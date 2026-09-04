@@ -96,3 +96,35 @@ target_link_libraries(test_overlay_renderer
 )
 vision_set_compiler_warnings(test_overlay_renderer)
 add_test(NAME test_overlay_renderer COMMAND test_overlay_renderer)
+
+# ------------------------------------------------------------------------------
+# Unit Test: test_roi_warper
+# ------------------------------------------------------------------------------
+add_executable(test_roi_warper
+    unit/test_roi_warper.cpp
+)
+target_link_libraries(test_roi_warper
+    PRIVATE
+        curv_core
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_roi_warper)
+add_test(NAME test_roi_warper COMMAND test_roi_warper)
+
+# ------------------------------------------------------------------------------
+# Unit Test: test_capi
+# ------------------------------------------------------------------------------
+add_executable(test_capi
+    unit/test_capi.cpp
+)
+target_link_libraries(test_capi
+    PRIVATE
+        curv_capi
+        curv_core
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_capi)
+add_test(NAME test_capi COMMAND test_capi)
+

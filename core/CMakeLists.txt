@@ -12,6 +12,9 @@ add_library(curv_core STATIC
     src/ridge/HessianMath.cpp
     src/ridge/StegerRidgeExtractor.cpp
     src/pipeline/SyncPerceptionPipeline.cpp
+    src/geometry/RoiWarper.cpp
+    src/roi/CanonicalWarper.cpp
+    src/config/DynamicParameterResolver.cpp
 )
 
 # Provide alias target for architectural naming flexibility
