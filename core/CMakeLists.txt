@@ -1,22 +1,29 @@
 # ==============================================================================
-# vision_core Library Target
+# curv_core / vision_perception_core Static Library Target
 # ==============================================================================
 
-add_library(vision_core
+add_library(curv_core STATIC
+    src/Version.cpp
+    src/Frame.cpp
+    src/QualityReport.cpp
+    src/Evidence.cpp
     src/vision_core.cpp
 )
 
-target_include_directories(vision_core
+# Provide alias target for architectural naming flexibility
+add_library(vision_perception_core ALIAS curv_core)
+
+target_include_directories(curv_core
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
 )
 
-if(TARGET OpenCV::opencv_core)
-    target_link_libraries(vision_core PUBLIC OpenCV::opencv_core)
-elseif(OpenCV_FOUND)
-    target_include_directories(vision_core PUBLIC ${OpenCV_INCLUDE_DIRS})
-    target_link_libraries(vision_core PUBLIC ${OpenCV_LIBS})
-endif()
+target_link_libraries(curv_core
+    PUBLIC
+        ${OpenCV_LIBS}
+        nlohmann_json::nlohmann_json
+        spdlog::spdlog
+)
 
-vision_set_compiler_warnings(vision_core)
+vision_set_compiler_warnings(curv_core)
