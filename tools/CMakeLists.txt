@@ -9,6 +9,8 @@ add_executable(curv_cli
 target_link_libraries(curv_cli
     PRIVATE
         curv_core
+        curv_adapters
+        curv_domains
         ${OpenCV_LIBS}
 )
 

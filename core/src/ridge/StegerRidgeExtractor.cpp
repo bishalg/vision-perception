@@ -108,57 +108,59 @@ RidgeGraph StegerRidgeExtractor::extractRidgeGraph(const cv::Mat& image) const {
     cv::sepFilter2D(gray_f, ryy, CV_32F, k_g,  k_g2, cv::Point(-1, -1), 0.0, cv::BORDER_REPLICATE);
     cv::sepFilter2D(gray_f, rxy, CV_32F, k_g1, k_g1, cv::Point(-1, -1), 0.0, cv::BORDER_REPLICATE);
 
-    // 4. Pixel-wise Hessian Decomposition & Sub-Pixel Localization
+    // 4. Multi-Threaded Pixel-wise Hessian Decomposition & Sub-Pixel Localization via cv::parallel_for_
     std::vector<CandidatePoint> candidates(static_cast<size_t>(rows * cols));
 
-    for (int y = 0; y < rows; ++y) {
-        const float* p_rx  = rx.ptr<float>(y);
-        const float* p_ry  = ry.ptr<float>(y);
-        const float* p_rxx = rxx.ptr<float>(y);
-        const float* p_ryy = ryy.ptr<float>(y);
-        const float* p_rxy = rxy.ptr<float>(y);
-        const float* p_val = gray_f.ptr<float>(y);
+    cv::parallel_for_(cv::Range(0, rows), [&](const cv::Range& range) {
+        for (int y = range.start; y < range.end; ++y) {
+            const float* p_rx  = rx.ptr<float>(y);
+            const float* p_ry  = ry.ptr<float>(y);
+            const float* p_rxx = rxx.ptr<float>(y);
+            const float* p_ryy = ryy.ptr<float>(y);
+            const float* p_rxy = rxy.ptr<float>(y);
+            const float* p_val = gray_f.ptr<float>(y);
 
-        for (int x = 0; x < cols; ++x) {
-            const auto eigen = computeHessianEigen2x2(p_rxx[x], p_rxy[x], p_ryy[x]);
-            const float salience = std::abs(eigen.lambda1);
+            for (int x = 0; x < cols; ++x) {
+                const auto eigen = computeHessianEigen2x2(p_rxx[x], p_rxy[x], p_ryy[x]);
+                const float salience = std::abs(eigen.lambda1);
 
-            // Polarity test: dark line (valleys) -> lambda1 > 0; bright line (ridges) -> lambda1 < 0
-            const bool correct_polarity = config_.extract_dark_lines ? (eigen.lambda1 > 0.0f) : (eigen.lambda1 < 0.0f);
+                // Polarity test: dark line (valleys) -> lambda1 > 0; bright line (ridges) -> lambda1 < 0
+                const bool correct_polarity = config_.extract_dark_lines ? (eigen.lambda1 > 0.0f) : (eigen.lambda1 < 0.0f);
 
-            if (!correct_polarity || salience < config_.low_threshold) {
-                continue;
-            }
+                if (!correct_polarity || salience < config_.low_threshold) {
+                    continue;
+                }
 
-            // Directional first and second derivatives along normal vector
-            const float f_prime = p_rx[x] * eigen.nx + p_ry[x] * eigen.ny;
-            const float f_dprime = p_rxx[x] * eigen.nx * eigen.nx +
-                                   2.0f * p_rxy[x] * eigen.nx * eigen.ny +
-                                   p_ryy[x] * eigen.ny * eigen.ny;
+                // Directional first and second derivatives along normal vector
+                const float f_prime = p_rx[x] * eigen.nx + p_ry[x] * eigen.ny;
+                const float f_dprime = p_rxx[x] * eigen.nx * eigen.nx +
+                                       2.0f * p_rxy[x] * eigen.nx * eigen.ny +
+                                       p_ryy[x] * eigen.ny * eigen.ny;
 
-            if (std::abs(f_dprime) < 1e-6f) continue;
+                if (std::abs(f_dprime) < 1e-6f) continue;
 
-            const float t = -f_prime / f_dprime;
-            const float sub_x = t * eigen.nx;
-            const float sub_y = t * eigen.ny;
+                const float t = -f_prime / f_dprime;
+                const float sub_x = t * eigen.nx;
+                const float sub_y = t * eigen.ny;
 
-            // Sub-pixel position offset inside current pixel unit square
-            if (std::abs(sub_x) <= 0.5f && std::abs(sub_y) <= 0.5f && std::abs(t) <= 0.7f) {
-                const int idx = y * cols + x;
-                auto& cand = candidates[static_cast<size_t>(idx)];
-                cand.valid = true;
-                cand.px = static_cast<float>(x) + sub_x;
-                cand.py = static_cast<float>(y) + sub_y;
-                cand.salience = salience;
-                cand.nx = eigen.nx;
-                cand.ny = eigen.ny;
-                cand.tx = -eigen.ny; // Tangent
-                cand.ty =  eigen.nx;
-                cand.intensity = p_val[x];
-                cand.confidence = std::min(1.0f, salience / std::max(0.01f, config_.high_threshold));
+                // Sub-pixel position offset inside current pixel unit square
+                if (std::abs(sub_x) <= 0.5f && std::abs(sub_y) <= 0.5f && std::abs(t) <= 0.7f) {
+                    const int idx = y * cols + x;
+                    auto& cand = candidates[static_cast<size_t>(idx)];
+                    cand.valid = true;
+                    cand.px = static_cast<float>(x) + sub_x;
+                    cand.py = static_cast<float>(y) + sub_y;
+                    cand.salience = salience;
+                    cand.nx = eigen.nx;
+                    cand.ny = eigen.ny;
+                    cand.tx = -eigen.ny; // Tangent
+                    cand.ty =  eigen.nx;
+                    cand.intensity = p_val[x];
+                    cand.confidence = std::min(1.0f, salience / std::max(0.01f, config_.high_threshold));
+                }
             }
         }
-    }
+    });
 
     // 5. Hysteresis Linking along Tangent Direction
     std::vector<uint8_t> visited(static_cast<size_t>(rows * cols), 0);

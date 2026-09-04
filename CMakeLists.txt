@@ -100,6 +100,8 @@ message(STATUS "==================================================")
 enable_testing()
 
 add_subdirectory(core)
+add_subdirectory(adapters)
+add_subdirectory(domains)
 add_subdirectory(apps/desktop_pipeline_demo)
 add_subdirectory(tools)
 add_subdirectory(tests)
