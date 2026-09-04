@@ -136,9 +136,9 @@ cv::Mat OverlayRenderer::render(
     }
 
     // 4. Draw Diagnostics HUD Box
-    if (config.draw_hud) {
+    if (config.draw_hud && canvas.cols >= 100 && canvas.rows >= 120) {
         const int hud_w = std::min(420, canvas.cols - 20);
-        const int hud_h = 105;
+        const int hud_h = std::min(105, canvas.rows - 20);
         const cv::Rect hud_rect(10, 10, hud_w, hud_h);
 
         // Alpha blended backdrop

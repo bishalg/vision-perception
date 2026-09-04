@@ -170,6 +170,23 @@ CURV_API int curv_pipeline_get_last_quality(
     CurvQualityResult* out_quality
 );
 
+/**
+ * @brief Retrieves the serialized JSON result from the most recent pipeline execution.
+ * Useful for querying the required buffer size before allocation or when CURV_STATUS_BUFFER_TOO_SMALL is returned.
+ * 
+ * @param pipeline Pipeline handle.
+ * @param out_json_buffer Caller-allocated buffer, or NULL to query size only.
+ * @param out_json_buffer_size Size of out_json_buffer in bytes (can be 0 if querying size).
+ * @param out_required_size Pointer to int populated with required buffer size including null terminator.
+ * @return Status code.
+ */
+CURV_API int curv_pipeline_get_last_json(
+    CurvPipelineHandle pipeline,
+    char* out_json_buffer,
+    int out_json_buffer_size,
+    int* out_required_size
+);
+
 #ifdef __cplusplus
 }
 #endif

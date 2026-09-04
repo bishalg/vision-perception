@@ -30,11 +30,13 @@ PipelineResult SyncPerceptionPipeline::process(const Frame& frame) {
 
     // 2. Stage 2: Curvilinear Ridge Extraction
     if (ridge_extractor_) {
-        // If the concrete extractor is a StegerRidgeExtractor, extract the full graph
+        // If the concrete extractor is a StegerRidgeExtractor, extract the full graph once and derive evidence
         if (auto steger = dynamic_cast<ridge::StegerRidgeExtractor*>(ridge_extractor_.get())) {
             result.ridge_graph = steger->extractRidgeGraph(frame.image);
+            result.evidence = steger->extractFromGraph(result.ridge_graph);
+        } else {
+            result.evidence = ridge_extractor_->extract(frame);
         }
-        result.evidence = ridge_extractor_->extract(frame);
     }
 
     const auto end_time = std::chrono::steady_clock::now();

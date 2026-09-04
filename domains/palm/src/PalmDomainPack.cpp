@@ -92,7 +92,12 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
     int life_line_id = -1;
 
     // 3. Zone Classification: evaluate spatial zone for major creases
-    const auto palm_zones = PalmZones::getCanonicalPalmZones(512);
+    bool is_left_hand = false;
+    if (input.frame.metadata.count("is_left_hand") && input.frame.metadata.at("is_left_hand") == "true") {
+        is_left_hand = true;
+    }
+    const int zone_dim = (input.frame.width() > 0) ? input.frame.width() : 512;
+    const auto palm_zones = PalmZones::getCanonicalPalmZones(zone_dim, is_left_hand);
     std::unordered_map<std::string, int> zone_counts;
 
     for (const auto& sa : analyses) {
@@ -150,14 +155,23 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
     // 4. Structural Features: Count junctions / intersections and continuity breaks
     const int intersections_count = static_cast<int>(input.ridges.junctions.size());
 
-    // Continuity breaks: check gaps between nearby segment endpoints (< 15 px)
+    // Continuity breaks: check gaps between nearby segment endpoints (< 15 px) across all 4 combinations
     int continuity_breaks = 0;
     for (size_t i = 0; i < analyses.size(); ++i) {
+        const auto& p_a_front = analyses[i].seg->points.front();
+        const auto& p_a_back  = analyses[i].seg->points.back();
+
         for (size_t j = i + 1; j < analyses.size(); ++j) {
-            const auto& pt_a = analyses[i].seg->points.back();
-            const auto& pt_b = analyses[j].seg->points.front();
-            const float dist = std::hypot(pt_a.x - pt_b.x, pt_a.y - pt_b.y);
-            if (dist > 2.0f && dist < 15.0f) {
+            const auto& p_b_front = analyses[j].seg->points.front();
+            const auto& p_b_back  = analyses[j].seg->points.back();
+
+            const float d1 = std::hypot(p_a_back.x  - p_b_front.x, p_a_back.y  - p_b_front.y);
+            const float d2 = std::hypot(p_a_front.x - p_b_front.x, p_a_front.y - p_b_front.y);
+            const float d3 = std::hypot(p_a_back.x  - p_b_back.x,  p_a_back.y  - p_b_back.y);
+            const float d4 = std::hypot(p_a_front.x - p_b_back.x,  p_a_front.y - p_b_back.y);
+
+            const float min_d = std::min({d1, d2, d3, d4});
+            if (min_d > 2.0f && min_d < 15.0f) {
                 continuity_breaks++;
             }
         }
@@ -166,6 +180,7 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
     output.domain_payload = {
         {"status", "analyzed"},
         {"palm_height_px", palm_height},
+        {"is_left_hand", is_left_hand},
         {"heart_line_id", (heart_line_id != -1) ? nlohmann::json(heart_line_id) : nullptr},
         {"head_line_id", (head_line_id != -1) ? nlohmann::json(head_line_id) : nullptr},
         {"life_line_id", (life_line_id != -1) ? nlohmann::json(life_line_id) : nullptr},

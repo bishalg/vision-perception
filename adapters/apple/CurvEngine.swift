@@ -76,8 +76,8 @@ public final class CurvEngine {
             curv_frame_destroy(frameHandle)
         }
 
-        var jsonBuffer = [CChar](repeating: 0, count: 524288) // 512 KB
-        let status = landmarks.withUnsafeBufferPointer { lmsPtr in
+        var jsonBuffer = [CChar](repeating: 0, count: 2097152) // 2 MB default buffer
+        var status = landmarks.withUnsafeBufferPointer { lmsPtr in
             curv_pipeline_process_landmarks_roi(
                 UnsafeMutableRawPointer(handle),
                 frameHandle,
@@ -85,6 +85,20 @@ public final class CurvEngine {
                 &jsonBuffer,
                 Int32(jsonBuffer.count)
             )
+        }
+
+        if status == 3 { // CURV_STATUS_BUFFER_TOO_SMALL
+            var neededSize: Int32 = 0
+            curv_pipeline_get_last_json(UnsafeMutableRawPointer(handle), nil, 0, &neededSize)
+            if neededSize > 0 {
+                jsonBuffer = [CChar](repeating: 0, count: Int(neededSize))
+                status = curv_pipeline_get_last_json(
+                    UnsafeMutableRawPointer(handle),
+                    &jsonBuffer,
+                    Int32(jsonBuffer.count),
+                    nil
+                )
+            }
         }
 
         if status != 0 && status != 2 { // 0: SUCCESS, 2: QUALITY_REJECTED (still has JSON)

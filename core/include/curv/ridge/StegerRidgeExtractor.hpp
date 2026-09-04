@@ -38,6 +38,11 @@ public:
      */
     [[nodiscard]] std::vector<Evidence> extract(const Frame& frame) override;
 
+    /**
+     * @brief Converts an already extracted RidgeGraph directly into Evidence items without re-running extraction.
+     */
+    [[nodiscard]] std::vector<Evidence> extractFromGraph(const RidgeGraph& graph) const;
+
     [[nodiscard]] const StegerConfig& getConfig() const noexcept { return config_; }
     void setConfig(const StegerConfig& config) noexcept { config_ = config; }
 

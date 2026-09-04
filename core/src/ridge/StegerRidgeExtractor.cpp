@@ -23,14 +23,15 @@ struct CandidatePoint {
 };
 
 void generate1DGaussianKernels(float sigma, cv::Mat& k_g, cv::Mat& k_g1, cv::Mat& k_g2) {
-    const int radius = std::max(2, static_cast<int>(std::ceil(3.0f * sigma)));
+    const float safe_sigma = std::max(0.1f, sigma);
+    const int radius = std::max(2, static_cast<int>(std::ceil(3.0f * safe_sigma)));
     const int ksize = 2 * radius + 1;
 
     k_g.create(1, ksize, CV_32F);
     k_g1.create(1, ksize, CV_32F);
     k_g2.create(1, ksize, CV_32F);
 
-    const float s2 = sigma * sigma;
+    const float s2 = safe_sigma * safe_sigma;
     const float s4 = s2 * s2;
 
     double sum_g = 0.0;
@@ -321,11 +322,9 @@ RidgeGraph StegerRidgeExtractor::extractRidgeGraph(const cv::Mat& image) const {
     return result;
 }
 
-std::vector<Evidence> StegerRidgeExtractor::extract(const Frame& frame) {
+std::vector<Evidence> StegerRidgeExtractor::extractFromGraph(const RidgeGraph& graph) const {
     std::vector<Evidence> evidence_list;
-    if (frame.empty()) return evidence_list;
-
-    const auto graph = extractRidgeGraph(frame.image);
+    evidence_list.reserve(graph.segments.size());
 
     for (const auto& seg : graph.segments) {
         nlohmann::json geom_points = nlohmann::json::array();
@@ -360,6 +359,11 @@ std::vector<Evidence> StegerRidgeExtractor::extract(const Frame& frame) {
     }
 
     return evidence_list;
+}
+
+std::vector<Evidence> StegerRidgeExtractor::extract(const Frame& frame) {
+    if (frame.empty()) return {};
+    return extractFromGraph(extractRidgeGraph(frame.image));
 }
 
 } // namespace CurvEngine::ridge

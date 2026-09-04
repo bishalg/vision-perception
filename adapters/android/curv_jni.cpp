@@ -56,22 +56,36 @@ Java_org_curv_CurvPipeline_nativeProcessLandmarksRoi(
         return env->NewStringUTF("{\"error\": \"frame_creation_failed\"}");
     }
 
-    std::vector<float> lms_data(42, 0.0f);
-    if (landmarks_array) {
-        const jsize len = env->GetArrayLength(landmarks_array);
-        if (len >= 42) {
-            env->GetFloatArrayRegion(landmarks_array, 0, 42, lms_data.data());
-        }
+    if (!landmarks_array || env->GetArrayLength(landmarks_array) < 42) {
+        curv_frame_destroy(f_handle);
+        return env->NewStringUTF("{\"error\": \"invalid_landmarks\"}");
     }
 
-    std::vector<char> json_buf(524288, 0); // 512 KB
-    const int status = curv_pipeline_process_landmarks_roi(
+    std::vector<float> lms_data(42, 0.0f);
+    env->GetFloatArrayRegion(landmarks_array, 0, 42, lms_data.data());
+
+    std::vector<char> json_buf(2097152, 0); // 2 MB default buffer
+    int status = curv_pipeline_process_landmarks_roi(
         p_handle,
         f_handle,
         lms_data.data(),
         json_buf.data(),
         static_cast<int>(json_buf.size())
     );
+
+    if (status == CURV_STATUS_BUFFER_TOO_SMALL) {
+        int needed_size = 0;
+        curv_pipeline_get_last_json(p_handle, nullptr, 0, &needed_size);
+        if (needed_size > 0) {
+            json_buf.resize(static_cast<size_t>(needed_size), 0);
+            status = curv_pipeline_get_last_json(
+                p_handle,
+                json_buf.data(),
+                static_cast<int>(json_buf.size()),
+                nullptr
+            );
+        }
+    }
 
     curv_frame_destroy(f_handle);
 

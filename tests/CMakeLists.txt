@@ -157,7 +157,22 @@ target_link_libraries(test_vlm_formatter
         GTest::gtest_main
         ${OpenCV_LIBS}
 )
-vision_set_compiler_warnings(test_vlm_formatter)
 add_test(NAME test_vlm_formatter COMMAND test_vlm_formatter)
 
-
+# ------------------------------------------------------------------------------
+# Unit Test: test_regression_audit
+# ------------------------------------------------------------------------------
+add_executable(test_regression_audit
+    unit/test_regression_audit.cpp
+)
+target_link_libraries(test_regression_audit
+    PRIVATE
+        curv_capi
+        curv_domains
+        curv_adapters
+        curv_core
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_regression_audit)
+add_test(NAME test_regression_audit COMMAND test_regression_audit)

@@ -100,6 +100,35 @@ RoiTransform computeCanonicalPalmTransform(
     return result;
 }
 
+bool detectIsLeftHand(const HandLandmarks& lms) {
+    const auto& p0  = lms.points[0];  // Wrist
+    const auto& p5  = lms.points[5];  // Index MCP
+    const auto& p9  = lms.points[9];  // Middle MCP
+    const auto& p17 = lms.points[17]; // Pinky MCP
+
+    // Up vector: Wrist (P0) -> Middle MCP (P9)
+    const float up_x = p9.x - p0.x;
+    const float up_y = p9.y - p0.y;
+    const float up_len = std::sqrt(up_x * up_x + up_y * up_y);
+    if (up_len < 1e-4f) {
+        return false;
+    }
+
+    // Right transverse vector (perpendicular to up in image coords where Y is down)
+    // For up = (0, -1) [pointing up], right = (1, 0) [pointing right]
+    const float right_x = -up_y / up_len;
+    const float right_y =  up_x / up_len;
+
+    // Vector from Index (P5) to Pinky (P17)
+    const float palm_w_x = p17.x - p5.x;
+    const float palm_w_y = p17.y - p5.y;
+
+    // Dot product: if Pinky is to the right of Index -> Right Hand (> 0)
+    // If Pinky is to the left of Index -> Left Hand (< 0)
+    const float dot = palm_w_x * right_x + palm_w_y * right_y;
+    return dot < 0.0f;
+}
+
 cv::Mat computeQuadPerspectiveTransform(
     const std::array<Point2D, 4>& corners,
     int target_dim
@@ -146,7 +175,7 @@ void invertGraphCoordinates(
     RidgeGraph& graph,
     const cv::Mat& M_inv
 ) {
-    if (M_inv.empty()) {
+    if (M_inv.empty() || M_inv.rows < 2 || M_inv.cols < 3) {
         return;
     }
 

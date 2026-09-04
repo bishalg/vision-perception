@@ -2,14 +2,19 @@
 
 namespace CurvEngine::domains {
 
-std::vector<geometry::Zone> PalmZones::getCanonicalPalmZones(int target_dim) {
+std::vector<geometry::Zone> PalmZones::getCanonicalPalmZones(int target_dim, bool is_left_hand) {
     const float s = static_cast<float>(target_dim) / 512.0f;
+    const float t_dim = static_cast<float>(target_dim);
 
-    auto make_poly = [s](std::initializer_list<std::pair<float, float>> coords) {
+    auto make_poly = [s, t_dim, is_left_hand](std::initializer_list<std::pair<float, float>> coords) {
         std::vector<Point2D> poly;
         poly.reserve(coords.size());
         for (const auto& [x, y] : coords) {
-            poly.emplace_back(x * s, y * s);
+            float px = x * s;
+            if (is_left_hand) {
+                px = t_dim - px;
+            }
+            poly.emplace_back(px, y * s);
         }
         return poly;
     };

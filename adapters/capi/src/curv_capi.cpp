@@ -32,6 +32,7 @@ struct PipelineContext {
     CurvEngine::config::DynamicParameterResolver param_resolver;
     CurvQualityResult last_quality{0.0, 0.0, 0.0, 0};
     std::string domain_id;
+    std::string last_json;
 
     PipelineContext(const char* domain) {
         if (domain) {
@@ -74,6 +75,7 @@ int copy_json_to_buffer(const nlohmann::json& js, char* out_buf, int buf_size) {
     if (!out_buf || buf_size <= 0) {
         return CURV_STATUS_INVALID_ARGUMENT;
     }
+    out_buf[0] = '\0';
 
     const std::string serialized = js.dump();
     const size_t needed_len = serialized.length() + 1;
@@ -234,6 +236,7 @@ int curv_pipeline_process_frame(
         }
         root_json["evidence"] = evidence_arr;
 
+        p_ctx->last_json = root_json.dump();
         const int copy_status = copy_json_to_buffer(root_json, out_json_buffer, out_json_buffer_size);
         if (copy_status != CURV_STATUS_SUCCESS) {
             return copy_status;
@@ -304,7 +307,7 @@ int curv_pipeline_process_quad_roi(
         p_ctx->last_quality.contrast_score = result.quality.contrast_score;
         p_ctx->last_quality.is_usable = result.quality.is_usable ? 1 : 0;
 
-        // Invert curve points back to original image space
+        // Invert curve points back to original image space and recompute true length
         for (auto& seg : result.ridge_graph.segments) {
             for (auto& pt : seg.points) {
                 const double px = static_cast<double>(pt.x);
@@ -314,6 +317,11 @@ int curv_pipeline_process_quad_roi(
                 pt.x = static_cast<float>((H_inv.at<double>(0, 0) * px + H_inv.at<double>(0, 1) * py + H_inv.at<double>(0, 2)) * inv_w);
                 pt.y = static_cast<float>((H_inv.at<double>(1, 0) * px + H_inv.at<double>(1, 1) * py + H_inv.at<double>(1, 2)) * inv_w);
             }
+            float new_len = 0.0f;
+            for (size_t i = 1; i < seg.points.size(); ++i) {
+                new_len += std::hypot(seg.points[i].x - seg.points[i - 1].x, seg.points[i].y - seg.points[i - 1].y);
+            }
+            seg.total_length = new_len;
         }
 
         nlohmann::json root_json;
@@ -343,6 +351,7 @@ int curv_pipeline_process_quad_roi(
         }
         root_json["evidence"] = evidence_arr;
 
+        p_ctx->last_json = root_json.dump();
         const int copy_status = copy_json_to_buffer(root_json, out_json_buffer, out_json_buffer_size);
         if (copy_status != CURV_STATUS_SUCCESS) {
             return copy_status;
@@ -398,6 +407,10 @@ int curv_pipeline_process_landmarks_roi(
 
         CurvEngine::Frame warped_frame(warped, f_ctx->frame.source_id + "_canonical_palm", f_ctx->frame.timestamp_ms);
 
+        // Detect handedness (left vs right hand) and propagate into frame metadata for PalmZones
+        const bool is_left = CurvEngine::geometry::detectIsLeftHand(lms);
+        warped_frame.metadata["is_left_hand"] = is_left ? "true" : "false";
+
         // Adapt parameters to palm scale
         auto tuned_cfg = CurvEngine::domains::PalmParameters::computeFromLandmarks(
             lms,
@@ -415,9 +428,6 @@ int curv_pipeline_process_landmarks_roi(
         p_ctx->last_quality.contrast_score = result.quality.contrast_score;
         p_ctx->last_quality.is_usable = result.quality.is_usable ? 1 : 0;
 
-        // Invert extracted sub-pixel curves back to source image coordinates
-        CurvEngine::geometry::invertGraphCoordinates(result.ridge_graph, transform.M_inv);
-
         nlohmann::json root_json;
         root_json["quality"] = {
             {"blur_score", result.quality.blur_score},
@@ -433,8 +443,9 @@ int curv_pipeline_process_landmarks_roi(
             evidence_arr.push_back(ev.to_json());
         }
 
+        // 1. First process with domain pack in 512x512 canonical space
         if (p_ctx->domain_pack && result.is_usable) {
-            CurvEngine::DomainInput d_in{f_ctx->frame, result.ridge_graph, result.quality};
+            CurvEngine::DomainInput d_in{warped_frame, result.ridge_graph, result.quality};
             auto d_out = p_ctx->domain_pack->process(d_in);
             for (const auto& ev : d_out.domain_evidence) {
                 evidence_arr.push_back(ev.to_json());
@@ -445,6 +456,10 @@ int curv_pipeline_process_landmarks_roi(
         }
         root_json["evidence"] = evidence_arr;
 
+        // 2. Now invert extracted sub-pixel curves back to source image coordinates for caller visualization
+        CurvEngine::geometry::invertGraphCoordinates(result.ridge_graph, transform.M_inv);
+
+        p_ctx->last_json = root_json.dump();
         const int copy_status = copy_json_to_buffer(root_json, out_json_buffer, out_json_buffer_size);
         if (copy_status != CURV_STATUS_SUCCESS) {
             return copy_status;
@@ -473,6 +488,39 @@ int curv_pipeline_get_last_quality(
     try {
         auto* p_ctx = static_cast<PipelineContext*>(pipeline);
         *out_quality = p_ctx->last_quality;
+        return CURV_STATUS_SUCCESS;
+    } catch (...) {
+        return CURV_STATUS_INTERNAL_ERROR;
+    }
+}
+
+int curv_pipeline_get_last_json(
+    CurvPipelineHandle pipeline,
+    char* out_json_buffer,
+    int out_json_buffer_size,
+    int* out_required_size
+) {
+    if (!pipeline) {
+        return CURV_STATUS_INVALID_ARGUMENT;
+    }
+
+    try {
+        auto* p_ctx = static_cast<PipelineContext*>(pipeline);
+        const size_t needed_len = p_ctx->last_json.length() + 1;
+        if (out_required_size) {
+            *out_required_size = static_cast<int>(needed_len);
+        }
+
+        if (!out_json_buffer || out_json_buffer_size <= 0) {
+            return CURV_STATUS_SUCCESS;
+        }
+
+        out_json_buffer[0] = '\0';
+        if (static_cast<size_t>(out_json_buffer_size) < needed_len) {
+            return CURV_STATUS_BUFFER_TOO_SMALL;
+        }
+
+        std::memcpy(out_json_buffer, p_ctx->last_json.c_str(), needed_len);
         return CURV_STATUS_SUCCESS;
     } catch (...) {
         return CURV_STATUS_INTERNAL_ERROR;

@@ -65,6 +65,17 @@ RoiTransform computeCanonicalPalmTransform(
 );
 
 /**
+ * @brief Determines if the hand landmarks correspond to a left hand or right hand.
+ * For a palm facing the camera:
+ * - In a right hand, the index finger (Point 5) is to the left of the pinky (Point 17) along the transverse axis.
+ * - In a left hand, the index finger is to the right of the pinky along the transverse axis.
+ *
+ * @param lms 21-point hand landmarks.
+ * @return true if left hand, false if right hand.
+ */
+bool detectIsLeftHand(const HandLandmarks& lms);
+
+/**
  * @brief Computes a perspective transform from 4 arbitrary quadrilateral corner points.
  * 
  * @param corners Top-Left, Top-Right, Bottom-Right, Bottom-Left corners in source image.
