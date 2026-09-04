@@ -1,31 +1,38 @@
-# Vision-Perception
+# vision-perception
 
-> **A Domain-Agnostic Sub-Pixel Curvilinear Ridge Extraction Engine with Modular Domain Plugins**
+> **A Reusable, Domain-Agnostic Computer Vision Perception Core**
 
-[![License: Policy](https://img.shields.io/badge/License-Policy-blue.svg)](docs/license_policy.md)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Architecture: Modular C++20](https://img.shields.io/badge/Architecture-Modular%20C%2B%2B20-orange.svg)](docs/architecture.md)
-[![Status: Research & Planning](https://img.shields.io/badge/Status-Research%20%26%20Planning-green.svg)](docs/roadmap.md)
+[![Milestone: 1 Scaffold](https://img.shields.io/badge/Milestone-1%3A%20Scaffold-green.svg)](docs/roadmap.md)
 
 ---
 
-## 1. Overview
+## 1. Project Purpose
 
-`vision-perception` is a high-performance, domain-agnostic computer vision engine engineered primarily in modern C++ (C++20) and OpenCV. 
+`vision-perception` is a production-grade, high-performance computer vision monorepo implemented primarily in modern C++ (C++20/C++17) and OpenCV.
 
-At the center of the engine is an unbiased, sub-pixel curvilinear structure and ridge extraction pipeline grounded in differential geometry, scale-space Hessian eigenvalue decomposition, and sub-pixel centerline tracking. 
-
-The architecture strictly decouples mathematical and geometric perception primitives from downstream domain-specific semantics. Domain packs (e.g., palm feature extraction, poultry behavior tracking, industrial surface inspection, driver monitoring, document scanning) plug into the core via well-defined evidence models, adapters, and extension interfaces.
+Its primary capability is an unbiased, sub-pixel curvilinear ridge extraction engine grounded in differential geometry, scale-space Hessian tensor decomposition, and sub-pixel centerline tracking.
 
 ---
 
-## 2. Core Philosophy & Design Principles
+## 2. Reusable, Domain-Agnostic Vision Core
 
-1. **Domain-Agnostic Core**: The core perception engine operates purely on geometric, spatial, radiometric, and structural primitives (points, ridges, contours, graphs, scale-space response, quality metrics). It contains zero domain-specific heuristics.
-2. **Sub-Pixel Precision**: Ridges, edges, and junctions are extracted with sub-pixel localization using directional derivatives, Hessian matrix analysis, and zero-crossing Taylor approximations.
-3. **Strict MVC / Model Decoupling**: View and rendering layers (overlays, visualizers) are isolated from core perception logic and mathematical models.
-4. **Evidence-Based Output**: Every pipeline execution produces an immutable `PerceptionEvidence` model encapsulating geometry, quality assessment scores, confidence intervals, and execution telemetry suitable for JSON serialization.
-5. **Zero Vendor Lock-In / Modular Adapters**: Hardware acceleration (OpenCV, ONNX Runtime, TFLite, Metal, Vulkan, OpenVINO) is abstracted through explicit adapter interfaces.
-6. **Commercial Permissiveness**: Strict licensing hygiene ensuring only Apache-2.0, MIT, BSD-3-Clause, Boost, and zlib compatible components are integrated.
+A foundational architectural invariant of this repository is that **the core must remain strictly domain-agnostic**:
+
+1. **Agnostic Core (`core/`)**:
+   - Operates purely on geometric, spatial, radiometric, and structural primitives: sub-pixel coordinates, curvilinear segments, topological junctions, Hessian eigenvalues, and image quality metrics.
+   - Contains zero domain-specific heuristics, rules, or domain terminology.
+2. **Domain Packs Added Later (`domains/`)**:
+   - All application-specific logic will be added later as isolated domain extension packs.
+   - Future domain packs include:
+     - `domains/palm/`: Biometric hand landmark alignment and crease extraction.
+     - `domains/poultry/`: Livestock density, dwell time, and behavior tracking.
+     - `domains/driver_monitoring/`: Driver gaze, head pose, and drowsiness analysis.
+     - `domains/surface_inspection/`: Micro-crack, scratch, and surface defect quality control.
+     - `domains/document_scanning/`: Quadrilateral edge rectification and text line analysis.
+3. **No Domain Pollution**:
+   - Palmistry, astrology, Samudrik Shastra, poultry feeding, driver alertness thresholds, etc., are **strictly forbidden** inside `core/`.
 
 ---
 
@@ -33,34 +40,34 @@ The architecture strictly decouples mathematical and geometric perception primit
 
 ```text
 vision-perception/
-├── core/            # Domain-agnostic vision core (ridge extraction, geometry, quality, evidence)
-├── adapters/        # Runtime adapters (OpenCV, ONNX Runtime, TFLite, Camera/Video I/O)
-├── domains/         # Domain packs (palm, poultry, surface_inspection, driver_monitoring, etc.)
-├── apps/            # Applications (CLI testbench, evaluation daemon, demo runners)
-├── tools/           # Developer tools (calibration, synthetic curve generator, benchmark harness)
-├── models/          # Model manifests, schemas, and download orchestrators
-├── data/            # Sample fixtures, calibration targets, and test artifacts
-├── third_party/     # External dependencies (git submodules / vendored headers)
-├── docs/            # Architecture specs, license policies, research benchmarks
-│   └── research/    # Literature reviews, GitHub reuse matrices, competitive analysis
-└── scripts/         # Environment setup, build helpers, CI/CD formatting & validation
+├── cmake/           # Modular CMake modules, toolchains, and compiler warning configurations
+├── core/            # Domain-agnostic C++ perception core (geometry, ridge engine, quality, evidence)
+│   ├── include/     # Public headers (curv/GeometryTypes.hpp, vision_core/version.hpp)
+│   ├── src/         # Core implementation units
+│   └── tests/       # Core unit tests
+├── adapters/        # Technology & hardware adapters (OpenCV, ONNX Runtime, TFLite, MediaPipe, Camera)
+├── domains/         # Domain extension packs (palm, poultry, driver_monitoring, surface_inspection, etc.)
+├── apps/            # Application executables (desktop_pipeline_demo, eval_tool)
+├── tools/           # Developer tools (run_pipeline, evaluate, overlay_viewer)
+├── models/          # Neural network manifests, schemas, and download orchestrators
+├── data/            # Sample fixtures, synthetic curves, and annotations
+├── third_party/     # Permissive third-party libraries and provenance records
+├── docs/            # Architecture specifications, evidence schemas, and research
+│   └── research/    # Literature reviews, GitHub reuse matrices, benchmarks
+└── scripts/         # Setup, build, test, lint, and formatting automation
 ```
 
 ---
 
-## 4. Documentation
+## 4. Current Milestone Status
 
-Detailed specifications and planning documentation are available in the [`docs/`](docs/) directory:
+This project is currently in **Milestone 1: Repository Scaffold**:
+- [x] Initialized Git repository tracking `git@github.com:bishalg/vision-perception.git`
+- [x] Established multi-tier folder scaffold (`docs/`, `cmake/`, `core/`, `adapters/`, `domains/`, `apps/`, `tools/`, `models/`, `data/`, `third_party/`, `scripts/`)
+- [x] Defined open-source reuse matrix and licensing governance (`docs/research/github_reuse_matrix.md`, `docs/license_policy.md`)
+- [x] Authored architectural blueprints (`docs/architecture.md`, `docs/evidence_schema.md`, `docs/domain_pack_spec.md`)
+- [x] Implemented core mathematical data contract (`core/include/curv/GeometryTypes.hpp`)
+- [x] Configured modern CMake modules, `.gitignore`, and automation scripts
+- [ ] *Next Phase*: Milestone 2 (CMake C++ OpenCV build verification and toolchain validation)
 
-- [**GitHub Open-Source Reuse Matrix**](docs/research/github_reuse_matrix.md): Exhaustive audit of candidate open-source libraries for core CV, line detection, curve fitting, inference runtimes, and tracking.
-- [**License & Provenance Policy**](docs/license_policy.md): Standards for third-party libraries, model weights, provenance tracking, and intellectual property protection.
-- [**System Architecture Specification**](docs/architecture.md): Modular component breakdown, data flow, pipeline abstractions, evidence schema, and domain plugin contracts.
-- [**Engineering Roadmap**](docs/roadmap.md): Milestone-based delivery plan from research and scaffolding through C++ implementation, evaluation tooling, and domain expansion.
-
----
-
-## 5. Current Status
-
-The project is currently in **Milestone 1 (Research and Repo Scaffold)**. No implementation code has been committed yet. The repository skeleton, git configuration, licensing framework, and architectural plans are established.
-
-Proceed to [Roadmap](docs/roadmap.md) to inspect upcoming milestones.
+No business logic, heavy dependencies, palmistry heuristics, or mobile platform code have been implemented.

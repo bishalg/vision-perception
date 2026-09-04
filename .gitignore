@@ -28,6 +28,7 @@ cmake-build-*/
 _build/
 bin/
 lib/
+.cache/
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
@@ -71,7 +72,6 @@ xcuserdata/
 *.moved-builder
 profile
 *.ipa
-build/
 
 # ------------------------------------------------------------------------------
 # Android NDK / Android Studio
@@ -100,8 +100,6 @@ ndk-build/
 
 # CLion / JetBrains
 .idea/
-cmake-build-debug/
-cmake-build-release/
 
 # Visual Studio
 .vs/
@@ -140,7 +138,6 @@ env/
 venv/
 .venv/
 ENV/
-build/
 develop-eggs/
 dist/
 downloads/
@@ -160,7 +157,6 @@ wheels/
 
 # ------------------------------------------------------------------------------
 # Large Datasets, Video Feeds, and Binary Model Weights
-# (Note: models and test fixture manifests are versioned, large binary blobs are not)
 # ------------------------------------------------------------------------------
 *.mp4
 *.avi
@@ -179,6 +175,7 @@ wheels/
 *.7z
 
 # Exceptions: keep small golden fixture data or test config files explicitly
-!data/fixtures/
 !data/samples/
+!data/synthetic/
+!data/annotations/
 !.gitkeep
