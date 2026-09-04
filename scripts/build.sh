@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Build Script for vision-perception
+# Build & Test Script for vision-perception
 # ==============================================================================
 set -euo pipefail
 
@@ -20,7 +20,11 @@ cmake --build "${BUILD_DIR}" --parallel "$(sysctl -n hw.ncpu 2>/dev/null || npro
 
 echo "==> Build successful."
 
-# Run post-build sanity check if executables exist
+# Run GoogleTest suite via CTest
+echo "==> Running automated test suite..."
+ctest --test-dir "${BUILD_DIR}" --output-on-failure
+
+# Run post-build sanity checks
 if [ -x "${BUILD_DIR}/tools/curv_cli" ]; then
     echo "==> Executing curv_cli post-build sanity test..."
     "${BUILD_DIR}/tools/curv_cli"
@@ -31,4 +35,4 @@ if [ -x "${BUILD_DIR}/apps/desktop_pipeline_demo/desktop_pipeline_demo" ]; then
     "${BUILD_DIR}/apps/desktop_pipeline_demo/desktop_pipeline_demo"
 fi
 
-echo "==> All post-build verification tests completed successfully!"
+echo "==> All build and test stages completed successfully!"

@@ -8,6 +8,10 @@ add_library(curv_core STATIC
     src/QualityReport.cpp
     src/Evidence.cpp
     src/vision_core.cpp
+    src/quality/LaplacianQualityAnalyzer.cpp
+    src/ridge/HessianMath.cpp
+    src/ridge/StegerRidgeExtractor.cpp
+    src/pipeline/SyncPerceptionPipeline.cpp
 )
 
 # Provide alias target for architectural naming flexibility

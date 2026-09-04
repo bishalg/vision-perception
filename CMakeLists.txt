@@ -31,6 +31,7 @@ list(APPEND CMAKE_PREFIX_PATH
     "/opt/homebrew/opt/opencv"
     "/opt/homebrew/opt/spdlog"
     "/opt/homebrew/opt/nlohmann-json"
+    "/opt/homebrew/opt/googletest"
     "/usr/local"
     "/usr/local/opt/opencv"
 )
@@ -40,7 +41,6 @@ include(cmake/compiler_warnings.cmake)
 
 # ------------------------------------------------------------------------------
 # Dependencies (nlohmann_json & spdlog)
-# Resolves local system packages first, falls back to FetchContent automatically.
 # ------------------------------------------------------------------------------
 include(FetchContent)
 
@@ -95,8 +95,11 @@ message(STATUS "  - OpenCV Inc:  ${OpenCV_INCLUDE_DIRS}")
 message(STATUS "==================================================")
 
 # ------------------------------------------------------------------------------
-# Subdirectories
+# Subdirectories & Testing
 # ------------------------------------------------------------------------------
+enable_testing()
+
 add_subdirectory(core)
 add_subdirectory(apps/desktop_pipeline_demo)
 add_subdirectory(tools)
+add_subdirectory(tests)
