@@ -1,0 +1,184 @@
+# ==============================================================================
+# Vision-Perception Monorepo .gitignore
+# C++, CMake, Android NDK, Apple/macOS, IDEs, and Runtime Artifacts
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Compiled Binaries & Libraries
+# ------------------------------------------------------------------------------
+*.o
+*.obj
+*.so
+*.so.*
+*.dylib
+*.dll
+*.lib
+*.a
+*.exe
+*.out
+*.app
+*.bin
+
+# ------------------------------------------------------------------------------
+# CMake & Build Directories
+# ------------------------------------------------------------------------------
+build/
+build-*/
+cmake-build-*/
+_build/
+bin/
+lib/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.ninja
+.ninja_*
+compile_commands.json
+CTestTestfile.cmake
+Testing/
+install_manifest.txt
+*.cmake.in.bak
+CPackConfig.cmake
+CPackSourceConfig.cmake
+_CPack_Packages/
+
+# Conan / vcpkg / Dependency Managers
+vcpkg_installed/
+conan.lock
+conanbuildinfo.*
+conaninfo.txt
+
+# ------------------------------------------------------------------------------
+# Apple / macOS Artifacts
+# ------------------------------------------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+*.dSYM/
+*.bundle
+DerivedData/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+*.xccheckout
+*.moved-builder
+profile
+*.ipa
+build/
+
+# ------------------------------------------------------------------------------
+# Android NDK / Android Studio
+# ------------------------------------------------------------------------------
+.cxx/
+local.properties
+.gradle/
+captures/
+obj/
+*.apk
+*.aar
+*.ap_
+*.dex
+ndk-build/
+
+# ------------------------------------------------------------------------------
+# IDEs & Editor Configuration
+# ------------------------------------------------------------------------------
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# CLion / JetBrains
+.idea/
+cmake-build-debug/
+cmake-build-release/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Vim / Emacs
+*~
+*.swp
+*.swo
+.#*
+\#*#
+
+# ------------------------------------------------------------------------------
+# Debugging, Profiling, & Sanitizers
+# ------------------------------------------------------------------------------
+*.gcov
+*.gcda
+*.gcno
+gmon.out
+callgrind.out.*
+vgcore.*
+sanitizer.log.*
+
+# ------------------------------------------------------------------------------
+# Python & Tooling Environment (evaluation / scripts)
+# ------------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ------------------------------------------------------------------------------
+# Large Datasets, Video Feeds, and Binary Model Weights
+# (Note: models and test fixture manifests are versioned, large binary blobs are not)
+# ------------------------------------------------------------------------------
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.m4v
+*.bag
+*.h5
+*.tflite
+*.onnx
+*.weights
+*.pt
+*.pth
+*.tar.gz
+*.zip
+*.7z
+
+# Exceptions: keep small golden fixture data or test config files explicitly
+!data/fixtures/
+!data/samples/
+!.gitkeep
