@@ -5,6 +5,8 @@
 add_library(curv_domains STATIC
     surface_inspection/src/SurfaceInspectionPack.cpp
     palm/src/PalmDomainPack.cpp
+    palm/src/PalmZones.cpp
+    palm/src/VlmPromptFormatter.cpp
 )
 
 add_library(curv_domain_palm ALIAS curv_domains)

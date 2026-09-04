@@ -1,7 +1,9 @@
 #include "curv/domains/PalmDomainPack.hpp"
+#include "curv/domain/PalmZones.hpp"
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <unordered_map>
 
 namespace CurvEngine::domains {
 
@@ -89,8 +91,14 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
     int head_line_id = -1;
     int life_line_id = -1;
 
+    // 3. Zone Classification: evaluate spatial zone for major creases
+    const auto palm_zones = PalmZones::getCanonicalPalmZones(512);
+    std::unordered_map<std::string, int> zone_counts;
+
     for (const auto& sa : analyses) {
         const float rel_y = (sa.mean_y - global_min_y) / palm_height;
+        const std::string primary_zone = geometry::ZoneIntersector::findPrimaryZone(*sa.seg, palm_zones);
+        zone_counts[primary_zone]++;
 
         // Top third, primarily transverse/horizontal -> Heart line
         if (heart_line_id == -1 && rel_y <= 0.42f && sa.angle_rad < 0.70f) {
@@ -99,7 +107,11 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
                 "crease_heart",
                 "heart_line",
                 0.90,
-                nlohmann::json{{"segment_id", sa.seg->id}, {"length", sa.seg->total_length}},
+                nlohmann::json{
+                    {"segment_id", sa.seg->id},
+                    {"length", sa.seg->total_length},
+                    {"zone", primary_zone}
+                },
                 nlohmann::json{{"mean_y_rel", rel_y}}
             );
         }
@@ -110,7 +122,11 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
                 "crease_head",
                 "head_line",
                 0.88,
-                nlohmann::json{{"segment_id", sa.seg->id}, {"length", sa.seg->total_length}},
+                nlohmann::json{
+                    {"segment_id", sa.seg->id},
+                    {"length", sa.seg->total_length},
+                    {"zone", primary_zone}
+                },
                 nlohmann::json{{"mean_y_rel", rel_y}}
             );
         }
@@ -121,13 +137,17 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
                 "crease_life",
                 "life_line",
                 0.85,
-                nlohmann::json{{"segment_id", sa.seg->id}, {"length", sa.seg->total_length}},
+                nlohmann::json{
+                    {"segment_id", sa.seg->id},
+                    {"length", sa.seg->total_length},
+                    {"zone", primary_zone}
+                },
                 nlohmann::json{{"mean_y_rel", rel_y}}
             );
         }
     }
 
-    // 3. Structural Features: Count junctions / intersections and continuity breaks
+    // 4. Structural Features: Count junctions / intersections and continuity breaks
     const int intersections_count = static_cast<int>(input.ridges.junctions.size());
 
     // Continuity breaks: check gaps between nearby segment endpoints (< 15 px)
@@ -151,6 +171,7 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
         {"life_line_id", (life_line_id != -1) ? nlohmann::json(life_line_id) : nullptr},
         {"intersections", intersections_count},
         {"continuity_breaks", continuity_breaks},
+        {"zone_distribution", zone_counts},
         {"total_segments_analyzed", input.ridges.segments.size()}
     };
 

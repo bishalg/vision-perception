@@ -128,3 +128,36 @@ target_link_libraries(test_capi
 vision_set_compiler_warnings(test_capi)
 add_test(NAME test_capi COMMAND test_capi)
 
+# ------------------------------------------------------------------------------
+# Unit Test: test_zone_intersector
+# ------------------------------------------------------------------------------
+add_executable(test_zone_intersector
+    unit/test_zone_intersector.cpp
+)
+target_link_libraries(test_zone_intersector
+    PRIVATE
+        curv_core
+        curv_domains
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_zone_intersector)
+add_test(NAME test_zone_intersector COMMAND test_zone_intersector)
+
+# ------------------------------------------------------------------------------
+# Unit Test: test_vlm_formatter
+# ------------------------------------------------------------------------------
+add_executable(test_vlm_formatter
+    unit/test_vlm_formatter.cpp
+)
+target_link_libraries(test_vlm_formatter
+    PRIVATE
+        curv_domains
+        curv_core
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_vlm_formatter)
+add_test(NAME test_vlm_formatter COMMAND test_vlm_formatter)
+
+

@@ -15,6 +15,7 @@ add_library(curv_core STATIC
     src/geometry/RoiWarper.cpp
     src/roi/CanonicalWarper.cpp
     src/config/DynamicParameterResolver.cpp
+    src/geometry/ZoneIntersector.cpp
 )
 
 # Provide alias target for architectural naming flexibility

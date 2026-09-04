@@ -4,11 +4,13 @@
 
 add_library(curv_adapters STATIC
     opencv/src/OverlayRenderer.cpp
+    opencv_dnn/src/HandLandmarkDetector.cpp
 )
 
 target_include_directories(curv_adapters
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/opencv/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/opencv_dnn/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/capi/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/c_api/include>
         $<INSTALL_INTERFACE:include>

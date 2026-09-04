@@ -80,7 +80,7 @@ endif()
 # ------------------------------------------------------------------------------
 # Dependency: OpenCV
 # ------------------------------------------------------------------------------
-find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs)
+find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs dnn)
 
 # ------------------------------------------------------------------------------
 # Diagnostic Status Messages
