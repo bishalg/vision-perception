@@ -1,16 +1,16 @@
 #pragma once
 
-#include <string>
-#include <optional>
+#include "curv/geometry/RoiWarper.hpp"
 #include <opencv2/core.hpp>
 #include <opencv2/dnn.hpp>
-#include "curv/geometry/RoiWarper.hpp"
+#include <optional>
+#include <string>
 
 namespace CurvEngine::adapters {
 
 /**
  * @brief Lightweight desktop hand landmark detector utilizing OpenCV's native DNN module.
- * 
+ *
  * Supports reading standard open-source ONNX hand pose models (e.g., 21 landmark output),
  * and provides an automatic anatomical heuristic fallback for standalone testing.
  */

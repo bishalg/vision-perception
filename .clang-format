@@ -1,0 +1,22 @@
+---
+# CurvEngine formatting standard (matches the existing 4-space, attached-brace style)
+Language: Cpp
+BasedOnStyle: LLVM
+Standard: c++20
+ColumnLimit: 120
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+AccessModifierOffset: -4
+DerivePointerAlignment: false
+PointerAlignment: Left
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortLambdasOnASingleLine: Inline
+AlignAfterOpenBracket: Align
+AlwaysBreakTemplateDeclarations: Yes
+FixNamespaceComments: true
+SortIncludes: CaseSensitive
+IncludeBlocks: Preserve
+InsertNewlineAtEOF: true

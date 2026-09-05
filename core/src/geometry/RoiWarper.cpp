@@ -1,6 +1,6 @@
 #include "curv/geometry/RoiWarper.hpp"
-#include <cmath>
 #include <algorithm>
+#include <cmath>
 #include <opencv2/imgproc.hpp>
 #if __has_include(<opencv2/geometry/2d.hpp>)
 #include <opencv2/geometry/2d.hpp>
@@ -8,12 +8,7 @@
 
 namespace CurvEngine::geometry {
 
-RoiTransform computeCanonicalPalmTransform(
-    const HandLandmarks& lms,
-    int img_width,
-    int img_height,
-    int target_dim
-) {
+RoiTransform computeCanonicalPalmTransform(const HandLandmarks& lms, int img_width, int img_height, int target_dim) {
     RoiTransform result;
     result.target_dim = target_dim;
 
@@ -21,17 +16,17 @@ RoiTransform computeCanonicalPalmTransform(
     const float h_f = static_cast<float>(std::max(1, img_height));
 
     // Helper lambda to denormalize a landmark point
-    auto get_pt = [&](int idx) -> cv::Point2f {
+    auto const get_pt = [&](int idx) -> cv::Point2f {
         const auto& pt = lms.points[static_cast<size_t>(idx)];
         if (lms.is_normalized) {
-            return cv::Point2f(pt.x * w_f, pt.y * h_f);
+            return {pt.x * w_f, pt.y * h_f};
         }
-        return cv::Point2f(pt.x, pt.y);
+        return {pt.x, pt.y};
     };
 
-    const cv::Point2f p0  = get_pt(0);  // Wrist
-    const cv::Point2f p5  = get_pt(5);  // Index MCP
-    const cv::Point2f p9  = get_pt(9);  // Middle MCP
+    const cv::Point2f p0 = get_pt(0);   // Wrist
+    const cv::Point2f p5 = get_pt(5);   // Index MCP
+    const cv::Point2f p9 = get_pt(9);   // Middle MCP
     const cv::Point2f p13 = get_pt(13); // Ring MCP
     const cv::Point2f p17 = get_pt(17); // Pinky MCP
 
@@ -69,7 +64,7 @@ RoiTransform computeCanonicalPalmTransform(
     // Maps centroid to canonical center (target_dim / 2, target_dim / 2)
     const float target_c = static_cast<float>(target_dim) * 0.5f;
     const float alpha = scale * std::cos(angle_rad);
-    const float beta  = scale * std::sin(angle_rad);
+    const float beta = scale * std::sin(angle_rad);
 
     result.M = cv::Mat::zeros(2, 3, CV_64F);
     double* m_data = result.M.ptr<double>();
@@ -82,8 +77,12 @@ RoiTransform computeCanonicalPalmTransform(
 
     // 5. Analytical inverse affine matrix (canonical -> original)
     // For M = [a, b, c; d, e, f], D = a*e - b*d
-    const double a = m_data[0], b = m_data[1], c = m_data[2];
-    const double d = m_data[3], e = m_data[4], f = m_data[5];
+    const double a = m_data[0];
+    const double b = m_data[1];
+    const double c = m_data[2];
+    const double d = m_data[3];
+    const double e = m_data[4];
+    const double f = m_data[5];
     const double D = a * e - b * d;
 
     result.M_inv = cv::Mat::zeros(2, 3, CV_64F);
@@ -101,9 +100,9 @@ RoiTransform computeCanonicalPalmTransform(
 }
 
 bool detectIsLeftHand(const HandLandmarks& lms) {
-    const auto& p0  = lms.points[0];  // Wrist
-    const auto& p5  = lms.points[5];  // Index MCP
-    const auto& p9  = lms.points[9];  // Middle MCP
+    const auto& p0 = lms.points[0];   // Wrist
+    const auto& p5 = lms.points[5];   // Index MCP
+    const auto& p9 = lms.points[9];   // Middle MCP
     const auto& p17 = lms.points[17]; // Pinky MCP
 
     // Up vector: Wrist (P0) -> Middle MCP (P9)
@@ -117,7 +116,7 @@ bool detectIsLeftHand(const HandLandmarks& lms) {
     // Right transverse vector (perpendicular to up in image coords where Y is down)
     // For up = (0, -1) [pointing up], right = (1, 0) [pointing right]
     const float right_x = -up_y / up_len;
-    const float right_y =  up_x / up_len;
+    const float right_y = up_x / up_len;
 
     // Vector from Index (P5) to Pinky (P17)
     const float palm_w_x = p17.x - p5.x;
@@ -129,52 +128,28 @@ bool detectIsLeftHand(const HandLandmarks& lms) {
     return dot < 0.0f;
 }
 
-cv::Mat computeQuadPerspectiveTransform(
-    const std::array<Point2D, 4>& corners,
-    int target_dim
-) {
+cv::Mat computeQuadPerspectiveTransform(const std::array<Point2D, 4>& corners, int target_dim) {
     const float t_dim = static_cast<float>(target_dim);
-    std::vector<cv::Point2f> src_pts = {
-        cv::Point2f(corners[0].x, corners[0].y),
-        cv::Point2f(corners[1].x, corners[1].y),
-        cv::Point2f(corners[2].x, corners[2].y),
-        cv::Point2f(corners[3].x, corners[3].y)
-    };
+    std::vector<cv::Point2f> const src_pts = {
+        cv::Point2f(corners[0].x, corners[0].y), cv::Point2f(corners[1].x, corners[1].y),
+        cv::Point2f(corners[2].x, corners[2].y), cv::Point2f(corners[3].x, corners[3].y)};
 
-    std::vector<cv::Point2f> dst_pts = {
-        cv::Point2f(0.0f, 0.0f),
-        cv::Point2f(t_dim, 0.0f),
-        cv::Point2f(t_dim, t_dim),
-        cv::Point2f(0.0f, t_dim)
-    };
+    std::vector<cv::Point2f> const dst_pts = {cv::Point2f(0.0f, 0.0f), cv::Point2f(t_dim, 0.0f),
+                                              cv::Point2f(t_dim, t_dim), cv::Point2f(0.0f, t_dim)};
 
     return cv::getPerspectiveTransform(src_pts, dst_pts);
 }
 
-cv::Mat warpToCanonical(
-    const cv::Mat& src,
-    const cv::Mat& M,
-    int target_dim
-) {
+cv::Mat warpToCanonical(const cv::Mat& src, const cv::Mat& M, int target_dim) {
     cv::Mat dst;
     if (src.empty() || M.empty()) {
         return dst;
     }
-    cv::warpAffine(
-        src,
-        dst,
-        M,
-        cv::Size(target_dim, target_dim),
-        cv::INTER_LINEAR,
-        cv::BORDER_REPLICATE
-    );
+    cv::warpAffine(src, dst, M, cv::Size(target_dim, target_dim), cv::INTER_LINEAR, cv::BORDER_REPLICATE);
     return dst;
 }
 
-void invertGraphCoordinates(
-    RidgeGraph& graph,
-    const cv::Mat& M_inv
-) {
+void invertGraphCoordinates(RidgeGraph& graph, const cv::Mat& M_inv) {
     if (M_inv.empty() || M_inv.rows < 2 || M_inv.cols < 3) {
         return;
     }
@@ -187,8 +162,12 @@ void invertGraphCoordinates(
     }
 
     const double* m = M_inv_64.ptr<double>();
-    const double m00 = m[0], m01 = m[1], m02 = m[2];
-    const double m10 = m[3], m11 = m[4], m12 = m[5];
+    const double m00 = m[0];
+    const double m01 = m[1];
+    const double m02 = m[2];
+    const double m10 = m[3];
+    const double m11 = m[4];
+    const double m12 = m[5];
 
     // Scaling factor applied to lengths
     const float inv_scale = static_cast<float>(std::sqrt(m00 * m00 + m10 * m10));

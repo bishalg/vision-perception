@@ -1,11 +1,11 @@
 #pragma once
 
-#include <vector>
+#include "curv/Evidence.hpp"
+#include "curv/GeometryTypes.hpp"
+#include "curv/interfaces/ILineCurveExtractor.hpp"
 #include <memory>
 #include <opencv2/core.hpp>
-#include "curv/interfaces/ILineCurveExtractor.hpp"
-#include "curv/GeometryTypes.hpp"
-#include "curv/Evidence.hpp"
+#include <vector>
 
 namespace CurvEngine::ridge {
 
@@ -13,11 +13,11 @@ namespace CurvEngine::ridge {
  * @brief Algorithmic parameters for Steger sub-pixel curvilinear ridge extraction.
  */
 struct StegerConfig {
-    float sigma{1.5f};               ///< Scale-space Gaussian standard deviation
-    float low_threshold{0.5f};       ///< Hysteresis lower salience bound (|lambda1|)
-    float high_threshold{1.5f};      ///< Hysteresis seed salience bound (|lambda1|)
-    bool extract_dark_lines{false};  ///< True for dark valleys/creases; False for bright ridges
-    float min_segment_length{5.0f};  ///< Minimum polyline arc-length (pixels) to retain
+    float sigma{1.5f};              ///< Scale-space Gaussian standard deviation
+    float low_threshold{0.5f};      ///< Hysteresis lower salience bound (|lambda1|)
+    float high_threshold{1.5f};     ///< Hysteresis seed salience bound (|lambda1|)
+    bool extract_dark_lines{false}; ///< True for dark valleys/creases; False for bright ridges
+    float min_segment_length{5.0f}; ///< Minimum polyline arc-length (pixels) to retain
 };
 
 /**

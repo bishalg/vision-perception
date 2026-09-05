@@ -1,14 +1,14 @@
 #pragma once
 
+#include "curv/Evidence.hpp"
+#include "curv/Frame.hpp"
+#include "curv/GeometryTypes.hpp"
+#include "curv/QualityReport.hpp"
+#include "curv/interfaces/ILineCurveExtractor.hpp"
+#include "curv/interfaces/IQualityAnalyzer.hpp"
+#include <chrono>
 #include <memory>
 #include <vector>
-#include <chrono>
-#include "curv/Frame.hpp"
-#include "curv/QualityReport.hpp"
-#include "curv/GeometryTypes.hpp"
-#include "curv/Evidence.hpp"
-#include "curv/interfaces/IQualityAnalyzer.hpp"
-#include "curv/interfaces/ILineCurveExtractor.hpp"
 
 namespace CurvEngine::pipeline {
 
@@ -28,9 +28,8 @@ struct PipelineResult {
  */
 class SyncPerceptionPipeline {
 public:
-    SyncPerceptionPipeline(
-        std::shared_ptr<interfaces::IQualityAnalyzer> quality_analyzer,
-        std::shared_ptr<interfaces::ILineCurveExtractor> ridge_extractor);
+    SyncPerceptionPipeline(std::shared_ptr<interfaces::IQualityAnalyzer> quality_analyzer,
+                           std::shared_ptr<interfaces::ILineCurveExtractor> ridge_extractor);
 
     [[nodiscard]] PipelineResult process(const Frame& frame);
 

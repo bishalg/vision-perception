@@ -21,7 +21,18 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Default to Release if CMAKE_BUILD_TYPE is unset
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build." FORCE)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose a build type." FORCE)
+endif()
+
+# Treat compiler warnings as errors (enabled in CI builds)
+option(VISION_WERROR "Treat compiler warnings as errors" OFF)
+
+# Sanitizer instrumentation, e.g. "address,undefined" or "thread" (empty = off).
+# Pairs with CMAKE_BUILD_TYPE=Debug; see CMakePresets.json ("asan"/"tsan" presets).
+set(VISION_SANITIZERS "" CACHE STRING "Comma-separated sanitizer list to enable")
+if(VISION_SANITIZERS)
+    add_compile_options(-fsanitize=${VISION_SANITIZERS} -fno-omit-frame-pointer -g)
+    add_link_options(-fsanitize=${VISION_SANITIZERS})
 endif()
 
 # Module path and system prefix paths

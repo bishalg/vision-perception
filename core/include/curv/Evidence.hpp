@@ -1,7 +1,7 @@
 #pragma once
 
-#include <string>
 #include <nlohmann/json.hpp>
+#include <string>
 
 namespace CurvEngine {
 
@@ -17,9 +17,7 @@ struct Evidence {
 
     Evidence() = default;
 
-    Evidence(std::string in_evidence_id,
-             std::string in_type,
-             double in_confidence = 1.0,
+    Evidence(std::string in_evidence_id, std::string in_type, double in_confidence = 1.0,
              nlohmann::json in_geometry = nlohmann::json::object(),
              nlohmann::json in_metadata = nlohmann::json::object());
 

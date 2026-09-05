@@ -4,7 +4,8 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Architecture: Modular C++20](https://img.shields.io/badge/Architecture-Modular%20C%2B%2B20-orange.svg)](docs/architecture.md)
-[![Milestone: 1 Scaffold](https://img.shields.io/badge/Milestone-1%3A%20Scaffold-green.svg)](docs/roadmap.md)
+[![Milestone: 6 Tests & Evaluation](https://img.shields.io/badge/Milestone-6%3A%20Tests%20%26%20Evaluation-green.svg)](docs/roadmap.md)
+[![CI](https://github.com/bishalg/vision-perception/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
 
 ---
 
@@ -42,13 +43,13 @@ A foundational architectural invariant of this repository is that **the core mus
 vision-perception/
 ├── cmake/           # Modular CMake modules, toolchains, and compiler warning configurations
 ├── core/            # Domain-agnostic C++ perception core (geometry, ridge engine, quality, evidence)
-│   ├── include/     # Public headers (curv/GeometryTypes.hpp, vision_core/version.hpp)
-│   ├── src/         # Core implementation units
-│   └── tests/       # Core unit tests
-├── adapters/        # Technology & hardware adapters (OpenCV, ONNX Runtime, TFLite, MediaPipe, Camera)
-├── domains/         # Domain extension packs (palm, poultry, driver_monitoring, surface_inspection, etc.)
-├── apps/            # Application executables (desktop_pipeline_demo, eval_tool)
-├── tools/           # Developer tools (run_pipeline, evaluate, overlay_viewer)
+│   ├── include/     # Public headers (curv/GeometryTypes.hpp, curv/pipeline/, curv/ridge/, ...)
+│   └── src/         # Core implementation units
+├── adapters/        # Technology & hardware adapters (OpenCV, OpenCV-DNN, C-ABI, JNI, Swift)
+├── domains/         # Domain extension packs (palm, surface_inspection; poultry, driver_monitoring, document_scanning planned)
+├── apps/            # Application executables (desktop_pipeline_demo)
+├── tools/           # Developer tools (curv_cli, hand_inspector_cli, synth_generator, evaluate, benchmark)
+├── tests/           # GoogleTest unit + regression suites (ctest)
 ├── models/          # Neural network manifests, schemas, and download orchestrators
 ├── data/            # Sample fixtures, synthetic curves, and annotations
 ├── third_party/     # Permissive third-party libraries and provenance records
@@ -59,15 +60,32 @@ vision-perception/
 
 ---
 
-## 4. Current Milestone Status
+## 4. Build, Test & Quality Gates
 
-This project is currently in **Milestone 1: Repository Scaffold**:
-- [x] Initialized Git repository tracking `git@github.com:bishalg/vision-perception.git`
-- [x] Established multi-tier folder scaffold (`docs/`, `cmake/`, `core/`, `adapters/`, `domains/`, `apps/`, `tools/`, `models/`, `data/`, `third_party/`, `scripts/`)
-- [x] Defined open-source reuse matrix and licensing governance (`docs/research/github_reuse_matrix.md`, `docs/license_policy.md`)
-- [x] Authored architectural blueprints (`docs/architecture.md`, `docs/evidence_schema.md`, `docs/domain_pack_spec.md`)
-- [x] Implemented core mathematical data contract (`core/include/curv/GeometryTypes.hpp`)
-- [x] Configured modern CMake modules, `.gitignore`, and automation scripts
-- [ ] *Next Phase*: Milestone 2 (CMake C++ OpenCV build verification and toolchain validation)
+```bash
+cmake --preset release          # Release + warnings-as-errors (Ninja)
+cmake --build --preset release -j
+ctest --test-dir build          # full GoogleTest suite
 
-No business logic, heavy dependencies, palmistry heuristics, or mobile platform code have been implemented.
+cmake --preset asan && cmake --build --preset asan -j && ctest --test-dir build-asan   # ASan+UBSan
+cmake --preset tsan && cmake --build --preset tsan -j && ctest --test-dir build-tsan   # TSan
+
+./scripts/format.sh             # clang-format (in place; --check in CI)
+./scripts/lint.sh               # clang-tidy static analysis
+./scripts/build.sh              # configure + build + ctest + CLI smoke runs
+```
+
+GitHub Actions (`.github/workflows/ci.yml`) gates every push to `main`/`dev`: clang-format check, Ubuntu + macOS builds with `-Werror`, full ctest, clang-tidy, and an ASan/UBSan job.
+
+---
+
+## 5. Current Milestone Status
+
+- [x] Milestone 1: Research & repo scaffold (architecture, licensing, evidence schema)
+- [x] Milestone 2: CMake C++20/OpenCV skeleton with strict warnings and GoogleTest
+- [x] Milestone 3: Core interfaces, geometry, and immutable evidence model
+- [x] Milestone 4: Minimal image pipeline (Steger sub-pixel ridges + Laplacian quality gate)
+- [x] Milestone 5: Overlay rendering, JSON evidence reports, CLI tools (`curv_cli`, `hand_inspector_cli`)
+- [x] Stable C-ABI (`libcurv_capi`) with JNI (Android) and Swift (iOS) bindings source
+- [ ] **Milestone 6 (in progress): Tests & evaluation tooling** — CI, sanitizer builds, clang-format/clang-tidy gates done; synthetic ground-truth generator, RMSE evaluation harness, and Google Benchmark latency profiles in progress
+- [ ] Next phase: mobile app packaging (Android Gradle/NDK + iOS SwiftPM/xcframework) and additional domain packs (poultry, driver_monitoring, document_scanning)

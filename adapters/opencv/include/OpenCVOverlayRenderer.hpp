@@ -2,5 +2,5 @@
 #include "curv/adapters/OverlayRenderer.hpp"
 
 namespace CurvEngine {
-    using OpenCVOverlayRenderer = adapters::OverlayRenderer;
+using OpenCVOverlayRenderer = adapters::OverlayRenderer;
 }

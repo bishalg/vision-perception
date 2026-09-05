@@ -1,9 +1,9 @@
 #pragma once
 
-#include <string>
-#include <unordered_map>
 #include <cstdint>
 #include <opencv2/core.hpp>
+#include <string>
+#include <unordered_map>
 
 namespace CurvEngine {
 
@@ -18,10 +18,8 @@ struct Frame {
 
     Frame() = default;
 
-    Frame(cv::Mat in_image,
-          std::string in_source_id = "",
-          uint64_t in_timestamp_ms = 0,
-          std::unordered_map<std::string, std::string> in_metadata = {});
+    explicit Frame(cv::Mat in_image, std::string in_source_id = "", uint64_t in_timestamp_ms = 0,
+                   std::unordered_map<std::string, std::string> in_metadata = {});
 
     [[nodiscard]] bool empty() const noexcept;
     [[nodiscard]] int width() const noexcept;

@@ -4,8 +4,7 @@
 
 namespace CurvEngine::domains {
 
-SurfaceInspectionPack::SurfaceInspectionPack(float min_length_px)
-    : min_length_px_(min_length_px) {}
+SurfaceInspectionPack::SurfaceInspectionPack(float min_length_px) : min_length_px_(min_length_px) {}
 
 DomainOutput SurfaceInspectionPack::process(const DomainInput& input) {
     DomainOutput output;
@@ -43,37 +42,22 @@ DomainOutput SurfaceInspectionPack::process(const DomainInput& input) {
         }
 
         nlohmann::json geom = {
-            {"segment_id", seg.id},
-            {"point_count", seg.points.size()},
-            {"total_length", seg.total_length}
-        };
+            {"segment_id", seg.id}, {"point_count", seg.points.size()}, {"total_length", seg.total_length}};
 
-        nlohmann::json meta = {
-            {"defect_class", defect_class},
-            {"severity", defect_severity}
-        };
+        nlohmann::json meta = {{"defect_class", defect_class}, {"severity", defect_severity}};
 
-        output.domain_evidence.emplace_back(
-            "defect_" + std::to_string(seg.id),
-            defect_class,
-            defect_severity,
-            geom,
-            meta
-        );
+        output.domain_evidence.emplace_back("defect_" + std::to_string(seg.id), defect_class, defect_severity, geom,
+                                            meta);
     }
 
     const int total_defects = severe_count + moderate_count + minor_count;
-    const double mean_length = (total_defects > 0) ? (static_cast<double>(sum_length) / static_cast<double>(total_defects)) : 0.0;
+    const double mean_length =
+        (total_defects > 0) ? (static_cast<double>(sum_length) / static_cast<double>(total_defects)) : 0.0;
 
-    output.domain_payload = {
-        {"total_defects_found", total_defects},
-        {"severe_cracks", severe_count},
-        {"moderate_cracks", moderate_count},
-        {"micro_scratches", minor_count},
-        {"max_defect_length", max_length},
-        {"mean_defect_length", mean_length},
-        {"frame_usable", input.quality.is_usable}
-    };
+    output.domain_payload = {{"total_defects_found", total_defects},   {"severe_cracks", severe_count},
+                             {"moderate_cracks", moderate_count},      {"micro_scratches", minor_count},
+                             {"max_defect_length", max_length},        {"mean_defect_length", mean_length},
+                             {"frame_usable", input.quality.is_usable}};
 
     return output;
 }

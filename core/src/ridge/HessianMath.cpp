@@ -1,6 +1,6 @@
 #include "curv/ridge/HessianMath.hpp"
-#include <cmath>
 #include <algorithm>
+#include <cmath>
 
 namespace CurvEngine::ridge {
 

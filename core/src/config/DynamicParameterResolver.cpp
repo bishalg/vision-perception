@@ -1,13 +1,12 @@
 #include "curv/config/DynamicParameterResolver.hpp"
-#include <cmath>
 #include <algorithm>
+#include <cmath>
 
 namespace CurvEngine::config {
 
 DynamicParameterResolver::DynamicParameterResolver() = default;
 
-DynamicParameterResolver::DynamicParameterResolver(BaselineConfig baseline)
-    : baseline_(baseline) {}
+DynamicParameterResolver::DynamicParameterResolver(BaselineConfig baseline) : baseline_(baseline) {}
 
 ridge::StegerConfig DynamicParameterResolver::resolve(float roi_diagonal_pixels) const {
     ridge::StegerConfig cfg;

@@ -46,6 +46,11 @@ function(vision_set_compiler_warnings target_name)
         /w14928
     )
 
+    if(VISION_WERROR)
+        list(APPEND CLANG_GCC_WARNINGS -Werror)
+        list(APPEND MSVC_WARNINGS /WX)
+    endif()
+
     if(MSVC)
         target_compile_options(${target_name} PRIVATE ${MSVC_WARNINGS})
     elseif(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

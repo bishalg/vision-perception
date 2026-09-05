@@ -2,7 +2,7 @@
 
 > **Target Repository**: `vision-perception`  
 > **Lifecycle Status**: Active Implementation Roadmap  
-> **Current Milestone**: Milestone 1 (Research & Repo Scaffold)  
+> **Current Milestone**: Milestone 6 (Tests & Evaluation Tooling)  
 
 ---
 
@@ -16,13 +16,13 @@ gantt
     dateFormat  YYYY-MM-DD
     section Scaffolding
     M1: Research & Repo Scaffold       :done,    m1, 2026-09-01, 2026-09-04
-    M2: CMake C++ OpenCV Skeleton      :active,  m2, 2026-09-05, 2026-09-12
+    M2: CMake C++ OpenCV Skeleton      :done,    m2, 2026-09-05, 2026-09-12
     section Core Perception
-    M3: Core Interfaces & Evidence     :         m3, 2026-09-13, 2026-09-20
-    M4: Minimal Image Pipeline         :         m4, 2026-09-21, 2026-10-05
+    M3: Core Interfaces & Evidence     :done,    m3, 2026-09-13, 2026-09-20
+    M4: Minimal Image Pipeline         :done,    m4, 2026-09-21, 2026-10-05
     section Delivery & Tooling
-    M5: Overlay & JSON Report          :         m5, 2026-10-06, 2026-10-15
-    M6: Tests & Evaluation Tooling     :         m6, 2026-10-16, 2026-10-30
+    M5: Overlay & JSON Report          :done,    m5, 2026-10-06, 2026-10-15
+    M6: Tests & Evaluation Tooling     :active,  m6, 2026-10-16, 2026-10-30
 ```
 
 ---
@@ -30,7 +30,7 @@ gantt
 ## 2. Milestone Details
 
 ### Milestone 1: Research and Repo Scaffold
-*Status: IN PROGRESS / PENDING USER APPROVAL*
+*Status: DONE*
 
 - **Objectives**:
   - Audit open-source libraries for permissive reuse vs clean-room implementation.
@@ -52,7 +52,7 @@ gantt
 ---
 
 ### Milestone 2: CMake C++ OpenCV Skeleton
-*Status: QUEUED*
+*Status: DONE*
 
 - **Objectives**:
   - Establish modern C++20 modular CMake build system.
@@ -72,7 +72,7 @@ gantt
 ---
 
 ### Milestone 3: Core Interfaces and Evidence Model
-*Status: QUEUED*
+*Status: DONE*
 
 - **Objectives**:
   - Implement fundamental geometric primitives and immutable evidence structures.
@@ -91,7 +91,7 @@ gantt
 ---
 
 ### Milestone 4: Minimal Image Pipeline
-*Status: QUEUED*
+*Status: DONE*
 
 - **Objectives**:
   - Implement the mathematical sub-pixel curvilinear ridge detection core (Steger algorithm).
@@ -110,7 +110,7 @@ gantt
 ---
 
 ### Milestone 5: Overlay and JSON Report
-*Status: QUEUED*
+*Status: DONE (delivered as `curv_cli` and `hand_inspector_cli` rather than `apps/cli/vision_run`)*
 
 - **Objectives**:
   - Implement high-visibility visualization and rendering adapters.
@@ -131,7 +131,7 @@ gantt
 ---
 
 ### Milestone 6: Tests and Evaluation Tooling
-*Status: QUEUED*
+*Status: IN PROGRESS*
 
 - **Objectives**:
   - Build synthetic ground-truth evaluation harness.

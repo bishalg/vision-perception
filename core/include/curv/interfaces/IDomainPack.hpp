@@ -1,12 +1,12 @@
 #pragma once
 
+#include "curv/Evidence.hpp"
+#include "curv/Frame.hpp"
+#include "curv/GeometryTypes.hpp"
+#include "curv/QualityReport.hpp"
+#include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
-#include <nlohmann/json.hpp>
-#include "curv/Frame.hpp"
-#include "curv/QualityReport.hpp"
-#include "curv/GeometryTypes.hpp"
-#include "curv/Evidence.hpp"
 
 namespace CurvEngine {
 

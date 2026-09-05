@@ -325,3 +325,52 @@ TEST(AuditRegressionTest, InvertGraphCoordinatesDimensionSafety) {
     });
     EXPECT_FLOAT_EQ(graph.segments[0].points[0].x, 10.0f);
 }
+
+// =========================================================================
+// Loophole 10: FFI Buffer Geometry Validation (stride, dimensions, format)
+// =========================================================================
+TEST(AuditRegressionTest, CAbiRejectsUndersizedOrNegativeStride) {
+    cv::Mat img = cv::Mat::ones(40, 40, CV_8UC3) * 50;
+    // 40 px * 3 channels = 120 bytes/row minimum; a smaller stride would cause
+    // the wrapped cv::Mat to read out of bounds on every row after the first.
+    EXPECT_EQ(curv_frame_create_from_buffer(img.data, 40, 40, 10, CURV_PIXEL_FORMAT_BGR), nullptr);
+    // Negative strides are a caller bug; reject outright.
+    EXPECT_EQ(curv_frame_create_from_buffer(img.data, 40, 40, -1, CURV_PIXEL_FORMAT_BGR), nullptr);
+    // Zero means "tightly packed" and must be accepted.
+    EXPECT_NE(curv_frame_create_from_buffer(img.data, 40, 40, 0, CURV_PIXEL_FORMAT_BGR), nullptr);
+    // Exact minimum row size must be accepted.
+    EXPECT_NE(curv_frame_create_from_buffer(img.data, 40, 40, 120, CURV_PIXEL_FORMAT_BGR), nullptr);
+}
+
+TEST(AuditRegressionTest, CAbiRejectsAbsurdDimensions) {
+    cv::Mat img = cv::Mat::ones(4, 4, CV_8UC1);
+    // Far beyond the 16384 px dimension cap; must be rejected before any
+    // allocation or pointer arithmetic on the 16-byte backing buffer.
+    EXPECT_EQ(
+        curv_frame_create_from_buffer(img.data, 1 << 30, 1 << 30, 0, CURV_PIXEL_FORMAT_GRAYSCALE),
+        nullptr
+    );
+    EXPECT_EQ(curv_frame_create_from_buffer(img.data, 1 << 30, 4, 0, CURV_PIXEL_FORMAT_GRAYSCALE), nullptr);
+    EXPECT_EQ(curv_frame_create_from_buffer(img.data, 4, 1 << 30, 0, CURV_PIXEL_FORMAT_GRAYSCALE), nullptr);
+}
+
+TEST(AuditRegressionTest, CAbiRejectsUnknownPixelFormat) {
+    cv::Mat img = cv::Mat::ones(4, 4, CV_8UC1);
+    EXPECT_EQ(curv_frame_create_from_buffer(img.data, 4, 4, 0, 999), nullptr);
+    EXPECT_EQ(curv_frame_create_from_buffer(img.data, 4, 4, 0, 0), nullptr);
+}
+
+TEST(AuditRegressionTest, CAbiAcceptsAllDeclaredFormats) {
+    const int size = 24;
+    cv::Mat gray = cv::Mat::ones(size, size, CV_8UC1) * 128;
+    cv::Mat bgr = cv::Mat::ones(size, size, CV_8UC3) * 128;
+    cv::Mat bgra = cv::Mat::ones(size, size, CV_8UC4) * 128;
+
+    EXPECT_NE(curv_frame_create_from_buffer(gray.data, size, size, 0, CURV_PIXEL_FORMAT_GRAYSCALE), nullptr);
+    EXPECT_NE(curv_frame_create_from_buffer(bgr.data, size, size, 0, CURV_PIXEL_FORMAT_BGR), nullptr);
+    EXPECT_NE(curv_frame_create_from_buffer(bgra.data, size, size, 0, CURV_PIXEL_FORMAT_BGRA), nullptr);
+    // RGB(A) variants share the same byte layout as BGR(A) at creation time;
+    // channel-order semantics are exercised downstream by cvtColor.
+    EXPECT_NE(curv_frame_create_from_buffer(bgr.data, size, size, 0, CURV_PIXEL_FORMAT_RGB), nullptr);
+    EXPECT_NE(curv_frame_create_from_buffer(bgra.data, size, size, 0, CURV_PIXEL_FORMAT_RGBA), nullptr);
+}

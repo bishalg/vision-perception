@@ -1,7 +1,7 @@
 #pragma once
 
-#include "curv/interfaces/IQualityAnalyzer.hpp"
 #include "curv/QualityReport.hpp"
+#include "curv/interfaces/IQualityAnalyzer.hpp"
 
 namespace CurvEngine::quality {
 
@@ -9,10 +9,10 @@ namespace CurvEngine::quality {
  * @brief Configurable quality thresholds for input frame validation.
  */
 struct QualityThresholds {
-    double min_blur_score{80.0};    ///< Minimum Laplacian variance
-    double min_brightness{20.0};    ///< Minimum mean pixel intensity [0, 255]
-    double max_brightness{240.0};   ///< Maximum mean pixel intensity [0, 255]
-    double min_contrast{15.0};      ///< Minimum standard deviation of intensity
+    double min_blur_score{80.0};  ///< Minimum Laplacian variance
+    double min_brightness{20.0};  ///< Minimum mean pixel intensity [0, 255]
+    double max_brightness{240.0}; ///< Maximum mean pixel intensity [0, 255]
+    double min_contrast{15.0};    ///< Minimum standard deviation of intensity
 };
 
 /**

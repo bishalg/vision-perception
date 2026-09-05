@@ -12,10 +12,10 @@ class DynamicParameterResolver {
 public:
     struct BaselineConfig {
         float reference_diagonal{500.0f}; // Baseline diagonal length in pixels
-        float base_sigma{1.5f};            // Baseline Gaussian filter scale
-        float base_low_thresh{0.5f};       // Baseline low hysteresis threshold
-        float base_high_thresh{1.5f};      // Baseline high hysteresis threshold
-        float min_segment_length{5.0f};    // Baseline minimum polyline length
+        float base_sigma{1.5f};           // Baseline Gaussian filter scale
+        float base_low_thresh{0.5f};      // Baseline low hysteresis threshold
+        float base_high_thresh{1.5f};     // Baseline high hysteresis threshold
+        float min_segment_length{5.0f};   // Baseline minimum polyline length
         bool extract_dark_lines{false};
     };
 

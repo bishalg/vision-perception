@@ -1,12 +1,11 @@
 #include "curv/quality/LaplacianQualityAnalyzer.hpp"
 #include <opencv2/imgproc.hpp>
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace CurvEngine::quality {
 
-LaplacianQualityAnalyzer::LaplacianQualityAnalyzer(QualityThresholds thresholds)
-    : thresholds_(thresholds) {}
+LaplacianQualityAnalyzer::LaplacianQualityAnalyzer(QualityThresholds thresholds) : thresholds_(thresholds) {}
 
 QualityReport LaplacianQualityAnalyzer::analyze(const Frame& frame) {
     if (frame.empty()) {
@@ -29,12 +28,14 @@ QualityReport LaplacianQualityAnalyzer::analyze(const Frame& frame) {
     cv::Mat laplacian;
     cv::Laplacian(gray, laplacian, CV_64F, 1, 1, 0, cv::BORDER_DEFAULT);
 
-    cv::Scalar lap_mean, lap_std;
+    cv::Scalar lap_mean;
+    cv::Scalar lap_std;
     cv::meanStdDev(laplacian, lap_mean, lap_std);
     const double blur_variance = lap_std.val[0] * lap_std.val[0];
 
     // 2. Calculate Brightness and Contrast (mean & standard deviation)
-    cv::Scalar gray_mean, gray_std;
+    cv::Scalar gray_mean;
+    cv::Scalar gray_std;
     cv::meanStdDev(gray, gray_mean, gray_std);
     const double brightness = gray_mean.val[0];
     const double contrast = gray_std.val[0];
@@ -43,15 +44,15 @@ QualityReport LaplacianQualityAnalyzer::analyze(const Frame& frame) {
     std::vector<std::string> issues;
 
     if (blur_variance < thresholds_.min_blur_score) {
-        issues.push_back("Image too blurry (insufficient high-frequency detail)");
+        issues.emplace_back("Image too blurry (insufficient high-frequency detail)");
     }
     if (brightness < thresholds_.min_brightness) {
-        issues.push_back("Image too dark / underexposed");
+        issues.emplace_back("Image too dark / underexposed");
     } else if (brightness > thresholds_.max_brightness) {
-        issues.push_back("Image too bright / overexposed");
+        issues.emplace_back("Image too bright / overexposed");
     }
     if (contrast < thresholds_.min_contrast) {
-        issues.push_back("Image contrast too low (washed out or flat)");
+        issues.emplace_back("Image contrast too low (washed out or flat)");
     }
 
     const bool is_usable = issues.empty();
@@ -66,13 +67,7 @@ QualityReport LaplacianQualityAnalyzer::analyze(const Frame& frame) {
         }
     }
 
-    return QualityReport{
-        blur_variance,
-        brightness,
-        contrast,
-        is_usable,
-        recommendation
-    };
+    return QualityReport{blur_variance, brightness, contrast, is_usable, recommendation};
 }
 
 } // namespace CurvEngine::quality

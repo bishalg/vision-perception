@@ -1,8 +1,8 @@
 #pragma once
 
-#include <vector>
-#include "curv/Frame.hpp"
 #include "curv/Evidence.hpp"
+#include "curv/Frame.hpp"
+#include <vector>
 
 namespace CurvEngine::interfaces {
 

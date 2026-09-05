@@ -1,48 +1,49 @@
-#include <iostream>
 #include <fstream>
-#include <string>
-#include <vector>
+#include <iostream>
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
-#include <nlohmann/json.hpp>
+#include <string>
+#include <vector>
 
-#include "curv/Version.hpp"
-#include "curv/GeometryTypes.hpp"
 #include "curv/Frame.hpp"
+#include "curv/GeometryTypes.hpp"
 #include "curv/QualityReport.hpp"
+#include "curv/Version.hpp"
+#include "curv/adapters/OverlayRenderer.hpp"
+#include "curv/domains/PalmDomainPack.hpp"
+#include "curv/domains/SurfaceInspectionPack.hpp"
+#include "curv/pipeline/SyncPerceptionPipeline.hpp"
 #include "curv/quality/LaplacianQualityAnalyzer.hpp"
 #include "curv/ridge/StegerRidgeExtractor.hpp"
-#include "curv/pipeline/SyncPerceptionPipeline.hpp"
-#include "curv/adapters/OverlayRenderer.hpp"
-#include "curv/domains/SurfaceInspectionPack.hpp"
-#include "curv/domains/PalmDomainPack.hpp"
 
 #include <chrono>
 
-static void runBenchmark() {
-    std::cout << "\n==================================================" << std::endl;
-    std::cout << "CurvEngine Performance Benchmark (cv::parallel_for_)" << std::endl;
-    std::cout << "Platform Threads: " << cv::getNumThreads() << std::endl;
-    std::cout << "==================================================" << std::endl;
+namespace {
+
+void runBenchmark() {
+    std::cout << "\n==================================================" << '\n';
+    std::cout << "CurvEngine Performance Benchmark (cv::parallel_for_)" << '\n';
+    std::cout << "Platform Threads: " << cv::getNumThreads() << '\n';
+    std::cout << "==================================================" << '\n';
 
     CurvEngine::ridge::StegerConfig cfg;
     cfg.sigma = 1.5f;
     cfg.low_threshold = 0.5f;
     cfg.high_threshold = 1.5f;
     cfg.min_segment_length = 5.0f;
-    CurvEngine::ridge::StegerRidgeExtractor extractor(cfg);
+    const CurvEngine::ridge::StegerRidgeExtractor extractor(cfg);
 
-    const std::vector<std::pair<std::string, cv::Size>> resolutions = {
-        {"720p HD", cv::Size(1280, 720)},
-        {"1080p FHD", cv::Size(1920, 1080)}
-    };
+    const std::vector<std::pair<std::string, cv::Size>> resolutions = {{"720p HD", cv::Size(1280, 720)},
+                                                                       {"1080p FHD", cv::Size(1920, 1080)}};
 
     for (const auto& [name, sz] : resolutions) {
         cv::Mat synth(sz, CV_8UC1, cv::Scalar(30));
         for (int r = 100; r < sz.height - 100; r += 120) {
-            cv::ellipse(synth, cv::Point(sz.width / 2, r), cv::Size(sz.width / 3, 60), 0, 0, 180, cv::Scalar(220), 3, cv::LINE_AA);
+            cv::ellipse(synth, cv::Point(sz.width / 2, r), cv::Size(sz.width / 3, 60), 0, 0, 180, cv::Scalar(220), 3,
+                        cv::LINE_AA);
         }
 
         // Warmup run
@@ -71,20 +72,22 @@ static void runBenchmark() {
 
         const double speedup = seq_ms / std::max(1e-6, par_ms);
 
-        std::cout << "\nResolution: " << name << " (" << sz.width << "x" << sz.height << ")" << std::endl;
-        std::cout << "  - Sequential (1 thread):         " << seq_ms << " ms" << std::endl;
-        std::cout << "  - Multi-threaded (parallel_for): " << par_ms << " ms" << std::endl;
-        std::cout << "  - Speedup Factor:                " << speedup << "x (" 
-                  << (1000.0 / par_ms) << " FPS)" << std::endl;
+        std::cout << "\nResolution: " << name << " (" << sz.width << "x" << sz.height << ")" << '\n';
+        std::cout << "  - Sequential (1 thread):         " << seq_ms << " ms" << '\n';
+        std::cout << "  - Multi-threaded (parallel_for): " << par_ms << " ms" << '\n';
+        std::cout << "  - Speedup Factor:                " << speedup << "x (" << (1000.0 / par_ms) << " FPS)" << '\n';
     }
-    std::cout << "\n==================================================\n" << std::endl;
-}
+    std::cout << "\n==================================================\n" << '\n';
+} // runBenchmark()
+} // namespace
 
-int main(int argc, char* argv[]) {
-    std::cout << "==================================================" << std::endl;
-    std::cout << "CurvEngine CLI Verification & Pipeline Tool (v" << CurvEngine::getVersion() << ")" << std::endl;
-    std::cout << "OpenCV Version:  " << cv::getVersionString() << std::endl;
-    std::cout << "==================================================" << std::endl;
+namespace {
+
+int run(int argc, char* argv[]) {
+    std::cout << "==================================================" << '\n';
+    std::cout << "CurvEngine CLI Verification & Pipeline Tool (v" << CurvEngine::getVersion() << ")" << '\n';
+    std::cout << "OpenCV Version:  " << cv::getVersionString() << '\n';
+    std::cout << "==================================================" << '\n';
 
     std::string image_path;
     std::string out_overlay_path = "output_overlay.png";
@@ -102,7 +105,7 @@ int main(int argc, char* argv[]) {
 
     // Parse command-line arguments
     for (int i = 1; i < argc; ++i) {
-        std::string arg = argv[i];
+        std::string const arg = argv[i];
         if (arg == "--image" && i + 1 < argc) {
             image_path = argv[++i];
         } else if (arg == "--domain" && i + 1 < argc) {
@@ -140,14 +143,14 @@ int main(int argc, char* argv[]) {
     }
 
     if (image_path.empty()) {
-        std::cout << "[INFO] No --image argument provided. Running internal sanity checks..." << std::endl;
-        CurvEngine::Point2D p1{100.5f, 150.25f, 0.95f, 0.99f};
+        std::cout << "[INFO] No --image argument provided. Running internal sanity checks..." << '\n';
+        CurvEngine::Point2D const p1{100.5f, 150.25f, 0.95f, 0.99f};
         CurvEngine::CurveSegment seg;
         seg.id = 1;
         seg.points.push_back(p1);
         CurvEngine::RidgeGraph graph;
         graph.segments.push_back(seg);
-        std::cout << "[PASS] CurvEngine::RidgeGraph contract validated." << std::endl;
+        std::cout << "[PASS] CurvEngine::RidgeGraph contract validated." << '\n';
         std::cout << "\nUsage: " << argv[0] << " --image <path> [options]\n"
                   << "Options:\n"
                   << "  --domain <palm|surface_inspection|none>  (default: none)\n"
@@ -164,16 +167,16 @@ int main(int argc, char* argv[]) {
     }
 
     // 1. Ingest Image
-    std::cout << "[STAGE 1] Ingesting image: " << image_path << std::endl;
-    cv::Mat input_image = cv::imread(image_path, cv::IMREAD_COLOR);
+    std::cout << "[STAGE 1] Ingesting image: " << image_path << '\n';
+    cv::Mat const input_image = cv::imread(image_path, cv::IMREAD_COLOR);
     if (input_image.empty()) {
-        std::cerr << "[ERROR] Failed to load image from: " << image_path << std::endl;
+        std::cerr << "[ERROR] Failed to load image from: " << image_path << '\n';
         return 1;
     }
-    std::cout << "  - Resolution: " << input_image.cols << "x" << input_image.rows
-              << " (" << input_image.channels() << " channels)" << std::endl;
+    std::cout << "  - Resolution: " << input_image.cols << "x" << input_image.rows << " (" << input_image.channels()
+              << " channels)" << '\n';
 
-    CurvEngine::Frame frame(input_image, image_path, 0);
+    CurvEngine::Frame const frame(input_image, image_path, 0);
 
     // 2. Configure Pipeline
     CurvEngine::quality::QualityThresholds q_thresh;
@@ -181,7 +184,7 @@ int main(int argc, char* argv[]) {
     q_thresh.min_brightness = 10.0;
     q_thresh.max_brightness = 250.0;
     q_thresh.min_contrast = 10.0;
-    auto quality_analyzer = std::make_shared<CurvEngine::quality::LaplacianQualityAnalyzer>(q_thresh);
+    auto const quality_analyzer = std::make_shared<CurvEngine::quality::LaplacianQualityAnalyzer>(q_thresh);
 
     CurvEngine::ridge::StegerConfig r_cfg;
     r_cfg.sigma = sigma;
@@ -189,27 +192,27 @@ int main(int argc, char* argv[]) {
     r_cfg.high_threshold = high_thresh;
     r_cfg.extract_dark_lines = extract_dark;
     r_cfg.min_segment_length = 5.0f;
-    auto ridge_extractor = std::make_shared<CurvEngine::ridge::StegerRidgeExtractor>(r_cfg);
+    auto const ridge_extractor = std::make_shared<CurvEngine::ridge::StegerRidgeExtractor>(r_cfg);
 
     CurvEngine::pipeline::SyncPerceptionPipeline pipeline(quality_analyzer, ridge_extractor);
 
     // 3. Execute Pipeline
-    std::cout << "[STAGE 2] Executing perception pipeline..." << std::endl;
+    std::cout << "[STAGE 2] Executing perception pipeline..." << '\n';
     const auto result = pipeline.process(frame);
 
-    std::cout << "[RESULTS] Execution completed in " << result.total_duration_us << " us:" << std::endl;
-    std::cout << "  - Usable:     " << (result.is_usable ? "YES" : "NO") << std::endl;
-    std::cout << "  - Blur Score: " << result.quality.blur_score << std::endl;
-    std::cout << "  - Brightness: " << result.quality.brightness_score << std::endl;
-    std::cout << "  - Contrast:   " << result.quality.contrast_score << std::endl;
-    std::cout << "  - Diagnostics:" << result.quality.recommendation << std::endl;
+    std::cout << "[RESULTS] Execution completed in " << result.total_duration_us << " us:" << '\n';
+    std::cout << "  - Usable:     " << (result.is_usable ? "YES" : "NO") << '\n';
+    std::cout << "  - Blur Score: " << result.quality.blur_score << '\n';
+    std::cout << "  - Brightness: " << result.quality.brightness_score << '\n';
+    std::cout << "  - Contrast:   " << result.quality.contrast_score << '\n';
+    std::cout << "  - Diagnostics:" << result.quality.recommendation << '\n';
 
     if (!result.is_usable) {
-        std::cout << "[WARNING] Frame rejected by quality gate. Skipping overlay rendering." << std::endl;
+        std::cout << "[WARNING] Frame rejected by quality gate. Skipping overlay rendering." << '\n';
         return 0;
     }
 
-    std::cout << "  - Extracted Segments: " << result.ridge_graph.segments.size() << std::endl;
+    std::cout << "  - Extracted Segments: " << result.ridge_graph.segments.size() << '\n';
 
     // 4. Domain Pack Processing (if specified)
     std::unique_ptr<CurvEngine::IDomainPack> domain_pack;
@@ -223,12 +226,13 @@ int main(int argc, char* argv[]) {
     std::vector<CurvEngine::Evidence> domain_evidence;
 
     if (domain_pack) {
-        std::cout << "[STAGE 3] Executing domain pack: " << domain_pack->name() << " (v" << domain_pack->version() << ")" << std::endl;
-        CurvEngine::DomainInput d_in{frame, result.ridge_graph, result.quality};
+        std::cout << "[STAGE 3] Executing domain pack: " << domain_pack->name() << " (v" << domain_pack->version()
+                  << ")" << '\n';
+        CurvEngine::DomainInput const d_in{frame, result.ridge_graph, result.quality};
         auto d_out = domain_pack->process(d_in);
         domain_payload = d_out.domain_payload;
         domain_evidence = std::move(d_out.domain_evidence);
-        std::cout << "  - Domain evidence items generated: " << domain_evidence.size() << std::endl;
+        std::cout << "  - Domain evidence items generated: " << domain_evidence.size() << '\n';
     }
 
     // 5. Anti-Aliased Sub-Pixel Overlay Rendering via OverlayRenderer
@@ -239,39 +243,29 @@ int main(int argc, char* argv[]) {
     overlay_config.draw_hud = draw_hud;
     overlay_config.subpixel_shift = 4; // 16x sub-pixel anti-aliasing
 
-    cv::Mat overlay = CurvEngine::adapters::OverlayRenderer::render(
-        input_image,
-        result.ridge_graph,
-        result.quality,
-        overlay_config
-    );
+    cv::Mat const overlay =
+        CurvEngine::adapters::OverlayRenderer::render(input_image, result.ridge_graph, result.quality, overlay_config);
 
     cv::imwrite(out_overlay_path, overlay);
-    std::cout << "[STAGE 4] Rendered sub-pixel overlay saved to: " << out_overlay_path << std::endl;
+    std::cout << "[STAGE 4] Rendered sub-pixel overlay saved to: " << out_overlay_path << '\n';
 
     // 6. SVG Vector Export (if requested)
     if (!out_svg_path.empty()) {
-        const bool svg_ok = CurvEngine::adapters::OverlayRenderer::exportToSvg(
-            result.ridge_graph,
-            input_image.cols,
-            input_image.rows,
-            out_svg_path
-        );
+        const bool svg_ok = CurvEngine::adapters::OverlayRenderer::exportToSvg(result.ridge_graph, input_image.cols,
+                                                                               input_image.rows, out_svg_path);
         if (svg_ok) {
-            std::cout << "[STAGE 5] SVG vector curves exported to: " << out_svg_path << std::endl;
+            std::cout << "[STAGE 5] SVG vector curves exported to: " << out_svg_path << '\n';
         } else {
-            std::cerr << "[ERROR] Failed to export SVG to: " << out_svg_path << std::endl;
+            std::cerr << "[ERROR] Failed to export SVG to: " << out_svg_path << '\n';
         }
     }
 
     // 7. Export JSON Evidence
     nlohmann::json root_json;
     root_json["quality"] = {
-        {"blur_score", result.quality.blur_score},
-        {"brightness_score", result.quality.brightness_score},
-        {"contrast_score", result.quality.contrast_score},
-        {"is_usable", result.quality.is_usable},
-        {"recommendation", result.quality.recommendation}
+        {"blur_score", result.quality.blur_score},         {"brightness_score", result.quality.brightness_score},
+        {"contrast_score", result.quality.contrast_score}, {"is_usable", result.quality.is_usable},
+        {"recommendation", result.quality.recommendation},
     };
     root_json["total_duration_us"] = result.total_duration_us;
 
@@ -291,9 +285,22 @@ int main(int argc, char* argv[]) {
     std::ofstream json_file(out_json_path);
     if (json_file.is_open()) {
         json_file << root_json.dump(2);
-        std::cout << "[STAGE 6] Perception evidence JSON saved to: " << out_json_path << std::endl;
+        std::cout << "[STAGE 6] Perception evidence JSON saved to: " << out_json_path << '\n';
     }
 
-    std::cout << "\n[PASS] Pipeline and domain processing completed successfully." << std::endl;
+    std::cout << "\n[PASS] Pipeline and domain processing completed successfully." << '\n';
     return 0;
+}
+} // namespace
+
+int main(int argc, char* argv[]) {
+    try {
+        return run(argc, argv);
+    } catch (const std::exception& e) {
+        std::cerr << "[ERROR] Unhandled exception: " << e.what() << '\n';
+        return 1;
+    } catch (...) {
+        std::cerr << "[ERROR] Unhandled unknown exception" << '\n';
+        return 1;
+    }
 }

@@ -101,6 +101,9 @@ ndk-build/
 # CLion / JetBrains
 .idea/
 
+# ZCode agent workspace artifacts
+.zcode/
+
 # Visual Studio
 .vs/
 *.suo

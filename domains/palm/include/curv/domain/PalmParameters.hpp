@@ -1,9 +1,9 @@
 #pragma once
 
-#include <cmath>
-#include <algorithm>
-#include "curv/ridge/StegerRidgeExtractor.hpp"
 #include "curv/geometry/RoiWarper.hpp"
+#include "curv/ridge/StegerRidgeExtractor.hpp"
+#include <algorithm>
+#include <cmath>
 
 namespace CurvEngine::domains {
 
@@ -29,10 +29,8 @@ public:
      * @param cfg Palm scale configuration baseline.
      * @return Tuned StegerConfig.
      */
-    static ridge::StegerConfig computeStegerConfig(
-        float palm_radius_px,
-        const PalmScaleConfig& cfg = PalmScaleConfig{}
-    ) {
+    static ridge::StegerConfig computeStegerConfig(float palm_radius_px,
+                                                   const PalmScaleConfig& cfg = PalmScaleConfig{}) {
         ridge::StegerConfig result;
         result.extract_dark_lines = false;
 
@@ -53,12 +51,8 @@ public:
     /**
      * @brief Extracts palm disc radius from 21 hand landmarks and computes tuned parameters.
      */
-    static ridge::StegerConfig computeFromLandmarks(
-        const geometry::HandLandmarks& lms,
-        int img_width,
-        int img_height,
-        const PalmScaleConfig& cfg = PalmScaleConfig{}
-    ) {
+    static ridge::StegerConfig computeFromLandmarks(const geometry::HandLandmarks& lms, int img_width, int img_height,
+                                                    const PalmScaleConfig& cfg = PalmScaleConfig{}) {
         const float w_f = static_cast<float>(std::max(1, img_width));
         const float h_f = static_cast<float>(std::max(1, img_height));
 
@@ -70,7 +64,7 @@ public:
             return cv::Point2f(pt.x, pt.y);
         };
 
-        const cv::Point2f p5  = get_pt(5);  // Index MCP
+        const cv::Point2f p5 = get_pt(5);   // Index MCP
         const cv::Point2f p17 = get_pt(17); // Pinky MCP
 
         const float palm_w = static_cast<float>(cv::norm(p17 - p5));
@@ -84,6 +78,6 @@ public:
 
 // Compatibility namespace alias for curv/domain/PalmParameters.hpp
 namespace CurvEngine::domain {
-    using PalmScaleConfig = CurvEngine::domains::PalmScaleConfig;
-    using PalmParameters = CurvEngine::domains::PalmParameters;
-}
+using PalmScaleConfig = CurvEngine::domains::PalmScaleConfig;
+using PalmParameters = CurvEngine::domains::PalmParameters;
+} // namespace CurvEngine::domain

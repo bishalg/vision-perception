@@ -58,7 +58,6 @@ add_executable(test_palm_domain
 target_link_libraries(test_palm_domain
     PRIVATE
         curv_domains
-        curv_core
         GTest::gtest_main
         ${OpenCV_LIBS}
 )
@@ -74,7 +73,6 @@ add_executable(test_surface_inspection
 target_link_libraries(test_surface_inspection
     PRIVATE
         curv_domains
-        curv_core
         GTest::gtest_main
         ${OpenCV_LIBS}
 )
@@ -90,7 +88,6 @@ add_executable(test_overlay_renderer
 target_link_libraries(test_overlay_renderer
     PRIVATE
         curv_adapters
-        curv_core
         GTest::gtest_main
         ${OpenCV_LIBS}
 )
@@ -136,7 +133,6 @@ add_executable(test_zone_intersector
 )
 target_link_libraries(test_zone_intersector
     PRIVATE
-        curv_core
         curv_domains
         GTest::gtest_main
         ${OpenCV_LIBS}
@@ -153,11 +149,26 @@ add_executable(test_vlm_formatter
 target_link_libraries(test_vlm_formatter
     PRIVATE
         curv_domains
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_vlm_formatter)
+add_test(NAME test_vlm_formatter COMMAND test_vlm_formatter)
+
+# ------------------------------------------------------------------------------
+# Unit Test: test_geometry_types
+# ------------------------------------------------------------------------------
+add_executable(test_geometry_types
+    unit/test_geometry_types.cpp
+)
+target_link_libraries(test_geometry_types
+    PRIVATE
         curv_core
         GTest::gtest_main
         ${OpenCV_LIBS}
 )
-add_test(NAME test_vlm_formatter COMMAND test_vlm_formatter)
+vision_set_compiler_warnings(test_geometry_types)
+add_test(NAME test_geometry_types COMMAND test_geometry_types)
 
 # ------------------------------------------------------------------------------
 # Unit Test: test_regression_audit
@@ -170,7 +181,6 @@ target_link_libraries(test_regression_audit
         curv_capi
         curv_domains
         curv_adapters
-        curv_core
         GTest::gtest_main
         ${OpenCV_LIBS}
 )

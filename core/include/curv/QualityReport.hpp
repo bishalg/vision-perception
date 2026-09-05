@@ -16,10 +16,7 @@ struct QualityReport {
 
     QualityReport() = default;
 
-    QualityReport(double in_blur_score,
-                  double in_brightness_score,
-                  double in_contrast_score,
-                  bool in_is_usable,
+    QualityReport(double in_blur_score, double in_brightness_score, double in_contrast_score, bool in_is_usable,
                   std::string in_recommendation = "");
 };
 

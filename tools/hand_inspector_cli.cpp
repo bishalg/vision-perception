@@ -1,29 +1,31 @@
-#include <iostream>
 #include <fstream>
-#include <string>
-#include <vector>
+#include <iostream>
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
-#include <nlohmann/json.hpp>
+#include <string>
+#include <vector>
 
-#include "curv/Version.hpp"
 #include "curv/Frame.hpp"
-#include "curv/quality/LaplacianQualityAnalyzer.hpp"
-#include "curv/ridge/StegerRidgeExtractor.hpp"
-#include "curv/pipeline/SyncPerceptionPipeline.hpp"
-#include "curv/geometry/RoiWarper.hpp"
+#include "curv/Version.hpp"
+#include "curv/adapters/HandLandmarkDetector.hpp"
+#include "curv/adapters/OverlayRenderer.hpp"
 #include "curv/domain/PalmParameters.hpp"
 #include "curv/domain/PalmZones.hpp"
 #include "curv/domain/VlmPromptFormatter.hpp"
 #include "curv/domains/PalmDomainPack.hpp"
-#include "curv/adapters/OverlayRenderer.hpp"
-#include "curv/adapters/HandLandmarkDetector.hpp"
+#include "curv/geometry/RoiWarper.hpp"
+#include "curv/pipeline/SyncPerceptionPipeline.hpp"
+#include "curv/quality/LaplacianQualityAnalyzer.hpp"
+#include "curv/ridge/StegerRidgeExtractor.hpp"
 
-int main(int argc, char* argv[]) {
-    std::cout << "==================================================" << std::endl;
-    std::cout << "CurvEngine Hand Inspector & VLM Grounding CLI (v" << CurvEngine::getVersion() << ")" << std::endl;
-    std::cout << "==================================================" << std::endl;
+namespace {
+
+int run(int argc, char* argv[]) {
+    std::cout << "==================================================" << '\n';
+    std::cout << "CurvEngine Hand Inspector & VLM Grounding CLI (v" << CurvEngine::getVersion() << ")" << '\n';
+    std::cout << "==================================================" << '\n';
 
     std::string image_path;
     std::string landmarks_path;
@@ -32,10 +34,10 @@ int main(int argc, char* argv[]) {
     std::string out_overlay_path = "overlay_palm.png";
     std::string out_json_path = "evidence.json";
     std::string out_vlm_prompt_path = "gemini_prompt.json";
-    bool draw_whiskers = true;
+    bool const draw_whiskers = true;
 
     for (int i = 1; i < argc; ++i) {
-        std::string arg = argv[i];
+        std::string const arg = argv[i];
         if (arg == "--image" && i + 1 < argc) {
             image_path = argv[++i];
         } else if (arg == "--landmarks" && i + 1 < argc) {
@@ -68,20 +70,20 @@ int main(int argc, char* argv[]) {
     }
 
     // 1. Ingest Image
-    std::cout << "[STAGE 1] Loading image: " << image_path << std::endl;
-    cv::Mat raw_image = cv::imread(image_path, cv::IMREAD_COLOR);
+    std::cout << "[STAGE 1] Loading image: " << image_path << '\n';
+    cv::Mat const raw_image = cv::imread(image_path, cv::IMREAD_COLOR);
     if (raw_image.empty()) {
-        std::cerr << "[ERROR] Could not load image: " << image_path << std::endl;
+        std::cerr << "[ERROR] Could not load image: " << image_path << '\n';
         return 1;
     }
-    std::cout << "  - Input Resolution: " << raw_image.cols << "x" << raw_image.rows << std::endl;
+    std::cout << "  - Input Resolution: " << raw_image.cols << "x" << raw_image.rows << '\n';
 
     // 2. Extract or Load Hand Landmarks
     CurvEngine::geometry::HandLandmarks lms;
     lms.is_normalized = true;
 
     if (!landmarks_path.empty()) {
-        std::cout << "[STAGE 2] Loading user landmarks: " << landmarks_path << std::endl;
+        std::cout << "[STAGE 2] Loading user landmarks: " << landmarks_path << '\n';
         std::ifstream f(landmarks_path);
         if (f.is_open()) {
             nlohmann::json js;
@@ -99,88 +101,72 @@ int main(int argc, char* argv[]) {
             }
         }
     } else {
-        std::cout << "[STAGE 2] Running desktop hand landmark detector..." << std::endl;
+        std::cout << "[STAGE 2] Running desktop hand landmark detector..." << '\n';
         CurvEngine::adapters::HandLandmarkDetector detector(auto_landmarks_model);
         auto opt_lms = detector.detect(raw_image);
         if (opt_lms) {
             lms = *opt_lms;
-            std::cout << "  - Landmarks established (Wrist: " << lms.points[0].x << ", " << lms.points[0].y << ")" << std::endl;
+            std::cout << "  - Landmarks established (Wrist: " << lms.points[0].x << ", " << lms.points[0].y << ")"
+                      << '\n';
         }
     }
 
     // 3. Compute Canonical Palm Transform & Warp
-    std::cout << "[STAGE 3] Warping to 512x512 canonical upright palm patch..." << std::endl;
+    std::cout << "[STAGE 3] Warping to 512x512 canonical upright palm patch..." << '\n';
     const int canonical_dim = 512;
-    const auto transform = CurvEngine::geometry::computeCanonicalPalmTransform(
-        lms,
-        raw_image.cols,
-        raw_image.rows,
-        canonical_dim
-    );
+    const auto transform =
+        CurvEngine::geometry::computeCanonicalPalmTransform(lms, raw_image.cols, raw_image.rows, canonical_dim);
 
-    cv::Mat canonical_patch = CurvEngine::geometry::warpToCanonical(
-        raw_image,
-        transform.M,
-        canonical_dim
-    );
+    cv::Mat const canonical_patch = CurvEngine::geometry::warpToCanonical(raw_image, transform.M, canonical_dim);
 
     cv::imwrite(out_warp_path, canonical_patch);
-    std::cout << "  - Canonical patch saved to: " << out_warp_path << std::endl;
+    std::cout << "  - Canonical patch saved to: " << out_warp_path << '\n';
 
     // 4. Extract Sub-Pixel Curvilinear Ridges with Adaptive Scale
-    std::cout << "[STAGE 4] Extracting sub-pixel curvilinear ridges..." << std::endl;
-    CurvEngine::Frame canonical_frame(canonical_patch, "canonical_palm", 1);
+    std::cout << "[STAGE 4] Extracting sub-pixel curvilinear ridges..." << '\n';
+    CurvEngine::Frame const canonical_frame(canonical_patch, "canonical_palm", 1);
 
     CurvEngine::quality::QualityThresholds q_thresh;
     q_thresh.min_blur_score = 15.0;
     q_thresh.min_brightness = 5.0;
-    auto quality_analyzer = std::make_shared<CurvEngine::quality::LaplacianQualityAnalyzer>(q_thresh);
+    auto const quality_analyzer = std::make_shared<CurvEngine::quality::LaplacianQualityAnalyzer>(q_thresh);
 
-    auto tuned_cfg = CurvEngine::domains::PalmParameters::computeFromLandmarks(
-        lms,
-        raw_image.cols,
-        raw_image.rows
-    );
-    auto ridge_extractor = std::make_shared<CurvEngine::ridge::StegerRidgeExtractor>(tuned_cfg);
+    auto const tuned_cfg =
+        CurvEngine::domains::PalmParameters::computeFromLandmarks(lms, raw_image.cols, raw_image.rows);
+    auto const ridge_extractor = std::make_shared<CurvEngine::ridge::StegerRidgeExtractor>(tuned_cfg);
 
     CurvEngine::pipeline::SyncPerceptionPipeline pipeline(quality_analyzer, ridge_extractor);
     auto result = pipeline.process(canonical_frame);
 
-    std::cout << "  - Frame Usable: " << (result.is_usable ? "YES" : "NO") << std::endl;
-    std::cout << "  - Blur Score: " << result.quality.blur_score << std::endl;
-    std::cout << "  - Extracted Segments: " << result.ridge_graph.segments.size() << std::endl;
+    std::cout << "  - Frame Usable: " << (result.is_usable ? "YES" : "NO") << '\n';
+    std::cout << "  - Blur Score: " << result.quality.blur_score << '\n';
+    std::cout << "  - Extracted Segments: " << result.ridge_graph.segments.size() << '\n';
 
     // 5. Palm Domain Semantic Analysis & Zone Tagging
-    std::cout << "[STAGE 5] Running PalmDomainPack semantic zone interpretation..." << std::endl;
+    std::cout << "[STAGE 5] Running PalmDomainPack semantic zone interpretation..." << '\n';
     CurvEngine::domains::PalmDomainPack palm_pack;
-    CurvEngine::DomainInput d_in{canonical_frame, result.ridge_graph, result.quality};
-    auto d_out = palm_pack.process(d_in);
+    CurvEngine::DomainInput const d_in{canonical_frame, result.ridge_graph, result.quality};
+    auto const d_out = palm_pack.process(d_in);
 
     // 6. Anti-Aliased Overlay Rendering
-    std::cout << "[STAGE 6] Rendering sub-pixel overlay..." << std::endl;
+    std::cout << "[STAGE 6] Rendering sub-pixel overlay..." << '\n';
     CurvEngine::adapters::OverlayConfig o_cfg;
     o_cfg.draw_subpixel_polylines = true;
     o_cfg.draw_normals = draw_whiskers;
     o_cfg.draw_hud = true;
     o_cfg.subpixel_shift = 4;
 
-    cv::Mat overlay = CurvEngine::adapters::OverlayRenderer::render(
-        canonical_patch,
-        result.ridge_graph,
-        result.quality,
-        o_cfg
-    );
+    cv::Mat const overlay =
+        CurvEngine::adapters::OverlayRenderer::render(canonical_patch, result.ridge_graph, result.quality, o_cfg);
     cv::imwrite(out_overlay_path, overlay);
-    std::cout << "  - Overlay saved to: " << out_overlay_path << std::endl;
+    std::cout << "  - Overlay saved to: " << out_overlay_path << '\n';
 
     // 7. Assemble Perception Evidence JSON
     nlohmann::json evidence_root;
-    evidence_root["quality"] = {
-        {"blur_score", result.quality.blur_score},
-        {"brightness_score", result.quality.brightness_score},
-        {"contrast_score", result.quality.contrast_score},
-        {"is_usable", result.quality.is_usable}
-    };
+    evidence_root["quality"] = {{"blur_score", result.quality.blur_score},
+                                {"brightness_score", result.quality.brightness_score},
+                                {"contrast_score", result.quality.contrast_score},
+                                {"is_usable", result.quality.is_usable}};
     evidence_root["domain_payload"] = d_out.domain_payload;
 
     nlohmann::json ev_array = nlohmann::json::array();
@@ -195,22 +181,34 @@ int main(int argc, char* argv[]) {
     std::ofstream ev_file(out_json_path);
     if (ev_file.is_open()) {
         ev_file << evidence_root.dump(2);
-        std::cout << "  - Evidence JSON saved to: " << out_json_path << std::endl;
+        std::cout << "  - Evidence JSON saved to: " << out_json_path << '\n';
     }
 
     // 8. Generate Grounded Gemini / Gemma Prompt Payload
-    std::cout << "[STAGE 7] Generating grounded VLM prompt payload..." << std::endl;
-    nlohmann::json gemini_payload = CurvEngine::domains::VlmPromptFormatter::formatGeminiRequest(
+    std::cout << "[STAGE 7] Generating grounded VLM prompt payload..." << '\n';
+    nlohmann::json const gemini_payload = CurvEngine::domains::VlmPromptFormatter::formatGeminiRequest(
         evidence_root,
-        "Analyze the career and longevity indicators strictly according to Vedic Samudrika Shastra rules."
-    );
+        "Analyze the career and longevity indicators strictly according to Vedic Samudrika Shastra rules.");
 
     std::ofstream prompt_file(out_vlm_prompt_path);
     if (prompt_file.is_open()) {
         prompt_file << gemini_payload.dump(2);
-        std::cout << "  - Grounded VLM prompt saved to: " << out_vlm_prompt_path << std::endl;
+        std::cout << "  - Grounded VLM prompt saved to: " << out_vlm_prompt_path << '\n';
     }
 
-    std::cout << "\n[PASS] Hand inspection pipeline completed successfully." << std::endl;
+    std::cout << "\n[PASS] Hand inspection pipeline completed successfully." << '\n';
     return 0;
+}
+} // namespace
+
+int main(int argc, char* argv[]) {
+    try {
+        return run(argc, argv);
+    } catch (const std::exception& e) {
+        std::cerr << "[ERROR] Unhandled exception: " << e.what() << '\n';
+        return 1;
+    } catch (...) {
+        std::cerr << "[ERROR] Unhandled unknown exception" << '\n';
+        return 1;
+    }
 }

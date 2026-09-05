@@ -1,14 +1,14 @@
 #pragma once
 
-#include <vector>
-#include <string>
 #include "curv/geometry/ZoneIntersector.hpp"
+#include <string>
+#include <vector>
 
 namespace CurvEngine::domains {
 
 /**
  * @brief Palm domain anatomical zones defined in canonical 512x512 upright patch space.
- * 
+ *
  * Orientations in canonical 512x512 patch:
  * - Upward (-Y): Digits (Index, Middle, Ring, Pinky)
  * - Downward (+Y): Wrist and Carpal creases
@@ -29,5 +29,5 @@ public:
 } // namespace CurvEngine::domains
 
 namespace CurvEngine::domain {
-    using PalmZones = CurvEngine::domains::PalmZones;
+using PalmZones = CurvEngine::domains::PalmZones;
 }

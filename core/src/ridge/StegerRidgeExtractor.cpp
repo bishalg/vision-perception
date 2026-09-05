@@ -1,9 +1,9 @@
 #include "curv/ridge/StegerRidgeExtractor.hpp"
 #include "curv/ridge/HessianMath.hpp"
-#include <opencv2/imgproc.hpp>
-#include <cmath>
 #include <algorithm>
+#include <cmath>
 #include <deque>
+#include <opencv2/imgproc.hpp>
 
 namespace CurvEngine::ridge {
 
@@ -71,8 +71,7 @@ void generate1DGaussianKernels(float sigma, cv::Mat& k_g, cv::Mat& k_g1, cv::Mat
 
 } // anonymous namespace
 
-StegerRidgeExtractor::StegerRidgeExtractor(StegerConfig config)
-    : config_(config) {}
+StegerRidgeExtractor::StegerRidgeExtractor(StegerConfig config) : config_(config) {}
 
 RidgeGraph StegerRidgeExtractor::extractRidgeGraph(const cv::Mat& image) const {
     RidgeGraph result;
@@ -98,15 +97,21 @@ RidgeGraph StegerRidgeExtractor::extractRidgeGraph(const cv::Mat& image) const {
     result.debug_mask = cv::Mat::zeros(rows, cols, CV_8UC1);
 
     // 2. Generate Separable 1D Gaussian Derivative Kernels
-    cv::Mat k_g, k_g1, k_g2;
+    cv::Mat k_g;
+    cv::Mat k_g1;
+    cv::Mat k_g2;
     generate1DGaussianKernels(config_.sigma, k_g, k_g1, k_g2);
 
     // 3. Compute 1st and 2nd Order Partial Derivatives via Separable Filtering
-    cv::Mat rx, ry, rxx, ryy, rxy;
-    cv::sepFilter2D(gray_f, rx,  CV_32F, k_g1, k_g,  cv::Point(-1, -1), 0.0, cv::BORDER_REPLICATE);
-    cv::sepFilter2D(gray_f, ry,  CV_32F, k_g,  k_g1, cv::Point(-1, -1), 0.0, cv::BORDER_REPLICATE);
-    cv::sepFilter2D(gray_f, rxx, CV_32F, k_g2, k_g,  cv::Point(-1, -1), 0.0, cv::BORDER_REPLICATE);
-    cv::sepFilter2D(gray_f, ryy, CV_32F, k_g,  k_g2, cv::Point(-1, -1), 0.0, cv::BORDER_REPLICATE);
+    cv::Mat rx;
+    cv::Mat ry;
+    cv::Mat rxx;
+    cv::Mat ryy;
+    cv::Mat rxy;
+    cv::sepFilter2D(gray_f, rx, CV_32F, k_g1, k_g, cv::Point(-1, -1), 0.0, cv::BORDER_REPLICATE);
+    cv::sepFilter2D(gray_f, ry, CV_32F, k_g, k_g1, cv::Point(-1, -1), 0.0, cv::BORDER_REPLICATE);
+    cv::sepFilter2D(gray_f, rxx, CV_32F, k_g2, k_g, cv::Point(-1, -1), 0.0, cv::BORDER_REPLICATE);
+    cv::sepFilter2D(gray_f, ryy, CV_32F, k_g, k_g2, cv::Point(-1, -1), 0.0, cv::BORDER_REPLICATE);
     cv::sepFilter2D(gray_f, rxy, CV_32F, k_g1, k_g1, cv::Point(-1, -1), 0.0, cv::BORDER_REPLICATE);
 
     // 4. Multi-Threaded Pixel-wise Hessian Decomposition & Sub-Pixel Localization via cv::parallel_for_
@@ -114,8 +119,8 @@ RidgeGraph StegerRidgeExtractor::extractRidgeGraph(const cv::Mat& image) const {
 
     cv::parallel_for_(cv::Range(0, rows), [&](const cv::Range& range) {
         for (int y = range.start; y < range.end; ++y) {
-            const float* p_rx  = rx.ptr<float>(y);
-            const float* p_ry  = ry.ptr<float>(y);
+            const float* p_rx = rx.ptr<float>(y);
+            const float* p_ry = ry.ptr<float>(y);
             const float* p_rxx = rxx.ptr<float>(y);
             const float* p_ryy = ryy.ptr<float>(y);
             const float* p_rxy = rxy.ptr<float>(y);
@@ -126,7 +131,8 @@ RidgeGraph StegerRidgeExtractor::extractRidgeGraph(const cv::Mat& image) const {
                 const float salience = std::abs(eigen.lambda1);
 
                 // Polarity test: dark line (valleys) -> lambda1 > 0; bright line (ridges) -> lambda1 < 0
-                const bool correct_polarity = config_.extract_dark_lines ? (eigen.lambda1 > 0.0f) : (eigen.lambda1 < 0.0f);
+                const bool correct_polarity =
+                    config_.extract_dark_lines ? (eigen.lambda1 > 0.0f) : (eigen.lambda1 < 0.0f);
 
                 if (!correct_polarity || salience < config_.low_threshold) {
                     continue;
@@ -134,8 +140,7 @@ RidgeGraph StegerRidgeExtractor::extractRidgeGraph(const cv::Mat& image) const {
 
                 // Directional first and second derivatives along normal vector
                 const float f_prime = p_rx[x] * eigen.nx + p_ry[x] * eigen.ny;
-                const float f_dprime = p_rxx[x] * eigen.nx * eigen.nx +
-                                       2.0f * p_rxy[x] * eigen.nx * eigen.ny +
+                const float f_dprime = p_rxx[x] * eigen.nx * eigen.nx + 2.0f * p_rxy[x] * eigen.nx * eigen.ny +
                                        p_ryy[x] * eigen.ny * eigen.ny;
 
                 if (std::abs(f_dprime) < 1e-6f) continue;
@@ -155,7 +160,7 @@ RidgeGraph StegerRidgeExtractor::extractRidgeGraph(const cv::Mat& image) const {
                     cand.nx = eigen.nx;
                     cand.ny = eigen.ny;
                     cand.tx = -eigen.ny; // Tangent
-                    cand.ty =  eigen.nx;
+                    cand.ty = eigen.nx;
                     cand.intensity = p_val[x];
                     cand.confidence = std::min(1.0f, salience / std::max(0.01f, config_.high_threshold));
                 }
@@ -167,8 +172,8 @@ RidgeGraph StegerRidgeExtractor::extractRidgeGraph(const cv::Mat& image) const {
     std::vector<uint8_t> visited(static_cast<size_t>(rows * cols), 0);
     int next_segment_id = 1;
 
-    const int dx[8] = { 1,  1,  0, -1, -1, -1,  0,  1};
-    const int dy[8] = { 0,  1,  1,  1,  0, -1, -1, -1};
+    const int dx[8] = {1, 1, 0, -1, -1, -1, 0, 1};
+    const int dy[8] = {0, 1, 1, 1, 0, -1, -1, -1};
 
     for (int y = 1; y < rows - 1; ++y) {
         for (int x = 1; x < cols - 1; ++x) {
@@ -329,33 +334,18 @@ std::vector<Evidence> StegerRidgeExtractor::extractFromGraph(const RidgeGraph& g
     for (const auto& seg : graph.segments) {
         nlohmann::json geom_points = nlohmann::json::array();
         for (const auto& pt : seg.points) {
-            geom_points.push_back({
-                {"x", pt.x},
-                {"y", pt.y},
-                {"intensity", pt.intensity},
-                {"confidence", pt.confidence}
-            });
+            geom_points.push_back(
+                {{"x", pt.x}, {"y", pt.y}, {"intensity", pt.intensity}, {"confidence", pt.confidence}});
         }
 
-        nlohmann::json geometry = {
-            {"segment_id", seg.id},
-            {"point_count", seg.points.size()},
-            {"total_length", seg.total_length},
-            {"points", geom_points}
-        };
+        nlohmann::json geometry = {{"segment_id", seg.id},
+                                   {"point_count", seg.points.size()},
+                                   {"total_length", seg.total_length},
+                                   {"points", geom_points}};
 
-        nlohmann::json metadata = {
-            {"sigma", config_.sigma},
-            {"extract_dark_lines", config_.extract_dark_lines}
-        };
+        nlohmann::json metadata = {{"sigma", config_.sigma}, {"extract_dark_lines", config_.extract_dark_lines}};
 
-        evidence_list.emplace_back(
-            "ridge_seg_" + std::to_string(seg.id),
-            "line_candidate",
-            0.95,
-            geometry,
-            metadata
-        );
+        evidence_list.emplace_back("ridge_seg_" + std::to_string(seg.id), "line_candidate", 0.95, geometry, metadata);
     }
 
     return evidence_list;

@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  format-check:
+    name: Format (clang-format)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-format
+      - name: Verify formatting
+        run: ./scripts/format.sh --check
+
+  build-ubuntu:
+    name: Build & Test (Ubuntu, -Werror)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build libopencv-dev nlohmann-json3-dev libspdlog-dev libgtest-dev clang-tidy
+      - name: Configure
+        run: cmake --preset release
+      - name: Build
+        run: cmake --build --preset release -j "$(nproc)"
+      - name: Unit tests
+        run: ctest --test-dir build --output-on-failure
+      - name: Static analysis (clang-tidy)
+        run: ./scripts/lint.sh
+
+  build-macos:
+    name: Build & Test (macOS, -Werror)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: brew install cmake ninja opencv nlohmann-json spdlog googletest
+      - name: Configure
+        run: cmake --preset release
+      - name: Build
+        run: cmake --build --preset release -j "$(sysctl -n hw.ncpu)"
+      - name: Unit tests
+        run: ctest --test-dir build --output-on-failure
+
+  sanitizers:
+    name: Sanitizers (ASan + UBSan)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build libopencv-dev nlohmann-json3-dev libspdlog-dev libgtest-dev
+      - name: Configure (Debug + ASan/UBSan)
+        run: cmake --preset asan
+      - name: Build
+        run: cmake --build --preset asan -j "$(nproc)"
+      - name: Unit tests under sanitizers
+        run: ctest --test-dir build-asan --output-on-failure

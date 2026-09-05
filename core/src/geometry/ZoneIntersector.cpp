@@ -29,11 +29,8 @@ bool ZoneIntersector::isPointInZone(const Point2D& point, const Zone& zone) {
     return result >= 0.0;
 }
 
-std::string ZoneIntersector::findPrimaryZone(
-    const CurveSegment& segment,
-    const std::vector<Zone>& zones,
-    float min_overlap_ratio
-) {
+std::string ZoneIntersector::findPrimaryZone(const CurveSegment& segment, const std::vector<Zone>& zones,
+                                             float min_overlap_ratio) {
     if (segment.points.empty() || zones.empty()) {
         return "unknown";
     }
@@ -50,10 +47,8 @@ std::string ZoneIntersector::findPrimaryZone(
     return "unknown";
 }
 
-std::vector<std::pair<std::string, float>> ZoneIntersector::computeZoneOverlap(
-    const CurveSegment& segment,
-    const std::vector<Zone>& zones
-) {
+std::vector<std::pair<std::string, float>> ZoneIntersector::computeZoneOverlap(const CurveSegment& segment,
+                                                                               const std::vector<Zone>& zones) {
     std::vector<std::pair<std::string, float>> result;
     if (segment.points.empty() || zones.empty()) {
         return result;
@@ -79,9 +74,7 @@ std::vector<std::pair<std::string, float>> ZoneIntersector::computeZoneOverlap(
         }
     }
 
-    std::sort(result.begin(), result.end(), [](const auto& a, const auto& b) {
-        return a.second > b.second;
-    });
+    std::ranges::sort(result, [](const auto& a, const auto& b) { return a.second > b.second; });
 
     return result;
 }

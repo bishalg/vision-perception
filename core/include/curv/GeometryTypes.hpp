@@ -1,8 +1,8 @@
 #pragma once
 
-#include <vector>
 #include <cstdint>
 #include <opencv2/core.hpp>
+#include <vector>
 
 namespace CurvEngine {
 

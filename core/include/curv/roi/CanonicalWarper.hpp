@@ -1,9 +1,9 @@
 #pragma once
 
-#include <array>
 #include "curv/Frame.hpp"
 #include "curv/GeometryTypes.hpp"
 #include "curv/geometry/RoiWarper.hpp"
+#include <array>
 
 namespace CurvEngine::roi {
 
@@ -21,11 +21,8 @@ public:
      * @param output_size Output square resolution (default: 512).
      * @return Frame containing the warped canonical image.
      */
-    Frame warpQuad(
-        const Frame& source_frame,
-        const std::array<Point2D, 4>& corners,
-        int output_size = 512
-    ) const;
+    [[nodiscard]] Frame warpQuad(const Frame& source_frame, const std::array<Point2D, 4>& corners,
+                                 int output_size = 512) const;
 
     /**
      * @brief Warps source frame palm region into canonical upright square frame using hand landmarks.
@@ -34,11 +31,8 @@ public:
      * @param output_size Output square resolution (default: 512).
      * @return Frame containing the warped canonical image and transform cached in metadata.
      */
-    Frame warpPalm(
-        const Frame& source_frame,
-        const geometry::HandLandmarks& landmarks,
-        int output_size = 512
-    ) const;
+    [[nodiscard]] Frame warpPalm(const Frame& source_frame, const geometry::HandLandmarks& landmarks,
+                                 int output_size = 512) const;
 
 private:
     int target_dim_;

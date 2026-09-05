@@ -1,9 +1,9 @@
 #pragma once
 
-#include <string>
-#include <vector>
-#include <utility>
 #include "curv/GeometryTypes.hpp"
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace CurvEngine::geometry {
 
@@ -33,20 +33,15 @@ public:
      * @param min_overlap_ratio Minimum fraction of points [0.0, 1.0] required (default: 0.20f).
      * @return Zone ID with greatest point overlap, or "unknown" if no zone meets min_overlap_ratio.
      */
-    static std::string findPrimaryZone(
-        const CurveSegment& segment,
-        const std::vector<Zone>& zones,
-        float min_overlap_ratio = 0.20f
-    );
+    static std::string findPrimaryZone(const CurveSegment& segment, const std::vector<Zone>& zones,
+                                       float min_overlap_ratio = 0.20f);
 
     /**
      * @brief Computes detailed overlap ratios across all zones for a curve segment.
      * @return Vector of pairs (zone_id, overlap_fraction in [0.0, 1.0]).
      */
-    static std::vector<std::pair<std::string, float>> computeZoneOverlap(
-        const CurveSegment& segment,
-        const std::vector<Zone>& zones
-    );
+    static std::vector<std::pair<std::string, float>> computeZoneOverlap(const CurveSegment& segment,
+                                                                         const std::vector<Zone>& zones);
 };
 
 } // namespace CurvEngine::geometry
