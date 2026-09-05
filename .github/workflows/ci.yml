@@ -64,3 +64,23 @@ jobs:
         run: cmake --build --preset asan -j "$(nproc)"
       - name: Unit tests under sanitizers
         run: ctest --test-dir build-asan --output-on-failure
+
+  coverage:
+    name: Coverage gate (100% lines + branches)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build libopencv-dev nlohmann-json3-dev libspdlog-dev libgtest-dev clang llvm python3
+      - name: Configure (Debug + coverage, clang)
+        run: cmake --preset coverage -DCMAKE_CXX_COMPILER=clang++
+      - name: Coverage pipeline and 100% gate
+        run: ./scripts/coverage.sh
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: build-coverage/html/

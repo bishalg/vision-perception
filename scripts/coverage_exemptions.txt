@@ -1,0 +1,7 @@
+# ==============================================================================
+# Coverage exemptions (scripts/coverage_gate.py). One entry per line:
+#     <repo-relative-path>|<justification>
+# Exemptions are for provably unreachable defensive code ONLY. Every entry
+# must carry a written justification and is surfaced in the gate output.
+# Target state: this file stays empty.
+# ==============================================================================

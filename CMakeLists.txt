@@ -35,6 +35,19 @@ if(VISION_SANITIZERS)
     add_link_options(-fsanitize=${VISION_SANITIZERS})
 endif()
 
+# LLVM source-based coverage instrumentation (Apple Clang / Clang).
+# Produces .profraw profiles at test runtime; consumed by scripts/coverage.sh
+# (llvm-profdata merge + llvm-cov export) and gated by scripts/coverage_gate.py.
+option(VISION_COVERAGE "Enable llvm-cov source-based coverage instrumentation" OFF)
+if(VISION_COVERAGE)
+    if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        message(FATAL_ERROR "VISION_COVERAGE requires Clang/AppleClang (gcc uses gcov, unsupported here); "
+                            "configure with -DCMAKE_CXX_COMPILER=clang++")
+    endif()
+    add_compile_options(-fprofile-instr-generate -fcoverage-mapping)
+    add_link_options(-fprofile-instr-generate -fcoverage-mapping)
+endif()
+
 # Module path and system prefix paths
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 list(APPEND CMAKE_PREFIX_PATH

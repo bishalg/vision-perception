@@ -51,6 +51,16 @@
                 "CMAKE_BUILD_TYPE": "Debug",
                 "VISION_SANITIZERS": "thread"
             }
+        },
+        {
+            "name": "coverage",
+            "displayName": "Debug + llvm-cov coverage",
+            "inherits": "base",
+            "binaryDir": "${sourceDir}/build-coverage",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "VISION_COVERAGE": "ON"
+            }
         }
     ],
     "buildPresets": [
@@ -69,6 +79,10 @@
         {
             "name": "tsan",
             "configurePreset": "tsan"
+        },
+        {
+            "name": "coverage",
+            "configurePreset": "coverage"
         }
     ],
     "testPresets": [
@@ -89,6 +103,13 @@
         {
             "name": "tsan",
             "configurePreset": "tsan",
+            "output": {
+                "outputOnFailure": true
+            }
+        },
+        {
+            "name": "coverage",
+            "configurePreset": "coverage",
             "output": {
                 "outputOnFailure": true
             }

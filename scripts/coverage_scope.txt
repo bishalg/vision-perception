@@ -1,0 +1,31 @@
+# ==============================================================================
+# Coverage scope for the 100% line+branch gate (scripts/coverage_gate.py).
+# One glob per line. Lines starting with '!' are exclusions. '#'-comments.
+# Paths are repo-relative POSIX ('/' separators; '**' crosses directories).
+# ==============================================================================
+
+# --- Core engine -------------------------------------------------------------
+core/src/*.cpp
+core/src/**/*.cpp
+
+# --- Domain packs ------------------------------------------------------------
+domains/*/src/*.cpp
+
+# --- Adapters (native, desktop-buildable) ------------------------------------
+adapters/capi/src/*.cpp
+adapters/opencv/src/*.cpp
+adapters/opencv_dnn/src/*.cpp
+adapters/android/*.cpp
+
+# --- CLI/application support libraries ---------------------------------------
+tools/lib/**/*.cpp
+
+# --- Exclusions --------------------------------------------------------------
+# Swift binding: covered by XCTest in Phase C (mobile packaging), not llvm-cov.
+!adapters/apple/**
+# Thin `main()` entry points; all logic lives in covered support libraries.
+!**/main.cpp
+!tools/curv_cli.cpp
+!tools/hand_inspector_cli.cpp
+!tools/synth_generator.cpp
+!tools/evaluate.cpp
