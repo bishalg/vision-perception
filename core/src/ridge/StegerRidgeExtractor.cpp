@@ -343,12 +343,12 @@ std::vector<Evidence> StegerRidgeExtractor::extractFromGraph(const RidgeGraph& g
                 {{"x", pt.x}, {"y", pt.y}, {"intensity", pt.intensity}, {"confidence", pt.confidence}});
         }
 
-        nlohmann::json geometry = {{"segment_id", seg.id},
-                                   {"point_count", seg.points.size()},
-                                   {"total_length", seg.total_length},
-                                   {"points", geom_points}};
+        const nlohmann::json geometry = {{"segment_id", seg.id},
+                                         {"point_count", seg.points.size()},
+                                         {"total_length", seg.total_length},
+                                         {"points", geom_points}};
 
-        nlohmann::json metadata = {{"sigma", config_.sigma}, {"extract_dark_lines", config_.extract_dark_lines}};
+        const nlohmann::json metadata = {{"sigma", config_.sigma}, {"extract_dark_lines", config_.extract_dark_lines}};
 
         evidence_list.emplace_back("ridge_seg_" + std::to_string(seg.id), "line_candidate", 0.95, geometry, metadata);
     }

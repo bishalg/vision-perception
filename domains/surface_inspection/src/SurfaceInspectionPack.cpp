@@ -41,10 +41,10 @@ DomainOutput SurfaceInspectionPack::process(const DomainInput& input) {
             minor_count++;
         }
 
-        nlohmann::json geom = {
+        const nlohmann::json geom = {
             {"segment_id", seg.id}, {"point_count", seg.points.size()}, {"total_length", seg.total_length}};
 
-        nlohmann::json meta = {{"defect_class", defect_class}, {"severity", defect_severity}};
+        const nlohmann::json meta = {{"defect_class", defect_class}, {"severity", defect_severity}};
 
         output.domain_evidence.emplace_back("defect_" + std::to_string(seg.id), defect_class, defect_severity, geom,
                                             meta);
