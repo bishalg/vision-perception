@@ -49,17 +49,17 @@ Real-World Impact track: Rapid glacier-collapse flood quantification in the Lend
     - *Agentic Vision Award Path*: AWS Bedrock Agent (Claude 3.5 Sonnet) autonomously evaluating `flood_delta.json` from S3 and dispatching alerts via AWS SNS when `flood_signal_detected == true` and `width_ratio >= 2.0`.
     - *Automated Cloud Delivery*: Event-driven STAC catalog polling on AWS Open Data via Lambda/ECS Fargate.
   - Verified 20/20 ctest passing, RMSE gate < 0.1 px passing, clang-format conforming across all 68 files.
-- **Phase 5: AWS Cloud Infrastructure & Agentic Vision Loop (2026-09-06) — COMPLETE ✅**:
+- **Phase 5: AWS Cloud Infrastructure & Two-Tool Agentic Loop (2026-09-06) — COMPLETE ✅**:
   - Authored AWS CDK (Python 3.12) IaC application in `aws_infra/`:
-    - `StorageStack`: Encrypted, versioned S3 bucket `vision-perception-flood-data` with 90-day S3-IA lifecycle rules and HTTPS enforcement.
-    - `AlertStack`: SNS topic `flood-disaster-alerts` with email subscription configured via `SNS_ALERT_EMAIL`.
+    - `StorageStack`: Primary S3 data bucket `vision-perception-flood-data`, dedicated S3 audit bucket `vision-perception-audit` (eliminating recursive S3 triggers), and Amazon DynamoDB event table `vision-perception-events-dev` (managing server-side idempotency, `evidenceToken` validation, and alert lifecycle state).
+    - `AlertStack`: SNS topic `flood-disaster-alerts` with email subscription configured via `SNS_ALERT_EMAIL` and an Amazon SQS fallback queue `flood-disaster-alerts-queue` for programmatic demo polling.
     - `IAMStack`: Least-privilege IAM execution roles for Lambda (`FloodLambdaExecutionRole`) and Bedrock Agent (`FloodBedrockAgentRole`).
-    - `AgentStack`: Amazon Bedrock Agent powered by Anthropic Claude 3.5 Sonnet v2 (`anthropic.claude-3-5-sonnet-20241022-v2:0`), strict disaster coordinator system prompt (`agent/system_prompt.txt`), OpenAPI Action Group tool `publish_flood_alert`, and S3-triggered event Lambda router (`agent/agent_trigger.py`).
-  - Unit tests in `aws_infra/tests/test_agent_trigger.py`: 7/7 unit tests passing green covering S3 ingestion, action group execution, schema validation, and error propagation.
+    - `AgentStack`: Amazon Bedrock Agent powered by Anthropic Claude 3.5 Sonnet v2 (`anthropic.claude-3-5-sonnet-20241022-v2:0`), strict evidence-first system prompt (`agent/system_prompt.txt`), two-tool Action Group OpenAPI specification (`getFloodEvidence` $\to$ `dispatchFloodAlert`), and S3-triggered event Lambda router (`agent/agent_trigger.py`).
+  - Unit tests in `aws_infra/tests/test_agent_trigger.py`: 8/8 unit tests passing green covering S3 event routing, token issuance, DynamoDB idempotency verification, SNS dispatch, and audit receipt generation.
   - Authored `aws_infra/README.md` with complete deployment, local testing, and cost estimation documentation.
 - **Phase 6: COOL on Graviton3 Benchmark Suite (2026-09-06) — COMPLETE ✅**:
   - Authored `scripts/benchmark_cool_vs_x86.sh` (Bash 3.2+ compatible) featuring automated 100-run Steger curvilinear extraction profiling against high-resolution disaster scenes.
-  - Auto-detects architecture (`aarch64` / `x86_64` / `arm64`), applies vector compile flags (`-mcpu=neoverse-v1` vs `-march=native`), measures high-precision monotonic latencies (Mean, P50, P90, P95), and computes cost-per-scene based on AWS on-demand rates ($0.3264/hr vs $0.3570/hr).
+  - Auto-detects architecture (`aarch64` / `x86_64` / `arm64`), searches COOL installation paths (`/opt/opencv-cool`, `/opt/awscv`), inspects OpenCV compilation features (`cv2.getBuildInformation()`), applies vector compile flags (`-mcpu=neoverse-v1` vs `-march=native`), measures high-precision monotonic latencies (Mean, P50, P90, P95), and computes cost-per-scene based on AWS on-demand rates ($0.3264/hr vs $0.3570/hr).
   - Verified locally via `--dry-run` producing `data/benchmark_results.json`.
   - Authored `docs/aws_benchmark_guide.md` with exact EC2 CLI commands, COOL setup procedures, code sync steps, and cost-containment termination commands.
 

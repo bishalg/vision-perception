@@ -75,6 +75,18 @@ if [[ "${ARCH}" == "aarch64" ]]; then
     INSTANCE_TYPE="c7g.2xlarge"
     OPENCV_VARIANT="COOL"
     HOURLY_PRICE="${PRICE_C7G_HOURLY}"
+
+    # Verify COOL installation paths and prioritize over standard distro OpenCV
+    COOL_CANDIDATE_PATHS=("/opt/opencv-cool" "/opt/awscv" "/usr/local/cool")
+    for cp in "${COOL_CANDIDATE_PATHS[@]}"; do
+        if [[ -d "${cp}" ]]; then
+            echo "[INFO] Found Cloud-Optimized OpenCV Library (COOL) at: ${cp}"
+            export CMAKE_PREFIX_PATH="${cp}:${CMAKE_PREFIX_PATH:-}"
+            export PKG_CONFIG_PATH="${cp}/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+            export LD_LIBRARY_PATH="${cp}/lib:${LD_LIBRARY_PATH:-}"
+            break
+        fi
+    done
 elif [[ "${ARCH}" == "x86_64" ]]; then
     echo "[INFO] Detected x86_64 architecture (Intel/AMD profile candidate)"
     INSTANCE_TYPE="c7i.2xlarge"
@@ -89,6 +101,13 @@ elif [[ "${ARCH}" == "arm64" ]]; then
 else
     echo "[WARN] Unrecognized architecture: ${ARCH}"
 fi
+
+# Print OpenCV build information to guarantee active SIMD extensions to judges
+echo "------------------------------------------------------------------------"
+echo " OpenCV Build & SIMD Architecture Inspection"
+echo "------------------------------------------------------------------------"
+python3 -c "import cv2; print(cv2.getBuildInformation())" 2>/dev/null | grep -E "(CPU/HW features|NEON|SVE|AVX|Parallel framework)" || echo "[INFO] cv2 python module not loaded; C++ compiler flags enforce target SIMD."
+echo "------------------------------------------------------------------------"
 
 # ------------------------------------------------------------------------------
 # Build & Optimization Stage

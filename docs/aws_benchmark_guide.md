@@ -95,6 +95,13 @@ pip3 install awscv opencv-python-headless
 sudo dnf install -y opencv opencv-devel
 ```
 
+### 3.3 Verifying COOL & SIMD Vector Extensions
+Run the following inspection command to verify that COOL's Neoverse V1 (NEON/SVE) vector optimizations are active before compiling:
+```bash
+python3 -c "import cv2; print(cv2.getBuildInformation())" | grep -E "(CPU/HW features|NEON|SVE|AVX|Parallel framework)"
+```
+This output serves as verification evidence for the competition review panel.
+
 ---
 
 ## 4. Transferring Code and Running the Benchmark

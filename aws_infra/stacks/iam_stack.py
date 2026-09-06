@@ -1,28 +1,35 @@
 """IAM Stack for Nepal Flood Disaster Monitoring Architecture.
 
-Defines least-privilege IAM roles and permission policies for the
-Lambda S3 trigger and the Bedrock Agentic Vision reasoning coordinator.
+Defines least-privilege IAM roles and permission policies for:
+1. Lambda Trigger & Tool Execution: Reading S3 deltas, writing audit receipts,
+   managing DynamoDB event states, publishing to SNS, and calling Bedrock runtime.
+2. Bedrock Agent Service Principal: Invoking Claude 3.5 Sonnet foundation models.
 """
 
 from aws_cdk import (
     CfnOutput,
     Stack,
+    aws_dynamodb as dynamodb,
     aws_iam as iam,
     aws_s3 as s3,
     aws_sns as sns,
+    aws_sqs as sqs,
 )
 from constructs import Construct
 
 
 class IAMStack(Stack):
-    """Provisions execution roles for Lambda and Bedrock Agent."""
+    """Provisions execution roles for Lambda and Bedrock Agent with DynamoDB & S3 access."""
 
     def __init__(
         self,
         scope: Construct,
         construct_id: str,
         storage_bucket: s3.IBucket,
+        audit_bucket: s3.IBucket,
+        events_table: dynamodb.ITable,
         alert_topic: sns.ITopic,
+        alert_queue: sqs.IQueue,
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
@@ -32,7 +39,7 @@ class IAMStack(Stack):
             self,
             "FloodLambdaExecutionRole",
             assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
-            description="Role used by FloodDeltaAgentTrigger Lambda to fetch S3 deltas and invoke Bedrock Agent",
+            description="Role used by FloodDeltaAgentTrigger Lambda for S3, DynamoDB, Bedrock, and SNS operations",
             managed_policies=[
                 iam.ManagedPolicy.from_aws_managed_policy_name(
                     "service-role/AWSLambdaBasicExecutionRole"
@@ -40,18 +47,20 @@ class IAMStack(Stack):
             ],
         )
 
-        # Allow reading flood delta JSON and evidence artifacts from S3
-        self.lambda_role.add_to_policy(
-            iam.PolicyStatement(
-                sid="AllowS3ReadFloodData",
-                effect=iam.Effect.ALLOW,
-                actions=["s3:GetObject", "s3:ListBucket"],
-                resources=[
-                    storage_bucket.bucket_arn,
-                    f"{storage_bucket.bucket_arn}/*",
-                ],
-            )
-        )
+        # S3 Data Bucket: Read flood deltas and evidence
+        storage_bucket.grant_read(self.lambda_role)
+
+        # S3 Audit Bucket: Write action receipts, logs, and agent execution records
+        audit_bucket.grant_read_write(self.lambda_role)
+
+        # DynamoDB Events Table: Read/Write for idempotency gate and evidenceToken tracking
+        events_table.grant_read_write_data(self.lambda_role)
+
+        # SNS Topic: Publish verified disaster alerts
+        alert_topic.grant_publish(self.lambda_role)
+
+        # SQS Fallback Queue: Consume messages for integration checks
+        alert_queue.grant_consume_messages(self.lambda_role)
 
         # Allow Lambda to invoke Bedrock Agent and Bedrock foundation models
         self.lambda_role.add_to_policy(
@@ -73,7 +82,7 @@ class IAMStack(Stack):
             self,
             "FloodBedrockAgentRole",
             assumed_by=iam.ServicePrincipal("bedrock.amazonaws.com"),
-            description="Role assumed by Amazon Bedrock Agent to reason and trigger alert tools",
+            description="Role assumed by Amazon Bedrock Agent to reason and execute Action Group tools",
         )
 
         # Allow Claude 3.5 Sonnet foundation model invocation
@@ -86,16 +95,6 @@ class IAMStack(Stack):
                     "arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-sonnet*",
                     "arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0",
                 ],
-            )
-        )
-
-        # Allow Bedrock Agent to publish emergency alerts to the SNS Topic
-        self.bedrock_agent_role.add_to_policy(
-            iam.PolicyStatement(
-                sid="AllowPublishToAlertTopic",
-                effect=iam.Effect.ALLOW,
-                actions=["sns:Publish"],
-                resources=[alert_topic.topic_arn],
             )
         )
 

@@ -138,52 +138,76 @@ The cloud architecture is codified in `aws_infra/` using **AWS CDK (Python 3.12)
 graph TD
     S2[Sentinel-2 L2A / CDAS Ingestion] --> Cpp[C++20 Sub-Pixel Core: curv_cli]
     Cpp --> Delta[flood_delta.json & Evidence Artifacts]
-    Delta -->|Upload| S3[StorageStack: S3 Bucket<br/>vision-perception-flood-data]
+    Delta -->|Upload| S3[StorageStack: S3 Data Bucket<br/>vision-perception-flood-data]
     S3 -->|S3 Event: ObjectCreated| Lambda[AgentStack: Lambda Trigger<br/>FloodDeltaAgentTrigger]
-    Lambda -->|bedrock-agent-runtime:InvokeAgent| Bedrock[Bedrock Agent<br/>Claude 3.5 Sonnet v2]
-    Bedrock -->|Reasoning on Thresholds| Evaluator{flood_signal == true<br/>AND width_ratio >= 2.0?}
-    Evaluator -->|Yes: CRITICAL| Tool[Action Group Tool<br/>publish_flood_alert]
-    Tool -->|Execute| Lambda
-    Lambda -->|Publish| SNS[AlertStack: SNS Topic<br/>flood-disaster-alerts]
-    SNS -->|Dispatch| Email[Emergency Contacts & NEOC Nepal]
-    Evaluator -->|No| Standby[Log: No alert threshold reached]
+    Lambda -->|InvokeAgent with eventId ONLY| Bedrock[Bedrock Agent<br/>Claude 3.5 Sonnet v2]
+    
+    subgraph Agentic Perception-Decision-Action Loop
+        Bedrock -->|1. Perception: getFloodEvidence eventId| Tool1[Tool 1: getFloodEvidence]
+        Tool1 -->|Fetch S3 Delta & Issue Token| DDB[(DynamoDB Table: PENDING<br/>vision-perception-events)]
+        Tool1 -->|Return evidenceToken & Metrics| Bedrock
+        Bedrock -->|2. Decision: Reasoning on Thresholds| Evaluator{flood_signal == true<br/>AND width_ratio >= 2.0<br/>AND spatial_control == true?}
+        Evaluator -->|Yes: CRITICAL| Tool2[Tool 2: dispatchFloodAlert<br/>eventId + evidenceToken]
+        Evaluator -->|No| Standby[Log: No alert threshold reached]
+        Tool2 -->|Verify Token & Idempotency| DDB
+        Tool2 -->|Publish Alert| SNS[AlertStack: SNS Topic<br/>flood-disaster-alerts]
+        Tool2 -->|Store Immutable Receipt| AuditS3[StorageStack: S3 Audit Bucket<br/>vision-perception-audit]
+        Tool2 -->|Mark DISPATCHED| DDB
+    end
+
+    SNS -->|Primary Human Dispatch| Email[Emergency Contacts & NEOC Nepal]
+    SNS -->|Programmatic Fallback| SQS[AlertStack: SQS Queue<br/>flood-disaster-alerts-queue]
 ```
 
 #### CDK Stack Definitions:
 - **`NepalFloodStorageStack`** ([`aws_infra/stacks/storage_stack.py`](file:///Users/bishalghimire/Documents/WORK/Code/vision-perception/aws_infra/stacks/storage_stack.py)):
-  - Bucket: `vision-perception-flood-data`
-  - Versioned for regulatory audit trails; HTTPS-enforced; CORS enabled for monitoring interfaces; 90-day transition to S3-IA.
+  - **Data Bucket**: `vision-perception-flood-data` (versioned, HTTPS-enforced, CORS enabled, 90-day S3-IA transition).
+  - **Audit Bucket**: `vision-perception-audit` (dedicated bucket storing immutable action receipts and agent traces; completely eliminates recursive S3 notification loops).
+  - **Events Table**: `vision-perception-events-dev` (Amazon DynamoDB table with PAY_PER_REQUEST billing and TTL attribute, managing server-side idempotency, `evidenceToken` validation, and alert lifecycle state).
 - **`NepalFloodAlertStack`** ([`aws_infra/stacks/alert_stack.py`](file:///Users/bishalghimire/Documents/WORK/Code/vision-perception/aws_infra/stacks/alert_stack.py)):
-  - SNS Topic: `flood-disaster-alerts`
-  - Subscribes `SNS_ALERT_EMAIL` with delivery protocol formatting.
+  - **SNS Topic**: `flood-disaster-alerts` with email subscription configured via `SNS_ALERT_EMAIL`.
+  - **SQS Fallback Queue**: `flood-disaster-alerts-queue` (subscribed to SNS topic for automated demo polling and programmatic verification without human email confirmation delays).
 - **`NepalFloodIAMStack`** ([`aws_infra/stacks/iam_stack.py`](file:///Users/bishalghimire/Documents/WORK/Code/vision-perception/aws_infra/stacks/iam_stack.py)):
-  - `FloodLambdaExecutionRole`: Least-privilege permissions for S3 retrieval, CloudWatch logging, and Bedrock runtime invocation.
-  - `FloodBedrockAgentRole`: Foundation model invocation permissions for Claude 3.5 Sonnet v2 and SNS publishing permissions.
+  - `FloodLambdaExecutionRole`: Least-privilege permissions across S3 data/audit buckets, DynamoDB event table, SQS queue, CloudWatch logging, and Bedrock runtime.
+  - `FloodBedrockAgentRole`: Foundation model invocation permissions for Claude 3.5 Sonnet v2 (`anthropic.claude-3-5-sonnet-20241022-v2:0`).
 - **`NepalFloodAgentStack`** ([`aws_infra/stacks/agent_stack.py`](file:///Users/bishalghimire/Documents/WORK/Code/vision-perception/aws_infra/stacks/agent_stack.py)):
-  - `CfnAgent` powered by `anthropic.claude-3-5-sonnet-20241022-v2:0` with strict system prompt (`agent/system_prompt.txt`).
-  - OpenAPI Action Group schema for `publish_flood_alert`.
-  - Lambda event bridge router (`agent/agent_trigger.py`).
+  - Bedrock Agent configured with two-tool Action Group OpenAPI specification (`getFloodEvidence` and `dispatchFloodAlert`).
+  - Strict evidence-first system prompt (`agent/system_prompt.txt`).
+  - S3 EventBridge notification filter scoped strictly to `prefix: "events/"` and `suffix: "flood_delta.json"`.
 
 ---
 
-### 8.2 Autonomous Agentic Vision Decision Logic
+### 8.2 Two-Tool Agentic Perception-Decision-Action Loop
 
-The Bedrock Agent enforces deterministic safety gates against hallucination:
+The Bedrock Agent enforces a verifiable **3-node trace** (retrieve $\to$ reason $\to$ act):
 
-1. **Ingestion & Validation**: Parses `flood_delta.json` metrics directly without intermediate human interpretation.
-2. **Deterministic Evaluation Rules**:
-   - $\text{flood\_signal\_detected} == \text{true}$
-   - $\text{channel\_width\_proxy.width\_ratio} \ge 2.0$ (Nepal event registered **2.211x**)
-   - $\text{spatial\_control.passes\_acceptance} == \text{true}$ (West Slope control registered **0.151x**)
-3. **Autonomous Action**: Immediately generates georeferenced incident payload and dispatches via SNS.
+1. **Perception (`getFloodEvidence`)**:
+   - The agent is invoked with only the `eventId`.
+   - The agent autonomously calls `getFloodEvidence(eventId)` to inspect pipeline indicators.
+   - The backend reads `flood_delta.json`, issues a cryptographically unique `evidenceToken`, and stores the initial state (`PENDING`) in DynamoDB.
+2. **Decision (Autonomous Reasoning)**:
+   - The agent observes:
+     - $\text{flood\_signal\_detected} == \text{true}$
+     - $\text{channel\_width\_proxy.width\_ratio} == 2.211 \ge 2.0$ (disaster surge)
+     - $\text{spatial\_control.passes\_acceptance} == \text{true}$ ($0.151\text{x} < 1.10$)
+   - The agent evaluates policy rules and decides a CRITICAL alert must be dispatched.
+3. **Action (`dispatchFloodAlert`)**:
+   - The agent calls `dispatchFloodAlert(eventId, evidenceToken, severity, channelWidthRatio, decisionReason)`.
+   - The backend validates the `evidenceToken` against DynamoDB.
+   - **Idempotency Check**: If the event was already dispatched, returns `ALREADY_DISPATCHED` with the existing receipt URI, eliminating duplicate alerts.
+   - Publishes to SNS (fanning out to email and SQS fallback).
+   - Writes immutable action receipt to `vision-perception-audit`.
+   - Transitions DynamoDB state to `DISPATCHED`.
 
 ---
 
 ### 8.3 COOL on Graviton3 Benchmark Suite
 
-To secure the **Best Use of COOL Special Award ($1,000)**, the benchmarking infrastructure is encapsulated in:
-- **`scripts/benchmark_cool_vs_x86.sh`**: Automated 100-iteration profiling harness measuring Gaussian Hessian convolution and Steger centerline extraction latencies.
-- **`docs/aws_benchmark_guide.md`**: Runbook for provisioning AWS Graviton3 (`c7g.2xlarge`, Neoverse V1) vs Intel Sapphire Rapids (`c7i.2xlarge`) instances.
+To secure the **Best Use of COOL Special Award ($1,000)**:
+- **Harness**: `scripts/benchmark_cool_vs_x86.sh` profiles 100 iterations of Steger curvilinear extraction.
+- **Hardware-Aware Compiles**: Auto-detects architecture, searches COOL library paths (`/opt/opencv-cool`, `/opt/awscv`), and injects vector flags (`-mcpu=neoverse-v1` on Graviton3 vs `-march=native` on x86).
+- **SIMD Inspection**: Verifies OpenCV compilation features via `cv2.getBuildInformation()` checking `(CPU|NEON|SVE|AVX)`.
+- **Runbook**: `docs/aws_benchmark_guide.md` provides exact EC2 CLI commands and immediate instance teardown steps.
 - **Target Efficiency**: Demonstrating $>30\%$ scenes-per-dollar advantage on AWS Graviton3 with Cloud-Optimized OpenCV Library (COOL).
 
 ---
@@ -196,7 +220,8 @@ To secure the **Best Use of COOL Special Award ($1,000)**, the benchmarking infr
 - [x] Quantitative flood surge demonstrated: +88.4% flood signature surge, +121.1% channel widening.
 - [x] Spatial control (0.151x) and temporal baseline control (0.905x) passing acceptance gates.
 - [x] Geomorphological interpretation of negative ridge delta (-9.0% physical terrain smoothing).
-- [x] Complete AWS CDK IaC authored locally with 4 decoupled stacks and least-privilege IAM roles.
-- [x] Autonomous Bedrock Agent prompt, OpenAPI Action Group tool, and S3 Lambda trigger with unit tests.
-- [x] Graviton3 COOL benchmark script and EC2 operational guide.
+- [x] Complete AWS CDK IaC authored locally with 4 decoupled stacks, dedicated audit bucket, and DynamoDB event store.
+- [x] Two-tool Bedrock Agent Action Group (`getFloodEvidence` $\to$ `dispatchFloodAlert`) with server-side idempotency and SQS fallback.
+- [x] Unit test suite covering S3 event routing, token validation, and duplicate alert prevention (8/8 green).
+- [x] Graviton3 COOL benchmark script with SIMD build-information verification and EC2 operational guide.
 

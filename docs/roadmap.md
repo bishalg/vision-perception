@@ -178,21 +178,21 @@ gantt
 - **Target**: Production AWS cloud wiring for autonomous disaster evaluation and competition special awards (Best Use of COOL and Agentic Vision).
 - **Key Deliverables**:
   - [x] Phase 5: Modular AWS CDK v2 (Python 3.12) IaC infrastructure (`aws_infra/`):
-    - `StorageStack`: Encrypted S3 bucket `vision-perception-flood-data` with 90-day S3-IA lifecycle rules, CORS, and HTTPS enforcement.
-    - `AlertStack`: SNS topic `flood-disaster-alerts` with email subscription configuration.
+    - `StorageStack`: Encrypted S3 data bucket `vision-perception-flood-data`, dedicated S3 audit bucket `vision-perception-audit` (eliminating recursive S3 triggers), and DynamoDB events table `vision-perception-events-dev` (idempotency gate & token tracking).
+    - `AlertStack`: SNS topic `flood-disaster-alerts` with email subscription and SQS fallback queue `flood-disaster-alerts-queue`.
     - `IAMStack`: Least-privilege IAM roles for Lambda and Bedrock Agent.
-    - `AgentStack`: Bedrock Agent powered by Anthropic Claude 3.5 Sonnet v2, `agent/system_prompt.txt`, OpenAPI `publish_flood_alert` action group tool, and S3 event Lambda router (`agent/agent_trigger.py`).
-    - Unit tests (`aws_infra/tests/test_agent_trigger.py`): 7/7 passing green.
+    - `AgentStack`: Bedrock Agent powered by Anthropic Claude 3.5 Sonnet v2, evidence-first `agent/system_prompt.txt`, two-tool Action Group OpenAPI specification (`getFloodEvidence` $\to$ `dispatchFloodAlert`), and S3 event Lambda router (`agent/agent_trigger.py`).
+    - Unit tests (`aws_infra/tests/test_agent_trigger.py`): 8/8 passing green.
   - [x] Phase 6: COOL on AWS Graviton3 benchmark suite (`scripts/benchmark_cool_vs_x86.sh`, `docs/aws_benchmark_guide.md`):
     - Multi-scale Gaussian & Hessian Steger extraction benchmark script across 100 runs.
-    - Hardware-aware compile flags (`-mcpu=neoverse-v1` for Graviton3, `-march=native` for x86_64).
+    - Hardware-aware compile flags (`-mcpu=neoverse-v1` for Graviton3, `-march=native` for x86_64), COOL library discovery, and SIMD build-information inspection (`cv2.getBuildInformation()`).
     - Latency statistics (Mean, P50, P90, P95) and cost-per-scene modeling using AWS on-demand rates ($0.3264/hr vs $0.3570/hr).
     - Verified locally in dry-run mode emitting `data/benchmark_results.json`.
   - [x] Phase 7: Competition documentation & tracking ledger updates in `docs/flood_nepal_2026.md`, `docs/PROGRESS.md`, and `docs/roadmap.md`.
 - **Exit Criteria**:
   - [x] CloudFormation templates synthesizable locally via CDK without requiring AWS credentials.
-  - [x] Lambda handler unit tests pass 100% (7/7 green).
-  - [x] Benchmark script passes bash syntax check (`bash -n`) and completes local dry-run.
+  - [x] Lambda handler unit tests pass 100% (8/8 green).
+  - [x] Benchmark script passes bash syntax check (`bash -n`) and completes local dry-run with build info logging.
   - [x] Core C++ test suite maintains 20/20 green status.
   - [x] All formatting standards upheld.
 
