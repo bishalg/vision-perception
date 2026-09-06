@@ -308,7 +308,12 @@ RidgeGraph StegerRidgeExtractor::extractRidgeGraph(const cv::Mat& image) const {
             if (total_length >= config_.min_segment_length) {
                 CurveSegment seg;
                 seg.id = next_segment_id++;
-                seg.points.assign(polyline.begin(), polyline.end());
+                // Plain loop, not assign(): GCC 13 -Wnull-dereference false-positives
+                // inside libstdc++'s std::copy for deque->vector copies at -O3.
+                seg.points.reserve(polyline.size());
+                for (const auto& pt : polyline) {
+                    seg.points.push_back(pt);
+                }
                 seg.total_length = total_length;
                 seg.average_curvature = 0.0f;
                 seg.is_closed = false;
