@@ -125,3 +125,78 @@ Simultaneously, the active incised water ribbons within this smoothed debris she
 ### 7.3 Automated Cloud Delivery (Serverless CDAS / STAC Catalog Polling)
 - **Event-Driven Ingestion**: Configure an **AWS Lambda / ECS Fargate task** subscribed to the Sentinel-2 SpatioTemporal Asset Catalog (STAC) on AWS Open Data (`earth-search`).
 - **Autonomous Triggering**: As soon as CDAS registers an AOI tile over Rasuwa/Langtang with cloud coverage $\le 30\%$, the pipeline automatically pulls bands B04/B03/B02, executes `curv_cli`, runs `flood_delta`, and updates the monitoring dashboard without human intervention.
+
+---
+
+## 8. Week 2 AWS Architecture & Autonomous Alerting
+
+### 8.1 Infrastructure as Code Topology (AWS CDK v2)
+
+The cloud architecture is codified in `aws_infra/` using **AWS CDK (Python 3.12)** across four isolated stacks:
+
+```mermaid
+graph TD
+    S2[Sentinel-2 L2A / CDAS Ingestion] --> Cpp[C++20 Sub-Pixel Core: curv_cli]
+    Cpp --> Delta[flood_delta.json & Evidence Artifacts]
+    Delta -->|Upload| S3[StorageStack: S3 Bucket<br/>vision-perception-flood-data]
+    S3 -->|S3 Event: ObjectCreated| Lambda[AgentStack: Lambda Trigger<br/>FloodDeltaAgentTrigger]
+    Lambda -->|bedrock-agent-runtime:InvokeAgent| Bedrock[Bedrock Agent<br/>Claude 3.5 Sonnet v2]
+    Bedrock -->|Reasoning on Thresholds| Evaluator{flood_signal == true<br/>AND width_ratio >= 2.0?}
+    Evaluator -->|Yes: CRITICAL| Tool[Action Group Tool<br/>publish_flood_alert]
+    Tool -->|Execute| Lambda
+    Lambda -->|Publish| SNS[AlertStack: SNS Topic<br/>flood-disaster-alerts]
+    SNS -->|Dispatch| Email[Emergency Contacts & NEOC Nepal]
+    Evaluator -->|No| Standby[Log: No alert threshold reached]
+```
+
+#### CDK Stack Definitions:
+- **`NepalFloodStorageStack`** ([`aws_infra/stacks/storage_stack.py`](file:///Users/bishalghimire/Documents/WORK/Code/vision-perception/aws_infra/stacks/storage_stack.py)):
+  - Bucket: `vision-perception-flood-data`
+  - Versioned for regulatory audit trails; HTTPS-enforced; CORS enabled for monitoring interfaces; 90-day transition to S3-IA.
+- **`NepalFloodAlertStack`** ([`aws_infra/stacks/alert_stack.py`](file:///Users/bishalghimire/Documents/WORK/Code/vision-perception/aws_infra/stacks/alert_stack.py)):
+  - SNS Topic: `flood-disaster-alerts`
+  - Subscribes `SNS_ALERT_EMAIL` with delivery protocol formatting.
+- **`NepalFloodIAMStack`** ([`aws_infra/stacks/iam_stack.py`](file:///Users/bishalghimire/Documents/WORK/Code/vision-perception/aws_infra/stacks/iam_stack.py)):
+  - `FloodLambdaExecutionRole`: Least-privilege permissions for S3 retrieval, CloudWatch logging, and Bedrock runtime invocation.
+  - `FloodBedrockAgentRole`: Foundation model invocation permissions for Claude 3.5 Sonnet v2 and SNS publishing permissions.
+- **`NepalFloodAgentStack`** ([`aws_infra/stacks/agent_stack.py`](file:///Users/bishalghimire/Documents/WORK/Code/vision-perception/aws_infra/stacks/agent_stack.py)):
+  - `CfnAgent` powered by `anthropic.claude-3-5-sonnet-20241022-v2:0` with strict system prompt (`agent/system_prompt.txt`).
+  - OpenAPI Action Group schema for `publish_flood_alert`.
+  - Lambda event bridge router (`agent/agent_trigger.py`).
+
+---
+
+### 8.2 Autonomous Agentic Vision Decision Logic
+
+The Bedrock Agent enforces deterministic safety gates against hallucination:
+
+1. **Ingestion & Validation**: Parses `flood_delta.json` metrics directly without intermediate human interpretation.
+2. **Deterministic Evaluation Rules**:
+   - $\text{flood\_signal\_detected} == \text{true}$
+   - $\text{channel\_width\_proxy.width\_ratio} \ge 2.0$ (Nepal event registered **2.211x**)
+   - $\text{spatial\_control.passes\_acceptance} == \text{true}$ (West Slope control registered **0.151x**)
+3. **Autonomous Action**: Immediately generates georeferenced incident payload and dispatches via SNS.
+
+---
+
+### 8.3 COOL on Graviton3 Benchmark Suite
+
+To secure the **Best Use of COOL Special Award ($1,000)**, the benchmarking infrastructure is encapsulated in:
+- **`scripts/benchmark_cool_vs_x86.sh`**: Automated 100-iteration profiling harness measuring Gaussian Hessian convolution and Steger centerline extraction latencies.
+- **`docs/aws_benchmark_guide.md`**: Runbook for provisioning AWS Graviton3 (`c7g.2xlarge`, Neoverse V1) vs Intel Sapphire Rapids (`c7i.2xlarge`) instances.
+- **Target Efficiency**: Demonstrating $>30\%$ scenes-per-dollar advantage on AWS Graviton3 with Cloud-Optimized OpenCV Library (COOL).
+
+---
+
+### 8.4 Competition Submission Checklist
+
+- [x] C++20 sub-pixel curvilinear ridge engine achieving sub-0.1 px RMSE on synthetic ground truth.
+- [x] Multi-temporal Sentinel-2 ingestion over Lende Khola / Bhote Koshi disaster corridor (100% valid-pixel coverage).
+- [x] Sub-pixel ECC co-registration verified (0.154 px shift $\le 3.0$ px threshold).
+- [x] Quantitative flood surge demonstrated: +88.4% flood signature surge, +121.1% channel widening.
+- [x] Spatial control (0.151x) and temporal baseline control (0.905x) passing acceptance gates.
+- [x] Geomorphological interpretation of negative ridge delta (-9.0% physical terrain smoothing).
+- [x] Complete AWS CDK IaC authored locally with 4 decoupled stacks and least-privilege IAM roles.
+- [x] Autonomous Bedrock Agent prompt, OpenAPI Action Group tool, and S3 Lambda trigger with unit tests.
+- [x] Graviton3 COOL benchmark script and EC2 operational guide.
+

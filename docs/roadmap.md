@@ -2,7 +2,7 @@
 
 > **Target Repository**: `vision-perception`  
 > **Lifecycle Status**: Active Implementation Roadmap  
-> **Current Milestone**: M1–M6 complete — next: Mobile App Packaging (Phase C)  
+> **Current Milestone**: M1–M8 complete — next: Mobile App Packaging (Phase C)  
 
 ---
 
@@ -23,7 +23,9 @@ gantt
     section Delivery & Tooling
     M5: Overlay & JSON Report          :done,    m5, 2026-10-06, 2026-10-15
     M6: Tests & Evaluation Tooling     :done,    m6, 2026-10-16, 2026-10-30
-    M7: Mobile App Packaging (Phase C) :active,  m7, 2026-10-31, 2026-11-20
+    M7: Geospatial Flood Pack          :done,    m7, 2026-09-06, 2026-09-06
+    M8: AWS Cloud & Special Awards     :done,    m8, 2026-09-06, 2026-09-06
+    M9: Mobile App Packaging (Phase C) :active,  m9, 2026-10-31, 2026-11-20
 ```
 
 ---
@@ -170,7 +172,33 @@ gantt
 
 ---
 
-## 3. Future Domain Expansion (Post-Milestone 7)
+### Milestone 8: AWS Cloud Architecture & Special Award Targets
+*Status: DONE (Phases 5–7 Complete)*
+
+- **Target**: Production AWS cloud wiring for autonomous disaster evaluation and competition special awards (Best Use of COOL and Agentic Vision).
+- **Key Deliverables**:
+  - [x] Phase 5: Modular AWS CDK v2 (Python 3.12) IaC infrastructure (`aws_infra/`):
+    - `StorageStack`: Encrypted S3 bucket `vision-perception-flood-data` with 90-day S3-IA lifecycle rules, CORS, and HTTPS enforcement.
+    - `AlertStack`: SNS topic `flood-disaster-alerts` with email subscription configuration.
+    - `IAMStack`: Least-privilege IAM roles for Lambda and Bedrock Agent.
+    - `AgentStack`: Bedrock Agent powered by Anthropic Claude 3.5 Sonnet v2, `agent/system_prompt.txt`, OpenAPI `publish_flood_alert` action group tool, and S3 event Lambda router (`agent/agent_trigger.py`).
+    - Unit tests (`aws_infra/tests/test_agent_trigger.py`): 7/7 passing green.
+  - [x] Phase 6: COOL on AWS Graviton3 benchmark suite (`scripts/benchmark_cool_vs_x86.sh`, `docs/aws_benchmark_guide.md`):
+    - Multi-scale Gaussian & Hessian Steger extraction benchmark script across 100 runs.
+    - Hardware-aware compile flags (`-mcpu=neoverse-v1` for Graviton3, `-march=native` for x86_64).
+    - Latency statistics (Mean, P50, P90, P95) and cost-per-scene modeling using AWS on-demand rates ($0.3264/hr vs $0.3570/hr).
+    - Verified locally in dry-run mode emitting `data/benchmark_results.json`.
+  - [x] Phase 7: Competition documentation & tracking ledger updates in `docs/flood_nepal_2026.md`, `docs/PROGRESS.md`, and `docs/roadmap.md`.
+- **Exit Criteria**:
+  - [x] CloudFormation templates synthesizable locally via CDK without requiring AWS credentials.
+  - [x] Lambda handler unit tests pass 100% (7/7 green).
+  - [x] Benchmark script passes bash syntax check (`bash -n`) and completes local dry-run.
+  - [x] Core C++ test suite maintains 20/20 green status.
+  - [x] All formatting standards upheld.
+
+---
+
+## 3. Future Domain Expansion (Post-Milestone 8)
 
 Once the core engine and geospatial flood pack are validated, specialized domain packs will be developed as isolated plug-ins:
 

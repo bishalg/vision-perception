@@ -1,0 +1,16 @@
+{
+  "instance_type": "local-arm64-workstation",
+  "arch": "arm64",
+  "opencv_variant": "Apple-Accelerate-OpenCV",
+  "runs": 2,
+  "latency_mean_ms": 215.26,
+  "latency_p50_ms": 237.79,
+  "latency_p90_ms": 237.79,
+  "latency_p95_ms": 237.79,
+  "latency_min_ms": 192.74,
+  "latency_max_ms": 237.79,
+  "cost_per_image_usd": 1.952e-05,
+  "throughput_images_per_dollar": 51236.8,
+  "hourly_instance_price_usd": 0.3264,
+  "timestamp": "2026-09-06T13:11:56.019628+00:00"
+}
