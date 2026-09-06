@@ -337,9 +337,13 @@ TEST(AuditRegressionTest, CAbiRejectsUndersizedOrNegativeStride) {
     // Negative strides are a caller bug; reject outright.
     EXPECT_EQ(curv_frame_create_from_buffer(img.data, 40, 40, -1, CURV_PIXEL_FORMAT_BGR), nullptr);
     // Zero means "tightly packed" and must be accepted.
-    EXPECT_NE(curv_frame_create_from_buffer(img.data, 40, 40, 0, CURV_PIXEL_FORMAT_BGR), nullptr);
+    CurvFrameHandle packed = curv_frame_create_from_buffer(img.data, 40, 40, 0, CURV_PIXEL_FORMAT_BGR);
+    EXPECT_NE(packed, nullptr);
     // Exact minimum row size must be accepted.
-    EXPECT_NE(curv_frame_create_from_buffer(img.data, 40, 40, 120, CURV_PIXEL_FORMAT_BGR), nullptr);
+    CurvFrameHandle exact = curv_frame_create_from_buffer(img.data, 40, 40, 120, CURV_PIXEL_FORMAT_BGR);
+    EXPECT_NE(exact, nullptr);
+    curv_frame_destroy(packed);
+    curv_frame_destroy(exact);
 }
 
 TEST(AuditRegressionTest, CAbiRejectsAbsurdDimensions) {
@@ -366,11 +370,17 @@ TEST(AuditRegressionTest, CAbiAcceptsAllDeclaredFormats) {
     cv::Mat bgr = cv::Mat::ones(size, size, CV_8UC3) * 128;
     cv::Mat bgra = cv::Mat::ones(size, size, CV_8UC4) * 128;
 
-    EXPECT_NE(curv_frame_create_from_buffer(gray.data, size, size, 0, CURV_PIXEL_FORMAT_GRAYSCALE), nullptr);
-    EXPECT_NE(curv_frame_create_from_buffer(bgr.data, size, size, 0, CURV_PIXEL_FORMAT_BGR), nullptr);
-    EXPECT_NE(curv_frame_create_from_buffer(bgra.data, size, size, 0, CURV_PIXEL_FORMAT_BGRA), nullptr);
+    std::vector<CurvFrameHandle> frames;
+    frames.push_back(curv_frame_create_from_buffer(gray.data, size, size, 0, CURV_PIXEL_FORMAT_GRAYSCALE));
+    frames.push_back(curv_frame_create_from_buffer(bgr.data, size, size, 0, CURV_PIXEL_FORMAT_BGR));
+    frames.push_back(curv_frame_create_from_buffer(bgra.data, size, size, 0, CURV_PIXEL_FORMAT_BGRA));
     // RGB(A) variants share the same byte layout as BGR(A) at creation time;
     // channel-order semantics are exercised downstream by cvtColor.
-    EXPECT_NE(curv_frame_create_from_buffer(bgr.data, size, size, 0, CURV_PIXEL_FORMAT_RGB), nullptr);
-    EXPECT_NE(curv_frame_create_from_buffer(bgra.data, size, size, 0, CURV_PIXEL_FORMAT_RGBA), nullptr);
+    frames.push_back(curv_frame_create_from_buffer(bgr.data, size, size, 0, CURV_PIXEL_FORMAT_RGB));
+    frames.push_back(curv_frame_create_from_buffer(bgra.data, size, size, 0, CURV_PIXEL_FORMAT_RGBA));
+
+    for (CurvFrameHandle frame : frames) {
+        EXPECT_NE(frame, nullptr);
+        curv_frame_destroy(frame);
+    }
 }

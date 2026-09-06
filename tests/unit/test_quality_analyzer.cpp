@@ -108,9 +108,9 @@ TEST_F(QualityAnalyzerTest, Test_FourChannelFrameIsAccepted) {
     thresholds.min_blur_score = 10.0;
     thresholds.min_brightness = 10.0;
     thresholds.min_contrast = 5.0;
-    quality::LaplacianQualityAnalyzer analyzer(thresholds);
+    quality::LaplacianQualityAnalyzer local_analyzer(thresholds);
 
-    const auto report = analyzer.analyze(frame);
+    const auto report = local_analyzer.analyze(frame);
     EXPECT_TRUE(report.is_usable);
     EXPECT_GT(report.blur_score, thresholds.min_blur_score);
 }
@@ -120,21 +120,21 @@ TEST_F(QualityAnalyzerTest, Test_TwoChannelFrameIsRejected) {
     cv::Mat image(64, 64, CV_8UC2, cv::Scalar(100, 100));
     Frame frame(image, "weird_frame", 1);
 
-    quality::LaplacianQualityAnalyzer analyzer;
-    const auto report = analyzer.analyze(frame);
+    quality::LaplacianQualityAnalyzer local_analyzer;
+    const auto report = local_analyzer.analyze(frame);
     EXPECT_FALSE(report.is_usable);
     EXPECT_NE(report.recommendation.find("Unsupported channel count"), std::string::npos);
     EXPECT_NEAR(report.blur_score, 0.0, 1e-9);
 }
 
 TEST_F(QualityAnalyzerTest, Test_ThresholdGettersAndSetters) {
-    quality::LaplacianQualityAnalyzer analyzer;
-    EXPECT_DOUBLE_EQ(analyzer.getThresholds().min_blur_score, 80.0);
+    quality::LaplacianQualityAnalyzer local_analyzer;
+    EXPECT_DOUBLE_EQ(local_analyzer.getThresholds().min_blur_score, 80.0);
 
     quality::QualityThresholds updated;
     updated.min_blur_score = 5.0;
     updated.max_brightness = 200.0;
-    analyzer.setThresholds(updated);
-    EXPECT_DOUBLE_EQ(analyzer.getThresholds().min_blur_score, 5.0);
-    EXPECT_DOUBLE_EQ(analyzer.getThresholds().max_brightness, 200.0);
+    local_analyzer.setThresholds(updated);
+    EXPECT_DOUBLE_EQ(local_analyzer.getThresholds().min_blur_score, 5.0);
+    EXPECT_DOUBLE_EQ(local_analyzer.getThresholds().max_brightness, 200.0);
 }
