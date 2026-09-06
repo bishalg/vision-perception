@@ -23,11 +23,10 @@ void runThroughputBenchmark(std::ostream& out, const BenchmarkOptions& opts) {
     const ridge::StegerRidgeExtractor extractor(cfg);
 
     const std::vector<std::pair<std::string, cv::Size>> resolutions =
-        opts.resolutions.empty()
-            ? std::vector<std::pair<std::string, cv::Size>>{{"720p HD", cv::Size(1280, 720)},
-                                                            {"1080p FHD", cv::Size(1920, 1080)},
-                                                            {"4K UHD", cv::Size(3840, 2160)}}
-            : opts.resolutions;
+        opts.resolutions.empty() ? std::vector<std::pair<std::string, cv::Size>>{{"720p HD", cv::Size(1280, 720)},
+                                                                                 {"1080p FHD", cv::Size(1920, 1080)},
+                                                                                 {"4K UHD", cv::Size(3840, 2160)}}
+                                 : opts.resolutions;
 
     for (const auto& [name, sz] : resolutions) {
         cv::Mat synth(sz, CV_8UC1, cv::Scalar(30));
