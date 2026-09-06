@@ -186,3 +186,93 @@ target_link_libraries(test_regression_audit
 )
 vision_set_compiler_warnings(test_regression_audit)
 add_test(NAME test_regression_audit COMMAND test_regression_audit)
+
+# ------------------------------------------------------------------------------
+# Unit Test: test_evaluate_lib (Phase B accuracy evaluator, TDD)
+# ------------------------------------------------------------------------------
+add_executable(test_evaluate_lib
+    unit/test_evaluate_lib.cpp
+)
+target_link_libraries(test_evaluate_lib
+    PRIVATE
+        curv_tools_lib
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_evaluate_lib)
+add_test(NAME test_evaluate_lib COMMAND test_evaluate_lib)
+
+# ------------------------------------------------------------------------------
+# Unit Test: test_synth_lib (Phase B synthetic ground-truth generator, TDD)
+# ------------------------------------------------------------------------------
+add_executable(test_synth_lib
+    unit/test_synth_lib.cpp
+)
+target_link_libraries(test_synth_lib
+    PRIVATE
+        curv_tools_lib
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_synth_lib)
+add_test(NAME test_synth_lib COMMAND test_synth_lib)
+
+# ------------------------------------------------------------------------------
+# Unit Test: test_benchmark_lib (Phase B throughput benchmark harness, TDD)
+# ------------------------------------------------------------------------------
+add_executable(test_benchmark_lib
+    unit/test_benchmark_lib.cpp
+)
+target_link_libraries(test_benchmark_lib
+    PRIVATE
+        curv_tools_lib
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_benchmark_lib)
+add_test(NAME test_benchmark_lib COMMAND test_benchmark_lib)
+
+# ------------------------------------------------------------------------------
+# Unit Test: test_cli_lib (perception CLI runner, TDD)
+# ------------------------------------------------------------------------------
+add_executable(test_cli_lib
+    unit/test_cli_lib.cpp
+)
+target_link_libraries(test_cli_lib
+    PRIVATE
+        curv_tools_lib
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_cli_lib)
+add_test(NAME test_cli_lib COMMAND test_cli_lib)
+
+# ------------------------------------------------------------------------------
+# Unit Test: test_hand_inspector_lib (hand inspector CLI runner, TDD)
+# ------------------------------------------------------------------------------
+add_executable(test_hand_inspector_lib
+    unit/test_hand_inspector_lib.cpp
+)
+target_link_libraries(test_hand_inspector_lib
+    PRIVATE
+        curv_tools_lib
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_hand_inspector_lib)
+add_test(NAME test_hand_inspector_lib COMMAND test_hand_inspector_lib)
+
+# ------------------------------------------------------------------------------
+# Unit Test: test_demo_lib (desktop demo runner, TDD)
+# ------------------------------------------------------------------------------
+add_executable(test_demo_lib
+    unit/test_demo_lib.cpp
+)
+target_link_libraries(test_demo_lib
+    PRIVATE
+        curv_tools_lib
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_demo_lib)
+add_test(NAME test_demo_lib COMMAND test_demo_lib)

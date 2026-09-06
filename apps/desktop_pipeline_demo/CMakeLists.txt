@@ -8,7 +8,7 @@ add_executable(desktop_pipeline_demo
 
 target_link_libraries(desktop_pipeline_demo
     PRIVATE
-        vision_perception_core
+        curv_tools_lib
 )
 
 vision_set_compiler_warnings(desktop_pipeline_demo)
