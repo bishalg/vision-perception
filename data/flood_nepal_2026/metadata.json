@@ -1,0 +1,48 @@
+{
+  "event": {
+    "name": "Glacier-collapse flood",
+    "date_of_event": "2026-08-26",
+    "approximate_time_npt": "08:37 NPT",
+    "corridor": "Lende Khola / Bhote Koshi",
+    "district": "Rasuwa",
+    "country": "Nepal",
+    "description": "Glacier-collapse flash flood causing river corridor widening, sediment deposition, and infrastructure damage along the Lende Khola and Bhote Koshi gorge."
+  },
+  "dataset": {
+    "constellation": "Sentinel-2",
+    "processing_level": "L2A (Bottom-of-Atmosphere Reflectance)",
+    "layer": "True Color (B04-Red, B03-Green, B02-Blue)",
+    "native_ground_sampling_distance_m": 10.0,
+    "provider": "Copernicus Data Space Ecosystem (CDAS)"
+  },
+  "acquisitions": {
+    "control_pre": {
+      "date": "2026-08-12",
+      "raw_filename": "ctrl_20260812.png",
+      "processed_filename": "ctrl_20260812_bgr.png",
+      "valid_mask_filename": "ctrl_valid_mask.png",
+      "source_original": "2026-08-12-00_00_2026-08-12-23_59_Sentinel-2_L2A_True_color.png"
+    },
+    "pre": {
+      "date": "2026-08-24",
+      "raw_filename": "pre_20260824.png",
+      "processed_filename": "pre_20260824_bgr.png",
+      "valid_mask_filename": "pre_valid_mask.png",
+      "source_original": "2026-08-24-00_00_2026-08-24-23_59_Sentinel-2_L2A_True_color.png"
+    },
+    "post": {
+      "date": "2026-08-27",
+      "raw_filename": "post_20260827.png",
+      "processed_filename": "post_20260827_bgr.png",
+      "valid_mask_filename": "post_valid_mask.png",
+      "source_original": "2026-08-27-00_00_2026-08-27-23_59_Sentinel-2_L2A_True_color.png"
+    }
+  },
+  "aoi": {
+    "center_lat": 28.27343,
+    "center_lng": 85.3807,
+    "zoom": 15,
+    "description": "Lende Khola / Bhote Koshi confluence zone, Rasuwa, Nepal"
+  },
+  "reference_url": "https://browser.dataspace.copernicus.eu/?zoom=15&lat=28.27343&lng=85.3807&themeId=DEFAULT-THEME&visualizationUrl=U2FsdGVkX193D%2FK%2FEkh9kVC4MjmmOAc2sP00GpUCao9L9gAltczKjc%2BKdIP4V2y04FBJOdQwzXvF6mQsxkbrg6tnpzuZWvLDuNWStUR3oc%2Fz5tUpCvQwzXvRt7XEs&datasetId=S2_L2A_CDAS&fromTime=2026-08-27T00%3A00%3A00.000Z&toTime=2026-08-27T23%3A59%3A59.999Z&layerId=1_TRUE_COLOR&demSource3D=%22MAPZEN%22&cloudCoverage=30&dateMode=SINGLE"
+}

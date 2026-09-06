@@ -191,8 +191,14 @@ wheels/
 *.zip
 *.7z
 
+# Dataset directories (ignore flood binaries, permit metadata)
+data/flood_nepal_2026/*
+!data/flood_nepal_2026/metadata.json
+
+
 # Exceptions: keep small golden fixture data or test config files explicitly
 !data/samples/
 !data/synthetic/
 !data/annotations/
 !.gitkeep
+
