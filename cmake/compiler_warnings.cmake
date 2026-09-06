@@ -51,6 +51,13 @@ function(vision_set_compiler_warnings target_name)
         list(APPEND MSVC_WARNINGS /WX)
     endif()
 
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        # GCC 13 at -O3 false-positives -Wnull-dereference from inside libstdc++
+        # headers (stl_algobase std::copy, <streambuf> xsputn/xsgetn) once they
+        # are inlined into user code. Clang keeps the warning; GCC drops it.
+        list(APPEND CLANG_GCC_WARNINGS -Wno-null-dereference)
+    endif()
+
     if(MSVC)
         target_compile_options(${target_name} PRIVATE ${MSVC_WARNINGS})
     elseif(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
