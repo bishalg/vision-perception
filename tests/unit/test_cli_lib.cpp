@@ -197,6 +197,22 @@ TEST_F(CliLibTest, MalformedNumericValueFailsWithClearError) {
     EXPECT_NE(err.str().find("Invalid numeric value for --sigma"), std::string::npos);
 }
 
+TEST_F(CliLibTest, ValuelessFlagsAtArgvEndAreIgnoredForEveryValueTakingFlag) {
+    // For each value-taking flag F, "F" as the LAST argument must be ignored by
+    // the bounds guard — never read past argv. With no --image, the runner
+    // always lands on the usage/sanity path.
+    const std::vector<std::string> value_flags = {"--image", "--domain", "--svg", "--sigma",
+                                                  "--low",   "--high",   "--out", "--json"};
+    for (const auto& flag : value_flags) {
+        const char* argv[] = {"curv_cli", flag.c_str()};
+        std::stringstream out;
+        std::stringstream err;
+        const int rc = CurvEngine::tools::runCurvCli(2, const_cast<char**>(argv), out, err);
+        EXPECT_EQ(rc, 0) << "flag " << flag << " caused failure; stderr: " << err.str();
+        EXPECT_NE(out.str().find("Usage"), std::string::npos) << "flag " << flag;
+    }
+}
+
 TEST_F(CliLibTest, ThresholdFlagsShapeTheExtractionConfig) {
     // Absurdly high hysteresis thresholds suppress all segments but must not crash.
     const auto image = makeLineImage();
