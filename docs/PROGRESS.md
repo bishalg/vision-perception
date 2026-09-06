@@ -18,6 +18,29 @@ Issues surfaced by Linux CI that macOS never showed, and their fixes:
 
 Linux coverage gap list (resume point for gap-closing waves): curv_capi 326/392 lines, 116/154 branches; OverlayRenderer 152/157, 52/66; HandLandmarkDetector 49/86, 4/14; RoiWarper 25/26 br; ZoneIntersector 25/26 br; Steger 296/297, 96/100; PalmParameters.hpp 34/35; PalmDomainPack 116/118, 46/52; VlmPromptFormatter 26/36 br; SurfaceInspectionPack 9/10 br; cli_lib 182/188, 69/76; evaluate_lib 168/195, 110/140; hand_inspector_lib 49/64 br; synth_lib 196/204, 61/74; curv_jni.cpp not linked into any test binary.
 
+## 7. OpenCV AI Competition 2026: Nepal Flood Disaster Analysis Milestone Ledger
+
+Real-World Impact track: Rapid glacier-collapse flood quantification in the Lende Khola / Bhote Koshi corridor (Rasuwa, Nepal, 2026-08-26 event) using sub-pixel curvilinear Steger ridge extraction on Sentinel-2 L2A 10m imagery.
+
+- **Phase 0: Baseline Validation (2026-09-06)**:
+  - 19/19 ctest suites green (18 unit + CTest RMSE accuracy gate).
+  - Accuracy evaluation gate: RMSE = 0.0301 px < 0.1 px threshold on synthetic ground truth.
+  - Pinned clang-format 18.1.8 check 100% conforming across all 66 source files.
+- **Phase 1: Multi-Temporal Ingestion & Valid-Pixel Masks (2026-09-06)**:
+  - Acquired Sentinel-2 L2A True Color tiles: PRE (2026-08-24), POST (2026-08-27), and temporal control CTRL (2026-08-12), all 893x1172 px.
+  - Implemented `scripts/prepare_flood_data.py`: generated binary valid masks (`alpha >= 250`), reporting 100.000% valid coverage.
+  - Flattens 4-channel BGRA to 3-channel BGR over white background.
+  - Git hygiene enforced: `.gitignore` protects all image binaries while tracking `data/flood_nepal_2026/metadata.json`.
+- **Phase 2: Sub-Pixel Co-Registration & 10-Config Weakly-Supervised F1 Sweep (2026-09-06)**:
+  - Sub-pixel registration verified via ECC (`scripts/check_registration.py`): shift magnitude = 0.154 px <= 3.0 px threshold.
+  - Executed 10-configuration scale x polarity sweep ($\sigma \in \{1.5, 3.0, 5.0, 8.0, 12.0\} \times \{\text{bright}, \text{dark}\}$).
+  - Weakly-supervised F1 scoring against cloud-excluded color flood masks identified polarity divergence: PRE-optimal is bright ($F_1 = 0.1426$), POST-optimal is dark ($F_1 = 0.2008$).
+  - Per architecture rules, unified both polarities at $\sigma = 1.5$, low = 0.5, high = 1.5, recorded in `configs/geospatial_wide_ridge.json`.
+  - Emitted `pre_evidence.json` (8,175 segments), `post_evidence.json` (7,322 segments), 16x sub-pixel anti-aliased overlays, vector SVGs, and side-by-side comparison panel `comparison.png`.
+- **Phase 3: Geospatial Domain Pack & Flood Delta Analysis (In Progress)**:
+  - Developing `domains/geospatial` (`GeospatialFloodPack.hpp/.cpp`) and flood delta analysis with valid-area normalization, cloud masking, and channel width proxy.
+
+
 ## 6. Proposed architecture split: device layer vs server layer (user discussion 2026-09-06, NOT yet planned/committed)
 
 User proposal: segregate (1) an on-device layer (OpenCV-based perception for Android/iOS) from (2) a pure server-side validation/verification layer. Assessment captured in the session summary; candidate as a roadmap M8. Seams already exist: the stable C-ABI, the evidence JSON schema (`docs/evidence_schema.md`), and `curv_core` already building on Linux CI.

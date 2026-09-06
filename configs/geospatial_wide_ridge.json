@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "geospatial_wide_ridge",
+  "description": "Winning scale-space Steger config from 10-config F1 sweep for Sentinel-2 10m flood corridor extraction",
+  "version": "0.2.0",
+  "parameters": {
+    "sigma": 1.5,
+    "low_threshold": 0.5,
+    "high_threshold": 1.5,
+    "min_blur_score": 15.0,
+    "extract_dark_lines": true,
+    "polarity": "dark",
+    "min_segment_length": 5.0
+  },
+  "weak_supervision_metrics": {
+    "winning_config": "s1.5_dark",
+    "f1_score_pre": 0.1362,
+    "f1_score_post": 0.2008,
+    "joint_score": 0.3371,
+    "all_configs_tested": 10
+  }
+}

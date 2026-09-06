@@ -22,3 +22,15 @@ on `core/include/curv/interfaces/`.
 - **`onnxruntime/`**, **`tflite/`**, **`mediapipe/`**: alternative inference backends.
 - **`android_camera/`**, **`ios_camera/`**: native platform camera ingestion.
 - **`file_image_source/`**: static image / directory batch frame ingestion.
+
+## Milestone Status & Next Phase
+
+- **Current Version**: `0.1.0`
+- **Completed**:
+  - Stable C-ABI (`libcurv_capi`) with exception-isolation, bounded input checks, and atomic frame tracking
+  - OpenCV sub-pixel overlay renderer (`OverlayRenderer`) with 16x anti-aliasing and SVG vector exporter
+  - OpenCV-DNN ONNX landmark detector (`HandLandmarkDetector`) with anatomical fallback
+  - Android JNI native bindings (`curv_jni.cpp`) + Kotlin wrapper (`CurvPipeline.kt`)
+  - Apple Swift native wrapper (`CurvEngine.swift`)
+- **Next Phase (Milestone 7 / Phase C)**: Android Gradle/NDK packaging (`platforms/android/`), CameraX zero-copy demo app, and iOS SwiftPM / `CurvEngine.xcframework` distribution.
+

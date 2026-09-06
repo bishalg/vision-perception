@@ -1,6 +1,7 @@
 # Applications
 
-This directory contains executable applications and integration demonstrators:
+This directory contains end-user executable applications and integration demonstrators:
 
-- **`desktop_pipeline_demo/`**: Interactive desktop demonstration application for running the vision perception pipeline over webcam feeds or video files with real-time HUD overlays.
-- **`eval_tool/`**: Command-line batch evaluation utility for benchmarking pipeline outputs against annotated datasets.
+- **`desktop_pipeline_demo/`**: Interactive desktop demonstration application that executes the vision perception pipeline over live webcam feeds or video files with real-time sub-pixel overlay rendering and HUD metrics (backed by `curv_tools_lib::runDesktopDemo`).
+- *Note*: Command-line evaluation and developer CLI tools live in [`tools/`](../tools/) (`curv_cli`, `hand_inspector_cli`, `synth_generator`, `evaluate`, `benchmark`).
+

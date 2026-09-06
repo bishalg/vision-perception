@@ -59,6 +59,7 @@ int runCurvCli(int argc, char* argv[], std::ostream& out, std::ostream& err) {
     float sigma = 1.5f;
     float low_thresh = 0.5f;
     float high_thresh = 1.5f;
+    float min_blur = 30.0f;
     bool extract_dark = false;
     bool draw_hud = true;
     bool draw_normals = false;
@@ -89,6 +90,8 @@ int runCurvCli(int argc, char* argv[], std::ostream& out, std::ostream& err) {
                 low_thresh = parseNumeric<float>(argv[++i], "--low");
             } else if (arg == "--high" && i + 1 < argc) {
                 high_thresh = parseNumeric<float>(argv[++i], "--high");
+            } else if (arg == "--min-blur" && i + 1 < argc) {
+                min_blur = parseNumeric<float>(argv[++i], "--min-blur");
             } else if (arg == "--dark") {
                 extract_dark = true;
             } else if (arg == "--benchmark") {
@@ -127,6 +130,7 @@ int runCurvCli(int argc, char* argv[], std::ostream& out, std::ostream& err) {
             << "  --ribbons                                (draw width ribbons)\n"
             << "  --sigma <float>                          (default: 1.5)\n"
             << "  --low <float> / --high <float>           (hysteresis thresholds)\n"
+            << "  --min-blur <float>                       (default: 30.0)\n"
             << "  --dark                                   (extract dark lines/valleys)\n"
             << "  --out <overlay.png>                      (default: output_overlay.png)\n"
             << "  --json <evidence.json>                   (default: evidence.json)\n";
@@ -147,7 +151,7 @@ int runCurvCli(int argc, char* argv[], std::ostream& out, std::ostream& err) {
 
     // 2. Configure Pipeline
     CurvEngine::quality::QualityThresholds q_thresh;
-    q_thresh.min_blur_score = 30.0;
+    q_thresh.min_blur_score = min_blur;
     q_thresh.min_brightness = 10.0;
     q_thresh.max_brightness = 250.0;
     q_thresh.min_contrast = 10.0;

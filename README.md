@@ -3,9 +3,11 @@
 > **A Reusable, Domain-Agnostic Computer Vision Perception Core**
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational.svg)](CMakeLists.txt)
 [![Architecture: Modular C++20](https://img.shields.io/badge/Architecture-Modular%20C%2B%2B20-orange.svg)](docs/architecture.md)
 [![Milestone: 6 Complete](https://img.shields.io/badge/Milestone-6%20Complete-green.svg)](docs/roadmap.md)
 [![CI](https://github.com/bishalg/vision-perception/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
+
 
 ---
 
