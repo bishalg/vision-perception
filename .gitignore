@@ -19,6 +19,17 @@
 *.app
 *.bin
 
+
+# Raw LLVM coverage profiles and root-dir test artifacts
+*.profraw
+/evidence.json
+/canonical_palm.png
+/overlay_palm.png
+/gemini_prompt.json
+/output_overlay.png
+/synthetic/
+/eval_gate_tmp/
+
 # ------------------------------------------------------------------------------
 # CMake & Build Directories
 # ------------------------------------------------------------------------------
@@ -28,6 +39,9 @@ cmake-build-*/
 _build/
 bin/
 lib/
+# `lib/` targets build-output dirs, but real sources live under tools/lib/.
+!tools/lib/
+!tools/lib/**
 .cache/
 CMakeFiles/
 CMakeCache.txt

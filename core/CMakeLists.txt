@@ -7,7 +7,6 @@ add_library(curv_core STATIC
     src/Frame.cpp
     src/QualityReport.cpp
     src/Evidence.cpp
-    src/vision_core.cpp
     src/quality/LaplacianQualityAnalyzer.cpp
     src/ridge/HessianMath.cpp
     src/ridge/StegerRidgeExtractor.cpp

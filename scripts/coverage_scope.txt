@@ -7,18 +7,24 @@
 # --- Core engine -------------------------------------------------------------
 core/src/*.cpp
 core/src/**/*.cpp
+core/include/**/*.hpp
 
 # --- Domain packs ------------------------------------------------------------
 domains/*/src/*.cpp
+domains/*/include/**/*.hpp
 
 # --- Adapters (native, desktop-buildable) ------------------------------------
 adapters/capi/src/*.cpp
+adapters/capi/include/**/*.hpp
 adapters/opencv/src/*.cpp
+adapters/opencv/include/**/*.hpp
 adapters/opencv_dnn/src/*.cpp
+adapters/opencv_dnn/include/**/*.hpp
 adapters/android/*.cpp
 
 # --- CLI/application support libraries ---------------------------------------
 tools/lib/**/*.cpp
+tools/lib/**/*.hpp
 
 # --- Exclusions --------------------------------------------------------------
 # Swift binding: covered by XCTest in Phase C (mobile packaging), not llvm-cov.

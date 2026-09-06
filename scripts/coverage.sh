@@ -96,7 +96,7 @@ done
 shopt -u nullglob
 while IFS= read -r -d '' sharedlib; do
     objects+=("$sharedlib")
-done < <(find "$BUILD_DIR" -maxdepth 2 \( -name "*.dylib" -o -name "*.so" \) -type f -print0)
+done < <(find "$BUILD_DIR" -maxdepth 2 \( -name "*.dylib" -o -name "*.so" \) -type f -perm -u+x -print0)
 
 if [ "${#objects[@]}" -eq 0 ]; then
     echo "error: no test objects found under $BUILD_DIR" >&2

@@ -93,9 +93,9 @@ class Scope:
 
 def rel_path(filename, root):
     """Normalize an llvm-cov filename to a repo-relative POSIX path."""
-    p = Path(filename)
+    p = Path(filename).resolve()
     try:
-        return p.resolve().relative_to(root).as_posix()
+        return p.relative_to(root).as_posix()
     except ValueError:
         return p.as_posix()
 
@@ -110,6 +110,7 @@ def main():
     parser.add_argument("--summary", type=Path, default=None, help="write a summary JSON here")
     parser.add_argument("--root", type=Path, default=Path(__file__).parent.parent)
     args = parser.parse_args()
+    args.root = args.root.resolve()
 
     rules = load_rule_file(args.scope)
     if not rules:
