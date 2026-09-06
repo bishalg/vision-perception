@@ -78,3 +78,65 @@ TEST(ZoneIntersectorTest, Test_PalmZones_CanonicalMapping) {
     const std::string primary = ZoneIntersector::findPrimaryZone(jupiter_curve, zones);
     EXPECT_EQ(primary, "jupiter_zone");
 }
+
+// === Step 4 coverage-gap tests (characterization) ===
+
+TEST(ZoneIntersectorTest, Test_DegeneratePolygonsAreNeverContaining) {
+    Zone empty_zone;
+    EXPECT_FALSE(ZoneIntersector::isPointInZone(Point2D{150.0f, 150.0f}, empty_zone));
+
+    Zone one_point;
+    one_point.polygon = {Point2D{150.0f, 150.0f}};
+    EXPECT_FALSE(ZoneIntersector::isPointInZone(Point2D{150.0f, 150.0f}, one_point));
+
+    Zone two_points;
+    two_points.polygon = {Point2D{0.0f, 0.0f}, Point2D{100.0f, 100.0f}};
+    EXPECT_FALSE(ZoneIntersector::isPointInZone(Point2D{50.0f, 50.0f}, two_points));
+}
+
+TEST(ZoneIntersectorTest, Test_FindPrimaryZone_EdgeCases) {
+    Zone zone;
+    zone.id = "zone";
+    zone.polygon = {Point2D{0.0f, 0.0f}, Point2D{100.0f, 0.0f}, Point2D{100.0f, 100.0f},
+                    Point2D{0.0f, 100.0f}};
+
+    CurveSegment empty_segment;
+    empty_segment.id = 1;
+    EXPECT_EQ(ZoneIntersector::findPrimaryZone(empty_segment, {zone}), "unknown");
+
+    CurveSegment seg;
+    seg.id = 2;
+    seg.points.emplace_back(50.0f, 50.0f);
+    EXPECT_EQ(ZoneIntersector::findPrimaryZone(seg, {}), "unknown");
+
+    // A demanding overlap ratio that no zone satisfies yields "unknown".
+    std::vector<Zone> zones = {zone};
+    CurveSegment mixed;
+    mixed.id = 3;
+    mixed.points.emplace_back(50.0f, 50.0f);
+    mixed.points.emplace_back(500.0f, 500.0f);
+    EXPECT_EQ(ZoneIntersector::findPrimaryZone(mixed, zones, 2.0f), "unknown");
+}
+
+TEST(ZoneIntersectorTest, Test_ComputeZoneOverlap_EdgeCases) {
+    CurveSegment empty_segment;
+    EXPECT_TRUE(ZoneIntersector::computeZoneOverlap(empty_segment, {}).empty());
+
+    Zone zone;
+    zone.id = "zone";
+    zone.polygon = {Point2D{0.0f, 0.0f}, Point2D{100.0f, 0.0f}, Point2D{100.0f, 100.0f},
+                    Point2D{0.0f, 100.0f}};
+
+    CurveSegment seg;
+    seg.id = 1;
+    seg.points.emplace_back(50.0f, 50.0f);
+
+    // Zones with degenerate polygons are skipped entirely.
+    Zone degenerate;
+    degenerate.id = "degenerate";
+    degenerate.polygon = {Point2D{50.0f, 50.0f}};
+    const auto overlaps = ZoneIntersector::computeZoneOverlap(seg, {degenerate, zone});
+    ASSERT_EQ(overlaps.size(), 1u);
+    EXPECT_EQ(overlaps[0].first, "zone");
+    EXPECT_NEAR(overlaps[0].second, 1.0f, 1e-6);
+}

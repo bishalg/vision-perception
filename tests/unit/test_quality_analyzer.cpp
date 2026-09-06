@@ -95,3 +95,46 @@ TEST_F(QualityAnalyzerTest, Test_EmptyFrame) {
     EXPECT_FALSE(report.is_usable);
     EXPECT_NE(report.recommendation.find("empty"), std::string::npos);
 }
+
+// === Step 4 coverage-gap tests (characterization) ===
+
+TEST_F(QualityAnalyzerTest, Test_FourChannelFrameIsAccepted) {
+    // BGRA frames take the COLOR_BGRA2GRAY conversion path.
+    cv::Mat image(120, 120, CV_8UC4, cv::Scalar(90, 90, 90, 255));
+    cv::line(image, cv::Point(10, 60), cv::Point(110, 60), cv::Scalar(255, 255, 255, 255), 3, cv::LINE_AA);
+    Frame frame(image, "bgra_frame", 1);
+
+    quality::QualityThresholds thresholds;
+    thresholds.min_blur_score = 10.0;
+    thresholds.min_brightness = 10.0;
+    thresholds.min_contrast = 5.0;
+    quality::LaplacianQualityAnalyzer analyzer(thresholds);
+
+    const auto report = analyzer.analyze(frame);
+    EXPECT_TRUE(report.is_usable);
+    EXPECT_GT(report.blur_score, thresholds.min_blur_score);
+}
+
+TEST_F(QualityAnalyzerTest, Test_TwoChannelFrameIsRejected) {
+    // Channel counts other than 1/3/4 are explicitly unsupported.
+    cv::Mat image(64, 64, CV_8UC2, cv::Scalar(100, 100));
+    Frame frame(image, "weird_frame", 1);
+
+    quality::LaplacianQualityAnalyzer analyzer;
+    const auto report = analyzer.analyze(frame);
+    EXPECT_FALSE(report.is_usable);
+    EXPECT_NE(report.recommendation.find("Unsupported channel count"), std::string::npos);
+    EXPECT_NEAR(report.blur_score, 0.0, 1e-9);
+}
+
+TEST_F(QualityAnalyzerTest, Test_ThresholdGettersAndSetters) {
+    quality::LaplacianQualityAnalyzer analyzer;
+    EXPECT_DOUBLE_EQ(analyzer.getThresholds().min_blur_score, 80.0);
+
+    quality::QualityThresholds updated;
+    updated.min_blur_score = 5.0;
+    updated.max_brightness = 200.0;
+    analyzer.setThresholds(updated);
+    EXPECT_DOUBLE_EQ(analyzer.getThresholds().min_blur_score, 5.0);
+    EXPECT_DOUBLE_EQ(analyzer.getThresholds().max_brightness, 200.0);
+}

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include "curv/Evidence.hpp"
 #include "curv/GeometryTypes.hpp"
 
 namespace {
@@ -75,3 +76,22 @@ TEST(GeometryTypes, RidgeGraphAggregatesSegmentsAndJunctions) {
 }
 
 } // namespace
+
+// === Step 4 coverage-gap tests (characterization) ===
+
+TEST(EvidenceContractTest, Test_DefaultEvidenceSerializesNullPayloadsAsObjects) {
+    // A default-constructed Evidence carries null JSON members; to_json must
+    // normalize both to empty objects so downstream consumers see a stable shape.
+    const CurvEngine::Evidence ev;
+    EXPECT_TRUE(ev.evidence_id.empty());
+    EXPECT_TRUE(ev.type.empty());
+    EXPECT_NEAR(ev.confidence, 1.0, 1e-9);
+
+    const auto doc = ev.to_json();
+    EXPECT_TRUE(doc["geometry"].is_object());
+    EXPECT_TRUE(doc["geometry"].empty());
+    EXPECT_TRUE(doc["metadata"].is_object());
+    EXPECT_TRUE(doc["metadata"].empty());
+    EXPECT_TRUE(doc["evidence_id"].is_string());
+    EXPECT_TRUE(doc["confidence"].is_number());
+}

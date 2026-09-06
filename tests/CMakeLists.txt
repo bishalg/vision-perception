@@ -276,3 +276,18 @@ target_link_libraries(test_demo_lib
 )
 vision_set_compiler_warnings(test_demo_lib)
 add_test(NAME test_demo_lib COMMAND test_demo_lib)
+
+# ------------------------------------------------------------------------------
+# Unit Test: test_parameter_resolver (dynamic Steger parameter scaling, TDD)
+# ------------------------------------------------------------------------------
+add_executable(test_parameter_resolver
+    unit/test_parameter_resolver.cpp
+)
+target_link_libraries(test_parameter_resolver
+    PRIVATE
+        curv_core
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_parameter_resolver)
+add_test(NAME test_parameter_resolver COMMAND test_parameter_resolver)

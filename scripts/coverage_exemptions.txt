@@ -1,7 +1,9 @@
 # ==============================================================================
 # Coverage exemptions (scripts/coverage_gate.py). One entry per line:
-#     <repo-relative-path>|<justification>
+#     <repo-relative-path>|<justification>                      (whole file)
+#     <repo-relative-path>|<function-substring>|<justification> (function only)
 # Exemptions are for provably unreachable defensive code ONLY. Every entry
 # must carry a written justification and is surfaced in the gate output.
 # Target state: this file stays empty.
 # ==============================================================================
+core/src/ridge/StegerRidgeExtractor.cpp|generate1DGaussianKernels|The three kernel-normalization guards (sum_g, sum_x_g1, sum_x2_g2 != 0) can never take their false edge: sum_g is a sum of strictly positive exp() terms over >= 5 taps, sum_x_g1 is an x^2-weighted sum of positive values with at least one nonzero tap (ksize >= 5), and sum_x2_g2 is positive for any realizable sigma (std::max(0.1f, sigma) floor, NaN sigma resolves to 0.1 via std::max semantics). Division by zero is therefore impossible; the guards are retained as documentation of the invariant.

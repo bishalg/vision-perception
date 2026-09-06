@@ -167,3 +167,109 @@ TEST(RoiWarperTest, Test_CanonicalWarperClass_ImageWarp) {
     EXPECT_EQ(palm_frame.height(), 512);
     EXPECT_FALSE(palm_frame.empty());
 }
+
+// === Step 4 coverage-gap tests (characterization) ===
+
+TEST(RoiWarperTest, Test_CanonicalTransform_PixelCoordinates) {
+    // is_normalized == false: landmarks are already in pixel coordinates and
+    // must be used verbatim (no denormalization).
+    HandLandmarks lms;
+    lms.is_normalized = false;
+    lms.points[0] = LandmarkPoint(320.0f, 500.0f);  // Wrist
+    lms.points[5] = LandmarkPoint(275.0f, 380.0f);  // Index MCP
+    lms.points[9] = LandmarkPoint(320.0f, 360.0f);  // Middle MCP
+    lms.points[13] = LandmarkPoint(360.0f, 380.0f); // Ring MCP
+    lms.points[17] = LandmarkPoint(385.0f, 400.0f); // Pinky MCP
+
+    const auto transform = computeCanonicalPalmTransform(lms, 640, 640, 512);
+    const double* m = transform.M.ptr<double>();
+    const double mapped_x = m[0] * transform.center.x + m[1] * transform.center.y + m[2];
+    const double mapped_y = m[3] * transform.center.x + m[4] * transform.center.y + m[5];
+    EXPECT_NEAR(mapped_x, 256.0, 0.05);
+    EXPECT_NEAR(mapped_y, 256.0, 0.05);
+}
+
+TEST(RoiWarperTest, Test_CanonicalTransform_DegenerateLandmarksStaySafe) {
+    // Zero landmarks: orientation vector and palm width both degenerate ->
+    // angle falls back to 0 and scale to 1.0; the affine matrix stays finite
+    // and the analytical inverse exists (D = alpha^2 + beta^2 = 1).
+    HandLandmarks lms;
+    lms.is_normalized = true;
+    const auto transform = computeCanonicalPalmTransform(lms, 640, 640, 512);
+    EXPECT_NEAR(transform.angle_deg, 0.0f, 1e-5);
+    EXPECT_NEAR(transform.scale, 1.0f, 1e-5);
+    EXPECT_FALSE(transform.M_inv.empty());
+    const double* mi = transform.M_inv.ptr<double>();
+    EXPECT_NEAR(mi[0], 1.0, 1e-6);
+    EXPECT_NEAR(mi[4], 1.0, 1e-6);
+}
+
+TEST(RoiWarperTest, Test_DetectIsLeftHand_DegenerateUpVector) {
+    // Coincident wrist and middle MCP: no orientation vector -> not left hand.
+    HandLandmarks lms;
+    lms.is_normalized = false;
+    for (auto& pt : lms.points) {
+        pt = LandmarkPoint(100.0f, 100.0f);
+    }
+    EXPECT_FALSE(detectIsLeftHand(lms));
+}
+
+TEST(RoiWarperTest, Test_WarpToCanonical_EmptyInputsReturnEmpty) {
+    cv::Mat src(64, 64, CV_8UC1, cv::Scalar(50));
+
+    cv::Mat from_empty_src = warpToCanonical(cv::Mat(), cv::Mat::eye(2, 3, CV_64F), 32);
+    EXPECT_TRUE(from_empty_src.empty());
+
+    cv::Mat from_empty_m = warpToCanonical(src, cv::Mat(), 32);
+    EXPECT_TRUE(from_empty_m.empty());
+
+    cv::Mat ok = warpToCanonical(src, cv::Mat::eye(2, 3, CV_64F), 32);
+    EXPECT_FALSE(ok.empty());
+    EXPECT_EQ(ok.cols, 32);
+}
+
+TEST(RoiWarperTest, Test_InvertGraphCoordinates_GuardsAndTypeConversion) {
+    RidgeGraph graph;
+    CurveSegment seg;
+    seg.total_length = 10.0f;
+    seg.points.emplace_back(1.0f, 2.0f);
+    graph.segments.push_back(seg);
+
+    // A 2x2 matrix has fewer than 3 columns: graph must remain untouched.
+    RidgeGraph untouched = graph;
+    invertGraphCoordinates(untouched, cv::Mat::zeros(2, 2, CV_64F));
+    EXPECT_FLOAT_EQ(untouched.segments[0].points[0].x, 1.0f);
+    EXPECT_FLOAT_EQ(untouched.segments[0].total_length, 10.0f);
+
+    // A CV_32F matrix is converted to CV_64F before use.
+    cv::Mat m32(2, 3, CV_32F);
+    m32.at<float>(0, 0) = 2.0f;
+    m32.at<float>(0, 1) = 0.0f;
+    m32.at<float>(0, 2) = 5.0f;
+    m32.at<float>(1, 0) = 0.0f;
+    m32.at<float>(1, 1) = 2.0f;
+    m32.at<float>(1, 2) = 7.0f;
+    RidgeGraph scaled = graph;
+    invertGraphCoordinates(scaled, m32);
+    EXPECT_FLOAT_EQ(scaled.segments[0].points[0].x, 7.0f);
+    EXPECT_FLOAT_EQ(scaled.segments[0].points[0].y, 11.0f);
+    EXPECT_NEAR(scaled.segments[0].total_length, 20.0f, 1e-4);
+}
+
+TEST(RoiWarperTest, Test_CanonicalWarper_DefaultTargetDimension) {
+    // output_size <= 0 falls back to the constructor's target dimension.
+    cv::Mat blank(400, 400, CV_8UC3, cv::Scalar(40, 40, 40));
+    Frame frame(blank, "default_dim", 1);
+    roi::CanonicalWarper warper(256);
+
+    std::array<Point2D, 4> corners = {Point2D{100.0f, 100.0f}, Point2D{300.0f, 100.0f},
+                                      Point2D{300.0f, 300.0f}, Point2D{100.0f, 300.0f}};
+    Frame quad_frame = warper.warpQuad(frame, corners, 0);
+    EXPECT_EQ(quad_frame.width(), 256);
+    EXPECT_EQ(quad_frame.height(), 256);
+
+    HandLandmarks lms = createRotatedLandmarks(0.0f, 400, 400);
+    Frame palm_frame = warper.warpPalm(frame, lms, 0);
+    EXPECT_EQ(palm_frame.width(), 256);
+    EXPECT_EQ(palm_frame.height(), 256);
+}

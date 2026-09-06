@@ -13,16 +13,21 @@ Scope rules (scripts/coverage_scope.txt):
     - lines starting with '!' are exclusion patterns
     - paths are repo-relative POSIX; '**' crosses directories, '*' does not
 
-Exemptions (scripts/coverage_exemptions.txt):
-    <repo-relative-path>|<justification>
-    A file listed here is skipped by the gate. Exemptions are for provably
-    unreachable defensive code only; every entry must carry a written
+Exemptions (scripts/coverage_exemptions.txt), '|' separated:
+    <repo-relative-path>|<justification>                     -> whole file exempt
+    <repo-relative-path>|<function-name-substring>|<justification>
+                                                             -> function exempt
+    Function-level exemptions subtract only the untaken branch edges and
+    unexecuted lines attributable to the matching functions, so exempting one
+    defensive helper never ungates the rest of its file. Exemptions exist for
+    provably unreachable defensive code only; every entry carries a written
     justification and is surfaced in the gate output.
 
 Semantics:
     - line coverage:    summary.lines.covered == summary.lines.count
     - branch coverage:  summary.branches.covered == summary.branches.count
-      (llvm-cov counts a branch as covered only when BOTH edges are taken)
+      (llvm-cov counts a branch edge covered only when that edge is executed;
+      a conditional is at 100% only when BOTH edges are taken)
     - an in-scope .cpp/.cc/.cxx file that is absent from the report fails the
       gate (it was never linked into any test binary); absent headers pass
       (no executable code was instantiated).
@@ -100,6 +105,51 @@ def rel_path(filename, root):
         return p.as_posix()
 
 
+def parse_exemptions(rules):
+    """Return (whole_file, per_function) exemption dicts."""
+    whole = {}
+    per_function = {}
+    for entry in rules:
+        parts = [p.strip() for p in entry.split("|")]
+        if len(parts) == 2:
+            whole[parts[0]] = parts[1]
+        elif len(parts) == 3:
+            per_function.setdefault(parts[0], []).append((parts[1], parts[2]))
+        else:
+            print("coverage-gate: FATAL malformed exemption entry: {}".format(entry))
+            sys.exit(2)
+    return whole, per_function
+
+
+def branch_edges(entry):
+    """Untaken edge count of one llvm-cov branch record.
+
+    Record: [line_start, col_start, line_end, col_end, true_count, false_count, ...]
+    """
+    true_count = entry[4] if len(entry) > 4 else 0
+    false_count = entry[5] if len(entry) > 5 else 0
+    return (1 if true_count == 0 else 0) + (1 if false_count == 0 else 0)
+
+
+def function_uncovered(func_record):
+    """(uncovered_lines, untaken_branch_edges) attributable to one function.
+
+    Lines: union of zero-count region spans minus every line covered by any
+    positive-count region of the same file. This can only UNDERCOUNT the
+    subtraction (regions are coarser than segments), keeping the gate strict.
+    """
+    zero_lines = set()
+    covered_lines = set()
+    for region in func_record.get("regions", []):
+        span = set(range(region[0], region[2] + 1))
+        if region[4] == 0:
+            zero_lines |= span
+        else:
+            covered_lines |= span
+    untaken = sum(branch_edges(b) for b in func_record.get("branches", []))
+    return len(zero_lines - covered_lines), untaken
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("export_json", type=Path, help="llvm-cov export JSON path")
@@ -118,13 +168,7 @@ def main():
         return 2
     scope = Scope(rules)
 
-    exemptions = {}
-    for entry in load_rule_file(args.exemptions):
-        parts = entry.split("|", 1)
-        if len(parts) != 2:
-            print("coverage-gate: FATAL malformed exemption entry: {}".format(entry))
-            return 2
-        exemptions[parts[0].strip()] = parts[1].strip()
+    whole_file_exemptions, function_exemptions = parse_exemptions(load_rule_file(args.exemptions))
 
     with args.export_json.open("r", encoding="utf-8") as fh:
         data = json.load(fh)
@@ -145,6 +189,15 @@ def main():
             agg["branches"][0] += branches.get("count", 0)
             agg["branches"][1] += branches.get("covered", 0)
 
+    # Collect per-function records for in-scope files (function-level exemptions).
+    functions_by_file = {}
+    for datum in data.get("data", []):
+        for func in datum.get("functions", []):
+            for filename in func.get("filenames", []):
+                rel = rel_path(filename, args.root)
+                if rel in files:
+                    functions_by_file.setdefault(rel, []).append(func)
+
     # Every in-scope translation unit must be present in the report.
     missing_from_report = []
     for cpp in sorted(args.root.rglob("*")):
@@ -155,30 +208,50 @@ def main():
             missing_from_report.append(rel)
 
     failures = []
-    exempted = []
+    exempted_files = []
+    function_exemptions_applied = []
     for rel in sorted(files):
-        if rel in exemptions:
-            exempted.append(rel)
+        if rel in whole_file_exemptions:
+            exempted_files.append(rel)
             continue
         lc, lcv = files[rel]["lines"]
         bc, bcv = files[rel]["branches"]
+        uncovered_lines = lc - lcv
+        uncovered_branches = bc - bcv
+
+        for pattern, justification in function_exemptions.get(rel, []):
+            matched = False
+            for func in functions_by_file.get(rel, []):
+                if pattern not in func.get("name", ""):
+                    continue
+                matched = True
+                f_lines, f_branches = function_uncovered(func)
+                uncovered_lines -= f_lines
+                uncovered_branches -= f_branches
+            if matched:
+                function_exemptions_applied.append((rel, pattern, justification))
+
         problems = []
-        if lcv < lc:
-            problems.append("lines {}/{}".format(lcv, lc))
-        if bcv < bc:
-            problems.append("branches {}/{}".format(bcv, bc))
+        if uncovered_lines > 0:
+            problems.append("lines {}/{}".format(lc - uncovered_lines, lc))
+        if uncovered_branches > 0:
+            problems.append("branches {}/{}".format(bc - uncovered_branches, bc))
         if problems:
             failures.append((rel, ", ".join(problems)))
     failures.extend((rel, "not linked into any test binary") for rel in missing_from_report)
 
     total_files = len(files) + len(missing_from_report)
-    gate_files = total_files - len(exempted)
+    gate_files = total_files - len(exempted_files)
     print("=" * 72)
     print("Coverage gate: 100% lines AND 100% branches required for {} files".format(gate_files))
-    if exempted:
-        print("Exempted files ({}):".format(len(exempted)))
-        for rel in exempted:
-            print("  {} -- {}".format(rel, exemptions[rel]))
+    if exempted_files:
+        print("Exempted files ({}):".format(len(exempted_files)))
+        for rel in exempted_files:
+            print("  {} -- {}".format(rel, whole_file_exemptions[rel]))
+    if function_exemptions_applied:
+        print("Function-level exemptions applied ({}):".format(len(function_exemptions_applied)))
+        for rel, pattern, justification in function_exemptions_applied:
+            print("  {} :: {} -- {}".format(rel, pattern, justification))
     if failures:
         print("FAIL: {} file(s) below threshold:".format(len(failures)))
         width = max(len(rel) for rel, _ in failures)
@@ -193,7 +266,8 @@ def main():
         payload = {
             "result": "pass",
             "files": gate_files,
-            "exempted": len(exempted),
+            "exempted_files": len(exempted_files),
+            "function_exemptions": len(function_exemptions_applied),
             "entries": {
                 rel: {
                     "lines": {"count": v["lines"][0], "covered": v["lines"][1]},

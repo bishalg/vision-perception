@@ -113,10 +113,12 @@ done
 
 # ------------------------------------------------------------------------------
 # 4. Export per-file summaries (with branch data) and run the gate.
+# Full export (not --summary-only): the gate needs per-function branch records
+# to apply justified function-level exemptions.
 # ------------------------------------------------------------------------------
 "$LLVM_COV" export "${objects[0]}" ${cov_objects[@]+"${cov_objects[@]}"} \
     -instr-profile="$BUILD_DIR/coverage.profdata" \
-    --summary-only --show-branch-summary > "$BUILD_DIR/coverage-export.json"
+    --show-branch-summary --skip-expansions > "$BUILD_DIR/coverage-export.json"
 
 python3 "$ROOT/scripts/coverage_gate.py" "$BUILD_DIR/coverage-export.json" \
     --summary "$BUILD_DIR/coverage-summary.json"
