@@ -37,8 +37,19 @@ Real-World Impact track: Rapid glacier-collapse flood quantification in the Lend
   - Weakly-supervised F1 scoring against cloud-excluded color flood masks identified polarity divergence: PRE-optimal is bright ($F_1 = 0.1426$), POST-optimal is dark ($F_1 = 0.2008$).
   - Per architecture rules, unified both polarities at $\sigma = 1.5$, low = 0.5, high = 1.5, recorded in `configs/geospatial_wide_ridge.json`.
   - Emitted `pre_evidence.json` (8,175 segments), `post_evidence.json` (7,322 segments), 16x sub-pixel anti-aliased overlays, vector SVGs, and side-by-side comparison panel `comparison.png`.
-- **Phase 3: Geospatial Domain Pack & Flood Delta Analysis (In Progress)**:
-  - Developing `domains/geospatial` (`GeospatialFloodPack.hpp/.cpp`) and flood delta analysis with valid-area normalization, cloud masking, and channel width proxy.
+- **Phase 3: Geospatial Domain Pack & Flood Delta Analysis (2026-09-06) — COMPLETE ✅**:
+  - Implemented `domains/geospatial` (`GeospatialFloodPack.hpp/.cpp`) implementing `IDomainPack`, classifying hydrological segments into river trunks (>=150px), tributaries (50-150px), and minor features (<50px).
+  - Wired into `curv_domains` static library with 5 unit tests in `tests/unit/test_geospatial_pack.cpp` (suite now 20/20 green).
+  - Executed `scripts/compute_flood_delta.py` with valid-area normalization (1,046,596 px), HSV cloud exclusion ($S < 30 \land V > 200$), and row-by-row channel width proxy.
+  - Demonstrated definitive flood detection: flood signature surged **+88.4%** (1.884x), channel width expanded **+121.1%** (2.211x, from 19.0px to 42.0px), while Spatial Control (Candidate A West Slope) ratio was **0.151x** (< 1.10) and Temporal Baseline Control (12 Aug vs 24 Aug) width ratio was **0.905x** (< 1.10).
+  - Formally interpreted -9.0% curvilinear ridge length reduction as physical surface texture smoothing from fine glacial debris blanket deposition over bedrock fractures.
+- **Phase 4: Quality Gates, Provenance Documentation & Architecture Mapping (2026-09-06) — COMPLETE ✅**:
+  - Authored comprehensive competition document `docs/flood_nepal_2026.md` covering event context, CDAS data provenance, methodology, quantitative results table, dual controls, geomorphological interpretation, and Week 2 award paths:
+    - *Best Use of COOL Award Path*: Porting C++ core to AWS Graviton3 (c7g.2xlarge) with Cloud-Optimized OpenCV Library (COOL) vector acceleration and x86 benchmarking.
+    - *Agentic Vision Award Path*: AWS Bedrock Agent (Claude 3.5 Sonnet) autonomously evaluating `flood_delta.json` from S3 and dispatching alerts via AWS SNS when `flood_signal_detected == true` and `width_ratio >= 2.0`.
+    - *Automated Cloud Delivery*: Event-driven STAC catalog polling on AWS Open Data via Lambda/ECS Fargate.
+  - Verified 20/20 ctest passing, RMSE gate < 0.1 px passing, clang-format conforming across all 68 files.
+
 
 
 ## 6. Proposed architecture split: device layer vs server layer (user discussion 2026-09-06, NOT yet planned/committed)

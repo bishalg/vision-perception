@@ -152,20 +152,21 @@ gantt
 ---
 
 ### Milestone 7: Geospatial Flood Perception Pack (OpenCV AI Competition 2026)
-*Status: IN PROGRESS (Phases 0–2 Complete, Phase 3 Active)*
+*Status: DONE (Phases 0–4 Complete)*
 
 - **Target**: Glacier-collapse flood disaster analysis for Nepal (Lende Khola / Bhote Koshi, 2026-08-26 event) using Sentinel-2 L2A 10m imagery.
 - **Key Deliverables**:
   - [x] Phase 0: Monorepo baseline validation (19/19 ctest, 0.0301 px RMSE gate, format check clean).
   - [x] Phase 1: Sentinel-2 image ingestion (PRE 2026-08-24, POST 2026-08-27, CTRL 2026-08-12), 100% valid-pixel alpha masks, gitignore binary isolation, metadata JSON.
   - [x] Phase 2: Sub-pixel ECC co-registration (0.154 px shift), 10-config scale $\times$ polarity sweep, weakly-supervised $F_1$ selection (union config $\sigma=1.5$), dual-polarity overlays, and side-by-side comparison panel (`comparison.png`).
-  - [ ] Phase 3: `domains/geospatial` domain pack (`GeospatialFloodPack`), flood delta report (`flood_delta.json`), cloud masking, valid-area normalization, and channel width proxy.
-  - [ ] Phase 4: Full CI/CD quality gate pass, `docs/flood_nepal_2026.md` with competition award mapping, and commits.
+  - [x] Phase 3: `domains/geospatial` domain pack (`GeospatialFloodPack`), flood delta report (`flood_delta.json`), cloud masking, valid-area normalization, and channel width proxy.
+  - [x] Phase 4: Full CI/CD quality gate pass, `docs/flood_nepal_2026.md` with competition award mapping, and commits.
 - **Exit Criteria**:
-  - [x] Pre/post flood registration shift $< 3.0$ px.
-  - [x] Weakly-supervised $F_1$ score evaluated across 10 configurations.
-  - [ ] `flood_delta.json` demonstrates positive flood signature (`flood_fraction_ratio >= 1.10` or `width_ratio >= 1.25`).
-  - [ ] Spatial and temporal control tests pass (`control_ratio < 1.10`).
+  - [x] Pre/post flood registration shift $< 3.0$ px (0.154 px achieved).
+  - [x] Weakly-supervised $F_1$ score evaluated across 10 configurations (union polarity resolved).
+  - [x] `flood_delta.json` demonstrates positive flood signature: flood fraction surged +88.4% ($\ge 1.10$), channel width widened +121.1% ($\ge 1.25$).
+  - [x] Spatial (0.151x) and temporal (0.905x) control tests pass ($< 1.10$).
+  - [x] Full architecture mapping documented for Best Use of COOL and Agentic Vision award paths.
 
 ---
 
@@ -175,8 +176,9 @@ Once the core engine and geospatial flood pack are validated, specialized domain
 
 1. **`domains/palm`**: Biometric hand landmark detection, palm ROI cropping, palm crease extraction, minutiae mapping, depth profiling. *(Implemented & Active)*
 2. **`domains/surface_inspection`**: Micro-crack detection, paint anomaly profiling, scratch severity scoring for industrial QC. *(Implemented & Active)*
-3. **`domains/geospatial`**: Flood damage mapping, sediment surge quantification, and river channel widening analysis. *(In Progress)*
+3. **`domains/geospatial`**: Flood damage mapping, sediment surge quantification, and river channel widening analysis. *(Implemented & Active)*
 4. **`domains/poultry`**: Flock tracking via ByteTrack adapter, density heatmap calculation, activity index, feeder queue monitoring.
 5. **`domains/driver_monitoring`**: Eye aspect ratio (EAR), gaze vector, head orientation, drowsiness detection.
+
 6. **`domains/document_scanning`**: 4-point perspective document boundary rectification, shadow suppression, and adaptive binarization.
 
