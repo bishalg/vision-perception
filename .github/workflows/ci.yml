@@ -12,8 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install clang-format
-        run: sudo apt-get update && sudo apt-get install -y clang-format
+      - name: Install pinned clang-format (keep in sync with scripts/format.sh)
+        run: python3 -m pip install clang-format==18.1.8
       - name: Verify formatting
         run: ./scripts/format.sh --check
 

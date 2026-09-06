@@ -14,9 +14,8 @@ if [[ "${1:-}" == "--check" || "${1:-}" == "-c" ]]; then
 fi
 
 if ! command -v clang-format >/dev/null 2>&1; then
-    echo "ERROR: clang-format not found. Install it first:" >&2
-    echo "  macOS:  brew install clang-format" >&2
-    echo "  Ubuntu: apt install clang-format" >&2
+    echo "ERROR: clang-format not found. Install the pinned version first:" >&2
+    echo "  python3 -m pip install clang-format==18.1.8" >&2
     exit 1
 fi
 

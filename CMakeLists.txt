@@ -48,6 +48,11 @@ if(VISION_COVERAGE)
     add_link_options(-fprofile-instr-generate -fcoverage-mapping)
 endif()
 
+# Static libs (curv_core/domains/adapters) are linked into the shared
+# libcurv_capi; GNU ld requires position-independent objects for that
+# (macOS ld64 tolerates non-PIC, Linux CI does not).
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 # Module path and system prefix paths
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 list(APPEND CMAKE_PREFIX_PATH

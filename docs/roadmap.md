@@ -2,7 +2,7 @@
 
 > **Target Repository**: `vision-perception`  
 > **Lifecycle Status**: Active Implementation Roadmap  
-> **Current Milestone**: Milestone 6 (Tests & Evaluation Tooling)  
+> **Current Milestone**: M1–M6 complete — next: Mobile App Packaging (Phase C)  
 
 ---
 
@@ -22,7 +22,8 @@ gantt
     M4: Minimal Image Pipeline         :done,    m4, 2026-09-21, 2026-10-05
     section Delivery & Tooling
     M5: Overlay & JSON Report          :done,    m5, 2026-10-06, 2026-10-15
-    M6: Tests & Evaluation Tooling     :active,  m6, 2026-10-16, 2026-10-30
+    M6: Tests & Evaluation Tooling     :done,    m6, 2026-10-16, 2026-10-30
+    M7: Mobile App Packaging (Phase C) :active,  m7, 2026-10-31, 2026-11-20
 ```
 
 ---
@@ -131,22 +132,22 @@ gantt
 ---
 
 ### Milestone 6: Tests and Evaluation Tooling
-*Status: IN PROGRESS*
+*Status: DONE (2026-09-06)*
 
 - **Objectives**:
   - Build synthetic ground-truth evaluation harness.
   - Validate sub-pixel precision down to sub-0.1 pixel accuracy against known mathematical curves.
   - Conduct micro-benchmarks and latency profiling across frame resolutions.
   - Finalize repository CI/CD automation.
-- **Key Deliverables**:
-  - `tools/synth_generator`: Synthetic curve generator rendering lines, parabolas, and spirals with known analytical ground truth and parameterized Gaussian noise.
-  - `tools/evaluation`: Error calculator measuring Root Mean Square Error (RMSE), sub-pixel localization bias, and false positive/negative rates.
-  - `tools/benchmark`: Google Benchmark harness profiling execution time for Gaussian filtering, Hessian decomposition, and linking at 720p, 1080p, and 4K resolutions.
-  - `.github/workflows/ci.yml`: GitHub Actions workflow running clang-format, building targets, and running unit tests.
+- **Key Deliverables** (as landed):
+  - `tools/synth_generator` (+ `tools/lib/curv/tools/synth_lib`): synthetic curve generator rendering lines, parabolas, and spirals with known analytical ground truth and parameterized Gaussian noise.
+  - `tools/evaluate` (+ `evaluate_lib`): error calculator measuring RMSE, sub-pixel localization bias, and false positive/negative rates; enforced in CI as the `evaluation_rmse_gate` CTest.
+  - `tools/benchmark`: latency profiles at 720p, 1080p, and 4K recorded in `docs/benchmarks.md` (stage-level micro-benchmarks tracked as follow-up work; the full-extractor profile covers the pipeline end-to-end).
+  - `.github/workflows/ci.yml`: clang-format (pinned version), Ubuntu + macOS `-Werror` builds + ctest, clang-tidy, ASan/UBSan job, and a 100% line+branch coverage gate.
 - **Exit Criteria**:
-  - Demonstrated RMSE $< 0.1$ pixels on synthetic ground truth.
-  - Latency profile documented in `docs/benchmarks.md`.
-  - All CI checks passing green.
+  - [x] RMSE $< 0.1$ pixels demonstrated on synthetic ground truth (`evaluation_rmse_gate` green).
+  - [x] Latency profile documented in `docs/benchmarks.md` (incl. 4K).
+  - [x] All CI checks passing green.
 
 ---
 

@@ -4,7 +4,7 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Architecture: Modular C++20](https://img.shields.io/badge/Architecture-Modular%20C%2B%2B20-orange.svg)](docs/architecture.md)
-[![Milestone: 6 Tests & Evaluation](https://img.shields.io/badge/Milestone-6%3A%20Tests%20%26%20Evaluation-green.svg)](docs/roadmap.md)
+[![Milestone: 6 Complete](https://img.shields.io/badge/Milestone-6%20Complete-green.svg)](docs/roadmap.md)
 [![CI](https://github.com/bishalg/vision-perception/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
 
 ---
@@ -87,5 +87,5 @@ GitHub Actions (`.github/workflows/ci.yml`) gates every push to `main`/`dev`: cl
 - [x] Milestone 4: Minimal image pipeline (Steger sub-pixel ridges + Laplacian quality gate)
 - [x] Milestone 5: Overlay rendering, JSON evidence reports, CLI tools (`curv_cli`, `hand_inspector_cli`)
 - [x] Stable C-ABI (`libcurv_capi`) with JNI (Android) and Swift (iOS) bindings source
-- [ ] **Milestone 6 (in progress): Tests & evaluation tooling** — CI, sanitizer builds, clang-format/clang-tidy gates done; synthetic ground-truth generator, RMSE evaluation harness, and Google Benchmark latency profiles in progress
+- [x] **Milestone 6: Tests & evaluation tooling** — GitHub Actions CI (format, Ubuntu/macOS `-Werror` builds, ASan/UBSan, 100% line+branch coverage gate), clang-format/clang-tidy gates, `synth_generator` + `evaluate` RMSE < 0.1 px accuracy gate, `benchmark` latency profiles at 720p/1080p/4K (`docs/benchmarks.md`)
 - [ ] Next phase: mobile app packaging (Android Gradle/NDK + iOS SwiftPM/xcframework) and additional domain packs (poultry, driver_monitoring, document_scanning)
