@@ -9,14 +9,19 @@
     "high_threshold": 1.5,
     "min_blur_score": 15.0,
     "extract_dark_lines": true,
-    "polarity": "dark",
+    "polarity": "union",
     "min_segment_length": 5.0
+  },
+  "spatial_control": {
+    "control_roi": [50, 400, 150, 200],
+    "description": "Candidate A: West Vegetated Mountain Slope (off-river, cloud-free in both dates)"
   },
   "weak_supervision_metrics": {
     "winning_config": "s1.5_dark",
     "f1_score_pre": 0.1362,
     "f1_score_post": 0.2008,
     "joint_score": 0.3371,
+    "polarity_strategy": "union (PRE-optimal bright + POST-optimal dark)",
     "all_configs_tested": 10
   }
 }

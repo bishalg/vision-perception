@@ -80,6 +80,22 @@ vision_set_compiler_warnings(test_surface_inspection)
 add_test(NAME test_surface_inspection COMMAND test_surface_inspection)
 
 # ------------------------------------------------------------------------------
+# Unit Test: test_geospatial_pack
+# ------------------------------------------------------------------------------
+add_executable(test_geospatial_pack
+    unit/test_geospatial_pack.cpp
+)
+target_link_libraries(test_geospatial_pack
+    PRIVATE
+        curv_domains
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_geospatial_pack)
+add_test(NAME test_geospatial_pack COMMAND test_geospatial_pack)
+
+
+# ------------------------------------------------------------------------------
 # Unit Test: test_overlay_renderer
 # ------------------------------------------------------------------------------
 add_executable(test_overlay_renderer
