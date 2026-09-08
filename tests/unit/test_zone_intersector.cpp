@@ -139,4 +139,7 @@ TEST(ZoneIntersectorTest, Test_ComputeZoneOverlap_EdgeCases) {
     ASSERT_EQ(overlaps.size(), 1u);
     EXPECT_EQ(overlaps[0].first, "zone");
     EXPECT_NEAR(overlaps[0].second, 1.0f, 1e-6);
+
+    // Non-empty segment with empty zones returns empty
+    EXPECT_TRUE(ZoneIntersector::computeZoneOverlap(seg, {}).empty());
 }

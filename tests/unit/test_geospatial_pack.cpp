@@ -30,6 +30,10 @@ TEST_F(GeospatialPackTest, DomainMetadataCorrect) {
     domains::GeospatialFloodPack pack;
     EXPECT_EQ(pack.name(), "org.curv.domain.geospatial");
     EXPECT_EQ(pack.version(), "0.1.0");
+
+    std::unique_ptr<IDomainPack> polymorphic = std::make_unique<domains::GeospatialFloodPack>();
+    ASSERT_NE(polymorphic, nullptr);
+    polymorphic.reset();
 }
 
 TEST_F(GeospatialPackTest, EmptyGraphReturnsZeroCounts) {

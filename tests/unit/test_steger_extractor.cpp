@@ -285,3 +285,18 @@ TEST(PipelineTest, Test_NonStegerExtractorUsesGenericExtractPath) {
     ASSERT_EQ(result.evidence.size(), 1u);
     EXPECT_EQ(result.evidence[0].evidence_id, "fake_seg_1");
 }
+
+TEST(StegerExtractorTest, ExtractFromValidFrameProducesEvidence) {
+    cv::Mat canvas = cv::Mat::zeros(100, 100, CV_8UC1);
+    cv::line(canvas, cv::Point(10, 50), cv::Point(90, 50), cv::Scalar(255), 3);
+    Frame frame(canvas, "test_frame", 1);
+
+    StegerConfig cfg;
+    cfg.low_threshold = 0.5f;
+    cfg.high_threshold = 1.0f;
+    cfg.min_segment_length = 10.0f;
+    StegerRidgeExtractor extractor(cfg);
+
+    const auto evidence = extractor.extract(frame);
+    EXPECT_FALSE(evidence.empty());
+}

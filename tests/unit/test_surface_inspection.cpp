@@ -48,3 +48,15 @@ TEST(SurfaceInspectionTest, Test_DefectClassificationAndPayload) {
     EXPECT_EQ(d_out.domain_evidence[0].type, "severe_crack");
     EXPECT_EQ(d_out.domain_evidence[1].type, "micro_scratch");
 }
+
+TEST(SurfaceInspectionTest, ZeroDefectsReturnsZeroMean) {
+    RidgeGraph graph; // empty
+    cv::Mat blank(200, 200, CV_8UC1, cv::Scalar(128));
+    Frame frame(blank, "surface_frame", 1);
+    QualityReport quality{200.0, 128.0, 40.0, true, "OK"};
+    SurfaceInspectionPack pack(20.0f);
+    DomainInput d_in{frame, graph, quality};
+    DomainOutput d_out = pack.process(d_in);
+    EXPECT_EQ(d_out.domain_payload["total_defects_found"], 0);
+    EXPECT_DOUBLE_EQ(static_cast<double>(d_out.domain_payload["mean_defect_length"]), 0.0);
+}

@@ -110,6 +110,13 @@ TEST(CapiTest, Test_FrameCreationAndProcessing) {
     status = curv_pipeline_process_frame(pipeline, frame, tiny_buf, sizeof(tiny_buf));
     EXPECT_EQ(status, CURV_STATUS_BUFFER_TOO_SMALL);
 
+    // Quad and landmarks buffer too small
+    status = curv_pipeline_process_quad_roi(pipeline, frame, corners, tiny_buf, sizeof(tiny_buf));
+    EXPECT_EQ(status, CURV_STATUS_BUFFER_TOO_SMALL);
+
+    status = curv_pipeline_process_landmarks_roi(pipeline, frame, lms, tiny_buf, sizeof(tiny_buf));
+    EXPECT_EQ(status, CURV_STATUS_BUFFER_TOO_SMALL);
+
     // 6. Invalid argument tests
     EXPECT_EQ(curv_pipeline_process_frame(nullptr, frame, json_buf.data(), static_cast<int>(json_buf.size())),
               CURV_STATUS_INVALID_ARGUMENT);
@@ -118,6 +125,51 @@ TEST(CapiTest, Test_FrameCreationAndProcessing) {
     EXPECT_EQ(curv_pipeline_process_frame(pipeline, frame, nullptr, 0),
               CURV_STATUS_INVALID_ARGUMENT);
 
+    EXPECT_EQ(curv_pipeline_process_quad_roi(nullptr, frame, corners, json_buf.data(), static_cast<int>(json_buf.size())),
+              CURV_STATUS_INVALID_ARGUMENT);
+    EXPECT_EQ(curv_pipeline_process_quad_roi(pipeline, nullptr, corners, json_buf.data(), static_cast<int>(json_buf.size())),
+              CURV_STATUS_INVALID_ARGUMENT);
+    EXPECT_EQ(curv_pipeline_process_quad_roi(pipeline, frame, nullptr, json_buf.data(), static_cast<int>(json_buf.size())),
+              CURV_STATUS_INVALID_ARGUMENT);
+    EXPECT_EQ(curv_pipeline_process_quad_roi(pipeline, frame, corners, nullptr, 0),
+              CURV_STATUS_INVALID_ARGUMENT);
+
+    EXPECT_EQ(curv_pipeline_process_landmarks_roi(nullptr, frame, lms, json_buf.data(), static_cast<int>(json_buf.size())),
+              CURV_STATUS_INVALID_ARGUMENT);
+    EXPECT_EQ(curv_pipeline_process_landmarks_roi(pipeline, nullptr, lms, json_buf.data(), static_cast<int>(json_buf.size())),
+              CURV_STATUS_INVALID_ARGUMENT);
+    EXPECT_EQ(curv_pipeline_process_landmarks_roi(pipeline, frame, nullptr, json_buf.data(), static_cast<int>(json_buf.size())),
+              CURV_STATUS_INVALID_ARGUMENT);
+    EXPECT_EQ(curv_pipeline_process_landmarks_roi(pipeline, frame, lms, nullptr, 0),
+              CURV_STATUS_INVALID_ARGUMENT);
+
+    EXPECT_EQ(curv_pipeline_get_last_quality(nullptr, &quality_res), CURV_STATUS_INVALID_ARGUMENT);
+    EXPECT_EQ(curv_pipeline_get_last_quality(pipeline, nullptr), CURV_STATUS_INVALID_ARGUMENT);
+
     curv_frame_destroy(frame);
+    curv_pipeline_destroy(pipeline);
+}
+
+TEST(CapiTest, QualityGateRejectionReturnsStatus) {
+    CurvPipelineHandle pipeline = curv_pipeline_create("palm");
+    ASSERT_NE(pipeline, nullptr);
+
+    // Completely black flat frame fails quality gate (contrast, blur, brightness)
+    const int width = 100;
+    const int height = 100;
+    std::vector<uint8_t> black_buf(static_cast<size_t>(width * height * 3), 0);
+    CurvFrameHandle black_frame = curv_frame_create_from_buffer(
+        black_buf.data(), width, height, 0, CURV_PIXEL_FORMAT_RGB);
+    ASSERT_NE(black_frame, nullptr);
+
+    std::vector<char> json_buf(1024, 0);
+    int status = curv_pipeline_process_frame(pipeline, black_frame, json_buf.data(), static_cast<int>(json_buf.size()));
+    EXPECT_EQ(status, CURV_STATUS_QUALITY_GATE_REJECTED);
+
+    const float corners[8] = {0.0f, 0.0f, 100.0f, 0.0f, 100.0f, 100.0f, 0.0f, 100.0f};
+    status = curv_pipeline_process_quad_roi(pipeline, black_frame, corners, json_buf.data(), static_cast<int>(json_buf.size()));
+    EXPECT_EQ(status, CURV_STATUS_QUALITY_GATE_REJECTED);
+
+    curv_frame_destroy(black_frame);
     curv_pipeline_destroy(pipeline);
 }
