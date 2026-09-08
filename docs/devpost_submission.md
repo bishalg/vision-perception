@@ -3,9 +3,9 @@
 > **Project Title**: vision-perception: Sub-Pixel Curvilinear Perception & Autonomous Disaster Response  
 > **Tagline**: *Powered by OpenCV 5, AWS Bedrock Agents, and COOL on Graviton3*  
 > **Track**: Real-World Impact Track  
-> **Special Awards Targeted**:  
-> - 🏆 **Best Use of COOL ($1,000 Award)**  
-> - 🏆 **Agentic Vision ($1,000 Award)**  
+> **Categories**:  
+> - **Use of COOL**  
+> - **Agentic Vision**  
 
 ---
 
@@ -35,9 +35,9 @@ Our system bridges the gap between heavy computer vision and modern agentic AI t
    - **Action (`dispatchFloodAlert`)**: Validates the `evidenceToken`, checks DynamoDB server-side idempotency, broadcasts an emergency SNS alert, and writes an immutable audit receipt to S3.
 4. **Cloud-Optimized Vector Acceleration (COOL on Graviton3)**: Deploys the heavy C++ scale-space tensor engine to AWS Graviton3 (`c7g.2xlarge`) using the Cloud-Optimized OpenCV Library (COOL) with Neoverse V1 SIMD vectorization.
 
-## Special Award Targets
+## Categories
 
-### 🏆 Best Use of COOL ($1,000 Award)
+### Use of COOL
 We benchmarked 100 continuous iterations of Steger curvilinear extraction on full-resolution ($893 \times 1172$ px) disaster imagery, comparing AWS Graviton3 (`c7g.2xlarge`) + COOL against an Intel Sapphire Rapids (`c7i.2xlarge`) + Standard OpenCV baseline:
 
 | Metric | Graviton3 + COOL | Intel + Std OpenCV | Advantage |
@@ -49,7 +49,7 @@ We benchmarked 100 continuous iterations of Steger curvilinear extraction on ful
 
 **SIMD Verification**: We logged `cv2.getBuildInformation()` verifying active Arm `NEON_DOTPROD`, `NEON_FP16`, and `SVE` vector intrinsics under Neoverse V1 compiler flags (`-mcpu=neoverse-v1`), proving the hardware acceleration was fully utilized.
 
-### 🏆 Agentic Vision ($1,000 Award)
+### Agentic Vision
 Unlike conventional systems where an orchestrator pre-digests metrics and requests an LLM to rubber-stamp a decision, our architecture enforces a verifiable **Perception $\to$ Decision $\to$ Action** loop:
 
 - **Perception Tool (`getFloodEvidence`)**: The Agent receives only the `eventId`. It must autonomously call the tool to inspect metrics, registering a `PENDING` event in DynamoDB and acquiring a cryptographic `evidenceToken`.
