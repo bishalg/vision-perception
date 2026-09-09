@@ -1,0 +1,22 @@
+{
+  "agency": "Caltrans District 3",
+  "name": "I-80 Drum Forebay (synthetic Stage 2 clip)",
+  "location": {
+    "lat": 39.3142,
+    "lon": -120.7321,
+    "elevation_m": 1420.0
+  },
+  "pose": {
+    "heading_deg": 65.0,
+    "pitch_deg": -15.0,
+    "fov_deg": 55.0
+  },
+  "url": "file://synthetic_stage2_clip",
+  "video": {
+    "frames": 30,
+    "fps": 10,
+    "width": 320,
+    "height": 240,
+    "codec": "MJPG"
+  }
+}

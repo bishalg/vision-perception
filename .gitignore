@@ -29,6 +29,7 @@
 /output_overlay.png
 /synthetic/
 /eval_gate_tmp/
+/output/
 
 # ------------------------------------------------------------------------------
 # CMake & Build Directories

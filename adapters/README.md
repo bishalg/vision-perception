@@ -12,6 +12,9 @@ on `core/include/curv/interfaces/`.
 - **`opencv/`**: anti-aliased sub-pixel overlay renderer + SVG vector export.
 - **`opencv_dnn/`**: 21-landmark ONNX hand landmark detector (`cv::dnn`) with an
   anatomical heuristic fallback when no model is loaded.
+- **`cctv/`**: Phase 1 `CctvFrameSource` (static images + sidecar JSON), Phase 2
+  `CctvVideoSource` (recorded video + FPS stride), plus `FrameRingBuffer` /
+  `CctvStreamAdapter` foundation for live streams.
 - **`android/`**: JNI glue (`curv_jni.cpp`, zero-copy CameraX direct buffers) and
   the Kotlin wrapper `org.curv.CurvPipeline`. Gradle/NDK packaging planned (Phase C).
 - **`apple/`**: Swift wrapper `CurvEngine.swift` over the C-ABI.

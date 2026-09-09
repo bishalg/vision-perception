@@ -60,7 +60,8 @@ void CctvFrameSource::parseSidecarJson(const std::string& json_path) {
                 metadata_.fov_horizontal_deg = pose["fov_deg"].get<double>();
             }
         }
-    } catch (...) { // NOLINT(bugprone-empty-catch) — intentional resilience boundary: sidecar JSON is optional; partial/default metadata is safe
+    } catch (...) { // NOLINT(bugprone-empty-catch) — intentional resilience boundary: sidecar JSON is optional;
+                    // partial/default metadata is safe
     }
 }
 
@@ -119,10 +120,9 @@ void CctvFrameSource::populateFrameMetadata(Frame& frame) const {
     frame.metadata["fov_horizontal_deg"] = std::to_string(metadata_.fov_horizontal_deg);
 }
 
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static) — API consistency: non-static for vtable-compatible future override
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static) — keep instance API for future override
 QualityReport CctvFrameSource::validateFrame(const Frame& frame, quality::LaplacianQualityAnalyzer& analyzer) const {
     return analyzer.analyze(frame);
 }
 
 } // namespace CurvEngine::adapters
-

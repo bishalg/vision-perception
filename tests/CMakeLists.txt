@@ -331,3 +331,49 @@ add_test(NAME test_cctv_adapter
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 
+# ------------------------------------------------------------------------------
+# Unit Test: test_cctv_stream_adapter (Stage 2 ring-buffer / recorded video)
+# ------------------------------------------------------------------------------
+add_executable(test_cctv_stream_adapter
+    unit/test_cctv_stream_adapter.cpp
+)
+target_compile_definitions(test_cctv_stream_adapter
+    PRIVATE
+        CURV_PROJECT_ROOT="${CMAKE_SOURCE_DIR}"
+)
+target_link_libraries(test_cctv_stream_adapter
+    PRIVATE
+        curv_core
+        curv_adapters
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_cctv_stream_adapter)
+add_test(NAME test_cctv_stream_adapter
+    COMMAND test_cctv_stream_adapter
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
+# ------------------------------------------------------------------------------
+# Unit Test: test_cctv_video_source (Phase 2 recorded video + FPS stride)
+# ------------------------------------------------------------------------------
+add_executable(test_cctv_video_source
+    unit/test_cctv_video_source.cpp
+)
+target_compile_definitions(test_cctv_video_source
+    PRIVATE
+        CURV_PROJECT_ROOT="${CMAKE_SOURCE_DIR}"
+)
+target_link_libraries(test_cctv_video_source
+    PRIVATE
+        curv_core
+        curv_adapters
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_cctv_video_source)
+add_test(NAME test_cctv_video_source
+    COMMAND test_cctv_video_source
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+

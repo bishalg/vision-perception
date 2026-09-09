@@ -86,10 +86,10 @@ GitHub Actions (`.github/workflows/ci.yml`) gates every push to `main`/`dev`: cl
 `vision-perception` integrates multi-modal spatial intelligence (drawing patterns from [`bilawalsidhu/gods-eye-view`](https://github.com/bilawalsidhu/gods-eye-view)) into its differential geometry pipeline via a **gradual 3-stage development model**:
 
 ```text
-Stage 1: Static Images (Current)  ──►  Stage 2: Recorded Video  ──►  Stage 3: Live Streams
-• Local .png/.jpg fixtures            • Local short .mp4 clips       • Live RTSP / HLS / MJPEG
-• Instant, reproducible local POC     • Temporal tracking & jitter   • AWS Bedrock Agentic Loop
-• Zero network dependencies           • Ring-buffer backpressure     • 3D Cesium / GEV Digital Twin
+Stage 1: Static Images ✅          ──►  Stage 2: Recorded Video (Current)  ──►  Stage 3: Live Streams
+• Local .png/.jpg fixtures              • Local short .avi/.mp4 clips           • Live RTSP / HLS / MJPEG
+• Instant, reproducible local POC       • FPS-stride + annotated demo CLI      • AWS Bedrock Agentic Loop
+• Zero network dependencies             • Ring-buffer backpressure ready        • 3D Cesium / GEV Digital Twin
 ```
 
 ### Ingestion Matrix & Documentation
@@ -114,6 +114,8 @@ Stage 1: Static Images (Current)  ──►  Stage 2: Recorded Video  ──► 
 - [x] **Milestone 6: Tests & evaluation tooling** — GitHub Actions CI (format, Ubuntu/macOS `-Werror` builds, ASan/UBSan, 100% line+branch coverage gate), clang-format/clang-tidy gates, `synth_generator` + `evaluate` RMSE < 0.1 px accuracy gate, `benchmark` latency profiles at 720p/1080p/4K (`docs/benchmarks.md`)
 - [x] **Milestone 7: Geospatial Flood Perception Pack (OpenCV AI Competition 2026)** — Rapid glacier-collapse flood quantification in Nepal (Lende Khola / Bhote Koshi) using Sentinel-2 L2A 10m imagery (+88.4% flood signature surge, +121.1% channel widening, dual controls passing; see [`docs/flood_nepal_2026.md`](docs/flood_nepal_2026.md))
 - [x] **Milestone 8: AWS Cloud Architecture & Special Award Targets** — AWS CDK v2 IaC (`aws_infra/`), two-tool Bedrock Agentic Vision loop (`getFloodEvidence` $\to$ `dispatchFloodAlert`), DynamoDB idempotency gate, dedicated S3 audit bucket, SQS fallback queue, and COOL on AWS Graviton3 benchmark suite (see [`docs/devpost_submission.md`](docs/devpost_submission.md) and [`docs/aws_benchmark_guide.md`](docs/aws_benchmark_guide.md))
-- [ ] **Milestone 9: Real-Time CCTV & Spatial Perception (Phase 1: Static Reference POC)** — Curate `data/fixtures/cctv/` reference images, implement `adapters/cctv/`, and evaluate Steger curvilinear extraction on highway lane lines and river corridor watermarks
-- [ ] Next phase: mobile app packaging (Android Gradle/NDK + iOS SwiftPM/xcframework) and additional domain packs (poultry, driver_monitoring, document_scanning)
+- [x] **Milestone 9: Real-Time CCTV & Spatial Perception (Phase 1: Static Reference POC)** — Curate `data/fixtures/cctv/` reference images, implement `adapters/cctv/`, and evaluate Steger curvilinear extraction on highway lane lines and river corridor watermarks
+- [x] **Milestone 10: Phase 2 Recorded Video Pipeline** — `CctvVideoSource` + `video_pipeline_demo` (quality + Steger annotated AVI/MP4), ring-buffer stream adapter foundation, offline `data/fixtures/cctv_video/` clip
+- [ ] **Milestone 11: Phase 3 Live HTTP Snapshot Stream** — `CctvHttpSnapshot` + `live_snapshot_demo` with local cache/proxy fallback for presentation-safe demos
+- [ ] Next phase: CesiumJS 3D twin (Phase 4), flood alert production demo (Phase 5); mobile packaging remains parallel track
 

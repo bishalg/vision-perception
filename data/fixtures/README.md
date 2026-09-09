@@ -2,34 +2,32 @@
 
 > **Directory**: `data/fixtures/`  
 > **Lifecycle Status**: Active Test Fixtures  
-> **Development Philosophy**: Gradual 3-Stage Development (Static Images $\to$ Recorded Video $\to$ Live Streams)
+> **Development Philosophy**: Gradual 3-Stage Development (Static Images → Recorded Video → Live Streams)
 
 ---
 
 ## 1. Gradual 3-Stage Development Strategy
 
-To ensure rapid local development, zero network flakiness, and deterministic CI testing, feature implementations progress through three distinct stages:
-
 ```text
 ┌────────────────────────────────┐
-│ Stage 1: Static Reference Img  │ ◄── [CURRENT STAGE]
-│ • Local image files (.png/.jpg)│     Fastest local POC iteration
-│ • Deterministic & reproducible │     Zero network latency / rate limits
-│ • ctest & CI regression suite  │     Sub-pixel algorithm validation
+│ Stage 1: Static Reference Img  │ ✅ DONE
+│ • Local image files (.png/.jpg)│
+│ • Deterministic & reproducible │
+│ • ctest & CI regression suite  │
 └───────────────┬────────────────┘
                 ▼
 ┌────────────────────────────────┐
-│ Stage 2: Recorded Video Feeds  │
-│ • Local short video (.mp4)     │     Temporal tracking & jitter analysis
-│ • Offline simulated streaming  │     Ring-buffer & backpressure testing
-│ • Frame-to-frame continuity    │     Dynamic waterline / vehicle flow
+│ Stage 2: Recorded Video Feeds  │ ◄── [CURRENT STAGE]
+│ • Local short video (.avi/.mp4)│     Temporal tracking & FPS stride
+│ • Offline simulated streaming  │     Ring-buffer & backpressure ready
+│ • Annotated demo CLI output    │     video_pipeline_demo
 └───────────────┬────────────────┘
                 ▼
 ┌────────────────────────────────┐
 │ Stage 3: Live Real-Time Feeds  │
-│ • Live RTSP / HLS / MJPEG      │     Production deployment
-│ • Network reconnect & retry    │     Live AWS Bedrock Agentic Loop
-│ • Edge & Cloud streaming       │     3D Cesium / GEV Digital Twin
+│ • Live RTSP / HLS / MJPEG      │
+│ • HTTP snapshot pull (Phase 3) │
+│ • Edge & Cloud streaming       │
 └────────────────────────────────┘
 ```
 
@@ -39,32 +37,36 @@ To ensure rapid local development, zero network flakiness, and deterministic CI 
 
 ```text
 data/fixtures/
-├── cctv/                 # Highway & urban intersection reference snapshots (Caltrans, Austin, TfL)
-│   ├── day_clear/        # Baseline daytime reference frames
-│   ├── night_lowlux/     # Nighttime low-illumination and glare test frames
-│   └── weather_rain/     # Rain, spray, and fog blur-gate test frames
-├── cctv_flood/           # Alpine river corridor & bridge pier watermark snapshots (Nepal / Alpine)
-│   ├── pre_flood/        # Baseline calm water stage
-│   └── post_flood/       # High-turbidity flood surge & bank scour
-└── satellite/            # Orthorectified optical (Sentinel-2) and SAR (Sentinel-1) reference crops
+├── cctv/                 # Highway & urban intersection reference snapshots
+│   ├── day_clear/
+│   ├── night_lowlux/
+│   ├── weather_rain/
+│   └── video/            # Stream-adapter soak clip (ring buffer tests)
+├── cctv_video/           # Phase 2 recorded-video demo + unit-test clip
+│   ├── caltrans_i80_sample.avi
+│   └── caltrans_i80_sample.json
+├── cctv_flood/           # Alpine river corridor watermark snapshots
+└── satellite/            # Orthorectified optical / SAR reference crops
 ```
 
 ---
 
 ## 3. Quick Local POC Execution
 
-Run the C++ Steger ridge extraction CLI against any static reference fixture:
-
 ```bash
-# Test on a static CCTV reference snapshot
-./build/tools/curv_cli --input data/fixtures/cctv/day_clear/caltrans_i80_sample.png \
-                       --config configs/default_ridge.json \
-                       --output data/out_cctv_overlay.png \
-                       --evidence data/out_cctv_evidence.json
+# Stage 1 — static CCTV snapshot
+./build/tools/curv_cli --image data/fixtures/cctv/day_clear/caltrans_i80_day.png \
+                       --out data/out_cctv_overlay.png \
+                       --json data/out_cctv_evidence.json
 
-# Test on a static flood river corridor crop
-./build/tools/curv_cli --input data/fixtures/cctv_flood/post_flood/bhote_koshi_sample.png \
-                       --config configs/geospatial_wide_ridge.json \
-                       --output data/out_flood_overlay.png \
-                       --evidence data/out_flood_evidence.json
+# Stage 2 — recorded video → annotated output (side-by-side raw | Steger)
+./build/tools/video_pipeline_demo \
+  --input data/fixtures/cctv_video/caltrans_i80_sample.avi \
+  --output output/annotated_caltrans_i80.avi \
+  --fps-stride 2 \
+  --side-by-side
+
+# Regenerate synthetic video fixture (no network)
+python3 tools/cctv_video_fixture.py \
+  -o data/fixtures/cctv_video/caltrans_i80_sample.avi
 ```

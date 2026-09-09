@@ -20,6 +20,8 @@ adapters/opencv/src/*.cpp
 adapters/opencv/include/**/*.hpp
 adapters/opencv_dnn/src/*.cpp
 adapters/opencv_dnn/include/**/*.hpp
+adapters/cctv/src/*.cpp
+adapters/cctv/include/**/*.hpp
 adapters/android/*.cpp
 
 # --- CLI/application support libraries ---------------------------------------
