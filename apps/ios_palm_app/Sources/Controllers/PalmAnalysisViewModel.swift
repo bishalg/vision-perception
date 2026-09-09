@@ -4,26 +4,36 @@ import CoreVideo
 import UIKit
 import Combine
 import os.log
+import CurvApple
+import CurvCameraOverlay
+import CurvPalmOverlay
 
 /**
- * Controller / ViewModel coordinating the camera pipeline, capture guidance,
- * haptics, and background CurvEngine processing.
+ * Palm-domain ViewModel. Camera / HUD come from the overlay kit.
+ * Post-capture priority: keep the photo and draw crease overlays on it.
+ * CurvEngine metrics are optional enrichment when the XCFramework is linked.
  */
 public final class PalmAnalysisViewModel: ObservableObject {
     private let logger = Logger(subsystem: "org.curv.palm", category: "PalmAnalysisViewModel")
 
-    public let cameraManager = CameraManager()
+    public let profile = PalmOverlay.profile
+    public let cameraSession = CameraSession()
     private let handTracker = VisionHandTracker()
-    private let guidanceEngine = PalmCaptureGuidance()
+    private let guidanceEngine: CaptureGuidance
     private var curvEngine: CurvEngine?
 
-    @Published public var guidanceState: PalmGuidanceState = .searching(message: LocalizedStrings.tr("guidance.searching"))
-    @Published public var qualityMetrics = PalmQualityMetrics()
+    @Published public var guidanceState: GuidanceState = .searching
+    @Published public var qualityMetrics = QualityMetrics()
+    @Published public var statusMessageOverride: String?
     @Published public var detectedLandmarks: [CGPoint] = []
     @Published public var isAnalyzing: Bool = false
     @Published public var analysisResult: PalmAnalysisResponse?
     @Published public var detectedSplines: [CreaseSpline] = []
-    @Published public var showResultSheet: Bool = false
+    @Published public var captureLandmarks: [CGPoint] = []
+    @Published public var capturedImage: UIImage?
+    /// Full-screen overlay review (opened from the camera-roll style thumbnail).
+    @Published public var showResultViewer: Bool = false
+    @Published public var usedNativeEngine: Bool = false
     @Published public var currentLanguage: AppLanguage = .english {
         didSet {
             LocalizedStrings.currentLanguage = currentLanguage
@@ -31,34 +41,63 @@ public final class PalmAnalysisViewModel: ObservableObject {
     }
 
     private var isCapturing: Bool = false
+    /// Prevents immediate re-arming of the 3-2-1 auto-capture after a shot.
+    private var suppressAutoCaptureUntil: CFTimeInterval = 0
+    private var lastCountdownDigit: Int = 0
     private let hapticFeedback = UIImpactFeedbackGenerator(style: .medium)
+    private let lightHaptic = UIImpactFeedbackGenerator(style: .light)
+    private let successHaptic = UINotificationFeedbackGenerator()
+    /// Throttle UI metric publishes so Lux/Glare/Tilt stay smooth (~15 Hz).
+    private var lastMetricsPublish: CFTimeInterval = 0
 
     public init() {
+        self.guidanceEngine = CaptureGuidance(thresholds: PalmOverlay.profile.thresholds)
         do {
-            self.curvEngine = try CurvEngine(domainId: "palm")
-            logger.info("Successfully initialized CurvEngine native pipeline")
+            self.curvEngine = try CurvEngine(domainId: PalmOverlay.profile.domainId)
+            logger.info("CurvEngine native pipeline ready")
         } catch {
-            logger.error("CurvEngine initialization failed: \(error.localizedDescription)")
+            logger.notice("CurvEngine unavailable (\(error.localizedDescription)) — landmark overlays only")
         }
 
         setupCameraPipeline()
         hapticFeedback.prepare()
+        lightHaptic.prepare()
+        successHaptic.prepare()
     }
 
     private func setupCameraPipeline() {
-        cameraManager.onFrameReceived = { [weak self] pixelBuffer in
-            guard let self = self else { return }
-            self.processVideoFrame(pixelBuffer)
+        cameraSession.onFrameReceived = { [weak self] pixelBuffer in
+            self?.processVideoFrame(pixelBuffer)
         }
     }
 
     public func start() {
         guidanceEngine.reset()
-        cameraManager.start()
+        cameraSession.start()
     }
 
     public func stop() {
-        cameraManager.stop()
+        cameraSession.stop()
+    }
+
+    public func openLastCapture() {
+        guard capturedImage != nil else { return }
+        showResultViewer = true
+    }
+
+    public func dismissResultViewer() {
+        showResultViewer = false
+    }
+
+    public func clearLastCapture() {
+        DispatchQueue.main.async {
+            self.analysisResult = nil
+            self.detectedSplines.removeAll()
+            self.captureLandmarks.removeAll()
+            self.capturedImage = nil
+            self.showResultViewer = false
+            self.usedNativeEngine = false
+        }
     }
 
     public func retake() {
@@ -67,109 +106,216 @@ public final class PalmAnalysisViewModel: ObservableObject {
             self.isAnalyzing = false
             self.analysisResult = nil
             self.detectedSplines.removeAll()
-            self.showResultSheet = false
+            self.captureLandmarks.removeAll()
+            self.capturedImage = nil
+            self.showResultViewer = false
+            self.usedNativeEngine = false
             self.guidanceEngine.reset()
-            self.cameraManager.start()
+            self.cameraSession.start()
         }
     }
 
     private func processVideoFrame(_ pixelBuffer: CVPixelBuffer) {
-        guard !isCapturing && !isAnalyzing else { return }
+        guard !isCapturing && !isAnalyzing && !showResultViewer else { return }
 
         let now = CACurrentMediaTime()
-        guard let landmarks = handTracker.processFrame(pixelBuffer) else {
-            DispatchQueue.main.async {
-                self.guidanceState = .searching(message: LocalizedStrings.tr("guidance.searching"))
-                self.detectedLandmarks.removeAll()
-                self.qualityMetrics = PalmQualityMetrics()
-            }
-            return
-        }
+        let landmarks = handTracker.processFrame(pixelBuffer)
+        let framing = landmarks.flatMap { HandLandmarkPose.framing(from: $0) }
+        let pose = framing?.pose
+        let tipsOK = framing?.isFullyInFrame ?? false
 
-        let (state, metrics) = guidanceEngine.evaluate(
+        let photoCenter = pose?.centroid ?? CGPoint(x: 0.5, y: 0.5)
+        let photoRadius = pose.map { max(0.18, $0.scale * 0.28) } ?? 0.28
+        let photometrics = Photometrics.sample(
             pixelBuffer: pixelBuffer,
-            landmarks: landmarks,
+            center: photoCenter,
+            radius: photoRadius
+        )
+
+        // Gate countdown on soft fingertip margin; still coach with cm when scale is off.
+        let gatePose = tipsOK ? pose : nil
+        var evaluation = guidanceEngine.evaluate(
+            pose: gatePose,
+            photometrics: photometrics,
             timestamp: now
         )
 
-        DispatchQueue.main.async {
-            self.detectedLandmarks = landmarks
-            self.qualityMetrics = metrics
-            self.guidanceState = self.mapLocalizedGuidance(state)
+        if let pose, !tipsOK {
+            var metrics = evaluation.metrics
+            metrics.scale = pose.scale
+            metrics.centerOffset = {
+                let dx = Float(pose.centroid.x - 0.5)
+                let dy = Float(pose.centroid.y - 0.5)
+                return sqrt(dx * dx + dy * dy)
+            }()
+            metrics.rollAngleDeg = abs(pose.rollDeg)
+            metrics.flatnessRatio = pose.aspectRatio
+            metrics.meanLuminance = photometrics.meanLuminance
+            metrics.glareRatio = photometrics.glareRatio
+            metrics.isIlluminationOk =
+                photometrics.meanLuminance >= profile.thresholds.minLuminance &&
+                photometrics.glareRatio <= profile.thresholds.maxGlareRatio
+            metrics.isReadyForCapture = false
+            evaluation = GuidanceEvaluation(state: .moveBack, metrics: metrics)
+        }
 
-            if case .ready(let progress, _) = state, progress >= 1.0 {
+        var statusOverride: String? = nil
+        if let pose {
+            if !tipsOK {
+                statusOverride = "Move ~2 cm farther — keep fingertips inside"
+            } else if let hint = PalmOverlay.distanceHintCm(scale: pose.scale, thresholds: profile.thresholds) {
+                statusOverride = hint.closer
+                    ? "Move ~\(hint.cm) cm closer"
+                    : "Move ~\(hint.cm) cm farther"
+            } else if case .centerSubject = evaluation.state {
+                statusOverride = centerHint(for: pose)
+            } else if case .ready(let progress) = evaluation.state, progress < 1 {
+                statusOverride = profile.copy.message(for: evaluation.state)
+            }
+        }
+
+        let shouldPublishMetrics = (now - lastMetricsPublish) >= (1.0 / 15.0)
+        if shouldPublishMetrics {
+            lastMetricsPublish = now
+        }
+
+        let autoArmed = now >= suppressAutoCaptureUntil
+        let shouldCapture: Bool = {
+            guard autoArmed,
+                  landmarks != nil,
+                  tipsOK,
+                  case .ready(let progress) = evaluation.state,
+                  progress >= 1.0,
+                  evaluation.metrics.isReadyForCapture
+            else { return false }
+            return true
+        }()
+
+        DispatchQueue.main.async {
+            if let landmarks {
+                self.detectedLandmarks = landmarks
+            } else {
+                self.detectedLandmarks.removeAll()
+            }
+            if !tipsOK {
+                self.guidanceEngine.reset()
+            }
+            self.guidanceState = evaluation.state
+            self.statusMessageOverride = statusOverride
+            if shouldPublishMetrics {
+                self.qualityMetrics = evaluation.metrics
+            }
+
+            if let digit = self.profile.copy.countdownDigit(for: evaluation.state), digit != self.lastCountdownDigit {
+                self.lastCountdownDigit = digit
+                self.lightHaptic.impactOccurred()
+            }
+            if case .ready = evaluation.state {
+            } else {
+                self.lastCountdownDigit = 0
+            }
+
+            if shouldCapture, let landmarks {
                 self.triggerCapture(landmarks: landmarks)
             }
         }
     }
 
+    private func centerHint(for pose: SubjectPose) -> String {
+        let dx = Float(pose.centroid.x - 0.5)
+        let dy = Float(pose.centroid.y - 0.5)
+        let perCm: Float = 0.03
+        if abs(dx) >= abs(dy) {
+            let cm = max(1, Int(round(abs(dx) / perCm)))
+            return dx > 0 ? "Move ~\(cm) cm left" : "Move ~\(cm) cm right"
+        } else {
+            let cm = max(1, Int(round(abs(dy) / perCm)))
+            return dy > 0 ? "Move ~\(cm) cm up" : "Move ~\(cm) cm down"
+        }
+    }
+
     public func manualCapture() {
-        guard !isCapturing && !isAnalyzing, !detectedLandmarks.isEmpty else { return }
+        guard !isCapturing && !isAnalyzing && !showResultViewer, !detectedLandmarks.isEmpty else { return }
+        guard let framing = HandLandmarkPose.framing(from: detectedLandmarks), framing.isFullyInFrame else { return }
         triggerCapture(landmarks: detectedLandmarks)
     }
 
     private func triggerCapture(landmarks: [CGPoint]) {
         guard !isCapturing else { return }
         isCapturing = true
+        // Block another auto cycle until this shot finishes + cooldown.
+        suppressAutoCaptureUntil = CACurrentMediaTime() + 10.0
 
         DispatchQueue.main.async {
             self.hapticFeedback.impactOccurred()
             self.isAnalyzing = true
-            self.guidanceState = .ready(countdownProgress: 1.0, message: LocalizedStrings.tr("guidance.ready"))
+            self.guidanceState = .ready(countdownProgress: 1.0)
         }
 
-        cameraManager.capturePhoto { [weak self] result in
-            guard let self = self else { return }
+        cameraSession.capturePhoto { [weak self] result in
+            guard let self else { return }
             switch result {
             case .success(let photoBuffer):
-                self.executeDeepPerception(photoBuffer: photoBuffer, landmarks: landmarks)
+                self.finishCapture(photoBuffer: photoBuffer, landmarks: landmarks)
             case .failure(let error):
                 self.logger.error("Photo capture failed: \(error.localizedDescription)")
                 DispatchQueue.main.async {
                     self.isCapturing = false
                     self.isAnalyzing = false
+                    self.suppressAutoCaptureUntil = CACurrentMediaTime() + 1.5
+                    self.guidanceEngine.reset()
                 }
             }
         }
     }
 
-    private func executeDeepPerception(photoBuffer: CVPixelBuffer, landmarks: [CGPoint]) {
+    private func finishCapture(photoBuffer: CVPixelBuffer, landmarks: [CGPoint]) {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let self = self else { return }
-            let flatLandmarks = VisionHandTracker.toFlatLandmarksArray(landmarks)
+            guard let self else { return }
 
+            let image = Self.image(from: photoBuffer)
+            var splines = self.generateLandmarkCreases(landmarks: landmarks, response: nil)
             var parsedResponse: PalmAnalysisResponse?
-            var splines: [CreaseSpline] = []
+            var usedNative = false
 
             if let engine = self.curvEngine {
-                let curvResult = engine.processPixelBuffer(pixelBuffer: photoBuffer, landmarks: flatLandmarks)
-                switch curvResult {
+                let flat = VisionHandTracker.toFlatLandmarksArray(landmarks)
+                switch engine.processPixelBuffer(pixelBuffer: photoBuffer, landmarks: flat) {
                 case .success(let jsonString):
                     parsedResponse = PalmAnalysisResponse.from(jsonString: jsonString)
-                    splines = self.generateSplinesFromAnalysis(parsedResponse, landmarks: landmarks)
+                    splines = self.generateLandmarkCreases(landmarks: landmarks, response: parsedResponse)
+                    usedNative = true
                 case .failure(let err):
                     self.logger.error("CurvEngine execution error: \(String(describing: err))")
                 }
             }
 
             DispatchQueue.main.async {
-                self.cameraManager.stop()
-                self.analysisResult = parsedResponse
+                // Stay in live camera mode (iOS Camera style): keep thumbnail, resume preview.
+                self.capturedImage = image
+                self.captureLandmarks = landmarks
                 self.detectedSplines = splines
+                self.analysisResult = parsedResponse
+                self.usedNativeEngine = usedNative
                 self.isAnalyzing = false
-                self.showResultSheet = true
+                self.isCapturing = false
+                self.showResultViewer = false
+                self.lastCountdownDigit = 0
+                self.suppressAutoCaptureUntil = CACurrentMediaTime() + 3.0
+                self.guidanceEngine.reset()
+                self.cameraSession.start()
+                self.successHaptic.notificationOccurred(.success)
             }
         }
     }
 
-    private func generateSplinesFromAnalysis(
-        _ response: PalmAnalysisResponse?,
-        landmarks: [CGPoint]
+    /// Landmark-anchored major crease guides drawn over the captured palm photo.
+    private func generateLandmarkCreases(
+        landmarks: [CGPoint],
+        response: PalmAnalysisResponse?
     ) -> [CreaseSpline] {
         guard landmarks.count >= 21 else { return [] }
-        var result: [CreaseSpline] = []
 
-        // Derive anatomically accurate spline anchors anchored to landmark coordinates
         let wrist = landmarks[0]
         let thumbMcp = landmarks[2]
         let indexMcp = landmarks[5]
@@ -177,76 +323,86 @@ public final class PalmAnalysisViewModel: ObservableObject {
         let ringMcp = landmarks[13]
         let pinkyMcp = landmarks[17]
 
-        // Heart line (Upper palm crease across mounts from Mercury to Jupiter)
-        let heartStart = CGPoint(x: pinkyMcp.x * 0.95 + wrist.x * 0.05, y: pinkyMcp.y * 0.70 + wrist.y * 0.30)
-        let heartMid = CGPoint(x: middleMcp.x * 0.85 + wrist.x * 0.15, y: middleMcp.y * 0.65 + wrist.y * 0.35)
-        let heartEnd = CGPoint(x: indexMcp.x * 0.80 + thumbMcp.x * 0.20, y: indexMcp.y * 0.60 + thumbMcp.y * 0.40)
-        result.append(CreaseSpline(
-            lineType: .heart,
-            points: [heartStart, heartMid, heartEnd],
-            confidence: response?.domainPayload?.majorLines?["heart"]?.confidence ?? 0.88,
-            tortuosity: response?.domainPayload?.majorLines?["heart"]?.tortuosity ?? 1.12,
-            arcLengthPx: response?.domainPayload?.majorLines?["heart"]?.arcLengthPx ?? 184.5
-        ))
+        func metric(_ key: String, fallbackConf: Float, fallbackTort: Float) -> (Float, Float, Float) {
+            let info = response?.domainPayload?.majorLines?[key]
+            let ptsFallback: Float = 0
+            return (
+                info?.confidence ?? fallbackConf,
+                info?.tortuosity ?? fallbackTort,
+                info?.arcLengthPx ?? ptsFallback
+            )
+        }
 
-        // Head line (Middle palm crease)
-        let headStart = CGPoint(x: indexMcp.x * 0.70 + thumbMcp.x * 0.30, y: indexMcp.y * 0.50 + thumbMcp.y * 0.50)
-        let headMid = CGPoint(x: middleMcp.x * 0.60 + wrist.x * 0.40, y: middleMcp.y * 0.50 + wrist.y * 0.50)
-        let headEnd = CGPoint(x: pinkyMcp.x * 0.85 + wrist.x * 0.15, y: pinkyMcp.y * 0.50 + wrist.y * 0.50)
-        result.append(CreaseSpline(
-            lineType: .head,
-            points: [headStart, headMid, headEnd],
-            confidence: response?.domainPayload?.majorLines?["head"]?.confidence ?? 0.91,
-            tortuosity: response?.domainPayload?.majorLines?["head"]?.tortuosity ?? 1.08,
-            arcLengthPx: response?.domainPayload?.majorLines?["head"]?.arcLengthPx ?? 192.0
-        ))
+        func length(_ pts: [CGPoint], imageHint: Float) -> Float {
+            if imageHint > 0 { return imageHint }
+            var sum: Float = 0
+            for i in 1..<pts.count {
+                let dx = Float(pts[i].x - pts[i - 1].x)
+                let dy = Float(pts[i].y - pts[i - 1].y)
+                sum += sqrt(dx * dx + dy * dy)
+            }
+            // Normalized path length × typical 1080p diagonal scale for readable HUD numbers.
+            return sum * 1400
+        }
 
-        // Life line (Encircling thenar eminence)
-        let lifeStart = CGPoint(x: indexMcp.x * 0.65 + thumbMcp.x * 0.35, y: indexMcp.y * 0.52 + thumbMcp.y * 0.48)
-        let lifeMid = CGPoint(x: thumbMcp.x * 0.55 + wrist.x * 0.45, y: thumbMcp.y * 0.40 + wrist.y * 0.60)
-        let lifeEnd = CGPoint(x: wrist.x * 0.75 + thumbMcp.x * 0.25, y: wrist.y * 0.90 + thumbMcp.y * 0.10)
-        result.append(CreaseSpline(
-            lineType: .life,
-            points: [lifeStart, lifeMid, lifeEnd],
-            confidence: response?.domainPayload?.majorLines?["life"]?.confidence ?? 0.94,
-            tortuosity: response?.domainPayload?.majorLines?["life"]?.tortuosity ?? 1.25,
-            arcLengthPx: response?.domainPayload?.majorLines?["life"]?.arcLengthPx ?? 245.2
-        ))
+        // Heart: across upper palm (Mercury → Jupiter mounts)
+        let heart: [CGPoint] = [
+            CGPoint(x: pinkyMcp.x * 0.92 + wrist.x * 0.08, y: pinkyMcp.y * 0.72 + wrist.y * 0.28),
+            CGPoint(x: ringMcp.x * 0.88 + wrist.x * 0.12, y: ringMcp.y * 0.68 + wrist.y * 0.32),
+            CGPoint(x: middleMcp.x * 0.82 + wrist.x * 0.18, y: middleMcp.y * 0.64 + wrist.y * 0.36),
+            CGPoint(x: indexMcp.x * 0.78 + thumbMcp.x * 0.22, y: indexMcp.y * 0.58 + thumbMcp.y * 0.42)
+        ]
+        let (hConf, hTort, hLen) = metric("heart", fallbackConf: 0.86, fallbackTort: 1.12)
 
-        // Fate line (Saturn line rising vertical towards middle finger)
-        let fateStart = CGPoint(x: wrist.x * 0.90 + middleMcp.x * 0.10, y: wrist.y * 0.85 + middleMcp.y * 0.15)
-        let fateEnd = CGPoint(x: middleMcp.x * 0.75 + wrist.x * 0.25, y: middleMcp.y * 0.68 + wrist.y * 0.32)
-        result.append(CreaseSpline(
-            lineType: .fate,
-            points: [fateStart, fateEnd],
-            confidence: response?.domainPayload?.majorLines?["fate"]?.confidence ?? 0.79,
-            tortuosity: response?.domainPayload?.majorLines?["fate"]?.tortuosity ?? 1.03,
-            arcLengthPx: response?.domainPayload?.majorLines?["fate"]?.arcLengthPx ?? 142.8
-        ))
+        // Head: mid-palm transverse
+        let head: [CGPoint] = [
+            CGPoint(x: indexMcp.x * 0.68 + thumbMcp.x * 0.32, y: indexMcp.y * 0.48 + thumbMcp.y * 0.52),
+            CGPoint(x: middleMcp.x * 0.58 + wrist.x * 0.42, y: middleMcp.y * 0.48 + wrist.y * 0.52),
+            CGPoint(x: ringMcp.x * 0.70 + wrist.x * 0.30, y: ringMcp.y * 0.50 + wrist.y * 0.50),
+            CGPoint(x: pinkyMcp.x * 0.82 + wrist.x * 0.18, y: pinkyMcp.y * 0.52 + wrist.y * 0.48)
+        ]
+        let (hdConf, hdTort, hdLen) = metric("head", fallbackConf: 0.90, fallbackTort: 1.08)
 
-        return result
+        // Life: arcs around thenar
+        let life: [CGPoint] = [
+            CGPoint(x: indexMcp.x * 0.62 + thumbMcp.x * 0.38, y: indexMcp.y * 0.50 + thumbMcp.y * 0.50),
+            CGPoint(x: thumbMcp.x * 0.70 + wrist.x * 0.30, y: thumbMcp.y * 0.45 + wrist.y * 0.55),
+            CGPoint(x: thumbMcp.x * 0.45 + wrist.x * 0.55, y: thumbMcp.y * 0.25 + wrist.y * 0.75),
+            CGPoint(x: wrist.x * 0.78 + thumbMcp.x * 0.22, y: wrist.y * 0.92 + thumbMcp.y * 0.08)
+        ]
+        let (lConf, lTort, lLen) = metric("life", fallbackConf: 0.93, fallbackTort: 1.25)
+
+        // Fate: rising toward middle finger
+        let fate: [CGPoint] = [
+            CGPoint(x: wrist.x * 0.88 + middleMcp.x * 0.12, y: wrist.y * 0.88 + middleMcp.y * 0.12),
+            CGPoint(x: wrist.x * 0.55 + middleMcp.x * 0.45, y: wrist.y * 0.55 + middleMcp.y * 0.45),
+            CGPoint(x: middleMcp.x * 0.72 + wrist.x * 0.28, y: middleMcp.y * 0.70 + wrist.y * 0.30)
+        ]
+        let (fConf, fTort, fLen) = metric("fate", fallbackConf: 0.78, fallbackTort: 1.03)
+
+        return [
+            CreaseSpline(lineType: .heart, points: heart, confidence: hConf, tortuosity: hTort, arcLengthPx: length(heart, imageHint: hLen)),
+            CreaseSpline(lineType: .head, points: head, confidence: hdConf, tortuosity: hdTort, arcLengthPx: length(head, imageHint: hdLen)),
+            CreaseSpline(lineType: .life, points: life, confidence: lConf, tortuosity: lTort, arcLengthPx: length(life, imageHint: lLen)),
+            CreaseSpline(lineType: .fate, points: fate, confidence: fConf, tortuosity: fTort, arcLengthPx: length(fate, imageHint: fLen))
+        ]
     }
 
-    private func mapLocalizedGuidance(_ state: PalmGuidanceState) -> PalmGuidanceState {
-        switch state {
-        case .searching:
-            return .searching(message: LocalizedStrings.tr("guidance.searching"))
-        case .centerHand:
-            return .centerHand(message: LocalizedStrings.tr("guidance.center"))
-        case .moveCloser:
-            return .moveCloser(message: LocalizedStrings.tr("guidance.closer"))
-        case .moveBack:
-            return .moveBack(message: LocalizedStrings.tr("guidance.further"))
-        case .holdFlat:
-            return .holdFlat(message: LocalizedStrings.tr("guidance.flat"))
-        case .tooDark:
-            return .tooDark(message: LocalizedStrings.tr("guidance.dark"))
-        case .glareDetected:
-            return .glareDetected(message: LocalizedStrings.tr("guidance.glare"))
-        case .holdSteady:
-            return .holdSteady(message: LocalizedStrings.tr("guidance.steady"))
-        case .ready(let progress, _):
-            return .ready(countdownProgress: progress, message: LocalizedStrings.tr("guidance.ready"))
+    private static func image(from pixelBuffer: CVPixelBuffer) -> UIImage? {
+        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+        let context = CIContext(options: nil)
+        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
+            return nil
         }
+
+        // Prefer upright portrait. If the still buffer is landscape (wider than tall)
+        // while the app is locked to portrait, rotate so the thumbnail matches preview.
+        let width = CGFloat(cgImage.width)
+        let height = CGFloat(cgImage.height)
+        if width > height {
+            // Sensor landscape → rotate 90° CW for portrait UI (fixes "tilted left" stills).
+            return UIImage(cgImage: cgImage, scale: 1.0, orientation: .right)
+        }
+        return UIImage(cgImage: cgImage, scale: 1.0, orientation: .up)
     }
 }

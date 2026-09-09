@@ -15,3 +15,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "PalmScannerApp"
 include(":app")
+include(":overlay")
+project(":overlay").projectDir = file("../mobile_overlay/android")

@@ -1,0 +1,67 @@
+name: PalmScanner
+options:
+  bundleIdPrefix: org.curv
+  deploymentTarget:
+    iOS: "16.0"
+  developmentLanguage: en
+  xcodeVersion: "15.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    TARGETED_DEVICE_FAMILY: "1"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+    ENABLE_BITCODE: NO
+    CLANG_ENABLE_MODULES: YES
+
+# Shared packages only — palm app code lives in this Xcode target.
+packages:
+  CurvCameraOverlayKit:
+    path: ../mobile_overlay/ios
+  CurvApple:
+    path: ../../adapters/apple
+
+targets:
+  PalmScanner:
+    type: application
+    platform: iOS
+    sources:
+      - path: AppHost
+        excludes:
+          - Info.plist
+      - path: Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.curv.palmapp
+        PRODUCT_NAME: PalmScanner
+        INFOPLIST_FILE: AppHost/Info.plist
+        GENERATE_INFOPLIST_FILE: false
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: "1.0.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: 5Q924U6M6X
+    dependencies:
+      - package: CurvCameraOverlayKit
+        product: CurvCameraOverlay
+      - package: CurvCameraOverlayKit
+        product: CurvPalmOverlay
+      - package: CurvApple
+        product: CurvApple
+    info:
+      path: AppHost/Info.plist
+      properties:
+        UILaunchScreen: {}
+        NSCameraUsageDescription: Camera access is required to capture your palm for real-time guidance and crease analysis.
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+schemes:
+  PalmScanner:
+    build:
+      targets:
+        PalmScanner: all
+    run:
+      config: Debug
+      askForAppToLaunch: false

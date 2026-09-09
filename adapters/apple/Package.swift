@@ -17,9 +17,11 @@ let package = Package(
         .target(
             name: "CurvApple",
             path: ".",
+            exclude: [
+                "README.md"
+            ],
             sources: [
-                "CurvEngine.swift",
-                "PalmCaptureGuidance.swift"
+                "CurvEngine.swift"
             ]
         ),
     ]

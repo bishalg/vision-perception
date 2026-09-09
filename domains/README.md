@@ -8,7 +8,8 @@ The `core/` engine contains **zero domain logic**. All domain-specific semantics
 ## Domain Packs Status
 
 ### Implemented & Active
-- **`palm/`** (`org.curv.domain.palm`): Biometric hand landmark alignment (21 keypoints), handedness detection, canonical 512x512 upright palm warp, adaptive Steger parameter scaling, crease classification, and grounded VLM prompt generation (Vedic Samudrika Shastra).
+- **`palm/`** (`org.curv.domain.palm`): Biometric hand landmark alignment (21 keypoints), handedness detection, canonical 512x512 upright palm warp, adaptive Steger parameter scaling, crease classification, and grounded VLM prompt generation (Vedic Samudrika Shastra). Consumed by `apps/*_palm_app` via landmarks ROI.
+- **`floor_plan/`** (`org.curv.domain.floor_plan`): Wall segment extraction, junction graphs, room polygons, and 9-pad Vastu Purusha Mandala evaluation. Consumed by `apps/*_vastu_app` via quad ROI + shared camera overlay kit.
 - **`surface_inspection/`** (`org.curv.domain.surface_inspection`): Industrial quality control defect analysis, quad-ROI perspective normalization with coordinate re-inversion, micro-crack/scratch classification, and severity scoring.
 - **`geospatial/`** (`org.curv.domain.geospatial`): Satellite-based hydrological corridor and glacier-collapse flood damage perception (Sentinel-2 L2A 10m), river trunk vs tributary classification, and multi-temporal flood delta quantification.
 

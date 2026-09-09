@@ -55,6 +55,33 @@ class CurvPipeline(domainId: String = "palm") : AutoCloseable {
         )
     }
 
+    /**
+     * Processes a direct ByteBuffer camera frame with an 8-float quadrilateral ROI
+     * (TL, TR, BR, BL in normalized coordinates). Used by vastu / floor-plan apps.
+     */
+    fun processQuadRoi(
+        buffer: ByteBuffer,
+        width: Int,
+        height: Int,
+        stride: Int = 0,
+        format: Int = FORMAT_RGBA,
+        corners: FloatArray
+    ): String {
+        check(nativeHandle != 0L) { "CurvPipeline has been closed" }
+        require(buffer.isDirect) { "Buffer must be allocated as a direct ByteBuffer" }
+        require(corners.size >= 8) { "Corners array must contain at least 8 floats (TL/TR/BR/BL)" }
+
+        return nativeProcessQuadRoi(
+            nativeHandle,
+            buffer,
+            width,
+            height,
+            stride,
+            format,
+            corners
+        )
+    }
+
     override fun close() {
         if (nativeHandle != 0L) {
             nativeDestroy(nativeHandle)
@@ -76,5 +103,14 @@ class CurvPipeline(domainId: String = "palm") : AutoCloseable {
         stride: Int,
         format: Int,
         landmarks: FloatArray
+    ): String
+    private external fun nativeProcessQuadRoi(
+        handle: Long,
+        buffer: ByteBuffer,
+        width: Int,
+        height: Int,
+        stride: Int,
+        format: Int,
+        corners: FloatArray
     ): String
 }

@@ -1,8 +1,10 @@
 import SwiftUI
+import CurvCameraOverlay
+import CurvPalmOverlay
 
 /**
- * Main Scanner screen orchestrating the camera preview, HUD guidance overlay,
- * spline drawing layer, and Samudrika reading presentation.
+ * Live guidance camera with iOS Camera-style last-capture thumbnail (bottom-left).
+ * Tap thumbnail to open the crease overlay review.
  */
 public struct MainScannerView: View {
     @StateObject private var viewModel = PalmAnalysisViewModel()
@@ -11,96 +13,79 @@ public struct MainScannerView: View {
 
     public var body: some View {
         ZStack {
-            // 1. Fullscreen Camera Preview
-            CameraPreviewView(session: viewModel.cameraManager.captureSession)
-                .ignoresSafeArea()
-
-            // 2. Continuous Crease Spline Vector Layer
-            if !viewModel.detectedSplines.isEmpty {
-                CreaseSplineOverlayView(splines: viewModel.detectedSplines)
-                    .ignoresSafeArea()
-            }
-
-            // 3. Liquid Glass Guidance HUD
-            LiquidGlassHUDView(
+            CameraOverlayHost(
+                profile: viewModel.profile,
+                session: viewModel.cameraSession,
                 guidanceState: viewModel.guidanceState,
                 metrics: viewModel.qualityMetrics,
-                onManualCapture: {
-                    viewModel.manualCapture()
-                }
-            )
-
-            // 4. Breadcrumb Header (Liquid Glass style)
-            VStack {
-                HStack(spacing: 6) {
-                    Image(systemName: "sparkles")
-                        .foregroundColor(Color(red: 0.20, green: 0.84, blue: 0.29))
-                    Text("AstroFusion")
-                        .font(.system(size: 13, weight: .regular))
-                        .foregroundColor(.white.opacity(0.7))
-                    Text("/")
-                        .foregroundColor(.white.opacity(0.4))
-                    Text("Palm Perception")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.white)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(
-                    Capsule()
-                        .fill(.ultraThinMaterial)
-                        .overlay(Capsule().stroke(Color.white.opacity(0.2), lineWidth: 1))
-                )
-                .padding(.top, 10)
-
-                Spacer()
+                isAnalyzing: viewModel.isAnalyzing,
+                statusMessageOverride: viewModel.statusMessageOverride,
+                onManualCapture: { viewModel.manualCapture() }
+            ) {
+                PalmSilhouetteView(isReady: viewModel.guidanceState.isReady)
             }
 
-            // 5. Analyzing Overlay (Active processing indicator)
-            if viewModel.isAnalyzing {
-                ZStack {
-                    Color.black.opacity(0.6).ignoresSafeArea()
-                    VStack(spacing: 16) {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            .scaleEffect(1.5)
+            // Live landmark skeleton while hand is detected (same dots as result view).
+            if !viewModel.detectedLandmarks.isEmpty && !viewModel.showResultViewer {
+                HandOutlineOverlay(landmarks: viewModel.detectedLandmarks)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+                    .zIndex(1)
+            }
 
-                        Text(LocalizedStrings.tr("status.processing", lang: viewModel.currentLanguage))
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
-                            .foregroundColor(.white)
+            // Bottom-left thumbnail (like stock iOS Camera)
+            if let thumb = viewModel.capturedImage, !viewModel.showResultViewer {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Button(action: { viewModel.openLastCapture() }) {
+                            Image(uiImage: thumb)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 54, height: 54)
+                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .stroke(Color.white.opacity(0.85), lineWidth: 1.5)
+                                )
+                                .shadow(color: .black.opacity(0.45), radius: 8, y: 3)
+                        }
+                        .padding(.leading, 22)
+                        .padding(.bottom, 46)
+                        Spacer()
                     }
-                    .padding(28)
-                    .background(
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .fill(.ultraThinMaterial)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                    .stroke(Color.white.opacity(0.25), lineWidth: 1)
-                            )
-                    )
+                }
+                .transition(.scale.combined(with: .opacity))
+                .zIndex(2)
+            }
+
+            if viewModel.showResultViewer {
+                CaptureResultView(
+                    image: viewModel.capturedImage,
+                    landmarks: viewModel.captureLandmarks,
+                    splines: viewModel.detectedSplines,
+                    selectedLanguage: viewModel.currentLanguage,
+                    usedNativeEngine: viewModel.usedNativeEngine,
+                    onLanguageChange: { viewModel.currentLanguage = $0 },
+                    onRetake: { viewModel.retake() }
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .zIndex(3)
+                .overlay(alignment: .topLeading) {
+                    Button(action: { viewModel.dismissResultViewer() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 28))
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(.white.opacity(0.9))
+                            .padding(.top, 16)
+                            .padding(.leading, 16)
+                    }
                 }
             }
         }
-        .sheet(isPresented: $viewModel.showResultSheet) {
-            SamudrikaReadingSheet(
-                result: viewModel.analysisResult,
-                splines: viewModel.detectedSplines,
-                selectedLanguage: viewModel.currentLanguage,
-                onLanguageChange: { newLang in
-                    viewModel.currentLanguage = newLang
-                },
-                onRetake: {
-                    viewModel.retake()
-                }
-            )
-            .presentationDetents([.fraction(0.45), .fraction(0.85)])
-            .presentationDragIndicator(.visible)
-        }
-        .onAppear {
-            viewModel.start()
-        }
-        .onDisappear {
-            viewModel.stop()
-        }
+        .animation(.easeInOut(duration: 0.22), value: viewModel.showResultViewer)
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: viewModel.capturedImage != nil)
+        .onAppear { viewModel.start() }
+        .onDisappear { viewModel.stop() }
     }
 }

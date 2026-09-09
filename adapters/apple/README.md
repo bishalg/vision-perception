@@ -3,9 +3,12 @@
 Source for the iOS/macOS integration of the C-ABI:
 
 - [`CurvEngine.swift`](CurvEngine.swift) — Swift wrapper over the flat C-ABI
-  (`Result<String, CurvError>`), BGRA pixel format default, mirroring the JNI
-  semantics of the Android adapter.
+  (`Result<String, CurvError>`), BGRA pixel format default. Supports both
+  **landmarks ROI** (palm) and **quad ROI** (vastu / floor-plan).
+
+Real-time capture guidance and Liquid Glass HUD live in
+[`apps/mobile_overlay/ios`](../../apps/mobile_overlay/ios) (`CurvCameraOverlay`),
+not in this adapter.
 
 Status: source-complete; SwiftPM package + `CurvEngine.xcframework` packaging
-(device + simulator slices, via [`cmake/toolchains/apple-clang.cmake`](../../cmake/toolchains/apple-clang.cmake))
-is the next planned milestone (Phase C).
+(device + simulator slices) via [`scripts/build_ios_xcframework.sh`](../../scripts/build_ios_xcframework.sh).

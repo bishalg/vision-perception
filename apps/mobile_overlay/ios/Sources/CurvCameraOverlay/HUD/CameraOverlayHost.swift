@@ -1,0 +1,101 @@
+import SwiftUI
+
+/**
+ * Shared scanner chrome: live camera + Liquid Glass HUD + brand breadcrumb +
+ * analyzing veil. Apps layer domain results (splines, sheets) on top.
+ */
+public struct CameraOverlayHost<OverlayContent: View>: View {
+    public let profile: OverlayProfile
+    public let session: CameraSession
+    public let guidanceState: GuidanceState
+    public let metrics: QualityMetrics
+    public let isAnalyzing: Bool
+    public let statusMessageOverride: String?
+    public let overlayContent: OverlayContent
+    public let onManualCapture: () -> Void
+
+    public init(
+        profile: OverlayProfile,
+        session: CameraSession,
+        guidanceState: GuidanceState,
+        metrics: QualityMetrics,
+        isAnalyzing: Bool,
+        statusMessageOverride: String? = nil,
+        onManualCapture: @escaping () -> Void,
+        @ViewBuilder overlayContent: () -> OverlayContent
+    ) {
+        self.profile = profile
+        self.session = session
+        self.guidanceState = guidanceState
+        self.metrics = metrics
+        self.isAnalyzing = isAnalyzing
+        self.statusMessageOverride = statusMessageOverride
+        self.onManualCapture = onManualCapture
+        self.overlayContent = overlayContent()
+    }
+
+    public var body: some View {
+        ZStack {
+            CameraPreviewView(session: session.captureSession)
+                .ignoresSafeArea()
+
+            LiquidGlassHUD(
+                profile: profile,
+                guidanceState: guidanceState,
+                metrics: metrics,
+                statusMessageOverride: statusMessageOverride,
+                onManualCapture: onManualCapture
+            ) {
+                overlayContent
+            }
+
+            VStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles")
+                        .foregroundColor(OverlayPalette.emerald)
+                    Text(profile.brand)
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundColor(.white.opacity(0.7))
+                    Text("/")
+                        .foregroundColor(.white.opacity(0.4))
+                    Text(profile.productTitle)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(.ultraThinMaterial)
+                        .overlay(Capsule().stroke(Color.white.opacity(0.2), lineWidth: 1))
+                )
+                .padding(.top, 10)
+
+                Spacer()
+            }
+
+            if isAnalyzing {
+                ZStack {
+                    Color.black.opacity(0.6).ignoresSafeArea()
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(1.5)
+                        Text(profile.copy.processing)
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white)
+                    }
+                    .padding(28)
+                    .background(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                    .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                            )
+                    )
+                }
+            }
+        }
+    }
+}

@@ -105,9 +105,24 @@ public struct LocalizedStrings {
             .hindi: "सामुद्रिक हस्तरेखा विश्लेषण"
         ],
         "status.processing": [
-            .english: "Extracting Sub-Pixel Ridges...",
-            .nepali: "सुक्ष्म रेखाहरू प्रशोधन हुँदैछ...",
-            .hindi: "सूक्ष्म रेखाओं का विश्लेषण हो रहा है..."
+            .english: "Mapping palm lines...",
+            .nepali: "हातका रेखाहरू म्याप हुँदैछ...",
+            .hindi: "हथेली की रेखाएं मैप हो रही हैं..."
+        ],
+        "result.title": [
+            .english: "Palm Line Overlay",
+            .nepali: "हस्तरेखा ओभरले",
+            .hindi: "हस्तरेखा ओवरले"
+        ],
+        "result.landmark": [
+            .english: "Landmark-guided crease overlay on your capture",
+            .nepali: "तपाईंको फोटोमा ल्यान्डमार्क-आधारित रेखा ओभरले",
+            .hindi: "आपकी फोटो पर लैंडमार्क-आधारित रेखा ओवरले"
+        ],
+        "result.native": [
+            .english: "Native CurvEngine metrics + crease overlay",
+            .nepali: "नेटिभ CurvEngine मेट्रिक्स + रेखा ओभरले",
+            .hindi: "नेटिव CurvEngine मेट्रिक्स + रेखा ओवरले"
         ]
     ]
 
