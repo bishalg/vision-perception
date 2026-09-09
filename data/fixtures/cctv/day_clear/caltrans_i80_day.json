@@ -1,0 +1,15 @@
+{
+  "agency": "Caltrans District 3",
+  "name": "I-80 at Drum Forebay",
+  "location": {
+    "lat": 39.3142,
+    "lon": -120.7321,
+    "elevation_m": 1420.0
+  },
+  "pose": {
+    "heading_deg": 65.0,
+    "pitch_deg": -15.0,
+    "fov_deg": 55.0
+  },
+  "url": "https://cwwp2.dot.ca.gov/data/d3/cctv/image/i80atdrumforebay/i80atdrumforebay.jpg"
+}

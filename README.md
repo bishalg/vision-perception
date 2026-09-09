@@ -81,7 +81,29 @@ GitHub Actions (`.github/workflows/ci.yml`) gates every push to `main`/`dev`: cl
 
 ---
 
-## 5. Current Milestone Status
+## 5. Multi-Source Spatial & CCTV Perception
+
+`vision-perception` integrates multi-modal spatial intelligence (drawing patterns from [`bilawalsidhu/gods-eye-view`](https://github.com/bilawalsidhu/gods-eye-view)) into its differential geometry pipeline via a **gradual 3-stage development model**:
+
+```text
+Stage 1: Static Images (Current)  ──►  Stage 2: Recorded Video  ──►  Stage 3: Live Streams
+• Local .png/.jpg fixtures            • Local short .mp4 clips       • Live RTSP / HLS / MJPEG
+• Instant, reproducible local POC     • Temporal tracking & jitter   • AWS Bedrock Agentic Loop
+• Zero network dependencies           • Ring-buffer backpressure     • 3D Cesium / GEV Digital Twin
+```
+
+### Ingestion Matrix & Documentation
+| Domain / Source | Format & Feeds | Technical Documentation |
+| :--- | :--- | :--- |
+| **Real-Time Flood (Nepal / Alpine)** | Sentinel-1 SAR + Sentinel-2 L2A + River CCTV | [`docs/flood_realtime_architecture.md`](docs/flood_realtime_architecture.md) |
+| **Highway & Urban CCTV** | Caltrans, Austin, TfL (HLS / JPEG snapshots) | [`docs/research/gods_eye_view_and_cctv_integration.md`](docs/research/gods_eye_view_and_cctv_integration.md) |
+| **System Spatial Architecture** | Multi-tier pipeline & 2D-to-3D viewshed projection | [`docs/research/realtime_spatial_perception_architecture.md`](docs/research/realtime_spatial_perception_architecture.md) |
+| **Test Fixtures & Local POC** | Curated reference datasets for rapid offline dev | [`data/fixtures/README.md`](data/fixtures/README.md) |
+| **Research Index** | High-density discovery index for humans & AI | [`docs/research/README.md`](docs/research/README.md) |
+
+---
+
+## 6. Current Milestone Status
 
 - [x] Milestone 1: Research & repo scaffold (architecture, licensing, evidence schema)
 - [x] Milestone 2: CMake C++20/OpenCV skeleton with strict warnings and GoogleTest
@@ -92,4 +114,6 @@ GitHub Actions (`.github/workflows/ci.yml`) gates every push to `main`/`dev`: cl
 - [x] **Milestone 6: Tests & evaluation tooling** — GitHub Actions CI (format, Ubuntu/macOS `-Werror` builds, ASan/UBSan, 100% line+branch coverage gate), clang-format/clang-tidy gates, `synth_generator` + `evaluate` RMSE < 0.1 px accuracy gate, `benchmark` latency profiles at 720p/1080p/4K (`docs/benchmarks.md`)
 - [x] **Milestone 7: Geospatial Flood Perception Pack (OpenCV AI Competition 2026)** — Rapid glacier-collapse flood quantification in Nepal (Lende Khola / Bhote Koshi) using Sentinel-2 L2A 10m imagery (+88.4% flood signature surge, +121.1% channel widening, dual controls passing; see [`docs/flood_nepal_2026.md`](docs/flood_nepal_2026.md))
 - [x] **Milestone 8: AWS Cloud Architecture & Special Award Targets** — AWS CDK v2 IaC (`aws_infra/`), two-tool Bedrock Agentic Vision loop (`getFloodEvidence` $\to$ `dispatchFloodAlert`), DynamoDB idempotency gate, dedicated S3 audit bucket, SQS fallback queue, and COOL on AWS Graviton3 benchmark suite (see [`docs/devpost_submission.md`](docs/devpost_submission.md) and [`docs/aws_benchmark_guide.md`](docs/aws_benchmark_guide.md))
+- [ ] **Milestone 9: Real-Time CCTV & Spatial Perception (Phase 1: Static Reference POC)** — Curate `data/fixtures/cctv/` reference images, implement `adapters/cctv/`, and evaluate Steger curvilinear extraction on highway lane lines and river corridor watermarks
 - [ ] Next phase: mobile app packaging (Android Gradle/NDK + iOS SwiftPM/xcframework) and additional domain packs (poultry, driver_monitoring, document_scanning)
+

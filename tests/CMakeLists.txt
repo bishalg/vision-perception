@@ -307,3 +307,27 @@ target_link_libraries(test_parameter_resolver
 )
 vision_set_compiler_warnings(test_parameter_resolver)
 add_test(NAME test_parameter_resolver COMMAND test_parameter_resolver)
+
+# ------------------------------------------------------------------------------
+# Unit Test: test_cctv_adapter (CCTV frame ingestion & quality validation, TDD)
+# ------------------------------------------------------------------------------
+add_executable(test_cctv_adapter
+    unit/test_cctv_adapter.cpp
+)
+target_compile_definitions(test_cctv_adapter
+    PRIVATE
+        CURV_PROJECT_ROOT="${CMAKE_SOURCE_DIR}"
+)
+target_link_libraries(test_cctv_adapter
+    PRIVATE
+        curv_core
+        curv_adapters
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_cctv_adapter)
+add_test(NAME test_cctv_adapter
+    COMMAND test_cctv_adapter
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+

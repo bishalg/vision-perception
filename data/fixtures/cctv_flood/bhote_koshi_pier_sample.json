@@ -1,0 +1,15 @@
+{
+  "agency": "Nepal Hydropower / DHM",
+  "name": "Bhote Koshi Bridge Pier Station",
+  "location": {
+    "lat": 28.2734,
+    "lon": 85.3807,
+    "elevation_m": 1820.0
+  },
+  "pose": {
+    "heading_deg": 185.0,
+    "pitch_deg": -25.0,
+    "fov_deg": 65.0
+  },
+  "url": "mock://nepal_flood_pier"
+}
