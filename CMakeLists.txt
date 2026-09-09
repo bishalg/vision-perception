@@ -55,15 +55,23 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Module path and system prefix paths
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-list(APPEND CMAKE_PREFIX_PATH
-    "/opt/homebrew"
-    "/opt/homebrew/opt/opencv"
-    "/opt/homebrew/opt/spdlog"
-    "/opt/homebrew/opt/nlohmann-json"
-    "/opt/homebrew/opt/googletest"
-    "/usr/local"
-    "/usr/local/opt/opencv"
-)
+
+# Homebrew prefixes are macOS-only. Leaving them on the search path during an
+# iOS cross-configure lets find_package() resolve host (arm64 macOS) OpenCV /
+# spdlog and silently produce a broken XCFramework, so scope them to non-iOS.
+# On iOS the FetchContent fallbacks build spdlog/nlohmann for the device, and
+# OpenCV comes from -DOpenCV_DIR (see scripts/build_ios_xcframework.sh).
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    list(APPEND CMAKE_PREFIX_PATH
+        "/opt/homebrew"
+        "/opt/homebrew/opt/opencv"
+        "/opt/homebrew/opt/spdlog"
+        "/opt/homebrew/opt/nlohmann-json"
+        "/opt/homebrew/opt/googletest"
+        "/usr/local"
+        "/usr/local/opt/opencv"
+    )
+endif()
 
 # Include strict compiler warnings module
 include(cmake/compiler_warnings.cmake)
@@ -93,7 +101,16 @@ endif()
 find_package(spdlog QUIET)
 if(NOT spdlog_FOUND)
     message(STATUS "[vision-perception] Fetching spdlog via FetchContent...")
-    set(SPDLOG_FMT_EXTERNAL ON CACHE INTERNAL "")
+    # Desktop Homebrew builds may use external fmt. iOS cannot: Apple Clang 17+
+    # rejects bundled fmt's FMT_STRING consteval (and FMT_USE_CONSTEVAL is
+    # unconditionally redefined in fmt's base.h, so -D does not stick). Use
+    # C++20 std::format instead; requires iOS 16.3 for std::to_chars.
+    if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+        set(SPDLOG_FMT_EXTERNAL OFF CACHE INTERNAL "")
+        set(SPDLOG_USE_STD_FORMAT ON CACHE INTERNAL "")
+    else()
+        set(SPDLOG_FMT_EXTERNAL ON CACHE INTERNAL "")
+    endif()
     set(SPDLOG_BUILD_TESTS OFF CACHE INTERNAL "")
     set(SPDLOG_BUILD_EXAMPLE OFF CACHE INTERNAL "")
     FetchContent_Declare(
@@ -109,8 +126,25 @@ endif()
 # ------------------------------------------------------------------------------
 # Dependency: OpenCV
 # ------------------------------------------------------------------------------
-find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs dnn videoio)
-find_package(CURL REQUIRED)
+# OpenCV: desktop needs highgui/videoio; iOS XCFramework builds typically ship
+# a smaller OpenCV without those modules.
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    # No dnn on iOS: OpenCV 4.11's dnn FP16 NEON kernels fail to build under
+    # Xcode 16+, and the iOS app gets hand landmarks from Apple Vision, not
+    # cv::dnn (adapters/opencv_dnn/HandLandmarkDetector is excluded on iOS).
+    find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs)
+    # Static opencv_world (APPLE_FRAMEWORK) does not create per-module imported
+    # targets — OpenCVConfig only aliases them when OpenCV_SHARED=ON. Linking
+    # the bare names "opencv_core" etc. yields -lopencv_core and no headers.
+    if(TARGET opencv_world)
+        set(OpenCV_LIBS opencv_world)
+    endif()
+else()
+    find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs dnn videoio highgui)
+    # libcurl only feeds the desktop CCTV HTTP snapshot source, which is not
+    # compiled on iOS (see adapters/CMakeLists.txt).
+    find_package(CURL REQUIRED)
+endif()
 
 # ------------------------------------------------------------------------------
 # Diagnostic Status Messages
@@ -127,11 +161,15 @@ message(STATUS "==================================================")
 # ------------------------------------------------------------------------------
 # Subdirectories & Testing
 # ------------------------------------------------------------------------------
-enable_testing()
-
 add_subdirectory(core)
 add_subdirectory(adapters)
 add_subdirectory(domains)
-add_subdirectory(apps/desktop_pipeline_demo)
-add_subdirectory(tools)
-add_subdirectory(tests)
+
+# Desktop-only: demo app, CLI tools and the GTest suite pull highgui/videoio and
+# googletest, none of which cross-compile for the iOS XCFramework.
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    enable_testing()
+    add_subdirectory(apps/desktop_pipeline_demo)
+    add_subdirectory(tools)
+    add_subdirectory(tests)
+endif()

@@ -11,7 +11,8 @@ import CurvPalmOverlay
 /**
  * Palm-domain ViewModel. Camera / HUD come from the overlay kit.
  * Post-capture priority: keep the photo and draw crease overlays on it.
- * CurvEngine metrics are optional enrichment when the XCFramework is linked.
+ * CurvEngine polylines are preferred when the XCFramework is linked;
+ * landmark guides are fallback-only.
  */
 public final class PalmAnalysisViewModel: ObservableObject {
     private let logger = Logger(subsystem: "org.curv.palm", category: "PalmAnalysisViewModel")
@@ -34,6 +35,9 @@ public final class PalmAnalysisViewModel: ObservableObject {
     /// Full-screen overlay review (opened from the camera-roll style thumbnail).
     @Published public var showResultViewer: Bool = false
     @Published public var usedNativeEngine: Bool = false
+    @Published public var overlaySource: CreaseOverlaySource = .landmarkFallback
+    /// Adjusted lines ready for prediction / VLM (set by "Use for reading").
+    @Published public var predictionReadySplines: [CreaseSpline] = []
     @Published public var currentLanguage: AppLanguage = .english {
         didSet {
             LocalizedStrings.currentLanguage = currentLanguage
@@ -56,7 +60,7 @@ public final class PalmAnalysisViewModel: ObservableObject {
             self.curvEngine = try CurvEngine(domainId: PalmOverlay.profile.domainId)
             logger.info("CurvEngine native pipeline ready")
         } catch {
-            logger.notice("CurvEngine unavailable (\(error.localizedDescription)) — landmark overlays only")
+            logger.notice("CurvEngine unavailable (\(error.localizedDescription)) — landmark crease fallback only")
         }
 
         setupCameraPipeline()
@@ -93,10 +97,12 @@ public final class PalmAnalysisViewModel: ObservableObject {
         DispatchQueue.main.async {
             self.analysisResult = nil
             self.detectedSplines.removeAll()
+            self.predictionReadySplines.removeAll()
             self.captureLandmarks.removeAll()
             self.capturedImage = nil
             self.showResultViewer = false
             self.usedNativeEngine = false
+            self.overlaySource = .landmarkFallback
         }
     }
 
@@ -106,13 +112,48 @@ public final class PalmAnalysisViewModel: ObservableObject {
             self.isAnalyzing = false
             self.analysisResult = nil
             self.detectedSplines.removeAll()
+            self.predictionReadySplines.removeAll()
             self.captureLandmarks.removeAll()
             self.capturedImage = nil
             self.showResultViewer = false
             self.usedNativeEngine = false
+            self.overlaySource = .landmarkFallback
             self.guidanceEngine.reset()
             self.cameraSession.start()
         }
+    }
+
+    /// Lock current (possibly edited) lines as the prediction input.
+    public func confirmAdjustedLinesForPrediction() {
+        predictionReadySplines = detectedSplines
+        logger.info("Prediction lines locked (\(self.predictionReadySplines.count) lines)")
+        // Future: hand off to VLM / Samudrika sheet using predictionPayloadJSON().
+    }
+
+    /// JSON fragment for prediction grounded on user-visible / adjusted lines.
+    public func predictionPayloadJSON() -> String? {
+        let lines = predictionReadySplines.isEmpty ? detectedSplines : predictionReadySplines
+        guard !lines.isEmpty else { return nil }
+        var major: [String: Any] = [:]
+        for line in lines {
+            major[line.engineKey] = [
+                "name": line.engineKey,
+                "present": true,
+                "confidence": line.confidence,
+                "user_adjusted": line.isUserAdjusted,
+                "points_image_norm": line.predictionPointsImageNorm
+            ] as [String: Any]
+        }
+        let root: [String: Any] = [
+            "domain_payload": [
+                "major_lines": major,
+                "source": overlaySource.rawValue
+            ]
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: root, options: [.sortedKeys]),
+              let str = String(data: data, encoding: .utf8)
+        else { return nil }
+        return str
     }
 
     private func processVideoFrame(_ pixelBuffer: CVPixelBuffer) {
@@ -269,22 +310,46 @@ public final class PalmAnalysisViewModel: ObservableObject {
         }
     }
 
-    private func finishCapture(photoBuffer: CVPixelBuffer, landmarks: [CGPoint]) {
+    private func finishCapture(photoBuffer: CVPixelBuffer, landmarks videoLandmarks: [CGPoint]) {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else { return }
 
-            let image = Self.image(from: photoBuffer)
-            var splines = self.generateLandmarkCreases(landmarks: landmarks, response: nil)
+            // Bake an upright bitmap so display size == landmark space (no UIImage.orientation tricks).
+            let (image, visionOrientation) = Self.uprightImage(from: photoBuffer)
+            var photoLandmarks = videoLandmarks
+
+            // Re-detect on the still itself — video landmarks live in a different FOV/crop.
+            if let cgImage = image?.cgImage,
+               let detected = self.handTracker.processCGImage(cgImage, orientation: .up) {
+                photoLandmarks = detected
+                self.logger.info("Re-detected \(detected.count) landmarks on captured still")
+            } else if let detected = self.handTracker.processFrame(photoBuffer, orientation: visionOrientation) {
+                photoLandmarks = detected
+                self.logger.info("Re-detected landmarks on photo buffer (orientation \(visionOrientation.rawValue))")
+            } else {
+                self.logger.error("Still re-detect failed — falling back to video landmarks (likely misaligned)")
+            }
+
+            // Prefer native Steger polylines; landmark guides are fallback only when XCFramework is absent.
+            var splines = self.fallbackLandmarkCreases(landmarks: photoLandmarks)
             var parsedResponse: PalmAnalysisResponse?
             var usedNative = false
+            var source: CreaseOverlaySource = .landmarkFallback
 
             if let engine = self.curvEngine {
-                let flat = VisionHandTracker.toFlatLandmarksArray(landmarks)
-                switch engine.processPixelBuffer(pixelBuffer: photoBuffer, landmarks: flat) {
+                // Process the upright bitmap so points_image_norm matches CaptureResultView.
+                let processBuffer = Self.makeBGRAPixelBuffer(from: image) ?? photoBuffer
+                let flat = VisionHandTracker.toFlatLandmarksArray(photoLandmarks)
+                switch engine.processPixelBuffer(pixelBuffer: processBuffer, landmarks: flat) {
                 case .success(let jsonString):
                     parsedResponse = PalmAnalysisResponse.from(jsonString: jsonString)
-                    splines = self.generateLandmarkCreases(landmarks: landmarks, response: parsedResponse)
-                    usedNative = true
+                    if let nativeSplines = parsedResponse?.creaseSplinesFromPolylines() {
+                        splines = nativeSplines
+                        usedNative = true
+                        source = .nativeEngine
+                    } else {
+                        self.logger.notice("Native JSON lacked points_image_norm — keeping landmark fallback")
+                    }
                 case .failure(let err):
                     self.logger.error("CurvEngine execution error: \(String(describing: err))")
                 }
@@ -293,10 +358,11 @@ public final class PalmAnalysisViewModel: ObservableObject {
             DispatchQueue.main.async {
                 // Stay in live camera mode (iOS Camera style): keep thumbnail, resume preview.
                 self.capturedImage = image
-                self.captureLandmarks = landmarks
+                self.captureLandmarks = photoLandmarks
                 self.detectedSplines = splines
                 self.analysisResult = parsedResponse
                 self.usedNativeEngine = usedNative
+                self.overlaySource = source
                 self.isAnalyzing = false
                 self.isCapturing = false
                 self.showResultViewer = false
@@ -309,100 +375,138 @@ public final class PalmAnalysisViewModel: ObservableObject {
         }
     }
 
-    /// Landmark-anchored major crease guides drawn over the captured palm photo.
-    private func generateLandmarkCreases(
-        landmarks: [CGPoint],
-        response: PalmAnalysisResponse?
-    ) -> [CreaseSpline] {
+    /**
+     * Landmark-anchored guides — **fallback only** when CurvEngine XCFramework is missing
+     * or native JSON has no `points_image_norm`. Must not ship as the product detection path.
+     */
+    private func fallbackLandmarkCreases(landmarks: [CGPoint]) -> [CreaseSpline] {
         guard landmarks.count >= 21 else { return [] }
 
         let wrist = landmarks[0]
+        let thumbCmc = landmarks[1]
         let thumbMcp = landmarks[2]
+        let thumbIp = landmarks[3]
         let indexMcp = landmarks[5]
         let middleMcp = landmarks[9]
+        let middleTip = landmarks[12]
         let ringMcp = landmarks[13]
         let pinkyMcp = landmarks[17]
 
-        func metric(_ key: String, fallbackConf: Float, fallbackTort: Float) -> (Float, Float, Float) {
-            let info = response?.domainPayload?.majorLines?[key]
-            let ptsFallback: Float = 0
-            return (
-                info?.confidence ?? fallbackConf,
-                info?.tortuosity ?? fallbackTort,
-                info?.arcLengthPx ?? ptsFallback
-            )
+        func lerp(_ a: CGPoint, _ b: CGPoint, _ t: CGFloat) -> CGPoint {
+            CGPoint(x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t)
         }
 
-        func length(_ pts: [CGPoint], imageHint: Float) -> Float {
-            if imageHint > 0 { return imageHint }
+        func palmDepth(_ mcp: CGPoint, _ t: CGFloat) -> CGPoint {
+            lerp(mcp, wrist, t)
+        }
+
+        func length(_ pts: [CGPoint]) -> Float {
             var sum: Float = 0
             for i in 1..<pts.count {
                 let dx = Float(pts[i].x - pts[i - 1].x)
                 let dy = Float(pts[i].y - pts[i - 1].y)
                 sum += sqrt(dx * dx + dy * dy)
             }
-            // Normalized path length × typical 1080p diagonal scale for readable HUD numbers.
             return sum * 1400
         }
 
-        // Heart: across upper palm (Mercury → Jupiter mounts)
         let heart: [CGPoint] = [
-            CGPoint(x: pinkyMcp.x * 0.92 + wrist.x * 0.08, y: pinkyMcp.y * 0.72 + wrist.y * 0.28),
-            CGPoint(x: ringMcp.x * 0.88 + wrist.x * 0.12, y: ringMcp.y * 0.68 + wrist.y * 0.32),
-            CGPoint(x: middleMcp.x * 0.82 + wrist.x * 0.18, y: middleMcp.y * 0.64 + wrist.y * 0.36),
-            CGPoint(x: indexMcp.x * 0.78 + thumbMcp.x * 0.22, y: indexMcp.y * 0.58 + thumbMcp.y * 0.42)
+            palmDepth(pinkyMcp, 0.06),
+            palmDepth(ringMcp, 0.10),
+            palmDepth(middleMcp, 0.12),
+            palmDepth(indexMcp, 0.10),
+            lerp(palmDepth(indexMcp, 0.08), palmDepth(middleMcp, 0.08), 0.35)
         ]
-        let (hConf, hTort, hLen) = metric("heart", fallbackConf: 0.86, fallbackTort: 1.12)
-
-        // Head: mid-palm transverse
+        let lifeOrigin = lerp(indexMcp, thumbMcp, 0.45)
         let head: [CGPoint] = [
-            CGPoint(x: indexMcp.x * 0.68 + thumbMcp.x * 0.32, y: indexMcp.y * 0.48 + thumbMcp.y * 0.52),
-            CGPoint(x: middleMcp.x * 0.58 + wrist.x * 0.42, y: middleMcp.y * 0.48 + wrist.y * 0.52),
-            CGPoint(x: ringMcp.x * 0.70 + wrist.x * 0.30, y: ringMcp.y * 0.50 + wrist.y * 0.50),
-            CGPoint(x: pinkyMcp.x * 0.82 + wrist.x * 0.18, y: pinkyMcp.y * 0.52 + wrist.y * 0.48)
+            lerp(lifeOrigin, wrist, 0.18),
+            palmDepth(indexMcp, 0.32),
+            palmDepth(middleMcp, 0.36),
+            palmDepth(ringMcp, 0.34),
+            palmDepth(pinkyMcp, 0.30)
         ]
-        let (hdConf, hdTort, hdLen) = metric("head", fallbackConf: 0.90, fallbackTort: 1.08)
-
-        // Life: arcs around thenar
         let life: [CGPoint] = [
-            CGPoint(x: indexMcp.x * 0.62 + thumbMcp.x * 0.38, y: indexMcp.y * 0.50 + thumbMcp.y * 0.50),
-            CGPoint(x: thumbMcp.x * 0.70 + wrist.x * 0.30, y: thumbMcp.y * 0.45 + wrist.y * 0.55),
-            CGPoint(x: thumbMcp.x * 0.45 + wrist.x * 0.55, y: thumbMcp.y * 0.25 + wrist.y * 0.75),
-            CGPoint(x: wrist.x * 0.78 + thumbMcp.x * 0.22, y: wrist.y * 0.92 + thumbMcp.y * 0.08)
+            lerp(lifeOrigin, wrist, 0.08),
+            lerp(thumbMcp, indexMcp, 0.25),
+            lerp(thumbMcp, wrist, 0.35),
+            lerp(thumbIp, wrist, 0.55),
+            lerp(thumbCmc, wrist, 0.72),
+            lerp(wrist, thumbCmc, 0.15)
         ]
-        let (lConf, lTort, lLen) = metric("life", fallbackConf: 0.93, fallbackTort: 1.25)
-
-        // Fate: rising toward middle finger
         let fate: [CGPoint] = [
-            CGPoint(x: wrist.x * 0.88 + middleMcp.x * 0.12, y: wrist.y * 0.88 + middleMcp.y * 0.12),
-            CGPoint(x: wrist.x * 0.55 + middleMcp.x * 0.45, y: wrist.y * 0.55 + middleMcp.y * 0.45),
-            CGPoint(x: middleMcp.x * 0.72 + wrist.x * 0.28, y: middleMcp.y * 0.70 + wrist.y * 0.30)
+            lerp(wrist, middleTip, 0.12),
+            lerp(wrist, middleTip, 0.38),
+            lerp(wrist, middleTip, 0.58),
+            palmDepth(middleMcp, 0.22)
         ]
-        let (fConf, fTort, fLen) = metric("fate", fallbackConf: 0.78, fallbackTort: 1.03)
 
         return [
-            CreaseSpline(lineType: .heart, points: heart, confidence: hConf, tortuosity: hTort, arcLengthPx: length(heart, imageHint: hLen)),
-            CreaseSpline(lineType: .head, points: head, confidence: hdConf, tortuosity: hdTort, arcLengthPx: length(head, imageHint: hdLen)),
-            CreaseSpline(lineType: .life, points: life, confidence: lConf, tortuosity: lTort, arcLengthPx: length(life, imageHint: lLen)),
-            CreaseSpline(lineType: .fate, points: fate, confidence: fConf, tortuosity: fTort, arcLengthPx: length(fate, imageHint: fLen))
+            CreaseSpline(id: "heart_line", lineType: .heart, points: heart, confidence: 0.86, tortuosity: 1.12, arcLengthPx: length(heart)),
+            CreaseSpline(id: "head_line", lineType: .head, points: head, confidence: 0.90, tortuosity: 1.08, arcLengthPx: length(head)),
+            CreaseSpline(id: "life_line", lineType: .life, points: life, confidence: 0.93, tortuosity: 1.25, arcLengthPx: length(life)),
+            CreaseSpline(id: "fate_line", lineType: .fate, points: fate, confidence: 0.78, tortuosity: 1.03, arcLengthPx: length(fate))
         ]
     }
 
-    private static func image(from pixelBuffer: CVPixelBuffer) -> UIImage? {
-        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-        let context = CIContext(options: nil)
-        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
+    /// Bake an upright UIImage into a BGRA CVPixelBuffer for CurvEngine (matches overlay coords).
+    private static func makeBGRAPixelBuffer(from image: UIImage?) -> CVPixelBuffer? {
+        guard let cgImage = image?.cgImage else { return nil }
+        let width = cgImage.width
+        let height = cgImage.height
+        var buffer: CVPixelBuffer?
+        let attrs: [CFString: Any] = [
+            kCVPixelBufferCGImageCompatibilityKey: true,
+            kCVPixelBufferCGBitmapContextCompatibilityKey: true
+        ]
+        let status = CVPixelBufferCreate(
+            kCFAllocatorDefault,
+            width,
+            height,
+            kCVPixelFormatType_32BGRA,
+            attrs as CFDictionary,
+            &buffer
+        )
+        guard status == kCVReturnSuccess, let pixelBuffer = buffer else { return nil }
+
+        CVPixelBufferLockBaseAddress(pixelBuffer, [])
+        defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, []) }
+        guard let ctx = CGContext(
+            data: CVPixelBufferGetBaseAddress(pixelBuffer),
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer),
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
+        ) else {
             return nil
         }
+        ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return pixelBuffer
+    }
 
-        // Prefer upright portrait. If the still buffer is landscape (wider than tall)
-        // while the app is locked to portrait, rotate so the thumbnail matches preview.
-        let width = CGFloat(cgImage.width)
-        let height = CGFloat(cgImage.height)
+    /// Returns an upright UIImage (pixels already rotated) plus the Vision orientation
+    /// that matches the raw capture buffer before baking.
+    private static func uprightImage(
+        from pixelBuffer: CVPixelBuffer
+    ) -> (UIImage?, CGImagePropertyOrientation) {
+        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+        let width = CVPixelBufferGetWidth(pixelBuffer)
+        let height = CVPixelBufferGetHeight(pixelBuffer)
+        let context = CIContext(options: nil)
+
+        // High-res stills are often sensor-landscape even when the connection is portrait.
         if width > height {
-            // Sensor landscape → rotate 90° CW for portrait UI (fixes "tilted left" stills).
-            return UIImage(cgImage: cgImage, scale: 1.0, orientation: .right)
+            let rotated = ciImage.oriented(.right)
+            guard let cgImage = context.createCGImage(rotated, from: rotated.extent) else {
+                return (nil, .right)
+            }
+            return (UIImage(cgImage: cgImage, scale: 1.0, orientation: .up), .right)
         }
-        return UIImage(cgImage: cgImage, scale: 1.0, orientation: .up)
+
+        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
+            return (nil, .up)
+        }
+        return (UIImage(cgImage: cgImage, scale: 1.0, orientation: .up), .up)
     }
 }

@@ -16,7 +16,10 @@
 #include "curv/Frame.hpp"
 #include "curv/QualityReport.hpp"
 #include "curv/Version.hpp"
+#include "curv/adapters/HandBoundaryDetector.hpp"
 #include "curv/config/DynamicParameterResolver.hpp"
+#include "curv/domain/CreaseChainLinker.hpp"
+#include "curv/domain/HandAnatomyDecomposer.hpp"
 #include "curv/domain/PalmParameters.hpp"
 #include "curv/domains/FloorPlanDomainPack.hpp"
 #include "curv/domains/PalmDomainPack.hpp"
@@ -31,6 +34,60 @@ namespace {
 // Hard dimension ceiling: keeps FFI callers from triggering absurd allocations
 // or overflowing the row-byte math, while still allowing 8K-class frames.
 constexpr int kMaxFrameDimension = 16384;
+
+cv::Point2f applyAffine2x3(const cv::Mat& M, float x, float y) {
+    cv::Mat M64;
+    if (M.type() != CV_64F) {
+        M.convertTo(M64, CV_64F);
+    } else {
+        M64 = M;
+    }
+    const double* m = M64.ptr<double>();
+    return cv::Point2f(static_cast<float>(m[0] * x + m[1] * y + m[2]),
+                       static_cast<float>(m[3] * x + m[4] * y + m[5]));
+}
+
+CurvEngine::geometry::HandLandmarks warpLandmarksToCanonical(const CurvEngine::geometry::HandLandmarks& src,
+                                                             const CurvEngine::geometry::RoiTransform& xf, int img_w,
+                                                             int img_h) {
+    CurvEngine::geometry::HandLandmarks out;
+    out.is_normalized = false;
+    const float sx = src.is_normalized ? static_cast<float>(img_w) : 1.0f;
+    const float sy = src.is_normalized ? static_cast<float>(img_h) : 1.0f;
+    for (size_t i = 0; i < 21; ++i) {
+        const float px = src.points[i].x * sx;
+        const float py = src.points[i].y * sy;
+        const auto mapped = applyAffine2x3(xf.M, px, py);
+        out.points[i].x = mapped.x;
+        out.points[i].y = mapped.y;
+    }
+    return out;
+}
+
+void enrichImageSpacePoints(nlohmann::json& domain_payload, const cv::Mat& M_inv, int img_w, int img_h) {
+    if (!domain_payload.contains("major_lines") || !domain_payload["major_lines"].is_object()) {
+        return;
+    }
+    const float inv_w = 1.0f / static_cast<float>(std::max(1, img_w));
+    const float inv_h = 1.0f / static_cast<float>(std::max(1, img_h));
+
+    for (auto& [name, line] : domain_payload["major_lines"].items()) {
+        (void)name;
+        if (!line.value("present", false) || !line.contains("points_canonical_px")) {
+            line["points_image_norm"] = nlohmann::json::array();
+            continue;
+        }
+        nlohmann::json image_pts = nlohmann::json::array();
+        for (const auto& pt : line["points_canonical_px"]) {
+            if (!pt.is_array() || pt.size() < 2) {
+                continue;
+            }
+            const auto mapped = applyAffine2x3(M_inv, pt[0].get<float>(), pt[1].get<float>());
+            image_pts.push_back({mapped.x * inv_w, mapped.y * inv_h});
+        }
+        line["points_image_norm"] = std::move(image_pts);
+    }
+}
 
 int channel_count_for_format(int format) {
     switch (format) {
@@ -435,6 +492,21 @@ int curv_pipeline_process_landmarks_roi(CurvPipelineHandle pipeline, CurvFrameHa
 
         auto result = custom_pipeline.process(warped_frame);
 
+        // Match desktop inspect: drop finger/background ridges before major-line naming.
+        auto const canonical_boundary = CurvEngine::adapters::HandBoundaryDetector::detectBoundary(warped);
+        if (canonical_boundary.is_valid) {
+            CurvEngine::adapters::HandBoundaryDetector::filterGraphByMask(result.ridge_graph, canonical_boundary.mask,
+                                                                          0.65f);
+        }
+        const auto landmarks_canonical =
+            warpLandmarksToCanonical(lms, transform, f_ctx->frame.width(), f_ctx->frame.height());
+        const auto anatomy_canonical =
+            CurvEngine::domain::HandAnatomyDecomposer::decompose(landmarks_canonical, 1.0f, 1.0f);
+        if (anatomy_canonical.is_valid) {
+            CurvEngine::domain::CreaseChainLinker::filterGraphByPalmDisc(result.ridge_graph,
+                                                                        anatomy_canonical.central_palm_disc, 0.40f);
+        }
+
         p_ctx->last_quality.blur_score = result.quality.blur_score;
         p_ctx->last_quality.brightness_score = result.quality.brightness_score;
         p_ctx->last_quality.contrast_score = result.quality.contrast_score;
@@ -453,20 +525,22 @@ int curv_pipeline_process_landmarks_roi(CurvPipelineHandle pipeline, CurvFrameHa
             evidence_arr.push_back(ev.to_json());
         }
 
-        // 1. First process with domain pack in 512x512 canonical space
+        // Domain pack in 512x512 canonical space with landmark priors + image-space polylines.
         if (p_ctx->domain_pack && result.is_usable) {
-            CurvEngine::DomainInput const d_in{warped_frame, result.ridge_graph, result.quality};
+            CurvEngine::DomainInput const d_in{warped_frame, result.ridge_graph, result.quality, &landmarks_canonical};
             auto const d_out = p_ctx->domain_pack->process(d_in);
             for (const auto& ev : d_out.domain_evidence) {
                 evidence_arr.push_back(ev.to_json());
             }
             if (!d_out.domain_payload.empty()) {
                 root_json["domain_payload"] = d_out.domain_payload;
+                enrichImageSpacePoints(root_json["domain_payload"], transform.M_inv, f_ctx->frame.width(),
+                                       f_ctx->frame.height());
             }
         }
         root_json["evidence"] = evidence_arr;
 
-        // 2. Now invert extracted sub-pixel curves back to source image coordinates for caller visualization
+        // Invert extracted sub-pixel curves back to source image coordinates for caller visualization
         CurvEngine::geometry::invertGraphCoordinates(result.ridge_graph, transform.M_inv);
 
         p_ctx->last_json = root_json.dump();

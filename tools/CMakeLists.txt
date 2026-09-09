@@ -8,6 +8,8 @@ add_library(curv_tools_lib STATIC
     lib/curv/tools/benchmark_lib.cpp
     lib/curv/tools/cli_lib.cpp
     lib/curv/tools/hand_inspector_lib.cpp
+    lib/curv/tools/palm_inspect_lib.cpp
+    lib/curv/tools/palm_overlay_debug_lib.cpp
     lib/curv/tools/demo_lib.cpp
     lib/curv/tools/video_pipeline_demo_lib.cpp
     lib/curv/tools/live_snapshot_demo_lib.cpp
@@ -56,6 +58,18 @@ target_link_libraries(hand_inspector_cli
 )
 
 vision_set_compiler_warnings(hand_inspector_cli)
+
+add_executable(palm_overlay_debug
+    palm_overlay_debug.cpp
+)
+
+target_link_libraries(palm_overlay_debug
+    PRIVATE
+        curv_tools_lib
+        ${OpenCV_LIBS}
+)
+
+vision_set_compiler_warnings(palm_overlay_debug)
 
 add_executable(synth_generator
     synth_generator.cpp

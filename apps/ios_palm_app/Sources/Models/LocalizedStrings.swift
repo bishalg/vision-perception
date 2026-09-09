@@ -115,14 +115,44 @@ public struct LocalizedStrings {
             .hindi: "हस्तरेखा ओवरले"
         ],
         "result.landmark": [
-            .english: "Landmark-guided crease overlay on your capture",
-            .nepali: "तपाईंको फोटोमा ल्यान्डमार्क-आधारित रेखा ओभरले",
-            .hindi: "आपकी फोटो पर लैंडमार्क-आधारित रेखा ओवरले"
+            .english: "Landmark guides (native engine not linked)",
+            .nepali: "ल्यान्डमार्क गाइड (नेटिभ इन्जिन लिंक छैन)",
+            .hindi: "लैंडमार्क गाइड (नेटिव इंजन लिंक नहीं)"
         ],
         "result.native": [
-            .english: "Native CurvEngine metrics + crease overlay",
-            .nepali: "नेटिभ CurvEngine मेट्रिक्स + रेखा ओभरले",
-            .hindi: "नेटिव CurvEngine मेट्रिक्स + रेखा ओवरले"
+            .english: "Native CurvEngine crease polylines",
+            .nepali: "नेटिभ CurvEngine रेखा पोलिलाइन",
+            .hindi: "नेटिव CurvEngine रेखा पॉलीलाइन"
+        ],
+        "result.retake": [
+            .english: "Retake",
+            .nepali: "फेरि खिच्नुहोस्",
+            .hindi: "फिर से लें"
+        ],
+        "result.edit": [
+            .english: "Edit",
+            .nepali: "सम्पादन",
+            .hindi: "संपादन"
+        ],
+        "result.doneEdit": [
+            .english: "Done",
+            .nepali: "सकियो",
+            .hindi: "हो गया"
+        ],
+        "result.editHint": [
+            .english: "Drag handles to reshape · drag rows to reorder · tag to reassign Heart/Head/Life/Fate",
+            .nepali: "ह्यान्डल तानेर मिलाउनुहोस् · पङ्क्ति सार्नुहोस् · ट्यागबाट नाम बदल्नुहोस्",
+            .hindi: "हैंडल खींचकर सुधारें · पंक्तियों को क्रम दें · टैग से नाम बदलें"
+        ],
+        "result.adjusted": [
+            .english: "adjusted",
+            .nepali: "मिलान",
+            .hindi: "समायोजित"
+        ],
+        "result.useAdjusted": [
+            .english: "Use these lines for reading",
+            .nepali: "यी रेखाहरू पढाइका लागि प्रयोग गर्नुहोस्",
+            .hindi: "पढ़ने के लिए इन रेखाओं का उपयोग करें"
         ]
     ]
 

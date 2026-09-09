@@ -1,0 +1,4 @@
+module curv_capi {
+    header "curv/curv_capi.h"
+    export *
+}

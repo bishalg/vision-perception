@@ -33,13 +33,29 @@ public final class VisionHandTracker {
 
     /**
      * Extracts 21 normalized landmarks from an incoming video frame CVPixelBuffer.
-     * Output coordinates: x in [0, 1], y in [0, 1] with origin (0, 0) at top-left.
+     * Output coordinates: x in [0, 1], y in [0, 1] with origin (0, 0) at top-left
+     * in the *oriented* image space (matching how the buffer should be displayed).
      */
     public func processFrame(
         _ pixelBuffer: CVPixelBuffer,
         orientation: CGImagePropertyOrientation = .up
     ) -> [CGPoint]? {
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: orientation, options: [:])
+        return run(handler: handler)
+    }
+
+    /**
+     * Same landmark extraction on an upright CGImage (preferred for captured stills).
+     */
+    public func processCGImage(
+        _ cgImage: CGImage,
+        orientation: CGImagePropertyOrientation = .up
+    ) -> [CGPoint]? {
+        let handler = VNImageRequestHandler(cgImage: cgImage, orientation: orientation, options: [:])
+        return run(handler: handler)
+    }
+
+    private func run(handler: VNImageRequestHandler) -> [CGPoint]? {
         do {
             try handler.perform([handPoseRequest])
             guard let observation = handPoseRequest.results?.first else {

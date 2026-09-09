@@ -2,16 +2,27 @@
 # curv_adapters Static Library Target
 # ==============================================================================
 
-add_library(curv_adapters STATIC
+# iOS build excludes:
+#   - opencv_dnn/HandLandmarkDetector (needs cv::dnn; iOS uses Apple Vision)
+#   - CctvStreamAdapter/CctvVideoSource (need <opencv2/videoio.hpp>, cv::VideoCapture)
+#   - CctvHttpSnapshot (needs <curl/curl.h>)
+set(CURV_ADAPTERS_SOURCES
     opencv/src/OverlayRenderer.cpp
     opencv/src/HandBoundaryDetector.cpp
-    opencv_dnn/src/HandLandmarkDetector.cpp
     cctv/src/CctvFrameSource.cpp
     cctv/src/FrameRingBuffer.cpp
-    cctv/src/CctvStreamAdapter.cpp
-    cctv/src/CctvVideoSource.cpp
-    cctv/src/CctvHttpSnapshot.cpp
 )
+
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    list(APPEND CURV_ADAPTERS_SOURCES
+        opencv_dnn/src/HandLandmarkDetector.cpp
+        cctv/src/CctvStreamAdapter.cpp
+        cctv/src/CctvVideoSource.cpp
+        cctv/src/CctvHttpSnapshot.cpp
+    )
+endif()
+
+add_library(curv_adapters STATIC ${CURV_ADAPTERS_SOURCES})
 
 target_include_directories(curv_adapters
     PUBLIC
@@ -28,8 +39,11 @@ target_link_libraries(curv_adapters
         curv_core
         ${OpenCV_LIBS}
         nlohmann_json::nlohmann_json
-        CURL::libcurl
 )
+
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    target_link_libraries(curv_adapters PUBLIC CURL::libcurl)
+endif()
 
 vision_set_compiler_warnings(curv_adapters)
 

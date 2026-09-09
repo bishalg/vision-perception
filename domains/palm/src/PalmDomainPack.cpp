@@ -96,8 +96,13 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
     }
 
     // 2. Authoritative Major Line Extraction via CreaseChainLinker
+    CurvEngine::domain::MajorLineLandmarks priors;
+    if (input.landmarks != nullptr) {
+        priors.landmarks = *input.landmarks;
+        priors.valid = true;
+    }
     const auto major_creases =
-        CurvEngine::domain::CreaseChainLinker::extractMajorLines(input.ridges, is_left_hand, zone_dim);
+        CurvEngine::domain::CreaseChainLinker::extractMajorLines(input.ridges, is_left_hand, zone_dim, priors);
 
     const std::vector<std::pair<std::string, std::string>> line_defs = {{"heart_line", "crease_heart"},
                                                                         {"head_line", "crease_head"},
@@ -131,6 +136,26 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
                 dominant_line = name;
             }
 
+            nlohmann::json points_canonical = nlohmann::json::array();
+            nlohmann::json points_norm = nlohmann::json::array();
+            const float inv_dim = 1.0f / static_cast<float>(std::max(1, zone_dim));
+            // Subsample for mobile-friendly payloads while keeping shape.
+            const size_t step = std::max<size_t>(1, chain.points.size() / 64);
+            for (size_t i = 0; i < chain.points.size(); i += step) {
+                const auto& pt = chain.points[i];
+                points_canonical.push_back({pt.x, pt.y});
+                points_norm.push_back({pt.x * inv_dim, pt.y * inv_dim});
+            }
+            if (!chain.points.empty() && (chain.points.size() - 1) % step != 0) {
+                const auto& pt = chain.points.back();
+                points_canonical.push_back({pt.x, pt.y});
+                points_norm.push_back({pt.x * inv_dim, pt.y * inv_dim});
+            }
+
+            if (chain.confidence > 0.0f) {
+                conf = std::min(0.98f, std::max(conf, chain.confidence));
+            }
+
             nlohmann::json line_obj = {{"name", name},
                                        {"present", true},
                                        {"confidence", conf},
@@ -144,7 +169,10 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
                                        {"gap_count", metrics.gap_count},
                                        {"fork_count", metrics.fork_count},
                                        {"mean_width_px", metrics.mean_width_px},
-                                       {"mean_intensity", metrics.mean_intensity}};
+                                       {"mean_intensity", metrics.mean_intensity},
+                                       {"points_canonical_px", points_canonical},
+                                       {"points_canonical_norm", points_norm},
+                                       {"points_image_norm", nlohmann::json::array()}};
             major_lines_json[name] = line_obj;
 
             // Emit structured domain evidence
@@ -172,7 +200,10 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
                                       {"gap_count", 0},
                                       {"fork_count", 0},
                                       {"mean_width_px", 0.0f},
-                                      {"mean_intensity", 0.0f}};
+                                      {"mean_intensity", 0.0f},
+                                      {"points_canonical_px", nlohmann::json::array()},
+                                      {"points_canonical_norm", nlohmann::json::array()},
+                                      {"points_image_norm", nlohmann::json::array()}};
         }
     }
 

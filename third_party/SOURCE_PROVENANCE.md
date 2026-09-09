@@ -26,4 +26,15 @@ Every new dependency must add an entry matching this template before merging:
 
 ## 2. Active Entries
 
-*(No external source files have been copied or vendored into the repository at Milestone 1 scaffold stage).*
+### Package: OpenCV (iOS XCFramework)
+- **Upstream Repository**: https://github.com/opencv/opencv
+- **Commit SHA / Release Tag**: `4.11.0`
+- **Original Author / Copyright**: OpenCV team / OpenCV Foundation
+- **License**: Apache-2.0
+- **Integration Target**: `third_party/ios/` (built on demand, git-ignored — see
+  `scripts/build_opencv_ios.sh`; not committed)
+- **Modifications**:
+  - [x] None (unmodified upstream, compiled for `iphoneos`/`iphonesimulator` arm64 with
+    `videoio`/`highgui`/`gapi`/language-binding modules disabled; `core`/`imgproc`/`imgcodecs`/`dnn` kept)
+- **Review Date**: 2026-09-09
+- **Approved By**: Bishal Ghimire

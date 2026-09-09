@@ -4,6 +4,7 @@
 #include "curv/Frame.hpp"
 #include "curv/GeometryTypes.hpp"
 #include "curv/QualityReport.hpp"
+#include "curv/geometry/RoiWarper.hpp"
 #include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
@@ -17,6 +18,8 @@ struct DomainInput {
     const Frame& frame;
     const RidgeGraph& ridges;
     const QualityReport& quality;
+    /// Optional 21-point landmarks in the same space as `ridges` (usually canonical patch).
+    const geometry::HandLandmarks* landmarks{nullptr};
 };
 
 /**

@@ -213,50 +213,74 @@ class PalmAnalysisViewModel : ViewModel() {
         if (landmarks.size < 21) return emptyList()
         val result = mutableListOf<CreaseSpline>()
 
+        // MediaPipe: tips 4/8/12/16/20; MCP knuckle row 5/9/13/17; wrist 0.
+        // Depth t=0 at MCP, t=1 at wrist — heart stays just under knuckles.
         val wrist = landmarks[0]
+        val thumbCmc = landmarks[1]
         val thumbMcp = landmarks[2]
+        val thumbIp = landmarks[3]
         val indexMcp = landmarks[5]
         val middleMcp = landmarks[9]
+        val middleTip = landmarks[12]
+        val ringMcp = landmarks[13]
         val pinkyMcp = landmarks[17]
 
-        val h1 = PointF(pinkyMcp.x * 0.95f + wrist.x * 0.05f, pinkyMcp.y * 0.70f + wrist.y * 0.30f)
-        val h2 = PointF(middleMcp.x * 0.85f + wrist.x * 0.15f, middleMcp.y * 0.65f + wrist.y * 0.35f)
-        val h3 = PointF(indexMcp.x * 0.80f + thumbMcp.x * 0.20f, indexMcp.y * 0.60f + thumbMcp.y * 0.40f)
+        fun lerp(a: PointF, b: PointF, t: Float) =
+            PointF(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
+        fun palmDepth(mcp: PointF, t: Float) = lerp(mcp, wrist, t)
+        val lifeOrigin = lerp(indexMcp, thumbMcp, 0.45f)
+
         result.add(CreaseSpline(
             lineType = CreaseLineType.HEART,
-            points = listOf(h1, h2, h3),
+            points = listOf(
+                palmDepth(pinkyMcp, 0.06f),
+                palmDepth(ringMcp, 0.10f),
+                palmDepth(middleMcp, 0.12f),
+                palmDepth(indexMcp, 0.10f),
+                lerp(palmDepth(indexMcp, 0.08f), palmDepth(middleMcp, 0.08f), 0.35f)
+            ),
             confidence = response?.domainPayload?.majorLines?.get("heart")?.confidence ?: 0.88f,
             tortuosity = response?.domainPayload?.majorLines?.get("heart")?.tortuosity ?: 1.12f,
             arcLengthPx = response?.domainPayload?.majorLines?.get("heart")?.arcLengthPx ?: 184.5f
         ))
 
-        val hd1 = PointF(indexMcp.x * 0.70f + thumbMcp.x * 0.30f, indexMcp.y * 0.50f + thumbMcp.y * 0.50f)
-        val hd2 = PointF(middleMcp.x * 0.60f + wrist.x * 0.40f, middleMcp.y * 0.50f + wrist.y * 0.50f)
-        val hd3 = PointF(pinkyMcp.x * 0.85f + wrist.x * 0.15f, pinkyMcp.y * 0.50f + wrist.y * 0.50f)
         result.add(CreaseSpline(
             lineType = CreaseLineType.HEAD,
-            points = listOf(hd1, hd2, hd3),
+            points = listOf(
+                lerp(lifeOrigin, wrist, 0.18f),
+                palmDepth(indexMcp, 0.32f),
+                palmDepth(middleMcp, 0.36f),
+                palmDepth(ringMcp, 0.34f),
+                palmDepth(pinkyMcp, 0.30f)
+            ),
             confidence = response?.domainPayload?.majorLines?.get("head")?.confidence ?: 0.91f,
             tortuosity = response?.domainPayload?.majorLines?.get("head")?.tortuosity ?: 1.08f,
             arcLengthPx = response?.domainPayload?.majorLines?.get("head")?.arcLengthPx ?: 192.0f
         ))
 
-        val l1 = PointF(indexMcp.x * 0.65f + thumbMcp.x * 0.35f, indexMcp.y * 0.52f + thumbMcp.y * 0.48f)
-        val l2 = PointF(thumbMcp.x * 0.55f + wrist.x * 0.45f, thumbMcp.y * 0.40f + wrist.y * 0.60f)
-        val l3 = PointF(wrist.x * 0.75f + thumbMcp.x * 0.25f, wrist.y * 0.90f + thumbMcp.y * 0.10f)
         result.add(CreaseSpline(
             lineType = CreaseLineType.LIFE,
-            points = listOf(l1, l2, l3),
+            points = listOf(
+                lerp(lifeOrigin, wrist, 0.08f),
+                lerp(thumbMcp, indexMcp, 0.25f),
+                lerp(thumbMcp, wrist, 0.35f),
+                lerp(thumbIp, wrist, 0.55f),
+                lerp(thumbCmc, wrist, 0.72f),
+                lerp(wrist, thumbCmc, 0.15f)
+            ),
             confidence = response?.domainPayload?.majorLines?.get("life")?.confidence ?: 0.94f,
             tortuosity = response?.domainPayload?.majorLines?.get("life")?.tortuosity ?: 1.25f,
             arcLengthPx = response?.domainPayload?.majorLines?.get("life")?.arcLengthPx ?: 245.2f
         ))
 
-        val f1 = PointF(wrist.x * 0.90f + middleMcp.x * 0.10f, wrist.y * 0.85f + middleMcp.y * 0.15f)
-        val f2 = PointF(middleMcp.x * 0.75f + wrist.x * 0.25f, middleMcp.y * 0.68f + wrist.y * 0.32f)
         result.add(CreaseSpline(
             lineType = CreaseLineType.FATE,
-            points = listOf(f1, f2),
+            points = listOf(
+                lerp(wrist, middleTip, 0.12f),
+                lerp(wrist, middleTip, 0.38f),
+                lerp(wrist, middleTip, 0.58f),
+                palmDepth(middleMcp, 0.22f)
+            ),
             confidence = response?.domainPayload?.majorLines?.get("fate")?.confidence ?: 0.79f,
             tortuosity = response?.domainPayload?.majorLines?.get("fate")?.tortuosity ?: 1.03f,
             arcLengthPx = response?.domainPayload?.majorLines?.get("fate")?.arcLengthPx ?: 142.8f

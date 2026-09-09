@@ -4,7 +4,7 @@ import CurvPalmOverlay
 
 /**
  * Live guidance camera with iOS Camera-style last-capture thumbnail (bottom-left).
- * Tap thumbnail to open the crease overlay review.
+ * Tap thumbnail to open the crease overlay review (edit lines).
  */
 public struct MainScannerView: View {
     @StateObject private var viewModel = PalmAnalysisViewModel()
@@ -63,11 +63,12 @@ public struct MainScannerView: View {
                 CaptureResultView(
                     image: viewModel.capturedImage,
                     landmarks: viewModel.captureLandmarks,
-                    splines: viewModel.detectedSplines,
+                    splines: $viewModel.detectedSplines,
                     selectedLanguage: viewModel.currentLanguage,
-                    usedNativeEngine: viewModel.usedNativeEngine,
+                    overlaySource: viewModel.overlaySource,
                     onLanguageChange: { viewModel.currentLanguage = $0 },
-                    onRetake: { viewModel.retake() }
+                    onRetake: { viewModel.retake() },
+                    onConfirmAdjustedLines: { viewModel.confirmAdjustedLinesForPrediction() }
                 )
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .zIndex(3)

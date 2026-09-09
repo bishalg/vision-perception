@@ -19,6 +19,7 @@
 		BE3309BBEB88214FB7035EBA /* PalmAnalysisResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD8FE6C0095809F7C6C5E47 /* PalmAnalysisResult.swift */; };
 		D76B8272311635E1310BDF7A /* PalmScannerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BB3A3841F3F59CF9472772D /* PalmScannerApp.swift */; };
 		EEBE745EFB90024885C691DC /* SamudrikaReadingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B79D06FF501468AED80497B /* SamudrikaReadingSheet.swift */; };
+		EF5D298BE06A29AA1FA0CBBB /* ImageCoordinateMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FC54A6BE9238CDDF01888E1 /* ImageCoordinateMapper.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,6 +32,7 @@
 		3CD8FE6C0095809F7C6C5E47 /* PalmAnalysisResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalmAnalysisResult.swift; sourceTree = "<group>"; };
 		4D50AD49761707C4F33F4119 /* PalmScanner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PalmScanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5BB3A3841F3F59CF9472772D /* PalmScannerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalmScannerApp.swift; sourceTree = "<group>"; };
+		5FC54A6BE9238CDDF01888E1 /* ImageCoordinateMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCoordinateMapper.swift; sourceTree = "<group>"; };
 		6B4263A45D6BB454A8D1C5E3 /* LocalizedStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizedStrings.swift; sourceTree = "<group>"; };
 		8B79D06FF501468AED80497B /* SamudrikaReadingSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SamudrikaReadingSheet.swift; sourceTree = "<group>"; };
 		FAA47A720FDE5572D1646BB0 /* CreaseSplineOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreaseSplineOverlayView.swift; sourceTree = "<group>"; };
@@ -86,11 +88,19 @@
 			name = Packages;
 			sourceTree = "<group>";
 		};
+		B98F47F7833058D84849467B /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
 		C3D629DF27816546537E8598 /* Views */ = {
 			isa = PBXGroup;
 			children = (
 				04145BAF5F6DF10A65698C9A /* CaptureResultView.swift */,
 				FAA47A720FDE5572D1646BB0 /* CreaseSplineOverlayView.swift */,
+				5FC54A6BE9238CDDF01888E1 /* ImageCoordinateMapper.swift */,
 				23380A94031934043F119E2F /* MainScannerView.swift */,
 				8B79D06FF501468AED80497B /* SamudrikaReadingSheet.swift */,
 			);
@@ -119,6 +129,7 @@
 			children = (
 				9A6499A55A290FC97CE81A2F /* AppHost */,
 				B335E51C401C973DAA7A958F /* Packages */,
+				B98F47F7833058D84849467B /* Resources */,
 				95E4E0449037091415FC36CB /* Sources */,
 				D47C26A80BC3E9A87FC79CB6 /* Products */,
 			);
@@ -132,6 +143,7 @@
 			buildConfigurationList = 02494C251937E86714C170FF /* Build configuration list for PBXNativeTarget "PalmScanner" */;
 			buildPhases = (
 				FABE5AE7CDF2E85E4980C965 /* Sources */,
+				B7E4E1DAE2021C47EAB8794F /* Resources */,
 				C4C50F26B03186A7488F3D0C /* Frameworks */,
 			);
 			buildRules = (
@@ -185,6 +197,16 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		B7E4E1DAE2021C47EAB8794F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		FABE5AE7CDF2E85E4980C965 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -192,6 +214,7 @@
 			files = (
 				4C266A227BD5EEF084A180FF /* CaptureResultView.swift in Sources */,
 				211E544517E4DA7197D89A57 /* CreaseSplineOverlayView.swift in Sources */,
+				EF5D298BE06A29AA1FA0CBBB /* ImageCoordinateMapper.swift in Sources */,
 				A037D806C935758987425DE6 /* LocalizedStrings.swift in Sources */,
 				58A086084D286C34069060F5 /* MainScannerView.swift in Sources */,
 				BE3309BBEB88214FB7035EBA /* PalmAnalysisResult.swift in Sources */,
