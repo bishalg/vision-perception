@@ -181,6 +181,9 @@ wheels/
 *.mov
 *.mkv
 *.m4v
+# Keep short offline demo/test clips under fixtures (Phase 2+).
+!data/fixtures/**/*.avi
+!data/fixtures/**/*.mp4
 *.bag
 *.h5
 *.tflite
