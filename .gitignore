@@ -125,10 +125,12 @@ ndk-build/
 
 # ------------------------------------------------------------------------------
 # Vendored iOS toolchain artifacts (built on demand by scripts/build_opencv_ios.sh)
-# ------------------------------------------------------------------------------
 third_party/ios/opencv2.xcframework/
 third_party/ios/opencv-src-*/
 third_party/ios/opencv-build-*/
+
+# SPM build artifacts
+adapters/apple/.build/
 
 # Visual Studio
 .vs/
