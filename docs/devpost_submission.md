@@ -97,3 +97,4 @@ Unlike conventional systems where an orchestrator pre-digests metrics and reques
 - [x] Unit test suite covering S3 event routing, token validation, and duplicate alert prevention (8/8 green).
 - [x] Graviton3 COOL benchmark script with SIMD build-information verification and EC2 operational guide.
 - [x] Turnkey Devpost submission text and 5-minute video storyboard documented.
+- [x] Hackathon live-demo presentation pack (phase-by-phase slides + runbook): [`docs/hackathon_presentation.md`](hackathon_presentation.md).

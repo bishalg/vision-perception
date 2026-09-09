@@ -100,6 +100,7 @@ Stage 1: Static Images ✅          ──►  Stage 2: Recorded Video ✅  ─�
 | **System Spatial Architecture** | Multi-tier pipeline & 2D-to-3D viewshed projection | [`docs/research/realtime_spatial_perception_architecture.md`](docs/research/realtime_spatial_perception_architecture.md) |
 | **Test Fixtures & Local POC** | Curated reference datasets for rapid offline dev | [`data/fixtures/README.md`](data/fixtures/README.md) |
 | **Research Index** | High-density discovery index for humans & AI | [`docs/research/README.md`](docs/research/README.md) |
+| **Hackathon presentation** | Slide outline, live demo runbook, metric cheatsheet | [`docs/hackathon_presentation.md`](docs/hackathon_presentation.md) |
 
 ---
 
