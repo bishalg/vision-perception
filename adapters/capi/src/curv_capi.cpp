@@ -84,6 +84,8 @@ struct PipelineContext {
         } else if (domain_id == "surface_inspection" || domain_id == "org.curv.domain.surface_inspection") {
             domain_pack = std::make_unique<CurvEngine::domains::SurfaceInspectionPack>();
         } else if (domain_id == "floor_plan" || domain_id == "org.curv.domain.floor_plan" || domain_id == "vastu") {
+            q_thresh.max_brightness = 255.0;
+            quality_analyzer = std::make_shared<CurvEngine::quality::LaplacianQualityAnalyzer>(q_thresh);
             r_cfg.extract_dark_lines = true;
             ridge_extractor = std::make_shared<CurvEngine::ridge::StegerRidgeExtractor>(r_cfg);
             pipeline =

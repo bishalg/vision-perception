@@ -33,6 +33,7 @@
 data/fixtures/cctv/http_cache/
 data/samples/*_Bishal*
 data/samples/*_bishal*
+data/samples/*_full_overlay.png
 
 # ------------------------------------------------------------------------------
 # CMake & Build Directories
