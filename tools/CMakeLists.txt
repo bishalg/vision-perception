@@ -10,6 +10,7 @@ add_library(curv_tools_lib STATIC
     lib/curv/tools/hand_inspector_lib.cpp
     lib/curv/tools/demo_lib.cpp
     lib/curv/tools/video_pipeline_demo_lib.cpp
+    lib/curv/tools/live_snapshot_demo_lib.cpp
 )
 
 target_include_directories(curv_tools_lib
@@ -100,6 +101,18 @@ target_link_libraries(video_pipeline_demo
 )
 
 vision_set_compiler_warnings(video_pipeline_demo)
+
+add_executable(live_snapshot_demo
+    live_snapshot_demo.cpp
+)
+
+target_link_libraries(live_snapshot_demo
+    PRIVATE
+        curv_tools_lib
+        ${OpenCV_LIBS}
+)
+
+vision_set_compiler_warnings(live_snapshot_demo)
 
 # ==============================================================================
 # Roadmap M6 accuracy gate: synth_generator -> curv_cli -> evaluate (RMSE < 0.1px)

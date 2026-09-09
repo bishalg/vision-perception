@@ -110,6 +110,7 @@ endif()
 # Dependency: OpenCV
 # ------------------------------------------------------------------------------
 find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs dnn videoio)
+find_package(CURL REQUIRED)
 
 # ------------------------------------------------------------------------------
 # Diagnostic Status Messages

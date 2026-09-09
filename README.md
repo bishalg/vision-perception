@@ -86,10 +86,10 @@ GitHub Actions (`.github/workflows/ci.yml`) gates every push to `main`/`dev`: cl
 `vision-perception` integrates multi-modal spatial intelligence (drawing patterns from [`bilawalsidhu/gods-eye-view`](https://github.com/bilawalsidhu/gods-eye-view)) into its differential geometry pipeline via a **gradual 3-stage development model**:
 
 ```text
-Stage 1: Static Images ✅          ──►  Stage 2: Recorded Video (Current)  ──►  Stage 3: Live Streams
-• Local .png/.jpg fixtures              • Local short .avi/.mp4 clips           • Live RTSP / HLS / MJPEG
-• Instant, reproducible local POC       • FPS-stride + annotated demo CLI      • AWS Bedrock Agentic Loop
-• Zero network dependencies             • Ring-buffer backpressure ready        • 3D Cesium / GEV Digital Twin
+Stage 1: Static Images ✅          ──►  Stage 2: Recorded Video ✅  ──►  Stage 3: Live Streams (Current)
+• Local .png/.jpg fixtures              • Local short .avi/.mp4 clips      • HTTP snapshot pull + cache
+• Instant, reproducible local POC       • FPS-stride + annotated demo CLI  • mock:// offline presentation mode
+• Zero network dependencies             • Ring-buffer backpressure ready   • Optional --direct live Caltrans
 ```
 
 ### Ingestion Matrix & Documentation
@@ -116,6 +116,7 @@ Stage 1: Static Images ✅          ──►  Stage 2: Recorded Video (Current)
 - [x] **Milestone 8: AWS Cloud Architecture & Special Award Targets** — AWS CDK v2 IaC (`aws_infra/`), two-tool Bedrock Agentic Vision loop (`getFloodEvidence` $\to$ `dispatchFloodAlert`), DynamoDB idempotency gate, dedicated S3 audit bucket, SQS fallback queue, and COOL on AWS Graviton3 benchmark suite (see [`docs/devpost_submission.md`](docs/devpost_submission.md) and [`docs/aws_benchmark_guide.md`](docs/aws_benchmark_guide.md))
 - [x] **Milestone 9: Real-Time CCTV & Spatial Perception (Phase 1: Static Reference POC)** — Curate `data/fixtures/cctv/` reference images, implement `adapters/cctv/`, and evaluate Steger curvilinear extraction on highway lane lines and river corridor watermarks
 - [x] **Milestone 10: Phase 2 Recorded Video Pipeline** — `CctvVideoSource` + `video_pipeline_demo` (quality + Steger annotated AVI/MP4), ring-buffer stream adapter foundation, offline `data/fixtures/cctv_video/` clip
-- [ ] **Milestone 11: Phase 3 Live HTTP Snapshot Stream** — `CctvHttpSnapshot` + `live_snapshot_demo` with local cache/proxy fallback for presentation-safe demos
-- [ ] Next phase: CesiumJS 3D twin (Phase 4), flood alert production demo (Phase 5); mobile packaging remains parallel track
+- [x] **Milestone 11: Phase 3 Live HTTP Snapshot Stream** — `CctvHttpSnapshot` + `live_snapshot_demo` with local cache/proxy fallback for presentation-safe demos
+- [ ] **Milestone 12: Phase 4 CesiumJS 3D Digital Twin** — `apps/cesium_viewer` frustum viewsheds + annotated frame panel
+- [ ] Next phase: flood alert production demo (Phase 5); mobile packaging remains parallel track
 

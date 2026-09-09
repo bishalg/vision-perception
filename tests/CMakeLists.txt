@@ -377,3 +377,22 @@ add_test(NAME test_cctv_video_source
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 
+# ------------------------------------------------------------------------------
+# Unit Test: test_cctv_http_snapshot (Phase 3 HTTP / mock / cache)
+# ------------------------------------------------------------------------------
+add_executable(test_cctv_http_snapshot
+    unit/test_cctv_http_snapshot.cpp
+)
+target_link_libraries(test_cctv_http_snapshot
+    PRIVATE
+        curv_core
+        curv_adapters
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_cctv_http_snapshot)
+add_test(NAME test_cctv_http_snapshot
+    COMMAND test_cctv_http_snapshot
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+

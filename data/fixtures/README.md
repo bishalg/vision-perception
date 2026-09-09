@@ -17,17 +17,17 @@
 └───────────────┬────────────────┘
                 ▼
 ┌────────────────────────────────┐
-│ Stage 2: Recorded Video Feeds  │ ◄── [CURRENT STAGE]
-│ • Local short video (.avi/.mp4)│     Temporal tracking & FPS stride
-│ • Offline simulated streaming  │     Ring-buffer & backpressure ready
-│ • Annotated demo CLI output    │     video_pipeline_demo
+│ Stage 2: Recorded Video Feeds  │ ✅ DONE
+│ • Local short video (.avi/.mp4)│
+│ • Offline simulated streaming  │
+│ • Annotated demo CLI output    │
 └───────────────┬────────────────┘
                 ▼
 ┌────────────────────────────────┐
-│ Stage 3: Live Real-Time Feeds  │
-│ • Live RTSP / HLS / MJPEG      │
-│ • HTTP snapshot pull (Phase 3) │
-│ • Edge & Cloud streaming       │
+│ Stage 3: Live Snapshot Pull    │ ◄── [CURRENT STAGE]
+│ • HTTP JPEG/PNG snapshots      │     Caltrans / Austin / mock://
+│ • Disk cache for presentations │     live_snapshot_demo
+│ • Optional --direct live mode  │
 └────────────────────────────────┘
 ```
 
@@ -66,7 +66,16 @@ data/fixtures/
   --fps-stride 2 \
   --side-by-side
 
-# Regenerate synthetic video fixture (no network)
-python3 tools/cctv_video_fixture.py \
-  -o data/fixtures/cctv_video/caltrans_i80_sample.avi
+# Stage 3 — live / mock HTTP snapshot loop (presentation-safe with mock://)
+./build/tools/live_snapshot_demo \
+  --url mock://caltrans_i80_day \
+  --interval-sec 2 \
+  --duration-sec 10
+
+# Live Caltrans pull (uses cache fallback on failure; --direct skips warm cache)
+./build/tools/live_snapshot_demo \
+  --url caltrans_i80_drum \
+  --interval-sec 5 \
+  --duration-sec 30 \
+  --direct
 ```

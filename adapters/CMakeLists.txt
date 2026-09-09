@@ -9,6 +9,7 @@ add_library(curv_adapters STATIC
     cctv/src/FrameRingBuffer.cpp
     cctv/src/CctvStreamAdapter.cpp
     cctv/src/CctvVideoSource.cpp
+    cctv/src/CctvHttpSnapshot.cpp
 )
 
 target_include_directories(curv_adapters
@@ -26,6 +27,7 @@ target_link_libraries(curv_adapters
         curv_core
         ${OpenCV_LIBS}
         nlohmann_json::nlohmann_json
+        CURL::libcurl
 )
 
 vision_set_compiler_warnings(curv_adapters)

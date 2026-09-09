@@ -30,6 +30,7 @@
 /synthetic/
 /eval_gate_tmp/
 /output/
+data/fixtures/cctv/http_cache/
 
 # ------------------------------------------------------------------------------
 # CMake & Build Directories
