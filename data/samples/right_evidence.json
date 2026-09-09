@@ -1,0 +1,23 @@
+{
+  "domain_payload": {
+    "continuity_breaks": 0,
+    "fate_line_id": null,
+    "head_line": null,
+    "head_line_id": null,
+    "heart_line": null,
+    "heart_line_id": null,
+    "intersections": 0,
+    "life_line": null,
+    "life_line_id": null,
+    "major_lines": {},
+    "palm_analysis": {},
+    "status": "no_segments_detected"
+  },
+  "evidence": [],
+  "quality": {
+    "blur_score": 8.535964962968137,
+    "brightness_score": 202.99291610717773,
+    "contrast_score": 5.8172430052377795,
+    "is_usable": false
+  }
+}

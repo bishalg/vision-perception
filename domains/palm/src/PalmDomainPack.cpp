@@ -1,4 +1,6 @@
 #include "curv/domains/PalmDomainPack.hpp"
+#include "curv/domain/CreaseChainLinker.hpp"
+#include "curv/domain/CreaseGeometry.hpp"
 #include "curv/domain/PalmZones.hpp"
 #include <algorithm>
 #include <cmath>
@@ -17,9 +19,6 @@ struct SegmentAnalysis {
     float max_y{-std::numeric_limits<float>::max()};
     float mean_x{0.0f};
     float mean_y{0.0f};
-    float net_dx{0.0f};
-    float net_dy{0.0f};
-    float angle_rad{0.0f};
 };
 
 SegmentAnalysis analyzeSegment(const CurveSegment& seg) {
@@ -40,10 +39,6 @@ SegmentAnalysis analyzeSegment(const CurveSegment& seg) {
     const float n = static_cast<float>(seg.points.size());
     sa.mean_x = sum_x / n;
     sa.mean_y = sum_y / n;
-
-    sa.net_dx = seg.points.back().x - seg.points.front().x;
-    sa.net_dy = seg.points.back().y - seg.points.front().y;
-    sa.angle_rad = std::atan2(std::abs(sa.net_dy), std::abs(sa.net_dx));
     return sa;
 }
 
@@ -58,6 +53,12 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
                                  {"heart_line", nullptr},
                                  {"head_line", nullptr},
                                  {"life_line", nullptr},
+                                 {"heart_line_id", nullptr},
+                                 {"head_line_id", nullptr},
+                                 {"life_line_id", nullptr},
+                                 {"fate_line_id", nullptr},
+                                 {"major_lines", nlohmann::json::object()},
+                                 {"palm_analysis", nlohmann::json::object()},
                                  {"intersections", 0},
                                  {"continuity_breaks", 0}};
         return output;
@@ -80,88 +81,165 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
 
     const float palm_height = std::max(10.0f, global_max_y - global_min_y);
 
-    // 2. Sort candidates by length (longest segments are primary creases)
-    std::ranges::sort(analyses, [](const SegmentAnalysis& a, const SegmentAnalysis& b) {
-        return a.seg->total_length > b.seg->total_length;
-    });
-
-    int heart_line_id = -1;
-    int head_line_id = -1;
-    int life_line_id = -1;
-
-    // 3. Zone Classification: evaluate spatial zone for major creases
     bool is_left_hand = false;
     if (input.frame.metadata.contains("is_left_hand") && input.frame.metadata.at("is_left_hand") == "true") {
         is_left_hand = true;
     }
     const int zone_dim = (input.frame.width() > 0) ? input.frame.width() : 512;
     const auto palm_zones = PalmZones::getCanonicalPalmZones(zone_dim, is_left_hand);
-    std::unordered_map<std::string, int> zone_counts;
 
+    // Count zone distribution across segments
+    std::unordered_map<std::string, int> zone_counts;
     for (const auto& sa : analyses) {
-        const float rel_y = (sa.mean_y - global_min_y) / palm_height;
         const std::string primary_zone = geometry::ZoneIntersector::findPrimaryZone(*sa.seg, palm_zones);
         zone_counts[primary_zone]++;
+    }
 
-        // Top third, primarily transverse/horizontal -> Heart line
-        if (heart_line_id == -1 && rel_y <= 0.42f && sa.angle_rad < 0.70f) {
-            heart_line_id = sa.seg->id;
+    // 2. Authoritative Major Line Extraction via CreaseChainLinker
+    const auto major_creases =
+        CurvEngine::domain::CreaseChainLinker::extractMajorLines(input.ridges, is_left_hand, zone_dim);
+
+    const std::vector<std::pair<std::string, std::string>> line_defs = {{"heart_line", "crease_heart"},
+                                                                        {"head_line", "crease_head"},
+                                                                        {"life_line", "crease_life"},
+                                                                        {"fate_line", "crease_fate"}};
+
+    nlohmann::json major_lines_json = nlohmann::json::object();
+    int total_gaps = 0;
+    float max_verified_arc = 0.0f;
+    std::string dominant_line = "none";
+    std::vector<float> verified_tortuosities;
+
+    for (const auto& [name, ev_type] : line_defs) {
+        auto it = major_creases.find(name);
+        const bool found = (it != major_creases.end() && it->second.is_valid && it->second.total_length >= 15.0f);
+
+        if (found) {
+            const auto& chain = it->second;
+            const auto metrics = CurvEngine::domain::CreaseGeometry::computeMetrics(chain, input.ridges, palm_zones);
+
+            float conf = 0.85f;
+            if (metrics.arc_length_px > 100.0f) conf += 0.05f;
+            if (metrics.start_zone != "unknown") conf += 0.03f;
+            conf = std::min(0.98f, conf);
+
+            total_gaps += metrics.gap_count;
+            verified_tortuosities.push_back(metrics.tortuosity);
+
+            if (metrics.arc_length_px > max_verified_arc) {
+                max_verified_arc = metrics.arc_length_px;
+                dominant_line = name;
+            }
+
+            nlohmann::json line_obj = {{"name", name},
+                                       {"present", true},
+                                       {"confidence", conf},
+                                       {"segment_ids", chain.constituent_segment_ids},
+                                       {"arc_length_px", metrics.arc_length_px},
+                                       {"chord_length_px", metrics.chord_length_px},
+                                       {"tortuosity", metrics.tortuosity},
+                                       {"mean_angle_deg", metrics.mean_angle_deg},
+                                       {"start_zone", metrics.start_zone},
+                                       {"end_zone", metrics.end_zone},
+                                       {"gap_count", metrics.gap_count},
+                                       {"fork_count", metrics.fork_count},
+                                       {"mean_width_px", metrics.mean_width_px},
+                                       {"mean_intensity", metrics.mean_intensity}};
+            major_lines_json[name] = line_obj;
+
+            // Emit structured domain evidence
             output.domain_evidence.emplace_back(
-                "crease_heart", "heart_line", 0.90,
-                nlohmann::json{{"segment_id", sa.seg->id}, {"length", sa.seg->total_length}, {"zone", primary_zone}},
-                nlohmann::json{{"mean_y_rel", rel_y}});
-        }
-        // Middle vertical tier, diagonal transverse -> Head line
-        else if (head_line_id == -1 && rel_y > 0.30f && rel_y <= 0.68f) {
-            head_line_id = sa.seg->id;
-            output.domain_evidence.emplace_back(
-                "crease_head", "head_line", 0.88,
-                nlohmann::json{{"segment_id", sa.seg->id}, {"length", sa.seg->total_length}, {"zone", primary_zone}},
-                nlohmann::json{{"mean_y_rel", rel_y}});
-        }
-        // Longitudinal curvature running down towards wrist -> Life line
-        else if (life_line_id == -1 && (rel_y > 0.45f || sa.angle_rad >= 0.70f)) {
-            life_line_id = sa.seg->id;
-            output.domain_evidence.emplace_back(
-                "crease_life", "life_line", 0.85,
-                nlohmann::json{{"segment_id", sa.seg->id}, {"length", sa.seg->total_length}, {"zone", primary_zone}},
-                nlohmann::json{{"mean_y_rel", rel_y}});
+                ev_type, name, conf,
+                nlohmann::json{{"segment_ids", chain.constituent_segment_ids},
+                               {"arc_length_px", metrics.arc_length_px},
+                               {"chord_length_px", metrics.chord_length_px},
+                               {"tortuosity", metrics.tortuosity},
+                               {"start_zone", metrics.start_zone},
+                               {"end_zone", metrics.end_zone},
+                               {"gap_count", metrics.gap_count}},
+                nlohmann::json{{"mean_angle_deg", metrics.mean_angle_deg}, {"fork_count", metrics.fork_count}});
+        } else {
+            major_lines_json[name] = {{"name", name},
+                                      {"present", false},
+                                      {"confidence", 0.0f},
+                                      {"segment_ids", nlohmann::json::array()},
+                                      {"arc_length_px", 0.0f},
+                                      {"chord_length_px", 0.0f},
+                                      {"tortuosity", 1.0f},
+                                      {"mean_angle_deg", 0.0f},
+                                      {"start_zone", "unknown"},
+                                      {"end_zone", "unknown"},
+                                      {"gap_count", 0},
+                                      {"fork_count", 0},
+                                      {"mean_width_px", 0.0f},
+                                      {"mean_intensity", 0.0f}};
         }
     }
 
-    // 4. Structural Features: Count junctions / intersections and continuity breaks
-    const int intersections_count = static_cast<int>(input.ridges.junctions.size());
+    // 3. Cross-line relationships
+    float heart_head_dist = -1.0f;
+    if (major_creases.contains("heart_line") && major_creases.at("heart_line").is_valid &&
+        major_creases.contains("head_line") && major_creases.at("head_line").is_valid) {
+        heart_head_dist = CurvEngine::domain::CreaseGeometry::computeMinDistance(major_creases.at("heart_line").points,
+                                                                                 major_creases.at("head_line").points);
+    }
 
-    // Continuity breaks: check gaps between nearby segment endpoints (< 15 px) across all 4 combinations
-    int continuity_breaks = 0;
-    for (size_t i = 0; i < analyses.size(); ++i) {
-        const auto& p_a_front = analyses[i].seg->points.front();
-        const auto& p_a_back = analyses[i].seg->points.back();
-
-        for (size_t j = i + 1; j < analyses.size(); ++j) {
-            const auto& p_b_front = analyses[j].seg->points.front();
-            const auto& p_b_back = analyses[j].seg->points.back();
-
-            const float d1 = std::hypot(p_a_back.x - p_b_front.x, p_a_back.y - p_b_front.y);
-            const float d2 = std::hypot(p_a_front.x - p_b_front.x, p_a_front.y - p_b_front.y);
-            const float d3 = std::hypot(p_a_back.x - p_b_back.x, p_a_back.y - p_b_back.y);
-            const float d4 = std::hypot(p_a_front.x - p_b_back.x, p_a_front.y - p_b_back.y);
-
-            const float min_d = std::min({d1, d2, d3, d4});
-            if (min_d > 2.0f && min_d < 15.0f) {
-                continuity_breaks++;
+    int named_line_intersections = 0;
+    const std::vector<std::string> names = {"heart_line", "head_line", "life_line", "fate_line"};
+    for (size_t i = 0; i < names.size(); ++i) {
+        for (size_t j = i + 1; j < names.size(); ++j) {
+            if (major_creases.contains(names[i]) && major_creases.at(names[i]).is_valid &&
+                major_creases.contains(names[j]) && major_creases.at(names[j]).is_valid) {
+                named_line_intersections += CurvEngine::domain::CreaseGeometry::countIntersections(
+                    major_creases.at(names[i]).points, major_creases.at(names[j]).points);
             }
         }
     }
 
+    std::string palm_type_proxy = "balanced";
+    if (!verified_tortuosities.empty()) {
+        float sum_tort = 0.0f;
+        for (float t : verified_tortuosities)
+            sum_tort += t;
+        const float mean_tort = sum_tort / static_cast<float>(verified_tortuosities.size());
+        if (mean_tort > 1.20f) {
+            palm_type_proxy = "curved";
+        } else if (mean_tort < 1.08f) {
+            palm_type_proxy = "straight";
+        }
+    }
+
+    nlohmann::json palm_analysis = {
+        {"lines", major_lines_json},
+        {"heart_head_min_distance_px", (heart_head_dist >= 0.0f) ? nlohmann::json(heart_head_dist) : nullptr},
+        {"named_line_intersections", named_line_intersections},
+        {"dominant_line", dominant_line},
+        {"palm_type_proxy", palm_type_proxy}};
+
+    // Backward-compatible primary segment IDs
+    auto get_primary_id = [&](const std::string& line_name) -> nlohmann::json {
+        if (major_lines_json.contains(line_name) && major_lines_json[line_name]["present"].get<bool>()) {
+            const auto& segs = major_lines_json[line_name]["segment_ids"];
+            if (!segs.empty()) {
+                return segs.front();
+            }
+        }
+        return nullptr;
+    };
+
+    const int total_junctions = static_cast<int>(input.ridges.junctions.size());
+
     output.domain_payload = {{"status", "analyzed"},
                              {"palm_height_px", palm_height},
                              {"is_left_hand", is_left_hand},
-                             {"heart_line_id", (heart_line_id != -1) ? nlohmann::json(heart_line_id) : nullptr},
-                             {"head_line_id", (head_line_id != -1) ? nlohmann::json(head_line_id) : nullptr},
-                             {"life_line_id", (life_line_id != -1) ? nlohmann::json(life_line_id) : nullptr},
-                             {"intersections", intersections_count},
-                             {"continuity_breaks", continuity_breaks},
+                             {"heart_line_id", get_primary_id("heart_line")},
+                             {"head_line_id", get_primary_id("head_line")},
+                             {"life_line_id", get_primary_id("life_line")},
+                             {"fate_line_id", get_primary_id("fate_line")},
+                             {"major_lines", major_lines_json},
+                             {"palm_analysis", palm_analysis},
+                             {"intersections", total_junctions},
+                             {"continuity_breaks", total_gaps},
                              {"zone_distribution", zone_counts},
                              {"total_segments_analyzed", input.ridges.segments.size()}};
 

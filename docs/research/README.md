@@ -13,6 +13,7 @@
 | **[`gods_eye_view_and_cctv_integration.md`](gods_eye_view_and_cctv_integration.md)** | `DOC-RES-004` | CCTV & Public Spatial Intelligence | • Open CCTV endpoints (Caltrans, Austin, TfL).<br>• 3D Camera pose & viewshed frustum projection.<br>• FLIR/Ironbow & NVG GLSL shader simulation.<br>• Real-time ADS-B, AIS, and SGP4 orbital feeds. |
 | **[`realtime_spatial_perception_architecture.md`](realtime_spatial_perception_architecture.md)** | `DOC-ARCH-005` | System-Wide Real-Time Ingestion | • Multi-tier architecture: Ingestion $\to$ Core $\to$ Cloud $\to$ 3D Twin.<br>• Thread-safe ring-buffer zero-latency frame ingestion.<br>• 4-Phase implementation roadmap (CCTV $\to$ SAR $\to$ Viewshed $\to$ Twin). |
 | **[`github_reuse_matrix.md`](github_reuse_matrix.md)** | `DOC-RES-001` | Open-Source Component Audit | • License audit (Apache-2.0, MIT, BSD vs GPL rejection).<br>• OpenCV core/imgproc, Steger reference, spline libraries. |
+| **[`palm_next_phase.md`](palm_next_phase.md)** | `DOC-RES-006` | Palm app next phase (analysis, not detector) | • Do not rebuild Steger / U-Net / Canny.<br>• Borrow feature lists from GitHub palmistry, not their code.<br>• `palm_analysis` + `user_report` contract; shrink VLM prompt.<br>• Phases P0–P3: wire linker → geometry → user report → mobile. |
 
 ---
 

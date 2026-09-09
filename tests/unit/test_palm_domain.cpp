@@ -49,7 +49,37 @@ TEST(PalmDomainTest, Test_MajorCreaseClassification) {
     EXPECT_EQ(d_out.domain_payload["heart_line_id"], 10);
     EXPECT_EQ(d_out.domain_payload["head_line_id"], 20);
     EXPECT_EQ(d_out.domain_payload["life_line_id"], 30);
+    EXPECT_TRUE(d_out.domain_payload["fate_line_id"].is_null());
+
+    // Verify canonical major_lines structure
+    EXPECT_TRUE(d_out.domain_payload.contains("major_lines"));
+    const auto& ml = d_out.domain_payload["major_lines"];
+    EXPECT_TRUE(ml.contains("heart_line"));
+    EXPECT_TRUE(ml["heart_line"]["present"].get<bool>());
+    EXPECT_GT(ml["heart_line"]["arc_length_px"].get<float>(), 100.0f);
+    EXPECT_GE(ml["heart_line"]["tortuosity"].get<float>(), 1.0f);
+
+    EXPECT_TRUE(ml.contains("head_line"));
+    EXPECT_TRUE(ml["head_line"]["present"].get<bool>());
+
+    EXPECT_TRUE(ml.contains("life_line"));
+    EXPECT_TRUE(ml["life_line"]["present"].get<bool>());
+
+    EXPECT_TRUE(ml.contains("fate_line"));
+    EXPECT_FALSE(ml["fate_line"]["present"].get<bool>());
+
+    // Verify palm_analysis object
+    EXPECT_TRUE(d_out.domain_payload.contains("palm_analysis"));
+    const auto& pa = d_out.domain_payload["palm_analysis"];
+    EXPECT_TRUE(pa.contains("dominant_line"));
+    EXPECT_NE(pa["dominant_line"].get<std::string>(), "none");
+    EXPECT_TRUE(pa.contains("heart_head_min_distance_px"));
+    EXPECT_GT(pa["heart_head_min_distance_px"].get<float>(), 0.0f);
+
+    // Continuity breaks should be sum of bridged chain gaps (0 for single segments)
+    EXPECT_EQ(d_out.domain_payload["continuity_breaks"], 0);
 
     // Verify domain evidence generated
     EXPECT_GE(d_out.domain_evidence.size(), 3u);
 }
+

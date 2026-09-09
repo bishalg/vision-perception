@@ -1,0 +1,267 @@
+{
+  "domain_payload": {
+    "continuity_breaks": 0,
+    "fate_line_id": 293,
+    "head_line_id": 158,
+    "heart_line_id": 158,
+    "intersections": 0,
+    "is_left_hand": true,
+    "life_line_id": 158,
+    "major_lines": {
+      "fate_line": {
+        "arc_length_px": 139.66355895996094,
+        "chord_length_px": 111.81941223144531,
+        "confidence": 0.9300000071525574,
+        "end_zone": "unknown",
+        "fork_count": 0,
+        "gap_count": 0,
+        "mean_angle_deg": 72.02116394042969,
+        "mean_intensity": 158.61068725585938,
+        "mean_width_px": 1.0661340951919556,
+        "name": "fate_line",
+        "present": true,
+        "segment_ids": [
+          293
+        ],
+        "start_zone": "venus_zone",
+        "tortuosity": 1.2490099668502808
+      },
+      "head_line": {
+        "arc_length_px": 222.17344665527344,
+        "chord_length_px": 212.98992919921875,
+        "confidence": 0.9000000357627869,
+        "end_zone": "saturn_zone",
+        "fork_count": 0,
+        "gap_count": 0,
+        "mean_angle_deg": 26.363285064697266,
+        "mean_intensity": 59.3969841003418,
+        "mean_width_px": 1.1164494752883911,
+        "name": "head_line",
+        "present": true,
+        "segment_ids": [
+          158
+        ],
+        "start_zone": "unknown",
+        "tortuosity": 1.0431171655654907
+      },
+      "heart_line": {
+        "arc_length_px": 222.17344665527344,
+        "chord_length_px": 212.98992919921875,
+        "confidence": 0.9000000357627869,
+        "end_zone": "saturn_zone",
+        "fork_count": 0,
+        "gap_count": 0,
+        "mean_angle_deg": 26.363285064697266,
+        "mean_intensity": 59.3969841003418,
+        "mean_width_px": 1.1164494752883911,
+        "name": "heart_line",
+        "present": true,
+        "segment_ids": [
+          158
+        ],
+        "start_zone": "unknown",
+        "tortuosity": 1.0431171655654907
+      },
+      "life_line": {
+        "arc_length_px": 222.17344665527344,
+        "chord_length_px": 212.98992919921875,
+        "confidence": 0.9000000357627869,
+        "end_zone": "saturn_zone",
+        "fork_count": 0,
+        "gap_count": 0,
+        "mean_angle_deg": 26.363285064697266,
+        "mean_intensity": 59.3969841003418,
+        "mean_width_px": 1.1164494752883911,
+        "name": "life_line",
+        "present": true,
+        "segment_ids": [
+          158
+        ],
+        "start_zone": "unknown",
+        "tortuosity": 1.0431171655654907
+      }
+    },
+    "palm_analysis": {
+      "dominant_line": "heart_line",
+      "heart_head_min_distance_px": 0.0,
+      "lines": {
+        "fate_line": {
+          "arc_length_px": 139.66355895996094,
+          "chord_length_px": 111.81941223144531,
+          "confidence": 0.9300000071525574,
+          "end_zone": "unknown",
+          "fork_count": 0,
+          "gap_count": 0,
+          "mean_angle_deg": 72.02116394042969,
+          "mean_intensity": 158.61068725585938,
+          "mean_width_px": 1.0661340951919556,
+          "name": "fate_line",
+          "present": true,
+          "segment_ids": [
+            293
+          ],
+          "start_zone": "venus_zone",
+          "tortuosity": 1.2490099668502808
+        },
+        "head_line": {
+          "arc_length_px": 222.17344665527344,
+          "chord_length_px": 212.98992919921875,
+          "confidence": 0.9000000357627869,
+          "end_zone": "saturn_zone",
+          "fork_count": 0,
+          "gap_count": 0,
+          "mean_angle_deg": 26.363285064697266,
+          "mean_intensity": 59.3969841003418,
+          "mean_width_px": 1.1164494752883911,
+          "name": "head_line",
+          "present": true,
+          "segment_ids": [
+            158
+          ],
+          "start_zone": "unknown",
+          "tortuosity": 1.0431171655654907
+        },
+        "heart_line": {
+          "arc_length_px": 222.17344665527344,
+          "chord_length_px": 212.98992919921875,
+          "confidence": 0.9000000357627869,
+          "end_zone": "saturn_zone",
+          "fork_count": 0,
+          "gap_count": 0,
+          "mean_angle_deg": 26.363285064697266,
+          "mean_intensity": 59.3969841003418,
+          "mean_width_px": 1.1164494752883911,
+          "name": "heart_line",
+          "present": true,
+          "segment_ids": [
+            158
+          ],
+          "start_zone": "unknown",
+          "tortuosity": 1.0431171655654907
+        },
+        "life_line": {
+          "arc_length_px": 222.17344665527344,
+          "chord_length_px": 212.98992919921875,
+          "confidence": 0.9000000357627869,
+          "end_zone": "saturn_zone",
+          "fork_count": 0,
+          "gap_count": 0,
+          "mean_angle_deg": 26.363285064697266,
+          "mean_intensity": 59.3969841003418,
+          "mean_width_px": 1.1164494752883911,
+          "name": "life_line",
+          "present": true,
+          "segment_ids": [
+            158
+          ],
+          "start_zone": "unknown",
+          "tortuosity": 1.0431171655654907
+        }
+      },
+      "named_line_intersections": 0,
+      "palm_type_proxy": "balanced"
+    },
+    "palm_height_px": 511.1741638183594,
+    "status": "analyzed",
+    "total_segments_analyzed": 275,
+    "zone_distribution": {
+      "jupiter_zone": 6,
+      "luna_zone": 26,
+      "mars_lower": 5,
+      "mars_upper": 12,
+      "mercury_zone": 6,
+      "plain_of_mars": 43,
+      "saturn_zone": 11,
+      "unknown": 101,
+      "venus_zone": 65
+    }
+  },
+  "evidence": [
+    {
+      "confidence": 0.9000000357627869,
+      "evidence_id": "crease_heart",
+      "geometry": {
+        "arc_length_px": 222.17344665527344,
+        "chord_length_px": 212.98992919921875,
+        "end_zone": "saturn_zone",
+        "gap_count": 0,
+        "segment_ids": [
+          158
+        ],
+        "start_zone": "unknown",
+        "tortuosity": 1.0431171655654907
+      },
+      "metadata": {
+        "fork_count": 0,
+        "mean_angle_deg": 26.363285064697266
+      },
+      "type": "heart_line"
+    },
+    {
+      "confidence": 0.9000000357627869,
+      "evidence_id": "crease_head",
+      "geometry": {
+        "arc_length_px": 222.17344665527344,
+        "chord_length_px": 212.98992919921875,
+        "end_zone": "saturn_zone",
+        "gap_count": 0,
+        "segment_ids": [
+          158
+        ],
+        "start_zone": "unknown",
+        "tortuosity": 1.0431171655654907
+      },
+      "metadata": {
+        "fork_count": 0,
+        "mean_angle_deg": 26.363285064697266
+      },
+      "type": "head_line"
+    },
+    {
+      "confidence": 0.9000000357627869,
+      "evidence_id": "crease_life",
+      "geometry": {
+        "arc_length_px": 222.17344665527344,
+        "chord_length_px": 212.98992919921875,
+        "end_zone": "saturn_zone",
+        "gap_count": 0,
+        "segment_ids": [
+          158
+        ],
+        "start_zone": "unknown",
+        "tortuosity": 1.0431171655654907
+      },
+      "metadata": {
+        "fork_count": 0,
+        "mean_angle_deg": 26.363285064697266
+      },
+      "type": "life_line"
+    },
+    {
+      "confidence": 0.9300000071525574,
+      "evidence_id": "crease_fate",
+      "geometry": {
+        "arc_length_px": 139.66355895996094,
+        "chord_length_px": 111.81941223144531,
+        "end_zone": "unknown",
+        "gap_count": 0,
+        "segment_ids": [
+          293
+        ],
+        "start_zone": "venus_zone",
+        "tortuosity": 1.2490099668502808
+      },
+      "metadata": {
+        "fork_count": 0,
+        "mean_angle_deg": 72.02116394042969
+      },
+      "type": "fate_line"
+    }
+  ],
+  "quality": {
+    "blur_score": 717.7442792446818,
+    "brightness_score": 157.24202728271484,
+    "contrast_score": 42.10290248121573,
+    "is_usable": true
+  }
+}

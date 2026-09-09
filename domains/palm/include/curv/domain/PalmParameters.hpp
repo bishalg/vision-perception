@@ -32,7 +32,7 @@ public:
     static ridge::StegerConfig computeStegerConfig(float palm_radius_px,
                                                    const PalmScaleConfig& cfg = PalmScaleConfig{}) {
         ridge::StegerConfig result;
-        result.extract_dark_lines = false;
+        result.extract_dark_lines = true;
 
         const float r = std::max(10.0f, palm_radius_px);
         const float ref_r = std::max(10.0f, cfg.reference_palm_radius_px);
@@ -50,8 +50,10 @@ public:
 
     /**
      * @brief Extracts palm disc radius from 21 hand landmarks and computes tuned parameters.
+     * @param target_canonical_dim If > 0, computes parameter scale for canonical warped patch.
      */
     static ridge::StegerConfig computeFromLandmarks(const geometry::HandLandmarks& lms, int img_width, int img_height,
+                                                    int target_canonical_dim = 512,
                                                     const PalmScaleConfig& cfg = PalmScaleConfig{}) {
         const float w_f = static_cast<float>(std::max(1, img_width));
         const float h_f = static_cast<float>(std::max(1, img_height));
@@ -68,7 +70,12 @@ public:
         const cv::Point2f p17 = get_pt(17); // Pinky MCP
 
         const float palm_w = static_cast<float>(cv::norm(p17 - p5));
-        const float palm_radius = palm_w * 0.5f;
+        float palm_radius = palm_w * 0.5f;
+
+        if (target_canonical_dim > 0 && palm_w > 1e-4f) {
+            const float target_palm_width = static_cast<float>(target_canonical_dim) * 0.55f;
+            palm_radius = target_palm_width * 0.5f;
+        }
 
         return computeStegerConfig(palm_radius, cfg);
     }

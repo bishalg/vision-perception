@@ -76,7 +76,8 @@ std::optional<geometry::HandLandmarks> HandLandmarkDetector::detect(const cv::Ma
     return generateHeuristicLandmarks(image.cols, image.rows);
 }
 
-geometry::HandLandmarks HandLandmarkDetector::generateHeuristicLandmarks(int /*width*/, int /*height*/) {
+geometry::HandLandmarks HandLandmarkDetector::generateHeuristicLandmarks(int /*width*/, int /*height*/,
+                                                                         bool is_left_hand) {
     geometry::HandLandmarks lms;
     lms.is_normalized = true;
 
@@ -113,6 +114,12 @@ geometry::HandLandmarks HandLandmarkDetector::generateHeuristicLandmarks(int /*w
     lms.points[18] = geometry::LandmarkPoint(0.77f, 0.40f);
     lms.points[19] = geometry::LandmarkPoint(0.80f, 0.32f);
     lms.points[20] = geometry::LandmarkPoint(0.82f, 0.25f);
+
+    if (is_left_hand) {
+        for (auto& pt : lms.points) {
+            pt.x = 1.0f - pt.x;
+        }
+    }
 
     return lms;
 }

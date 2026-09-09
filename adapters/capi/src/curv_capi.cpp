@@ -18,6 +18,7 @@
 #include "curv/Version.hpp"
 #include "curv/config/DynamicParameterResolver.hpp"
 #include "curv/domain/PalmParameters.hpp"
+#include "curv/domains/FloorPlanDomainPack.hpp"
 #include "curv/domains/PalmDomainPack.hpp"
 #include "curv/domains/SurfaceInspectionPack.hpp"
 #include "curv/geometry/RoiWarper.hpp"
@@ -82,6 +83,12 @@ struct PipelineContext {
             domain_pack = std::make_unique<CurvEngine::domains::PalmDomainPack>();
         } else if (domain_id == "surface_inspection" || domain_id == "org.curv.domain.surface_inspection") {
             domain_pack = std::make_unique<CurvEngine::domains::SurfaceInspectionPack>();
+        } else if (domain_id == "floor_plan" || domain_id == "org.curv.domain.floor_plan" || domain_id == "vastu") {
+            r_cfg.extract_dark_lines = true;
+            ridge_extractor = std::make_shared<CurvEngine::ridge::StegerRidgeExtractor>(r_cfg);
+            pipeline =
+                std::make_unique<CurvEngine::pipeline::SyncPerceptionPipeline>(quality_analyzer, ridge_extractor);
+            domain_pack = std::make_unique<CurvEngine::domains::FloorPlanDomainPack>();
         }
     }
 };

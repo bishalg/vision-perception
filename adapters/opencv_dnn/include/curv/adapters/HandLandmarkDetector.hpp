@@ -41,7 +41,7 @@ public:
     /**
      * @brief Generates robust anatomical baseline hand landmarks based on image dimensions.
      */
-    static geometry::HandLandmarks generateHeuristicLandmarks(int width, int height);
+    static geometry::HandLandmarks generateHeuristicLandmarks(int width, int height, bool is_left_hand = false);
 
 private:
     cv::dnn::Net net_;

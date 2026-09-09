@@ -26,3 +26,12 @@ palm logic ever enters `core/`.
 Handedness is detected in `core` (`geometry::detectIsLeftHand`) from the 21
 landmarks and propagated via frame metadata; the C-ABI landmark path wires it
 all together end-to-end.
+
+## Next phase
+
+Extraction (Steger + warp + mask + chaining) is in place. The next product work
+is **robust result analysis**, not a new detector. See
+[`docs/research/palm_next_phase.md`](../../docs/research/palm_next_phase.md):
+wire `CreaseChainLinker` as the named-line source of truth, emit geometric
+`palm_analysis` / `user_report`, and stop sending hundreds of raw ridge
+candidates to the VLM.

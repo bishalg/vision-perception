@@ -38,30 +38,51 @@ std::string VlmPromptFormatter::buildUserPrompt(const nlohmann::json& evidence_j
         const auto& dp = evidence_json["domain_payload"];
         oss << "## Verified Major Creases (Primary Lines)\n";
 
-        // Heart line
-        if (dp.contains("heart_line_id") && !dp["heart_line_id"].is_null()) {
-            oss << "- **Hridaya Rekha (Heart Line)**: Verified (Segment ID: " << dp["heart_line_id"] << ")\n";
-        } else {
-            oss << "- **Hridaya Rekha (Heart Line)**: [UNVERIFIED / ABSENT]\n";
+        const std::vector<std::tuple<std::string, std::string, std::string>> line_info = {
+            {"heart_line", "Hridaya Rekha (Heart Line)", "heart_line_id"},
+            {"head_line", "Matru Rekha (Head Line)", "head_line_id"},
+            {"life_line", "Ayur Rekha (Life Line)", "life_line_id"},
+            {"fate_line", "Karma / Shani Rekha (Fate Line)", "fate_line_id"}};
+
+        const bool has_major_lines = dp.contains("major_lines") && dp["major_lines"].is_object();
+        for (const auto& [key, title, legacy_id_key] : line_info) {
+            if (has_major_lines && dp["major_lines"].contains(key)) {
+                const auto& l_obj = dp["major_lines"][key];
+                if (l_obj.value("present", false)) {
+                    oss << "- **" << title << "**: Verified\n";
+                    oss << "  - Arc Length: " << std::fixed << std::setprecision(1)
+                        << l_obj.value("arc_length_px", 0.0f) << " px";
+                    oss << " | Tortuosity: " << std::setprecision(2) << l_obj.value("tortuosity", 1.0f);
+                    oss << " | Angle: " << std::setprecision(1) << l_obj.value("mean_angle_deg", 0.0f) << "°\n";
+                    oss << "  - Mounts: `" << l_obj.value("start_zone", "unknown") << "` -> `"
+                        << l_obj.value("end_zone", "unknown") << "`";
+                    oss << " | Bridged Gaps: " << l_obj.value("gap_count", 0);
+                    oss << " | Confidence: " << std::setprecision(2) << l_obj.value("confidence", 0.0f) << "\n";
+                    continue;
+                }
+            } else if (dp.contains(legacy_id_key) && !dp[legacy_id_key].is_null()) {
+                oss << "- **" << title << "**: Verified (Segment ID: " << dp[legacy_id_key] << ")\n";
+                continue;
+            }
+            oss << "- **" << title << "**: [UNVERIFIED / ABSENT]\n";
         }
 
-        // Head line
-        if (dp.contains("head_line_id") && !dp["head_line_id"].is_null()) {
-            oss << "- **Matru Rekha (Head Line)**: Verified (Segment ID: " << dp["head_line_id"] << ")\n";
-        } else {
-            oss << "- **Matru Rekha (Head Line)**: [UNVERIFIED / ABSENT]\n";
-        }
-
-        // Life line
-        if (dp.contains("life_line_id") && !dp["life_line_id"].is_null()) {
-            oss << "- **Ayur Rekha (Life Line)**: Verified (Segment ID: " << dp["life_line_id"] << ")\n";
-        } else {
-            oss << "- **Ayur Rekha (Life Line)**: [UNVERIFIED / ABSENT]\n";
+        // Cross-line structure
+        if (dp.contains("palm_analysis") && dp["palm_analysis"].is_object()) {
+            const auto& pa = dp["palm_analysis"];
+            oss << "\n## Cross-Line Biometric Structure\n";
+            if (pa.contains("heart_head_min_distance_px") && !pa["heart_head_min_distance_px"].is_null()) {
+                oss << "- Heart-Head Separation: " << std::fixed << std::setprecision(1)
+                    << pa["heart_head_min_distance_px"].get<float>() << " px\n";
+            }
+            oss << "- Named Line Intersections: " << pa.value("named_line_intersections", 0) << "\n";
+            oss << "- Dominant Crease: " << pa.value("dominant_line", "none") << "\n";
+            oss << "- Palm Line Curvature Type: " << pa.value("palm_type_proxy", "balanced") << "\n";
         }
 
         oss << "\n## Structural Topology\n";
         oss << "- Topological Intersections/Junctions: " << dp.value("intersections", 0) << "\n";
-        oss << "- Continuity Breaks / Gaps: " << dp.value("continuity_breaks", 0) << "\n";
+        oss << "- Major Crease Gaps: " << dp.value("continuity_breaks", 0) << "\n";
         oss << "- Total Curve Segments Analyzed: " << dp.value("total_segments_analyzed", 0) << "\n\n";
 
         if (dp.contains("zone_distribution") && dp["zone_distribution"].is_object()) {
@@ -73,19 +94,28 @@ std::string VlmPromptFormatter::buildUserPrompt(const nlohmann::json& evidence_j
         }
     }
 
-    // 3. Evidence Items
+    // 3. Evidence Items (domain landmarks only - suppress raw line_candidate clutter)
     if (evidence_json.contains("evidence") && evidence_json["evidence"].is_array()) {
-        oss << "## Extracted Landmark Evidence Items (" << evidence_json["evidence"].size() << " items)\n";
+        std::vector<nlohmann::json> verified_items;
         for (const auto& item : evidence_json["evidence"]) {
             const std::string type = item.value("type", "unknown");
-            const double conf = item.value("confidence", 0.0);
-            oss << "- Type: `" << type << "` | Confidence: " << std::fixed << std::setprecision(2) << conf;
-            if (item.contains("metadata") && item["metadata"].contains("zone")) {
-                oss << " | Zone: " << item["metadata"]["zone"];
+            if (type != "line_candidate") {
+                verified_items.push_back(item);
+            }
+        }
+        if (!verified_items.empty()) {
+            oss << "## Extracted Landmark Evidence Items (" << verified_items.size() << " items)\n";
+            for (const auto& item : verified_items) {
+                const std::string type = item.value("type", "unknown");
+                const double conf = item.value("confidence", 0.0);
+                oss << "- Type: `" << type << "` | Confidence: " << std::fixed << std::setprecision(2) << conf;
+                if (item.contains("metadata") && item["metadata"].contains("zone")) {
+                    oss << " | Zone: " << item["metadata"]["zone"];
+                }
+                oss << "\n";
             }
             oss << "\n";
         }
-        oss << "\n";
     }
 
     // 4. User Query or Final Directives

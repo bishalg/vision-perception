@@ -85,10 +85,75 @@ cv::Mat OverlayRenderer::render(const cv::Mat& background, const RidgeGraph& gra
         cv::addWeighted(ribbon_layer, 0.4, canvas, 0.6, 0.0, canvas);
     }
 
-    // 2. Draw Sub-pixel Centerline Polylines (16x shift for AA)
+    // 2. Draw Hand Boundary Contours
+    if (config.draw_boundary && !config.boundary_contours.empty()) {
+        cv::drawContours(canvas, config.boundary_contours, -1, config.boundary_color, config.boundary_thickness,
+                         cv::LINE_AA);
+    }
+
+    // 2b. Draw 2nd-Level Anatomy Lines (Digit separation rays & basal MCP crease arc)
+    if (config.draw_anatomy && !config.anatomy_contours.empty()) {
+        for (const auto& contour : config.anatomy_contours) {
+            if (contour.size() < 2) continue;
+            const cv::Point* pts_ptr = contour.data();
+            int const n_pts = static_cast<int>(contour.size());
+            cv::polylines(canvas, &pts_ptr, &n_pts, 1, false, config.anatomy_color, config.anatomy_thickness,
+                          cv::LINE_AA);
+        }
+    }
+
+    // 2c. Draw Continuous Major Crease Spline Curves (Heart, Head, Life, Fate lines)
+    if (config.draw_continuous_creases && !config.continuous_creases.empty()) {
+        for (const auto& item : config.continuous_creases) {
+            if (item.points.size() < 2) continue;
+
+            const cv::Point* pts_ptr = item.points.data();
+            int const n_pts = static_cast<int>(item.points.size());
+
+            // Outer soft glow
+            const cv::Scalar glow_color = item.color * 0.4;
+            cv::polylines(canvas, &pts_ptr, &n_pts, 1, false, glow_color, item.thickness + 4, cv::LINE_AA);
+
+            // Core solid continuous line
+            cv::polylines(canvas, &pts_ptr, &n_pts, 1, false, item.color, item.thickness, cv::LINE_AA);
+
+            // Label badge
+            if (!item.label.empty()) {
+                const auto& mid_pt = item.points[item.points.size() / 2];
+                const cv::Point text_origin(mid_pt.x + 12, mid_pt.y - 12);
+
+                int baseline = 0;
+                double const font_scale = std::clamp(canvas.cols / 1400.0, 0.45, 1.4);
+                int const font_thickness = std::max(1, static_cast<int>(font_scale * 2.0));
+                cv::Size const text_size =
+                    cv::getTextSize(item.label, cv::FONT_HERSHEY_SIMPLEX, font_scale, font_thickness, &baseline);
+
+                cv::Rect bg_rect(text_origin.x - 4, text_origin.y - text_size.height - 4, text_size.width + 8,
+                                 text_size.height + 8);
+                if (bg_rect.x >= 0 && bg_rect.y >= 0 && bg_rect.x + bg_rect.width < canvas.cols &&
+                    bg_rect.y + bg_rect.height < canvas.rows) {
+                    cv::Mat badge_roi = canvas(bg_rect);
+                    cv::Mat const badge_bg(bg_rect.size(), CV_8UC3, cv::Scalar(15, 15, 15));
+                    cv::addWeighted(badge_bg, 0.75, badge_roi, 0.25, 0.0, badge_roi);
+                    cv::rectangle(canvas, bg_rect, item.color, 1, cv::LINE_AA);
+                }
+                cv::putText(canvas, item.label, text_origin, cv::FONT_HERSHEY_SIMPLEX, font_scale,
+                            cv::Scalar(255, 255, 255), font_thickness, cv::LINE_AA);
+            }
+        }
+    }
+
+    // 3. Draw Sub-pixel Centerline Polylines (16x shift for AA)
     if (config.draw_subpixel_polylines) {
         for (const auto& seg : graph.segments) {
             if (seg.points.size() < 2) continue;
+
+            cv::Scalar color = config.line_color;
+            int thickness = config.line_thickness;
+            if (auto const it = config.segment_colors.find(seg.id); it != config.segment_colors.end()) {
+                color = it->second;
+                thickness = std::max(thickness + 2, static_cast<int>(static_cast<float>(thickness) * 1.5f));
+            }
 
             std::vector<cv::Point> pts;
             pts.reserve(seg.points.size());
@@ -99,8 +164,31 @@ cv::Mat OverlayRenderer::render(const cv::Mat& background, const RidgeGraph& gra
 
             const cv::Point* pts_ptr = pts.data();
             int const n_pts = static_cast<int>(pts.size());
-            cv::polylines(canvas, &pts_ptr, &n_pts, 1, false, config.line_color, config.line_thickness, cv::LINE_AA,
-                          config.subpixel_shift);
+            cv::polylines(canvas, &pts_ptr, &n_pts, 1, false, color, thickness, cv::LINE_AA, config.subpixel_shift);
+
+            if (auto const it_lbl = config.segment_labels.find(seg.id);
+                it_lbl != config.segment_labels.end() && !it_lbl->second.empty()) {
+                const auto& mid_pt = seg.points[seg.points.size() / 2];
+                const cv::Point text_origin(static_cast<int>(mid_pt.x + 10), static_cast<int>(mid_pt.y - 10));
+
+                int baseline = 0;
+                double const font_scale = std::clamp(canvas.cols / 1400.0, 0.45, 1.4);
+                int const font_thickness = std::max(1, static_cast<int>(font_scale * 2.0));
+                cv::Size const text_size =
+                    cv::getTextSize(it_lbl->second, cv::FONT_HERSHEY_SIMPLEX, font_scale, font_thickness, &baseline);
+
+                cv::Rect bg_rect(text_origin.x - 4, text_origin.y - text_size.height - 4, text_size.width + 8,
+                                 text_size.height + 8);
+                if (bg_rect.x >= 0 && bg_rect.y >= 0 && bg_rect.x + bg_rect.width < canvas.cols &&
+                    bg_rect.y + bg_rect.height < canvas.rows) {
+                    cv::Mat badge_roi = canvas(bg_rect);
+                    cv::Mat const badge_bg(bg_rect.size(), CV_8UC3, cv::Scalar(15, 15, 15));
+                    cv::addWeighted(badge_bg, 0.75, badge_roi, 0.25, 0.0, badge_roi);
+                    cv::rectangle(canvas, bg_rect, color, 1, cv::LINE_AA);
+                }
+                cv::putText(canvas, it_lbl->second, text_origin, cv::FONT_HERSHEY_SIMPLEX, font_scale,
+                            cv::Scalar(255, 255, 255), font_thickness, cv::LINE_AA);
+            }
         }
     }
 

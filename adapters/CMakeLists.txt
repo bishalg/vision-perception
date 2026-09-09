@@ -4,6 +4,7 @@
 
 add_library(curv_adapters STATIC
     opencv/src/OverlayRenderer.cpp
+    opencv/src/HandBoundaryDetector.cpp
     opencv_dnn/src/HandLandmarkDetector.cpp
     cctv/src/CctvFrameSource.cpp
     cctv/src/FrameRingBuffer.cpp

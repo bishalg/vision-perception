@@ -111,6 +111,21 @@ vision_set_compiler_warnings(test_overlay_renderer)
 add_test(NAME test_overlay_renderer COMMAND test_overlay_renderer)
 
 # ------------------------------------------------------------------------------
+# Unit Test: test_hand_boundary_detector
+# ------------------------------------------------------------------------------
+add_executable(test_hand_boundary_detector
+    unit/test_hand_boundary_detector.cpp
+)
+target_link_libraries(test_hand_boundary_detector
+    PRIVATE
+        curv_adapters
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_hand_boundary_detector)
+add_test(NAME test_hand_boundary_detector COMMAND test_hand_boundary_detector)
+
+# ------------------------------------------------------------------------------
 # Unit Test: test_roi_warper
 # ------------------------------------------------------------------------------
 add_executable(test_roi_warper
@@ -396,3 +411,68 @@ add_test(NAME test_cctv_http_snapshot
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 
+# ------------------------------------------------------------------------------
+# Unit Test: test_hand_anatomy_decomposer (HandAnatomyDecomposer, TDD)
+# ------------------------------------------------------------------------------
+add_executable(test_hand_anatomy_decomposer
+    unit/test_hand_anatomy_decomposer.cpp
+)
+target_link_libraries(test_hand_anatomy_decomposer
+    PRIVATE
+        curv_domains
+        curv_adapters
+        curv_core
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_hand_anatomy_decomposer)
+add_test(NAME test_hand_anatomy_decomposer COMMAND test_hand_anatomy_decomposer)
+
+# ------------------------------------------------------------------------------
+# Unit Test: test_crease_chain_linker (CreaseChainLinker, TDD)
+# ------------------------------------------------------------------------------
+add_executable(test_crease_chain_linker
+    unit/test_crease_chain_linker.cpp
+)
+target_link_libraries(test_crease_chain_linker
+    PRIVATE
+        curv_domains
+        curv_core
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_crease_chain_linker)
+add_test(NAME test_crease_chain_linker COMMAND test_crease_chain_linker)
+
+# ------------------------------------------------------------------------------
+# Unit Test: test_crease_geometry (CreaseGeometry, TDD)
+# ------------------------------------------------------------------------------
+add_executable(test_crease_geometry
+    unit/test_crease_geometry.cpp
+)
+target_link_libraries(test_crease_geometry
+    PRIVATE
+        curv_domains
+        curv_core
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_crease_geometry)
+add_test(NAME test_crease_geometry COMMAND test_crease_geometry)
+
+# ------------------------------------------------------------------------------
+# Unit Test: test_floor_plan_domain (FloorPlanDomainPack, TDD)
+# ------------------------------------------------------------------------------
+add_executable(test_floor_plan_domain
+    unit/test_floor_plan_domain.cpp
+)
+target_link_libraries(test_floor_plan_domain
+    PRIVATE
+        curv_domains
+        curv_capi
+        curv_core
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_floor_plan_domain)
+add_test(NAME test_floor_plan_domain COMMAND test_floor_plan_domain)

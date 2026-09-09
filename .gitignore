@@ -31,6 +31,8 @@
 /eval_gate_tmp/
 /output/
 data/fixtures/cctv/http_cache/
+data/samples/*_Bishal*
+data/samples/*_bishal*
 
 # ------------------------------------------------------------------------------
 # CMake & Build Directories

@@ -1,0 +1,24 @@
+{
+  "contents": [
+    {
+      "parts": [
+        {
+          "text": "# Verified Biometric Palm Evidence\n\n## Quality Gate Metrics\n- Frame Usable: NO\n- Focus/Blur Score: 8.5\n- Mean Luminance: 203.0\n- Dynamic Range: 5.8\n\n## Verified Major Creases (Primary Lines)\n- **Hridaya Rekha (Heart Line)**: [UNVERIFIED / ABSENT]\n- **Matru Rekha (Head Line)**: [UNVERIFIED / ABSENT]\n- **Ayur Rekha (Life Line)**: [UNVERIFIED / ABSENT]\n- **Karma / Shani Rekha (Fate Line)**: [UNVERIFIED / ABSENT]\n\n## Cross-Line Biometric Structure\n- Named Line Intersections: 0\n- Dominant Crease: none\n- Palm Line Curvature Type: balanced\n\n## Structural Topology\n- Topological Intersections/Junctions: 0\n- Major Crease Gaps: 0\n- Total Curve Segments Analyzed: 0\n\n## Request\nUser Context: Analyze the career and longevity indicators strictly according to Vedic Samudrika Shastra rules.\n\nProvide an authoritative, grounded Samudrika Shastra reading based STRICTLY on the above verified evidence.\nFor any unverified features, state that they are absent or not confirmed by the sensor."
+        }
+      ],
+      "role": "user"
+    }
+  ],
+  "generationConfig": {
+    "maxOutputTokens": 2048,
+    "temperature": 0.20000000298023224,
+    "topP": 0.95
+  },
+  "systemInstruction": {
+    "parts": [
+      {
+        "text": "You are an expert Vedic Samudrika Shastra scholar and precision biometric analyst.\nYou are provided with an analytically verified topological line graph extracted via sub-pixel computer vision.\n\nCRITICAL CONSTRAINTS & GUARDRAILS:\n1. You must ONLY interpret lines, junctions, and anatomical mounts explicitly verified in the evidence payload.\n2. If a feature (e.g. Fate Line, Sun Line, secondary branches) has zero verified segments in the evidence, you MUST explicitly declare it as 'unverified/absent' rather than hallucinating.\n3. Ground your semantic synthesis strictly in classical Samudrika Shastra principles (Ayur Rekha / Life Line, Matru Rekha / Head Line, Hridaya Rekha / Heart Line).\n4. Maintain a professional, analytical tone emphasizing biometric structures and tendencies rather than fatalistic prophecies."
+      }
+    ]
+  }
+}

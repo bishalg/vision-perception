@@ -89,12 +89,47 @@ TEST_F(HandInspectorLibTest, FullRunWithHeuristicLandmarksProducesAllOutputs) {
     EXPECT_TRUE(ev.contains("quality"));
     EXPECT_TRUE(ev.contains("domain_payload"));
     EXPECT_TRUE(ev.contains("evidence"));
+    EXPECT_TRUE(ev["domain_payload"].contains("major_lines"));
+    EXPECT_TRUE(ev["domain_payload"].contains("palm_analysis"));
 
     nlohmann::json pr;
     { std::ifstream f(prompt); f >> pr; }
     EXPECT_TRUE(pr.contains("contents")); // Gemini request shape
+    const std::string prompt_str = pr["contents"][0]["parts"][0]["text"].get<std::string>();
+    EXPECT_EQ(prompt_str.find("line_candidate"), std::string::npos); // Prompt is clean
     EXPECT_NE(out.str().find("[PASS]"), std::string::npos);
 }
+
+TEST_F(HandInspectorLibTest, DebugAllRidgesFlagEnablesRawEvidence) {
+    const auto image = makePalmImage();
+    const std::string image_arg = image.string();
+    const std::string warp = (dir / "warp_dbg.png").string();
+    const std::string overlay = (dir / "overlay_dbg.png").string();
+    const std::string evidence = (dir / "evidence_dbg.json").string();
+    const std::string prompt = (dir / "prompt_dbg.json").string();
+
+    const char* argv[] = {"hand_inspector_cli", "--image", image_arg.c_str(),
+                          "--debug-all-ridges",
+                          "--out-warp", warp.c_str(), "--out-overlay", overlay.c_str(),
+                          "--out-json", evidence.c_str(), "--out-vlm-prompt", prompt.c_str()};
+    std::stringstream out;
+    std::stringstream err;
+    ASSERT_EQ(CurvEngine::tools::runHandInspector(12, const_cast<char**>(argv), out, err), 0) << err.str();
+
+    nlohmann::json ev;
+    { std::ifstream f(evidence); f >> ev; }
+    EXPECT_TRUE(ev.contains("evidence"));
+
+    bool has_line_candidate = false;
+    for (const auto& item : ev["evidence"]) {
+        if (item.value("type", "") == "line_candidate") {
+            has_line_candidate = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(has_line_candidate);
+}
+
 
 TEST_F(HandInspectorLibTest, ObjectFormLandmarksJsonIsLoaded) {
     nlohmann::json lms = nlohmann::json::array();
