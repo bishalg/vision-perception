@@ -1,0 +1,105 @@
+html,
+body,
+#cesiumContainer {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #0b1220;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+}
+
+#hud {
+  position: absolute;
+  z-index: 10;
+  top: 1rem;
+  left: 1rem;
+  max-width: min(28rem, calc(100vw - 2rem));
+  padding: 0.85rem 1rem;
+  color: #e8eef8;
+  background: linear-gradient(145deg, rgba(12, 24, 42, 0.92), rgba(18, 40, 64, 0.78));
+  border: 1px solid rgba(140, 190, 255, 0.25);
+  backdrop-filter: blur(8px);
+}
+
+#hud .brand {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+#hud .subtitle {
+  margin-top: 0.15rem;
+  color: #9eb6d4;
+  font-size: 0.85rem;
+}
+
+#status {
+  margin-top: 0.55rem;
+  font-size: 0.8rem;
+  color: #c5d7ef;
+}
+
+#panel {
+  position: absolute;
+  z-index: 11;
+  top: 1rem;
+  right: 1rem;
+  width: min(22rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1rem;
+  color: #e8eef8;
+  background: rgba(10, 18, 32, 0.94);
+  border: 1px solid rgba(140, 190, 255, 0.28);
+}
+
+#panel.hidden {
+  display: none;
+}
+
+#panel-close {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.55rem;
+  border: 0;
+  background: transparent;
+  color: #9eb6d4;
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+#panel h2 {
+  margin: 0 1.5rem 0.35rem 0;
+  font-size: 1.05rem;
+}
+
+#panel-meta {
+  margin: 0 0 0.75rem;
+  color: #9eb6d4;
+  font-size: 0.8rem;
+}
+
+#panel-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#panel-pose {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.75rem;
+  margin: 0.85rem 0 0;
+  font-size: 0.78rem;
+}
+
+#panel-pose dt {
+  color: #9eb6d4;
+}
+
+#panel-pose dd {
+  margin: 0;
+}

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>vision-perception · Phase 4 Digital Twin</title>
+  </head>
+  <body>
+    <div id="hud">
+      <div class="brand">vision-perception</div>
+      <div class="subtitle">Phase 4 · CCTV digital twin</div>
+      <div id="status">Loading cameras…</div>
+    </div>
+    <aside id="panel" class="hidden" aria-live="polite">
+      <button id="panel-close" type="button" aria-label="Close panel">×</button>
+      <h2 id="panel-title">Camera</h2>
+      <p id="panel-meta"></p>
+      <img id="panel-image" alt="CCTV annotated still" />
+      <dl id="panel-pose"></dl>
+    </aside>
+    <div id="cesiumContainer"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

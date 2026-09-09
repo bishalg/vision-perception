@@ -1,0 +1,148 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.7321,
+          39.3142,
+          1420.0
+        ]
+      },
+      "properties": {
+        "id": "caltrans_i80_day",
+        "name": "I-80 at Drum Forebay",
+        "agency": "Caltrans District 3",
+        "elevation_m": 1420.0,
+        "heading_deg": 65.0,
+        "pitch_deg": -15.0,
+        "fov_deg": 55.0,
+        "url": "https://cwwp2.dot.ca.gov/data/d3/cctv/image/i80atdrumforebay/i80atdrumforebay.jpg",
+        "sidecar": "data/fixtures/cctv/day_clear/caltrans_i80_day.json",
+        "image": "media/caltrans_i80_day.png"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.7321,
+          39.3142,
+          1420.0
+        ]
+      },
+      "properties": {
+        "id": "caltrans_i80_night",
+        "name": "I-80 at Drum Forebay",
+        "agency": "Caltrans District 3",
+        "elevation_m": 1420.0,
+        "heading_deg": 65.0,
+        "pitch_deg": -15.0,
+        "fov_deg": 55.0,
+        "url": "https://cwwp2.dot.ca.gov/data/d3/cctv/image/i80atdrumforebay/i80atdrumforebay.jpg",
+        "sidecar": "data/fixtures/cctv/night_lowlux/caltrans_i80_night.json",
+        "image": "media/caltrans_i80_night.png"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.7321,
+          39.3142,
+          1420.0
+        ]
+      },
+      "properties": {
+        "id": "caltrans_i80_day_clip",
+        "name": "I-80 Drum Forebay (synthetic Stage 2 clip)",
+        "agency": "Caltrans District 3",
+        "elevation_m": 1420.0,
+        "heading_deg": 65.0,
+        "pitch_deg": -15.0,
+        "fov_deg": 55.0,
+        "url": "file://synthetic_stage2_clip",
+        "sidecar": "data/fixtures/cctv/video/caltrans_i80_day_clip.json",
+        "image": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.7321,
+          39.3142,
+          1420.0
+        ]
+      },
+      "properties": {
+        "id": "caltrans_i80_rain_blur",
+        "name": "I-80 at Drum Forebay",
+        "agency": "Caltrans District 3",
+        "elevation_m": 1420.0,
+        "heading_deg": 65.0,
+        "pitch_deg": -15.0,
+        "fov_deg": 55.0,
+        "url": "https://cwwp2.dot.ca.gov/data/d3/cctv/image/i80atdrumforebay/i80atdrumforebay.jpg",
+        "sidecar": "data/fixtures/cctv/weather_rain/caltrans_i80_rain_blur.json",
+        "image": "media/caltrans_i80_rain_blur.png"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          85.3807,
+          28.2734,
+          1820.0
+        ]
+      },
+      "properties": {
+        "id": "bhote_koshi_pier_sample",
+        "name": "Bhote Koshi Bridge Pier Station",
+        "agency": "Nepal Hydropower / DHM",
+        "elevation_m": 1820.0,
+        "heading_deg": 185.0,
+        "pitch_deg": -25.0,
+        "fov_deg": 65.0,
+        "url": "mock://nepal_flood_pier",
+        "sidecar": "data/fixtures/cctv_flood/bhote_koshi_pier_sample.json",
+        "image": "media/bhote_koshi_pier_sample.png"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.7321,
+          39.3142,
+          1420.0
+        ]
+      },
+      "properties": {
+        "id": "caltrans_i80_sample",
+        "name": "I-80 Drum Forebay (synthetic Stage 2 clip)",
+        "agency": "Caltrans District 3",
+        "elevation_m": 1420.0,
+        "heading_deg": 65.0,
+        "pitch_deg": -15.0,
+        "fov_deg": 55.0,
+        "url": "file://synthetic_stage2_clip",
+        "sidecar": "data/fixtures/cctv_video/caltrans_i80_sample.json",
+        "image": null
+      }
+    }
+  ],
+  "properties": {
+    "generator": "tools/geojson_exporter.py",
+    "phase": 4,
+    "count": 6
+  }
+}

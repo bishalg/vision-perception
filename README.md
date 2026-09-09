@@ -117,6 +117,7 @@ Stage 1: Static Images ✅          ──►  Stage 2: Recorded Video ✅  ─�
 - [x] **Milestone 9: Real-Time CCTV & Spatial Perception (Phase 1: Static Reference POC)** — Curate `data/fixtures/cctv/` reference images, implement `adapters/cctv/`, and evaluate Steger curvilinear extraction on highway lane lines and river corridor watermarks
 - [x] **Milestone 10: Phase 2 Recorded Video Pipeline** — `CctvVideoSource` + `video_pipeline_demo` (quality + Steger annotated AVI/MP4), ring-buffer stream adapter foundation, offline `data/fixtures/cctv_video/` clip
 - [x] **Milestone 11: Phase 3 Live HTTP Snapshot Stream** — `CctvHttpSnapshot` + `live_snapshot_demo` with local cache/proxy fallback for presentation-safe demos
-- [ ] **Milestone 12: Phase 4 CesiumJS 3D Digital Twin** — `apps/cesium_viewer` frustum viewsheds + annotated frame panel
-- [ ] Next phase: flood alert production demo (Phase 5); mobile packaging remains parallel track
+- [x] **Milestone 12: Phase 4 CesiumJS 3D Digital Twin** — `apps/cesium_viewer` (Vite + Cesium, OSM tiles) + `tools/geojson_exporter.py` frustum markers and still panels
+- [ ] **Milestone 13: Phase 5 Flood Alert Production Demo** — scheduled ingest → flood heuristics → alert banner on twin
+- [ ] Next phase: mobile packaging remains parallel track
 
