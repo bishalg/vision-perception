@@ -56,7 +56,12 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
 
             if self.captureSession.canAddOutput(self.photoOutput) {
                 self.captureSession.addOutput(self.photoOutput)
-                self.photoOutput.isHighResolutionCaptureEnabled = true
+                if #available(iOS 16.0, *) {
+                    self.photoOutput.maxPhotoDimensions = CMVideoDimensions(width: 4032, height: 3024)
+                } else {
+                    // On iOS versions prior to 16, high resolution capture is the default when supported.
+                    // The `isHighResolutionCaptureEnabled` property is deprecated in iOS 16+, so we avoid using it.
+                }
                 self.applyPortraitOrientation(to: self.photoOutput)
             }
 
@@ -94,7 +99,13 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
             let settings = AVCapturePhotoSettings(format: [
                 kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA)
             ])
-            settings.isHighResolutionPhotoEnabled = true
+            if #available(iOS 16.0, *) {
+                settings.maxPhotoDimensions = CMVideoDimensions(width: 4032, height: 3024)
+            } else {
+                // Pre–iOS 16 fallback: enable high-resolution capture when supported.
+                // This API is deprecated starting in iOS 16.
+                settings.isHighResolutionPhotoEnabled = true
+            }
             self.photoOutput.capturePhoto(with: settings, delegate: self)
         }
     }

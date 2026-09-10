@@ -488,9 +488,19 @@ int curv_pipeline_process_landmarks_roi(CurvPipelineHandle pipeline, CurvFrameHa
             CurvEngine::domains::PalmParameters::computeFromLandmarks(lms, f_ctx->frame.width(), f_ctx->frame.height());
 
         auto const custom_extractor = std::make_shared<CurvEngine::ridge::StegerRidgeExtractor>(tuned_cfg);
-        CurvEngine::pipeline::SyncPerceptionPipeline custom_pipeline(p_ctx->quality_analyzer, custom_extractor);
+        // Mobile stills already passed Vision capture coaching. Do NOT wire the
+        // Laplacian quality analyzer into SyncPerceptionPipeline here — it early-
+        // returns with an empty ridge_graph when blur < 80, which made iOS fall
+        // back to landmark "fake" lines even though CurvEngine was linked.
+        CurvEngine::pipeline::SyncPerceptionPipeline custom_pipeline(/*quality_analyzer=*/nullptr, custom_extractor);
 
         auto result = custom_pipeline.process(warped_frame);
+
+        // Still compute quality for diagnostics / status, without gating extraction.
+        if (p_ctx->quality_analyzer) {
+            result.quality = p_ctx->quality_analyzer->analyze(warped_frame);
+            result.is_usable = result.quality.is_usable;
+        }
 
         // Match desktop inspect: drop finger/background ridges before major-line naming.
         auto const canonical_boundary = CurvEngine::adapters::HandBoundaryDetector::detectBoundary(warped);
@@ -519,14 +529,15 @@ int curv_pipeline_process_landmarks_roi(CurvPipelineHandle pipeline, CurvFrameHa
                                 {"is_usable", result.quality.is_usable},
                                 {"recommendation", result.quality.recommendation}};
         root_json["total_duration_us"] = result.total_duration_us;
+        root_json["is_usable"] = result.is_usable;
 
         nlohmann::json evidence_arr = nlohmann::json::array();
         for (const auto& ev : result.evidence) {
             evidence_arr.push_back(ev.to_json());
         }
 
-        // Domain pack in 512x512 canonical space with landmark priors + image-space polylines.
-        if (p_ctx->domain_pack && result.is_usable) {
+        // Always emit domain polylines for overlay — quality is advisory on this path.
+        if (p_ctx->domain_pack) {
             CurvEngine::DomainInput const d_in{warped_frame, result.ridge_graph, result.quality, &landmarks_canonical};
             auto const d_out = p_ctx->domain_pack->process(d_in);
             for (const auto& ev : d_out.domain_evidence) {

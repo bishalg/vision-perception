@@ -74,7 +74,14 @@ public struct PalmAnalysisResponse: Codable {
 
     public static func from(jsonString: String) -> PalmAnalysisResponse? {
         guard let data = jsonString.data(using: .utf8) else { return nil }
-        return try? JSONDecoder().decode(PalmAnalysisResponse.self, from: data)
+        do {
+            return try JSONDecoder().decode(PalmAnalysisResponse.self, from: data)
+        } catch {
+            // Keep a short prefix so Console shows which field failed without dumping MBs.
+            let prefix = String(jsonString.prefix(280))
+            print("[PalmAnalysisResponse] JSON decode failed: \(error). prefix=\(prefix)")
+            return nil
+        }
     }
 
     /// Build overlay splines from Steger polylines (`points_image_norm`). Returns nil if none present.

@@ -58,9 +58,11 @@ public final class PalmAnalysisViewModel: ObservableObject {
         self.guidanceEngine = CaptureGuidance(thresholds: PalmOverlay.profile.thresholds)
         do {
             self.curvEngine = try CurvEngine(domainId: PalmOverlay.profile.domainId)
-            logger.info("CurvEngine native pipeline ready")
+            logger.info("CurvEngine native pipeline ready (isNativeAvailable=\(CurvEngine.isNativeAvailable))")
         } catch {
-            logger.notice("CurvEngine unavailable (\(error.localizedDescription)) — landmark crease fallback only")
+            logger.notice(
+                "CurvEngine unavailable (isNativeAvailable=\(CurvEngine.isNativeAvailable), \(error.localizedDescription)) — landmark crease fallback only"
+            )
         }
 
         setupCameraPipeline()
@@ -343,16 +345,25 @@ public final class PalmAnalysisViewModel: ObservableObject {
                 switch engine.processPixelBuffer(pixelBuffer: processBuffer, landmarks: flat) {
                 case .success(let jsonString):
                     parsedResponse = PalmAnalysisResponse.from(jsonString: jsonString)
-                    if let nativeSplines = parsedResponse?.creaseSplinesFromPolylines() {
+                    if parsedResponse == nil {
+                        self.logger.error("Native JSON decode failed (len=\(jsonString.count)) — keeping landmark fallback")
+                    } else if let nativeSplines = parsedResponse?.creaseSplinesFromPolylines() {
                         splines = nativeSplines
                         usedNative = true
                         source = .nativeEngine
+                        self.logger.info("Native Steger returned \(nativeSplines.count) crease polylines")
                     } else {
-                        self.logger.notice("Native JSON lacked points_image_norm — keeping landmark fallback")
+                        let usable = parsedResponse?.isUsable.map(String.init) ?? "nil"
+                        let lineCount = parsedResponse?.domainPayload?.majorLines?.count ?? 0
+                        self.logger.notice(
+                            "Native JSON had no usable points_image_norm (is_usable=\(usable), major_lines=\(lineCount)) — keeping landmark fallback"
+                        )
                     }
                 case .failure(let err):
                     self.logger.error("CurvEngine execution error: \(String(describing: err))")
                 }
+            } else {
+                self.logger.notice("curvEngine is nil — landmark crease fallback only")
             }
 
             DispatchQueue.main.async {

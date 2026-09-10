@@ -49,7 +49,8 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
         CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: 5Q924U6M6X
+        DEVELOPMENT_TEAM: 6J3WY94J6T
+        IPHONEOS_DEPLOYMENT_TARGET: "16.3"
     dependencies:
       - package: CurvCameraOverlayKit
         product: CurvCameraOverlay

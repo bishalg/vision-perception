@@ -110,18 +110,90 @@ if [[ ! -f "${DEVICE_LIB}" || ! -f "${SIM_LIB}" ]]; then
     exit 1
 fi
 
+# Merge transitive static dependencies into a single archive per slice so SPM's
+# binaryTarget `curv_capi` resolves all curv_* symbols. The thin capi archive
+# alone lacks curv_core / curv_domains / curv_adapters / spdlog objects.
+DEVICE_MERGED="${BUILD_DEVICE}/adapters/libcurv_capi_merged.a"
+SIM_MERGED="${BUILD_SIM}/adapters/libcurv_capi_merged.a"
+echo "--> Merging device slice dependencies..."
+libtool -static -o "${DEVICE_MERGED}" \
+    "${BUILD_DEVICE}/core/libcurv_core.a" \
+    "${BUILD_DEVICE}/domains/libcurv_domains.a" \
+    "${BUILD_DEVICE}/adapters/libcurv_adapters.a" \
+    "${DEVICE_LIB}" \
+    "${BUILD_DEVICE}/_deps/spdlog-build/libspdlog.a"
+echo "--> Merging simulator slice dependencies..."
+libtool -static -o "${SIM_MERGED}" \
+    "${BUILD_SIM}/core/libcurv_core.a" \
+    "${BUILD_SIM}/domains/libcurv_domains.a" \
+    "${BUILD_SIM}/adapters/libcurv_adapters.a" \
+    "${SIM_LIB}" \
+    "${BUILD_SIM}/_deps/spdlog-build/libspdlog.a"
+
 xcodebuild -create-xcframework \
-    -library "${DEVICE_LIB}" \
+    -library "${DEVICE_MERGED}" \
     -headers "${ROOT_DIR}/adapters/capi/include" \
-    -library "${SIM_LIB}" \
+    -library "${SIM_MERGED}" \
     -headers "${ROOT_DIR}/adapters/capi/include" \
     -output "${OUTPUT_DIR}"
+
+# Normalize output to the conventional static name expected by SPM consumers.
+# The XCFramework's Info.plist references BinaryPath/LibraryPath; we created it
+# with the merged names, then copy to the canonical libcurv_capi_static.a.
+for slice in ios-arm64 ios-arm64-simulator; do
+    if [[ -f "${OUTPUT_DIR}/${slice}/libcurv_capi_merged.a" ]]; then
+        mv "${OUTPUT_DIR}/${slice}/libcurv_capi_merged.a" "${OUTPUT_DIR}/${slice}/libcurv_capi_static.a"
+    fi
+done
+# Patch XCFramework Info.plist if it still references the temporary merged name.
+if grep -q "libcurv_capi_merged" "${OUTPUT_DIR}/Info.plist" 2>/dev/null; then
+    OUTPUT_DIR_ENV="${OUTPUT_DIR}" python3 - << 'PY'
+import plistlib, pathlib, os
+p = pathlib.Path(os.environ["OUTPUT_DIR_ENV"]) / "Info.plist"
+if p.exists():
+    data = plistlib.loads(p.read_bytes())
+    for lib in data.get("AvailableLibraries", []):
+        lib["BinaryPath"] = lib["BinaryPath"].replace("libcurv_capi_merged.a", "libcurv_capi_static.a")
+        lib["LibraryPath"] = lib["LibraryPath"].replace("libcurv_capi_merged.a", "libcurv_capi_static.a")
+    p.write_bytes(plistlib.dumps(data))
+    print(f"Patched {p}")
+PY
+fi
 
 # 4. Ship OpenCV alongside CurvEngine so the app can link both. They are kept as
 #    two separate XCFrameworks (merging static archives across slices is fragile
 #    and SPM/Xcode link multiple binary targets fine).
 rm -rf "${ROOT_DIR}/build/opencv2.xcframework"
 cp -R "${OPENCV_XCF}" "${ROOT_DIR}/build/opencv2.xcframework"
+
+# 5. Flatten OpenCV framework from macOS-style versioned bundle (Versions/A)
+#    to iOS shallow bundle. Xcode 16+ validates that iOS frameworks have
+#    Info.plist at the bundle root, not Versions/Current/Resources.
+echo "--> Flattening OpenCV XCFramework to iOS shallow bundles..."
+for slice in ios-arm64 ios-arm64-simulator; do
+    FW="${ROOT_DIR}/build/opencv2.xcframework/${slice}/opencv2.framework"
+    if [[ -d "${FW}/Versions/A" ]]; then
+        rm -f "${FW}/Headers" "${FW}/Modules" "${FW}/opencv2" "${FW}/Resources"
+        mkdir -p "${FW}/Headers" "${FW}/Resources"
+        cp -R "${FW}/Versions/A/Headers/." "${FW}/Headers/"
+        cp "${FW}/Versions/A/opencv2" "${FW}/opencv2"
+        cp -R "${FW}/Versions/A/Resources/." "${FW}/Resources/"
+        if [[ -f "${FW}/Resources/Info.plist" ]]; then
+            cp "${FW}/Resources/Info.plist" "${FW}/Info.plist"
+        fi
+        rm -rf "${FW}/Versions"
+    fi
+done
+ROOT_DIR_ENV="${ROOT_DIR}" python3 - << 'PY2'
+import plistlib, pathlib, os
+p = pathlib.Path(os.environ["ROOT_DIR_ENV"]) / "build/opencv2.xcframework/Info.plist"
+if p.exists():
+    data = plistlib.loads(p.read_bytes())
+    for lib in data.get("AvailableLibraries", []):
+        lib["BinaryPath"] = lib["BinaryPath"].replace("opencv2.framework/Versions/A/opencv2", "opencv2.framework/opencv2")
+    p.write_bytes(plistlib.dumps(data))
+    print(f"Patched OpenCV {p}")
+PY2
 
 echo "=================================================="
 echo "Successfully generated:"
