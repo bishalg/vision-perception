@@ -154,7 +154,8 @@ int runHandInspector(int argc, char* argv[], std::ostream& out, std::ostream& er
 
     out << "[STAGE 7] Generating grounded VLM prompt payload..." << '\n';
     nlohmann::json const gemini_payload = domains::VlmPromptFormatter::formatGeminiRequest(
-        result.evidence, "Analyze the career and longevity indicators strictly according to Vedic Samudrika Shastra rules.");
+        result.evidence,
+        "Analyze the career and longevity indicators strictly according to Vedic Samudrika Shastra rules.");
     std::ofstream prompt_file(out_vlm_prompt_path);
     if (prompt_file.is_open()) {
         prompt_file << gemini_payload.dump(2);

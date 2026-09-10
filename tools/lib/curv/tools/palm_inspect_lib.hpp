@@ -59,7 +59,7 @@ bool saveLandmarksJson(const std::string& path, const geometry::HandLandmarks& l
  * @brief Warp source-image landmarks into canonical patch pixel space.
  */
 geometry::HandLandmarks warpLandmarksToCanonical(const geometry::HandLandmarks& src, const geometry::RoiTransform& xf,
-                                                   int img_w, int img_h);
+                                                 int img_w, int img_h);
 
 /**
  * @brief Core palm inspect pipeline used by CLI and the desktop debug viewer.

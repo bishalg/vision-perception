@@ -112,9 +112,9 @@ JNIEXPORT jstring JNICALL Java_org_curv_CurvPipeline_nativeProcessLandmarksRoi(J
 }
 
 JNIEXPORT jstring JNICALL Java_org_curv_CurvPipeline_nativeProcessQuadRoi(JNIEnv* env, jobject /*thiz*/, jlong handle,
-                                                                           jobject byte_buffer, jint width, jint height,
-                                                                           jint stride, jint format,
-                                                                           jfloatArray corners_array) {
+                                                                          jobject byte_buffer, jint width, jint height,
+                                                                          jint stride, jint format,
+                                                                          jfloatArray corners_array) {
     auto p_handle = reinterpret_cast<CurvPipelineHandle>(handle);
     if (!p_handle || !byte_buffer) {
         return env->NewStringUTF("{\"error\": \"invalid_argument\"}");

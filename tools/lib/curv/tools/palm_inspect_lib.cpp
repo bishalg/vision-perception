@@ -33,8 +33,7 @@ cv::Point2f applyAffine(const cv::Mat& M, float x, float y) {
         M64 = M;
     }
     const double* m = M64.ptr<double>();
-    return cv::Point2f(static_cast<float>(m[0] * x + m[1] * y + m[2]),
-                       static_cast<float>(m[3] * x + m[4] * y + m[5]));
+    return cv::Point2f(static_cast<float>(m[0] * x + m[1] * y + m[2]), static_cast<float>(m[3] * x + m[4] * y + m[5]));
 }
 
 void enrichImageSpacePoints(nlohmann::json& domain_payload, const cv::Mat& M_inv, int img_w, int img_h) {
@@ -69,9 +68,8 @@ void drawLandmarkDots(cv::Mat& img, const geometry::HandLandmarks& lms, int img_
     }
 }
 
-adapters::OverlayConfig::ContinuousCreaseItem makeCreaseItem(const std::string& name,
-                                                             const domain::ChainedCreaseLine& line, const cv::Mat* M_inv,
-                                                             int thickness) {
+adapters::OverlayConfig::ContinuousCreaseItem
+makeCreaseItem(const std::string& name, const domain::ChainedCreaseLine& line, const cv::Mat* M_inv, int thickness) {
     adapters::OverlayConfig::ContinuousCreaseItem item;
     item.thickness = thickness;
     item.points.reserve(line.points.size());
@@ -149,7 +147,7 @@ bool saveLandmarksJson(const std::string& path, const geometry::HandLandmarks& l
 }
 
 geometry::HandLandmarks warpLandmarksToCanonical(const geometry::HandLandmarks& src, const geometry::RoiTransform& xf,
-                                                   int img_w, int img_h) {
+                                                 int img_w, int img_h) {
     geometry::HandLandmarks out;
     out.is_normalized = false;
     const float sx = src.is_normalized ? static_cast<float>(img_w) : 1.0f;
@@ -225,8 +223,8 @@ PalmInspectResult runPalmInspect(const cv::Mat& bgr, const geometry::HandLandmar
     res.segments_after_mask = res.ridge_graph.segments.size();
 
     logLine(log, "[STAGE 4c] Anatomy + palm-disc ridge filter...");
-    res.anatomy_raw =
-        domain::HandAnatomyDecomposer::decompose(res.landmarks, static_cast<float>(bgr.cols), static_cast<float>(bgr.rows));
+    res.anatomy_raw = domain::HandAnatomyDecomposer::decompose(res.landmarks, static_cast<float>(bgr.cols),
+                                                               static_cast<float>(bgr.rows));
     res.anatomy_canonical = domain::HandAnatomyDecomposer::decompose(res.landmarks_canonical, 1.0f, 1.0f);
     if (res.anatomy_canonical.is_valid) {
         const size_t removed = domain::CreaseChainLinker::filterGraphByPalmDisc(
@@ -243,8 +241,8 @@ PalmInspectResult runPalmInspect(const cv::Mat& bgr, const geometry::HandLandmar
     domain::MajorLineLandmarks priors;
     priors.landmarks = res.landmarks_canonical;
     priors.valid = true;
-    res.major_lines = domain::CreaseChainLinker::extractMajorLines(
-        res.ridge_graph, res.is_left_hand, canonical_dim, priors, options.link_options);
+    res.major_lines = domain::CreaseChainLinker::extractMajorLines(res.ridge_graph, res.is_left_hand, canonical_dim,
+                                                                   priors, options.link_options);
 
     // Prefer linker chains (with confidence) already mirrored into domain payload.
     res.evidence = nlohmann::json::object();

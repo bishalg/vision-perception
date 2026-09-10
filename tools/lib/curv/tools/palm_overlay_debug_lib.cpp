@@ -99,7 +99,8 @@ int runPalmOverlayDebug(int argc, char* argv[], std::ostream& out, std::ostream&
         } else if (arg == "--debug-all-ridges") {
             st.debug_ridges = true;
         } else if (arg == "--help") {
-            out << "Usage: " << argv[0] << " [--image path] [--landmarks path.json] [--left-hand] [--debug-all-ridges]\n";
+            out << "Usage: " << argv[0]
+                << " [--image path] [--landmarks path.json] [--left-hand] [--debug-all-ridges]\n";
             printHelp(out);
             return 0;
         }

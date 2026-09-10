@@ -137,17 +137,16 @@ std::vector<ChainedCreaseLine> CreaseChainLinker::linkSegments(const std::vector
         }
         const auto& cand = *valid_segs[j];
         const Point2D tip = extend_front ? chain.front() : chain.back();
-        const Point2D tip_tangent =
-            extend_front
-                ? normalizeVec(Point2D(chain[0].x - chain[1].x, chain[0].y - chain[1].y))
-                : normalizeVec(Point2D(chain.back().x - chain[chain.size() - 2].x,
-                                       chain.back().y - chain[chain.size() - 2].y));
+        const Point2D tip_tangent = extend_front
+                                        ? normalizeVec(Point2D(chain[0].x - chain[1].x, chain[0].y - chain[1].y))
+                                        : normalizeVec(Point2D(chain.back().x - chain[chain.size() - 2].x,
+                                                               chain.back().y - chain[chain.size() - 2].y));
 
         const size_t c_n = cand.points.size();
         const Point2D head_t =
             normalizeVec(Point2D(cand.points[1].x - cand.points[0].x, cand.points[1].y - cand.points[0].y));
-        const Point2D tail_t = normalizeVec(Point2D(cand.points[c_n - 2].x - cand.points[c_n - 1].x,
-                                                    cand.points[c_n - 2].y - cand.points[c_n - 1].y));
+        const Point2D tail_t = normalizeVec(
+            Point2D(cand.points[c_n - 2].x - cand.points[c_n - 1].x, cand.points[c_n - 2].y - cand.points[c_n - 1].y));
 
         auto consider = [&](const Point2D& cand_end, const Point2D& cand_tangent, bool reverse) {
             const float d = dist2d(tip, cand_end);
@@ -244,7 +243,6 @@ std::vector<ChainedCreaseLine> CreaseChainLinker::linkSegments(const std::vector
     return result;
 }
 
-
 size_t CreaseChainLinker::filterGraphByPalmDisc(RidgeGraph& graph, const std::vector<Point2D>& palm_disc,
                                                 float min_inside_ratio) {
     if (palm_disc.size() < 3 || graph.segments.empty()) {
@@ -302,7 +300,7 @@ struct SegStats {
     float mean_y{0.0f};
     float dx{0.0f};
     float dy{0.0f};
-    float angle{0.0f};   // atan2(|sin|,|cos|) of PCA axis: 0=horizontal, ~1.57=vertical
+    float angle{0.0f}; // atan2(|sin|,|cos|) of PCA axis: 0=horizontal, ~1.57=vertical
     float span_x{0.0f};
     float span_y{0.0f};
     float min_y{0.0f};
@@ -621,10 +619,7 @@ CreaseChainLinker::extractMajorLines(const RidgeGraph& graph, bool is_left_hand,
         for (const auto& c : cands) {
             if (c.assigned != label || c.stats.seg == nullptr) continue;
             segs.push_back(*c.stats.seg);
-            const float sc = (label == 0)   ? c.heart
-                             : (label == 1) ? c.head
-                             : (label == 2) ? c.life
-                                            : c.fate;
+            const float sc = (label == 0) ? c.heart : (label == 1) ? c.head : (label == 2) ? c.life : c.fate;
             score_sum += sc;
             ++score_n;
         }
@@ -650,8 +645,7 @@ CreaseChainLinker::extractMajorLines(const RidgeGraph& graph, bool is_left_hand,
                 min_x = std::min(min_x, pt.x);
                 max_x = std::max(max_x, pt.x);
             }
-            const float palm_width =
-                axis.valid ? std::max(40.0f, std::abs(axis.pinky_x - axis.index_x)) : dim * 0.45f;
+            const float palm_width = axis.valid ? std::max(40.0f, std::abs(axis.pinky_x - axis.index_x)) : dim * 0.45f;
             if ((max_x - min_x) < 0.22f * palm_width && chains.front().total_length < 60.0f) {
                 return;
             }

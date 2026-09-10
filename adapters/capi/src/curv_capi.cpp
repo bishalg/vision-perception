@@ -43,8 +43,7 @@ cv::Point2f applyAffine2x3(const cv::Mat& M, float x, float y) {
         M64 = M;
     }
     const double* m = M64.ptr<double>();
-    return cv::Point2f(static_cast<float>(m[0] * x + m[1] * y + m[2]),
-                       static_cast<float>(m[3] * x + m[4] * y + m[5]));
+    return cv::Point2f(static_cast<float>(m[0] * x + m[1] * y + m[2]), static_cast<float>(m[3] * x + m[4] * y + m[5]));
 }
 
 CurvEngine::geometry::HandLandmarks warpLandmarksToCanonical(const CurvEngine::geometry::HandLandmarks& src,
@@ -514,7 +513,7 @@ int curv_pipeline_process_landmarks_roi(CurvPipelineHandle pipeline, CurvFrameHa
             CurvEngine::domain::HandAnatomyDecomposer::decompose(landmarks_canonical, 1.0f, 1.0f);
         if (anatomy_canonical.is_valid) {
             CurvEngine::domain::CreaseChainLinker::filterGraphByPalmDisc(result.ridge_graph,
-                                                                        anatomy_canonical.central_palm_disc, 0.40f);
+                                                                         anatomy_canonical.central_palm_disc, 0.40f);
         }
 
         p_ctx->last_quality.blur_score = result.quality.blur_score;
