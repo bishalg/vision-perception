@@ -6,25 +6,72 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import org.curv.overlay.hud.OverlayEmerald
-import androidx.compose.ui.graphics.Color
 
 @Composable
-fun PalmSilhouette(isReady: Boolean) {
-    val stroke = if (isReady) OverlayEmerald.copy(alpha = 0.55f) else Color.White.copy(alpha = 0.28f)
-    val fill = if (isReady) OverlayEmerald.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.06f)
+fun PalmSilhouette(
+    isReady: Boolean,
+    handSide: HandSide = HandSide.AUTO,
+    detectedIsLeft: Boolean? = null
+) {
+    val mirror = when (handSide) {
+        HandSide.LEFT -> true
+        HandSide.RIGHT -> false
+        HandSide.AUTO -> detectedIsLeft ?: false
+    }
+    val fillBase = if (isReady) OverlayEmerald.copy(alpha = 0.13f) else Color.White.copy(alpha = 0.05f)
+    val strokeC = if (isReady) OverlayEmerald else Color.White.copy(alpha = 0.38f)
 
-    Canvas(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 10.dp)) {
-        val path = fullHandPath(size.width, size.height)
-        drawPath(path, color = fill, style = Fill)
-        drawPath(path, color = stroke, style = Stroke(width = 3f))
+    Canvas(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .graphicsLayer(scaleX = if (mirror) -1f else 1f)
+    ) {
+        val w = size.width
+        val h = size.height
+        val path = fullHandPath(w, h)
+        // outer glow
+        drawPath(path, brush = Brush.radialGradient(listOf(fillBase, Color.Transparent)), style = Fill)
+        // crisp fill with subtle top highlight
+        drawPath(path, brush = Brush.linearGradient(listOf(Color.White.copy(alpha = if (isReady) 0.14f else 0.08f), fillBase)), style = Fill)
+        // faint crease hints
+        drawPath(hintCreases(w, h), color = Color.White.copy(alpha = 0.14f), style = Stroke(width = 1f, pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)))
+        // stroke
+        drawPath(path, color = strokeC, style = Stroke(width = if (isReady) 6f else 4.5f))
+        drawPath(path, color = Color.White.copy(alpha = 0.72f), style = Stroke(width = 1.2f))
+        // wrist tick
+        drawPath(wristBrace(w, h), color = Color.White.copy(alpha = 0.24f), style = Stroke(width = 2f, pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(6f, 8f), 0f)))
+        // fingertip dots
+        val glowC = if (isReady) Color.White.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.62f)
+        for (pt in fingertipPoints(w, h) + mcpPoints(w, h)) {
+            drawCircle(color = glowC, radius = 3.4f, center = pt)
+        }
+        drawCircle(color = glowC, radius = 4.2f, center = Offset(w*0.5f, h*0.56f))
     }
 }
 
+private fun fingertipPoints(w: Float, h: Float): List<Offset> = listOf(
+    Offset(0.12f*w, 0.17f*h), Offset(0.30f*w, 0.09f*h), Offset(0.50f*w, 0.04f*h), Offset(0.70f*w, 0.08f*h), Offset(0.87f*w, 0.18f*h)
+)
+private fun mcpPoints(w: Float, h: Float): List<Offset> = listOf(
+    Offset(0.32f*w, 0.42f*h), Offset(0.42f*w, 0.36f*h), Offset(0.54f*w, 0.34f*h), Offset(0.66f*w, 0.36f*h), Offset(0.76f*w, 0.42f*h)
+)
+private fun hintCreases(w: Float, h: Float): Path = Path().apply {
+    moveTo(0.22f*w, 0.42f*h); cubicTo(0.32f*w,0.34f*h, 0.64f*w,0.34f*h, 0.78f*w,0.40f*h)
+    moveTo(0.20f*w, 0.52f*h); cubicTo(0.34f*w,0.48f*h, 0.62f*w,0.48f*h, 0.76f*w,0.51f*h)
+    moveTo(0.40f*w, 0.46f*h); cubicTo(0.32f*w,0.56f*h, 0.30f*w,0.68f*h, 0.42f*w,0.74f*h)
+}
+private fun wristBrace(w: Float, h: Float): Path = Path().apply {
+    moveTo(0.28f*w, 0.88f*h); cubicTo(0.38f*w,0.90f*h, 0.62f*w,0.90f*h, 0.72f*w,0.88f*h)
+}
 private fun fullHandPath(w: Float, h: Float): Path {
     fun p(x: Float, y: Float) = Offset(x * w, y * h)
     return Path().apply {

@@ -11,6 +11,7 @@ public struct CameraOverlayHost<OverlayContent: View>: View {
     public let metrics: QualityMetrics
     public let isAnalyzing: Bool
     public let statusMessageOverride: String?
+    public let deviceRollDeg: Float?
     public let overlayContent: OverlayContent
     public let onManualCapture: () -> Void
 
@@ -21,6 +22,7 @@ public struct CameraOverlayHost<OverlayContent: View>: View {
         metrics: QualityMetrics,
         isAnalyzing: Bool,
         statusMessageOverride: String? = nil,
+        deviceRollDeg: Float? = nil,
         onManualCapture: @escaping () -> Void,
         @ViewBuilder overlayContent: () -> OverlayContent
     ) {
@@ -30,6 +32,7 @@ public struct CameraOverlayHost<OverlayContent: View>: View {
         self.metrics = metrics
         self.isAnalyzing = isAnalyzing
         self.statusMessageOverride = statusMessageOverride
+        self.deviceRollDeg = deviceRollDeg
         self.onManualCapture = onManualCapture
         self.overlayContent = overlayContent()
     }
@@ -44,6 +47,7 @@ public struct CameraOverlayHost<OverlayContent: View>: View {
                 guidanceState: guidanceState,
                 metrics: metrics,
                 statusMessageOverride: statusMessageOverride,
+                deviceRollDeg: deviceRollDeg,
                 onManualCapture: onManualCapture
             ) {
                 overlayContent

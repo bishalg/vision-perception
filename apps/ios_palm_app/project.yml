@@ -58,6 +58,23 @@ targets:
         product: CurvPalmOverlay
       - package: CurvApple
         product: CurvApple
+    # opencv2.xcframework is a static framework (ar archive). Xcode 16+ validates
+    # frameworks in App/Frameworks/ and rejects static ones with "missing or
+    # invalid CFBundleExecutable". It is already linked statically via
+    # OTHER_LDFLAGS, so remove the copied bundle post-embed.
+    postBuildScripts:
+      - name: StripStaticOpenCVFramework
+        script: |
+          echo "Stripping static opencv2.framework from Frameworks (already linked statically)..."
+          rm -rf "${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/opencv2.framework"
+          # Re-sign the app bundle after removing the framework.
+          # Use EXPANDED_CODE_SIGN_IDENTITY if set by Xcode/Fastlane, otherwise fall back to ad-hoc for simulator.
+          if [ -d "${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}" ]; then
+            SIGN_IDENTITY="${EXPANDED_CODE_SIGN_IDENTITY:--}"
+            echo "Re-signing bundle with identity: ${SIGN_IDENTITY}"
+            codesign --force --sign "${SIGN_IDENTITY}" --timestamp=none "${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}" 2>/dev/null || true
+          fi
+        runOnlyWhenInstalling: false
     info:
       path: AppHost/Info.plist
       properties:

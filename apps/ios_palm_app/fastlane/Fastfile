@@ -1,0 +1,150 @@
+default_platform(:ios)
+
+platform :ios do
+  before_all do
+    # Load .env file if present
+    Dotenv.load if defined?(Dotenv)
+
+    # Configure App Store Connect API Key if environment variables are provided
+    if ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"] && ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"]
+      app_store_connect_api_key(
+        key_id: ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"],
+        issuer_id: ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"],
+        key_filepath: ENV["APP_STORE_CONNECT_API_KEY_KEY_FILEPATH"],
+        key_content: ENV["APP_STORE_CONNECT_API_KEY_KEY_CONTENT"],
+        is_key_content_base64: ENV["APP_STORE_CONNECT_API_KEY_IS_KEY_CONTENT_BASE64"] == "true"
+      )
+    end
+  end
+
+  # =========================================================================
+  # 1. CERTIFICATES & CODE SIGNING MANAGEMENT
+  # =========================================================================
+  desc "Sync development certificates & provisioning profiles"
+  lane :sync_dev_certs do
+    if ENV["MATCH_GIT_URL"] && !ENV["MATCH_GIT_URL"].empty?
+      match(
+        type: "development",
+        app_identifier: [ENV["APP_IDENTIFIER"] || "org.curv.palmapp"],
+        readonly: is_ci
+      )
+    else
+      UI.message("MATCH_GIT_URL not configured. Using cert + sigh directly...")
+      cert(development: true)
+      sigh(
+        development: true,
+        app_identifier: ENV["APP_IDENTIFIER"] || "org.curv.palmapp"
+      )
+    end
+  end
+
+  desc "Sync distribution certificates & provisioning profiles for TestFlight/AppStore"
+  lane :sync_dist_certs do
+    if ENV["MATCH_GIT_URL"] && !ENV["MATCH_GIT_URL"].empty?
+      match(
+        type: "appstore",
+        app_identifier: [ENV["APP_IDENTIFIER"] || "org.curv.palmapp"],
+        readonly: is_ci
+      )
+    else
+      UI.message("MATCH_GIT_URL not configured. Using cert + sigh directly...")
+      cert(development: false)
+      sigh(
+        development: false,
+        app_identifier: ENV["APP_IDENTIFIER"] || "org.curv.palmapp"
+      )
+    end
+  end
+
+  # =========================================================================
+  # 2. TESTING & CI VALIDATION
+  # =========================================================================
+  desc "Run automated unit & integration tests"
+  lane :test do
+    run_tests(
+      scheme: "PalmScanner",
+      project: "PalmScanner.xcodeproj",
+      devices: ["iPhone 16 Pro"],
+      clean: true,
+      fail_build: true
+    )
+  end
+
+  # =========================================================================
+  # 3. AUTOMATED SCREENSHOTS
+  # =========================================================================
+  desc "Capture localized screenshots across multiple device form-factors"
+  lane :screenshots do
+    snapshot
+    # Frame screenshots with mockups if frameit is desired:
+    # frameit(silver: true)
+  end
+
+  # =========================================================================
+  # 4. LOCAL DEVICE RUNNER
+  # =========================================================================
+  desc "Build and install app directly onto connected physical iPhone"
+  lane :install_device do
+    sync_dev_certs
+
+    build_app(
+      scheme: "PalmScanner",
+      project: "PalmScanner.xcodeproj",
+      export_method: "development",
+      clean: true
+    )
+
+    install_on_device(
+      ipa: Actions.lane_context[SharedValues::IPA_OUTPUT_PATH]
+    )
+  end
+
+  # =========================================================================
+  # 5. TESTFLIGHT (BETA) DEPLOYMENT
+  # =========================================================================
+  desc "Build and upload new beta build to TestFlight"
+  lane :beta do |options|
+    sync_dist_certs
+
+    # Auto-increment build number
+    increment_build_number(
+      build_number: options[:build_number] || (is_ci ? ENV["BUILD_NUMBER"] : nil)
+    )
+
+    build_app(
+      scheme: "PalmScanner",
+      project: "PalmScanner.xcodeproj",
+      export_method: "app-store",
+      clean: true
+    )
+
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true,
+      changelog: options[:changelog] || "Automated build from CI/CD pipeline"
+    )
+  end
+
+  # =========================================================================
+  # 6. APP STORE (PRODUCTION RELEASE)
+  # =========================================================================
+  desc "Deliver full App Store release with metadata, screenshots, and binary"
+  lane :release do |options|
+    sync_dist_certs
+
+    build_app(
+      scheme: "PalmScanner",
+      project: "PalmScanner.xcodeproj",
+      export_method: "app-store",
+      clean: true
+    )
+
+    deliver(
+      submit_for_review: false, # Set to true to automatically submit for Apple review
+      automatic_release: false,
+      force: true, # Skips HTML preview verification dialog in CI
+      skip_screenshots: options[:skip_screenshots] || false,
+      metadata_path: "./fastlane/metadata",
+      screenshots_path: "./fastlane/screenshots"
+    )
+  end
+end

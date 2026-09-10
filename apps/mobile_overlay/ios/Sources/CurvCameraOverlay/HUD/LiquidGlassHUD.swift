@@ -18,12 +18,17 @@ public struct LiquidGlassHUD<OverlayContent: View>: View {
     public let statusMessageOverride: String?
     public let overlayContent: OverlayContent
     public let onManualCapture: () -> Void
+    /// Device roll vs gravity in degrees (0 = vertical). nil = use live gyro.
+    public var deviceRollDeg: Float?
+
+    @StateObject private var tiltProvider = DeviceTiltProvider()
 
     public init(
         profile: OverlayProfile,
         guidanceState: GuidanceState,
         metrics: QualityMetrics,
         statusMessageOverride: String? = nil,
+        deviceRollDeg: Float? = nil,
         onManualCapture: @escaping () -> Void,
         @ViewBuilder overlayContent: () -> OverlayContent
     ) {
@@ -31,11 +36,15 @@ public struct LiquidGlassHUD<OverlayContent: View>: View {
         self.guidanceState = guidanceState
         self.metrics = metrics
         self.statusMessageOverride = statusMessageOverride
+        self.deviceRollDeg = deviceRollDeg
         self.onManualCapture = onManualCapture
         self.overlayContent = overlayContent()
     }
 
     private var isReady: Bool { guidanceState.isReady }
+    private var effectiveDeviceRoll: Float {
+        deviceRollDeg ?? tiltProvider.deviceRollDeg
+    }
 
     private var statusColor: Color { isReady ? OverlayPalette.emerald : OverlayPalette.amber }
 
@@ -95,6 +104,25 @@ public struct LiquidGlassHUD<OverlayContent: View>: View {
                         }
                     }
                     .allowsHitTesting(false)
+
+                // ── Left / Right tilt rails ──
+                HStack {
+                    TiltRailView(
+                        deviceRollDeg: effectiveDeviceRoll,
+                        handRollDeg: metrics.rollAngleDeg,
+                        isLeft: true
+                    )
+                    Spacer()
+                    TiltRailView(
+                        deviceRollDeg: effectiveDeviceRoll,
+                        handRollDeg: metrics.rollAngleDeg,
+                        isLeft: false
+                    )
+                }
+                .padding(.horizontal, 10)
+                .allowsHitTesting(false)
+                .animation(.easeOut(duration: 0.12), value: effectiveDeviceRoll)
+                .animation(.easeOut(duration: 0.12), value: metrics.rollAngleDeg)
 
                 VStack {
                     HStack(spacing: 8) {
@@ -156,6 +184,8 @@ public struct LiquidGlassHUD<OverlayContent: View>: View {
                 }
             }
         }
+        .onAppear { tiltProvider.start() }
+        .onDisappear { tiltProvider.stop() }
     }
 
     @ViewBuilder

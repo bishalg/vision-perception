@@ -1,0 +1,1 @@
+palm, scanner, computer vision, hand tracking, biometric, opencv

@@ -144,6 +144,7 @@
 			buildPhases = (
 				FABE5AE7CDF2E85E4980C965 /* Sources */,
 				C4C50F26B03186A7488F3D0C /* Frameworks */,
+				127F87FBABD344832010BD87 /* StripStaticOpenCVFramework */,
 			);
 			buildRules = (
 			);
@@ -196,6 +197,27 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		127F87FBABD344832010BD87 /* StripStaticOpenCVFramework */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = StripStaticOpenCVFramework;
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "echo \"Stripping static opencv2.framework from Frameworks (already linked statically)...\"\nrm -rf \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/opencv2.framework\"\n# Re-sign the app bundle after removing the framework.\n# Use EXPANDED_CODE_SIGN_IDENTITY if set by Xcode/Fastlane, otherwise fall back to ad-hoc for simulator.\nif [ -d \"${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}\" ]; then\n  SIGN_IDENTITY=\"${EXPANDED_CODE_SIGN_IDENTITY:--}\"\n  echo \"Re-signing bundle with identity: ${SIGN_IDENTITY}\"\n  codesign --force --sign \"${SIGN_IDENTITY}\" --timestamp=none \"${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}\" 2>/dev/null || true\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		FABE5AE7CDF2E85E4980C965 /* Sources */ = {
@@ -358,7 +380,11 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				OTHER_LDFLAGS = "-lc++ -framework Accelerate";
+				OTHER_LDFLAGS = (
+					"-lc++",
+					"-framework",
+					Accelerate,
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = org.curv.palmapp;
 				PRODUCT_NAME = PalmScanner;
 				SDKROOT = iphoneos;
@@ -384,7 +410,11 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				OTHER_LDFLAGS = "-lc++ -framework Accelerate";
+				OTHER_LDFLAGS = (
+					"-lc++",
+					"-framework",
+					Accelerate,
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = org.curv.palmapp;
 				PRODUCT_NAME = PalmScanner;
 				SDKROOT = iphoneos;

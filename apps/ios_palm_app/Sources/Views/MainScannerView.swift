@@ -22,8 +22,23 @@ public struct MainScannerView: View {
                 statusMessageOverride: viewModel.statusMessageOverride,
                 onManualCapture: { viewModel.manualCapture() }
             ) {
-                PalmSilhouetteView(isReady: viewModel.guidanceState.isReady)
+                PalmSilhouetteView(
+                    isReady: viewModel.guidanceState.isReady,
+                    handSide: viewModel.selectedHandSide,
+                    detectedIsLeft: viewModel.detectedHandSide == .left
+                )
             }
+
+            // Top hand toggle (Auto / Left / Right) — algorithm auto-detects, user can lock
+            VStack {
+                HandSideToggleView(
+                    selection: $viewModel.selectedHandSide,
+                    autoDetected: viewModel.detectedHandSide
+                )
+                .padding(.top, 54)
+                Spacer()
+            }
+            .zIndex(1)
 
             // Live landmark skeleton while hand is detected (same dots as result view).
             if !viewModel.detectedLandmarks.isEmpty && !viewModel.showResultViewer {

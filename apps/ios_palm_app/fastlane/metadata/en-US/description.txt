@@ -1,0 +1,1 @@
+PalmScanner provides real-time palm tracking, geometric contour guidance, and crease analysis powered by the CurvEngine on-device vision pipeline.

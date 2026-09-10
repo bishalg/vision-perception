@@ -1,0 +1,7 @@
+# Fastlane Appfile for PalmScanner iOS App
+# Reference: https://docs.fastlane.tools/advanced/#appfile
+
+app_identifier(ENV["APP_IDENTIFIER"] || "org.curv.palmapp")
+apple_id(ENV["APPLE_ID"] || "")
+team_id(ENV["APPLE_TEAM_ID"] || "6J3WY94J6T")
+itc_team_id(ENV["ITC_TEAM_ID"] || "")

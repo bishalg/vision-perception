@@ -57,7 +57,13 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
             if self.captureSession.canAddOutput(self.photoOutput) {
                 self.captureSession.addOutput(self.photoOutput)
                 if #available(iOS 16.0, *) {
-                    self.photoOutput.maxPhotoDimensions = CMVideoDimensions(width: 4032, height: 3024)
+                    let preferred = CMVideoDimensions(width: 4032, height: 3024)
+                    let supported = device.activeFormat.supportedMaxPhotoDimensions
+                    if supported.contains(where: { $0.width == preferred.width && $0.height == preferred.height }) {
+                        self.photoOutput.maxPhotoDimensions = preferred
+                    } else if let best = supported.max(by: { $0.width * $0.height < $1.width * $1.height }) {
+                        self.photoOutput.maxPhotoDimensions = best
+                    }
                 } else {
                     // On iOS versions prior to 16, high resolution capture is the default when supported.
                     // The `isHighResolutionCaptureEnabled` property is deprecated in iOS 16+, so we avoid using it.
@@ -100,7 +106,16 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
                 kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA)
             ])
             if #available(iOS 16.0, *) {
-                settings.maxPhotoDimensions = CMVideoDimensions(width: 4032, height: 3024)
+                let preferred = CMVideoDimensions(width: 4032, height: 3024)
+                if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) {
+                    let supported = device.activeFormat.supportedMaxPhotoDimensions
+                    if supported.contains(where: { $0.width == preferred.width && $0.height == preferred.height }) {
+                        settings.maxPhotoDimensions = preferred
+                    } else if let best = supported.max(by: { $0.width * $0.height < $1.width * $1.height }) {
+                        settings.maxPhotoDimensions = best
+                    }
+                }
+                // else leave at default — device will pick a valid size
             } else {
                 // Pre–iOS 16 fallback: enable high-resolution capture when supported.
                 // This API is deprecated starting in iOS 16.

@@ -181,6 +181,23 @@ for slice in ios-arm64 ios-arm64-simulator; do
         if [[ -f "${FW}/Resources/Info.plist" ]]; then
             cp "${FW}/Resources/Info.plist" "${FW}/Info.plist"
         fi
+        # Xcode 16+ installd validation requires CFBundleExecutable for any
+        # framework inside App/Frameworks/, even static ones. OpenCV's static
+        # framework ships without it, causing "missing or invalid
+        # CFBundleExecutable" at install. Inject it so embedding passes.
+        if [[ -f "${FW}/Info.plist" ]]; then
+            FW_PLIST="${FW}/Info.plist" python3 - << 'PYFW'
+import plistlib, os
+p = os.environ["FW_PLIST"]
+with open(p, 'rb') as f:
+    d = plistlib.load(f)
+if 'CFBundleExecutable' not in d:
+    d['CFBundleExecutable'] = 'opencv2'
+    with open(p, 'wb') as f:
+        plistlib.dump(d, f)
+    print(f"Patched {p} with CFBundleExecutable")
+PYFW
+        fi
         rm -rf "${FW}/Versions"
     fi
 done

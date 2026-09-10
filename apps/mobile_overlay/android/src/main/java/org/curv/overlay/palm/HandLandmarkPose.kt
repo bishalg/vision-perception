@@ -49,4 +49,23 @@ object HandLandmarkPose {
             confidence = 1f
         )
     }
+
+    /** Mirrors core/geometry/RoiWarper::detectIsLeftHand */
+    fun isLeftHand(landmarks: List<PointF>): Boolean {
+        if (landmarks.size < 18) return false
+        val p0 = landmarks[0]
+        val p5 = landmarks[5]
+        val p9 = landmarks[9]
+        val p17 = landmarks[17]
+        val upX = p9.x - p0.x
+        val upY = p9.y - p0.y
+        val upLen = sqrt(upX*upX + upY*upY)
+        if (upLen < 1e-4f) return false
+        val rightX = -upY / upLen
+        val rightY = upX / upLen
+        val palmWX = p17.x - p5.x
+        val palmWY = p17.y - p5.y
+        val dot = palmWX * rightX + palmWY * rightY
+        return dot < 0f
+    }
 }

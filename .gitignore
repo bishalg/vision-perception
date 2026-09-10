@@ -233,3 +233,14 @@ data/flood_nepal_2026/*
 !data/annotations/
 !.gitkeep
 
+
+# Fastlane
+apps/ios_palm_app/fastlane/.env
+apps/ios_palm_app/fastlane/README.md
+apps/ios_palm_app/fastlane/report.xml
+apps/ios_palm_app/fastlane/Preview.html
+apps/ios_palm_app/fastlane/screenshots/**/*.png
+apps/ios_palm_app/fastlane/test_output
+apps/ios_palm_app/fastlane/*.p8
+apps/ios_palm_app/fastlane/*.mobileprovision
+apps/ios_palm_app/fastlane/*.cer

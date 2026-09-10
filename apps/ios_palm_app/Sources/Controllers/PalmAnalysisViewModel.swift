@@ -38,6 +38,8 @@ public final class PalmAnalysisViewModel: ObservableObject {
     @Published public var overlaySource: CreaseOverlaySource = .landmarkFallback
     /// Adjusted lines ready for prediction / VLM (set by "Use for reading").
     @Published public var predictionReadySplines: [CreaseSpline] = []
+    @Published public var selectedHandSide: HandSide = .auto
+    @Published public var detectedHandSide: HandSide = .right
     @Published public var currentLanguage: AppLanguage = .english {
         didSet {
             LocalizedStrings.currentLanguage = currentLanguage
@@ -237,6 +239,8 @@ public final class PalmAnalysisViewModel: ObservableObject {
         DispatchQueue.main.async {
             if let landmarks {
                 self.detectedLandmarks = landmarks
+                let isLeft = HandLandmarkPose.isLeftHand(landmarks)
+                self.detectedHandSide = isLeft ? .left : .right
             } else {
                 self.detectedLandmarks.removeAll()
             }

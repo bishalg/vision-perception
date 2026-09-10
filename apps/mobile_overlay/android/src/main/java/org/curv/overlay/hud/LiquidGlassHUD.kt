@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,6 +28,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.curv.overlay.guidance.DeviceTiltMonitor
 import org.curv.overlay.guidance.GuidanceState
 import org.curv.overlay.guidance.QualityMetrics
 import org.curv.overlay.profile.OverlayProfile
@@ -42,6 +44,8 @@ fun LiquidGlassHUD(
     metrics: QualityMetrics,
     onManualCapture: () -> Unit,
     modifier: Modifier = Modifier,
+    statusMessageOverride: String? = null,
+    deviceRollDeg: Float? = null,
     overlayContent: @Composable () -> Unit
 ) {
     val isReady = guidanceState.isReady
@@ -50,6 +54,16 @@ fun LiquidGlassHUD(
         label = "statusColor"
     )
     val corner = RoundedCornerShape(profile.reticleCornerRadiusDp.dp)
+
+    // Live gyro tilt when caller doesn't pass explicit value
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val tiltMonitor = androidx.compose.runtime.remember { DeviceTiltMonitor(context) }
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        tiltMonitor.start()
+        onDispose { tiltMonitor.stop() }
+    }
+    val liveDeviceRoll by tiltMonitor.deviceRollDeg.collectAsState()
+    val effectiveDeviceRoll = deviceRollDeg ?: liveDeviceRoll
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         Box(
@@ -76,6 +90,18 @@ fun LiquidGlassHUD(
             overlayContent()
         }
 
+        // ── Left / Right tilt rails ──
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TiltRail(deviceRollDeg = effectiveDeviceRoll, handRollDeg = metrics.rollAngleDeg, isLeft = true)
+            TiltRail(deviceRollDeg = effectiveDeviceRoll, handRollDeg = metrics.rollAngleDeg, isLeft = false)
+        }
+
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -96,7 +122,7 @@ fun LiquidGlassHUD(
                         .background(statusColor)
                 )
                 Text(
-                    text = profile.copy.message(guidanceState),
+                    text = statusMessageOverride ?: profile.copy.message(guidanceState),
                     color = Color.White,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold

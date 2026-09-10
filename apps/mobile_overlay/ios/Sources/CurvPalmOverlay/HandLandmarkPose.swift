@@ -75,4 +75,23 @@ public enum HandLandmarkPose {
     public static func from(_ landmarks: [CGPoint]) -> SubjectPose? {
         framing(from: landmarks)?.pose
     }
+
+    /// Mirrors core/geometry/RoiWarper::detectIsLeftHand — thumb/pinky side vs up vector.
+    public static func isLeftHand(_ landmarks: [CGPoint]) -> Bool {
+        guard landmarks.count >= 18 else { return false }
+        let p0 = landmarks[0]
+        let p5 = landmarks[5]
+        let p9 = landmarks[9]
+        let p17 = landmarks[17]
+        let upX = Float(p9.x - p0.x)
+        let upY = Float(p9.y - p0.y)
+        let upLen = sqrt(upX*upX + upY*upY)
+        guard upLen > 1e-4 else { return false }
+        let rightX = -upY / upLen
+        let rightY = upX / upLen
+        let palmWX = Float(p17.x - p5.x)
+        let palmWY = Float(p17.y - p5.y)
+        let dot = palmWX * rightX + palmWY * rightY
+        return dot < 0
+    }
 }

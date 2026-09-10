@@ -1,0 +1,17 @@
+# Fastlane Snapfile for PalmScanner iOS App
+# Reference: https://docs.fastlane.tools/actions/snapshot/
+
+devices([
+  "iPhone 16 Pro Max",
+  "iPhone 16 Pro",
+  "iPhone 15"
+])
+
+languages([
+  "en-US"
+])
+
+scheme("PalmScanner")
+output_directory("./fastlane/screenshots")
+clear_previous_screenshots(true)
+reinstall_app(true)

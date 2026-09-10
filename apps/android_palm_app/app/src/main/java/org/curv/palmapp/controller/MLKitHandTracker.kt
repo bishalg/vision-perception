@@ -58,6 +58,24 @@ class MLKitHandTracker {
             }
     }
 
+    /** Re-detect on a captured bitmap (upright). Used to align still coords — parity with iOS re-detect. */
+    fun processBitmap(
+        bitmap: android.graphics.Bitmap,
+        onSuccess: (List<PointF>) -> Unit,
+        onError: (Exception) -> Unit = {}
+    ) {
+        val inputImage = InputImage.fromBitmap(bitmap, 0)
+        detector.process(inputImage)
+            .addOnSuccessListener { pose ->
+                val landmarks = extractHandLandmarks(pose, bitmap.width, bitmap.height)
+                onSuccess(if (landmarks.size == 21) landmarks else emptyList())
+            }
+            .addOnFailureListener { e ->
+                Log.e(tag, "Bitmap pose detection failed", e)
+                onError(e as Exception)
+            }
+    }
+
     /**
      * Extracts and normalizes 21 landmarks in canonical MediaPipe order.
      */

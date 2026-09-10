@@ -1,0 +1,11 @@
+# Fastlane Matchfile for PalmScanner iOS App
+# Reference: https://docs.fastlane.tools/actions/match/
+
+git_url(ENV["MATCH_GIT_URL"] || "")
+storage_mode(ENV["MATCH_STORAGE_MODE"] || "git") # 'git', 'google_cloud', or 's3'
+type("development")
+
+app_identifier(["org.curv.palmapp"])
+username(ENV["APPLE_ID"] || "")
+team_id(ENV["APPLE_TEAM_ID"] || "6J3WY94J6T")
+clone_branch_headless(true)
