@@ -393,9 +393,20 @@ public final class PalmAnalysisViewModel: ObservableObject {
     /**
      * Landmark-anchored guides — **fallback only** when CurvEngine XCFramework is missing
      * or native JSON has no `points_image_norm`. Must not ship as the product detection path.
+     * Phase 1: always returns *something* so overlay never empty for debugging.
      */
     private func fallbackLandmarkCreases(landmarks: [CGPoint]) -> [CreaseSpline] {
-        guard landmarks.count >= 21 else { return [] }
+        // If no landmarks yet (e.g. simulator without camera), return centered scaffold so overlay is still testable.
+        if landmarks.count < 21 {
+            let cx: CGFloat = 0.5, cy: CGFloat = 0.55
+            func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: cx + x*0.28, y: cy + y*0.28) }
+            return [
+                CreaseSpline(id: "heart_line", lineType: .heart, points: [p(-0.6, -0.22), p(-0.1, -0.24), p(0.45, -0.20), p(0.62, -0.12)], confidence: 0.2, tortuosity: 1.1, arcLengthPx: 120),
+                CreaseSpline(id: "head_line",  lineType: .head,  points: [p(-0.55, 0.02), p(-0.05, 0.04), p(0.42, 0.06), p(0.62, 0.08)], confidence: 0.2, tortuosity: 1.1, arcLengthPx: 130),
+                CreaseSpline(id: "life_line",  lineType: .life,  points: [p(-0.38, -0.02), p(-0.48, 0.18), p(-0.42, 0.38), p(-0.20, 0.58)], confidence: 0.2, tortuosity: 1.2, arcLengthPx: 180),
+                CreaseSpline(id: "fate_line",  lineType: .fate,  points: [p(0.02, 0.52), p(0.04, 0.22), p(0.06, -0.02), p(0.06, -0.18)], confidence: 0.2, tortuosity: 1.0, arcLengthPx: 110)
+            ]
+        }
 
         let wrist = landmarks[0]
         let thumbCmc = landmarks[1]

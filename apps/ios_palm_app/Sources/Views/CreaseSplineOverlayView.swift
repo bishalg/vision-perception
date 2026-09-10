@@ -10,6 +10,7 @@ public struct CreaseSplineOverlayView: View {
     public let imageRect: CGRect?
     public var selectedSplineId: String?
     public var isEditing: Bool
+    public var isFallback: Bool = false
     public var onSelect: ((String) -> Void)?
     public var onMoveVertex: ((String, Int, CGPoint) -> Void)?
 
@@ -18,6 +19,7 @@ public struct CreaseSplineOverlayView: View {
         imageRect: CGRect? = nil,
         selectedSplineId: String? = nil,
         isEditing: Bool = false,
+        isFallback: Bool = false,
         onSelect: ((String) -> Void)? = nil,
         onMoveVertex: ((String, Int, CGPoint) -> Void)? = nil
     ) {
@@ -25,6 +27,7 @@ public struct CreaseSplineOverlayView: View {
         self.imageRect = imageRect
         self.selectedSplineId = selectedSplineId
         self.isEditing = isEditing
+        self.isFallback = isFallback
         self.onSelect = onSelect
         self.onMoveVertex = onMoveVertex
     }
@@ -33,6 +36,7 @@ public struct CreaseSplineOverlayView: View {
         GeometryReader { proxy in
             let rect = imageRect ?? CGRect(origin: .zero, size: proxy.size)
             ZStack {
+                // 1) Lines (non-interactive)
                 Canvas { context, _ in
                     for spline in splines {
                         guard spline.points.count >= 2 else { continue }
@@ -41,15 +45,40 @@ public struct CreaseSplineOverlayView: View {
                         let color = Color(hex: spline.lineType.hexColor)
                         let selected = spline.id == selectedSplineId
                         let dim = isEditing && selectedSplineId != nil && !selected
-                        context.stroke(path, with: .color(color.opacity(dim ? 0.12 : 0.30)), style: StrokeStyle(lineWidth: selected ? 10 : 7, lineCap: .round, lineJoin: .round))
-                        context.stroke(path, with: .color(color.opacity(dim ? 0.42 : 1.0)), style: StrokeStyle(lineWidth: selected ? 3.6 : 2.8, lineCap: .round, lineJoin: .round))
-                        if selected && isEditing {
-                            context.stroke(path, with: .color(Color.white.opacity(0.22)), style: StrokeStyle(lineWidth: 1, lineCap: .round, lineJoin: .round, dash: [6,4]))
+                        // Fallback dashed when not yet adjusted
+                        let fallbackDashed = isFallback && !spline.isUserAdjusted
+                        if fallbackDashed {
+                            context.stroke(path, with: .color(color.opacity(dim ? 0.18 : 0.62)), style: StrokeStyle(lineWidth: selected ? 3.2 : 2.6, lineCap: .round, lineJoin: .round, dash: [7,5]))
+                        } else {
+                            context.stroke(path, with: .color(color.opacity(dim ? 0.12 : 0.30)), style: StrokeStyle(lineWidth: selected ? 10 : 7, lineCap: .round, lineJoin: .round))
+                            context.stroke(path, with: .color(color.opacity(dim ? 0.42 : 1.0)), style: StrokeStyle(lineWidth: selected ? 3.6 : 2.8, lineCap: .round, lineJoin: .round))
+                            if selected && isEditing {
+                                context.stroke(path, with: .color(Color.white.opacity(0.22)), style: StrokeStyle(lineWidth: 1, lineCap: .round, lineJoin: .round, dash: [6,4]))
+                            }
                         }
                     }
                 }
                 .allowsHitTesting(false)
 
+                // 2) Tap-to-select layer — MUST be behind handles so handles stay topmost.
+                // Uses simultaneousGesture + translation <12 so drags don't fire selection.
+                if isEditing {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .simultaneousGesture(
+                            DragGesture(minimumDistance: 0, coordinateSpace: .named("creaseCanvas"))
+                                .onEnded { value in
+                                    if hypot(value.translation.width, value.translation.height) < 12 {
+                                        if let id = nearestSplineId(at: value.location, in: rect) {
+                                            onSelect?(id)
+                                        }
+                                    }
+                                }
+                        )
+                }
+
+                // 3) Handles topmost — 28pt ends, 24pt mids, white stroke 2.5.
+                // Drag uses DragGesture(minimumDistance:2, coordinateSpace:.named("creaseCanvas")) + unmap.
                 if isEditing, let selectedId = selectedSplineId,
                    let spline = splines.first(where: { $0.id == selectedId }) {
                     ForEach(Array(spline.points.enumerated()), id: \.offset) { index, norm in
@@ -72,23 +101,12 @@ public struct CreaseSplineOverlayView: View {
                         )
                     }
                 }
-
-                if isEditing {
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .simultaneousGesture(
-                            DragGesture(minimumDistance: 0, coordinateSpace: .named("creaseCanvas"))
-                                .onEnded { value in
-                                    if hypot(value.translation.width, value.translation.height) < 12 {
-                                        if let id = nearestSplineId(at: value.location, in: rect) {
-                                            onSelect?(id)
-                                        }
-                                    }
-                                }
-                        )
-                }
             }
-            .coordinateSpace(name: "creaseCanvas")
+            // Do NOT create a second named coordinateSpace here — parent CaptureResultView
+            // already defines "creaseCanvas" on its ZStack (the photo frame). Using
+            // .named("creaseCanvas") above resolves to that parent space; defining it
+            // again here would create a nested duplicate and break hit-test / unmap
+            // alignment. Keep this subtree in .local coordinates.
         }
     }
 

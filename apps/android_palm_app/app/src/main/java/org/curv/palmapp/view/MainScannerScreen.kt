@@ -145,6 +145,7 @@ fun MainScannerScreen(
                 splines = detectedSplines,
                 selectedLanguage = currentLanguage,
                 overlaySource = overlaySource,
+                handSide = if (selectedHandSide != HandSide.AUTO) selectedHandSide else detectedHandSide,
                 onSplinesChange = { viewModel.updateSplines(it) },
                 onLanguageChange = { viewModel.setLanguage(it) },
                 onRetake = { viewModel.retake() },

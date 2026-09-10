@@ -81,6 +81,7 @@ public struct MainScannerView: View {
                     splines: $viewModel.detectedSplines,
                     selectedLanguage: viewModel.currentLanguage,
                     overlaySource: viewModel.overlaySource,
+                    handSide: viewModel.selectedHandSide == .auto ? viewModel.detectedHandSide : viewModel.selectedHandSide,
                     onLanguageChange: { viewModel.currentLanguage = $0 },
                     onRetake: { viewModel.retake() },
                     onConfirmAdjustedLines: { viewModel.confirmAdjustedLinesForPrediction() }

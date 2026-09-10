@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import CurvPalmOverlay
 
 /**
  * Post-capture review: photo + editable crease overlays.
@@ -13,6 +14,7 @@ public struct CaptureResultView: View {
     @Binding public var splines: [CreaseSpline]
     public let selectedLanguage: AppLanguage
     public let overlaySource: CreaseOverlaySource
+    public let handSide: HandSide
     public let onRetake: () -> Void
     public let onConfirmAdjustedLines: () -> Void
 
@@ -27,6 +29,7 @@ public struct CaptureResultView: View {
         splines: Binding<[CreaseSpline]>,
         selectedLanguage: AppLanguage,
         overlaySource: CreaseOverlaySource,
+        handSide: HandSide = .right,
         onLanguageChange: ((AppLanguage) -> Void)? = nil,
         onRetake: @escaping () -> Void,
         onConfirmAdjustedLines: @escaping () -> Void
@@ -36,6 +39,7 @@ public struct CaptureResultView: View {
         self._splines = splines
         self.selectedLanguage = selectedLanguage
         self.overlaySource = overlaySource
+        self.handSide = handSide
         self.onRetake = onRetake
         self.onConfirmAdjustedLines = onConfirmAdjustedLines
     }
@@ -90,6 +94,7 @@ public struct CaptureResultView: View {
                             imageRect: drawRect,
                             selectedSplineId: selectedSplineId,
                             isEditing: isEditing,
+                            isFallback: overlaySource == .landmarkFallback,
                             onSelect: { selectedSplineId = $0 },
                             onMoveVertex: { id, index, point in
                                 moveVertex(splineId: id, index: index, to: point)
@@ -101,6 +106,17 @@ public struct CaptureResultView: View {
                 .frame(maxHeight: .infinity)
 
                 VStack(spacing: 12) {
+                    if overlaySource == .landmarkFallback {
+                        HStack(spacing: 10) {
+                            Image(systemName: "exclamationmark.triangle.fill").foregroundColor(Color.yellow).font(.system(size: 18))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Fallback guides — drag dashed lines to align").font(.system(size: 12, weight: .bold)).foregroundColor(.white)
+                                Text("Native Steger not linked or low quality. Dashed = editable scaffold.").font(.system(size: 10)).foregroundColor(.white.opacity(0.72)).fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        .padding(10)
+                        .background(RoundedRectangle(cornerRadius: 12).fill(Color(red: 0.5, green: 0.22, blue: 0.07).opacity(0.92)).overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.yellow.opacity(0.55), lineWidth: 1.5)))
+                    }
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(LocalizedStrings.tr("result.title", lang: selectedLanguage))
@@ -203,7 +219,41 @@ public struct CaptureResultView: View {
                     .environment(\.editMode, $editMode)
                     .frame(maxHeight: min(CGFloat(splines.count) * 48 + 8, 220))
 
-                    // Debug/analysis panel
+                    // Samudrika Reading (Basic) — rule-based, no VLM. Visible when splines present; highlighted after "Use these lines" (showDebug).
+                    if !splines.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "sparkles").font(.system(size: 11, weight: .bold)).foregroundColor(Color(hex: "34C759"))
+                                Text("Samudrika Reading (Basic)").font(.system(size: 12, weight: .bold, design: .rounded)).foregroundColor(.white)
+                                Text("rule-based · no VLM").font(.system(size: 9, weight: .medium, design: .monospaced)).foregroundColor(.white.opacity(0.45)).padding(.horizontal, 6).padding(.vertical, 2).background(Capsule().fill(Color.white.opacity(0.08)))
+                                Spacer()
+                                Text(handSide == .left ? "Left" : handSide == .right ? "Right" : "Auto").font(.system(size: 10, weight: .semibold)).foregroundColor(.white.opacity(0.6))
+                            }
+                            Text("Local interpretation from geometry: tortuosity, length, confidence, points. Not a prediction claim.")
+                                .font(.system(size: 10, weight: .regular)).foregroundColor(.white.opacity(0.55)).fixedSize(horizontal: false, vertical: true)
+                            ForEach(splines) { s in
+                                let reading = SimplePalmReading.readingText(for: s, handSide: handSide)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack(spacing: 6) {
+                                        Circle().fill(Color(hex: s.lineType.hexColor)).frame(width: 7, height: 7)
+                                        Text(LocalizedStrings.tr(s.lineType.displayNameKey, lang: selectedLanguage)).font(.system(size: 11, weight: .bold)).foregroundColor(.white)
+                                        Text(String(format: "conf %.0f%%  tort %.2f  %d pts", s.confidence*100, s.tortuosity, s.points.count)).font(.system(size: 10, weight: .medium, design: .monospaced)).foregroundColor(.white.opacity(0.55))
+                                        if s.isUserAdjusted { Text("edited").font(.system(size: 9, weight: .bold)).foregroundColor(Color(hex: "34C759")).padding(.horizontal, 5).padding(.vertical, 2).background(Capsule().fill(Color(hex: "34C759").opacity(0.18))) }
+                                    }
+                                    Text(reading)
+                                        .font(.system(size: 11, weight: .regular)).foregroundColor(.white.opacity(0.88)).fixedSize(horizontal: false, vertical: true)
+                                    Text(String(format: "len:%.1fpx  start:(%.3f,%.3f)  end:(%.3f,%.3f)", s.arcLengthPx, s.points.first?.x ?? 0, s.points.first?.y ?? 0, s.points.last?.x ?? 0, s.points.last?.y ?? 0))
+                                        .font(.system(size: 9, weight: .regular, design: .monospaced)).foregroundColor(.white.opacity(0.42))
+                                }
+                                .padding(8)
+                                .background(RoundedRectangle(cornerRadius: 8).fill(Color.white.opacity(0.06)))
+                            }
+                        }
+                        .padding(10)
+                        .background(RoundedRectangle(cornerRadius: 12).fill(Color(hex: "1A1A1E").opacity(0.92)).overlay(RoundedRectangle(cornerRadius: 12).stroke(Color(hex: "34C759").opacity(showDebug ? 0.35 : 0.15), lineWidth: 1)))
+                    }
+
+                    // Debug/analysis panel (enhanced with readingText)
                     if showDebug && !splines.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack { Text("Debug analysis").font(.system(size: 12, weight: .bold, design: .monospaced)).foregroundColor(.white.opacity(0.85)); Spacer(); Button("Hide") { withAnimation { showDebug = false } }.font(.system(size: 11)).foregroundColor(.white.opacity(0.6)) }
@@ -212,6 +262,7 @@ public struct CaptureResultView: View {
                                 let end = s.points.last ?? .zero
                                 let len = s.arcLengthPx
                                 let straight = hypot(end.x - start.x, end.y - start.y) * 1000 // normalized -> approx px scale
+                                let reading = SimplePalmReading.readingText(for: s, handSide: handSide)
                                 VStack(alignment: .leading, spacing: 2) {
                                     HStack(spacing: 6) {
                                         Circle().fill(Color(hex: s.lineType.hexColor)).frame(width: 7, height: 7)
@@ -221,6 +272,7 @@ public struct CaptureResultView: View {
                                     }
                                     Text(String(format: "pts:%d  len:%.1fpx  tort:%.2f  start:(%.3f,%.3f)  end:(%.3f,%.3f)", s.points.count, len, s.tortuosity, start.x, start.y, end.x, end.y))
                                         .font(.system(size: 10, weight: .regular, design: .monospaced)).foregroundColor(.white.opacity(0.72)).fixedSize(horizontal: false, vertical: true)
+                                    Text(reading).font(.system(size: 10, weight: .regular)).foregroundColor(Color(hex: "34C759").opacity(0.9)).fixedSize(horizontal: false, vertical: true)
                                     Text(String(format: "chord ~%.1f  gap:%d (debug)", straight, 0)).font(.system(size: 9, weight: .regular, design: .monospaced)).foregroundColor(.white.opacity(0.45))
                                 }
                                 .padding(8)

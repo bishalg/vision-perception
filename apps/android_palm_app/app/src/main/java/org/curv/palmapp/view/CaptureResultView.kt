@@ -29,11 +29,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.curv.overlay.palm.HandSide
 import org.curv.palmapp.model.AppLanguage
 import org.curv.palmapp.model.CreaseLineType
 import org.curv.palmapp.model.CreaseOverlaySource
 import org.curv.palmapp.model.CreaseSpline
 import org.curv.palmapp.model.LocalizedStrings
+import org.curv.palmapp.model.SimplePalmReading
 import kotlin.math.hypot
 
 /**
@@ -47,6 +49,7 @@ fun CaptureResultView(
     splines: List<CreaseSpline>,
     selectedLanguage: AppLanguage,
     overlaySource: CreaseOverlaySource,
+    handSide: HandSide = HandSide.RIGHT,
     onSplinesChange: (List<CreaseSpline>) -> Unit,
     onLanguageChange: (AppLanguage) -> Unit = {},
     onRetake: () -> Unit,
@@ -152,11 +155,38 @@ fun CaptureResultView(
                     }
                 }
             }
+            // Samudrika Reading (Basic) — rule-based, no VLM. Shown when splines present; highlighted after "Use these lines" (showDebug).
+            if (splines.isNotEmpty()) {
+                Column(modifier=Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFF1A1A1E).copy(alpha=0.92f)).border(1.dp, if(showDebug) Color(0xFF34C759).copy(0.35f) else Color.White.copy(0.10f), RoundedCornerShape(12.dp)).padding(10.dp), verticalArrangement=Arrangement.spacedBy(10.dp)){
+                    Row(horizontalArrangement=Arrangement.spacedBy(8.dp), verticalAlignment=Alignment.CenterVertically){
+                        Text("✦", color=Color(0xFF34C759), fontSize=11.sp, fontWeight=FontWeight.Bold)
+                        Text("Samudrika Reading (Basic)", color=Color.White, fontWeight=FontWeight.Bold, fontSize=12.sp)
+                        Text("rule-based · no VLM", color=Color.White.copy(0.45f), fontSize=9.sp, fontFamily=androidx.compose.ui.text.font.FontFamily.Monospace, modifier=Modifier.clip(RoundedCornerShape(12.dp)).background(Color.White.copy(0.08f)).padding(horizontal=6.dp, vertical=2.dp))
+                        Spacer()
+                        Text(when(handSide){ HandSide.LEFT->"Left"; HandSide.RIGHT->"Right"; else->"Auto" }, color=Color.White.copy(0.6f), fontSize=10.sp, fontWeight=FontWeight.SemiBold)
+                    }
+                    Text("Local interpretation from geometry: tortuosity, length, confidence, points. Not a prediction claim.", color=Color.White.copy(0.55f), fontSize=10.sp)
+                    splines.forEach{ s ->
+                        val reading = SimplePalmReading.readingText(s, handSide)
+                        val start=s.points.firstOrNull(); val end=s.points.lastOrNull()
+                        Column(modifier=Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha=0.06f)).padding(8.dp), verticalArrangement=Arrangement.spacedBy(4.dp)){
+                            Row(horizontalArrangement=Arrangement.spacedBy(6.dp), verticalAlignment=Alignment.CenterVertically){
+                                Box(Modifier.size(7.dp).clip(CircleShape).background(parseHex(s.lineType.hexColor))); Text(LocalizedStrings.tr(s.lineType.displayNameKey, selectedLanguage), color=Color.White, fontWeight=FontWeight.Bold, fontSize=11.sp)
+                                Text("conf ${(s.confidence*100).toInt()}%  tort %.2f  ${s.points.size} pts".format(s.tortuosity), color=Color.White.copy(0.55f), fontSize=10.sp, fontFamily=androidx.compose.ui.text.font.FontFamily.Monospace)
+                                if(s.isUserAdjusted) Text("edited", color=Color(0xFF34C759), fontSize=9.sp, fontWeight=FontWeight.Bold)
+                            }
+                            Text(reading, color=Color.White.copy(0.88f), fontSize=11.sp)
+                            Text("len:%.1fpx  start:(%.3f,%.3f)  end:(%.3f,%.3f)".format(s.arcLengthPx, start?.x?:0f, start?.y?:0f, end?.x?:0f, end?.y?:0f), color=Color.White.copy(0.42f), fontSize=9.sp, fontFamily=androidx.compose.ui.text.font.FontFamily.Monospace)
+                        }
+                    }
+                }
+            }
             if(showDebug && splines.isNotEmpty()){
                 Column(modifier=Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color.Black.copy(0.28f)).border(1.dp, Color.White.copy(0.10f), RoundedCornerShape(12.dp)).padding(10.dp), verticalArrangement=Arrangement.spacedBy(8.dp)){
                     Row{ Text("Debug analysis", color=Color.White.copy(0.85f), fontWeight=FontWeight.Bold, fontSize=12.sp, fontFamily=androidx.compose.ui.text.font.FontFamily.Monospace); Spacer(); TextButton(onClick={showDebug=false}){ Text("Hide", color=Color.White.copy(0.6f), fontSize=11.sp) } }
                     splines.forEach{ s ->
                         val start=s.points.firstOrNull(); val end=s.points.lastOrNull()
+                        val reading = SimplePalmReading.readingText(s, handSide)
                         Column(modifier=Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha=0.06f)).padding(8.dp), verticalArrangement=Arrangement.spacedBy(2.dp)){
                             Row(horizontalArrangement=Arrangement.spacedBy(6.dp), verticalAlignment=Alignment.CenterVertically){
                                 Box(Modifier.size(7.dp).clip(CircleShape).background(parseHex(s.lineType.hexColor))); Text(s.lineType.name, color=Color.White, fontWeight=FontWeight.Bold, fontSize=11.sp, fontFamily=androidx.compose.ui.text.font.FontFamily.Monospace)
@@ -164,6 +194,7 @@ fun CaptureResultView(
                                 if(s.isUserAdjusted) Text("edited", color=Color(0xFF34C759), fontSize=9.sp, fontWeight=FontWeight.Bold)
                             }
                             Text("pts:%d  len:%.1fpx  start:(%.3f,%.3f)  end:(%.3f,%.3f)".format(s.points.size, s.arcLengthPx, start?.x?:0f, start?.y?:0f, end?.x?:0f, end?.y?:0f), color=Color.White.copy(0.72f), fontSize=10.sp, fontFamily=androidx.compose.ui.text.font.FontFamily.Monospace)
+                            Text(reading, color=Color(0xFF34C759).copy(alpha=0.9f), fontSize=10.sp)
                         }
                     }
                 }
