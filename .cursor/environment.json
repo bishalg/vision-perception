@@ -1,0 +1,26 @@
+{
+  "name": "vision-perception",
+  "install": "./.cursor/install.sh",
+  "terminals": [
+    {
+      "name": "studio-api",
+      "command": "python3 scripts/studio_server.py --port 8088",
+      "description": "CurvStudio Python API backend. Serves fixtures/datasets, saves ground truth, and runs the compiled C++ curv_cli / hand_inspector_cli for inference. The studio-web frontend proxies /api, /data and /output to this server on port 8088."
+    },
+    {
+      "name": "studio-web",
+      "command": "cd apps/annotation_studio && npx vite --host 0.0.0.0 --port 3000",
+      "description": "CurvStudio annotation frontend (Vite + React + TypeScript) on http://localhost:3000. Proxies API calls to the studio-api backend on port 8088."
+    },
+    {
+      "name": "cesium-viewer",
+      "command": "cd apps/cesium_viewer && npx vite --host 0.0.0.0 --port 5173",
+      "description": "Phase 4 CesiumJS 3D digital-twin viewer (Vite) on http://localhost:5173."
+    }
+  ],
+  "ports": [
+    { "name": "studio-web", "port": 3000 },
+    { "name": "studio-api", "port": 8088 },
+    { "name": "cesium-viewer", "port": 5173 }
+  ]
+}
