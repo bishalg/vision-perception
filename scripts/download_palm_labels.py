@@ -42,7 +42,7 @@ PROVENANCE = ROOT / "third_party" / "SOURCE_PROVENANCE.md"
 DEFAULT_WORKSPACE = "palms-lf79v"
 DEFAULT_PROJECT = "palm-lines-recognition-lbedg"
 DEFAULT_VERSION = 1
-DEFAULT_FORMAT = "coco"
+DEFAULT_FORMAT = "yolov8"
 
 LINE_ALIASES = {
     "heart": "heart",
@@ -294,13 +294,85 @@ def convert_coco(coco_path: Path, image_root: Path, limit: int, source_tag: str)
     return samples
 
 
+def convert_yolov8(work_dir: Path, limit: int, source_tag: str) -> list[dict]:
+    yaml_path = work_dir / "data.yaml"
+    idx_to_name = {0: "fate", 1: "head", 2: "heart", 3: "life"}
+    if yaml_path.exists():
+        try:
+            content = yaml_path.read_text(encoding="utf-8")
+            match = re.search(r"names:\s*\[(.*?)\]", content)
+            if match:
+                raw_names = [n.strip(" '\"") for n in match.group(1).split(",")]
+                idx_to_name = {i: normalize_line_name(n) or n for i, n in enumerate(raw_names)}
+        except Exception:
+            pass
+
+    candidates: list[tuple[Path, Path]] = []
+    for split in ("train", "valid", "test"):
+        img_dir = work_dir / split / "images"
+        lbl_dir = work_dir / split / "labels"
+        if not img_dir.exists():
+            continue
+        for img_p in sorted(img_dir.iterdir()):
+            if img_p.suffix.lower() not in {".jpg", ".jpeg", ".png"}:
+                continue
+            lbl_p = lbl_dir / f"{img_p.stem}.txt"
+            if lbl_p.exists() and lbl_p.stat().st_size > 0:
+                candidates.append((img_p, lbl_p))
+
+    if limit > 0 and len(candidates) > limit:
+        step = len(candidates) / limit
+        candidates = [candidates[int(i * step)] for i in range(limit)]
+
+    samples: list[dict] = []
+    for iid, (img_p, lbl_p) in enumerate(candidates, start=1):
+        polys: dict[str, list] = {n: [] for n in LINES}
+        lines = lbl_p.read_text(encoding="utf-8").strip().splitlines()
+        for line in lines:
+            parts = line.strip().split()
+            if len(parts) < 5:
+                continue
+            cls_idx = int(parts[0])
+            line_name = idx_to_name.get(cls_idx)
+            if not line_name or line_name not in polys:
+                continue
+            kpt_tokens = parts[5:]
+            pts: list[list[float]] = []
+            stride = 3 if len(kpt_tokens) % 3 == 0 else (2 if len(kpt_tokens) % 2 == 0 else 0)
+            if stride > 0:
+                for idx in range(0, len(kpt_tokens), stride):
+                    x = float(kpt_tokens[idx])
+                    y = float(kpt_tokens[idx + 1])
+                    v = float(kpt_tokens[idx + 2]) if stride == 3 else 2.0
+                    if v > 0 and (x > 0.0 or y > 0.0):
+                        pts.append([max(0.0, min(1.0, x)), max(0.0, min(1.0, y))])
+            if len(pts) >= 2:
+                if not polys[line_name] or len(pts) > len(polys[line_name]):
+                    polys[line_name] = pts
+
+        stem = stem_from_filename(img_p.name, iid)
+        img_path = copy_image(img_p, stem)
+        write_label(stem, polys, source_tag)
+        samples.append({
+            "stem": stem,
+            "image": str(img_path.relative_to(ROOT)),
+            "label": f"data/palm_labels/{stem}_USER_CORRECTED.json",
+            "sha256": sha256_file(img_path),
+            "lines": {n: len(polys[n]) for n in LINES},
+            "reviewed": False,
+        })
+        print(f"  + {stem}  lines={ {n: len(polys[n]) for n in LINES} }")
+
+    return samples
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--limit", type=int, default=100, help="Max images to keep (default 100)")
     ap.add_argument("--workspace", default=DEFAULT_WORKSPACE)
     ap.add_argument("--project", default=DEFAULT_PROJECT)
     ap.add_argument("--version", type=int, default=DEFAULT_VERSION)
-    ap.add_argument("--format", default=DEFAULT_FORMAT, choices=("coco",), help="Export format")
+    ap.add_argument("--format", default=DEFAULT_FORMAT, choices=("coco", "yolov8"), help="Export format")
     ap.add_argument("--api-key", default=os.environ.get("ROBOFLOW_API_KEY", ""),
                     help="Or set ROBOFLOW_API_KEY")
     ap.add_argument("--skip-download", action="store_true",
@@ -382,11 +454,15 @@ def main() -> None:
             die(f"license still unclear for --skip-download: {reason}")
         license_text = reason if ok else license_text
 
-    coco_path = find_coco_json(WORK)
-    image_root = coco_path.parent
-    print(f"Converting {coco_path.relative_to(ROOT)} (limit={args.limit})")
     source_tag = f"roboflow_import:{args.workspace}/{args.project}/{args.version}"
-    samples = convert_coco(coco_path, image_root, args.limit, source_tag)
+    if (WORK / "data.yaml").exists() or args.format == "yolov8":
+        print(f"Converting YOLOv8 format under {WORK} (limit={args.limit})")
+        samples = convert_yolov8(WORK, args.limit, source_tag)
+    else:
+        coco_path = find_coco_json(WORK)
+        image_root = coco_path.parent
+        print(f"Converting {coco_path.relative_to(ROOT)} (limit={args.limit})")
+        samples = convert_coco(coco_path, image_root, args.limit, source_tag)
 
     if not samples:
         die("no samples converted — check export format / image paths")

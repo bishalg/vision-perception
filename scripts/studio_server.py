@@ -82,8 +82,16 @@ def parse_human_polys(human_data: dict, class_id: str) -> list:
 
 
 def get_samples_for_domain(domain_cfg: dict) -> list[dict]:
-    dataset_dir = ROOT / domain_cfg.get("dataset_dir", "")
-    if not dataset_dir.exists():
+    target_dirs = []
+    primary = ROOT / domain_cfg.get("dataset_dir", "")
+    if primary.exists():
+        target_dirs.append(primary)
+    for extra in domain_cfg.get("extra_dataset_dirs", []):
+        p = ROOT / extra
+        if p.exists() and p not in target_dirs:
+            target_dirs.append(p)
+
+    if not target_dirs:
         return []
 
     evidence_dir = ROOT / domain_cfg.get("evidence_dir", domain_cfg.get("dataset_dir", ""))
@@ -92,96 +100,103 @@ def get_samples_for_domain(domain_cfg: dict) -> list[dict]:
     classes = domain_cfg.get("classes", [])
     classes_by_id = {c["id"]: c for c in classes}
 
+    seen_stems = set()
     samples = []
-    for img_path in sorted(dataset_dir.iterdir()):
-        if not img_path.is_file():
-            continue
-        if not any(img_path.name.lower().endswith(ext) for ext in extensions):
-            continue
-        if any(exc in img_path.name for exc in excludes):
-            continue
+    for cur_dir in target_dirs:
+        for img_path in sorted(cur_dir.iterdir()):
+            if not img_path.is_file():
+                continue
+            if not any(img_path.name.lower().endswith(ext) for ext in extensions):
+                continue
+            if any(exc in img_path.name for exc in excludes):
+                continue
 
-        stem = img_path.stem
-        rel_img = str(img_path.relative_to(ROOT))
+            stem = img_path.stem
+            if stem in seen_stems:
+                continue
+            seen_stems.add(stem)
+            rel_img = str(img_path.relative_to(ROOT))
 
-        # Check for evidence file
-        evidence_data = None
-        evidence_file = None
-        for cand in [
-            evidence_dir / f"{stem}_evidence.json",
-            evidence_dir / f"{stem.replace('_bgr', '')}_evidence.json",
-            dataset_dir / f"{stem}_evidence.json",
-            ROOT / "output" / f"palm_{stem}.json",
-        ]:
-            if cand.exists():
-                evidence_file = str(cand.relative_to(ROOT))
-                try:
-                    evidence_data = json.loads(cand.read_text(encoding="utf-8"))
-                except Exception:
-                    pass
-                break
+            # Check for evidence file
+            evidence_data = None
+            evidence_file = None
+            for cand in [
+                evidence_dir / f"{stem}_evidence.json",
+                evidence_dir / f"{stem.replace('_bgr', '')}_evidence.json",
+                cur_dir / f"{stem}_evidence.json",
+                ROOT / "output" / f"palm_{stem}.json",
+            ]:
+                if cand.exists():
+                    evidence_file = str(cand.relative_to(ROOT))
+                    try:
+                        evidence_data = json.loads(cand.read_text(encoding="utf-8"))
+                    except Exception:
+                        pass
+                    break
 
-        # Check for human ground truth
-        truth_data = None
-        truth_file = None
-        for cand in [
-            dataset_dir / f"{stem}_USER_CORRECTED.json",
-            dataset_dir / f"{stem}_USER_CORRECTED_v2.json",
-            evidence_dir / f"{stem}_USER_CORRECTED.json",
-        ]:
-            if cand.exists():
-                truth_file = str(cand.relative_to(ROOT))
-                try:
-                    truth_data = json.loads(cand.read_text(encoding="utf-8"))
-                except Exception:
-                    pass
-                break
+            # Check for human ground truth
+            truth_data = None
+            truth_file = None
+            for cand in [
+                cur_dir / f"{stem}_USER_CORRECTED.json",
+                cur_dir.parent / f"{stem}_USER_CORRECTED.json",
+                cur_dir / f"{stem}_USER_CORRECTED_v2.json",
+                evidence_dir / f"{stem}_USER_CORRECTED.json",
+            ]:
+                if cand.exists():
+                    truth_file = str(cand.relative_to(ROOT))
+                    try:
+                        truth_data = json.loads(cand.read_text(encoding="utf-8"))
+                    except Exception:
+                        pass
+                    break
 
-        # Extract auto curves per class
-        auto_lines = {}
-        if evidence_data:
-            payload = evidence_data.get("domain_payload") or {}
-            major = payload.get("major_lines") or {}
-            for cid in classes_by_id:
-                # Check major lines
-                if cid in major:
-                    pts = major[cid].get("points_canonical_norm") or major[cid].get("points_norm") or []
-                    if pts:
-                        auto_lines[cid] = pts
-                # Check generic evidence items
-                if not auto_lines.get(cid) and "evidence" in evidence_data:
-                    for ev in evidence_data.get("evidence", []):
-                        if ev.get("evidence_id") == cid or ev.get("class_id") == cid:
-                            pts = [[pt["x"], pt["y"]] for pt in ev.get("geometry", {}).get("points", [])]
-                            if pts:
-                                auto_lines[cid] = pts
+            # Extract auto curves per class
+            auto_lines = {}
+            if evidence_data:
+                payload = evidence_data.get("domain_payload") or {}
+                major = payload.get("major_lines") or {}
+                for cid in classes_by_id:
+                    # Check major lines
+                    if cid in major:
+                        pts = major[cid].get("points_canonical_norm") or major[cid].get("points_norm") or []
+                        if pts:
+                            auto_lines[cid] = pts
+                    # Check generic evidence items
+                    if not auto_lines.get(cid) and "evidence" in evidence_data:
+                        for ev in evidence_data.get("evidence", []):
+                            if ev.get("evidence_id") == cid or ev.get("class_id") == cid:
+                                pts = [[pt["x"], pt["y"]] for pt in ev.get("geometry", {}).get("points", [])]
+                                if pts:
+                                    auto_lines[cid] = pts
 
-        # Compare metrics
-        metrics = {}
-        if truth_data:
-            for cid in classes_by_id:
-                hpolys = parse_human_polys(truth_data, cid)
-                apts = auto_lines.get(cid) or []
-                metrics[cid] = compare_polylines(apts, hpolys)
+            # Compare metrics
+            metrics = {}
+            if truth_data:
+                for cid in classes_by_id:
+                    hpolys = parse_human_polys(truth_data, cid)
+                    apts = auto_lines.get(cid) or []
+                    metrics[cid] = compare_polylines(apts, hpolys)
 
-        samples.append({
-            "stem": stem,
-            "filename": img_path.name,
-            "image_url": f"/{rel_img}",
-            "truth_file": truth_file or str((dataset_dir / f"{stem}_USER_CORRECTED.json").relative_to(ROOT)),
-            "has_truth": bool(truth_data),
-            "truth_data": truth_data or {},
-            "evidence_file": evidence_file,
-            "has_evidence": bool(evidence_data),
-            "auto_lines": auto_lines,
-            "metrics": metrics,
-            "split": "unassigned",
-        })
+            samples.append({
+                "stem": stem,
+                "filename": img_path.name,
+                "image_url": f"/{rel_img}",
+                "truth_file": truth_file or str((cur_dir / f"{stem}_USER_CORRECTED.json").relative_to(ROOT)),
+                "has_truth": bool(truth_data),
+                "truth_data": truth_data or {},
+                "evidence_file": evidence_file,
+                "has_evidence": bool(evidence_data),
+                "auto_lines": auto_lines,
+                "metrics": metrics,
+                "split": "unassigned",
+            })
 
     # Read split assignments from manifest if present
     manifest_candidates = [
-        dataset_dir / "manifest.json",
+        primary / "manifest.json",
         ROOT / "data" / "palm_labels" / "manifest.json",
+        ROOT / "data" / "flood_labels" / "manifest.json",
     ]
     for mf in manifest_candidates:
         if mf.exists():
@@ -213,26 +228,56 @@ class StudioHandler(SimpleHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        if self.path == "/" or self.path == "/studio":
-            self.send_response(302)
-            dist_index = ROOT / "apps" / "annotation_studio" / "dist" / "index.html"
-            loc = "/apps/annotation_studio/dist/index.html" if dist_index.exists() else "/apps/annotation_studio/index.html"
-            self.send_header("Location", loc)
-            self.end_headers()
-            return
+        clean_path = self.path.split("?")[0]
 
-        if self.path.startswith("/assets/"):
-            rel_asset = self.path.lstrip("/")
-            cand = ROOT / "apps" / "annotation_studio" / "dist" / rel_asset
-            if cand.exists():
+        studio_pages = {
+            "/",
+            "/studio",
+            "/apps/annotation_studio",
+            "/apps/annotation_studio/",
+            "/apps/annotation_studio/index.html",
+            "/apps/annotation_studio/dist",
+            "/apps/annotation_studio/dist/",
+            "/apps/annotation_studio/dist/index.html",
+        }
+        if clean_path in studio_pages:
+            dist_index = ROOT / "apps" / "annotation_studio" / "dist" / "index.html"
+            target_html = dist_index if dist_index.exists() else (ROOT / "apps" / "annotation_studio" / "index.html")
+            if target_html.exists():
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                data = target_html.read_bytes()
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+                return
+
+        # Handle static bundled assets (/assets/*, /apps/annotation_studio/dist/assets/*, etc.)
+        if "/assets/" in clean_path or clean_path.startswith("/assets/"):
+            asset_subpath = clean_path.split("/assets/", 1)[1] if "/assets/" in clean_path else clean_path.lstrip("/assets/")
+            cand = ROOT / "apps" / "annotation_studio" / "dist" / "assets" / asset_subpath
+            if cand.exists() and cand.is_file():
                 self.send_response(200)
                 if cand.suffix == ".js":
-                    self.send_header("Content-Type", "application/javascript")
+                    self.send_header("Content-Type", "application/javascript; charset=utf-8")
                 elif cand.suffix == ".css":
-                    self.send_header("Content-Type", "text/css")
+                    self.send_header("Content-Type", "text/css; charset=utf-8")
+                elif cand.suffix == ".map":
+                    self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(cand.stat().st_size))
                 self.end_headers()
                 self.wfile.write(cand.read_bytes())
+                return
+
+        # Fallback if unbundled /src/main.ts is requested by a cached browser session
+        if clean_path.endswith("/src/main.ts") or clean_path == "/src/main.ts":
+            dist_js = ROOT / "apps" / "annotation_studio" / "dist" / "assets" / "index.js"
+            if dist_js.exists():
+                self.send_response(200)
+                self.send_header("Content-Type", "application/javascript; charset=utf-8")
+                self.send_header("Content-Length", str(dist_js.stat().st_size))
+                self.end_headers()
+                self.wfile.write(dist_js.read_bytes())
                 return
 
         if self.path == "/api/domains":

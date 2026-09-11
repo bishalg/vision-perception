@@ -1,7 +1,7 @@
 {
   "schema": "curvstudio_dataset_split_v1",
   "domain": "palm",
-  "updated_at": "2026-09-11T07:01:24.790117+00:00",
+  "updated_at": "2026-09-11T08:22:17.355996+00:00",
   "split_ratio": {
     "train": 70,
     "valid": 20,
@@ -9,10 +9,10 @@
   },
   "labeled_only": false,
   "counts": {
-    "total": 2,
-    "train": 1,
-    "valid": 0,
-    "test": 1
+    "total": 52,
+    "train": 36,
+    "valid": 10,
+    "test": 6
   },
   "samples": [
     {
@@ -24,8 +24,308 @@
     {
       "stem": "02_right_bishal",
       "filename": "02_right_bishal.jpg",
-      "split": "test",
+      "split": "train",
       "has_truth": false
+    },
+    {
+      "stem": "rf_00001_114_image_palm_jpeg.rf.264c463276c951cd89e184b2c",
+      "filename": "rf_00001_114_image_palm_jpeg.rf.264c463276c951cd89e184b2c.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00002_186_image_palm_jpeg.rf.8d1d7a20d8e4084d65359e09e",
+      "filename": "rf_00002_186_image_palm_jpeg.rf.8d1d7a20d8e4084d65359e09e.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00003_267_image_palm_jpeg.rf.b6e55c37132e6d81da2456f04",
+      "filename": "rf_00003_267_image_palm_jpeg.rf.b6e55c37132e6d81da2456f04.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00004_342_image_palm_jpeg.rf.71df03622fff9a3cfb22e9ed2",
+      "filename": "rf_00004_342_image_palm_jpeg.rf.71df03622fff9a3cfb22e9ed2.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00005_421_image_palm_jpeg.rf.13354996159c092b0019823dc",
+      "filename": "rf_00005_421_image_palm_jpeg.rf.13354996159c092b0019823dc.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00006_500_image_palm_jpeg.rf.f40735359ea099be9ef7d8413",
+      "filename": "rf_00006_500_image_palm_jpeg.rf.f40735359ea099be9ef7d8413.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00007_593_image_palm_jpeg.rf.43153e25e0befc57d5506bcd6",
+      "filename": "rf_00007_593_image_palm_jpeg.rf.43153e25e0befc57d5506bcd6.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00008_FIMG_0018_JPG.rf.0083e9d021109589e3ac694c62863af",
+      "filename": "rf_00008_FIMG_0018_JPG.rf.0083e9d021109589e3ac694c62863af.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00009_FIMG_0077_JPG.rf.7da1464425114da177b131c7367e2bd",
+      "filename": "rf_00009_FIMG_0077_JPG.rf.7da1464425114da177b131c7367e2bd.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00010_FIMG_0139_JPG.rf.c47bd1dacae59a0a93c8e025043e765",
+      "filename": "rf_00010_FIMG_0139_JPG.rf.c47bd1dacae59a0a93c8e025043e765.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00011_FIMG_0208_JPG.rf.4550770229ce0d7aee2dfcdbc503b9e",
+      "filename": "rf_00011_FIMG_0208_JPG.rf.4550770229ce0d7aee2dfcdbc503b9e.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00012_FIMG_0279_JPG.rf.36c64100b524da64001a9c1da7cab86",
+      "filename": "rf_00012_FIMG_0279_JPG.rf.36c64100b524da64001a9c1da7cab86.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00013_FIMG_0347_JPG.rf.27729a0939dfade2d5cda49a677f079",
+      "filename": "rf_00013_FIMG_0347_JPG.rf.27729a0939dfade2d5cda49a677f079.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00014_Hand_0000143_jpg.rf.a2b10f4bff2133d3bd7bcab85751",
+      "filename": "rf_00014_Hand_0000143_jpg.rf.a2b10f4bff2133d3bd7bcab85751.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00015_Hand_0000388_jpg.rf.456775dcb64c49f4e5ced4e294aa",
+      "filename": "rf_00015_Hand_0000388_jpg.rf.456775dcb64c49f4e5ced4e294aa.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00016_Hand_0000641_jpg.rf.c0dd31035c35dbe95858f5ca8a29",
+      "filename": "rf_00016_Hand_0000641_jpg.rf.c0dd31035c35dbe95858f5ca8a29.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00017_Hand_0000883_jpg.rf.1893bdad14e68de7cc2d982d0248",
+      "filename": "rf_00017_Hand_0000883_jpg.rf.1893bdad14e68de7cc2d982d0248.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00018_Hand_0001191_jpg.rf.0889a99c2f4bc27876076fddb7d1",
+      "filename": "rf_00018_Hand_0001191_jpg.rf.0889a99c2f4bc27876076fddb7d1.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00019_Hand_0001420_jpg.rf.27279607d2fe1ac0b5c1d9a061bd",
+      "filename": "rf_00019_Hand_0001420_jpg.rf.27279607d2fe1ac0b5c1d9a061bd.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00020_Hand_0001658_jpg.rf.12fb8848fcdd46e9bfbf495bfd05",
+      "filename": "rf_00020_Hand_0001658_jpg.rf.12fb8848fcdd46e9bfbf495bfd05.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00021_Hand_0001913_jpg.rf.08d8043912ab7d1d97b7e00d0f97",
+      "filename": "rf_00021_Hand_0001913_jpg.rf.08d8043912ab7d1d97b7e00d0f97.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00022_Hand_0002198_jpg.rf.42858c4fccdde44328a0b2ec8af1",
+      "filename": "rf_00022_Hand_0002198_jpg.rf.42858c4fccdde44328a0b2ec8af1.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00023_Hand_0002764_jpg.rf.06432bcd32cc43e204b7811533f4",
+      "filename": "rf_00023_Hand_0002764_jpg.rf.06432bcd32cc43e204b7811533f4.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00024_Hand_0003015_jpg.rf.b2ed2f09163a84886303a66640e4",
+      "filename": "rf_00024_Hand_0003015_jpg.rf.b2ed2f09163a84886303a66640e4.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00025_Hand_0003322_jpg.rf.e6aa554156be176b458e334f3e87",
+      "filename": "rf_00025_Hand_0003322_jpg.rf.e6aa554156be176b458e334f3e87.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00026_Hand_0003613_jpg.rf.5117270b6e212b7231fcf9b1f5d4",
+      "filename": "rf_00026_Hand_0003613_jpg.rf.5117270b6e212b7231fcf9b1f5d4.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00027_Hand_0003958_jpg.rf.ab3acd3dcc1483f5f8f1afbda0fa",
+      "filename": "rf_00027_Hand_0003958_jpg.rf.ab3acd3dcc1483f5f8f1afbda0fa.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00028_Hand_0004345_jpg.rf.262415f9165a9e4a0892a36ae300",
+      "filename": "rf_00028_Hand_0004345_jpg.rf.262415f9165a9e4a0892a36ae300.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00029_Hand_0004660_jpg.rf.ae11bda960c498ca142906af739e",
+      "filename": "rf_00029_Hand_0004660_jpg.rf.ae11bda960c498ca142906af739e.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00030_Hand_0004983_jpg.rf.e8399e4f509c0158cf8a5b4b3b19",
+      "filename": "rf_00030_Hand_0004983_jpg.rf.e8399e4f509c0158cf8a5b4b3b19.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00031_Hand_0005292_jpg.rf.f011a8fcb07b00241a39a5914d76",
+      "filename": "rf_00031_Hand_0005292_jpg.rf.f011a8fcb07b00241a39a5914d76.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00032_Hand_0005442_jpg.rf.312c7b91416b836cdb65dc983cfd",
+      "filename": "rf_00032_Hand_0005442_jpg.rf.312c7b91416b836cdb65dc983cfd.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00033_Hand_0005651_jpg.rf.dad0275dc01082b52202b834a1f9",
+      "filename": "rf_00033_Hand_0005651_jpg.rf.dad0275dc01082b52202b834a1f9.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00034_Hand_0005811_jpg.rf.7ecc7e1c879801dab38e45aa3815",
+      "filename": "rf_00034_Hand_0005811_jpg.rf.7ecc7e1c879801dab38e45aa3815.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00035_Hand_0006065_jpg.rf.b7b32824860f6fa049f7bdb1b09d",
+      "filename": "rf_00035_Hand_0006065_jpg.rf.b7b32824860f6fa049f7bdb1b09d.jpg",
+      "split": "valid",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00036_Hand_0006299_jpg.rf.db8a81c32cc8f438c8bd82cab6ff",
+      "filename": "rf_00036_Hand_0006299_jpg.rf.db8a81c32cc8f438c8bd82cab6ff.jpg",
+      "split": "valid",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00037_Hand_0006563_jpg.rf.b2e45c31e3d05d2da976223d438b",
+      "filename": "rf_00037_Hand_0006563_jpg.rf.b2e45c31e3d05d2da976223d438b.jpg",
+      "split": "valid",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00038_Hand_0010993_jpg.rf.aab40f5d5064fa2f5dc3bf79ab68",
+      "filename": "rf_00038_Hand_0010993_jpg.rf.aab40f5d5064fa2f5dc3bf79ab68.jpg",
+      "split": "valid",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00039_Hand_0011158_jpg.rf.708e4491792eece87295377fe81a",
+      "filename": "rf_00039_Hand_0011158_jpg.rf.708e4491792eece87295377fe81a.jpg",
+      "split": "valid",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00040_Hand_0011323_jpg.rf.de6d904654e1e9601171fcaf6d9c",
+      "filename": "rf_00040_Hand_0011323_jpg.rf.de6d904654e1e9601171fcaf6d9c.jpg",
+      "split": "valid",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00041_Hand_0011481_jpg.rf.954a3b655e8650d65642e1ed7921",
+      "filename": "rf_00041_Hand_0011481_jpg.rf.954a3b655e8650d65642e1ed7921.jpg",
+      "split": "valid",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00042_Hand_0011609_jpg.rf.f1253415d2e83e063d6f23bb81c8",
+      "filename": "rf_00042_Hand_0011609_jpg.rf.f1253415d2e83e063d6f23bb81c8.jpg",
+      "split": "valid",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00043_IMG_0024_JPG.rf.566e5a58fcf3a70a6df7331a1b169ab3",
+      "filename": "rf_00043_IMG_0024_JPG.rf.566e5a58fcf3a70a6df7331a1b169ab3.jpg",
+      "split": "valid",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00044_IMG_0087_JPG.rf.38f2272bf2f9382099eb590e5cb519a5",
+      "filename": "rf_00044_IMG_0087_JPG.rf.38f2272bf2f9382099eb590e5cb519a5.jpg",
+      "split": "valid",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00045_IMG_0152_JPG.rf.c5fd93cd656d58f6c499eb1e62665396",
+      "filename": "rf_00045_IMG_0152_JPG.rf.c5fd93cd656d58f6c499eb1e62665396.jpg",
+      "split": "test",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00046_IMG_0220_JPG.rf.2131f9fdf61bcfa71dab0b7c5b784a8b",
+      "filename": "rf_00046_IMG_0220_JPG.rf.2131f9fdf61bcfa71dab0b7c5b784a8b.jpg",
+      "split": "test",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00047_IMG_0299_JPG.rf.dd581f5dc1c1305c312d8bc57a1164d9",
+      "filename": "rf_00047_IMG_0299_JPG.rf.dd581f5dc1c1305c312d8bc57a1164d9.jpg",
+      "split": "test",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00048_IMG_0374_JPG.rf.db4dcf9887dc3101a3a12c2609dc0ffe",
+      "filename": "rf_00048_IMG_0374_JPG.rf.db4dcf9887dc3101a3a12c2609dc0ffe.jpg",
+      "split": "test",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00049_Hand_0007085_jpg.rf.932097951b8cf228ea47df1d8c89",
+      "filename": "rf_00049_Hand_0007085_jpg.rf.932097951b8cf228ea47df1d8c89.jpg",
+      "split": "test",
+      "has_truth": true
+    },
+    {
+      "stem": "rf_00050_Hand_0007435_jpg.rf.bfb3a14a3b47068b4e965fb7f07f",
+      "filename": "rf_00050_Hand_0007435_jpg.rf.bfb3a14a3b47068b4e965fb7f07f.jpg",
+      "split": "test",
+      "has_truth": true
     }
   ]
 }

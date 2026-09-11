@@ -1,7 +1,7 @@
 // apps/annotation_studio/src/main.ts — CurvStudio Roboflow Clone Main Entry (TypeScript)
 import { state } from './state';
-import { initCanvas, resetView, redraw } from './canvas';
-import { initTools, setTool, showToast } from './tools';
+import { initCanvas, resetView, redraw, zoomIn, zoomOut } from './canvas';
+import { initTools, setTool, showToast, performUndo, performRedo } from './tools';
 import { initSidebar, renderLabelsTab, selectClass } from './sidebar';
 import { initModals } from './modals';
 import type { ToolType, DomainConfig } from './types';
@@ -21,7 +21,6 @@ export async function bootstrapStudio(): Promise<void> {
   setupKeyboardShortcuts();
 
   state.on('samples_updated', () => {
-    renderGallery();
     updateSampleSelect();
   });
 
@@ -40,6 +39,8 @@ async function loadDomainRegistry(): Promise<void> {
       sel.onchange = e => switchDomain((e.target as HTMLSelectElement).value);
     }
 
+    renderProjectTabs();
+
     if (state.domains.length > 0) {
       await switchDomain(state.domains[0].id);
     }
@@ -48,12 +49,37 @@ async function loadDomainRegistry(): Promise<void> {
   }
 }
 
+function renderProjectTabs(): void {
+  const tabsContainer = document.getElementById('projectTabs');
+  if (!tabsContainer) return;
+  tabsContainer.innerHTML = state.domains.map(d => {
+    const isActive = d.id === state.currentDomain?.id;
+    const icon = d.id === 'flood' ? '🌊' : '🌿';
+    return `
+      <button class="project-tab ${isActive ? 'active' : ''}" data-domain="${d.id}" title="${d.label}">
+        <span>${icon}</span>
+        <span>${d.label}</span>
+      </button>
+    `;
+  }).join('');
+
+  tabsContainer.querySelectorAll<HTMLElement>('.project-tab').forEach(tab => {
+    tab.onclick = () => {
+      const domId = tab.dataset.domain!;
+      if (domId !== state.currentDomain?.id) {
+        switchDomain(domId);
+      }
+    };
+  });
+}
+
 export async function switchDomain(domainId: string): Promise<void> {
   state.currentDomain = state.domains.find(d => d.id === domainId) || null;
   if (!state.currentDomain) return;
 
   const sel = document.getElementById('domainSelect') as HTMLSelectElement | null;
   if (sel) sel.value = domainId;
+  renderProjectTabs();
 
   if (state.currentDomain.classes && state.currentDomain.classes.length > 0) {
     state.activeClassId = state.currentDomain.classes[0].id;
@@ -65,7 +91,6 @@ export async function switchDomain(domainId: string): Promise<void> {
     state.samples = data.samples || [];
 
     renderLabelsTab();
-    renderGallery();
     updateSampleSelect();
 
     if (state.samples.length > 0) {
@@ -87,6 +112,11 @@ export async function selectSample(idx: number): Promise<void> {
   state.currentDraft = [];
   state.undoStack = [];
   state.redoStack = [];
+
+  const pagerLbl = document.getElementById('samplePagerLabel');
+  if (pagerLbl) {
+    pagerLbl.textContent = `${state.currentSampleIdx + 1} / ${state.samples.length}`;
+  }
 
   updateSampleSelect();
   updateGallerySelection();
@@ -220,6 +250,39 @@ function setupTopControls(): void {
   if (btnReset) btnReset.onclick = resetView;
   if (btnSave) btnSave.onclick = saveGroundTruth;
   if (selSample) selSample.onchange = e => selectSample(Number((e.target as HTMLSelectElement).value));
+
+  // Bottom floating controls bar
+  const btnZoomIn = document.getElementById('btnZoomIn');
+  const btnZoomOut = document.getElementById('btnZoomOut');
+  if (btnZoomIn) btnZoomIn.onclick = () => zoomIn();
+  if (btnZoomOut) btnZoomOut.onclick = () => zoomOut();
+
+  const btnTheme = document.getElementById('btnToggleTheme');
+  if (btnTheme) {
+    let contrastMode = false;
+    btnTheme.onclick = () => {
+      contrastMode = !contrastMode;
+      const cvs = document.getElementById('studioCanvas');
+      if (cvs) cvs.style.filter = contrastMode ? 'contrast(1.35) brightness(1.2)' : 'none';
+      btnTheme.textContent = contrastMode ? '🌙' : '☀️';
+      showToast(contrastMode ? 'High-contrast canvas enabled' : 'Normal canvas view');
+    };
+  }
+
+  const btnShortcuts = document.getElementById('btnOpenShortcuts');
+  const modalShortcuts = document.getElementById('shortcutsModal');
+  const btnCloseShortcuts = document.getElementById('btnCloseShortcuts');
+  if (btnShortcuts && modalShortcuts) {
+    btnShortcuts.onclick = () => modalShortcuts.classList.add('show');
+  }
+  if (btnCloseShortcuts && modalShortcuts) {
+    btnCloseShortcuts.onclick = () => modalShortcuts.classList.remove('show');
+  }
+  if (modalShortcuts) {
+    modalShortcuts.onclick = (e) => {
+      if (e.target === modalShortcuts) modalShortcuts.classList.remove('show');
+    };
+  }
 }
 
 function setupKeyboardShortcuts(): void {
@@ -236,21 +299,18 @@ function setupKeyboardShortcuts(): void {
       return;
     }
 
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+    // Undo: Ctrl+Z or Cmd+Z
+    if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
       e.preventDefault();
-      if (e.shiftKey) {
-        state.redo();
-      } else {
-        state.undo();
-      }
-      redraw();
+      performUndo();
       return;
     }
 
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') {
+    // Redo: Ctrl+Shift+Z, Cmd+Shift+Z, Ctrl+Y, Cmd+Y
+    if (((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'z') ||
+        ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y')) {
       e.preventDefault();
-      state.redo();
-      redraw();
+      performRedo();
       return;
     }
 
@@ -260,6 +320,23 @@ function setupKeyboardShortcuts(): void {
     }
     if (e.key === ']') {
       selectSample(state.currentSampleIdx + 1);
+      return;
+    }
+
+    if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+      document.getElementById('shortcutsModal')?.classList.toggle('show');
+      return;
+    }
+    if (e.key === '0') {
+      resetView();
+      return;
+    }
+    if (e.key === '=' || e.key === '+') {
+      zoomIn();
+      return;
+    }
+    if (e.key === '-' || e.key === '_') {
+      zoomOut();
       return;
     }
 

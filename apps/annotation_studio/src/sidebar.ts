@@ -8,11 +8,13 @@ export function initSidebar(): void {
   setupTabs();
   setupLayerControls();
   setupRawDataCopy();
+  setupTagInput();
 
   state.on('state_changed', () => {
     renderLabelsTab();
     renderRawDataTab();
     updateMetricsReadout();
+    updateSubHeader();
   });
 
   state.on('audit_updated', () => {
@@ -21,29 +23,73 @@ export function initSidebar(): void {
 }
 
 function setupTabs(): void {
-  document.querySelectorAll<HTMLElement>('.sidebar-tab-btn').forEach(btn => {
+  document.querySelectorAll<HTMLElement>('.rail-btn').forEach(btn => {
     btn.onclick = () => {
       const targetTab = btn.dataset.tab;
-      document.querySelectorAll('.sidebar-tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+      document.querySelectorAll('.rail-btn').forEach(b => b.classList.toggle('active', b === btn));
       document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === `tab-${targetTab}`));
+      const panel = document.getElementById('sidebarPanel');
+      if (panel) panel.classList.remove('collapsed');
       if (targetTab === 'raw') renderRawDataTab();
       if (targetTab === 'history') renderHistoryTab();
       if (targetTab === 'copilot') renderCopilotTab();
     };
   });
+
+  const btnToggle = document.getElementById('btnToggleSidebar');
+  if (btnToggle) {
+    btnToggle.onclick = () => {
+      const panel = document.getElementById('sidebarPanel');
+      if (panel) panel.classList.toggle('collapsed');
+    };
+  }
+
+  const subtabClasses = document.getElementById('subtabClasses');
+  const subtabLayers = document.getElementById('subtabLayers');
+  if (subtabClasses && subtabLayers) {
+    subtabClasses.onclick = () => {
+      subtabClasses.classList.add('active');
+      subtabLayers.classList.remove('active');
+      const railLabels = document.querySelector<HTMLElement>('.rail-btn[data-tab="labels"]');
+      if (railLabels) railLabels.click();
+    };
+    subtabLayers.onclick = () => {
+      subtabLayers.classList.add('active');
+      subtabClasses.classList.remove('active');
+      const railLayers = document.querySelector<HTMLElement>('.rail-btn[data-tab="layers"]');
+      if (railLayers) railLayers.click();
+    };
+  }
 }
 
 export function renderLabelsTab(): void {
   const container = document.getElementById('classList');
+  const unusedContainer = document.getElementById('unusedClassList');
   const countBadge = document.getElementById('totalAnnotationCount');
+  const groupLabel = document.getElementById('panelGroupLabel');
   if (!container || !state.currentDomain) return;
 
   if (countBadge) {
     countBadge.textContent = `${state.countTotalAnnotations()}`;
   }
+  if (groupLabel) {
+    groupLabel.textContent = `Group: ${state.currentDomain.id}`;
+  }
 
   const classes = state.currentDomain.classes || [];
-  container.innerHTML = classes.map((c, i) => {
+  const usedClasses: typeof classes = [];
+  const unusedClasses: typeof classes = [];
+
+  for (const c of classes) {
+    const count = state.countClassAnnotations(c.id);
+    if (count > 0 || c.id === state.activeClassId) {
+      usedClasses.push(c);
+    } else {
+      unusedClasses.push(c);
+    }
+  }
+
+  container.innerHTML = usedClasses.map(c => {
     const isSelected = c.id === state.activeClassId;
     const isVisible = state.classVisibility[c.id] !== false;
     const count = state.countClassAnnotations(c.id);
@@ -70,6 +116,7 @@ export function renderLabelsTab(): void {
     row.onclick = e => {
       if ((e.target as HTMLElement).closest('.class-visibility-btn')) return;
       selectClass(row.dataset.class!);
+      renderLabelsTab();
     };
   });
 
@@ -83,7 +130,33 @@ export function renderLabelsTab(): void {
     };
   });
 
+  // Render Unused Classes (Roboflow Parity)
+  if (unusedContainer) {
+    if (unusedClasses.length === 0) {
+      unusedContainer.innerHTML = `<div style="font-size:11px;color:var(--txt-muted);padding:4px">All classes in use</div>`;
+    } else {
+      unusedContainer.innerHTML = unusedClasses.map(c => `
+        <div class="unused-class-item" data-class="${c.id}" title="Click to activate ${c.label}">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="class-dot" style="background:${c.color};opacity:0.65"></span>
+            <span>${c.label}</span>
+          </div>
+          <span style="font-size:12px;color:var(--txt-muted)">+</span>
+        </div>
+      `).join('');
+
+      unusedContainer.querySelectorAll<HTMLElement>('.unused-class-item').forEach(item => {
+        item.onclick = () => {
+          const cid = item.dataset.class!;
+          selectClass(cid);
+          renderLabelsTab();
+        };
+      });
+    }
+  }
+
   renderTags();
+  updateSubHeader();
 }
 
 export function selectClass(classId: string): void {
@@ -94,19 +167,86 @@ export function selectClass(classId: string): void {
   updateMetricsReadout();
 }
 
+const customTags: Record<string, string[]> = {};
+
 function renderTags(): void {
   const container = document.getElementById('sampleTags');
   if (!container || !state.currentSample) return;
 
-  const tags: Array<{ label: string; cls: string }> = [];
+  const stem = state.currentSample.stem;
+  const sampleCustom = customTags[stem] || [];
+
+  const tags: Array<{ label: string; cls: string; removable?: boolean }> = [];
   if (state.currentSample.has_truth) tags.push({ label: 'Reviewed', cls: 'active' });
   else tags.push({ label: 'Needs Review', cls: '' });
 
-  if (state.currentDomain?.canonical_warp) tags.push({ label: 'Canonical Warp', cls: '' });
+  if (state.currentDomain?.canonical_warp) tags.push({ label: 'Warped', cls: '' });
   if (state.currentSample.split) tags.push({ label: state.currentSample.split.toUpperCase(), cls: 'active' });
-  tags.push({ label: state.currentDomain?.coord_space || 'pixels', cls: '' });
 
-  container.innerHTML = tags.map(t => `<span class="pill-tag ${t.cls}">${t.label}</span>`).join('');
+  for (const ct of sampleCustom) {
+    tags.push({ label: ct, cls: 'active', removable: true });
+  }
+
+  container.innerHTML = tags.map(t => `
+    <span class="pill-tag ${t.cls}">
+      ${t.label}
+      ${t.removable ? `<span class="tag-remove" data-tag="${t.label}" style="cursor:pointer;font-size:10px;margin-left:2px">✕</span>` : ''}
+    </span>
+  `).join('');
+
+  container.querySelectorAll<HTMLElement>('.tag-remove').forEach(el => {
+    el.onclick = (e) => {
+      e.stopPropagation();
+      const tag = el.dataset.tag!;
+      customTags[stem] = (customTags[stem] || []).filter(x => x !== tag);
+      renderTags();
+    };
+  });
+}
+
+function setupTagInput(): void {
+  const inp = document.getElementById('inpNewTag') as HTMLInputElement | null;
+  const btn = document.getElementById('btnAddTag');
+  if (!inp || !btn) return;
+
+  const addTag = () => {
+    const val = inp.value.trim();
+    if (!val || !state.currentSample) return;
+    const stem = state.currentSample.stem;
+    if (!customTags[stem]) customTags[stem] = [];
+    if (!customTags[stem].includes(val)) {
+      customTags[stem].push(val);
+      renderTags();
+    }
+    inp.value = '';
+  };
+
+  btn.onclick = addTag;
+  inp.onkeydown = (e) => {
+    if (e.key === 'Enter') addTag();
+  };
+}
+
+export function updateSubHeader(): void {
+  const fnEl = document.getElementById('subHeaderFilename');
+  const splitEl = document.getElementById('subHeaderSplitBadge');
+  const revEl = document.getElementById('subHeaderReviewedBadge');
+  const metaEl = document.getElementById('subHeaderDomainMeta');
+
+  if (fnEl) {
+    fnEl.textContent = state.currentSample?.filename || 'No sample selected';
+  }
+  if (splitEl) {
+    const split = state.currentSample?.split || 'unassigned';
+    splitEl.textContent = split;
+    splitEl.className = `split-pill ${split}`;
+  }
+  if (revEl) {
+    revEl.style.display = state.currentSample?.has_truth ? 'inline-block' : 'none';
+  }
+  if (metaEl && state.currentDomain) {
+    metaEl.textContent = `${state.currentDomain.label} • Local Engine ($0/mo)`;
+  }
 }
 
 function setupLayerControls(): void {

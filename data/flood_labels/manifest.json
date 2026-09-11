@@ -1,0 +1,724 @@
+{
+  "schema": "flood_labels_manifest_v1",
+  "status": "ready",
+  "source": {
+    "workspace": "unitec-gr8dy",
+    "project": "river-flood-detection",
+    "version": 6,
+    "format": "coco-segmentation",
+    "url": "https://universe.roboflow.com/unitec-gr8dy/river-flood-detection",
+    "tag": "roboflow_import:unitec-gr8dy/river-flood-detection/6"
+  },
+  "license": "CC BY 4.0",
+  "downloaded_at": "2026-09-11T07:15:40Z",
+  "limit": 50,
+  "count": 50,
+  "splits": {
+    "train": 0,
+    "valid": 0,
+    "test": 50
+  },
+  "samples": [
+    {
+      "stem": "rf_flood_0001_youtube-49_jpg_rf_2b621642aadd80706cbc04d7",
+      "image": "data/flood_labels/raw/rf_flood_0001_youtube-49_jpg_rf_2b621642aadd80706cbc04d7.jpg",
+      "label": "data/flood_labels/rf_flood_0001_youtube-49_jpg_rf_2b621642aadd80706cbc04d7_USER_CORRECTED.json",
+      "sha256": "ffd774360f56dc6ea8b833a8c97d4b86386080b602efeee169eeda5f6f1983db",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0002_youtube-6_jpg_rf_12902204d9de8df87d78a8854",
+      "image": "data/flood_labels/raw/rf_flood_0002_youtube-6_jpg_rf_12902204d9de8df87d78a8854.jpg",
+      "label": "data/flood_labels/rf_flood_0002_youtube-6_jpg_rf_12902204d9de8df87d78a8854_USER_CORRECTED.json",
+      "sha256": "e3e0059893503f6ecefcc247af229ea292e89546e88d63bdd4ea0326c5523527",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0003_youtube-51_jpg_rf_08040cd35749d0c72b93e8de",
+      "image": "data/flood_labels/raw/rf_flood_0003_youtube-51_jpg_rf_08040cd35749d0c72b93e8de.jpg",
+      "label": "data/flood_labels/rf_flood_0003_youtube-51_jpg_rf_08040cd35749d0c72b93e8de_USER_CORRECTED.json",
+      "sha256": "449ee559abd74550bc5d8dfa623263e071d79930efea811d5c1934dfd45f7cfd",
+      "split": "test",
+      "lines": {
+        "waterline": 2,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0004_youtube-11_jpg_rf_0f12e2c4ea657a125a870ba0",
+      "image": "data/flood_labels/raw/rf_flood_0004_youtube-11_jpg_rf_0f12e2c4ea657a125a870ba0.jpg",
+      "label": "data/flood_labels/rf_flood_0004_youtube-11_jpg_rf_0f12e2c4ea657a125a870ba0_USER_CORRECTED.json",
+      "sha256": "e22dcc4d3bbc5c45381abe8e6097da7dd85b73ac58d5e194c099516681e34b3a",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0005_youtube-37_jpg_rf_2f90cff535f83107f9826781",
+      "image": "data/flood_labels/raw/rf_flood_0005_youtube-37_jpg_rf_2f90cff535f83107f9826781.jpg",
+      "label": "data/flood_labels/rf_flood_0005_youtube-37_jpg_rf_2f90cff535f83107f9826781_USER_CORRECTED.json",
+      "sha256": "1aac6bb46ead3d71a0a114ed50d1ba12f5b602295cff3cbe263f043c229dfad7",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0006_Screen-Shot-2023-11-29-at-4-59-44-PM-2_png",
+      "image": "data/flood_labels/raw/rf_flood_0006_Screen-Shot-2023-11-29-at-4-59-44-PM-2_png.jpg",
+      "label": "data/flood_labels/rf_flood_0006_Screen-Shot-2023-11-29-at-4-59-44-PM-2_png_USER_CORRECTED.json",
+      "sha256": "046f1cd3b6f43cdd7940c3033afb87393d3e002439320e4ce6cf431f0bdfe69f",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0007_youtube-65_jpg_rf_121abb736bc84439e7a092ec",
+      "image": "data/flood_labels/raw/rf_flood_0007_youtube-65_jpg_rf_121abb736bc84439e7a092ec.jpg",
+      "label": "data/flood_labels/rf_flood_0007_youtube-65_jpg_rf_121abb736bc84439e7a092ec_USER_CORRECTED.json",
+      "sha256": "3dd97a70ef97808d30b3912a7ce1d0f8b849c6fdb9e67288124555fe4aa6688c",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0008_youtube-45_jpg_rf_0833105af5af2f6dd05529b2",
+      "image": "data/flood_labels/raw/rf_flood_0008_youtube-45_jpg_rf_0833105af5af2f6dd05529b2.jpg",
+      "label": "data/flood_labels/rf_flood_0008_youtube-45_jpg_rf_0833105af5af2f6dd05529b2_USER_CORRECTED.json",
+      "sha256": "b416d2ba90166fe2438c179e51ecc7671c4bf8124a2cee1fe6663236ccea89d7",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0009_Screen-Shot-2023-11-29-at-4-59-27-PM_png_r",
+      "image": "data/flood_labels/raw/rf_flood_0009_Screen-Shot-2023-11-29-at-4-59-27-PM_png_r.jpg",
+      "label": "data/flood_labels/rf_flood_0009_Screen-Shot-2023-11-29-at-4-59-27-PM_png_r_USER_CORRECTED.json",
+      "sha256": "21567bdbe4973f6a69ad36f92d1d6b921d4661ebf24adac0a183f6dc33f8d9a0",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0010_youtube-66_jpg_rf_0f4a00bd082355346243ce8e",
+      "image": "data/flood_labels/raw/rf_flood_0010_youtube-66_jpg_rf_0f4a00bd082355346243ce8e.jpg",
+      "label": "data/flood_labels/rf_flood_0010_youtube-66_jpg_rf_0f4a00bd082355346243ce8e_USER_CORRECTED.json",
+      "sha256": "c49e8bada368428fc56ee78d6f816099d989cf41bafa1f834b8df2e36c751f30",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0011_youtube-12_jpg_rf_36d5b762d9ea7921f77898b4",
+      "image": "data/flood_labels/raw/rf_flood_0011_youtube-12_jpg_rf_36d5b762d9ea7921f77898b4.jpg",
+      "label": "data/flood_labels/rf_flood_0011_youtube-12_jpg_rf_36d5b762d9ea7921f77898b4_USER_CORRECTED.json",
+      "sha256": "2ce41df178f0d31a2697194997e5b16a2b303644ea473eb910b369fe286e914c",
+      "split": "test",
+      "lines": {
+        "waterline": 2,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0012_youtube-41_jpg_rf_288e406c744bfbc80234bcc6",
+      "image": "data/flood_labels/raw/rf_flood_0012_youtube-41_jpg_rf_288e406c744bfbc80234bcc6.jpg",
+      "label": "data/flood_labels/rf_flood_0012_youtube-41_jpg_rf_288e406c744bfbc80234bcc6_USER_CORRECTED.json",
+      "sha256": "c6e0aab6359376d977c2d87007c9aba6b91ca093a3c29e44434f78eafbd66ee3",
+      "split": "test",
+      "lines": {
+        "waterline": 2,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0013_youtube-36_jpg_rf_42c3fb4b5e6465c93ee8bb4d",
+      "image": "data/flood_labels/raw/rf_flood_0013_youtube-36_jpg_rf_42c3fb4b5e6465c93ee8bb4d.jpg",
+      "label": "data/flood_labels/rf_flood_0013_youtube-36_jpg_rf_42c3fb4b5e6465c93ee8bb4d_USER_CORRECTED.json",
+      "sha256": "18cb34e95ba002f9d372cfc507006bb904fdda6171a6cf3f8fe3041ec59426a5",
+      "split": "test",
+      "lines": {
+        "waterline": 2,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0014_Screen-Shot-2023-11-29-at-4-59-38-PM-1_png",
+      "image": "data/flood_labels/raw/rf_flood_0014_Screen-Shot-2023-11-29-at-4-59-38-PM-1_png.jpg",
+      "label": "data/flood_labels/rf_flood_0014_Screen-Shot-2023-11-29-at-4-59-38-PM-1_png_USER_CORRECTED.json",
+      "sha256": "27004fb5732d6b566d0baf5a3372f8824f3b08b229b4a7751f55c2fe91475b57",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0015_youtube-60_jpg_rf_455b9ae1512285829c1d564b",
+      "image": "data/flood_labels/raw/rf_flood_0015_youtube-60_jpg_rf_455b9ae1512285829c1d564b.jpg",
+      "label": "data/flood_labels/rf_flood_0015_youtube-60_jpg_rf_455b9ae1512285829c1d564b_USER_CORRECTED.json",
+      "sha256": "1452f9ef7ffc4178766059cc7fcd55d5b6f95468cac889839b039f00636b029b",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0016_youtube-7_jpg_rf_255d41cf5dcf4f4e3cb8c3ea1",
+      "image": "data/flood_labels/raw/rf_flood_0016_youtube-7_jpg_rf_255d41cf5dcf4f4e3cb8c3ea1.jpg",
+      "label": "data/flood_labels/rf_flood_0016_youtube-7_jpg_rf_255d41cf5dcf4f4e3cb8c3ea1_USER_CORRECTED.json",
+      "sha256": "106ae749ff13de1c346783147296535432c9d244a77e5ee0894dd33c79595104",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0017_youtube-33_jpg_rf_34212dc4750e8df3608c6165",
+      "image": "data/flood_labels/raw/rf_flood_0017_youtube-33_jpg_rf_34212dc4750e8df3608c6165.jpg",
+      "label": "data/flood_labels/rf_flood_0017_youtube-33_jpg_rf_34212dc4750e8df3608c6165_USER_CORRECTED.json",
+      "sha256": "872994c6566fde158531cf7d1393e12920e8c549659cdcbfacc783a757dc00fd",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0018_youtube-30_jpg_rf_0ef0234c9be9fae447147231",
+      "image": "data/flood_labels/raw/rf_flood_0018_youtube-30_jpg_rf_0ef0234c9be9fae447147231.jpg",
+      "label": "data/flood_labels/rf_flood_0018_youtube-30_jpg_rf_0ef0234c9be9fae447147231_USER_CORRECTED.json",
+      "sha256": "6c4995b8697bbaca031b0a63f62fef33580b9584d9b94f63d649caccd697c6bf",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0019_youtube-32_jpg_rf_3867a17e4bb6f024f57330a9",
+      "image": "data/flood_labels/raw/rf_flood_0019_youtube-32_jpg_rf_3867a17e4bb6f024f57330a9.jpg",
+      "label": "data/flood_labels/rf_flood_0019_youtube-32_jpg_rf_3867a17e4bb6f024f57330a9_USER_CORRECTED.json",
+      "sha256": "93a63bcaab617a2c11b6c5bbe5ada35d4e757b0aa96c9d1fdce6f28a92f17cc7",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0020_youtube-29_jpg_rf_012e31fedbd17f3d1ea91c7a",
+      "image": "data/flood_labels/raw/rf_flood_0020_youtube-29_jpg_rf_012e31fedbd17f3d1ea91c7a.jpg",
+      "label": "data/flood_labels/rf_flood_0020_youtube-29_jpg_rf_012e31fedbd17f3d1ea91c7a_USER_CORRECTED.json",
+      "sha256": "552b307ce1f6b2fa96c5f52a56c35ba256fd11b98cd0d04c6cf5a6a75e445a5a",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0021_Screen-Shot-2023-11-29-at-4-59-46-PM-1_png",
+      "image": "data/flood_labels/raw/rf_flood_0021_Screen-Shot-2023-11-29-at-4-59-46-PM-1_png.jpg",
+      "label": "data/flood_labels/rf_flood_0021_Screen-Shot-2023-11-29-at-4-59-46-PM-1_png_USER_CORRECTED.json",
+      "sha256": "d5e81413b78b3f98b9feb0d5e2996870a3e99dd6b4c5809fadd88ad6c1bc87b4",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0022_youtube-15_jpg_rf_0dfe2022d6b93a289e1a4e4b",
+      "image": "data/flood_labels/raw/rf_flood_0022_youtube-15_jpg_rf_0dfe2022d6b93a289e1a4e4b.jpg",
+      "label": "data/flood_labels/rf_flood_0022_youtube-15_jpg_rf_0dfe2022d6b93a289e1a4e4b_USER_CORRECTED.json",
+      "sha256": "fbf1121e4fcdbf65fe5eaf06ec0028f6023ca24c0c36697b7edc1f9593fc7b19",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0023_youtube-36_jpg_rf_46eae37af9170df30d3d8b72",
+      "image": "data/flood_labels/raw/rf_flood_0023_youtube-36_jpg_rf_46eae37af9170df30d3d8b72.jpg",
+      "label": "data/flood_labels/rf_flood_0023_youtube-36_jpg_rf_46eae37af9170df30d3d8b72_USER_CORRECTED.json",
+      "sha256": "051a29eff93c4e3cac0e27c31ee93d86e85ee8222d5b40aa9352c9aa75449321",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0024_youtube-28_jpg_rf_1cfe3d467cc3586ffbc198bb",
+      "image": "data/flood_labels/raw/rf_flood_0024_youtube-28_jpg_rf_1cfe3d467cc3586ffbc198bb.jpg",
+      "label": "data/flood_labels/rf_flood_0024_youtube-28_jpg_rf_1cfe3d467cc3586ffbc198bb_USER_CORRECTED.json",
+      "sha256": "840e4fafb46e94dd9f3b58eb8b7d8dd030b0ac6ace58a486e9c24548af00340e",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0025_youtube-73_jpg_rf_4ea450d15ccb1b5219b72e8c",
+      "image": "data/flood_labels/raw/rf_flood_0025_youtube-73_jpg_rf_4ea450d15ccb1b5219b72e8c.jpg",
+      "label": "data/flood_labels/rf_flood_0025_youtube-73_jpg_rf_4ea450d15ccb1b5219b72e8c_USER_CORRECTED.json",
+      "sha256": "0608d7321c84254fe9dfd2628201e8de17b71f234bc05028c1c389eab7b85e58",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0026_youtube-74_jpg_rf_47f2a573dac44adb199777a9",
+      "image": "data/flood_labels/raw/rf_flood_0026_youtube-74_jpg_rf_47f2a573dac44adb199777a9.jpg",
+      "label": "data/flood_labels/rf_flood_0026_youtube-74_jpg_rf_47f2a573dac44adb199777a9_USER_CORRECTED.json",
+      "sha256": "34f305af76567d786e24fe65605e2afc28e8a5537a35ec6ffd2a1fa57d86cf5c",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0027_youtube-55_jpg_rf_5a22013066bb7c6a6b42ce76",
+      "image": "data/flood_labels/raw/rf_flood_0027_youtube-55_jpg_rf_5a22013066bb7c6a6b42ce76.jpg",
+      "label": "data/flood_labels/rf_flood_0027_youtube-55_jpg_rf_5a22013066bb7c6a6b42ce76_USER_CORRECTED.json",
+      "sha256": "f4e3d2385469eaffd8437ee3197342d18955458ab63b6ffe48caccbeffb94331",
+      "split": "test",
+      "lines": {
+        "waterline": 2,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0028_Screen-Shot-2023-11-29-at-4-59-31-PM_png_r",
+      "image": "data/flood_labels/raw/rf_flood_0028_Screen-Shot-2023-11-29-at-4-59-31-PM_png_r.jpg",
+      "label": "data/flood_labels/rf_flood_0028_Screen-Shot-2023-11-29-at-4-59-31-PM_png_r_USER_CORRECTED.json",
+      "sha256": "ab22a408cc1285877461932d94aebef6708d0e3ba9986212147dd7c43b28447f",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0029_youtube-92_jpg_rf_498d0b6831bda3e5e1153981",
+      "image": "data/flood_labels/raw/rf_flood_0029_youtube-92_jpg_rf_498d0b6831bda3e5e1153981.jpg",
+      "label": "data/flood_labels/rf_flood_0029_youtube-92_jpg_rf_498d0b6831bda3e5e1153981_USER_CORRECTED.json",
+      "sha256": "1d980c52c2ff02bca2ff715889cb6586b7b4bc92994df7d5604d4b942fef5762",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0030_youtube-21_jpg_rf_52094f8e9e3aa7c1bb638291",
+      "image": "data/flood_labels/raw/rf_flood_0030_youtube-21_jpg_rf_52094f8e9e3aa7c1bb638291.jpg",
+      "label": "data/flood_labels/rf_flood_0030_youtube-21_jpg_rf_52094f8e9e3aa7c1bb638291_USER_CORRECTED.json",
+      "sha256": "6eafe887f44c53fd9bec620c086beeb0675eda7144f13b662ed3224ef1c3c0d6",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0031_youtube-82_jpg_rf_50ad7ec5e9a40f2fd131d59b",
+      "image": "data/flood_labels/raw/rf_flood_0031_youtube-82_jpg_rf_50ad7ec5e9a40f2fd131d59b.jpg",
+      "label": "data/flood_labels/rf_flood_0031_youtube-82_jpg_rf_50ad7ec5e9a40f2fd131d59b_USER_CORRECTED.json",
+      "sha256": "f9036bbc3a235d30d822f4c4cb62cfb2605d58cb498c948b4067a5248e2b15f8",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0032_youtube-69_jpg_rf_50f0e22b5fc4bd05e47b02cb",
+      "image": "data/flood_labels/raw/rf_flood_0032_youtube-69_jpg_rf_50f0e22b5fc4bd05e47b02cb.jpg",
+      "label": "data/flood_labels/rf_flood_0032_youtube-69_jpg_rf_50f0e22b5fc4bd05e47b02cb_USER_CORRECTED.json",
+      "sha256": "bc3e9e8935c822475eec08a34c42b4e61af97d1441112ec4181ec9b1382ca966",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0033_youtube-15_jpg_rf_1b12db2a44ca7b75cf52c29e",
+      "image": "data/flood_labels/raw/rf_flood_0033_youtube-15_jpg_rf_1b12db2a44ca7b75cf52c29e.jpg",
+      "label": "data/flood_labels/rf_flood_0033_youtube-15_jpg_rf_1b12db2a44ca7b75cf52c29e_USER_CORRECTED.json",
+      "sha256": "8f081eb35c18a1a757678f44d316b22392a89ffb2de6b9c96578b7e3dd4a2e90",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0034_youtube-53_jpg_rf_6466b322f8d43ed17a2a33bd",
+      "image": "data/flood_labels/raw/rf_flood_0034_youtube-53_jpg_rf_6466b322f8d43ed17a2a33bd.jpg",
+      "label": "data/flood_labels/rf_flood_0034_youtube-53_jpg_rf_6466b322f8d43ed17a2a33bd_USER_CORRECTED.json",
+      "sha256": "3989ac569b07c98deb556e8b193831eaba8b41ca62a05306117d0d06b35ca94c",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0035_youtube-13_jpg_rf_6a308af4efb8c1f2f17323b7",
+      "image": "data/flood_labels/raw/rf_flood_0035_youtube-13_jpg_rf_6a308af4efb8c1f2f17323b7.jpg",
+      "label": "data/flood_labels/rf_flood_0035_youtube-13_jpg_rf_6a308af4efb8c1f2f17323b7_USER_CORRECTED.json",
+      "sha256": "9b129fac3d1f55d734231c3892446e78a103630744d84f88fa38f9848a916f38",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0036_youtube-50_jpg_rf_5d491cf0641814cbf408746b",
+      "image": "data/flood_labels/raw/rf_flood_0036_youtube-50_jpg_rf_5d491cf0641814cbf408746b.jpg",
+      "label": "data/flood_labels/rf_flood_0036_youtube-50_jpg_rf_5d491cf0641814cbf408746b_USER_CORRECTED.json",
+      "sha256": "eefe37cacc7f4edc869bc3a4852880aff72395aa83e0392851c7d2acf86ae1d9",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0037_youtube-5_jpg_rf_62982a5061306d271a94779e1",
+      "image": "data/flood_labels/raw/rf_flood_0037_youtube-5_jpg_rf_62982a5061306d271a94779e1.jpg",
+      "label": "data/flood_labels/rf_flood_0037_youtube-5_jpg_rf_62982a5061306d271a94779e1_USER_CORRECTED.json",
+      "sha256": "c100f8c3756aab9efea5f2dd80cbec0c533324542fd4af2a29628cfe8ebaf36c",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0038_youtube-33_jpg_rf_7b2d8ad051986d033ab97643",
+      "image": "data/flood_labels/raw/rf_flood_0038_youtube-33_jpg_rf_7b2d8ad051986d033ab97643.jpg",
+      "label": "data/flood_labels/rf_flood_0038_youtube-33_jpg_rf_7b2d8ad051986d033ab97643_USER_CORRECTED.json",
+      "sha256": "05fa44a00a1145e83c43501de03a4d59d88334f0fb291216dc87e86c83c26f1c",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0039_youtube-55_jpg_rf_775bfe702319e2d320778b12",
+      "image": "data/flood_labels/raw/rf_flood_0039_youtube-55_jpg_rf_775bfe702319e2d320778b12.jpg",
+      "label": "data/flood_labels/rf_flood_0039_youtube-55_jpg_rf_775bfe702319e2d320778b12_USER_CORRECTED.json",
+      "sha256": "0dd174fee741f66736bf4dbeec96540d509aac109e0935aa66eff491800719cd",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0040_youtube-29_jpg_rf_6e68218a3b91e9def0e6b888",
+      "image": "data/flood_labels/raw/rf_flood_0040_youtube-29_jpg_rf_6e68218a3b91e9def0e6b888.jpg",
+      "label": "data/flood_labels/rf_flood_0040_youtube-29_jpg_rf_6e68218a3b91e9def0e6b888_USER_CORRECTED.json",
+      "sha256": "18813d4f5fb004133468e11f301f40ea50fc8572ea57846577f1375baac9d820",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0041_youtube-58_jpg_rf_7914fba164b58823fd7d620a",
+      "image": "data/flood_labels/raw/rf_flood_0041_youtube-58_jpg_rf_7914fba164b58823fd7d620a.jpg",
+      "label": "data/flood_labels/rf_flood_0041_youtube-58_jpg_rf_7914fba164b58823fd7d620a_USER_CORRECTED.json",
+      "sha256": "620a21f14e9c40f6b951d6423b39249fa7e6779497008960b0d53111229429a7",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0042_youtube-45_jpg_rf_7b9c32a10b44eea08363b582",
+      "image": "data/flood_labels/raw/rf_flood_0042_youtube-45_jpg_rf_7b9c32a10b44eea08363b582.jpg",
+      "label": "data/flood_labels/rf_flood_0042_youtube-45_jpg_rf_7b9c32a10b44eea08363b582_USER_CORRECTED.json",
+      "sha256": "3440544170ab11cf3044ca6c137bdf4fe0cc53c927276bb545977d393aae874a",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0043_youtube-84_jpg_rf_7bba966cff55e0afdfcca289",
+      "image": "data/flood_labels/raw/rf_flood_0043_youtube-84_jpg_rf_7bba966cff55e0afdfcca289.jpg",
+      "label": "data/flood_labels/rf_flood_0043_youtube-84_jpg_rf_7bba966cff55e0afdfcca289_USER_CORRECTED.json",
+      "sha256": "8716d847f570efae1c8edf7969eee3e9e83d5f452cc583a70bb61492915fd280",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0044_youtube-35_jpg_rf_7f1fff4d8735a2f18b2fc7c1",
+      "image": "data/flood_labels/raw/rf_flood_0044_youtube-35_jpg_rf_7f1fff4d8735a2f18b2fc7c1.jpg",
+      "label": "data/flood_labels/rf_flood_0044_youtube-35_jpg_rf_7f1fff4d8735a2f18b2fc7c1_USER_CORRECTED.json",
+      "sha256": "84cd6a0ee3fa7d2ca3898ea8244c067c5680fe362cf1a7f21b7c1939f5b87ff4",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0045_youtube-28_jpg_rf_81513e03fedb421bd038de44",
+      "image": "data/flood_labels/raw/rf_flood_0045_youtube-28_jpg_rf_81513e03fedb421bd038de44.jpg",
+      "label": "data/flood_labels/rf_flood_0045_youtube-28_jpg_rf_81513e03fedb421bd038de44_USER_CORRECTED.json",
+      "sha256": "f65ad563b3d549c43e6105ef59d67f1e0ff18b6b4d2e3b89298f90b3de90f438",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0046_youtube-23_jpg_rf_8184d005372e4b9953be55fd",
+      "image": "data/flood_labels/raw/rf_flood_0046_youtube-23_jpg_rf_8184d005372e4b9953be55fd.jpg",
+      "label": "data/flood_labels/rf_flood_0046_youtube-23_jpg_rf_8184d005372e4b9953be55fd_USER_CORRECTED.json",
+      "sha256": "de0a60d0182deb6160b0596b724fbe99f0dbb51046f1049242da2b90daafa8ea",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0047_youtube-9_jpg_rf_844eb90fa5aaafd9f8927f2aa",
+      "image": "data/flood_labels/raw/rf_flood_0047_youtube-9_jpg_rf_844eb90fa5aaafd9f8927f2aa.jpg",
+      "label": "data/flood_labels/rf_flood_0047_youtube-9_jpg_rf_844eb90fa5aaafd9f8927f2aa_USER_CORRECTED.json",
+      "sha256": "1dfac179667a64012835a0d0281be9db057b42534f7ecddbfad3ec416e22df69",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0048_youtube-48_jpg_rf_8663d840e3818b4a8b1145c0",
+      "image": "data/flood_labels/raw/rf_flood_0048_youtube-48_jpg_rf_8663d840e3818b4a8b1145c0.jpg",
+      "label": "data/flood_labels/rf_flood_0048_youtube-48_jpg_rf_8663d840e3818b4a8b1145c0_USER_CORRECTED.json",
+      "sha256": "28bfce9469781e399c20b654e5993c3843ce9f3202f11ba0edf581428ae0d88b",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0049_youtube-39_jpg_rf_827bb45fbd7d91adc6a77c5a",
+      "image": "data/flood_labels/raw/rf_flood_0049_youtube-39_jpg_rf_827bb45fbd7d91adc6a77c5a.jpg",
+      "label": "data/flood_labels/rf_flood_0049_youtube-39_jpg_rf_827bb45fbd7d91adc6a77c5a_USER_CORRECTED.json",
+      "sha256": "3ac10eca10144b72f97f97ba60cc0811ac74951da028520bcc803b7cdad8fe58",
+      "split": "test",
+      "lines": {
+        "waterline": 2,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_flood_0050_youtube-5_jpg_rf_874d7a29555084aaa36bba96e",
+      "image": "data/flood_labels/raw/rf_flood_0050_youtube-5_jpg_rf_874d7a29555084aaa36bba96e.jpg",
+      "label": "data/flood_labels/rf_flood_0050_youtube-5_jpg_rf_874d7a29555084aaa36bba96e_USER_CORRECTED.json",
+      "sha256": "98451590da8acc8fc66485a4ba698cfd8857579e0ca49c30adb5f814aabe612a",
+      "split": "test",
+      "lines": {
+        "waterline": 1,
+        "flood_boundary": 0,
+        "river_centerline": 0,
+        "bank_line": 0
+      },
+      "reviewed": false
+    }
+  ],
+  "note": "Imported labels have reviewed:false. Open CurvStudio to review and correct."
+}

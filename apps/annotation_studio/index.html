@@ -5,57 +5,124 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>CurvStudio — Roboflow-Caliber Computer Vision Studio</title>
   <link rel="stylesheet" href="css/studio.css">
+  <link rel="stylesheet" href="css/viewport.css">
   <link rel="stylesheet" href="css/modals.css">
 </head>
 <body>
   <!-- Header Bar -->
   <header>
-    <div class="brand">
-      <div class="logo-icon">C</div>
-      <span>CurvStudio</span>
-      <span class="tag-badge">Multi-Domain Vision Engine</span>
+    <div class="header-left">
+      <button id="btnToggleSidebar" class="header-icon-btn" title="Toggle Sidebar (B)">◫</button>
+      <a href="/" class="header-brand" title="CurvStudio">
+        <div class="logo-icon">C</div>
+        <span class="brand-title">CurvStudio</span>
+      </a>
+      <div class="project-tabs" id="projectTabs"></div>
+      <select id="domainSelect" style="display:none"></select>
     </div>
 
-    <div class="top-controls">
-      <select id="domainSelect" title="Select Perception Domain"></select>
-      <button id="btnPrevSample" title="Previous sample ([)">◀</button>
-      <select id="sampleSelect" title="Select Sample"></select>
-      <button id="btnNextSample" title="Next sample (])">▶</button>
-      <button id="btnResetView" title="Reset zoom and center image">Fit Screen</button>
+    <div class="header-center">
+      <div class="sample-pager">
+        <button id="btnPrevSample" class="pager-arrow" title="Previous sample ([)">‹</button>
+        <div class="pager-info" id="pagerInfo" title="Click to jump to sample">
+          <span id="samplePagerLabel">1 / 1</span>
+        </div>
+        <button id="btnNextSample" class="pager-arrow" title="Next sample (])">›</button>
+      </div>
+      <select id="sampleSelect" style="display:none"></select>
+    </div>
+
+    <div class="header-right">
+      <div class="dataset-flow-indicator">
+        <span class="flow-dots">● — ● — ●</span>
+        <span class="flow-label">Dataset</span>
+      </div>
       <button id="btnOpenSplitter" class="btn-purple" title="Split dataset into Train, Valid, Test">📊 Dataset Split</button>
-      <button id="btnOpenTestBench" class="btn-primary" title="Live Model Inference Test Bench">⚡ Test Bench</button>
+      <button id="btnOpenTestBench" class="btn-secondary" title="Live Model Inference Test Bench">⚡ Test Bench</button>
       <button id="btnSaveTruth" class="btn-primary" title="Save Ground Truth (Cmd+S)">💾 Save Truth</button>
       <a href="/output/admin_dashboard.html" target="_blank" style="text-decoration:none">
-        <button type="button" title="Open Admin Metrics Dashboard">📈 Metrics</button>
+        <button type="button" class="btn-ghost" title="Open Admin Metrics Dashboard">📈</button>
       </a>
     </div>
   </header>
 
+  <!-- Sub-Header Filename & Status Bar -->
+  <div class="sub-header-bar">
+    <div class="sub-header-left">
+      <span id="subHeaderFilename" class="active-filename">Loading sample…</span>
+      <span id="subHeaderSplitBadge" class="split-pill unassigned">unassigned</span>
+      <span id="subHeaderReviewedBadge" class="status-badge" style="display:none">Reviewed</span>
+    </div>
+    <div class="sub-header-right">
+      <span id="subHeaderDomainMeta" class="domain-sub-meta">Local Engine • $0/mo</span>
+    </div>
+  </div>
+
   <!-- App Body Layout -->
   <div class="app-body">
-    <!-- Left Multi-Tab Navigation Sidebar -->
-    <div class="sidebar">
-      <div class="sidebar-tabs">
-        <button class="sidebar-tab-btn active" data-tab="labels">Labels</button>
-        <button class="sidebar-tab-btn" data-tab="layers">Layers</button>
-        <button class="sidebar-tab-btn" data-tab="raw">Raw</button>
-        <button class="sidebar-tab-btn" data-tab="history">Audit</button>
-        <button class="sidebar-tab-btn" data-tab="copilot">Copilot ✨</button>
+    <!-- Two-Tier Left Navigation Sidebar (Roboflow-Grade) -->
+    <div class="two-tier-sidebar" id="twoTierSidebar">
+      <!-- Tier 1: Slim Leftmost Icon Rail (56px) -->
+      <div class="sidebar-rail" id="sidebarRail">
+        <button class="rail-btn active" data-tab="labels" title="Labels & Annotations">
+          <span class="rail-icon">🏷️</span>
+          <span class="rail-label">Labels</span>
+        </button>
+        <button class="rail-btn" data-tab="layers" title="Layers & Visibility">
+          <span class="rail-icon">☰</span>
+          <span class="rail-label">Layers</span>
+        </button>
+        <button class="rail-btn" data-tab="history" title="Audit Trail">
+          <span class="rail-icon">🕒</span>
+          <span class="rail-label">History</span>
+        </button>
+        <button class="rail-btn" data-tab="raw" title="Raw Data (JSON)">
+          <span class="rail-icon">&lt;/&gt;</span>
+          <span class="rail-label">Raw Data</span>
+        </button>
+        <button class="rail-btn" data-tab="copilot" title="Copilot ✨ & Morphology">
+          <span class="rail-icon">✨</span>
+          <span class="rail-label">Copilot</span>
+        </button>
       </div>
 
-      <div class="sidebar-content">
+      <!-- Tier 2: Secondary Content Panel (260px) -->
+      <div class="sidebar-panel" id="sidebarPanel">
         <!-- Tab 1: Labels & Classes -->
         <div id="tab-labels" class="tab-pane active">
-          <div class="sidebar-section-title">
-            <span>Classes / Palette</span>
-            <span id="totalAnnotationCount" class="class-count-badge">0</span>
+          <div class="panel-header">
+            <div class="panel-title-row">
+              <span class="panel-title">Annotations</span>
+              <span id="totalAnnotationCount" class="class-count-badge">0</span>
+            </div>
+            <div class="panel-actions">
+              <button id="btnToggleAbsent" class="panel-icon-btn" title="Mark Active Feature Absent (A)">⇄</button>
+            </div>
           </div>
+
+          <div class="panel-subtabs">
+            <button class="panel-subtab-btn active" id="subtabClasses" data-subtab="classes">Classes</button>
+            <button class="panel-subtab-btn" id="subtabLayers" data-subtab="layers">Layers</button>
+          </div>
+
+          <div class="panel-group-header">
+            <span id="panelGroupLabel" class="panel-group-label">Group: active</span>
+          </div>
+
+          <!-- Active Annotated Classes -->
           <div id="classList" class="class-list"></div>
 
-          <div class="sidebar-section-title" style="margin-top:8px">
-            <span>Sample Metadata</span>
-          </div>
+          <!-- Unused Classes Group (Roboflow Parity) -->
+          <div class="sidebar-section-title" style="margin-top:14px">UNUSED CLASSES</div>
+          <div id="unusedClassList" class="unused-class-list"></div>
+
+          <!-- Sample Tags Manager -->
+          <div class="sidebar-section-title" style="margin-top:16px">Tags</div>
           <div id="sampleTags" class="tags-container"></div>
+          <div class="tag-input-row">
+            <input type="text" id="inpNewTag" class="tag-input" placeholder="Add tag…">
+            <button id="btnAddTag" class="btn-tag-add">+ Add</button>
+          </div>
         </div>
 
         <!-- Tab 2: Layers & Opacity -->
@@ -116,43 +183,47 @@
           <div id="copilotContainer"></div>
         </div>
       </div>
-
-      <!-- Left Sidebar Footer Shortcuts -->
-      <div style="padding:12px 14px;border-top:1px solid var(--border);font-size:11px;color:var(--txt-muted);line-height:1.6">
-        <div><b>Shortcuts:</b> <code>1-4</code> Class • <code>H</code> Pan • <code>L</code> Line • <code>P</code> Poly</div>
-        <div><code>B</code> Brush • <code>R</code> Box • <code>S</code> Snap • <code>A</code> Absent • <code>⌘S</code> Save</div>
-      </div>
     </div>
 
     <!-- Canvas Viewport -->
     <div class="canvas-container" id="canvasContainer">
       <canvas id="studioCanvas"></canvas>
 
-      <!-- Viewport HUD -->
+      <!-- Viewport Top HUD -->
       <div class="canvas-hud">
         <span id="hudCoords">X: 0, Y: 0</span>
         <span id="hudZoom">Zoom: 100%</span>
         <span id="hudPoints">Annotations: 0</span>
       </div>
 
-      <!-- Floating Right Tool Dock (Roboflow-Grade) -->
+      <!-- Floating Bottom Controls Bar (Roboflow Grade) -->
+      <div class="floating-bottom-bar" id="floatingBottomBar">
+        <div class="zoom-pill">
+          <button class="zoom-btn" id="btnZoomOut" title="Zoom Out (-5%)">—</button>
+          <span class="zoom-text" id="lblZoomPct">100%</span>
+          <button class="zoom-btn" id="btnZoomIn" title="Zoom In (+5%)">+</button>
+          <button class="zoom-reset-btn" id="btnResetView" title="Reset view and fit to screen">RESET</button>
+        </div>
+        <button class="bottom-circle-btn" id="btnToggleTheme" title="Toggle Brightness / Invert">☀️</button>
+        <button class="bottom-circle-btn" id="btnOpenShortcuts" title="Keyboard Shortcuts (?)">⌨️</button>
+      </div>
+
+      <!-- Floating Right Tool Dock (Roboflow Grade) -->
       <div class="tool-dock">
-        <button class="dock-btn" data-tool="pan" title="Pan Canvas (H / Space)">✋</button>
-        <button class="dock-btn active" data-tool="polyline" title="Polyline / Crease Tool (L)">✏️</button>
+        <button class="dock-btn" data-tool="pan" title="Select / Pan (H / Space)">✋</button>
+        <button class="dock-btn" data-tool="bbox" title="Bounding Box (R)">▢</button>
         <button class="dock-btn" data-tool="polygon" title="Polygon Area Tool (P)">⬡</button>
         <button class="dock-btn" data-tool="brush" title="Brush Stroke Tool (B)">🖌️</button>
-        <button class="dock-btn" data-tool="bbox" title="Bounding Box (R)">▢</button>
-
-        <div class="dock-divider"></div>
         <button class="dock-btn" data-tool="wand" title="AI Contour Snap (S)">
           🧲
           <span class="dock-ai-badge">AI</span>
         </button>
+        <button class="dock-btn active" data-tool="polyline" title="Polyline / Crease Tool (L)">✏️</button>
 
         <div class="dock-divider"></div>
-        <button class="dock-btn" id="toolUndo" data-action="undo" title="Undo (Cmd+Z)">↩</button>
-        <button class="dock-btn" id="toolRedo" data-action="redo" title="Redo (Cmd+Y)">↪</button>
-        <button class="dock-btn" id="toolAbsent" data-action="absent" title="Mark Feature Absent (A)">🚫</button>
+        <button class="dock-btn" id="toolUndo" data-action="undo" title="Undo (Ctrl+Z / Cmd+Z)">↩</button>
+        <button class="dock-btn" id="toolRedo" data-action="redo" title="Redo (Ctrl+Y / Cmd+Y)">↪</button>
+        <button class="dock-btn" id="toolAbsent" data-action="absent" title="Mark Feature Absent (A)">⊘</button>
       </div>
 
       <!-- Hover Preview Cards -->
@@ -166,17 +237,22 @@
         </div>
       </div>
 
-      <!-- Brush Sub-Popover -->
+      <!-- Brush Sub-Popover (Roboflow Parity) -->
       <div class="brush-sub-popover" id="brushSubPopover">
-        <div style="font-size:11.5px;font-weight:700">Brush Settings</div>
-        <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px">
-          <span>Radius</span>
-          <span id="lblBrushSize">16px</span>
+        <div class="brush-popover-header">
+          <span>🖌️ Brush Tool</span>
         </div>
-        <input type="range" id="rngBrushSize" min="4" max="64" value="16" style="accent-color:var(--blue)">
-        <div style="display:flex;gap:6px">
-          <button id="btnBrushDraw" class="btn-primary" style="flex:1;font-size:11px;padding:4px">Draw</button>
-          <button id="btnBrushErase" style="flex:1;font-size:11px;padding:4px">Erase</button>
+        <div class="brush-mode-row">
+          <span class="brush-label">Mode</span>
+          <div class="brush-segmented-toggle">
+            <button id="btnBrushDraw" class="brush-seg-btn active" title="Draw">🖌️ Draw</button>
+            <button id="btnBrushErase" class="brush-seg-btn" title="Erase">🧽 Erase</button>
+          </div>
+        </div>
+        <div class="brush-size-row">
+          <span class="brush-label">Size</span>
+          <input type="range" id="rngBrushSize" min="4" max="64" value="15" class="brush-slider">
+          <span id="lblBrushSize" class="brush-size-val">15px</span>
         </div>
       </div>
 
@@ -192,10 +268,7 @@
     </div>
   </div>
 
-  <!-- Bottom Thumbnail Gallery -->
-  <div class="bottom-gallery" id="bottomGallery"></div>
-
-  <!-- 3-Way Dataset Splitter Modal (Roboflow-Grade) -->
+  <!-- Dataset Partition Split Modal -->
   <div class="modal-backdrop" id="datasetSplitModal">
     <div class="modal-window">
       <div class="modal-header">
@@ -295,6 +368,44 @@
         <button id="btnRunInference" class="btn-primary" style="width:100%;justify-content:center">
           ▶ Run CurvEngine Inference
         </button>
+      </div>
+    </div>
+  <!-- Keyboard Shortcuts Modal -->
+  <div class="modal-backdrop" id="shortcutsModal">
+    <div class="modal-window" style="max-width:540px">
+      <div class="modal-header">
+        <span class="modal-title">Keyboard Shortcuts</span>
+        <button class="modal-close" id="btnCloseShortcuts">✕</button>
+      </div>
+      <div class="modal-body" style="gap:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px">
+          <div style="background:var(--surface-2);padding:10px;border-radius:6px;border:1px solid var(--border);display:flex;flex-direction:column;gap:6px">
+            <b style="color:var(--txt)">Navigation</b>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--txt-muted)">Pan / Hand</span><code>H / Space</code></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--txt-muted)">Prev Image</span><code>[</code></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--txt-muted)">Next Image</span><code>]</code></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--txt-muted)">Zoom In/Out</span><code>Scroll / +/-</code></div>
+          </div>
+          <div style="background:var(--surface-2);padding:10px;border-radius:6px;border:1px solid var(--border);display:flex;flex-direction:column;gap:6px">
+            <b style="color:var(--txt)">Annotation Tools</b>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--txt-muted)">Polyline Tool</span><code>L</code></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--txt-muted)">Polygon Tool</span><code>P</code></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--txt-muted)">Brush Tool</span><code>B</code></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--txt-muted)">BBox Tool</span><code>R</code></div>
+          </div>
+          <div style="background:var(--surface-2);padding:10px;border-radius:6px;border:1px solid var(--border);display:flex;flex-direction:column;gap:6px">
+            <b style="color:var(--txt)">AI & Actions</b>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--txt-muted)">AI Contour Snap</span><code>S</code></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--txt-muted)">Mark Absent</span><code>A</code></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--txt-muted)">Save Truth</span><code>Cmd+S / Ctrl+S</code></div>
+          </div>
+          <div style="background:var(--surface-2);padding:10px;border-radius:6px;border:1px solid var(--border);display:flex;flex-direction:column;gap:6px">
+            <b style="color:var(--txt)">History & Classes</b>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--txt-muted)">Undo</span><code>Cmd+Z / Ctrl+Z</code></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--txt-muted)">Redo</span><code>Cmd+Y / Ctrl+Y</code></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--txt-muted)">Select Class</span><code>1, 2, 3, 4</code></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

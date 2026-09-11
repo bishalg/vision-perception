@@ -1,10 +1,669 @@
 {
   "schema": "palm_labels_manifest_v1",
-  "status": "empty",
-  "note": "Run: python3 scripts/download_palm_labels.py --limit 100",
-  "source": null,
-  "license": null,
-  "downloaded_at": null,
-  "limit": 0,
-  "samples": []
+  "status": "ready",
+  "source": {
+    "workspace": "palms-lf79v",
+    "project": "palm-lines-recognition-lbedg",
+    "version": 1,
+    "format": "yolov8",
+    "url": "https://universe.roboflow.com/palms-lf79v/palm-lines-recognition-lbedg",
+    "tag": "roboflow_import:palms-lf79v/palm-lines-recognition-lbedg/1"
+  },
+  "license": "CC BY 4.0",
+  "downloaded_at": "2026-09-11T07:15:06Z",
+  "limit": 50,
+  "count": 50,
+  "samples": [
+    {
+      "stem": "rf_00001_114_image_palm_jpeg.rf.264c463276c951cd89e184b2c",
+      "image": "data/palm_labels/raw/rf_00001_114_image_palm_jpeg.rf.264c463276c951cd89e184b2c.jpg",
+      "label": "data/palm_labels/rf_00001_114_image_palm_jpeg.rf.264c463276c951cd89e184b2c_USER_CORRECTED.json",
+      "sha256": "82ed05a0aaec48878ad6dc66142166e28ef22655dcdfbe22b5a0a8b7da73c81b",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00002_186_image_palm_jpeg.rf.8d1d7a20d8e4084d65359e09e",
+      "image": "data/palm_labels/raw/rf_00002_186_image_palm_jpeg.rf.8d1d7a20d8e4084d65359e09e.jpg",
+      "label": "data/palm_labels/rf_00002_186_image_palm_jpeg.rf.8d1d7a20d8e4084d65359e09e_USER_CORRECTED.json",
+      "sha256": "81343b55f8de13b07022ee9100ef5df21308b037fa54e4a540582755f474668a",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00003_267_image_palm_jpeg.rf.b6e55c37132e6d81da2456f04",
+      "image": "data/palm_labels/raw/rf_00003_267_image_palm_jpeg.rf.b6e55c37132e6d81da2456f04.jpg",
+      "label": "data/palm_labels/rf_00003_267_image_palm_jpeg.rf.b6e55c37132e6d81da2456f04_USER_CORRECTED.json",
+      "sha256": "b50b5b43963a18d19063cea30eafd668f2c00553b6c6b758699b2a6c3a6104f2",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00004_342_image_palm_jpeg.rf.71df03622fff9a3cfb22e9ed2",
+      "image": "data/palm_labels/raw/rf_00004_342_image_palm_jpeg.rf.71df03622fff9a3cfb22e9ed2.jpg",
+      "label": "data/palm_labels/rf_00004_342_image_palm_jpeg.rf.71df03622fff9a3cfb22e9ed2_USER_CORRECTED.json",
+      "sha256": "77978ec421aaed3139c38e172d687b41eb9485b92cb8447f9be173bb15106aff",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00005_421_image_palm_jpeg.rf.13354996159c092b0019823dc",
+      "image": "data/palm_labels/raw/rf_00005_421_image_palm_jpeg.rf.13354996159c092b0019823dc.jpg",
+      "label": "data/palm_labels/rf_00005_421_image_palm_jpeg.rf.13354996159c092b0019823dc_USER_CORRECTED.json",
+      "sha256": "a489a04700124e4143067c936159546992b554c29b41e7edd6bbdef0ba26f7f9",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00006_500_image_palm_jpeg.rf.f40735359ea099be9ef7d8413",
+      "image": "data/palm_labels/raw/rf_00006_500_image_palm_jpeg.rf.f40735359ea099be9ef7d8413.jpg",
+      "label": "data/palm_labels/rf_00006_500_image_palm_jpeg.rf.f40735359ea099be9ef7d8413_USER_CORRECTED.json",
+      "sha256": "226efadfc36e795e79e8313c6d77ceca2ad0336c56bc89d8e9270e30bbd81bca",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00007_593_image_palm_jpeg.rf.43153e25e0befc57d5506bcd6",
+      "image": "data/palm_labels/raw/rf_00007_593_image_palm_jpeg.rf.43153e25e0befc57d5506bcd6.jpg",
+      "label": "data/palm_labels/rf_00007_593_image_palm_jpeg.rf.43153e25e0befc57d5506bcd6_USER_CORRECTED.json",
+      "sha256": "8a69e0f3116f83bcec3a5fffee8768fa3ec899b11a356690532b2073562b0873",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00008_FIMG_0018_JPG.rf.0083e9d021109589e3ac694c62863af",
+      "image": "data/palm_labels/raw/rf_00008_FIMG_0018_JPG.rf.0083e9d021109589e3ac694c62863af.jpg",
+      "label": "data/palm_labels/rf_00008_FIMG_0018_JPG.rf.0083e9d021109589e3ac694c62863af_USER_CORRECTED.json",
+      "sha256": "e8587b131fbc72314ce393f7e1b0c502e15db5b44ad6c91851c214c1761af5e9",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00009_FIMG_0077_JPG.rf.7da1464425114da177b131c7367e2bd",
+      "image": "data/palm_labels/raw/rf_00009_FIMG_0077_JPG.rf.7da1464425114da177b131c7367e2bd.jpg",
+      "label": "data/palm_labels/rf_00009_FIMG_0077_JPG.rf.7da1464425114da177b131c7367e2bd_USER_CORRECTED.json",
+      "sha256": "f9b902536b9587f6fc8f6b6a41087c96e3af3b54826944b4ef52fb59326399f3",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00010_FIMG_0139_JPG.rf.c47bd1dacae59a0a93c8e025043e765",
+      "image": "data/palm_labels/raw/rf_00010_FIMG_0139_JPG.rf.c47bd1dacae59a0a93c8e025043e765.jpg",
+      "label": "data/palm_labels/rf_00010_FIMG_0139_JPG.rf.c47bd1dacae59a0a93c8e025043e765_USER_CORRECTED.json",
+      "sha256": "5b0b940eabf54307bdf617c5267913d4bf044d5c38766684598b1b6b0b74b601",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00011_FIMG_0208_JPG.rf.4550770229ce0d7aee2dfcdbc503b9e",
+      "image": "data/palm_labels/raw/rf_00011_FIMG_0208_JPG.rf.4550770229ce0d7aee2dfcdbc503b9e.jpg",
+      "label": "data/palm_labels/rf_00011_FIMG_0208_JPG.rf.4550770229ce0d7aee2dfcdbc503b9e_USER_CORRECTED.json",
+      "sha256": "79540f28b602f55dc8a629321ffdbae12b384ac8a20543bb970ec7b1fcf88214",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00012_FIMG_0279_JPG.rf.36c64100b524da64001a9c1da7cab86",
+      "image": "data/palm_labels/raw/rf_00012_FIMG_0279_JPG.rf.36c64100b524da64001a9c1da7cab86.jpg",
+      "label": "data/palm_labels/rf_00012_FIMG_0279_JPG.rf.36c64100b524da64001a9c1da7cab86_USER_CORRECTED.json",
+      "sha256": "154c8025698f8732cb550fe3e2e25a153ac7e5a99103543b1faa31532dce19c6",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00013_FIMG_0347_JPG.rf.27729a0939dfade2d5cda49a677f079",
+      "image": "data/palm_labels/raw/rf_00013_FIMG_0347_JPG.rf.27729a0939dfade2d5cda49a677f079.jpg",
+      "label": "data/palm_labels/rf_00013_FIMG_0347_JPG.rf.27729a0939dfade2d5cda49a677f079_USER_CORRECTED.json",
+      "sha256": "7d9ae525ef98991922b7902abd8b151d0a12fe5c3c29ccbdbf33841ae897e8e2",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00014_Hand_0000143_jpg.rf.a2b10f4bff2133d3bd7bcab85751",
+      "image": "data/palm_labels/raw/rf_00014_Hand_0000143_jpg.rf.a2b10f4bff2133d3bd7bcab85751.jpg",
+      "label": "data/palm_labels/rf_00014_Hand_0000143_jpg.rf.a2b10f4bff2133d3bd7bcab85751_USER_CORRECTED.json",
+      "sha256": "ab87c13f9a73e5fdad70d848c2fa826f619bf32c96f749b0095b3746cfcb4500",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00015_Hand_0000388_jpg.rf.456775dcb64c49f4e5ced4e294aa",
+      "image": "data/palm_labels/raw/rf_00015_Hand_0000388_jpg.rf.456775dcb64c49f4e5ced4e294aa.jpg",
+      "label": "data/palm_labels/rf_00015_Hand_0000388_jpg.rf.456775dcb64c49f4e5ced4e294aa_USER_CORRECTED.json",
+      "sha256": "12d48ef08bce662f05753bcee91edb6e4380dc25c3f524bc6b1ebad478296e5c",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00016_Hand_0000641_jpg.rf.c0dd31035c35dbe95858f5ca8a29",
+      "image": "data/palm_labels/raw/rf_00016_Hand_0000641_jpg.rf.c0dd31035c35dbe95858f5ca8a29.jpg",
+      "label": "data/palm_labels/rf_00016_Hand_0000641_jpg.rf.c0dd31035c35dbe95858f5ca8a29_USER_CORRECTED.json",
+      "sha256": "f9e7822a4e75876e84908ebc5abcde2752e0e6c22bfb60324e5086621a9b7df8",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00017_Hand_0000883_jpg.rf.1893bdad14e68de7cc2d982d0248",
+      "image": "data/palm_labels/raw/rf_00017_Hand_0000883_jpg.rf.1893bdad14e68de7cc2d982d0248.jpg",
+      "label": "data/palm_labels/rf_00017_Hand_0000883_jpg.rf.1893bdad14e68de7cc2d982d0248_USER_CORRECTED.json",
+      "sha256": "a51706371a4292e6ea87545ca5ad62394042bddc3c55dbfb80d71bbbcdec4023",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00018_Hand_0001191_jpg.rf.0889a99c2f4bc27876076fddb7d1",
+      "image": "data/palm_labels/raw/rf_00018_Hand_0001191_jpg.rf.0889a99c2f4bc27876076fddb7d1.jpg",
+      "label": "data/palm_labels/rf_00018_Hand_0001191_jpg.rf.0889a99c2f4bc27876076fddb7d1_USER_CORRECTED.json",
+      "sha256": "b54d9e89d6575dba5fed2ec1d5d4b114e63b8b28c7f36b3af050b8fde75fc983",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00019_Hand_0001420_jpg.rf.27279607d2fe1ac0b5c1d9a061bd",
+      "image": "data/palm_labels/raw/rf_00019_Hand_0001420_jpg.rf.27279607d2fe1ac0b5c1d9a061bd.jpg",
+      "label": "data/palm_labels/rf_00019_Hand_0001420_jpg.rf.27279607d2fe1ac0b5c1d9a061bd_USER_CORRECTED.json",
+      "sha256": "7fff441a59ab8fba9da6804211e0bbf4921e7dc324adcee5ebade3d099d8f52e",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00020_Hand_0001658_jpg.rf.12fb8848fcdd46e9bfbf495bfd05",
+      "image": "data/palm_labels/raw/rf_00020_Hand_0001658_jpg.rf.12fb8848fcdd46e9bfbf495bfd05.jpg",
+      "label": "data/palm_labels/rf_00020_Hand_0001658_jpg.rf.12fb8848fcdd46e9bfbf495bfd05_USER_CORRECTED.json",
+      "sha256": "f46bfc798d0da85b279d4e2733f719425c7312174ebbcdf12164b64787c58066",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00021_Hand_0001913_jpg.rf.08d8043912ab7d1d97b7e00d0f97",
+      "image": "data/palm_labels/raw/rf_00021_Hand_0001913_jpg.rf.08d8043912ab7d1d97b7e00d0f97.jpg",
+      "label": "data/palm_labels/rf_00021_Hand_0001913_jpg.rf.08d8043912ab7d1d97b7e00d0f97_USER_CORRECTED.json",
+      "sha256": "0aa49443557882fe21ccfe4afb704a1763041aae49335f29afc89922ead4249e",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00022_Hand_0002198_jpg.rf.42858c4fccdde44328a0b2ec8af1",
+      "image": "data/palm_labels/raw/rf_00022_Hand_0002198_jpg.rf.42858c4fccdde44328a0b2ec8af1.jpg",
+      "label": "data/palm_labels/rf_00022_Hand_0002198_jpg.rf.42858c4fccdde44328a0b2ec8af1_USER_CORRECTED.json",
+      "sha256": "40a85f90a8f8baf34e986d9f004b2ef139306afcb42538d32c4876911fee69d5",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00023_Hand_0002764_jpg.rf.06432bcd32cc43e204b7811533f4",
+      "image": "data/palm_labels/raw/rf_00023_Hand_0002764_jpg.rf.06432bcd32cc43e204b7811533f4.jpg",
+      "label": "data/palm_labels/rf_00023_Hand_0002764_jpg.rf.06432bcd32cc43e204b7811533f4_USER_CORRECTED.json",
+      "sha256": "f27258754f975c3af13402088a87b5e7cdc963c699e0d9d73431d7c155798305",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00024_Hand_0003015_jpg.rf.b2ed2f09163a84886303a66640e4",
+      "image": "data/palm_labels/raw/rf_00024_Hand_0003015_jpg.rf.b2ed2f09163a84886303a66640e4.jpg",
+      "label": "data/palm_labels/rf_00024_Hand_0003015_jpg.rf.b2ed2f09163a84886303a66640e4_USER_CORRECTED.json",
+      "sha256": "74a1705a745b08e8f799e72c82a8b3d0a2e5491df8c42068b46753b32ab7ebb7",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00025_Hand_0003322_jpg.rf.e6aa554156be176b458e334f3e87",
+      "image": "data/palm_labels/raw/rf_00025_Hand_0003322_jpg.rf.e6aa554156be176b458e334f3e87.jpg",
+      "label": "data/palm_labels/rf_00025_Hand_0003322_jpg.rf.e6aa554156be176b458e334f3e87_USER_CORRECTED.json",
+      "sha256": "a8daaf1606d677692b6d963b0b257825993d7b7b8ed64574d686f9999cb3a06e",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00026_Hand_0003613_jpg.rf.5117270b6e212b7231fcf9b1f5d4",
+      "image": "data/palm_labels/raw/rf_00026_Hand_0003613_jpg.rf.5117270b6e212b7231fcf9b1f5d4.jpg",
+      "label": "data/palm_labels/rf_00026_Hand_0003613_jpg.rf.5117270b6e212b7231fcf9b1f5d4_USER_CORRECTED.json",
+      "sha256": "9120136f528a8242e0983d2764232b477b95bc690a48adcb1eaaaecf2765106f",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00027_Hand_0003958_jpg.rf.ab3acd3dcc1483f5f8f1afbda0fa",
+      "image": "data/palm_labels/raw/rf_00027_Hand_0003958_jpg.rf.ab3acd3dcc1483f5f8f1afbda0fa.jpg",
+      "label": "data/palm_labels/rf_00027_Hand_0003958_jpg.rf.ab3acd3dcc1483f5f8f1afbda0fa_USER_CORRECTED.json",
+      "sha256": "70bd5fffc92aee9cfa8a636dbbec951eaf28a7212fee254866228dcf67b2b867",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00028_Hand_0004345_jpg.rf.262415f9165a9e4a0892a36ae300",
+      "image": "data/palm_labels/raw/rf_00028_Hand_0004345_jpg.rf.262415f9165a9e4a0892a36ae300.jpg",
+      "label": "data/palm_labels/rf_00028_Hand_0004345_jpg.rf.262415f9165a9e4a0892a36ae300_USER_CORRECTED.json",
+      "sha256": "87a97b52ca33a79790653765f1789b7c5df26d1a171c08b7474a7611877c29f2",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00029_Hand_0004660_jpg.rf.ae11bda960c498ca142906af739e",
+      "image": "data/palm_labels/raw/rf_00029_Hand_0004660_jpg.rf.ae11bda960c498ca142906af739e.jpg",
+      "label": "data/palm_labels/rf_00029_Hand_0004660_jpg.rf.ae11bda960c498ca142906af739e_USER_CORRECTED.json",
+      "sha256": "fb81b82bf650e4bb9e924fbcb7aa7de25f6c97b88cbb22544f52f70371dc864a",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00030_Hand_0004983_jpg.rf.e8399e4f509c0158cf8a5b4b3b19",
+      "image": "data/palm_labels/raw/rf_00030_Hand_0004983_jpg.rf.e8399e4f509c0158cf8a5b4b3b19.jpg",
+      "label": "data/palm_labels/rf_00030_Hand_0004983_jpg.rf.e8399e4f509c0158cf8a5b4b3b19_USER_CORRECTED.json",
+      "sha256": "26c8b396064afda28a532d9e7fa24336cc2c9962a4182c32f0ef2a9d5ce364f4",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00031_Hand_0005292_jpg.rf.f011a8fcb07b00241a39a5914d76",
+      "image": "data/palm_labels/raw/rf_00031_Hand_0005292_jpg.rf.f011a8fcb07b00241a39a5914d76.jpg",
+      "label": "data/palm_labels/rf_00031_Hand_0005292_jpg.rf.f011a8fcb07b00241a39a5914d76_USER_CORRECTED.json",
+      "sha256": "fde971ac0a3b5c4ec216d4eb87d8f00832880871a468bfe562b005bf86890ee9",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00032_Hand_0005442_jpg.rf.312c7b91416b836cdb65dc983cfd",
+      "image": "data/palm_labels/raw/rf_00032_Hand_0005442_jpg.rf.312c7b91416b836cdb65dc983cfd.jpg",
+      "label": "data/palm_labels/rf_00032_Hand_0005442_jpg.rf.312c7b91416b836cdb65dc983cfd_USER_CORRECTED.json",
+      "sha256": "5d52637d04aafe81e374dae72e9a69bb34c4c044518a9c03b4e9dacbde3f2c1c",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00033_Hand_0005651_jpg.rf.dad0275dc01082b52202b834a1f9",
+      "image": "data/palm_labels/raw/rf_00033_Hand_0005651_jpg.rf.dad0275dc01082b52202b834a1f9.jpg",
+      "label": "data/palm_labels/rf_00033_Hand_0005651_jpg.rf.dad0275dc01082b52202b834a1f9_USER_CORRECTED.json",
+      "sha256": "0582e7d144024003d0938317551603904d8a5baa355d5a9a3a336830e41d87b0",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00034_Hand_0005811_jpg.rf.7ecc7e1c879801dab38e45aa3815",
+      "image": "data/palm_labels/raw/rf_00034_Hand_0005811_jpg.rf.7ecc7e1c879801dab38e45aa3815.jpg",
+      "label": "data/palm_labels/rf_00034_Hand_0005811_jpg.rf.7ecc7e1c879801dab38e45aa3815_USER_CORRECTED.json",
+      "sha256": "b72998e065844bef3773932c412d6ed945030d752687a2b3422338c006fc3c52",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00035_Hand_0006065_jpg.rf.b7b32824860f6fa049f7bdb1b09d",
+      "image": "data/palm_labels/raw/rf_00035_Hand_0006065_jpg.rf.b7b32824860f6fa049f7bdb1b09d.jpg",
+      "label": "data/palm_labels/rf_00035_Hand_0006065_jpg.rf.b7b32824860f6fa049f7bdb1b09d_USER_CORRECTED.json",
+      "sha256": "48a9eb3bcbc5cb2f5b7436556e036f85a166898543f97816b7139f5957b922c1",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00036_Hand_0006299_jpg.rf.db8a81c32cc8f438c8bd82cab6ff",
+      "image": "data/palm_labels/raw/rf_00036_Hand_0006299_jpg.rf.db8a81c32cc8f438c8bd82cab6ff.jpg",
+      "label": "data/palm_labels/rf_00036_Hand_0006299_jpg.rf.db8a81c32cc8f438c8bd82cab6ff_USER_CORRECTED.json",
+      "sha256": "540d64ff01f4b8f77571f862dd60974640bad1e2720beb2f07ee7755edb30d4a",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00037_Hand_0006563_jpg.rf.b2e45c31e3d05d2da976223d438b",
+      "image": "data/palm_labels/raw/rf_00037_Hand_0006563_jpg.rf.b2e45c31e3d05d2da976223d438b.jpg",
+      "label": "data/palm_labels/rf_00037_Hand_0006563_jpg.rf.b2e45c31e3d05d2da976223d438b_USER_CORRECTED.json",
+      "sha256": "a914a2d7c48040f8487fe17be5418232e4487855563ce86fa470488fd2f3600a",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00038_Hand_0010993_jpg.rf.aab40f5d5064fa2f5dc3bf79ab68",
+      "image": "data/palm_labels/raw/rf_00038_Hand_0010993_jpg.rf.aab40f5d5064fa2f5dc3bf79ab68.jpg",
+      "label": "data/palm_labels/rf_00038_Hand_0010993_jpg.rf.aab40f5d5064fa2f5dc3bf79ab68_USER_CORRECTED.json",
+      "sha256": "ef07de5e9e918f1ca4fae4e6dbcfce9a5bc5242337f1a882406f85ba6a4a0272",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00039_Hand_0011158_jpg.rf.708e4491792eece87295377fe81a",
+      "image": "data/palm_labels/raw/rf_00039_Hand_0011158_jpg.rf.708e4491792eece87295377fe81a.jpg",
+      "label": "data/palm_labels/rf_00039_Hand_0011158_jpg.rf.708e4491792eece87295377fe81a_USER_CORRECTED.json",
+      "sha256": "c9f6d60a067755f189094cd7ca4cfa58fd6e66ebf989e8fcc92d8f3d127d282f",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00040_Hand_0011323_jpg.rf.de6d904654e1e9601171fcaf6d9c",
+      "image": "data/palm_labels/raw/rf_00040_Hand_0011323_jpg.rf.de6d904654e1e9601171fcaf6d9c.jpg",
+      "label": "data/palm_labels/rf_00040_Hand_0011323_jpg.rf.de6d904654e1e9601171fcaf6d9c_USER_CORRECTED.json",
+      "sha256": "fad81b33b3479613205b4ae55c3c5bf42cf436fb0017ef41792fd0ce8565714f",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00041_Hand_0011481_jpg.rf.954a3b655e8650d65642e1ed7921",
+      "image": "data/palm_labels/raw/rf_00041_Hand_0011481_jpg.rf.954a3b655e8650d65642e1ed7921.jpg",
+      "label": "data/palm_labels/rf_00041_Hand_0011481_jpg.rf.954a3b655e8650d65642e1ed7921_USER_CORRECTED.json",
+      "sha256": "4e715fe37cc801720da697806ca6b8d75abc355504a798d5a1eb832cfd6b86d5",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00042_Hand_0011609_jpg.rf.f1253415d2e83e063d6f23bb81c8",
+      "image": "data/palm_labels/raw/rf_00042_Hand_0011609_jpg.rf.f1253415d2e83e063d6f23bb81c8.jpg",
+      "label": "data/palm_labels/rf_00042_Hand_0011609_jpg.rf.f1253415d2e83e063d6f23bb81c8_USER_CORRECTED.json",
+      "sha256": "ff94fb4ca1c364a70a897a865de84f2131945122ad79134ed8bf1d8e53b8f4e1",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00043_IMG_0024_JPG.rf.566e5a58fcf3a70a6df7331a1b169ab3",
+      "image": "data/palm_labels/raw/rf_00043_IMG_0024_JPG.rf.566e5a58fcf3a70a6df7331a1b169ab3.jpg",
+      "label": "data/palm_labels/rf_00043_IMG_0024_JPG.rf.566e5a58fcf3a70a6df7331a1b169ab3_USER_CORRECTED.json",
+      "sha256": "6ba7cfdffdc477d7d6bf6db7e732f10b7d2c26bddfa626b31c027ac5670344c3",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00044_IMG_0087_JPG.rf.38f2272bf2f9382099eb590e5cb519a5",
+      "image": "data/palm_labels/raw/rf_00044_IMG_0087_JPG.rf.38f2272bf2f9382099eb590e5cb519a5.jpg",
+      "label": "data/palm_labels/rf_00044_IMG_0087_JPG.rf.38f2272bf2f9382099eb590e5cb519a5_USER_CORRECTED.json",
+      "sha256": "47ed2201541c1221ae84a6c58cefce1efe18e666c9cfd70f8a0e8aa5f65219a4",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00045_IMG_0152_JPG.rf.c5fd93cd656d58f6c499eb1e62665396",
+      "image": "data/palm_labels/raw/rf_00045_IMG_0152_JPG.rf.c5fd93cd656d58f6c499eb1e62665396.jpg",
+      "label": "data/palm_labels/rf_00045_IMG_0152_JPG.rf.c5fd93cd656d58f6c499eb1e62665396_USER_CORRECTED.json",
+      "sha256": "9f4aed2eb372c982e880f405f581c83da196de002d516407129f74d77a26dbec",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00046_IMG_0220_JPG.rf.2131f9fdf61bcfa71dab0b7c5b784a8b",
+      "image": "data/palm_labels/raw/rf_00046_IMG_0220_JPG.rf.2131f9fdf61bcfa71dab0b7c5b784a8b.jpg",
+      "label": "data/palm_labels/rf_00046_IMG_0220_JPG.rf.2131f9fdf61bcfa71dab0b7c5b784a8b_USER_CORRECTED.json",
+      "sha256": "ee0a41087d6720883779ec71ab02b4fda0a48325d0f83d608467bd525fba74ff",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00047_IMG_0299_JPG.rf.dd581f5dc1c1305c312d8bc57a1164d9",
+      "image": "data/palm_labels/raw/rf_00047_IMG_0299_JPG.rf.dd581f5dc1c1305c312d8bc57a1164d9.jpg",
+      "label": "data/palm_labels/rf_00047_IMG_0299_JPG.rf.dd581f5dc1c1305c312d8bc57a1164d9_USER_CORRECTED.json",
+      "sha256": "1f7491b5b4bc1a2a5b972329f9eb594dff21d7ad0131fe7a3c3a6ed822e8b57d",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00048_IMG_0374_JPG.rf.db4dcf9887dc3101a3a12c2609dc0ffe",
+      "image": "data/palm_labels/raw/rf_00048_IMG_0374_JPG.rf.db4dcf9887dc3101a3a12c2609dc0ffe.jpg",
+      "label": "data/palm_labels/rf_00048_IMG_0374_JPG.rf.db4dcf9887dc3101a3a12c2609dc0ffe_USER_CORRECTED.json",
+      "sha256": "32c14263e4077f5721096eabb5e5a44956c7f1c5695b9ce0c00baa74a95fd5fa",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00049_Hand_0007085_jpg.rf.932097951b8cf228ea47df1d8c89",
+      "image": "data/palm_labels/raw/rf_00049_Hand_0007085_jpg.rf.932097951b8cf228ea47df1d8c89.jpg",
+      "label": "data/palm_labels/rf_00049_Hand_0007085_jpg.rf.932097951b8cf228ea47df1d8c89_USER_CORRECTED.json",
+      "sha256": "1cb93b6eb4085636ad22333337461972b017a0c24e43cdf0530a9dcb29899862",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    },
+    {
+      "stem": "rf_00050_Hand_0007435_jpg.rf.bfb3a14a3b47068b4e965fb7f07f",
+      "image": "data/palm_labels/raw/rf_00050_Hand_0007435_jpg.rf.bfb3a14a3b47068b4e965fb7f07f.jpg",
+      "label": "data/palm_labels/rf_00050_Hand_0007435_jpg.rf.bfb3a14a3b47068b4e965fb7f07f_USER_CORRECTED.json",
+      "sha256": "f35a2140a3495b2a613578743e8d3645d0296c925b025409a31a443aa205a943",
+      "lines": {
+        "heart": 10,
+        "head": 10,
+        "life": 10,
+        "fate": 10
+      },
+      "reviewed": false
+    }
+  ],
+  "note": "Imported labels have reviewed:false. Open tools/palm_annotator to correct and Save."
 }

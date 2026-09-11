@@ -41,12 +41,25 @@ Every new dependency must add an entry matching this template before merging:
 
 ### Dataset: Roboflow palms-lf79v/palm-lines-recognition-lbedg
 - **Upstream Repository**: https://universe.roboflow.com/palms-lf79v/palm-lines-recognition-lbedg
-- **Commit SHA / Release Tag**: version 1 (confirm at download time)
+- **Commit SHA / Release Tag**: version 1
 - **Original Author / Copyright**: Roboflow Universe project `palms-lf79v/palm-lines-recognition-lbedg`
-- **License**: CC BY 4.0 required — verified by `scripts/download_palm_labels.py` before extract (refuses CC-BY-NC)
+- **License**: CC BY 4.0 (CC BY required; verified by download script)
 - **Integration Target**: `data/palm_labels/` (raw images gitignored; JSON labels + manifest committed)
 - **Modifications**:
-  - [x] Keypoints converted to `palm_label_v1` polylines (`reviewed: false` until human Save in the annotator)
-- **Sample count (this machine)**: 0 until `python3 scripts/download_palm_labels.py --limit 100`
+  - [x] Keypoints converted to `palm_label_v1` polylines (`reviewed: false` until human Save)
+- **Sample count (this machine)**: 50
 - **Review Date**: 2026-09-11
-- **Approved By**: download_palm_labels.py (automated; re-run updates this block)
+- **Approved By**: download_palm_labels.py (automated)
+
+
+### Dataset: Roboflow unitec-gr8dy/river-flood-detection
+- **Upstream Repository**: https://universe.roboflow.com/unitec-gr8dy/river-flood-detection
+- **Commit SHA / Release Tag**: version 6
+- **Original Author / Copyright**: Roboflow Universe project `unitec-gr8dy/river-flood-detection`
+- **License**: CC BY 4.0 (CC BY required; verified by download script)
+- **Integration Target**: `data/flood_labels/` (raw images gitignored; JSON labels + manifest committed)
+- **Modifications**:
+  - [x] COCO segmentation polygons converted to `curv_v1` polylines (`reviewed: false` until human Save)
+- **Sample count (this machine)**: 50
+- **Review Date**: 2026-09-11
+- **Approved By**: download_flood_labels.py (automated)

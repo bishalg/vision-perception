@@ -224,9 +224,24 @@ apps/**/.vite/
 *.zip
 *.7z
 
+# Environment files and credentials
+.env
+.env.*
+*.env
+
 # Dataset directories (ignore flood binaries, permit metadata)
 data/flood_nepal_2026/*
 !data/flood_nepal_2026/metadata.json
+
+# Flood-label bootstrap (Roboflow JPEGs + work dirs — never commit binaries)
+data/flood_labels/raw/
+data/flood_labels/_download/
+data/flood_labels/**/*.jpg
+data/flood_labels/**/*.jpeg
+data/flood_labels/**/*.png
+!data/flood_labels/README.md
+!data/flood_labels/manifest.json
+!data/flood_labels/**/*_USER_CORRECTED*.json
 
 # Palm-label bootstrap (Roboflow JPEGs + work dirs — never commit binaries)
 data/palm_labels/raw/
@@ -238,11 +253,22 @@ data/palm_labels/**/*.png
 !data/palm_labels/manifest.json
 !data/palm_labels/**/*_USER_CORRECTED*.json
 
+# Flood-label bootstrap (Roboflow JPEGs + work dirs — never commit binaries)
+data/flood_labels/raw/
+data/flood_labels/_download/
+data/flood_labels/**/*.jpg
+data/flood_labels/**/*.jpeg
+data/flood_labels/**/*.png
+!data/flood_labels/README.md
+!data/flood_labels/manifest.json
+!data/flood_labels/**/*_USER_CORRECTED*.json
+
 # Exceptions: keep small golden fixture data or test config files explicitly
 !data/samples/
 !data/synthetic/
 !data/annotations/
 !data/palm_labels/
+!data/flood_labels/
 !.gitkeep
 
 

@@ -28,12 +28,37 @@ export function resetView(): void {
   const iw = state.image.naturalWidth || 640;
   const ih = state.image.naturalHeight || 640;
 
-  const scale = Math.min((cw - 60) / iw, (ch - 60) / ih, 2.5);
+  // Comfortable padding, auto-fit scale clamped to max 1.0 (so small images don't get blown up into blur)
+  const padX = 64;
+  const padY = 64;
+  const scale = Math.min((cw - padX) / iw, (ch - padY) / ih, 1.0);
   state.zoom = Math.max(scale, 0.05);
   state.pan = {
     x: (cw - iw * state.zoom) / 2,
     y: (ch - ih * state.zoom) / 2,
   };
+  updateHud();
+  redraw();
+}
+
+export function zoomIn(factor = 1.05): void {
+  if (!container || !canvas || !state.image) return;
+  const cx = container.clientWidth / 2;
+  const cy = container.clientHeight / 2;
+  state.pan.x = cx - (cx - state.pan.x) * factor;
+  state.pan.y = cy - (cy - state.pan.y) * factor;
+  state.zoom = Math.min(state.zoom * factor, 15.0);
+  updateHud();
+  redraw();
+}
+
+export function zoomOut(factor = 0.95): void {
+  if (!container || !canvas || !state.image) return;
+  const cx = container.clientWidth / 2;
+  const cy = container.clientHeight / 2;
+  state.pan.x = cx - (cx - state.pan.x) * factor;
+  state.pan.y = cy - (cy - state.pan.y) * factor;
+  state.zoom = Math.max(state.zoom * factor, 0.05);
   updateHud();
   redraw();
 }
@@ -262,7 +287,10 @@ export function updateHud(e?: MouseEvent): void {
     const [x, y] = screenToImage(e.clientX - rect.left, e.clientY - rect.top);
     hudCoords.textContent = `X: ${Math.round(x)}, Y: ${Math.round(y)}`;
   }
-  if (hudZoom) hudZoom.textContent = `Zoom: ${Math.round(state.zoom * 100)}%`;
+  const pctStr = `${Math.round(state.zoom * 100)}%`;
+  if (hudZoom) hudZoom.textContent = `Zoom: ${pctStr}`;
+  const lblZoomPct = document.getElementById('lblZoomPct');
+  if (lblZoomPct) lblZoomPct.textContent = pctStr;
   if (hudPoints) hudPoints.textContent = `Annotations: ${state.countTotalAnnotations()}`;
 }
 
@@ -271,7 +299,8 @@ function setupCanvasEvents(): void {
 
   container.onwheel = (e: WheelEvent) => {
     e.preventDefault();
-    const factor = e.deltaY < 0 ? 1.15 : 0.85;
+    // Gentle 4% zoom step per wheel tick for smooth micro-adjustments
+    const factor = e.deltaY < 0 ? 1.04 : 0.96;
     const rect = canvas!.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;

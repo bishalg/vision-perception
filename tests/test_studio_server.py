@@ -158,10 +158,34 @@ def test_curv_studio_endpoints():
     assert "event" in delta
     print(f"   [PASS] Loaded morphology delta: {delta.get('event')[:45]}...")
 
+    # 8. GET / (CurvStudio Shell HTML)
+    print("8. Testing GET / (CurvStudio HTML shell)...")
+    h8 = MockHandlerWrapper("GET", "/")
+    h8.execute()
+    assert h8.response_code == 200
+    html_output = h8.wfile.getvalue().decode("utf-8")
+    assert "two-tier-sidebar" in html_output, "Two-tier sidebar markup missing from HTML shell"
+    assert "floatingBottomBar" in html_output, "Floating bottom bar missing from HTML shell"
+    print("   [PASS] CurvStudio HTML shell delivered with two-tier layout & floating bottom bar.")
+
+    # 9. GET /assets/index.js & /assets/index.css (Vite Bundles)
+    print("9. Testing GET /assets/index.js & /assets/index.css...")
+    h9_js = MockHandlerWrapper("GET", "/assets/index.js")
+    h9_js.execute()
+    assert h9_js.response_code == 200
+    assert len(h9_js.wfile.getvalue()) > 1000
+
+    h9_css = MockHandlerWrapper("GET", "/assets/index.css")
+    h9_css.execute()
+    assert h9_css.response_code == 200
+    assert len(h9_css.wfile.getvalue()) > 1000
+    print("   [PASS] Vite static bundles verified and served.")
+
     print("================================================================")
-    print("ALL CURVSTUDIO ENDPOINT TESTS PASSED (7/7)")
+    print("ALL CURVSTUDIO ENDPOINT TESTS PASSED (9/9)")
     print("================================================================")
 
 
 if __name__ == "__main__":
     test_curv_studio_endpoints()
+

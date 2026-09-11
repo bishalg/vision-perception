@@ -48,17 +48,30 @@ export function setTool(toolName: ToolType): void {
 
 function setupToolDock(): void {
   document.querySelectorAll<HTMLElement>('.dock-btn[data-tool]').forEach(btn => {
-    btn.onclick = () => setTool(btn.dataset.tool as ToolType);
+    btn.onmousedown = (e: MouseEvent) => e.stopPropagation();
+    btn.onclick = (e: MouseEvent) => {
+      e.stopPropagation();
+      setTool(btn.dataset.tool as ToolType);
+    };
   });
 
   const btnUndo = document.getElementById('toolUndo');
-  if (btnUndo) btnUndo.onclick = () => { state.undo(); redraw(); };
+  if (btnUndo) {
+    btnUndo.onmousedown = (e: MouseEvent) => { e.stopPropagation(); e.preventDefault(); };
+    btnUndo.onclick = (e: MouseEvent) => { e.stopPropagation(); e.preventDefault(); performUndo(); };
+  }
 
   const btnRedo = document.getElementById('toolRedo');
-  if (btnRedo) btnRedo.onclick = () => { state.redo(); redraw(); };
+  if (btnRedo) {
+    btnRedo.onmousedown = (e: MouseEvent) => { e.stopPropagation(); e.preventDefault(); };
+    btnRedo.onclick = (e: MouseEvent) => { e.stopPropagation(); e.preventDefault(); performRedo(); };
+  }
 
   const btnAbsent = document.getElementById('toolAbsent');
-  if (btnAbsent) btnAbsent.onclick = () => toggleAbsentActiveFeature();
+  if (btnAbsent) {
+    btnAbsent.onmousedown = (e: MouseEvent) => { e.stopPropagation(); e.preventDefault(); };
+    btnAbsent.onclick = (e: MouseEvent) => { e.stopPropagation(); e.preventDefault(); toggleAbsentActiveFeature(); };
+  }
 
   // Brush controls
   const rngBrush = document.getElementById('rngBrushSize') as HTMLInputElement | null;
@@ -273,6 +286,48 @@ function closePopover(): void {
   pendingShape = null;
 }
 
+export function performUndo(): void {
+  // 1. If currently drafting points, remove the most recent point
+  if (state.currentDraft && state.currentDraft.length > 0) {
+    state.currentDraft.pop();
+    showToast(`Undid vertex (${state.currentDraft.length} remaining)`);
+    redraw();
+    return;
+  }
+
+  // 2. If currently drafting a bounding box, cancel it
+  if (state.bboxStart) {
+    state.bboxStart = null;
+    redraw();
+    return;
+  }
+
+  // 3. If in-context popover is open, discard draft
+  if (inContextPopover?.classList.contains('show')) {
+    discardPendingShape();
+    return;
+  }
+
+  // 4. Pop previous committed action from undoStack
+  const ok = state.undo();
+  if (ok) {
+    showToast('Reverted previous annotation');
+    redraw();
+  } else {
+    showToast('Nothing to undo');
+  }
+}
+
+export function performRedo(): void {
+  const ok = state.redo();
+  if (ok) {
+    showToast('Restored annotation');
+    redraw();
+  } else {
+    showToast('Nothing to redo');
+  }
+}
+
 function setupCanvasInteractions(): void {
   const container = document.getElementById('canvasContainer');
   const canvas = document.getElementById('studioCanvas') as HTMLCanvasElement | null;
@@ -282,6 +337,11 @@ function setupCanvasInteractions(): void {
   let currentBrushStroke: any = null;
 
   container.onmousedown = (e: MouseEvent) => {
+    const target = e.target as HTMLElement | null;
+    if (target && target.closest('.tool-dock, .brush-sub-popover, .in-context-popover, .canvas-hud, .hover-preview-card')) {
+      return;
+    }
+
     if (inContextPopover?.classList.contains('show') && !inContextPopover.contains(e.target as Node)) {
       discardPendingShape();
     }
@@ -394,6 +454,10 @@ function setupCanvasInteractions(): void {
   });
 
   container.ondblclick = (e: MouseEvent) => {
+    const target = e.target as HTMLElement | null;
+    if (target && target.closest('.tool-dock, .brush-sub-popover, .in-context-popover, .canvas-hud, .hover-preview-card')) {
+      return;
+    }
     if (state.activeTool === 'polyline' || state.activeTool === 'polygon') {
       finishDraftShape(e.clientX, e.clientY);
     }
