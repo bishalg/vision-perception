@@ -8,8 +8,20 @@ import CurvPalmOverlay
  */
 public struct MainScannerView: View {
     @StateObject private var viewModel = PalmAnalysisViewModel()
+    /// Corridor guides ship default-off (spec §4); persists across launches.
+    @AppStorage("showPalmCorridors") private var showCorridors = false
 
     public init() {}
+
+    /// Live landmarks, or the geometry scaffold on simulator (no camera).
+    private var regionLandmarks: [CGPoint] {
+        if !viewModel.detectedLandmarks.isEmpty { return viewModel.detectedLandmarks }
+        #if targetEnvironment(simulator)
+        return PalmRegionGeometry.scaffoldLandmarks()
+        #else
+        return []
+        #endif
+    }
 
     public var body: some View {
         ZStack {
@@ -36,6 +48,25 @@ public struct MainScannerView: View {
                     autoDetected: viewModel.detectedHandSide
                 )
                 .padding(.top, 54)
+                // Corridor guide toggle — only while a hand is on screen.
+                if !regionLandmarks.isEmpty && !viewModel.showResultViewer {
+                    Button(action: { showCorridors.toggle() }) {
+                        HStack(spacing: 5) {
+                            Image(systemName: showCorridors ? "dot.scope" : "circle.dotted")
+                            Text("Corridors")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .foregroundColor(.white.opacity(showCorridors ? 0.95 : 0.6))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(
+                            Capsule()
+                                .fill(.ultraThinMaterial)
+                                .overlay(Capsule().stroke(Color.white.opacity(showCorridors ? 0.5 : 0.2), lineWidth: 1))
+                        )
+                    }
+                    .padding(.top, 6)
+                }
                 Spacer()
             }
             .zIndex(1)
@@ -46,6 +77,18 @@ public struct MainScannerView: View {
                     .ignoresSafeArea()
                     .allowsHitTesting(false)
                     .zIndex(1)
+            }
+
+            // Live sci-fi region overlay (mounts + optional corridors).
+            if !regionLandmarks.isEmpty && !viewModel.showResultViewer {
+                RegionOverlayView(
+                    landmarks: regionLandmarks,
+                    isReady: viewModel.guidanceState.isReady,
+                    showCorridors: showCorridors,
+                    mirror: viewModel.detectedHandSide == .left
+                )
+                .ignoresSafeArea()
+                .zIndex(1)
             }
 
             // Bottom-left thumbnail (like stock iOS Camera)

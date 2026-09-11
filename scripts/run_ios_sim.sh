@@ -19,5 +19,9 @@ xcodebuild -project apps/ios_palm_app/PalmScanner.xcodeproj \
   -derivedDataPath /tmp/PalmSim build | tail -n 3
 
 APP=/tmp/PalmSim/Build/Products/Debug-iphonesimulator/PalmScanner.app
+# opencv2 links statically; Xcode re-embeds the framework AFTER the target's
+# strip phase, and sim installd rejects it (CFBundleExecutable). Strip here.
+rm -rf "${APP}/Frameworks/opencv2.framework"
+codesign --force --sign - --timestamp=none "${APP}" 2>/dev/null || true
 xcrun simctl install "${UDID}" "${APP}"
 xcrun simctl launch "${UDID}" org.curv.palmapp
