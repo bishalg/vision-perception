@@ -164,6 +164,14 @@ def trend_svg(history: list) -> str:
             f'<line x1="{PAD}" y1="{PAD}" x2="{PAD}" y2="{H - PAD}" stroke="#444"/>{f1}</svg>')
 
 
+def find_image(stem: str) -> str | None:
+    for suffix in ("_full_overlay.png", "_canonical_overlay.png", ".jpg", ".png"):
+        for cand in (FIXTURE_DIR / f"{stem}{suffix}",):
+            if cand.exists():
+                return f"../data/samples/mobile_captures/{cand.name}"
+    return None
+
+
 def html(ts: str, cases: list, agg: dict, queue: list, history: list) -> str:
     def row(name: str) -> str:
         a = agg[name]
@@ -186,9 +194,27 @@ def html(ts: str, cases: list, agg: dict, queue: list, history: list) -> str:
             + "</td>" for n in LINES) + f"<td><small>{fate(c)}</small></td></tr>"
         for c in cases)
     q = ", ".join(queue) if queue else "empty — all reviewed"
+
+    def card(c: dict) -> str:
+        img = find_image(c["stem"])
+        badge = ("reviewed" if c["reviewed"]
+                 else "needs label")
+        bcolor = "#34C759" if c["reviewed"] else "#FFCC00"
+        thumb = (f'<a href="{img}"><img src="{img}" style="width:100%;border-radius:8px" loading="lazy"></a>'
+                 if img else "<p><small>no image</small></p>")
+        chips = " ".join(
+            f"<span>{n[:2]}:{c['per_line'][n]['mean_err_px']:.0f}px</span>"
+            if c["per_line"][n]["mean_err_px"] is not None else f"<span>{n[:2]}:—</span>"
+            for n in LINES)
+        return (f'<div style="background:#161618;border:1px solid #333;border-radius:12px;padding:10px">'
+                f"{thumb}<p><b>{c['stem']}</b> "
+                f'<span style="color:{bcolor}">● {badge}</span><br><small>{chips}</small></p></div>')
+
+    gallery = "".join(card(c) for c in cases)
     return f"""<!doctype html><html><head><meta charset="utf-8"><title>Curv Admin — prediction health</title>
-<style>body{{background:#0b0b0d;color:#eee;font-family:system-ui,sans-serif;margin:24px}}table{{border-collapse:collapse;margin:12px 0}}td,th{{border:1px solid #333;padding:6px 10px;font-size:13px}}th{{background:#1c1c1e}}small{{color:#aaa}}a{{color:#6cf}}</style>
+<style>body{{background:#0b0b0d;color:#eee;font-family:system-ui,sans-serif;margin:24px}}table{{border-collapse:collapse;margin:12px 0}}td,th{{border:1px solid #333;padding:6px 10px;font-size:13px}}th{{background:#1c1c1e}}small{{color:#aaa}}a{{color:#6cf}}.grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}}span{{font-size:11px}}</style>
 </head><body><h1>Prediction engine health</h1><p><small>Generated {ts} · presence TP/FP/FN/TN + geometry error vs human truth · source: <code>scripts/admin_metrics.py</code></small></p>
+<h2>Training gallery ({len(cases)} hands — click to zoom)</h2><div class="grid">{gallery}</div>
 <h2>Confusion matrix per line</h2><table><tr><th>line</th><th>n</th><th>TP</th><th>FP</th><th>FN</th><th>TN</th><th>prec</th><th>rec</th><th>F1</th><th>err px</th></tr>{"".join(row(n) for n in LINES)}</table>
 <h2>Trend</h2>{trend_svg(history)}
 <h2>Per-fixture (auto/human + err) + fate spot-check</h2><table><tr><th>fixture</th><th>heart</th><th>head</th><th>life</th><th>fate</th><th>fate_analysis</th></tr>{detail}</table>
