@@ -12,15 +12,19 @@
 ## 1. The loop (already running)
 
 ```text
-drop captures → gallery shows array (open output/admin_dashboard.html)
-  → you draw each major line → *_USER_CORRECTED*.json
+download/bootstrap OR drop captures
+  → python3 tools/palm_annotator/server.py  (draw color-tagged lines)
+  → *_USER_CORRECTED*.json  (reviewed:true)
   → scripts/admin_metrics.py matches AI coords vs yours (TP/FP/FN/TN + px error)
   → fix scorer → trends move → repeat
 ```
 
-- Gallery: image array with `reviewed` / `needs label` badges + per-line error.
+- Gallery: image array with `reviewed` / `needs label` / `imported` badges + per-line error.
+- Annotator: local browser tool at `http://127.0.0.1:8765` (Heart/Head/Life/Fate colors).
+- Bootstrap: `python3 scripts/download_palm_labels.py --limit 100` (CC BY only; raw JPEGs gitignored).
 - Compare: presence confusion matrix + mean point error per line.
 - Fix: retune (`docs/palm_sweep.md`) or retrain; history proves direction.
+- **Do not train U-Net until ~50–100 labels have `reviewed:true`.**
 
 ## 2. Free internet sources (suitability-ranked)
 
@@ -37,9 +41,14 @@ Rule: internet data **pretrains and stress-tests**; your phone captures
 **decide**. Anything downloaded gets logged in
 `third_party/SOURCE_PROVENANCE.md` with license + URL before use.
 
+**Deferred (do not start yet):** heatmap export (`tools/palm_label_export.py`),
+MLP linker, and U-Net 4-channel training wait until ~50–100 labels have
+`reviewed:true`. See `docs/palm_robust_roadmap.md` Week 3.
+
 ## 3. Layout
 
-- Raw drops: `data/samples/mobile_captures/<stem>.jpg` (today) → `data/palm_labels/` at scale (see `docs/palm_robust_roadmap.md` D1–D2).
-- Truth: `<stem>_USER_CORRECTED*.json` (+`.png`) next to the capture.
+- Raw drops: `data/samples/mobile_captures/<stem>.jpg` (phone gold) + `data/palm_labels/raw/` (Roboflow bootstrap, gitignored).
+- Truth: `<stem>_USER_CORRECTED*.json` next to the capture / under `data/palm_labels/` (`reviewed:true` after annotator Save).
+- Schema + howto: [`data/palm_labels/README.md`](../data/palm_labels/README.md).
 - Never commit binaries you don't own; manifests reference URLs
-  (pattern: `data/fixtures/palm_fate/manifest.json`).
+  (pattern: `data/fixtures/palm_fate/manifest.json`, `data/palm_labels/manifest.json`).

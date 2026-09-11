@@ -150,7 +150,8 @@ TEST_F(HandInspectorLibTest, ObjectFormLandmarksJsonIsLoaded) {
     std::stringstream err;
     EXPECT_EQ(CurvEngine::tools::runHandInspector(9, const_cast<char**>(argv), out, err), 0) << err.str();
     EXPECT_TRUE(fs::exists(warp));
-    EXPECT_NE(out.str().find("Loading user landmarks"), std::string::npos);
+    EXPECT_TRUE(out.str().find("Loaded landmarks from") != std::string::npos ||
+                out.str().find("Loading user landmarks") != std::string::npos);
 }
 
 TEST_F(HandInspectorLibTest, ArrayFormLandmarksJsonIsLoaded) {

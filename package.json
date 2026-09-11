@@ -5,6 +5,9 @@
   "description": "Monorepo runner — `pnpm dev` opens the interactive project menu",
   "scripts": {
     "dev": "node scripts/menu.mjs",
-    "menu": "node scripts/menu.mjs"
+    "menu": "node scripts/menu.mjs",
+    "studio": "python3 scripts/studio_server.py --open",
+    "studio:vite": "NODE_PATH=apps/cesium_viewer/node_modules ./apps/cesium_viewer/node_modules/.bin/vite apps/annotation_studio",
+    "studio:build": "NODE_PATH=apps/cesium_viewer/node_modules ./apps/cesium_viewer/node_modules/.bin/vite build apps/annotation_studio"
   }
 }

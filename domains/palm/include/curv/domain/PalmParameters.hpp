@@ -13,9 +13,9 @@ namespace CurvEngine::domains {
 struct PalmScaleConfig {
     float reference_palm_radius_px{150.0f}; // Reference palm radius in canonical/patch space
     float base_sigma{1.45f};                // Base Gaussian sigma for palm creases (robust: 1.6→1.45 for faint head)
-    float base_low_thresh{0.30f};           // Base low hysteresis threshold (robust: 0.40→0.30 to capture faint head/life)
-    float base_high_thresh{1.00f};          // Base high hysteresis threshold (robust: 1.20→1.00)
-    float base_min_length{11.0f};           // Base minimum crease length (robust: 15→11 for broken)
+    float base_low_thresh{0.30f};  // Base low hysteresis threshold (robust: 0.40→0.30 to capture faint head/life)
+    float base_high_thresh{1.00f}; // Base high hysteresis threshold (robust: 1.20→1.00)
+    float base_min_length{11.0f};  // Base minimum crease length (robust: 15→11 for broken)
 };
 
 /**

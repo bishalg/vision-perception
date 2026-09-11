@@ -491,3 +491,35 @@ target_link_libraries(test_floor_plan_domain
 )
 vision_set_compiler_warnings(test_floor_plan_domain)
 add_test(NAME test_floor_plan_domain COMMAND test_floor_plan_domain)
+
+# ------------------------------------------------------------------------------
+# Unit Test: test_curve_chunker (CurveChunker, TDD)
+# ------------------------------------------------------------------------------
+add_executable(test_curve_chunker
+    unit/test_curve_chunker.cpp
+)
+target_link_libraries(test_curve_chunker
+    PRIVATE
+        curv_core
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_curve_chunker)
+add_test(NAME test_curve_chunker COMMAND test_curve_chunker)
+
+# ------------------------------------------------------------------------------
+# Unit Test: test_micro_pattern_detector (MicroPatternDetector, TDD)
+# ------------------------------------------------------------------------------
+add_executable(test_micro_pattern_detector
+    unit/test_micro_pattern_detector.cpp
+)
+target_link_libraries(test_micro_pattern_detector
+    PRIVATE
+        curv_core
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_micro_pattern_detector)
+add_test(NAME test_micro_pattern_detector COMMAND test_micro_pattern_detector)
+
+

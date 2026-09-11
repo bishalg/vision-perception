@@ -1,0 +1,31 @@
+{
+  "schema": "curvstudio_dataset_split_v1",
+  "domain": "palm",
+  "updated_at": "2026-09-11T07:01:24.790117+00:00",
+  "split_ratio": {
+    "train": 70,
+    "valid": 20,
+    "test": 10
+  },
+  "labeled_only": false,
+  "counts": {
+    "total": 2,
+    "train": 1,
+    "valid": 0,
+    "test": 1
+  },
+  "samples": [
+    {
+      "stem": "01_left_bishal",
+      "filename": "01_left_bishal.jpg",
+      "split": "train",
+      "has_truth": true
+    },
+    {
+      "stem": "02_right_bishal",
+      "filename": "02_right_bishal.jpg",
+      "split": "test",
+      "has_truth": false
+    }
+  ]
+}

@@ -69,7 +69,7 @@ public enum PalmRegionGeometry {
 
         // Four finger mounts: MCP row on top, 0.22 palm-depth foot.
         func fingerMount(topA: CGPoint, topB: CGPoint, outward: Bool = false) -> [CGPoint] {
-            let a = outward ? push(topA) : topA
+            let a = topA
             let b = outward ? push(topB) : topB
             return [a, b, depth(b, wrist, 0.22), depth(a, wrist, 0.22)]
         }
@@ -77,9 +77,9 @@ public enum PalmRegionGeometry {
         let venus: [CGPoint] = [
             thumbCmc,
             thumbMcp,
-            lerp(thumbMcp, wrist, 0.35),
-            lerp(wrist, indexMcp, 0.35),
             lerp(indexMcp, thumbMcp, 0.45),
+            lerp(wrist, indexMcp, 0.35),
+            lerp(thumbMcp, wrist, 0.35),
         ]
         let lunaTop = lerp(wrist, pinkyMcp, 0.55)
         let luna: [CGPoint] = [lunaTop, push(lunaTop), push(wrist), wrist]

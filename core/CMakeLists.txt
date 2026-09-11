@@ -15,6 +15,8 @@ add_library(curv_core STATIC
     src/roi/CanonicalWarper.cpp
     src/config/DynamicParameterResolver.cpp
     src/geometry/ZoneIntersector.cpp
+    src/geometry/CurveChunker.cpp
+    src/pattern/MicroPatternDetector.cpp
 )
 
 # Provide alias target for architectural naming flexibility

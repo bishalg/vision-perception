@@ -21,10 +21,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_DIR = ROOT / "data" / "samples" / "mobile_captures"
+PALM_LABELS_DIR = ROOT / "data" / "palm_labels"
+PALM_LABELS_RAW = PALM_LABELS_DIR / "raw"
 OUT_DIR = ROOT / "output"
 LINES = ("heart", "head", "life", "fate")
 AUTO_KEY = {name: f"{name}_line" for name in LINES}
 DIM = 512.0
+# Roots scanned for evidence / human truth / photos (mobile gold + bootstrap).
+SCAN_DIRS = (FIXTURE_DIR, PALM_LABELS_DIR, PALM_LABELS_RAW)
 
 
 def dist(a: list, b: list) -> float:
@@ -77,29 +81,100 @@ def compare_line(auto_info: dict, hpolys: list) -> dict:
     }
 
 
+def find_human_label(stem: str) -> Path | None:
+    hits: list[Path] = []
+    for d in (PALM_LABELS_DIR, FIXTURE_DIR, PALM_LABELS_RAW):
+        if d.exists():
+            hits.extend(sorted(d.glob(f"{stem}_USER_CORRECTED*.json")))
+    return hits[-1] if hits else None
+
+
+def find_evidence_path(stem: str) -> Path | None:
+    for d in (FIXTURE_DIR, PALM_LABELS_DIR, PALM_LABELS_RAW):
+        p = d / f"{stem}_evidence.json"
+        if p.exists():
+            return p
+    return None
+
+
+def label_reviewed(human: dict, has_file: bool) -> bool:
+    """Gold mobile labels without schema count as reviewed; imports need reviewed:true."""
+    if not has_file:
+        return False
+    if "reviewed" in human:
+        return bool(human.get("reviewed"))
+    # Legacy USER_CORRECTED without schema (phone gold) = reviewed.
+    return True
+
+
+def collection_for(stem: str) -> str:
+    if (PALM_LABELS_RAW / f"{stem}.jpg").exists() or (PALM_LABELS_DIR / f"{stem}_USER_CORRECTED.json").exists():
+        if stem.startswith("rf_") or (PALM_LABELS_RAW / f"{stem}.jpg").exists():
+            return "palm_labels"
+    return "mobile_captures"
+
+
 def load_cases() -> tuple[list, list]:
+    """Load cases from mobile_captures + data/palm_labels.
+
+    - Evidence-backed stems enter the confusion matrix when human-reviewed.
+    - Label-only imports (no evidence yet) appear in the queue / case list so the
+      training tab can track reviewed vs imported.
+    """
     cases, queue = [], []
-    for path in sorted(FIXTURE_DIR.glob("*_evidence.json")):
-        if "USER_CORRECTED" in path.name:
+    stems: set[str] = set()
+
+    for d in SCAN_DIRS:
+        if not d.exists():
             continue
-        stem = path.name.replace("_evidence.json", "")
-        data = json.loads(path.read_text())
-        payload = data.get("domain_payload") or {}
-        lines = payload.get("major_lines") or {}
-        hpaths = sorted(FIXTURE_DIR.glob(f"{stem}_USER_CORRECTED*.json"))
-        human = json.loads(hpaths[-1].read_text()) if hpaths else {}
-        reviewed = bool(hpaths)
+        for path in d.glob("*_evidence.json"):
+            if "USER_CORRECTED" in path.name:
+                continue
+            stems.add(path.name.replace("_evidence.json", ""))
+        for path in d.glob("*_USER_CORRECTED*.json"):
+            name = path.name
+            for suf in ("_USER_CORRECTED_v2.json", "_USER_CORRECTED.json"):
+                if name.endswith(suf):
+                    stems.add(name[: -len(suf)])
+                    break
+        if d == PALM_LABELS_RAW or d == FIXTURE_DIR:
+            for path in d.iterdir():
+                if path.suffix.lower() in {".jpg", ".jpeg", ".png"}:
+                    n = path.name.lower()
+                    if "overlay" in n or "canonical" in n or "user_corrected" in n:
+                        continue
+                    stems.add(path.stem)
+
+    for stem in sorted(stems):
+        ev_path = find_evidence_path(stem)
+        lines, fate = {}, {}
+        if ev_path:
+            data = json.loads(ev_path.read_text())
+            payload = data.get("domain_payload") or {}
+            lines = payload.get("major_lines") or {}
+            fate = payload.get("fate_analysis") or {}
+        hpath = find_human_label(stem)
+        human = json.loads(hpath.read_text()) if hpath else {}
+        reviewed = label_reviewed(human, bool(hpath))
+        # Queue: needs human review (no file, or imported with reviewed:false).
         if not reviewed:
             queue.append(stem)
         per_line = {n: compare_line(lines.get(AUTO_KEY[n]) or {}, human_polys(human, n)) for n in LINES}
-        cases.append({"stem": stem, "reviewed": reviewed,
-                      "per_line": per_line, "fate_analysis": payload.get("fate_analysis") or {}})
+        cases.append({
+            "stem": stem,
+            "reviewed": reviewed,
+            "imported": bool(human.get("source") and "roboflow" in str(human.get("source"))),
+            "collection": collection_for(stem),
+            "has_evidence": bool(ev_path),
+            "per_line": per_line,
+            "fate_analysis": fate,
+        })
     return cases, queue
 
 
 def aggregate(cases: list) -> dict:
-    # Matrix covers reviewed fixtures only; unreviewed live in the queue, not as FPs.
-    reviewed = [c for c in cases if c["reviewed"]]
+    # Matrix covers reviewed fixtures with auto evidence only; unreviewed live in the queue.
+    reviewed = [c for c in cases if c["reviewed"] and c.get("has_evidence", True)]
     agg = {}
     for name in LINES:
         rows = [c["per_line"][name] for c in reviewed]
@@ -191,10 +266,15 @@ def bar(frac, color: str) -> str:
 
 def find_image(stem: str) -> str | None:
     # Prefer small files for thumbnails; full overlays are ~18MB.
-    for suffix in ("_canonical.png", ".jpg", "_canonical_overlay.png", ".png", "_full_overlay.png"):
-        for cand in (FIXTURE_DIR / f"{stem}{suffix}",):
+    for suffix in ("_canonical.png", ".jpg", ".jpeg", ".png", "_canonical_overlay.png", "_full_overlay.png"):
+        for d, rel_prefix in (
+            (FIXTURE_DIR, "../data/samples/mobile_captures"),
+            (PALM_LABELS_RAW, "../data/palm_labels/raw"),
+            (PALM_LABELS_DIR, "../data/palm_labels"),
+        ):
+            cand = d / f"{stem}{suffix}"
             if cand.exists():
-                return f"../data/samples/mobile_captures/{cand.name}"
+                return f"{rel_prefix}/{cand.name}"
     return None
 
 
@@ -241,30 +321,88 @@ def size_fmt(n: int) -> str:
 
 
 def inventory() -> dict:
-    """All files in the fixture dir, grouped by hand stem."""
+    """All files in mobile_captures + palm_labels, grouped by hand stem."""
     inv: dict = {}
-    for p in sorted(FIXTURE_DIR.iterdir()):
-        if not p.is_file() or p.name.startswith("."):
+    roots = (
+        (FIXTURE_DIR, "data/samples/mobile_captures"),
+        (PALM_LABELS_DIR, "data/palm_labels"),
+        (PALM_LABELS_RAW, "data/palm_labels/raw"),
+    )
+    for d, repo_prefix in roots:
+        if not d.exists():
             continue
-        stem = stem_of(p.name)
-        inv.setdefault(stem, []).append({
-            "name": p.name,
-            "repo": f"data/samples/mobile_captures/{p.name}",
-            "href": f"../data/samples/mobile_captures/{p.name}",
-            "kind": kind_of(p.name),
-            "bytes": p.stat().st_size,
-        })
+        for p in sorted(d.iterdir()):
+            if not p.is_file() or p.name.startswith(".") or p.suffix.lower() == ".md":
+                continue
+            if p.name in {"manifest.json"}:
+                continue
+            stem = stem_of(p.name)
+            inv.setdefault(stem, []).append({
+                "name": p.name,
+                "repo": f"{repo_prefix}/{p.name}",
+                "href": f"../{repo_prefix}/{p.name}",
+                "kind": kind_of(p.name),
+                "bytes": p.stat().st_size,
+            })
     return inv
 
 
 def inspect_cmd(stem: str) -> str:
-    return (f"./build/tools/hand_inspector_cli --image data/samples/mobile_captures/{stem}.jpg "
+    img = None
+    for d, rel in (
+        (FIXTURE_DIR, "data/samples/mobile_captures"),
+        (PALM_LABELS_RAW, "data/palm_labels/raw"),
+        (PALM_LABELS_DIR, "data/palm_labels"),
+    ):
+        for ext in (".jpg", ".jpeg", ".png"):
+            if (d / f"{stem}{ext}").exists():
+                img = f"{rel}/{stem}{ext}"
+                break
+        if img:
+            break
+    if not img:
+        img = f"data/samples/mobile_captures/{stem}.jpg"
+    return (f"./build/tools/hand_inspector_cli --image {img} "
             f"--auto-landmarks --out-json output/palm_{stem}.json "
             f"--out-full-overlay output/palm_{stem}_full.png")
 
 
+MENU_GROUPS = ("palm", "flood", "core", "labeling", "mobile", "quality")
+
+NODE_DUMP = """
+const out = [];
+function flat(items, prefix) {
+  return items.flatMap((it) => {
+    const label = prefix ? prefix + ' \\u203a ' + it.label : it.label;
+    if (it.menu) return flat(it.menu, label);
+    return [{ label, kind: it.ask ? 'ask' : (typeof it.run === 'string' ? 'run' : (it.run ? 'fn' : (it.note ? 'note' : '?'))),
+              cmd: typeof it.run === 'string' ? it.run : null, ask: it.ask || null, note: it.note || null }];
+  });
+}
+for (const g of %s) {
+  const m = await import('./scripts/menu/' + g + '.mjs');
+  out.push({ slug: g, title: m.title, items: flat(m.items, '') });
+}
+console.log(JSON.stringify(out));
+""" % (list(MENU_GROUPS),)
+
+
+def menu_tasks() -> list:
+    """Same step-by-step tasks as `pnpm dev`, read live from scripts/menu/*.mjs."""
+    import subprocess
+    try:
+        r = subprocess.run(["node", "--input-type=module", "-e", NODE_DUMP],
+                           cwd=ROOT, capture_output=True, text=True, timeout=20)
+        groups = json.loads(r.stdout)
+        return groups if isinstance(groups, list) else []
+    except Exception:
+        return []
+
+
 SHELL = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Curv Admin: palm-line prediction health — detection quality vs human truth, asset manager, training queue, runnable task index, architecture map.">
+<meta name="theme-color" content="#0b0b0d">
 <title>Curv Admin — palm prediction health</title>
 <style>
 :root{--bg:#0b0b0d;--panel:#141417;--panel2:#1a1a1f;--line:#2a2a31;--txt:#f4f4f5;--mut:#a1a1aa;
@@ -320,30 +458,58 @@ padding:12px 14px;margin:8px 0;font-size:13px}.step b{color:var(--blue)}
 .note{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:8px;
 padding:7px 10px;font-size:12px;margin-top:8px}
 footer{margin-top:34px;font-size:12px;color:var(--mut);border-top:1px solid var(--line);padding-top:14px}
+.skip{position:absolute;left:-999px;top:0;background:#2563eb;color:#fff;padding:10px 16px;border-radius:0 0 10px 0;z-index:99}
+.skip:focus{left:0}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+button:focus-visible,.abtn:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+nav.tabs button[aria-selected="true"]{background:#2563eb;border-color:#2563eb}
+.task{display:flex;gap:10px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);
+border-radius:12px;padding:10px 12px;margin:8px 0}
+.task .n{flex:none;width:26px;height:26px;border-radius:50%;background:#26262b;color:var(--mut);
+font-size:12px;display:flex;align-items:center;justify-content:center}
+.task .t{flex:1;min-width:0}.task .t b{font-size:13px;font-weight:600}
+.task .t .cmd{margin:6px 0 0}.task .t .hint{font-size:12px;color:var(--mut);margin-top:4px}
+.task button{flex:none;align-self:center}
+.flow{width:100%;height:auto;background:#101013;border:1px solid var(--line);border-radius:12px}
+ol.howto{font-size:13px;line-height:1.7;color:var(--txt);padding-left:20px}
+ol.howto code,.muted code,p code,li code{background:#26262b;border-radius:6px;padding:1px 6px;font-size:12px}
 @media(max-width:640px){.kpis{grid-template-columns:1fr 1fr}}
-</style></head><body><div class="wrap">
-<div class="topbar"><h1>Curv Admin — palm prediction health<small>Generated @@TS@@ · auto vs human truth · source <code>scripts/admin_metrics.py</code></small></h1>
-<div class="btns"><a class="abtn" href="admin_metrics.json" download>Snapshot JSON</a>
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style></head><body><a class="skip" href="#main">Skip to content</a><div class="wrap">
+<header class="topbar"><h1>Curv Admin — palm prediction health<small>Generated @@TS@@ · auto vs human truth · source <code>scripts/admin_metrics.py</code></small></h1>
+<div class="btns"><a class="abtn primary" href="../apps/annotation_studio/index.html" style="background:#2563eb;border-color:#2563eb;color:#fff;font-weight:600">🎨 Launch CurvStudio</a>
+<a class="abtn" href="admin_metrics.json" download>Snapshot JSON</a>
 <a class="abtn" href="admin_history.jsonl" download>History</a>
-<button id="exportReview">Export review log</button>
-<a class="abtn" href="../docs/admin_dashboard.md">Method doc</a></div></div>
-<nav class="tabs" id="tabs">
-<button data-tab="overview" class="active">Overview</button>
-<button data-tab="assets">Assets <span class="ct">@@NFILES@@</span></button>
-<button data-tab="training">Training data <span class="ct">@@NQUEUE@@</span></button>
-<button data-tab="results">Results <span class="ct">@@NCASES@@</span></button>
-</nav>
-<section class="tab active" id="tab-overview">@@OVERVIEW@@</section>
-<section class="tab" id="tab-assets">@@ASSETS@@</section>
-<section class="tab" id="tab-training">@@TRAINING@@</section>
-<section class="tab" id="tab-results">@@RESULTS@@</section>
-<footer>Presence TP/FP/FN/TN: did we claim a line the human says is / isn't there. Geometry error is separate — a TP can still be off. Human truth files: <code>*_USER_CORRECTED*.json</code> in <code>data/samples/mobile_captures/</code>. Review approvals live in this browser (localStorage) — export the log and keep it with the run.</footer>
+<button id="exportReview" type="button">Export review log</button>
+<a class="abtn" href="../docs/admin_dashboard.md">Method doc</a></div></header>
+<nav class="tabs" id="tabs" aria-label="Dashboard sections"><div role="tablist" aria-label="Dashboard sections" style="display:flex;gap:6px;flex-wrap:wrap">
+<button role="tab" id="tabbtn-overview" aria-controls="tab-overview" aria-selected="true" data-tab="overview">Overview</button>
+<button role="tab" id="tabbtn-tasks" aria-controls="tab-tasks" aria-selected="false" data-tab="tasks" tabindex="-1">Tasks <span class="ct">@@NTASKS@@</span></button>
+<button role="tab" id="tabbtn-assets" aria-controls="tab-assets" aria-selected="false" data-tab="assets" tabindex="-1">Assets <span class="ct">@@NFILES@@</span></button>
+<button role="tab" id="tabbtn-training" aria-controls="tab-training" aria-selected="false" data-tab="training" tabindex="-1">Training data <span class="ct">@@NQUEUE@@</span></button>
+<button role="tab" id="tabbtn-results" aria-controls="tab-results" aria-selected="false" data-tab="results" tabindex="-1">Results <span class="ct">@@NCASES@@</span></button>
+<button role="tab" id="tabbtn-arch" aria-controls="tab-arch" aria-selected="false" data-tab="arch" tabindex="-1">Architecture</button>
+</div></nav>
+<main id="main">
+<section class="tab active" id="tab-overview" role="tabpanel" aria-labelledby="tabbtn-overview" tabindex="0">@@OVERVIEW@@</section>
+<section class="tab" id="tab-tasks" role="tabpanel" aria-labelledby="tabbtn-tasks" tabindex="0">@@TASKS@@</section>
+<section class="tab" id="tab-assets" role="tabpanel" aria-labelledby="tabbtn-assets" tabindex="0">@@ASSETS@@</section>
+<section class="tab" id="tab-training" role="tabpanel" aria-labelledby="tabbtn-training" tabindex="0">@@TRAINING@@</section>
+<section class="tab" id="tab-results" role="tabpanel" aria-labelledby="tabbtn-results" tabindex="0">@@RESULTS@@</section>
+<section class="tab" id="tab-arch" role="tabpanel" aria-labelledby="tabbtn-arch" tabindex="0">@@ARCH@@</section>
+</main>
+<footer>Presence TP/FP/FN/TN: did we claim a line the human says is / isn't there. Geometry error is separate — a TP can still be off. Human truth: <code>*_USER_CORRECTED*.json</code> in <code>data/samples/mobile_captures/</code> and <code>data/palm_labels/</code> (imports need <code>reviewed:true</code> from the annotator). Review approvals live in this browser (localStorage) — export the log and keep it with the run.</footer>
 </div>
 <script>
-const tabs=[...document.querySelectorAll("#tabs button")];
-tabs.forEach(b=>b.onclick=()=>{tabs.forEach(x=>x.classList.remove("active"));b.classList.add("active");
+const tabs=[...document.querySelectorAll('#tabs [role="tab"]')];
+function selectTab(b,focus){tabs.forEach(x=>{x.classList.remove("active");x.setAttribute("aria-selected","false");x.tabIndex=-1});
+b.classList.add("active");b.setAttribute("aria-selected","true");b.tabIndex=0;
 document.querySelectorAll(".tab").forEach(s=>s.classList.remove("active"));
-document.getElementById("tab-"+b.dataset.tab).classList.add("active")});
+document.getElementById("tab-"+b.dataset.tab).classList.add("active");if(focus)b.focus()}
+tabs.forEach((b,i)=>{b.onclick=()=>selectTab(b,false);
+b.onkeydown=e=>{let j=null;if(e.key==="ArrowRight")j=(i+1)%tabs.length;else if(e.key==="ArrowLeft")j=(i-1+tabs.length)%tabs.length;
+else if(e.key==="Home")j=0;else if(e.key==="End")j=tabs.length-1;
+if(j!==null){e.preventDefault();selectTab(tabs[j],true)}}});
 function copyText(t,btn){const done=()=>{const o=btn.textContent;btn.textContent="copied ✓";setTimeout(()=>btn.textContent=o,1200)};
 if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done).catch(()=>fallback())}else fallback();
 function fallback(){const ta=document.createElement("textarea");ta.value=t;document.body.appendChild(ta);ta.select();
@@ -400,13 +566,16 @@ def line_cell(info: dict) -> str:
 
 def overview_html(cases: list, agg: dict, queue: list, history: list) -> str:
     reviewed = [c for c in cases if c["reviewed"]]
+    scored = [c for c in reviewed if c.get("has_evidence", True)]
+    imported = [c for c in cases if c.get("imported") and not c["reviewed"]]
     f1s = [agg[n]["f1"] for n in LINES if agg[n]["f1"] is not None]
     mean_f1 = sum(f1s) / len(f1s) if f1s else None
     worst = min(LINES, key=lambda n: agg[n]["f1"] if agg[n]["f1"] is not None else 2)
     kpis = (
         f'<div class="kpi"><div class="v">{len(reviewed)}/{len(cases)}</div><div class="l">hands reviewed</div></div>'
         f'<div class="kpi"><div class="v">{len(queue)}</div><div class="l">need labeling</div></div>'
-        f'<div class="kpi"><div class="v">{fmt(mean_f1)}</div><div class="l">mean F1 (presence)</div></div>'
+        f'<div class="kpi"><div class="v">{len(imported)}</div><div class="l">imported (unreviewed)</div></div>'
+        f'<div class="kpi"><div class="v">{fmt(mean_f1)}</div><div class="l">mean F1 (scored n={len(scored)})</div></div>'
         f'<div class="kpi"><div class="v" style="color:{LINE_COLORS[worst]}">{worst}</div>'
         f'<div class="l">weakest line · F1 {fmt(agg[worst]["f1"])}</div></div>')
     cards = ""
@@ -420,23 +589,26 @@ def overview_html(cases: list, agg: dict, queue: list, history: list) -> str:
             f'<div class="nums"><span>TP {a["tp"]} · FP {a["fp"]} · FN {a["fn"]} · TN {a["tn"]}</span>'
             f'<span>n={a["n"]}</span><span>err <span class="err {err_class(a["mean_err_px"])}">'
             f'{fmt(a["mean_err_px"], 1)}px</span></span></div></div>')
-    qprev = (" ".join(f'<span class="badge amber">{s}</span>' for s in queue)
+    qprev = (" ".join(f'<span class="badge amber">{s}</span>' for s in queue[:40])
+             + (f' <span class="muted">+{len(queue)-40} more</span>' if len(queue) > 40 else "")
              if queue else '<span class="badge green">empty — all reviewed</span>')
     return (f"<h2>Health at a glance</h2><div class='kpis'>{kpis}</div>"
-            f"<h2>Per-line quality (reviewed hands only)</h2><div class='cards'>{cards}</div>"
+            f"<h2>Per-line quality (reviewed + evidence only)</h2><div class='cards'>{cards}</div>"
             f"<h2>Trend — F1 per run</h2>{trend_svg(history)}"
             f"<h2>Validation queue ({len(queue)})</h2><p>{qprev}</p>"
-            f"<p class='muted'>Label the queued hands in the Training data tab, then re-run "
-            f"<code>python3 scripts/admin_metrics.py</code> (or menu 4 → 7).</p>")
+            f"<p class='muted'>Label queued hands in the browser annotator "
+            f"(<code>python3 tools/palm_annotator/server.py</code>), then re-run "
+            f"<code>python3 scripts/admin_metrics.py</code>.</p>")
 
 
 def assets_html(inv: dict, cases: list) -> str:
     reviewed = {c["stem"] for c in cases if c["reviewed"]}
     stems = sorted(inv)
     total = sum(len(v) for v in inv.values())
-    out = [f"<h2>Asset manager — {total} files in <code>data/samples/mobile_captures/</code></h2>",
+    out = [f"<h2>Asset manager — {total} files in <code>mobile_captures/</code> + <code>palm_labels/</code></h2>",
            "<p class='muted'>Every file behind the metrics. Open to preview, copy the repo path for scripts, "
-           "download to share. Truth files (<span class='badge violet'>human truth</span>) are what the matrix scores against.</p>",
+           "download to share. Truth files (<span class='badge violet'>human truth</span>) are what the matrix scores against. "
+           "Imported Roboflow labels stay <span class='badge amber'>needs label</span> until Save in the annotator.</p>",
            '<div class="stem-grid">']
     for stem in stems:
         files = inv[stem]
@@ -453,35 +625,50 @@ def assets_html(inv: dict, cases: list) -> str:
             for fl in files)
         out.append(
             f"<div class='card'><h3>{stem} {status}</h3>{thumb}"
-            f"<table><tr><th>file</th><th>kind</th><th>size</th><th></th></tr>{rows}</table></div>")
+            f"<table><caption class='vh'>Files for this hand</caption><tr><th scope='col'>file</th>"
+            f"<th scope='col'>kind</th><th scope='col'>size</th><th scope='col'>"
+            f"<span class='vh'>actions</span></th></tr>{rows}</table></div>")
     out.append("</div>")
     return "".join(out)
 
 
 def training_html(cases: list, queue: list) -> str:
     guide = (
-        "<h2>Add a new hand (3 steps)</h2><div class='steps'>"
-        "<div class='step'><b>1. Drop the photo</b> into <code>data/samples/mobile_captures/&lt;stem&gt;.jpg</code> "
-        "(e.g. <code>03_left_mom.jpg</code>).</div>"
-        "<div class='step'><b>2. Run detection</b> — copy, paste in terminal:<div class='cmd'>./build/tools/hand_inspector_cli "
-        "--image data/samples/mobile_captures/&lt;stem&gt;.jpg --auto-landmarks "
-        "--out-json output/palm_&lt;stem&gt;.json --out-full-overlay output/palm_&lt;stem&gt;_full.png</div></div>"
-        "<div class='step'><b>3. Correct the lines</b> (Markup on the canonical warp, or edit the overlay debugger output) "
-        "and save as <code>&lt;stem&gt;_USER_CORRECTED.json</code> next to the photo. Then menu 4 → 7 to rebuild this page.</div>"
+        "<h2>Add / label hands</h2><div class='steps'>"
+        "<div class='step'><b>A. Bootstrap (~100 CC-BY)</b> — "
+        "<code>export ROBOFLOW_API_KEY=…</code> then "
+        "<code>python3 scripts/download_palm_labels.py --limit 100</code>. "
+        "Imported keypoints land in <code>data/palm_labels/</code> with <code>reviewed:false</code>.</div>"
+        "<div class='step'><b>B. Draw / correct</b> — "
+        "<code>python3 tools/palm_annotator/server.py</code> → "
+        "<a href='http://127.0.0.1:8765'>http://127.0.0.1:8765</a>. "
+        "Color tags 1–4 Heart/Head/Life/Fate, Save sets <code>reviewed:true</code>.</div>"
+        "<div class='step'><b>C. Phone gold</b> — drop <code>&lt;stem&gt;.jpg</code> into "
+        "<code>data/samples/mobile_captures/</code>, run detect, then label in the same annotator.</div>"
+        "<div class='step'><b>D. Compare</b> — re-run this dashboard. "
+        "Do <b>not</b> train U-Net until ~50–100 labels are reviewed "
+        "(see <code>data/palm_labels/README.md</code>).</div>"
         "</div>")
     qcards = ""
     if queue:
-        qcards = "<h2>Needs labeling</h2><div class='stem-grid'>"
-        for stem in queue:
+        qcards = f"<h2>Needs labeling ({len(queue)})</h2><div class='stem-grid'>"
+        for stem in queue[:60]:
+            c = next((x for x in cases if x["stem"] == stem), {})
             img = find_image(stem)
             thumb = (f'<a href="{img}"><img class="thumb" src="{img}" loading="lazy" alt="{stem}"></a>' if img else "")
+            kind = "imported" if c.get("imported") else "unlabeled"
+            badge = f"<span class='badge amber'>{kind}</span>"
+            if c.get("collection") == "palm_labels":
+                badge += " <span class='badge violet'>palm_labels</span>"
             cmd = inspect_cmd(stem).replace("&", "&amp;").replace("<", "&lt;")
             qcards += (
-                f"<div class='card'><h3>{stem} <span class='badge amber'>needs label</span></h3>{thumb}"
-                f"<p class='muted'>Run, correct, save truth as <code>{stem}_USER_CORRECTED.json</code>:</p>"
+                f"<div class='card'><h3>{stem} {badge}</h3>{thumb}"
+                f"<p class='muted'>Annotate at <code>http://127.0.0.1:8765</code> or run inspect:</p>"
                 f"<div class='cmd'>{cmd}</div>"
                 f"<button data-copy=\"{inspect_cmd(stem)}\">Copy inspect command</button> "
                 f"<button data-copy=\"{stem}_USER_CORRECTED.json\">Copy truth filename</button></div>")
+        if len(queue) > 60:
+            qcards += f"<p class='muted'>Showing 60 of {len(queue)} — open the annotator gallery for the rest.</p>"
         qcards += "</div>"
     rcards = "<h2>Reviewed — confirm or flag</h2><div class='stem-grid'>"
     for c in cases:
@@ -494,13 +681,131 @@ def training_html(cases: list, queue: list) -> str:
             f"human {'Y' if c['per_line'][n]['human_present'] else '·'}"
             + (f" · {c['per_line'][n]['mean_err_px']:.0f}px" if c['per_line'][n]['mean_err_px'] is not None else "")
             + "</span>" for n in LINES)
+        coll = f" <span class='badge grey'>{c.get('collection','')}</span>" if c.get("collection") else ""
         rcards += (
             f"<div class='card' data-review=\"{c['stem']}\"><h3>{c['stem']} "
-            f"<span class='badge green'>reviewed</span> <span class='muted rstate'></span></h3>{thumb}"
+            f"<span class='badge green'>reviewed</span>{coll} <span class='muted rstate'></span></h3>{thumb}"
             f"<p>{chips}</p><button class='bApprove'>Approve ✓</button> <button class='bFlag'>Flag ✗</button>"
             f"<input class='note' placeholder='review note (stored in this browser)…'></div>")
     rcards += "</div>"
     return guide + qcards + rcards
+
+
+def tasks_html(groups: list) -> str:
+    from html import escape as esc
+    if not groups:
+        return ("<h2>Runnable tasks</h2><p class='muted'>Menu modules unreadable — "
+                "run <code>pnpm dev</code> in a terminal for the interactive menu.</p>")
+    out = ["<h2>Runnable tasks — same steps as <code>pnpm dev</code></h2>",
+           "<p class='muted'>A static page cannot run shell commands — <b>Copy</b>, paste in a "
+           "repo-root terminal, Enter. Numbering matches the <code>pnpm dev</code> menu. "
+           "Items marked <span class='badge grey'>input</span> need the shown value; "
+           "<span class='badge grey'>guided</span> opens a submenu or note — use "
+           "<code>pnpm dev</code> for those.</p>"]
+    for gi, g in enumerate(groups, 1):
+        out.append(f"<h3>{gi}. {esc(g['title'])}</h3>")
+        for ti, it in enumerate(g["items"], 1):
+            label = esc(it["label"])
+            if it["kind"] == "run":
+                cmd = esc(it["cmd"])
+                out.append(
+                    f"<div class='task'><span class='n' aria-hidden='true'>{ti}</span>"
+                    f"<div class='t'><b>{label}</b><div class='cmd'>{cmd}</div></div>"
+                    f"<button type='button' data-copy=\"{esc(it['cmd'], quote=True)}\">Copy</button></div>")
+            elif it["kind"] == "ask":
+                ask = esc(it["ask"] or "input")
+                if it["cmd"]:
+                    body = f"<div class='cmd'>{esc(it['cmd'])} &lt;{ask}&gt;</div>"
+                    btn = f"<button type='button' data-copy=\"{esc(it['cmd'], quote=True)}\">Copy</button>"
+                else:
+                    body = (f"<div class='hint'>needs your {ask} to build the command — "
+                            f"run via <code>pnpm dev</code>, or copy the inspect command from the Training data tab</div>")
+                    btn = ""
+                out.append(
+                    f"<div class='task'><span class='n' aria-hidden='true'>{ti}</span>"
+                    f"<div class='t'><b>{label}</b> <span class='badge grey'>input</span>{body}</div>{btn}</div>")
+            else:
+                hint = esc(it["note"]) if it.get("note") else "guided step — run via <code>pnpm dev</code>"
+                out.append(
+                    f"<div class='task'><span class='n' aria-hidden='true'>{ti}</span>"
+                    f"<div class='t'><b>{label}</b> <span class='badge grey'>guided</span>"
+                    f"<div class='hint'>{hint}</div></div></div>")
+    return "".join(out)
+
+
+ARCH_ROLES = [
+    ("core/", "Domain-agnostic vision engine (C++). Knows pixels, not palms."),
+    ("domains/palm/", "Palm product logic: crease detection, fate taxonomy, report payload."),
+    ("domains/flood/", "Flood product logic: river morphology, delta, registration."),
+    ("apps/mobile_overlay/", "Shared camera overlay (iOS + Android). Renders only — never decides."),
+    ("apps/ios_palm_app/", "Shippable iOS app (PalmScanner)."),
+    ("apps/android_palm_app/", "Shippable Android app + native .so packaging."),
+    ("tools/", "Desktop CLIs: hand_inspector, overlay debugger, demos."),
+    ("scripts/", "Python ops: metrics, sweeps, pipeline helpers. Menu groups in scripts/menu/."),
+    ("data/samples/mobile_captures/", "Phone gold hands + evidence + human truth."),
+    ("data/palm_labels/", "Roboflow bootstrap + annotator labels (raw JPEGs gitignored)."),
+    ("tools/palm_annotator/", "Local browser polyline editor (color-tagged Heart/Head/Life/Fate)."),
+    ("output/", "Gitignored build artifacts: dashboard, snapshots, overlays."),
+    ("docs/", "Method, vision, roadmaps. Start at product_vision.md."),
+]
+
+FLOW_STEPS = [
+    ("Mobile capture", "photo"),
+    ("hand_inspector_cli", "detect"),
+    ("*_evidence.json", "auto lines"),
+    ("Human correction", "you label"),
+    ("*_USER_CORRECTED", "truth"),
+    ("admin_metrics.py", "scores"),
+    ("This dashboard", "decide"),
+    ("Prediction report", "user value"),
+]
+
+
+def arch_html() -> str:
+    import os
+    boxes, arrows = [], []
+    W, BW, BH, GAP = 1180, 128, 54, 22
+    per_row = 4
+    for i, (title, sub) in enumerate(FLOW_STEPS):
+        r, k = divmod(i, per_row)
+        x = 10 + k * (BW + GAP)
+        y = 10 + r * (BH + 44)
+        fill = "#1c2b1f" if "Human" in title or "TRUTH" in title.upper() else ("#1a2340" if "dashboard" in title else "#16161c")
+        stroke = "#34d399" if "Human" in title or "TRUTH" in title.upper() else ("#60a5fa" if "dashboard" in title else "#3a3a44")
+        boxes.append(
+            f'<rect x="{x}" y="{y}" width="{BW}" height="{BH}" rx="10" fill="{fill}" stroke="{stroke}"/>'
+            f'<text x="{x + BW / 2}" y="{y + 23}" fill="#f4f4f5" font-size="11" font-weight="bold" text-anchor="middle">{title}</text>'
+            f'<text x="{x + BW / 2}" y="{y + 39}" fill="#a1a1aa" font-size="10" text-anchor="middle">{sub}</text>')
+        if k < per_row - 1 and i + 1 < len(FLOW_STEPS) and (i + 1) % per_row:
+            arrows.append(f'<line x1="{x + BW}" y1="{y + BH / 2}" x2="{x + BW + GAP}" y2="{y + BH / 2}" stroke="#52525b" marker-end="url(#ah)"/>')
+        elif (i + 1) < len(FLOW_STEPS):
+            nx = 10
+            arrows.append(f'<line x1="{x + BW / 2}" y1="{y + BH}" x2="{nx + BW / 2}" y2="{y + BH + 44}" stroke="#52525b" marker-end="url(#ah)"/>')
+    rows = max(1, -(-len(FLOW_STEPS) // per_row))
+    H = rows * (BH + 44) + 10
+    flow = (f'<svg class="flow" viewBox="0 0 {W} {H}" role="img" aria-label="Data flow from capture to prediction report">'
+            '<defs><marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">'
+            '<path d="M0,0 L8,4 L0,8" fill="none" stroke="#52525b"/></marker></defs>'
+            + "".join(arrows + boxes) + "</svg>")
+    tre = []
+    for d, role in ARCH_ROLES:
+        p = ROOT / d.rstrip("/")
+        n = sum(1 for _, _, fs in os.walk(p) for f in fs if not f.startswith(".")) if p.exists() else 0
+        tre.append(f"<tr><td><code>{d}</code></td><td>{role}</td><td>{n} files</td></tr>")
+    return (
+        "<h2>How the code fits together</h2>"
+        "<p class='muted'>Green = human input, blue = this page. The loop: detect → you correct → "
+        "scores update → predictions improve. Overlays never decide; only confirmed geometry reaches reports.</p>"
+        + flow +
+        "<h2>Repo map (live file counts)</h2>"
+        "<table><caption class='vh'>Repository directories and their roles</caption>"
+        "<tr><th scope='col'>directory</th><th scope='col'>role</th><th scope='col'>size</th></tr>"
+        + "".join(tre) + "</table>"
+        "<h2>Working agreements</h2><ol class='howto'>"
+        "<li><code>core/</code> stays domain-agnostic — palm/flood logic lives in <code>domains/</code>.</li>"
+        "<li>Overlays render; they never classify. Evidence JSON is the contract between layers.</li>"
+        "<li>Every tuning pass ends with <code>python3 scripts/admin_metrics.py</code> so the trend chart moves.</li>"
+        "<li>Human corrections are first-class training labels, not side files.</li></ol>")
 
 
 def results_html(cases: list, agg: dict) -> str:
@@ -512,8 +817,16 @@ def results_html(cases: list, agg: dict) -> str:
         for n in LINES)
     def fixture_row(c: dict) -> str:
         status = "reviewed" if c["reviewed"] else "queued"
-        badge = ("<span class='badge green'>reviewed</span>" if c["reviewed"]
-                 else "<span class='badge amber'>needs label</span>")
+        if c["reviewed"]:
+            badge = "<span class='badge green'>reviewed</span>"
+        elif c.get("imported"):
+            badge = "<span class='badge amber'>imported</span>"
+        else:
+            badge = "<span class='badge amber'>needs label</span>"
+        if c.get("collection") == "palm_labels":
+            badge += " <span class='badge violet'>palm_labels</span>"
+        if not c.get("has_evidence", True):
+            badge += " <span class='badge grey'>no auto</span>"
         cells = "".join(f"<td>{line_cell(c['per_line'][n])}</td>" for n in LINES)
         return (f"<tr data-stem=\"{c['stem']}\" data-status=\"{status}\">"
                 f"<td><b>{c['stem']}</b><br>{badge}</td>{cells}<td>{fate_chips(c)}</td></tr>")
@@ -521,27 +834,34 @@ def results_html(cases: list, agg: dict) -> str:
     frows = "".join(fixture_row(c) for c in cases)
     return (
         "<h2>Confusion matrix per line</h2>"
-        "<table><tr><th>line</th><th>n</th><th>TP</th><th>FP</th><th>FN</th><th>TN</th>"
-        "<th>prec</th><th>rec</th><th>F1</th><th>err</th></tr>" + mrows + "</table>"
+        "<table><caption class='vh'>Presence confusion matrix per palm line</caption>"
+        "<tr><th scope='col'>line</th><th scope='col'>n</th><th scope='col'>TP</th><th scope='col'>FP</th>"
+        "<th scope='col'>FN</th><th scope='col'>TN</th>"
+        "<th scope='col'>prec</th><th scope='col'>rec</th><th scope='col'>F1</th><th scope='col'>err</th></tr>"
+        + mrows + "</table>"
         "<h2>Per-fixture detail</h2>"
         "<div class='toolbar'><div class='seg'><button data-f='all' class='on'>All</button>"
         "<button data-f='reviewed'>Reviewed</button><button data-f='queued'>Needs label</button></div>"
         "<input type='search' id='q' placeholder='filter by hand name…'></div>"
-        "<table><tr><th>fixture</th><th>heart<br><small>auto/human</small></th>"
-        "<th>head<br><small>auto/human</small></th><th>life<br><small>auto/human</small></th>"
-        "<th>fate<br><small>auto/human</small></th><th>fate analysis</th></tr>"
+        "<table><caption class='vh'>Per-fixture auto vs human presence and geometry error</caption>"
+        "<tr><th scope='col'>fixture</th><th scope='col'>heart<br><small>auto/human</small></th>"
+        "<th scope='col'>head<br><small>auto/human</small></th><th scope='col'>life<br><small>auto/human</small></th>"
+        "<th scope='col'>fate<br><small>auto/human</small></th><th scope='col'>fate analysis</th></tr>"
         f"<tbody id='fixtureRows'>{frows}</tbody></table>")
 
 
-def html(ts: str, cases: list, agg: dict, queue: list, history: list, inv: dict) -> str:
+def html(ts: str, cases: list, agg: dict, queue: list, history: list, inv: dict, groups: list) -> str:
     page = SHELL.replace("@@TS@@", ts)
     page = page.replace("@@NFILES@@", str(sum(len(v) for v in inv.values())))
     page = page.replace("@@NQUEUE@@", str(len(queue)))
     page = page.replace("@@NCASES@@", str(len(cases)))
+    page = page.replace("@@NTASKS@@", str(sum(len(g["items"]) for g in groups)))
     page = page.replace("@@OVERVIEW@@", overview_html(cases, agg, queue, history))
+    page = page.replace("@@TASKS@@", tasks_html(groups))
     page = page.replace("@@ASSETS@@", assets_html(inv, cases))
     page = page.replace("@@TRAINING@@", training_html(cases, queue))
     page = page.replace("@@RESULTS@@", results_html(cases, agg))
+    page = page.replace("@@ARCH@@", arch_html())
     return page
 
 
@@ -568,7 +888,8 @@ def main() -> None:
             f.write(json.dumps({"ts": ts, "agg": agg,
                                 "n_cases": len(cases), "queue": queue}) + "\n")
         history.append({"ts": ts, "agg": agg})
-    (OUT_DIR / "admin_dashboard.html").write_text(html(ts, cases, agg, queue, history, inv))
+    groups = menu_tasks()
+    (OUT_DIR / "admin_dashboard.html").write_text(html(ts, cases, agg, queue, history, inv, groups))
 
     if args.markdown:
         print(markdown(cases, agg, queue))

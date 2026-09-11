@@ -25,6 +25,11 @@ let package = Package(
             name: "CurvVastuOverlay",
             dependencies: ["CurvCameraOverlay"],
             path: "Sources/CurvVastuOverlay"
+        ),
+        .testTarget(
+            name: "CurvPalmOverlayTests",
+            dependencies: ["CurvPalmOverlay"],
+            path: "Tests/CurvPalmOverlayTests"
         )
     ]
 )

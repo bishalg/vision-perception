@@ -24,72 +24,88 @@ public struct MainScannerView: View {
     }
 
     public var body: some View {
-        ZStack {
-            CameraOverlayHost(
-                profile: viewModel.profile,
-                session: viewModel.cameraSession,
-                guidanceState: viewModel.guidanceState,
-                metrics: viewModel.qualityMetrics,
-                isAnalyzing: viewModel.isAnalyzing,
-                statusMessageOverride: viewModel.statusMessageOverride,
-                onManualCapture: { viewModel.manualCapture() }
-            ) {
-                PalmSilhouetteView(
-                    isReady: viewModel.guidanceState.isReady,
-                    handSide: viewModel.selectedHandSide,
-                    detectedIsLeft: viewModel.detectedHandSide == .left
-                )
-            }
+        GeometryReader { geometry in
+            let cameraFeedSize = CGSize(width: 1080, height: 1920)
+            let imageRect = ImageCoordinateMapper.imageRect(
+                imageSize: cameraFeedSize,
+                viewSize: geometry.size,
+                mode: .fill
+            )
+            let isScaffold = viewModel.detectedLandmarks.isEmpty
+            // Only mirror synthetic scaffold hand on simulator if Left Hand is selected.
+            // Live landmarks from camera are already in image space and anatomically invariant.
+            let shouldMirror = isScaffold && (viewModel.selectedHandSide == .left || viewModel.detectedHandSide == .left)
 
-            // Top hand toggle (Auto / Left / Right) — algorithm auto-detects, user can lock
-            VStack {
-                HandSideToggleView(
-                    selection: $viewModel.selectedHandSide,
-                    autoDetected: viewModel.detectedHandSide
-                )
-                .padding(.top, 54)
-                // Corridor guide toggle — only while a hand is on screen.
-                if !regionLandmarks.isEmpty && !viewModel.showResultViewer {
-                    Button(action: { showCorridors.toggle() }) {
-                        HStack(spacing: 5) {
-                            Image(systemName: showCorridors ? "dot.scope" : "circle.dotted")
-                            Text("Corridors")
-                                .font(.system(size: 12, weight: .semibold))
-                        }
-                        .foregroundColor(.white.opacity(showCorridors ? 0.95 : 0.6))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(
-                            Capsule()
-                                .fill(.ultraThinMaterial)
-                                .overlay(Capsule().stroke(Color.white.opacity(showCorridors ? 0.5 : 0.2), lineWidth: 1))
-                        )
-                    }
-                    .padding(.top, 6)
+            ZStack {
+                CameraOverlayHost(
+                    profile: viewModel.profile,
+                    session: viewModel.cameraSession,
+                    guidanceState: viewModel.guidanceState,
+                    metrics: viewModel.qualityMetrics,
+                    isAnalyzing: viewModel.isAnalyzing,
+                    statusMessageOverride: viewModel.statusMessageOverride,
+                    onManualCapture: { viewModel.manualCapture() }
+                ) {
+                    PalmSilhouetteView(
+                        isReady: viewModel.guidanceState.isReady,
+                        handSide: viewModel.selectedHandSide,
+                        detectedIsLeft: viewModel.detectedHandSide == .left
+                    )
                 }
-                Spacer()
-            }
-            .zIndex(1)
 
-            // Live landmark skeleton while hand is detected (same dots as result view).
-            if !viewModel.detectedLandmarks.isEmpty && !viewModel.showResultViewer {
-                HandOutlineOverlay(landmarks: viewModel.detectedLandmarks)
+                // Top hand toggle (Auto / Left / Right) — algorithm auto-detects, user can lock
+                VStack {
+                    HandSideToggleView(
+                        selection: $viewModel.selectedHandSide,
+                        autoDetected: viewModel.detectedHandSide
+                    )
+                    .padding(.top, 54)
+                    // Corridor guide toggle — only while a hand is on screen.
+                    if !regionLandmarks.isEmpty && !viewModel.showResultViewer {
+                        Button(action: { showCorridors.toggle() }) {
+                            HStack(spacing: 5) {
+                                Image(systemName: showCorridors ? "dot.scope" : "circle.dotted")
+                                Text("Corridors")
+                                    .font(.system(size: 12, weight: .semibold))
+                            }
+                            .foregroundColor(.white.opacity(showCorridors ? 0.95 : 0.6))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .background(
+                                Capsule()
+                                    .fill(.ultraThinMaterial)
+                                    .overlay(Capsule().stroke(Color.white.opacity(showCorridors ? 0.5 : 0.2), lineWidth: 1))
+                            )
+                        }
+                        .padding(.top, 6)
+                    }
+                    Spacer()
+                }
+                .zIndex(1)
+
+                // Live landmark skeleton while hand is detected (same dots as result view).
+                if !viewModel.detectedLandmarks.isEmpty && !viewModel.showResultViewer {
+                    HandOutlineOverlay(
+                        landmarks: viewModel.detectedLandmarks,
+                        imageRect: imageRect
+                    )
                     .ignoresSafeArea()
                     .allowsHitTesting(false)
                     .zIndex(1)
-            }
+                }
 
-            // Live sci-fi region overlay (mounts + optional corridors).
-            if !regionLandmarks.isEmpty && !viewModel.showResultViewer {
-                RegionOverlayView(
-                    landmarks: regionLandmarks,
-                    isReady: viewModel.guidanceState.isReady,
-                    showCorridors: showCorridors,
-                    mirror: viewModel.detectedHandSide == .left
-                )
-                .ignoresSafeArea()
-                .zIndex(1)
-            }
+                // Live sci-fi region overlay (mounts + optional corridors).
+                if !regionLandmarks.isEmpty && !viewModel.showResultViewer {
+                    RegionOverlayView(
+                        landmarks: regionLandmarks,
+                        isReady: viewModel.guidanceState.isReady,
+                        showCorridors: showCorridors,
+                        mirror: shouldMirror,
+                        imageRect: imageRect
+                    )
+                    .ignoresSafeArea()
+                    .zIndex(1)
+                }
 
             // Bottom-left thumbnail (like stock iOS Camera)
             if let thumb = viewModel.capturedImage, !viewModel.showResultViewer {
@@ -143,6 +159,8 @@ public struct MainScannerView: View {
                 }
             }
         }
+        }
+        .ignoresSafeArea()
         .animation(.easeInOut(duration: 0.22), value: viewModel.showResultViewer)
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: viewModel.capturedImage != nil)
         .onAppear { viewModel.start() }

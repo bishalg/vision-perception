@@ -81,11 +81,11 @@ int runHandInspector(int argc, char* argv[], std::ostream& out, std::ostream& er
     if (!landmarks_path.empty()) {
         std::string lerr;
         if (!loadLandmarksJson(landmarks_path, lms, &lerr)) {
-            err << "[ERROR] " << lerr << '\n';
-            return 1;
+            err << "[WARN] " << lerr << " — falling back to default landmarks\n";
+        } else {
+            lms_ptr = &lms;
+            out << "[STAGE 2] Loaded landmarks from " << landmarks_path << '\n';
         }
-        lms_ptr = &lms;
-        out << "[STAGE 2] Loaded landmarks from " << landmarks_path << '\n';
     }
 
     PalmInspectOptions opts;

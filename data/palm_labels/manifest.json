@@ -1,0 +1,10 @@
+{
+  "schema": "palm_labels_manifest_v1",
+  "status": "empty",
+  "note": "Run: python3 scripts/download_palm_labels.py --limit 100",
+  "source": null,
+  "license": null,
+  "downloaded_at": null,
+  "limit": 0,
+  "samples": []
+}

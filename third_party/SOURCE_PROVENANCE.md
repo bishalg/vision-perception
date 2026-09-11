@@ -38,3 +38,15 @@ Every new dependency must add an entry matching this template before merging:
     `videoio`/`highgui`/`gapi`/language-binding modules disabled; `core`/`imgproc`/`imgcodecs`/`dnn` kept)
 - **Review Date**: 2026-09-09
 - **Approved By**: Bishal Ghimire
+
+### Dataset: Roboflow palms-lf79v/palm-lines-recognition-lbedg
+- **Upstream Repository**: https://universe.roboflow.com/palms-lf79v/palm-lines-recognition-lbedg
+- **Commit SHA / Release Tag**: version 1 (confirm at download time)
+- **Original Author / Copyright**: Roboflow Universe project `palms-lf79v/palm-lines-recognition-lbedg`
+- **License**: CC BY 4.0 required — verified by `scripts/download_palm_labels.py` before extract (refuses CC-BY-NC)
+- **Integration Target**: `data/palm_labels/` (raw images gitignored; JSON labels + manifest committed)
+- **Modifications**:
+  - [x] Keypoints converted to `palm_label_v1` polylines (`reviewed: false` until human Save in the annotator)
+- **Sample count (this machine)**: 0 until `python3 scripts/download_palm_labels.py --limit 100`
+- **Review Date**: 2026-09-11
+- **Approved By**: download_palm_labels.py (automated; re-run updates this block)

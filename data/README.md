@@ -6,6 +6,7 @@ This directory stores datasets, synthetic curve fixtures, and test annotations u
 - **`samples/`**: Small, representative real-world images for sanity checks and integration tests.
 - **`synthetic/`**: Mathematically generated curves (straight lines, parabolas, sinusoids, concentric rings) with exact known analytical sub-pixel ground truth.
 - **`annotations/`**: Ground-truth JSON annotations formatted according to `docs/evidence_schema.md`.
+- **`palm_labels/`**: Scale palm-line labels (Roboflow bootstrap + browser annotator). Raw JPEGs gitignored; see [`palm_labels/README.md`](palm_labels/README.md).
 - **`flood_nepal_2026/`**: Historical Sentinel-2 L2A optical disaster fixtures for the Lende Khola / Bhote Koshi event.
 
 ## Data Governance

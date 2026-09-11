@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "curv/domain/CreaseGeometry.hpp"
+#include "curv/pattern/MicroPatternDetector.hpp"
 
 namespace CurvEngine::domain {
 
@@ -266,12 +267,28 @@ FateReport FateLineAnalyzer::analyze(const ChainedCreaseLine& fate, const Chaine
         }
     }
 
-    // P2 shape heuristics (documented as heuristic until dedicated detectors land).
-    rep.has_island_fish = rep.broken && (forks >= 1);
-    rep.has_triangle = CreaseGeometry::countIntersections(fate.points, fate.points) >= 1 && forks >= 2;
-    rep.has_cross = forks >= 1 && rep.gap_count >= 1 && !rep.has_island_fish;
-    rep.has_square = rep.broken && !rep.has_island_fish &&
-                     CreaseGeometry::computeTortuosity(arc, CreaseGeometry::computeChordLength(fate.points)) < 1.1F;
+    // P2 shape detection using both dedicated MicroPatternDetector and fallback heuristics.
+    auto detected_patterns = pattern::MicroPatternDetector::detectAll(graph);
+    bool found_island_fish = false;
+    bool found_triangle = false;
+    bool found_cross = false;
+    bool found_square = false;
+
+    for (const auto& pat : detected_patterns) {
+        if (pat.type == pattern::PatternType::Fish || pat.type == pattern::PatternType::Island)
+            found_island_fish = true;
+        if (pat.type == pattern::PatternType::Triangle) found_triangle = true;
+        if (pat.type == pattern::PatternType::Cross) found_cross = true;
+        if (pat.type == pattern::PatternType::Square) found_square = true;
+    }
+
+    rep.has_island_fish = found_island_fish || (rep.broken && (forks >= 1));
+    rep.has_triangle =
+        found_triangle || (CreaseGeometry::countIntersections(fate.points, fate.points) >= 1 && forks >= 2);
+    rep.has_cross = found_cross || (forks >= 1 && rep.gap_count >= 1 && !rep.has_island_fish);
+    rep.has_square = found_square ||
+                     (rep.broken && !rep.has_island_fish &&
+                      CreaseGeometry::computeTortuosity(arc, CreaseGeometry::computeChordLength(fate.points)) < 1.1F);
 
     // Age anchors from actual heart/head intersections when available.
     float head_y = 0.0F;

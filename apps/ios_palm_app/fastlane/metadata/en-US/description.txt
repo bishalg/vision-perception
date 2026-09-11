@@ -1,1 +1,16 @@
-PalmScanner provides real-time palm tracking, geometric contour guidance, and crease analysis powered by the CurvEngine on-device vision pipeline.
+Palm Reading Scanner helps you capture a clear palm, map major lines (Life, Heart, Head, Fate), and review a grounded reading — with edits you control.
+
+WHAT YOU CAN DO
+• Guided camera capture so your palm is framed and lit correctly
+• On-device line detection for Life, Heart, Head, and Fate
+• Edit lines before reading — drag, relabel, and confirm what counts
+• Clear reading card based on confirmed geometry, not raw guesses
+• Works offline for core scanning on your device
+
+BUILT FOR REAL USE
+This is a helper, not an oracle. The app proposes lines; you correct them quickly, then lock them for the reading. Your corrections improve future proposals.
+
+PRIVACY
+Camera access is used only to analyze your palm on device for guidance and crease mapping. Review our privacy policy for details.
+
+Perfect if you want modern palmistry tools, hand-line study, or a clean scanner for personal insight and entertainment.

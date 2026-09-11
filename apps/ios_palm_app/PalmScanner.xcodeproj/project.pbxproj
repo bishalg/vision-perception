@@ -31,7 +31,7 @@
 		248332063F7DC8A9DEB48F43 /* VisionHandTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionHandTracker.swift; sourceTree = "<group>"; };
 		32D5685105C749526C195AA3 /* ios */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ios; path = ../mobile_overlay/ios; sourceTree = SOURCE_ROOT; };
 		3CD8FE6C0095809F7C6C5E47 /* PalmAnalysisResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalmAnalysisResult.swift; sourceTree = "<group>"; };
-		4D50AD49761707C4F33F4119 /* PalmScanner.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PalmScanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4D50AD49761707C4F33F4119 /* PalmScanner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PalmScanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5BB3A3841F3F59CF9472772D /* PalmScannerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalmScannerApp.swift; sourceTree = "<group>"; };
 		5FC54A6BE9238CDDF01888E1 /* ImageCoordinateMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCoordinateMapper.swift; sourceTree = "<group>"; };
 		6B4263A45D6BB454A8D1C5E3 /* LocalizedStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizedStrings.swift; sourceTree = "<group>"; };
@@ -204,6 +204,7 @@
 /* Begin PBXShellScriptBuildPhase section */
 		127F87FBABD344832010BD87 /* StripStaticOpenCVFramework */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -378,13 +379,18 @@
 				DEVELOPMENT_TEAM = 6J3WY94J6T;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AppHost/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.books";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.3;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				OTHER_LDFLAGS = "-lc++ -framework Accelerate";
+				OTHER_LDFLAGS = (
+					"-lc++",
+					"-framework",
+					Accelerate,
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = org.curv.palmapp;
 				PRODUCT_NAME = PalmScanner;
 				SDKROOT = iphoneos;
@@ -404,13 +410,18 @@
 				DEVELOPMENT_TEAM = 6J3WY94J6T;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AppHost/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.books";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.3;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				OTHER_LDFLAGS = "-lc++ -framework Accelerate";
+				OTHER_LDFLAGS = (
+					"-lc++",
+					"-framework",
+					Accelerate,
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = org.curv.palmapp;
 				PRODUCT_NAME = PalmScanner;
 				SDKROOT = iphoneos;

@@ -131,6 +131,8 @@ third_party/ios/opencv-build-*/
 
 # SPM build artifacts
 adapters/apple/.build/
+apps/mobile_overlay/ios/.build/
+.build/
 
 # Visual Studio
 .vs/
@@ -226,11 +228,21 @@ apps/**/.vite/
 data/flood_nepal_2026/*
 !data/flood_nepal_2026/metadata.json
 
+# Palm-label bootstrap (Roboflow JPEGs + work dirs — never commit binaries)
+data/palm_labels/raw/
+data/palm_labels/_download/
+data/palm_labels/**/*.jpg
+data/palm_labels/**/*.jpeg
+data/palm_labels/**/*.png
+!data/palm_labels/README.md
+!data/palm_labels/manifest.json
+!data/palm_labels/**/*_USER_CORRECTED*.json
 
 # Exceptions: keep small golden fixture data or test config files explicitly
 !data/samples/
 !data/synthetic/
 !data/annotations/
+!data/palm_labels/
 !.gitkeep
 
 

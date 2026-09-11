@@ -11,24 +11,32 @@ public struct RegionOverlayView: View {
     public let isReady: Bool
     public var showCorridors: Bool = false
     public var mirror: Bool = false
+    public var imageRect: CGRect? = nil
 
     /// EMA factor against landmark jitter (Vision noise shimmers dashes).
     private static let smoothing: CGFloat = 0.35
 
     @State private var smoothed: [CGPoint] = []
 
-    public init(landmarks: [CGPoint], isReady: Bool, showCorridors: Bool = false, mirror: Bool = false) {
+    public init(
+        landmarks: [CGPoint],
+        isReady: Bool,
+        showCorridors: Bool = false,
+        mirror: Bool = false,
+        imageRect: CGRect? = nil
+    ) {
         self.landmarks = landmarks
         self.isReady = isReady
         self.showCorridors = showCorridors
         self.mirror = mirror
+        self.imageRect = imageRect
     }
 
     public var body: some View {
         Canvas { context, size in
             let pts = smoothed.count >= 21 ? smoothed : landmarks
             guard let regions = PalmRegionGeometry.regions(from: pts) else { return }
-            let rect = CGRect(origin: .zero, size: size)
+            let rect = imageRect ?? CGRect(origin: .zero, size: size)
             func map(_ p: CGPoint) -> CGPoint {
                 var q = CGPoint(x: rect.minX + p.x * rect.width, y: rect.minY + p.y * rect.height)
                 if mirror { q.x = rect.maxX - (q.x - rect.minX) }

@@ -1,1 +1,1 @@
-Initial release of PalmScanner with on-device palm detection and crease analysis.
+First release: guided palm capture, editable Life/Heart/Head/Fate lines, and on-device reading from confirmed geometry.

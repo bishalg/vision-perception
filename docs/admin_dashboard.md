@@ -73,8 +73,11 @@ palm-line sets, 11k Hands, biometric DBs) is ranked in
 ## 4. Human validation flow
 
 1. Dashboard **queue** lists captures needing correction.
-2. Human draws corrections (today: Markup on canonical warp) → saved as
-   `data/samples/mobile_captures/<stem>_USER_CORRECTED*.json` (+`.png`).
+2. Human draws corrections in the **palm annotator**
+   (`python3 tools/palm_annotator/server.py` → http://127.0.0.1:8765)
+   or (legacy) Markup on canonical warp → saved as
+   `data/samples/mobile_captures/<stem>_USER_CORRECTED*.json` or under
+   `data/palm_labels/` (+`.png` optional).
 3. Re-run the script: queue shrinks, matrix + trends update.
 4. Prediction layer consumes only confirmed geometry
    (`predictionReadySplines`), so every validated item directly improves

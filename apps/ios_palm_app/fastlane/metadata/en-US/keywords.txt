@@ -1,1 +1,1 @@
-palm, scanner, computer vision, hand tracking, biometric, opencv
+palm reading,palmistry,hand reading,fortune,fate line,life line,hand analysis,palm scan

@@ -1,1 +1,1 @@
-PalmScanner - Real-Time Palm & Hand Geometry Scanner
+Palm Reading Scanner

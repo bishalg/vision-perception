@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "domains": [
+    {
+      "id": "palm",
+      "label": "Palm Creases & Hand Anatomy",
+      "description": "Heart, head, life, and fate crease extraction from smartphone captures",
+      "dataset_dir": "data/samples/mobile_captures",
+      "image_extensions": [".jpg", ".jpeg", ".png"],
+      "image_filter_exclude": ["_overlay", "_canonical", "_USER_CORRECTED", "_landmarks"],
+      "canonical_warp": true,
+      "classes": [
+        {
+          "id": "heart_line",
+          "label": "Heart Line",
+          "color": "#F43F5E",
+          "shortcut": "1",
+          "description": "Upper transverse crease running below fingers"
+        },
+        {
+          "id": "head_line",
+          "label": "Head Line",
+          "color": "#06B6D4",
+          "shortcut": "2",
+          "description": "Middle transverse crease across palm disc"
+        },
+        {
+          "id": "life_line",
+          "label": "Life Line",
+          "color": "#10B981",
+          "shortcut": "3",
+          "description": "Radial longitudinal crease arcing around thumb mount"
+        },
+        {
+          "id": "fate_line",
+          "label": "Fate Line",
+          "color": "#8B5CF6",
+          "shortcut": "4",
+          "description": "Vertical line extending up from wrist toward middle finger"
+        }
+      ],
+      "auto_evidence_suffix": "_evidence.json",
+      "human_truth_suffix": "_USER_CORRECTED.json",
+      "coord_space": "norm_512"
+    },
+    {
+      "id": "flood",
+      "label": "Flood & River Morphology",
+      "description": "Satellite and aerial waterlines, flood boundaries, and river centerlines",
+      "dataset_dir": "data/flood_nepal_2026/processed",
+      "evidence_dir": "data/flood_nepal_2026/out",
+      "image_extensions": [".png", ".jpg", ".tif"],
+      "image_filter_exclude": ["_mask", "_overlay", "_curves", "_USER_CORRECTED"],
+      "canonical_warp": false,
+      "classes": [
+        {
+          "id": "waterline",
+          "label": "Active Waterline",
+          "color": "#3B82F6",
+          "shortcut": "1",
+          "description": "High-confidence active water body flow path"
+        },
+        {
+          "id": "flood_boundary",
+          "label": "Flood Boundary",
+          "color": "#EF4444",
+          "shortcut": "2",
+          "description": "Peak flood extent / inundation perimeter"
+        },
+        {
+          "id": "river_centerline",
+          "label": "River Centerline",
+          "color": "#10B981",
+          "shortcut": "3",
+          "description": "Main river channel thalweg / morphological axis"
+        },
+        {
+          "id": "bank_line",
+          "label": "Channel Bank",
+          "color": "#F59E0B",
+          "shortcut": "4",
+          "description": "Stable geological embankment or levee"
+        }
+      ],
+      "auto_evidence_suffix": "_evidence.json",
+      "human_truth_suffix": "_USER_CORRECTED.json",
+      "coord_space": "pixel"
+    }
+  ]
+}
