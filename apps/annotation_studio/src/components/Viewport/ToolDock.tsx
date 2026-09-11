@@ -26,23 +26,41 @@ interface ToolDockProps {
   showBrushPopover: boolean;
 }
 
+const DEFAULT_TITLES: Record<ToolType, string> = {
+  pan: 'Select / Pan (H / Space)',
+  bbox: 'Bounding Box (R)',
+  polygon: 'Polygon Area Tool (P)',
+  brush: 'Brush Stroke Tool (B)',
+  wand: 'AI Contour Snap (S)',
+  polyline: 'Polyline Tool (L)',
+};
+
+const TOOL_META: Array<{
+  id: ToolType;
+  icon: React.ReactNode;
+  badge?: string;
+}> = [
+  { id: 'pan', icon: <IconHand size={18} /> },
+  { id: 'bbox', icon: <IconBBox size={18} /> },
+  { id: 'polygon', icon: <IconPolygon size={18} /> },
+  { id: 'brush', icon: <IconBrush size={18} /> },
+  { id: 'wand', icon: <IconWand size={18} />, badge: 'AI' },
+  { id: 'polyline', icon: <IconPolyline size={18} /> },
+];
+
 export const ToolDock: React.FC<ToolDockProps> = ({ onToggleBrushPopover }) => {
   const activeTool = useStore(studioStore, s => s.activeTool);
   const activeClassId = useStore(studioStore, s => s.activeClassId);
+  const currentDomain = useStore(studioStore, s => s.currentDomain);
 
-  const tools: Array<{
-    id: ToolType;
-    icon: React.ReactNode;
-    title: string;
-    badge?: string;
-  }> = [
-    { id: 'pan', icon: <IconHand size={18} />, title: 'Select / Pan (H / Space)' },
-    { id: 'bbox', icon: <IconBBox size={18} />, title: 'Bounding Box (R)' },
-    { id: 'polygon', icon: <IconPolygon size={18} />, title: 'Polygon Area Tool (P)' },
-    { id: 'brush', icon: <IconBrush size={18} />, title: 'Brush Stroke Tool (B)' },
-    { id: 'wand', icon: <IconWand size={18} />, title: 'AI Contour Snap (S)', badge: 'AI' },
-    { id: 'polyline', icon: <IconPolyline size={18} />, title: 'Polyline / Crease Tool (L)' },
-  ];
+  const enabled = currentDomain?.tools_enabled;
+  const labels = currentDomain?.tool_labels || {};
+  const showAbsent = !enabled || enabled.includes('absent');
+
+  const tools = TOOL_META.filter(t => !enabled || enabled.includes(t.id)).map(t => ({
+    ...t,
+    title: labels[t.id] || DEFAULT_TITLES[t.id],
+  }));
 
   const handleToolClick = (e: React.MouseEvent, tool: ToolType) => {
     e.stopPropagation();
@@ -107,14 +125,16 @@ export const ToolDock: React.FC<ToolDockProps> = ({ onToggleBrushPopover }) => {
       >
         <IconRedo size={17} />
       </button>
-      <button
-        className="dock-btn"
-        id="toolAbsent"
-        title="Mark Feature Absent (A)"
-        onClick={handleAbsent}
-      >
-        <IconAbsent size={17} />
-      </button>
+      {showAbsent && (
+        <button
+          className="dock-btn"
+          id="toolAbsent"
+          title="Mark Feature Absent (A)"
+          onClick={handleAbsent}
+        >
+          <IconAbsent size={17} />
+        </button>
+      )}
     </div>
   );
 };

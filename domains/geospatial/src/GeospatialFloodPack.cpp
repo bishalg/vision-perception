@@ -38,11 +38,20 @@ DomainOutput GeospatialFloodPack::process(const DomainInput& input) {
             minor_count++;
         }
 
-        const nlohmann::json geom = {
-            {"segment_id", seg.id}, {"point_count", seg.points.size()}, {"total_length", seg.total_length}};
+        nlohmann::json points = nlohmann::json::array();
+        for (const auto& pt : seg.points) {
+            points.push_back({{"x", pt.x}, {"y", pt.y}});
+        }
+
+        const nlohmann::json geom = {{"segment_id", seg.id},
+                                     {"point_count", seg.points.size()},
+                                     {"total_length", seg.total_length},
+                                     {"points", points}};
 
         const nlohmann::json meta = {{"feature_class", feature_class}, {"confidence", feature_confidence}};
 
+        // type == feature_class so studio_server inference_class_map can remap
+        // river_channel → river_centerline, tributary → waterline, etc.
         output.domain_evidence.emplace_back("geo_feature_" + std::to_string(seg.id), feature_class, feature_confidence,
                                             geom, meta);
     }

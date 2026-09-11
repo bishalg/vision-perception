@@ -11,15 +11,31 @@ export function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`;
 }
 
+export interface RenderLayerMask {
+  image?: boolean;
+  ai?: boolean;
+  truth?: boolean;
+  draft?: boolean;
+  /** Faint human/import ghost on Source pane */
+  ghostTruth?: boolean;
+}
+
 export function renderStudioFrame(
   ctx: CanvasRenderingContext2D,
   state: StudioState,
   imageElement: CanvasImageSource | null,
   viewportWidth: number,
-  viewportHeight: number
+  viewportHeight: number,
+  layerMask?: RenderLayerMask
 ): void {
   ctx.clearRect(0, 0, viewportWidth, viewportHeight);
   if (!imageElement) return;
+
+  const showImage = layerMask?.image ?? state.layerVisibility.image;
+  const showAi = layerMask?.ai ?? state.layerVisibility.ai;
+  const showTruth = layerMask?.truth ?? state.layerVisibility.truth;
+  const showDraft = layerMask?.draft ?? true;
+  const showGhost = layerMask?.ghostTruth ?? false;
 
   const iw = state.imageBounds.width || 640;
   const ih = state.imageBounds.height || 640;
@@ -29,7 +45,7 @@ export function renderStudioFrame(
   ctx.scale(state.zoom, state.zoom);
 
   // 1. Draw Background Image with clean border and drop-shadow
-  if (state.layerVisibility.image && state.layerOpacities.image > 0) {
+  if (showImage && state.layerOpacities.image > 0) {
     ctx.save();
     ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
     ctx.shadowBlur = 20 / state.zoom;
@@ -52,8 +68,27 @@ export function renderStudioFrame(
   const scaleX = isNorm ? iw / 512.0 : 1.0;
   const scaleY = isNorm ? ih / 512.0 : 1.0;
 
+  // Optional faint ghost of imported / human truth on Source pane
+  if (showGhost && state.currentDomain?.classes) {
+    ctx.globalAlpha = 0.28;
+    for (const cls of state.currentDomain.classes) {
+      const polys = state.polylines[cls.id] || [];
+      ctx.strokeStyle = cls.color;
+      ctx.lineWidth = 2.0 / state.zoom;
+      for (const poly of polys) {
+        if (!poly || poly.length < 2) continue;
+        ctx.beginPath();
+        ctx.moveTo(poly[0][0] * scaleX, poly[0][1] * scaleY);
+        for (let i = 1; i < poly.length; ++i) {
+          ctx.lineTo(poly[i][0] * scaleX, poly[i][1] * scaleY);
+        }
+        ctx.stroke();
+      }
+    }
+  }
+
   // 2. Draw CurvEngine AI Predictions / Steger Ridges
-  if (state.layerVisibility.ai && state.layerOpacities.ai > 0 && state.currentDomain?.classes) {
+  if (showAi && state.layerOpacities.ai > 0 && state.currentDomain?.classes) {
     ctx.globalAlpha = state.layerOpacities.ai;
     for (const cls of state.currentDomain.classes) {
       if (state.classVisibility[cls.id] === false) continue;
@@ -74,7 +109,7 @@ export function renderStudioFrame(
   }
 
   // 3. Draw Ground Truth Annotations
-  if (state.layerVisibility.truth && state.layerOpacities.truth > 0 && state.currentDomain?.classes) {
+  if (showTruth && state.layerOpacities.truth > 0 && state.currentDomain?.classes) {
     ctx.globalAlpha = state.layerOpacities.truth;
     for (const cls of state.currentDomain.classes) {
       if (state.classVisibility[cls.id] === false) continue;
@@ -161,7 +196,7 @@ export function renderStudioFrame(
   }
 
   // 4. Draw Current Draft Shape
-  if (state.currentDraft.length > 0) {
+  if (showDraft && state.currentDraft.length > 0) {
     const draftTargetClass = state.draftClassId || state.activeClassId;
     const activeCls = state.currentDomain?.classes?.find(c => c.id === draftTargetClass) || { color: '#3b82f6' };
     ctx.globalAlpha = 1.0;
@@ -212,7 +247,7 @@ export function renderStudioFrame(
   }
 
   // 5. Draw BBox Drag Preview
-  if (state.activeTool === 'bbox' && state.bboxStart && state.currentCursor) {
+  if (showDraft && state.activeTool === 'bbox' && state.bboxStart && state.currentCursor) {
     const activeCls = state.currentDomain?.classes?.find(c => c.id === state.activeClassId) || { color: '#3b82f6' };
     const [x1, y1] = state.bboxStart;
     const [x2, y2] = state.currentCursor;

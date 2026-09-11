@@ -5,12 +5,21 @@ export type Point2D = [number, number];
 
 export type ToolType = 'pan' | 'polyline' | 'polygon' | 'brush' | 'bbox' | 'wand';
 
+export type ViewportMode = 'draw' | 'compare';
+
+export type SampleOrigin = 'gold' | 'bootstrap';
+
+export type CompareMode = 'side_by_side' | 'pre_post';
+
 export interface AnnotationClass {
   id: string;
   label: string;
   color: string;
   order?: number;
   type?: 'curve' | 'polygon' | 'bbox';
+  shortcut?: string;
+  default_tool?: ToolType;
+  description?: string;
 }
 
 export interface DomainConfig {
@@ -18,8 +27,16 @@ export interface DomainConfig {
   label: string;
   description?: string;
   classes: AnnotationClass[];
-  coord_space?: 'pixels' | 'norm_512';
+  coord_space?: 'pixels' | 'pixel' | 'norm_512';
   canonical_warp?: boolean;
+  tools_enabled?: Array<ToolType | 'absent'>;
+  tool_labels?: Partial<Record<ToolType, string>>;
+  compare_modes?: CompareMode[];
+  inference_cli?: string;
+  inference_args?: string[];
+  inference_class_map?: Record<string, string>;
+  dataset_dir?: string;
+  extra_dataset_dirs?: string[];
 }
 
 export interface SampleMetrics {
@@ -39,9 +56,13 @@ export interface SampleItem {
   has_truth: boolean;
   truth_file?: string;
   split?: 'train' | 'valid' | 'test' | 'unassigned';
+  origin?: SampleOrigin;
   truth_data?: Record<string, any>;
   auto_lines?: Record<string, Point2D[]>;
   metrics?: Record<string, SampleMetrics>;
+  /** Optional pre-event image for flood pre/post compare */
+  pre_image_url?: string | null;
+  post_image_url?: string | null;
 }
 
 export interface BrushStroke {

@@ -9,6 +9,7 @@ import {
   performUndo,
   performRedo,
   initialStudioState,
+  setViewportMode,
 } from '../src/core/store.ts';
 import {
   handlePointerDown,
@@ -207,6 +208,41 @@ console.log('Running Annotation Studio Drawing & Class Isolation Tests...');
   assert.equal(studioStore.state.polylines['head_line']?.length, 1, 'Polyline should be restored');
 
   console.log('  [PASS] Test 6: Undo & Redo Integration');
+}
+
+// Test 7: Class default_tool switches active tool from registry
+{
+  setupTestState();
+  studioStore.setState(prev => ({
+    ...prev,
+    currentDomain: {
+      ...mockPalmDomain,
+      tools_enabled: ['pan', 'polyline', 'polygon'],
+      classes: [
+        { id: 'heart_line', label: 'Heart Line', color: '#F43F5E', default_tool: 'polyline' },
+        { id: 'head_line', label: 'Head Line', color: '#06B6D4', default_tool: 'polygon' },
+        { id: 'life_line', label: 'Life Line', color: '#10B981', default_tool: 'polyline' },
+        { id: 'fate_line', label: 'Fate Line', color: '#8B5CF6', default_tool: 'polyline' },
+      ],
+    },
+    activeTool: 'polyline',
+  }));
+
+  selectClass('head_line');
+  assert.equal(studioStore.state.activeTool, 'polygon', 'Selecting class should apply default_tool');
+  selectClass('life_line');
+  assert.equal(studioStore.state.activeTool, 'polyline');
+  console.log('  [PASS] Test 7: Class default_tool registry switching');
+}
+
+// Test 8: Viewport mode Draw | Compare
+{
+  setupTestState();
+  setViewportMode('compare');
+  assert.equal(studioStore.state.viewportMode, 'compare');
+  setViewportMode('draw');
+  assert.equal(studioStore.state.viewportMode, 'draw');
+  console.log('  [PASS] Test 8: Viewport mode toggle');
 }
 
 console.log('\nALL DRAWING & CLASS ISOLATION TESTS PASSED!\n');

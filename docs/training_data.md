@@ -13,16 +13,19 @@
 
 ```text
 download/bootstrap OR drop captures
-  → python3 tools/palm_annotator/server.py  (draw color-tagged lines)
+  → pnpm studio  (CurvStudio: draw → Save Truth → Compare)
   → *_USER_CORRECTED*.json  (reviewed:true)
   → scripts/admin_metrics.py matches AI coords vs yours (TP/FP/FN/TN + px error)
   → fix scorer → trends move → repeat
 ```
 
-- Gallery: image array with `reviewed` / `needs label` / `imported` badges + per-line error.
-- Annotator: local browser tool at `http://127.0.0.1:8765` (Heart/Head/Life/Fate colors).
+Operator how-to (step 1 → step 9): **[`docs/STUDIO_GUIDE.md`](STUDIO_GUIDE.md)**.
+
+- Gallery: filmstrip with `gold` / `bootstrap` / reviewed / `T|V|E` badges + per-line error.
+- Annotator: CurvStudio at `http://localhost:8080/apps/annotation_studio/` (`pnpm studio`).
+  Legacy `tools/palm_annotator` (port 8765) is **deprecated** — do not start new labeling there.
 - Bootstrap: `python3 scripts/download_palm_labels.py --limit 100` (CC BY only; raw JPEGs gitignored).
-- Compare: presence confusion matrix + mean point error per line.
+- Compare: in-studio Draw overlay + Compare mode (Source | Engine | Yours); admin dashboard for batch.
 - Fix: retune (`docs/palm_sweep.md`) or retrain; history proves direction.
 - **Do not train U-Net until ~50–100 labels have `reviewed:true`.**
 

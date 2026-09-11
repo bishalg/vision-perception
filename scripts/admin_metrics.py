@@ -23,12 +23,63 @@ ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_DIR = ROOT / "data" / "samples" / "mobile_captures"
 PALM_LABELS_DIR = ROOT / "data" / "palm_labels"
 PALM_LABELS_RAW = PALM_LABELS_DIR / "raw"
+FLOOD_LABELS_DIR = ROOT / "data" / "flood_labels"
+FLOOD_LABELS_RAW = FLOOD_LABELS_DIR / "raw"
+FLOOD_PROCESSED = ROOT / "data" / "flood_nepal_2026" / "processed"
 OUT_DIR = ROOT / "output"
-LINES = ("heart", "head", "life", "fate")
-AUTO_KEY = {name: f"{name}_line" for name in LINES}
+REGISTRY_PATH = ROOT / "configs" / "domain_registry.json"
 DIM = 512.0
+
+
+def load_registry() -> dict:
+    if REGISTRY_PATH.exists():
+        try:
+            return json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {"domains": []}
+
+
+def domain_class_ids(domain_id: str = "palm") -> tuple[str, ...]:
+    """Return annotation class ids from domain_registry.json (e.g. heart_line)."""
+    reg = load_registry()
+    for d in reg.get("domains", []):
+        if d.get("id") == domain_id:
+            ids = tuple(c["id"] for c in d.get("classes", []) if c.get("id"))
+            if ids:
+                return ids
+    if domain_id == "flood":
+        return ("waterline", "flood_boundary", "river_centerline", "bank_line")
+    return ("heart_line", "head_line", "life_line", "fate_line")
+
+
+def short_label(class_id: str) -> str:
+    return class_id.replace("_line", "") if class_id.endswith("_line") else class_id
+
+
+# Palm remains the default dashboard domain; --domain can switch.
+ACTIVE_DOMAIN = "palm"
+CLASS_IDS: tuple[str, ...] = domain_class_ids(ACTIVE_DOMAIN)
+# Short display names (heart, head, ...) kept for HTML template compatibility.
+LINES: tuple[str, ...] = tuple(short_label(c) for c in CLASS_IDS)
+AUTO_KEY = {short_label(c): c for c in CLASS_IDS}
 # Roots scanned for evidence / human truth / photos (mobile gold + bootstrap).
 SCAN_DIRS = (FIXTURE_DIR, PALM_LABELS_DIR, PALM_LABELS_RAW)
+
+
+def configure_domain(domain_id: str) -> None:
+    """Rebind module-level class lists + scan dirs from the registry."""
+    global ACTIVE_DOMAIN, CLASS_IDS, LINES, AUTO_KEY, SCAN_DIRS, DIM
+    ACTIVE_DOMAIN = domain_id
+    CLASS_IDS = domain_class_ids(domain_id)
+    LINES = tuple(short_label(c) for c in CLASS_IDS)
+    AUTO_KEY = {short_label(c): c for c in CLASS_IDS}
+    if domain_id == "flood":
+        SCAN_DIRS = (FLOOD_PROCESSED, FLOOD_LABELS_DIR, FLOOD_LABELS_RAW)
+        DIM = 1.0  # flood labels are in pixel space; mean_err stays in px
+    else:
+        SCAN_DIRS = (FIXTURE_DIR, PALM_LABELS_DIR, PALM_LABELS_RAW)
+        DIM = 512.0
 
 
 def dist(a: list, b: list) -> float:
@@ -83,14 +134,14 @@ def compare_line(auto_info: dict, hpolys: list) -> dict:
 
 def find_human_label(stem: str) -> Path | None:
     hits: list[Path] = []
-    for d in (PALM_LABELS_DIR, FIXTURE_DIR, PALM_LABELS_RAW):
+    for d in SCAN_DIRS:
         if d.exists():
             hits.extend(sorted(d.glob(f"{stem}_USER_CORRECTED*.json")))
     return hits[-1] if hits else None
 
 
 def find_evidence_path(stem: str) -> Path | None:
-    for d in (FIXTURE_DIR, PALM_LABELS_DIR, PALM_LABELS_RAW):
+    for d in SCAN_DIRS:
         p = d / f"{stem}_evidence.json"
         if p.exists():
             return p
@@ -108,6 +159,10 @@ def label_reviewed(human: dict, has_file: bool) -> bool:
 
 
 def collection_for(stem: str) -> str:
+    if ACTIVE_DOMAIN == "flood":
+        if (FLOOD_LABELS_RAW / f"{stem}.jpg").exists() or stem.startswith("rf_"):
+            return "flood_labels"
+        return "flood_nepal"
     if (PALM_LABELS_RAW / f"{stem}.jpg").exists() or (PALM_LABELS_DIR / f"{stem}_USER_CORRECTED.json").exists():
         if stem.startswith("rf_") or (PALM_LABELS_RAW / f"{stem}.jpg").exists():
             return "palm_labels"
@@ -153,13 +208,34 @@ def load_cases() -> tuple[list, list]:
             payload = data.get("domain_payload") or {}
             lines = payload.get("major_lines") or {}
             fate = payload.get("fate_analysis") or {}
+            # Flood / generic: promote evidence items into a class_id → info map
+            if not lines and "evidence" in data:
+                class_map = {}
+                for d in load_registry().get("domains", []):
+                    if d.get("id") == ACTIVE_DOMAIN:
+                        class_map = d.get("inference_class_map") or {}
+                        break
+                for ev in data.get("evidence", []):
+                    raw = ev.get("class_id") or ev.get("type") or (ev.get("metadata") or {}).get("feature_class") or ""
+                    mapped = class_map.get(raw, raw)
+                    pts = []
+                    for p in (ev.get("geometry") or {}).get("points", []) or []:
+                        if isinstance(p, dict) and "x" in p:
+                            pts.append([p["x"], p["y"]])
+                    if mapped and pts:
+                        lines[mapped] = {
+                            "present": True,
+                            "confidence": ev.get("confidence", 0.8),
+                            "points_canonical_norm": pts,
+                            "arc_length_px": (ev.get("geometry") or {}).get("total_length", 0),
+                        }
         hpath = find_human_label(stem)
         human = json.loads(hpath.read_text()) if hpath else {}
         reviewed = label_reviewed(human, bool(hpath))
         # Queue: needs human review (no file, or imported with reviewed:false).
         if not reviewed:
             queue.append(stem)
-        per_line = {n: compare_line(lines.get(AUTO_KEY[n]) or {}, human_polys(human, n)) for n in LINES}
+        per_line = {n: compare_line(lines.get(AUTO_KEY[n]) or lines.get(n) or {}, human_polys(human, n)) for n in LINES}
         cases.append({
             "stem": stem,
             "reviewed": reviewed,
@@ -216,7 +292,27 @@ def markdown(cases: list, agg: dict, queue: list) -> str:
     return "\n".join(out)
 
 
-LINE_COLORS = {"heart": "#F43F5E", "head": "#06B6D4", "life": "#10B981", "fate": "#8B5CF6"}
+LINE_COLORS = {
+    "heart": "#F43F5E",
+    "head": "#06B6D4",
+    "life": "#10B981",
+    "fate": "#8B5CF6",
+    "waterline": "#3B82F6",
+    "flood_boundary": "#EF4444",
+    "river_centerline": "#10B981",
+    "bank_line": "#F59E0B",
+}
+
+
+def line_color(name: str) -> str:
+    if name in LINE_COLORS:
+        return LINE_COLORS[name]
+    for d in load_registry().get("domains", []):
+        for c in d.get("classes", []):
+            cid = c.get("id", "")
+            if cid == name or short_label(cid) == name:
+                return c.get("color") or "#94A3B8"
+    return "#94A3B8"
 
 
 def trend_svg(history: list) -> str:
@@ -235,20 +331,24 @@ def trend_svg(history: list) -> str:
         for y in [H - PADB - frac * (H - PADB - 16)])
     series = ""
     for key in LINES:
-        vals = [(i, h["agg"][key]["f1"]) for i, h in enumerate(history) if h["agg"][key]["f1"] is not None]
+        vals = []
+        for i, h in enumerate(history):
+            row = (h.get("agg") or {}).get(key) or {}
+            if row.get("f1") is not None:
+                vals.append((i, row["f1"]))
         if not vals:
             continue
         coords = " ".join(f"{xy(i, v)[0]:.1f},{xy(i, v)[1]:.1f}" for i, v in vals)
         dots = "".join(
-            f'<circle cx="{xy(i, v)[0]:.1f}" cy="{xy(i, v)[1]:.1f}" r="3.5" fill="{LINE_COLORS[key]}">'
+            f'<circle cx="{xy(i, v)[0]:.1f}" cy="{xy(i, v)[1]:.1f}" r="3.5" fill="{line_color(key)}">'
             f"<title>{key} F1={v:.2f} · run {i + 1} · {history[i].get('ts', '')}</title></circle>"
             for i, v in vals)
-        series += (f'<polyline points="{coords}" fill="none" stroke="{LINE_COLORS[key]}" stroke-width="2"/>'
+        series += (f'<polyline points="{coords}" fill="none" stroke="{line_color(key)}" stroke-width="2"/>'
                    + dots)
     xticks = " ".join(
         f'<text x="{xy(i, 0)[0]:.0f}" y="{H - 12}" fill="#71717a" font-size="10" text-anchor="middle">run {i + 1}</text>'
         for i in range(len(history)))
-    legend = " ".join(f'<span class="legend" style="color:{c}">● {k}</span>' for k, c in LINE_COLORS.items())
+    legend = " ".join(f'<span class="legend" style="color:{line_color(k)}">● {k}</span>' for k in LINES)
     return (f'<div class="chart"><svg viewBox="0 0 {W} {H}" role="img" aria-label="F1 trend">{grid}{series}{xticks}</svg>'
             f'<div class="chart-legend">F1 per run · {legend}</div></div>')
 
@@ -576,16 +676,16 @@ def overview_html(cases: list, agg: dict, queue: list, history: list) -> str:
         f'<div class="kpi"><div class="v">{len(queue)}</div><div class="l">need labeling</div></div>'
         f'<div class="kpi"><div class="v">{len(imported)}</div><div class="l">imported (unreviewed)</div></div>'
         f'<div class="kpi"><div class="v">{fmt(mean_f1)}</div><div class="l">mean F1 (scored n={len(scored)})</div></div>'
-        f'<div class="kpi"><div class="v" style="color:{LINE_COLORS[worst]}">{worst}</div>'
+        f'<div class="kpi"><div class="v" style="color:{line_color(worst)}">{worst}</div>'
         f'<div class="l">weakest line · F1 {fmt(agg[worst]["f1"])}</div></div>')
     cards = ""
     for n in LINES:
         a = agg[n]
         cards += (
-            f'<div class="card"><h3><span class="dot" style="background:{LINE_COLORS[n]}"></span>{n}</h3>'
-            f'<div class="meter"><span>precision</span>{bar(a["precision"], LINE_COLORS[n])}<span>{fmt(a["precision"])}</span></div>'
-            f'<div class="meter"><span>recall</span>{bar(a["recall"], LINE_COLORS[n])}<span>{fmt(a["recall"])}</span></div>'
-            f'<div class="meter"><span>F1</span>{bar(a["f1"], LINE_COLORS[n])}<span>{fmt(a["f1"])}</span></div>'
+            f'<div class="card"><h3><span class="dot" style="background:{line_color(n)}"></span>{n}</h3>'
+            f'<div class="meter"><span>precision</span>{bar(a["precision"], line_color(n))}<span>{fmt(a["precision"])}</span></div>'
+            f'<div class="meter"><span>recall</span>{bar(a["recall"], line_color(n))}<span>{fmt(a["recall"])}</span></div>'
+            f'<div class="meter"><span>F1</span>{bar(a["f1"], line_color(n))}<span>{fmt(a["f1"])}</span></div>'
             f'<div class="nums"><span>TP {a["tp"]} · FP {a["fp"]} · FN {a["fn"]} · TN {a["tn"]}</span>'
             f'<span>n={a["n"]}</span><span>err <span class="err {err_class(a["mean_err_px"])}">'
             f'{fmt(a["mean_err_px"], 1)}px</span></span></div></div>')
@@ -810,7 +910,7 @@ def arch_html() -> str:
 
 def results_html(cases: list, agg: dict) -> str:
     mrows = "".join(
-        f"<tr><td><span class='dot' style='background:{LINE_COLORS[n]}'></span>{n}</td><td>{agg[n]['n']}</td>"
+        f"<tr><td><span class='dot' style='background:{line_color(n)}'></span>{n}</td><td>{agg[n]['n']}</td>"
         f"<td>{agg[n]['tp']}</td><td>{agg[n]['fp']}</td><td>{agg[n]['fn']}</td><td>{agg[n]['tn']}</td>"
         f"<td>{fmt(agg[n]['precision'])}</td><td>{fmt(agg[n]['recall'])}</td><td>{fmt(agg[n]['f1'])}</td>"
         f"<td><span class='err {err_class(agg[n]['mean_err_px'])}'>{fmt(agg[n]['mean_err_px'], 1)}px</span></td></tr>"
@@ -828,13 +928,18 @@ def results_html(cases: list, agg: dict) -> str:
         if not c.get("has_evidence", True):
             badge += " <span class='badge grey'>no auto</span>"
         cells = "".join(f"<td>{line_cell(c['per_line'][n])}</td>" for n in LINES)
+        fate_td = f"<td>{fate_chips(c)}</td>" if ACTIVE_DOMAIN == "palm" else ""
         return (f"<tr data-stem=\"{c['stem']}\" data-status=\"{status}\">"
-                f"<td><b>{c['stem']}</b><br>{badge}</td>{cells}<td>{fate_chips(c)}</td></tr>")
+                f"<td><b>{c['stem']}</b><br>{badge}</td>{cells}{fate_td}</tr>")
 
     frows = "".join(fixture_row(c) for c in cases)
+    line_headers = "".join(
+        f"<th scope='col'>{n}<br><small>auto/human</small></th>" for n in LINES
+    )
+    fate_header = "<th scope='col'>fate analysis</th>" if ACTIVE_DOMAIN == "palm" else ""
     return (
         "<h2>Confusion matrix per line</h2>"
-        "<table><caption class='vh'>Presence confusion matrix per palm line</caption>"
+        f"<table><caption class='vh'>Presence confusion matrix per {ACTIVE_DOMAIN} class</caption>"
         "<tr><th scope='col'>line</th><th scope='col'>n</th><th scope='col'>TP</th><th scope='col'>FP</th>"
         "<th scope='col'>FN</th><th scope='col'>TN</th>"
         "<th scope='col'>prec</th><th scope='col'>rec</th><th scope='col'>F1</th><th scope='col'>err</th></tr>"
@@ -843,10 +948,8 @@ def results_html(cases: list, agg: dict) -> str:
         "<div class='toolbar'><div class='seg'><button data-f='all' class='on'>All</button>"
         "<button data-f='reviewed'>Reviewed</button><button data-f='queued'>Needs label</button></div>"
         "<input type='search' id='q' placeholder='filter by hand name…'></div>"
-        "<table><caption class='vh'>Per-fixture auto vs human presence and geometry error</caption>"
-        "<tr><th scope='col'>fixture</th><th scope='col'>heart<br><small>auto/human</small></th>"
-        "<th scope='col'>head<br><small>auto/human</small></th><th scope='col'>life<br><small>auto/human</small></th>"
-        "<th scope='col'>fate<br><small>auto/human</small></th><th scope='col'>fate analysis</th></tr>"
+        f"<table><caption class='vh'>Per-fixture auto vs human presence and geometry error</caption>"
+        f"<tr><th scope='col'>fixture</th>{line_headers}{fate_header}</tr>"
         f"<tbody id='fixtureRows'>{frows}</tbody></table>")
 
 
@@ -869,7 +972,14 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--markdown", action="store_true")
     ap.add_argument("--no-history", action="store_true")
+    ap.add_argument(
+        "--domain",
+        default="palm",
+        help="Domain id from configs/domain_registry.json (default: palm)",
+    )
     args = ap.parse_args()
+
+    configure_domain(args.domain)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -877,7 +987,7 @@ def main() -> None:
     agg = aggregate(cases)
 
     inv = inventory()
-    snap = {"ts": ts, "agg": agg, "cases": cases, "queue": queue, "inventory": inv}
+    snap = {"ts": ts, "domain": ACTIVE_DOMAIN, "class_ids": list(CLASS_IDS), "agg": agg, "cases": cases, "queue": queue, "inventory": inv}
     (OUT_DIR / "admin_metrics.json").write_text(json.dumps(snap, indent=2))
     hist_path = OUT_DIR / "admin_history.jsonl"
     history = []
@@ -885,7 +995,7 @@ def main() -> None:
         history = [json.loads(line) for line in hist_path.read_text().splitlines() if line.strip()]
     if not args.no_history:
         with hist_path.open("a") as f:
-            f.write(json.dumps({"ts": ts, "agg": agg,
+            f.write(json.dumps({"ts": ts, "domain": ACTIVE_DOMAIN, "agg": agg,
                                 "n_cases": len(cases), "queue": queue}) + "\n")
         history.append({"ts": ts, "agg": agg})
     groups = menu_tasks()
@@ -894,7 +1004,7 @@ def main() -> None:
     if args.markdown:
         print(markdown(cases, agg, queue))
     else:
-        print(f"cases={len(cases)} queue={len(queue)} -> output/admin_metrics.json + output/admin_dashboard.html")
+        print(f"domain={ACTIVE_DOMAIN} cases={len(cases)} queue={len(queue)} -> output/admin_metrics.json + output/admin_dashboard.html")
 
 
 if __name__ == "__main__":

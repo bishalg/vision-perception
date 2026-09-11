@@ -1,8 +1,8 @@
 // apps/annotation_studio/src/components/Header/StudioHeader.tsx
 import React from 'react';
 import { useStore } from '@tanstack/react-store';
-import { studioStore } from '../../core/store';
-import type { DomainConfig } from '../../core/types';
+import { studioStore, setViewportMode } from '../../core/store';
+import type { DomainConfig, ViewportMode } from '../../core/types';
 import {
   IconWave,
   IconHand,
@@ -36,6 +36,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
   const currentDomain = useStore(studioStore, s => s.currentDomain);
   const currentIdx = useStore(studioStore, s => s.currentSampleIdx);
   const totalSamples = useStore(studioStore, s => s.samples.length);
+  const viewportMode = useStore(studioStore, s => s.viewportMode);
 
   const toggleSidebar = () => {
     studioStore.setState(prev => ({
@@ -43,6 +44,11 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
       sidebarCollapsed: !prev.sidebarCollapsed,
     }));
   };
+
+  const modes: Array<{ id: ViewportMode; label: string }> = [
+    { id: 'draw', label: 'Draw' },
+    { id: 'compare', label: 'Compare' },
+  ];
 
   return (
     <header>
@@ -63,7 +69,6 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
           <span className="brand-title">CurvStudio</span>
         </a>
 
-        {/* Project Tabs (Roboflow Parity) */}
         <div className="project-tabs" id="projectTabs">
           {domains.map(d => {
             const isActive = d.id === currentDomain?.id;
@@ -81,9 +86,22 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
             );
           })}
         </div>
+
+        <div className="viewport-mode-toggle" role="group" aria-label="Viewport mode">
+          {modes.map(m => (
+            <button
+              key={m.id}
+              type="button"
+              className={`viewport-mode-btn ${viewportMode === m.id ? 'active' : ''}`}
+              onClick={() => setViewportMode(m.id)}
+              title={m.id === 'draw' ? 'Overlay draw mode' : 'Side-by-side Source | Engine | Yours'}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Center Sample Pagination */}
       <div className="header-center">
         <div className="sample-pager">
           <button
@@ -110,7 +128,6 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
         </div>
       </div>
 
-      {/* Right Top Actions */}
       <div className="header-right">
         <div className="dataset-flow-indicator">
           <span className="flow-dots">● — ● — ●</span>

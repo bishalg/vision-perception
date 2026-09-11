@@ -10,6 +10,7 @@ import type {
   BrushStroke,
   AuditEntry,
   StudioSnapshot,
+  ViewportMode,
 } from './types';
 import { calculateAutoFit } from './geometry';
 
@@ -45,6 +46,9 @@ export interface StudioState {
   activeRailTab: 'labels' | 'layers' | 'history' | 'raw' | 'copilot';
   sidebarCollapsed: boolean;
   contrastMode: boolean;
+  viewportMode: ViewportMode;
+  /** Flood pre/post: which still the Source pane shows */
+  sourceTemporal: 'current' | 'pre' | 'post';
 }
 
 export const initialStudioState: StudioState = {
@@ -79,6 +83,8 @@ export const initialStudioState: StudioState = {
   activeRailTab: 'labels',
   sidebarCollapsed: false,
   contrastMode: false,
+  viewportMode: 'draw',
+  sourceTemporal: 'current',
 };
 
 export const studioStore = new Store<StudioState>(initialStudioState);
@@ -243,12 +249,24 @@ export function selectClass(classId: string): void {
     cancelCurrentDraft();
   }
 
+  const cls = studioStore.state.currentDomain?.classes.find(c => c.id === classId);
+  const defaultTool = cls?.default_tool;
+
   studioStore.setState(prev => ({
     ...prev,
     activeClassId: classId,
+    ...(defaultTool && prev.activeTool !== 'pan' ? { activeTool: defaultTool } : {}),
   }));
 
   addAuditLog('Class Selected', `Active class switched to ${classId}`);
+}
+
+export function setViewportMode(mode: ViewportMode): void {
+  studioStore.setState(prev => ({
+    ...prev,
+    viewportMode: mode,
+  }));
+  addAuditLog('Viewport Mode', `Switched to ${mode} mode`);
 }
 
 export function toggleClassVisibility(classId: string): void {

@@ -11,6 +11,7 @@ import {
   performRedo,
   toggleAbsentClass,
   addAuditLog,
+  setViewportMode,
 } from './core/store';
 import { finishDraft, cancelDraft } from './core/tools';
 import type { SampleItem, Point2D } from './core/types';
@@ -24,6 +25,7 @@ import { StudioHeader } from './components/Header/StudioHeader';
 import { SubHeader } from './components/Header/SubHeader';
 import { TwoTierSidebar } from './components/Sidebar/TwoTierSidebar';
 import { CanvasViewport } from './components/Viewport/CanvasViewport';
+import { CompareViewport } from './components/Viewport/CompareViewport';
 import { DatasetSplitterModal } from './components/Modals/DatasetSplitterModal';
 import { TestBenchModal } from './components/Modals/TestBenchModal';
 import { ShortcutsModal } from './components/Modals/ShortcutsModal';
@@ -89,6 +91,7 @@ const StudioApp: React.FC = () => {
   const currentSampleIdx = useStore(studioStore, s => s.currentSampleIdx);
   const samples = useStore(studioStore, s => s.samples);
   const activeClassId = useStore(studioStore, s => s.activeClassId);
+  const viewportMode = useStore(studioStore, s => s.viewportMode);
 
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -112,11 +115,13 @@ const StudioApp: React.FC = () => {
   useEffect(() => {
     if (domains.length > 0 && !currentDomain) {
       const initialDomain = domains[0];
+      const firstClass = initialDomain.classes[0];
       studioStore.setState(prev => ({
         ...prev,
         domains,
         currentDomain: initialDomain,
-        activeClassId: initialDomain.classes[0]?.id || '',
+        activeClassId: firstClass?.id || '',
+        activeTool: firstClass?.default_tool || prev.activeTool,
       }));
     }
   }, [domains, currentDomain]);
@@ -159,13 +164,16 @@ const StudioApp: React.FC = () => {
   const handleSelectDomain = useCallback((domainId: string) => {
     const d = domains.find(x => x.id === domainId);
     if (!d || d.id === currentDomain?.id) return;
+    const firstClass = d.classes[0];
     studioStore.setState(prev => ({
       ...prev,
       currentDomain: d,
-      activeClassId: d.classes[0]?.id || '',
+      activeClassId: firstClass?.id || '',
+      activeTool: firstClass?.default_tool || prev.activeTool,
       currentSampleIdx: 0,
       samples: [],
       currentSample: null,
+      sourceTemporal: 'current',
     }));
     addAuditLog('Domain Switch', `Switched domain to ${d.label}`);
   }, [domains, currentDomain?.id]);
@@ -306,10 +314,14 @@ const StudioApp: React.FC = () => {
 
       <div className="app-body">
         <TwoTierSidebar />
-        <CanvasViewport
-          onOpenShortcuts={() => setIsShortcutsOpen(true)}
-          onSelectSample={handleSelectSample}
-        />
+        {viewportMode === 'compare' ? (
+          <CompareViewport onSelectSample={handleSelectSample} />
+        ) : (
+          <CanvasViewport
+            onOpenShortcuts={() => setIsShortcutsOpen(true)}
+            onSelectSample={handleSelectSample}
+          />
+        )}
       </div>
 
       <DatasetSplitterModal
@@ -322,6 +334,7 @@ const StudioApp: React.FC = () => {
         isOpen={isTestBenchOpen}
         onClose={() => setIsTestBenchOpen(false)}
         onToast={showToast}
+        onInferenceComplete={() => setViewportMode('compare')}
       />
 
       <ShortcutsModal

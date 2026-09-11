@@ -85,11 +85,11 @@ def get_samples_for_domain(domain_cfg: dict) -> list[dict]:
     target_dirs = []
     primary = ROOT / domain_cfg.get("dataset_dir", "")
     if primary.exists():
-        target_dirs.append(primary)
+        target_dirs.append(("gold", primary))
     for extra in domain_cfg.get("extra_dataset_dirs", []):
         p = ROOT / extra
-        if p.exists() and p not in target_dirs:
-            target_dirs.append(p)
+        if p.exists() and all(p != d for _, d in target_dirs):
+            target_dirs.append(("bootstrap", p))
 
     if not target_dirs:
         return []
@@ -99,10 +99,14 @@ def get_samples_for_domain(domain_cfg: dict) -> list[dict]:
     excludes = tuple(domain_cfg.get("image_filter_exclude", []))
     classes = domain_cfg.get("classes", [])
     classes_by_id = {c["id"]: c for c in classes}
+    class_map = domain_cfg.get("inference_class_map") or {}
+
+    # Optional flood pre/post stills living next to evidence
+    pre_post_dir = evidence_dir if evidence_dir.exists() else None
 
     seen_stems = set()
     samples = []
-    for cur_dir in target_dirs:
+    for origin, cur_dir in target_dirs:
         for img_path in sorted(cur_dir.iterdir()):
             if not img_path.is_file():
                 continue
@@ -157,18 +161,31 @@ def get_samples_for_domain(domain_cfg: dict) -> list[dict]:
                 payload = evidence_data.get("domain_payload") or {}
                 major = payload.get("major_lines") or {}
                 for cid in classes_by_id:
-                    # Check major lines
                     if cid in major:
                         pts = major[cid].get("points_canonical_norm") or major[cid].get("points_norm") or []
                         if pts:
                             auto_lines[cid] = pts
-                    # Check generic evidence items
                     if not auto_lines.get(cid) and "evidence" in evidence_data:
                         for ev in evidence_data.get("evidence", []):
-                            if ev.get("evidence_id") == cid or ev.get("class_id") == cid:
-                                pts = [[pt["x"], pt["y"]] for pt in ev.get("geometry", {}).get("points", [])]
-                                if pts:
-                                    auto_lines[cid] = pts
+                            raw_id = (
+                                ev.get("class_id")
+                                or ev.get("type")
+                                or (ev.get("metadata") or {}).get("feature_class")
+                                or ev.get("evidence_id")
+                                or ""
+                            )
+                            mapped = class_map.get(raw_id, raw_id)
+                            if mapped != cid and raw_id != cid:
+                                continue
+                            pts = []
+                            for pt in (ev.get("geometry") or {}).get("points", []) or []:
+                                if isinstance(pt, dict) and "x" in pt:
+                                    pts.append([pt["x"], pt["y"]])
+                                elif isinstance(pt, (list, tuple)) and len(pt) >= 2:
+                                    pts.append([pt[0], pt[1]])
+                            if pts:
+                                auto_lines[cid] = pts
+                                break
 
             # Compare metrics
             metrics = {}
@@ -177,6 +194,20 @@ def get_samples_for_domain(domain_cfg: dict) -> list[dict]:
                     hpolys = parse_human_polys(truth_data, cid)
                     apts = auto_lines.get(cid) or []
                     metrics[cid] = compare_polylines(apts, hpolys)
+
+            pre_url = None
+            post_url = None
+            if pre_post_dir:
+                for suffix, key in (("_pre", "pre"), ("_post", "post"), ("_pre_event", "pre"), ("_post_event", "post")):
+                    for ext in (".png", ".jpg", ".tif"):
+                        cand = pre_post_dir / f"{stem}{suffix}{ext}"
+                        if cand.exists():
+                            url = f"/{cand.relative_to(ROOT)}"
+                            if key == "pre":
+                                pre_url = url
+                            else:
+                                post_url = url
+                            break
 
             samples.append({
                 "stem": stem,
@@ -190,11 +221,15 @@ def get_samples_for_domain(domain_cfg: dict) -> list[dict]:
                 "auto_lines": auto_lines,
                 "metrics": metrics,
                 "split": "unassigned",
+                "origin": origin,
+                "pre_image_url": pre_url,
+                "post_image_url": post_url,
             })
 
     # Read split assignments from manifest if present
+    primary_dir = primary if primary.exists() else (target_dirs[0][1] if target_dirs else ROOT)
     manifest_candidates = [
-        primary / "manifest.json",
+        primary_dir / "manifest.json",
         ROOT / "data" / "palm_labels" / "manifest.json",
         ROOT / "data" / "flood_labels" / "manifest.json",
     ]
@@ -211,6 +246,78 @@ def get_samples_for_domain(domain_cfg: dict) -> list[dict]:
                 pass
 
     return samples
+
+
+def resolve_inference_command(domain_cfg: dict, target_img: Path, out_json: Path, out_overlay: Path) -> list[str]:
+    """Build CLI argv from domain_registry inference_cli / inference_args."""
+    cli_name = domain_cfg.get("inference_cli") or ("hand_inspector_cli" if domain_cfg.get("id") == "palm" else "curv_cli")
+    bin_path = ROOT / "build" / "tools" / cli_name
+    extra = list(domain_cfg.get("inference_args") or [])
+
+    if cli_name == "hand_inspector_cli":
+        cmd = [
+            str(bin_path),
+            "--image", str(target_img),
+            "--out-json", str(out_json),
+            "--out-overlay", str(out_overlay),
+            *extra,
+        ]
+    else:
+        # curv_cli and other generic runners
+        cmd = [
+            str(bin_path),
+            "--image", str(target_img),
+            "--json", str(out_json),
+            "--out", str(out_overlay),
+            *extra,
+        ]
+        # Ensure min-blur is present for flood satellite tiles when not in args
+        if "--min-blur" not in cmd:
+            cmd.extend(["--min-blur", "0.0"])
+    return cmd
+
+
+def extract_predictions(domain_cfg: dict, evidence: dict, conf_thresh: float) -> list[dict]:
+    """Parse CLI evidence JSON into studio predictions using registry class map."""
+    predictions: list[dict] = []
+    class_map = domain_cfg.get("inference_class_map") or {}
+    domain_id = domain_cfg.get("id", "")
+
+    if domain_id == "palm" or domain_cfg.get("inference_cli") == "hand_inspector_cli":
+        major = (evidence.get("domain_payload") or {}).get("major_lines") or {}
+        for cid, info in major.items():
+            conf = float(info.get("confidence") or 0.0)
+            if conf >= conf_thresh:
+                pts = info.get("points_canonical_norm") or info.get("points_norm") or []
+                predictions.append({
+                    "class_id": cid,
+                    "confidence": conf,
+                    "points": pts,
+                    "length_px": info.get("arc_length_px", 0),
+                })
+        return predictions
+
+    for ev in evidence.get("evidence", [])[:40]:
+        conf = float(ev.get("confidence") or 0.8)
+        if conf < conf_thresh:
+            continue
+        raw_id = ev.get("class_id") or ev.get("type") or (ev.get("metadata") or {}).get("feature_class") or ev.get("evidence_id") or "waterline"
+        mapped = class_map.get(raw_id, raw_id)
+        geom = ev.get("geometry") or {}
+        pts = []
+        if isinstance(geom.get("points"), list):
+            for p in geom["points"]:
+                if isinstance(p, dict) and "x" in p:
+                    pts.append([p["x"], p["y"]])
+                elif isinstance(p, (list, tuple)) and len(p) >= 2:
+                    pts.append([p[0], p[1]])
+        predictions.append({
+            "class_id": mapped,
+            "confidence": conf,
+            "points": pts,
+            "length_px": geom.get("total_length", 0),
+        })
+    return predictions
 
 
 class StudioHandler(SimpleHTTPRequestHandler):
@@ -462,29 +569,14 @@ class StudioHandler(SimpleHTTPRequestHandler):
                 out_json.parent.mkdir(parents=True, exist_ok=True)
 
                 start_t = time.perf_counter()
-                if domain_id == "palm":
-                    bin_path = ROOT / "build" / "tools" / "hand_inspector_cli"
-                    if not bin_path.exists():
-                        self.send_json({"error": f"Binary {bin_path} not found. Run cmake --build build"}, status=500)
-                        return
-                    cmd = [
-                        str(bin_path),
-                        "--image", str(target_img),
-                        "--out-json", str(out_json),
-                        "--out-overlay", str(out_overlay),
-                    ]
-                else:
-                    bin_path = ROOT / "build" / "tools" / "curv_cli"
-                    if not bin_path.exists():
-                        self.send_json({"error": f"Binary {bin_path} not found. Run cmake --build build"}, status=500)
-                        return
-                    cmd = [
-                        str(bin_path),
-                        "--image", str(target_img),
-                        "--min-blur", "0.0",
-                        "--json", str(out_json),
-                        "--out", str(out_overlay),
-                    ]
+                reg = load_registry()
+                matching = [d for d in reg.get("domains", []) if d["id"] == domain_id]
+                domain_cfg = matching[0] if matching else {"id": domain_id}
+                cmd = resolve_inference_command(domain_cfg, target_img, out_json, out_overlay)
+                bin_path = Path(cmd[0])
+                if not bin_path.exists():
+                    self.send_json({"error": f"Binary {bin_path} not found. Run cmake --build build"}, status=500)
+                    return
 
                 proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True, text=True, timeout=20)
                 dur_ms = round((time.perf_counter() - start_t) * 1000, 1)
@@ -494,28 +586,7 @@ class StudioHandler(SimpleHTTPRequestHandler):
                 if out_json.exists():
                     try:
                         evidence = json.loads(out_json.read_text(encoding="utf-8"))
-                        if domain_id == "palm":
-                            major = (evidence.get("domain_payload") or {}).get("major_lines") or {}
-                            for cid, info in major.items():
-                                conf = float(info.get("confidence") or 0.0)
-                                if conf >= conf_thresh:
-                                    pts = info.get("points_canonical_norm") or info.get("points_norm") or []
-                                    predictions.append({
-                                        "class_id": cid,
-                                        "confidence": conf,
-                                        "points": pts,
-                                        "length_px": info.get("arc_length_px", 0),
-                                    })
-                        else:
-                            for ev in evidence.get("evidence", [])[:20]:
-                                conf = float(ev.get("confidence") or 0.8)
-                                if conf >= conf_thresh:
-                                    pts = [[p["x"], p["y"]] for p in ev.get("geometry", {}).get("points", [])]
-                                    predictions.append({
-                                        "class_id": ev.get("class_id") or ev.get("evidence_id") or "waterline",
-                                        "confidence": conf,
-                                        "points": pts,
-                                    })
+                        predictions = extract_predictions(domain_cfg, evidence, conf_thresh)
                     except Exception as ex:
                         sys.stderr.write(f"[WARN] Error reading evidence: {ex}\n")
 
@@ -528,6 +599,7 @@ class StudioHandler(SimpleHTTPRequestHandler):
                     "predictions": predictions,
                     "overlay_url": overlay_url,
                     "evidence": evidence,
+                    "cli": cmd[0],
                 })
             except Exception as e:
                 self.send_json({"error": str(e)}, status=500)

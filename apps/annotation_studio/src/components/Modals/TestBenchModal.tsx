@@ -10,12 +10,14 @@ interface TestBenchModalProps {
   isOpen: boolean;
   onClose: () => void;
   onToast: (msg: string) => void;
+  onInferenceComplete?: () => void;
 }
 
 export const TestBenchModal: React.FC<TestBenchModalProps> = ({
   isOpen,
   onClose,
   onToast,
+  onInferenceComplete,
 }) => {
   const currentDomain = useStore(studioStore, s => s.currentDomain);
   const currentSample = useStore(studioStore, s => s.currentSample);
@@ -65,6 +67,26 @@ export const TestBenchModal: React.FC<TestBenchModalProps> = ({
         if (result.overlay_url) {
           setOverlayUrl(`${result.overlay_url}?t=${Date.now()}`);
         }
+
+        // Push predictions onto the current sample AI layer for Compare view
+        if (imageSource === 'current' && result.predictions?.length) {
+          const aiLines: Record<string, [number, number][]> = {};
+          for (const p of result.predictions) {
+            if (p.points && p.points.length >= 2) {
+              aiLines[p.class_id] = p.points as [number, number][];
+            }
+          }
+          studioStore.setState(prev => ({
+            ...prev,
+            aiLines: { ...prev.aiLines, ...aiLines },
+            currentSample: prev.currentSample
+              ? { ...prev.currentSample, auto_lines: { ...(prev.currentSample.auto_lines || {}), ...aiLines } }
+              : prev.currentSample,
+          }));
+          onInferenceComplete?.();
+          onClose();
+        }
+
         addAuditLog(
           'Model Inference',
           `Evaluated ${currentSample?.stem || 'uploaded'} (${result.duration_ms} ms)`
