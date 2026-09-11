@@ -46,6 +46,9 @@ capture → auto propose → human edit (fast) → confirm
 - Progress is measured on prediction-grounded metrics (`IoU` vs human
   polyline, report agreement), tracked in `docs/palm_crease_baseline.md`
   and `docs/PROGRESS.md` — not on CV internals alone.
+- Health is visible on the admin dashboard: `python3 scripts/admin_metrics.py`,
+  open `output/admin_dashboard.html` (confusion matrix, trends, validation
+  queue). Spec: [`docs/admin_dashboard.md`](admin_dashboard.md).
 
 ## 4. Architecture consequences
 

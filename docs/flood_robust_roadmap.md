@@ -31,4 +31,4 @@
 * **D12:** Cloud smoke: `aws_infra/stacks/storage_stack.py:1` `cdk synth` + `agent_trigger.py` unit `8/8`; local `benchmark_cool_vs_x86.sh` dry-run.
 * **D14:** Final audit: `ctest 29/29`, `hand_inspector_cli` 10 flood +10 dry, `width±3px`, controls PASS, tag `flood-v1.0`.
 
-Track daily in `docs/PROGRESS.md` + `data/benchmark_results.json`.
+Track daily in `docs/PROGRESS.md` + `data/benchmark_results.json`, plus the admin dashboard (`scripts/admin_metrics.py` → `output/admin_dashboard.html`, spec [`docs/admin_dashboard.md`](admin_dashboard.md)) once the flood holdout lands.

@@ -88,5 +88,6 @@ Fallback dashed scaffold remains when ML conf <0.55 (so UI never empty, `PalmAna
 * Kanban: `D1-D26` as GitHub issues with `palm-robust` label, linked to `docs/palm_robust_roadmap.md`.
 * Daily `hand_inspector_cli` artifact: `canonical_overlay.png` + `evidence.json` committed to `data/samples/mobile_captures` for visual diff.
 * Weekly demo to you: phone `devicectl ... --console` + desktop `overlay_palm.png` side-by-side.
+* Health dashboard: `python3 scripts/admin_metrics.py --markdown` after every tuning pass; open `output/admin_dashboard.html` for confusion matrix + trend + validation queue ([`docs/admin_dashboard.md`](admin_dashboard.md)).
 
 Next step: I will commit this doc as `docs/palm_robust_roadmap.md` and open `Week1 D1` label task — approve to proceed?
