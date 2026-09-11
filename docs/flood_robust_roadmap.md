@@ -3,6 +3,7 @@
 **Date:** 2026-09-10
 **Status:** Active — mirrors `docs/palm_robust_roadmap.md:1` for parallel tracking
 **Core:** Same `core/src/ridge/StegerRidgeExtractor.cpp:1` sub-pixel engine as palm; domain isolates in `domains/geospatial` + `adapters/cctv`
+**Guiding principle:** [`product_vision.md`](product_vision.md) — detection serves the alert/forecast; analyst confirmations improve thresholds.
 
 ---
 

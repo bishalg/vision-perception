@@ -29,6 +29,9 @@ apps/mobile_overlay/
 2. Apps supply an `OverlayProfile` + reticle content (`PalmSilhouette` / `VastuMandala`).
 3. Apps map tracker output → `SubjectPose` (or use `SubjectPose.reticleFill` for document capture).
 4. Deep perception stays in the app: landmarks ROI (palm) or quad ROI (vastu) via C-ABI.
+5. **Overlay never decides.** It guides capture and renders proposals; the human
+   edits and confirms in the app, and only confirmed geometry feeds prediction
+   ([`docs/product_vision.md`](../../docs/product_vision.md)).
 
 ## Consuming apps
 

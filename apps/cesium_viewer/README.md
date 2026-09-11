@@ -3,6 +3,10 @@
 Standalone Vite + CesiumJS app (no NX). Renders fixture cameras as globe markers with
 pose metadata and still-image panels. **No Cesium ion token required** (OSM tiles + ellipsoid).
 
+> End goal is the **alert + forecast**, not the lines: analysts review detections
+> on the twin, confirm or correct them, and confirmations improve thresholds.
+> Principle: [`docs/product_vision.md`](../../docs/product_vision.md).
+
 ## Quick start
 
 ```bash

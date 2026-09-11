@@ -52,6 +52,10 @@
 
 **Code array (single source of truth):** `domains/palm/include/curv/domain/FateLineCases.hpp` — `AllFateCases()` segregates every figure above into 7 groups (`Presence / Origin / Course / Termination / Marks / Age / Context`) with `id / blog_anchor / image_url / image_file / primitive / use / priority / implemented`. Flip `implemented` per case as detectors land. P0 first (present/stops/broken/age), then P1 branches, then P2 shapes.
 
+**Prediction note:** every case feeds the reading report, and the human can
+override any of them in the app editor — overrides become labels per
+[`product_vision.md`](product_vision.md).
+
 **Figure manifest:** `data/fixtures/palm_fate/manifest.json` (+ `README.md`) groups the same image basenames for visual review without vendoring copyrighted binaries.
 
 Status: P0 + P1 implemented in `domains/palm/src/FateLineAnalyzer.cpp:1` (wired as `fate_analysis` in `domains/palm/src/PalmDomainPack.cpp:1`, 19/30 cases `implemented=true` in header, `tests/unit/test_fate_line_analyzer.cpp:1` 6/6 green, desktop smoke `01_left` → `present/broken/stops/age` live). P2 shapes remain heuristic stubs; Context P3 is future work.

@@ -291,5 +291,16 @@ public:
    - Zero `printf`, `std::cout`, or `std::cerr` in core code.
    - Logging is injected via a lightweight callback or diagnostic logger interface (`ILogger`).
 5. **Testability**:
-   - 100% of core algorithms must be unit-testable without camera hardware or external network access.
-   - Synthetic mathematical curves (parabolas, circles, sine waves) with known analytical ground truth must validate sub-pixel accuracy down to $< 0.1$ pixel.
+    - 100% of core algorithms must be unit-testable without camera hardware or external network access.
+    - Synthetic mathematical curves (parabolas, circles, sine waves) with known analytical ground truth must validate sub-pixel accuracy down to $< 0.1$ pixel.
+
+---
+
+## 8. Product Principle: Prediction-First, Human-in-the-Loop
+
+Detection serves prediction; the user buys a result, never lines or
+confidences. The app is a helper: it proposes geometry, the human corrects it
+with cheap edits, and the confirmed geometry feeds the prediction layer (palm
+reading, flood alert). Confirmations accumulate as training labels so proposals
+improve gradually; full automation is the end state, never the entry gate.
+Full statement: [`docs/product_vision.md`](product_vision.md).

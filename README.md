@@ -17,6 +17,8 @@
 
 Its primary capability is an unbiased, sub-pixel curvilinear ridge extraction engine grounded in differential geometry, scale-space Hessian tensor decomposition, and sub-pixel centerline tracking.
 
+Detection is the means, not the product: lines exist to produce **predictions** (palm readings, flood alerts). Humans stay in the loop — the app proposes, the human corrects fast, confirmations become training data. See [`docs/product_vision.md`](docs/product_vision.md).
+
 ---
 
 ## 2. Reusable, Domain-Agnostic Vision Core

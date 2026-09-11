@@ -17,3 +17,10 @@ as river channels, braided tributaries, and drainage lines over Sentinel-2 image
 
 The core (`core/`) contains strictly zero geospatial, hydrological, or remote sensing logic.
 All sensor band semantics, classification thresholds, and disaster delta analytics reside in this domain pack.
+
+## End goal: prediction, not lines
+
+Channels and width proxies are the means; the product is the **flood alert +
+forecast** (`flood_delta.json` → Bedrock dispatch + twin banner). Analysts
+review and confirm detections in the twin; confirmations become labels that
+improve thresholds over time. See [`docs/product_vision.md`](../../docs/product_vision.md).

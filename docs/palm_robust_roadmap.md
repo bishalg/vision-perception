@@ -2,6 +2,7 @@
 
 **Date:** 2026-09-10
 **Status:** Draft for review — implements user request: document phase-by-phase, day-by-day for 100% main-line detection before coding.
+**Guiding principle:** [`product_vision.md`](product_vision.md) — detection serves the reading; human edits are first-class and become training labels.
 **Context:** Desktop `hand_inspector_cli` on `data/samples/mobile_captures/01_left_bishal.jpg` is accurate for fingertip dots + hand outline (`adapters/opencv/src/HandBoundaryDetector.cpp:1`), but Heart/Head/Life/Fate crease polylines are wild-off (avg `conf 0.44-0.50` in `/tmp/test_evidence.json` vs `0.75` for fate). Outline uses solid binary mask; creases are low-contrast, variable-width valleys not ideal Steger ridges.
 
 ---

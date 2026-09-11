@@ -2,6 +2,10 @@
 
 Palm analysis app on the shared **`:overlay`** library plus palm plugin.
 
+> Helper, not oracle: same contract as iOS — propose lines, human corrects
+> fast, only confirmed geometry feeds the reading; corrections become labels.
+> Principle: [`docs/product_vision.md`](../../docs/product_vision.md).
+
 ## Modules
 
 - `:overlay` → `apps/mobile_overlay/android` (camera, HUD, guidance)

@@ -1,5 +1,11 @@
 # iOS Palm Scanner (`apps/ios_palm_app`)
 
+> Helper, not oracle: the app proposes lines, you correct them fast
+> (**Edit** → drag/add/remove/relabel), then **Use these lines for reading**.
+> Only confirmed geometry feeds the prediction. Corrections become training
+> labels (`*_USER_CORRECTED.*`) so proposals improve over time.
+> Principle: [`docs/product_vision.md`](../../docs/product_vision.md).
+
 ## Why you still saw "random" lines
 
 `CurvEngine.xcframework` is **not linked** yet (needs OpenCV-for-iOS). Without it the

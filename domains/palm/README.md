@@ -27,6 +27,19 @@ Handedness is detected in `core` (`geometry::detectIsLeftHand`) from the 21
 landmarks and propagated via frame metadata; the C-ABI landmark path wires it
 all together end-to-end.
 
+## End goal: prediction, not lines
+
+Lines are the means; the product is the **Samudrika reading**. The domain emits
+`major_lines` + `fate_analysis`, the app lets the human correct them fast, and
+only confirmed geometry feeds the report (`SimplePalmReading` → grounded VLM).
+Absent/faint (`no_fate`) is valid. See [`docs/product_vision.md`](../../docs/product_vision.md).
+
+## Human-in-the-loop + learning loop
+
+Human corrections are training data: every confirmed capture (`*_USER_CORRECTED.*`
+in `data/samples/mobile_captures/`, later `data/palm_labels/`) retunes the
+scorer, so proposals improve gradually toward full automation.
+
 ## Next phase
 
 Extraction (Steger + warp + mask + chaining) is in place. The next product work
