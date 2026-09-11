@@ -16,6 +16,7 @@
 #include "curv/Version.hpp"
 #include "curv/adapters/OverlayRenderer.hpp"
 #include "curv/domains/PalmDomainPack.hpp"
+#include "curv/domains/GeospatialFloodPack.hpp"
 #include "curv/domains/SurfaceInspectionPack.hpp"
 #include "curv/pipeline/SyncPerceptionPipeline.hpp"
 #include "curv/quality/LaplacianQualityAnalyzer.hpp"
@@ -123,7 +124,7 @@ int runCurvCli(int argc, char* argv[], std::ostream& out, std::ostream& err) {
         out << "[PASS] CurvEngine::RidgeGraph contract validated." << '\n';
         out << "\nUsage: " << argv[0] << " --image <path> [options]\n"
             << "Options:\n"
-            << "  --domain <palm|surface_inspection|none>  (default: none)\n"
+            << "  --domain <palm|geospatial|flood|surface_inspection|none>  (default: none)\n"
             << "  --svg <output.svg>                       (export vector curves)\n"
             << "  --hud / --no-hud                         (toggle diagnostics HUD)\n"
             << "  --normals                                (draw normal vectors)\n"
@@ -189,6 +190,8 @@ int runCurvCli(int argc, char* argv[], std::ostream& out, std::ostream& err) {
     std::unique_ptr<CurvEngine::IDomainPack> domain_pack;
     if (domain_name == "palm") {
         domain_pack = std::make_unique<CurvEngine::domains::PalmDomainPack>();
+    } else if (domain_name == "geospatial" || domain_name == "flood") {
+        domain_pack = std::make_unique<CurvEngine::domains::GeospatialFloodPack>();
     } else if (domain_name == "surface_inspection" || domain_name == "surface") {
         domain_pack = std::make_unique<CurvEngine::domains::SurfaceInspectionPack>();
     }

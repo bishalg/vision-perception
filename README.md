@@ -19,6 +19,8 @@ Its primary capability is an unbiased, sub-pixel curvilinear ridge extraction en
 
 Detection is the means, not the product: lines exist to produce **predictions** (palm readings, flood alerts). Humans stay in the loop — the app proposes, the human corrects fast, confirmations become training data. See [`docs/product_vision.md`](docs/product_vision.md).
 
+**Labeling desk:** CurvStudio — `pnpm studio` → http://localhost:8080/apps/annotation_studio/. Operator steps (draw → save → compare → retune): [`docs/STUDIO_GUIDE.md`](docs/STUDIO_GUIDE.md).
+
 ---
 
 ## 2. Reusable, Domain-Agnostic Vision Core

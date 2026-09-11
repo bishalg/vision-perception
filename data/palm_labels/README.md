@@ -53,12 +53,15 @@ provenance is logged in `manifest.json` and `third_party/SOURCE_PROVENANCE.md`.
 ## Draw / correct
 
 ```bash
-python3 tools/palm_annotator/server.py
-# open http://127.0.0.1:8765
+pnpm studio
+# open http://localhost:8080/apps/annotation_studio/
 ```
 
-Keys: `1–4` line tags, `5` hand mask, click to place vertices, Backspace undo,
-`A` mark absent, `S` save, `N`/`P` next/prev.
+Operator steps: [`docs/STUDIO_GUIDE.md`](../../docs/STUDIO_GUIDE.md).
+Legacy `tools/palm_annotator` (port 8765) is deprecated.
+
+Keys: `1–4` line tags, `L` polyline, `A` mark absent, `Cmd+S` save, `[`/`]` prev/next.
+Use **Compare** mode for Source | Engine | Yours side-by-side.
 
 ## Compare
 

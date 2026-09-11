@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "domains": [
     {
       "id": "palm",
@@ -11,12 +11,25 @@
       "image_extensions": [".jpg", ".jpeg", ".png"],
       "image_filter_exclude": ["_overlay", "_canonical", "_USER_CORRECTED", "_landmarks"],
       "canonical_warp": true,
+      "tools_enabled": ["pan", "polyline", "polygon", "brush", "bbox", "wand", "absent"],
+      "tool_labels": {
+        "polyline": "Polyline / Crease (L)",
+        "polygon": "Polygon Area (P)",
+        "brush": "Brush Stroke (B)",
+        "bbox": "Bounding Box (R)",
+        "wand": "AI Contour Snap (S)",
+        "pan": "Select / Pan (H / Space)"
+      },
+      "compare_modes": ["side_by_side"],
+      "inference_cli": "hand_inspector_cli",
+      "inference_args": [],
       "classes": [
         {
           "id": "heart_line",
           "label": "Heart Line",
           "color": "#F43F5E",
           "shortcut": "1",
+          "default_tool": "polyline",
           "description": "Upper transverse crease running below fingers"
         },
         {
@@ -24,6 +37,7 @@
           "label": "Head Line",
           "color": "#06B6D4",
           "shortcut": "2",
+          "default_tool": "polyline",
           "description": "Middle transverse crease across palm disc"
         },
         {
@@ -31,6 +45,7 @@
           "label": "Life Line",
           "color": "#10B981",
           "shortcut": "3",
+          "default_tool": "polyline",
           "description": "Radial longitudinal crease arcing around thumb mount"
         },
         {
@@ -38,6 +53,7 @@
           "label": "Fate Line",
           "color": "#8B5CF6",
           "shortcut": "4",
+          "default_tool": "polyline",
           "description": "Vertical line extending up from wrist toward middle finger"
         }
       ],
@@ -50,17 +66,38 @@
       "label": "Flood & River Morphology",
       "description": "Satellite and aerial waterlines, flood boundaries, and river centerlines",
       "dataset_dir": "data/flood_nepal_2026/processed",
-      "extra_dataset_dirs": ["data/flood_labels/raw"],
+      "extra_dataset_dirs": ["data/flood_labels/raw", "data/fixtures/cctv_flood"],
       "evidence_dir": "data/flood_nepal_2026/out",
       "image_extensions": [".png", ".jpg", ".tif"],
       "image_filter_exclude": ["_mask", "_overlay", "_curves", "_USER_CORRECTED"],
       "canonical_warp": false,
+      "tools_enabled": ["pan", "polyline", "polygon", "brush", "wand", "absent"],
+      "tool_labels": {
+        "polyline": "Centerline / Waterline (L)",
+        "polygon": "Flood Boundary Polygon (P)",
+        "brush": "Water Mask Brush (B)",
+        "wand": "AI Contour Snap (S)",
+        "pan": "Select / Pan (H / Space)"
+      },
+      "compare_modes": ["side_by_side", "pre_post"],
+      "inference_cli": "curv_cli",
+      "inference_args": ["--domain", "geospatial", "--dark", "--min-blur", "0.0"],
+      "inference_class_map": {
+        "river_channel": "river_centerline",
+        "tributary": "waterline",
+        "minor_feature": "bank_line",
+        "river_centerline": "river_centerline",
+        "waterline": "waterline",
+        "flood_boundary": "flood_boundary",
+        "bank_line": "bank_line"
+      },
       "classes": [
         {
           "id": "waterline",
           "label": "Active Waterline",
           "color": "#3B82F6",
           "shortcut": "1",
+          "default_tool": "polyline",
           "description": "High-confidence active water body flow path"
         },
         {
@@ -68,6 +105,7 @@
           "label": "Flood Boundary",
           "color": "#EF4444",
           "shortcut": "2",
+          "default_tool": "polygon",
           "description": "Peak flood extent / inundation perimeter"
         },
         {
@@ -75,6 +113,7 @@
           "label": "River Centerline",
           "color": "#10B981",
           "shortcut": "3",
+          "default_tool": "polyline",
           "description": "Main river channel thalweg / morphological axis"
         },
         {
@@ -82,6 +121,7 @@
           "label": "Channel Bank",
           "color": "#F59E0B",
           "shortcut": "4",
+          "default_tool": "polyline",
           "description": "Stable geological embankment or levee"
         }
       ],

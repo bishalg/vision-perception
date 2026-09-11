@@ -8,6 +8,7 @@ This directory contains end-user executable applications and integration demonst
 - **`mobile_overlay/`**: Shared iOS/Android camera overlay **packages/libraries** (guidance + Liquid Glass HUD + domain overlay plugins).
 - **`desktop_pipeline_demo/`**: Interactive desktop demonstration over live webcam / video.
 - **`cesium_viewer/`**: Phase 4 Vite + CesiumJS digital twin — CCTV pose markers, still panels, OSM globe.
+- **`annotation_studio/`**: **CurvStudio** — multi-domain annotation + Compare (Source | Engine | Yours). Start with `pnpm studio`. How-to: [`docs/STUDIO_GUIDE.md`](../docs/STUDIO_GUIDE.md).
 
 Command-line evaluation and developer CLI tools live in [`tools/`](../tools/).
 

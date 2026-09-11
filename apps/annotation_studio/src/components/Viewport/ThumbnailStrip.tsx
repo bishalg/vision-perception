@@ -171,6 +171,29 @@ export const ThumbnailStrip: React.FC<ThumbnailStripProps> = ({
                 }}
               />
 
+              {/* Origin badge: gold vs bootstrap */}
+              {s.origin && (
+                <span
+                  className={`origin-pill ${s.origin}`}
+                  style={{
+                    position: 'absolute',
+                    top: '2px',
+                    left: '2px',
+                    fontSize: '7px',
+                    padding: '1px 3px',
+                    lineHeight: 1,
+                    borderRadius: '3px',
+                    fontWeight: 700,
+                    letterSpacing: '0.02em',
+                    background: s.origin === 'gold' ? 'rgba(245, 158, 11, 0.9)' : 'rgba(99, 102, 241, 0.9)',
+                    color: '#fff',
+                  }}
+                  title={s.origin === 'gold' ? 'Primary / gold dataset' : 'Bootstrap import'}
+                >
+                  {s.origin === 'gold' ? 'G' : 'B'}
+                </span>
+              )}
+
               {/* Status Indicator */}
               {s.has_truth && (
                 <span
