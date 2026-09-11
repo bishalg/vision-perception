@@ -1,9 +1,19 @@
 // apps/annotation_studio/src/core/tools.ts — Headless Tool State Machine
 // Framework-agnostic interaction engine for curve, polygon, brush, bbox, and AI snapping.
 
-import { studioStore, recordSnapshot, addAuditLog } from './store';
+import {
+  studioStore,
+  recordSnapshot,
+  addAuditLog,
+  commitCurrentDraft,
+  cancelCurrentDraft,
+} from './store';
 import { findClosestRidge, dist } from './geometry';
 import type { Point2D } from './types';
+
+// Tracking state for natural freehand drag strokes
+let isStrokeDragging = false;
+let strokeTotalDist = 0;
 
 export function handlePointerDown(imgPt: Point2D): void {
   const state = studioStore.state;
@@ -11,12 +21,27 @@ export function handlePointerDown(imgPt: Point2D): void {
   const activeClass = state.activeClassId;
   if (!activeClass) return;
 
-  if (tool === 'polyline' || tool === 'polygon') {
-    // Add point to active drafting curve
-    studioStore.setState(prev => ({
-      ...prev,
-      currentDraft: [...prev.currentDraft, imgPt],
-    }));
+  if (tool === 'polyline') {
+    isStrokeDragging = true;
+    strokeTotalDist = 0;
+
+    studioStore.setState(prev => {
+      const draftClassId = prev.currentDraft.length === 0 ? activeClass : (prev.draftClassId || activeClass);
+      return {
+        ...prev,
+        draftClassId,
+        currentDraft: [...prev.currentDraft, imgPt],
+      };
+    });
+  } else if (tool === 'polygon') {
+    studioStore.setState(prev => {
+      const draftClassId = prev.currentDraft.length === 0 ? activeClass : (prev.draftClassId || activeClass);
+      return {
+        ...prev,
+        draftClassId,
+        currentDraft: [...prev.currentDraft, imgPt],
+      };
+    });
   } else if (tool === 'bbox') {
     studioStore.setState(prev => ({
       ...prev,
@@ -50,8 +75,17 @@ export function handlePointerMove(imgPt: Point2D, isDragging: boolean): void {
     currentCursor: imgPt,
   }));
 
-  if (tool === 'bbox' && state.bboxStart) {
-    // bbox preview updates automatically via currentCursor
+  if (tool === 'polyline' && isDragging && state.currentDraft.length > 0) {
+    const pts = state.currentDraft;
+    const lastPt = pts[pts.length - 1];
+    const d = dist(lastPt, imgPt);
+    if (d >= 3.0) {
+      strokeTotalDist += d;
+      studioStore.setState(prev => ({
+        ...prev,
+        currentDraft: [...prev.currentDraft, imgPt],
+      }));
+    }
   } else if (tool === 'brush' && isDragging && state.brushStrokes.length > 0) {
     studioStore.setState(prev => {
       const strokes = [...prev.brushStrokes];
@@ -73,6 +107,17 @@ export function handlePointerUp(imgPt: Point2D): void {
   const state = studioStore.state;
   const tool = state.activeTool;
   const activeClass = state.activeClassId;
+
+  if (tool === 'polyline') {
+    // If the user performed a continuous drag gesture (drag distance >= 8px and >= 2 points),
+    // automatically commit the completed stroke!
+    if (isStrokeDragging && strokeTotalDist >= 8.0 && state.currentDraft.length >= 2) {
+      commitCurrentDraft();
+    }
+    isStrokeDragging = false;
+    strokeTotalDist = 0;
+    return;
+  }
 
   if (tool === 'bbox' && state.bboxStart && activeClass) {
     const start = state.bboxStart;
@@ -103,36 +148,15 @@ export function handlePointerUp(imgPt: Point2D): void {
 }
 
 export function finishDraft(): void {
-  const state = studioStore.state;
-  const activeClass = state.activeClassId;
-  const pts = state.currentDraft;
-  if (!activeClass || pts.length < 2) {
-    studioStore.setState(prev => ({ ...prev, currentDraft: [] }));
-    return;
-  }
+  commitCurrentDraft();
+  isStrokeDragging = false;
+  strokeTotalDist = 0;
+}
 
-  recordSnapshot();
-  if (state.activeTool === 'polygon' && pts.length >= 3) {
-    studioStore.setState(prev => ({
-      ...prev,
-      polygons: {
-        ...prev.polygons,
-        [activeClass]: [...(prev.polygons[activeClass] || []), pts],
-      },
-      currentDraft: [],
-    }));
-    addAuditLog('Polygon Committed', `Finished polygon with ${pts.length} vertices for ${activeClass}`);
-  } else {
-    studioStore.setState(prev => ({
-      ...prev,
-      polylines: {
-        ...prev.polylines,
-        [activeClass]: [...(prev.polylines[activeClass] || []), pts],
-      },
-      currentDraft: [],
-    }));
-    addAuditLog('Polyline Committed', `Finished polyline with ${pts.length} vertices for ${activeClass}`);
-  }
+export function cancelDraft(): void {
+  cancelCurrentDraft();
+  isStrokeDragging = false;
+  strokeTotalDist = 0;
 }
 
 export function snapAIRidge(imgPt: Point2D): boolean {

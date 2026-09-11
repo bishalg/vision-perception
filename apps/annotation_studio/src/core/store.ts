@@ -33,6 +33,7 @@ export interface StudioState {
   brushSettings: { mode: 'draw' | 'erase'; size: number };
   aiLines: Record<string, Point2D[]>;
   currentDraft: Point2D[];
+  draftClassId: string | null;
   bboxStart: Point2D | null;
   currentCursor: Point2D | null;
   layerVisibility: { image: boolean; ai: boolean; truth: boolean };
@@ -66,6 +67,7 @@ export const initialStudioState: StudioState = {
   brushSettings: { mode: 'draw', size: 15 },
   aiLines: {},
   currentDraft: [],
+  draftClassId: null,
   bboxStart: null,
   currentCursor: null,
   layerVisibility: { image: true, ai: true, truth: true },
@@ -107,9 +109,11 @@ export function performUndo(): boolean {
     // 1. If drafting a shape, pop the last vertex
     if (prev.currentDraft.length > 0) {
       restored = true;
+      const nextDraft = prev.currentDraft.slice(0, -1);
       return {
         ...prev,
-        currentDraft: prev.currentDraft.slice(0, -1),
+        currentDraft: nextDraft,
+        draftClassId: nextDraft.length === 0 ? null : prev.draftClassId,
       };
     }
 
@@ -157,20 +161,94 @@ export function performRedo(): boolean {
   return restored;
 }
 
+export function commitCurrentDraft(): boolean {
+  let committed = false;
+  studioStore.setState(prev => {
+    const targetClass = prev.draftClassId || prev.activeClassId;
+    const pts = prev.currentDraft;
+    if (!targetClass || pts.length < 2) {
+      return { ...prev, currentDraft: [], draftClassId: null };
+    }
+
+    committed = true;
+    const nextUndo = [...prev.undoStack.slice(-24), createSnapshot(prev)];
+
+    if (prev.activeTool === 'polygon' && pts.length >= 3) {
+      return {
+        ...prev,
+        undoStack: nextUndo,
+        redoStack: [],
+        polygons: {
+          ...prev.polygons,
+          [targetClass]: [...(prev.polygons[targetClass] || []), pts],
+        },
+        currentDraft: [],
+        draftClassId: null,
+      };
+    } else {
+      return {
+        ...prev,
+        undoStack: nextUndo,
+        redoStack: [],
+        polylines: {
+          ...prev.polylines,
+          [targetClass]: [...(prev.polylines[targetClass] || []), pts],
+        },
+        currentDraft: [],
+        draftClassId: null,
+      };
+    }
+  });
+
+  if (committed) {
+    const active = studioStore.state.activeClassId;
+    addAuditLog('Shape Committed', `Committed annotation for ${active}`);
+  }
+  return committed;
+}
+
+export function cancelCurrentDraft(): void {
+  studioStore.setState(prev => ({
+    ...prev,
+    currentDraft: [],
+    draftClassId: null,
+    bboxStart: null,
+  }));
+}
+
 export function setTool(tool: ToolType): void {
+  if (studioStore.state.activeTool === tool) return;
+
+  if (studioStore.state.currentDraft.length >= 2) {
+    commitCurrentDraft();
+  } else {
+    cancelCurrentDraft();
+  }
+
   studioStore.setState(prev => ({
     ...prev,
     activeTool: tool,
     currentDraft: [],
+    draftClassId: null,
     bboxStart: null,
   }));
 }
 
 export function selectClass(classId: string): void {
+  if (studioStore.state.activeClassId === classId) return;
+
+  if (studioStore.state.currentDraft.length >= 2) {
+    commitCurrentDraft();
+  } else {
+    cancelCurrentDraft();
+  }
+
   studioStore.setState(prev => ({
     ...prev,
     activeClassId: classId,
   }));
+
+  addAuditLog('Class Selected', `Active class switched to ${classId}`);
 }
 
 export function toggleClassVisibility(classId: string): void {

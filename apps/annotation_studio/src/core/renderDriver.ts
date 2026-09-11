@@ -162,7 +162,8 @@ export function renderStudioFrame(
 
   // 4. Draw Current Draft Shape
   if (state.currentDraft.length > 0) {
-    const activeCls = state.currentDomain?.classes?.find(c => c.id === state.activeClassId) || { color: '#3b82f6' };
+    const draftTargetClass = state.draftClassId || state.activeClassId;
+    const activeCls = state.currentDomain?.classes?.find(c => c.id === draftTargetClass) || { color: '#3b82f6' };
     ctx.globalAlpha = 1.0;
     ctx.strokeStyle = activeCls.color;
     ctx.fillStyle = activeCls.color;
@@ -173,29 +174,40 @@ export function renderStudioFrame(
     for (let i = 1; i < state.currentDraft.length; ++i) {
       ctx.lineTo(state.currentDraft[i][0] * scaleX, state.currentDraft[i][1] * scaleY);
     }
+    ctx.stroke();
 
-    if (state.activeTool === 'polygon' && state.currentDraft.length >= 2) {
-      ctx.stroke();
-      // Closing dashed line
+    // Elastic guide line to current cursor in drafting mode
+    if (state.currentCursor) {
+      const last = state.currentDraft[state.currentDraft.length - 1];
       ctx.beginPath();
       ctx.setLineDash([4 / state.zoom, 4 / state.zoom]);
-      ctx.moveTo(
-        state.currentDraft[state.currentDraft.length - 1][0] * scaleX,
-        state.currentDraft[state.currentDraft.length - 1][1] * scaleY
-      );
-      ctx.lineTo(state.currentDraft[0][0] * scaleX, state.currentDraft[0][1] * scaleY);
+      ctx.strokeStyle = hexToRgba(activeCls.color, 0.75);
+      ctx.lineWidth = 2.0 / state.zoom;
+      ctx.moveTo(last[0] * scaleX, last[1] * scaleY);
+      ctx.lineTo(state.currentCursor[0] * scaleX, state.currentCursor[1] * scaleY);
       ctx.stroke();
+
+      if (state.activeTool === 'polygon' && state.currentDraft.length >= 2) {
+        ctx.beginPath();
+        ctx.strokeStyle = hexToRgba(activeCls.color, 0.35);
+        ctx.moveTo(state.currentCursor[0] * scaleX, state.currentCursor[1] * scaleY);
+        ctx.lineTo(state.currentDraft[0][0] * scaleX, state.currentDraft[0][1] * scaleY);
+        ctx.stroke();
+      }
       ctx.setLineDash([]);
-    } else {
-      ctx.stroke();
     }
 
-    // Handles
+    // Handles with outline for contrast against any palm/satellite background
     const r = 4.5 / state.zoom;
-    for (const pt of state.currentDraft) {
+    for (let i = 0; i < state.currentDraft.length; ++i) {
+      const pt = state.currentDraft[i];
       ctx.beginPath();
       ctx.arc(pt[0] * scaleX, pt[1] * scaleY, r, 0, Math.PI * 2);
+      ctx.fillStyle = i === 0 ? '#FFFFFF' : activeCls.color;
       ctx.fill();
+      ctx.strokeStyle = '#0e0e13';
+      ctx.lineWidth = 1.2 / state.zoom;
+      ctx.stroke();
     }
   }
 

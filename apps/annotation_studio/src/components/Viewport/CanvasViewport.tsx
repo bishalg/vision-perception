@@ -251,6 +251,12 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onDoubleClick={handleDoubleClick}
+        onContextMenu={e => {
+          e.preventDefault();
+          if (activeTool === 'polyline' || activeTool === 'polygon') {
+            finishDraft();
+          }
+        }}
       />
 
       {/* Top HUD */}

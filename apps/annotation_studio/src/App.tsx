@@ -12,6 +12,7 @@ import {
   toggleAbsentClass,
   addAuditLog,
 } from './core/store';
+import { finishDraft, cancelDraft } from './core/tools';
 import type { SampleItem, Point2D } from './core/types';
 import {
   useDomainsQuery,
@@ -265,6 +266,12 @@ const StudioApp: React.FC = () => {
         if (activeClassId) toggleAbsentClass(activeClassId);
       } else if (e.key === '?') {
         setIsShortcutsOpen(prev => !prev);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        finishDraft();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        cancelDraft();
       } else if (e.key >= '1' && e.key <= '9') {
         const idx = parseInt(e.key, 10) - 1;
         const cls = currentDomain?.classes[idx];
