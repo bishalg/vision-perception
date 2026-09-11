@@ -164,16 +164,18 @@ def test_curv_studio_endpoints():
     h8.execute()
     assert h8.response_code == 200
     html_output = h8.wfile.getvalue().decode("utf-8")
-    assert "two-tier-sidebar" in html_output, "Two-tier sidebar markup missing from HTML shell"
-    assert "floatingBottomBar" in html_output, "Floating bottom bar missing from HTML shell"
-    print("   [PASS] CurvStudio HTML shell delivered with two-tier layout & floating bottom bar.")
+    assert "id=\"root\"" in html_output or "two-tier-sidebar" in html_output, "CurvStudio root container missing from HTML shell"
+    print("   [PASS] CurvStudio HTML shell delivered with modern React mount container.")
 
     # 9. GET /assets/index.js & /assets/index.css (Vite Bundles)
     print("9. Testing GET /assets/index.js & /assets/index.css...")
     h9_js = MockHandlerWrapper("GET", "/assets/index.js")
     h9_js.execute()
     assert h9_js.response_code == 200
-    assert len(h9_js.wfile.getvalue()) > 1000
+    js_content = h9_js.wfile.getvalue().decode("utf-8")
+    assert len(js_content) > 1000
+    assert "two-tier-sidebar" in js_content or "twoTierSidebar" in js_content, "Two-tier sidebar missing from bundle"
+    assert "floatingBottomBar" in js_content, "Floating bottom bar missing from bundle"
 
     h9_css = MockHandlerWrapper("GET", "/assets/index.css")
     h9_css.execute()
