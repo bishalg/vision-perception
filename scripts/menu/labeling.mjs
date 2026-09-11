@@ -16,6 +16,5 @@ export const items = [
     label: 'Full loop: baselines + rebuild dashboard + open it',
     run: 'python3 scripts/palm_crease_baseline_metrics.py --markdown && python3 scripts/admin_metrics.py && open output/admin_dashboard.html',
   },
-  { label: 'Open admin dashboard (matrix + trends + gallery)', run: 'open output/admin_dashboard.html' },
-  { label: 'Open training gallery (same dashboard)', run: 'open output/admin_dashboard.html' },
+  { label: 'Open admin dashboard (overview · assets · training · results)', run: 'open output/admin_dashboard.html' },
 ];

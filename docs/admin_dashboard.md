@@ -49,13 +49,26 @@ open output/admin_dashboard.html            # the view (self-contained, no serve
 - Fate spot-checks read straight from `fate_analysis` (no human fate truth
   required beyond the polyline).
 
-## 4b. Training gallery + data strategy
+## 4b. Dashboard tabs + data strategy
 
-The dashboard opens with the image array: every hand, `reviewed` / `needs
-label` badge, per-line error. Drop 100s of captures in
-`data/samples/mobile_captures/`, label them, re-run — the matrix and trends
-do the compare-and-fix. Free-data bootstrapping (Roboflow palm-line sets,
-11k Hands, biometric DBs) is ranked in [`docs/training_data.md`](training_data.md).
+The page has four tabs (sticky nav, no backend):
+
+- **Overview** — KPI cards (reviewed/total, queue, mean F1, weakest line),
+  per-line quality cards with precision/recall/F1 bars, F1 trend chart, queue preview.
+- **Assets** — every file in `data/samples/mobile_captures/`, grouped by hand:
+  thumbnail, kind badge (photo / evidence / human truth / …), size, open / save /
+  copy-path actions. Thumbnails use the small canonical warp, not the 18 MB overlays.
+- **Training data** — 3-step "add a new hand" guide, needs-label queue cards with
+  copyable inspect commands + truth filenames, reviewed hands with
+  Approve ✓ / Flag ✗ + note (stored in this browser's localStorage;
+  **Export review log** downloads it as JSON to keep with the run).
+- **Results** — confusion matrix per line + filterable per-fixture table
+  (All / Reviewed / Needs label + name search), fate spot-check chips.
+
+Drop 100s of captures in `data/samples/mobile_captures/`, label them, re-run —
+the matrix and trends do the compare-and-fix. Free-data bootstrapping (Roboflow
+palm-line sets, 11k Hands, biometric DBs) is ranked in
+[`docs/training_data.md`](training_data.md).
 
 ## 4. Human validation flow
 
