@@ -16,8 +16,11 @@ echo "==> [1/4] Ensuring system toolchain & libraries..."
 # because the VM default `c++` alternative is Clang 18, which auto-selects the
 # GCC 14 toolchain directory. Guarded so a prepared snapshot boots instantly.
 if ! pkg-config --exists opencv4 || ! command -v ninja >/dev/null 2>&1; then
-  sudo apt-get update
-  sudo apt-get install -y --no-install-recommends \
+  # Retry/timeout options make the download resilient to flaky Ubuntu mirrors
+  # (occasional 502s), so a single bad response doesn't fail the whole build.
+  APT_OPTS=(-o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
+  sudo apt-get "${APT_OPTS[@]}" update
+  sudo apt-get "${APT_OPTS[@]}" install -y --no-install-recommends \
     build-essential ninja-build libstdc++-14-dev \
     libopencv-dev nlohmann-json3-dev libspdlog-dev libgtest-dev \
     libcurl4-openssl-dev clang-tidy
