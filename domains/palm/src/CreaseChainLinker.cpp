@@ -421,19 +421,19 @@ float scoreHeart(const SegStats& st, const PalmAxis& axis, float dim, bool /*is_
         return 0.35f * depth_score + 0.25f * horiz + 0.20f * len + 0.20f * span;
     }
     const float norm_y = st.mean_y / dim;
-    if (norm_y < 0.18f || norm_y > 0.42f) {
+    if (norm_y < 0.14f || norm_y > 0.42f) {
         return -1.0f;
     }
     return (1.0f - std::abs(norm_y - 0.28f) / 0.24f) * 0.5f + (1.0f - st.angle / 0.75f) * 0.5f;
 }
 
 float scoreHead(const SegStats& st, const PalmAxis& axis, float dim, bool /*is_left*/) {
-    if (st.seg->total_length < 18.0f || st.angle > 0.90f) {
+    if (st.seg->total_length < 14.0f || st.angle > 0.92f) {
         return -1.0f;
     }
     if (axis.valid) {
         const float d = palmDepth(st.mean_y, axis);
-        if (d < 0.32f || d > 0.62f) {
+        if (d < 0.28f || d > 0.65f) {
             return -1.0f;
         }
         const float palm_width = std::max(40.0f, std::abs(axis.pinky_x - axis.index_x));
@@ -567,9 +567,17 @@ CreaseChainLinker::extractMajorLines(const RidgeGraph& graph, bool is_left_hand,
     }
 
     CreaseLinkOptions opts = link_options;
-    if (opts.max_gap_distance < 1.0f) opts.max_gap_distance = 35.0f;
-    if (opts.min_collinearity < 0.1f) opts.min_collinearity = 0.70f;
-    if (opts.spline_step < 0.1f) opts.spline_step = 2.0f;
+    // Robust: 35->60 for broken head/life (user head gap ~30px).
+    if (opts.max_gap_distance < 1.0f) {
+        opts.max_gap_distance = 60.0F;
+    }
+    // Robust: 0.70->0.60 to allow life arc.
+    if (opts.min_collinearity < 0.1f) {
+        opts.min_collinearity = 0.60F;
+    }
+    if (opts.spline_step < 0.1f) {
+        opts.spline_step = 2.0F;
+    }
 
     auto chainGeometryScore = [&](const ChainedCreaseLine& chain, int label, float mean_seg_score) -> float {
         if (chain.points.size() < 2) {

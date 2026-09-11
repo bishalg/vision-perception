@@ -461,6 +461,21 @@ vision_set_compiler_warnings(test_crease_geometry)
 add_test(NAME test_crease_geometry COMMAND test_crease_geometry)
 
 # ------------------------------------------------------------------------------
+# Unit Test: test_fate_line_analyzer (FateLineAnalyzer, TDD)
+# ------------------------------------------------------------------------------
+add_executable(test_fate_line_analyzer
+    unit/test_fate_line_analyzer.cpp
+)
+target_link_libraries(test_fate_line_analyzer
+    PRIVATE
+        curv_domains
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_fate_line_analyzer)
+add_test(NAME test_fate_line_analyzer COMMAND test_fate_line_analyzer)
+
+# ------------------------------------------------------------------------------
 # Unit Test: test_floor_plan_domain (FloorPlanDomainPack, TDD)
 # ------------------------------------------------------------------------------
 add_executable(test_floor_plan_domain

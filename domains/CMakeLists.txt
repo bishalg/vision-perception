@@ -9,6 +9,7 @@ add_library(curv_domains STATIC
     palm/src/HandAnatomyDecomposer.cpp
     palm/src/CreaseChainLinker.cpp
     palm/src/CreaseGeometry.cpp
+    palm/src/FateLineAnalyzer.cpp
     palm/src/VlmPromptFormatter.cpp
     geospatial/src/GeospatialFloodPack.cpp
     floor_plan/src/FloorPlanDomainPack.cpp

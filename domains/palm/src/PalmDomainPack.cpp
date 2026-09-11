@@ -1,6 +1,7 @@
 #include "curv/domains/PalmDomainPack.hpp"
 #include "curv/domain/CreaseChainLinker.hpp"
 #include "curv/domain/CreaseGeometry.hpp"
+#include "curv/domain/FateLineAnalyzer.hpp"
 #include "curv/domain/PalmZones.hpp"
 #include <algorithm>
 #include <cmath>
@@ -260,6 +261,20 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
 
     const int total_junctions = static_cast<int>(input.ridges.junctions.size());
 
+    // Detailed fate analysis (optional line; absent is valid no_fate).
+    const auto fate_it = major_creases.find("fate_line");
+    const auto heart_it = major_creases.find("heart_line");
+    const auto head_it = major_creases.find("head_line");
+    const auto life_it = major_creases.find("life_line");
+    const CurvEngine::domain::ChainedCreaseLine empty_line;
+    const auto& fate_line = (fate_it != major_creases.end()) ? fate_it->second : empty_line;
+    const auto* heart_ptr =
+        (heart_it != major_creases.end() && heart_it->second.is_valid) ? &heart_it->second : nullptr;
+    const auto* head_ptr = (head_it != major_creases.end() && head_it->second.is_valid) ? &head_it->second : nullptr;
+    const auto* life_ptr = (life_it != major_creases.end() && life_it->second.is_valid) ? &life_it->second : nullptr;
+    const auto fate_report =
+        CurvEngine::domain::FateLineAnalyzer::analyze(fate_line, heart_ptr, head_ptr, life_ptr, input.ridges, zone_dim);
+
     output.domain_payload = {{"status", "analyzed"},
                              {"palm_height_px", palm_height},
                              {"is_left_hand", is_left_hand},
@@ -269,6 +284,7 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
                              {"fate_line_id", get_primary_id("fate_line")},
                              {"major_lines", major_lines_json},
                              {"palm_analysis", palm_analysis},
+                             {"fate_analysis", fate_report.toJson()},
                              {"intersections", total_junctions},
                              {"continuity_breaks", total_gaps},
                              {"zone_distribution", zone_counts},

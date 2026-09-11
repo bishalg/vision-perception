@@ -1,0 +1,98 @@
+{
+  "source_article": "https://www.palmistindian.com/fate-line-money-line-in-palmistry-destiny-luck/",
+  "source_note": "Manish Paliwal, Oct 2020, 32 types. Hotlink references only — images NOT vendored (copyright). Use for visual regression reference; download locally for manual review only.",
+  "license": "All images (c) palmistindian.com — do not redistribute. See third_party/SOURCE_PROVENANCE.md pattern.",
+  "code_array": "domains/palm/include/curv/domain/FateLineCases.hpp :: AllFateCases()",
+  "groups": [
+    {
+      "group": "Presence",
+      "group_id": 0,
+      "cases": ["present", "no_fate"],
+      "images": [
+        "fate-line-present-or-abscent-1024x606.jpg",
+        "no-fate-line-1024x606.jpg"
+      ]
+    },
+    {
+      "group": "Origin",
+      "group_id": 1,
+      "cases": ["from_moon", "joined_life_start", "origin_from_head"],
+      "images": [
+        "fate-line-starts-from-mount-of-moon-1-1024x606.jpg",
+        "fate-and-life-line-joint-at-start-1024x606.jpg",
+        "fate-line-originating-form-headline-1-1024x606.jpg",
+        "fate-line-and-headline-merged-at-start-1024x606.jpg"
+      ]
+    },
+    {
+      "group": "Course",
+      "group_id": 2,
+      "cases": ["short", "long", "broken", "double_parallel", "y_shaped", "forked_up", "branches_up", "toward_mars_negative", "parallel_life"],
+      "images": [
+        "short-fate-line-1024x606.jpg",
+        "long-fate-line-1024x606.jpg",
+        "fate-line-broken-1024x606.jpg",
+        "double-fate-line-1024x606.jpg",
+        "fate-line-Y-shaped-1024x606.jpg",
+        "forked-fate-line-1024x606.jpg",
+        "fate-line-branches-towards-fingers-1024x606.jpg",
+        "fate-line-branches-towards-mars-negative-1024x606.jpg",
+        "fate-line-and-life-line-run-parallel-1-1024x606.jpg"
+      ]
+    },
+    {
+      "group": "Termination",
+      "group_id": 3,
+      "cases": ["stops_at_heart_53", "stops_at_head_35", "merged_head", "cross_sun", "cross_life_to_mars"],
+      "images": [
+        "fate-line-ends-on-heart-line-1024x606.jpg",
+        "fate-line-ends-on-head-line-1024x606.jpg",
+        "fate-line-and-headline-merged-at-start-1024x606.jpg",
+        "fate-and-sun-line-cross-each-other-1024x606.jpg",
+        "fate-line-crosses-the-life-line-1024x606.jpg",
+        "fate-line-moves-towards-mars-negative-1024x606.jpg"
+      ]
+    },
+    {
+      "group": "Marks",
+      "group_id": 4,
+      "cases": ["island_fish", "triangle", "cross", "square", "bad_saturn_mount", "bad_mercury_mount"],
+      "images": [
+        "fate-line-fish-sign-1024x606.jpg",
+        "isalnd-on-fate-line-1024x606.jpg",
+        "triangle-on-fate-line-1024x606.jpg",
+        "triangle-on-fate-line-702x526.jpg",
+        "cross-on-fate-line-1024x606.jpg",
+        "cross-on-fate-line-1-1024x606.jpg",
+        "square-on-fate-line-1-1024x606.jpg",
+        "fate-line-good-but-bad-saturn-mount-1-1024x606.jpg",
+        "fate-line-good-but-bad-mercury-1024x606.jpg",
+        "saturn-qualities-2-1024x606.jpg"
+      ]
+    },
+    {
+      "group": "Age",
+      "group_id": 5,
+      "cases": ["age_map"],
+      "images": ["age-on-fate-line-1024x606.jpg"]
+    },
+    {
+      "group": "Context",
+      "group_id": 6,
+      "cases": ["weight_15pct", "money_role", "luck_career_alias", "govt_job"],
+      "images": [
+        "fate-line-too-much-of-importance-1024x606.jpg",
+        "fate-and-other-line-importance-1024x606.jpg",
+        "fate-line-luck-line-1024x606.jpg",
+        "career-line-1024x606.jpg",
+        "fate-line-and-government-job-1024x606.jpg"
+      ]
+    }
+  ],
+  "base_url_patterns": [
+    "https://palmistindian.com/wp-content/uploads/2020/10/{file}",
+    "https://palmistindian.com/wp-content/uploads/2020/11/{file}",
+    "https://palmistindian.com/wp-content/uploads/2021/01/{file}",
+    "https://www.palmistindian.com/wp-content/uploads/2020/10/{file}"
+  ]
+}

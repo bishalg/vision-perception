@@ -25,9 +25,11 @@ std::vector<geometry::Zone> PalmZones::getCanonicalPalmZones(int target_dim, boo
             {"mercury_zone", make_poly({{400.0f, 110.0f}, {490.0f, 110.0f}, {490.0f, 230.0f}, {400.0f, 230.0f}})},
             {"mars_upper", make_poly({{380.0f, 230.0f}, {490.0f, 230.0f}, {490.0f, 330.0f}, {380.0f, 330.0f}})},
             {"luna_zone", make_poly({{330.0f, 330.0f}, {480.0f, 330.0f}, {480.0f, 480.0f}, {330.0f, 480.0f}})},
-            {"venus_zone", make_poly({{50.0f, 230.0f}, {200.0f, 230.0f}, {220.0f, 470.0f}, {70.0f, 470.0f}})},
+            // Expanded y to 500 to capture lower life arc (user 01_left life y 470-500) — was 470
+            {"venus_zone", make_poly({{50.0f, 230.0f}, {200.0f, 230.0f}, {220.0f, 500.0f}, {70.0f, 500.0f}})},
             {"mars_lower", make_poly({{80.0f, 180.0f}, {190.0f, 180.0f}, {190.0f, 260.0f}, {80.0f, 260.0f}})},
-            {"plain_of_mars", make_poly({{190.0f, 200.0f}, {380.0f, 200.0f}, {350.0f, 350.0f}, {200.0f, 350.0f}})}};
+            // Expanded plain_of_mars y to 380 to cover head lower tail (user head y 327)
+            {"plain_of_mars", make_poly({{190.0f, 200.0f}, {380.0f, 200.0f}, {350.0f, 380.0f}, {200.0f, 380.0f}})}};
 }
 
 } // namespace CurvEngine::domains
