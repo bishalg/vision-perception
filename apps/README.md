@@ -10,3 +10,11 @@ This directory contains end-user executable applications and integration demonst
 - **`cesium_viewer/`**: Phase 4 Vite + CesiumJS digital twin — CCTV pose markers, still panels, OSM globe.
 
 Command-line evaluation and developer CLI tools live in [`tools/`](../tools/).
+
+## Runner menu
+
+Don't remember commands — run `pnpm dev` from the repo root for a numbered,
+step-by-step menu of everything runnable (palm apps, flood pipeline, core
+build/tests, labeling loop, mobile builds, quality gates). Modular groups live
+in `scripts/menu/` (one file per group); iOS run helpers in
+`scripts/run_ios_sim.sh` / `scripts/run_ios_device.sh`.

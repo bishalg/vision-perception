@@ -234,6 +234,9 @@ data/flood_nepal_2026/*
 !.gitkeep
 
 
+# Root menu runner has zero deps — ignore its empty lockfile (cesium keeps its own)
+pnpm-lock.yaml
+
 # Fastlane
 apps/ios_palm_app/fastlane/.env
 apps/ios_palm_app/fastlane/README.md

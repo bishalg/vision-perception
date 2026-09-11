@@ -1,0 +1,10 @@
+{
+  "name": "vision-perception",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monorepo runner — `pnpm dev` opens the interactive project menu",
+  "scripts": {
+    "dev": "node scripts/menu.mjs",
+    "menu": "node scripts/menu.mjs"
+  }
+}
