@@ -3,6 +3,14 @@ import React from 'react';
 import { useStore } from '@tanstack/react-store';
 import { studioStore } from '../../core/store';
 import type { DomainConfig } from '../../core/types';
+import {
+  IconWave,
+  IconHand,
+  IconSplit,
+  IconPlay,
+  IconSave,
+  IconChart,
+} from '../Common/Icons';
 
 interface StudioHeaderProps {
   domains: DomainConfig[];
@@ -45,7 +53,10 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
           title="Toggle Sidebar (B)"
           onClick={toggleSidebar}
         >
-          ◫
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect width="18" height="18" x="3" y="3" rx="2" />
+            <path d="M9 3v18" />
+          </svg>
         </button>
         <a href="/" className="header-brand" title="CurvStudio">
           <div className="logo-icon">C</div>
@@ -56,7 +67,7 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
         <div className="project-tabs" id="projectTabs">
           {domains.map(d => {
             const isActive = d.id === currentDomain?.id;
-            const icon = d.id === 'flood' ? '🌊' : '🌿';
+            const icon = d.id === 'flood' ? <IconWave size={14} /> : <IconHand size={14} />;
             return (
               <button
                 key={d.id}
@@ -111,7 +122,8 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
           title="Split dataset into Train, Valid, Test"
           onClick={onOpenSplitter}
         >
-          📊 Dataset Split
+          <IconSplit size={14} />
+          <span>Dataset Split</span>
         </button>
         <button
           id="btnOpenTestBench"
@@ -119,7 +131,8 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
           title="Live Model Inference Test Bench"
           onClick={onOpenTestBench}
         >
-          ⚡ Test Bench
+          <IconPlay size={13} />
+          <span>Test Bench</span>
         </button>
         <button
           id="btnSaveTruth"
@@ -128,11 +141,12 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
           onClick={onSaveTruth}
           disabled={isSaving}
         >
-          {isSaving ? 'Saving…' : '💾 Save Truth'}
+          <IconSave size={14} />
+          <span>{isSaving ? 'Saving…' : 'Save Truth'}</span>
         </button>
         <a href="/output/admin_dashboard.html" target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
           <button type="button" className="btn-ghost" title="Open Admin Metrics Dashboard">
-            📈
+            <IconChart size={15} />
           </button>
         </a>
       </div>

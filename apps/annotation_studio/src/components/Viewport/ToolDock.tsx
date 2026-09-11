@@ -9,6 +9,17 @@ import {
   toggleAbsentClass,
 } from '../../core/store';
 import type { ToolType } from '../../core/types';
+import {
+  IconHand,
+  IconBBox,
+  IconPolygon,
+  IconBrush,
+  IconWand,
+  IconPolyline,
+  IconUndo,
+  IconRedo,
+  IconAbsent,
+} from '../Common/Icons';
 
 interface ToolDockProps {
   onToggleBrushPopover: () => void;
@@ -19,13 +30,18 @@ export const ToolDock: React.FC<ToolDockProps> = ({ onToggleBrushPopover }) => {
   const activeTool = useStore(studioStore, s => s.activeTool);
   const activeClassId = useStore(studioStore, s => s.activeClassId);
 
-  const tools: Array<{ id: ToolType; icon: string; title: string; badge?: string }> = [
-    { id: 'pan', icon: '✋', title: 'Select / Pan (H / Space)' },
-    { id: 'bbox', icon: '▢', title: 'Bounding Box (R)' },
-    { id: 'polygon', icon: '⬡', title: 'Polygon Area Tool (P)' },
-    { id: 'brush', icon: '🖌️', title: 'Brush Stroke Tool (B)' },
-    { id: 'wand', icon: '🧲', title: 'AI Contour Snap (S)', badge: 'AI' },
-    { id: 'polyline', icon: '✏️', title: 'Polyline / Crease Tool (L)' },
+  const tools: Array<{
+    id: ToolType;
+    icon: React.ReactNode;
+    title: string;
+    badge?: string;
+  }> = [
+    { id: 'pan', icon: <IconHand size={18} />, title: 'Select / Pan (H / Space)' },
+    { id: 'bbox', icon: <IconBBox size={18} />, title: 'Bounding Box (R)' },
+    { id: 'polygon', icon: <IconPolygon size={18} />, title: 'Polygon Area Tool (P)' },
+    { id: 'brush', icon: <IconBrush size={18} />, title: 'Brush Stroke Tool (B)' },
+    { id: 'wand', icon: <IconWand size={18} />, title: 'AI Contour Snap (S)', badge: 'AI' },
+    { id: 'polyline', icon: <IconPolyline size={18} />, title: 'Polyline / Crease Tool (L)' },
   ];
 
   const handleToolClick = (e: React.MouseEvent, tool: ToolType) => {
@@ -81,7 +97,7 @@ export const ToolDock: React.FC<ToolDockProps> = ({ onToggleBrushPopover }) => {
         title="Undo (Ctrl+Z / Cmd+Z)"
         onClick={handleUndo}
       >
-        ↩
+        <IconUndo size={17} />
       </button>
       <button
         className="dock-btn"
@@ -89,7 +105,7 @@ export const ToolDock: React.FC<ToolDockProps> = ({ onToggleBrushPopover }) => {
         title="Redo (Ctrl+Y / Cmd+Y)"
         onClick={handleRedo}
       >
-        ↪
+        <IconRedo size={17} />
       </button>
       <button
         className="dock-btn"
@@ -97,7 +113,7 @@ export const ToolDock: React.FC<ToolDockProps> = ({ onToggleBrushPopover }) => {
         title="Mark Feature Absent (A)"
         onClick={handleAbsent}
       >
-        ⊘
+        <IconAbsent size={17} />
       </button>
     </div>
   );

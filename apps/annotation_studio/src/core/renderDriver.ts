@@ -28,10 +28,24 @@ export function renderStudioFrame(
   ctx.translate(state.pan.x, state.pan.y);
   ctx.scale(state.zoom, state.zoom);
 
-  // 1. Draw Background Image
+  // 1. Draw Background Image with clean border and drop-shadow
   if (state.layerVisibility.image && state.layerOpacities.image > 0) {
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+    ctx.shadowBlur = 20 / state.zoom;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 6 / state.zoom;
+    ctx.fillStyle = '#0e0e13';
+    ctx.fillRect(0, 0, iw, ih);
+    ctx.restore();
+
     ctx.globalAlpha = state.layerOpacities.image;
     ctx.drawImage(imageElement, 0, 0, iw, ih);
+
+    // Modern clean hairline outline
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.lineWidth = 1.0 / state.zoom;
+    ctx.strokeRect(0, 0, iw, ih);
   }
 
   const isNorm = state.currentDomain?.coord_space === 'norm_512';

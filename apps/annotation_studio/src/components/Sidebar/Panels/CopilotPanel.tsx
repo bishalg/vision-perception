@@ -3,6 +3,12 @@ import React from 'react';
 import { useStore } from '@tanstack/react-store';
 import { studioStore } from '../../../core/store';
 import { useFloodDeltaQuery } from '../../../api/queries';
+import {
+  IconAlertTriangle,
+  IconCheck,
+  IconHand,
+  IconWand,
+} from '../../Common/Icons';
 
 export const CopilotPanel: React.FC = () => {
   const currentDomain = useStore(studioStore, s => s.currentDomain);
@@ -31,8 +37,27 @@ export const CopilotPanel: React.FC = () => {
                 borderRadius: '8px',
               }}
             >
-              <div style={{ fontSize: '12px', fontWeight: 700, color: detected ? 'var(--red)' : 'var(--green)' }}>
-                {detected ? '🚨 CRITICAL FLOOD SIGNAL DETECTED' : '✓ NORMAL RIVER FLOW'}
+              <div
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  color: detected ? 'var(--red)' : 'var(--green)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                {detected ? (
+                  <>
+                    <IconAlertTriangle size={15} />
+                    <span>CRITICAL FLOOD SIGNAL DETECTED</span>
+                  </>
+                ) : (
+                  <>
+                    <IconCheck size={15} />
+                    <span>NORMAL RIVER FLOW</span>
+                  </>
+                )}
               </div>
               <div style={{ fontSize: '11px', color: 'var(--txt)', marginTop: '4px' }}>
                 {d?.event || 'Glacier-collapse flood — Lende Khola / Bhote Koshi'}
@@ -79,8 +104,9 @@ export const CopilotPanel: React.FC = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <div style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid var(--blue)', padding: '10px', borderRadius: '8px' }}>
-        <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--blue)' }}>
-          ✋ PALM CREASE ANATOMY ENGINE
+        <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--blue)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <IconHand size={15} />
+          <span>PALM CREASE ANATOMY ENGINE</span>
         </div>
         <div style={{ fontSize: '11px', color: 'var(--txt)', marginTop: '4px' }}>
           Sub-pixel Steger ridge extraction grounded in 21 hand landmarks.
@@ -97,7 +123,7 @@ export const CopilotPanel: React.FC = () => {
 
       <div className="sidebar-section-title">Copilot Tips</div>
       <div style={{ fontSize: '11px', color: 'var(--txt-muted)', lineHeight: 1.5, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px' }}>
-        • Click <code>🧲 Snap AI (S)</code> near any CurvEngine predicted ridge to instantly adopt it into the active class.<br />
+        • Click <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}><IconWand size={11} /> <code>Snap AI (S)</code></span> near any CurvEngine predicted ridge to instantly adopt it.<br />
         • Press <code>A</code> if a crease is absent on the capture.<br />
         • Press <code>⌘S</code> to commit ground truth.
       </div>

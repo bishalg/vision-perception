@@ -299,7 +299,10 @@ const StudioApp: React.FC = () => {
 
       <div className="app-body">
         <TwoTierSidebar />
-        <CanvasViewport onOpenShortcuts={() => setIsShortcutsOpen(true)} />
+        <CanvasViewport
+          onOpenShortcuts={() => setIsShortcutsOpen(true)}
+          onSelectSample={handleSelectSample}
+        />
       </div>
 
       <DatasetSplitterModal

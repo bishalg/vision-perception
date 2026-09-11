@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useStore } from '@tanstack/react-store';
 import { studioStore } from '../../../core/store';
+import { IconCopy, IconCheck } from '../../Common/Icons';
 
 export const RawDataPanel: React.FC = () => {
   const [copied, setCopied] = useState(false);
@@ -40,8 +41,21 @@ export const RawDataPanel: React.FC = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span className="sidebar-section-title">Source & Truth JSON</span>
-        <button onClick={handleCopy} style={{ fontSize: '11px', padding: '3px 8px' }}>
-          {copied ? '✓ Copied!' : '📋 Copy JSON'}
+        <button
+          onClick={handleCopy}
+          style={{ fontSize: '11px', padding: '3px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}
+        >
+          {copied ? (
+            <>
+              <IconCheck size={12} style={{ color: 'var(--green)' }} />
+              <span>Copied!</span>
+            </>
+          ) : (
+            <>
+              <IconCopy size={12} />
+              <span>Copy JSON</span>
+            </>
+          )}
         </button>
       </div>
       <div id="rawJsonInspector" className="json-inspector-box">

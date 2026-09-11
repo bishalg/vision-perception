@@ -2,16 +2,27 @@
 import React from 'react';
 import { useStore } from '@tanstack/react-store';
 import { studioStore } from '../../core/store';
+import {
+  IconTag,
+  IconLayers,
+  IconClock,
+  IconCode,
+  IconSparkles,
+} from '../Common/Icons';
 
 export const SidebarRail: React.FC = () => {
   const activeTab = useStore(studioStore, s => s.activeRailTab);
 
-  const tabs: Array<{ id: 'labels' | 'layers' | 'history' | 'raw' | 'copilot'; icon: string; label: string }> = [
-    { id: 'labels', icon: '🏷️', label: 'Labels' },
-    { id: 'layers', icon: '☰', label: 'Layers' },
-    { id: 'history', icon: '🕒', label: 'History' },
-    { id: 'raw', icon: '</>', label: 'Raw Data' },
-    { id: 'copilot', icon: '✨', label: 'Copilot' },
+  const tabs: Array<{
+    id: 'labels' | 'layers' | 'history' | 'raw' | 'copilot';
+    icon: React.ReactNode;
+    label: string;
+  }> = [
+    { id: 'labels', icon: <IconTag size={16} />, label: 'Labels' },
+    { id: 'layers', icon: <IconLayers size={16} />, label: 'Layers' },
+    { id: 'history', icon: <IconClock size={16} />, label: 'History' },
+    { id: 'raw', icon: <IconCode size={16} />, label: 'Raw Data' },
+    { id: 'copilot', icon: <IconSparkles size={16} />, label: 'Copilot' },
   ];
 
   const handleSelect = (tab: typeof activeTab) => {

@@ -2,17 +2,20 @@
 import React from 'react';
 import { useStore } from '@tanstack/react-store';
 import { studioStore, zoomStep, resetView } from '../../core/store';
+import { IconSun, IconMoon, IconKeyboard } from '../Common/Icons';
 
 interface FloatingBottomBarProps {
   onOpenShortcuts: () => void;
   viewportWidth: number;
   viewportHeight: number;
+  bottomOffset?: number;
 }
 
 export const FloatingBottomBar: React.FC<FloatingBottomBarProps> = ({
   onOpenShortcuts,
   viewportWidth,
   viewportHeight,
+  bottomOffset = 18,
 }) => {
   const zoom = useStore(studioStore, s => s.zoom);
   const contrastMode = useStore(studioStore, s => s.contrastMode);
@@ -44,6 +47,7 @@ export const FloatingBottomBar: React.FC<FloatingBottomBarProps> = ({
     <div
       className="floating-bottom-bar"
       id="floatingBottomBar"
+      style={{ bottom: `${bottomOffset}px`, transition: 'bottom 0.2s ease' }}
       onClick={e => e.stopPropagation()}
       onMouseDown={e => e.stopPropagation()}
     >
@@ -83,7 +87,7 @@ export const FloatingBottomBar: React.FC<FloatingBottomBarProps> = ({
         title="Toggle Brightness / High-Contrast"
         onClick={toggleContrast}
       >
-        {contrastMode ? '🌙' : '☀️'}
+        {contrastMode ? <IconMoon size={15} /> : <IconSun size={15} />}
       </button>
 
       <button
@@ -95,7 +99,7 @@ export const FloatingBottomBar: React.FC<FloatingBottomBarProps> = ({
           onOpenShortcuts();
         }}
       >
-        ⌨️
+        <IconKeyboard size={15} />
       </button>
     </div>
   );

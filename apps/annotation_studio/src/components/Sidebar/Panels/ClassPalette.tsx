@@ -8,6 +8,7 @@ import {
   countClassAnnotations,
 } from '../../../core/store';
 import type { AnnotationClass } from '../../../core/types';
+import { IconEye, IconEyeOff } from '../../Common/Icons';
 
 interface ClassPaletteProps {
   classes: AnnotationClass[];
@@ -63,7 +64,7 @@ export const ClassPalette: React.FC<ClassPaletteProps> = ({ classes }) => {
                   toggleClassVisibility(c.id);
                 }}
               >
-                {isVisible ? '👁️' : '🕶️'}
+                {isVisible ? <IconEye size={14} /> : <IconEyeOff size={14} />}
               </button>
             </div>
           </div>

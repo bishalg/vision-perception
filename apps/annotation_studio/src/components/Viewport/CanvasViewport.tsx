@@ -19,12 +19,17 @@ import { renderStudioFrame } from '../../core/renderDriver';
 import { ToolDock } from './ToolDock';
 import { FloatingBottomBar } from './FloatingBottomBar';
 import { BrushPopover } from './BrushPopover';
+import { ThumbnailStrip } from './ThumbnailStrip';
 
 interface CanvasViewportProps {
   onOpenShortcuts: () => void;
+  onSelectSample?: (idx: number) => void;
 }
 
-export const CanvasViewport: React.FC<CanvasViewportProps> = ({ onOpenShortcuts }) => {
+export const CanvasViewport: React.FC<CanvasViewportProps> = ({
+  onOpenShortcuts,
+  onSelectSample,
+}) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
@@ -39,7 +44,10 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({ onOpenShortcuts 
   const pan = useStore(studioStore, s => s.pan);
   const contrastMode = useStore(studioStore, s => s.contrastMode);
   const currentDomain = useStore(studioStore, s => s.currentDomain);
+  const samples = useStore(studioStore, s => s.samples);
+  const currentSampleIdx = useStore(studioStore, s => s.currentSampleIdx);
   const totalAnnotations = useStore(studioStore, countTotalAnnotations);
+  const [showFilmstrip, setShowFilmstrip] = useState(true);
 
   const isPanningRef = useRef(false);
   const isMouseDownRef = useRef(false);
@@ -259,6 +267,7 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({ onOpenShortcuts 
         onOpenShortcuts={onOpenShortcuts}
         viewportWidth={viewportSize.width}
         viewportHeight={viewportSize.height}
+        bottomOffset={showFilmstrip && samples.length > 0 ? 104 : 18}
       />
 
       {/* Floating Right Tool Dock */}
@@ -272,6 +281,17 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({ onOpenShortcuts 
         isOpen={showBrushPopover && activeTool === 'brush'}
         onClose={() => setShowBrushPopover(false)}
       />
+
+      {/* Real Image Dataset Filmstrip */}
+      {samples.length > 0 && onSelectSample && (
+        <ThumbnailStrip
+          samples={samples}
+          currentIdx={currentSampleIdx}
+          onSelectSample={onSelectSample}
+          isOpen={showFilmstrip}
+          onToggle={() => setShowFilmstrip(v => !v)}
+        />
+      )}
     </div>
   );
 };

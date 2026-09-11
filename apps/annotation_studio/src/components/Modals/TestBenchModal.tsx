@@ -4,6 +4,7 @@ import { useStore } from '@tanstack/react-store';
 import { studioStore, addAuditLog } from '../../core/store';
 import { useInferenceMutation } from '../../api/queries';
 import type { InferencePrediction, InferencePayload } from '../../api/client';
+import { IconPlay } from '../Common/Icons';
 
 interface TestBenchModalProps {
   isOpen: boolean;
@@ -225,11 +226,12 @@ export const TestBenchModal: React.FC<TestBenchModalProps> = ({
           <button
             id="btnRunInference"
             className="btn-primary"
-            style={{ width: '100%', justifyContent: 'center' }}
+            style={{ width: '100%', justifyContent: 'center', gap: '8px' }}
             disabled={inferMutation.isPending}
             onClick={handleRun}
           >
-            {inferMutation.isPending ? 'Running Pipeline...' : '▶ Run CurvEngine Inference'}
+            <IconPlay size={14} />
+            <span>{inferMutation.isPending ? 'Running Pipeline...' : 'Run CurvEngine Inference'}</span>
           </button>
         </div>
       </div>

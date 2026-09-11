@@ -2,6 +2,7 @@
 import React from 'react';
 import { useStore } from '@tanstack/react-store';
 import { studioStore } from '../../core/store';
+import { IconBrush, IconEraser } from '../Common/Icons';
 
 interface BrushPopoverProps {
   isOpen: boolean;
@@ -41,7 +42,9 @@ export const BrushPopover: React.FC<BrushPopoverProps> = ({ isOpen, onClose }) =
       onMouseDown={e => e.stopPropagation()}
     >
       <div className="brush-popover-header">
-        <span>🖌️ Brush Tool</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <IconBrush size={14} /> Brush Tool
+        </span>
         {onClose && (
           <button
             className="modal-close"
@@ -63,7 +66,7 @@ export const BrushPopover: React.FC<BrushPopoverProps> = ({ isOpen, onClose }) =
             title="Draw stroke"
             onClick={() => setMode('draw')}
           >
-            🖌️ Draw
+            <IconBrush size={12} /> Draw
           </button>
           <button
             id="btnBrushErase"
@@ -71,7 +74,7 @@ export const BrushPopover: React.FC<BrushPopoverProps> = ({ isOpen, onClose }) =
             title="Erase stroke"
             onClick={() => setMode('erase')}
           >
-            🧽 Erase
+            <IconEraser size={12} /> Erase
           </button>
         </div>
       </div>

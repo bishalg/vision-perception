@@ -15,6 +15,20 @@ export const SubHeader: React.FC = () => {
   return (
     <div className="sub-header-bar">
       <div className="sub-header-left">
+        {currentSample?.image_url && (
+          <img
+            src={currentSample.image_url}
+            alt="Sample preview"
+            style={{
+              width: '20px',
+              height: '20px',
+              borderRadius: '4px',
+              objectFit: 'cover',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              marginRight: '2px',
+            }}
+          />
+        )}
         <span id="subHeaderFilename" className="active-filename">
           {filename}
         </span>
