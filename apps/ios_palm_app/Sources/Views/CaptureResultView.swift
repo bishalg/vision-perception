@@ -271,10 +271,6 @@ public struct CaptureResultView: View {
 
             Spacer()
 
-            Text("\(spline.points.count) pts")
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundColor(.white.opacity(0.55))
-
             Text("\(Int(spline.confidence * 100))%")
                 .font(.system(size: 12, weight: .bold, design: .rounded))
                 .foregroundColor(Color(hex: "34C759"))

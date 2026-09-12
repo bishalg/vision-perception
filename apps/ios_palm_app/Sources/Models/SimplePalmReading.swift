@@ -91,24 +91,24 @@ public struct SimplePalmReading {
                 return "measured, steadier in affections"
             }()
             let lenHint = len < 100 ? "selective attachments" : len > 175 ? "deep continuity in bonds" : "steady warmth"
-            return "Heart Line — \(curveNote), \(temper); \(lengthNote) (\(lenHint)), \(clarity), \(detailNote) · tort \(String(format: "%.2f", tort))"
+            return "Heart Line — \(curveNote), \(temper); \(lengthNote) (\(lenHint)), \(clarity)."
         case .head:
             let focus: String = {
                 if tort > 1.28 { return "flexible, imaginative thinking" }
                 if tort > 1.14 { return "balanced logic and imagination" }
-                return "straighter — focused, linear reasoning"
+                return "focused, linear reasoning"
             }()
-            let lenHint = len < 95 ? "concise, to-the-point focus" : len > 170 ? "long — extended analytical reach" : "even, sustained focus"
-            return "Head Line — \(curveNote), \(focus); \(lengthNote) (\(lenHint)), \(clarity), \(detailNote) · tort \(String(format: "%.2f", tort))"
+            let lenHint = len < 95 ? "concise, to-the-point focus" : len > 170 ? "extended analytical reach" : "even, sustained focus"
+            return "Head Line — \(curveNote), \(focus); \(lengthNote) (\(lenHint)), \(clarity)."
         case .life:
             let vigor: String = {
-                if tort > 1.32 { return "winding — adaptive, draws around obstacles" }
+                if tort > 1.32 { return "adaptive, draws around obstacles" }
                 if tort > 1.18 { return "gentle arc — resilient" }
-                return "straighter arc — steady stamina" // life often curved, straighter is still meaningful
+                return "steady stamina and vigor"
             }()
             let lenHint = len < 110 ? "shorter arc — conserve energy, pace well" : len > 200 ? "long arc — strong vitality, wide circle" : "medium arc — even vitality"
             let confHint = conf < 0.5 ? "lighter — nurture routines" : "well-marked"
-            return "Life Line — \(vigor); \(lengthNote) (\(lenHint)), \(clarity) (\(confHint)), \(detailNote) · tort \(String(format: "%.2f", tort)) · len \(String(format: "%.0f", len))px"
+            return "Life Line — \(vigor); \(lengthNote) (\(lenHint)), \(clarity) (\(confHint))."
         case .fate:
             let presence: String = {
                 if conf < 0.38 { return "faint / intermittent — path shaped more by choice than circumstance" }
@@ -117,7 +117,7 @@ public struct SimplePalmReading {
                 return "clear and continuous — steady direction, purpose builds"
             }()
             let curveHint = tort > 1.18 ? "(\(curveNote) — flexible course corrections)" : "(\(curveNote))"
-            return "Fate Line — \(presence) \(curveHint), \(lengthNote), \(clarity), \(detailNote) · tort \(String(format: "%.2f", tort))"
+            return "Fate Line — \(presence) \(curveHint), \(lengthNote), \(clarity)."
         }
     }
 }

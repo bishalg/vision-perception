@@ -28,12 +28,25 @@ class CameraSession(private val context: Context) {
 
     var onFrameAnalysis: ((ImageProxy) -> Unit)? = null
 
+    /** When false, incoming analysis frames are dropped (battery save during review/reading). */
+    @Volatile
+    var frameAnalysisEnabled: Boolean = true
+
+    private var boundLifecycleOwner: LifecycleOwner? = null
+    private var boundSurfaceProvider: Preview.SurfaceProvider? = null
+    @Volatile
+    private var paused: Boolean = false
+
     fun startCamera(
         lifecycleOwner: LifecycleOwner,
         surfaceProvider: Preview.SurfaceProvider,
         onSuccess: () -> Unit = {},
         onError: (Exception) -> Unit = {}
     ) {
+        boundLifecycleOwner = lifecycleOwner
+        boundSurfaceProvider = surfaceProvider
+        paused = false
+        frameAnalysisEnabled = true
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
         cameraProviderFuture.addListener({
             try {
@@ -49,7 +62,11 @@ class CameraSession(private val context: Context) {
                     .build()
                     .also { analysis ->
                         analysis.setAnalyzer(analysisExecutor) { imageProxy ->
-                            onFrameAnalysis?.invoke(imageProxy)
+                            if (frameAnalysisEnabled && !paused) {
+                                onFrameAnalysis?.invoke(imageProxy)
+                            } else {
+                                imageProxy.close()
+                            }
                         }
                     }
 
@@ -108,5 +125,41 @@ class CameraSession(private val context: Context) {
     fun shutdown() {
         analysisExecutor.shutdown()
         cameraProvider?.unbindAll()
+    }
+
+    /**
+     * Battery-save pause during review / reading — parity with iOS
+     * `cameraSession.stop()`. Drops analysis frames; preview keeps last frame.
+     */
+    fun pause() {
+        paused = true
+        frameAnalysisEnabled = false
+    }
+
+    /** Resume live guidance — parity with iOS `cameraSession.start()`. */
+    fun resume() {
+        paused = false
+        frameAnalysisEnabled = true
+    }
+
+    /** Full stop (unbind). Call [startCamera] again to restart. */
+    fun stop() {
+        paused = true
+        frameAnalysisEnabled = false
+        try {
+            cameraProvider?.unbindAll()
+        } catch (_: Exception) { }
+    }
+
+    /** Restart after [stop] using the last bound lifecycle + surface. */
+    fun start() {
+        val owner = boundLifecycleOwner
+        val provider = boundSurfaceProvider
+        if (owner != null && provider != null) {
+            startCamera(lifecycleOwner = owner, surfaceProvider = provider)
+        } else {
+            paused = false
+            frameAnalysisEnabled = true
+        }
     }
 }

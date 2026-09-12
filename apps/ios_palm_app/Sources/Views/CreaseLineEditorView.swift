@@ -414,8 +414,8 @@ public struct CreaseLineEditorView: View {
                     .foregroundColor(.white)
 
                 if let spline = activeSpline {
-                    Text("\(LocalizedStrings.tr(spline.lineType.displayNameKey, lang: selectedLanguage)) • 4 points")
-                        .font(.system(size: 11, weight: .medium))
+                    Text(LocalizedStrings.tr(spline.lineType.displayNameKey, lang: selectedLanguage))
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Color(hex: spline.lineType.hexColor))
                 }
             }
