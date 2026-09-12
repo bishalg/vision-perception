@@ -28,13 +28,14 @@ public struct CaptureResultView: View {
         image: UIImage?,
         landmarks: [CGPoint],
         splines: Binding<[CreaseSpline]>,
-        selectedLanguage: AppLanguage,
-        overlaySource: CreaseOverlaySource,
+        selectedLanguage: AppLanguage = .english,
+        overlaySource: CreaseOverlaySource = .landmarkFallback,
         handSide: HandSide = .right,
         onLanguageChange: ((AppLanguage) -> Void)? = nil,
-        onDismiss: @escaping () -> Void,
-        onRetake: @escaping () -> Void,
-        onProceedToAnalysis: @escaping () -> Void
+        onConfirmAdjustedLines: (() -> Void)? = nil,
+        onDismiss: @escaping () -> Void = {},
+        onRetake: @escaping () -> Void = {},
+        onProceedToAnalysis: (() -> Void)? = nil
     ) {
         self.image = image
         self.landmarks = landmarks
@@ -44,7 +45,10 @@ public struct CaptureResultView: View {
         self.handSide = handSide
         self.onDismiss = onDismiss
         self.onRetake = onRetake
-        self.onProceedToAnalysis = onProceedToAnalysis
+        self.onProceedToAnalysis = {
+            onConfirmAdjustedLines?()
+            onProceedToAnalysis?()
+        }
     }
 
     private var sourceSubtitle: String {
