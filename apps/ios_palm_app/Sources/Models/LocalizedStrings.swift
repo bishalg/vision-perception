@@ -203,6 +203,21 @@ public struct LocalizedStrings {
             .english: "1.0x",
             .nepali: "१.०x",
             .hindi: "१.०x"
+        ],
+        "editor.modePoints": [
+            .english: "Adjust",
+            .nepali: "मिलाउनुहोस्",
+            .hindi: "समायोजित"
+        ],
+        "editor.modeDraw": [
+            .english: "Draw Curve",
+            .nepali: "रेखा कोर्नुहोस्",
+            .hindi: "रेखा बनाएं"
+        ],
+        "editor.drawHint": [
+            .english: "Trace along the palm crease with your finger to redraw the curve.",
+            .nepali: "हातको रेखामाथि औंला सारेर नयाँ वक्र रेखा कोर्नुहोस्।",
+            .hindi: "हथेली की रेखा पर उंगली फिराकर नई वक्र रेखा बनाएं।"
         ]
     ]
 

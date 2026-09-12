@@ -4,12 +4,15 @@ import CurvPalmOverlay
 
 /**
  * Dedicated full-screen precision editor for palm crease lines.
- * Provides a pro studio editing experience:
- * - Zoom & Pan canvas (1.0x to 4.0x) with quick 1.0x reset
- * - Magnifying Loupe floating above touch point to prevent finger occlusion
- * - 44x44pt touch targets with haptic feedback
- * - Insert vertex, delete vertex, reset line, and undo stack
- * - Line selection and type reclassification
+ * Phase 2b of Palm Scanner workflow:
+ * - Each crease line is represented by ONE continuous Catmull-Rom curve
+ *   controlled by exactly 4 points: Start, Curve Mid 1, Curve Mid 2, and End.
+ * - Zero clutter: no hundreds of small circles.
+ * - Dual editing modes:
+ *     1. "Adjust": Drag the 4 control handles with a 2.4x Apple-style Magnifying Loupe.
+ *     2. "Draw Curve": Trace the palm crease directly on the photo with your finger;
+ *        snaps smoothly into a 4-point continuous spline on release.
+ * - Full Undo stack, Reset, and Zoom & Pan (1.0x to 4.0x).
  */
 public struct CreaseLineEditorView: View {
     public let image: UIImage?
@@ -23,6 +26,10 @@ public struct CreaseLineEditorView: View {
     @State private var selectedSplineId: String?
     @State private var selectedVertexIndex: Int?
 
+    // Editing mode: Adjust 4 handles vs Freehand Trace
+    @State private var isDrawMode: Bool = false
+    @State private var freehandCanvasPoints: [CGPoint] = []
+
     // Zoom & Pan state
     @State private var zoomScale: CGFloat = 1.0
     @State private var lastZoomScale: CGFloat = 1.0
@@ -31,8 +38,8 @@ public struct CreaseLineEditorView: View {
 
     // Loupe / Magnifier state
     @State private var isDraggingVertex: Bool = false
-    @State private var loupeLocation: CGPoint = .zero // in local coordinates
-    @State private var loupeNormPoint: CGPoint = .zero // normalized in image (0..1)
+    @State private var loupeLocation: CGPoint = .zero
+    @State private var loupeNormPoint: CGPoint = .zero
 
     private let lightHaptic = UIImpactFeedbackGenerator(style: .light)
     private let mediumHaptic = UIImpactFeedbackGenerator(style: .medium)
@@ -48,10 +55,17 @@ public struct CreaseLineEditorView: View {
         self.selectedLanguage = selectedLanguage
         self.onDismiss = onDismiss
         self.onDone = onDone
-        self._workingSplines = State(initialValue: splines)
-        self.initialSplines = splines
-        self._selectedSplineId = State(initialValue: splines.first?.id)
-        if let first = splines.first, !first.points.isEmpty {
+
+        // Guarantee all lines are clean 4-point control splines
+        let clean = splines.map { s in
+            s.points.count > 5
+                ? s.replacing(points: CreaseSpline.resampleToControlPoints(s.points, targetCount: 4))
+                : s
+        }
+        self._workingSplines = State(initialValue: clean)
+        self.initialSplines = clean
+        self._selectedSplineId = State(initialValue: clean.first?.id)
+        if let first = clean.first, !first.points.isEmpty {
             self._selectedVertexIndex = State(initialValue: 0)
         }
     }
@@ -67,13 +81,13 @@ public struct CreaseLineEditorView: View {
             VStack(spacing: 0) {
                 // Top Navigation Bar
                 navigationHeader
-                    .padding(.top, 50) // Safe area top inset
+                    .padding(.top, 50)
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)
                     .background(Color.black.opacity(0.85).background(.ultraThinMaterial))
                     .zIndex(20)
 
-                // Main Interactive Canvas
+                // Interactive Photo & Curve Canvas
                 GeometryReader { proxy in
                     let canvasSize = proxy.size
                     let imageSize = image?.size ?? canvasSize
@@ -86,7 +100,7 @@ public struct CreaseLineEditorView: View {
                     ZStack {
                         Color.black
 
-                        // Zoomable & Pannable Container
+                        // Scaled container
                         ZStack {
                             if let image {
                                 Image(uiImage: image)
@@ -95,7 +109,7 @@ public struct CreaseLineEditorView: View {
                                     .position(x: baseDrawRect.midX, y: baseDrawRect.midY)
                             }
 
-                            // Crease Splines Path Render
+                            // Render All Crease Splines as Smooth Continuous Curves
                             Canvas { context, _ in
                                 for spline in workingSplines {
                                     guard spline.points.count >= 2 else { continue }
@@ -107,59 +121,49 @@ public struct CreaseLineEditorView: View {
                                     // Outer soft glow
                                     context.stroke(
                                         path,
-                                        with: .color(color.opacity(isSelected ? 0.35 : 0.12)),
-                                        style: StrokeStyle(lineWidth: isSelected ? 12 : 6, lineCap: .round, lineJoin: .round)
+                                        with: .color(color.opacity(isSelected ? 0.38 : 0.12)),
+                                        style: StrokeStyle(lineWidth: isSelected ? 10 : 5, lineCap: .round, lineJoin: .round)
                                     )
-                                    // Main core line
+                                    // Solid continuous curve
                                     context.stroke(
                                         path,
-                                        with: .color(color.opacity(isSelected ? 1.0 : 0.40)),
-                                        style: StrokeStyle(lineWidth: isSelected ? 3.6 : 2.4, lineCap: .round, lineJoin: .round)
+                                        with: .color(color.opacity(isSelected ? 1.0 : 0.35)),
+                                        style: StrokeStyle(lineWidth: isSelected ? 3.8 : 2.2, lineCap: .round, lineJoin: .round)
                                     )
-                                    // Dash pattern when selected
-                                    if isSelected {
-                                        context.stroke(
-                                            path,
-                                            with: .color(Color.white.opacity(0.4)),
-                                            style: StrokeStyle(lineWidth: 1.2, lineCap: .round, dash: [6, 4])
-                                        )
+                                }
+
+                                // In-progress freehand trace stroke
+                                if !freehandCanvasPoints.isEmpty {
+                                    var trace = Path()
+                                    trace.move(to: freehandCanvasPoints[0])
+                                    for pt in freehandCanvasPoints.dropFirst() {
+                                        trace.addLine(to: pt)
                                     }
+                                    let activeColor = activeSpline.map { Color(hex: $0.lineType.hexColor) } ?? .white
+                                    context.stroke(
+                                        trace,
+                                        with: .color(activeColor),
+                                        style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round)
+                                    )
                                 }
                             }
                             .allowsHitTesting(false)
 
-                            // Interactive Vertex Handles for Active Spline
-                            if let spline = activeSpline {
+                            // Handles: Shown ONLY for the active spline in Adjust Mode
+                            if !isDrawMode, let spline = activeSpline {
                                 ForEach(Array(spline.points.enumerated()), id: \.offset) { index, norm in
                                     let canvasPt = ImageCoordinateMapper.map(norm, into: baseDrawRect)
                                     let isVertexSelected = (index == selectedVertexIndex)
-                                    let isEnd = (index == 0 || index == spline.points.count - 1)
+                                    let isStart = (index == 0)
+                                    let isEnd = (index == spline.points.count - 1)
                                     let color = Color(hex: spline.lineType.hexColor)
 
-                                    ZStack {
-                                        // Large 44x44 invisible touch target
-                                        Color.clear
-                                            .frame(width: 44, height: 44)
-                                            .contentShape(Rectangle())
-
-                                        // Selection halo ring
-                                        if isVertexSelected {
-                                            Circle()
-                                                .stroke(Color.white, lineWidth: 2)
-                                                .frame(width: isEnd ? 34 : 30, height: isEnd ? 34 : 30)
-                                        }
-
-                                        // Core visible handle
-                                        Circle()
-                                            .fill(color)
-                                            .frame(width: isEnd ? 26 : 22, height: isEnd ? 26 : 22)
-                                            .overlay(Circle().stroke(Color.white, lineWidth: 2))
-                                            .shadow(color: .black.opacity(0.6), radius: 4, y: 2)
-
-                                        if isEnd {
-                                            Circle().fill(Color.white).frame(width: 6, height: 6)
-                                        }
-                                    }
+                                    controlHandleView(
+                                        color: color,
+                                        isStart: isStart,
+                                        isEnd: isEnd,
+                                        isSelected: isVertexSelected
+                                    )
                                     .position(canvasPt)
                                     .gesture(
                                         DragGesture(minimumDistance: 0, coordinateSpace: .named("editorCanvas"))
@@ -172,7 +176,6 @@ public struct CreaseLineEditorView: View {
                                                 selectedSplineId = spline.id
                                                 selectedVertexIndex = index
 
-                                                // Update position in image normalized coordinates
                                                 let unmapped = ImageCoordinateMapper.unmap(value.location, from: baseDrawRect)
                                                 let clamped = CGPoint(
                                                     x: min(max(unmapped.x, 0.01), 0.99),
@@ -180,7 +183,6 @@ public struct CreaseLineEditorView: View {
                                                 )
                                                 moveVertex(splineId: spline.id, index: index, to: clamped)
 
-                                                // Update Loupe position
                                                 loupeLocation = value.location
                                                 loupeNormPoint = clamped
                                             }
@@ -191,11 +193,26 @@ public struct CreaseLineEditorView: View {
                                     )
                                 }
                             }
+
+                            // Freehand Trace Capture Layer
+                            if isDrawMode {
+                                Color.clear
+                                    .contentShape(Rectangle())
+                                    .gesture(
+                                        DragGesture(minimumDistance: 2, coordinateSpace: .named("editorCanvas"))
+                                            .onChanged { value in
+                                                freehandCanvasPoints.append(value.location)
+                                            }
+                                            .onEnded { _ in
+                                                finishFreehandDraw(baseDrawRect: baseDrawRect)
+                                            }
+                                    )
+                            }
                         }
                         .scaleEffect(zoomScale)
                         .offset(panOffset)
                         .gesture(
-                            // 2-finger zoom and pan
+                            // 2-finger zoom
                             MagnificationGesture()
                                 .onChanged { scale in
                                     let newScale = lastZoomScale * scale
@@ -206,28 +223,28 @@ public struct CreaseLineEditorView: View {
                                 }
                         )
                         .simultaneousGesture(
-                            DragGesture(minimumDistance: 10)
+                            // 2-finger pan when zoomed
+                            DragGesture(minimumDistance: 12)
                                 .onChanged { value in
-                                    guard !isDraggingVertex, zoomScale > 1.05 else { return }
+                                    guard !isDraggingVertex && !isDrawMode && zoomScale > 1.05 else { return }
                                     panOffset = CGSize(
                                         width: lastPanOffset.width + value.translation.width,
                                         height: lastPanOffset.height + value.translation.height
                                     )
                                 }
                                 .onEnded { _ in
-                                    guard !isDraggingVertex else { return }
+                                    guard !isDraggingVertex && !isDrawMode else { return }
                                     lastPanOffset = panOffset
                                 }
                         )
 
-                        // Floating Magnifying Loupe (appears above the dragged finger)
+                        // Floating 2.4x Magnifying Loupe
                         if isDraggingVertex, let img = image {
                             MagnifyingLoupeView(
                                 image: img,
                                 focusPointNorm: loupeNormPoint,
                                 lineColor: activeSpline.map { Color(hex: $0.lineType.hexColor) } ?? .white
                             )
-                            // Position 85pt above the touch point on screen
                             .position(
                                 x: min(max(loupeLocation.x + panOffset.width, 60), canvasSize.width - 60),
                                 y: max(loupeLocation.y + panOffset.height - 85, 60)
@@ -283,6 +300,46 @@ public struct CreaseLineEditorView: View {
         }
     }
 
+    // MARK: - Control Handle Component (Clean 4 Handles: Start, Curve 1, Curve 2, End)
+    @ViewBuilder
+    private func controlHandleView(color: Color, isStart: Bool, isEnd: Bool, isSelected: Bool) -> some View {
+        let diameter: CGFloat = (isStart || isEnd) ? 28 : 22
+
+        ZStack {
+            // Invisible 44x44pt touch area
+            Color.clear
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+
+            // Selection pulse ring
+            if isSelected {
+                Circle()
+                    .stroke(Color.white, lineWidth: 2)
+                    .frame(width: diameter + 8, height: diameter + 8)
+            }
+
+            // Solid handle body
+            Circle()
+                .fill(color)
+                .frame(width: diameter, height: diameter)
+                .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                .shadow(color: .black.opacity(0.6), radius: 4, y: 2)
+
+            // Distinctive inner icon for Start vs Curve vs End
+            if isStart {
+                Text("S")
+                    .font(.system(size: 11, weight: .black, design: .rounded))
+                    .foregroundColor(.white)
+            } else if isEnd {
+                Text("E")
+                    .font(.system(size: 11, weight: .black, design: .rounded))
+                    .foregroundColor(.white)
+            } else {
+                Circle().fill(Color.white).frame(width: 5, height: 5)
+            }
+        }
+    }
+
     // MARK: - Navigation Header
     private var navigationHeader: some View {
         HStack(alignment: .center) {
@@ -303,7 +360,7 @@ public struct CreaseLineEditorView: View {
                     .foregroundColor(.white)
 
                 if let spline = activeSpline {
-                    Text("\(LocalizedStrings.tr(spline.lineType.displayNameKey, lang: selectedLanguage)) • \(spline.points.count) pts")
+                    Text("\(LocalizedStrings.tr(spline.lineType.displayNameKey, lang: selectedLanguage)) • 4 points")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(Color(hex: spline.lineType.hexColor))
                 }
@@ -333,7 +390,7 @@ public struct CreaseLineEditorView: View {
     // MARK: - Bottom Toolbar
     private var bottomToolbar: some View {
         VStack(spacing: 12) {
-            // Line Selection Tabs
+            // Line Selection Tabs (Heart, Head, Life, Fate)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(workingSplines) { spline in
@@ -352,11 +409,8 @@ public struct CreaseLineEditorView: View {
                                 Text(LocalizedStrings.tr(spline.lineType.displayNameKey, lang: selectedLanguage))
                                     .font(.system(size: 13, weight: isSelected ? .bold : .medium))
                                     .foregroundColor(isSelected ? .white : .white.opacity(0.65))
-                                Text("\(spline.points.count)")
-                                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                                    .foregroundColor(isSelected ? .white.opacity(0.9) : .white.opacity(0.4))
                             }
-                            .padding(.horizontal, 12)
+                            .padding(.horizontal, 14)
                             .padding(.vertical, 7)
                             .background(
                                 Capsule()
@@ -371,42 +425,61 @@ public struct CreaseLineEditorView: View {
                 .padding(.horizontal, 4)
             }
 
-            // Action Buttons Row: [Undo] [+ Point] [- Delete] [Reset] [Label]
+            // Mode & Tool Action Row: [Adjust Mode | ✏️ Draw Curve] [Undo] [Reset]
             HStack(spacing: 8) {
+                // Mode Toggle: Adjust vs Draw
+                HStack(spacing: 2) {
+                    Button {
+                        isDrawMode = false
+                        lightHaptic.impactOccurred()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "slider.horizontal.3")
+                            Text(LocalizedStrings.tr("editor.modePoints", lang: selectedLanguage))
+                        }
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(!isDrawMode ? .black : .white.opacity(0.7))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Capsule().fill(!isDrawMode ? Color.white : Color.clear))
+                    }
+
+                    Button {
+                        isDrawMode = true
+                        lightHaptic.impactOccurred()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "pencil.line")
+                            Text(LocalizedStrings.tr("editor.modeDraw", lang: selectedLanguage))
+                        }
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(isDrawMode ? .black : .white.opacity(0.7))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Capsule().fill(isDrawMode ? Color(hex: "34C759") : Color.clear))
+                    }
+                }
+                .padding(3)
+                .background(Capsule().fill(Color.white.opacity(0.10)))
+
+                Spacer()
+
                 // Undo
                 Button(action: undo) {
-                    Label(LocalizedStrings.tr("editor.undo", lang: selectedLanguage), systemImage: "arrow.uturn.backward")
-                        .font(.system(size: 12, weight: .semibold))
+                    Image(systemName: "arrow.uturn.backward")
+                        .font(.system(size: 13, weight: .semibold))
                 }
                 .buttonStyle(ToolbarActionButtonStyle(isDisabled: history.isEmpty))
                 .disabled(history.isEmpty)
 
-                // Add Point
-                Button(action: addPointToActiveSpline) {
-                    Label(LocalizedStrings.tr("editor.addPoint", lang: selectedLanguage), systemImage: "plus.circle.fill")
-                        .font(.system(size: 12, weight: .semibold))
-                }
-                .buttonStyle(ToolbarActionButtonStyle(isDisabled: activeSpline == nil))
-                .disabled(activeSpline == nil)
-
-                // Delete Point
-                Button(action: deleteSelectedPoint) {
-                    Label(LocalizedStrings.tr("editor.removePoint", lang: selectedLanguage), systemImage: "trash")
-                        .font(.system(size: 12, weight: .semibold))
-                }
-                .buttonStyle(ToolbarActionButtonStyle(isDisabled: (activeSpline?.points.count ?? 0) <= 2))
-                .disabled((activeSpline?.points.count ?? 0) <= 2)
-
-                // Reset Line
+                // Reset Active Line
                 Button(action: resetActiveLine) {
                     Text(LocalizedStrings.tr("editor.resetLine", lang: selectedLanguage))
                         .font(.system(size: 12, weight: .semibold))
                 }
                 .buttonStyle(ToolbarActionButtonStyle(isDisabled: false))
 
-                Spacer()
-
-                // Reassign Label
+                // Reassign Type Menu
                 if let spline = activeSpline {
                     Menu {
                         ForEach(CreaseLineType.allCases) { type in
@@ -429,8 +502,8 @@ public struct CreaseLineEditorView: View {
                 }
             }
 
-            // Informative hint
-            Text(LocalizedStrings.tr("editor.hint", lang: selectedLanguage))
+            // Hint Text
+            Text(isDrawMode ? LocalizedStrings.tr("editor.drawHint", lang: selectedLanguage) : LocalizedStrings.tr("editor.hint", lang: selectedLanguage))
                 .font(.system(size: 11))
                 .foregroundColor(.white.opacity(0.55))
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -467,37 +540,29 @@ public struct CreaseLineEditorView: View {
         workingSplines[sIndex] = workingSplines[sIndex].replacing(points: pts, markAdjusted: true)
     }
 
-    private func addPointToActiveSpline() {
-        guard let sid = selectedSplineId,
-              let sIndex = workingSplines.firstIndex(where: { $0.id == sid }) else { return }
-        pushHistory()
-        var pts = workingSplines[sIndex].points
-        let cur = selectedVertexIndex ?? 0
-        if cur + 1 < pts.count {
-            let mid = CGPoint(
-                x: (pts[cur].x + pts[cur + 1].x) * 0.5,
-                y: (pts[cur].y + pts[cur + 1].y) * 0.5
-            )
-            pts.insert(mid, at: cur + 1)
-            selectedVertexIndex = cur + 1
-        } else if let last = pts.last {
-            pts.append(CGPoint(x: min(last.x + 0.03, 0.98), y: min(last.y + 0.03, 0.98)))
-            selectedVertexIndex = pts.count - 1
+    private func finishFreehandDraw(baseDrawRect: CGRect) {
+        guard freehandCanvasPoints.count >= 4,
+              let sid = selectedSplineId,
+              let sIndex = workingSplines.firstIndex(where: { $0.id == sid }) else {
+            freehandCanvasPoints.removeAll()
+            return
         }
-        workingSplines[sIndex] = workingSplines[sIndex].replacing(points: pts, markAdjusted: true)
-        lightHaptic.impactOccurred()
-    }
-
-    private func deleteSelectedPoint() {
-        guard let sid = selectedSplineId,
-              let sIndex = workingSplines.firstIndex(where: { $0.id == sid }) else { return }
-        var pts = workingSplines[sIndex].points
-        guard pts.count > 2, let cur = selectedVertexIndex, pts.indices.contains(cur) else { return }
         pushHistory()
-        pts.remove(at: cur)
-        selectedVertexIndex = max(0, min(cur, pts.count - 1))
-        workingSplines[sIndex] = workingSplines[sIndex].replacing(points: pts, markAdjusted: true)
-        lightHaptic.impactOccurred()
+
+        // Unmap canvas points to image normalized (0..1) coordinates
+        let normDrawn = freehandCanvasPoints.map { canvasPt in
+            let unmapped = ImageCoordinateMapper.unmap(canvasPt, from: baseDrawRect)
+            return CGPoint(
+                x: min(max(unmapped.x, 0.01), 0.99),
+                y: min(max(unmapped.y, 0.01), 0.99)
+            )
+        }
+
+        // Resample the user's freehand stroke to 4 clean control points
+        let fourPoints = CreaseSpline.resampleToControlPoints(normDrawn, targetCount: 4)
+        workingSplines[sIndex] = workingSplines[sIndex].replacing(points: fourPoints, markAdjusted: true)
+        freehandCanvasPoints.removeAll()
+        mediumHaptic.impactOccurred()
     }
 
     private func resetActiveLine() {
@@ -526,7 +591,6 @@ private struct MagnifyingLoupeView: View {
 
     var body: some View {
         ZStack {
-            // Magnified crop of the photo
             GeometryReader { _ in
                 let imgSize = image.size
                 let focusX = focusPointNorm.x * imgSize.width
@@ -545,13 +609,11 @@ private struct MagnifyingLoupeView: View {
             .frame(width: diameter, height: diameter)
             .clipShape(Circle())
 
-            // Precision crosshair
             Circle()
                 .stroke(lineColor, lineWidth: 2.5)
                 .frame(width: diameter, height: diameter)
                 .shadow(color: lineColor.opacity(0.6), radius: 8)
 
-            // Center target dot
             Circle()
                 .fill(lineColor)
                 .frame(width: 8, height: 8)

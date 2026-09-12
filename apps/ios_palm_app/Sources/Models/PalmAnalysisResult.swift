@@ -98,11 +98,12 @@ public struct PalmAnalysisResponse: Codable {
             guard let info = lines[key], info.present else { continue }
             let pts = info.imagePoints
             guard pts.count >= 2 else { continue }
+            let controlPoints = CreaseSpline.resampleToControlPoints(pts, targetCount: 4)
             splines.append(
                 CreaseSpline(
                     id: key,
                     lineType: type,
-                    points: pts,
+                    points: controlPoints,
                     confidence: info.confidence,
                     tortuosity: info.tortuosity,
                     arcLengthPx: info.arcLengthPx
@@ -119,12 +120,14 @@ public struct PalmAnalysisResponse: Codable {
 
 /**
  * UI display model for rendering Catmull-Rom crease splines on screen.
- * Mutable copies support drag / reorder / reassign before prediction.
+ * Defined by 4 clean control points (Start, Curve 1, Curve 2, End) that form
+ * one continuous, smoothly editable curve.
  */
 public struct CreaseSpline: Identifiable, Equatable {
     public let id: String
     public var lineType: CreaseLineType
-    public var points: [CGPoint] // Normalized (0..1) coordinates in image space
+    /// Exactly 4-5 control points: Start, Curve Mid 1, Curve Mid 2, and End.
+    public var points: [CGPoint]
     public var confidence: Float
     public var tortuosity: Float
     public var arcLengthPx: Float
@@ -142,7 +145,8 @@ public struct CreaseSpline: Identifiable, Equatable {
     ) {
         self.id = id
         self.lineType = lineType
-        self.points = points
+        // Guarantee clean control points: reduce 100+ dense points down to 4 control points
+        self.points = points.count > 5 ? Self.resampleToControlPoints(points, targetCount: 4) : points
         self.confidence = confidence
         self.tortuosity = tortuosity
         self.arcLengthPx = arcLengthPx
@@ -154,10 +158,12 @@ public struct CreaseSpline: Identifiable, Equatable {
         points: [CGPoint]? = nil,
         markAdjusted: Bool = true
     ) -> CreaseSpline {
-        CreaseSpline(
+        let newPts = points ?? self.points
+        let cleanPts = newPts.count > 5 ? Self.resampleToControlPoints(newPts, targetCount: 4) : newPts
+        return CreaseSpline(
             id: id,
             lineType: lineType ?? self.lineType,
-            points: points ?? self.points,
+            points: cleanPts,
             confidence: confidence,
             tortuosity: tortuosity,
             arcLengthPx: arcLengthPx,
@@ -165,9 +171,86 @@ public struct CreaseSpline: Identifiable, Equatable {
         )
     }
 
-    /// Payload fragment for prediction / VLM grounding (image-normalized points).
+    /// Reduce any raw polyline (even with 100+ dense detector points) into a clean,
+    /// editable 4-point control curve: Start, Curve Mid 1, Curve Mid 2, and End.
+    public static func resampleToControlPoints(_ rawPoints: [CGPoint], targetCount: Int = 4) -> [CGPoint] {
+        guard rawPoints.count > targetCount else { return rawPoints }
+        guard targetCount >= 2 else { return rawPoints }
+
+        var cumulative: [CGFloat] = [0]
+        var totalLength: CGFloat = 0
+        for i in 1..<rawPoints.count {
+            let dx = rawPoints[i].x - rawPoints[i-1].x
+            let dy = rawPoints[i].y - rawPoints[i-1].y
+            let dist = sqrt(dx * dx + dy * dy)
+            totalLength += dist
+            cumulative.append(totalLength)
+        }
+
+        guard totalLength > 1e-5 else {
+            return [rawPoints.first ?? .zero, rawPoints.last ?? .zero]
+        }
+
+        var resampled: [CGPoint] = []
+        resampled.append(rawPoints.first!)
+
+        for k in 1..<(targetCount - 1) {
+            let targetDist = totalLength * (CGFloat(k) / CGFloat(targetCount - 1))
+            var segIndex = 0
+            while segIndex < cumulative.count - 2 && cumulative[segIndex + 1] < targetDist {
+                segIndex += 1
+            }
+            let d0 = cumulative[segIndex]
+            let d1 = cumulative[segIndex + 1]
+            let segLen = d1 - d0
+            let t = segLen > 1e-6 ? (targetDist - d0) / segLen : 0
+            let p0 = rawPoints[segIndex]
+            let p1 = rawPoints[segIndex + 1]
+            let interp = CGPoint(
+                x: p0.x + (p1.x - p0.x) * t,
+                y: p0.y + (p1.y - p0.y) * t
+            )
+            resampled.append(interp)
+        }
+
+        resampled.append(rawPoints.last!)
+        return resampled
+    }
+
+    /// Evaluates smooth continuous points along the Catmull-Rom spline for downstream analysis & predictions.
+    public func evaluateDensePoints(samplesPerSegment: Int = 16) -> [CGPoint] {
+        guard points.count >= 2 else { return points }
+        if points.count == 2 { return points }
+        var result: [CGPoint] = []
+        for i in 0..<(points.count - 1) {
+            let p0 = i > 0 ? points[i - 1] : points[i]
+            let p1 = points[i]
+            let p2 = points[i + 1]
+            let p3 = (i + 2 < points.count) ? points[i + 2] : p2
+
+            for step in 0..<samplesPerSegment {
+                let t = CGFloat(step) / CGFloat(samplesPerSegment)
+                let t2 = t * t
+                let t3 = t2 * t
+                let x = 0.5 * ((2.0 * p1.x) +
+                               (-p0.x + p2.x) * t +
+                               (2.0 * p0.x - 5.0 * p1.x + 4.0 * p2.x - p3.x) * t2 +
+                               (-p0.x + 3.0 * p1.x - 3.0 * p2.x + p3.x) * t3)
+                let y = 0.5 * ((2.0 * p1.y) +
+                               (-p0.y + p2.y) * t +
+                               (2.0 * p0.y - 5.0 * p1.y + 4.0 * p2.y - p3.y) * t2 +
+                               (-p0.y + 3.0 * p1.y - 3.0 * p2.y + p3.y) * t3)
+                result.append(CGPoint(x: x, y: y))
+            }
+        }
+        if let last = points.last { result.append(last) }
+        return result
+    }
+
+    /// Payload fragment for prediction / VLM grounding (continuous curve points).
     public var predictionPointsImageNorm: [[Double]] {
-        points.map { [Double($0.x), Double($0.y)] }
+        let dense = evaluateDensePoints(samplesPerSegment: 8)
+        return dense.map { [Double($0.x), Double($0.y)] }
     }
 
     public var engineKey: String { "\(lineType.rawValue)_line" }
