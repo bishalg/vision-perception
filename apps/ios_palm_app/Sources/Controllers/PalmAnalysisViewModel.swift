@@ -38,6 +38,8 @@ public final class PalmAnalysisViewModel: ObservableObject {
     @Published public var overlaySource: CreaseOverlaySource = .landmarkFallback
     /// Adjusted lines ready for prediction / VLM (set by "Use for reading").
     @Published public var predictionReadySplines: [CreaseSpline] = []
+    /// Dedicated Phase 3 Samudrika reading presentation sheet
+    @Published public var showAnalysisReading: Bool = false
     @Published public var selectedHandSide: HandSide = .auto
     @Published public var detectedHandSide: HandSide = .right
     @Published public var currentLanguage: AppLanguage = .english {
@@ -90,11 +92,14 @@ public final class PalmAnalysisViewModel: ObservableObject {
 
     public func openLastCapture() {
         guard capturedImage != nil else { return }
+        cameraSession.stop()
         showResultViewer = true
     }
 
     public func dismissResultViewer() {
         showResultViewer = false
+        showAnalysisReading = false
+        cameraSession.start()
     }
 
     public func clearLastCapture() {
@@ -105,8 +110,10 @@ public final class PalmAnalysisViewModel: ObservableObject {
             self.captureLandmarks.removeAll()
             self.capturedImage = nil
             self.showResultViewer = false
+            self.showAnalysisReading = false
             self.usedNativeEngine = false
             self.overlaySource = .landmarkFallback
+            self.cameraSession.start()
         }
     }
 
@@ -120,6 +127,7 @@ public final class PalmAnalysisViewModel: ObservableObject {
             self.captureLandmarks.removeAll()
             self.capturedImage = nil
             self.showResultViewer = false
+            self.showAnalysisReading = false
             self.usedNativeEngine = false
             self.overlaySource = .landmarkFallback
             self.guidanceEngine.reset()
@@ -127,11 +135,16 @@ public final class PalmAnalysisViewModel: ObservableObject {
         }
     }
 
+    /// Proceed to Phase 3: lock lines and present Samudrika Reading Sheet
+    public func proceedToAnalysis() {
+        confirmAdjustedLinesForPrediction()
+        showAnalysisReading = true
+    }
+
     /// Lock current (possibly edited) lines as the prediction input.
     public func confirmAdjustedLinesForPrediction() {
         predictionReadySplines = detectedSplines
         logger.info("Prediction lines locked (\(self.predictionReadySplines.count) lines)")
-        // Future: hand off to VLM / Samudrika sheet using predictionPayloadJSON().
     }
 
     /// JSON fragment for prediction grounded on user-visible / adjusted lines.

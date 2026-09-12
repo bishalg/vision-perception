@@ -153,6 +153,56 @@ public struct LocalizedStrings {
             .english: "Use these lines for reading",
             .nepali: "यी रेखाहरू पढाइका लागि प्रयोग गर्नुहोस्",
             .hindi: "पढ़ने के लिए इन रेखाओं का उपयोग करें"
+        ],
+        "result.continueReading": [
+            .english: "Analyze Reading",
+            .nepali: "सामुद्रिक विश्लेषण हेर्नुहोस्",
+            .hindi: "सामुद्रिक विश्लेषण देखें"
+        ],
+        "editor.title": [
+            .english: "Edit Crease Lines",
+            .nepali: "हस्तरेखा सम्पादन",
+            .hindi: "हस्तरेखा संपादन"
+        ],
+        "editor.cancel": [
+            .english: "Cancel",
+            .nepali: "रद्द गर्नुहोस्",
+            .hindi: "रद्द करें"
+        ],
+        "editor.done": [
+            .english: "Done",
+            .nepali: "सम्पन्न",
+            .hindi: "संपन्न"
+        ],
+        "editor.addPoint": [
+            .english: "+ Point",
+            .nepali: "+ बिन्दु",
+            .hindi: "+ बिंदु"
+        ],
+        "editor.removePoint": [
+            .english: "Delete Point",
+            .nepali: "बिन्दु मेटाउनुहोस्",
+            .hindi: "बिंदु हटाएं"
+        ],
+        "editor.resetLine": [
+            .english: "Reset Line",
+            .nepali: "लाइन रिसेट",
+            .hindi: "लाइन रीसेट"
+        ],
+        "editor.undo": [
+            .english: "Undo",
+            .nepali: "पूर्वावस्था",
+            .hindi: "पूर्ववत"
+        ],
+        "editor.hint": [
+            .english: "Drag handles to reshape. Magnifier shows crease details under finger.",
+            .nepali: "ह्यान्डल सारेर मिलाउनुहोस्। म्याग्निफायरले औंला मुनिको रेखा देखाउँछ।",
+            .hindi: "हैंडल खींचकर सुधारें। मैग्निफायर उंगली के नीचे की रेखा दिखाता है।"
+        ],
+        "editor.resetZoom": [
+            .english: "1.0x",
+            .nepali: "१.०x",
+            .hindi: "१.०x"
         ]
     ]
 

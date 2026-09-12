@@ -99,26 +99,20 @@ fun MainScannerScreen(
                 }
             }
         ) {
-            PalmSilhouette(
-                isReady = guidanceState.isReady,
-                handSide = selectedHandSide,
-                detectedIsLeft = detectedHandSide == HandSide.LEFT,
-                isHandDetected = detectedLandmarks.isNotEmpty()
-            )
-        }
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                PalmSilhouette(
+                    isReady = guidanceState.isReady,
+                    handSide = selectedHandSide,
+                    detectedIsLeft = detectedHandSide == HandSide.LEFT,
+                    isHandDetected = detectedLandmarks.isNotEmpty()
+                )
 
-        // Non-overlapping [L | R] toggle positioned cleanly above bottom telemetry chips
-        if (!showResultViewer) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(end = 22.dp, bottom = 134.dp),
-                contentAlignment = Alignment.BottomEnd
-            ) {
+                // Center-top inside the camera box reticle frame
                 HandSideToggle(
                     selection = selectedHandSide,
                     autoDetected = detectedHandSide,
-                    onSelect = { viewModel.selectHandSide(it) }
+                    onSelect = { viewModel.selectHandSide(it) },
+                    modifier = Modifier.padding(top = 14.dp)
                 )
             }
         }

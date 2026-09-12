@@ -13,6 +13,7 @@
 		211E544517E4DA7197D89A57 /* CreaseSplineOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAA47A720FDE5572D1646BB0 /* CreaseSplineOverlayView.swift */; };
 		3DD481C80F5E54A2159F6F71 /* CurvCameraOverlay in Frameworks */ = {isa = PBXBuildFile; productRef = 97DE29EADC336D7513109EEF /* CurvCameraOverlay */; };
 		4C266A227BD5EEF084A180FF /* CaptureResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04145BAF5F6DF10A65698C9A /* CaptureResultView.swift */; };
+		4C266A227BD5EEF084A18100 /* CreaseLineEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04145BAF5F6DF10A65698C9B /* CreaseLineEditorView.swift */; };
 		58A086084D286C34069060F5 /* MainScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23380A94031934043F119E2F /* MainScannerView.swift */; };
 		5DD6C50AB3DA1C7EBD4D2229 /* SimplePalmReading.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9E94BB9812BD62ECC5AEA84 /* SimplePalmReading.swift */; };
 		64FDF94E7DE4A78348DA5047 /* VisionHandTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 248332063F7DC8A9DEB48F43 /* VisionHandTracker.swift */; };
@@ -25,6 +26,7 @@
 
 /* Begin PBXFileReference section */
 		04145BAF5F6DF10A65698C9A /* CaptureResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureResultView.swift; sourceTree = "<group>"; };
+		04145BAF5F6DF10A65698C9B /* CreaseLineEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreaseLineEditorView.swift; sourceTree = "<group>"; };
 		06EEB0B15D07944D8BF3F476 /* PalmAnalysisViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalmAnalysisViewModel.swift; sourceTree = "<group>"; };
 		21604D61D994310C2854427F /* apple */ = {isa = PBXFileReference; lastKnownFileType = folder; name = apple; path = ../../adapters/apple; sourceTree = SOURCE_ROOT; };
 		23380A94031934043F119E2F /* MainScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainScannerView.swift; sourceTree = "<group>"; };
@@ -102,6 +104,7 @@
 			isa = PBXGroup;
 			children = (
 				04145BAF5F6DF10A65698C9A /* CaptureResultView.swift */,
+				04145BAF5F6DF10A65698C9B /* CreaseLineEditorView.swift */,
 				FAA47A720FDE5572D1646BB0 /* CreaseSplineOverlayView.swift */,
 				5FC54A6BE9238CDDF01888E1 /* ImageCoordinateMapper.swift */,
 				23380A94031934043F119E2F /* MainScannerView.swift */,
@@ -229,6 +232,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4C266A227BD5EEF084A180FF /* CaptureResultView.swift in Sources */,
+				4C266A227BD5EEF084A18100 /* CreaseLineEditorView.swift in Sources */,
 				211E544517E4DA7197D89A57 /* CreaseSplineOverlayView.swift in Sources */,
 				EF5D298BE06A29AA1FA0CBBB /* ImageCoordinateMapper.swift in Sources */,
 				A037D806C935758987425DE6 /* LocalizedStrings.swift in Sources */,

@@ -1,24 +1,34 @@
 import SwiftUI
+import CurvPalmOverlay
 
 /**
- * Liquid Glass bottom sheet presenting Samudrika Shastra palm metrics and Vastu insights.
+ * Liquid Glass bottom sheet presenting sacred Samudrika Shastra palm interpretations.
+ * Phase 3 of Palm Scanner workflow:
+ * - Pure interpretive reading grounded in user-verified crease geometry
+ * - Zero raw CV telemetry on consumer screen
+ * - Localized and hand-side contextualized
  */
 public struct SamudrikaReadingSheet: View {
     public let result: PalmAnalysisResponse?
     public let splines: [CreaseSpline]
+    public let handSide: HandSide
     public let selectedLanguage: AppLanguage
     public let onLanguageChange: (AppLanguage) -> Void
     public let onRetake: () -> Void
 
+    @Environment(\.dismiss) private var dismiss
+
     public init(
         result: PalmAnalysisResponse?,
         splines: [CreaseSpline],
+        handSide: HandSide = .right,
         selectedLanguage: AppLanguage,
         onLanguageChange: @escaping (AppLanguage) -> Void,
         onRetake: @escaping () -> Void
     ) {
         self.result = result
         self.splines = splines
+        self.handSide = handSide
         self.selectedLanguage = selectedLanguage
         self.onLanguageChange = onLanguageChange
         self.onRetake = onRetake
@@ -31,19 +41,18 @@ public struct SamudrikaReadingSheet: View {
                 Capsule()
                     .fill(Color.white.opacity(0.3))
                     .frame(width: 44, height: 5)
-                    .padding(.top, 10)
+                    .padding(.top, 12)
 
                 // Header & Language Picker
-                HStack {
+                HStack(alignment: .center) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(LocalizedStrings.tr("sheet.title", lang: selectedLanguage))
                             .font(.system(size: 20, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
-                        if let dur = result?.totalDurationUs {
-                            Text("Engine Latency: \(dur / 1000) ms")
-                                .font(.system(size: 12, weight: .regular, design: .monospaced))
-                                .foregroundColor(.white.opacity(0.6))
-                        }
+
+                        Text(handSide == .left ? "Left Palm • Inherited Potential" : "Right Palm • Active Manifestation")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white.opacity(0.60))
                     }
 
                     Spacer()
@@ -71,68 +80,84 @@ public struct SamudrikaReadingSheet: View {
                         )
                     }
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, 20)
 
-                // Crease Line Analysis Cards (Liquid Glass cards)
-                VStack(spacing: 12) {
+                // Crease Line Interpretations (Liquid Glass cards)
+                VStack(spacing: 14) {
                     ForEach(splines) { spline in
-                        GlassCard {
-                            HStack(spacing: 14) {
-                                Circle()
-                                    .fill(Color(hex: spline.lineType.hexColor))
-                                    .frame(width: 14, height: 14)
-                                    .shadow(color: Color(hex: spline.lineType.hexColor).opacity(0.6), radius: 6)
+                        let reading = SimplePalmReading.readingText(for: spline, handSide: handSide)
 
-                                VStack(alignment: .leading, spacing: 2) {
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 10) {
+                                HStack(spacing: 10) {
+                                    Circle()
+                                        .fill(Color(hex: spline.lineType.hexColor))
+                                        .frame(width: 12, height: 12)
+                                        .shadow(color: Color(hex: spline.lineType.hexColor).opacity(0.6), radius: 6)
+
                                     Text(LocalizedStrings.tr(spline.lineType.displayNameKey, lang: selectedLanguage))
-                                        .font(.system(size: 16, weight: .semibold))
+                                        .font(.system(size: 16, weight: .bold, design: .rounded))
                                         .foregroundColor(.white)
 
-                                    HStack(spacing: 10) {
-                                        Text("Length: \(String(format: "%.1f", spline.arcLengthPx)) px")
-                                        Text("Tortuosity: \(String(format: "%.2f", spline.tortuosity))")
+                                    if spline.isUserAdjusted {
+                                        Text("verified")
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundColor(Color(hex: "34C759"))
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(Capsule().fill(Color(hex: "34C759").opacity(0.18)))
                                     }
-                                    .font(.system(size: 12, weight: .regular, design: .monospaced))
-                                    .foregroundColor(.white.opacity(0.65))
+
+                                    Spacer()
+
+                                    Text("\(Int(spline.confidence * 100))% clear")
+                                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                                        .foregroundColor(Color(hex: "34C759"))
                                 }
 
-                                Spacer()
-
-                                Text("\(Int(spline.confidence * 100))%")
-                                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                                    .foregroundColor(Color(red: 0.20, green: 0.84, blue: 0.29))
+                                Text(reading)
+                                    .font(.system(size: 14, weight: .regular))
+                                    .foregroundColor(.white.opacity(0.92))
+                                    .lineSpacing(4)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                         }
                     }
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, 20)
 
-                // Retake Button
-                Button(action: onRetake) {
-                    HStack {
-                        Image(systemName: "arrow.counterclockwise")
-                        Text(LocalizedStrings.tr("button.retake", lang: selectedLanguage))
+                // Actions: Done and Retake
+                VStack(spacing: 10) {
+                    Button(action: { dismiss() }) {
+                        Text(LocalizedStrings.tr("result.doneEdit", lang: selectedLanguage))
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Capsule().fill(Color(hex: "34C759")))
+                            .shadow(color: Color(hex: "34C759").opacity(0.35), radius: 8, y: 2)
                     }
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(.ultraThinMaterial)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .stroke(Color.white.opacity(0.25), lineWidth: 1)
-                            )
-                    )
+
+                    Button(action: {
+                        dismiss()
+                        onRetake()
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.counterclockwise")
+                            Text(LocalizedStrings.tr("button.retake", lang: selectedLanguage))
+                        }
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.8))
+                        .padding(.vertical, 8)
+                    }
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, 20)
                 .padding(.top, 10)
-                .padding(.bottom, 30)
+                .padding(.bottom, 36)
             }
         }
         .background(
-            Color.black.opacity(0.85)
+            Color.black.opacity(0.88)
                 .background(.ultraThinMaterial)
                 .ignoresSafeArea()
         )
@@ -151,7 +176,7 @@ public struct GlassCard<Content: View>: View {
 
     public var body: some View {
         content
-            .padding(14)
+            .padding(16)
             .background(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .fill(Color.white.opacity(0.06))
@@ -160,7 +185,7 @@ public struct GlassCard<Content: View>: View {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .stroke(
                                 LinearGradient(
-                                    colors: [Color.white.opacity(0.25), Color.white.opacity(0.05)],
+                                    colors: [Color.white.opacity(0.22), Color.white.opacity(0.05)],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ),
