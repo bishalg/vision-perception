@@ -218,6 +218,61 @@ public struct LocalizedStrings {
             .english: "Trace along the palm crease with your finger to redraw the curve.",
             .nepali: "हातको रेखामाथि औंला सारेर नयाँ वक्र रेखा कोर्नुहोस्।",
             .hindi: "हथेली की रेखा पर उंगली फिराकर नई वक्र रेखा बनाएं।"
+        ],
+        "editor.toolAdjust": [
+            .english: "Adjust",
+            .nepali: "सार्नुहोस्",
+            .hindi: "समायोजित"
+        ],
+        "editor.toolDraw": [
+            .english: "Draw",
+            .nepali: "कोर्नुहोस्",
+            .hindi: "खींचें"
+        ],
+        "editor.toolUndo": [
+            .english: "Undo",
+            .nepali: "फिर्ता",
+            .hindi: "पूर्ववत"
+        ],
+        "editor.toolReset": [
+            .english: "Reset",
+            .nepali: "रिसेट",
+            .hindi: "रीसेट"
+        ],
+        "editor.toolLabel": [
+            .english: "Label",
+            .nepali: "नाम",
+            .hindi: "लेबल"
+        ],
+        "editor.hintAdjust": [
+            .english: "Drag handles to reshape • Pinch to zoom",
+            .nepali: "ह्यान्डल सारेर मिलाउनुहोस् • जुम गर्न पिन्च गर्नुहोस्",
+            .hindi: "हैंडल खींचकर सुधारें • ज़ूम के लिए पिंच करें"
+        ],
+        "editor.hintDraw": [
+            .english: "Trace along palm crease to redraw",
+            .nepali: "हस्तरेखामाथि औंला सारेर नयाँ रेखा कोर्नुहोस्",
+            .hindi: "हथेली की रेखा पर उंगली फिराकर नई रेखा बनाएं"
+        ],
+        "editor.hintMovingStart": [
+            .english: "Moving Start Point (S)",
+            .nepali: "सुरुवात बिन्दु (S) सार्दै",
+            .hindi: "शुरुआती बिंदु (S) स्थानांतरित"
+        ],
+        "editor.hintMovingCurve": [
+            .english: "Adjusting curve curvature",
+            .nepali: "वक्रता मिलाउँदै",
+            .hindi: "वक्रता समायोजित कर रहे हैं"
+        ],
+        "editor.hintMovingEnd": [
+            .english: "Moving End Point (E)",
+            .nepali: "अन्त्य बिन्दु (E) सार्दै",
+            .hindi: "अंतिम बिंदु (E) स्थानांतरित"
+        ],
+        "editor.hintTracing": [
+            .english: "Tracing curve... release to set line",
+            .nepali: "रेखा कोरिरहेको... औंला उठाएर रेखा बनाउनुहोस्",
+            .hindi: "रेखा खींच रहे हैं... उंगली उठाकर रेखा बनाएं"
         ]
     ]
 
