@@ -35,36 +35,32 @@ fun TiltRail(
         while (d < -180f) d += 360f
         d
     }
-    val label = if (isLeft) "CAM %.0f°".format(deviceRollDeg) else "Δ %.0f°".format(angleDeg)
+    val degreeText = "%.0f°".format(kotlin.math.abs(angleDeg))
     val isOk = kotlin.math.abs(angleDeg) <= if (isLeft) 8f else 10f
     val accent = if (isOk) OverlayEmerald else OverlayAmber
 
     Column(
-        modifier = modifier
-            .clip(Capsule)
-            .background(Color.Black.copy(alpha = 0.38f))
-            .border(1.dp, Color.White.copy(alpha = 0.14f), Capsule)
-            .padding(horizontal = 6.dp, vertical = 7.dp),
+        modifier = modifier.padding(horizontal = 4.dp, vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(5.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
+        // Icon indicator: phone/cam symbol on left, Delta (Δ) on right
         Text(
-            text = if (isLeft) "CAM" else "HAND",
-            color = Color.White.copy(alpha = 0.55f),
-            fontSize = 7.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = FontFamily.Monospace
+            text = if (isLeft) "⌁" else "Δ",
+            color = if (isOk) Color.White.copy(alpha = 0.8f) else OverlayAmber,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold
         )
-        Box(modifier = Modifier.size(width = 22.dp, height = 38.dp), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.size(width = 20.dp, height = 32.dp), contentAlignment = Alignment.Center) {
             Box(
                 modifier = Modifier
-                    .size(width = 2.dp, height = 34.dp)
+                    .size(width = 2.dp, height = 30.dp)
                     .clip(Capsule)
-                    .background(Color.White.copy(alpha = 0.12f))
+                    .background(Color.White.copy(alpha = 0.20f))
             )
             Box(
                 modifier = Modifier
-                    .size(width = 2.5.dp, height = 28.dp)
+                    .size(width = 2.5.dp, height = 24.dp)
                     .clip(Capsule)
                     .background(accent)
                     .rotate(angleDeg)
@@ -73,13 +69,13 @@ fun TiltRail(
                 modifier = Modifier
                     .size(3.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.9f))
+                    .background(Color.White.copy(alpha = 0.95f))
             )
         }
         Text(
-            text = label,
+            text = degreeText,
             color = accent,
-            fontSize = 8.sp,
+            fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = FontFamily.Monospace
         )

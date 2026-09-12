@@ -30,12 +30,8 @@ public struct TiltRailView: View {
         }
     }
 
-    private var label: String {
-        if isLeft {
-            return String(format: "CAM %.0f°", deviceRollDeg)
-        } else {
-            return String(format: "Δ %.0f°", angleDeg)
-        }
+    private var degreeText: String {
+        String(format: "%.0f°", abs(angleDeg))
     }
 
     private var isOk: Bool {
@@ -43,39 +39,49 @@ public struct TiltRailView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 5) {
-            Text(isLeft ? "CAM" : "HAND")
-                .font(.system(size: 7, weight: .bold, design: .monospaced))
-                .foregroundColor(.white.opacity(0.55))
-            // vertical tick
+        VStack(spacing: 4) {
+            // Icon helper: iPhone/cam symbol on left, Delta (Δ) on right
+            if isLeft {
+                Image(systemName: "iphone.gen3")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(isOk ? .white.opacity(0.75) : OverlayPalette.amber.opacity(0.9))
+                    .shadow(color: .black.opacity(0.6), radius: 3)
+            } else {
+                Text("Δ")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundColor(isOk ? .white.opacity(0.8) : OverlayPalette.amber.opacity(0.95))
+                    .shadow(color: .black.opacity(0.6), radius: 3)
+            }
+
+            // Minimal vertical tick indicator in frame
             ZStack {
                 // track
                 Capsule()
-                    .fill(Color.white.opacity(0.12))
-                    .frame(width: 2, height: 34)
-                // active line
+                    .fill(Color.white.opacity(0.20))
+                    .frame(width: 2, height: 30)
+
+                // active rotating line
                 Capsule()
                     .fill(isOk ? OverlayPalette.emerald : OverlayPalette.amber)
-                    .frame(width: 2.5, height: 28)
+                    .frame(width: 2.5, height: 24)
                     .rotationEffect(.degrees(angleDeg))
-                    .shadow(color: (isOk ? OverlayPalette.emerald : OverlayPalette.amber).opacity(0.7), radius: 4)
-                // center dot
+                    .shadow(color: (isOk ? OverlayPalette.emerald : OverlayPalette.amber).opacity(0.75), radius: 4)
+
+                // center pivot dot
                 Circle()
-                    .fill(Color.white.opacity(0.9))
+                    .fill(Color.white.opacity(0.95))
                     .frame(width: 3, height: 3)
             }
-            .frame(width: 22, height: 38)
-            Text(label)
-                .font(.system(size: 8, weight: .bold, design: .monospaced))
+            .frame(width: 20, height: 32)
+
+            // Pure degree value — no English words
+            Text(degreeText)
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
                 .foregroundColor(isOk ? OverlayPalette.emerald : OverlayPalette.amber)
+                .shadow(color: .black.opacity(0.7), radius: 3)
                 .contentTransition(.numericText())
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 7)
-        .background(
-            Capsule()
-                .fill(Color.black.opacity(0.38))
-                .overlay(Capsule().stroke(Color.white.opacity(0.14), lineWidth: 1))
-        )
+        .padding(.horizontal, 4)
+        .padding(.vertical, 4)
     }
 }

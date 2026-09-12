@@ -1,9 +1,12 @@
 package org.curv.overlay.palm
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -19,7 +22,8 @@ import org.curv.overlay.hud.OverlayEmerald
 fun PalmSilhouette(
     isReady: Boolean,
     handSide: HandSide = HandSide.AUTO,
-    detectedIsLeft: Boolean? = null
+    detectedIsLeft: Boolean? = null,
+    isHandDetected: Boolean = false
 ) {
     val mirror = when (handSide) {
         HandSide.LEFT -> true
@@ -28,12 +32,20 @@ fun PalmSilhouette(
     }
     val fillBase = if (isReady) OverlayEmerald.copy(alpha = 0.13f) else Color.White.copy(alpha = 0.05f)
     val strokeC = if (isReady) OverlayEmerald else Color.White.copy(alpha = 0.38f)
+    val silhouetteAlpha by animateFloatAsState(
+        targetValue = if (isHandDetected) 0f else 1f,
+        animationSpec = tween(durationMillis = 350),
+        label = "silhouetteAlpha"
+    )
 
     Canvas(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 14.dp, vertical = 10.dp)
-            .graphicsLayer(scaleX = if (mirror) -1f else 1f)
+            .graphicsLayer(
+                scaleX = if (mirror) -1f else 1f,
+                alpha = silhouetteAlpha
+            )
     ) {
         val w = size.width
         val h = size.height
@@ -59,15 +71,15 @@ fun PalmSilhouette(
 }
 
 private fun fingertipPoints(w: Float, h: Float): List<Offset> = listOf(
-    Offset(0.12f*w, 0.17f*h), Offset(0.30f*w, 0.09f*h), Offset(0.50f*w, 0.04f*h), Offset(0.70f*w, 0.08f*h), Offset(0.87f*w, 0.18f*h)
+    Offset(0.12f*w, 0.35f*h), Offset(0.38f*w, 0.11f*h), Offset(0.52f*w, 0.04f*h), Offset(0.66f*w, 0.09f*h), Offset(0.81f*w, 0.18f*h)
 )
 private fun mcpPoints(w: Float, h: Float): List<Offset> = listOf(
-    Offset(0.32f*w, 0.42f*h), Offset(0.42f*w, 0.36f*h), Offset(0.54f*w, 0.34f*h), Offset(0.66f*w, 0.36f*h), Offset(0.76f*w, 0.42f*h)
+    Offset(0.22f*w, 0.58f*h), Offset(0.38f*w, 0.42f*h), Offset(0.51f*w, 0.38f*h), Offset(0.63f*w, 0.40f*h), Offset(0.74f*w, 0.44f*h)
 )
 private fun hintCreases(w: Float, h: Float): Path = Path().apply {
     moveTo(0.22f*w, 0.42f*h); cubicTo(0.32f*w,0.34f*h, 0.64f*w,0.34f*h, 0.78f*w,0.40f*h)
     moveTo(0.20f*w, 0.52f*h); cubicTo(0.34f*w,0.48f*h, 0.62f*w,0.48f*h, 0.76f*w,0.51f*h)
-    moveTo(0.40f*w, 0.46f*h); cubicTo(0.32f*w,0.56f*h, 0.30f*w,0.68f*h, 0.42f*w,0.74f*h)
+    moveTo(0.36f*w, 0.46f*h); cubicTo(0.28f*w,0.56f*h, 0.26f*w,0.68f*h, 0.38f*w,0.76f*h)
 }
 private fun wristBrace(w: Float, h: Float): Path = Path().apply {
     moveTo(0.28f*w, 0.88f*h); cubicTo(0.38f*w,0.90f*h, 0.62f*w,0.90f*h, 0.72f*w,0.88f*h)
@@ -90,11 +102,20 @@ private fun fullHandPath(w: Float, h: Float): Path {
         cubicTo(p(0.46f, 0.22f).x, p(0.46f, 0.22f).y, p(0.46f, 0.14f).x, p(0.46f, 0.14f).y, p(0.42f, 0.10f).x, p(0.42f, 0.10f).y)
         cubicTo(p(0.40f, 0.04f).x, p(0.40f, 0.04f).y, p(0.36f, 0.04f).x, p(0.36f, 0.04f).y, p(0.34f, 0.12f).x, p(0.34f, 0.12f).y)
         cubicTo(p(0.32f, 0.22f).x, p(0.32f, 0.22f).y, p(0.32f, 0.34f).x, p(0.32f, 0.34f).y, p(0.34f, 0.44f).x, p(0.34f, 0.44f).y)
-        cubicTo(p(0.28f, 0.46f).x, p(0.28f, 0.46f).y, p(0.22f, 0.44f).x, p(0.22f, 0.44f).y, p(0.18f, 0.48f).x, p(0.18f, 0.48f).y)
-        cubicTo(p(0.12f, 0.50f).x, p(0.12f, 0.50f).y, p(0.08f, 0.52f).x, p(0.08f, 0.52f).y, p(0.10f, 0.58f).x, p(0.10f, 0.58f).y)
-        cubicTo(p(0.10f, 0.64f).x, p(0.10f, 0.64f).y, p(0.14f, 0.68f).x, p(0.14f, 0.68f).y, p(0.16f, 0.66f).x, p(0.16f, 0.66f).y)
-        cubicTo(p(0.20f, 0.64f).x, p(0.20f, 0.64f).y, p(0.24f, 0.66f).x, p(0.24f, 0.66f).y, p(0.28f, 0.72f).x, p(0.28f, 0.72f).y)
-        cubicTo(p(0.26f, 0.80f).x, p(0.26f, 0.80f).y, p(0.24f, 0.88f).x, p(0.24f, 0.88f).y, p(0.28f, 0.92f).x, p(0.28f, 0.92f).y)
+        // ── Anatomically Correct Thumb ──
+        // First web space: smooth concave cleft between index and thumb
+        cubicTo(p(0.32f, 0.46f).x, p(0.32f, 0.46f).y, p(0.30f, 0.47f).x, p(0.30f, 0.47f).y, p(0.27f, 0.47f).x, p(0.27f, 0.47f).y)
+        // Inner thumb margin: rises outward & upward toward thumb tip
+        cubicTo(p(0.24f, 0.46f).x, p(0.24f, 0.46f).y, p(0.20f, 0.41f).x, p(0.20f, 0.41f).y, p(0.18f, 0.38f).x, p(0.18f, 0.38f).y)
+        // Rounded thumb tip: angled outward ~35°
+        cubicTo(p(0.15f, 0.33f).x, p(0.15f, 0.33f).y, p(0.11f, 0.33f).x, p(0.11f, 0.33f).y, p(0.10f, 0.35f).x, p(0.10f, 0.35f).y)
+        // Outer thumb edge: distal phalanx down through interphalangeal joint
+        cubicTo(p(0.09f, 0.38f).x, p(0.09f, 0.38f).y, p(0.11f, 0.42f).x, p(0.11f, 0.42f).y, p(0.13f, 0.46f).x, p(0.13f, 0.46f).y)
+        // Thumb metacarpal outer contour
+        cubicTo(p(0.13f, 0.50f).x, p(0.13f, 0.50f).y, p(0.15f, 0.54f).x, p(0.15f, 0.54f).y, p(0.17f, 0.58f).x, p(0.17f, 0.58f).y)
+        // Thenar eminence (ball of the thumb) sweeping into wrist
+        cubicTo(p(0.19f, 0.64f).x, p(0.19f, 0.64f).y, p(0.21f, 0.69f).x, p(0.21f, 0.69f).y, p(0.23f, 0.74f).x, p(0.23f, 0.74f).y)
+        cubicTo(p(0.25f, 0.81f).x, p(0.25f, 0.81f).y, p(0.26f, 0.88f).x, p(0.26f, 0.88f).y, p(0.28f, 0.92f).x, p(0.28f, 0.92f).y)
         close()
     }
 }

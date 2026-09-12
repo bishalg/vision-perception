@@ -102,18 +102,25 @@ fun MainScannerScreen(
             PalmSilhouette(
                 isReady = guidanceState.isReady,
                 handSide = selectedHandSide,
-                detectedIsLeft = detectedHandSide == HandSide.LEFT
+                detectedIsLeft = detectedHandSide == HandSide.LEFT,
+                isHandDetected = detectedLandmarks.isNotEmpty()
             )
         }
 
-        // Top toggle — Auto (algorithm) + manual Left/Right lock
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-            HandSideToggle(
-                selection = selectedHandSide,
-                autoDetected = detectedHandSide,
-                onSelect = { viewModel.selectHandSide(it) },
-                modifier = Modifier.padding(top = 54.dp)
-            )
+        // Non-overlapping [L | R] toggle positioned cleanly above bottom telemetry chips
+        if (!showResultViewer) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(end = 22.dp, bottom = 134.dp),
+                contentAlignment = Alignment.BottomEnd
+            ) {
+                HandSideToggle(
+                    selection = selectedHandSide,
+                    autoDetected = detectedHandSide,
+                    onSelect = { viewModel.selectHandSide(it) }
+                )
+            }
         }
 
         // Live landmark skeleton (same dots as result view)

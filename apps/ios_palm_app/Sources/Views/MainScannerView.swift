@@ -49,39 +49,46 @@ public struct MainScannerView: View {
                     PalmSilhouetteView(
                         isReady: viewModel.guidanceState.isReady,
                         handSide: viewModel.selectedHandSide,
-                        detectedIsLeft: viewModel.detectedHandSide == .left
+                        detectedIsLeft: viewModel.detectedHandSide == .left,
+                        isHandDetected: !viewModel.detectedLandmarks.isEmpty
                     )
                 }
 
-                // Top hand toggle (Auto / Left / Right) — algorithm auto-detects, user can lock
-                VStack {
-                    HandSideToggleView(
-                        selection: $viewModel.selectedHandSide,
-                        autoDetected: viewModel.detectedHandSide
-                    )
-                    .padding(.top, 54)
-                    // Corridor guide toggle — only while a hand is on screen.
-                    if !regionLandmarks.isEmpty && !viewModel.showResultViewer {
-                        Button(action: { showCorridors.toggle() }) {
-                            HStack(spacing: 5) {
-                                Image(systemName: showCorridors ? "dot.scope" : "circle.dotted")
-                                Text("Corridors")
-                                    .font(.system(size: 12, weight: .semibold))
+                // Non-overlapping HUD controls: [Corridors] and compact [L | R] toggle
+                // Placed right above the bottom telemetry chips inside the camera frame,
+                // leaving the top status coaching pill completely unblocked.
+                if !viewModel.showResultViewer {
+                    VStack {
+                        Spacer()
+                        HStack(spacing: 12) {
+                            if !regionLandmarks.isEmpty {
+                                Button(action: { showCorridors.toggle() }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: showCorridors ? "dot.scope" : "circle.dotted")
+                                        Text("Corridors")
+                                            .font(.system(size: 11, weight: .semibold))
+                                    }
+                                    .foregroundColor(.white.opacity(showCorridors ? 0.95 : 0.6))
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(
+                                        Capsule()
+                                            .fill(.ultraThinMaterial)
+                                            .overlay(Capsule().stroke(Color.white.opacity(showCorridors ? 0.5 : 0.2), lineWidth: 0.8))
+                                    )
+                                }
                             }
-                            .foregroundColor(.white.opacity(showCorridors ? 0.95 : 0.6))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 7)
-                            .background(
-                                Capsule()
-                                    .fill(.ultraThinMaterial)
-                                    .overlay(Capsule().stroke(Color.white.opacity(showCorridors ? 0.5 : 0.2), lineWidth: 1))
+                            Spacer()
+                            HandSideToggleView(
+                                selection: $viewModel.selectedHandSide,
+                                autoDetected: viewModel.detectedHandSide
                             )
                         }
-                        .padding(.top, 6)
+                        .padding(.horizontal, 22)
+                        .padding(.bottom, 134)
                     }
-                    Spacer()
+                    .zIndex(1)
                 }
-                .zIndex(1)
 
                 // Live landmark skeleton while hand is detected (same dots as result view).
                 if !viewModel.detectedLandmarks.isEmpty && !viewModel.showResultViewer {

@@ -10,6 +10,8 @@ public struct PalmSilhouetteView: View {
     public let isReady: Bool
     public var handSide: HandSide = .auto
     public var detectedIsLeft: Bool? = nil
+    /// When true (hand is detected by vision tracker), the static silhouette guide smoothly fades out.
+    public var isHandDetected: Bool = false
 
     // resolved handedness for mirroring
     private var mirror: Bool {
@@ -20,10 +22,16 @@ public struct PalmSilhouetteView: View {
         }
     }
 
-    public init(isReady: Bool, handSide: HandSide = .auto, detectedIsLeft: Bool? = nil) {
+    public init(
+        isReady: Bool,
+        handSide: HandSide = .auto,
+        detectedIsLeft: Bool? = nil,
+        isHandDetected: Bool = false
+    ) {
         self.isReady = isReady
         self.handSide = handSide
         self.detectedIsLeft = detectedIsLeft
+        self.isHandDetected = isHandDetected
     }
 
     public var body: some View {
@@ -87,6 +95,9 @@ public struct PalmSilhouetteView: View {
             .frame(width: proxy.size.width, height: proxy.size.height)
             .scaleEffect(isReady ? 1.0 : 0.985)
             .animation(.easeInOut(duration: 0.55).repeatForever(autoreverses: true), value: isReady)
+            // Dynamic helper: smoothly disappears once user's real hand is detected
+            .opacity(isHandDetected ? 0.0 : 1.0)
+            .animation(.easeInOut(duration: 0.35), value: isHandDetected)
         }
     }
 }
@@ -104,8 +115,8 @@ private struct HintCreases: Shape {
         path.move(to: p(0.20, 0.52))
         path.addCurve(to: p(0.76, 0.51), control1: p(0.34,0.48), control2: p(0.62,0.48))
         // life-like thumb wrap
-        path.move(to: p(0.40, 0.46))
-        path.addCurve(to: p(0.42, 0.74), control1: p(0.32,0.56), control2: p(0.30,0.68))
+        path.move(to: p(0.36, 0.46))
+        path.addCurve(to: p(0.38, 0.76), control1: p(0.28,0.56), control2: p(0.26,0.68))
         return path
     }
 }
@@ -123,8 +134,10 @@ private struct FingertipDots: Shape {
     func path(in rect: CGRect) -> Path {
         let w = rect.width; let h = rect.height
         func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: rect.minX + x*w, y: rect.minY + y*h) }
-        let tips: [CGPoint] = [p(0.12,0.17), p(0.30,0.09), p(0.50,0.04), p(0.70,0.08), p(0.87,0.18)]
-        let mcp: [CGPoint] = [p(0.32,0.42), p(0.42,0.36), p(0.54,0.34), p(0.66,0.36), p(0.76,0.42)]
+        // Anatomically aligned: thumb tip, index tip, middle tip, ring tip, pinky tip
+        let tips: [CGPoint] = [p(0.12,0.35), p(0.38,0.11), p(0.52,0.04), p(0.66,0.09), p(0.81,0.18)]
+        // MCP knuckles: thumb MCP, index MCP, middle MCP, ring MCP, pinky MCP
+        let mcp: [CGPoint] = [p(0.22,0.58), p(0.38,0.42), p(0.51,0.38), p(0.63,0.40), p(0.74,0.44)]
         var path = Path()
         for pt in tips + mcp {
             path.addEllipse(in: CGRect(x: pt.x-1.7, y: pt.y-1.7, width: 3.4, height: 3.4))
@@ -135,6 +148,7 @@ private struct FingertipDots: Shape {
     }
 }
 /// Normalized open right-hand outline (fingers up, wrist down) filling its bounds.
+/// Features anatomically correct outward-angled thumb, web space, and natural digit curves.
 private struct FullHandGuideShape: Shape {
     func path(in rect: CGRect) -> Path {
         let w = rect.width
@@ -143,26 +157,41 @@ private struct FullHandGuideShape: Shape {
             CGPoint(x: rect.minX + x * w, y: rect.minY + y * h)
         }
         var path = Path()
+        // Wrist base
         path.move(to: p(0.28, 0.92))
         path.addCurve(to: p(0.72, 0.92), control1: p(0.38, 0.98), control2: p(0.62, 0.98))
+        // Ulnar side (pinky / hypothenar)
         path.addCurve(to: p(0.78, 0.62), control1: p(0.80, 0.86), control2: p(0.82, 0.72))
+        // Pinky lateral edge & tip
         path.addCurve(to: p(0.86, 0.18), control1: p(0.84, 0.50), control2: p(0.90, 0.32))
         path.addCurve(to: p(0.78, 0.16), control1: p(0.85, 0.12), control2: p(0.80, 0.12))
         path.addCurve(to: p(0.74, 0.42), control1: p(0.76, 0.24), control2: p(0.74, 0.34))
+        // Ring finger
         path.addCurve(to: p(0.70, 0.10), control1: p(0.74, 0.28), control2: p(0.74, 0.16))
         path.addCurve(to: p(0.62, 0.08), control1: p(0.68, 0.04), control2: p(0.64, 0.04))
         path.addCurve(to: p(0.60, 0.38), control1: p(0.60, 0.16), control2: p(0.60, 0.28))
+        // Middle finger
         path.addCurve(to: p(0.56, 0.04), control1: p(0.60, 0.22), control2: p(0.60, 0.10))
         path.addCurve(to: p(0.48, 0.04), control1: p(0.54, 0.00), control2: p(0.50, 0.00))
         path.addCurve(to: p(0.46, 0.36), control1: p(0.46, 0.12), control2: p(0.46, 0.24))
+        // Index finger
         path.addCurve(to: p(0.42, 0.10), control1: p(0.46, 0.22), control2: p(0.46, 0.14))
         path.addCurve(to: p(0.34, 0.12), control1: p(0.40, 0.04), control2: p(0.36, 0.04))
         path.addCurve(to: p(0.34, 0.44), control1: p(0.32, 0.22), control2: p(0.32, 0.34))
-        path.addCurve(to: p(0.18, 0.48), control1: p(0.28, 0.46), control2: p(0.22, 0.44))
-        path.addCurve(to: p(0.10, 0.58), control1: p(0.12, 0.50), control2: p(0.08, 0.52))
-        path.addCurve(to: p(0.16, 0.66), control1: p(0.10, 0.64), control2: p(0.14, 0.68))
-        path.addCurve(to: p(0.28, 0.72), control1: p(0.20, 0.64), control2: p(0.24, 0.66))
-        path.addCurve(to: p(0.28, 0.92), control1: p(0.26, 0.80), control2: p(0.24, 0.88))
+        // ── Anatomically Correct Thumb ──
+        // First web space: smooth concave cleft between index and thumb
+        path.addCurve(to: p(0.27, 0.47), control1: p(0.32, 0.46), control2: p(0.30, 0.47))
+        // Inner thumb margin: rises outward & upward toward thumb tip
+        path.addCurve(to: p(0.18, 0.38), control1: p(0.24, 0.46), control2: p(0.20, 0.41))
+        // Rounded thumb tip: angled outward ~35°
+        path.addCurve(to: p(0.10, 0.35), control1: p(0.15, 0.33), control2: p(0.11, 0.33))
+        // Outer thumb edge: distal phalanx down through interphalangeal joint
+        path.addCurve(to: p(0.13, 0.46), control1: p(0.09, 0.38), control2: p(0.11, 0.42))
+        // Thumb metacarpal outer contour
+        path.addCurve(to: p(0.17, 0.58), control1: p(0.13, 0.50), control2: p(0.15, 0.54))
+        // Thenar eminence (ball of the thumb) sweeping into wrist
+        path.addCurve(to: p(0.23, 0.74), control1: p(0.19, 0.64), control2: p(0.21, 0.69))
+        path.addCurve(to: p(0.28, 0.92), control1: p(0.25, 0.81), control2: p(0.26, 0.88))
         path.closeSubpath()
         return path
     }
