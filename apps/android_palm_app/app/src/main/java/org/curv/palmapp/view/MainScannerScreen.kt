@@ -6,9 +6,23 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.runtime.*
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -18,18 +32,23 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.curv.overlay.camera.CameraSession
 import org.curv.overlay.hud.CameraOverlayHost
 import org.curv.overlay.palm.HandSide
 import org.curv.overlay.palm.HandSideToggle
 import org.curv.overlay.palm.PalmSilhouette
+import org.curv.overlay.palm.RegionOverlayView
 import org.curv.palmapp.controller.PalmAnalysisViewModel
 
 /**
- * Palm scanner screen — parity with iOS MainScannerView.swift.
- * Live guidance + thumbnail (like iOS Camera) + full-screen editable review.
+ * Palm scanner screen — 1:1 parity with iOS MainScannerView.swift.
+ * Live guidance + sci-fi region overlay + corridors toggle + thumbnail
+ * (like iOS Camera) + full-screen editable review + Samudrika reading sheet.
+ * Camera feed pauses during review & reading to conserve battery.
  */
 @Composable
 fun MainScannerScreen(
@@ -42,6 +61,14 @@ fun MainScannerScreen(
     val cameraSession = remember { CameraSession(context) }
     var previewView by remember { mutableStateOf<PreviewView?>(null) }
 
+    // Corridor guides ship default-off (spec §4); persists across launches.
+    val prefs = remember(context) {
+        context.getSharedPreferences("palm_prefs", android.content.Context.MODE_PRIVATE)
+    }
+    var showCorridors by remember {
+        mutableStateOf(prefs.getBoolean("showPalmCorridors", false))
+    }
+
     val guidanceState by viewModel.guidanceState.collectAsState()
     val metrics by viewModel.qualityMetrics.collectAsState()
     val isAnalyzing by viewModel.isAnalyzing.collectAsState()
@@ -49,9 +76,10 @@ fun MainScannerScreen(
     val capturedBitmap by viewModel.capturedBitmap.collectAsState()
     val captureLandmarks by viewModel.captureLandmarks.collectAsState()
     val detectedSplines by viewModel.detectedSplines.collectAsState()
+    val predictionReadySplines by viewModel.predictionReadySplines.collectAsState()
     val overlaySource by viewModel.overlaySource.collectAsState()
     val showResultViewer by viewModel.showResultViewer.collectAsState()
-    val showResultSheet by viewModel.showResultSheet.collectAsState()
+    val showAnalysisReading by viewModel.showAnalysisReading.collectAsState()
     val analysisResult by viewModel.analysisResult.collectAsState()
     val currentLanguage by viewModel.currentLanguage.collectAsState()
     val statusOverride by viewModel.statusMessageOverride.collectAsState()
@@ -79,6 +107,12 @@ fun MainScannerScreen(
             onSuccess = {},
             onError = {}
         )
+    }
+
+    // Camera session lifecycle: stop feed during review & reading (battery save).
+    LaunchedEffect(showResultViewer, showAnalysisReading) {
+        if (showResultViewer || showAnalysisReading) cameraSession.pause()
+        else cameraSession.resume()
     }
 
     DisposableEffect(Unit) {
@@ -111,18 +145,70 @@ fun MainScannerScreen(
                 HandSideToggle(
                     selection = selectedHandSide,
                     autoDetected = detectedHandSide,
+                    isHandDetected = detectedLandmarks.isNotEmpty(),
                     onSelect = { viewModel.selectHandSide(it) },
                     modifier = Modifier.padding(top = 14.dp)
                 )
             }
         }
 
-        // Live landmark skeleton (same dots as result view)
+        // Optional corridors toggle (bottom-left, above telemetry chips).
+        if (!showResultViewer && detectedLandmarks.isNotEmpty()) {
+            Row(
+                modifier = Modifier.align(Alignment.BottomStart)
+                    .padding(start = 22.dp, bottom = 134.dp)
+            ) {
+                Row(
+                    modifier = Modifier.clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.35f))
+                        .border(
+                            0.8.dp,
+                            Color.White.copy(alpha = if (showCorridors) 0.5f else 0.2f),
+                            CircleShape
+                        )
+                        .clickable {
+                            showCorridors = !showCorridors
+                            prefs.edit().putBoolean("showPalmCorridors", showCorridors).apply()
+                        }
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = if (showCorridors) "◉" else "◌",
+                        color = Color.White.copy(alpha = if (showCorridors) 0.95f else 0.6f),
+                        fontSize = 11.sp
+                    )
+                    Text(
+                        text = "Corridors",
+                        color = Color.White.copy(alpha = if (showCorridors) 0.95f else 0.6f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+
+        // Live landmark skeleton while hand is detected.
         if (detectedLandmarks.isNotEmpty() && !showResultViewer) {
             HandOutlineOverlay(landmarks = detectedLandmarks, modifier = Modifier.fillMaxSize())
         }
 
-        // Bottom-left thumbnail (iOS Camera style)
+        // Live sci-fi region overlay (mounts + optional corridors).
+        // Live landmarks are already in image space and anatomically invariant:
+        // no mirroring (parity with iOS MainScannerView shouldMirror).
+        if (detectedLandmarks.isNotEmpty() && !showResultViewer) {
+            RegionOverlayView(
+                landmarks = detectedLandmarks,
+                isReady = guidanceState.isReady,
+                showCorridors = showCorridors,
+                mirror = false,
+                imageRect = null,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        // Bottom-left thumbnail (iOS Camera style).
         if (capturedBitmap != null && !showResultViewer) {
             Box(modifier = Modifier.align(Alignment.BottomStart).padding(start = 22.dp, bottom = 46.dp)) {
                 Image(
@@ -138,7 +224,7 @@ fun MainScannerScreen(
             }
         }
 
-        // Full-screen editable review
+        // Phase 2: crease-line verification screen.
         if (showResultViewer) {
             CaptureResultView(
                 bitmap = capturedBitmap,
@@ -152,18 +238,21 @@ fun MainScannerScreen(
                 onRetake = { viewModel.retake() },
                 onConfirmAdjustedLines = { viewModel.confirmAdjustedLinesForPrediction() },
                 onDismiss = { viewModel.dismissResultViewer() },
+                onProceedToAnalysis = { viewModel.proceedToAnalysis() },
                 modifier = Modifier.fillMaxSize()
             )
-        } else if (showResultSheet) {
-            // Fallback bottom sheet when not in manual-edit viewer (native success still shows sheet)
-            // Kept for backwards compat; viewer already covers manual case.
+        }
+
+        // Phase 3: dedicated Samudrika reading sheet.
+        if (showAnalysisReading) {
             ReadingBottomSheet(
                 result = analysisResult,
-                splines = detectedSplines,
+                splines = if (predictionReadySplines.isEmpty()) detectedSplines else predictionReadySplines,
                 selectedLanguage = currentLanguage,
+                handSide = if (selectedHandSide != HandSide.AUTO) selectedHandSide else detectedHandSide,
                 onLanguageChange = { viewModel.setLanguage(it) },
                 onRetake = { viewModel.retake() },
-                onDismiss = { viewModel.retake() }
+                onDismiss = { viewModel.dismissAnalysisReading() }
             )
         }
     }

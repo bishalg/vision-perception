@@ -8,15 +8,16 @@
 
 /* Begin PBXBuildFile section */
 		013263D9291F35C85AD9DCF0 /* CurvPalmOverlay in Frameworks */ = {isa = PBXBuildFile; productRef = 113726120F45BD905558E862 /* CurvPalmOverlay */; };
+		05569F052965F655D5406FF6 /* palm_strings.json in Resources */ = {isa = PBXBuildFile; fileRef = 555E3F877521B427842A4A2B /* palm_strings.json */; };
 		0E45A1E86E0616E6E2EB55F5 /* PalmAnalysisViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EEB0B15D07944D8BF3F476 /* PalmAnalysisViewModel.swift */; };
 		1F99542221C6EC9D2FA8DFEB /* CurvApple in Frameworks */ = {isa = PBXBuildFile; productRef = F18F74289D90C3B2B20870A4 /* CurvApple */; };
 		211E544517E4DA7197D89A57 /* CreaseSplineOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAA47A720FDE5572D1646BB0 /* CreaseSplineOverlayView.swift */; };
 		3DD481C80F5E54A2159F6F71 /* CurvCameraOverlay in Frameworks */ = {isa = PBXBuildFile; productRef = 97DE29EADC336D7513109EEF /* CurvCameraOverlay */; };
 		4C266A227BD5EEF084A180FF /* CaptureResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04145BAF5F6DF10A65698C9A /* CaptureResultView.swift */; };
-		4C266A227BD5EEF084A18100 /* CreaseLineEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04145BAF5F6DF10A65698C9B /* CreaseLineEditorView.swift */; };
 		58A086084D286C34069060F5 /* MainScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23380A94031934043F119E2F /* MainScannerView.swift */; };
 		5DD6C50AB3DA1C7EBD4D2229 /* SimplePalmReading.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9E94BB9812BD62ECC5AEA84 /* SimplePalmReading.swift */; };
 		64FDF94E7DE4A78348DA5047 /* VisionHandTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 248332063F7DC8A9DEB48F43 /* VisionHandTracker.swift */; };
+		8B49F3CC8F5767FCEE42BAC5 /* CreaseLineEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B9D77E26C37D4EE2A1F5EA5 /* CreaseLineEditorView.swift */; };
 		A037D806C935758987425DE6 /* LocalizedStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4263A45D6BB454A8D1C5E3 /* LocalizedStrings.swift */; };
 		BE3309BBEB88214FB7035EBA /* PalmAnalysisResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD8FE6C0095809F7C6C5E47 /* PalmAnalysisResult.swift */; };
 		D76B8272311635E1310BDF7A /* PalmScannerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BB3A3841F3F59CF9472772D /* PalmScannerApp.swift */; };
@@ -26,14 +27,15 @@
 
 /* Begin PBXFileReference section */
 		04145BAF5F6DF10A65698C9A /* CaptureResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureResultView.swift; sourceTree = "<group>"; };
-		04145BAF5F6DF10A65698C9B /* CreaseLineEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreaseLineEditorView.swift; sourceTree = "<group>"; };
 		06EEB0B15D07944D8BF3F476 /* PalmAnalysisViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalmAnalysisViewModel.swift; sourceTree = "<group>"; };
 		21604D61D994310C2854427F /* apple */ = {isa = PBXFileReference; lastKnownFileType = folder; name = apple; path = ../../adapters/apple; sourceTree = SOURCE_ROOT; };
 		23380A94031934043F119E2F /* MainScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainScannerView.swift; sourceTree = "<group>"; };
 		248332063F7DC8A9DEB48F43 /* VisionHandTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionHandTracker.swift; sourceTree = "<group>"; };
 		32D5685105C749526C195AA3 /* ios */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ios; path = ../mobile_overlay/ios; sourceTree = SOURCE_ROOT; };
+		3B9D77E26C37D4EE2A1F5EA5 /* CreaseLineEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreaseLineEditorView.swift; sourceTree = "<group>"; };
 		3CD8FE6C0095809F7C6C5E47 /* PalmAnalysisResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalmAnalysisResult.swift; sourceTree = "<group>"; };
-		4D50AD49761707C4F33F4119 /* PalmScanner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PalmScanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4D50AD49761707C4F33F4119 /* PalmScanner.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PalmScanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		555E3F877521B427842A4A2B /* palm_strings.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = palm_strings.json; sourceTree = "<group>"; };
 		5BB3A3841F3F59CF9472772D /* PalmScannerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalmScannerApp.swift; sourceTree = "<group>"; };
 		5FC54A6BE9238CDDF01888E1 /* ImageCoordinateMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCoordinateMapper.swift; sourceTree = "<group>"; };
 		6B4263A45D6BB454A8D1C5E3 /* LocalizedStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizedStrings.swift; sourceTree = "<group>"; };
@@ -56,6 +58,23 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		633304576A2BFF7E3B5A18C7 /* shared */ = {
+			isa = PBXGroup;
+			children = (
+				EDF275B61388E23B6DFB6EEE /* strings */,
+			);
+			path = shared;
+			sourceTree = "<group>";
+		};
+		8952663FA6E22574375FA807 /* apps */ = {
+			isa = PBXGroup;
+			children = (
+				A51C25898FF3706BA50FD511 /* mobile_overlay */,
+			);
+			name = apps;
+			path = ..;
+			sourceTree = "<group>";
+		};
 		95E4E0449037091415FC36CB /* Sources */ = {
 			isa = PBXGroup;
 			children = (
@@ -72,6 +91,14 @@
 				5BB3A3841F3F59CF9472772D /* PalmScannerApp.swift */,
 			);
 			path = AppHost;
+			sourceTree = "<group>";
+		};
+		A51C25898FF3706BA50FD511 /* mobile_overlay */ = {
+			isa = PBXGroup;
+			children = (
+				633304576A2BFF7E3B5A18C7 /* shared */,
+			);
+			path = mobile_overlay;
 			sourceTree = "<group>";
 		};
 		A729A0EE82C351D36FA3CB7D /* Models */ = {
@@ -104,7 +131,7 @@
 			isa = PBXGroup;
 			children = (
 				04145BAF5F6DF10A65698C9A /* CaptureResultView.swift */,
-				04145BAF5F6DF10A65698C9B /* CreaseLineEditorView.swift */,
+				3B9D77E26C37D4EE2A1F5EA5 /* CreaseLineEditorView.swift */,
 				FAA47A720FDE5572D1646BB0 /* CreaseSplineOverlayView.swift */,
 				5FC54A6BE9238CDDF01888E1 /* ImageCoordinateMapper.swift */,
 				23380A94031934043F119E2F /* MainScannerView.swift */,
@@ -130,10 +157,19 @@
 			path = Controllers;
 			sourceTree = "<group>";
 		};
+		EDF275B61388E23B6DFB6EEE /* strings */ = {
+			isa = PBXGroup;
+			children = (
+				555E3F877521B427842A4A2B /* palm_strings.json */,
+			);
+			path = strings;
+			sourceTree = "<group>";
+		};
 		F0D0D6530796AAD481F15F15 = {
 			isa = PBXGroup;
 			children = (
 				9A6499A55A290FC97CE81A2F /* AppHost */,
+				8952663FA6E22574375FA807 /* apps */,
 				B335E51C401C973DAA7A958F /* Packages */,
 				B98F47F7833058D84849467B /* Resources */,
 				95E4E0449037091415FC36CB /* Sources */,
@@ -149,6 +185,7 @@
 			buildConfigurationList = 02494C251937E86714C170FF /* Build configuration list for PBXNativeTarget "PalmScanner" */;
 			buildPhases = (
 				FABE5AE7CDF2E85E4980C965 /* Sources */,
+				B7E4E1DAE2021C47EAB8794F /* Resources */,
 				C4C50F26B03186A7488F3D0C /* Frameworks */,
 				127F87FBABD344832010BD87 /* StripStaticOpenCVFramework */,
 			);
@@ -204,10 +241,20 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		B7E4E1DAE2021C47EAB8794F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				05569F052965F655D5406FF6 /* palm_strings.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXShellScriptBuildPhase section */
 		127F87FBABD344832010BD87 /* StripStaticOpenCVFramework */ = {
 			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -232,7 +279,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4C266A227BD5EEF084A180FF /* CaptureResultView.swift in Sources */,
-				4C266A227BD5EEF084A18100 /* CreaseLineEditorView.swift in Sources */,
+				8B49F3CC8F5767FCEE42BAC5 /* CreaseLineEditorView.swift in Sources */,
 				211E544517E4DA7197D89A57 /* CreaseSplineOverlayView.swift in Sources */,
 				EF5D298BE06A29AA1FA0CBBB /* ImageCoordinateMapper.swift in Sources */,
 				A037D806C935758987425DE6 /* LocalizedStrings.swift in Sources */,
@@ -383,18 +430,13 @@
 				DEVELOPMENT_TEAM = 6J3WY94J6T;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AppHost/Info.plist;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.books";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.3;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				OTHER_LDFLAGS = (
-					"-lc++",
-					"-framework",
-					Accelerate,
-				);
+				OTHER_LDFLAGS = "-lc++ -framework Accelerate";
 				PRODUCT_BUNDLE_IDENTIFIER = org.curv.palmapp;
 				PRODUCT_NAME = PalmScanner;
 				SDKROOT = iphoneos;
@@ -414,18 +456,13 @@
 				DEVELOPMENT_TEAM = 6J3WY94J6T;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AppHost/Info.plist;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.books";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.3;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				OTHER_LDFLAGS = (
-					"-lc++",
-					"-framework",
-					Accelerate,
-				);
+				OTHER_LDFLAGS = "-lc++ -framework Accelerate";
 				PRODUCT_BUNDLE_IDENTIFIER = org.curv.palmapp;
 				PRODUCT_NAME = PalmScanner;
 				SDKROOT = iphoneos;

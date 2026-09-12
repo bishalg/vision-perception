@@ -123,17 +123,17 @@ public struct CreaseLineEditorView: View {
                                         let isSelected = spline.id == selectedSplineId
                                         let color = Color(hex: spline.lineType.hexColor)
 
-                                        // Outer soft glow
+                                        // Outer soft glow (subtle, non-occluding)
                                         context.stroke(
                                             path,
-                                            with: .color(color.opacity(isSelected ? 0.38 : 0.12)),
-                                            style: StrokeStyle(lineWidth: isSelected ? 10 : 5, lineCap: .round, lineJoin: .round)
+                                            with: .color(color.opacity(isSelected ? 0.25 : 0.08)),
+                                            style: StrokeStyle(lineWidth: isSelected ? 5 : 2.5, lineCap: .round, lineJoin: .round)
                                         )
-                                        // Solid continuous curve
+                                        // Precision continuous curve
                                         context.stroke(
                                             path,
-                                            with: .color(color.opacity(isSelected ? 1.0 : 0.35)),
-                                            style: StrokeStyle(lineWidth: isSelected ? 3.8 : 2.2, lineCap: .round, lineJoin: .round)
+                                            with: .color(color.opacity(isSelected ? 0.90 : 0.40)),
+                                            style: StrokeStyle(lineWidth: isSelected ? 2.4 : 1.6, lineCap: .round, lineJoin: .round)
                                         )
                                     }
 
@@ -358,39 +358,39 @@ public struct CreaseLineEditorView: View {
         }
     }
 
-    // MARK: - Control Handle Component (Clean 4 Handles: Start, Curve 1, Curve 2, End)
+    // MARK: - Precision Hollow Reticle (Zero-Occlusion: Palm Crease 100% Visible Below Ring)
     @ViewBuilder
     private func controlHandleView(color: Color, isStart: Bool, isEnd: Bool, isSelected: Bool) -> some View {
-        let diameter: CGFloat = (isStart || isEnd) ? 28 : 22
+        let ringDiameter: CGFloat = 22
 
         ZStack {
+            // Invisible 44x44pt touch area for effortless finger target
             Color.clear
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
 
+            // Selection glow halo
             if isSelected {
                 Circle()
-                    .stroke(Color.white, lineWidth: 2)
-                    .frame(width: diameter + 8, height: diameter + 8)
+                    .stroke(Color.white.opacity(0.85), lineWidth: 1.5)
+                    .frame(width: ringDiameter + 8, height: ringDiameter + 8)
+                    .shadow(color: color.opacity(0.8), radius: 4)
             }
 
+            // Outer shadow ring for crisp contrast on light/dark palm skin
             Circle()
-                .fill(color)
-                .frame(width: diameter, height: diameter)
-                .overlay(Circle().stroke(Color.white, lineWidth: 2))
-                .shadow(color: .black.opacity(0.6), radius: 4, y: 2)
+                .stroke(Color.black.opacity(0.50), lineWidth: 3.5)
+                .frame(width: ringDiameter, height: ringDiameter)
 
-            if isStart {
-                Text("S")
-                    .font(.system(size: 11, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
-            } else if isEnd {
-                Text("E")
-                    .font(.system(size: 11, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
-            } else {
-                Circle().fill(Color.white).frame(width: 5, height: 5)
-            }
+            // Precision hollow ring: stroke only, 100% transparent center!
+            Circle()
+                .stroke(color, lineWidth: 2.2)
+                .frame(width: ringDiameter, height: ringDiameter)
+
+            // Inner delicate guide ring
+            Circle()
+                .stroke(Color.white.opacity(0.8), lineWidth: 0.8)
+                .frame(width: ringDiameter - 4, height: ringDiameter - 4)
         }
     }
 
@@ -665,31 +665,50 @@ private struct MagnifyingLoupeView: View {
         ZStack {
             GeometryReader { _ in
                 let imgSize = image.size
-                let focusX = focusPointNorm.x * imgSize.width
-                let focusY = focusPointNorm.y * imgSize.height
                 let zoomFactor: CGFloat = 2.4
+                let imgW = imgSize.width * zoomFactor
+                let imgH = imgSize.height * zoomFactor
 
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
-                    .frame(width: imgSize.width * zoomFactor, height: imgSize.height * zoomFactor)
+                    .frame(width: imgW, height: imgH)
                     .position(
-                        x: diameter * 0.5 - (focusX * zoomFactor - diameter * 0.5),
-                        y: diameter * 0.5 - (focusY * zoomFactor - diameter * 0.5)
+                        x: diameter * 0.5 + (0.5 - focusPointNorm.x) * imgW,
+                        y: diameter * 0.5 + (0.5 - focusPointNorm.y) * imgH
                     )
             }
             .frame(width: diameter, height: diameter)
             .clipShape(Circle())
 
+            // Loupe frame border
             Circle()
                 .stroke(lineColor, lineWidth: 2.5)
                 .frame(width: diameter, height: diameter)
                 .shadow(color: lineColor.opacity(0.6), radius: 8)
 
+            // Fine precision crosshairs with open center aperture (zero occlusion)
+            Path { p in
+                let mid = diameter * 0.5
+                let gap: CGFloat = 8
+                let arm: CGFloat = 16
+                // Horizontal
+                p.move(to: CGPoint(x: mid - gap - arm, y: mid))
+                p.addLine(to: CGPoint(x: mid - gap, y: mid))
+                p.move(to: CGPoint(x: mid + gap, y: mid))
+                p.addLine(to: CGPoint(x: mid + gap + arm, y: mid))
+                // Vertical
+                p.move(to: CGPoint(x: mid, y: mid - gap - arm))
+                p.addLine(to: CGPoint(x: mid, y: mid - gap))
+                p.move(to: CGPoint(x: mid, y: mid + gap))
+                p.addLine(to: CGPoint(x: mid, y: mid + gap + arm))
+            }
+            .stroke(Color.white.opacity(0.9), lineWidth: 1.2)
+
+            // Open center reticle ring (100% transparent inside)
             Circle()
-                .fill(lineColor)
-                .frame(width: 8, height: 8)
-                .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
+                .stroke(lineColor, lineWidth: 1.5)
+                .frame(width: 14, height: 14)
         }
         .frame(width: diameter, height: diameter)
         .shadow(color: .black.opacity(0.6), radius: 10, y: 4)

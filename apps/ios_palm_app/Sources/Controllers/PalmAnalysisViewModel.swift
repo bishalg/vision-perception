@@ -177,7 +177,8 @@ public final class PalmAnalysisViewModel: ObservableObject {
         guard !isCapturing && !isAnalyzing && !showResultViewer else { return }
 
         let now = CACurrentMediaTime()
-        let landmarks = handTracker.processFrame(pixelBuffer)
+        let trackingResult = handTracker.processFrameWithResult(pixelBuffer)
+        let landmarks = trackingResult?.landmarks
         let framing = landmarks.flatMap { HandLandmarkPose.framing(from: $0) }
         let pose = framing?.pose
         let tipsOK = framing?.isFullyInFrame ?? false
@@ -250,10 +251,13 @@ public final class PalmAnalysisViewModel: ObservableObject {
         }()
 
         DispatchQueue.main.async {
-            if let landmarks {
-                self.detectedLandmarks = landmarks
-                let isLeft = HandLandmarkPose.isLeftHand(landmarks)
-                self.detectedHandSide = isLeft ? .left : .right
+            if let trackingResult {
+                self.detectedLandmarks = trackingResult.landmarks
+                let newSide: HandSide = trackingResult.isLeftHand ? .left : .right
+                if newSide != self.detectedHandSide {
+                    self.detectedHandSide = newSide
+                    self.lightHaptic.impactOccurred()
+                }
             } else {
                 self.detectedLandmarks.removeAll()
             }
@@ -339,12 +343,16 @@ public final class PalmAnalysisViewModel: ObservableObject {
 
             // Re-detect on the still itself — video landmarks live in a different FOV/crop.
             if let cgImage = image?.cgImage,
-               let detected = self.handTracker.processCGImage(cgImage, orientation: .up) {
-                photoLandmarks = detected
-                self.logger.info("Re-detected \(detected.count) landmarks on captured still")
-            } else if let detected = self.handTracker.processFrame(photoBuffer, orientation: visionOrientation) {
-                photoLandmarks = detected
-                self.logger.info("Re-detected landmarks on photo buffer (orientation \(visionOrientation.rawValue))")
+               let tracking = self.handTracker.processCGImageWithResult(cgImage, orientation: .up) {
+                photoLandmarks = tracking.landmarks
+                let stillSide: HandSide = tracking.isLeftHand ? .left : .right
+                self.detectedHandSide = stillSide
+                self.logger.info("Re-detected \(tracking.landmarks.count) landmarks on captured still (side: \(stillSide.rawValue))")
+            } else if let tracking = self.handTracker.processFrameWithResult(photoBuffer, orientation: visionOrientation) {
+                photoLandmarks = tracking.landmarks
+                let stillSide: HandSide = tracking.isLeftHand ? .left : .right
+                self.detectedHandSide = stillSide
+                self.logger.info("Re-detected landmarks on photo buffer (side: \(stillSide.rawValue))")
             } else {
                 self.logger.error("Still re-detect failed — falling back to video landmarks (likely misaligned)")
             }

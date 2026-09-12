@@ -71,6 +71,10 @@ class PalmAnalysisViewModel : ViewModel() {
     private val _showResultViewer = MutableStateFlow(false)
     val showResultViewer: StateFlow<Boolean> = _showResultViewer.asStateFlow()
 
+    /** Dedicated Phase 3 Samudrika reading sheet — parity with iOS showAnalysisReading. */
+    private val _showAnalysisReading = MutableStateFlow(false)
+    val showAnalysisReading: StateFlow<Boolean> = _showAnalysisReading.asStateFlow()
+
     private val _overlaySource = MutableStateFlow(CreaseOverlaySource.NEEDS_MANUAL_ALIGNMENT)
     val overlaySource: StateFlow<CreaseOverlaySource> = _overlaySource.asStateFlow()
 
@@ -321,8 +325,12 @@ class PalmAnalysisViewModel : ViewModel() {
             _usedNativeEngine.value = usedNative
             _overlaySource.value = source
             _isAnalyzing.value = false
-            _showResultViewer.value = (source == CreaseOverlaySource.NEEDS_MANUAL_ALIGNMENT)
-            _showResultSheet.value = true
+            // Stay in live camera mode (Camera style, parity with iOS finishCapture):
+            // keep the thumbnail, resume preview; the user opens the review
+            // from the thumbnail, then proceeds to the reading sheet.
+            _showResultViewer.value = false
+            _showResultSheet.value = false
+            _showAnalysisReading.value = false
             isCapturing = false
             suppressAutoCaptureUntilNs = SystemClock.elapsedRealtimeNanos() + 3_000_000_000L
             guidanceEngine.reset()
@@ -330,8 +338,17 @@ class PalmAnalysisViewModel : ViewModel() {
     }
 
     fun openLastCapture() { if (_capturedBitmap.value != null) _showResultViewer.value = true }
-    fun dismissResultViewer() { _showResultViewer.value = false }
+    fun dismissResultViewer() {
+        _showResultViewer.value = false
+        _showAnalysisReading.value = false
+    }
+    fun dismissAnalysisReading() { _showAnalysisReading.value = false }
     fun updateSplines(newList: List<CreaseSpline>) { _detectedSplines.value = newList }
+    /** Proceed to Phase 3: lock lines and present the Samudrika reading sheet. */
+    fun proceedToAnalysis() {
+        confirmAdjustedLinesForPrediction()
+        _showAnalysisReading.value = true
+    }
     fun confirmAdjustedLinesForPrediction() {
         _predictionReadySplines.value = _detectedSplines.value
         Log.i(tag, "Prediction lines locked (${_predictionReadySplines.value.size})")
@@ -354,7 +371,11 @@ class PalmAnalysisViewModel : ViewModel() {
             majors.put(l.engineKey, entry)
         }
         payload.put("major_lines", majors)
-        payload.put("source", _overlaySource.value.name.lowercase())
+        val sourceRaw = when (_overlaySource.value) {
+            CreaseOverlaySource.NATIVE_ENGINE -> "nativeEngine"
+            CreaseOverlaySource.NEEDS_MANUAL_ALIGNMENT -> "landmarkFallback"
+        }
+        payload.put("source", sourceRaw)
         obj.put("domain_payload", payload)
         return obj.toString()
     }
@@ -367,6 +388,7 @@ class PalmAnalysisViewModel : ViewModel() {
         _capturedBitmap.value = null
         _showResultViewer.value = false
         _showResultSheet.value = false
+        _showAnalysisReading.value = false
         _usedNativeEngine.value = false
         _overlaySource.value = CreaseOverlaySource.NEEDS_MANUAL_ALIGNMENT
     }
@@ -381,12 +403,13 @@ class PalmAnalysisViewModel : ViewModel() {
         _capturedBitmap.value = null
         _showResultViewer.value = false
         _showResultSheet.value = false
+        _showAnalysisReading.value = false
         _usedNativeEngine.value = false
         _overlaySource.value = CreaseOverlaySource.NEEDS_MANUAL_ALIGNMENT
         guidanceEngine.reset()
     }
 
-    /** Editable 4-point scaffolds — parity with iOS manualAlignmentSeedCreases. */
+    /** Editable 4-point scaffolds — parity with iOS fallbackLandmarkCreases. */
     private fun manualSeedCreases(landmarks: List<PointF>): List<CreaseSpline> {
         fun lerp(a: PointF, b: PointF, t: Float) = PointF(a.x + (b.x - a.x)*t, a.y + (b.y - a.y)*t)
         val wrist: PointF; val indexMcp: PointF; val middleMcp: PointF; val pinkyMcp: PointF; val thumbMcp: PointF; val middleTip: PointF
@@ -395,14 +418,29 @@ class PalmAnalysisViewModel : ViewModel() {
         } else {
             wrist = PointF(0.50f,0.82f); thumbMcp = PointF(0.28f,0.55f); indexMcp = PointF(0.38f,0.28f); middleMcp = PointF(0.50f,0.26f); middleTip = PointF(0.50f,0.08f); pinkyMcp = PointF(0.68f,0.32f)
         }
+        fun length(pts: List<PointF>): Float {
+            var sum = 0f
+            for (i in 1 until pts.size) {
+                val dx = pts[i].x - pts[i - 1].x
+                val dy = pts[i].y - pts[i - 1].y
+                sum += kotlin.math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+            }
+            return sum * 1400f
+        }
         val palmTop = lerp(indexMcp, pinkyMcp, 0.5f)
         val palmMid = lerp(palmTop, wrist, 0.45f)
         val heart = listOf(lerp(pinkyMcp,wrist,0.12f), lerp(pinkyMcp,indexMcp,0.35f), lerp(pinkyMcp,indexMcp,0.70f), lerp(indexMcp,wrist,0.15f))
         val head = listOf(lerp(indexMcp,thumbMcp,0.35f), lerp(indexMcp,pinkyMcp,0.25f), lerp(middleMcp,wrist,0.35f), lerp(pinkyMcp,wrist,0.28f))
         val life = listOf(lerp(indexMcp,thumbMcp,0.40f), lerp(thumbMcp,wrist,0.25f), lerp(thumbMcp,wrist,0.55f), lerp(wrist,thumbMcp,0.15f))
         val fate = listOf(lerp(wrist,middleTip,0.15f), lerp(wrist,middleTip,0.40f), lerp(palmMid,middleMcp,0.35f), lerp(middleMcp,wrist,0.20f))
-        fun seed(id: String, type: CreaseLineType, pts: List<PointF>) = CreaseSpline(id= id, lineType= type, points= pts, confidence=0f, tortuosity=1f, arcLengthPx=0f, isUserAdjusted=false)
-        return listOf(seed("heart_line", CreaseLineType.HEART, heart), seed("head_line", CreaseLineType.HEAD, head), seed("life_line", CreaseLineType.LIFE, life), seed("fate_line", CreaseLineType.FATE, fate))
+        // Confidence/tortuosity mirror the iOS landmark fallback so the
+        // rule-based reading tiers behave identically on both platforms.
+        return listOf(
+            CreaseSpline(id = "heart_line", lineType = CreaseLineType.HEART, points = heart, confidence = 0.86f, tortuosity = 1.12f, arcLengthPx = length(heart)),
+            CreaseSpline(id = "head_line", lineType = CreaseLineType.HEAD, points = head, confidence = 0.90f, tortuosity = 1.08f, arcLengthPx = length(head)),
+            CreaseSpline(id = "life_line", lineType = CreaseLineType.LIFE, points = life, confidence = 0.93f, tortuosity = 1.25f, arcLengthPx = length(life)),
+            CreaseSpline(id = "fate_line", lineType = CreaseLineType.FATE, points = fate, confidence = 0.78f, tortuosity = 1.03f, arcLengthPx = length(fate))
+        )
     }
 
     override fun onCleared() { super.onCleared(); curvPipeline?.close(); curvPipeline = null }

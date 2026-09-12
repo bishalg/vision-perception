@@ -61,7 +61,8 @@ public struct MainScannerView: View {
                         // Center-top inside the camera box reticle frame
                         HandSideToggleView(
                             selection: $viewModel.selectedHandSide,
-                            autoDetected: viewModel.detectedHandSide
+                            autoDetected: viewModel.detectedHandSide,
+                            isHandDetected: !viewModel.detectedLandmarks.isEmpty
                         )
                         .padding(.top, 14)
                     }

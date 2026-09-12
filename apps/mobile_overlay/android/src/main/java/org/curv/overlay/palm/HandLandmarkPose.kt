@@ -50,19 +50,40 @@ object HandLandmarkPose {
         )
     }
 
-    /** Mirrors core/geometry/RoiWarper::detectIsLeftHand */
+    /** Mirrors core/geometry/RoiWarper::detectIsLeftHand — robust thumb vs pinky lateral position. */
     fun isLeftHand(landmarks: List<PointF>): Boolean {
         if (landmarks.size < 18) return false
-        val p0 = landmarks[0]
-        val p5 = landmarks[5]
-        val p9 = landmarks[9]
-        val p17 = landmarks[17]
+        val p0 = landmarks[0] // wrist
+        val p9 = landmarks[9] // middle MCP
         val upX = p9.x - p0.x
         val upY = p9.y - p0.y
-        val upLen = sqrt(upX*upX + upY*upY)
+        val upLen = sqrt(upX * upX + upY * upY)
         if (upLen < 1e-4f) return false
         val rightX = -upY / upLen
         val rightY = upX / upLen
+
+        // 1. Primary: Thumb lateral vs Pinky lateral relative to palm centerline (wrist -> middle MCP)
+        if (landmarks.size >= 21) {
+            val p2 = landmarks[2]  // thumb MP
+            val p4 = landmarks[4]  // thumb tip
+            val p17 = landmarks[17] // pinky MCP
+            val p20 = landmarks[20] // pinky tip
+
+            val thumbX = (p2.x + p4.x) * 0.5f - p0.x
+            val thumbY = (p2.y + p4.y) * 0.5f - p0.y
+            val thumbLateral = thumbX * rightX + thumbY * rightY
+
+            val pinkyX = (p17.x + p20.x) * 0.5f - p0.x
+            val pinkyY = (p17.y + p20.y) * 0.5f - p0.y
+            val pinkyLateral = pinkyX * rightX + pinkyY * rightY
+
+            // For palm facing camera: Left palm has thumb on the right (thumbLateral > pinkyLateral)
+            return thumbLateral > pinkyLateral
+        }
+
+        // 2. Fallback: Index MCP (p5) to Pinky MCP (p17) dot product
+        val p5 = landmarks[5]
+        val p17 = landmarks[17]
         val palmWX = p17.x - p5.x
         val palmWY = p17.y - p5.y
         val dot = palmWX * rightX + palmWY * rightY

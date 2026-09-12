@@ -31,9 +31,13 @@ targets:
         excludes:
           - Info.plist
       - path: Sources
+      - path: ../mobile_overlay/shared/strings/palm_strings.json
+        buildPhase: resources
       - path: Resources
         buildPhase: resources
         type: group
+        excludes:
+          - .gitkeep
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.curv.palmapp
@@ -78,6 +82,7 @@ targets:
     info:
       path: AppHost/Info.plist
       properties:
+        CFBundleDisplayName: Palm Reader
         UILaunchScreen: {}
         NSCameraUsageDescription: Camera access is required to capture your palm for real-time guidance and crease analysis.
         UISupportedInterfaceOrientations:

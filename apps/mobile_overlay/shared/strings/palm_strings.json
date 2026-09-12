@@ -1,0 +1,277 @@
+{
+  "button.capture": {
+    "en": "Capture",
+    "hi": "कैप्चर",
+    "ne": "खिच्नुहोस्"
+  },
+  "button.retake": {
+    "en": "Retake",
+    "hi": "फिर से लें",
+    "ne": "पुनः खिच्नुहोस्"
+  },
+  "editor.addPoint": {
+    "en": "+ Point",
+    "hi": "+ बिंदु",
+    "ne": "+ बिन्दु"
+  },
+  "editor.cancel": {
+    "en": "Cancel",
+    "hi": "रद्द करें",
+    "ne": "रद्द गर्नुहोस्"
+  },
+  "editor.done": {
+    "en": "Done",
+    "hi": "संपन्न",
+    "ne": "सम्पन्न"
+  },
+  "editor.drawHint": {
+    "en": "Trace along the palm crease with your finger to redraw the curve.",
+    "hi": "हथेली की रेखा पर उंगली फिराकर नई वक्र रेखा बनाएं।",
+    "ne": "हातको रेखामाथि औंला सारेर नयाँ वक्र रेखा कोर्नुहोस्।"
+  },
+  "editor.hint": {
+    "en": "Drag handles to reshape. Magnifier shows crease details under finger.",
+    "hi": "हैंडल खींचकर सुधारें। मैग्निफायर उंगली के नीचे की रेखा दिखाता है।",
+    "ne": "ह्यान्डल सारेर मिलाउनुहोस्। म्याग्निफायरले औंला मुनिको रेखा देखाउँछ।"
+  },
+  "editor.hintAdjust": {
+    "en": "Drag handles to reshape • Pinch to zoom",
+    "hi": "हैंडल खींचकर सुधारें • ज़ूम के लिए पिंच करें",
+    "ne": "ह्यान्डल सारेर मिलाउनुहोस् • जुम गर्न पिन्च गर्नुहोस्"
+  },
+  "editor.hintDraw": {
+    "en": "Trace along palm crease to redraw",
+    "hi": "हथेली की रेखा पर उंगली फिराकर नई रेखा बनाएं",
+    "ne": "हस्तरेखामाथि औंला सारेर नयाँ रेखा कोर्नुहोस्"
+  },
+  "editor.hintMovingCurve": {
+    "en": "Adjusting curve",
+    "hi": "वक्रता समायोजित",
+    "ne": "वक्रता मिलाउँदै"
+  },
+  "editor.hintMovingEnd": {
+    "en": "Moving end of line",
+    "hi": "अंतिम सिरा स्थानांतरित",
+    "ne": "अन्त्य बिन्दु सार्दै"
+  },
+  "editor.hintMovingStart": {
+    "en": "Moving start of line",
+    "hi": "शुरुआती सिरा स्थानांतरित",
+    "ne": "सुरुवात बिन्दु सार्दै"
+  },
+  "editor.hintTracing": {
+    "en": "Tracing curve... release to set line",
+    "hi": "रेखा खींच रहे हैं... उंगली उठाकर रेखा बनाएं",
+    "ne": "रेखा कोरिरहेको... औंला उठाएर रेखा बनाउनुहोस्"
+  },
+  "editor.modeDraw": {
+    "en": "Draw Curve",
+    "hi": "रेखा बनाएं",
+    "ne": "रेखा कोर्नुहोस्"
+  },
+  "editor.modePoints": {
+    "en": "Adjust",
+    "hi": "समायोजित",
+    "ne": "मिलाउनुहोस्"
+  },
+  "editor.removePoint": {
+    "en": "Delete Point",
+    "hi": "बिंदु हटाएं",
+    "ne": "बिन्दु मेटाउनुहोस्"
+  },
+  "editor.resetLine": {
+    "en": "Reset Line",
+    "hi": "लाइन रीसेट",
+    "ne": "लाइन रिसेट"
+  },
+  "editor.resetZoom": {
+    "en": "1.0x",
+    "hi": "१.०x",
+    "ne": "१.०x"
+  },
+  "editor.title": {
+    "en": "Edit Crease Lines",
+    "hi": "हस्तरेखा संपादन",
+    "ne": "हस्तरेखा सम्पादन"
+  },
+  "editor.toolAdjust": {
+    "en": "Adjust",
+    "hi": "समायोजित",
+    "ne": "सार्नुहोस्"
+  },
+  "editor.toolDraw": {
+    "en": "Draw",
+    "hi": "खींचें",
+    "ne": "कोर्नुहोस्"
+  },
+  "editor.toolLabel": {
+    "en": "Label",
+    "hi": "लेबल",
+    "ne": "नाम"
+  },
+  "editor.toolReset": {
+    "en": "Reset",
+    "hi": "रीसेट",
+    "ne": "रिसेट"
+  },
+  "editor.toolUndo": {
+    "en": "Undo",
+    "hi": "पूर्ववत",
+    "ne": "फिर्ता"
+  },
+  "editor.undo": {
+    "en": "Undo",
+    "hi": "पूर्ववत",
+    "ne": "पूर्वावस्था"
+  },
+  "guidance.center": {
+    "en": "Center your palm",
+    "hi": "हथेली को केंद्र में रखें",
+    "ne": "हातलाई केन्द्रमा राख्नुहोस्"
+  },
+  "guidance.closer": {
+    "en": "Move closer",
+    "hi": "हथेली पास लाएं",
+    "ne": "हात नजिक ल्याउनुहोस्"
+  },
+  "guidance.dark": {
+    "en": "Too dark — add more light",
+    "hi": "बहुत अंधेरा है — रोशनी बढ़ाएं",
+    "ne": "धेरै अँध्यारो छ — थप उज्यालो चाहिन्छ"
+  },
+  "guidance.flat": {
+    "en": "Hold palm flat facing camera",
+    "hi": "हथेली को कैमरे के सामने सीधा रखें",
+    "ne": "हात सीधा क्यामेरा तर्फ देखाउनुहोस्"
+  },
+  "guidance.further": {
+    "en": "Move further away",
+    "hi": "हथेली थोड़ा दूर ले जाएं",
+    "ne": "हात अलि टाढा लैजानुहोस्"
+  },
+  "guidance.glare": {
+    "en": "Angle palm away from glare",
+    "hi": "सीधी रोशनी से हथेली थोड़ा घुमाएं",
+    "ne": "सिधा प्रकाशबाट हात अलि ढल्काउनुहोस्"
+  },
+  "guidance.ready": {
+    "en": "Capturing palm lines...",
+    "hi": "हथेली की रेखाएं कैप्चर हो रही हैं...",
+    "ne": "हातका रेखाहरू खिचिँदैछ..."
+  },
+  "guidance.searching": {
+    "en": "Place your palm inside the frame",
+    "hi": "हथेली को फ्रेम के अंदर रखें",
+    "ne": "हात फ्रेम भित्र राख्नुहोस्"
+  },
+  "guidance.steady": {
+    "en": "Hold steady...",
+    "hi": "स्थिर रखें...",
+    "ne": "हात स्थिर राख्नुहोस्..."
+  },
+  "line.fate": {
+    "en": "Fate Line",
+    "hi": "भाग्य रेखा",
+    "ne": "भाग्य रेखा"
+  },
+  "line.head": {
+    "en": "Head Line",
+    "hi": "मस्तिष्क रेखा",
+    "ne": "मस्तिष्क रेखा"
+  },
+  "line.heart": {
+    "en": "Heart Line",
+    "hi": "हृदय रेखा",
+    "ne": "हृदय रेखा"
+  },
+  "line.life": {
+    "en": "Life Line",
+    "hi": "जीवन रेखा",
+    "ne": "जीवन रेखा"
+  },
+  "result.addPoint": {
+    "en": "Add point",
+    "hi": "बिंदु जोड़ें",
+    "ne": "बिन्दु थप्नुहोस्"
+  },
+  "result.adjusted": {
+    "en": "adjusted",
+    "hi": "समायोजित",
+    "ne": "मिलान"
+  },
+  "result.continueReading": {
+    "en": "Analyze Reading",
+    "hi": "सामुद्रिक विश्लेषण देखें",
+    "ne": "सामुद्रिक विश्लेषण हेर्नुहोस्"
+  },
+  "result.doneEdit": {
+    "en": "Done",
+    "hi": "हो गया",
+    "ne": "सकियो"
+  },
+  "result.dragHint": {
+    "en": "Drag dots to reshape",
+    "hi": "बिंदुओं को खींचें",
+    "ne": "बिन्दु तानेर मिलाउनुहोस्"
+  },
+  "result.edit": {
+    "en": "Edit",
+    "hi": "संपादन",
+    "ne": "सम्पादन"
+  },
+  "result.editHint": {
+    "en": "Drag handles to reshape · drag rows to reorder · tag to reassign Heart/Head/Life/Fate",
+    "hi": "हैंडल खींचकर सुधारें · पंक्तियों को क्रम दें · टैग से नाम बदलें",
+    "ne": "ह्यान्डल तानेर मिलाउनुहोस् · पङ्क्ति सार्नुहोस् · ट्यागबाट नाम बदल्नुहोस्"
+  },
+  "result.landmark": {
+    "en": "Landmark guides (native engine not linked)",
+    "hi": "लैंडमार्क गाइड (नेटिव इंजन लिंक नहीं)",
+    "ne": "ल्यान्डमार्क गाइड (नेटिभ इन्जिन लिंक छैन)"
+  },
+  "result.manualBannerBody": {
+    "en": "Detection was uncertain — drag the dashed scaffolds so they sit exactly on your creases, then tap Use for reading.",
+    "hi": "पहचान अनिश्चित थी — डैश्ड स्कैफोल्ड को अपनी रेखाओं पर खींचें, फिर रीडिंग के लिए उपयोग करें दबाएं।",
+    "ne": "पहिचान अनिश्चित थियो — ड्यास scaffold लाई रेखामा मिलाउनुहोस्, त्यसपछि पठनका लागि प्रयोग गर्नुहोस् थिच्नुहोस्।"
+  },
+  "result.manualBannerTitle": {
+    "en": "Drag lines into place",
+    "hi": "रेखाओं को खींचकर सही जगह रखें",
+    "ne": "रेखाहरूलाई तानेर मिलाउनुहोस्"
+  },
+  "result.native": {
+    "en": "Native CurvEngine crease polylines",
+    "hi": "नेटिव CurvEngine रेखा पॉलीलाइन",
+    "ne": "नेटिभ CurvEngine रेखा पोलिलाइन"
+  },
+  "result.retake": {
+    "en": "Retake",
+    "hi": "फिर से लें",
+    "ne": "फेरि खिच्नुहोस्"
+  },
+  "result.selectedLine": {
+    "en": "Selected",
+    "hi": "चयनित",
+    "ne": "छानिएको"
+  },
+  "result.title": {
+    "en": "Palm Line Overlay",
+    "hi": "हस्तरेखा ओवरले",
+    "ne": "हस्तरेखा ओभरले"
+  },
+  "result.useAdjusted": {
+    "en": "Use these lines for reading",
+    "hi": "पढ़ने के लिए इन रेखाओं का उपयोग करें",
+    "ne": "यी रेखाहरू पढाइका लागि प्रयोग गर्नुहोस्"
+  },
+  "sheet.title": {
+    "en": "Samudrika Palm Analysis",
+    "hi": "सामुद्रिक हस्तरेखा विश्लेषण",
+    "ne": "सामुद्रिक हस्तरेखा विश्लेषण"
+  },
+  "status.processing": {
+    "en": "Mapping palm lines...",
+    "hi": "हथेली की रेखाएं मैप हो रही हैं...",
+    "ne": "हातका रेखाहरू म्याप हुँदैछ..."
+  }
+}

@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import org.curv.palmapp.model.LocalizedStrings
 import org.curv.palmapp.view.MainScannerScreen
 
 class MainActivity : ComponentActivity() {
@@ -31,6 +32,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Load the shared palm strings (same JSON the iOS app bundles).
+        LocalizedStrings.init(applicationContext)
 
         hasCameraPermission = ContextCompat.checkSelfPermission(
             this,

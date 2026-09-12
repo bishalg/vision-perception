@@ -2,6 +2,13 @@ import Foundation
 import Vision
 import CoreVideo
 import os.log
+import CurvPalmOverlay
+
+public struct VisionHandTrackingResult {
+    public let landmarks: [CGPoint]
+    public let chirality: VNChirality
+    public let isLeftHand: Bool
+}
 
 /**
  * High-performance hand pose tracker using Apple Vision Framework.
@@ -40,8 +47,18 @@ public final class VisionHandTracker {
         _ pixelBuffer: CVPixelBuffer,
         orientation: CGImagePropertyOrientation = .up
     ) -> [CGPoint]? {
+        processFrameWithResult(pixelBuffer, orientation: orientation)?.landmarks
+    }
+
+    /**
+     * Full tracking extraction including Apple Vision Neural Engine chirality and geometric verification.
+     */
+    public func processFrameWithResult(
+        _ pixelBuffer: CVPixelBuffer,
+        orientation: CGImagePropertyOrientation = .up
+    ) -> VisionHandTrackingResult? {
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: orientation, options: [:])
-        return run(handler: handler)
+        return runWithResult(handler: handler)
     }
 
     /**
@@ -51,11 +68,18 @@ public final class VisionHandTracker {
         _ cgImage: CGImage,
         orientation: CGImagePropertyOrientation = .up
     ) -> [CGPoint]? {
-        let handler = VNImageRequestHandler(cgImage: cgImage, orientation: orientation, options: [:])
-        return run(handler: handler)
+        processCGImageWithResult(cgImage, orientation: orientation)?.landmarks
     }
 
-    private func run(handler: VNImageRequestHandler) -> [CGPoint]? {
+    public func processCGImageWithResult(
+        _ cgImage: CGImage,
+        orientation: CGImagePropertyOrientation = .up
+    ) -> VisionHandTrackingResult? {
+        let handler = VNImageRequestHandler(cgImage: cgImage, orientation: orientation, options: [:])
+        return runWithResult(handler: handler)
+    }
+
+    private func runWithResult(handler: VNImageRequestHandler) -> VisionHandTrackingResult? {
         do {
             try handler.perform([handPoseRequest])
             guard let observation = handPoseRequest.results?.first else {
@@ -66,14 +90,31 @@ public final class VisionHandTracker {
             points.reserveCapacity(21)
 
             for key in jointKeys {
-                guard let point = try? observation.recognizedPoint(key), point.confidence > 0.2 else {
+                guard let point = try? observation.recognizedPoint(key), point.confidence > 0.15 else {
                     return nil // Incomplete hand
                 }
                 // Vision has (0, 0) at bottom-left; flip y to standard top-left
                 points.append(CGPoint(x: point.location.x, y: 1.0 - point.location.y))
             }
 
-            return points
+            // Determine chirality:
+            // 1. Primary: Apple Vision Neural Engine ML classification
+            let chirality = observation.chirality
+            let isLeft: Bool
+            if chirality == .left {
+                isLeft = true
+            } else if chirality == .right {
+                isLeft = false
+            } else {
+                // 2. Fallback: Robust anatomical lateral geometry (thumb vs pinky relative to palm centerline)
+                isLeft = HandLandmarkPose.isLeftHand(points)
+            }
+
+            return VisionHandTrackingResult(
+                landmarks: points,
+                chirality: chirality,
+                isLeftHand: isLeft
+            )
         } catch {
             logger.error("Vision hand pose detection failed: \(error.localizedDescription)")
             return nil

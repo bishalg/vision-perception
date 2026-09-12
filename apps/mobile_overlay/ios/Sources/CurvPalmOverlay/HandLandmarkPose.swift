@@ -76,19 +76,40 @@ public enum HandLandmarkPose {
         framing(from: landmarks)?.pose
     }
 
-    /// Mirrors core/geometry/RoiWarper::detectIsLeftHand — thumb/pinky side vs up vector.
+    /// Mirrors core/geometry/RoiWarper::detectIsLeftHand — robust thumb vs pinky lateral position.
     public static func isLeftHand(_ landmarks: [CGPoint]) -> Bool {
         guard landmarks.count >= 18 else { return false }
-        let p0 = landmarks[0]
-        let p5 = landmarks[5]
-        let p9 = landmarks[9]
-        let p17 = landmarks[17]
+        let p0 = landmarks[0] // wrist
+        let p9 = landmarks[9] // middle MCP
         let upX = Float(p9.x - p0.x)
         let upY = Float(p9.y - p0.y)
         let upLen = sqrt(upX*upX + upY*upY)
         guard upLen > 1e-4 else { return false }
         let rightX = -upY / upLen
         let rightY = upX / upLen
+
+        // 1. Primary: Thumb lateral vs Pinky lateral relative to palm centerline (wrist -> middle MCP)
+        if landmarks.count >= 21 {
+            let p2 = landmarks[2]  // thumb MP
+            let p4 = landmarks[4]  // thumb tip
+            let p17 = landmarks[17] // pinky MCP
+            let p20 = landmarks[20] // pinky tip
+
+            let thumbX = Float((p2.x + p4.x) * 0.5 - p0.x)
+            let thumbY = Float((p2.y + p4.y) * 0.5 - p0.y)
+            let thumbLateral = thumbX * rightX + thumbY * rightY
+
+            let pinkyX = Float((p17.x + p20.x) * 0.5 - p0.x)
+            let pinkyY = Float((p17.y + p20.y) * 0.5 - p0.y)
+            let pinkyLateral = pinkyX * rightX + pinkyY * rightY
+
+            // For palm facing camera: Left palm has thumb on the right (thumbLateral > pinkyLateral)
+            return thumbLateral > pinkyLateral
+        }
+
+        // 2. Fallback: Index MCP (p5) to Pinky MCP (p17) dot product
+        let p5 = landmarks[5]
+        let p17 = landmarks[17]
         let palmWX = Float(p17.x - p5.x)
         let palmWY = Float(p17.y - p5.y)
         let dot = palmWX * rightX + palmWY * rightY
