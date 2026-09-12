@@ -275,10 +275,10 @@ public enum CreaseLineType: String, CaseIterable, Identifiable {
 
     public var hexColor: String {
         switch self {
-        case .heart: return "#F43F5E" // Crimson Rose
-        case .head: return "#06B6D4"  // Electric Cyan
-        case .life: return "#10B981"  // Emerald Green
-        case .fate: return "#8B5CF6"  // Royal Violet
+        case .heart: return "#FF2D55" // Crimson Rose
+        case .head: return "#007AFF"  // Sapphire Blue (pure vibrant blue, completely distinct from green)
+        case .life: return "#34C759"  // Vibrant Emerald Green
+        case .fate: return "#AF52DE"  // Royal Violet
         }
     }
 }

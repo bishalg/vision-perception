@@ -5,10 +5,10 @@ import CurvPalmOverlay
 /**
  * Post-capture review: photo + verified crease overlays.
  * Phase 2 of Palm Scanner workflow:
- * - Clean display of detected crease polylines
- * - Top-right standard iOS Edit button opens dedicated CreaseLineEditorView
- * - Reachable safe-area close button
- * - Retake or proceed to Samudrika Reading Analysis
+ * - Native navigation bar (Cancel / title+subtitle / Edit) via NavigationStack.
+ * - Native List of detected crease lines; tap a row to open the precision editor.
+ * - Native bordered button styles for Retake / Analyze Reading.
+ * - The photo canvas itself stays custom (no native equivalent for crease overlays).
  */
 public struct CaptureResultView: View {
     public let image: UIImage?
@@ -61,181 +61,85 @@ public struct CaptureResultView: View {
     }
 
     public var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-
+        NavigationStack {
             VStack(spacing: 0) {
-                // Top Safe-Area Navigation Header
-                HStack(alignment: .center) {
-                    // Reachable Close Button
-                    Button(action: onDismiss) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 28))
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(.white.opacity(0.85))
-                            .shadow(color: .black.opacity(0.5), radius: 4)
+                // Captured Image and Detected Creases Canvas
+                photoCanvas
+
+                // Detected lines as a native list
+                List {
+                    Section(
+                        String(
+                            format: LocalizedStrings.tr("result.detectedCreases", lang: selectedLanguage),
+                            splines.count
+                        )
+                    ) {
+                        ForEach(splines) { spline in
+                            Button {
+                                selectedSplineId = spline.id
+                                showEditor = true
+                            } label: {
+                                lineRow(spline)
+                            }
+                        }
                     }
-                    .frame(width: 44, height: 44)
-
-                    Spacer()
-
+                }
+                .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
+            }
+            .background(Color.black.ignoresSafeArea())
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(action: onDismiss) {
+                        Text(LocalizedStrings.tr("editor.cancel", lang: selectedLanguage))
+                    }
+                }
+                ToolbarItem(placement: .principal) {
                     VStack(spacing: 2) {
                         Text(LocalizedStrings.tr("result.title", lang: selectedLanguage))
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
+                            .font(.headline)
                         Text(sourceSubtitle)
-                            .font(.system(size: 11, weight: .regular))
-                            .foregroundColor(.white.opacity(0.55))
-                            .fixedSize(horizontal: false, vertical: true)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
-
-                    Spacer()
-
-                    // Standard iOS Edit Button on top-right of header
+                    .foregroundStyle(.white)
+                }
+                ToolbarItem(placement: .primaryAction) {
                     Button {
                         showEditor = true
                     } label: {
-                        HStack(spacing: 5) {
-                            Image(systemName: "slider.horizontal.3")
-                                .font(.system(size: 14, weight: .semibold))
-                            Text(LocalizedStrings.tr("result.edit", lang: selectedLanguage))
-                                .font(.system(size: 14, weight: .semibold))
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(
-                            Capsule()
-                                .fill(Color.white.opacity(0.14))
-                                .overlay(Capsule().stroke(Color.white.opacity(0.22), lineWidth: 1))
-                        )
+                        Label(LocalizedStrings.tr("result.edit", lang: selectedLanguage), systemImage: "slider.horizontal.3")
                     }
                 }
-                .padding(.top, 50) // Safe-area top padding below notch / Dynamic Island
-                .padding(.horizontal, 16)
-                .padding(.bottom, 10)
-                .background(Color.black.opacity(0.80).background(.ultraThinMaterial))
-                .zIndex(10)
-
-                // Captured Image and Detected Creases Canvas
-                GeometryReader { proxy in
-                    let imageSize = image?.size ?? proxy.size
-                    let drawRect = ImageCoordinateMapper.imageRect(
-                        imageSize: imageSize,
-                        viewSize: proxy.size,
-                        mode: .fit
-                    )
-
-                    ZStack {
-                        Color.black
-
-                        if let image {
-                            Image(uiImage: image)
-                                .resizable()
-                                .frame(width: drawRect.width, height: drawRect.height)
-                                .position(x: drawRect.midX, y: drawRect.midY)
-                        } else {
-                            Text("No photo")
-                                .foregroundColor(.white.opacity(0.5))
-                        }
-
-                        LinearGradient(
-                            colors: [Color.black.opacity(0.2), Color.clear, Color.black.opacity(0.3)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                        .allowsHitTesting(false)
-
-                        HandOutlineOverlay(landmarks: landmarks, imageRect: drawRect)
-                            .allowsHitTesting(false)
-
-                        CreaseSplineOverlayView(
-                            splines: splines,
-                            imageRect: drawRect,
-                            selectedSplineId: selectedSplineId,
-                            isEditing: false,
-                            isFallback: overlaySource == .landmarkFallback
-                        )
+            }
+            .safeAreaInset(edge: .bottom) {
+                // Retake / Analyze Reading action bar with native button styles
+                HStack(spacing: 12) {
+                    Button(action: onRetake) {
+                        Label(LocalizedStrings.tr("result.retake", lang: selectedLanguage), systemImage: "arrow.counterclockwise")
+                            .frame(maxWidth: 110)
                     }
-                }
-                .frame(maxHeight: .infinity)
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                    .tint(.white)
 
-                // Bottom Verification Summary Card
-                VStack(spacing: 14) {
-                    // Header inside card
-                    HStack {
-                        Text("Detected Creases (\(splines.count))")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundColor(.white.opacity(0.9))
-
-                        Spacer()
-
-                        Button {
-                            showEditor = true
-                        } label: {
-                            Text("Edit Points")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(Color(hex: "34C759"))
-                        }
-                    }
-
-                    // Detected lines list
-                    VStack(spacing: 8) {
-                        ForEach(splines) { spline in
-                            lineRow(spline)
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    selectedSplineId = spline.id
-                                    showEditor = true
-                                }
-                        }
-                    }
-
-                    // Bottom Navigation Buttons: [Retake] on left, [Analyze Reading ➔] on right
-                    HStack(spacing: 12) {
-                        Button(action: onRetake) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "arrow.counterclockwise")
-                                Text(LocalizedStrings.tr("result.retake", lang: selectedLanguage))
-                            }
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 14)
-                            .background(
-                                Capsule()
-                                    .fill(Color.white.opacity(0.10))
-                                    .overlay(Capsule().stroke(Color.white.opacity(0.18), lineWidth: 1))
-                            )
-                        }
-                        .frame(width: 110)
-
-                        Button(action: onProceedToAnalysis) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "sparkles")
-                                Text(LocalizedStrings.tr("result.continueReading", lang: selectedLanguage))
-                            }
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundColor(.black)
+                    Button(action: onProceedToAnalysis) {
+                        Label(LocalizedStrings.tr("result.continueReading", lang: selectedLanguage), systemImage: "sparkles")
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(Capsule().fill(Color(hex: "34C759")))
-                            .shadow(color: Color(hex: "34C759").opacity(0.35), radius: 8, y: 2)
-                        }
-                        .disabled(splines.isEmpty)
-                        .opacity(splines.isEmpty ? 0.5 : 1)
                     }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .tint(Color(hex: "34C759"))
+                    .disabled(splines.isEmpty)
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 28)
-                .background(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(Color(white: 0.12))
-                        .ignoresSafeArea(edges: .bottom)
-                )
+                .padding(.vertical, 12)
+                .background(.ultraThinMaterial)
             }
         }
+        .preferredColorScheme(.dark)
         .fullScreenCover(isPresented: $showEditor) {
             CreaseLineEditorView(
                 image: image,
@@ -250,43 +154,84 @@ public struct CaptureResultView: View {
         }
     }
 
+    // MARK: - Photo canvas (custom: crease overlays have no native equivalent)
+
+    private var photoCanvas: some View {
+        GeometryReader { proxy in
+            let imageSize = image?.size ?? proxy.size
+            let drawRect = ImageCoordinateMapper.imageRect(
+                imageSize: imageSize,
+                viewSize: proxy.size,
+                mode: .fit
+            )
+
+            ZStack {
+                Color.black
+
+                if let image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .frame(width: drawRect.width, height: drawRect.height)
+                        .position(x: drawRect.midX, y: drawRect.midY)
+                } else {
+                    Text(LocalizedStrings.tr("result.noPhoto", lang: selectedLanguage))
+                        .foregroundStyle(.secondary)
+                }
+
+                LinearGradient(
+                    colors: [Color.black.opacity(0.2), Color.clear, Color.black.opacity(0.3)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .allowsHitTesting(false)
+
+                HandOutlineOverlay(landmarks: landmarks, imageRect: drawRect)
+                    .allowsHitTesting(false)
+
+                CreaseSplineOverlayView(
+                    splines: splines,
+                    imageRect: drawRect,
+                    selectedSplineId: selectedSplineId,
+                    isEditing: false,
+                    isFallback: overlaySource == .landmarkFallback
+                )
+            }
+        }
+        .frame(minHeight: 220)
+    }
+
+    // MARK: - Native list row
+
     @ViewBuilder
     private func lineRow(_ spline: CreaseSpline) -> some View {
         HStack(spacing: 10) {
             Capsule()
                 .fill(Color(hex: spline.lineType.hexColor))
                 .frame(width: 18, height: 5)
-                .shadow(color: Color(hex: spline.lineType.hexColor).opacity(0.6), radius: 4)
 
-            Text(LocalizedStrings.tr(spline.lineType.displayNameKey, lang: selectedLanguage))
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(.white)
-
-            if spline.isUserAdjusted {
-                Text("•").foregroundColor(Color(hex: "34C759"))
-                Text(LocalizedStrings.tr("result.adjusted", lang: selectedLanguage))
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(hex: "34C759"))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(LocalizedStrings.tr(spline.lineType.displayNameKey, lang: selectedLanguage))
+                    .font(.headline)
+                HStack(spacing: 4) {
+                    Text("\(spline.points.count) pts")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if spline.isUserAdjusted {
+                        Text(LocalizedStrings.tr("result.adjusted", lang: selectedLanguage))
+                            .font(.caption)
+                            .foregroundStyle(Color(hex: "34C759"))
+                    }
+                }
             }
 
             Spacer()
 
             Text("\(Int(spline.confidence * 100))%")
-                .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundColor(Color(hex: "34C759"))
-                .padding(.horizontal, 7).padding(.vertical, 3)
-                .background(Capsule().fill(Color(hex: "34C759").opacity(0.14)))
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.white.opacity(0.25))
+                .font(.subheadline.monospacedDigit())
+                .bold()
+                .foregroundStyle(Color(hex: "34C759"))
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color.white.opacity(0.04))
-        )
+        .foregroundStyle(.white)
     }
 }
 

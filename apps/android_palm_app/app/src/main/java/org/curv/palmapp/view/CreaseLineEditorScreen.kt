@@ -9,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -22,20 +23,29 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Undo
+import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -100,7 +110,7 @@ fun CreaseLineEditorScreen(
     val initialSplines = remember(cleanInitial) { cleanInitial }
     val history = remember { mutableStateListOf<List<CreaseSpline>>() }
     var selectedSplineId by remember(cleanInitial) { mutableStateOf(cleanInitial.firstOrNull()?.id) }
-    var selectedVertexIndex by remember { mutableStateOf<Int?>(0) }
+    var selectedVertexIndex by remember { mutableStateOf<Int?>(null) }
 
     var isDrawMode by remember { mutableStateOf(false) }
     val freehandCanvasPoints = remember { mutableStateListOf<Offset>() }
@@ -129,10 +139,8 @@ fun CreaseLineEditorScreen(
         panOffset = Offset.Zero
     }
 
-    // Loupe state.
+    // Drag state.
     var isDraggingVertex by remember { mutableStateOf(false) }
-    var loupeLocation by remember { mutableStateOf(Offset.Zero) }
-    var loupeNormPoint by remember { mutableStateOf(Offset.Zero) }
 
     val activeSpline = workingSplines.firstOrNull { it.id == selectedSplineId }
 
@@ -164,7 +172,9 @@ fun CreaseLineEditorScreen(
             return
         }
         pushHistory()
-        val normDrawn = freehandCanvasPoints.map { canvasPt ->
+        // 3-tap moving-average smoothing filter to eliminate finger digitizer micro-jitter
+        val smoothedCanvas = smoothPoints(freehandCanvasPoints.toList())
+        val normDrawn = smoothedCanvas.map { canvasPt ->
             val unmapped = ImageCoordinateMapper.unmap(canvasPt, drawRect)
             Offset(
                 unmapped.x.coerceIn(0.01f, 0.99f),
@@ -177,7 +187,7 @@ fun CreaseLineEditorScreen(
         }
         freehandCanvasPoints.clear()
         view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-        updateCoaching("New curve created", 2.5)
+        updateCoaching(LocalizedStrings.tr("editor.coachingCreated", selectedLanguage), 2.5)
     }
 
     LaunchedEffect(Unit) {
@@ -185,49 +195,16 @@ fun CreaseLineEditorScreen(
     }
 
     Column(modifier = modifier.fillMaxSize().background(Color.Black)) {
-        // Top navigation bar.
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 50.dp, start = 16.dp, end = 16.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = LocalizedStrings.tr("editor.cancel", selectedLanguage),
-                color = Color.White.copy(alpha = 0.85f),
-                fontSize = 15.sp,
-                modifier = Modifier.clip(CircleShape).background(Color.White.copy(alpha = 0.12f))
-                    .clickable { onDismiss() }.padding(horizontal = 12.dp, vertical = 7.dp)
-            )
-            Spacer(Modifier.weight(1f))
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = LocalizedStrings.tr("editor.title", selectedLanguage),
-                    color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold
-                )
-                if (activeSpline != null) {
-                    Text(
-                        text = LocalizedStrings.tr(activeSpline.lineType.displayNameKey, selectedLanguage),
-                        color = parseHex(activeSpline.lineType.hexColor),
-                        fontSize = 12.sp, fontWeight = FontWeight.SemiBold
-                    )
-                }
+        // Native top app bar (status-bar insets handled by TopAppBar itself).
+        EditorTopBar(
+            selectedLanguage = selectedLanguage,
+            activeSpline = activeSpline,
+            onDismiss = onDismiss,
+            onDone = {
+                view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                onDone(workingSplines)
             }
-            Spacer(Modifier.weight(1f))
-            Row(
-                modifier = Modifier.clip(CircleShape).background(Color(0xFF34C759))
-                    .clickable {
-                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                        onDone(workingSplines)
-                    }.padding(horizontal = 16.dp, vertical = 7.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp)
-            ) {
-                Icon(Icons.Default.Check, null, tint = Color.Black, modifier = Modifier.size(14.dp))
-                Text(
-                    text = LocalizedStrings.tr("editor.done", selectedLanguage),
-                    color = Color.Black, fontSize = 15.sp, fontWeight = FontWeight.Bold
-                )
-            }
-        }
+        )
 
         // Main canvas area.
         BoxWithConstraints(
@@ -316,8 +293,6 @@ fun CreaseLineEditorScreen(
                                         selectedSplineId = spline.id
                                         val unmapped = ImageCoordinateMapper.unmap(change.position, baseDrawRect)
                                         moveVertex(spline.id, vIdx, unmapped)
-                                        loupeLocation = change.position
-                                        loupeNormPoint = unmapped
                                     }
                                 }
                                 change.consume()
@@ -328,7 +303,7 @@ fun CreaseLineEditorScreen(
                                 } else if (isDraggingVertex) {
                                     isDraggingVertex = false
                                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                    updateCoaching("Curve updated", 2.0)
+                                    updateCoaching(LocalizedStrings.tr("editor.coachingUpdated", selectedLanguage), 2.0)
                                 }
                             },
                             onDragCancel = {
@@ -359,74 +334,72 @@ fun CreaseLineEditorScreen(
                     modifier = Modifier.fillMaxSize()
                 )
                 // Handles for the active spline in Adjust mode.
+                // Mid points: 5dp pinpoint dot (resting).
+                // Start / End points: 10dp small dot circle (resting, twice the mid dot).
+                // Clicked / Dragged: Smoothly grows into 26dp hollow reticle (zero-occlusion, 100% transparent center).
                 if (!isDrawMode && activeSpline != null) {
                     val spline = activeSpline
                     val dotColor = parseHex(spline.lineType.hexColor)
                     for ((index, pt) in spline.points.withIndex()) {
                         val canvasPt = ImageCoordinateMapper.map(Offset(pt.x, pt.y), baseDrawRect)
-                        val canvasDp = with(density) {
-                            Offset(canvasPt.x.toDp().value, canvasPt.y.toDp().value)
-                        }
-                        // Positions are in px; convert via density-aware offset below.
                         val xDp = with(density) { canvasPt.x.toDp() }
                         val yDp = with(density) { canvasPt.y.toDp() }
                         val isStart = index == 0
+                        val isEnd = index == spline.points.size - 1
+                        val isEndpoint = isStart || isEnd
                         val isSelected = index == selectedVertexIndex
-                        val ringDiameter: Dp = 22.dp
+
                         Box(
                             modifier = Modifier.offset(x = xDp - 22.dp, y = yDp - 22.dp)
                                 .size(44.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            // Selection subtle halo
                             if (isSelected) {
+                                // Active Expanded State: Precision Hollow Reticle (Zero-Occlusion)
                                 Box(
-                                    modifier = Modifier.size(ringDiameter + 8.dp)
+                                    modifier = Modifier.size(34.dp)
                                         .border(1.5.dp, Color.White.copy(alpha = 0.85f), CircleShape)
                                 )
+                                Box(
+                                    modifier = Modifier.size(26.dp)
+                                        .border(3.5.dp, Color.Black.copy(alpha = 0.60f), CircleShape)
+                                )
+                                Box(
+                                    modifier = Modifier.size(26.dp)
+                                        .border(2.2.dp, dotColor, CircleShape)
+                                )
+                                Box(
+                                    modifier = Modifier.size(21.dp)
+                                        .border(0.8.dp, Color.White.copy(alpha = 0.85f), CircleShape)
+                                )
+                            } else if (isEndpoint) {
+                                // Resting Endpoint (Start / End): Small Dot Circle (10dp, twice the mid dot)
+                                Box(
+                                    modifier = Modifier.size(10.dp)
+                                        .border(2.5.dp, Color.Black.copy(alpha = 0.50f), CircleShape)
+                                )
+                                Box(
+                                    modifier = Modifier.size(10.dp)
+                                        .border(1.8.dp, dotColor, CircleShape)
+                                )
+                                Box(
+                                    modifier = Modifier.size(3.5.dp)
+                                        .background(Color.White, CircleShape)
+                                )
+                            } else {
+                                // Resting Mid Points: Almost Dot Only (5dp pinpoint dot)
+                                Box(
+                                    modifier = Modifier.size(7.dp)
+                                        .background(Color.Black.copy(alpha = 0.50f), CircleShape)
+                                )
+                                Box(
+                                    modifier = Modifier.size(5.dp)
+                                        .background(dotColor, CircleShape)
+                                        .border(0.7.dp, Color.White.copy(alpha = 0.90f), CircleShape)
+                                )
                             }
-                            // Outer dark shadow ring for high contrast
-                            Box(
-                                modifier = Modifier.size(ringDiameter)
-                                    .border(3.dp, Color.Black.copy(alpha = 0.50f), CircleShape)
-                            )
-                            // Precision hollow ring: stroke only, 100% transparent center!
-                            Box(
-                                modifier = Modifier.size(ringDiameter)
-                                    .border(2.dp, dotColor, CircleShape)
-                            )
-                            // Inner delicate guide ring
-                            Box(
-                                modifier = Modifier.size(ringDiameter - 4.dp)
-                                    .border(0.8.dp, Color.White.copy(alpha = 0.8f), CircleShape)
-                            )
                         }
-                        // Silence unused warning for canvasDp parity computations.
-                        @Suppress("UNUSED_EXPRESSION")
-                        canvasDp
                     }
-                }
-            }
-
-            // Floating 2.4x magnifying loupe while dragging.
-            if (isDraggingVertex && bitmap != null) {
-                val density2 = LocalDensity.current
-                val loupeDp = 104.dp
-                val lx = with(density2) { loupeLocation.x.toDp() } * 1f
-                val ly = with(density2) { loupeLocation.y.toDp() }
-                // Position above the finger; coordinates here are unscaled canvas px.
-                Box(
-                    modifier = Modifier.offset(
-                        x = (lx - loupeDp / 2),
-                        y = (ly - 85.dp - loupeDp / 2).coerceAtLeast(8.dp)
-                    ).size(loupeDp)
-                ) {
-                    MagnifyingLoupe(
-                        bitmap = bitmap,
-                        focusNorm = loupeNormPoint,
-                        lineColor = activeSpline?.let { parseHex(it.lineType.hexColor) } ?: Color.White,
-                        diameter = loupeDp
-                    )
                 }
             }
 
@@ -458,7 +431,7 @@ fun CreaseLineEditorScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text("✦", color = Color(0xFF34C759), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Icon(Icons.Filled.AutoAwesome, null, tint = Color(0xFF34C759), modifier = Modifier.size(14.dp))
                         Text(dynamicHint, color = Color.White.copy(alpha = 0.95f), fontSize = 12.sp)
                     }
                     Spacer(Modifier.weight(1f))
@@ -466,186 +439,214 @@ fun CreaseLineEditorScreen(
             }
         }
 
-        // Bottom floating control studio.
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp)
-                .padding(top = 12.dp, bottom = 22.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Line selection tabs.
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(workingSplines, key = { it.id }) { spline ->
-                    val isSelected = spline.id == selectedSplineId
-                    val color = parseHex(spline.lineType.hexColor)
-                    Row(
-                        modifier = Modifier.clip(CircleShape)
-                            .background(if (isSelected) color.copy(alpha = 0.28f) else Color.White.copy(alpha = 0.08f))
-                            .border(
-                                1.dp,
-                                if (isSelected) color else Color.White.copy(alpha = 0.15f),
-                                CircleShape
-                            )
-                            .clickable {
-                                selectedSplineId = spline.id
-                                selectedVertexIndex = 0
-                                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                                updateCoaching(
-                                    "Selected ${LocalizedStrings.tr(spline.lineType.displayNameKey, selectedLanguage)}",
-                                    2.0
-                                )
-                            }
-                            .padding(horizontal = 14.dp, vertical = 7.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Box(Modifier.size(8.dp).clip(CircleShape).background(color))
-                        Text(
-                            text = LocalizedStrings.tr(spline.lineType.displayNameKey, selectedLanguage),
-                            color = if (isSelected) Color.White else Color.White.copy(alpha = 0.65f),
-                            fontSize = 13.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                        )
+        // Native line selector + bottom tool bar.
+        EditorBottomStudio(
+            workingSplines = workingSplines,
+            selectedSplineId = selectedSplineId,
+            selectedLanguage = selectedLanguage,
+            isDrawMode = isDrawMode,
+            canUndo = history.isNotEmpty(),
+            onSelectSpline = { spline ->
+                selectedSplineId = spline.id
+                selectedVertexIndex = null
+                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                updateCoaching(
+                    LocalizedStrings.tr("editor.coachingSelected", selectedLanguage)
+                        .replace("{name}", LocalizedStrings.tr(spline.lineType.displayNameKey, selectedLanguage)),
+                    2.0
+                )
+            },
+            onAdjust = {
+                isDrawMode = false
+                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                updateCoaching(LocalizedStrings.tr("editor.hintAdjust", selectedLanguage), 3.5)
+            },
+            onDraw = {
+                isDrawMode = true
+                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                updateCoaching(LocalizedStrings.tr("editor.hintDraw", selectedLanguage), 4.0)
+            },
+            onUndo = {
+                val prev = history.removeLastOrNull()
+                if (prev != null) {
+                    workingSplines = prev
+                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                }
+                updateCoaching(LocalizedStrings.tr("editor.coachingUndone", selectedLanguage), 2.0)
+            },
+            onReset = {
+                val sid = selectedSplineId
+                val sIndex = workingSplines.indexOfFirst { it.id == sid }
+                val initial = initialSplines.firstOrNull { it.id == sid }
+                if (sIndex >= 0 && initial != null) {
+                    pushHistory()
+                    workingSplines = workingSplines.toMutableList().also { it[sIndex] = initial }
+                    selectedVertexIndex = null
+                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                }
+                updateCoaching(LocalizedStrings.tr("editor.coachingReset", selectedLanguage), 2.0)
+            },
+            onReassign = { type ->
+                val sid = selectedSplineId
+                val idx = workingSplines.indexOfFirst { it.id == sid }
+                if (idx >= 0) {
+                    pushHistory()
+                    workingSplines = workingSplines.toMutableList().also {
+                        it[idx] = workingSplines[idx].replacing(lineType = type)
                     }
+                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                    updateCoaching(
+                        LocalizedStrings.tr("editor.coachingReassigned", selectedLanguage)
+                            .replace("{name}", LocalizedStrings.tr(type.displayNameKey, selectedLanguage)),
+                        2.5
+                    )
                 }
             }
+        )
+    }
+}
 
-            // 5-tool equal row: Adjust | Draw | Undo | Reset | Label.
-            Row(modifier = Modifier.fillMaxWidth()) {
-                EditorToolButton(
-                    icon = "Adjust",
-                    title = LocalizedStrings.tr("editor.toolAdjust", selectedLanguage),
-                    isActive = !isDrawMode,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    isDrawMode = false
-                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                    updateCoaching(LocalizedStrings.tr("editor.hintAdjust", selectedLanguage), 3.5)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditorTopBar(
+    selectedLanguage: AppLanguage,
+    activeSpline: CreaseSpline?,
+    onDismiss: () -> Unit,
+    onDone: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            Column {
+                Text(
+                    text = LocalizedStrings.tr("editor.title", selectedLanguage),
+                    style = MaterialTheme.typography.titleLarge
+                )
+                if (activeSpline != null) {
+                    Text(
+                        text = LocalizedStrings.tr(activeSpline.lineType.displayNameKey, selectedLanguage),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = parseHex(activeSpline.lineType.hexColor)
+                    )
                 }
-                EditorToolButton(
-                    icon = "Draw",
-                    title = LocalizedStrings.tr("editor.toolDraw", selectedLanguage),
-                    isActive = isDrawMode,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    isDrawMode = true
-                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                    updateCoaching(LocalizedStrings.tr("editor.hintDraw", selectedLanguage), 4.0)
-                }
-                EditorToolButton(
-                    icon = "Undo",
-                    title = LocalizedStrings.tr("editor.toolUndo", selectedLanguage),
-                    isDisabled = history.isEmpty(),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    val prev = history.removeLastOrNull()
-                    if (prev != null) {
-                        workingSplines = prev
-                        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                    }
-                    updateCoaching("Action undone", 2.0)
-                }
-                EditorToolButton(
-                    icon = "Reset",
-                    title = LocalizedStrings.tr("editor.toolReset", selectedLanguage),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    val sid = selectedSplineId
-                    val sIndex = workingSplines.indexOfFirst { it.id == sid }
-                    val initial = initialSplines.firstOrNull { it.id == sid }
-                    if (sIndex >= 0 && initial != null) {
-                        pushHistory()
-                        workingSplines = workingSplines.toMutableList().also { it[sIndex] = initial }
-                        selectedVertexIndex = 0
-                        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                    }
-                    updateCoaching("Line reset to original", 2.0)
-                }
-                // Label tool (reassign line type).
-                var labelMenu by remember { mutableStateOf(false) }
-                Box(modifier = Modifier.weight(1f)) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().clickable { labelMenu = true }
-                            .padding(vertical = 6.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(Icons.Default.Tag, null, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(18.dp))
-                        Text(
-                            text = LocalizedStrings.tr("editor.toolLabel", selectedLanguage),
-                            color = Color.White.copy(alpha = 0.85f), fontSize = 10.sp
-                        )
-                    }
-                    DropdownMenu(expanded = labelMenu, onDismissRequest = { labelMenu = false }) {
-                        CreaseLineType.values().forEach { type ->
-                            DropdownMenuItem(
-                                text = { Text(LocalizedStrings.tr(type.displayNameKey, selectedLanguage)) },
-                                onClick = {
-                                    val sid = selectedSplineId
-                                    val idx = workingSplines.indexOfFirst { it.id == sid }
-                                    if (idx >= 0) {
-                                        pushHistory()
-                                        workingSplines = workingSplines.toMutableList().also {
-                                            it[idx] = workingSplines[idx].replacing(lineType = type)
-                                        }
-                                        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                                        updateCoaching(
-                                            "Reassigned to ${LocalizedStrings.tr(type.displayNameKey, selectedLanguage)}",
-                                            2.5
-                                        )
-                                    }
-                                    labelMenu = false
-                                }
+            }
+        },
+        navigationIcon = {
+            TextButton(onClick = onDismiss) {
+                Text(LocalizedStrings.tr("editor.cancel", selectedLanguage))
+            }
+        },
+        actions = {
+            Button(onClick = onDone) {
+                Icon(Icons.Filled.Check, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.size(4.dp))
+                Text(LocalizedStrings.tr("editor.done", selectedLanguage))
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.Black,
+            titleContentColor = Color.White,
+            navigationIconContentColor = Color.White,
+            actionIconContentColor = Color.Black
+        )
+    )
+}
+
+/** Native segmented line selector + bottom navigation-bar tools. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditorBottomStudio(
+    workingSplines: List<CreaseSpline>,
+    selectedSplineId: String?,
+    selectedLanguage: AppLanguage,
+    isDrawMode: Boolean,
+    canUndo: Boolean,
+    onSelectSpline: (CreaseSpline) -> Unit,
+    onAdjust: () -> Unit,
+    onDraw: () -> Unit,
+    onUndo: () -> Unit,
+    onReset: () -> Unit,
+    onReassign: (CreaseLineType) -> Unit
+) {
+    var labelMenu by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Line selector: native single-choice segmented buttons.
+        SingleChoiceSegmentedButtonRow(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            workingSplines.forEachIndexed { index, spline ->
+                SegmentedButton(
+                    selected = spline.id == selectedSplineId,
+                    onClick = { onSelectSpline(spline) },
+                    shape = SegmentedButtonDefaults.itemShape(index, workingSplines.size),
+                    icon = {
+                        SegmentedButtonDefaults.Icon(active = spline.id == selectedSplineId) {
+                            Box(
+                                Modifier.size(8.dp).clip(CircleShape)
+                                    .background(parseHex(spline.lineType.hexColor))
                             )
                         }
+                    },
+                    label = {
+                        Text(
+                            text = LocalizedStrings.tr(spline.lineType.displayNameKey, selectedLanguage),
+                            maxLines = 1
+                        )
                     }
+                )
+            }
+        }
+
+        // Five tools as a native bottom navigation bar.
+        Box(modifier = Modifier.fillMaxWidth()) {
+            NavigationBar(containerColor = Color.Transparent) {
+                NavigationBarItem(
+                    selected = !isDrawMode,
+                    onClick = onAdjust,
+                    icon = { Icon(Icons.Filled.Tune, null) },
+                    label = { Text(LocalizedStrings.tr("editor.toolAdjust", selectedLanguage)) }
+                )
+                NavigationBarItem(
+                    selected = isDrawMode,
+                    onClick = onDraw,
+                    icon = { Icon(Icons.Filled.Edit, null) },
+                    label = { Text(LocalizedStrings.tr("editor.toolDraw", selectedLanguage)) }
+                )
+                NavigationBarItem(
+                    selected = false,
+                    enabled = canUndo,
+                    onClick = onUndo,
+                    icon = { Icon(Icons.Filled.Undo, null) },
+                    label = { Text(LocalizedStrings.tr("editor.toolUndo", selectedLanguage)) }
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = onReset,
+                    icon = { Icon(Icons.Filled.Refresh, null) },
+                    label = { Text(LocalizedStrings.tr("editor.toolReset", selectedLanguage)) }
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = { labelMenu = true },
+                    icon = { Icon(Icons.Filled.Tag, null) },
+                    label = { Text(LocalizedStrings.tr("editor.toolLabel", selectedLanguage)) }
+                )
+            }
+            // Relabel menu anchored to the bottom bar (native dropdown).
+            DropdownMenu(expanded = labelMenu, onDismissRequest = { labelMenu = false }) {
+                CreaseLineType.values().forEach { type ->
+                    DropdownMenuItem(
+                        text = { Text(LocalizedStrings.tr(type.displayNameKey, selectedLanguage)) },
+                        onClick = {
+                            onReassign(type)
+                            labelMenu = false
+                        }
+                    )
                 }
             }
         }
     }
 }
-
-@Composable
-private fun EditorToolButton(
-    icon: String,
-    title: String,
-    isActive: Boolean = false,
-    isDisabled: Boolean = false,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    Column(
-        modifier = modifier.clickable(enabled = !isDisabled) { onClick() }
-            .padding(vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        val imageVector = when (icon) {
-            "Draw" -> Icons.Default.Tune
-            "Undo" -> Icons.Default.Undo
-            "Reset" -> Icons.Default.Refresh
-            else -> Icons.Default.Tune
-        }
-        Icon(
-            imageVector = imageVector,
-            contentDescription = null,
-            tint = when {
-                isDisabled -> Color.White.copy(alpha = 0.25f)
-                isActive -> Color(0xFF34C759)
-                else -> Color.White.copy(alpha = 0.85f)
-            },
-            modifier = Modifier.size(18.dp)
-        )
-        Text(
-            text = title,
-            color = when {
-                isDisabled -> Color.White.copy(alpha = 0.25f)
-                isActive -> Color(0xFF34C759)
-                else -> Color.White.copy(alpha = 0.85f)
-            },
-            fontSize = 10.sp,
-            fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium
-        )
-    }
 }
 
 private fun parseHex(hex: String): Color {
@@ -734,51 +735,19 @@ private fun buildEditorCatmullRom(points: List<Offset>): androidx.compose.ui.gra
     return path
 }
 
-/**
- * Floating 2.4x circular magnifying loupe over the touch point.
- * Port of iOS MagnifyingLoupeView (104dp diameter).
- */
-@Composable
-private fun MagnifyingLoupe(
-    bitmap: Bitmap,
-    focusNorm: Offset,
-    lineColor: Color,
-    diameter: Dp,
-    modifier: Modifier = Modifier
-) {
-    val imageBitmap = remember(bitmap) { bitmap.asImageBitmap() }
-    val zoomFactor = 2.4f
-    Box(
-        modifier = modifier.size(diameter).clip(CircleShape)
-            .background(Color.Black)
-            .border(2.5.dp, lineColor, CircleShape),
-        contentAlignment = Alignment.Center
-    ) {
-        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize().clip(CircleShape)) {
-            val imgW = imageBitmap.width.toFloat()
-            val imgH = imageBitmap.height.toFloat()
-            val focusX = focusNorm.x.coerceIn(0f, 1f) * imgW
-            val focusY = focusNorm.y.coerceIn(0f, 1f) * imgH
-            val dstSize = size
-            // Source window in bitmap px that fills the loupe at 2.4x.
-            // dstSize is in canvas px; bitmap px per canvas px:
-            val pxPerCanvasX = imgW / size.width.coerceAtLeast(1f)
-            val pxPerCanvasY = imgH / size.height.coerceAtLeast(1f)
-            val srcW = (dstSize.width / zoomFactor) * pxPerCanvasX
-            val srcH = (dstSize.height / zoomFactor) * pxPerCanvasY
-            val srcLeft = (focusX - srcW / 2f).coerceIn(0f, (imgW - srcW).coerceAtLeast(0f))
-            val srcTop = (focusY - srcH / 2f).coerceIn(0f, (imgH - srcH).coerceAtLeast(0f))
-            drawImage(
-                image = imageBitmap,
-                srcOffset = androidx.compose.ui.unit.IntOffset(srcLeft.toInt(), srcTop.toInt()),
-                srcSize = androidx.compose.ui.unit.IntSize(srcW.toInt().coerceAtLeast(1), srcH.toInt().coerceAtLeast(1)),
-                dstOffset = androidx.compose.ui.unit.IntOffset.Zero,
-                dstSize = androidx.compose.ui.unit.IntSize(dstSize.width.toInt(), dstSize.height.toInt())
-            )
-        }
-        Box(
-            Modifier.size(8.dp).clip(CircleShape).background(lineColor)
-                .border(1.5.dp, Color.White, CircleShape)
-        )
+/** 3-tap moving-average smoothing filter to eliminate finger digitizer micro-jitter (parity with iOS). */
+private fun smoothPoints(pts: List<Offset>): List<Offset> {
+    if (pts.size <= 3) return pts
+    val result = mutableListOf<Offset>()
+    result.add(pts.first())
+    for (i in 1 until pts.size - 1) {
+        val prev = pts[i - 1]
+        val curr = pts[i]
+        val next = pts[i + 1]
+        val sx = (prev.x * 0.25f) + (curr.x * 0.50f) + (next.x * 0.25f)
+        val sy = (prev.y * 0.25f) + (curr.y * 0.50f) + (next.y * 0.25f)
+        result.add(Offset(sx, sy))
     }
+    result.add(pts.last())
+    return result
 }

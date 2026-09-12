@@ -76,8 +76,9 @@ public struct MainScannerView: View {
                             Button(action: { showCorridors.toggle() }) {
                                 HStack(spacing: 4) {
                                     Image(systemName: showCorridors ? "dot.scope" : "circle.dotted")
-                                    Text("Corridors")
-                                        .font(.system(size: 11, weight: .semibold))
+                                    Text(LocalizedStrings.tr("camera.corridors", lang: viewModel.currentLanguage))
+                                        .font(.footnote)
+                                        .bold()
                                 }
                                 .foregroundColor(.white.opacity(showCorridors ? 0.95 : 0.6))
                                 .padding(.horizontal, 10)
@@ -88,6 +89,9 @@ public struct MainScannerView: View {
                                         .overlay(Capsule().stroke(Color.white.opacity(showCorridors ? 0.5 : 0.2), lineWidth: 0.8))
                                 )
                             }
+                            .accessibilityLabel(LocalizedStrings.tr("camera.corridors", lang: viewModel.currentLanguage))
+                            .accessibilityValue(showCorridors ? Text("On") : Text("Off"))
+                            .accessibilityAddTraits(.isToggle)
                             Spacer()
                         }
                         .padding(.horizontal, 22)
@@ -164,11 +168,13 @@ public struct MainScannerView: View {
                     .zIndex(3)
                 }
             }
+            // The viewfinder is a media surface: always dark, like the native Camera app.
+            .preferredColorScheme(.dark)
         }
         .ignoresSafeArea()
         .animation(.easeInOut(duration: 0.22), value: viewModel.showResultViewer)
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: viewModel.capturedImage != nil)
-        // Phase 3: Dedicated Samudrika Reading Sheet
+        // Phase 3: Dedicated Samudrika Reading Sheet (native sheet chrome)
         .sheet(isPresented: $viewModel.showAnalysisReading) {
             SamudrikaReadingSheet(
                 result: viewModel.analysisResult,
@@ -178,6 +184,8 @@ public struct MainScannerView: View {
                 onLanguageChange: { viewModel.currentLanguage = $0 },
                 onRetake: { viewModel.retake() }
             )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
         // Camera Session Lifecycle Management (Stop feed to conserve battery during review & reading)
         .onChange(of: viewModel.showResultViewer) { showing in

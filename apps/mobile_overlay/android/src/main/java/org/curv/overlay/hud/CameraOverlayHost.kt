@@ -67,7 +67,7 @@ fun CameraOverlayHost(
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.AutoAwesome,
+                imageVector = Icons.Filled.AutoAwesome,
                 contentDescription = null,
                 tint = OverlayEmerald,
                 modifier = Modifier.size(16.dp)

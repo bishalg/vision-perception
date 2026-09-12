@@ -6,18 +6,21 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import org.curv.palmapp.model.LocalizedStrings
+import org.curv.palmapp.ui.theme.PalmAppTheme
 import org.curv.palmapp.view.MainScannerScreen
 
 class MainActivity : ComponentActivity() {
@@ -46,24 +49,28 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            MaterialTheme {
-                if (hasCameraPermission) {
-                    MainScannerScreen()
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black),
-                        contentAlignment = Alignment.Center
-                    ) {
+            PalmAppTheme {
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    if (hasCameraPermission) {
+                        MainScannerScreen()
+                    } else {
                         Column(
+                            modifier = Modifier.fillMaxSize().padding(24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                            verticalArrangement = Arrangement.Center
                         ) {
+                            Icon(
+                                Icons.Filled.Videocam,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.size(16.dp))
                             Text(
                                 text = "Camera permission is required for palm perception.",
-                                color = Color.White
+                                style = MaterialTheme.typography.bodyLarge
                             )
+                            Spacer(Modifier.size(16.dp))
                             Button(onClick = {
                                 permissionLauncher.launch(Manifest.permission.CAMERA)
                             }) {

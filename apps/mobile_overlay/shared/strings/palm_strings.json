@@ -9,6 +9,11 @@
     "hi": "फिर से लें",
     "ne": "पुनः खिच्नुहोस्"
   },
+  "camera.corridors": {
+    "en": "Corridors",
+    "hi": "कॉरिडोर",
+    "ne": "कोरिडोर"
+  },
   "editor.addPoint": {
     "en": "+ Point",
     "hi": "+ बिंदु",
@@ -18,6 +23,36 @@
     "en": "Cancel",
     "hi": "रद्द करें",
     "ne": "रद्द गर्नुहोस्"
+  },
+  "editor.coachingCreated": {
+    "en": "New curve created",
+    "hi": "नई रेखा बन गई",
+    "ne": "नयाँ रेखा बन्यो"
+  },
+  "editor.coachingReassigned": {
+    "en": "Reassigned to {name}",
+    "hi": "{name} पर पुनः नामांकित",
+    "ne": "{name} मा पुनः नाम राखियो"
+  },
+  "editor.coachingReset": {
+    "en": "Line reset to original",
+    "hi": "रेखा मूल स्थिति में लौट आई",
+    "ne": "रेखा सुरुको अवस्थामा फर्कियो"
+  },
+  "editor.coachingSelected": {
+    "en": "Selected {name}",
+    "hi": "{name} चुना गया",
+    "ne": "{name} छानियो"
+  },
+  "editor.coachingUndone": {
+    "en": "Action undone",
+    "hi": "कार्य पूर्ववत हुआ",
+    "ne": "कार्य फिर्ता भयो"
+  },
+  "editor.coachingUpdated": {
+    "en": "Curve updated",
+    "hi": "रेखा अपडेट हो गई",
+    "ne": "रेखा अद्यावधिक भयो"
   },
   "editor.done": {
     "en": "Done",
@@ -204,6 +239,11 @@
     "hi": "सामुद्रिक विश्लेषण देखें",
     "ne": "सामुद्रिक विश्लेषण हेर्नुहोस्"
   },
+  "result.detectedCreases": {
+    "en": "Detected Creases (%d)",
+    "hi": "पाई गई रेखाएँ (%d)",
+    "ne": "फेला परेका रेखाहरू (%d)"
+  },
   "result.doneEdit": {
     "en": "Done",
     "hi": "हो गया",
@@ -244,6 +284,11 @@
     "hi": "नेटिव CurvEngine रेखा पॉलीलाइन",
     "ne": "नेटिभ CurvEngine रेखा पोलिलाइन"
   },
+  "result.noPhoto": {
+    "en": "No photo",
+    "hi": "कोई फ़ोटो नहीं",
+    "ne": "फोटो छैन"
+  },
   "result.retake": {
     "en": "Retake",
     "hi": "फिर से लें",
@@ -263,6 +308,11 @@
     "en": "Use these lines for reading",
     "hi": "पढ़ने के लिए इन रेखाओं का उपयोग करें",
     "ne": "यी रेखाहरू पढाइका लागि प्रयोग गर्नुहोस्"
+  },
+  "result.verified": {
+    "en": "verified",
+    "hi": "सत्यापित",
+    "ne": "प्रमाणित"
   },
   "sheet.title": {
     "en": "Samudrika Palm Analysis",

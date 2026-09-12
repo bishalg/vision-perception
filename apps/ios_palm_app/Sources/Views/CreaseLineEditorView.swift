@@ -40,10 +40,8 @@ public struct CreaseLineEditorView: View {
     @State private var panOffset: CGSize = .zero
     @State private var lastPanOffset: CGSize = .zero
 
-    // Loupe / Magnifier state
+    // Drag state
     @State private var isDraggingVertex: Bool = false
-    @State private var loupeLocation: CGPoint = .zero
-    @State private var loupeNormPoint: CGPoint = .zero
 
     private let lightHaptic = UIImpactFeedbackGenerator(style: .light)
     private let mediumHaptic = UIImpactFeedbackGenerator(style: .medium)
@@ -69,9 +67,7 @@ public struct CreaseLineEditorView: View {
         self._workingSplines = State(initialValue: clean)
         self.initialSplines = clean
         self._selectedSplineId = State(initialValue: clean.first?.id)
-        if let first = clean.first, !first.points.isEmpty {
-            self._selectedVertexIndex = State(initialValue: 0)
-        }
+        self._selectedVertexIndex = State(initialValue: nil)
     }
 
     private var activeSpline: CreaseSpline? {
@@ -79,20 +75,16 @@ public struct CreaseLineEditorView: View {
     }
 
     public var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
+        NavigationStack {
+            ZStack {
+                Color.black.ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                // Top Navigation Bar
-                navigationHeader
-                    .padding(.top, 50)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
-                    .background(Color.black.opacity(0.85).background(.ultraThinMaterial))
-                    .zIndex(20)
+                VStack(spacing: 0) {
+                    // Native segmented line selector (Heart / Head / Life / Fate)
+                    linePicker
 
-                // Main Canvas Area
-                ZStack(alignment: .top) {
+                    // Main Canvas Area
+                    ZStack(alignment: .top) {
                     GeometryReader { proxy in
                         let canvasSize = proxy.size
                         let imageSize = image?.size ?? canvasSize
@@ -195,14 +187,11 @@ public struct CreaseLineEditorView: View {
                                                         y: min(max(unmapped.y, 0.01), 0.99)
                                                     )
                                                     moveVertex(splineId: spline.id, index: index, to: clamped)
-
-                                                    loupeLocation = value.location
-                                                    loupeNormPoint = clamped
                                                 }
                                                 .onEnded { _ in
                                                     isDraggingVertex = false
                                                     mediumHaptic.impactOccurred()
-                                                    updateCoaching(text: "Curve updated", autoDismissAfter: 2.0)
+                                                    updateCoaching(text: LocalizedStrings.tr("editor.coachingUpdated", lang: selectedLanguage), autoDismissAfter: 2.0)
                                                 }
                                         )
                                     }
@@ -252,21 +241,6 @@ public struct CreaseLineEditorView: View {
                                         lastPanOffset = panOffset
                                     }
                             )
-
-                            // Floating 2.4x Magnifying Loupe
-                            if isDraggingVertex, let img = image {
-                                MagnifyingLoupeView(
-                                    image: img,
-                                    focusPointNorm: loupeNormPoint,
-                                    lineColor: activeSpline.map { Color(hex: $0.lineType.hexColor) } ?? .white
-                                )
-                                .position(
-                                    x: min(max(loupeLocation.x + panOffset.width, 60), canvasSize.width - 60),
-                                    y: max(loupeLocation.y + panOffset.height - 85, 60)
-                                )
-                                .transition(.scale(scale: 0.7).combined(with: .opacity))
-                                .zIndex(30)
-                            }
 
                             // Floating 1.0x Reset Zoom Button
                             if zoomScale > 1.05 {
@@ -319,25 +293,134 @@ public struct CreaseLineEditorView: View {
                         .zIndex(15)
                     }
                 }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+            .toolbarBackground(.ultraThinMaterial, for: .bottomBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(action: onDismiss) {
+                        Text(LocalizedStrings.tr("editor.cancel", lang: selectedLanguage))
+                    }
+                }
+                ToolbarItem(placement: .principal) {
+                    VStack(spacing: 2) {
+                        Text(LocalizedStrings.tr("editor.title", lang: selectedLanguage))
+                            .font(.headline)
+                        if let spline = activeSpline {
+                            Text(LocalizedStrings.tr(spline.lineType.displayNameKey, lang: selectedLanguage))
+                                .font(.caption)
+                                .foregroundStyle(Color(hex: spline.lineType.hexColor))
+                        }
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(action: {
+                        mediumHaptic.impactOccurred()
+                        onDone(workingSplines)
+                    }) {
+                        Text(LocalizedStrings.tr("editor.done", lang: selectedLanguage))
+                            .bold()
+                    }
+                }
+                ToolbarItemGroup(placement: .bottomBar) {
+                    // Native bottom-bar tools: [Adjust] [Draw] [Undo] [Reset] [Label]
+                    Button {
+                        isDrawMode = false
+                        lightHaptic.impactOccurred()
+                        updateCoaching(text: LocalizedStrings.tr("editor.hintAdjust", lang: selectedLanguage), autoDismissAfter: 3.5)
+                    } label: {
+                        Label(LocalizedStrings.tr("editor.toolAdjust", lang: selectedLanguage), systemImage: "slider.horizontal.3")
+                    }
+                    .tint(!isDrawMode ? Color(hex: "34C759") : .white)
 
-                // Bottom Floating Control Studio
-                bottomToolbar
-                    .padding(.horizontal, 14)
-                    .padding(.top, 12)
-                    .padding(.bottom, 22)
-                    .background(
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .fill(Color(white: 0.10))
-                            .ignoresSafeArea(edges: .bottom)
-                    )
-                    .zIndex(20)
+                    Spacer()
+
+                    Button {
+                        isDrawMode = true
+                        lightHaptic.impactOccurred()
+                        updateCoaching(text: LocalizedStrings.tr("editor.hintDraw", lang: selectedLanguage), autoDismissAfter: 4.0)
+                    } label: {
+                        Label(LocalizedStrings.tr("editor.toolDraw", lang: selectedLanguage), systemImage: "pencil.line")
+                    }
+                    .tint(isDrawMode ? Color(hex: "34C759") : .white)
+
+                    Spacer()
+
+                    Button {
+                        undo()
+                        updateCoaching(text: LocalizedStrings.tr("editor.coachingUndone", lang: selectedLanguage), autoDismissAfter: 2.0)
+                    } label: {
+                        Label(LocalizedStrings.tr("editor.toolUndo", lang: selectedLanguage), systemImage: "arrow.uturn.backward")
+                    }
+                    .disabled(history.isEmpty)
+
+                    Spacer()
+
+                    Button {
+                        resetActiveLine()
+                        updateCoaching(text: LocalizedStrings.tr("editor.coachingReset", lang: selectedLanguage), autoDismissAfter: 2.0)
+                    } label: {
+                        Label(LocalizedStrings.tr("editor.toolReset", lang: selectedLanguage), systemImage: "arrow.counterclockwise")
+                    }
+
+                    Spacer()
+
+                    if let spline = activeSpline {
+                        Menu {
+                            ForEach(CreaseLineType.allCases) { type in
+                                Button(LocalizedStrings.tr(type.displayNameKey, lang: selectedLanguage)) {
+                                    pushHistory()
+                                    reassign(splineId: spline.id, to: type)
+                                    updateCoaching(text: coachingReassigned(name: LocalizedStrings.tr(type.displayNameKey, lang: selectedLanguage)), autoDismissAfter: 2.5)
+                                }
+                            }
+                        } label: {
+                            Label(LocalizedStrings.tr("editor.toolLabel", lang: selectedLanguage), systemImage: "tag.fill")
+                        }
+                    }
+                }
             }
         }
+        }
+        .preferredColorScheme(.dark)
         .onAppear {
             lightHaptic.prepare()
             mediumHaptic.prepare()
             updateCoaching(text: LocalizedStrings.tr("editor.hintAdjust", lang: selectedLanguage), autoDismissAfter: 4.0)
         }
+    }
+
+    // MARK: - Native segmented line selector
+
+    private var linePicker: some View {
+        Picker("Line", selection: $selectedSplineId) {
+            ForEach(workingSplines) { spline in
+                Text(LocalizedStrings.tr(spline.lineType.displayNameKey, lang: selectedLanguage))
+                    .tag(spline.id as String?)
+            }
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .onChange(of: selectedSplineId) { _ in
+            selectedVertexIndex = nil
+            lightHaptic.impactOccurred()
+            if let id = selectedSplineId,
+               let spline = workingSplines.first(where: { $0.id == id }) {
+                updateCoaching(text: coachingSelected(name: LocalizedStrings.tr(spline.lineType.displayNameKey, lang: selectedLanguage)), autoDismissAfter: 2.0)
+            }
+        }
+    }
+
+    private func coachingSelected(name: String) -> String {
+        LocalizedStrings.tr("editor.coachingSelected", lang: selectedLanguage)
+            .replacingOccurrences(of: "{name}", with: name)
+    }
+
+    private func coachingReassigned(name: String) -> String {
+        LocalizedStrings.tr("editor.coachingReassigned", lang: selectedLanguage)
+            .replacingOccurrences(of: "{name}", with: name)
     }
 
     // MARK: - Dynamic Coaching Helper
@@ -358,10 +441,13 @@ public struct CreaseLineEditorView: View {
         }
     }
 
-    // MARK: - Precision Hollow Reticle (Zero-Occlusion: Palm Crease 100% Visible Below Ring)
+    // MARK: - Precision Control Handle View
+    // Mid points: 5pt pinpoint dot (resting).
+    // Start / End points: 10pt small dot circle (resting, twice the mid dot).
+    // Clicked / Dragged: Smoothly grows into 26pt hollow reticle (zero-occlusion, 100% transparent center).
     @ViewBuilder
     private func controlHandleView(color: Color, isStart: Bool, isEnd: Bool, isSelected: Bool) -> some View {
-        let ringDiameter: CGFloat = 22
+        let isEndpoint = isStart || isEnd
 
         ZStack {
             // Invisible 44x44pt touch area for effortless finger target
@@ -369,218 +455,57 @@ public struct CreaseLineEditorView: View {
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
 
-            // Selection glow halo
             if isSelected {
+                // Active Expanded State: Precision Hollow Reticle (Zero-Occlusion)
+                // Outer glow
                 Circle()
                     .stroke(Color.white.opacity(0.85), lineWidth: 1.5)
-                    .frame(width: ringDiameter + 8, height: ringDiameter + 8)
+                    .frame(width: 34, height: 34)
                     .shadow(color: color.opacity(0.8), radius: 4)
-            }
 
-            // Outer shadow ring for crisp contrast on light/dark palm skin
-            Circle()
-                .stroke(Color.black.opacity(0.50), lineWidth: 3.5)
-                .frame(width: ringDiameter, height: ringDiameter)
+                // Dark contrast border for high visibility on light & dark skin
+                Circle()
+                    .stroke(Color.black.opacity(0.60), lineWidth: 3.5)
+                    .frame(width: 26, height: 26)
 
-            // Precision hollow ring: stroke only, 100% transparent center!
-            Circle()
-                .stroke(color, lineWidth: 2.2)
-                .frame(width: ringDiameter, height: ringDiameter)
+                // Precision colored ring (hollow transparent center)
+                Circle()
+                    .stroke(color, lineWidth: 2.2)
+                    .frame(width: 26, height: 26)
 
-            // Inner delicate guide ring
-            Circle()
-                .stroke(Color.white.opacity(0.8), lineWidth: 0.8)
-                .frame(width: ringDiameter - 4, height: ringDiameter - 4)
-        }
-    }
+                // Inner delicate guide ring
+                Circle()
+                    .stroke(Color.white.opacity(0.85), lineWidth: 0.8)
+                    .frame(width: 21, height: 21)
+            } else if isEndpoint {
+                // Resting Endpoint (Start / End): Small Dot Circle (10pt, twice the mid dot)
+                Circle()
+                    .stroke(Color.black.opacity(0.50), lineWidth: 2.5)
+                    .frame(width: 10, height: 10)
 
-    // MARK: - Navigation Header
-    private var navigationHeader: some View {
-        HStack(alignment: .center) {
-            Button(action: onDismiss) {
-                Text(LocalizedStrings.tr("editor.cancel", lang: selectedLanguage))
-                    .font(.system(size: 15, weight: .regular))
-                    .foregroundColor(.white.opacity(0.85))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
-                    .background(Capsule().fill(Color.white.opacity(0.12)))
-            }
+                Circle()
+                    .stroke(color, lineWidth: 1.8)
+                    .frame(width: 10, height: 10)
 
-            Spacer()
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: 3.5, height: 3.5)
+            } else {
+                // Resting Mid Points: Almost Dot Only (5pt pinpoint dot)
+                Circle()
+                    .fill(Color.black.opacity(0.50))
+                    .frame(width: 7, height: 7)
 
-            VStack(spacing: 2) {
-                Text(LocalizedStrings.tr("editor.title", lang: selectedLanguage))
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
+                Circle()
+                    .fill(color)
+                    .frame(width: 5, height: 5)
 
-                if let spline = activeSpline {
-                    Text(LocalizedStrings.tr(spline.lineType.displayNameKey, lang: selectedLanguage))
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(Color(hex: spline.lineType.hexColor))
-                }
-            }
-
-            Spacer()
-
-            Button(action: {
-                mediumHaptic.impactOccurred()
-                onDone(workingSplines)
-            }) {
-                HStack(spacing: 5) {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 13, weight: .bold))
-                    Text(LocalizedStrings.tr("editor.done", lang: selectedLanguage))
-                        .font(.system(size: 15, weight: .bold))
-                }
-                .foregroundColor(.black)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 7)
-                .background(Capsule().fill(Color(hex: "34C759")))
-                .shadow(color: Color(hex: "34C759").opacity(0.35), radius: 6)
+                Circle()
+                    .stroke(Color.white.opacity(0.90), lineWidth: 0.7)
+                    .frame(width: 5, height: 5)
             }
         }
-    }
-
-    // MARK: - Bottom Toolbar (Unified 5-Tool Bar: Icon Over Text)
-    private var bottomToolbar: some View {
-        VStack(spacing: 12) {
-            // Line Selection Tabs (Heart, Head, Life, Fate)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(workingSplines) { spline in
-                        let isSelected = spline.id == selectedSplineId
-                        let color = Color(hex: spline.lineType.hexColor)
-
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                selectedSplineId = spline.id
-                                selectedVertexIndex = 0
-                            }
-                            lightHaptic.impactOccurred()
-                            updateCoaching(text: "Selected \(LocalizedStrings.tr(spline.lineType.displayNameKey, lang: selectedLanguage))", autoDismissAfter: 2.0)
-                        } label: {
-                            HStack(spacing: 6) {
-                                Circle().fill(color).frame(width: 8, height: 8)
-                                Text(LocalizedStrings.tr(spline.lineType.displayNameKey, lang: selectedLanguage))
-                                    .font(.system(size: 13, weight: isSelected ? .bold : .medium))
-                                    .foregroundColor(isSelected ? .white : .white.opacity(0.65))
-                            }
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 7)
-                            .background(
-                                Capsule()
-                                    .fill(isSelected ? color.opacity(0.28) : Color.white.opacity(0.08))
-                                    .overlay(
-                                        Capsule().stroke(isSelected ? color : Color.white.opacity(0.15), lineWidth: 1)
-                                    )
-                            )
-                        }
-                    }
-                }
-                .padding(.horizontal, 4)
-            }
-
-            // Clean 5-Column Equal Tool Row: [Adjust] [Draw] [Undo] [Reset] [Label]
-            HStack(spacing: 0) {
-                // 1. Adjust Tool
-                toolButton(
-                    icon: "slider.horizontal.3",
-                    title: LocalizedStrings.tr("editor.toolAdjust", lang: selectedLanguage),
-                    isActive: !isDrawMode
-                ) {
-                    isDrawMode = false
-                    lightHaptic.impactOccurred()
-                    updateCoaching(text: LocalizedStrings.tr("editor.hintAdjust", lang: selectedLanguage), autoDismissAfter: 3.5)
-                }
-
-                // 2. Draw Tool
-                toolButton(
-                    icon: "pencil.line",
-                    title: LocalizedStrings.tr("editor.toolDraw", lang: selectedLanguage),
-                    isActive: isDrawMode
-                ) {
-                    isDrawMode = true
-                    lightHaptic.impactOccurred()
-                    updateCoaching(text: LocalizedStrings.tr("editor.hintDraw", lang: selectedLanguage), autoDismissAfter: 4.0)
-                }
-
-                // 3. Undo Tool
-                toolButton(
-                    icon: "arrow.uturn.backward",
-                    title: LocalizedStrings.tr("editor.toolUndo", lang: selectedLanguage),
-                    isDisabled: history.isEmpty
-                ) {
-                    undo()
-                    updateCoaching(text: "Action undone", autoDismissAfter: 2.0)
-                }
-
-                // 4. Reset Tool
-                toolButton(
-                    icon: "arrow.counterclockwise",
-                    title: LocalizedStrings.tr("editor.toolReset", lang: selectedLanguage)
-                ) {
-                    resetActiveLine()
-                    updateCoaching(text: "Line reset to original", autoDismissAfter: 2.0)
-                }
-
-                // 5. Line Type Menu Tool
-                if let spline = activeSpline {
-                    Menu {
-                        ForEach(CreaseLineType.allCases) { type in
-                            Button(LocalizedStrings.tr(type.displayNameKey, lang: selectedLanguage)) {
-                                pushHistory()
-                                reassign(splineId: spline.id, to: type)
-                                updateCoaching(text: "Reassigned to \(LocalizedStrings.tr(type.displayNameKey, lang: selectedLanguage))", autoDismissAfter: 2.5)
-                            }
-                        }
-                    } label: {
-                        VStack(spacing: 4) {
-                            Image(systemName: "tag.fill")
-                                .font(.system(size: 18, weight: .semibold))
-                            Text(LocalizedStrings.tr("editor.toolLabel", lang: selectedLanguage))
-                                .font(.system(size: 10, weight: .medium))
-                        }
-                        .foregroundColor(.white.opacity(0.85))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
-                        .contentShape(Rectangle())
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: - Equal-Width Tool Button Component
-    @ViewBuilder
-    private func toolButton(
-        icon: String,
-        title: String,
-        isActive: Bool = false,
-        isDisabled: Bool = false,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            VStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.system(size: 18, weight: isActive ? .bold : .semibold))
-                Text(title)
-                    .font(.system(size: 10, weight: isActive ? .bold : .medium))
-            }
-            .foregroundColor(
-                isDisabled
-                    ? .white.opacity(0.25)
-                    : (isActive ? Color(hex: "34C759") : .white.opacity(0.85))
-            )
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 6)
-            .background(
-                isActive
-                    ? RoundedRectangle(cornerRadius: 12).fill(Color(hex: "34C759").opacity(0.14))
-                    : RoundedRectangle(cornerRadius: 12).fill(Color.clear)
-            )
-            .contentShape(Rectangle())
-        }
-        .disabled(isDisabled)
+        .animation(.spring(response: 0.28, dampingFraction: 0.72), value: isSelected)
     }
 
     // MARK: - Logic & Actions
@@ -622,7 +547,10 @@ public struct CreaseLineEditorView: View {
         }
         pushHistory()
 
-        let normDrawn = freehandCanvasPoints.map { canvasPt in
+        // 1. Moving-average smoothing filter to eliminate finger digitizer micro-jitter
+        let smoothedPoints = Self.smoothPoints(freehandCanvasPoints)
+
+        let normDrawn = smoothedPoints.map { canvasPt in
             let unmapped = ImageCoordinateMapper.unmap(canvasPt, from: baseDrawRect)
             return CGPoint(
                 x: min(max(unmapped.x, 0.01), 0.99),
@@ -634,7 +562,24 @@ public struct CreaseLineEditorView: View {
         workingSplines[sIndex] = workingSplines[sIndex].replacing(points: fourPoints, markAdjusted: true)
         freehandCanvasPoints.removeAll()
         mediumHaptic.impactOccurred()
-        updateCoaching(text: "New curve created", autoDismissAfter: 2.5)
+        updateCoaching(text: LocalizedStrings.tr("editor.coachingCreated", lang: selectedLanguage), autoDismissAfter: 2.5)
+    }
+
+    /// 3-tap moving-average smoothing filter to produce silky-smooth drawn curves.
+    private static func smoothPoints(_ pts: [CGPoint]) -> [CGPoint] {
+        guard pts.count > 3 else { return pts }
+        var result: [CGPoint] = []
+        result.append(pts.first!)
+        for i in 1..<(pts.count - 1) {
+            let prev = pts[i - 1]
+            let curr = pts[i]
+            let next = pts[i + 1]
+            let sx = (prev.x * 0.25) + (curr.x * 0.50) + (next.x * 0.25)
+            let sy = (prev.y * 0.25) + (curr.y * 0.50) + (next.y * 0.25)
+            result.append(CGPoint(x: sx, y: sy))
+        }
+        result.append(pts.last!)
+        return result
     }
 
     private func resetActiveLine() {
@@ -643,7 +588,7 @@ public struct CreaseLineEditorView: View {
               let initial = initialSplines.first(where: { $0.id == sid }) else { return }
         pushHistory()
         workingSplines[sIndex] = initial
-        selectedVertexIndex = 0
+        selectedVertexIndex = nil
         lightHaptic.impactOccurred()
     }
 
@@ -651,66 +596,5 @@ public struct CreaseLineEditorView: View {
         guard let idx = workingSplines.firstIndex(where: { $0.id == splineId }) else { return }
         workingSplines[idx] = workingSplines[idx].replacing(lineType: newType, markAdjusted: true)
         lightHaptic.impactOccurred()
-    }
-}
-
-// MARK: - Magnifying Loupe View (2.4x circular zoom floating over touch)
-private struct MagnifyingLoupeView: View {
-    let image: UIImage
-    let focusPointNorm: CGPoint
-    let lineColor: Color
-    private let diameter: CGFloat = 104
-
-    var body: some View {
-        ZStack {
-            GeometryReader { _ in
-                let imgSize = image.size
-                let zoomFactor: CGFloat = 2.4
-                let imgW = imgSize.width * zoomFactor
-                let imgH = imgSize.height * zoomFactor
-
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: imgW, height: imgH)
-                    .position(
-                        x: diameter * 0.5 + (0.5 - focusPointNorm.x) * imgW,
-                        y: diameter * 0.5 + (0.5 - focusPointNorm.y) * imgH
-                    )
-            }
-            .frame(width: diameter, height: diameter)
-            .clipShape(Circle())
-
-            // Loupe frame border
-            Circle()
-                .stroke(lineColor, lineWidth: 2.5)
-                .frame(width: diameter, height: diameter)
-                .shadow(color: lineColor.opacity(0.6), radius: 8)
-
-            // Fine precision crosshairs with open center aperture (zero occlusion)
-            Path { p in
-                let mid = diameter * 0.5
-                let gap: CGFloat = 8
-                let arm: CGFloat = 16
-                // Horizontal
-                p.move(to: CGPoint(x: mid - gap - arm, y: mid))
-                p.addLine(to: CGPoint(x: mid - gap, y: mid))
-                p.move(to: CGPoint(x: mid + gap, y: mid))
-                p.addLine(to: CGPoint(x: mid + gap + arm, y: mid))
-                // Vertical
-                p.move(to: CGPoint(x: mid, y: mid - gap - arm))
-                p.addLine(to: CGPoint(x: mid, y: mid - gap))
-                p.move(to: CGPoint(x: mid, y: mid + gap))
-                p.addLine(to: CGPoint(x: mid, y: mid + gap + arm))
-            }
-            .stroke(Color.white.opacity(0.9), lineWidth: 1.2)
-
-            // Open center reticle ring (100% transparent inside)
-            Circle()
-                .stroke(lineColor, lineWidth: 1.5)
-                .frame(width: 14, height: 14)
-        }
-        .frame(width: diameter, height: diameter)
-        .shadow(color: .black.opacity(0.6), radius: 10, y: 4)
     }
 }

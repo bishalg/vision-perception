@@ -140,10 +140,10 @@ data class PalmAnalysisResponse(
 }
 
 enum class CreaseLineType(val lineName: String, val hexColor: String, val displayNameKey: String) {
-    HEART("heart", "#F43F5E", "line.heart"),
-    HEAD("head", "#06B6D4", "line.head"),
-    LIFE("life", "#10B981", "line.life"),
-    FATE("fate", "#8B5CF6", "line.fate")
+    HEART("heart", "#FF2D55", "line.heart"),
+    HEAD("head", "#007AFF", "line.head"),
+    LIFE("life", "#34C759", "line.life"),
+    FATE("fate", "#AF52DE", "line.fate")
 }
 
 enum class CreaseOverlaySource {

@@ -3,17 +3,17 @@ package org.curv.palmapp.view
 import android.view.HapticFeedbackConstants
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -32,9 +32,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.curv.overlay.camera.CameraSession
 import org.curv.overlay.hud.CameraOverlayHost
@@ -43,6 +41,7 @@ import org.curv.overlay.palm.HandSideToggle
 import org.curv.overlay.palm.PalmSilhouette
 import org.curv.overlay.palm.RegionOverlayView
 import org.curv.palmapp.controller.PalmAnalysisViewModel
+import org.curv.palmapp.model.LocalizedStrings
 
 /**
  * Palm scanner screen — 1:1 parity with iOS MainScannerView.swift.
@@ -153,39 +152,29 @@ fun MainScannerScreen(
         }
 
         // Optional corridors toggle (bottom-left, above telemetry chips).
+        // Native toggle chip: selected state + checkmark come from Material3.
         if (!showResultViewer && detectedLandmarks.isNotEmpty()) {
             Row(
                 modifier = Modifier.align(Alignment.BottomStart)
                     .padding(start = 22.dp, bottom = 134.dp)
             ) {
-                Row(
-                    modifier = Modifier.clip(CircleShape)
-                        .background(Color.Black.copy(alpha = 0.35f))
-                        .border(
-                            0.8.dp,
-                            Color.White.copy(alpha = if (showCorridors) 0.5f else 0.2f),
-                            CircleShape
-                        )
-                        .clickable {
-                            showCorridors = !showCorridors
-                            prefs.edit().putBoolean("showPalmCorridors", showCorridors).apply()
+                FilterChip(
+                    selected = showCorridors,
+                    onClick = {
+                        showCorridors = !showCorridors
+                        prefs.edit().putBoolean("showPalmCorridors", showCorridors).apply()
+                    },
+                    label = { Text(LocalizedStrings.tr("camera.corridors", currentLanguage)) },
+                    leadingIcon = if (showCorridors) {
+                        {
+                            Icon(
+                                Icons.Filled.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
                         }
-                        .padding(horizontal = 10.dp, vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = if (showCorridors) "◉" else "◌",
-                        color = Color.White.copy(alpha = if (showCorridors) 0.95f else 0.6f),
-                        fontSize = 11.sp
-                    )
-                    Text(
-                        text = "Corridors",
-                        color = Color.White.copy(alpha = if (showCorridors) 0.95f else 0.6f),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+                    } else null
+                )
             }
         }
 
