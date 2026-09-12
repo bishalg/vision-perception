@@ -647,7 +647,6 @@ private fun EditorBottomStudio(
         }
     }
 }
-}
 
 private fun parseHex(hex: String): Color {
     val c = hex.removePrefix("#").toLongOrNull(16) ?: 0xFFFFFF

@@ -255,6 +255,7 @@
 /* Begin PBXShellScriptBuildPhase section */
 		127F87FBABD344832010BD87 /* StripStaticOpenCVFramework */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);

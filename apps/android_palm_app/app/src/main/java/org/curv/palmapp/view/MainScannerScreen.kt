@@ -154,28 +154,25 @@ fun MainScannerScreen(
         // Optional corridors toggle (bottom-left, above telemetry chips).
         // Native toggle chip: selected state + checkmark come from Material3.
         if (!showResultViewer && detectedLandmarks.isNotEmpty()) {
-            Row(
+            FilterChip(
+                selected = showCorridors,
+                onClick = {
+                    showCorridors = !showCorridors
+                    prefs.edit().putBoolean("showPalmCorridors", showCorridors).apply()
+                },
+                label = { Text(LocalizedStrings.tr("camera.corridors", currentLanguage)) },
+                leadingIcon = {
+                    if (showCorridors) {
+                        Icon(
+                            Icons.Filled.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                },
                 modifier = Modifier.align(Alignment.BottomStart)
                     .padding(start = 22.dp, bottom = 134.dp)
-            ) {
-                FilterChip(
-                    selected = showCorridors,
-                    onClick = {
-                        showCorridors = !showCorridors
-                        prefs.edit().putBoolean("showPalmCorridors", showCorridors).apply()
-                    },
-                    label = { Text(LocalizedStrings.tr("camera.corridors", currentLanguage)) },
-                    leadingIcon = if (showCorridors) {
-                        {
-                            Icon(
-                                Icons.Filled.Check,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    } else null
-                )
-            }
+            )
         }
 
         // Live landmark skeleton while hand is detected.

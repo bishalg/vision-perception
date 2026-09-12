@@ -68,6 +68,7 @@ targets:
     # OTHER_LDFLAGS, so remove the copied bundle post-embed.
     postBuildScripts:
       - name: StripStaticOpenCVFramework
+        basedOnDependencyAnalysis: false
         script: |
           echo "Stripping static opencv2.framework from Frameworks (already linked statically)..."
           rm -rf "${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/opencv2.framework"

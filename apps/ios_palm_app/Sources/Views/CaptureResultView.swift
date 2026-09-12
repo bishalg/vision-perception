@@ -230,6 +230,11 @@ public struct CaptureResultView: View {
                 .font(.subheadline.monospacedDigit())
                 .bold()
                 .foregroundStyle(Color(hex: "34C759"))
+
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .bold()
+                .foregroundStyle(.tertiary)
         }
         .foregroundStyle(.white)
     }

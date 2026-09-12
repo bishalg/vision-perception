@@ -91,7 +91,7 @@ public struct MainScannerView: View {
                             }
                             .accessibilityLabel(LocalizedStrings.tr("camera.corridors", lang: viewModel.currentLanguage))
                             .accessibilityValue(showCorridors ? Text("On") : Text("Off"))
-                            .accessibilityAddTraits(.isToggle)
+                            .accessibilityAddTraits(showCorridors ? [.isButton, .isSelected] : .isButton)
                             Spacer()
                         }
                         .padding(.horizontal, 22)
