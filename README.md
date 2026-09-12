@@ -2,7 +2,7 @@
 
 > **A Reusable, Domain-Agnostic Computer Vision Perception Core**
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
 [![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational.svg)](CMakeLists.txt)
 [![Architecture: Modular C++20](https://img.shields.io/badge/Architecture-Modular%20C%2B%2B20-orange.svg)](docs/architecture.md)
 [![Milestone: 8 Complete](https://img.shields.io/badge/Milestone-8%20Complete-green.svg)](docs/roadmap.md)

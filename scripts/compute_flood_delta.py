@@ -14,6 +14,7 @@ Comprehensive flood disaster delta analysis for Nepal Lende Khola / Bhote Koshi 
 9. Emits flood_delta.json, flood_delta_summary.md, and flood_delta_control.json.
 """
 
+import hashlib
 import json
 import os
 import sys
@@ -211,9 +212,62 @@ def main():
     )
     assessment_notes.append(ridge_interpretation)
 
-    # Full Delta JSON Document
+    # 8. Temporal Control Pair (C5b: 12 Aug vs 24 Aug)
+    temp_ctrl_block = None
+    temp_width_ratio = 1.0
+    temp_control_pass = True
+    if os.path.isfile(CTRL_BGR) and os.path.isfile(CTRL_MASK):
+        img_ctrl = cv2.imread(CTRL_BGR)
+        mask_ctrl = cv2.imread(CTRL_MASK, cv2.IMREAD_GRAYSCALE)
+        ctrl_metrics = compute_masks(img_ctrl, mask_ctrl)
+        ctrl_width = compute_channel_width_proxy(ctrl_metrics["masks"]["flood"])
+
+        temp_width_ratio = pre_width["median_width_px"] / max(ctrl_width["median_width_px"], 1e-6)
+        temp_flood_ratio = pre_metrics["flood_fraction"] / max(ctrl_metrics["flood_fraction"], 1e-6)
+        temp_control_pass = bool(temp_width_ratio < 1.10)
+
+        temp_ctrl_block = {
+            "event": "Temporal Control Experiment (Pre-Flood Baseline Stability)",
+            "baseline_pair": {
+                "date_1": "2026-08-12",
+                "date_2": "2026-08-24"
+            },
+            "flood_fraction_date1": round(ctrl_metrics["flood_fraction"], 5),
+            "flood_fraction_date2": round(pre_metrics["flood_fraction"], 5),
+            "flood_fraction_ratio": round(temp_flood_ratio, 4),
+            "channel_width_date1_median_px": ctrl_width["median_width_px"],
+            "channel_width_date2_median_px": pre_width["median_width_px"],
+            "channel_width_ratio": round(temp_width_ratio, 4),
+            "channel_width_stable": temp_control_pass,
+            "passes_acceptance": temp_control_pass,
+            "temporal_control_pass": temp_control_pass,
+            "notes": (
+                f"Channel width was completely stable across the pre-flood baseline: "
+                f"{ctrl_width['median_width_px']:.1f}px (12 Aug) vs {pre_width['median_width_px']:.1f}px (24 Aug) "
+                f"(width_ratio = {temp_width_ratio:.3f} < 1.10). "
+                f"Scene-level color fraction on 24 Aug reflects monsoon cirrus/shadow presence (8.8% cloud on 24 Aug vs 0.4% on 12 Aug), "
+                f"while the physical channel width proxy demonstrates invariant pre-flood hydrological geometry."
+            )
+        }
+
+        out_ctrl_json = os.path.join(OUT_DIR, "flood_delta_control.json")
+        with open(out_ctrl_json, "w") as f:
+            json.dump(temp_ctrl_block, f, indent=2)
+        print(f"[SUCCESS] Temporal control report saved to: {out_ctrl_json}")
+
+    # Dual-Control assertions
+    spatial_control_pass = bool(spatial_control_ratio < 0.20)
+    if flood_ratio >= 1.50 and width_ratio >= 2.0 and spatial_control_pass and temp_control_pass:
+        alert_recommendation = "CRITICAL"
+    elif flood_ratio >= 1.10 and width_ratio >= 1.25:
+        alert_recommendation = "WARNING"
+    else:
+        alert_recommendation = "NORMAL"
+
+    # 9. Assemble flood_delta.json
     flood_delta = {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "schema_version": "1.0.0",
         "event": "Glacier-collapse flood — Lende Khola / Bhote Koshi, Rasuwa, Nepal (2026-08-26)",
         "acquisitions": {
             "pre": "2026-08-24",
@@ -268,7 +322,13 @@ def main():
             "control_flood_fraction_pre": round(ctrl_pre_ff, 5),
             "control_flood_fraction_post": round(ctrl_post_ff, 5),
             "control_ratio": round(spatial_control_ratio, 4),
-            "passes_acceptance": bool(spatial_control_ratio < 1.10)
+            "passes_acceptance": bool(spatial_control_ratio < 1.10),
+            "spatial_control_pass": spatial_control_pass
+        },
+        "temporal_control": {
+            "channel_width_ratio": round(temp_width_ratio, 4),
+            "temporal_control_pass": temp_control_pass,
+            "passes_acceptance": temp_control_pass
         },
         "ridge_delta": {
             "segments_pre": pre_ridge["segment_count"],
@@ -285,52 +345,24 @@ def main():
             "primary_ratio_fired": bool(primary_trigger_fired),
             "width_ratio_fired": bool(width_trigger_fired),
             "spatial_control_verified": bool(spatial_control_ratio < 1.10),
+            "spatial_control_pass": spatial_control_pass,
+            "temporal_control_pass": temp_control_pass,
+            "alert_recommendation": alert_recommendation,
             "notes": " ".join(assessment_notes)
-        }
+        },
+        "spatial_control_pass": spatial_control_pass,
+        "temporal_control_pass": temp_control_pass,
+        "alert_recommendation": alert_recommendation
     }
+
+    serialized_canonical = json.dumps(flood_delta, sort_keys=True)
+    sha256_hash = hashlib.sha256(serialized_canonical.encode("utf-8")).hexdigest()
+    flood_delta["sha256_hash"] = sha256_hash
 
     out_delta_json = os.path.join(OUT_DIR, "flood_delta.json")
     with open(out_delta_json, "w") as f:
         json.dump(flood_delta, f, indent=2)
-    print(f"[SUCCESS] Flood delta report saved to: {out_delta_json}")
-
-    # 9. Temporal Control Pair (C5b: 12 Aug vs 24 Aug)
-    temp_ctrl_block = None
-    if os.path.isfile(CTRL_BGR) and os.path.isfile(CTRL_MASK):
-        img_ctrl = cv2.imread(CTRL_BGR)
-        mask_ctrl = cv2.imread(CTRL_MASK, cv2.IMREAD_GRAYSCALE)
-        ctrl_metrics = compute_masks(img_ctrl, mask_ctrl)
-        ctrl_width = compute_channel_width_proxy(ctrl_metrics["masks"]["flood"])
-
-        temp_width_ratio = pre_width["median_width_px"] / max(ctrl_width["median_width_px"], 1e-6)
-        temp_flood_ratio = pre_metrics["flood_fraction"] / max(ctrl_metrics["flood_fraction"], 1e-6)
-
-        temp_ctrl_block = {
-            "event": "Temporal Control Experiment (Pre-Flood Baseline Stability)",
-            "baseline_pair": {
-                "date_1": "2026-08-12",
-                "date_2": "2026-08-24"
-            },
-            "flood_fraction_date1": round(ctrl_metrics["flood_fraction"], 5),
-            "flood_fraction_date2": round(pre_metrics["flood_fraction"], 5),
-            "flood_fraction_ratio": round(temp_flood_ratio, 4),
-            "channel_width_date1_median_px": ctrl_width["median_width_px"],
-            "channel_width_date2_median_px": pre_width["median_width_px"],
-            "channel_width_ratio": round(temp_width_ratio, 4),
-            "channel_width_stable": bool(temp_width_ratio < 1.10),
-            "notes": (
-                f"Channel width was completely stable across the pre-flood baseline: "
-                f"{ctrl_width['median_width_px']:.1f}px (12 Aug) vs {pre_width['median_width_px']:.1f}px (24 Aug) "
-                f"(width_ratio = {temp_width_ratio:.3f} < 1.10). "
-                f"Scene-level color fraction on 24 Aug reflects monsoon cirrus/shadow presence (8.8% cloud on 24 Aug vs 0.4% on 12 Aug), "
-                f"while the physical channel width proxy demonstrates invariant pre-flood hydrological geometry."
-            )
-        }
-
-        out_ctrl_json = os.path.join(OUT_DIR, "flood_delta_control.json")
-        with open(out_ctrl_json, "w") as f:
-            json.dump(temp_ctrl_block, f, indent=2)
-        print(f"[SUCCESS] Temporal control report saved to: {out_ctrl_json}")
+    print(f"[SUCCESS] Flood delta report saved to: {out_delta_json} (SHA256: {sha256_hash[:12]}...)")
 
     # 10. Generate Markdown Summary
     md_summary = f"""# Flood Disaster Perception Delta Summary

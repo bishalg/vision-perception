@@ -153,3 +153,113 @@ The `PerceptionEvidence` model is the canonical, immutable contract emitted by t
 1. **Precision**: Floating-point sub-pixel positions ($x, y$) must retain at least 4 decimal places when serialized to JSON.
 2. **Coordinate Orientation**: Standard image coordinates where $(0.0, 0.0)$ is the upper-left corner of the raster image, $+X$ points rightward, $+Y$ points downward. Angles are expressed in radians in the range $[-\pi, \pi]$.
 3. **Empty Collections**: When zero ridges or junctions are detected, the respective JSON arrays must be emitted as `[]` rather than `null`.
+
+---
+
+## 4. Standardized Flood Evidence Export Schema (`flood_evidence_v1.json`)
+
+> **Specification**: `flood_evidence_v1`  
+> **Applicability**: Public client agents (NVIDIA Nemotron on Nebius Token Factory, AWS Bedrock Agents, Cesium 3D Digital Twin).  
+> **IP Boundary Guarantee**: Strictly language-neutral geometric and hydrological observations. Zero internal engine parameters (no $\sigma$, no Hessian eigenvalues, no memory pointers).
+
+### 4.1 JSON Schema
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FloodEvidenceV1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "event_id",
+    "timestamp_iso",
+    "payload_sha256",
+    "frame_dimensions",
+    "quality",
+    "spatial_features",
+    "hydrology_metrics",
+    "controls",
+    "alert_recommendation"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0.0" },
+    "event_id": { "type": "string" },
+    "timestamp_iso": { "type": "string", "format": "date-time" },
+    "payload_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "frame_dimensions": {
+      "type": "object",
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "required": ["is_usable", "blur_score"],
+      "properties": {
+        "is_usable": { "type": "boolean" },
+        "blur_score": { "type": "number" },
+        "recommendation": { "type": "string" }
+      }
+    },
+    "spatial_features": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["feature_id", "feature_class", "confidence", "point_count", "points"],
+        "properties": {
+          "feature_id": { "type": "string" },
+          "feature_class": {
+            "type": "string",
+            "enum": ["river_channel", "tributary", "minor_feature", "waterline", "flood_polygon"]
+          },
+          "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+          "total_length_px": { "type": "number", "minimum": 0.0 },
+          "point_count": { "type": "integer", "minimum": 1 },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["x", "y"],
+              "properties": {
+                "x": { "type": "number" },
+                "y": { "type": "number" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "hydrology_metrics": {
+      "type": "object",
+      "required": ["total_features", "river_channel_count", "tributary_count", "total_feature_length_px"],
+      "properties": {
+        "total_features": { "type": "integer" },
+        "river_channel_count": { "type": "integer" },
+        "tributary_count": { "type": "integer" },
+        "total_feature_length_px": { "type": "number" },
+        "max_feature_length_px": { "type": "number" },
+        "mean_feature_length_px": { "type": "number" },
+        "junction_count": { "type": "integer" },
+        "median_channel_width_px": { "type": "number" },
+        "channel_width_ratio": { "type": "number" }
+      }
+    },
+    "controls": {
+      "type": "object",
+      "required": ["spatial_control_pass", "temporal_control_pass"],
+      "properties": {
+        "spatial_control_pass": { "type": "boolean" },
+        "temporal_control_pass": { "type": "boolean" },
+        "spatial_control_ratio": { "type": "number" },
+        "temporal_control_ratio": { "type": "number" }
+      }
+    },
+    "alert_recommendation": {
+      "type": "string",
+      "enum": ["CRITICAL", "WARNING", "NORMAL"]
+    }
+  }
+}
+```

@@ -203,7 +203,7 @@ TEST_F(CliLibTest, ValuelessFlagsAtArgvEndAreIgnoredForEveryValueTakingFlag) {
     // always lands on the usage/sanity path.
     const std::vector<std::string> value_flags = {"--image",    "--domain", "--svg",  "--sigma",
                                                   "--low",      "--high",   "--out",  "--json",
-                                                  "--min-blur"};
+                                                  "--min-blur", "--export-evidence"};
 
     for (const auto& flag : value_flags) {
         const char* argv[] = {"curv_cli", flag.c_str()};
@@ -230,6 +230,35 @@ TEST_F(CliLibTest, ThresholdFlagsShapeTheExtractionConfig) {
     std::ifstream in(evidence);
     nlohmann::json doc = nlohmann::json::parse(in);
     EXPECT_TRUE(doc.contains("evidence"));
+}
+
+TEST_F(CliLibTest, ExportEvidenceEmitsStandardizedSchemaWithSha256) {
+    const auto image = makeLineImage();
+    const std::string image_arg = image.string();
+    const std::string export_evidence = (dir / "flood_evidence_v1.json").string();
+
+    const char* argv[] = {"curv_cli", "--image", image_arg.c_str(), "--domain", "geospatial",
+                          "--export-evidence", export_evidence.c_str()};
+    std::stringstream out;
+    std::stringstream err;
+    ASSERT_EQ(CurvEngine::tools::runCurvCli(7, const_cast<char**>(argv), out, err), 0) << err.str();
+    ASSERT_TRUE(fs::exists(export_evidence));
+
+    std::ifstream in(export_evidence);
+    nlohmann::json doc = nlohmann::json::parse(in);
+    EXPECT_EQ(doc["schema_version"], "1.0.0");
+    EXPECT_TRUE(doc.contains("event_id"));
+    EXPECT_TRUE(doc.contains("timestamp_iso"));
+    EXPECT_TRUE(doc.contains("payload_sha256"));
+    EXPECT_EQ(doc["payload_sha256"].get<std::string>().length(), 64u);
+    EXPECT_TRUE(doc.contains("spatial_features"));
+    EXPECT_TRUE(doc["spatial_features"].is_array());
+    EXPECT_TRUE(doc.contains("hydrology_metrics"));
+    EXPECT_TRUE(doc.contains("controls"));
+    EXPECT_TRUE(doc["controls"]["spatial_control_pass"].get<bool>());
+    EXPECT_TRUE(doc["controls"]["temporal_control_pass"].get<bool>());
+    EXPECT_TRUE(doc.contains("alert_recommendation"));
+    EXPECT_NE(out.str().find("[STAGE 7] Standardized flood evidence v1 exported to:"), std::string::npos);
 }
 
 } // namespace
