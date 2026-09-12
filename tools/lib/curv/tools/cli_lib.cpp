@@ -19,8 +19,8 @@
 #include "curv/QualityReport.hpp"
 #include "curv/Version.hpp"
 #include "curv/adapters/OverlayRenderer.hpp"
-#include "curv/domains/PalmDomainPack.hpp"
 #include "curv/domains/GeospatialFloodPack.hpp"
+#include "curv/domains/PalmDomainPack.hpp"
 #include "curv/domains/SurfaceInspectionPack.hpp"
 #include "curv/pipeline/SyncPerceptionPipeline.hpp"
 #include "curv/quality/LaplacianQualityAnalyzer.hpp"
@@ -45,13 +45,9 @@ std::string computeSha256(const std::string& input) {
         0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
         0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
         0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
-    };
+        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2};
 
-    uint32_t H[8] = {
-        0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
-        0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
-    };
+    uint32_t H[8] = {0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19};
 
     std::vector<uint8_t> msg(input.begin(), input.end());
     const uint64_t bit_len = static_cast<uint64_t>(msg.size()) * 8;
@@ -372,16 +368,11 @@ int runCurvCli(int argc, char* argv[], std::ostream& out, std::ostream& err) {
         ss_time << std::put_time(std::gmtime(&now_t), "%Y-%m-%dT%H:%M:%SZ");
         export_doc["timestamp_iso"] = ss_time.str();
 
-        export_doc["frame_dimensions"] = {
-            {"width", input_image.cols},
-            {"height", input_image.rows}
-        };
+        export_doc["frame_dimensions"] = {{"width", input_image.cols}, {"height", input_image.rows}};
 
-        export_doc["quality"] = {
-            {"is_usable", result.is_usable},
-            {"blur_score", result.quality.blur_score},
-            {"recommendation", result.quality.recommendation}
-        };
+        export_doc["quality"] = {{"is_usable", result.is_usable},
+                                 {"blur_score", result.quality.blur_score},
+                                 {"recommendation", result.quality.recommendation}};
 
         nlohmann::json spatial_features = nlohmann::json::array();
         int river_count = 0;
@@ -410,14 +401,12 @@ int runCurvCli(int argc, char* argv[], std::ostream& out, std::ostream& err) {
                 pts.push_back({{"x", pt.x}, {"y", pt.y}});
             }
 
-            spatial_features.push_back({
-                {"feature_id", "geo_feature_" + std::to_string(seg.id)},
-                {"feature_class", feat_class},
-                {"confidence", conf},
-                {"total_length_px", seg.total_length},
-                {"point_count", static_cast<int>(seg.points.size())},
-                {"points", pts}
-            });
+            spatial_features.push_back({{"feature_id", "geo_feature_" + std::to_string(seg.id)},
+                                        {"feature_class", feat_class},
+                                        {"confidence", conf},
+                                        {"total_length_px", seg.total_length},
+                                        {"point_count", static_cast<int>(seg.points.size())},
+                                        {"points", pts}});
         }
         export_doc["spatial_features"] = spatial_features;
 
@@ -427,15 +416,13 @@ int runCurvCli(int argc, char* argv[], std::ostream& out, std::ostream& err) {
         } else {
             const int total_features = static_cast<int>(result.ridge_graph.segments.size());
             const double mean_len = total_features > 0 ? (static_cast<double>(total_length) / total_features) : 0.0;
-            hydro_metrics = {
-                {"total_features", total_features},
-                {"river_channel_count", river_count},
-                {"tributary_count", tributary_count},
-                {"total_feature_length_px", total_length},
-                {"max_feature_length_px", max_length},
-                {"mean_feature_length_px", mean_len},
-                {"junction_count", static_cast<int>(result.ridge_graph.junctions.size())}
-            };
+            hydro_metrics = {{"total_features", total_features},
+                             {"river_channel_count", river_count},
+                             {"tributary_count", tributary_count},
+                             {"total_feature_length_px", total_length},
+                             {"max_feature_length_px", max_length},
+                             {"mean_feature_length_px", mean_len},
+                             {"junction_count", static_cast<int>(result.ridge_graph.junctions.size())}};
         }
         export_doc["hydrology_metrics"] = hydro_metrics;
 
@@ -448,12 +435,10 @@ int runCurvCli(int argc, char* argv[], std::ostream& out, std::ostream& err) {
             recommendation = "WARNING";
         }
 
-        export_doc["controls"] = {
-            {"spatial_control_pass", spatial_pass},
-            {"temporal_control_pass", temporal_pass},
-            {"spatial_control_ratio", 0.1509},
-            {"temporal_control_ratio", 0.9048}
-        };
+        export_doc["controls"] = {{"spatial_control_pass", spatial_pass},
+                                  {"temporal_control_pass", temporal_pass},
+                                  {"spatial_control_ratio", 0.1509},
+                                  {"temporal_control_ratio", 0.9048}};
         export_doc["alert_recommendation"] = recommendation;
 
         // Compute SHA256 integrity hash
