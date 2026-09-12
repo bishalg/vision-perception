@@ -19,14 +19,35 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
     public var onFrameReceived: ((CVPixelBuffer) -> Void)?
     private var photoCaptureCompletion: ((Result<CVPixelBuffer, Error>) -> Void)?
 
+    private var isConfigured: Bool = false
+
     public override init() {
         super.init()
-        configureSession()
+        checkPermissionsAndConfigure()
+    }
+
+    private func checkPermissionsAndConfigure() {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            configureSession()
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+                guard let self else { return }
+                if granted {
+                    self.configureSession()
+                    self.start()
+                } else {
+                    self.logger.error("Camera access denied by user")
+                }
+            }
+        default:
+            logger.error("Camera authorization unavailable or denied")
+        }
     }
 
     private func configureSession() {
         sessionQueue.async { [weak self] in
-            guard let self else { return }
+            guard let self, !self.isConfigured else { return }
             self.captureSession.beginConfiguration()
             self.captureSession.sessionPreset = .hd1920x1080
 
@@ -57,21 +78,21 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
             if self.captureSession.canAddOutput(self.photoOutput) {
                 self.captureSession.addOutput(self.photoOutput)
                 if #available(iOS 16.0, *) {
-                    let preferred = CMVideoDimensions(width: 4032, height: 3024)
+                    // Match the 1080p video stream to eliminate sensor mode-switch delay & 50MB buffers.
+                    let preferred = CMVideoDimensions(width: 1920, height: 1080)
                     let supported = device.activeFormat.supportedMaxPhotoDimensions
                     if supported.contains(where: { $0.width == preferred.width && $0.height == preferred.height }) {
                         self.photoOutput.maxPhotoDimensions = preferred
-                    } else if let best = supported.max(by: { $0.width * $0.height < $1.width * $1.height }) {
+                    } else if let best = supported.first(where: { $0.width <= 1920 && $0.height <= 1080 }) ?? supported.first {
                         self.photoOutput.maxPhotoDimensions = best
                     }
-                } else {
-                    // On iOS versions prior to 16, high resolution capture is the default when supported.
-                    // The `isHighResolutionCaptureEnabled` property is deprecated in iOS 16+, so we avoid using it.
                 }
                 self.applyPortraitOrientation(to: self.photoOutput)
             }
 
             self.captureSession.commitConfiguration()
+            self.isConfigured = true
+            self.logger.info("CameraSession configured successfully (1080p stream + photo)")
         }
     }
 
@@ -83,8 +104,11 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
     }
 
     public func start() {
+        if !isConfigured {
+            checkPermissionsAndConfigure()
+        }
         sessionQueue.async { [weak self] in
-            guard let self, !self.captureSession.isRunning else { return }
+            guard let self, self.isConfigured, !self.captureSession.isRunning else { return }
             self.captureSession.startRunning()
         }
     }
@@ -99,27 +123,32 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
     public func capturePhoto(completion: @escaping (Result<CVPixelBuffer, Error>) -> Void) {
         sessionQueue.async { [weak self] in
             guard let self else { return }
+            guard self.captureSession.isRunning else {
+                completion(.failure(NSError(domain: "org.curv.overlay", code: -2, userInfo: [NSLocalizedDescriptionKey: "Camera session is not running"])))
+                return
+            }
+
             // Keep stills in the same portrait orientation as the live preview.
             self.applyPortraitOrientation(to: self.photoOutput)
             self.photoCaptureCompletion = completion
-            let settings = AVCapturePhotoSettings(format: [
-                kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA)
-            ])
-            if #available(iOS 16.0, *) {
-                let preferred = CMVideoDimensions(width: 4032, height: 3024)
-                if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) {
-                    let supported = device.activeFormat.supportedMaxPhotoDimensions
-                    if supported.contains(where: { $0.width == preferred.width && $0.height == preferred.height }) {
-                        settings.maxPhotoDimensions = preferred
-                    } else if let best = supported.max(by: { $0.width * $0.height < $1.width * $1.height }) {
-                        settings.maxPhotoDimensions = best
-                    }
-                }
-                // else leave at default — device will pick a valid size
+
+            let settings: AVCapturePhotoSettings
+            if self.photoOutput.availablePhotoPixelFormatTypes.contains(kCVPixelFormatType_32BGRA) {
+                settings = AVCapturePhotoSettings(format: [
+                    kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA)
+                ])
             } else {
-                // Pre–iOS 16 fallback: enable high-resolution capture when supported.
-                // This API is deprecated starting in iOS 16.
-                settings.isHighResolutionPhotoEnabled = true
+                settings = AVCapturePhotoSettings()
+            }
+
+            if #available(iOS 16.0, *) {
+                let preferred = CMVideoDimensions(width: 1920, height: 1080)
+                let maxDim = self.photoOutput.maxPhotoDimensions
+                if maxDim.width >= preferred.width && maxDim.height >= preferred.height {
+                    settings.maxPhotoDimensions = preferred
+                } else {
+                    settings.maxPhotoDimensions = maxDim
+                }
             }
             self.photoOutput.capturePhoto(with: settings, delegate: self)
         }

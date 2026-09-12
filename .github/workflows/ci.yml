@@ -15,6 +15,14 @@ jobs:
       - name: Validate shared palm strings (single source for iOS + Android)
         run: ./scripts/check_shared_strings.py
 
+  mobile-parity:
+    name: iOS/Android parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check iOS/Android parity contract (see docs/mobile_parity.md)
+        run: ./scripts/check_mobile_parity.py
+
   format-check:
     name: Format (clang-format)
     runs-on: ubuntu-latest

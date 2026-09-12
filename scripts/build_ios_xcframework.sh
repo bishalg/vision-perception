@@ -160,57 +160,62 @@ if p.exists():
 PY
 fi
 
-# 4. Ship OpenCV alongside CurvEngine so the app can link both. They are kept as
-#    two separate XCFrameworks (merging static archives across slices is fragile
-#    and SPM/Xcode link multiple binary targets fine).
-rm -rf "${ROOT_DIR}/build/opencv2.xcframework"
-cp -R "${OPENCV_XCF}" "${ROOT_DIR}/build/opencv2.xcframework"
+# 4. Package OpenCV as a static library XCFramework (libopencv2.a + Headers).
+#    Because it is structured as a static library (.a) rather than a .framework,
+#    Xcode and SPM link it statically and never attempt to embed it in App/Frameworks/,
+#    eliminating all "No such file or directory" copy collisions and CFBundleExecutable issues.
+echo "--> Converting OpenCV XCFramework to clean static library format..."
+TMP_OPENCV_DIR="$(mktemp -d)"
+DEVICE_LIB="${TMP_OPENCV_DIR}/libopencv2_device.a"
+SIM_LIB="${TMP_OPENCV_DIR}/libopencv2_sim.a"
 
-# 5. Flatten OpenCV framework from macOS-style versioned bundle (Versions/A)
-#    to iOS shallow bundle. Xcode 16+ validates that iOS frameworks have
-#    Info.plist at the bundle root, not Versions/Current/Resources.
-echo "--> Flattening OpenCV XCFramework to iOS shallow bundles..."
+# Extract archive binaries
+if [[ -f "${OPENCV_XCF}/ios-arm64/opencv2.framework/Versions/A/opencv2" ]]; then
+    cp "${OPENCV_XCF}/ios-arm64/opencv2.framework/Versions/A/opencv2" "${DEVICE_LIB}"
+    cp -R "${OPENCV_XCF}/ios-arm64/opencv2.framework/Versions/A/Headers" "${TMP_OPENCV_DIR}/Headers_device"
+elif [[ -f "${OPENCV_XCF}/ios-arm64/opencv2.framework/opencv2" ]]; then
+    cp "${OPENCV_XCF}/ios-arm64/opencv2.framework/opencv2" "${DEVICE_LIB}"
+    cp -R "${OPENCV_XCF}/ios-arm64/opencv2.framework/Headers" "${TMP_OPENCV_DIR}/Headers_device"
+fi
+
+if [[ -f "${OPENCV_XCF}/ios-arm64-simulator/opencv2.framework/Versions/A/opencv2" ]]; then
+    cp "${OPENCV_XCF}/ios-arm64-simulator/opencv2.framework/Versions/A/opencv2" "${SIM_LIB}"
+    cp -R "${OPENCV_XCF}/ios-arm64-simulator/opencv2.framework/Versions/A/Headers" "${TMP_OPENCV_DIR}/Headers_sim"
+elif [[ -f "${OPENCV_XCF}/ios-arm64-simulator/opencv2.framework/opencv2" ]]; then
+    cp "${OPENCV_XCF}/ios-arm64-simulator/opencv2.framework/opencv2" "${SIM_LIB}"
+    cp -R "${OPENCV_XCF}/ios-arm64-simulator/opencv2.framework/Headers" "${TMP_OPENCV_DIR}/Headers_sim"
+fi
+
+rm -rf "${ROOT_DIR}/build/opencv2.xcframework"
+xcodebuild -create-xcframework \
+    -library "${DEVICE_LIB}" \
+    -headers "${TMP_OPENCV_DIR}/Headers_device" \
+    -library "${SIM_LIB}" \
+    -headers "${TMP_OPENCV_DIR}/Headers_sim" \
+    -output "${ROOT_DIR}/build/opencv2.xcframework"
+
 for slice in ios-arm64 ios-arm64-simulator; do
-    FW="${ROOT_DIR}/build/opencv2.xcframework/${slice}/opencv2.framework"
-    if [[ -d "${FW}/Versions/A" ]]; then
-        rm -f "${FW}/Headers" "${FW}/Modules" "${FW}/opencv2" "${FW}/Resources"
-        mkdir -p "${FW}/Headers" "${FW}/Resources"
-        cp -R "${FW}/Versions/A/Headers/." "${FW}/Headers/"
-        cp "${FW}/Versions/A/opencv2" "${FW}/opencv2"
-        cp -R "${FW}/Versions/A/Resources/." "${FW}/Resources/"
-        if [[ -f "${FW}/Resources/Info.plist" ]]; then
-            cp "${FW}/Resources/Info.plist" "${FW}/Info.plist"
-        fi
-        # Xcode 16+ installd validation requires CFBundleExecutable for any
-        # framework inside App/Frameworks/, even static ones. OpenCV's static
-        # framework ships without it, causing "missing or invalid
-        # CFBundleExecutable" at install. Inject it so embedding passes.
-        if [[ -f "${FW}/Info.plist" ]]; then
-            FW_PLIST="${FW}/Info.plist" python3 - << 'PYFW'
-import plistlib, os
-p = os.environ["FW_PLIST"]
-with open(p, 'rb') as f:
-    d = plistlib.load(f)
-if 'CFBundleExecutable' not in d:
-    d['CFBundleExecutable'] = 'opencv2'
-    with open(p, 'wb') as f:
-        plistlib.dump(d, f)
-    print(f"Patched {p} with CFBundleExecutable")
-PYFW
-        fi
-        rm -rf "${FW}/Versions"
+    if [[ -f "${ROOT_DIR}/build/opencv2.xcframework/${slice}/libopencv2_device.a" ]]; then
+        mv "${ROOT_DIR}/build/opencv2.xcframework/${slice}/libopencv2_device.a" "${ROOT_DIR}/build/opencv2.xcframework/${slice}/libopencv2.a"
+    fi
+    if [[ -f "${ROOT_DIR}/build/opencv2.xcframework/${slice}/libopencv2_sim.a" ]]; then
+        mv "${ROOT_DIR}/build/opencv2.xcframework/${slice}/libopencv2_sim.a" "${ROOT_DIR}/build/opencv2.xcframework/${slice}/libopencv2.a"
     fi
 done
+
 ROOT_DIR_ENV="${ROOT_DIR}" python3 - << 'PY2'
 import plistlib, pathlib, os
 p = pathlib.Path(os.environ["ROOT_DIR_ENV"]) / "build/opencv2.xcframework/Info.plist"
 if p.exists():
     data = plistlib.loads(p.read_bytes())
     for lib in data.get("AvailableLibraries", []):
-        lib["BinaryPath"] = lib["BinaryPath"].replace("opencv2.framework/Versions/A/opencv2", "opencv2.framework/opencv2")
+        lib["BinaryPath"] = "libopencv2.a"
+        lib["LibraryPath"] = "libopencv2.a"
     p.write_bytes(plistlib.dumps(data))
-    print(f"Patched OpenCV {p}")
+    print(f"Normalized static {p}")
 PY2
+
+rm -rf "${TMP_OPENCV_DIR}"
 
 echo "=================================================="
 echo "Successfully generated:"

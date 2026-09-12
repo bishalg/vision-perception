@@ -5,13 +5,15 @@ import CurvPalmOverlay
 /**
  * Dedicated full-screen precision editor for palm crease lines.
  * Phase 2b of Palm Scanner workflow:
- * - Each crease line is represented by ONE continuous Catmull-Rom curve
- *   controlled by exactly 4 points: Start (S), Curve Mid 1, Curve Mid 2, and End (E).
- * - Zero clutter: no hundreds of small circles.
- * - Unified 5-tool bottom bar (icon above text caption) with equal spacing.
- * - Dynamic state-aware coaching system: guides the user on every interaction,
- *   auto-dismissing after activity to leave canvas completely clean.
- * - Zoom & Pan (1.0x to 4.0x) with Apple-style 2.4x Magnifying Loupe.
+ * - Robust coordinate system: transforms the draw rect directly, eliminating scaleEffect desync.
+ * - Each crease line is ONE continuous Catmull-Rom curve controlled by 4 points: Start (S), Mid 1, Mid 2, End (E).
+ * - Multi-action touch & move gesture engine:
+ *     1. Direct Handle Drag: drag any of the 4 control points with zero jitter.
+ *     2. Whole Line Drag: touch and drag the curve line directly to translate the entire crease.
+ *     3. Zero-Occlusion Magnifying Loupe: 2.2x Apple-style floating loupe above finger during all drags.
+ *     4. Zoom & Pan (1.0x to 4.0x): two-finger pinch, one-finger background pan, double-tap toggle, reset button.
+ *     5. Smooth Freehand Draw: 5-tap Gaussian smoothing filter for silky-smooth redrawing at any zoom level.
+ * - Unified 5-tool bottom bar with state-aware coaching pill.
  */
 public struct CreaseLineEditorView: View {
     public let image: UIImage?
@@ -25,7 +27,7 @@ public struct CreaseLineEditorView: View {
     @State private var selectedSplineId: String?
     @State private var selectedVertexIndex: Int?
 
-    // Editing mode: Adjust 4 handles vs Freehand Trace
+    // Editing mode: Adjust handles / line vs Freehand Trace
     @State private var isDrawMode: Bool = false
     @State private var freehandCanvasPoints: [CGPoint] = []
 
@@ -40,8 +42,16 @@ public struct CreaseLineEditorView: View {
     @State private var panOffset: CGSize = .zero
     @State private var lastPanOffset: CGSize = .zero
 
-    // Drag state
+    // Drag & Move Interaction State
     @State private var isDraggingVertex: Bool = false
+    @State private var isDraggingWholeLine: Bool = false
+    @State private var wholeLineDragStartNorm: CGPoint = .zero
+    @State private var wholeLineInitialPoints: [CGPoint] = []
+
+    // Magnifying Loupe State
+    @State private var showLoupe: Bool = false
+    @State private var loupeTouchPoint: CGPoint = .zero
+    @State private var loupeTargetNorm: CGPoint = .zero
 
     private let lightHaptic = UIImpactFeedbackGenerator(style: .light)
     private let mediumHaptic = UIImpactFeedbackGenerator(style: .medium)
@@ -50,6 +60,7 @@ public struct CreaseLineEditorView: View {
         image: UIImage?,
         splines: [CreaseSpline],
         selectedLanguage: AppLanguage = .english,
+        initialSelectedSplineId: String? = nil,
         onDismiss: @escaping () -> Void,
         onDone: @escaping ([CreaseSpline]) -> Void
     ) {
@@ -66,7 +77,10 @@ public struct CreaseLineEditorView: View {
         }
         self._workingSplines = State(initialValue: clean)
         self.initialSplines = clean
-        self._selectedSplineId = State(initialValue: clean.first?.id)
+        let initialId = (initialSelectedSplineId != nil && clean.contains(where: { $0.id == initialSelectedSplineId }))
+            ? initialSelectedSplineId
+            : clean.first?.id
+        self._selectedSplineId = State(initialValue: initialId)
         self._selectedVertexIndex = State(initialValue: nil)
     }
 
@@ -80,169 +94,109 @@ public struct CreaseLineEditorView: View {
                 Color.black.ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    // Native segmented line selector (Heart / Head / Life / Fate)
+                    // Segmented line selector (Heart / Head / Life / Fate)
                     linePicker
 
                     // Main Canvas Area
-                    ZStack(alignment: .top) {
                     GeometryReader { proxy in
                         let canvasSize = proxy.size
                         let imageSize = image?.size ?? canvasSize
-                        let baseDrawRect = ImageCoordinateMapper.imageRect(
+                        let drawRect = ImageCoordinateMapper.transformedImageRect(
                             imageSize: imageSize,
                             viewSize: canvasSize,
-                            mode: .fit
+                            mode: .fit,
+                            zoomScale: zoomScale,
+                            panOffset: panOffset
                         )
 
                         ZStack {
                             Color.black
 
-                            // Scaled Container
-                            ZStack {
-                                if let image {
-                                    Image(uiImage: image)
-                                        .resizable()
-                                        .frame(width: baseDrawRect.width, height: baseDrawRect.height)
-                                        .position(x: baseDrawRect.midX, y: baseDrawRect.midY)
-                                }
+                            // 1. Palm Photo Layer (positioned via transformed drawRect)
+                            if let image {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .frame(width: drawRect.width, height: drawRect.height)
+                                    .position(x: drawRect.midX, y: drawRect.midY)
+                            }
 
-                                // Render All Crease Splines as Smooth Continuous Curves
-                                Canvas { context, _ in
-                                    for spline in workingSplines {
-                                        guard spline.points.count >= 2 else { continue }
-                                        let canvasPoints = spline.points.map { ImageCoordinateMapper.map($0, into: baseDrawRect) }
-                                        let path = Path.catmullRom(points: canvasPoints)
-                                        let isSelected = spline.id == selectedSplineId
-                                        let color = Color(hex: spline.lineType.hexColor)
+                            // 2. Continuous Catmull-Rom Splines Canvas Layer
+                            Canvas { context, _ in
+                                for spline in workingSplines {
+                                    guard spline.points.count >= 2 else { continue }
+                                    let canvasPoints = spline.points.map { ImageCoordinateMapper.map($0, into: drawRect) }
+                                    let path = Path.catmullRom(points: canvasPoints)
+                                    let isSelected = spline.id == selectedSplineId
+                                    let color = Color(hex: spline.lineType.hexColor)
 
-                                        // Outer soft glow (subtle, non-occluding)
+                                    // Active whole-line drag highlight halo
+                                    if isSelected && isDraggingWholeLine {
                                         context.stroke(
                                             path,
-                                            with: .color(color.opacity(isSelected ? 0.25 : 0.08)),
-                                            style: StrokeStyle(lineWidth: isSelected ? 5 : 2.5, lineCap: .round, lineJoin: .round)
-                                        )
-                                        // Precision continuous curve
-                                        context.stroke(
-                                            path,
-                                            with: .color(color.opacity(isSelected ? 0.90 : 0.40)),
-                                            style: StrokeStyle(lineWidth: isSelected ? 2.4 : 1.6, lineCap: .round, lineJoin: .round)
+                                            with: .color(color.opacity(0.40)),
+                                            style: StrokeStyle(lineWidth: 12, lineCap: .round, lineJoin: .round)
                                         )
                                     }
 
-                                    // In-progress freehand trace stroke
-                                    if !freehandCanvasPoints.isEmpty {
-                                        var trace = Path()
-                                        trace.move(to: freehandCanvasPoints[0])
-                                        for pt in freehandCanvasPoints.dropFirst() {
-                                            trace.addLine(to: pt)
-                                        }
-                                        let activeColor = activeSpline.map { Color(hex: $0.lineType.hexColor) } ?? .white
-                                        context.stroke(
-                                            trace,
-                                            with: .color(activeColor),
-                                            style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round)
-                                        )
-                                    }
-                                }
-                                .allowsHitTesting(false)
-
-                                // Handles: Shown ONLY for the active spline in Adjust Mode
-                                if !isDrawMode, let spline = activeSpline {
-                                    ForEach(Array(spline.points.enumerated()), id: \.offset) { index, norm in
-                                        let canvasPt = ImageCoordinateMapper.map(norm, into: baseDrawRect)
-                                        let isVertexSelected = (index == selectedVertexIndex)
-                                        let isStart = (index == 0)
-                                        let isEnd = (index == spline.points.count - 1)
-                                        let color = Color(hex: spline.lineType.hexColor)
-
-                                        controlHandleView(
-                                            color: color,
-                                            isStart: isStart,
-                                            isEnd: isEnd,
-                                            isSelected: isVertexSelected
-                                        )
-                                        .position(canvasPt)
-                                        .gesture(
-                                            DragGesture(minimumDistance: 0, coordinateSpace: .named("editorCanvas"))
-                                                .onChanged { value in
-                                                    if !isDraggingVertex {
-                                                        pushHistory()
-                                                        isDraggingVertex = true
-                                                        lightHaptic.impactOccurred()
-
-                                                        if isStart {
-                                                            updateCoaching(text: LocalizedStrings.tr("editor.hintMovingStart", lang: selectedLanguage), autoDismissAfter: nil)
-                                                        } else if isEnd {
-                                                            updateCoaching(text: LocalizedStrings.tr("editor.hintMovingEnd", lang: selectedLanguage), autoDismissAfter: nil)
-                                                        } else {
-                                                            updateCoaching(text: LocalizedStrings.tr("editor.hintMovingCurve", lang: selectedLanguage), autoDismissAfter: nil)
-                                                        }
-                                                    }
-                                                    selectedSplineId = spline.id
-                                                    selectedVertexIndex = index
-
-                                                    let unmapped = ImageCoordinateMapper.unmap(value.location, from: baseDrawRect)
-                                                    let clamped = CGPoint(
-                                                        x: min(max(unmapped.x, 0.01), 0.99),
-                                                        y: min(max(unmapped.y, 0.01), 0.99)
-                                                    )
-                                                    moveVertex(splineId: spline.id, index: index, to: clamped)
-                                                }
-                                                .onEnded { _ in
-                                                    isDraggingVertex = false
-                                                    mediumHaptic.impactOccurred()
-                                                    updateCoaching(text: LocalizedStrings.tr("editor.coachingUpdated", lang: selectedLanguage), autoDismissAfter: 2.0)
-                                                }
-                                        )
-                                    }
+                                    // Outer soft glow
+                                    context.stroke(
+                                        path,
+                                        with: .color(color.opacity(isSelected ? 0.28 : 0.09)),
+                                        style: StrokeStyle(lineWidth: isSelected ? 6 : 2.5, lineCap: .round, lineJoin: .round)
+                                    )
+                                    // Precision continuous curve
+                                    context.stroke(
+                                        path,
+                                        with: .color(color.opacity(isSelected ? 0.95 : 0.40)),
+                                        style: StrokeStyle(lineWidth: isSelected ? 2.6 : 1.6, lineCap: .round, lineJoin: .round)
+                                    )
                                 }
 
-                                // Freehand Trace Capture Layer
-                                if isDrawMode {
-                                    Color.clear
-                                        .contentShape(Rectangle())
-                                        .gesture(
-                                            DragGesture(minimumDistance: 2, coordinateSpace: .named("editorCanvas"))
-                                                .onChanged { value in
-                                                    if freehandCanvasPoints.isEmpty {
-                                                        updateCoaching(text: LocalizedStrings.tr("editor.hintTracing", lang: selectedLanguage), autoDismissAfter: nil)
-                                                    }
-                                                    freehandCanvasPoints.append(value.location)
-                                                }
-                                                .onEnded { _ in
-                                                    finishFreehandDraw(baseDrawRect: baseDrawRect)
-                                                }
-                                        )
+                                // In-progress freehand trace stroke (Draw mode)
+                                if !freehandCanvasPoints.isEmpty {
+                                    var trace = Path()
+                                    trace.move(to: freehandCanvasPoints[0])
+                                    for pt in freehandCanvasPoints.dropFirst() {
+                                        trace.addLine(to: pt)
+                                    }
+                                    let activeColor = activeSpline.map { Color(hex: $0.lineType.hexColor) } ?? .white
+                                    // Subtle trace glow
+                                    context.stroke(
+                                        trace,
+                                        with: .color(activeColor.opacity(0.3)),
+                                        style: StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round)
+                                    )
+                                    context.stroke(
+                                        trace,
+                                        with: .color(activeColor),
+                                        style: StrokeStyle(lineWidth: 3.5, lineCap: .round, lineJoin: .round)
+                                    )
                                 }
                             }
-                            .scaleEffect(zoomScale)
-                            .offset(panOffset)
-                            .gesture(
-                                MagnificationGesture()
-                                    .onChanged { scale in
-                                        let newScale = lastZoomScale * scale
-                                        zoomScale = min(max(newScale, 1.0), 4.0)
-                                    }
-                                    .onEnded { _ in
-                                        lastZoomScale = zoomScale
-                                    }
-                            )
-                            .simultaneousGesture(
-                                DragGesture(minimumDistance: 12)
-                                    .onChanged { value in
-                                        guard !isDraggingVertex && !isDrawMode && zoomScale > 1.05 else { return }
-                                        panOffset = CGSize(
-                                            width: lastPanOffset.width + value.translation.width,
-                                            height: lastPanOffset.height + value.translation.height
-                                        )
-                                    }
-                                    .onEnded { _ in
-                                        guard !isDraggingVertex && !isDrawMode else { return }
-                                        lastPanOffset = panOffset
-                                    }
-                            )
+                            .allowsHitTesting(false)
 
-                            // Floating 1.0x Reset Zoom Button
+                            // 3. Canvas Background Touch Layer (Pan, Whole-Line Move, Line Selection, Freehand Draw)
+                            canvasInteractionLayer(drawRect: drawRect)
+
+                            // 4. Precision Control Handles Layer (Adjust Mode)
+                            if !isDrawMode, let spline = activeSpline {
+                                handlesLayer(spline: spline, drawRect: drawRect)
+                            }
+
+                            // 5. Zero-Occlusion Magnifying Loupe
+                            if showLoupe {
+                                MagnifyingLoupeView(
+                                    image: image,
+                                    splines: workingSplines,
+                                    activeSplineId: selectedSplineId,
+                                    targetNormPoint: loupeTargetNorm,
+                                    touchLocation: loupeTouchPoint,
+                                    canvasSize: canvasSize,
+                                    accentColor: activeSpline.map { Color(hex: $0.lineType.hexColor) } ?? .green
+                                )
+                            }
+
+                            // 6. Floating 1.0x Reset Zoom Button
                             if zoomScale > 1.05 {
                                 VStack {
                                     HStack {
@@ -256,7 +210,11 @@ public struct CreaseLineEditorView: View {
                                             .foregroundColor(.white)
                                             .padding(.horizontal, 10)
                                             .padding(.vertical, 6)
-                                            .background(Capsule().fill(.ultraThinMaterial).overlay(Capsule().stroke(Color.white.opacity(0.3), lineWidth: 1)))
+                                            .background(
+                                                Capsule()
+                                                    .fill(.ultraThinMaterial)
+                                                    .overlay(Capsule().stroke(Color.white.opacity(0.3), lineWidth: 1))
+                                            )
                                             .shadow(color: .black.opacity(0.4), radius: 6)
                                         }
                                         .padding(.trailing, 16)
@@ -268,9 +226,40 @@ public struct CreaseLineEditorView: View {
                         }
                         .coordinateSpace(name: "editorCanvas")
                         .clipped()
+                        // Pinch to zoom (two-finger gesture)
+                        .simultaneousGesture(
+                            MagnificationGesture()
+                                .onChanged { scale in
+                                    let newScale = min(max(lastZoomScale * scale, 1.0), 4.0)
+                                    zoomScale = newScale
+                                }
+                                .onEnded { _ in
+                                    lastZoomScale = zoomScale
+                                    if zoomScale <= 1.02 {
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                                            panOffset = .zero
+                                            lastPanOffset = .zero
+                                        }
+                                    }
+                                }
+                        )
+                        // Double-tap to toggle zoom (1.0x <-> 2.2x)
+                        .onTapGesture(count: 2) {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                if zoomScale > 1.05 {
+                                    zoomScale = 1.0
+                                    lastZoomScale = 1.0
+                                    panOffset = .zero
+                                    lastPanOffset = .zero
+                                } else {
+                                    zoomScale = 2.2
+                                    lastZoomScale = 2.2
+                                }
+                            }
+                        }
                     }
 
-                    // Dynamic State Coaching Pill (floating, auto-updating, auto-dismissing)
+                    // Dynamic State Coaching Pill
                     if showCoachingPill && !dynamicHint.isEmpty {
                         HStack(spacing: 6) {
                             Image(systemName: "sparkle")
@@ -324,7 +313,6 @@ public struct CreaseLineEditorView: View {
                     }
                 }
                 ToolbarItemGroup(placement: .bottomBar) {
-                    // Native bottom-bar tools: [Adjust] [Draw] [Undo] [Reset] [Label]
                     Button {
                         isDrawMode = false
                         lightHaptic.impactOccurred()
@@ -382,12 +370,168 @@ public struct CreaseLineEditorView: View {
                 }
             }
         }
-        }
         .preferredColorScheme(.dark)
         .onAppear {
             lightHaptic.prepare()
             mediumHaptic.prepare()
             updateCoaching(text: LocalizedStrings.tr("editor.hintAdjust", lang: selectedLanguage), autoDismissAfter: 4.0)
+        }
+    }
+
+    // MARK: - Canvas Interaction Layer
+
+    @ViewBuilder
+    private func canvasInteractionLayer(drawRect: CGRect) -> some View {
+        if isDrawMode {
+            // Freehand Draw Layer
+            Color.clear
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 1, coordinateSpace: .named("editorCanvas"))
+                        .onChanged { value in
+                            if freehandCanvasPoints.isEmpty {
+                                updateCoaching(text: LocalizedStrings.tr("editor.hintTracing", lang: selectedLanguage), autoDismissAfter: nil)
+                            }
+                            if let last = freehandCanvasPoints.last {
+                                let d = hypot(value.location.x - last.x, value.location.y - last.y)
+                                if d >= 2.0 {
+                                    freehandCanvasPoints.append(value.location)
+                                }
+                            } else {
+                                freehandCanvasPoints.append(value.location)
+                            }
+                        }
+                        .onEnded { _ in
+                            finishFreehandDraw(drawRect: drawRect)
+                        }
+                )
+        } else {
+            // Adjust Mode: Whole-Line Drag, Line Selection, and Pan
+            Color.clear
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 3, coordinateSpace: .named("editorCanvas"))
+                        .onChanged { value in
+                            guard !isDraggingVertex else { return }
+
+                            if !isDraggingWholeLine {
+                                // Test if touch began on or very close to the active curve
+                                if let spline = activeSpline,
+                                   ImageCoordinateMapper.distanceToSpline(point: value.startLocation, normPoints: spline.points, in: drawRect) < 28 {
+                                    pushHistory()
+                                    isDraggingWholeLine = true
+                                    wholeLineInitialPoints = spline.points
+                                    wholeLineDragStartNorm = ImageCoordinateMapper.unmap(value.startLocation, from: drawRect)
+                                    lightHaptic.impactOccurred()
+                                    updateCoaching(text: LocalizedStrings.tr("editor.hintMovingLine", lang: selectedLanguage), autoDismissAfter: nil)
+                                }
+                            }
+
+                            if isDraggingWholeLine, let sid = selectedSplineId {
+                                let currNorm = ImageCoordinateMapper.unmap(value.location, from: drawRect)
+                                let dx = currNorm.x - wholeLineDragStartNorm.x
+                                let dy = currNorm.y - wholeLineDragStartNorm.y
+
+                                translateActiveLine(splineId: sid, initialPoints: wholeLineInitialPoints, dx: dx, dy: dy)
+
+                                loupeTouchPoint = value.location
+                                loupeTargetNorm = currNorm
+                                withAnimation(.easeOut(duration: 0.15)) {
+                                    showLoupe = true
+                                }
+                            } else if zoomScale > 1.02 {
+                                // Pan canvas when zoomed
+                                panOffset = CGSize(
+                                    width: lastPanOffset.width + value.translation.width,
+                                    height: lastPanOffset.height + value.translation.height
+                                )
+                            }
+                        }
+                        .onEnded { value in
+                            if isDraggingWholeLine {
+                                isDraggingWholeLine = false
+                                withAnimation(.easeOut(duration: 0.2)) {
+                                    showLoupe = false
+                                }
+                                mediumHaptic.impactOccurred()
+                                updateCoaching(text: LocalizedStrings.tr("editor.coachingUpdated", lang: selectedLanguage), autoDismissAfter: 2.0)
+                            } else if zoomScale > 1.02 {
+                                lastPanOffset = panOffset
+                            } else {
+                                // Quick tap to select another line
+                                if hypot(value.translation.width, value.translation.height) < 10 {
+                                    if let nearestId = nearestSplineId(at: value.startLocation, in: drawRect) {
+                                        selectedSplineId = nearestId
+                                        selectedVertexIndex = nil
+                                        lightHaptic.impactOccurred()
+                                    }
+                                }
+                            }
+                        }
+                )
+        }
+    }
+
+    // MARK: - Handles Layer (4 control points per spline)
+
+    @ViewBuilder
+    private func handlesLayer(spline: CreaseSpline, drawRect: CGRect) -> some View {
+        ForEach(Array(spline.points.enumerated()), id: \.offset) { index, norm in
+            let canvasPt = ImageCoordinateMapper.map(norm, into: drawRect)
+            let isVertexSelected = (index == selectedVertexIndex)
+            let isStart = (index == 0)
+            let isEnd = (index == spline.points.count - 1)
+            let color = Color(hex: spline.lineType.hexColor)
+
+            controlHandleView(
+                color: color,
+                isStart: isStart,
+                isEnd: isEnd,
+                isSelected: isVertexSelected
+            )
+            .position(canvasPt)
+            .gesture(
+                DragGesture(minimumDistance: 0, coordinateSpace: .named("editorCanvas"))
+                    .onChanged { value in
+                        if !isDraggingVertex {
+                            pushHistory()
+                            isDraggingVertex = true
+                            selectedSplineId = spline.id
+                            selectedVertexIndex = index
+                            lightHaptic.impactOccurred()
+
+                            if isStart {
+                                updateCoaching(text: LocalizedStrings.tr("editor.hintMovingStart", lang: selectedLanguage), autoDismissAfter: nil)
+                            } else if isEnd {
+                                updateCoaching(text: LocalizedStrings.tr("editor.hintMovingEnd", lang: selectedLanguage), autoDismissAfter: nil)
+                            } else {
+                                updateCoaching(text: LocalizedStrings.tr("editor.hintMovingCurve", lang: selectedLanguage), autoDismissAfter: nil)
+                            }
+                        }
+
+                        let unmapped = ImageCoordinateMapper.unmap(value.location, from: drawRect)
+                        let clamped = CGPoint(
+                            x: min(max(unmapped.x, 0.01), 0.99),
+                            y: min(max(unmapped.y, 0.01), 0.99)
+                        )
+
+                        loupeTouchPoint = value.location
+                        loupeTargetNorm = clamped
+                        withAnimation(.easeOut(duration: 0.15)) {
+                            showLoupe = true
+                        }
+
+                        moveVertex(splineId: spline.id, index: index, to: clamped)
+                    }
+                    .onEnded { _ in
+                        isDraggingVertex = false
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            showLoupe = false
+                        }
+                        mediumHaptic.impactOccurred()
+                        updateCoaching(text: LocalizedStrings.tr("editor.coachingUpdated", lang: selectedLanguage), autoDismissAfter: 2.0)
+                    }
+            )
         }
     }
 
@@ -424,6 +568,7 @@ public struct CreaseLineEditorView: View {
     }
 
     // MARK: - Dynamic Coaching Helper
+
     private func updateCoaching(text: String, autoDismissAfter: Double? = 3.5) {
         withAnimation(.easeInOut(duration: 0.2)) {
             dynamicHint = text
@@ -442,43 +587,37 @@ public struct CreaseLineEditorView: View {
     }
 
     // MARK: - Precision Control Handle View
-    // Mid points: 5pt pinpoint dot (resting).
-    // Start / End points: 10pt small dot circle (resting, twice the mid dot).
-    // Clicked / Dragged: Smoothly grows into 26pt hollow reticle (zero-occlusion, 100% transparent center).
+
     @ViewBuilder
     private func controlHandleView(color: Color, isStart: Bool, isEnd: Bool, isSelected: Bool) -> some View {
         let isEndpoint = isStart || isEnd
 
         ZStack {
-            // Invisible 44x44pt touch area for effortless finger target
+            // Invisible generous 44x44pt touch area
             Color.clear
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
 
             if isSelected {
                 // Active Expanded State: Precision Hollow Reticle (Zero-Occlusion)
-                // Outer glow
                 Circle()
                     .stroke(Color.white.opacity(0.85), lineWidth: 1.5)
                     .frame(width: 34, height: 34)
                     .shadow(color: color.opacity(0.8), radius: 4)
 
-                // Dark contrast border for high visibility on light & dark skin
                 Circle()
                     .stroke(Color.black.opacity(0.60), lineWidth: 3.5)
                     .frame(width: 26, height: 26)
 
-                // Precision colored ring (hollow transparent center)
                 Circle()
                     .stroke(color, lineWidth: 2.2)
                     .frame(width: 26, height: 26)
 
-                // Inner delicate guide ring
                 Circle()
                     .stroke(Color.white.opacity(0.85), lineWidth: 0.8)
                     .frame(width: 21, height: 21)
             } else if isEndpoint {
-                // Resting Endpoint (Start / End): Small Dot Circle (10pt, twice the mid dot)
+                // Resting Endpoint: Small Dot Circle (10pt)
                 Circle()
                     .stroke(Color.black.opacity(0.50), lineWidth: 2.5)
                     .frame(width: 10, height: 10)
@@ -491,7 +630,7 @@ public struct CreaseLineEditorView: View {
                     .fill(Color.white)
                     .frame(width: 3.5, height: 3.5)
             } else {
-                // Resting Mid Points: Almost Dot Only (5pt pinpoint dot)
+                // Resting Mid Points: Pinpoint Dot (5pt)
                 Circle()
                     .fill(Color.black.opacity(0.50))
                     .frame(width: 7, height: 7)
@@ -538,20 +677,42 @@ public struct CreaseLineEditorView: View {
         workingSplines[sIndex] = workingSplines[sIndex].replacing(points: pts, markAdjusted: true)
     }
 
-    private func finishFreehandDraw(baseDrawRect: CGRect) {
+    private func translateActiveLine(splineId: String, initialPoints: [CGPoint], dx: CGFloat, dy: CGFloat) {
+        guard let sIndex = workingSplines.firstIndex(where: { $0.id == splineId }) else { return }
+        let translated = initialPoints.map { pt in
+            CGPoint(
+                x: min(max(pt.x + dx, 0.01), 0.99),
+                y: min(max(pt.y + dy, 0.01), 0.99)
+            )
+        }
+        workingSplines[sIndex] = workingSplines[sIndex].replacing(points: translated, markAdjusted: true)
+    }
+
+    private func finishFreehandDraw(drawRect: CGRect) {
         guard freehandCanvasPoints.count >= 4,
               let sid = selectedSplineId,
               let sIndex = workingSplines.firstIndex(where: { $0.id == sid }) else {
             freehandCanvasPoints.removeAll()
             return
         }
+
+        // Verify minimum path length to filter out accidental taps
+        var totalDist: CGFloat = 0
+        for i in 1..<freehandCanvasPoints.count {
+            totalDist += hypot(freehandCanvasPoints[i].x - freehandCanvasPoints[i - 1].x,
+                               freehandCanvasPoints[i].y - freehandCanvasPoints[i - 1].y)
+        }
+        guard totalDist > 20 else {
+            freehandCanvasPoints.removeAll()
+            return
+        }
+
         pushHistory()
 
-        // 1. Moving-average smoothing filter to eliminate finger digitizer micro-jitter
-        let smoothedPoints = Self.smoothPoints(freehandCanvasPoints)
-
-        let normDrawn = smoothedPoints.map { canvasPt in
-            let unmapped = ImageCoordinateMapper.unmap(canvasPt, from: baseDrawRect)
+        // 5-tap Gaussian smoothing filter
+        let smoothed = ImageCoordinateMapper.smoothPoints(freehandCanvasPoints)
+        let normDrawn = smoothed.map { canvasPt in
+            let unmapped = ImageCoordinateMapper.unmap(canvasPt, from: drawRect)
             return CGPoint(
                 x: min(max(unmapped.x, 0.01), 0.99),
                 y: min(max(unmapped.y, 0.01), 0.99)
@@ -563,23 +724,6 @@ public struct CreaseLineEditorView: View {
         freehandCanvasPoints.removeAll()
         mediumHaptic.impactOccurred()
         updateCoaching(text: LocalizedStrings.tr("editor.coachingCreated", lang: selectedLanguage), autoDismissAfter: 2.5)
-    }
-
-    /// 3-tap moving-average smoothing filter to produce silky-smooth drawn curves.
-    private static func smoothPoints(_ pts: [CGPoint]) -> [CGPoint] {
-        guard pts.count > 3 else { return pts }
-        var result: [CGPoint] = []
-        result.append(pts.first!)
-        for i in 1..<(pts.count - 1) {
-            let prev = pts[i - 1]
-            let curr = pts[i]
-            let next = pts[i + 1]
-            let sx = (prev.x * 0.25) + (curr.x * 0.50) + (next.x * 0.25)
-            let sy = (prev.y * 0.25) + (curr.y * 0.50) + (next.y * 0.25)
-            result.append(CGPoint(x: sx, y: sy))
-        }
-        result.append(pts.last!)
-        return result
     }
 
     private func resetActiveLine() {
@@ -596,5 +740,18 @@ public struct CreaseLineEditorView: View {
         guard let idx = workingSplines.firstIndex(where: { $0.id == splineId }) else { return }
         workingSplines[idx] = workingSplines[idx].replacing(lineType: newType, markAdjusted: true)
         lightHaptic.impactOccurred()
+    }
+
+    // MARK: - Geometry & Hit-Testing
+
+    private func nearestSplineId(at point: CGPoint, in rect: CGRect) -> String? {
+        var best: (String, CGFloat)?
+        for spline in workingSplines {
+            let d = ImageCoordinateMapper.distanceToSpline(point: point, normPoints: spline.points, in: rect)
+            if d < 28, best == nil || d < best!.1 {
+                best = (spline.id, d)
+            }
+        }
+        return best?.0
     }
 }

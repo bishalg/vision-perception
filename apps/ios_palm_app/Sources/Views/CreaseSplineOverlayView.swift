@@ -61,14 +61,14 @@ public struct CreaseSplineOverlayView: View {
                 .allowsHitTesting(false)
 
                 // 2) Tap-to-select layer — MUST be behind handles so handles stay topmost.
-                // Uses simultaneousGesture + translation <12 so drags don't fire selection.
-                if isEditing {
+                // Uses simultaneousGesture + translation <15 so drags don't fire selection.
+                if isEditing || onSelect != nil {
                     Color.clear
                         .contentShape(Rectangle())
                         .simultaneousGesture(
-                            DragGesture(minimumDistance: 0, coordinateSpace: .named("creaseCanvas"))
+                            DragGesture(minimumDistance: 0, coordinateSpace: .local)
                                 .onEnded { value in
-                                    if hypot(value.translation.width, value.translation.height) < 12 {
+                                    if hypot(value.translation.width, value.translation.height) < 15 {
                                         if let id = nearestSplineId(at: value.location, in: rect) {
                                             onSelect?(id)
                                         }
@@ -117,11 +117,11 @@ public struct CreaseSplineOverlayView: View {
             if pts.count < 2 { continue }
             for i in 0..<(pts.count-1) {
                 let d = distanceToSegment(point: viewPoint, a: pts[i], b: pts[i+1])
-                if d < 22, best == nil || d < best!.1 { best = (spline.id, d) }
+                if d < 32, best == nil || d < best!.1 { best = (spline.id, d) }
             }
             for pt in pts {
                 let d = hypot(pt.x - viewPoint.x, pt.y - viewPoint.y)
-                if d < 28, best == nil || d < best!.1 { best = (spline.id, d) }
+                if d < 36, best == nil || d < best!.1 { best = (spline.id, d) }
             }
         }
         return best?.0

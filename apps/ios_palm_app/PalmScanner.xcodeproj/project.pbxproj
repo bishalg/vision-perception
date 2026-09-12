@@ -16,7 +16,9 @@
 		4C266A227BD5EEF084A180FF /* CaptureResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04145BAF5F6DF10A65698C9A /* CaptureResultView.swift */; };
 		58A086084D286C34069060F5 /* MainScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23380A94031934043F119E2F /* MainScannerView.swift */; };
 		5DD6C50AB3DA1C7EBD4D2229 /* SimplePalmReading.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9E94BB9812BD62ECC5AEA84 /* SimplePalmReading.swift */; };
+		5F8BAFE30DEEDFD5748EB23B /* MagnifyingLoupeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C23CA9724D524227313ED0E7 /* MagnifyingLoupeView.swift */; };
 		64FDF94E7DE4A78348DA5047 /* VisionHandTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 248332063F7DC8A9DEB48F43 /* VisionHandTracker.swift */; };
+		76831FC29FD19F7585D57F80 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7582DE41A497B9558689A2EB /* Assets.xcassets */; };
 		8B49F3CC8F5767FCEE42BAC5 /* CreaseLineEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B9D77E26C37D4EE2A1F5EA5 /* CreaseLineEditorView.swift */; };
 		A037D806C935758987425DE6 /* LocalizedStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4263A45D6BB454A8D1C5E3 /* LocalizedStrings.swift */; };
 		BE3309BBEB88214FB7035EBA /* PalmAnalysisResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD8FE6C0095809F7C6C5E47 /* PalmAnalysisResult.swift */; };
@@ -39,7 +41,9 @@
 		5BB3A3841F3F59CF9472772D /* PalmScannerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalmScannerApp.swift; sourceTree = "<group>"; };
 		5FC54A6BE9238CDDF01888E1 /* ImageCoordinateMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCoordinateMapper.swift; sourceTree = "<group>"; };
 		6B4263A45D6BB454A8D1C5E3 /* LocalizedStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizedStrings.swift; sourceTree = "<group>"; };
+		7582DE41A497B9558689A2EB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8B79D06FF501468AED80497B /* SamudrikaReadingSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SamudrikaReadingSheet.swift; sourceTree = "<group>"; };
+		C23CA9724D524227313ED0E7 /* MagnifyingLoupeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnifyingLoupeView.swift; sourceTree = "<group>"; };
 		E9E94BB9812BD62ECC5AEA84 /* SimplePalmReading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimplePalmReading.swift; sourceTree = "<group>"; };
 		FAA47A720FDE5572D1646BB0 /* CreaseSplineOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreaseSplineOverlayView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -123,6 +127,7 @@
 		B98F47F7833058D84849467B /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				7582DE41A497B9558689A2EB /* Assets.xcassets */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -134,6 +139,7 @@
 				3B9D77E26C37D4EE2A1F5EA5 /* CreaseLineEditorView.swift */,
 				FAA47A720FDE5572D1646BB0 /* CreaseSplineOverlayView.swift */,
 				5FC54A6BE9238CDDF01888E1 /* ImageCoordinateMapper.swift */,
+				C23CA9724D524227313ED0E7 /* MagnifyingLoupeView.swift */,
 				23380A94031934043F119E2F /* MainScannerView.swift */,
 				8B79D06FF501468AED80497B /* SamudrikaReadingSheet.swift */,
 			);
@@ -246,6 +252,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				76831FC29FD19F7585D57F80 /* Assets.xcassets in Resources */,
 				05569F052965F655D5406FF6 /* palm_strings.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -270,7 +277,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "echo \"Stripping static opencv2.framework from Frameworks (already linked statically)...\"\nrm -rf \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/opencv2.framework\"\n# Re-sign the app bundle after removing the framework.\n# Use EXPANDED_CODE_SIGN_IDENTITY if set by Xcode/Fastlane, otherwise fall back to ad-hoc for simulator.\nif [ -d \"${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}\" ]; then\n  SIGN_IDENTITY=\"${EXPANDED_CODE_SIGN_IDENTITY:--}\"\n  echo \"Re-signing bundle with identity: ${SIGN_IDENTITY}\"\n  codesign --force --sign \"${SIGN_IDENTITY}\" --timestamp=none \"${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}\" 2>/dev/null || true\nfi\n";
+			shellScript = "if [ -d \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/opencv2.framework\" ]; then\n  echo \"Stripping static opencv2.framework from Frameworks (already linked statically)...\"\n  rm -rf \"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/opencv2.framework\"\n  if [ -d \"${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}\" ]; then\n    SIGN_IDENTITY=\"${EXPANDED_CODE_SIGN_IDENTITY:--}\"\n    echo \"Re-signing bundle with identity: ${SIGN_IDENTITY}\"\n    codesign --force --sign \"${SIGN_IDENTITY}\" --timestamp=none \"${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}\" 2>/dev/null || true\n  fi\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -284,6 +291,7 @@
 				211E544517E4DA7197D89A57 /* CreaseSplineOverlayView.swift in Sources */,
 				EF5D298BE06A29AA1FA0CBBB /* ImageCoordinateMapper.swift in Sources */,
 				A037D806C935758987425DE6 /* LocalizedStrings.swift in Sources */,
+				5F8BAFE30DEEDFD5748EB23B /* MagnifyingLoupeView.swift in Sources */,
 				58A086084D286C34069060F5 /* MainScannerView.swift in Sources */,
 				BE3309BBEB88214FB7035EBA /* PalmAnalysisResult.swift in Sources */,
 				0E45A1E86E0616E6E2EB55F5 /* PalmAnalysisViewModel.swift in Sources */,

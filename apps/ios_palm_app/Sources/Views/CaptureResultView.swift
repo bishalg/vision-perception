@@ -108,6 +108,9 @@ public struct CaptureResultView: View {
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button {
+                        if selectedSplineId == nil {
+                            selectedSplineId = splines.first?.id
+                        }
                         showEditor = true
                     } label: {
                         Label(LocalizedStrings.tr("result.edit", lang: selectedLanguage), systemImage: "slider.horizontal.3")
@@ -145,6 +148,7 @@ public struct CaptureResultView: View {
                 image: image,
                 splines: splines,
                 selectedLanguage: selectedLanguage,
+                initialSelectedSplineId: selectedSplineId,
                 onDismiss: { showEditor = false },
                 onDone: { updatedSplines in
                     splines = updatedSplines
@@ -193,7 +197,11 @@ public struct CaptureResultView: View {
                     imageRect: drawRect,
                     selectedSplineId: selectedSplineId,
                     isEditing: false,
-                    isFallback: overlaySource == .landmarkFallback
+                    isFallback: overlaySource == .landmarkFallback,
+                    onSelect: { tappedId in
+                        selectedSplineId = tappedId
+                        showEditor = true
+                    }
                 )
             }
         }
@@ -212,15 +220,10 @@ public struct CaptureResultView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(LocalizedStrings.tr(spline.lineType.displayNameKey, lang: selectedLanguage))
                     .font(.headline)
-                HStack(spacing: 4) {
-                    Text("\(spline.points.count) pts")
+                if spline.isUserAdjusted {
+                    Text(LocalizedStrings.tr("result.adjusted", lang: selectedLanguage))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
-                    if spline.isUserAdjusted {
-                        Text(LocalizedStrings.tr("result.adjusted", lang: selectedLanguage))
-                            .font(.caption)
-                            .foregroundStyle(Color(hex: "34C759"))
-                    }
+                        .foregroundStyle(Color(hex: "34C759"))
                 }
             }
 

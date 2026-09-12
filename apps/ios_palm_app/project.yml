@@ -42,6 +42,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.curv.palmapp
         PRODUCT_NAME: PalmScanner
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # OpenCV's static core references libc++ and the Accelerate framework;
         # both must be linked explicitly for the CurvEngine native path.
         OTHER_LDFLAGS: "-lc++ -framework Accelerate"
@@ -70,21 +71,24 @@ targets:
       - name: StripStaticOpenCVFramework
         basedOnDependencyAnalysis: false
         script: |
-          echo "Stripping static opencv2.framework from Frameworks (already linked statically)..."
-          rm -rf "${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/opencv2.framework"
-          # Re-sign the app bundle after removing the framework.
-          # Use EXPANDED_CODE_SIGN_IDENTITY if set by Xcode/Fastlane, otherwise fall back to ad-hoc for simulator.
-          if [ -d "${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}" ]; then
-            SIGN_IDENTITY="${EXPANDED_CODE_SIGN_IDENTITY:--}"
-            echo "Re-signing bundle with identity: ${SIGN_IDENTITY}"
-            codesign --force --sign "${SIGN_IDENTITY}" --timestamp=none "${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}" 2>/dev/null || true
+          if [ -d "${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/opencv2.framework" ]; then
+            echo "Stripping static opencv2.framework from Frameworks (already linked statically)..."
+            rm -rf "${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/opencv2.framework"
+            if [ -d "${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}" ]; then
+              SIGN_IDENTITY="${EXPANDED_CODE_SIGN_IDENTITY:--}"
+              echo "Re-signing bundle with identity: ${SIGN_IDENTITY}"
+              codesign --force --sign "${SIGN_IDENTITY}" --timestamp=none "${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}" 2>/dev/null || true
+            fi
           fi
         runOnlyWhenInstalling: false
     info:
       path: AppHost/Info.plist
       properties:
         CFBundleDisplayName: Palm Reader
-        UILaunchScreen: {}
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+          UIImageName: LaunchLogo
+          UIImageRespectsSafeAreaInsets: true
         NSCameraUsageDescription: Camera access is required to capture your palm for real-time guidance and crease analysis.
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

@@ -84,6 +84,11 @@
     "hi": "वक्रता समायोजित",
     "ne": "वक्रता मिलाउँदै"
   },
+  "editor.hintMovingLine": {
+    "en": "Moving entire line",
+    "hi": "पूरी रेखा स्थानांतरित",
+    "ne": "सम्पूर्ण रेखा सार्दै"
+  },
   "editor.hintMovingEnd": {
     "en": "Moving end of line",
     "hi": "अंतिम सिरा स्थानांतरित",

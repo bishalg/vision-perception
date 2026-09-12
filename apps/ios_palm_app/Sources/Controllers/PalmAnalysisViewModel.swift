@@ -241,6 +241,7 @@ public final class PalmAnalysisViewModel: ObservableObject {
         let autoArmed = now >= suppressAutoCaptureUntil
         let shouldCapture: Bool = {
             guard autoArmed,
+                  capturedImage == nil,
                   landmarks != nil,
                   tipsOK,
                   case .ready(let progress) = evaluation.state,
@@ -316,6 +317,15 @@ public final class PalmAnalysisViewModel: ObservableObject {
             self.guidanceState = .ready(countdownProgress: 1.0)
         }
 
+        // Safety watchdog: ensure analysis loader can never hang the camera feed
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { [weak self] in
+            guard let self, self.isAnalyzing else { return }
+            self.logger.warning("Capture watchdog timeout reached — resetting analysis state")
+            self.isAnalyzing = false
+            self.isCapturing = false
+            self.guidanceEngine.reset()
+        }
+
         cameraSession.capturePhoto { [weak self] result in
             guard let self else { return }
             switch result {
@@ -357,8 +367,9 @@ public final class PalmAnalysisViewModel: ObservableObject {
                 self.logger.error("Still re-detect failed — falling back to video landmarks (likely misaligned)")
             }
 
-            // Prefer native Steger polylines; landmark guides are fallback only when XCFramework is absent.
-            var splines = self.fallbackLandmarkCreases(landmarks: photoLandmarks)
+            // Anatomical landmark scaffold: always provides all 4 major lines (Heart, Head, Life, Fate).
+            let fallbackCreases = self.fallbackLandmarkCreases(landmarks: photoLandmarks)
+            var splines = fallbackCreases
             var parsedResponse: PalmAnalysisResponse?
             var usedNative = false
             var source: CreaseOverlaySource = .landmarkFallback
@@ -372,11 +383,20 @@ public final class PalmAnalysisViewModel: ObservableObject {
                     parsedResponse = PalmAnalysisResponse.from(jsonString: jsonString)
                     if parsedResponse == nil {
                         self.logger.error("Native JSON decode failed (len=\(jsonString.count)) — keeping landmark fallback")
-                    } else if let nativeSplines = parsedResponse?.creaseSplinesFromPolylines() {
-                        splines = nativeSplines
+                    } else if let nativeSplines = parsedResponse?.creaseSplinesFromPolylines(), !nativeSplines.isEmpty {
+                        // Merge native lines with anatomical scaffold for any line missed by Steger
+                        var merged: [CreaseSpline] = []
+                        for fallback in fallbackCreases {
+                            if let matchedNative = nativeSplines.first(where: { $0.lineType == fallback.lineType }) {
+                                merged.append(matchedNative)
+                            } else {
+                                merged.append(fallback)
+                            }
+                        }
+                        splines = merged
                         usedNative = true
                         source = .nativeEngine
-                        self.logger.info("Native Steger returned \(nativeSplines.count) crease polylines")
+                        self.logger.info("Native Steger detected lines; guaranteed all 4 major lines (Heart, Head, Life, Fate)")
                     } else {
                         let usable = parsedResponse?.isUsable.map(String.init) ?? "nil"
                         let lineCount = parsedResponse?.domainPayload?.majorLines?.count ?? 0
@@ -532,6 +552,11 @@ public final class PalmAnalysisViewModel: ObservableObject {
         return pixelBuffer
     }
 
+    private static let sharedCIContext = CIContext(options: [
+        .useSoftwareRenderer: false,
+        .priorityRequestLow: false
+    ])
+
     /// Returns an upright UIImage (pixels already rotated) plus the Vision orientation
     /// that matches the raw capture buffer before baking.
     private static func uprightImage(
@@ -540,18 +565,17 @@ public final class PalmAnalysisViewModel: ObservableObject {
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
         let width = CVPixelBufferGetWidth(pixelBuffer)
         let height = CVPixelBufferGetHeight(pixelBuffer)
-        let context = CIContext(options: nil)
 
         // High-res stills are often sensor-landscape even when the connection is portrait.
         if width > height {
             let rotated = ciImage.oriented(.right)
-            guard let cgImage = context.createCGImage(rotated, from: rotated.extent) else {
+            guard let cgImage = sharedCIContext.createCGImage(rotated, from: rotated.extent) else {
                 return (nil, .right)
             }
             return (UIImage(cgImage: cgImage, scale: 1.0, orientation: .up), .right)
         }
 
-        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
+        guard let cgImage = sharedCIContext.createCGImage(ciImage, from: ciImage.extent) else {
             return (nil, .up)
         }
         return (UIImage(cgImage: cgImage, scale: 1.0, orientation: .up), .up)
