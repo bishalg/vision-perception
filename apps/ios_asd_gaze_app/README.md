@@ -19,15 +19,27 @@ This application coordinates the pediatric eye-gaze data collection and social v
 
 ---
 
-## 2. Project Generation (XcodeGen)
+## 2. Running the App
 
-To generate the `.xcodeproj` file:
-
+### Option A: Open Directly in Xcode (GUI)
 ```bash
-cd apps/ios_asd_gaze_app
-xcodegen generate
-open AsdGazeCollector.xcodeproj
+open apps/ios_asd_gaze_app/AsdGazeCollector.xcodeproj
 ```
+1. Select the `AsdGazeCollector` scheme.
+2. Select your connected device (e.g., **Bishal’s iPhone 17 Pro**) or an iOS Simulator.
+3. Press **`Cmd + R`** to build and run.
+
+### Option B: Deploy to Connected iPhone (CLI)
+```bash
+./scripts/run_gaze_app_device.sh
+```
+Builds, signs, installs via `xcrun devicectl`, and launches directly on your paired physical device.
+
+### Option C: Run in iPhone Simulator (CLI)
+```bash
+./scripts/run_gaze_app_sim.sh
+```
+Boots the first available iPhone simulator, builds, installs, and launches automatically.
 
 ---
 
@@ -43,7 +55,9 @@ apps/ios_asd_gaze_app/
     ├── UI/
     │   └── LiquidGlassTheme.swift      # GlassCard, GlassInput & color tokens
     └── Views/
-        ├── CaregiverDashboardView.swift  # Longitudinal milestones & history
-        ├── BubbleCalibrationView.swift   # Interactive 5-point calibration target
-        └── StimulusScreeningView.swift   # Synchronized video player + real-time gaze HUD
+        ├── MainGazeScannerView.swift   # Palm-scanner style side-by-side live scanner
+        ├── GazeSessionResultView.swift # Post-capture analysis & clinical evidence report
+        ├── CaregiverDashboardView.swift# Longitudinal milestones & history
+        ├── BubbleCalibrationView.swift # Interactive 5-point calibration target
+        └── StimulusScreeningView.swift # Synchronized video player + real-time gaze HUD
 ```

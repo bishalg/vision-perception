@@ -159,6 +159,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
+					5A339C8E397001A08FBAA7AE = {
+						DevelopmentTeam = 6J3WY94J6T;
+						ProvisioningStyle = Automatic;
+					};
 				};
 			};
 			buildConfigurationList = 4B07836A83B7884E90F2E57A /* Build configuration list for PBXProject "AsdGazeCollector" */;
@@ -206,7 +210,9 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6J3WY94J6T;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "TrueDepth camera access is required to track eye gaze and measure social visual attention in real-time. No raw camera frames or videos are ever recorded to storage.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "Device motion data is required to separate device movement from toddler head orientation.";
@@ -295,7 +301,9 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6J3WY94J6T;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "TrueDepth camera access is required to track eye gaze and measure social visual attention in real-time. No raw camera frames or videos are ever recorded to storage.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "Device motion data is required to separate device movement from toddler head orientation.";

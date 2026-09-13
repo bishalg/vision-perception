@@ -30,6 +30,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.curv.asd.gazecollector
         PRODUCT_NAME: AsdGazeCollector
+        DEVELOPMENT_TEAM: 6J3WY94J6T
+        CODE_SIGN_STYLE: Automatic
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: "1.0.0"
         GENERATE_INFOPLIST_FILE: true
