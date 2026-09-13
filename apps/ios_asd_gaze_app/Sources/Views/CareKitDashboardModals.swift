@@ -205,3 +205,148 @@ public struct MilestoneDetailModalView: View {
         }
     }
 }
+
+// MARK: - Developmental Milestones Section View
+
+public struct DevelopmentalMilestonesSectionView: View {
+    public let milestones: [MilestoneItem]
+    public let onSelect: (MilestoneItem) -> Void
+
+    public init(milestones: [MilestoneItem], onSelect: @escaping (MilestoneItem) -> Void) {
+        self.milestones = milestones
+        self.onSelect = onSelect
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(Localizer.tr("carekit_milestones_title"))
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundColor(.primary)
+
+            VStack(spacing: 8) {
+                ForEach(milestones) { milestone in
+                    Button {
+                        onSelect(milestone)
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: milestone.isCompleted ? "checkmark.circle.fill" : "circle.dashed")
+                                .foregroundColor(milestone.isCompleted ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber)
+                                .font(.system(size: 20))
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(milestone.title)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(.primary)
+
+                                Text(milestone.dueDateString)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.secondary.opacity(0.5))
+                        }
+                        .glassCard(cornerRadius: 12, padding: 12)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Clinical Advisory Banner View
+
+public struct ClinicalAdvisoryBannerView: View {
+    public let onDismiss: () -> Void
+    public let onMoreDetails: () -> Void
+
+    public init(onDismiss: @escaping () -> Void, onMoreDetails: @escaping () -> Void) {
+        self.onDismiss = onDismiss
+        self.onMoreDetails = onMoreDetails
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Alert Header Row
+            HStack(spacing: 6) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(LiquidGlass.warmAmber)
+                    .font(.system(size: 12))
+
+                Text(Localizer.tr("dashboard_clinical_advisory"))
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundColor(LiquidGlass.warmAmber)
+
+                Spacer()
+
+                Text("13 Sep")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+
+                Button {
+                    onDismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(.secondary.opacity(0.8))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Dismiss Alert")
+            }
+
+            // Body: Pediatric heart/clinical icon + Title + Description
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(LiquidGlass.warmAmber.opacity(0.2))
+                        .frame(width: 40, height: 40)
+                    Image(systemName: "heart.text.square.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(LiquidGlass.warmAmber)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(Localizer.tr("dashboard_clinical_title"))
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.primary)
+
+                    Text(Localizer.tr("dashboard_clinical_desc"))
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            // More Details Action Button
+            HStack {
+                Button {
+                    onMoreDetails()
+                } label: {
+                    Text(Localizer.tr("dashboard_more_details"))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.black) // theme:fixed-media
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 7)
+                        .background(Capsule().fill(LiquidGlass.warmAmber))
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+            }
+            .padding(.top, 2)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(LiquidGlass.warmAmber.opacity(0.12))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(LiquidGlass.warmAmber.opacity(0.35), lineWidth: 1)
+        )
+    }
+}

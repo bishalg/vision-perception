@@ -129,10 +129,33 @@ public struct MedicationItem: Identifiable, Codable, Sendable, Equatable {
         self.dose = dose
         self.instructions = instructions
         self.schedule = schedule
-        self.dosesTakenToday = dosesTakenToday.isEmpty
-            ? Array(repeating: false, count: schedule.count)
-            : dosesTakenToday
+        self.dosesTakenToday = Self.alignedDoses(dosesTakenToday, to: schedule)
         self.lastTakenAt = lastTakenAt
+    }
+
+    /// Decode leniently: persisted `dosesTakenToday` from an older schedule
+    /// shape is resized (prefix preserved, remainder false) instead of
+    /// silently disabling doses.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let schedule = try container.decode([String].self, forKey: .schedule)
+        self.init(
+            id: try container.decode(String.self, forKey: .id),
+            name: try container.decode(String.self, forKey: .name),
+            dose: try container.decode(String.self, forKey: .dose),
+            instructions: try container.decode(String.self, forKey: .instructions),
+            schedule: schedule,
+            dosesTakenToday: (try? container.decode([Bool].self, forKey: .dosesTakenToday)) ?? [],
+            lastTakenAt: try? container.decode(Date.self, forKey: .lastTakenAt)
+        )
+    }
+
+    /// Resize a taken-array to the schedule length (prefix preserved).
+    private static func alignedDoses(_ doses: [Bool], to schedule: [String]) -> [Bool] {
+        if doses.count == schedule.count { return doses }
+        var fixed = Array(doses.prefix(schedule.count))
+        while fixed.count < schedule.count { fixed.append(false) }
+        return fixed
     }
 }
 
@@ -190,12 +213,19 @@ public struct MilestoneItem: Identifiable, Codable, Sendable {
 public final class CarePlanStore: ObservableObject {
     public static let shared = CarePlanStore()
 
+    /// Injected clinical-record backend (`.shared` in production; an in-memory
+    /// store in tests so unit tests never touch the on-disk record).
+    private let clinicalStore: CareKitClinicalStore
+
     @Published public var tasks: [CarePlanTask] = []
     @Published public var diaryEntry: DailyDiaryEntry = DailyDiaryEntry()
     @Published public var medications: [MedicationItem] = []
     @Published public var streakDays: Int = 5
     @Published public var weeklyHistory: [LongitudinalAttentionPoint] = []
     @Published public var milestones: [MilestoneItem] = []
+    /// In-flight CareKit mirror write counts per care-plan task id. A counter
+    /// (not a set) so rapid double-taps can't clear the spinner early.
+    @Published public var pendingCareKitCounts: [String: Int] = [:]
 
     private let tasksKey = "org.curv.asd.careplan.tasks"
     private let diaryKey = "org.curv.asd.careplan.diary"
@@ -203,7 +233,8 @@ public final class CarePlanStore: ObservableObject {
     private let streakKey = "org.curv.asd.careplan.streak"
     private let historyKey = "org.curv.asd.careplan.history"
 
-    public init() {
+    public init(clinicalStore: CareKitClinicalStore = .shared) {
+        self.clinicalStore = clinicalStore
         loadState()
     }
 
@@ -225,8 +256,25 @@ public final class CarePlanStore: ObservableObject {
             tasks[index].isCompleted.toggle()
             tasks[index].completedAt = tasks[index].isCompleted ? Date() : nil
             saveTasks()
-            // Mirror into the on-device CareKit clinical record (fire-and-forget).
-            CareKitClinicalStore.shared.recordTaskCompletion(tasks[index], knownTasks: tasks)
+            let task = tasks[index]
+            // Mirror into the on-device CareKit clinical record (fire-and-forget);
+            // the pending counter drives the row's mini spinner until the write lands.
+            pendingCareKitCounts[task.id, default: 0] += 1
+            clinicalStore.recordTaskCompletion(task, knownTasks: tasks) {
+                Task { @MainActor in
+                    self.decrementPending(for: task.id)
+                }
+            }
+        }
+    }
+
+    /// Decrement the in-flight counter for a task (floor at zero), removing the key.
+    private func decrementPending(for id: String) {
+        guard let count = pendingCareKitCounts[id] else { return }
+        if count <= 1 {
+            pendingCareKitCounts.removeValue(forKey: id)
+        } else {
+            pendingCareKitCounts[id] = count - 1
         }
     }
 
@@ -261,10 +309,17 @@ public final class CarePlanStore: ObservableObject {
         medications[index].dosesTakenToday[doseIndex].toggle()
         medications[index].lastTakenAt = medications[index].dosesTakenToday[doseIndex] ? Date() : nil
         saveMedications()
+        let med = medications[index]
+        let key = "med_\(med.id)"
+        pendingCareKitCounts[key, default: 0] += 1
         // Mirror the dose event into the CareKit clinical record (fire-and-forget).
-        CareKitClinicalStore.shared.recordMedicationTaken(
-            medications[index], doseIndex: doseIndex, markedAt: medications[index].lastTakenAt ?? Date()
-        )
+        clinicalStore.recordMedicationTaken(
+            med, doseIndex: doseIndex, markedAt: med.lastTakenAt ?? Date()
+        ) { [weak self] in
+            Task { @MainActor in
+                self?.decrementPending(for: key)
+            }
+        }
     }
 
     /// Proportion of today's scheduled doses that have been given (0.0 to 1.0).
@@ -294,10 +349,19 @@ public final class CarePlanStore: ObservableObject {
             )
             saveHistory()
         }
-        // Mirror the screening outcome (with its scores) into CareKit (fire-and-forget).
-        CareKitClinicalStore.shared.recordScreeningOutcome(
+        // Mirror the screening outcome (with its scores) into CareKit (fire-and-forget);
+        // keep the observation row's spinner up until the write lands.
+        if let observation = tasks.first(where: { $0.category == .observation }) {
+            pendingCareKitCounts[observation.id, default: 0] += 1
+        }
+        clinicalStore.recordScreeningOutcome(
             socialScore: socialScore, validFramePercentage: 94.0, knownTasks: tasks
-        )
+        ) { [weak self] in
+            Task { @MainActor in
+                guard let observation = self?.tasks.first(where: { $0.category == .observation }) else { return }
+                self?.decrementPending(for: observation.id)
+            }
+        }
     }
 
     /// Exports clinical CareKit summary adhering to OCKCarePlanActivity structure.
@@ -320,7 +384,7 @@ public final class CarePlanStore: ObservableObject {
 
         let payload = CareKitExportPayload(
             exportTimestamp: Date(),
-            protocolVersion: "CareKit-ASD-v1.2",
+            protocolVersion: "CareKit-ASD-v1.3",
             streakDays: streakDays,
             completionRate: completionRatio,
             todayDiary: diaryEntry,
@@ -398,7 +462,7 @@ public final class CarePlanStore: ObservableObject {
             UserDefaults.standard.set(data, forKey: diaryKey)
         }
         // Mirror the diary into the on-device CareKit clinical record (fire-and-forget).
-        CareKitClinicalStore.shared.recordDiaryEntry(diaryEntry)
+        clinicalStore.recordDiaryEntry(diaryEntry)
     }
 
     private func saveMedications() {

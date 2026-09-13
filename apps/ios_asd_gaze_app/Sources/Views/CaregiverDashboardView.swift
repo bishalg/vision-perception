@@ -124,85 +124,15 @@ public struct CaregiverDashboardView: View {
     // MARK: - 1. Clinical Advisory Alert Banner (Apple Health Style)
 
     private var clinicalAdvisoryBanner: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // Alert Header Row
-            HStack(spacing: 6) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundColor(LiquidGlass.warmAmber)
-                    .font(.system(size: 12))
-
-                Text(Localizer.tr("dashboard_clinical_advisory"))
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundColor(LiquidGlass.warmAmber)
-
-                Spacer()
-
-                Text("13 Sep")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
-
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        isAdvisoryDismissed = true
-                    }
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 16))
-                        .foregroundColor(.secondary.opacity(0.8))
+        ClinicalAdvisoryBannerView(
+            onDismiss: {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isAdvisoryDismissed = true
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Dismiss Alert")
+            },
+            onMoreDetails: {
+                showingClinicalDetailsSheet = true
             }
-
-            // Body: Pediatric heart/clinical icon + Title + Description
-            HStack(alignment: .top, spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(LiquidGlass.warmAmber.opacity(0.2))
-                        .frame(width: 40, height: 40)
-                    Image(systemName: "heart.text.square.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(LiquidGlass.warmAmber)
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(Localizer.tr("dashboard_clinical_title"))
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.primary)
-
-                    Text(Localizer.tr("dashboard_clinical_desc"))
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-
-            // More Details Action Button
-            HStack {
-                Button {
-                    showingClinicalDetailsSheet = true
-                } label: {
-                    Text(Localizer.tr("dashboard_more_details"))
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.black) // theme:fixed-media
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 7)
-                        .background(Capsule().fill(LiquidGlass.warmAmber))
-                }
-                .buttonStyle(.plain)
-
-                Spacer()
-            }
-            .padding(.top, 2)
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(LiquidGlass.warmAmber.opacity(0.12))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(LiquidGlass.warmAmber.opacity(0.35), lineWidth: 1)
         )
     }
 
@@ -391,15 +321,25 @@ public struct CaregiverDashboardView: View {
 
     private func carePlanTaskRow(task: CarePlanTask) -> some View {
         HStack(spacing: 12) {
-            // Circular Checkbox with Tactile Haptic Feedback
+            // Circular Checkbox with Tactile Haptic Feedback + sync spinner
             Button {
                 let generator = UIImpactFeedbackGenerator(style: .light)
                 generator.impactOccurred()
                 carePlanStore.toggleTask(id: task.id)
             } label: {
-                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 22))
-                    .foregroundColor(task.isCompleted ? LiquidGlass.emeraldMint : Color.primary.opacity(0.35))
+                ZStack {
+                    Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 22))
+                        .foregroundColor(task.isCompleted ? LiquidGlass.emeraldMint : Color.primary.opacity(0.35))
+
+                    // Mini "syncing to clinical record" spinner while the
+                    // CareKit mirror write is in flight (instant feedback).
+                    if (carePlanStore.pendingCareKitCounts[task.id] ?? 0) > 0 {
+                        ProgressView()
+                            .controlSize(.mini)
+                            .tint(LiquidGlass.celestialTeal)
+                    }
+                }
             }
             .buttonStyle(.plain)
 
@@ -488,8 +428,15 @@ public struct CaregiverDashboardView: View {
                         carePlanStore.toggleMedicationTaken(id: medication.id, doseIndex: index)
                     } label: {
                         HStack(spacing: 5) {
-                            Image(systemName: isTaken ? "checkmark.circle.fill" : "circle")
-                                .font(.system(size: 15))
+                            ZStack {
+                                Image(systemName: isTaken ? "checkmark.circle.fill" : "circle")
+                                    .font(.system(size: 15))
+                                if (carePlanStore.pendingCareKitCounts["med_\(medication.id)"] ?? 0) > 0 {
+                                    ProgressView()
+                                        .controlSize(.mini)
+                                        .tint(LiquidGlass.celestialTeal)
+                                }
+                            }
                             Text(time)
                                 .font(.system(size: 12, weight: .semibold, design: .monospaced))
                         }
@@ -778,43 +725,10 @@ public struct CaregiverDashboardView: View {
     // MARK: - 7. CDC / AAP Developmental Milestones
 
     private var milestonesSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(Localizer.tr("carekit_milestones_title"))
-                .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundColor(.primary)
-
-            VStack(spacing: 8) {
-                ForEach(carePlanStore.milestones) { milestone in
-                    Button {
-                        selectedMilestone = milestone
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: milestone.isCompleted ? "checkmark.circle.fill" : "circle.dashed")
-                                .foregroundColor(milestone.isCompleted ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber)
-                                .font(.system(size: 20))
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(milestone.title)
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(.primary)
-
-                                Text(milestone.dueDateString)
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.secondary)
-                            }
-
-                            Spacer()
-
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.secondary.opacity(0.5))
-                        }
-                        .glassCard(cornerRadius: 12, padding: 12)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
+        DevelopmentalMilestonesSectionView(
+            milestones: carePlanStore.milestones,
+            onSelect: { selectedMilestone = $0 }
+        )
     }
 }
 

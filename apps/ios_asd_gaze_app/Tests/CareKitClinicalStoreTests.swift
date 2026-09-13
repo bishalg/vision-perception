@@ -195,4 +195,259 @@ final class CareKitClinicalStoreTests: XCTestCase {
         }
         XCTAssertEqual(cleared, 0, "toggling a dose off must delete its outcome")
     }
+
+    // MARK: - Audit-driven regression (cumulative occurrence, merge seeding, upserts)
+
+    /// CareKit occurrences are cumulative since the schedule start — a dose
+    /// recorded days after seeding must land on today's cumulative index,
+    /// never on the per-day index (which would corrupt an older outcome).
+    func testMedicationOutcomeUsesCumulativeOccurrence() throws {
+        let store = OCKStore(name: "TestMedCumulative", type: .inMemory)
+        let recorder = CareKitClinicalStore(store: store)
+        let threeDaysAgo = Calendar.current.date(byAdding: .day, value: -3, to: Date())!
+        var med = MedicationItem(
+            id: "med_omega_3", name: "Omega-3 Support", dose: "500 mg",
+            instructions: "With meals", schedule: ["08:00", "20:00"]
+        )
+        recorder.seedTasks([], medications: [med], on: threeDaysAgo)
+        med.dosesTakenToday = [false, true]
+        recorder.recordMedicationTaken(med, doseIndex: 1, markedAt: Date())
+
+        // Twice-daily for 3 full days + today's 08:00 dose = occurrence 7 for 20:00 today.
+        var index = -1
+        var count = 0
+        for _ in 0..<60 {
+            let exp = expectation(description: "fetch cumulative med outcome")
+            store.fetchOutcomes(query: OCKOutcomeQuery(for: Date()), callbackQueue: .main) { result in
+                let outcomes = (try? result.get()) ?? []
+                count = outcomes.count
+                index = outcomes.first?.taskOccurrenceIndex ?? -1
+                exp.fulfill()
+            }
+            wait(for: [exp], timeout: 2.0)
+            if count == 1 { break }
+        }
+        XCTAssertEqual(count, 1)
+        XCTAssertEqual(index, 7, "evening dose three days after seeding must use cumulative occurrence 7")
+    }
+
+    /// A record that arrives before any full seed must not lock the store into
+    /// a partial task set: the later full seed still merges everything.
+    func testPartialSeedThenFullSeedMergesAll() throws {
+        let store = OCKStore(name: "TestPartialSeed", type: .inMemory)
+        let recorder = CareKitClinicalStore(store: store)
+        let med = MedicationItem(
+            id: "med_vitamin_d", name: "Vitamin D3 Drops", dose: "400 IU",
+            instructions: "Morning", schedule: ["08:00"]
+        )
+        // Diary-only write first (seeds just the diary task).
+        let diaryDone = expectation(description: "diary recorded")
+        recorder.recordDiaryEntry(DailyDiaryEntry()) { diaryDone.fulfill() }
+        wait(for: [diaryDone], timeout: 10.0)
+        // Full launch seed afterwards must still add care-plan + med tasks.
+        recorder.seedTasks([sampleTask()], medications: [med])
+        var found = false
+        for _ in 0..<60 {
+            let exp = expectation(description: "fetch merged tasks")
+            var ids: [String] = []
+            store.fetchTasks(callbackQueue: .main) { result in
+                ids = (try? result.get().map(\.id)) ?? []
+                exp.fulfill()
+            }
+            wait(for: [exp], timeout: 2.0)
+            if ids.contains("ock_task_gaze_screen") && ids.contains("ock_caregiver_diary")
+                && ids.contains("ock_med_med_vitamin_d") {
+                found = true
+                break
+            }
+        }
+        XCTAssertTrue(found, "late full seed must merge all tasks even after a partial seed")
+    }
+
+    /// Two concurrent diary writes must serialize into a single outcome.
+    func testConcurrentDiaryWritesKeepSingleOutcome() throws {
+        let store = OCKStore(name: "TestConcurrentDiary", type: .inMemory)
+        let recorder = CareKitClinicalStore(store: store)
+        let first = expectation(description: "first diary write")
+        let second = expectation(description: "second diary write")
+        DispatchQueue.global().async {
+            recorder.recordDiaryEntry(DailyDiaryEntry(notes: "first")) { first.fulfill() }
+        }
+        DispatchQueue.global().async {
+            recorder.recordDiaryEntry(DailyDiaryEntry(notes: "second")) { second.fulfill() }
+        }
+        wait(for: [first, second], timeout: 15.0)
+        let exp = expectation(description: "fetch single diary outcome")
+        var count = -1
+        var valueCount = 0
+        store.fetchOutcomes(query: OCKOutcomeQuery(for: Date()), callbackQueue: .main) { result in
+            let outcomes = (try? result.get()) ?? []
+            count = outcomes.count
+            valueCount = outcomes.reduce(0) { $0 + $1.values.count }
+            exp.fulfill()
+        }
+        wait(for: [exp], timeout: 5.0)
+        XCTAssertEqual(count, 1, "concurrent diary writes must upsert into one outcome")
+        XCTAssertEqual(valueCount, 4)
+    }
+
+    /// Toggle on then off must keep exactly one outcome and reflect the
+    /// latest state (completed=false), proving the update path.
+    func testTaskToggleTwiceKeepsSingleOutcome() throws {
+        let store = OCKStore(name: "TestToggleTwice", type: .inMemory)
+        let recorder = CareKitClinicalStore(store: store)
+        recorder.seedTasks([sampleTask()])
+        var onTask = sampleTask()
+        onTask.isCompleted = true
+        onTask.completedAt = Date()
+        let onDone = expectation(description: "toggle on recorded")
+        recorder.recordTaskCompletion(onTask, knownTasks: [onTask]) { onDone.fulfill() }
+        wait(for: [onDone], timeout: 10.0)
+        var offTask = sampleTask()
+        offTask.isCompleted = false
+        offTask.completedAt = nil
+        let offDone = expectation(description: "toggle off recorded")
+        recorder.recordTaskCompletion(offTask, knownTasks: [offTask]) { offDone.fulfill() }
+        wait(for: [offDone], timeout: 10.0)
+        let exp = expectation(description: "fetch toggled outcome")
+        var count = -1
+        var completed = true
+        store.fetchOutcomes(query: OCKOutcomeQuery(for: Date()), callbackQueue: .main) { result in
+            let outcomes = (try? result.get()) ?? []
+            count = outcomes.count
+            completed = outcomes.first?.values.compactMap(\.booleanValue).first ?? true
+            exp.fulfill()
+        }
+        wait(for: [exp], timeout: 5.0)
+        XCTAssertEqual(count, 1, "toggle on/off must not duplicate the occurrence outcome")
+        XCTAssertFalse(completed, "latest toggle state (off) must win")
+    }
+
+    /// Daily care plan task completion 4 days after schedule start must land on
+    /// cumulative occurrence index 4, not 0.
+    func testDailyTaskCumulativeOccurrenceOverMultipleDays() throws {
+        let store = OCKStore(name: "TestDailyCumulative", type: .inMemory)
+        let recorder = CareKitClinicalStore(store: store)
+        let fourDaysAgo = Calendar.current.date(byAdding: .day, value: -4, to: Date())!
+        let task = sampleTask()
+        recorder.seedTasks([task], on: fourDaysAgo)
+
+        var completedTask = task
+        completedTask.isCompleted = true
+        completedTask.completedAt = Date()
+        let done = expectation(description: "task completion recorded")
+        recorder.recordTaskCompletion(completedTask, knownTasks: [task]) { done.fulfill() }
+        wait(for: [done], timeout: 10.0)
+
+        let exp = expectation(description: "fetch cumulative task outcome")
+        var occurrence = -1
+        store.fetchOutcomes(query: OCKOutcomeQuery(for: Date()), callbackQueue: .main) { result in
+            let outcomes = (try? result.get()) ?? []
+            occurrence = outcomes.first?.taskOccurrenceIndex ?? -1
+            exp.fulfill()
+        }
+        wait(for: [exp], timeout: 5.0)
+        XCTAssertEqual(occurrence, 4, "completion 4 days after seed must use cumulative occurrence 4")
+    }
+
+    /// Screening outcome with social score and valid frames must record correctly.
+    func testRecordScreeningOutcomeRoundTrip() throws {
+        let store = OCKStore(name: "TestScreeningOutcome", type: .inMemory)
+        let recorder = CareKitClinicalStore(store: store)
+        let task = sampleTask()
+        let done = expectation(description: "screening outcome recorded")
+        recorder.recordScreeningOutcome(
+            socialScore: 0.72,
+            validFramePercentage: 96.0,
+            knownTasks: [task]
+        ) { done.fulfill() }
+        wait(for: [done], timeout: 10.0)
+
+        let exp = expectation(description: "fetch screening outcome")
+        var valueCount = 0
+        var doubles: [Double] = []
+        store.fetchOutcomes(query: OCKOutcomeQuery(for: Date()), callbackQueue: .main) { result in
+            let outcomes = (try? result.get()) ?? []
+            let values = outcomes.first?.values ?? []
+            valueCount = values.count
+            doubles = values.compactMap(\.doubleValue)
+            exp.fulfill()
+        }
+        wait(for: [exp], timeout: 5.0)
+        XCTAssertEqual(valueCount, 3, "screening outcome must persist social score, frame %, and date")
+        XCTAssertTrue(doubles.contains(where: { abs($0 - 0.72) < 1e-6 }), "outcome must contain social score 0.72")
+        XCTAssertTrue(doubles.contains(where: { abs($0 - 96.0) < 1e-6 }), "outcome must contain valid frame % 96.0")
+    }
+
+    /// Concurrent diary, task completion, and medication writes must serialize safely.
+    func testConcurrentTaskCompletionAndMedicationWrites() throws {
+        let store = OCKStore(name: "TestConcurrentMulti", type: .inMemory)
+        let recorder = CareKitClinicalStore(store: store)
+        let task = sampleTask()
+        var med = MedicationItem(
+            id: "med_d3", name: "Vitamin D3", dose: "400 IU",
+            instructions: "Morning", schedule: ["08:00"]
+        )
+        med.dosesTakenToday = [true]
+
+        recorder.seedTasks([task], medications: [med])
+
+        let diaryDone = expectation(description: "diary done")
+        let taskDone = expectation(description: "task done")
+        let medDone = expectation(description: "med done")
+
+        DispatchQueue.global().async {
+            recorder.recordDiaryEntry(DailyDiaryEntry(notes: "concurrent notes")) { diaryDone.fulfill() }
+        }
+        DispatchQueue.global().async {
+            var completed = task
+            completed.isCompleted = true
+            recorder.recordTaskCompletion(completed, knownTasks: [task]) { taskDone.fulfill() }
+        }
+        DispatchQueue.global().async {
+            recorder.recordMedicationTaken(med, doseIndex: 0) { medDone.fulfill() }
+        }
+
+        wait(for: [diaryDone, taskDone, medDone], timeout: 15.0)
+
+        let exp = expectation(description: "fetch all outcomes")
+        var outcomeCount = 0
+        store.fetchOutcomes(query: OCKOutcomeQuery(for: Date()), callbackQueue: .main) { result in
+            let outcomes = (try? result.get()) ?? []
+            outcomeCount = outcomes.count
+            exp.fulfill()
+        }
+        wait(for: [exp], timeout: 5.0)
+        XCTAssertEqual(outcomeCount, 3, "diary, task, and med outcomes must all settle concurrently")
+    }
+
+    /// Seeding medications first and care plan tasks second merges all tasks properly.
+    func testMedicationSeedThenCarePlanSeedMergesAll() throws {
+        let store = OCKStore(name: "TestMedThenTaskSeed", type: .inMemory)
+        let recorder = CareKitClinicalStore(store: store)
+        let med = MedicationItem(
+            id: "med_multi", name: "Multivitamin", dose: "1 chewable",
+            instructions: "Morning", schedule: ["08:00"]
+        )
+        // 1. Partial seed with medication only
+        recorder.seedTasks([], medications: [med])
+        // 2. Full seed with task
+        recorder.seedTasks([sampleTask()], medications: [med])
+
+        var found = false
+        for _ in 0..<40 {
+            let exp = expectation(description: "fetch merged")
+            var ids: [String] = []
+            store.fetchTasks(callbackQueue: .main) { result in
+                ids = (try? result.get().map(\.id)) ?? []
+                exp.fulfill()
+            }
+            wait(for: [exp], timeout: 2.0)
+            if ids.contains("ock_med_med_multi") && ids.contains("ock_task_gaze_screen") && ids.contains("ock_caregiver_diary") {
+                found = true
+                break
+            }
+        }
+        XCTAssertTrue(found, "all tasks must merge when medication is seeded first")
+    }
 }

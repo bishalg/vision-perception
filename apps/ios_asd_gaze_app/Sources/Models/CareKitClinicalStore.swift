@@ -1,5 +1,6 @@
 import CareKitStore
 import Foundation
+import os
 
 /// On-device clinical record for the ASD gaze program, backed by Apple's
 /// CareKit `OCKStore`. This is the real SDK integration behind the
@@ -13,16 +14,15 @@ import Foundation
 /// `domains/asd_screening/docs/ETHICS_PROTOCOL.md` (zero raw video storage).
 /// All writes are fire-and-forget with error logging; a store failure never
 /// blocks or alters UI state.
-public final class CareKitClinicalStore {
+public final class CareKitClinicalStore: @unchecked Sendable {
     public static let shared = CareKitClinicalStore()
+
+    private static let logger = Logger(subsystem: "com.visionperception.asd", category: "CareKitClinicalStore")
 
     /// Stable task id for the caregiver diary check-in.
     public static let diaryTaskID = "ock_caregiver_diary"
 
     private let store: OCKStore
-    private var hasSeeded = false
-    private var knownTasks: [CarePlanTask] = []
-    private var knownMedications: [MedicationItem] = []
 
     /// Production initializer (on-disk store). Tests inject `.inMemory()`.
     public convenience init() {
@@ -139,94 +139,119 @@ public final class CareKitClinicalStore {
 
     // MARK: - Seeding
 
-    /// Idempotent: only tasks whose ids are absent are inserted, so re-seeds
-    /// (e.g. every launch) are safe. Seeds the care-plan tasks plus the
-    /// caregiver diary check-in and one multi-dose task per medication.
+    /// Cumulative merge: every call inserts whatever ids are absent, so
+    /// re-seeds (every launch, every record path) and partial-then-full
+    /// sequences are all safe. Arguments are captured into the queued block,
+    /// so concurrent callers can never observe each other's mutable state.
     /// Runs on `mutationQueue`; recording calls that arrive before seeding
     /// completes queue behind it (FIFO), so seed-then-write ordering holds.
     public func seedTasks(_ tasks: [CarePlanTask], medications: [MedicationItem] = [],
                           on date: Date = Date()) {
-        knownTasks = tasks
-        knownMedications = medications
-        mutationQueue.async { self.performSeed(on: date) }
+        mutationQueue.async { self.performSeed(tasks: tasks, medications: medications, on: date) }
     }
 
     // MARK: - Recording (fire-and-forget; never throws into UI)
 
     /// Records a daily-task toggle against today's occurrence.
-    public func recordTaskCompletion(_ task: CarePlanTask, knownTasks: [CarePlanTask]) {
+    /// `completion` fires on the main actor after the outcome is written
+    /// (successful or not), so the UI can clear its "syncing" indicator.
+    public func recordTaskCompletion(_ task: CarePlanTask, knownTasks: [CarePlanTask],
+                                     completion: (@Sendable () -> Void)? = nil) {
         mutationQueue.async {
-            self.performSeed(on: Date())
+            self.performSeed(tasks: knownTasks, on: Date())
+            self.ensureTask(Self.makeTask(from: task, startOfDay: Calendar.current.startOfDay(for: Date())))
             let values = Self.taskCompletionValues(completed: task.isCompleted, completedAt: task.completedAt)
             self.upsertOutcome(taskID: "ock_\(task.id)", date: Date(), values: values)
+            Self.dispatch(completion)
         }
     }
 
     /// Records a completed gaze screening session with its scores.
+    /// `completion` fires on the main actor once the outcome is written.
     public func recordScreeningOutcome(socialScore: Double, validFramePercentage: Double,
-                                       knownTasks: [CarePlanTask], date: Date = Date()) {
+                                       knownTasks: [CarePlanTask], date: Date = Date(),
+                                       completion: (@Sendable () -> Void)? = nil) {
         mutationQueue.async {
-            self.performSeed(on: date)
-            guard let observation = knownTasks.first(where: { $0.category == .observation }) else { return }
+            self.performSeed(tasks: knownTasks, on: date)
+            guard let observation = knownTasks.first(where: { $0.category == .observation }) else {
+                Self.dispatch(completion)
+                return
+            }
+            self.ensureTask(Self.makeTask(from: observation, startOfDay: Calendar.current.startOfDay(for: date)))
             let values = Self.screeningOutcomeValues(socialScore: socialScore,
                                                      validFramePercentage: validFramePercentage,
                                                      completedAt: date)
             self.upsertOutcome(taskID: "ock_\(observation.id)", date: date, values: values)
+            Self.dispatch(completion)
         }
     }
 
     /// Records the caregiver diary entry against the diary task occurrence.
-    public func recordDiaryEntry(_ entry: DailyDiaryEntry, date: Date = Date()) {
+    /// `completion` fires on the main actor once the outcome is written.
+    public func recordDiaryEntry(_ entry: DailyDiaryEntry, date: Date = Date(),
+                                 completion: (@Sendable () -> Void)? = nil) {
         mutationQueue.async {
-            self.performSeed(on: date)
+            self.performSeed(tasks: [], on: date)
             self.ensureTask(Self.makeDiaryTask(startOfDay: Calendar.current.startOfDay(for: date)))
             self.upsertOutcome(taskID: Self.diaryTaskID, date: date, values: Self.diaryOutcomeValues(from: entry))
+            Self.dispatch(completion)
         }
     }
 
     /// Records (or clears, via `deleteOutcome`) one scheduled dose of a
-    /// medication. The CareKit occurrence for a composed multi-dose schedule
-    /// equals the dose's index into `item.schedule`.
+    /// medication. The written occurrence is resolved from today's schedule
+    /// events matched to the dose clock time — CareKit occurrences are
+    /// cumulative since the schedule start, never per-day indexes.
+    /// `completion` fires on the main actor once the write settles.
     public func recordMedicationTaken(_ item: MedicationItem, doseIndex: Int,
-                                      markedAt: Date = Date()) {
+                                      markedAt: Date = Date(),
+                                      completion: (@Sendable () -> Void)? = nil) {
         mutationQueue.async {
-            self.performSeed(on: markedAt)
+            self.performSeed(tasks: [], medications: [item], on: markedAt)
             guard item.dosesTakenToday.indices.contains(doseIndex),
                   item.schedule.indices.contains(doseIndex),
-                  Self.parseClockTime(item.schedule[doseIndex]) != nil else { return }
+                  let doseTime = Self.parseClockTime(item.schedule[doseIndex]) else {
+                Self.dispatch(completion)
+                return
+            }
             self.ensureTask(Self.makeMedicationTask(from: item, startOfDay: Calendar.current.startOfDay(for: markedAt)))
             let taskID = "ock_med_\(item.id)"
             if item.dosesTakenToday[doseIndex] {
                 self.upsertOutcome(taskID: taskID, date: markedAt,
                                    values: Self.medicationOutcomeValues(item: item, markedAt: markedAt),
-                                   occurrenceHint: doseIndex)
+                                   doseTime: doseTime)
             } else {
-                self.deleteOutcomeIfPresent(taskID: taskID, occurrence: doseIndex, date: markedAt)
+                // Resolve the same occurrence the taken-path would use, then delete it.
+                if let occurrence = self.occurrenceForDose(taskID: taskID, doseTime: doseTime, date: markedAt) {
+                    self.deleteOutcomeIfPresent(taskID: taskID, occurrence: occurrence, date: markedAt)
+                }
             }
+            Self.dispatch(completion)
         }
     }
 
     // MARK: - Private serialized plumbing
+
+    /// Runs `completion` on the main actor, if provided.
+    private static func dispatch(_ completion: (@Sendable () -> Void)?) {
+        guard let completion else { return }
+        DispatchQueue.main.async(execute: completion)
+    }
 
     /// Serial queue that owns every read/write below. Each public call enqueues
     /// one unit of work, so mutations never interleave and seeding always
     /// precedes the outcome writes it should back.
     private let mutationQueue = DispatchQueue(label: "org.curv.carekit.mutations", qos: .userInitiated)
 
-    private func performSeed(on date: Date) {
-        guard !hasSeeded else { return }
+    private func performSeed(tasks: [CarePlanTask], medications: [MedicationItem] = [], on date: Date) {
         let startOfDay = Calendar.current.startOfDay(for: date)
-        var desired = knownTasks.map { Self.makeTask(from: $0, startOfDay: startOfDay) }
+        var desired = tasks.map { Self.makeTask(from: $0, startOfDay: startOfDay) }
         desired.append(Self.makeDiaryTask(startOfDay: startOfDay))
-        desired.append(contentsOf: knownMedications.map { Self.makeMedicationTask(from: $0, startOfDay: startOfDay) })
+        desired.append(contentsOf: medications.map { Self.makeMedicationTask(from: $0, startOfDay: startOfDay) })
         let existingIDs = Set(fetchTasksNow().map(\.id))
         let missing = desired.filter { !existingIDs.contains($0.id) }
-        if missing.isEmpty {
-            hasSeeded = true
-            return
-        }
-        guard addTasksNow(missing) else { return }
-        hasSeeded = true
+        guard !missing.isEmpty else { return }
+        addTasksNow(missing)
     }
 
     /// Insert `task` only if its id is absent. Lets a record path back its own
@@ -239,24 +264,32 @@ public final class CareKitClinicalStore {
 
     /// Upsert today's outcome for `taskID` (update if one already exists for
     /// the occurrence, otherwise insert) so each occurrence holds one outcome.
+    /// When `doseTime` is given, the occurrence is resolved by matching today's
+    /// schedule event closest to that clock time — required because CareKit
+    /// occurrence indexes are cumulative since the schedule start, not per-day.
     private func upsertOutcome(taskID: String, date: Date, values: [OCKOutcomeValue],
-                               occurrenceHint: Int? = nil) {
+                               doseTime: (hour: Int, minute: Int)? = nil) {
         guard let task = fetchTasksNow().first(where: { $0.id == taskID }) else {
-            print("[CareKitClinicalStore] no task \(taskID) for outcome")
+            Self.logger.warning("no task \(taskID, privacy: .public) for outcome")
             return
         }
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
         guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else { return }
+        let events = task.schedule.events(from: startOfDay, to: endOfDay)
         let occurrence: Int
-        if let hint = occurrenceHint {
-            occurrence = hint
-        } else {
-            guard let first = task.schedule.events(from: startOfDay, to: endOfDay).first else {
-                print("[CareKitClinicalStore] no occurrence for \(taskID) today")
-                return
-            }
+        if let doseTime,
+           let doseStart = calendar.date(bySettingHour: doseTime.hour, minute: doseTime.minute, second: 0, of: startOfDay),
+           let event = events.min(by: { abs($0.start.timeIntervalSince(doseStart)) < abs($1.start.timeIntervalSince(doseStart)) }) {
+            occurrence = event.occurrence
+        } else if doseTime != nil {
+            Self.logger.warning("no event matching dose time for \(taskID, privacy: .public)")
+            return
+        } else if let first = events.first {
             occurrence = first.occurrence
+        } else {
+            Self.logger.warning("no occurrence for \(taskID, privacy: .public) today")
+            return
         }
         if let existing = fetchOutcomeNow(task: task, occurrence: occurrence, startOfDay: startOfDay, endOfDay: endOfDay) {
             var updated = existing
@@ -265,6 +298,18 @@ public final class CareKitClinicalStore {
         } else {
             addOutcomeNow(OCKOutcome(taskUUID: task.uuid, taskOccurrenceIndex: occurrence, values: values))
         }
+    }
+
+    /// Resolve the cumulative occurrence index of the schedule event closest
+    /// to `doseTime` on `date`, or nil when the task/event is absent.
+    private func occurrenceForDose(taskID: String, doseTime: (hour: Int, minute: Int), date: Date) -> Int? {
+        guard let task = fetchTasksNow().first(where: { $0.id == taskID }) else { return nil }
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay),
+              let doseStart = calendar.date(bySettingHour: doseTime.hour, minute: doseTime.minute, second: 0, of: startOfDay) else { return nil }
+        let events = task.schedule.events(from: startOfDay, to: endOfDay)
+        return events.min(by: { abs($0.start.timeIntervalSince(doseStart)) < abs($1.start.timeIntervalSince(doseStart)) })?.occurrence
     }
 
     /// Remove any recorded outcome for the given task occurrence (toggle-off).
@@ -277,7 +322,7 @@ public final class CareKitClinicalStore {
         let semaphore = DispatchSemaphore(value: 0)
         store.deleteOutcomes([existing], callbackQueue: .main) { result in
             if case .failure(let error) = result {
-                print("[CareKitClinicalStore] deleteOutcome failed: \(error)")
+                Self.logger.error("deleteOutcome failed: \(error.localizedDescription, privacy: .public)")
             }
             semaphore.signal()
         }
@@ -286,56 +331,70 @@ public final class CareKitClinicalStore {
 
     // MARK: - Synchronous store shims (safe: called only on `mutationQueue`)
 
+    private final class Box<T>: @unchecked Sendable {
+        var value: T
+        init(_ value: T) { self.value = value }
+    }
+
     /// Block until CareKit answers, then return the result. The caller must be
     /// on `mutationQueue` (never the main thread) so the main-queue callbacks
     /// below cannot deadlock.
     private func fetchTasksNow() -> [OCKTask] {
-        var result: [OCKTask] = []
+        let box = Box<[OCKTask]>([])
         let semaphore = DispatchSemaphore(value: 0)
         store.fetchTasks(callbackQueue: .main) { outcome in
-            result = (try? outcome.get()) ?? []
-            semaphore.signal()
-        }
-        semaphore.wait()
-        return result
-    }
-
-    @discardableResult
-    private func addTasksNow(_ tasks: [OCKTask]) -> Bool {
-        var ok = false
-        let semaphore = DispatchSemaphore(value: 0)
-        store.addTasks(tasks, callbackQueue: .main) { outcome in
-            if case .failure(let error) = outcome {
-                print("[CareKitClinicalStore] addTasks failed: \(error)")
-            } else {
-                ok = true
+            switch outcome {
+            case .success(let tasks):
+                box.value = tasks
+            case .failure(let error):
+                Self.logger.error("fetchTasks failed: \(error.localizedDescription, privacy: .public)")
             }
             semaphore.signal()
         }
         semaphore.wait()
-        return ok
+        return box.value
+    }
+
+    @discardableResult
+    private func addTasksNow(_ tasks: [OCKTask]) -> Bool {
+        let box = Box(false)
+        let semaphore = DispatchSemaphore(value: 0)
+        store.addTasks(tasks, callbackQueue: .main) { outcome in
+            if case .failure(let error) = outcome {
+                Self.logger.error("addTasks failed: \(error.localizedDescription, privacy: .public)")
+            } else {
+                box.value = true
+            }
+            semaphore.signal()
+        }
+        semaphore.wait()
+        return box.value
     }
 
     private func fetchOutcomeNow(task: OCKTask, occurrence: Int,
                                  startOfDay: Date, endOfDay: Date) -> OCKOutcome? {
-        var result: OCKOutcome?
+        let box = Box<OCKOutcome?>(nil)
         let semaphore = DispatchSemaphore(value: 0)
         var query = OCKOutcomeQuery(dateInterval: DateInterval(start: startOfDay, end: endOfDay))
         query.taskIDs = [task.id]
         store.fetchOutcomes(query: query, callbackQueue: .main) { outcome in
-            let outcomes = (try? outcome.get()) ?? []
-            result = outcomes.first(where: { $0.taskUUID == task.uuid && $0.taskOccurrenceIndex == occurrence })
+            switch outcome {
+            case .success(let outcomes):
+                box.value = outcomes.first(where: { $0.taskUUID == task.uuid && $0.taskOccurrenceIndex == occurrence })
+            case .failure(let error):
+                Self.logger.error("fetchOutcomes failed: \(error.localizedDescription, privacy: .public)")
+            }
             semaphore.signal()
         }
         semaphore.wait()
-        return result
+        return box.value
     }
 
     private func addOutcomeNow(_ outcome: OCKOutcome) {
         let semaphore = DispatchSemaphore(value: 0)
         store.addOutcome(outcome, callbackQueue: .main) { outcomeResult in
             if case .failure(let error) = outcomeResult {
-                print("[CareKitClinicalStore] addOutcome failed: \(error)")
+                Self.logger.error("addOutcome failed: \(error.localizedDescription, privacy: .public)")
             }
             semaphore.signal()
         }
@@ -346,7 +405,7 @@ public final class CareKitClinicalStore {
         let semaphore = DispatchSemaphore(value: 0)
         store.updateOutcomes([outcome], callbackQueue: .main) { outcomeResult in
             if case .failure(let error) = outcomeResult {
-                print("[CareKitClinicalStore] updateOutcome failed: \(error)")
+                Self.logger.error("updateOutcome failed: \(error.localizedDescription, privacy: .public)")
             }
             semaphore.signal()
         }

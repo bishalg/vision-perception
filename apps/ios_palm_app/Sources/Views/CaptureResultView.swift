@@ -88,7 +88,6 @@ public struct CaptureResultView: View {
                 .scrollContentBackground(.hidden)
             }
             .background(Color.black.ignoresSafeArea())
-            .preferredColorScheme(.dark)
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarBackground(Color.black.opacity(0.72), for: .navigationBar)
@@ -143,7 +142,6 @@ public struct CaptureResultView: View {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
                 .background(Color.black.opacity(0.78))
-                .preferredColorScheme(.dark)
             }
         }
         .fullScreenCover(isPresented: $showEditor) {
