@@ -7,9 +7,13 @@ the generated artifact for native consumers.
 Adoption status (honest):
 - Web CurvStudio hint preview: adopted (imports the TS modules directly).
 - Mobile searching silhouette (`mobile_overlay/.../PalmSilhouetteView.swift`,
-  `PalmSilhouette.kt`): NOT yet consuming this spec — still hand-authored per
-  platform. Unifying it is tracked work (per-finger paths, fill-once +
-  per-finger strokes).
+  `PalmSilhouette.kt`): canonical mobile geometry now lives in
+  `mobile_overlay/shared/shapes/silhouette.json` (normalized 0..1 fractions,
+  identical to the code — pinned by `check_shared_shapes.py`). Views still
+  draw hardcoded paths; rewiring both to parse the spec is the tracked next
+  step, in one change, with fill-once + per-finger strokes. This folder's
+  `palm_guide.json` is the *web* artwork (220×250 space) and is not consumed
+  by mobile.
 - Mobile live region overlay (`PalmRegionGeometry`): intentionally separate —
   it is landmark-driven (computed from the 21 live tracking points), not
   static art, and stays that way.

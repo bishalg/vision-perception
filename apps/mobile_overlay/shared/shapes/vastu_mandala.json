@@ -1,0 +1,24 @@
+{
+  "$comment": "Canonical Vastu Purusha Mandala 3x3 grid. Single source of truth for VastuMandalaView.swift and VastuMandala.kt zone identity. Layout metrics (insets, corner radii, type sizes, north icon) stay platform-native; only identity + emphasis are shared.",
+  "spec_version": "1.0.0",
+  "grid": "3x3",
+  "rows": [
+    [
+      { "key": "vayu", "name": "Vayu", "element": "Air" },
+      { "key": "uttara", "name": "Uttara", "element": "Wealth" },
+      { "key": "ishanya", "name": "Ishanya", "element": "Water" }
+    ],
+    [
+      { "key": "pashchima", "name": "Pashchima", "element": "West" },
+      { "key": "brahmasthan", "name": "Brahmasthan", "element": "Space" },
+      { "key": "purva", "name": "Purva", "element": "Light" }
+    ],
+    [
+      { "key": "nairutya", "name": "Nairutya", "element": "Earth" },
+      { "key": "dakshina", "name": "Dakshina", "element": "Fire" },
+      { "key": "agni", "name": "Agni", "element": "Fire" }
+    ]
+  ],
+  "emphasis_key": "brahmasthan",
+  "emphasis_note": "Center cell renders at 2x stroke width of the other cells on both platforms."
+}

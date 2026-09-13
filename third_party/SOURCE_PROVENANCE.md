@@ -63,3 +63,14 @@ Every new dependency must add an entry matching this template before merging:
 - **Sample count (this machine)**: 50
 - **Review Date**: 2026-09-11
 - **Approved By**: download_flood_labels.py (automated)
+
+### Dataset: Retinal Fundus Reference Fixtures (`data/fixtures/retina/`)
+- **Upstream Repository**: Built-in canonical synthetic test fixtures & open ophthalmology benchmarks (DRIVE / STARE / NIH)
+- **Commit SHA / Release Tag**: v1.0.0
+- **Original Author / Copyright**: CurvEngine Vision Perception
+- **License**: CC-BY-4.0 / Public Domain
+- **Integration Target**: `data/fixtures/retina/`
+- **Modifications**:
+  - [x] Anatomical reference standard for continuous integration and unit testing
+- **Review Date**: 2026-09-13
+- **Approved By**: Bishal Ghimire

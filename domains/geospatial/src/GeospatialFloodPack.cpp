@@ -13,6 +13,8 @@ DomainOutput GeospatialFloodPack::process(const DomainInput& input) {
 
     float max_length = 0.0f;
     float sum_length = 0.0f;
+    float river_length = 0.0f;
+    float longest_river = 0.0f;
     int river_count = 0;
     int tributary_count = 0;
     int minor_count = 0;
@@ -28,6 +30,8 @@ DomainOutput GeospatialFloodPack::process(const DomainInput& input) {
             feature_class = "river_channel";
             feature_confidence = 0.95;
             river_count++;
+            river_length += seg.total_length;
+            longest_river = std::max(longest_river, seg.total_length);
         } else if (seg.total_length >= cfg_.tributary_min_length_px) {
             feature_class = "tributary";
             feature_confidence = 0.80;
@@ -59,12 +63,14 @@ DomainOutput GeospatialFloodPack::process(const DomainInput& input) {
     const int total_features = river_count + tributary_count + minor_count;
     const double mean_length =
         (total_features > 0) ? (static_cast<double>(sum_length) / static_cast<double>(total_features)) : 0.0;
+    const double river_fraction = (sum_length > 0.0f) ? (static_cast<double>(river_length) / sum_length) : 0.0;
 
     output.domain_payload = {
-        {"total_features", total_features},       {"river_channel_count", river_count},
-        {"tributary_count", tributary_count},     {"minor_feature_count", minor_count},
-        {"max_feature_length_px", max_length},    {"mean_feature_length_px", mean_length},
-        {"total_feature_length_px", sum_length},  {"junction_count", input.ridges.junctions.size()},
+        {"total_features", total_features},         {"river_channel_count", river_count},
+        {"tributary_count", tributary_count},       {"minor_feature_count", minor_count},
+        {"max_feature_length_px", max_length},      {"mean_feature_length_px", mean_length},
+        {"total_feature_length_px", sum_length},    {"junction_count", input.ridges.junctions.size()},
+        {"longest_river_length_px", longest_river}, {"river_length_fraction", river_fraction},
         {"frame_usable", input.quality.is_usable}};
 
     return output;

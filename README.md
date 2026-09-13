@@ -31,15 +31,18 @@ A foundational architectural invariant of this repository is that **the core mus
    - Operates purely on geometric, spatial, radiometric, and structural primitives: sub-pixel coordinates, curvilinear segments, topological junctions, Hessian eigenvalues, and image quality metrics.
    - Contains zero domain-specific heuristics, rules, or domain terminology.
 2. **Domain Packs Added Later (`domains/`)**:
-   - All application-specific logic will be added later as isolated domain extension packs.
-   - Future domain packs include:
+   - All application-specific logic is isolated in domain extension packs.
+   - Active and roadmap domain packs include:
      - `domains/palm/`: Biometric hand landmark alignment and crease extraction.
-     - `domains/poultry/`: Livestock density, dwell time, and behavior tracking.
-     - `domains/driver_monitoring/`: Driver gaze, head pose, and drowsiness analysis.
+     - `domains/retina/`: Ophthalmology fundus micro-vessel segmentation, tortuosity index, and bifurcation tracking.
+     - `domains/asd_screening/`: Pediatric social visual attention screening (GeoPref, Face Scanning, ResearchKit/CareKit).
+     - `domains/driver_monitoring/`: Automotive in-cabin driver gaze, off-road distraction, and visual alertness.
+     - `domains/geospatial/`: Satellite SAR / optical river corridor morphology and flood boundary quantification.
      - `domains/surface_inspection/`: Micro-crack, scratch, and surface defect quality control.
+     - `domains/floor_plan/`: Wall polygon and architectural junction extraction.
      - `domains/document_scanning/`: Quadrilateral edge rectification and text line analysis.
 3. **No Domain Pollution**:
-   - Palmistry, astrology, Samudrik Shastra, poultry feeding, driver alertness thresholds, etc., are **strictly forbidden** inside `core/`.
+   - Palmistry, astrology, medical diagnostics, poultry feeding, driver alertness thresholds, etc., are **strictly forbidden** inside `core/`.
 
 ---
 
@@ -101,6 +104,8 @@ Stage 1: Static Images ✅          ──►  Stage 2: Recorded Video ✅  ─�
 | :--- | :--- | :--- |
 | **Real-Time Flood (Nepal / Alpine)** | Sentinel-1 SAR + Sentinel-2 L2A + River CCTV | [`docs/flood_realtime_architecture.md`](docs/flood_realtime_architecture.md) |
 | **Highway & Urban CCTV** | Caltrans, Austin, TfL (HLS / JPEG snapshots) | [`docs/research/gods_eye_view_and_cctv_integration.md`](docs/research/gods_eye_view_and_cctv_integration.md) |
+| **Pediatric Social Attention & ASD Screening** | TrueDepth ARKit Gaze + Multi-Task Stimuli | [`domains/asd_screening/README.md`](domains/asd_screening/README.md) |
+| **Retinal Micro-Vascular Biometrics** | Fundus Photography (Green Channel CLAHE) | [`domains/retina/README.md`](domains/retina/README.md) |
 | **System Spatial Architecture** | Multi-tier pipeline & 2D-to-3D viewshed projection | [`docs/research/realtime_spatial_perception_architecture.md`](docs/research/realtime_spatial_perception_architecture.md) |
 | **Test Fixtures & Local POC** | Curated reference datasets for rapid offline dev | [`data/fixtures/README.md`](data/fixtures/README.md) |
 | **Research Index** | High-density discovery index for humans & AI | [`docs/research/README.md`](docs/research/README.md) |
@@ -123,6 +128,13 @@ Stage 1: Static Images ✅          ──►  Stage 2: Recorded Video ✅  ─�
 - [x] **Milestone 10: Phase 2 Recorded Video Pipeline** — `CctvVideoSource` + `video_pipeline_demo` (quality + Steger annotated AVI/MP4), ring-buffer stream adapter foundation, offline `data/fixtures/cctv_video/` clip
 - [x] **Milestone 11: Phase 3 Live HTTP Snapshot Stream** — `CctvHttpSnapshot` + `live_snapshot_demo` with local cache/proxy fallback for presentation-safe demos
 - [x] **Milestone 12: Phase 4 CesiumJS 3D Digital Twin** — `apps/cesium_viewer` (Vite + Cesium, OSM tiles) + `tools/geojson_exporter.py` frustum markers and still panels
-- [ ] **Milestone 13: Phase 5 Flood Alert Production Demo** — scheduled ingest → flood heuristics → alert banner on twin
+- [x] **Milestone 13: Retinal & Pediatric ASD Screening Perception Packs** — Steger fundus micro-vessel segmentation (`domains/retina/`), core temporal oculomotor dynamics (`core/temporal/`: I-VT, I-DT, DTW), and pediatric social visual attention pack (`domains/asd_screening/`) with ResearchKit and CareKit data schemas. Specifications:
+  - Architecture: [`domains/asd_screening/docs/ARCHITECTURE.md`](domains/asd_screening/docs/ARCHITECTURE.md)
+  - Stimuli & Dynamic AOIs: [`domains/asd_screening/docs/STIMULI_SPEC.md`](domains/asd_screening/docs/STIMULI_SPEC.md)
+  - Data Collection & Ethics: [`domains/asd_screening/docs/ETHICS_PROTOCOL.md`](domains/asd_screening/docs/ETHICS_PROTOCOL.md)
+  - ML & Validation Roadmap: [`domains/asd_screening/docs/ML_ROADMAP.md`](domains/asd_screening/docs/ML_ROADMAP.md)
+  - Literature Survey & 12-Phase Plan: [`domains/asd_screening/docs/LITERATURE.md`](domains/asd_screening/docs/LITERATURE.md)
+- [ ] **Milestone 14: Phase 5 Flood Alert Production Demo** — scheduled ingest → flood heuristics → alert banner on twin
 - [ ] Next phase: mobile packaging remains parallel track
+
 

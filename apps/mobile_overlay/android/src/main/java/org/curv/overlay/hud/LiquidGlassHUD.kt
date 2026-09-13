@@ -34,7 +34,9 @@ import org.curv.overlay.guidance.QualityMetrics
 import org.curv.overlay.profile.OverlayProfile
 import org.curv.overlay.profile.TelemetryChannel
 
-val OverlayEmerald = Color(0xFF32D74B)
+// Canonical values from mobile_overlay/shared/shapes/overlay_theme.json
+// (iOS OverlayPalette is the reference; see _resolved notes in the JSON).
+val OverlayEmerald = Color(0xFF33D64A)
 val OverlayAmber = Color(0xFFFFCC00)
 
 @Composable
@@ -79,7 +81,7 @@ fun LiquidGlassHUD(
                 .border(
                     width = if (isReady) 3.5.dp else 2.dp,
                     brush = if (isReady) {
-                        Brush.linearGradient(listOf(OverlayEmerald, Color(0xFF22C55E)))
+                        Brush.linearGradient(listOf(OverlayEmerald, Color(0xFF21BF6B)))
                     } else {
                         Brush.linearGradient(listOf(Color.White.copy(alpha = 0.6f), Color.White.copy(alpha = 0.2f)))
                     },

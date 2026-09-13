@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node run_tests.mjs"
+    "test": "node run_tests.mjs",
+    "guide:export": "node export_guide.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.66.0",

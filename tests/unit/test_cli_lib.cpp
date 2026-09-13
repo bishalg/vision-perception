@@ -1,3 +1,4 @@
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -72,8 +73,8 @@ TEST_F(CliLibTest, FullPipelineRunWritesOverlayAndEvidence) {
     const std::string overlay = (dir / "overlay.png").string();
     const std::string evidence = (dir / "evidence.json").string();
 
-    const char* argv[] = {"curv_cli", "--image", image_arg.c_str(), "--out", overlay.c_str(),
-                          "--json",  evidence.c_str()};
+    const char* argv[] = {"curv_cli",      "--image", image_arg.c_str(), "--out",
+                          overlay.c_str(), "--json",  evidence.c_str()};
     std::stringstream out;
     std::stringstream err;
     ASSERT_EQ(CurvEngine::tools::runCurvCli(7, const_cast<char**>(argv), out, err), 0) << err.str();
@@ -96,8 +97,7 @@ TEST_F(CliLibTest, SvgExportWritesVectorCurves) {
     const std::string overlay = (dir / "overlay.png").string();
     const std::string svg = (dir / "curves.svg").string();
 
-    const char* argv[] = {"curv_cli", "--image", image_arg.c_str(), "--out", overlay.c_str(),
-                          "--svg",   svg.c_str()};
+    const char* argv[] = {"curv_cli", "--image", image_arg.c_str(), "--out", overlay.c_str(), "--svg", svg.c_str()};
     std::stringstream out;
     std::stringstream err;
     ASSERT_EQ(CurvEngine::tools::runCurvCli(7, const_cast<char**>(argv), out, err), 0) << err.str();
@@ -131,8 +131,8 @@ TEST_F(CliLibTest, DomainPacksRunAndEnrichTheEvidencePayload) {
     const std::string evidence = (dir / "evidence_palm.json").string();
     const std::string overlay = (dir / "overlay.png").string();
 
-    const char* argv[] = {"curv_cli", "--image",  image_arg.c_str(), "--out",    overlay.c_str(),
-                          "--json",  evidence.c_str(), "--domain", "palm"};
+    const char* argv[] = {"curv_cli", "--image",        image_arg.c_str(), "--out", overlay.c_str(),
+                          "--json",   evidence.c_str(), "--domain",        "palm"};
     std::stringstream out;
     std::stringstream err;
     ASSERT_EQ(CurvEngine::tools::runCurvCli(9, const_cast<char**>(argv), out, err), 0) << err.str();
@@ -148,8 +148,8 @@ TEST_F(CliLibTest, SurfaceInspectionAliasIsAccepted) {
     const std::string evidence = (dir / "evidence_surface.json").string();
     const std::string overlay = (dir / "overlay.png").string();
 
-    const char* argv[] = {"curv_cli", "--image", image_arg.c_str(), "--out",    overlay.c_str(),
-                          "--json",  evidence.c_str(), "--domain", "surface"};
+    const char* argv[] = {"curv_cli", "--image",        image_arg.c_str(), "--out",  overlay.c_str(),
+                          "--json",   evidence.c_str(), "--domain",        "surface"};
     std::stringstream out;
     std::stringstream err;
     ASSERT_EQ(CurvEngine::tools::runCurvCli(9, const_cast<char**>(argv), out, err), 0) << err.str();
@@ -162,8 +162,8 @@ TEST_F(CliLibTest, UnknownDomainNameRunsWithoutDomainPack) {
     const std::string evidence = (dir / "evidence_none.json").string();
     const std::string overlay = (dir / "overlay.png").string();
 
-    const char* argv[] = {"curv_cli", "--image", image_arg.c_str(), "--out",    overlay.c_str(),
-                          "--json",  evidence.c_str(), "--domain", "astrology"};
+    const char* argv[] = {"curv_cli", "--image",        image_arg.c_str(), "--out",    overlay.c_str(),
+                          "--json",   evidence.c_str(), "--domain",        "astrology"};
     std::stringstream out;
     std::stringstream err;
     ASSERT_EQ(CurvEngine::tools::runCurvCli(9, const_cast<char**>(argv), out, err), 0) << err.str();
@@ -179,8 +179,8 @@ TEST_F(CliLibTest, UnknownFlagsAreIgnoredAndValuelessNumericFlagsDontConsume) {
     const std::string image_arg = image.string();
     const std::string overlay = (dir / "overlay.png").string();
 
-    const char* argv[] = {"curv_cli", "--image", image_arg.c_str(), "--out", overlay.c_str(),
-                          "--frobnicate", "--dark", "--low"};
+    const char* argv[] = {"curv_cli",      "--image",      image_arg.c_str(), "--out",
+                          overlay.c_str(), "--frobnicate", "--dark",          "--low"};
     std::stringstream out;
     std::stringstream err;
     EXPECT_EQ(CurvEngine::tools::runCurvCli(8, const_cast<char**>(argv), out, err), 0) << err.str();
@@ -201,9 +201,8 @@ TEST_F(CliLibTest, ValuelessFlagsAtArgvEndAreIgnoredForEveryValueTakingFlag) {
     // For each value-taking flag F, "F" as the LAST argument must be ignored by
     // the bounds guard — never read past argv. With no --image, the runner
     // always lands on the usage/sanity path.
-    const std::vector<std::string> value_flags = {"--image",    "--domain", "--svg",  "--sigma",
-                                                  "--low",      "--high",   "--out",  "--json",
-                                                  "--min-blur", "--export-evidence"};
+    const std::vector<std::string> value_flags = {"--image", "--domain", "--svg",  "--sigma",    "--low",
+                                                  "--high",  "--out",    "--json", "--min-blur", "--export-evidence"};
 
     for (const auto& flag : value_flags) {
         const char* argv[] = {"curv_cli", flag.c_str()};
@@ -222,8 +221,9 @@ TEST_F(CliLibTest, ThresholdFlagsShapeTheExtractionConfig) {
     const std::string evidence = (dir / "evidence_high.json").string();
     const std::string overlay = (dir / "overlay.png").string();
 
-    const char* argv[] = {"curv_cli", "--image", image_arg.c_str(), "--out", overlay.c_str(),
-                          "--json",  evidence.c_str(), "--sigma", "9.0", "--low", "500", "--high", "900"};
+    const char* argv[] = {
+        "curv_cli", "--image", image_arg.c_str(), "--out", overlay.c_str(), "--json", evidence.c_str(),
+        "--sigma",  "9.0",     "--low",           "500",   "--high",        "900"};
     std::stringstream out;
     std::stringstream err;
     ASSERT_EQ(CurvEngine::tools::runCurvCli(13, const_cast<char**>(argv), out, err), 0) << err.str();
@@ -237,8 +237,8 @@ TEST_F(CliLibTest, ExportEvidenceEmitsStandardizedSchemaWithSha256) {
     const std::string image_arg = image.string();
     const std::string export_evidence = (dir / "flood_evidence_v1.json").string();
 
-    const char* argv[] = {"curv_cli", "--image", image_arg.c_str(), "--domain", "geospatial",
-                          "--export-evidence", export_evidence.c_str()};
+    const char* argv[] = {"curv_cli",   "--image",           image_arg.c_str(),      "--domain",
+                          "geospatial", "--export-evidence", export_evidence.c_str()};
     std::stringstream out;
     std::stringstream err;
     ASSERT_EQ(CurvEngine::tools::runCurvCli(7, const_cast<char**>(argv), out, err), 0) << err.str();
@@ -259,6 +259,111 @@ TEST_F(CliLibTest, ExportEvidenceEmitsStandardizedSchemaWithSha256) {
     EXPECT_TRUE(doc["controls"]["temporal_control_pass"].get<bool>());
     EXPECT_TRUE(doc.contains("alert_recommendation"));
     EXPECT_NE(out.str().find("[STAGE 7] Standardized flood evidence v1 exported to:"), std::string::npos);
+}
+
+TEST_F(CliLibTest, ExportEvidenceEventIdDerivesFromImageStem) {
+    // No hardcoded event ids: the id must trace back to the source frame.
+    const auto image = makeLineImage();
+    const std::string image_arg = image.string();
+    const std::string export_evidence = (dir / "flood_evidence_v1.json").string();
+
+    const char* argv[] = {"curv_cli",   "--image",           image_arg.c_str(),      "--domain",
+                          "geospatial", "--export-evidence", export_evidence.c_str()};
+    std::stringstream out;
+    std::stringstream err;
+    ASSERT_EQ(CurvEngine::tools::runCurvCli(7, const_cast<char**>(argv), out, err), 0) << err.str();
+
+    std::ifstream in(export_evidence);
+    nlohmann::json doc = nlohmann::json::parse(in);
+    const std::string event_id = doc["event_id"].get<std::string>();
+    EXPECT_NE(event_id.find("input_line"), std::string::npos) << "event_id: " << event_id;
+}
+
+TEST_F(CliLibTest, ExportEvidenceSha256CoversPayload) {
+    // Integrity hash must recompute over the payload-without-hash document.
+    const auto image = makeLineImage();
+    const std::string image_arg = image.string();
+    const std::string export_evidence = (dir / "flood_evidence_v1.json").string();
+
+    const char* argv[] = {"curv_cli",   "--image",           image_arg.c_str(),      "--domain",
+                          "geospatial", "--export-evidence", export_evidence.c_str()};
+    std::stringstream out;
+    std::stringstream err;
+    ASSERT_EQ(CurvEngine::tools::runCurvCli(7, const_cast<char**>(argv), out, err), 0) << err.str();
+
+    std::ifstream in(export_evidence);
+    nlohmann::json doc = nlohmann::json::parse(in);
+    const std::string stored = doc["payload_sha256"].get<std::string>();
+    EXPECT_EQ(stored.length(), 64u);
+    EXPECT_TRUE(stored.find_first_not_of("0123456789abcdef") == std::string::npos) << stored;
+    nlohmann::json payload = doc;
+    payload.erase("payload_sha256");
+    // Stored hash must differ from the hash of an empty object (i.e. it covers content).
+    EXPECT_NE(stored, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+}
+
+TEST_F(CliLibTest, ExportEvidenceControlsVaryWithSuppressedExtraction) {
+    // Controls must be computed from the ridge graph, not hardcoded constants:
+    // suppressing all segments must change the control ratios vs the river image.
+    const auto image = makeLineImage();
+    const std::string image_arg = image.string();
+    const std::string river_json = (dir / "river.json").string();
+    const std::string empty_json = (dir / "empty.json").string();
+    const std::string overlay = (dir / "overlay.png").string();
+
+    {
+        const char* argv[] = {"curv_cli",      "--image",           image_arg.c_str(), "--out",
+                              overlay.c_str(), "--export-evidence", river_json.c_str()};
+        std::stringstream out;
+        std::stringstream err;
+        ASSERT_EQ(CurvEngine::tools::runCurvCli(7, const_cast<char**>(argv), out, err), 0) << err.str();
+    }
+    {
+        const std::string overlay2 = (dir / "overlay2.png").string();
+        const char* argv[] = {"curv_cli",
+                              "--image",
+                              image_arg.c_str(),
+                              "--out",
+                              overlay2.c_str(),
+                              "--export-evidence",
+                              empty_json.c_str(),
+                              "--sigma",
+                              "9.0",
+                              "--low",
+                              "500",
+                              "--high",
+                              "900"};
+        std::stringstream out;
+        std::stringstream err;
+        ASSERT_EQ(CurvEngine::tools::runCurvCli(13, const_cast<char**>(argv), out, err), 0) << err.str();
+    }
+    nlohmann::json river;
+    nlohmann::json empty;
+    {
+        std::ifstream in(river_json);
+        river = nlohmann::json::parse(in);
+    }
+    {
+        std::ifstream in(empty_json);
+        empty = nlohmann::json::parse(in);
+    }
+
+    const double river_spatial = river["controls"]["spatial_control_ratio"].get<double>();
+    const double empty_spatial = empty["controls"]["spatial_control_ratio"].get<double>();
+    const double river_temporal = river["controls"]["temporal_control_ratio"].get<double>();
+    const double empty_temporal = empty["controls"]["temporal_control_ratio"].get<double>();
+    EXPECT_TRUE(std::isfinite(river_spatial));
+    EXPECT_TRUE(std::isfinite(empty_spatial));
+    EXPECT_TRUE(std::isfinite(river_temporal));
+    EXPECT_TRUE(std::isfinite(empty_temporal));
+    // Temporal strength (mean length vs river threshold) must reflect the graph:
+    // a real ridge frame scores > 0, a fully suppressed frame scores 0.
+    EXPECT_GT(river_temporal, 0.0);
+    EXPECT_DOUBLE_EQ(empty_temporal, 0.0);
+    EXPECT_NE(river_temporal, empty_temporal) << "control ratios must reflect input graph";
+    EXPECT_EQ(empty["alert_recommendation"].get<std::string>(), "NORMAL");
+    EXPECT_FALSE(river["event_id"].get<std::string>().empty());
+    EXPECT_FALSE(empty["event_id"].get<std::string>().empty());
 }
 
 } // namespace

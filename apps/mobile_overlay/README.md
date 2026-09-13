@@ -13,14 +13,18 @@ apps/mobile_overlay/
 │       ├── CurvCameraOverlay/    # Camera, guidance, HUD, OverlayProfile
 │       ├── CurvPalmOverlay/      # Palm silhouette + landmark → SubjectPose
 │       └── CurvVastuOverlay/     # Mandala reticle + floor_plan profile
-└── android/                      # Gradle Android library (`org.curv.overlay`)
-    └── src/main/java/org/curv/overlay/
-        ├── camera/               # CameraX session + preview
-        ├── guidance/             # CaptureGuidance, SubjectPose, photometrics
-        ├── hud/                  # LiquidGlassHUD + CameraOverlayHost
-        ├── profile/              # OverlayProfile / GuidanceCopy
-        ├── palm/                 # Palm plugin
-        └── vastu/                # Vastu plugin
+├── android/                      # Gradle Android library (`org.curv.overlay`)
+│   └── src/main/java/org/curv/overlay/
+│       ├── camera/               # CameraX session + preview
+│       ├── guidance/             # CaptureGuidance, SubjectPose, photometrics
+│       ├── hud/                  # LiquidGlassHUD + CameraOverlayHost
+│       ├── profile/              # OverlayProfile / GuidanceCopy
+│       ├── palm/                 # Palm plugin
+│       └── vastu/                # Vastu plugin
+└── shared/                       # Cross-platform single sources of truth
+    ├── strings/                  # UI copy (palm_strings.json + validator)
+    └── shapes/                   # Overlay geometry + theme (validator:
+                                  # scripts/check_shared_shapes.py)
 ```
 
 ## Contract

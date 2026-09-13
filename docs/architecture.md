@@ -268,12 +268,28 @@ public:
 } // namespace vision::domains
 ```
 
-### 6.2. Domain Pack Examples
-1. **`domains/palm`**: Consumes hand ROI landmarks, maps extracted curvilinear ridges to anatomic palm creases (Heart Line, Head Line, Life Line, Fate Line), extracts minutiae, calculates crease depth profiles.
-2. **`domains/poultry`**: Consumes object tracking boxes and motion vectors, computes flock velocity vectors, clustering density, feeder dwell times, and anomaly movement flags.
-3. **`domains/surface_inspection`**: Consumes high-curvature ridge anomalies, clusters structural surface imperfections (cracks, micro-scratches, pinholes), outputs defect severity scores.
-4. **`domains/driver_monitoring`**: Consumes face landmarks, evaluates eye aspect ratio (EAR), gaze vector, head orientation (yaw, pitch, roll), calculates distraction and drowsiness risk.
-5. **`domains/document_scanning`**: Detects quadrilateral paper boundaries, computes planar homography, performs perspective rectification, shadow attenuation, and adaptive binarization.
+### 6.2. Standalone Domain Pack Standard
+To ensure seamless repository extraction, each domain pack is an **independently extractable, self-sustained package** containing its own `docs/ARCHITECTURE.md`, `README.md`, specifications, headers, and test cases:
+
+1. **`domains/asd_screening`**: Pediatric social visual attention screening (GeoPref split-screen, naturalistic face scanning, joint attention, ResearchKit `ORKActiveStep` and CareKit `OCKCarePlanActivity` schemas).
+   - Architecture: [`domains/asd_screening/docs/ARCHITECTURE.md`](../domains/asd_screening/docs/ARCHITECTURE.md)
+   - Manifest: [`domains/asd_screening/README.md`](../domains/asd_screening/README.md)
+2. **`domains/retina`**: Ophthalmology fundus micro-vessel segmentation, green-channel CLAHE, arc-chord tortuosity index ($\tau$), and bifurcation tracking.
+   - Architecture: [`domains/retina/docs/ARCHITECTURE.md`](../domains/retina/docs/ARCHITECTURE.md)
+   - Manifest: [`domains/retina/README.md`](../domains/retina/README.md)
+3. **`domains/driver_monitoring`**: Automotive in-cabin driver gaze, NHTSA $\ge 2.0\text{s}$ off-road distraction thresholds, and visual alertness monitoring.
+   - Architecture: [`domains/driver_monitoring/docs/ARCHITECTURE.md`](../domains/driver_monitoring/docs/ARCHITECTURE.md)
+   - Manifest: [`domains/driver_monitoring/README.md`](../domains/driver_monitoring/README.md)
+4. **`domains/palm`**: Biometric hand landmark alignment, anatomical crease mapping (Heart, Head, Life, Fate lines), and grounded VLM prompt generation.
+   - Manifest: [`domains/palm/README.md`](../domains/palm/README.md)
+5. **`domains/geospatial`**: Multi-temporal satellite SAR / optical river corridor change quantification and glacier-collapse flood perception.
+   - Manifest: [`domains/geospatial/README.md`](../domains/geospatial/README.md)
+6. **`domains/surface_inspection`**: High-curvature structural anomaly clustering (cracks, micro-scratches, pinholes) and defect severity scoring.
+   - Manifest: [`domains/surface_inspection/README.md`](../domains/surface_inspection/README.md)
+7. **`domains/floor_plan`**: Architectural wall polyline segmentation, corner junction graphs, and room polygon extraction.
+   - Manifest: [`domains/floor_plan/README.md`](../domains/floor_plan/README.md)
+8. **`domains/document_scanning`**: Quadrilateral document boundary detection, planar homography, and perspective rectification.
+9. **`domains/poultry`**: Livestock flock tracking, spatial clustering density, feeder dwell times, and anomaly movement flags.
 
 ---
 

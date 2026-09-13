@@ -1,0 +1,37 @@
+{
+  "dataset": "Synthetic Anatomical Retinal Fundus (Reference Fixture)",
+  "resolution": {
+    "width": 640,
+    "height": 640
+  },
+  "fov": {
+    "center": [
+      320,
+      320
+    ],
+    "radius_px": 294,
+    "field_angle_deg": 45.0
+  },
+  "landmarks": {
+    "optic_disc": {
+      "center": [
+        210,
+        320
+      ],
+      "radius_x": 32,
+      "radius_y": 40
+    },
+    "macula": {
+      "center": [
+        410,
+        325
+      ],
+      "radius": 45
+    }
+  },
+  "vascular_tree": {
+    "major_arcades_count": 4,
+    "bifurcations_count": 4,
+    "expected_contrast_channel": "green"
+  }
+}

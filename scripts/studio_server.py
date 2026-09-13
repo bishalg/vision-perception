@@ -353,6 +353,9 @@ class StudioHandler(SimpleHTTPRequestHandler):
             if target_html.exists():
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
+                # Dev server: never cache HTML, or browsers pin stale hashed
+                # asset URLs across rebuilds (assets use fixed filenames).
+                self.send_header("Cache-Control", "no-store")
                 data = target_html.read_bytes()
                 self.send_header("Content-Length", str(len(data)))
                 self.end_headers()
@@ -371,6 +374,8 @@ class StudioHandler(SimpleHTTPRequestHandler):
                     self.send_header("Content-Type", "text/css; charset=utf-8")
                 elif cand.suffix == ".map":
                     self.send_header("Content-Type", "application/json")
+                # Fixed asset filenames change content per build: never cache.
+                self.send_header("Cache-Control", "no-store")
                 self.send_header("Content-Length", str(cand.stat().st_size))
                 self.end_headers()
                 self.wfile.write(cand.read_bytes())

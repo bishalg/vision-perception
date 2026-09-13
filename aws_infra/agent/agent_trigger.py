@@ -60,6 +60,15 @@ AUDIT_BUCKET_NAME = os.environ.get("AUDIT_BUCKET_NAME", "vision-perception-audit
 EVENTS_TABLE_NAME = os.environ.get("EVENTS_TABLE_NAME", "vision-perception-events-dev")
 
 
+def is_strict_mode():
+    """Production gate: VISION_STRICT_MODE=1 forbids synthetic fallback payloads.
+
+    Local/dev default (unset) preserves the offline fixture path so unit tests
+    and demos run without AWS credentials. Lambda production sets the env var.
+    """
+    return os.environ.get("VISION_STRICT_MODE", "") == "1"
+
+
 def handler(event, context):
     """Main routing entry point for Lambda invocations."""
     logger.info("Received invocation event: %s", json.dumps(event, default=str))
@@ -372,6 +381,11 @@ def fetch_flood_delta(event_id):
         except ClientError as e:
             logger.info("Could not fetch s3://%s/%s: %s (using baseline fixture)", DATA_BUCKET_NAME, s3_key, e)
 
+    if is_strict_mode():
+        raise RuntimeError(
+            f"VISION_STRICT_MODE=1: refusing synthetic fallback for s3://{DATA_BUCKET_NAME}/{s3_key}"
+        )
+
     # Fallback disaster payload matching Nepal 2026 empirical results
     return {
         "event": "Glacier-collapse flood — Lende Khola / Bhote Koshi, Rasuwa, Nepal",
@@ -456,6 +470,8 @@ def mark_event_dispatched(event_id, evidence_token, sns_message_id, receipt_uri)
 def publish_sns_alert(event_id, severity, ratio, reason, token):
     """Publishes emergency notification to Amazon SNS topic."""
     if not SNS_TOPIC_ARN or not sns_client:
+        if is_strict_mode():
+            raise RuntimeError("VISION_STRICT_MODE=1: SNS is not configured; refusing simulated MessageId.")
         logger.warning("SNS_TOPIC_ARN not set; returning simulated MessageId.")
         return f"simulated-sns-{uuid.uuid4().hex[:12]}"
 

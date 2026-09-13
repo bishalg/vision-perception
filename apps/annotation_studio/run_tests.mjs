@@ -10,6 +10,7 @@ async function main() {
 
   try {
     await server.ssrLoadModule('./tests/drawing_tools.test.ts');
+    await server.ssrLoadModule('./tests/palm_guide.test.ts');
   } finally {
     await server.close();
   }

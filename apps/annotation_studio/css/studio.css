@@ -472,6 +472,77 @@ button.btn-purple:hover {
 .class-visibility-btn:hover {
   color: #fff;
 }
+.class-guide-btn {
+  background: transparent;
+  border: none;
+  padding: 2px 4px;
+  color: var(--txt-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+.class-guide-btn:hover {
+  color: #fff;
+}
+/* Palm crease hint preview card */
+.class-guide-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border-focus);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: modalScale 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.class-guide-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.class-guide-title {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.class-guide-close {
+  background: transparent;
+  border: none;
+  color: var(--txt-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.class-guide-close:hover {
+  color: #fff;
+}
+.class-guide-hand-toggle {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: auto;
+  margin-right: 6px;
+}
+.class-guide-hand-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--txt-muted);
+  font-size: 10px;
+  font-weight: 700;
+  width: 20px;
+  height: 18px;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+}
+.class-guide-hand-btn.active {
+  color: #fff;
+  border-color: var(--border-focus);
+  background: rgba(255, 255, 255, 0.08);
+}
+.class-guide-desc {
+  font-size: 11px;
+  color: var(--txt-muted);
+  line-height: 1.5;
+}
 
 /* Metadata tag pills */
 .tags-container {

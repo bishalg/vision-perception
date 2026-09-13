@@ -86,6 +86,50 @@ def copy_media(features: list[dict], repo_root: Path, media_dir: Path) -> None:
         feat["properties"]["image"] = f"media/{dest.name}"
 
 
+def evidence_to_features(doc: dict) -> list[dict]:
+    """Converts a validated flood_evidence_v1 doc into GeoJSON Point features.
+
+    One feature per river_channel/tributary spatial feature, positioned at the
+    polyline centroid (pixel space, twin reprojects). Raises ValueError when
+    the document fails schema validation — invalid evidence never reaches
+    the globe.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from s3_mirror import validate_flood_evidence
+
+    errors = validate_flood_evidence(doc)
+    if errors:
+        raise ValueError("invalid flood evidence: " + "; ".join(errors[:5]))
+
+    alert = doc.get("alert_recommendation", "NORMAL")
+    event_id = doc.get("event_id", "unknown")
+    features: list[dict] = []
+    for feat in doc.get("spatial_features", []):
+        if feat.get("feature_class") not in ("river_channel", "tributary", "waterline", "flood_polygon"):
+            continue
+        pts = feat.get("points", [])
+        if not pts:
+            continue
+        cx = sum(p["x"] for p in pts) / len(pts)
+        cy = sum(p["y"] for p in pts) / len(pts)
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [cx, cy]},
+                "properties": {
+                    "id": feat.get("feature_id", "flood_signal"),
+                    "kind": "flood_signal",
+                    "event_id": event_id,
+                    "alert": alert,
+                    "feature_class": feat.get("feature_class"),
+                    "confidence": feat.get("confidence", 0.0),
+                    "total_length_px": feat.get("total_length_px", 0.0),
+                },
+            }
+        )
+    return features
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -106,6 +150,13 @@ def main() -> int:
         action="store_true",
         help="Do not copy fixture PNGs into the viewer public tree",
     )
+    parser.add_argument(
+        "--evidence",
+        type=Path,
+        action="append",
+        default=[],
+        help="flood_evidence_v1.json to overlay as flood_signal features (repeatable)",
+    )
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parents[1]
@@ -119,6 +170,15 @@ def main() -> int:
         feat = sidecar_to_feature(path, repo_root)
         if feat is not None:
             features.append(feat)
+
+    for ev_path in args.evidence:
+        raw = ev_path if ev_path.is_absolute() else repo_root / ev_path
+        try:
+            doc = json.loads(raw.read_text(encoding="utf-8"))
+            features.extend(evidence_to_features(doc))
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
+            print(f"[-] Skipping evidence {ev_path}: {exc}", file=sys.stderr)
+            return 1
 
     if not args.no_copy_media:
         copy_media(features, repo_root, args.media_dir if args.media_dir.is_absolute() else repo_root / args.media_dir)

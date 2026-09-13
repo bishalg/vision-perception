@@ -15,6 +15,14 @@ jobs:
       - name: Validate shared palm strings (single source for iOS + Android)
         run: ./scripts/check_shared_strings.py
 
+  shared-shapes:
+    name: Shared mobile shapes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate shared shape/theme specs (single source for iOS + Android)
+        run: ./scripts/check_shared_shapes.py
+
   mobile-parity:
     name: iOS/Android parity
     runs-on: ubuntu-latest

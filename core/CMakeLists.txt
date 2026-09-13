@@ -17,6 +17,8 @@ add_library(curv_core STATIC
     src/geometry/ZoneIntersector.cpp
     src/geometry/CurveChunker.cpp
     src/pattern/MicroPatternDetector.cpp
+    src/temporal/OculomotorClassifier.cpp
+    src/temporal/DynamicTimeWarping.cpp
 )
 
 # Provide alias target for architectural naming flexibility

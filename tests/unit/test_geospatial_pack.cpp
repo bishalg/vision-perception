@@ -15,7 +15,6 @@ protected:
     Frame dummy_frame{cv::Mat(100, 100, CV_8UC3, cv::Scalar(128, 128, 128)), "test", 0};
     QualityReport nominal_quality{50.0, 128.0, 45.0, true, "Nominal"};
 
-
     CurveSegment makeSegment(int id, float length) {
         CurveSegment seg;
         seg.id = id;
@@ -109,6 +108,34 @@ TEST_F(GeospatialPackTest, MixedSegmentsCorrectAggregateMetrics) {
     EXPECT_FLOAT_EQ(output.domain_payload["max_feature_length_px"].get<float>(), 200.0f);
     EXPECT_FLOAT_EQ(output.domain_payload["total_feature_length_px"].get<float>(), 320.0f);
     EXPECT_NEAR(output.domain_payload["mean_feature_length_px"].get<double>(), 106.666, 0.01);
+}
+
+TEST_F(GeospatialPackTest, PayloadExposesRiverLengthFractionForDownstreamControls) {
+    // Real downstream gates (cli --export-evidence, Nemotron/Bedrock agents)
+    // need river-dominated length fraction, not just counts.
+    domains::GeospatialFloodPack pack;
+    RidgeGraph graph;
+    graph.segments.push_back(makeSegment(1, 200.0f)); // river
+    graph.segments.push_back(makeSegment(2, 100.0f)); // tributary
+    graph.segments.push_back(makeSegment(3, 20.0f));  // minor
+    DomainInput input{dummy_frame, graph, nominal_quality};
+
+    const auto output = pack.process(input);
+    ASSERT_TRUE(output.domain_payload.contains("longest_river_length_px"));
+    ASSERT_TRUE(output.domain_payload.contains("river_length_fraction"));
+    EXPECT_FLOAT_EQ(output.domain_payload["longest_river_length_px"].get<float>(), 200.0f);
+    // 200 river px of 320 total px = 0.625
+    EXPECT_NEAR(output.domain_payload["river_length_fraction"].get<double>(), 0.625, 1e-6);
+}
+
+TEST_F(GeospatialPackTest, EmptyGraphRiverFractionIsZero) {
+    domains::GeospatialFloodPack pack;
+    RidgeGraph graph;
+    DomainInput input{dummy_frame, graph, nominal_quality};
+
+    const auto output = pack.process(input);
+    EXPECT_FLOAT_EQ(output.domain_payload["longest_river_length_px"].get<float>(), 0.0f);
+    EXPECT_DOUBLE_EQ(output.domain_payload["river_length_fraction"].get<double>(), 0.0);
 }
 
 } // namespace

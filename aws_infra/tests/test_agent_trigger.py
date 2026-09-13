@@ -254,5 +254,38 @@ class TestAgentTriggerTwoTool(unittest.TestCase):
         self.assertEqual(res["response"]["httpStatusCode"], 400)
 
 
+class TestStrictMode(unittest.TestCase):
+    """VISION_STRICT_MODE=1 forbids synthetic fallbacks (production safety)."""
+
+    def setUp(self):
+        self._old = os.environ.get("VISION_STRICT_MODE")
+        os.environ["VISION_STRICT_MODE"] = "1"
+
+    def tearDown(self):
+        if self._old is None:
+            os.environ.pop("VISION_STRICT_MODE", None)
+        else:
+            os.environ["VISION_STRICT_MODE"] = self._old
+
+    def test_fetch_flood_delta_raises_when_s3_unavailable(self):
+        with patch.object(agent_trigger, "s3_client", None):
+            with self.assertRaises(RuntimeError):
+                agent_trigger.fetch_flood_delta("missing-event")
+
+    def test_publish_sns_alert_raises_when_unconfigured(self):
+        with patch.object(agent_trigger, "sns_client", None):
+            with self.assertRaises(RuntimeError):
+                agent_trigger.publish_sns_alert("e", "CRITICAL", "2x", "r", "t")
+
+    def test_non_strict_preserves_offline_fallback(self):
+        os.environ.pop("VISION_STRICT_MODE", None)
+        with patch.object(agent_trigger, "s3_client", None):
+            payload = agent_trigger.fetch_flood_delta("any-event")
+            self.assertTrue(payload["assessment"]["flood_signal_detected"])
+        with patch.object(agent_trigger, "sns_client", None):
+            mid = agent_trigger.publish_sns_alert("e", "CRITICAL", "2x", "r", "t")
+            self.assertTrue(mid.startswith("simulated-sns-"))
+
+
 if __name__ == "__main__":
     unittest.main()

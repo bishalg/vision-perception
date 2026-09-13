@@ -522,4 +522,53 @@ target_link_libraries(test_micro_pattern_detector
 vision_set_compiler_warnings(test_micro_pattern_detector)
 add_test(NAME test_micro_pattern_detector COMMAND test_micro_pattern_detector)
 
+# ------------------------------------------------------------------------------
+# Unit Test: test_retina_domain (RetinaDomainPack)
+# ------------------------------------------------------------------------------
+add_executable(test_retina_domain
+    unit/test_retina_domain.cpp
+)
+target_link_libraries(test_retina_domain
+    PRIVATE
+        curv_domains
+        curv_core
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_retina_domain)
+add_test(NAME test_retina_domain COMMAND test_retina_domain)
+
+# ------------------------------------------------------------------------------
+# Unit Test: test_temporal_gaze (OculomotorClassifier, DTW, DriverGazePack)
+# ------------------------------------------------------------------------------
+add_executable(test_temporal_gaze
+    unit/test_temporal_gaze.cpp
+)
+target_link_libraries(test_temporal_gaze
+    PRIVATE
+        curv_domains
+        curv_core
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_temporal_gaze)
+add_test(NAME test_temporal_gaze COMMAND test_temporal_gaze)
+
+# ------------------------------------------------------------------------------
+# Unit Test: test_asd_biomarkers (AsdBiomarkerPack, ResearchKit/CareKit)
+# ------------------------------------------------------------------------------
+add_executable(test_asd_biomarkers
+    unit/test_asd_biomarkers.cpp
+)
+target_link_libraries(test_asd_biomarkers
+    PRIVATE
+        curv_domains
+        curv_core
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_asd_biomarkers)
+add_test(NAME test_asd_biomarkers COMMAND test_asd_biomarkers)
+
+
 

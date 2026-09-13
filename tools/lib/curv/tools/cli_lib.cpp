@@ -2,6 +2,8 @@
 
 #include <chrono>
 #include <cstdint>
+#include <ctime>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <memory>
@@ -133,6 +135,46 @@ T parseNumeric(const char* raw, const std::string& flag) {
     } catch (const std::exception&) {
         throw std::invalid_argument(flag);
     }
+}
+
+// Classification thresholds mirror GeospatialFloodConfig defaults so the
+// standalone exporter (no --domain) agrees with the domain pack.
+inline constexpr float kRiverMinLengthPx = 150.0f;
+inline constexpr float kTributaryMinLengthPx = 50.0f;
+inline constexpr float kCriticalTotalLengthPx = 500.0f;
+// A river-dominated frame has most of its curvilinear length in long trunks.
+// spatial_control_ratio = minor-feature length / total length; pass < 0.90.
+inline constexpr double kSpatialNoiseGate = 0.90;
+
+// Thread-safe UTC ISO-8601 timestamp (std::gmtime uses a shared static buffer).
+std::string isoUtcNow() {
+    const auto now = std::chrono::system_clock::now();
+    const std::time_t now_t = std::chrono::system_clock::to_time_t(now);
+    std::tm tm_utc{};
+#if defined(_WIN32)
+    gmtime_s(&tm_utc, &now_t);
+#else
+    gmtime_r(&now_t, &tm_utc);
+#endif
+    std::stringstream ss;
+    ss << std::put_time(&tm_utc, "%Y-%m-%dT%H:%M:%SZ");
+    return ss.str();
+}
+
+// Traceable event id: <image-stem>-<compact-utc>. No hardcoded ids.
+std::string makeEventId(const std::string& image_path, const std::string& timestamp_iso) {
+    std::string stem = std::filesystem::path(image_path).stem().string();
+    if (stem.empty()) {
+        stem = "frame";
+    }
+    std::string compact;
+    compact.reserve(timestamp_iso.size());
+    for (const char ch : timestamp_iso) {
+        if ((ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')) {
+            compact.push_back(ch);
+        }
+    }
+    return stem + "-" + compact;
 }
 
 } // namespace
@@ -361,12 +403,9 @@ int runCurvCli(int argc, char* argv[], std::ostream& out, std::ostream& err) {
     if (!out_export_evidence_path.empty()) {
         nlohmann::json export_doc;
         export_doc["schema_version"] = "1.0.0";
-        export_doc["event_id"] = "geospatial-flood-event";
-
-        const auto now_t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-        std::stringstream ss_time;
-        ss_time << std::put_time(std::gmtime(&now_t), "%Y-%m-%dT%H:%M:%SZ");
-        export_doc["timestamp_iso"] = ss_time.str();
+        const std::string timestamp_iso = isoUtcNow();
+        export_doc["event_id"] = makeEventId(image_path, timestamp_iso);
+        export_doc["timestamp_iso"] = timestamp_iso;
 
         export_doc["frame_dimensions"] = {{"width", input_image.cols}, {"height", input_image.rows}};
 
@@ -378,6 +417,7 @@ int runCurvCli(int argc, char* argv[], std::ostream& out, std::ostream& err) {
         int river_count = 0;
         int tributary_count = 0;
         float total_length = 0.0f;
+        float minor_length = 0.0f;
         float max_length = 0.0f;
 
         for (const auto& seg : result.ridge_graph.segments) {
@@ -386,14 +426,16 @@ int runCurvCli(int argc, char* argv[], std::ostream& out, std::ostream& err) {
 
             std::string feat_class = "minor_feature";
             double conf = 0.60;
-            if (seg.total_length >= 150.0f) {
+            if (seg.total_length >= kRiverMinLengthPx) {
                 feat_class = "river_channel";
                 conf = 0.95;
                 river_count++;
-            } else if (seg.total_length >= 50.0f) {
+            } else if (seg.total_length >= kTributaryMinLengthPx) {
                 feat_class = "tributary";
                 conf = 0.80;
                 tributary_count++;
+            } else {
+                minor_length += seg.total_length;
             }
 
             nlohmann::json pts = nlohmann::json::array();
@@ -426,10 +468,18 @@ int runCurvCli(int argc, char* argv[], std::ostream& out, std::ostream& err) {
         }
         export_doc["hydrology_metrics"] = hydro_metrics;
 
-        const bool spatial_pass = true;
-        const bool temporal_pass = true;
+        // Dual controls computed from THIS frame's ridge graph (never hardcoded):
+        // - spatial: minor-noise length fraction; structured river frames score low.
+        // - temporal: single-frame provisional strength vs river threshold; multi-frame
+        //   baselines are evaluated downstream (Bedrock/Nemotron) across event streams.
+        const int total_features = static_cast<int>(result.ridge_graph.segments.size());
+        const double mean_len = total_features > 0 ? (static_cast<double>(total_length) / total_features) : 0.0;
+        const double spatial_ratio = total_length > 0.0f ? (static_cast<double>(minor_length) / total_length) : 0.0;
+        const double temporal_ratio = mean_len / static_cast<double>(kRiverMinLengthPx);
+        const bool spatial_pass = spatial_ratio < kSpatialNoiseGate;
+        const bool temporal_pass = result.is_usable;
         std::string recommendation = "NORMAL";
-        if (river_count > 0 && total_length >= 500.0f) {
+        if (river_count > 0 && total_length >= kCriticalTotalLengthPx) {
             recommendation = "CRITICAL";
         } else if (river_count > 0 || tributary_count > 0) {
             recommendation = "WARNING";
@@ -437,8 +487,8 @@ int runCurvCli(int argc, char* argv[], std::ostream& out, std::ostream& err) {
 
         export_doc["controls"] = {{"spatial_control_pass", spatial_pass},
                                   {"temporal_control_pass", temporal_pass},
-                                  {"spatial_control_ratio", 0.1509},
-                                  {"temporal_control_ratio", 0.9048}};
+                                  {"spatial_control_ratio", spatial_ratio},
+                                  {"temporal_control_ratio", temporal_ratio}};
         export_doc["alert_recommendation"] = recommendation;
 
         // Compute SHA256 integrity hash

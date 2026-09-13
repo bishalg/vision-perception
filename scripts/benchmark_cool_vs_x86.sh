@@ -23,12 +23,17 @@ DEFAULT_RUNS=100
 RUNS="${DEFAULT_RUNS}"
 DRY_RUN=0
 SKIP_BUILD=0
+OUTPUT_JSON=""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --runs)
             RUNS="$2"
+            shift 2
+            ;;
+        --output)
+            OUTPUT_JSON="$2"
             shift 2
             ;;
         --dry-run)
@@ -41,10 +46,11 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         -h|--help)
-            echo "Usage: $0 [--runs N] [--dry-run] [--skip-build]"
+            echo "Usage: $0 [--runs N] [--dry-run] [--skip-build] [--output PATH]"
             echo "  --runs N       Number of benchmark iterations (default: 100)"
             echo "  --dry-run      Run 2 iterations for quick verification"
             echo "  --skip-build   Skip CMake compilation step"
+            echo "  --output PATH  Results JSON path (default: data/benchmark_results.json)"
             exit 0
             ;;
         *)
@@ -217,8 +223,8 @@ PYEOF
 # ------------------------------------------------------------------------------
 echo "[STEP 3/3] Computing latency metrics and cost efficiency..."
 
-RESULTS_JSON="${ROOT_DIR}/data/benchmark_results.json"
-mkdir -p "${ROOT_DIR}/data"
+RESULTS_JSON="${OUTPUT_JSON:-${ROOT_DIR}/data/benchmark_results.json}"
+mkdir -p "$(dirname "${RESULTS_JSON}")"
 
 python3 - "${LATENCY_SAMPLES_FILE}" "${INSTANCE_TYPE}" "${ARCH}" "${OPENCV_VARIANT}" "${RUNS}" "${HOURLY_PRICE}" "${RESULTS_JSON}" << 'PYEOF'
 import datetime

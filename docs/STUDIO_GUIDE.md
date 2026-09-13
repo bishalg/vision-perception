@@ -30,10 +30,15 @@ defaults come from [`configs/domain_registry.json`](../configs/domain_registry.j
 ### 1. Open studio
 
 ```bash
-pnpm studio
-# optional hot reload for React UI:
-pnpm studio:vite
+pnpm studio          # stable build: Python API + static bundle on :8080
+pnpm studio:dev      # UI development: Vite hot reload on :3000, API proxied to :8080
 ```
+
+`pnpm studio:dev` runs both servers at once (`scripts/studio_dev.mjs`, no new
+dependencies). Edit TSX/CSS and the browser updates in place via React Fast
+Refresh — no rebuild, no refresh. Component state is preserved across edits;
+editing `core/store.ts` does a full reload instead. Flags:
+`--api-port`, `--vite-port` (pairs with `VITE_STUDIO_API` automatically).
 
 Legacy palm annotator (`python3 tools/palm_annotator/server.py`, port 8765) is
 **deprecated**. Use CurvStudio only.

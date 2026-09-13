@@ -1,0 +1,103 @@
+{
+  "$comment": "Canonical mobile searching-silhouette geometry. Single source of truth for PalmSilhouetteView.swift and PalmSilhouette.kt — do not re-author per platform. Normalized 0..1 space (x right, y down), matching the p(x,y) fractions in code exactly. Fill rule: fill the CLOSED loop once (translucent glass); animate STROKES per finger segment. Per-finger fills would double-blend at overlaps.",
+  "spec_version": "1.0.0",
+  "coordinate_space": "normalized_01_ydown",
+  "base_handedness": "thumb_on_viewer_left",
+  "handedness_note": "Artwork as stored shows the thumb on the viewer's left: a true facing right palm. This matches 01_left_bishal.jpg and mirrored front-camera selfie previews. Mirror x for the opposite presentation; never mirror text labels, only geometry.",
+  "segments": {
+    "fingers": {
+      "pinky": {
+        "move": [0.78, 0.62],
+        "curves": [
+          [0.84, 0.50, 0.90, 0.32, 0.86, 0.18],
+          [0.85, 0.12, 0.80, 0.12, 0.78, 0.16],
+          [0.76, 0.24, 0.74, 0.34, 0.74, 0.42]
+        ]
+      },
+      "ring": {
+        "move": [0.74, 0.42],
+        "curves": [
+          [0.74, 0.28, 0.74, 0.16, 0.70, 0.10],
+          [0.68, 0.04, 0.64, 0.04, 0.62, 0.08],
+          [0.60, 0.16, 0.60, 0.28, 0.60, 0.38]
+        ]
+      },
+      "middle": {
+        "move": [0.60, 0.38],
+        "curves": [
+          [0.60, 0.22, 0.60, 0.10, 0.56, 0.04],
+          [0.54, 0.00, 0.50, 0.00, 0.48, 0.04],
+          [0.46, 0.12, 0.46, 0.24, 0.46, 0.36]
+        ]
+      },
+      "index": {
+        "move": [0.46, 0.36],
+        "curves": [
+          [0.46, 0.22, 0.46, 0.14, 0.42, 0.10],
+          [0.40, 0.04, 0.36, 0.04, 0.34, 0.12],
+          [0.32, 0.22, 0.32, 0.34, 0.34, 0.44]
+        ]
+      }
+    },
+    "thumb": {
+      "move": [0.34, 0.44],
+      "curves": [
+        [0.32, 0.46, 0.30, 0.47, 0.27, 0.47],
+        [0.24, 0.46, 0.20, 0.41, 0.18, 0.38],
+        [0.15, 0.33, 0.11, 0.33, 0.10, 0.35],
+        [0.09, 0.38, 0.11, 0.42, 0.13, 0.46],
+        [0.13, 0.50, 0.15, 0.54, 0.17, 0.58]
+      ]
+    },
+    "base": {
+      "thenar": {
+        "move": [0.17, 0.58],
+        "curves": [
+          [0.19, 0.64, 0.21, 0.69, 0.23, 0.74],
+          [0.25, 0.81, 0.26, 0.88, 0.28, 0.92]
+        ]
+      },
+      "wrist": {
+        "move": [0.28, 0.92],
+        "curves": [[0.38, 0.98, 0.62, 0.98, 0.72, 0.92]]
+      },
+      "ulnar": {
+        "move": [0.72, 0.92],
+        "curves": [[0.80, 0.86, 0.82, 0.72, 0.78, 0.62]]
+      }
+    }
+  },
+  "closed_loop_order": [
+    "fingers.pinky",
+    "fingers.ring",
+    "fingers.middle",
+    "fingers.index",
+    "thumb",
+    "base.thenar",
+    "base.wrist",
+    "base.ulnar"
+  ],
+  "dots": {
+    "fingertips": [[0.12, 0.35], [0.38, 0.11], [0.52, 0.04], [0.66, 0.09], [0.81, 0.18]],
+    "mcp": [[0.22, 0.58], [0.38, 0.42], [0.51, 0.38], [0.63, 0.40], [0.74, 0.44]],
+    "palm_center": [0.5, 0.56]
+  },
+  "hint_creases": {
+    "heart": {
+      "move": [0.22, 0.42],
+      "curves": [[0.32, 0.34, 0.64, 0.34, 0.78, 0.40]]
+    },
+    "head": {
+      "move": [0.20, 0.52],
+      "curves": [[0.34, 0.48, 0.62, 0.48, 0.76, 0.51]]
+    },
+    "life": {
+      "move": [0.36, 0.46],
+      "curves": [[0.28, 0.56, 0.26, 0.68, 0.38, 0.76]]
+    }
+  },
+  "wrist_brace": {
+    "move": [0.28, 0.88],
+    "curves": [[0.38, 0.90, 0.62, 0.90, 0.72, 0.88]]
+  }
+}

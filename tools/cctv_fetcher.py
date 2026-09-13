@@ -7,8 +7,11 @@ Fetches static snapshot frames from open municipal CCTV camera networks
 mock fixtures for offline local development and CI testing.
 """
 
+from __future__ import annotations
+
 import argparse
 import json
+import math
 import os
 import sys
 import urllib.error
@@ -76,10 +79,23 @@ def create_mock_fixture(camera_id: str, output_path: Path, mode: str = "day_clea
         pixels[i * 3 + 1] = val
         pixels[i * 3 + 2] = val
 
-    # Draw high-contrast curvilinear features (lane dividers or water pier marks)
+    # Flood fixtures: horizontal staff-gauge waterline across the full width
+    # (bridge-pier stations read water level off a horizontal mark).
+    if is_flood:
+        water_y = int(height * 0.65)
+        for x in range(width):
+            yw = water_y + int(2.0 * math.sin(x / 90.0))
+            for dy in range(-2, 3):
+                py = yw + dy
+                if 0 <= py < height:
+                    idx = (py * width + x) * 3
+                    pixels[idx] = 30
+                    pixels[idx + 1] = 50
+                    pixels[idx + 2] = 70
+
+    # High-contrast curvilinear features (lane dividers or pier sediment marks).
     for y in range(height):
         # Curved line 1: x = 200 + 40 * sin(y / 60)
-        import math
         x1 = int(220 + 50.0 * math.sin(y / 70.0) + (y * 0.3))
         x2 = int(420 - 40.0 * math.cos(y / 80.0) - (y * 0.2))
 
@@ -122,6 +138,9 @@ def create_mock_fixture(camera_id: str, output_path: Path, mode: str = "day_clea
         import cv2
         import numpy as np
         img_np = np.frombuffer(pixels, dtype=np.uint8).reshape((height, width, 3))
+        # `pixels` is assembled in RGB order (PPM convention); OpenCV Mats are
+        # BGR, so convert to preserve exact color semantics across both paths.
+        img_np = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
         cv2.imwrite(str(output_path), img_np)
     except ImportError:
         # Fallback to direct PPM or raw write
@@ -148,15 +167,52 @@ def create_mock_fixture(camera_id: str, output_path: Path, mode: str = "day_clea
         json.dump(camera_info, mf, indent=2)
 
 
-def fetch_live_frame(camera_id: str, output_path: Path, timeout: float = 8.0) -> bool:
-    """Fetches a real frame from a public CCTV endpoint."""
-    if camera_id not in PUBLIC_CCTV_REGISTRY:
+def is_decodable_image(payload: bytes) -> bool:
+    """Validates payload magic bytes (JPEG SOI or PNG signature) + minimum size.
+
+    Rejects HTML error pages / captive-portal responses saved as .jpg, which
+    would otherwise poison downstream Steger extraction with fake frames.
+    """
+    if len(payload) < 1024:
+        return False
+    if payload[:2] == b"\xff\xd8":  # JPEG SOI
+        return True
+    if payload[:8] == b"\x89PNG\r\n\x1a\n":  # PNG signature
+        return True
+    return False
+
+
+def fetch_live_frame(
+    camera_id: str,
+    output_path: Path,
+    timeout: float = 8.0,
+    allow_fallback: bool = False,
+    registry: dict | None = None,
+) -> bool:
+    """Fetches a real frame from a public CCTV endpoint.
+
+    Returns True ONLY when a validated real image was written. On network
+    failure or invalid content returns False — unless allow_fallback is set,
+    in which case a clearly-logged synthetic fixture is written instead.
+    A registry URL of mock:// means no live feed exists: fixture generation
+    requires explicit allow_fallback (or the --mock / --allow-fallback flags).
+    """
+    reg = registry if registry is not None else PUBLIC_CCTV_REGISTRY
+    if camera_id not in reg:
         print(f"[-] Unknown camera ID: {camera_id}", file=sys.stderr)
         return False
 
-    url = PUBLIC_CCTV_REGISTRY[camera_id]["url"]
+    url = reg[camera_id]["url"]
     if url.startswith("mock://"):
+        if not allow_fallback:
+            print(
+                f"[-] Camera '{camera_id}' has no live feed (mock:// registry entry). "
+                f"Re-run with --mock or --allow-fallback to generate a synthetic fixture.",
+                file=sys.stderr,
+            )
+            return False
         create_mock_fixture(camera_id, output_path)
+        print(f"[!] Wrote SYNTHETIC fixture for {camera_id} -> {output_path} (no live feed exists)")
         return True
 
     headers = {"User-Agent": "Mozilla/5.0 (vision-perception/1.0 CCTV Fetcher)"}
@@ -165,19 +221,35 @@ def fetch_live_frame(camera_id: str, output_path: Path, timeout: float = 8.0) ->
     try:
         with urllib.request.urlopen(req, timeout=timeout) as response:
             data = response.read()
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, "wb") as f:
-                f.write(data)
-            # Save metadata
-            meta_path = output_path.with_suffix(".json")
-            with open(meta_path, "w", encoding="utf-8") as mf:
-                json.dump(PUBLIC_CCTV_REGISTRY[camera_id], mf, indent=2)
-            print(f"[✓] Successfully downloaded snapshot from {camera_id} -> {output_path}")
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        print(f"[!] Network error fetching {camera_id}: {e}.", file=sys.stderr)
+        if allow_fallback:
+            print(f"[!] Falling back to synthetic fixture for {camera_id} -> {output_path}")
+            create_mock_fixture(camera_id, output_path)
             return True
-    except (urllib.error.URLError, TimeoutError) as e:
-        print(f"[!] Network error fetching {camera_id}: {e}. Falling back to calibrated mock fixture.")
-        create_mock_fixture(camera_id, output_path)
-        return True
+        return False
+
+    if not is_decodable_image(data):
+        print(
+            f"[-] Rejected {len(data)} bytes from {camera_id}: not a JPEG/PNG image "
+            f"(likely HTML error page).",
+            file=sys.stderr,
+        )
+        if allow_fallback:
+            print(f"[!] Falling back to synthetic fixture for {camera_id} -> {output_path}")
+            create_mock_fixture(camera_id, output_path)
+            return True
+        return False
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "wb") as f:
+        f.write(data)
+    # Save metadata
+    meta_path = output_path.with_suffix(".json")
+    with open(meta_path, "w", encoding="utf-8") as mf:
+        json.dump(reg[camera_id], mf, indent=2)
+    print(f"[✓] Successfully downloaded REAL snapshot from {camera_id} -> {output_path}")
+    return True
 
 
 def main() -> int:
@@ -185,6 +257,7 @@ def main() -> int:
     parser.add_argument("--camera", "-c", default="caltrans_i80_drum", help="Camera identifier from registry")
     parser.add_argument("--output", "-o", default="data/fixtures/cctv/day_clear/caltrans_i80_day.png", help="Output file path")
     parser.add_argument("--mock", action="store_true", help="Generate calibrated mock fixture without network")
+    parser.add_argument("--allow-fallback", action="store_true", help="On network failure, write a synthetic fixture instead of failing")
     parser.add_argument("--mode", default="day_clear", choices=["day_clear", "night_lowlux", "weather_rain"], help="Fixture visual condition")
     parser.add_argument("--list", action="store_true", help="List registered public CCTV cameras")
 
@@ -200,7 +273,7 @@ def main() -> int:
         print(f"[✓] Created mock fixture: {out_path}")
         return 0
 
-    success = fetch_live_frame(args.camera, out_path)
+    success = fetch_live_frame(args.camera, out_path, allow_fallback=args.allow_fallback)
     return 0 if success else 1
 
 

@@ -1,0 +1,32 @@
+{
+  "$comment": "Canonical overlay theme tokens. Single source of truth for OverlayPalette (iOS) and hud/Theme OverlayEmerald/OverlayAmber (Android). Resolved drifts are recorded in _resolved so neither side 'fixes' them back. Dash lengths are specified in iOS points; Android px values are exactly 2x (density rule), NOT drift.",
+  "spec_version": "1.0.0",
+  "colors": {
+    "emerald": "#33D64A",
+    "emerald_deep": "#21BF6B",
+    "amber": "#FFCC00",
+    "white": "#FFFFFF"
+  },
+  "_resolved": [
+    "emerald: iOS float (0.20,0.84,0.29) converts to #33D64A; Android #32D74B differs by 1 LSB in R/G — align Android to #33D64A.",
+    "emerald_deep: iOS (0.13,0.75,0.42) converts to #21BF6B; Android gradient #22C55E (34,197,94) visibly drifts in G/B — align Android to #21BF6B.",
+    "amber: exact match both sides (#FFCC00), no action."
+  ],
+  "silhouette": {
+    "fill_ready_alpha": 0.13,
+    "fill_idle_alpha": 0.05,
+    "stroke_idle_alpha": 0.38,
+    "fade_ms": 350,
+    "pulse": { "period_ms": 550, "scale_from": 0.985, "note": "iOS implements repeat pulse; Android currently fades only — adopt pulse." }
+  },
+  "region": {
+    "mount_stroke_alpha": { "ready": 0.55, "idle": 0.34 },
+    "mount_fill_alpha": 0.07,
+    "corridor_stroke_alpha": { "ready": 0.5, "idle": 0.3 },
+    "echo_stroke_alpha": { "ready": 0.22, "idle": 0.14 },
+    "dash_pt": { "mount": [2, 5], "corridor": [5, 4], "echo": [1, 6] },
+    "android_px_rule": "multiply pt dash lengths by 2",
+    "ema": 0.35
+  },
+  "tilt": { "ok_gate_deg": 8, "warn_gate_deg": 10 }
+}

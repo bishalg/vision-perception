@@ -68,6 +68,7 @@ Android-only by design (no iOS counterpart expected): `Theme.kt`,
 | Artifact | Path | Consumed by |
 | :--- | :--- | :--- |
 | UI strings (en/ne/hi) | `apps/mobile_overlay/shared/strings/palm_strings.json` | Both `LocalizedStrings` loaders; validated by `check_shared_strings.py` |
+| Overlay shapes + theme | `apps/mobile_overlay/shared/shapes/*.json` | `GuideSpec.swift` / `GuidePaths.kt` loaders; validated by `check_shared_shapes.py` (loop chaining, code cross-check, theme hexes) |
 
 If a fix introduces a user-visible string, color, or threshold that both apps
 need, prefer adding it to a shared artifact over duplicating literals.

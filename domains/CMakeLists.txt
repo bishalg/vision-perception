@@ -17,10 +17,16 @@ add_library(curv_domains STATIC
     floor_plan/src/WallJunctionGraph.cpp
     floor_plan/src/RoomPolygonDetector.cpp
     floor_plan/src/VastuMandalaOverlay.cpp
+    retina/src/RetinaDomainPack.cpp
+    driver_monitoring/src/DriverGazePack.cpp
+    asd_screening/src/AsdBiomarkerPack.cpp
 )
 
 add_library(curv_domain_palm ALIAS curv_domains)
 add_library(curv_domain_floor_plan ALIAS curv_domains)
+add_library(curv_domain_retina ALIAS curv_domains)
+add_library(curv_domain_driver_monitoring ALIAS curv_domains)
+add_library(curv_domain_asd_screening ALIAS curv_domains)
 
 target_include_directories(curv_domains
     PUBLIC
@@ -28,6 +34,9 @@ target_include_directories(curv_domains
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/palm/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/geospatial/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/floor_plan/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/retina/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/driver_monitoring/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/asd_screening/include>
         $<INSTALL_INTERFACE:include>
 )
 
