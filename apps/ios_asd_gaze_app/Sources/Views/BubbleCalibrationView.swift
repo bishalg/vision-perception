@@ -193,7 +193,7 @@ public struct BubbleCalibrationView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .toolbar {
-                if let onClose {
+                if onClose != nil {
                     ToolbarItem(placement: .cancellationAction) {
                         Button(action: handleClose) {
                             HStack(spacing: 4) {
@@ -468,7 +468,9 @@ public struct BubbleCalibrationView: View {
         isLockedOnTarget = false
 
         loopTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { _ in
-            updateFramePhysics()
+            MainActor.assumeIsolated {
+                updateFramePhysics()
+            }
         }
     }
 
@@ -476,7 +478,7 @@ public struct BubbleCalibrationView: View {
         controller.calibrationTarget = nil
         loopTimer?.invalidate()
         loopTimer = nil
-        controller.stopSession()
+        _ = controller.stopSession()
     }
 
     private func updateFramePhysics() {

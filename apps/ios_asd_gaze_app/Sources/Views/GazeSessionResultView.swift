@@ -346,8 +346,10 @@ public struct GazeSessionResultView: View {
             isReplaying = true
             replayTimer?.invalidate()
             replayTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { _ in
-                let maxCount = max(1, recordedFrames.count)
-                replayFrameIndex = (replayFrameIndex + 1) % maxCount
+                MainActor.assumeIsolated {
+                    let maxCount = max(1, recordedFrames.count)
+                    replayFrameIndex = (replayFrameIndex + 1) % maxCount
+                }
             }
         }
     }

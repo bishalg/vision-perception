@@ -82,7 +82,7 @@ public struct MainGazeScannerView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .toolbar {
-                if let onClose {
+                if onClose != nil {
                     ToolbarItem(placement: .topBarLeading) {
                         Button(action: handleClose) {
                             HStack(spacing: 4) {
@@ -553,17 +553,19 @@ public struct MainGazeScannerView: View {
         controller.startSession()
         sessionTimer?.invalidate()
         sessionTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { _ in
-            elapsedSeconds += 1.0 / 60.0
-            if controller.isSimulationMode {
-                controller.tickSimulatedFrame(timeSec: elapsedSeconds)
-            }
+            MainActor.assumeIsolated {
+                elapsedSeconds += 1.0 / 60.0
+                if controller.isSimulationMode {
+                    controller.tickSimulatedFrame(timeSec: elapsedSeconds)
+                }
 
-            // Gentle cartoon bounce and blink animation
-            cartoonBounce = sin(elapsedSeconds * 4.0) * 8.0
-            if fmod(elapsedSeconds, 3.5) < 0.15 {
-                cartoonBlink = true
-            } else {
-                cartoonBlink = false
+                // Gentle cartoon bounce and blink animation
+                cartoonBounce = sin(elapsedSeconds * 4.0) * 8.0
+                if fmod(elapsedSeconds, 3.5) < 0.15 {
+                    cartoonBlink = true
+                } else {
+                    cartoonBlink = false
+                }
             }
         }
     }
