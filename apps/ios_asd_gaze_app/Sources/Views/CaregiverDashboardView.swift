@@ -46,6 +46,9 @@ public struct CaregiverDashboardView: View {
                         // Pinned Care Plan Interventions
                         todayCarePlanSection
 
+                        // Caregiver-Logged Medication Schedule
+                        medicationsSection
+
                         // Daily Sensory & Mood Diary (2-Item-Per-Row Grid)
                         dailyDiarySection
 
@@ -427,7 +430,92 @@ public struct CaregiverDashboardView: View {
         .glassCard(cornerRadius: 12, padding: 12)
     }
 
-    // MARK: - 5. Daily Sensory & Mood Diary (2 Items Per Row Grid)
+    // MARK: - 5. Caregiver-Logged Medication Schedule
+
+    private var medicationsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(Localizer.tr("carekit_meds_title"))
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+
+                Spacer()
+
+                Text("\(Int(carePlanStore.medicationCompletionRatio * 100))% today")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(LiquidGlass.celestialTeal)
+            }
+
+            VStack(spacing: 8) {
+                ForEach(carePlanStore.medications) { medication in
+                    medicationRow(medication)
+                }
+            }
+        }
+    }
+
+    private func medicationRow(_ medication: MedicationItem) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 12) {
+                Image(systemName: "pills.fill")
+                    .font(.system(size: 18))
+                    .foregroundColor(LiquidGlass.celestialTeal)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(medication.name)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.primary)
+
+                    Text("\(medication.dose) · \(medication.instructions)")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+
+                Text("\(medication.dosesTakenToday.filter { $0 }.count)/\(medication.schedule.count)")
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .foregroundColor(LiquidGlass.emeraldMint)
+            }
+
+            HStack(spacing: 10) {
+                ForEach(Array(medication.schedule.enumerated()), id: \.offset) { index, time in
+                    let isTaken = medication.dosesTakenToday[index]
+                    Button {
+                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        generator.impactOccurred()
+                        carePlanStore.toggleMedicationTaken(id: medication.id, doseIndex: index)
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: isTaken ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 15))
+                            Text(time)
+                                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                        }
+                        .foregroundColor(isTaken ? LiquidGlass.emeraldMint : .secondary)
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 7)
+                        .background(
+                            isTaken ? LiquidGlass.emeraldMint.opacity(0.16) : LiquidGlass.cardBackground
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .stroke(
+                                    isTaken ? LiquidGlass.emeraldMint.opacity(0.6) : LiquidGlass.cardBorder.opacity(0.3),
+                                    lineWidth: isTaken ? 1.2 : 0.8
+                                )
+                        )
+                        .cornerRadius(9)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .glassCard(cornerRadius: 12, padding: 12)
+    }
+
+    // MARK: - 6. Daily Sensory & Mood Diary (2 Items Per Row Grid)
 
     private var dailyDiarySection: some View {
         VStack(alignment: .leading, spacing: 10) {

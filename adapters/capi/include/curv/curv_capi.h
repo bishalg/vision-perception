@@ -164,6 +164,28 @@ CURV_API int curv_pipeline_get_last_quality(CurvPipelineHandle pipeline, CurvQua
 CURV_API int curv_pipeline_get_last_json(CurvPipelineHandle pipeline, char* out_json_buffer, int out_json_buffer_size,
                                          int* out_required_size);
 
+/**
+ * @brief Analyzes an orbit capture session JSON and returns mount_relief domain payload.
+ * @param orbit_session_json Null-terminated orbit session JSON (curv_orbit_session_v1).
+ */
+CURV_API int curv_analyze_orbit_session_json(const char* orbit_session_json, char* out_json_buffer,
+                                             int out_json_buffer_size);
+
+/**
+ * @brief Palm ROI processing with fine-scale Steger pass for minor_ridges in domain_payload.
+ */
+CURV_API int curv_pipeline_process_landmarks_roi_extended(CurvPipelineHandle pipeline, CurvFrameHandle frame,
+                                                          const float* landmarks_42_floats, int include_minor_ridges,
+                                                          char* out_json_buffer, int out_json_buffer_size);
+
+/**
+ * @brief Classifies dermatoglyphic pattern (arch/loop/whorl) from fingertip close-up ROI.
+ * @param digit_name e.g. "index", "thumb".
+ */
+CURV_API int curv_classify_fingertip_roi(CurvPipelineHandle pipeline, CurvFrameHandle frame,
+                                         const float* landmarks_42_floats, const char* digit_name,
+                                         char* out_json_buffer, int out_json_buffer_size);
+
 #ifdef __cplusplus
 }
 #endif

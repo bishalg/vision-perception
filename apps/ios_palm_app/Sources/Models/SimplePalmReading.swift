@@ -14,12 +14,43 @@ public struct SimplePalmReading {
     /// Engine reports keyed by engine line id ("heart_line", ...). When a
     /// report is present for a spline, a measured clause is appended to the
     /// legacy prose; when absent, output is byte-identical to legacy.
+    public struct EnrichmentContext {
+        public var mountRelief: MountReliefPayload?
+        public var minorRidgeCount: Int
+        public var fingertipPatterns: [FingertipPatternPayload]
+
+        public init(
+            mountRelief: MountReliefPayload? = nil,
+            minorRidgeCount: Int = 0,
+            fingertipPatterns: [FingertipPatternPayload] = []
+        ) {
+            self.mountRelief = mountRelief
+            self.minorRidgeCount = minorRidgeCount
+            self.fingertipPatterns = fingertipPatterns
+        }
+
+        public static func from(payload: PalmDomainPayload?) -> EnrichmentContext {
+            guard let payload else { return EnrichmentContext() }
+            return EnrichmentContext(
+                mountRelief: payload.mountRelief,
+                minorRidgeCount: payload.minorRidges?.count ?? 0,
+                fingertipPatterns: payload.fingertipPattern.map { [$0] } ?? []
+            )
+        }
+    }
+
     public struct LineReports {
         public var fate: FateReport?
         public var lines: [String: LineReport]
-        public init(fate: FateReport? = nil, lines: [String: LineReport] = [:]) {
+        public var enrichment: EnrichmentContext
+        public init(
+            fate: FateReport? = nil,
+            lines: [String: LineReport] = [:],
+            enrichment: EnrichmentContext = EnrichmentContext()
+        ) {
             self.fate = fate
             self.lines = lines
+            self.enrichment = enrichment
         }
 
         public static func from(payload: PalmDomainPayload?) -> LineReports {
@@ -28,7 +59,11 @@ public struct SimplePalmReading {
             if let heart = payload.heartAnalysis { lines["heart_line"] = heart }
             if let head = payload.headAnalysis { lines["head_line"] = head }
             if let life = payload.lifeAnalysis { lines["life_line"] = life }
-            return LineReports(fate: payload.fateAnalysis, lines: lines)
+            return LineReports(
+                fate: payload.fateAnalysis,
+                lines: lines,
+                enrichment: .from(payload: payload)
+            )
         }
     }
 
@@ -69,7 +104,8 @@ public struct SimplePalmReading {
             sideCue = ""
         }
         let measured = measuredClause(for: spline, reports: reports)
-        return base + sideCue + measured
+        let enrichment = enrichmentClause(for: spline, reports: reports)
+        return base + sideCue + measured + enrichment
     }
 
     /// Single-line without side.
@@ -117,6 +153,64 @@ public struct SimplePalmReading {
         }
         guard !bits.isEmpty else { return "" }
         return " Measured: " + bits.joined(separator: "; ") + " (development thresholds)."
+    }
+
+    /// Mount relief, minor lines, and fingertip dermatoglyphics from 3D scan modes.
+    private static func enrichmentClause(for spline: CreaseSpline, reports: LineReports) -> String {
+        var bits: [String] = []
+        let e = reports.enrichment
+
+        if spline.lineType == .life || spline.lineType == .fate {
+            if let venus = e.mountRelief?.mounts?.first(where: { $0.mount == "venus" }) {
+                if venus.prominence == "elevated" || e.mountRelief?.venusElevated == true {
+                    bits.append("Mount of Venus elevated")
+                } else if venus.prominence == "deficient" {
+                    bits.append("Mount of Venus deficient")
+                }
+            }
+        }
+
+        if e.minorRidgeCount > 0, spline.lineType == .heart || spline.lineType == .head {
+            bits.append("\(e.minorRidgeCount) minor crease segments mapped")
+        }
+
+        if !e.fingertipPatterns.isEmpty, spline.lineType == .head {
+            let patterns = e.fingertipPatterns.compactMap { p -> String? in
+                guard let digit = p.digit, let pattern = p.pattern else { return nil }
+                return "\(digit) \(pattern)"
+            }
+            if !patterns.isEmpty {
+                bits.append("finger pads: " + patterns.joined(separator: ", "))
+            }
+        }
+
+        guard !bits.isEmpty else { return "" }
+        return " Scan: " + bits.joined(separator: "; ") + "."
+    }
+
+    /// Standalone mount + fingertip summary for reading sheet header.
+    public static func scanSummary(from reports: LineReports) -> String? {
+        var bits: [String] = []
+        if let relief = reports.enrichment.mountRelief {
+            if relief.venusElevated == true {
+                bits.append("Venus mount reads elevated relative to this hand")
+            }
+            let elevated = relief.mounts?.filter { $0.prominence == "elevated" }.compactMap(\.mount) ?? []
+            if !elevated.isEmpty, relief.venusElevated != true {
+                bits.append("Elevated mounts: \(elevated.joined(separator: ", "))")
+            }
+        }
+        if reports.enrichment.minorRidgeCount > 0 {
+            bits.append("\(reports.enrichment.minorRidgeCount) fine crease segments captured")
+        }
+        let tips = reports.enrichment.fingertipPatterns.compactMap { p -> String? in
+            guard let d = p.digit, let pat = p.pattern else { return nil }
+            return "\(d): \(pat)"
+        }
+        if !tips.isEmpty {
+            bits.append("Dermatoglyphics — " + tips.joined(separator: "; "))
+        }
+        return bits.isEmpty ? nil : bits.joined(separator: ". ") + "."
     }
 
     // MARK: - Private templates

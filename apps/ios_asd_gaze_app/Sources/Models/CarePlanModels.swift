@@ -101,6 +101,41 @@ public struct DailyDiaryEntry: Identifiable, Codable, Sendable {
     }
 }
 
+/// Caregiver-logged daily medication / supplement schedule, tracked CareKit-style:
+/// one multi-dose daily task per item, each scheduled dose time toggleable for today.
+/// The presence of an item is caregiver-entered, not a prescription.
+public struct MedicationItem: Identifiable, Codable, Sendable, Equatable {
+    public let id: String
+    public var name: String
+    public var dose: String
+    public var instructions: String
+    /// "HH:MM" dose times, e.g. ["08:00", "20:00"].
+    public let schedule: [String]
+    /// Per-dose completion for today, aligned with `schedule`.
+    public var dosesTakenToday: [Bool]
+    public var lastTakenAt: Date?
+
+    public init(
+        id: String,
+        name: String,
+        dose: String,
+        instructions: String,
+        schedule: [String],
+        dosesTakenToday: [Bool] = [],
+        lastTakenAt: Date? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.dose = dose
+        self.instructions = instructions
+        self.schedule = schedule
+        self.dosesTakenToday = dosesTakenToday.isEmpty
+            ? Array(repeating: false, count: schedule.count)
+            : dosesTakenToday
+        self.lastTakenAt = lastTakenAt
+    }
+}
+
 /// Longitudinal social visual preference data point.
 public struct LongitudinalAttentionPoint: Identifiable, Codable, Sendable {
     public let id: String
@@ -157,12 +192,14 @@ public final class CarePlanStore: ObservableObject {
 
     @Published public var tasks: [CarePlanTask] = []
     @Published public var diaryEntry: DailyDiaryEntry = DailyDiaryEntry()
+    @Published public var medications: [MedicationItem] = []
     @Published public var streakDays: Int = 5
     @Published public var weeklyHistory: [LongitudinalAttentionPoint] = []
     @Published public var milestones: [MilestoneItem] = []
 
     private let tasksKey = "org.curv.asd.careplan.tasks"
     private let diaryKey = "org.curv.asd.careplan.diary"
+    private let medicationsKey = "org.curv.asd.careplan.medications"
     private let streakKey = "org.curv.asd.careplan.streak"
     private let historyKey = "org.curv.asd.careplan.history"
 
@@ -188,6 +225,8 @@ public final class CarePlanStore: ObservableObject {
             tasks[index].isCompleted.toggle()
             tasks[index].completedAt = tasks[index].isCompleted ? Date() : nil
             saveTasks()
+            // Mirror into the on-device CareKit clinical record (fire-and-forget).
+            CareKitClinicalStore.shared.recordTaskCompletion(tasks[index], knownTasks: tasks)
         }
     }
 
@@ -209,6 +248,33 @@ public final class CarePlanStore: ObservableObject {
         saveDiary()
     }
 
+    /// Update spontaneous joint-attention count for today and persist.
+    public func updateJointAttentionCount(_ count: Int) {
+        diaryEntry.jointAttentionCount = max(0, count)
+        saveDiary()
+    }
+
+    /// Toggle one scheduled dose time of a medication for today.
+    public func toggleMedicationTaken(id: String, doseIndex: Int) {
+        guard let index = medications.firstIndex(where: { $0.id == id }),
+              medications[index].dosesTakenToday.indices.contains(doseIndex) else { return }
+        medications[index].dosesTakenToday[doseIndex].toggle()
+        medications[index].lastTakenAt = medications[index].dosesTakenToday[doseIndex] ? Date() : nil
+        saveMedications()
+        // Mirror the dose event into the CareKit clinical record (fire-and-forget).
+        CareKitClinicalStore.shared.recordMedicationTaken(
+            medications[index], doseIndex: doseIndex, markedAt: medications[index].lastTakenAt ?? Date()
+        )
+    }
+
+    /// Proportion of today's scheduled doses that have been given (0.0 to 1.0).
+    public var medicationCompletionRatio: Double {
+        let total = medications.reduce(0) { $0 + $1.dosesTakenToday.count }
+        guard total > 0 else { return 0.0 }
+        let taken = medications.reduce(0) { $0 + $1.dosesTakenToday.filter { $0 }.count }
+        return Double(taken) / Double(total)
+    }
+
     /// Record a newly completed screening session into the gaze observation task.
     public func markScreeningCompleted(socialScore: Double) {
         if let index = tasks.firstIndex(where: { $0.category == .observation }) {
@@ -228,6 +294,10 @@ public final class CarePlanStore: ObservableObject {
             )
             saveHistory()
         }
+        // Mirror the screening outcome (with its scores) into CareKit (fire-and-forget).
+        CareKitClinicalStore.shared.recordScreeningOutcome(
+            socialScore: socialScore, validFramePercentage: 94.0, knownTasks: tasks
+        )
     }
 
     /// Exports clinical CareKit summary adhering to OCKCarePlanActivity structure.
@@ -243,6 +313,7 @@ public final class CarePlanStore: ObservableObject {
             let completionRate: Double
             let todayDiary: DailyDiaryEntry
             let activeTasks: [CarePlanTask]
+            let medications: [MedicationItem]
             let weeklyAttentionTrend: [LongitudinalAttentionPoint]
             let milestonesStatus: [MilestoneItem]
         }
@@ -254,6 +325,7 @@ public final class CarePlanStore: ObservableObject {
             completionRate: completionRatio,
             todayDiary: diaryEntry,
             activeTasks: tasks,
+            medications: medications,
             weeklyAttentionTrend: weeklyHistory,
             milestonesStatus: milestones
         )
@@ -284,6 +356,21 @@ public final class CarePlanStore: ObservableObject {
             self.diaryEntry = DailyDiaryEntry()
         }
 
+        // Load medications (reset per-dose taken state when crossing a new day)
+        if let data = UserDefaults.standard.data(forKey: medicationsKey),
+           let saved = try? JSONDecoder().decode([MedicationItem].self, from: data) {
+            self.medications = saved.map { item in
+                if let lastTaken = item.lastTakenAt, !Calendar.current.isDateInToday(lastTaken) {
+                    var fresh = item
+                    fresh.dosesTakenToday = Array(repeating: false, count: item.schedule.count)
+                    return fresh
+                }
+                return item
+            }
+        } else {
+            self.medications = Self.defaultMedications
+        }
+
         // Load streak
         let savedStreak = UserDefaults.standard.integer(forKey: streakKey)
         self.streakDays = savedStreak > 0 ? savedStreak : 5
@@ -309,6 +396,14 @@ public final class CarePlanStore: ObservableObject {
     private func saveDiary() {
         if let data = try? JSONEncoder().encode(diaryEntry) {
             UserDefaults.standard.set(data, forKey: diaryKey)
+        }
+        // Mirror the diary into the on-device CareKit clinical record (fire-and-forget).
+        CareKitClinicalStore.shared.recordDiaryEntry(diaryEntry)
+    }
+
+    private func saveMedications() {
+        if let data = try? JSONEncoder().encode(medications) {
+            UserDefaults.standard.set(data, forKey: medicationsKey)
         }
     }
 
@@ -370,6 +465,34 @@ public final class CarePlanStore: ObservableObject {
             LongitudinalAttentionPoint(id: "day_5", dayLabel: "Fri", socialPreferenceScore: 0.46, validFramePercentage: 90.0, sessionCount: 1),
             LongitudinalAttentionPoint(id: "day_6", dayLabel: "Sat", socialPreferenceScore: 0.55, validFramePercentage: 96.0, sessionCount: 2),
             LongitudinalAttentionPoint(id: "day_7", dayLabel: "Sun", socialPreferenceScore: 0.58, validFramePercentage: 97.0, sessionCount: 1)
+        ]
+    }
+
+    /// Caregiver-editable placeholders for common daily supplements. Their
+    /// presence here is a tracking aid, not a prescription.
+    private static var defaultMedications: [MedicationItem] {
+        [
+            MedicationItem(
+                id: "med_vitamin_d",
+                name: "Vitamin D3 Drops",
+                dose: "400 IU",
+                instructions: "Give with morning meal.",
+                schedule: ["08:00"]
+            ),
+            MedicationItem(
+                id: "med_omega_3",
+                name: "Omega-3 Support",
+                dose: "500 mg",
+                instructions: "Half with breakfast, half with dinner.",
+                schedule: ["08:00", "20:00"]
+            ),
+            MedicationItem(
+                id: "med_melatonin",
+                name: "Melatonin",
+                dose: "2 mg",
+                instructions: "If advised by clinician; 30 min before bedtime routine.",
+                schedule: ["19:45"]
+            )
         ]
     }
 

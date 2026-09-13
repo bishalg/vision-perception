@@ -64,6 +64,14 @@ struct AsdGazeApp: App {
                     .zIndex(999)
                 }
             }
+            .task {
+                // Seed the on-device CareKit store once per launch (idempotent):
+                // care-plan tasks + caregiver diary + medication tasks.
+                CareKitClinicalStore.shared.seedTasks(
+                    CarePlanStore.shared.tasks,
+                    medications: CarePlanStore.shared.medications
+                )
+            }
             // No preferredColorScheme: the app follows the system theme on
             // launch. Camera/stimulus fields stay dark media surfaces; all
             // chrome uses the adaptive LiquidGlass tokens + semantic text.

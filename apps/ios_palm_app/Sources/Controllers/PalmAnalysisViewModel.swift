@@ -15,13 +15,25 @@ import CurvPalmOverlay
  * landmark guides are fallback-only.
  */
 public final class PalmAnalysisViewModel: ObservableObject {
-    private let logger = Logger(subsystem: "org.curv.palm", category: "PalmAnalysisViewModel")
+    let logger = Logger(subsystem: "org.curv.palm", category: "PalmAnalysisViewModel")
 
     public let profile = PalmOverlay.profile
     public let cameraSession = CameraSession()
     private let handTracker = VisionHandTracker()
     private let guidanceEngine: CaptureGuidance
-    private var curvEngine: CurvEngine?
+    let orbitGuidance = OrbitCaptureGuidance()
+    let closeUpGuidance = CloseUpTileGuidance()
+    let fingertipGuidance = FingertipCaptureGuidance()
+    let deviceTiltProvider = DeviceTiltProvider()
+    var curvEngine: CurvEngine?
+
+    @Published public var scanMode: PalmScanMode = .stillPhoto
+    @Published public var orbitState: OrbitGuidanceState = .idle
+    @Published public var orbitSession: OrbitCaptureSession = OrbitCaptureSession(handSide: "auto")
+    @Published public var closeUpSession = CloseUpMosaicSession()
+    @Published public var fingertipSession = FingertipScanSession()
+    @Published public var mountReliefMap: MountReliefMap?
+    @Published public var mountReliefHeat: [String: Float] = [:]
 
     @Published public var guidanceState: GuidanceState = .searching
     @Published public var qualityMetrics = QualityMetrics()
@@ -58,13 +70,13 @@ public final class PalmAnalysisViewModel: ObservableObject {
         }
     }
 
-    private var isCapturing: Bool = false
+    var isCapturing: Bool = false
     /// Prevents immediate re-arming of the 3-2-1 auto-capture after a shot.
     private var suppressAutoCaptureUntil: CFTimeInterval = 0
     private var lastCountdownDigit: Int = 0
     private let hapticFeedback = UIImpactFeedbackGenerator(style: .medium)
-    private let lightHaptic = UIImpactFeedbackGenerator(style: .light)
-    private let successHaptic = UINotificationFeedbackGenerator()
+    let lightHaptic = UIImpactFeedbackGenerator(style: .light)
+    let successHaptic = UINotificationFeedbackGenerator()
     /// Throttle UI metric publishes so Lux/Glare/Tilt stay smooth (~15 Hz).
     private var lastMetricsPublish: CFTimeInterval = 0
 
@@ -160,7 +172,65 @@ public final class PalmAnalysisViewModel: ObservableObject {
     /// Proceed to Phase 3: lock lines and present Samudrika Reading Sheet
     public func proceedToAnalysis() {
         confirmAdjustedLinesForPrediction()
+        mergeScanEnrichmentIntoAnalysisResult()
         showAnalysisReading = true
+    }
+
+    /// Attach orbit / close-up / fingertip scan data to the reading payload.
+    public func mergeScanEnrichmentIntoAnalysisResult() {
+        guard var response = analysisResult, let payload = response.domainPayload else {
+            if let relief = mountReliefMap {
+                analysisResult = analysisResultWithMountRelief(
+                    analysisResult,
+                    relief: relief,
+                    intrinsics: CameraIntrinsics.fromFieldOfView(imageWidth: 1920, imageHeight: 1080, fovHorizontalDeg: 68)
+                )
+            }
+            return
+        }
+        let reliefPayload: MountReliefPayload? = mountReliefMap.map { map in
+            MountReliefPayload(
+                mounts: map.mounts.map {
+                    MountReliefEntryPayload(
+                        mount: $0.mount,
+                        heightMm: $0.heightMm,
+                        heightRelative: $0.heightRelative,
+                        prominence: $0.prominence.rawValue,
+                        confidence: $0.confidence,
+                        viewCount: $0.viewCount
+                    )
+                },
+                venusElevated: map.venusElevated,
+                source: map.source
+            )
+        }
+        let tipPayload: FingertipPatternPayload? = fingertipSession.results.first.map {
+            FingertipPatternPayload(
+                digit: $0.digit.rawValue,
+                pattern: $0.pattern.rawValue,
+                ridgeFrequency: $0.ridgeFrequency,
+                quality: $0.quality
+            )
+        }
+        let merged = PalmDomainPayload(
+            majorLines: payload.majorLines,
+            dominantLine: payload.dominantLine,
+            heartHeadMinDistancePx: payload.heartHeadMinDistancePx,
+            fateAnalysis: payload.fateAnalysis,
+            heartAnalysis: payload.heartAnalysis,
+            headAnalysis: payload.headAnalysis,
+            lifeAnalysis: payload.lifeAnalysis,
+            mountRelief: reliefPayload ?? payload.mountRelief,
+            minorRidges: payload.minorRidges,
+            fingertipPattern: tipPayload ?? payload.fingertipPattern
+        )
+        if let data = try? JSONEncoder().encode(PalmAnalysisResponseWrapper(
+            isUsable: response.isUsable,
+            totalDurationUs: response.totalDurationUs,
+            domainPayload: merged
+        )), let str = String(data: data, encoding: .utf8) {
+            analysisResult = PalmAnalysisResponse.from(jsonString: str)
+        }
     }
 
     /// Lock current (possibly edited) lines as the prediction input.
@@ -199,6 +269,31 @@ public final class PalmAnalysisViewModel: ObservableObject {
         guard !isCapturing && !isAnalyzing && !showResultViewer else { return }
 
         let now = CACurrentMediaTime()
+        if scanMode != .stillPhoto {
+            let trackingResult = handTracker.processFrameWithResult(pixelBuffer)
+            let landmarks = trackingResult?.landmarks
+            let framing = landmarks.flatMap { HandLandmarkPose.framing(from: $0) }
+            let pose = framing?.pose
+            let tipsOK = framing?.isFullyInFrame ?? false
+            let photoCenter = pose?.centroid ?? CGPoint(x: 0.5, y: 0.5)
+            let photoRadius = pose.map { max(0.18, $0.scale * 0.28) } ?? 0.28
+            let photometrics = Photometrics.sample(pixelBuffer: pixelBuffer, center: photoCenter, radius: photoRadius)
+            if trackingResult != nil {
+                DispatchQueue.main.async {
+                    self.detectedLandmarks = trackingResult?.landmarks ?? []
+                }
+            }
+            if processScanModeFrame(
+                pixelBuffer: pixelBuffer,
+                landmarks: landmarks,
+                pose: pose,
+                photometrics: photometrics,
+                tipsOK: tipsOK,
+                now: now
+            ) {
+                return
+            }
+        }
         let trackingResult = handTracker.processFrameWithResult(pixelBuffer)
         let landmarks = trackingResult?.landmarks
         let framing = landmarks.flatMap { HandLandmarkPose.framing(from: $0) }
@@ -351,8 +446,8 @@ public final class PalmAnalysisViewModel: ObservableObject {
         cameraSession.capturePhoto { [weak self] result in
             guard let self else { return }
             switch result {
-            case .success(let photoBuffer):
-                self.finishCapture(photoBuffer: photoBuffer, landmarks: landmarks)
+            case .success(let captured):
+                self.finishCapture(photoBuffer: captured.pixelBuffer, intrinsics: captured.intrinsics, landmarks: landmarks)
             case .failure(let error):
                 self.logger.error("Photo capture failed: \(error.localizedDescription)")
                 DispatchQueue.main.async {
@@ -365,7 +460,7 @@ public final class PalmAnalysisViewModel: ObservableObject {
         }
     }
 
-    private func finishCapture(photoBuffer: CVPixelBuffer, landmarks videoLandmarks: [CGPoint]) {
+    private func finishCapture(photoBuffer: CVPixelBuffer, intrinsics: CameraIntrinsics, landmarks videoLandmarks: [CGPoint]) {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else { return }
 
@@ -400,7 +495,8 @@ public final class PalmAnalysisViewModel: ObservableObject {
                 // Process the upright bitmap so points_image_norm matches CaptureResultView.
                 let processBuffer = Self.makeBGRAPixelBuffer(from: image) ?? photoBuffer
                 let flat = VisionHandTracker.toFlatLandmarksArray(photoLandmarks)
-                switch engine.processPixelBuffer(pixelBuffer: processBuffer, landmarks: flat) {
+                let includeMinor = self.scanMode == .closeUpMosaic
+                switch engine.processPixelBuffer(pixelBuffer: processBuffer, landmarks: flat, includeMinorRidges: includeMinor) {
                 case .success(let jsonString):
                     parsedResponse = PalmAnalysisResponse.from(jsonString: jsonString)
                     if parsedResponse == nil {
@@ -442,7 +538,11 @@ public final class PalmAnalysisViewModel: ObservableObject {
                 }
                 self.captureLandmarks = photoLandmarks
                 self.detectedSplines = splines
-                self.analysisResult = parsedResponse
+                var merged = parsedResponse
+                if self.scanMode == .stillPhoto, let relief = self.mountReliefMap {
+                    merged = self.analysisResultWithMountRelief(parsedResponse, relief: relief, intrinsics: intrinsics)
+                }
+                self.analysisResult = merged
                 self.usedNativeEngine = usedNative
                 self.overlaySource = source
                 self.isAnalyzing = false
@@ -542,7 +642,7 @@ public final class PalmAnalysisViewModel: ObservableObject {
     }
 
     /// Bake an upright UIImage into a BGRA CVPixelBuffer for CurvEngine (matches overlay coords).
-    private static func makeBGRAPixelBuffer(from image: UIImage?) -> CVPixelBuffer? {
+    static func makeBGRAPixelBuffer(from image: UIImage?) -> CVPixelBuffer? {
         guard let cgImage = image?.cgImage else { return nil }
         let width = cgImage.width
         let height = cgImage.height
@@ -578,14 +678,14 @@ public final class PalmAnalysisViewModel: ObservableObject {
         return pixelBuffer
     }
 
-    private static let sharedCIContext = CIContext(options: [
+    static let sharedCIContext = CIContext(options: [
         .useSoftwareRenderer: false,
         .priorityRequestLow: false
     ])
 
     /// Returns an upright UIImage (pixels already rotated) plus the Vision orientation
     /// that matches the raw capture buffer before baking.
-    private static func uprightImage(
+    static func uprightImage(
         from pixelBuffer: CVPixelBuffer
     ) -> (UIImage?, CGImagePropertyOrientation) {
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)

@@ -17,6 +17,7 @@ add_library(curv_core STATIC
     src/geometry/ZoneIntersector.cpp
     src/geometry/CurveChunker.cpp
     src/pattern/MicroPatternDetector.cpp
+    src/surface/SurfaceRelief.cpp
     src/temporal/OculomotorClassifier.cpp
     src/temporal/DynamicTimeWarping.cpp
 )

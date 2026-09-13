@@ -49,6 +49,65 @@ public struct MajorLineInfo: Codable, Identifiable {
     }
 }
 
+public struct MountReliefEntryPayload: Codable {
+    public let mount: String
+    public let heightMm: Float?
+    public let heightRelative: Float?
+    public let prominence: String?
+    public let confidence: Float?
+    public let viewCount: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case mount
+        case heightMm = "height_mm"
+        case heightRelative = "height_relative"
+        case prominence, confidence
+        case viewCount = "view_count"
+    }
+}
+
+public struct MountReliefPayload: Codable {
+    public let mounts: [MountReliefEntryPayload]?
+    public let venusElevated: Bool?
+    public let source: String?
+
+    enum CodingKeys: String, CodingKey {
+        case mounts
+        case venusElevated = "venus_elevated"
+        case source
+    }
+}
+
+public struct MinorRidgeSegment: Codable, Identifiable {
+    public var id: Int { segmentId }
+    public let segmentId: Int
+    public let arcLengthPx: Float?
+    public let meanAngleDeg: Float?
+    public let primaryZone: String?
+    public let pointsCanonicalNorm: [[Float]]?
+
+    enum CodingKeys: String, CodingKey {
+        case segmentId = "segment_id"
+        case arcLengthPx = "arc_length_px"
+        case meanAngleDeg = "mean_angle_deg"
+        case primaryZone = "primary_zone"
+        case pointsCanonicalNorm = "points_canonical_norm"
+    }
+}
+
+public struct FingertipPatternPayload: Codable {
+    public let digit: String?
+    public let pattern: String?
+    public let ridgeFrequency: Float?
+    public let quality: Float?
+
+    enum CodingKeys: String, CodingKey {
+        case digit, pattern
+        case ridgeFrequency = "ridge_frequency"
+        case quality
+    }
+}
+
 public struct PalmDomainPayload: Codable {
     public let majorLines: [String: MajorLineInfo]?
     public let dominantLine: String?
@@ -57,6 +116,9 @@ public struct PalmDomainPayload: Codable {
     public let heartAnalysis: LineReport?
     public let headAnalysis: LineReport?
     public let lifeAnalysis: LineReport?
+    public let mountRelief: MountReliefPayload?
+    public let minorRidges: [MinorRidgeSegment]?
+    public let fingertipPattern: FingertipPatternPayload?
 
     enum CodingKeys: String, CodingKey {
         case majorLines = "major_lines"
@@ -66,6 +128,33 @@ public struct PalmDomainPayload: Codable {
         case heartAnalysis = "heart_analysis"
         case headAnalysis = "head_analysis"
         case lifeAnalysis = "life_analysis"
+        case mountRelief = "mount_relief"
+        case minorRidges = "minor_ridges"
+        case fingertipPattern = "fingertip_pattern"
+    }
+
+    public init(
+        majorLines: [String: MajorLineInfo]? = nil,
+        dominantLine: String? = nil,
+        heartHeadMinDistancePx: Float? = nil,
+        fateAnalysis: FateReport? = nil,
+        heartAnalysis: LineReport? = nil,
+        headAnalysis: LineReport? = nil,
+        lifeAnalysis: LineReport? = nil,
+        mountRelief: MountReliefPayload? = nil,
+        minorRidges: [MinorRidgeSegment]? = nil,
+        fingertipPattern: FingertipPatternPayload? = nil
+    ) {
+        self.majorLines = majorLines
+        self.dominantLine = dominantLine
+        self.heartHeadMinDistancePx = heartHeadMinDistancePx
+        self.fateAnalysis = fateAnalysis
+        self.heartAnalysis = heartAnalysis
+        self.headAnalysis = headAnalysis
+        self.lifeAnalysis = lifeAnalysis
+        self.mountRelief = mountRelief
+        self.minorRidges = minorRidges
+        self.fingertipPattern = fingertipPattern
     }
 }
 
@@ -129,6 +218,19 @@ public struct FateReport: Codable {
         case ageAtBreak = "age_at_break"
         case badSaturnMount = "bad_saturn_mount"
         case badMercuryMount = "bad_mercury_mount"
+    }
+}
+
+/// Encoder helper for merging partial domain_payload updates.
+struct PalmAnalysisResponseWrapper: Codable {
+    let isUsable: Bool?
+    let totalDurationUs: Int?
+    let domainPayload: PalmDomainPayload?
+
+    enum CodingKeys: String, CodingKey {
+        case isUsable = "is_usable"
+        case totalDurationUs = "total_duration_us"
+        case domainPayload = "domain_payload"
     }
 }
 

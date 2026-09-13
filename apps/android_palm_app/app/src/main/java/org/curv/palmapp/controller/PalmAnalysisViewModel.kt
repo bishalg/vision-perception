@@ -242,10 +242,13 @@ class PalmAnalysisViewModel : ViewModel() {
 
         val landmarks = _detectedLandmarks.value.toList()
         cameraSession.capturePhoto(
-            onSuccess = { buffer, width, height, stride ->
-                // Build bitmap for thumbnail + re-detect
+            onSuccess = { captured ->
+                val buffer = captured.buffer
+                val width = captured.width
+                val height = captured.height
+                val stride = captured.stride
+                Log.d(tag, "Captured still ${width}x${height} fx=${captured.intrinsics.focalLengthX}")
                 val bmp = yuvGrayscaleToBitmap(buffer, width, height)
-                // Try re-detect on still; fallback to video landmarks
                 if (bmp != null) {
                     handTracker.processBitmap(bmp,
                         onSuccess = { stillLandmarks ->

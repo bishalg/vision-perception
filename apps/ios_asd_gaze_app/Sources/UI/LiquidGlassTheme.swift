@@ -513,6 +513,11 @@ public enum Localizer {
             "ne": "दैनिक संवेदी र मुड डायरी",
             "hi": "दैनिक संवेदी और मूड डायरी"
         ],
+        "carekit_meds_title": [
+            "en": "Daily Medication Schedule",
+            "ne": "दैनिक औषधि तालिका",
+            "hi": "दैनिक दवा समय-सारणी"
+        ],
         "carekit_diary_notes_placeholder": [
             "en": "Notes on eye contact, gestures, or words today...",
             "ne": "आजको दृष्टि सम्पर्क, संकेत वा शब्दहरूको टिप्पणी...",

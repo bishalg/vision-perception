@@ -17,7 +17,8 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
     private let videoQueue = DispatchQueue(label: "org.curv.overlay.videoQueue", qos: .userInteractive)
 
     public var onFrameReceived: ((CVPixelBuffer) -> Void)?
-    private var photoCaptureCompletion: ((Result<CVPixelBuffer, Error>) -> Void)?
+    private var photoCaptureCompletion: ((Result<CapturedPhoto, Error>) -> Void)?
+    private weak var activeCaptureDevice: AVCaptureDevice?
 
     private var isConfigured: Bool = false
 
@@ -57,6 +58,7 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
                 self.captureSession.commitConfiguration()
                 return
             }
+            self.activeCaptureDevice = device
 
             if self.captureSession.canAddInput(input) {
                 self.captureSession.addInput(input)
@@ -78,14 +80,16 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
             if self.captureSession.canAddOutput(self.photoOutput) {
                 self.captureSession.addOutput(self.photoOutput)
                 if #available(iOS 16.0, *) {
-                    // Match the 1080p video stream to eliminate sensor mode-switch delay & 50MB buffers.
-                    let preferred = CMVideoDimensions(width: 1920, height: 1080)
+                    // Prefer highest supported still resolution for close-up / orbit keyframes.
                     let supported = device.activeFormat.supportedMaxPhotoDimensions
-                    if supported.contains(where: { $0.width == preferred.width && $0.height == preferred.height }) {
-                        self.photoOutput.maxPhotoDimensions = preferred
-                    } else if let best = supported.first(where: { $0.width <= 1920 && $0.height <= 1080 }) ?? supported.first {
+                    if let best = supported.max(by: { a, b in
+                        Int64(a.width) * Int64(a.height) < Int64(b.width) * Int64(b.height)
+                    }) {
                         self.photoOutput.maxPhotoDimensions = best
+                        self.logger.info("Photo max dimensions: \(best.width)x\(best.height)")
                     }
+                } else {
+                    self.photoOutput.isHighResolutionCaptureEnabled = true
                 }
                 self.applyPortraitOrientation(to: self.photoOutput)
             }
@@ -120,7 +124,8 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
         }
     }
 
-    public func capturePhoto(completion: @escaping (Result<CVPixelBuffer, Error>) -> Void) {
+    /// Captures a high-res still with pinhole intrinsics metadata.
+    public func capturePhoto(completion: @escaping (Result<CapturedPhoto, Error>) -> Void) {
         sessionQueue.async { [weak self] in
             guard let self else { return }
             guard self.captureSession.isRunning else {
@@ -128,7 +133,6 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
                 return
             }
 
-            // Keep stills in the same portrait orientation as the live preview.
             self.applyPortraitOrientation(to: self.photoOutput)
             self.photoCaptureCompletion = completion
 
@@ -142,16 +146,49 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
             }
 
             if #available(iOS 16.0, *) {
-                let preferred = CMVideoDimensions(width: 1920, height: 1080)
-                let maxDim = self.photoOutput.maxPhotoDimensions
-                if maxDim.width >= preferred.width && maxDim.height >= preferred.height {
-                    settings.maxPhotoDimensions = preferred
-                } else {
-                    settings.maxPhotoDimensions = maxDim
-                }
+                settings.maxPhotoDimensions = self.photoOutput.maxPhotoDimensions
+            } else {
+                settings.isHighResolutionPhotoEnabled = true
             }
             self.photoOutput.capturePhoto(with: settings, delegate: self)
         }
+    }
+
+    /// Legacy buffer-only capture (intrinsics approximated from device FOV).
+    public func capturePhotoBuffer(completion: @escaping (Result<CVPixelBuffer, Error>) -> Void) {
+        capturePhoto { result in
+            completion(result.map(\.pixelBuffer))
+        }
+    }
+
+    public func intrinsicsForDevice(imageWidth: Int, imageHeight: Int) -> CameraIntrinsics {
+        guard let device = activeCaptureDevice else {
+            return CameraIntrinsics.fromFieldOfView(
+                imageWidth: imageWidth,
+                imageHeight: imageHeight,
+                fovHorizontalDeg: 68
+            )
+        }
+        let format = device.activeFormat
+        let fov = format.videoFieldOfView
+        if fov > 1 {
+            return CameraIntrinsics.fromFieldOfView(
+                imageWidth: imageWidth,
+                imageHeight: imageHeight,
+                fovHorizontalDeg: fov
+            )
+        }
+        let dims = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
+        let fx = Float(dims.width) * 0.85
+        return CameraIntrinsics(
+            focalLengthX: fx,
+            focalLengthY: fx,
+            principalPointX: Float(imageWidth) * 0.5,
+            principalPointY: Float(imageHeight) * 0.5,
+            imageWidth: imageWidth,
+            imageHeight: imageHeight,
+            fieldOfViewDeg: fov > 0 ? fov : nil
+        )
     }
 
     public func captureOutput(
@@ -183,7 +220,10 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
             photoCaptureCompletion = nil
             return
         }
-        photoCaptureCompletion?(.success(pixelBuffer))
+        let w = CVPixelBufferGetWidth(pixelBuffer)
+        let h = CVPixelBufferGetHeight(pixelBuffer)
+        let intrinsics = intrinsicsForDevice(imageWidth: w, imageHeight: h)
+        photoCaptureCompletion?(.success(CapturedPhoto(pixelBuffer: pixelBuffer, intrinsics: intrinsics)))
         photoCaptureCompletion = nil
     }
 }

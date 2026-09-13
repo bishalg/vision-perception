@@ -79,6 +79,20 @@ public:
 
         return computeStegerConfig(palm_radius, cfg);
     }
+
+    /**
+     * @brief Fine-scale Steger config for minor creases / close-up mosaic tiles.
+     * Uses smaller sigma to capture islands, breaks, and secondary lines.
+     */
+    static ridge::StegerConfig computeFineStegerConfig(float palm_radius_px,
+                                                       const PalmScaleConfig& cfg = PalmScaleConfig{}) {
+        auto result = computeStegerConfig(palm_radius_px, cfg);
+        result.sigma = std::max(0.6f, result.sigma * 0.55f);
+        result.low_threshold = std::max(0.12f, result.low_threshold * 0.65f);
+        result.high_threshold = std::max(0.35f, result.high_threshold * 0.70f);
+        result.min_segment_length = std::max(5.0f, result.min_segment_length * 0.55f);
+        return result;
+    }
 };
 
 } // namespace CurvEngine::domains

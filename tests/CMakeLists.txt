@@ -600,5 +600,42 @@ target_link_libraries(test_asd_biomarkers
 vision_set_compiler_warnings(test_asd_biomarkers)
 add_test(NAME test_asd_biomarkers COMMAND test_asd_biomarkers)
 
+# ------------------------------------------------------------------------------
+# 3D palm scan: surface relief, mount prominence, fingertip dermatoglyphics
+# ------------------------------------------------------------------------------
+add_executable(test_surface_relief
+    core/test_surface_relief.cpp
+)
+target_link_libraries(test_surface_relief
+    PRIVATE
+        curv_core
+        GTest::gtest_main
+)
+vision_set_compiler_warnings(test_surface_relief)
+add_test(NAME test_surface_relief COMMAND test_surface_relief)
+
+add_executable(test_mount_relief
+    palm/test_mount_relief.cpp
+)
+target_link_libraries(test_mount_relief
+    PRIVATE
+        curv_domains
+        curv_core
+        GTest::gtest_main
+)
+vision_set_compiler_warnings(test_mount_relief)
+add_test(NAME test_mount_relief COMMAND test_mount_relief)
+
+add_executable(test_fingertip_pattern
+    palm/test_fingertip_pattern.cpp
+)
+target_link_libraries(test_fingertip_pattern
+    PRIVATE
+        curv_domains
+        curv_core
+        GTest::gtest_main
+)
+vision_set_compiler_warnings(test_fingertip_pattern)
+add_test(NAME test_fingertip_pattern COMMAND test_fingertip_pattern)
 
 

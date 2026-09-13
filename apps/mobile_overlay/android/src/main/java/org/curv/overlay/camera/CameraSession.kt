@@ -91,7 +91,7 @@ class CameraSession(private val context: Context) {
     }
 
     fun capturePhoto(
-        onSuccess: (ByteBuffer, Int, Int, Int) -> Unit,
+        onSuccess: (CapturedPhoto) -> Unit,
         onError: (Exception) -> Unit
     ) {
         val capture = imageCapture ?: run {
@@ -108,7 +108,20 @@ class CameraSession(private val context: Context) {
                         val directBuf = ByteBuffer.allocateDirect(buffer.remaining())
                         directBuf.put(buffer)
                         directBuf.flip()
-                        onSuccess(directBuf, image.width, image.height, image.planes[0].rowStride)
+                        val intrinsics = CameraIntrinsics.fromFieldOfView(
+                            imageWidth = image.width,
+                            imageHeight = image.height,
+                            fovHorizontalDeg = 68f
+                        )
+                        onSuccess(
+                            CapturedPhoto(
+                                buffer = directBuf,
+                                width = image.width,
+                                height = image.height,
+                                stride = image.planes[0].rowStride,
+                                intrinsics = intrinsics
+                            )
+                        )
                     } finally {
                         image.close()
                     }

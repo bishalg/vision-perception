@@ -44,6 +44,15 @@ public struct SamudrikaReadingSheet: View {
     public var body: some View {
         NavigationStack {
             List {
+                if let summary = SimplePalmReading.scanSummary(from: .from(payload: result?.domainPayload)) {
+                    Section {
+                        Text(summary)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    } header: {
+                        Text("3D Scan Summary")
+                    }
+                }
                 ForEach(splines) { spline in
                     Section {
                         VStack(alignment: .leading, spacing: 8) {

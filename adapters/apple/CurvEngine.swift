@@ -1,5 +1,6 @@
 import Foundation
 import CoreVideo
+import Darwin
 
 #if canImport(curv_capi)
 import curv_capi
@@ -191,10 +192,22 @@ public final class CurvEngine {
 
     public func processPixelBuffer(
         pixelBuffer: CVPixelBuffer,
-        landmarks: [Float]
+        landmarks: [Float],
+        includeMinorRidges: Bool = false
     ) -> Result<String, CurvError> {
         withLockedPixelBuffer(pixelBuffer) { bytes, width, height, stride in
-            processLandmarksRoi(
+            if includeMinorRidges {
+                return processLandmarksRoiExtended(
+                    bytes: bytes,
+                    width: width,
+                    height: height,
+                    stride: stride,
+                    format: .bgra,
+                    landmarks: landmarks,
+                    includeMinorRidges: true
+                )
+            }
+            return processLandmarksRoi(
                 bytes: bytes,
                 width: width,
                 height: height,
@@ -204,6 +217,153 @@ public final class CurvEngine {
             )
         }
     }
+
+    /// Orbit mount-relief analysis. Uses native C-API when the linked XCFramework
+    /// contains `curv_analyze_orbit_session_json`; otherwise returns a passthrough
+    /// envelope so Swift-side `MountReliefEstimator` remains the source of truth.
+    public func analyzeOrbitSession(json: String) -> Result<String, CurvError> {
+        #if canImport(curv_capi)
+        if let analyze = Self.dlsymAnalyzeOrbit {
+            var jsonBuffer = [CChar](repeating: 0, count: 65536)
+            let status = json.withCString { ptr in
+                analyze(ptr, &jsonBuffer, Int32(jsonBuffer.count))
+            }
+            if status == 0 {
+                return .success(String(cString: jsonBuffer))
+            }
+        }
+        #endif
+        // Fallback: app already grades mounts in Swift; keep schema compatible.
+        _ = json
+        return .success(
+            #"{"domain_payload":{"mount_relief":{"source":"swift_fallback","venus_elevated":false,"mounts":[]}}}"#
+        )
+    }
+
+    /// Fingertip dermatoglyphics. Prefers native classifier when present in the
+    /// linked binary; otherwise returns an `unknown` pattern stub (no template).
+    public func classifyFingertip(
+        pixelBuffer: CVPixelBuffer,
+        landmarks: [Float],
+        digit: String
+    ) -> Result<String, CurvError> {
+        #if canImport(curv_capi)
+        if let classify = Self.dlsymClassifyFingertip {
+            return withLockedPixelBuffer(pixelBuffer) { bytes, width, height, stride in
+                guard let handle = pipelineHandle else { return .failure(.initializationFailed) }
+                guard landmarks.count >= 42 else { return .failure(.invalidBuffer) }
+                guard let frameHandle = curv_frame_create_from_buffer(
+                    bytes, Int32(width), Int32(height), Int32(stride), CurvPixelFormat.bgra.rawValue
+                ) else { return .failure(.frameCreationFailed) }
+                defer { curv_frame_destroy(frameHandle) }
+                var jsonBuffer = [CChar](repeating: 0, count: 65536)
+                let status = landmarks.withUnsafeBufferPointer { lmsPtr in
+                    digit.withCString { digitPtr in
+                        classify(
+                            UnsafeMutableRawPointer(handle),
+                            frameHandle,
+                            lmsPtr.baseAddress,
+                            digitPtr,
+                            &jsonBuffer,
+                            Int32(jsonBuffer.count)
+                        )
+                    }
+                }
+                if status != 0 { return .failure(.pipelineExecutionFailed(Int(status))) }
+                return .success(String(cString: jsonBuffer))
+            }
+        }
+        #endif
+        let escaped = digit.replacingOccurrences(of: "\"", with: "")
+        return .success(
+            "{\"domain_payload\":{\"fingertip_pattern\":{\"digit\":\"\(escaped)\",\"pattern\":\"unknown\",\"ridge_frequency\":0,\"quality\":0}}}"
+        )
+    }
+
+    /// Extended palm ROI. Falls back to standard landmarks ROI when the linked
+    /// XCFramework predates `curv_pipeline_process_landmarks_roi_extended`.
+    public func processLandmarksRoiExtended(
+        bytes: UnsafePointer<UInt8>,
+        width: Int,
+        height: Int,
+        stride: Int = 0,
+        format: CurvPixelFormat = .bgra,
+        landmarks: [Float],
+        includeMinorRidges: Bool
+    ) -> Result<String, CurvError> {
+        #if canImport(curv_capi)
+        if includeMinorRidges, let extended = Self.dlsymProcessExtended {
+            guard let handle = pipelineHandle else { return .failure(.initializationFailed) }
+            guard landmarks.count >= 42 else { return .failure(.invalidBuffer) }
+            guard let frameHandle = curv_frame_create_from_buffer(
+                bytes, Int32(width), Int32(height), Int32(stride), format.rawValue
+            ) else { return .failure(.frameCreationFailed) }
+            defer { curv_frame_destroy(frameHandle) }
+            var jsonBuffer = [CChar](repeating: 0, count: 2097152)
+            let status = landmarks.withUnsafeBufferPointer { lmsPtr in
+                extended(
+                    UnsafeMutableRawPointer(handle),
+                    frameHandle,
+                    lmsPtr.baseAddress,
+                    1,
+                    &jsonBuffer,
+                    Int32(jsonBuffer.count)
+                )
+            }
+            if status == 0 || status == 2 {
+                return .success(String(cString: jsonBuffer))
+            }
+        }
+        #endif
+        return processLandmarksRoi(
+            bytes: bytes,
+            width: width,
+            height: height,
+            stride: stride,
+            format: format,
+            landmarks: landmarks
+        )
+    }
+
+    // MARK: - Optional 3D-scan C-API (resolved at runtime)
+
+    // The shipped CurvEngine.xcframework may predate these symbols. Resolve via
+    // dlsym so Swift compiles against old module headers and picks them up after
+    // `scripts/build_ios_xcframework.sh` without a source change.
+    #if canImport(curv_capi)
+    private typealias AnalyzeOrbitFn = @convention(c) (
+        UnsafePointer<CChar>?, UnsafeMutablePointer<CChar>?, Int32
+    ) -> Int32
+    private typealias ProcessExtendedFn = @convention(c) (
+        UnsafeMutableRawPointer?, UnsafeMutableRawPointer?, UnsafePointer<Float>?, Int32,
+        UnsafeMutablePointer<CChar>?, Int32
+    ) -> Int32
+    private typealias ClassifyFingertipFn = @convention(c) (
+        UnsafeMutableRawPointer?, UnsafeMutableRawPointer?, UnsafePointer<Float>?,
+        UnsafePointer<CChar>?, UnsafeMutablePointer<CChar>?, Int32
+    ) -> Int32
+
+    private static let dlsymAnalyzeOrbit: AnalyzeOrbitFn? = {
+        // RTLD_DEFAULT is a C macro ((void*)-2); not always imported into Swift.
+        let rtldDefault = UnsafeMutableRawPointer(bitPattern: -2)
+        guard let sym = dlsym(rtldDefault, "curv_analyze_orbit_session_json") else { return nil }
+        return unsafeBitCast(sym, to: AnalyzeOrbitFn.self)
+    }()
+
+    private static let dlsymProcessExtended: ProcessExtendedFn? = {
+        let rtldDefault = UnsafeMutableRawPointer(bitPattern: -2)
+        guard let sym = dlsym(rtldDefault, "curv_pipeline_process_landmarks_roi_extended") else {
+            return nil
+        }
+        return unsafeBitCast(sym, to: ProcessExtendedFn.self)
+    }()
+
+    private static let dlsymClassifyFingertip: ClassifyFingertipFn? = {
+        let rtldDefault = UnsafeMutableRawPointer(bitPattern: -2)
+        guard let sym = dlsym(rtldDefault, "curv_classify_fingertip_roi") else { return nil }
+        return unsafeBitCast(sym, to: ClassifyFingertipFn.self)
+    }()
+    #endif
 
     public func processPixelBuffer(
         pixelBuffer: CVPixelBuffer,

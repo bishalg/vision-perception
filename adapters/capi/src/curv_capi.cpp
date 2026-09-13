@@ -19,7 +19,10 @@
 #include "curv/adapters/HandBoundaryDetector.hpp"
 #include "curv/config/DynamicParameterResolver.hpp"
 #include "curv/domain/CreaseChainLinker.hpp"
+#include "curv/domain/FingertipPatternAnalyzer.hpp"
 #include "curv/domain/HandAnatomyDecomposer.hpp"
+#include "curv/domain/MinorRidgeExtractor.hpp"
+#include "curv/domain/MountReliefAnalyzer.hpp"
 #include "curv/domain/PalmParameters.hpp"
 #include "curv/domains/FloorPlanDomainPack.hpp"
 #include "curv/domains/PalmDomainPack.hpp"
@@ -587,6 +590,121 @@ int curv_pipeline_get_last_quality(CurvPipelineHandle pipeline, CurvQualityResul
         return CURV_STATUS_INTERNAL_ERROR;
     } catch (...) {
         spdlog::error("[curv_capi] get_last_quality failed with unknown exception");
+        return CURV_STATUS_INTERNAL_ERROR;
+    }
+}
+
+int curv_analyze_orbit_session_json(const char* orbit_session_json, char* out_json_buffer, int out_json_buffer_size) {
+    if (!orbit_session_json) {
+        return CURV_STATUS_INVALID_ARGUMENT;
+    }
+    try {
+        const auto session = nlohmann::json::parse(orbit_session_json);
+        const auto relief = CurvEngine::domain::MountReliefAnalyzer::analyzeOrbitSession(session);
+        nlohmann::json root = {{"domain_payload", {{"mount_relief", relief.toJson()}}}};
+        return copy_json_to_buffer(root, out_json_buffer, out_json_buffer_size);
+    } catch (const std::exception& e) {
+        spdlog::error("[curv_capi] analyze_orbit_session failed: {}", e.what());
+        return CURV_STATUS_INTERNAL_ERROR;
+    }
+}
+
+int curv_pipeline_process_landmarks_roi_extended(CurvPipelineHandle pipeline, CurvFrameHandle frame,
+                                                 const float* landmarks_42_floats, int include_minor_ridges,
+                                                 char* out_json_buffer, int out_json_buffer_size) {
+    const int base = curv_pipeline_process_landmarks_roi(pipeline, frame, landmarks_42_floats, out_json_buffer,
+                                                         out_json_buffer_size);
+    if (base != CURV_STATUS_SUCCESS && base != CURV_STATUS_QUALITY_GATE_REJECTED) {
+        return base;
+    }
+    if (!include_minor_ridges) {
+        return base;
+    }
+
+    try {
+        auto* p_ctx = static_cast<PipelineContext*>(pipeline);
+        auto const* f_ctx = static_cast<FrameContext*>(frame);
+
+        CurvEngine::geometry::HandLandmarks lms;
+        lms.is_normalized = true;
+        for (size_t i = 0; i < 21; ++i) {
+            lms.points[i].x = landmarks_42_floats[2 * i];
+            lms.points[i].y = landmarks_42_floats[2 * i + 1];
+        }
+
+        const int target_dim = 512;
+        const auto transform = CurvEngine::geometry::computeCanonicalPalmTransform(lms, f_ctx->frame.width(),
+                                                                                   f_ctx->frame.height(), target_dim);
+        cv::Mat const warped = CurvEngine::geometry::warpToCanonical(f_ctx->frame.image, transform.M, target_dim);
+        CurvEngine::Frame warped_frame(warped, f_ctx->frame.source_id + "_fine", f_ctx->frame.timestamp_ms);
+        const bool is_left = CurvEngine::geometry::detectIsLeftHand(lms);
+        warped_frame.metadata["is_left_hand"] = is_left ? "true" : "false";
+
+        const float img_w = static_cast<float>(f_ctx->frame.width());
+        const float img_h = static_cast<float>(f_ctx->frame.height());
+        const float palm_w = static_cast<float>(cv::norm(
+            cv::Point2f(lms.points[17].x * img_w, lms.points[17].y * img_h) -
+            cv::Point2f(lms.points[5].x * img_w, lms.points[5].y * img_h)));
+        const float palm_radius = palm_w * 0.5f;
+        auto fine_cfg = CurvEngine::domains::PalmParameters::computeFineStegerConfig(palm_radius);
+        auto fine_extractor = std::make_shared<CurvEngine::ridge::StegerRidgeExtractor>(fine_cfg);
+        CurvEngine::pipeline::SyncPerceptionPipeline fine_pipeline(nullptr, fine_extractor);
+        auto fine_result = fine_pipeline.process(warped_frame);
+
+        const auto minor =
+            CurvEngine::domain::MinorRidgeExtractor::extract(fine_result.ridge_graph, fine_result.ridge_graph,
+                                                             target_dim, is_left);
+
+        nlohmann::json root = nlohmann::json::parse(p_ctx->last_json);
+        if (!root.contains("domain_payload")) {
+            root["domain_payload"] = nlohmann::json::object();
+        }
+        root["domain_payload"]["minor_ridges"] = CurvEngine::domain::MinorRidgeExtractor::toJson(minor)["minor_ridges"];
+        p_ctx->last_json = root.dump();
+        return copy_json_to_buffer(root, out_json_buffer, out_json_buffer_size);
+    } catch (const std::exception& e) {
+        spdlog::error("[curv_capi] extended minor ridges failed: {}", e.what());
+        return base;
+    }
+}
+
+int curv_classify_fingertip_roi(CurvPipelineHandle pipeline, CurvFrameHandle frame,
+                                const float* landmarks_42_floats, const char* digit_name, char* out_json_buffer,
+                                int out_json_buffer_size) {
+    if (!pipeline || !frame || !landmarks_42_floats || !digit_name) {
+        return CURV_STATUS_INVALID_ARGUMENT;
+    }
+    try {
+        auto const* f_ctx = static_cast<FrameContext*>(frame);
+        CurvEngine::geometry::HandLandmarks lms;
+        lms.is_normalized = true;
+        for (size_t i = 0; i < 21; ++i) {
+            lms.points[i].x = landmarks_42_floats[2 * i];
+            lms.points[i].y = landmarks_42_floats[2 * i + 1];
+        }
+
+        const int target_dim = 256;
+        const auto transform = CurvEngine::geometry::computeCanonicalPalmTransform(lms, f_ctx->frame.width(),
+                                                                                   f_ctx->frame.height(), target_dim);
+        cv::Mat const warped = CurvEngine::geometry::warpToCanonical(f_ctx->frame.image, transform.M, target_dim);
+        CurvEngine::Frame warped_frame(warped, f_ctx->frame.source_id + "_fingertip", f_ctx->frame.timestamp_ms);
+
+        const float img_w = static_cast<float>(f_ctx->frame.width());
+        const float img_h = static_cast<float>(f_ctx->frame.height());
+        const float palm_w = static_cast<float>(cv::norm(
+            cv::Point2f(lms.points[17].x * img_w, lms.points[17].y * img_h) -
+            cv::Point2f(lms.points[5].x * img_w, lms.points[5].y * img_h)));
+        auto fine_cfg = CurvEngine::domains::PalmParameters::computeFineStegerConfig(palm_w * 0.5f);
+        auto fine_extractor = std::make_shared<CurvEngine::ridge::StegerRidgeExtractor>(fine_cfg);
+        CurvEngine::pipeline::SyncPerceptionPipeline fine_pipeline(nullptr, fine_extractor);
+        auto fine_result = fine_pipeline.process(warped_frame);
+
+        const auto pattern =
+            CurvEngine::domain::FingertipPatternAnalyzer::classify(fine_result.ridge_graph, digit_name);
+        nlohmann::json root = {{"domain_payload", {{"fingertip_pattern", pattern.toJson()}}}};
+        return copy_json_to_buffer(root, out_json_buffer, out_json_buffer_size);
+    } catch (const std::exception& e) {
+        spdlog::error("[curv_capi] classify_fingertip failed: {}", e.what());
         return CURV_STATUS_INTERNAL_ERROR;
     }
 }

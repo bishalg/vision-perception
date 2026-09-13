@@ -7,9 +7,9 @@ import Combine
  * rollDeg = atan2(gravity.x, -gravity.y) in degrees, 0 = device vertical.
  * Mirrors Android DeviceTiltMonitor so both platforms report same sign.
  */
-@MainActor
 public final class DeviceTiltProvider: ObservableObject {
     @Published public var deviceRollDeg: Float = 0
+    @Published public var gravityVector: (x: Float, y: Float, z: Float) = (0, 0, -1)
     @Published public var isAvailable: Bool = false
 
     private let motion = CMMotionManager()
@@ -28,11 +28,9 @@ public final class DeviceTiltProvider: ObservableObject {
             .sink { [weak self] _ in
                 guard let self, let dm = self.motion.deviceMotion else { return }
                 let g = dm.gravity
-                // Same math as Android: roll from gravity vector
+                self.gravityVector = (Float(g.x), Float(g.y), Float(g.z))
                 let roll = atan2(g.x, -g.y) * 180.0 / Double.pi
-                // Low-pass to avoid jitter
                 let filtered = Float(roll) * 0.35 + self.deviceRollDeg * 0.65
-                // Clamp to -45..45 for rail display, but keep true value
                 self.deviceRollDeg = filtered
             }
     }

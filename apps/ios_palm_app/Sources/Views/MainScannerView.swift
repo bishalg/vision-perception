@@ -12,6 +12,7 @@ public struct MainScannerView: View {
     @StateObject private var viewModel = PalmAnalysisViewModel()
     /// Corridor guides ship default-off (spec §4); persists across launches.
     @AppStorage("showPalmCorridors") private var showCorridors = false
+    @State private var showScanModePicker = false
 
     /// Drives the post-capture "hero" flight: a large centered flash of the
     /// still shrinks into the bottom-left filmstrip slot, matching the shared
@@ -98,6 +99,46 @@ public struct MainScannerView: View {
                     }
                 }
 
+                // Scan mode + orbit coverage HUD
+                if !viewModel.showResultViewer {
+                    VStack {
+                        HStack {
+                            Button(action: { showScanModePicker = true }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: viewModel.scanMode == .stillPhoto ? "camera" : "rotate.3d")
+                                    Text(viewModel.scanMode.displayName)
+                                        .font(.footnote.bold())
+                                }
+                                .foregroundColor(.white.opacity(0.9))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.black.opacity(0.62))
+                                        .overlay(Capsule().stroke(Color.white.opacity(0.28), lineWidth: 0.8))
+                                )
+                            }
+                            Spacer()
+                            if viewModel.scanMode == .orbitScan {
+                                Text("Venus \(viewModel.orbitSession.mountViewCounts()["venus", default: 0])/\(OrbitBin.allCases.count)")
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundColor(.white.opacity(0.95))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color.black.opacity(0.62))
+                                            .overlay(Capsule().stroke(Color.white.opacity(0.28), lineWidth: 0.8))
+                                    )
+                            }
+                        }
+                        .padding(.horizontal, 22)
+                        .padding(.top, 56)
+                        Spacer()
+                    }
+                    .zIndex(2)
+                }
+
                 // Optional corridors toggle (bottom left, above telemetry chips)
                 if !viewModel.showResultViewer && !regionLandmarks.isEmpty {
                     VStack {
@@ -110,13 +151,13 @@ public struct MainScannerView: View {
                                         .font(.footnote)
                                         .bold()
                                 }
-                                .foregroundColor(.white.opacity(showCorridors ? 0.95 : 0.6))
+                                .foregroundColor(.white.opacity(showCorridors ? 0.95 : 0.75))
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 5)
                                 .background(
                                     Capsule()
-                                        .fill(.ultraThinMaterial)
-                                        .overlay(Capsule().stroke(Color.white.opacity(showCorridors ? 0.5 : 0.2), lineWidth: 0.8))
+                                        .fill(Color.black.opacity(0.62))
+                                        .overlay(Capsule().stroke(Color.white.opacity(showCorridors ? 0.55 : 0.22), lineWidth: 0.8))
                                 )
                             }
                             .accessibilityLabel(LocalizedStrings.tr("camera.corridors", lang: viewModel.currentLanguage))
@@ -145,10 +186,11 @@ public struct MainScannerView: View {
                 if !regionLandmarks.isEmpty && !viewModel.showResultViewer {
                     RegionOverlayView(
                         landmarks: regionLandmarks,
-                        isReady: viewModel.guidanceState.isReady,
+                        isReady: viewModel.scanMode == .stillPhoto ? viewModel.guidanceState.isReady : viewModel.orbitSession.coverageFraction > 0.3,
                         showCorridors: showCorridors,
                         mirror: shouldMirror,
-                        imageRect: imageRect
+                        imageRect: imageRect,
+                        mountReliefHeat: viewModel.mountReliefHeat
                     )
                     .ignoresSafeArea()
                     .zIndex(1)
@@ -253,6 +295,14 @@ public struct MainScannerView: View {
             } else if !viewModel.showResultViewer {
                 viewModel.cameraSession.start()
             }
+        }
+        .confirmationDialog("Scan mode", isPresented: $showScanModePicker, titleVisibility: .visible) {
+            ForEach(PalmScanMode.allCases) { mode in
+                Button(mode.displayName) { viewModel.setScanMode(mode) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Mode A still photo, or enriched 3D orbit / close-up / fingertip scans.")
         }
         .onAppear { viewModel.start() }
         .onDisappear { viewModel.stop() }

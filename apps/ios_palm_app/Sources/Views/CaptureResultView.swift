@@ -88,8 +88,11 @@ public struct CaptureResultView: View {
                 .scrollContentBackground(.hidden)
             }
             .background(Color.black.ignoresSafeArea())
+            .preferredColorScheme(.dark)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(Color.black.opacity(0.72), for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(action: onDismiss) {
@@ -139,7 +142,8 @@ public struct CaptureResultView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
-                .background(.ultraThinMaterial)
+                .background(Color.black.opacity(0.78))
+                .preferredColorScheme(.dark)
             }
         }
         .fullScreenCover(isPresented: $showEditor) {
@@ -238,7 +242,7 @@ public struct CaptureResultView: View {
                 .bold()
                 .foregroundStyle(.tertiary)
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(.primary)
     }
 }
 

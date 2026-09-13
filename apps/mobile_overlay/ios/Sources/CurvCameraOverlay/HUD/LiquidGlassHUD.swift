@@ -145,8 +145,8 @@ public struct LiquidGlassHUD<OverlayContent: View>: View {
                     .padding(.vertical, 10)
                     .background(
                         Capsule()
-                            .fill(.ultraThinMaterial)
-                            .overlay(Capsule().strokeBorder(Color.white.opacity(0.25), lineWidth: 1))
+                            .fill(Color.black.opacity(0.62))
+                            .overlay(Capsule().strokeBorder(Color.white.opacity(0.28), lineWidth: 1))
                     )
                     .shadow(color: Color.black.opacity(0.25), radius: 10, y: 4)
                     .padding(.top, 60)
@@ -166,7 +166,7 @@ public struct LiquidGlassHUD<OverlayContent: View>: View {
                         Button(action: onManualCapture) {
                             ZStack {
                                 Circle()
-                                    .fill(.ultraThinMaterial)
+                                    .fill(Color.black.opacity(0.55))
                                     .frame(width: 76, height: 76)
                                     .overlay(Circle().strokeBorder(Color.white.opacity(0.6), lineWidth: 2))
 

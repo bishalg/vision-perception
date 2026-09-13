@@ -13,6 +13,9 @@ add_library(curv_domains STATIC
     palm/src/LifeLineAnalyzer.cpp
     palm/src/HeartHeadAnalyzer.cpp
     palm/src/MountMarkDetector.cpp
+    palm/src/MountReliefAnalyzer.cpp
+    palm/src/FingertipPatternAnalyzer.cpp
+    palm/src/MinorRidgeExtractor.cpp
     palm/src/VlmPromptFormatter.cpp
     geospatial/src/GeospatialFloodPack.cpp
     floor_plan/src/FloorPlanDomainPack.cpp

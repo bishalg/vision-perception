@@ -207,12 +207,12 @@ public struct CreaseLineEditorView: View {
                                                 Text(LocalizedStrings.tr("editor.resetZoom", lang: selectedLanguage))
                                             }
                                             .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                            .foregroundColor(.primary)
+                                            .foregroundColor(.white)
                                             .padding(.horizontal, 10)
                                             .padding(.vertical, 6)
                                             .background(
                                                 Capsule()
-                                                    .fill(.ultraThinMaterial)
+                                                    .fill(Color.black.opacity(0.62))
                                                     .overlay(Capsule().stroke(Color.white.opacity(0.3), lineWidth: 1))
                                             )
                                             .shadow(color: .black.opacity(0.4), radius: 6)
@@ -273,7 +273,7 @@ public struct CreaseLineEditorView: View {
                         .padding(.vertical, 6)
                         .background(
                             Capsule()
-                                .fill(.ultraThinMaterial)
+                                .fill(Color.black.opacity(0.62))
                                 .overlay(Capsule().stroke(Color.white.opacity(0.20), lineWidth: 0.8))
                         )
                         .shadow(color: .black.opacity(0.35), radius: 6, y: 2)

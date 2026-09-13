@@ -12,6 +12,8 @@ public struct RegionOverlayView: View {
     public var showCorridors: Bool = false
     public var mirror: Bool = false
     public var imageRect: CGRect? = nil
+    /// Optional mount relief heat (0…1 per mount name) for orbit scan HUD.
+    public var mountReliefHeat: [String: Float] = [:]
 
     /// EMA factor against landmark jitter (Vision noise shimmers dashes).
     private static let smoothing: CGFloat = 0.35
@@ -23,13 +25,15 @@ public struct RegionOverlayView: View {
         isReady: Bool,
         showCorridors: Bool = false,
         mirror: Bool = false,
-        imageRect: CGRect? = nil
+        imageRect: CGRect? = nil,
+        mountReliefHeat: [String: Float] = [:]
     ) {
         self.landmarks = landmarks
         self.isReady = isReady
         self.showCorridors = showCorridors
         self.mirror = mirror
         self.imageRect = imageRect
+        self.mountReliefHeat = mountReliefHeat
     }
 
     public var body: some View {
@@ -49,17 +53,20 @@ public struct RegionOverlayView: View {
             let corridorStroke = base.opacity(isReady ? 0.5 : 0.3)
             let echoStroke = base.opacity(isReady ? 0.22 : 0.14)
 
-            for (_, poly) in regions.mounts {
+            for (mount, poly) in regions.mounts {
                 let mapped = poly.map(map)
                 guard mapped.count >= 3 else { continue }
                 var path = Path()
                 path.move(to: mapped[0])
                 for pt in mapped.dropFirst() { path.addLine(to: pt) }
                 path.closeSubpath()
-                context.fill(path, with: .color(mountFill))
+                let heat = mountReliefHeat[mount.rawValue] ?? 0
+                let reliefFill = base.opacity(0.06 + Double(min(1, max(0, heat))) * 0.22)
+                context.fill(path, with: .color(heat > 0 ? reliefFill : mountFill))
+                let strokeW: CGFloat = heat > 0.5 ? 1.6 : 1.0
                 context.stroke(
-                    path, with: .color(mountStroke),
-                    style: StrokeStyle(lineWidth: 1.0, lineCap: .round, lineJoin: .round, dash: [2, 5])
+                    path, with: .color(mountStroke.opacity(heat > 0.35 ? 0.85 : 0.55)),
+                    style: StrokeStyle(lineWidth: strokeW, lineCap: .round, lineJoin: .round, dash: [2, 5])
                 )
             }
 
