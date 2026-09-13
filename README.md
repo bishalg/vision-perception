@@ -55,7 +55,7 @@ vision-perception/
 │   ├── include/     # Public headers (curv/GeometryTypes.hpp, curv/pipeline/, curv/ridge/, ...)
 │   └── src/         # Core implementation units
 ├── adapters/        # Technology & hardware adapters (OpenCV, OpenCV-DNN, C-ABI, JNI, Swift)
-├── domains/         # Domain extension packs (palm, surface_inspection; poultry, driver_monitoring, document_scanning planned)
+├── domains/         # Domain extension packs (palm, geospatial, floor_plan, surface_inspection, retina, driver_monitoring, asd_screening; poultry, document_scanning planned)
 ├── apps/            # Application executables (desktop_pipeline_demo)
 ├── tools/           # Developer tools (curv_cli, hand_inspector_cli, synth_generator, evaluate, benchmark)
 ├── tests/           # GoogleTest unit + regression suites (ctest)
