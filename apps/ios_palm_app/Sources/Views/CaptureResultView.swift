@@ -142,7 +142,6 @@ public struct CaptureResultView: View {
                 .background(.ultraThinMaterial)
             }
         }
-        .preferredColorScheme(.dark)
         .fullScreenCover(isPresented: $showEditor) {
             CreaseLineEditorView(
                 image: image,

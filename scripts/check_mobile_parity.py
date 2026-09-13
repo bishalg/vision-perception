@@ -72,6 +72,7 @@ ALIASES = {
     "CreaseLineEditorView": "CreaseLineEditorScreen",
     "MainScannerView": "MainScannerScreen",
     "VisionHandTracker": "MLKitHandTracker",
+    "GuideSpec": "GuidePaths",
 }
 
 # Components implemented inline instead of a separate file.

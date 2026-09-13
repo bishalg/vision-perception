@@ -23,6 +23,14 @@ jobs:
       - name: Validate shared shape/theme specs (single source for iOS + Android)
         run: ./scripts/check_shared_shapes.py
 
+  app-theme:
+    name: App system-theme support
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate forced schemes + hardcoded paint (iOS + Android)
+        run: ./scripts/check_app_theme.py
+
   mobile-parity:
     name: iOS/Android parity
     runs-on: ubuntu-latest

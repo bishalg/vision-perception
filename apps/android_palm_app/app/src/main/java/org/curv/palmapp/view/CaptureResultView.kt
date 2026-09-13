@@ -101,7 +101,7 @@ fun CaptureResultView(
         onProceedToAnalysis?.invoke()
     }
 
-    PalmAppTheme(darkTheme = true) {
+    PalmAppTheme() {
         Scaffold(
             modifier = modifier.fillMaxSize(),
             containerColor = Color.Black,

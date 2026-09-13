@@ -58,7 +58,11 @@ public struct SamudrikaReadingSheet: View {
                                     .font(.subheadline.monospacedDigit())
                                     .foregroundStyle(.secondary)
                             }
-                            Text(SimplePalmReading.readingText(for: spline, handSide: handSide))
+                            Text(SimplePalmReading.readingText(
+                                for: spline,
+                                handSide: handSide,
+                                reports: .from(payload: result.flatMap { $0.domainPayload })
+                            ))
                                 .font(.body)
                                 .foregroundStyle(.primary)
                                 .fixedSize(horizontal: false, vertical: true)

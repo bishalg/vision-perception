@@ -476,6 +476,36 @@ vision_set_compiler_warnings(test_fate_line_analyzer)
 add_test(NAME test_fate_line_analyzer COMMAND test_fate_line_analyzer)
 
 # ------------------------------------------------------------------------------
+# Unit Test: test_line_length_thresholds (Track 2 short/long table, TDD)
+# ------------------------------------------------------------------------------
+add_executable(test_line_length_thresholds
+    unit/test_line_length_thresholds.cpp
+)
+target_link_libraries(test_line_length_thresholds
+    PRIVATE
+        curv_domains
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_line_length_thresholds)
+add_test(NAME test_line_length_thresholds COMMAND test_line_length_thresholds)
+
+# ------------------------------------------------------------------------------
+# Unit Test: test_palm_line_analyzers (Tracks 3-5: life/heart/head/mounts, TDD)
+# ------------------------------------------------------------------------------
+add_executable(test_palm_line_analyzers
+    unit/test_palm_line_analyzers.cpp
+)
+target_link_libraries(test_palm_line_analyzers
+    PRIVATE
+        curv_domains
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_palm_line_analyzers)
+add_test(NAME test_palm_line_analyzers COMMAND test_palm_line_analyzers)
+
+# ------------------------------------------------------------------------------
 # Unit Test: test_floor_plan_domain (FloorPlanDomainPack, TDD)
 # ------------------------------------------------------------------------------
 add_executable(test_floor_plan_domain

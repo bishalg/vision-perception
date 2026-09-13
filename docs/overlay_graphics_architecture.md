@@ -62,8 +62,26 @@ bites twice.
 - Visual changes to the silhouette need a before/after render check against
   `data/samples/mobile_captures/01_left_bishal.jpg` / `02_right_bishal.jpg`.
 
-## 5. Adoption status
+## 5. App theme policy (dark + light, system-following)
 
+Every app follows the system theme on launch and stays legible in both modes
+(gated by `scripts/check_app_theme.py`: forcing a scheme fails CI).
+
+- **Never force a scheme**: no `.preferredColorScheme(`, no `darkTheme =`
+  literals, no `UIUserInterfaceStyle` plist keys, no `setDefaultNightMode`.
+- **Live camera viewfinders & photo review** (live camera stream, editor canvas, photo review):
+  camera feed stays direct by design with high-contrast functional HUD overlays.
+- **Gaze tracking, calibration, and screening screens adapt**: `MainGazeScannerView`,
+  `BubbleCalibrationView`, and `StimulusScreeningView` fully support both dark and light
+  system themes with adaptive canvases (`LiquidGlass.deepCanvas`), adaptive stimulus
+  gradients (`LiquidGlass.stimulusSocialTop/Bottom`), adaptive cards, and semantic typography.
+- **Everything else adapts**: text uses semantic colors (`.primary` /
+  `.secondary`, `colorScheme.*`); card fills/borders flow from adaptive
+  tokens (`LiquidGlass.cardBackground/cardBorder`, `deepCanvas`); brand
+  accents stay fixed. Intentional fixed treatments carry a
+  `theme:fixed-media` marker so the gate stays silent and honest.
+
+## 6. Adoption status
 - Web CurvStudio hint preview: separate 220×250 artwork (`palmGuide.ts`),
   evidence-matched to captures, tested. Intentionally not unified with the
   mobile silhouette (different proportions/audience); shared principles

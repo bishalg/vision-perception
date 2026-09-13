@@ -39,26 +39,26 @@ public struct VastuResultSheet: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Capsule()
-                    .fill(Color.white.opacity(0.3))
+                    .fill(.primary.opacity(0.3))
                     .frame(width: 44, height: 5)
                     .frame(maxWidth: .infinity)
                     .padding(.top, 10)
 
                 Text("Vastu Mandala Analysis")
                     .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
 
                 Text("Floor-plan ridges mapped to the 9-pad Purusha Mandala via CurvEngine domain `floor_plan`.")
                     .font(.system(size: 13))
-                    .foregroundColor(.white.opacity(0.7))
+                    .foregroundColor(.secondary)
 
                 Text(json ?? "{\"status\":\"no_evidence\"}")
                     .font(.system(size: 11, weight: .regular, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.85))
+                    .foregroundColor(.primary.opacity(0.85))
                     .padding(12)
                     .background(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Color.white.opacity(0.06))
+                            .fill(.primary.opacity(0.06))
                     )
 
                 Button(action: onRetake) {
@@ -67,7 +67,7 @@ public struct VastuResultSheet: View {
                         Text("Retake")
                     }
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                     .background(

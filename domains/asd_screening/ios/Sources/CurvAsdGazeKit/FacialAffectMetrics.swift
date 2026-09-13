@@ -1,5 +1,36 @@
 import Foundation
 
+/// High-level classified emotional affect state based on FACS Action Units.
+public enum DominantEmotion: String, Codable, CaseIterable, Identifiable, Sendable {
+    case calm = "Calm Attention"
+    case joy = "Joy & Smiling"
+    case surprise = "Surprise & Wonder"
+    case distress = "Distress & Frustration"
+    case excited = "High Excitement"
+
+    public var id: String { rawValue }
+
+    public var emoji: String {
+        switch self {
+        case .calm: return "🙂"
+        case .joy: return "😊"
+        case .surprise: return "😲"
+        case .distress: return "😟"
+        case .excited: return "🤩"
+        }
+    }
+
+    public var systemIcon: String {
+        switch self {
+        case .calm: return "face.smiling"
+        case .joy: return "face.smiling.fill"
+        case .surprise: return "eyes"
+        case .distress: return "exclamationmark.triangle.fill"
+        case .excited: return "sparkles"
+        }
+    }
+}
+
 /// Complete 52-field FACS Facial Affect Metrics from Apple TrueDepth ARFaceAnchor.blendShapes.
 ///
 /// All values are normalized floats in [0.0, 1.0]:
@@ -113,6 +144,32 @@ public struct FacialAffectMetrics: Codable, Sendable, Equatable {
         let mean = keyMuscles.reduce(0, +) / Double(keyMuscles.count)
         return keyMuscles.map { ($0 - mean) * ($0 - mean) }.reduce(0, +) / Double(keyMuscles.count)
     }
+
+    /// Excitement composite metric combining high smiling and facial dynamism (0.0 to 1.0).
+    public var excitementScore: Double {
+        min(1.0, (socialSmileIntensity * 0.5 + expressivityIndex * 35.0 * 0.5))
+    }
+
+    /// Anger & frustration metric combining brow furrow, frown, and nose sneer (0.0 to 1.0).
+    public var angerScore: Double {
+        min(1.0, (browDownLeft + browDownRight + noseSneerLeft + noseSneerRight + mouthFrownLeft + mouthFrownRight) / 6.0)
+    }
+
+    /// Dominant classified emotion based on FACS Action Unit thresholds.
+    public var dominantEmotion: DominantEmotion {
+        if socialSmileIntensity > 0.40 && expressivityIndex > 0.008 {
+            return .excited
+        } else if socialSmileIntensity > 0.35 {
+            return .joy
+        } else if surpriseScore > 0.28 {
+            return .surprise
+        } else if distressScore > 0.25 || angerScore > 0.25 {
+            return .distress
+        } else {
+            return .calm
+        }
+    }
+
 
     // MARK: - Convenience: zero-affect neutral baseline (Simulator / unit tests)
     public static var neutral: FacialAffectMetrics { FacialAffectMetrics() }

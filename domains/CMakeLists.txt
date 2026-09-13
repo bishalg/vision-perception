@@ -10,6 +10,9 @@ add_library(curv_domains STATIC
     palm/src/CreaseChainLinker.cpp
     palm/src/CreaseGeometry.cpp
     palm/src/FateLineAnalyzer.cpp
+    palm/src/LifeLineAnalyzer.cpp
+    palm/src/HeartHeadAnalyzer.cpp
+    palm/src/MountMarkDetector.cpp
     palm/src/VlmPromptFormatter.cpp
     geospatial/src/GeospatialFloodPack.cpp
     floor_plan/src/FloorPlanDomainPack.cpp

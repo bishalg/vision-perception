@@ -85,6 +85,8 @@ nlohmann::json FateReport::toJson() const {
         {"has_triangle", has_triangle},
         {"has_cross", has_cross},
         {"has_square", has_square},
+        {"bad_saturn_mount", bad_saturn_mount},
+        {"bad_mercury_mount", bad_mercury_mount},
         {"age_at_break", age_at_break},
         {"age_at_end", age_at_end},
     };

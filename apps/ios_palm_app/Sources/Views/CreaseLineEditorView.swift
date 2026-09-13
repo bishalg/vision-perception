@@ -207,7 +207,7 @@ public struct CreaseLineEditorView: View {
                                                 Text(LocalizedStrings.tr("editor.resetZoom", lang: selectedLanguage))
                                             }
                                             .font(.system(size: 12, weight: .bold, design: .monospaced))
-                                            .foregroundColor(.white)
+                                            .foregroundColor(.primary)
                                             .padding(.horizontal, 10)
                                             .padding(.vertical, 6)
                                             .background(
@@ -370,7 +370,6 @@ public struct CreaseLineEditorView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
         .onAppear {
             lightHaptic.prepare()
             mediumHaptic.prepare()

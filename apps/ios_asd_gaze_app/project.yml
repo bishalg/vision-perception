@@ -26,10 +26,14 @@ targets:
     platform: iOS
     sources:
       - path: Sources
+      - path: Resources
+        buildPhase: resources
+        type: group
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.curv.asd.gazecollector
         PRODUCT_NAME: AsdGazeCollector
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         DEVELOPMENT_TEAM: 6J3WY94J6T
         CODE_SIGN_STYLE: Automatic
         CURRENT_PROJECT_VERSION: 1
@@ -42,6 +46,21 @@ targets:
     dependencies:
       - package: CurvAsdGazeKit
       - sdk: ARKit.framework
+      - sdk: SceneKit.framework
       - sdk: AVFoundation.framework
       - sdk: CoreMotion.framework
       - sdk: CryptoKit.framework
+
+  AsdGazeCollectorTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: true
+    dependencies:
+      - target: AsdGazeCollector
+      - package: CurvAsdGazeKit
+
+

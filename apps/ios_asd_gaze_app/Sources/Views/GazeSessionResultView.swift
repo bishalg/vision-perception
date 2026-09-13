@@ -9,7 +9,6 @@ public struct GazeSessionResultView: View {
     public let onDismiss: () -> Void
     public let onRetake: () -> Void
 
-    @State private var selectedLocale: AppLocale = .english
     @State private var replayFrameIndex: Int = 0
     @State private var isReplaying: Bool = false
     @State private var replayTimer: Timer?
@@ -51,32 +50,40 @@ public struct GazeSessionResultView: View {
                     .padding(.vertical, 12)
                 }
             }
+            .navigationTitle(Localizer.tr("result_title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .cancellationAction) {
                     Button(action: onRetake) {
                         HStack(spacing: 4) {
-                            Image(systemName: "chevron.left")
-                            Text("Retake")
+                            Image(systemName: "arrow.counterclockwise")
+                            Text(Localizer.tr("retake"))
                         }
                         .foregroundColor(LiquidGlass.celestialTeal)
                     }
                 }
                 ToolbarItem(placement: .principal) {
                     VStack(spacing: 2) {
-                        Text(Localizer.tr("result_title", lang: selectedLocale))
+                        Text(Localizer.tr("result_title"))
                             .font(.system(size: 15, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
+                            .foregroundColor(.primary)
                         Text("Session #\(summary.sessionId)")
                             .font(.system(size: 11, weight: .medium, design: .monospaced))
-                            .foregroundColor(Color.white.opacity(0.6))
+                            .foregroundColor(.secondary)
                     }
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: prepareShareExport) {
-                        Image(systemName: "square.and.arrow.up")
-                            .foregroundColor(LiquidGlass.celestialTeal)
+                ToolbarItem(placement: .topBarTrailing) {
+                    HStack(spacing: 12) {
+                        Button(action: prepareShareExport) {
+                            Image(systemName: "square.and.arrow.up")
+                                .foregroundColor(LiquidGlass.celestialTeal)
+                        }
+                        Button(action: onDismiss) {
+                            Text("Done")
+                                .fontWeight(.semibold)
+                                .foregroundColor(LiquidGlass.emeraldMint)
+                        }
                     }
                 }
             }
@@ -129,7 +136,7 @@ public struct GazeSessionResultView: View {
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                    .stroke(LiquidGlass.cardBorder, lineWidth: 1)
             )
 
             // Replay Controls Bar
@@ -137,14 +144,14 @@ public struct GazeSessionResultView: View {
                 Button(action: toggleReplay) {
                     Image(systemName: isReplaying ? "pause.fill" : "play.fill")
                         .font(.system(size: 14))
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
                         .frame(width: 32, height: 32)
                         .background(Circle().fill(LiquidGlass.cardBackground))
                 }
 
                 Text(String(format: "Frame %d / %d (%.1fs)", min(replayFrameIndex, max(1, recordedFrames.count)), max(1, recordedFrames.count), summary.durationSec))
                     .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                    .foregroundColor(Color.white.opacity(0.8))
+                    .foregroundColor(.primary.opacity(0.85))
 
                 Spacer()
 
@@ -162,9 +169,9 @@ public struct GazeSessionResultView: View {
     private var socialPreferenceCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(Localizer.tr("biomarkers_title", lang: selectedLocale))
+                Text(Localizer.tr("biomarkers_title"))
                     .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                 Spacer()
                 Text("GeoPref Index")
                     .font(.system(size: 11, weight: .medium))
@@ -187,7 +194,8 @@ public struct GazeSessionResultView: View {
                             )
                             .frame(height: 12)
 
-                        // Marker pill
+                        // Marker pill on the replay timeline (media surface).
+                        // theme:fixed-media
                         Circle()
                             .fill(Color.white)
                             .frame(width: 18, height: 18)
@@ -204,7 +212,7 @@ public struct GazeSessionResultView: View {
                     Spacer()
                     Text(String(format: "%+.2f", summary.socialPreferenceScore))
                         .font(.system(size: 12, weight: .bold, design: .monospaced))
-                        .foregroundColor(.white)
+                        .foregroundColor(.primary)
                     Spacer()
                     Text("Social Focus (+1.0)")
                         .font(.system(size: 10))
@@ -212,7 +220,7 @@ public struct GazeSessionResultView: View {
                 }
             }
 
-            Divider().background(Color.white.opacity(0.1))
+            Divider().background(.primary.opacity(0.08))
 
             // Additional Gaze Metrics Grid
             HStack(spacing: 16) {
@@ -230,9 +238,9 @@ public struct GazeSessionResultView: View {
     private var facialAffectMetricsCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(Localizer.tr("emotion_title", lang: selectedLocale))
+                Text(Localizer.tr("emotion_title"))
                     .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                 Spacer()
                 Text("52 FACS Telemetry")
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
@@ -260,10 +268,10 @@ public struct GazeSessionResultView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("ResearchKit & CareKit Contract")
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
                 Text(String(format: "Valid Samples: %.1f%% • Verdict: %@", summary.validRatio * 100, summary.qualityVerdict.rawValue.capitalized))
                     .font(.system(size: 11))
-                    .foregroundColor(Color.white.opacity(0.7))
+                    .foregroundColor(.secondary)
             }
 
             Spacer()
@@ -286,7 +294,7 @@ public struct GazeSessionResultView: View {
     private var actionButtonsSection: some View {
         VStack(spacing: 10) {
             GlassButton(
-                title: Localizer.tr("export_pdf", lang: selectedLocale),
+                title: Localizer.tr("export_pdf"),
                 systemImage: "doc.text.fill",
                 isPrimary: true
             ) {
@@ -298,7 +306,7 @@ public struct GazeSessionResultView: View {
             Button(action: onDismiss) {
                 Text("Done")
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(LiquidGlass.textSecondary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
             }
@@ -311,10 +319,10 @@ public struct GazeSessionResultView: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
                 .font(.system(size: 11))
-                .foregroundColor(Color.white.opacity(0.6))
+                .foregroundColor(.secondary)
             Text(value)
                 .font(.system(size: 14, weight: .bold, design: .monospaced))
-                .foregroundColor(.white)
+                .foregroundColor(.primary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -363,6 +371,7 @@ public struct ResearchKitExportSheet: View {
     public var body: some View {
         NavigationStack {
             ZStack {
+                // theme:fixed-media — dark JSON viewer by design (both modes).
                 Color.black.ignoresSafeArea()
                 ScrollView {
                     Text(exportJsonText)

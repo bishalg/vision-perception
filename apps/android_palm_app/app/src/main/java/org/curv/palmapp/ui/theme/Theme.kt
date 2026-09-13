@@ -12,10 +12,10 @@ import androidx.compose.ui.graphics.Color
  *
  * Brand accent is the signature palm green; everything else comes from the
  * Material3 tonal system so surfaces, sheets, and dialogs feel native and
- * adapt to light/dark mode automatically. Camera, review, and editor screens
- * wrap themselves in [PalmAppTheme] with `darkTheme = true` (media surfaces
- * stay dark like the native camera/gallery), while the reading sheet follows
- * the system theme.
+ * adapt to light/dark mode automatically. All screens follow the system
+ * theme on launch (`darkTheme` defaults to `isSystemInDarkTheme()`); only
+ * media canvases (camera preview, photo review backdrop, editor canvas) stay
+ * dark for tracing contrast, with fixed light-on-dark treatments on top.
  */
 val PalmGreen = Color(0xFF34C759)
 val PalmGreenDark = Color(0xFF1F9D4D)

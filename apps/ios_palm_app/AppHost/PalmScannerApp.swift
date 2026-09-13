@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 @main
 struct PalmScannerApp: App {
@@ -11,12 +12,19 @@ struct PalmScannerApp: App {
 
                 if isShowingSplash {
                     ZStack {
-                        Color.white.ignoresSafeArea()
+                        // System backdrop (adapts); brand mark sits on a fixed
+                        // dark tile since the logo art is white-on-transparent.
+                        Color(uiColor: .systemBackground).ignoresSafeArea()
 
                         Image("LaunchLogo")
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .frame(width: 128, height: 128)
+                            .frame(width: 112, height: 112)
+                            .padding(20)
+                            .background(
+                                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                                    .fill(Color(red: 0.04, green: 0.06, blue: 0.10))
+                            )
                     }
                     .transition(.opacity)
                     .zIndex(999)
@@ -30,9 +38,11 @@ struct PalmScannerApp: App {
                     }
                 }
             }
-            // NOTE: no global preferredColorScheme here. The viewfinder, review,
-            // and editor force dark themselves (media surfaces, like Camera/Photos);
-            // the reading sheet follows the system so it feels native in both modes.
+            // NOTE: no global preferredColorScheme here — the app follows the
+            // system theme on launch. Camera/editor canvases stay dark media
+            // surfaces (contrast for tracing); all chrome uses semantic
+            // colors. The reading sheet follows the system so it feels
+            // native in both modes.
         }
     }
 }

@@ -65,6 +65,15 @@ public struct GazeSessionReportSummary: Codable, Sendable, Equatable {
 /// Supports both TrueDepth hardware (`ARSession`) and deterministic mathematical simulation.
 public final class GazeSessionController: NSObject, ObservableObject, @unchecked Sendable {
     @Published public var currentGazePoint: CGPoint = CGPoint(x: 0.5, y: 0.5)
+    /// Uncalibrated raycast output (still EMA-smoothed). `BubbleCalibrationView`
+    /// fits `calibrationProfile` against this, never against `currentGazePoint`
+    /// (which is already-corrected once a profile exists, and fitting a
+    /// correction against an already-corrected signal would compound errors).
+    @Published public var currentRawGazePoint: CGPoint = CGPoint(x: 0.5, y: 0.5)
+    /// Per-user affine correction (see `GazeCalibrationProfile`). Loaded from
+    /// the on-device profile at init so every new `GazeSessionController`
+    /// instance (each screen owns its own) picks up the last calibration.
+    @Published public private(set) var calibrationProfile: GazeCalibrationProfile
     @Published public var currentDistanceCm: Double = 48.0
     @Published public var currentQuality: GazeQualityGate.Evaluation
     @Published public var currentAffect: FacialAffectMetrics = .neutral
@@ -81,9 +90,10 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
 
     private var sessionStartTime: Date?
     public var isSimulationMode: Bool = false
+    @Published public var calibrationTarget: CGPoint? = nil
 
     #if canImport(ARKit) && !os(macOS)
-    private var arSession: ARSession?
+    @Published public var arSession: ARSession?
     #endif
 
     public init(
@@ -95,7 +105,22 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
         self.qualityGate = qualityGate
         self.aoiTracker = aoiTracker
         self.currentQuality = GazeQualityGate.Evaluation(isValid: true, verdict: .optimal)
+        self.calibrationProfile = GazeCalibrationStore.load()
         super.init()
+    }
+
+    /// Persists a freshly-fit calibration and makes it take effect immediately
+    /// for this controller instance (subsequent frames use it right away).
+    public func applyAndPersist(calibrationProfile profile: GazeCalibrationProfile) {
+        calibrationProfile = profile
+        GazeCalibrationStore.save(profile)
+    }
+
+    /// Drops back to the uncalibrated identity transform (e.g. before
+    /// screening a different child, or if a calibration run looked bad).
+    public func resetCalibration() {
+        calibrationProfile = .identity
+        GazeCalibrationStore.reset()
     }
 
     /// Starts telemetry capture. Automatically activates TrueDepth camera if available,
@@ -214,25 +239,48 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
 
     /// Ingests a single synthetic frame (used for preview animation, unit testing, and Simulator).
     public func tickSimulatedFrame(timeSec: Double) {
-        // Naturalistic oscillating gaze with preference toward Social side [0.15, 0.45]
-        let wave = sin(timeSec * 1.8)
-        let x = wave > -0.2 ? (0.28 + 0.12 * sin(timeSec * 3.5)) : (0.72 + 0.10 * cos(timeSec * 2.2))
-        let y = 0.40 + 0.10 * sin(timeSec * 2.0)
+        let gazePoint: CGPoint
+        if let target = calibrationTarget {
+            // Realistic micro-saccadic jitter around active calibration target
+            let jitterX = 0.015 * sin(timeSec * 7.2)
+            let jitterY = 0.015 * cos(timeSec * 6.4)
+            gazePoint = CGPoint(
+                x: max(0.05, min(0.95, target.x + jitterX)),
+                y: max(0.05, min(0.95, target.y + jitterY))
+            )
+        } else {
+            // Naturalistic oscillating gaze with preference toward Social side [0.15, 0.45]
+            let wave = sin(timeSec * 1.8)
+            let x = wave > -0.2 ? (0.28 + 0.12 * sin(timeSec * 3.5)) : (0.72 + 0.10 * cos(timeSec * 2.2))
+            let y = 0.40 + 0.10 * sin(timeSec * 2.0)
+            gazePoint = CGPoint(x: max(0.05, min(0.95, x)), y: max(0.05, min(0.95, y)))
+        }
 
-        let gazePoint = CGPoint(x: max(0.05, min(0.95, x)), y: max(0.05, min(0.95, y)))
         let activeHits = aoiTracker.activeAOIs(atTimeSec: timeSec, xNorm: gazePoint.x, yNorm: gazePoint.y)
 
-        // Synthetic smile modulation: child smiles during social scene moments
-        let isSmiling = (activeHits.contains("Social_Actor") && fmod(timeSec, 6.0) < 2.5)
-        let smileVal = isSmiling ? 0.65 : 0.08
+        // Dynamic emotion synthesis for realistic Simulator playback and verification:
+        // Cycles across Joy/Smile -> Surprise/Alert -> High Excitement -> Calm Focus
+        let phase = fmod(timeSec, 16.0)
+        let isSmiling = (phase < 4.0)
+        let isSurprised = (phase >= 4.0 && phase < 8.0)
+        let isExcited = (phase >= 8.0 && phase < 12.0)
+
+        let smileVal = isExcited ? 0.78 : (isSmiling ? 0.65 : 0.06)
+        let browUp = isSurprised ? 0.65 : (isExcited ? 0.40 : 0.04)
+        let eyeWide = isSurprised ? 0.60 : (isExcited ? 0.45 : 0.05)
+        let jawOpenVal = isSurprised ? 0.45 : 0.0
+
         let affect = FacialAffectMetrics(
             mouthSmileLeft: smileVal,
-            mouthSmileRight: smileVal * 0.95,
-            cheekSquintLeft: isSmiling ? 0.42 : 0.02,
-            cheekSquintRight: isSmiling ? 0.40 : 0.02,
-            browInnerUp: isSmiling ? 0.15 : 0.02,
-            eyeWideLeft: isSmiling ? 0.20 : 0.05,
-            eyeWideRight: isSmiling ? 0.20 : 0.05
+            mouthSmileRight: smileVal * 0.96,
+            cheekSquintLeft: (isSmiling || isExcited) ? 0.48 : 0.02,
+            cheekSquintRight: (isSmiling || isExcited) ? 0.46 : 0.02,
+            browInnerUp: browUp,
+            browOuterUpLeft: browUp * 0.9,
+            browOuterUpRight: browUp * 0.9,
+            eyeWideLeft: eyeWide,
+            eyeWideRight: eyeWide,
+            jawOpen: jawOpenVal
         )
 
         let sample = GazeTelemetrySample(
@@ -266,6 +314,7 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
 
         let updateUI = {
             self.currentGazePoint = gazePoint
+            self.currentRawGazePoint = gazePoint
             self.currentDistanceCm = sample.distanceToScreenCm
             self.currentQuality = eval
             self.currentAffect = affect
@@ -301,9 +350,17 @@ extension GazeSessionController: ARSessionDelegate {
         let distanceCm = Double(distanceMeters * 100.0)
 
         let raycast = raycaster.projectGazeToScreen(
+            faceTransform: faceAnchor.transform,
             lookAtPoint: faceAnchor.lookAtPoint,
-            distanceMeters: distanceMeters
+            leftEyeTransform: faceAnchor.leftEyeTransform,
+            rightEyeTransform: faceAnchor.rightEyeTransform
         )
+        // Correct the raw anatomical estimate with the user's fitted profile
+        // (identity/no-op until they've calibrated). Everything downstream —
+        // AOI hit-testing, the recorded telemetry sample, the UI cursor — uses
+        // this corrected point; only `currentRawGazePoint` stays uncorrected,
+        // for the calibration screen itself to fit against.
+        let calibratedPoint = calibrationProfile.apply(to: raycast.normalizedPoint)
 
         // Decompose Euler angles from face transform matrix
         let pitch = Double(asin(max(-1.0, min(1.0, -faceAnchor.transform.columns.2.y))))
@@ -330,13 +387,13 @@ extension GazeSessionController: ARSessionDelegate {
         )
 
         let elapsedSec = sessionStartTime.map { Date().timeIntervalSince($0) } ?? 0.0
-        let activeHits = aoiTracker.activeAOIs(atTimeSec: elapsedSec, xNorm: raycast.normalizedPoint.x, yNorm: raycast.normalizedPoint.y)
+        let activeHits = aoiTracker.activeAOIs(atTimeSec: elapsedSec, xNorm: calibratedPoint.x, yNorm: calibratedPoint.y)
 
         let sample = GazeTelemetrySample(
             timestampMs: elapsedSec * 1000.0,
             videoTimeSec: elapsedSec,
-            xNorm: raycast.normalizedPoint.x,
-            yNorm: raycast.normalizedPoint.y,
+            xNorm: calibratedPoint.x,
+            yNorm: calibratedPoint.y,
             confidence: 0.95,
             leftEyeOpenness: 1.0 - (shapes[.eyeBlinkLeft]?.doubleValue ?? 0),
             rightEyeOpenness: 1.0 - (shapes[.eyeBlinkRight]?.doubleValue ?? 0),
@@ -358,7 +415,22 @@ extension GazeSessionController: ARSessionDelegate {
         )
 
         DispatchQueue.main.async {
-            self.currentGazePoint = raycast.normalizedPoint
+            let pt = calibratedPoint
+            let dist = hypot(pt.x - self.currentGazePoint.x, pt.y - self.currentGazePoint.y)
+            let alpha: CGFloat = dist > 0.08 ? 0.85 : 0.28
+            self.currentGazePoint = CGPoint(
+                x: self.currentGazePoint.x * (1.0 - alpha) + pt.x * alpha,
+                y: self.currentGazePoint.y * (1.0 - alpha) + pt.y * alpha
+            )
+
+            let rawPt = raycast.normalizedPoint
+            let rawDist = hypot(rawPt.x - self.currentRawGazePoint.x, rawPt.y - self.currentRawGazePoint.y)
+            let rawAlpha: CGFloat = rawDist > 0.08 ? 0.85 : 0.28
+            self.currentRawGazePoint = CGPoint(
+                x: self.currentRawGazePoint.x * (1.0 - rawAlpha) + rawPt.x * rawAlpha,
+                y: self.currentRawGazePoint.y * (1.0 - rawAlpha) + rawPt.y * rawAlpha
+            )
+
             self.currentDistanceCm = distanceCm
             self.currentQuality = eval
             self.currentAffect = affect

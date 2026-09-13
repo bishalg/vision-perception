@@ -53,11 +53,82 @@ public struct PalmDomainPayload: Codable {
     public let majorLines: [String: MajorLineInfo]?
     public let dominantLine: String?
     public let heartHeadMinDistancePx: Float?
+    public let fateAnalysis: FateReport?
+    public let heartAnalysis: LineReport?
+    public let headAnalysis: LineReport?
+    public let lifeAnalysis: LineReport?
 
     enum CodingKeys: String, CodingKey {
         case majorLines = "major_lines"
         case dominantLine = "dominant_line"
         case heartHeadMinDistancePx = "heart_head_min_distance_px"
+        case fateAnalysis = "fate_analysis"
+        case heartAnalysis = "heart_analysis"
+        case headAnalysis = "head_analysis"
+        case lifeAnalysis = "life_analysis"
+    }
+}
+
+/// Structural per-line report (heart/head/life). All-optional: older evidence
+/// payloads predate these keys and must still decode.
+public struct LineReport: Codable {
+    public let present: Bool?
+    public let isShort: Bool?
+    public let isLong: Bool?
+    public let broken: Bool?
+    public let gapCount: Int?
+    public let ageAtEnd: Float?
+    public let simianMerge: Bool?
+    public let mergedHeart: Bool?
+    public let joinedLifeOrigin: Bool?
+    public let terminatesFate: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case present
+        case isShort = "is_short"
+        case isLong = "is_long"
+        case broken
+        case gapCount = "gap_count"
+        case ageAtEnd = "age_at_end"
+        case simianMerge = "simian_merge"
+        case mergedHeart = "merged_heart"
+        case joinedLifeOrigin = "joined_life_origin"
+        case terminatesFate = "terminates_fate"
+    }
+}
+
+/// Fate-line report (FateLineAnalyzer). All-optional for the same reason.
+public struct FateReport: Codable {
+    public let present: Bool?
+    public let noFate: Bool?
+    public let origin: String?
+    public let isShort: Bool?
+    public let isLong: Bool?
+    public let broken: Bool?
+    public let gapCount: Int?
+    public let stopsAtHeart: Bool?
+    public let stopsAtHead: Bool?
+    public let mergedHead: Bool?
+    public let ageAtEnd: Float?
+    public let ageAtBreak: Float?
+    public let badSaturnMount: Bool?
+    public let badMercuryMount: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case present
+        case noFate = "no_fate"
+        case origin
+        case isShort = "is_short"
+        case isLong = "is_long"
+        case broken
+        case gapCount = "gap_count"
+        case stopsAtHeart = "stops_at_heart"
+        case stopsAtHead = "stops_at_head"
+        case mergedHead = "merged_head"
+        case ageAtEnd = "age_at_end"
+        case ageAtBreak = "age_at_break"
+        case badSaturnMount = "bad_saturn_mount"
+        case badMercuryMount = "bad_mercury_mount"
     }
 }
 

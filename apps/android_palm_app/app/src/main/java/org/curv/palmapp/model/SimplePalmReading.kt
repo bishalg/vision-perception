@@ -8,13 +8,36 @@ import org.curv.overlay.palm.HandSide
  */
 object SimplePalmReading {
 
+    /** Engine reports keyed by engine line id ("heart_line", ...). Absent report = legacy output. */
+    data class LineReports(
+        val fate: FateReport? = null,
+        val lines: Map<String, LineReport> = emptyMap()
+    ) {
+        companion object {
+            fun from(payload: PalmDomainPayload?): LineReports {
+                if (payload == null) return LineReports()
+                val lines = mutableMapOf<String, LineReport>()
+                payload.heartAnalysis?.let { lines["heart_line"] = it }
+                payload.headAnalysis?.let { lines["head_line"] = it }
+                payload.lifeAnalysis?.let { lines["life_line"] = it }
+                return LineReports(fate = payload.fateAnalysis, lines = lines)
+            }
+        }
+    }
+
     fun reading(splines: List<CreaseSpline>, handSide: HandSide): List<String> =
         splines.map { readingText(it, handSide) }
+
+    fun reading(splines: List<CreaseSpline>, handSide: HandSide, reports: LineReports): List<String> =
+        splines.map { readingText(it, handSide, reports) }
 
     fun reading(splines: List<CreaseSpline>): List<String> =
         reading(splines, HandSide.RIGHT)
 
-    fun readingText(spline: CreaseSpline, handSide: HandSide): String {
+    fun readingText(spline: CreaseSpline, handSide: HandSide): String =
+        readingText(spline, handSide, LineReports())
+
+    fun readingText(spline: CreaseSpline, handSide: HandSide, reports: LineReports): String {
         val handNote = when (handSide) {
             HandSide.LEFT -> "Left (inherited inclination)"
             HandSide.RIGHT -> "Right (active expression)"
@@ -25,10 +48,53 @@ object SimplePalmReading {
             CreaseLineType.HEART, CreaseLineType.LIFE -> " — $handNote"
             else -> ""
         }
-        return base + sideCue
+        return base + sideCue + measuredClause(spline, reports)
     }
 
     fun readingText(spline: CreaseSpline): String = baseReading(spline)
+
+    /**
+     * Structural facts from the C++ analyzers. Empty string when no report is
+     * present, keeping output byte-identical to legacy. Thresholds are
+     * development placeholders (uncalibrated) — flagged inline.
+     */
+    private fun measuredClause(spline: CreaseSpline, reports: LineReports): String {
+        val bits = mutableListOf<String>()
+        when (spline.lineType) {
+            CreaseLineType.FATE -> {
+                val rep = reports.fate
+                if (rep?.present != true) return ""
+                if (rep.isShort == true) bits.add("short span")
+                if (rep.isLong == true) bits.add("long span")
+                when (rep.origin) {
+                    "moon" -> bits.add("rises from Moon mount")
+                    "life_joint" -> bits.add("joined with life at origin")
+                    "head_origin" -> bits.add("rises from head line")
+                }
+                if (rep.broken == true) bits.add("interrupted (${rep.gapCount ?: 1} gaps)")
+                rep.ageAtEnd?.let { if (it > 0f) bits.add("extends to ~${it.toInt()}") }
+                if (rep.stopsAtHeart == true) bits.add("ends at heart line")
+                if (rep.stopsAtHead == true) bits.add("ends at head line")
+                if (rep.badSaturnMount == true) bits.add("Saturn mount afflicted")
+                if (rep.badMercuryMount == true) bits.add("Mercury mount afflicted")
+            }
+            CreaseLineType.HEART, CreaseLineType.HEAD, CreaseLineType.LIFE -> {
+                val rep = reports.lines[spline.engineKey] ?: return ""
+                if (rep.present != true) return ""
+                if (rep.isShort == true) bits.add(if (spline.lineType == CreaseLineType.LIFE) "short arc (arc length only)" else "short span")
+                if (rep.isLong == true) bits.add(if (spline.lineType == CreaseLineType.LIFE) "long arc" else "long span")
+                if (rep.broken == true) bits.add("interrupted")
+                if (rep.simianMerge == true || rep.mergedHeart == true) bits.add("fused with head/heart (Simian crease)")
+                if (rep.joinedLifeOrigin == true) bits.add("shares origin with life")
+                if (rep.terminatesFate == true) bits.add("terminates fate line")
+                if (spline.lineType == CreaseLineType.LIFE) {
+                    rep.ageAtEnd?.let { if (it > 0f) bits.add("arc reaches ~${it.toInt()}") }
+                }
+            }
+        }
+        if (bits.isEmpty()) return ""
+        return " Measured: " + bits.joinToString("; ") + " (development thresholds)."
+    }
 
     private fun baseReading(s: CreaseSpline): String {
         val conf = s.confidence

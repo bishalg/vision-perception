@@ -1,52 +1,69 @@
 import SwiftUI
 import CurvAsdGazeKit
 
-public enum AppWorkflowState {
-    case scanner
-    case result(GazeSessionReportSummary, [GazeFrame])
-    case history
-    case calibrating
-}
-
 @main
 struct AsdGazeApp: App {
-    @State private var workflowState: AppWorkflowState = .scanner
+    @State private var selectedTab: Int = 0
+    @State private var showSplashScreen: Bool = true
 
     var body: some Scene {
         WindowGroup {
-            Group {
-                switch workflowState {
-                case .scanner:
-                    MainGazeScannerView(
-                        onComplete: { summary, frames in
-                            workflowState = .result(summary, frames)
-                        },
-                        onOpenHistory: {
-                            workflowState = .history
-                        }
-                    )
-                case .result(let summary, let frames):
-                    GazeSessionResultView(
-                        summary: summary,
-                        recordedFrames: frames,
-                        onDismiss: {
-                            workflowState = .scanner
-                        },
-                        onRetake: {
-                            workflowState = .scanner
-                        }
-                    )
-                case .history:
+            ZStack {
+                TabView(selection: $selectedTab) {
                     CaregiverDashboardView {
-                        workflowState = .calibrating
+                        selectedTab = 1
                     }
-                case .calibrating:
-                    BubbleCalibrationView {
-                        workflowState = .scanner
+                    .tabItem {
+                        Label(Localizer.tr("tab_dashboard"), systemImage: "chart.line.uptrend.xyaxis")
                     }
+                    .tag(0)
+
+                    MainGazeScannerView(
+                        onClose: nil,
+                        onComplete: nil,
+                        onOpenHistory: {
+                            selectedTab = 0
+                        }
+                    )
+                    .tabItem {
+                        Label(Localizer.tr("tab_gaze"), systemImage: "eye.circle.fill")
+                    }
+                    .tag(1)
+
+                    BubbleCalibrationView(
+                        onClose: nil,
+                        onCalibrationComplete: {
+                            selectedTab = 1
+                        }
+                    )
+                    .tabItem {
+                        Label(Localizer.tr("tab_calibrate"), systemImage: "target")
+                    }
+                    .tag(2)
+
+                    SettingsView()
+                        .tabItem {
+                            Label(Localizer.tr("tab_settings"), systemImage: "gearshape.fill")
+                        }
+                        .tag(3)
+                }
+                .tint(LiquidGlass.celestialTeal)
+
+                // Animated App Icon Launch & Splash Screen
+                if showSplashScreen {
+                    SplashScreenView {
+                        withAnimation(.easeInOut(duration: 0.35)) {
+                            showSplashScreen = false
+                        }
+                    }
+                    .transition(.opacity)
+                    .zIndex(999)
                 }
             }
-            .preferredColorScheme(.dark)
+            // No preferredColorScheme: the app follows the system theme on
+            // launch. Camera/stimulus fields stay dark media surfaces; all
+            // chrome uses the adaptive LiquidGlass tokens + semantic text.
         }
     }
 }
+

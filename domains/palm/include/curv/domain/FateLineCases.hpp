@@ -142,11 +142,11 @@ inline std::vector<FateCaseDef> AllFateCases() {
         {"bad_saturn_mount", FateFigureGroup::Marks, "#Fate_line_and_mount_of_Saturn",
          "https://palmistindian.com/wp-content/uploads/2020/10/fate-line-good-but-bad-saturn-mount-1-1024x606.jpg",
          "fate-line-good-but-bad-saturn-mount-1-1024x606.jpg", "grill/cross/star on saturn_zone (Hough)",
-         "hardship even if fate good", FatePriority::P2, false},
+         "hardship even if fate good", FatePriority::P2, true},
         {"bad_mercury_mount", FateFigureGroup::Marks, "#Fate_line_and_mount_of_Mercury",
          "https://palmistindian.com/wp-content/uploads/2020/10/fate-line-good-but-bad-mercury-1024x606.jpg",
          "fate-line-good-but-bad-mercury-1024x606.jpg", "grill/island/horiz on mercury_zone", "poor decision flag",
-         FatePriority::P2, false},
+         FatePriority::P2, true},
         // ---- Group 5: Age ----
         {"age_map", FateFigureGroup::Age, "#Fate_line_age_in_palmistry",
          "https://palmistindian.com/wp-content/uploads/2020/10/age-on-fate-line-1024x606.jpg",

@@ -119,7 +119,10 @@ fun ReadingBottomSheet(
                 modifier = Modifier.heightIn(max = 380.dp)
             ) {
                 items(splines, key = { it.id }) { spline ->
-                    val reading = SimplePalmReading.readingText(spline, handSide)
+                    val reading = SimplePalmReading.readingText(
+                        spline, handSide,
+                        SimplePalmReading.LineReports.from(result?.domainPayload)
+                    )
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                         Column(
                             modifier = Modifier.fillMaxWidth().padding(16.dp),

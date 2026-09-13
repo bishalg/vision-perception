@@ -29,8 +29,73 @@ data class MajorLineInfo(
 data class PalmDomainPayload(
     val majorLines: Map<String, MajorLineInfo>,
     val dominantLine: String?,
-    val heartHeadMinDistancePx: Float?
+    val heartHeadMinDistancePx: Float?,
+    val fateAnalysis: FateReport? = null,
+    val heartAnalysis: LineReport? = null,
+    val headAnalysis: LineReport? = null,
+    val lifeAnalysis: LineReport? = null
 )
+
+/** Structural per-line report (heart/head/life). All-nullable: older evidence predates these keys. */
+data class LineReport(
+    val present: Boolean? = null,
+    val isShort: Boolean? = null,
+    val isLong: Boolean? = null,
+    val broken: Boolean? = null,
+    val gapCount: Int? = null,
+    val ageAtEnd: Float? = null,
+    val simianMerge: Boolean? = null,
+    val mergedHeart: Boolean? = null,
+    val joinedLifeOrigin: Boolean? = null,
+    val terminatesFate: Boolean? = null
+) {
+    companion object {
+        fun fromJson(o: JSONObject?): LineReport? {
+            if (o == null) return null
+            fun bool(k: String) = if (o.has(k)) o.optBoolean(k) else null
+            fun int(k: String) = if (o.has(k)) o.optInt(k) else null
+            fun flt(k: String) = if (o.has(k)) o.optDouble(k).toFloat() else null
+            return LineReport(present = bool("present"), isShort = bool("is_short"), isLong = bool("is_long"),
+                broken = bool("broken"), gapCount = int("gap_count"), ageAtEnd = flt("age_at_end"),
+                simianMerge = bool("simian_merge"), mergedHeart = bool("merged_heart"),
+                joinedLifeOrigin = bool("joined_life_origin"), terminatesFate = bool("terminates_fate"))
+        }
+    }
+}
+
+/** Fate-line report (FateLineAnalyzer). All-nullable for the same reason. */
+data class FateReport(
+    val present: Boolean? = null,
+    val noFate: Boolean? = null,
+    val origin: String? = null,
+    val isShort: Boolean? = null,
+    val isLong: Boolean? = null,
+    val broken: Boolean? = null,
+    val gapCount: Int? = null,
+    val stopsAtHeart: Boolean? = null,
+    val stopsAtHead: Bool? = null,
+    val mergedHead: Boolean? = null,
+    val ageAtEnd: Float? = null,
+    val ageAtBreak: Float? = null,
+    val badSaturnMount: Boolean? = null,
+    val badMercuryMount: Boolean? = null
+) {
+    companion object {
+        fun fromJson(o: JSONObject?): FateReport? {
+            if (o == null) return null
+            fun bool(k: String) = if (o.has(k)) o.optBoolean(k) else null
+            fun int(k: String) = if (o.has(k)) o.optInt(k) else null
+            fun flt(k: String) = if (o.has(k)) o.optDouble(k).toFloat() else null
+            fun str(k: String) = if (o.has(k)) o.optString(k, null) else null
+            return FateReport(present = bool("present"), noFate = bool("no_fate"), origin = str("origin"),
+                isShort = bool("is_short"), isLong = bool("is_long"), broken = bool("broken"),
+                gapCount = int("gap_count"), stopsAtHeart = bool("stops_at_heart"),
+                stopsAtHead = bool("stops_at_head"), mergedHead = bool("merged_head"),
+                ageAtEnd = flt("age_at_end"), ageAtBreak = flt("age_at_break"),
+                badSaturnMount = bool("bad_saturn_mount"), badMercuryMount = bool("bad_mercury_mount"))
+        }
+    }
+}
 
 data class PalmAnalysisResponse(
     val isUsable: Boolean,
@@ -98,7 +163,13 @@ data class PalmAnalysisResponse(
                         payloadObj.optDouble("heart_head_min_distance_px").toFloat()
                     } else null
 
-                    domainPayload = PalmDomainPayload(linesMap, domLine, hhDist)
+                    domainPayload = PalmDomainPayload(
+                        linesMap, domLine, hhDist,
+                        fateAnalysis = FateReport.fromJson(payloadObj.optJSONObject("fate_analysis")),
+                        heartAnalysis = LineReport.fromJson(payloadObj.optJSONObject("heart_analysis")),
+                        headAnalysis = LineReport.fromJson(payloadObj.optJSONObject("head_analysis")),
+                        lifeAnalysis = LineReport.fromJson(payloadObj.optJSONObject("life_analysis"))
+                    )
                 }
 
                 PalmAnalysisResponse(isUsable, durationUs, domainPayload)

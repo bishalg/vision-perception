@@ -2,6 +2,10 @@
 #include "curv/domain/CreaseChainLinker.hpp"
 #include "curv/domain/CreaseGeometry.hpp"
 #include "curv/domain/FateLineAnalyzer.hpp"
+#include "curv/domain/HeartHeadAnalyzer.hpp"
+#include "curv/domain/LifeLineAnalyzer.hpp"
+#include "curv/domain/LineLengthThresholds.hpp"
+#include "curv/domain/MountMarkDetector.hpp"
 #include "curv/domain/PalmZones.hpp"
 #include <algorithm>
 #include <cmath>
@@ -68,6 +72,8 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
     // 1. Compute global bounding box across all segments
     float global_min_y = std::numeric_limits<float>::max();
     float global_max_y = -std::numeric_limits<float>::max();
+    float global_min_x = std::numeric_limits<float>::max();
+    float global_max_x = -std::numeric_limits<float>::max();
 
     std::vector<SegmentAnalysis> analyses;
     analyses.reserve(input.ridges.segments.size());
@@ -77,10 +83,13 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
         auto const sa = analyzeSegment(seg);
         global_min_y = std::min(global_min_y, sa.min_y);
         global_max_y = std::max(global_max_y, sa.max_y);
+        global_min_x = std::min(global_min_x, sa.min_x);
+        global_max_x = std::max(global_max_x, sa.max_x);
         analyses.push_back(sa);
     }
 
     const float palm_height = std::max(10.0f, global_max_y - global_min_y);
+    const float palm_width = std::max(10.0f, global_max_x - global_min_x);
 
     bool is_left_hand = false;
     if (input.frame.metadata.contains("is_left_hand") && input.frame.metadata.at("is_left_hand") == "true") {
@@ -88,6 +97,11 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
     }
     const int zone_dim = (input.frame.width() > 0) ? input.frame.width() : 512;
     const auto palm_zones = PalmZones::getCanonicalPalmZones(zone_dim, is_left_hand);
+    // Short/long length basis per Track 2 (palm_prediction_roadmap §6):
+    // vertical lines (fate/life) normalize against canonical patch height
+    // (the fate-line precedent), horizontal lines against measured width.
+    const auto length_table = CurvEngine::domain::LineLengthTable::defaults();
+    const float length_basis_height = static_cast<float>(std::max(1, zone_dim));
 
     // Count zone distribution across segments
     std::unordered_map<std::string, int> zone_counts;
@@ -157,6 +171,16 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
                 conf = std::min(0.98f, std::max(conf, chain.confidence));
             }
 
+            // Track 2: per-line short/long classification (placeholder
+            // thresholds, calibrated=false until data-calibrated).
+            const auto* length_row = CurvEngine::domain::LineLengthTable::find(length_table, name);
+            const float length_basis =
+                (length_row != nullptr && length_row->basis == "palm_width") ? palm_width : length_basis_height;
+            const auto length_class =
+                (length_row != nullptr)
+                    ? CurvEngine::domain::LineLengthTable::classify(*length_row, metrics.arc_length_px, length_basis)
+                    : CurvEngine::domain::LineLengthClass{};
+
             nlohmann::json line_obj = {{"name", name},
                                        {"present", true},
                                        {"confidence", conf},
@@ -173,7 +197,10 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
                                        {"mean_intensity", metrics.mean_intensity},
                                        {"points_canonical_px", points_canonical},
                                        {"points_canonical_norm", points_norm},
-                                       {"points_image_norm", nlohmann::json::array()}};
+                                       {"points_image_norm", nlohmann::json::array()},
+                                       {"is_short", length_class.is_short},
+                                       {"is_long", length_class.is_long},
+                                       {"length_basis", (length_row != nullptr) ? length_row->basis : "unknown"}};
             major_lines_json[name] = line_obj;
 
             // Emit structured domain evidence
@@ -204,7 +231,10 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
                                       {"mean_intensity", 0.0f},
                                       {"points_canonical_px", nlohmann::json::array()},
                                       {"points_canonical_norm", nlohmann::json::array()},
-                                      {"points_image_norm", nlohmann::json::array()}};
+                                      {"points_image_norm", nlohmann::json::array()},
+                                      {"is_short", false},
+                                      {"is_long", false},
+                                      {"length_basis", "unknown"}};
         }
     }
 
@@ -275,6 +305,23 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
     const auto fate_report =
         CurvEngine::domain::FateLineAnalyzer::analyze(fate_line, heart_ptr, head_ptr, life_ptr, input.ridges, zone_dim);
 
+    // Track 5: mount-mark negation flags (bad_saturn/mercury_mount cases).
+    auto fate_report_mutable = fate_report;
+    const auto mount_marks = CurvEngine::domain::MountMarkDetector::detect(input.ridges, palm_zones);
+    fate_report_mutable.bad_saturn_mount = mount_marks.saturn_bad;
+    fate_report_mutable.bad_mercury_mount = mount_marks.mercury_bad;
+
+    // Tracks 3-4: life / heart / head structural reports (absent lines yield
+    // present=false reports, mirroring the fate no_fate convention).
+    const auto life_report = CurvEngine::domain::LifeLineAnalyzer::analyze(
+        (life_it != major_creases.end()) ? life_it->second : empty_line, heart_ptr, head_ptr, zone_dim);
+    const auto heart_report = CurvEngine::domain::HeartLineAnalyzer::analyze(
+        (heart_it != major_creases.end()) ? heart_it->second : empty_line, head_ptr,
+        (fate_it != major_creases.end() && fate_it->second.is_valid) ? &fate_it->second : nullptr, zone_dim,
+        palm_width);
+    const auto head_report = CurvEngine::domain::HeadLineAnalyzer::analyze(
+        (head_it != major_creases.end()) ? head_it->second : empty_line, heart_ptr, life_ptr, zone_dim, palm_width);
+
     output.domain_payload = {{"status", "analyzed"},
                              {"palm_height_px", palm_height},
                              {"is_left_hand", is_left_hand},
@@ -284,7 +331,10 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
                              {"fate_line_id", get_primary_id("fate_line")},
                              {"major_lines", major_lines_json},
                              {"palm_analysis", palm_analysis},
-                             {"fate_analysis", fate_report.toJson()},
+                             {"fate_analysis", fate_report_mutable.toJson()},
+                             {"heart_analysis", heart_report.toJson()},
+                             {"head_analysis", head_report.toJson()},
+                             {"life_analysis", life_report.toJson()},
                              {"intersections", total_junctions},
                              {"continuity_breaks", total_gaps},
                              {"zone_distribution", zone_counts},

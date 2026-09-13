@@ -220,8 +220,8 @@ public struct MainScannerView: View {
                     .zIndex(3)
                 }
             }
-            // The viewfinder is a media surface: always dark, like the native Camera app.
-            .preferredColorScheme(.dark)
+            // The viewfinder canvas is a media surface (stays video-dark);
+            // all chrome around it follows the system theme on launch.
         }
         .ignoresSafeArea()
         .animation(.easeInOut(duration: 0.22), value: viewModel.showResultViewer)

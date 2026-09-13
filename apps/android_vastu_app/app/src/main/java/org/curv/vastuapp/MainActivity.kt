@@ -14,7 +14,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import org.curv.vastuapp.view.MainScannerScreen
@@ -49,7 +48,7 @@ class MainActivity : ComponentActivity() {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black),
+                            .background(MaterialTheme.colorScheme.background),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(
@@ -58,7 +57,7 @@ class MainActivity : ComponentActivity() {
                         ) {
                             Text(
                                 text = "Camera permission is required for Vastu perception.",
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onBackground
                             )
                             Button(onClick = {
                                 permissionLauncher.launch(Manifest.permission.CAMERA)

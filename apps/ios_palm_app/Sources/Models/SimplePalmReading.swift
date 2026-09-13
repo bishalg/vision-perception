@@ -11,9 +11,34 @@ public struct SimplePalmReading {
 
     // MARK: - Public API (spec)
 
+    /// Engine reports keyed by engine line id ("heart_line", ...). When a
+    /// report is present for a spline, a measured clause is appended to the
+    /// legacy prose; when absent, output is byte-identical to legacy.
+    public struct LineReports {
+        public var fate: FateReport?
+        public var lines: [String: LineReport]
+        public init(fate: FateReport? = nil, lines: [String: LineReport] = [:]) {
+            self.fate = fate
+            self.lines = lines
+        }
+
+        public static func from(payload: PalmDomainPayload?) -> LineReports {
+            guard let payload else { return LineReports() }
+            var lines: [String: LineReport] = [:]
+            if let heart = payload.heartAnalysis { lines["heart_line"] = heart }
+            if let head = payload.headAnalysis { lines["head_line"] = head }
+            if let life = payload.lifeAnalysis { lines["life_line"] = life }
+            return LineReports(fate: payload.fateAnalysis, lines: lines)
+        }
+    }
+
     /// Per-line readings for all splines, ordered as passed in.
     public static func reading(for splines: [CreaseSpline], handSide: HandSide) -> [String] {
         splines.map { readingText(for: $0, handSide: handSide) }
+    }
+
+    public static func reading(for splines: [CreaseSpline], handSide: HandSide, reports: LineReports) -> [String] {
+        splines.map { readingText(for: $0, handSide: handSide, reports: reports) }
     }
 
     /// Overload without handSide (defaults to .right / active hand).
@@ -23,6 +48,10 @@ public struct SimplePalmReading {
 
     /// Single-line interpretive sentence + compact metric suffix.
     public static func readingText(for spline: CreaseSpline, handSide: HandSide) -> String {
+        readingText(for: spline, handSide: handSide, reports: LineReports())
+    }
+
+    public static func readingText(for spline: CreaseSpline, handSide: HandSide, reports: LineReports) -> String {
         let handNote: String = {
             switch handSide {
             case .left: return "Left (inherited inclination)"
@@ -39,12 +68,55 @@ public struct SimplePalmReading {
         default:
             sideCue = ""
         }
-        return base + sideCue
+        let measured = measuredClause(for: spline, reports: reports)
+        return base + sideCue + measured
     }
 
     /// Single-line without side.
     public static func readingText(for spline: CreaseSpline) -> String {
         baseReading(for: spline)
+    }
+
+    // MARK: - Engine-measured clauses (Track 6)
+
+    /// Structural facts from the C++ analyzers. Only fires when a report is
+    /// present; otherwise returns "" and output is byte-identical to legacy.
+    /// Thresholds are development placeholders (uncalibrated) — flagged inline.
+    private static func measuredClause(for spline: CreaseSpline, reports: LineReports) -> String {
+        var bits: [String] = []
+        switch spline.lineType {
+        case .fate:
+            guard let rep = reports.fate, rep.present == true else { return "" }
+            if rep.isShort == true { bits.append("short span") }
+            if rep.isLong == true { bits.append("long span") }
+            switch rep.origin {
+            case "moon": bits.append("rises from Moon mount")
+            case "life_joint": bits.append("joined with life at origin")
+            case "head_origin": bits.append("rises from head line")
+            default: break
+            }
+            if rep.broken == true { bits.append("interrupted (\(rep.gapCount ?? 1) gaps)") }
+            if let age = rep.ageAtEnd, age > 0 { bits.append("extends to ~\(Int(age))") }
+            if rep.stopsAtHeart == true { bits.append("ends at heart line") }
+            if rep.stopsAtHead == true { bits.append("ends at head line") }
+            if rep.badSaturnMount == true { bits.append("Saturn mount afflicted") }
+            if rep.badMercuryMount == true { bits.append("Mercury mount afflicted") }
+        case .heart, .head, .life:
+            guard let rep = reports.lines[spline.engineKey], rep.present == true else { return "" }
+            if rep.isShort == true {
+                bits.append(spline.lineType == .life ? "short arc (arc length only)" : "short span")
+            }
+            if rep.isLong == true { bits.append(spline.lineType == .life ? "long arc" : "long span") }
+            if rep.broken == true { bits.append("interrupted") }
+            if rep.simianMerge == true || rep.mergedHeart == true { bits.append("fused with head/heart (Simian crease)") }
+            if rep.joinedLifeOrigin == true { bits.append("shares origin with life") }
+            if rep.terminatesFate == true { bits.append("terminates fate line") }
+            if spline.lineType == .life, let age = rep.ageAtEnd, age > 0 {
+                bits.append("arc reaches ~\(Int(age))")
+            }
+        }
+        guard !bits.isEmpty else { return "" }
+        return " Measured: " + bits.joined(separator: "; ") + " (development thresholds)."
     }
 
     // MARK: - Private templates

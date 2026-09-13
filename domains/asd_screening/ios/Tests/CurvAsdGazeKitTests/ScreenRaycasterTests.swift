@@ -99,4 +99,78 @@ final class ScreenRaycasterTests: XCTestCase {
         let expiredHits = tracker.activeAOIs(atTimeSec: 45.0, xNorm: 0.25, yNorm: 0.50)
         XCTAssertTrue(expiredHits.isEmpty)
     }
+
+    func testScreenRaycasterAutoDeviceDefaults() {
+        let raycaster = ScreenRaycaster()
+        XCTAssertGreaterThan(raycaster.screenWidthPoints, 300.0)
+        XCTAssertGreaterThan(raycaster.screenHeightPoints, 600.0)
+        XCTAssertGreaterThan(raycaster.screenWidthMeters, 0.05)
+        XCTAssertGreaterThan(raycaster.screenHeightMeters, 0.10)
+    }
+
+    func testCalibrationTargetSimulation() {
+        let controller = GazeSessionController()
+        let target = CGPoint(x: 0.22, y: 0.24)
+        controller.calibrationTarget = target
+        controller.startSession()
+
+        controller.tickSimulatedFrame(timeSec: 1.0)
+        let gaze = controller.currentGazePoint
+
+        // Gaze should be within 0.05 of the calibration target
+        let distance = hypot(gaze.x - target.x, gaze.y - target.y)
+        XCTAssertLessThan(distance, 0.05)
+    }
+
+    func test3DCameraSpaceRaycastCenter() {
+        let raycaster = ScreenRaycaster(
+            screenWidthPoints: 393.0,
+            screenHeightPoints: 852.0,
+            screenWidthMeters: 0.0715,
+            screenHeightMeters: 0.154
+        )
+
+        var faceTransform = matrix_identity_float4x4
+        faceTransform.columns.0 = simd_float4(-1, 0, 0, 0)
+        faceTransform.columns.1 = simd_float4(0, 1, 0, 0)
+        faceTransform.columns.2 = simd_float4(0, 0, -1, 0)
+        faceTransform.columns.3 = simd_float4(0.0, -0.099, -0.45, 1.0)
+
+        // Center of screen: lookAt in face space corresponds to screen center (0.50, 0.50)
+        let lookAt = simd_float3(0.0, 0.030, -0.45)
+        let result = raycaster.projectGazeToScreen(
+            faceTransform: faceTransform,
+            lookAtPoint: lookAt
+        )
+
+        XCTAssertTrue(result.isWithinScreen)
+        XCTAssertEqual(result.normalizedPoint.x, 0.5, accuracy: 0.02)
+        XCTAssertEqual(result.normalizedPoint.y, 0.5, accuracy: 0.02)
+    }
+
+    func test3DCameraSpaceRaycastTopLeft() {
+        let raycaster = ScreenRaycaster(
+            screenWidthPoints: 393.0,
+            screenHeightPoints: 852.0,
+            screenWidthMeters: 0.0715,
+            screenHeightMeters: 0.154
+        )
+
+        var faceTransform = matrix_identity_float4x4
+        faceTransform.columns.0 = simd_float4(-1, 0, 0, 0)
+        faceTransform.columns.1 = simd_float4(0, 1, 0, 0)
+        faceTransform.columns.2 = simd_float4(0, 0, -1, 0)
+        faceTransform.columns.3 = simd_float4(0.0, -0.099, -0.45, 1.0)
+
+        // Target 2 Top-Left (0.22, 0.24): looking up-left corresponds to face local X > 0, Y > 0
+        let lookAt = simd_float3(0.020, 0.070, -0.45)
+        let result = raycaster.projectGazeToScreen(
+            faceTransform: faceTransform,
+            lookAtPoint: lookAt
+        )
+
+        XCTAssertTrue(result.isWithinScreen)
+        XCTAssertEqual(result.normalizedPoint.x, 0.22, accuracy: 0.02)
+        XCTAssertEqual(result.normalizedPoint.y, 0.24, accuracy: 0.02)
+    }
 }

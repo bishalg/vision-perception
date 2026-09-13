@@ -40,6 +40,9 @@ struct FateReport {
     bool has_triangle{false};
     bool has_cross{false};
     bool has_square{false};
+    // Mount-mark negation (Track 5: MountMarkDetector, wired in PalmDomainPack).
+    bool bad_saturn_mount{false};
+    bool bad_mercury_mount{false};
     // Age group
     float age_at_break{0.0F};
     float age_at_end{0.0F};
