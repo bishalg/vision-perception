@@ -210,47 +210,61 @@ public final class ResearchKitStudyStore: @unchecked Sendable {
         let tasks = fetchStoredTaskResults()
         let surveys = fetchStoredSurveyResults()
 
-        let taskDicts: [[String: Any]] = tasks.compactMap { task in
-            guard let data = try? JSONEncoder().encode(task),
-                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
-            return obj
+        let participant = StudyParticipantMetadata(
+            participantId: profile.participantId,
+            isConsented: profile.isConsented,
+            childAgeMonths: profile.childAgeMonths,
+            consentVersion: profile.consentSignature?.consentVersion ?? "unconsented"
+        )
+
+        var package = ResearchKitStudyPackage(
+            participant: participant,
+            taskResults: tasks,
+            surveys: surveys
+        )
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        if let encodedData = try? encoder.encode(package) {
+            let digest = SHA256.hash(data: encodedData)
+            package.payloadSha256 = digest.compactMap { String(format: "%02x", $0) }.joined()
         }
 
-        let surveyDicts: [[String: Any]] = surveys.compactMap { survey in
-            guard let data = try? JSONEncoder().encode(survey),
-                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
-            return obj
+        guard let finalData = try? encoder.encode(package),
+              let jsonObject = try? JSONSerialization.jsonObject(with: finalData) as? [String: Any] else {
+            return [:]
         }
-
-        var bundle: [String: Any] = [
-            "bundleType": "ResearchKitStudyPackage",
-            "schemaVersion": "v1.4",
-            "compiledAt": ISO8601DateFormatter().string(from: Date()),
-            "studyIdentifier": "CURV-ASD-GAZE-2026",
-            "irbProtocolId": "IRB-ASD-2026-088",
-            "participant": [
-                "participantId": profile.participantId,
-                "isConsented": profile.isConsented,
-                "childAgeMonths": profile.childAgeMonths,
-                "consentVersion": profile.consentSignature?.consentVersion ?? "unconsented"
-            ],
-            "taskResults": taskDicts,
-            "surveys": surveyDicts
-        ]
-
-        // Compute SHA-256 payload integrity digest
-        if let data = try? JSONSerialization.data(withJSONObject: bundle, options: [.sortedKeys]) {
-            let digest = SHA256.hash(data: data)
-            bundle["payloadSha256"] = digest.compactMap { String(format: "%02x", $0) }.joined()
-        }
-
-        return bundle
+        return jsonObject
     }
 
     /// Export study bundle as a pretty-printed JSON string.
     public func exportResearchKitJSON() -> String {
-        let bundle = compileStudyBundle()
-        if let data = try? JSONSerialization.data(withJSONObject: bundle, options: [.prettyPrinted, .sortedKeys]),
+        let profile = fetchEnrollmentDirect()
+        let tasks = fetchStoredTaskResults()
+        let surveys = fetchStoredSurveyResults()
+
+        let participant = StudyParticipantMetadata(
+            participantId: profile.participantId,
+            isConsented: profile.isConsented,
+            childAgeMonths: profile.childAgeMonths,
+            consentVersion: profile.consentSignature?.consentVersion ?? "unconsented"
+        )
+
+        var package = ResearchKitStudyPackage(
+            participant: participant,
+            taskResults: tasks,
+            surveys: surveys
+        )
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        if let encodedData = try? encoder.encode(package) {
+            let digest = SHA256.hash(data: encodedData)
+            package.payloadSha256 = digest.compactMap { String(format: "%02x", $0) }.joined()
+        }
+
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        if let data = try? encoder.encode(package),
            let str = String(data: data, encoding: .utf8) {
             return str
         }

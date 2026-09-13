@@ -450,3 +450,59 @@ public struct ResearchStudyEnrollment: Sendable, Codable, Equatable {
         return "STUDY-ASD-\(hex)"
     }
 }
+
+// MARK: - Study Export Package
+
+public struct StudyParticipantMetadata: Sendable, Codable, Equatable {
+    public let participantId: String
+    public let isConsented: Bool
+    public let childAgeMonths: Int
+    public let consentVersion: String
+
+    public init(
+        participantId: String,
+        isConsented: Bool,
+        childAgeMonths: Int,
+        consentVersion: String
+    ) {
+        self.participantId = participantId
+        self.isConsented = isConsented
+        self.childAgeMonths = childAgeMonths
+        self.consentVersion = consentVersion
+    }
+}
+
+public struct ResearchKitStudyPackage: Sendable, Codable, Equatable {
+    public let bundleType: String
+    public let schemaVersion: String
+    public let compiledAt: String
+    public let studyIdentifier: String
+    public let irbProtocolId: String
+    public let participant: StudyParticipantMetadata
+    public let taskResults: [ORKTaskResult]
+    public let surveys: [MCHATScoreResult]
+    public var payloadSha256: String?
+
+    public init(
+        bundleType: String = "ResearchKitStudyPackage",
+        schemaVersion: String = "v1.4",
+        compiledAt: String = ISO8601DateFormatter().string(from: Date()),
+        studyIdentifier: String = "CURV-ASD-GAZE-2026",
+        irbProtocolId: String = "IRB-ASD-2026-088",
+        participant: StudyParticipantMetadata,
+        taskResults: [ORKTaskResult] = [],
+        surveys: [MCHATScoreResult] = [],
+        payloadSha256: String? = nil
+    ) {
+        self.bundleType = bundleType
+        self.schemaVersion = schemaVersion
+        self.compiledAt = compiledAt
+        self.studyIdentifier = studyIdentifier
+        self.irbProtocolId = irbProtocolId
+        self.participant = participant
+        self.taskResults = taskResults
+        self.surveys = surveys
+        self.payloadSha256 = payloadSha256
+    }
+}
+
