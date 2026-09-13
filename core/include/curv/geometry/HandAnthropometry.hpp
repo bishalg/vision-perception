@@ -79,6 +79,20 @@ struct AnatomicalPadMetric {
 };
 
 /**
+ * @brief Morphometry of palmar flexion creases using standard anatomical nomenclature.
+ */
+struct PalmarCreaseMetric {
+    std::string anatomical_name; // "distal_transverse_crease", "proximal_transverse_crease", "thenar_longitudinal_crease", "median_longitudinal_crease"
+    std::string traditional_alias; // "heart", "head", "life", "fate"
+    float arc_length_mm{0.0f};
+    float chord_length_mm{0.0f};
+    float tortuosity{1.0f};
+    bool is_simian_variant{false};
+
+    [[nodiscard]] nlohmann::json toJson() const;
+};
+
+/**
  * @brief Comprehensive, domain-agnostic hand anthropometry report.
  */
 struct HandAnthropometryReport {
@@ -88,6 +102,7 @@ struct HandAnthropometryReport {
     DigitRatios ratios;
     InterdigitalSpan spans;
     std::vector<AnatomicalPadMetric> pads;
+    std::vector<PalmarCreaseMetric> creases;
     float mm_per_pixel{0.0f};
     std::string hand_side{"auto"};
 

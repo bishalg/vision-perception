@@ -66,12 +66,25 @@ TEST(HandAnthropometry, ComputesValidDimensionsAndRatios) {
     ASSERT_NE(it_thenar, report.pads.end());
     EXPECT_FLOAT_EQ(it_thenar->height_mm, 3.2f);
 
+    // Anatomical flexion creases
+    ASSERT_EQ(report.creases.size(), 4);
+    EXPECT_EQ(report.creases[0].anatomical_name, "distal_transverse_crease");
+    EXPECT_EQ(report.creases[0].traditional_alias, "heart");
+    EXPECT_GT(report.creases[0].arc_length_mm, 20.0f);
+    EXPECT_EQ(report.creases[1].anatomical_name, "proximal_transverse_crease");
+    EXPECT_EQ(report.creases[1].traditional_alias, "head");
+    EXPECT_EQ(report.creases[2].anatomical_name, "thenar_longitudinal_crease");
+    EXPECT_EQ(report.creases[2].traditional_alias, "life");
+    EXPECT_EQ(report.creases[3].anatomical_name, "median_longitudinal_crease");
+    EXPECT_EQ(report.creases[3].traditional_alias, "fate");
+
     // JSON serialization
     const auto json = report.toJson();
     EXPECT_EQ(json["schema_version"], "curv_hand_anthropometry_v1");
     EXPECT_TRUE(json.contains("palm"));
     EXPECT_TRUE(json.contains("digits"));
     EXPECT_TRUE(json.contains("ratios"));
+    EXPECT_TRUE(json.contains("creases"));
 }
 
 TEST(HandMeshGenerator, Generates3DSurfaceAndObj) {

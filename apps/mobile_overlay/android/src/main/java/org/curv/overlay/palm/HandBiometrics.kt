@@ -53,6 +53,24 @@ data class AnatomicalPadMetric(
         get() = AnatomicalPad.fromKey(padName) ?: AnatomicalPad.fromAstrologicalMount(padName)
 }
 
+data class PalmarCreaseMetric(
+    val anatomicalName: String,
+    val traditionalAlias: String,
+    val arcLengthMm: Float,
+    val chordLengthMm: Float,
+    val tortuosity: Float,
+    val isSimianVariant: Boolean = false
+) {
+    val scientificDisplayName: String
+        get() = when (anatomicalName) {
+            "distal_transverse_crease" -> "Distal Transverse Crease"
+            "proximal_transverse_crease" -> "Proximal Transverse Crease"
+            "thenar_longitudinal_crease" -> "Thenar Longitudinal Crease"
+            "median_longitudinal_crease" -> "Median Longitudinal Crease"
+            else -> anatomicalName
+        }
+}
+
 data class HandBiometricsReport(
     val schemaVersion: String = "curv_hand_anthropometry_v1",
     val palm: PalmDimensions,
@@ -60,6 +78,7 @@ data class HandBiometricsReport(
     val ratios: DigitRatios,
     val spans: InterdigitalSpan,
     val pads: List<AnatomicalPadMetric>,
+    val creases: List<PalmarCreaseMetric> = emptyList(),
     val mmPerPixel: Float,
     val handSide: String
 )
@@ -206,12 +225,30 @@ object HandBiometricsCalculator {
             )
         }
 
+        // Palmar flexion creases (standard anatomical nomenclature)
+        val p6 = listOf(landmarks[6][0] * imageWidth, landmarks[6][1] * imageHeight)
+        val p18 = listOf(landmarks[18][0] * imageWidth, landmarks[18][1] * imageHeight)
+        val p2 = listOf(landmarks[2][0] * imageWidth, landmarks[2][1] * imageHeight)
+
+        val dtcChord = pxToMm(dist(p17, p6) * 0.90f)
+        val ptcChord = pxToMm(dist(p5, p18) * 0.85f)
+        val tlcChord = pxToMm(dist(p2, p0) * 0.95f)
+        val mlcChord = pxToMm(dist(p0, p9) * 0.75f)
+
+        val creases = listOf(
+            PalmarCreaseMetric("distal_transverse_crease", "heart", dtcChord * 1.05f, dtcChord, 1.05f),
+            PalmarCreaseMetric("proximal_transverse_crease", "head", ptcChord * 1.04f, ptcChord, 1.04f),
+            PalmarCreaseMetric("thenar_longitudinal_crease", "life", tlcChord * 1.15f, tlcChord, 1.15f),
+            PalmarCreaseMetric("median_longitudinal_crease", "fate", mlcChord * 1.02f, mlcChord, 1.02f)
+        )
+
         return HandBiometricsReport(
             palm = palm,
             digits = digits,
             ratios = ratios,
             spans = spans,
             pads = pads,
+            creases = creases,
             mmPerPixel = mmPerPx,
             handSide = handSide
         )

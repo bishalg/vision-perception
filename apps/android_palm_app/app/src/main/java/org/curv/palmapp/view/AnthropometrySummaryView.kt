@@ -120,7 +120,34 @@ fun AnthropometrySummaryView(
                 }
             }
 
-            // 3. Export Button
+            // 3. Palmar Flexure Creases (Anatomical)
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1C1C1E)),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Palmar Flexure Creases (Anatomical)", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    for (crease in biometrics.creases) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(crease.scientificDisplayName, color = Color.White, fontSize = 13.sp)
+                                Text("Traditional: ${crease.traditionalAlias.replaceFirstChar { it.uppercase() }} Line", color = Color.Gray, fontSize = 11.sp)
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(String.format("%.1f mm", crease.arcLengthMm), color = Color(0xFF34C759), fontWeight = FontWeight.SemiBold)
+                                Text(String.format("Tortuosity: %.2f", crease.tortuosity), color = Color.Gray, fontSize = 10.sp)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 4. Export Button
             Button(
                 onClick = {
                     val sendIntent = Intent().apply {

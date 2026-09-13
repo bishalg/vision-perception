@@ -454,6 +454,36 @@ public enum CreaseLineType: String, CaseIterable, Identifiable {
         case .fate: return "#AF52DE"  // Royal Violet
         }
     }
+
+    /// Standard scientific anatomical designation.
+    public var anatomicalName: String {
+        switch self {
+        case .heart: return "distal_transverse_crease"
+        case .head: return "proximal_transverse_crease"
+        case .life: return "thenar_longitudinal_crease"
+        case .fate: return "median_longitudinal_crease"
+        }
+    }
+
+    /// Scientific display name for clinical and research views.
+    public var scientificDisplayName: String {
+        switch self {
+        case .heart: return "Distal Transverse Crease"
+        case .head: return "Proximal Transverse Crease"
+        case .life: return "Thenar Longitudinal Crease"
+        case .fate: return "Median Longitudinal Crease"
+        }
+    }
+
+    public static func fromAnatomicalName(_ name: String) -> CreaseLineType? {
+        switch name.lowercased() {
+        case "distal_transverse_crease", "distal_transverse", "dtc": return .heart
+        case "proximal_transverse_crease", "proximal_transverse", "ptc": return .head
+        case "thenar_longitudinal_crease", "thenar_longitudinal", "tlc": return .life
+        case "median_longitudinal_crease", "median_longitudinal", "mlc": return .fate
+        default: return nil
+        }
+    }
 }
 
 /// Source of the overlay currently shown on the result screen.

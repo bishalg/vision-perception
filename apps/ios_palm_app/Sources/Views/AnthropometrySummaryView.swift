@@ -49,6 +49,7 @@ public struct AnthropometrySummaryView: View {
                     palmarMorphometryCard(report.palm)
                     digitKinematicsCard(report.digits)
                     anatomicalPadsCard(report.pads)
+                    palmarCreasesCard(report.creases)
                     exportSection(report)
                 } else {
                     insufficientDataView
@@ -314,7 +315,46 @@ public struct AnthropometrySummaryView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
-    // MARK: - 5. Export
+    // MARK: - 5. Palmar Flexion Creases (Anatomical)
+
+    @ViewBuilder
+    private func palmarCreasesCard(_ creases: [PalmarCreaseMetric]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Palmar Flexure Creases (Anatomical)", systemImage: "waveform.path")
+                .font(.headline)
+                .foregroundStyle(.white)
+
+            ForEach(creases) { crease in
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(crease.scientificDisplayName)
+                            .font(.subheadline)
+                            .foregroundStyle(.white)
+                        Text("Traditional: \(crease.traditionalAlias.capitalized) Line")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(String(format: "%.1f mm", crease.arcLengthMm))
+                            .font(.subheadline.monospacedDigit().bold())
+                            .foregroundStyle(Color(hex: "34C759"))
+                        Text(String(format: "Tortuosity: %.2f", crease.tortuosity))
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(8)
+                .background(Color.white.opacity(0.04))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+        }
+        .padding(16)
+        .background(Color(white: 0.10))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    // MARK: - 6. Export
 
     @ViewBuilder
     private func exportSection(_ report: HandBiometricsReport) -> some View {

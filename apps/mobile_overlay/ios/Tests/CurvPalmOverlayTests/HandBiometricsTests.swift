@@ -76,5 +76,25 @@ final class HandBiometricsTests: XCTestCase {
         let fossa = report.pads.first { $0.padName == "palmar_fossa" }
         XCTAssertNotNil(fossa)
         XCTAssertEqual(fossa?.heightMm ?? 0, -1.0, accuracy: 0.01)
+
+        // Anatomical flexion creases
+        XCTAssertEqual(report.creases.count, 4)
+        let dtc = report.creases.first { $0.anatomicalName == "distal_transverse_crease" }
+        XCTAssertNotNil(dtc)
+        XCTAssertEqual(dtc?.traditionalAlias, "heart")
+        XCTAssertEqual(dtc?.scientificDisplayName, "Distal Transverse Crease")
+        XCTAssertGreaterThan(dtc?.arcLengthMm ?? 0, 20.0)
+
+        let ptc = report.creases.first { $0.anatomicalName == "proximal_transverse_crease" }
+        XCTAssertNotNil(ptc)
+        XCTAssertEqual(ptc?.traditionalAlias, "head")
+
+        let tlc = report.creases.first { $0.anatomicalName == "thenar_longitudinal_crease" }
+        XCTAssertNotNil(tlc)
+        XCTAssertEqual(tlc?.traditionalAlias, "life")
+
+        let mlc = report.creases.first { $0.anatomicalName == "median_longitudinal_crease" }
+        XCTAssertNotNil(mlc)
+        XCTAssertEqual(mlc?.traditionalAlias, "fate")
     }
 }

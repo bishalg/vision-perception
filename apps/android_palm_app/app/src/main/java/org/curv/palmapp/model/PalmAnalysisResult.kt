@@ -214,7 +214,35 @@ enum class CreaseLineType(val lineName: String, val hexColor: String, val displa
     HEART("heart", "#FF2D55", "line.heart"),
     HEAD("head", "#007AFF", "line.head"),
     LIFE("life", "#34C759", "line.life"),
-    FATE("fate", "#AF52DE", "line.fate")
+    FATE("fate", "#AF52DE", "line.fate");
+
+    val anatomicalName: String
+        get() = when (this) {
+            HEART -> "distal_transverse_crease"
+            HEAD -> "proximal_transverse_crease"
+            LIFE -> "thenar_longitudinal_crease"
+            FATE -> "median_longitudinal_crease"
+        }
+
+    val scientificDisplayName: String
+        get() = when (this) {
+            HEART -> "Distal Transverse Crease"
+            HEAD -> "Proximal Transverse Crease"
+            LIFE -> "Thenar Longitudinal Crease"
+            FATE -> "Median Longitudinal Crease"
+        }
+
+    companion object {
+        fun fromAnatomicalName(name: String): CreaseLineType? {
+            return when (name.lowercase()) {
+                "distal_transverse_crease", "distal_transverse", "dtc" -> HEART
+                "proximal_transverse_crease", "proximal_transverse", "ptc" -> HEAD
+                "thenar_longitudinal_crease", "thenar_longitudinal", "tlc" -> LIFE
+                "median_longitudinal_crease", "median_longitudinal", "mlc" -> FATE
+                else -> null
+            }
+        }
+    }
 }
 
 enum class CreaseOverlaySource {

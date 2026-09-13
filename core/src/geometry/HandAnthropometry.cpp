@@ -84,6 +84,17 @@ nlohmann::json AnatomicalPadMetric::toJson() const {
     };
 }
 
+nlohmann::json PalmarCreaseMetric::toJson() const {
+    return {
+        {"anatomical_name", anatomical_name},
+        {"traditional_alias", traditional_alias},
+        {"arc_length_mm", arc_length_mm},
+        {"chord_length_mm", chord_length_mm},
+        {"tortuosity", tortuosity},
+        {"is_simian_variant", is_simian_variant}
+    };
+}
+
 nlohmann::json HandAnthropometryReport::toJson() const {
     nlohmann::json digits_arr = nlohmann::json::array();
     for (const auto& d : digits) {
@@ -93,6 +104,10 @@ nlohmann::json HandAnthropometryReport::toJson() const {
     for (const auto& p : pads) {
         pads_arr.push_back(p.toJson());
     }
+    nlohmann::json creases_arr = nlohmann::json::array();
+    for (const auto& c : creases) {
+        creases_arr.push_back(c.toJson());
+    }
     return {
         {"schema_version", schema_version},
         {"palm", palm.toJson()},
@@ -100,6 +115,7 @@ nlohmann::json HandAnthropometryReport::toJson() const {
         {"ratios", ratios.toJson()},
         {"spans", spans.toJson()},
         {"pads", pads_arr},
+        {"creases", creases_arr},
         {"mm_per_pixel", mm_per_pixel},
         {"hand_side", hand_side}
     };
@@ -234,6 +250,51 @@ HandAnthropometryReport HandAnthropometer::compute(
         }
         report.pads.push_back(m);
     }
+
+    // Palmar flexion creases (standard anatomical nomenclature)
+    // 1. Distal transverse crease (Heart line equivalent)
+    const float dtc_chord = distPx(lm[17], lm[6], w, h) * mm_per_px * 0.9f;
+    report.creases.push_back(PalmarCreaseMetric{
+        "distal_transverse_crease",
+        "heart",
+        dtc_chord * 1.05f,
+        dtc_chord,
+        1.05f,
+        false
+    });
+
+    // 2. Proximal transverse crease (Head line equivalent)
+    const float ptc_chord = distPx(lm[5], lm[18], w, h) * mm_per_px * 0.85f;
+    report.creases.push_back(PalmarCreaseMetric{
+        "proximal_transverse_crease",
+        "head",
+        ptc_chord * 1.04f,
+        ptc_chord,
+        1.04f,
+        false
+    });
+
+    // 3. Thenar longitudinal crease (Life line equivalent)
+    const float tlc_chord = distPx(lm[2], lm[0], w, h) * mm_per_px * 0.95f;
+    report.creases.push_back(PalmarCreaseMetric{
+        "thenar_longitudinal_crease",
+        "life",
+        tlc_chord * 1.15f,
+        tlc_chord,
+        1.15f,
+        false
+    });
+
+    // 4. Median longitudinal crease (Fate line equivalent)
+    const float mlc_chord = distPx(lm[0], lm[9], w, h) * mm_per_px * 0.75f;
+    report.creases.push_back(PalmarCreaseMetric{
+        "median_longitudinal_crease",
+        "fate",
+        mlc_chord * 1.02f,
+        mlc_chord,
+        1.02f,
+        false
+    });
 
     return report;
 }

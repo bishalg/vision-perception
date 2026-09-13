@@ -140,6 +140,42 @@ public struct AnatomicalPadMetric: Codable, Sendable, Hashable, Identifiable {
     }
 }
 
+public struct PalmarCreaseMetric: Codable, Sendable, Hashable, Identifiable {
+    public var id: String { anatomicalName }
+    public let anatomicalName: String
+    public let traditionalAlias: String
+    public let arcLengthMm: Float
+    public let chordLengthMm: Float
+    public let tortuosity: Float
+    public let isSimianVariant: Bool
+
+    public var scientificDisplayName: String {
+        switch anatomicalName {
+        case "distal_transverse_crease": return "Distal Transverse Crease"
+        case "proximal_transverse_crease": return "Proximal Transverse Crease"
+        case "thenar_longitudinal_crease": return "Thenar Longitudinal Crease"
+        case "median_longitudinal_crease": return "Median Longitudinal Crease"
+        default: return anatomicalName
+        }
+    }
+
+    public init(
+        anatomicalName: String,
+        traditionalAlias: String,
+        arcLengthMm: Float,
+        chordLengthMm: Float,
+        tortuosity: Float,
+        isSimianVariant: Bool = false
+    ) {
+        self.anatomicalName = anatomicalName
+        self.traditionalAlias = traditionalAlias
+        self.arcLengthMm = arcLengthMm
+        self.chordLengthMm = chordLengthMm
+        self.tortuosity = tortuosity
+        self.isSimianVariant = isSimianVariant
+    }
+}
+
 public struct HandBiometricsReport: Codable, Sendable, Hashable {
     public let schemaVersion: String
     public let palm: PalmDimensions
@@ -147,6 +183,7 @@ public struct HandBiometricsReport: Codable, Sendable, Hashable {
     public let ratios: DigitRatios
     public let spans: InterdigitalSpan
     public let pads: [AnatomicalPadMetric]
+    public let creases: [PalmarCreaseMetric]
     public let mmPerPixel: Float
     public let handSide: String
 
@@ -157,6 +194,7 @@ public struct HandBiometricsReport: Codable, Sendable, Hashable {
         ratios: DigitRatios,
         spans: InterdigitalSpan,
         pads: [AnatomicalPadMetric],
+        creases: [PalmarCreaseMetric] = [],
         mmPerPixel: Float,
         handSide: String
     ) {
@@ -166,6 +204,7 @@ public struct HandBiometricsReport: Codable, Sendable, Hashable {
         self.ratios = ratios
         self.spans = spans
         self.pads = pads
+        self.creases = creases
         self.mmPerPixel = mmPerPixel
         self.handSide = handSide
     }
@@ -318,12 +357,54 @@ public enum HandBiometricsCalculator {
             ))
         }
 
+        // Palmar flexion creases (standard anatomical nomenclature)
+        let p6 = [landmarks[6][0] * imageWidth, landmarks[6][1] * imageHeight]
+        let p18 = [landmarks[18][0] * imageWidth, landmarks[18][1] * imageHeight]
+        let p2 = [landmarks[2][0] * imageWidth, landmarks[2][1] * imageHeight]
+
+        let dtcChord = pxToMm(dist(p17, p6) * 0.90)
+        let ptcChord = pxToMm(dist(p5, p18) * 0.85)
+        let tlcChord = pxToMm(dist(p2, p0) * 0.95)
+        let mlcChord = pxToMm(dist(p0, p9) * 0.75)
+
+        let creases = [
+            PalmarCreaseMetric(
+                anatomicalName: "distal_transverse_crease",
+                traditionalAlias: "heart",
+                arcLengthMm: dtcChord * 1.05,
+                chordLengthMm: dtcChord,
+                tortuosity: 1.05
+            ),
+            PalmarCreaseMetric(
+                anatomicalName: "proximal_transverse_crease",
+                traditionalAlias: "head",
+                arcLengthMm: ptcChord * 1.04,
+                chordLengthMm: ptcChord,
+                tortuosity: 1.04
+            ),
+            PalmarCreaseMetric(
+                anatomicalName: "thenar_longitudinal_crease",
+                traditionalAlias: "life",
+                arcLengthMm: tlcChord * 1.15,
+                chordLengthMm: tlcChord,
+                tortuosity: 1.15
+            ),
+            PalmarCreaseMetric(
+                anatomicalName: "median_longitudinal_crease",
+                traditionalAlias: "fate",
+                arcLengthMm: mlcChord * 1.02,
+                chordLengthMm: mlcChord,
+                tortuosity: 1.02
+            )
+        ]
+
         return HandBiometricsReport(
             palm: palm,
             digits: digits,
             ratios: ratios,
             spans: spans,
             pads: pads,
+            creases: creases,
             mmPerPixel: mmPerPx,
             handSide: handSide
         )
