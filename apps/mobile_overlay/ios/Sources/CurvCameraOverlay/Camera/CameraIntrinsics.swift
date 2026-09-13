@@ -16,6 +16,16 @@ public struct CameraIntrinsics: Codable, Equatable, Sendable {
     /// Horizontal field of view in degrees (derived when focal length known).
     public let fieldOfViewDeg: Float?
 
+    private enum CodingKeys: String, CodingKey {
+        case focalLengthX = "fx"
+        case focalLengthY = "fy"
+        case principalPointX = "cx"
+        case principalPointY = "cy"
+        case imageWidth = "image_width"
+        case imageHeight = "image_height"
+        case fieldOfViewDeg = "fov_horizontal_deg"
+    }
+
     public init(
         focalLengthX: Float,
         focalLengthY: Float,

@@ -112,6 +112,9 @@ public final class OrbitCaptureGuidance {
     }
 
     public func recordFrame(_ frame: OrbitFrame) {
+        if session.referenceGravity == nil {
+            session.referenceGravity = frame.gravity
+        }
         session.frames.append(frame)
         if session.filledBins.count >= OrbitBin.allCases.count {
             session.completedAt = frame.timestamp

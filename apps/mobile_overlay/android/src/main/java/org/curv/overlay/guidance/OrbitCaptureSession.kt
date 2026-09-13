@@ -29,7 +29,10 @@ data class OrbitFrame(
     val imageWidth: Int,
     val imageHeight: Int,
     val digitSpreadOk: Boolean,
-    val maxJointDrift: Float
+    val maxJointDrift: Float,
+    /** Measured per-mount depth in mm from hardware depth. Null until wired. */
+    val depthMm: Map<String, Float>? = null,
+    val depthSource: String? = null
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("id", id)
@@ -43,6 +46,8 @@ data class OrbitFrame(
         put("image_height", imageHeight)
         put("digit_spread_ok", digitSpreadOk)
         put("max_joint_drift", maxJointDrift.toDouble())
+        depthMm?.let { put("depth_mm", JSONObject(it as Map<*, *>)) }
+        depthSource?.let { put("depth_source", it) }
     }
 }
 
@@ -52,6 +57,11 @@ class OrbitCaptureSession(val handSide: String) {
     var completedAt: Double? = null
     val frames = mutableListOf<OrbitFrame>()
     var referenceLandmarks: List<List<Float>>? = null
+    /** Device gravity at the flat reference view; set from the first frame. */
+    var referenceGravity: List<Float>? = null
+    /** Anatomical scale prior in mm (metacarpal breadth). Null = 80 mm default. */
+    var metricPalmWidthMm: Float? = null
+    var metricSource: String? = null
 
     fun filledBins(): Set<OrbitBin> = frames.map { it.bin }.toSet()
 
@@ -66,5 +76,8 @@ class OrbitCaptureSession(val handSide: String) {
         referenceLandmarks?.let { ref ->
             put("reference_landmarks", JSONArray(ref.map { JSONArray(it) }))
         }
+        referenceGravity?.let { put("reference_gravity", JSONArray(it)) }
+        metricPalmWidthMm?.let { put("metric_palm_width_mm", it.toDouble()) }
+        metricSource?.let { put("metric_source", it) }
     }
 }
