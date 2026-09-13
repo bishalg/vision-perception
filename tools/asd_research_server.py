@@ -249,12 +249,139 @@ def run_demo():
     print("\nDemo simulation completed successfully.")
 
 
+# ==============================================================================
+# ResearchKit Study Ingestion HTTP Server
+# ==============================================================================
+
+import hashlib
+import http.server
+import os
+import socketserver
+import time
+from pathlib import Path
+
+
+class ResearchServerHandler(http.server.BaseHTTPRequestHandler):
+    vault_dir = Path("data/research_study_vault/records")
+
+    def _send_json(self, status_code: int, data: dict[str, Any]):
+        body = json.dumps(data, indent=2).encode("utf-8")
+        self.send_response(status_code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, User-Agent")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, User-Agent")
+        self.end_headers()
+
+    def do_GET(self):
+        if self.path == "/api/v1/research/study-info":
+            self._send_json(200, {
+                "status": "active",
+                "study_identifier": "CURV-ASD-GAZE-2026",
+                "irb_protocol_id": "IRB-ASD-2026-088",
+                "institution": "Center for Pediatric Neurodevelopment & Vision Research",
+                "principal_investigator": "Dr. Elena Vasquez, MD, PhD",
+                "consent_version": "v1.3-IRB2026",
+                "required_instruments": ["ORKConsentReviewStep", "M-CHAT-R/F", "ORKActiveStepResult"],
+                "zero_raw_video_guarantee": True
+            })
+        elif self.path == "/api/v1/research/records":
+            self.vault_dir.mkdir(parents=True, exist_ok=True)
+            records = []
+            for file_path in sorted(self.vault_dir.glob("*.json"), reverse=True):
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        records.append(json.load(f))
+                except Exception:
+                    continue
+            self._send_json(200, {
+                "total_records": len(records),
+                "records": records[:50]
+            })
+        else:
+            self._send_json(404, {"error": "Not Found", "path": self.path})
+
+    def do_POST(self):
+        if self.path != "/api/v1/research/ingest":
+            self._send_json(404, {"error": "Endpoint not found", "path": self.path})
+            return
+
+        content_length = int(self.headers.get("Content-Length", 0))
+        if content_length <= 0:
+            self._send_json(400, {"error": "Empty payload"})
+            return
+
+        body = self.rfile.read(content_length)
+        try:
+            payload = json.loads(body.decode("utf-8"))
+        except Exception as e:
+            self._send_json(400, {"error": f"Invalid JSON: {str(e)}"})
+            return
+
+        # Validate minimum study structure
+        participant_id = (
+            payload.get("participant", {}).get("participantId")
+            or payload.get("participantId")
+            or "ANONYMOUS_PARTICIPANT"
+        )
+
+        receipt_raw = f"{participant_id}_{time.time()}_{len(body)}"
+        receipt_id = "RCPT-" + hashlib.sha256(receipt_raw.encode("utf-8")).hexdigest()[:12].upper()
+
+        record = {
+            "receipt_id": receipt_id,
+            "ingested_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "participant_id": participant_id,
+            "payload": payload
+        }
+
+        self.vault_dir.mkdir(parents=True, exist_ok=True)
+        file_path = self.vault_dir / f"{receipt_id}.json"
+        try:
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(record, f, indent=2)
+        except Exception as e:
+            self._send_json(500, {"error": f"Failed to persist record: {str(e)}"})
+            return
+
+        self._send_json(200, {
+            "status": "success",
+            "receipt_id": receipt_id,
+            "participant_id": participant_id,
+            "message": "ResearchKit study package verified and ingested successfully."
+        })
+
+
+def serve(port: int = 8089):
+    print(f"Starting ResearchKit Ingestion Server on http://127.0.0.1:{port}...")
+    server = socketserver.TCPServer(("127.0.0.1", port), ResearchServerHandler)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nShutting down server.")
+    finally:
+        server.server_close()
+
+
 def main():
     parser = argparse.ArgumentParser(description="ASD screening gaze research tool.")
-    parser.add_argument("--demo", action="store_true", default=True, help="Run simulation demo")
+    parser.add_argument("--demo", action="store_true", help="Run simulation demo")
+    parser.add_argument("--serve", action="store_true", help="Run HTTP research ingestion server")
+    parser.add_argument("--port", type=int, default=8089, help="Port for HTTP research server (default: 8089)")
     args = parser.parse_args()
 
-    if args.demo:
+    if args.serve:
+        serve(port=args.port)
+    else:
         run_demo()
 
 

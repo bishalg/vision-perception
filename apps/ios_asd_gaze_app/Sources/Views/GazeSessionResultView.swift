@@ -369,18 +369,51 @@ public struct GazeSessionResultView: View {
 public struct ResearchKitExportSheet: View {
     public let exportJsonText: String
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var syncService = ResearchKitSyncService.shared
 
     public var body: some View {
         NavigationStack {
             ZStack {
-                // theme:fixed-media — dark JSON viewer by design (both modes).
-                Color.black.ignoresSafeArea()
-                ScrollView {
-                    Text(exportJsonText)
-                        .font(.system(size: 12, design: .monospaced))
-                        .foregroundColor(.green)
-                        .padding(16)
+                LiquidGlass.deepCanvas.ignoresSafeArea()
+
+                VStack(spacing: 14) {
+                    ScrollView {
+                        Text(exportJsonText)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(.green)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(16)
+                    }
+                    .background(Color.black.opacity(0.85)) // theme:fixed-media
+                    .cornerRadius(12)
+
+                    VStack(spacing: 8) {
+                        Button {
+                            syncService.syncNow()
+                        } label: {
+                            HStack {
+                                if syncService.syncState.isSyncing {
+                                    ProgressView().tint(.black)
+                                } else {
+                                    Image(systemName: "icloud.and.arrow.up.fill")
+                                }
+                                Text("Transmit to Research Institute Server")
+                                    .fontWeight(.bold)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(LiquidGlass.celestialTeal)
+                            .foregroundColor(.black) // theme:fixed-media
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                        .disabled(syncService.syncState.isSyncing)
+
+                        Text(syncService.syncState.description)
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
                 }
+                .padding(16)
             }
             .navigationTitle("ResearchKit Result JSON")
             .navigationBarTitleDisplayMode(.inline)

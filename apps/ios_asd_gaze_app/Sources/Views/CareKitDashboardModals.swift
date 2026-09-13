@@ -350,3 +350,303 @@ public struct ClinicalAdvisoryBannerView: View {
         )
     }
 }
+
+// MARK: - ResearchKit Clinical Study Dashboard Card
+
+public struct ResearchStudyDashboardCard: View {
+    @ObservedObject private var syncService = ResearchKitSyncService.shared
+    @State private var enrollment: ResearchStudyEnrollment = ResearchKitStudyStore.shared.fetchEnrollment()
+    @State private var showConsentSheet: Bool = false
+    @State private var showSurveySheet: Bool = false
+    @State private var showExportSheet: Bool = false
+
+    public init() {}
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header: Apple ResearchKit badge + Enrollment status
+            HStack {
+                Label("Apple ResearchKit", systemImage: "waveform.path.ecg.rectangle.fill")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(LiquidGlass.celestialTeal)
+
+                Spacer()
+
+                if enrollment.isConsented {
+                    HStack(spacing: 4) {
+                        Circle().fill(LiquidGlass.emeraldMint).frame(width: 6, height: 6)
+                        Text("Enrolled • IRB #2026-088")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(LiquidGlass.emeraldMint)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(LiquidGlass.emeraldMint.opacity(0.12)))
+                } else {
+                    Text("Consent Required")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(LiquidGlass.warmAmber)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(LiquidGlass.warmAmber.opacity(0.15)))
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Pediatric Clinical Research Study")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+
+                Text(enrollment.isConsented
+                    ? "Participant \(enrollment.participantId) • Data streams are de-identified and encrypted."
+                    : "Participate in clinical research to advance toddler neurodevelopment screening.")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
+
+            // Sync Status Row
+            if enrollment.isConsented {
+                HStack(spacing: 8) {
+                    Image(systemName: syncService.syncState.isSyncing ? "arrow.triangle.2.circlepath" : "icloud.and.arrow.up")
+                        .foregroundColor(LiquidGlass.celestialTeal)
+                        .font(.system(size: 12))
+
+                    Text(syncService.syncState.description)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.secondary)
+
+                    Spacer()
+
+                    if syncService.pendingQueueCount > 0 {
+                        Text("\(syncService.pendingQueueCount) Pending")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundColor(LiquidGlass.warmAmber)
+                    }
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(RoundedRectangle(cornerRadius: 8).fill(LiquidGlass.cardBackground))
+            }
+
+            // Action Buttons
+            HStack(spacing: 8) {
+                if !enrollment.isConsented {
+                    Button {
+                        showConsentSheet = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "signature")
+                            Text("e-Consent")
+                                .fontWeight(.bold)
+                        }
+                        .font(.system(size: 12))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Capsule().fill(LiquidGlass.celestialTeal))
+                        .foregroundColor(.black) // theme:fixed-media
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Button {
+                        showSurveySheet = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "list.clipboard.fill")
+                            Text("M-CHAT Survey")
+                                .fontWeight(.bold)
+                        }
+                        .font(.system(size: 12))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Capsule().fill(LiquidGlass.cardBackground))
+                        .foregroundColor(LiquidGlass.celestialTeal)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        syncService.syncNow()
+                    } label: {
+                        HStack(spacing: 4) {
+                            if syncService.syncState.isSyncing {
+                                ProgressView().scaleEffect(0.6).tint(.black)
+                            } else {
+                                Image(systemName: "arrow.up.circle.fill")
+                            }
+                            Text("Transmit")
+                                .fontWeight(.bold)
+                        }
+                        .font(.system(size: 12))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Capsule().fill(LiquidGlass.emeraldMint))
+                        .foregroundColor(.black) // theme:fixed-media
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(syncService.syncState.isSyncing)
+                }
+
+                Spacer()
+
+                Button {
+                    showExportSheet = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "doc.text.magnifyingglass")
+                        Text("Study Vault")
+                            .fontWeight(.medium)
+                    }
+                    .font(.system(size: 12))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .foregroundColor(LiquidGlass.celestialTeal)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(LiquidGlass.celestialTeal.opacity(0.08))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(LiquidGlass.celestialTeal.opacity(0.25), lineWidth: 1)
+        )
+        .sheet(isPresented: $showConsentSheet) {
+            ResearchStudyConsentView { updated in
+                enrollment = updated
+            }
+        }
+        .sheet(isPresented: $showSurveySheet) {
+            MCHATSurveyModalView()
+        }
+        .sheet(isPresented: $showExportSheet) {
+            ResearchKitDoctorExportModal()
+        }
+        .onAppear {
+            enrollment = ResearchKitStudyStore.shared.fetchEnrollment()
+        }
+    }
+}
+
+// MARK: - ResearchKit Doctor Export Modal
+
+public struct ResearchKitDoctorExportModal: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var syncService = ResearchKitSyncService.shared
+    @State private var jsonString: String = ""
+    @State private var shareURL: URL?
+
+    public init() {}
+
+    public var body: some View {
+        NavigationStack {
+            ZStack {
+                LiquidGlass.deepCanvas.ignoresSafeArea()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        metadataCard
+                        jsonPreviewCard
+                        actionButtons
+                    }
+                    .padding(20)
+                }
+            }
+            .navigationTitle("Research Study Vault")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                        .foregroundColor(LiquidGlass.celestialTeal)
+                }
+            }
+            .onAppear {
+                jsonString = ResearchKitStudyStore.shared.exportResearchKitJSON()
+                shareURL = syncService.generateDoctorShareFile()
+            }
+        }
+    }
+
+    private var metadataCard: some View {
+        let enrollment = ResearchKitStudyStore.shared.fetchEnrollment()
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label("IRB-ASD-2026-088", systemImage: "checkmark.seal.fill")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(LiquidGlass.celestialTeal)
+                Spacer()
+                Text("Schema v1.4")
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundColor(.secondary)
+            }
+
+            Text("Participant: \(enrollment.participantId)")
+                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                .foregroundColor(.primary)
+
+            Text("Conforms to Apple ResearchKit ORKTaskResult and ORKActiveStepResult schemas for specialist pediatric review.")
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+        }
+        .glassCard(cornerRadius: 14, padding: 14)
+    }
+
+    private var jsonPreviewCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("ResearchKit Study Package Payload")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(.secondary)
+
+            ScrollView {
+                Text(jsonString)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.green)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+            }
+            .frame(maxHeight: 260)
+            .background(Color.black.opacity(0.85)) // theme:fixed-media
+            .cornerRadius(12)
+        }
+    }
+
+    private var actionButtons: some View {
+        VStack(spacing: 10) {
+            Button {
+                syncService.syncNow()
+            } label: {
+                HStack {
+                    if syncService.syncState.isSyncing {
+                        ProgressView().tint(.black)
+                    } else {
+                        Image(systemName: "icloud.and.arrow.up.fill")
+                    }
+                    Text("Transmit to Research Institute Server")
+                        .fontWeight(.bold)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(LiquidGlass.celestialTeal)
+                .foregroundColor(.black) // theme:fixed-media
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .disabled(syncService.syncState.isSyncing)
+
+            if let shareURL {
+                ShareLink(item: shareURL) {
+                    HStack {
+                        Image(systemName: "square.and.arrow.up")
+                        Text("Export Bundle for Pediatric Specialist")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(LiquidGlass.cardBackground)
+                    .foregroundColor(LiquidGlass.emeraldMint)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+            }
+        }
+    }
+}

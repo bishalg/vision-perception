@@ -40,6 +40,9 @@ public struct CaregiverDashboardView: View {
                         // Apple Health Style 3-Column Activity & Care Protocol Card
                         careKitActivityCard
 
+                        // Apple ResearchKit Clinical Study Card (Parallel Research Track)
+                        ResearchStudyDashboardCard()
+
                         // Standardized Screening Action Card
                         screeningActionCard
 

@@ -1,3 +1,4 @@
+import CurvAsdGazeKit
 import Foundation
 import SwiftUI
 
@@ -216,6 +217,8 @@ public final class CarePlanStore: ObservableObject {
     /// Injected clinical-record backend (`.shared` in production; an in-memory
     /// store in tests so unit tests never touch the on-disk record).
     private let clinicalStore: CareKitClinicalStore
+    /// Injected research-record backend running in parallel to CareKit for study tracking.
+    private let researchStore: ResearchKitStudyStore
 
     @Published public var tasks: [CarePlanTask] = []
     @Published public var diaryEntry: DailyDiaryEntry = DailyDiaryEntry()
@@ -233,8 +236,12 @@ public final class CarePlanStore: ObservableObject {
     private let streakKey = "org.curv.asd.careplan.streak"
     private let historyKey = "org.curv.asd.careplan.history"
 
-    public init(clinicalStore: CareKitClinicalStore = .shared) {
+    public init(
+        clinicalStore: CareKitClinicalStore = .shared,
+        researchStore: ResearchKitStudyStore = .shared
+    ) {
         self.clinicalStore = clinicalStore
+        self.researchStore = researchStore
         loadState()
     }
 
@@ -330,36 +337,58 @@ public final class CarePlanStore: ObservableObject {
         return Double(taken) / Double(total)
     }
 
-    /// Record a newly completed screening session into the gaze observation task.
-    public func markScreeningCompleted(socialScore: Double) {
+    /// Record completion of a gaze screening session in both CareKit and ResearchKit.
+    public func markScreeningCompleted(
+        socialScore: Double,
+        validFramePercentage: Double = 94.0,
+        summary: GazeSessionReportSummary? = nil
+    ) {
         if let index = tasks.firstIndex(where: { $0.category == .observation }) {
             tasks[index].isCompleted = true
             tasks[index].completedAt = Date()
             saveTasks()
         }
-        // Update today's entry in weekly history
         if let lastIndex = weeklyHistory.indices.last {
             let existing = weeklyHistory[lastIndex]
             weeklyHistory[lastIndex] = LongitudinalAttentionPoint(
                 id: existing.id,
                 dayLabel: existing.dayLabel,
                 socialPreferenceScore: max(0.0, min(1.0, (existing.socialPreferenceScore + socialScore) / 2.0)),
-                validFramePercentage: 94.0,
+                validFramePercentage: validFramePercentage,
                 sessionCount: existing.sessionCount + 1
             )
             saveHistory()
         }
-        // Mirror the screening outcome (with its scores) into CareKit (fire-and-forget);
+        // 1. CareKit track: Mirror the screening outcome into CareKit (fire-and-forget);
         // keep the observation row's spinner up until the write lands.
         if let observation = tasks.first(where: { $0.category == .observation }) {
             pendingCareKitCounts[observation.id, default: 0] += 1
         }
         clinicalStore.recordScreeningOutcome(
-            socialScore: socialScore, validFramePercentage: 94.0, knownTasks: tasks
+            socialScore: socialScore, validFramePercentage: validFramePercentage, knownTasks: tasks
         ) { [weak self] in
             Task { @MainActor in
                 guard let observation = self?.tasks.first(where: { $0.category == .observation }) else { return }
                 self?.decrementPending(for: observation.id)
+            }
+        }
+        // 2. ResearchKit track: In parallel, compile and store ORKActiveStepResult
+        if let summary {
+            researchStore.recordActiveStepResult(summary: summary)
+        }
+    }
+
+    /// Record completion of M-CHAT-R/F survey in both ResearchKit and CareKit milestone tracking.
+    public func recordMCHATSurvey(
+        answers: [Int: Bool],
+        completion: (@Sendable (MCHATScoreResult) -> Void)? = nil
+    ) {
+        researchStore.recordSurveyResult(answers: answers) { [weak self] result in
+            Task { @MainActor in
+                if let idx = self?.milestones.firstIndex(where: { $0.ageMonths == 24 || $0.id.contains("mchat") }) {
+                    self?.milestones[idx].isCompleted = true
+                }
+                completion?(result)
             }
         }
     }
