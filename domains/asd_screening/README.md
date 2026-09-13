@@ -25,6 +25,8 @@ This domain pack is fully self-sustained. Its specifications, protocols, and arc
 | :--- | :--- | :--- |
 | **System Architecture** | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Component hierarchy, offline iOS data flow, TrueDepth raycasting, and quality gates. |
 | **iOS Native App Design & Tracker** | [`docs/IOS_APP_DESIGN_AND_ROADMAP.md`](docs/IOS_APP_DESIGN_AND_ROADMAP.md) | 7-phase iOS implementation roadmap, TrueDepth raycaster, AVPlayer sync, and ResearchKit/CareKit guide. |
+| **Data Collection Schema** | [`docs/DATA_COLLECTION_SCHEMA.md`](docs/DATA_COLLECTION_SCHEMA.md) | Complete 83-field per-frame schema: gaze, head pose, 52 FACS affect metrics, AOI, stimulus sync, quality. |
+| **Data Storage & Pipeline** | [`docs/DATA_STORAGE_AND_PIPELINE.md`](docs/DATA_STORAGE_AND_PIPELINE.md) | AES-GCM-256 encrypted vault, session JSONL format, 5-phase pipeline roadmap (D1–D5), export contracts. |
 | **Stimuli & Dynamic AOIs** | [`docs/STIMULI_SPEC.md`](docs/STIMULI_SPEC.md) | Specifications for GeoPref, Face Scanning, and Joint Attention tasks, with dynamic AOIs. |
 | **Ethics & Consent Protocol** | [`docs/ETHICS_PROTOCOL.md`](docs/ETHICS_PROTOCOL.md) | IRB protocol, COPPA/HIPAA protections, zero raw video storage, and 5-point bubble calibration. |
 | **ML & Validation Roadmap** | [`docs/ML_ROADMAP.md`](docs/ML_ROADMAP.md) | Grouped cross-validation (by `child_id`), 16 explainable biomarkers, SHAP, and CoreML export. |
