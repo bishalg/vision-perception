@@ -194,6 +194,7 @@ public struct MainGazeScannerView: View {
         }
         .onDisappear {
             sessionTimer?.invalidate()
+            _ = controller.stopSession()
         }
     }
 

@@ -32,6 +32,11 @@ public struct ARFaceSceneView: UIViewRepresentable {
         }
     }
 
+    public static func dismantleUIView(_ uiView: ARSCNView, coordinator: Coordinator) {
+        uiView.delegate = nil
+        coordinator.faceGeometry = nil
+    }
+
     public func makeCoordinator() -> Coordinator {
         Coordinator()
     }
@@ -203,7 +208,7 @@ public struct ARFaceCameraView: View {
                 )
 
                 // Tracking mesh dots (cheekbones, chin, temples)
-                ForEach(syntheticLandmarks(centerX: centerX, centerY: centerY), id: \.x) { pt in
+                ForEach(Array(syntheticLandmarks(centerX: centerX, centerY: centerY).enumerated()), id: \.offset) { _, pt in
                     Circle()
                         .fill(LiquidGlass.celestialTeal)
                         .frame(width: 3.5, height: 3.5)

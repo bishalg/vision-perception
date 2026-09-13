@@ -94,6 +94,7 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
 
     #if canImport(ARKit) && !os(macOS)
     @Published public var arSession: ARSession?
+    private let arDelegateQueue = DispatchQueue(label: "org.curv.asd.arSessionQueue", qos: .userInteractive)
     #endif
 
     public init(
@@ -107,6 +108,15 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
         self.currentQuality = GazeQualityGate.Evaluation(isValid: true, verdict: .optimal)
         self.calibrationProfile = GazeCalibrationStore.load()
         super.init()
+    }
+
+    deinit {
+        #if canImport(ARKit) && !os(macOS)
+        arSession?.pause()
+        arSession?.delegate = nil
+        arSession?.delegateQueue = nil
+        arSession = nil
+        #endif
     }
 
     /// Persists a freshly-fit calibration and makes it take effect immediately
@@ -135,7 +145,14 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
 
         #if canImport(ARKit) && !os(macOS)
         if ARFaceTrackingConfiguration.isSupported {
+            if let existingSession = arSession {
+                existingSession.pause()
+                existingSession.delegate = nil
+                existingSession.delegateQueue = nil
+                self.arSession = nil
+            }
             let session = ARSession()
+            session.delegateQueue = arDelegateQueue
             session.delegate = self
             let config = ARFaceTrackingConfiguration()
             config.isWorldTrackingEnabled = false
@@ -156,6 +173,8 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
 
         #if canImport(ARKit) && !os(macOS)
         arSession?.pause()
+        arSession?.delegate = nil
+        arSession?.delegateQueue = nil
         arSession = nil
         #endif
 
@@ -336,8 +355,8 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
 extension GazeSessionController: ARSessionDelegate {
     public func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {
         guard let faceAnchor = anchors.compactMap({ $0 as? ARFaceAnchor }).first else {
-            DispatchQueue.main.async {
-                self.currentQuality = GazeQualityGate.Evaluation(
+            DispatchQueue.main.async { [weak self] in
+                self?.currentQuality = GazeQualityGate.Evaluation(
                     isValid: false,
                     verdict: .rejected,
                     failureReasons: ["Face anchor lost"]
@@ -414,7 +433,8 @@ extension GazeSessionController: ARSessionDelegate {
             qualityVerdict: eval.verdict
         )
 
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
             let pt = calibratedPoint
             let dist = hypot(pt.x - self.currentGazePoint.x, pt.y - self.currentGazePoint.y)
             let alpha: CGFloat = dist > 0.08 ? 0.85 : 0.28
