@@ -32,6 +32,16 @@ public final class PalmAnalysisViewModel: ObservableObject {
     @Published public var detectedSplines: [CreaseSpline] = []
     @Published public var captureLandmarks: [CGPoint] = []
     @Published public var capturedImage: UIImage?
+    /// Multi-shot capture session (e.g. left palm + right palm today; a future
+    /// angle like the back of the hand just needs `requiredShotCount` bumped).
+    @Published public private(set) var capturedShots: [UIImage] = []
+    /// Shots this session needs before the filmstrip badge reads "complete".
+    public var requiredShotCount: Int = 2
+    /// Increments on every successful capture. UIImage isn't Equatable, so the
+    /// filmstrip badge watches this (not `capturedShots`) to trigger its
+    /// landing/shake animation exactly once per new shot.
+    @Published public private(set) var captureTick: Int = 0
+    public var isCaptureSessionComplete: Bool { capturedShots.count >= requiredShotCount }
     /// Full-screen overlay review (opened from the camera-roll style thumbnail).
     @Published public var showResultViewer: Bool = false
     @Published public var usedNativeEngine: Bool = false
@@ -109,6 +119,7 @@ public final class PalmAnalysisViewModel: ObservableObject {
             self.predictionReadySplines.removeAll()
             self.captureLandmarks.removeAll()
             self.capturedImage = nil
+            if !self.capturedShots.isEmpty { self.capturedShots.removeLast() }
             self.showResultViewer = false
             self.showAnalysisReading = false
             self.usedNativeEngine = false
@@ -126,6 +137,9 @@ public final class PalmAnalysisViewModel: ObservableObject {
             self.predictionReadySplines.removeAll()
             self.captureLandmarks.removeAll()
             self.capturedImage = nil
+            // The shot under review was rejected — drop it from the session
+            // (and its badge count) so retaking doesn't overcount.
+            if !self.capturedShots.isEmpty { self.capturedShots.removeLast() }
             self.showResultViewer = false
             self.showAnalysisReading = false
             self.usedNativeEngine = false
@@ -133,6 +147,14 @@ public final class PalmAnalysisViewModel: ObservableObject {
             self.guidanceEngine.reset()
             self.cameraSession.start()
         }
+    }
+
+    /// Starts a fresh multi-shot session (e.g. after submitting left+right for
+    /// analysis, or the user explicitly restarts). Does not touch the current
+    /// single-shot review state.
+    public func resetCaptureSession() {
+        capturedShots.removeAll()
+        captureTick = 0
     }
 
     /// Proceed to Phase 3: lock lines and present Samudrika Reading Sheet
@@ -414,6 +436,10 @@ public final class PalmAnalysisViewModel: ObservableObject {
             DispatchQueue.main.async {
                 // Stay in live camera mode (iOS Camera style): keep thumbnail, resume preview.
                 self.capturedImage = image
+                if let image {
+                    self.capturedShots.append(image)
+                    self.captureTick += 1
+                }
                 self.captureLandmarks = photoLandmarks
                 self.detectedSplines = splines
                 self.analysisResult = parsedResponse

@@ -13,7 +13,37 @@ public struct MainScannerView: View {
     /// Corridor guides ship default-off (spec §4); persists across launches.
     @AppStorage("showPalmCorridors") private var showCorridors = false
 
+    /// Drives the post-capture "hero" flight: a large centered flash of the
+    /// still shrinks into the bottom-left filmstrip slot, matching the shared
+    /// `captureHero` id below. See CaptureFilmstripThumbnail at file bottom.
+    @Namespace private var captureHeroNamespace
+    @State private var showCaptureFlash = false
+    @State private var flashImage: UIImage?
+    @State private var filmstripShakeTicks: CGFloat = 0
+
     public init() {}
+
+    /// Kicks off the capture -> filmstrip flight for the newest shot. Held
+    /// briefly at full size (so the capture visibly registers) before the
+    /// slow, emphasized shrink into the thumbnail well; the filmstrip shakes
+    /// once it lands so a fast multi-shot session still reads as "added".
+    private func animateNewCapture() {
+        guard let newest = viewModel.capturedShots.last else { return }
+        flashImage = newest
+        showCaptureFlash = true
+        let flightDuration = 0.68
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            withAnimation(.spring(response: flightDuration, dampingFraction: 0.78)) {
+                showCaptureFlash = false
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15 + flightDuration) {
+            flashImage = nil
+            withAnimation(.default) {
+                filmstripShakeTicks += 1
+            }
+        }
+    }
 
     /// Live landmarks, or the geometry scaffold on simulator (no camera).
     private var regionLandmarks: [CGPoint] {
@@ -124,23 +154,22 @@ public struct MainScannerView: View {
                     .zIndex(1)
                 }
 
-                // Bottom-left thumbnail (like stock iOS Camera)
-                if let thumb = viewModel.capturedImage, !viewModel.showResultViewer {
+                // Bottom-left filmstrip thumbnail (like stock iOS Camera), with a
+                // session badge (e.g. 1/2 for left+right palm) that turns green
+                // once the required shot count is met.
+                if let thumb = viewModel.capturedShots.last, !viewModel.showResultViewer, !showCaptureFlash {
                     VStack {
                         Spacer()
                         HStack {
                             Button(action: { viewModel.openLastCapture() }) {
-                                Image(uiImage: thumb)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 54, height: 54)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                            .stroke(Color.white.opacity(0.85), lineWidth: 1.5)
-                                    )
-                                    .shadow(color: .black.opacity(0.45), radius: 8, y: 3)
+                                CaptureFilmstripThumbnail(
+                                    image: thumb,
+                                    count: viewModel.capturedShots.count,
+                                    requiredCount: viewModel.requiredShotCount,
+                                    shakeTicks: filmstripShakeTicks
+                                )
                             }
+                            .matchedGeometryEffect(id: "captureHero", in: captureHeroNamespace)
                             .padding(.leading, 22)
                             .padding(.bottom, 46)
                             Spacer()
@@ -148,6 +177,29 @@ public struct MainScannerView: View {
                     }
                     .transition(.scale.combined(with: .opacity))
                     .zIndex(2)
+                }
+
+                // Post-capture "hero" flash: briefly full-size, then shrinks
+                // (slowly, deliberately — like the stock Camera app) into the
+                // filmstrip slot above via the shared matchedGeometryEffect id.
+                if showCaptureFlash, let flashImage {
+                    Image(uiImage: flashImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(
+                            width: showCaptureFlash ? geometry.size.width * 0.62 : 54,
+                            height: showCaptureFlash ? geometry.size.width * 0.62 : 54
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(Color.white.opacity(0.9), lineWidth: 2)
+                        )
+                        .shadow(color: .black.opacity(0.5), radius: 20, y: 6)
+                        .matchedGeometryEffect(id: "captureHero", in: captureHeroNamespace)
+                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                        .allowsHitTesting(false)
+                        .zIndex(4)
                 }
 
                 // Phase 2: Crease Line Verification Screen
@@ -173,7 +225,7 @@ public struct MainScannerView: View {
         }
         .ignoresSafeArea()
         .animation(.easeInOut(duration: 0.22), value: viewModel.showResultViewer)
-        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: viewModel.capturedImage != nil)
+        .onChange(of: viewModel.captureTick) { _ in animateNewCapture() }
         // Phase 3: Dedicated Samudrika Reading Sheet (native sheet chrome)
         .sheet(isPresented: $viewModel.showAnalysisReading) {
             SamudrikaReadingSheet(
@@ -204,5 +256,59 @@ public struct MainScannerView: View {
         }
         .onAppear { viewModel.start() }
         .onDisappear { viewModel.stop() }
+    }
+}
+
+/// Bottom-left "last capture" thumbnail with a session badge — like the stock
+/// iOS Camera roll well, but tracking a multi-shot session (left/right palm
+/// today; a future angle, e.g. back of hand, just bumps `requiredCount`).
+/// The badge and border both go green once `count >= requiredCount`.
+private struct CaptureFilmstripThumbnail: View {
+    let image: UIImage
+    let count: Int
+    let requiredCount: Int
+    /// Bumped by the parent once the capture "lands"; drives the shake.
+    let shakeTicks: CGFloat
+
+    private var isComplete: Bool { count >= requiredCount }
+    private var boxColor: Color { isComplete ? OverlayPalette.emerald : Color.white.opacity(0.85) }
+    private var badgeColor: Color { isComplete ? OverlayPalette.emerald : Color.black.opacity(0.78) }
+
+    var body: some View {
+        Image(uiImage: image)
+            .resizable()
+            .scaledToFill()
+            .frame(width: 54, height: 54)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(boxColor, lineWidth: isComplete ? 2.2 : 1.5)
+            )
+            .shadow(color: (isComplete ? OverlayPalette.emerald : .black).opacity(isComplete ? 0.55 : 0.45), radius: 8, y: 3)
+            .overlay(alignment: .topTrailing) {
+                Text("\(count)")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .frame(minWidth: 18, minHeight: 18)
+                    .background(Circle().fill(badgeColor))
+                    .overlay(Circle().stroke(Color.white.opacity(0.9), lineWidth: 1))
+                    .offset(x: 8, y: -8)
+            }
+            .modifier(ShakeEffect(animatableData: shakeTicks))
+            .animation(.easeInOut(duration: 0.25), value: isComplete)
+    }
+}
+
+/// Classic damped horizontal shake driven entirely by SwiftUI's animatable-
+/// data interpolation (no Timer, no manual step tracking). Caller bumps an
+/// integer-valued `CGFloat` inside `withAnimation` to trigger one shake.
+private struct ShakeEffect: GeometryEffect {
+    var travel: CGFloat = 6
+    var oscillations: Double = 3
+    var animatableData: CGFloat
+
+    func effectValue(size: CGSize) -> ProjectionTransform {
+        let dx = travel * sin(Double(animatableData) * .pi * oscillations)
+        return ProjectionTransform(CGAffineTransform(translationX: dx, y: 0))
     }
 }
