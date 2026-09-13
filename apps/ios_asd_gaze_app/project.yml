@@ -1,0 +1,45 @@
+name: AsdGazeCollector
+options:
+  bundleIdPrefix: org.curv
+  deploymentTarget:
+    iOS: "17.0"
+  developmentLanguage: en
+  xcodeVersion: "15.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    TARGETED_DEVICE_FAMILY: "1,2" # iPhone & iPad
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    ENABLE_BITCODE: NO
+    CLANG_ENABLE_MODULES: YES
+    SWIFT_STRICT_CONCURRENCY: complete
+
+packages:
+  CurvAsdGazeKit:
+    path: ../../domains/asd_screening/ios
+
+targets:
+  AsdGazeCollector:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.curv.asd.gazecollector
+        PRODUCT_NAME: AsdGazeCollector
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: "1.0.0"
+        GENERATE_INFOPLIST_FILE: true
+        INFOPLIST_KEY_NSCameraUsageDescription: "TrueDepth camera access is required to track eye gaze and measure social visual attention in real-time. No raw camera frames or videos are ever recorded to storage."
+        INFOPLIST_KEY_NSMotionUsageDescription: "Device motion data is required to separate device movement from toddler head orientation."
+        INFOPLIST_KEY_UILaunchScreen_Generation: true
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+    dependencies:
+      - package: CurvAsdGazeKit
+      - sdk: ARKit.framework
+      - sdk: AVFoundation.framework
+      - sdk: CoreMotion.framework
+      - sdk: CryptoKit.framework

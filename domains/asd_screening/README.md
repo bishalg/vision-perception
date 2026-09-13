@@ -24,6 +24,7 @@ This domain pack is fully self-sustained. Its specifications, protocols, and arc
 | Document | File Path | Scope & Focus |
 | :--- | :--- | :--- |
 | **System Architecture** | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Component hierarchy, offline iOS data flow, TrueDepth raycasting, and quality gates. |
+| **iOS Native App Design & Tracker** | [`docs/IOS_APP_DESIGN_AND_ROADMAP.md`](docs/IOS_APP_DESIGN_AND_ROADMAP.md) | 7-phase iOS implementation roadmap, TrueDepth raycaster, AVPlayer sync, and ResearchKit/CareKit guide. |
 | **Stimuli & Dynamic AOIs** | [`docs/STIMULI_SPEC.md`](docs/STIMULI_SPEC.md) | Specifications for GeoPref, Face Scanning, and Joint Attention tasks, with dynamic AOIs. |
 | **Ethics & Consent Protocol** | [`docs/ETHICS_PROTOCOL.md`](docs/ETHICS_PROTOCOL.md) | IRB protocol, COPPA/HIPAA protections, zero raw video storage, and 5-point bubble calibration. |
 | **ML & Validation Roadmap** | [`docs/ML_ROADMAP.md`](docs/ML_ROADMAP.md) | Grouped cross-validation (by `child_id`), 16 explainable biomarkers, SHAP, and CoreML export. |
@@ -37,18 +38,23 @@ This folder is structured to allow immediate standalone extraction (e.g. `git su
 
 ```text
 domains/asd_screening/
-├── README.md               # Package manifest and documentation index
-├── docs/                   # Complete standalone specifications
-│   ├── ARCHITECTURE.md     # Architectural specification
-│   ├── STIMULI_SPEC.md     # Stimuli timing, resolution, and AOI schemas
-│   ├── ETHICS_PROTOCOL.md  # Privacy, IRB, and calibration specifications
-│   ├── ML_ROADMAP.md       # Validation protocols and CoreML export
-│   └── LITERATURE.md       # Scientific foundations & 12-phase roadmap
+├── README.md                           # Package manifest and documentation index
+├── docs/                               # Complete standalone specifications
+│   ├── ARCHITECTURE.md                 # Architectural specification
+│   ├── IOS_APP_DESIGN_AND_ROADMAP.md   # Native iOS app design & phase tracking
+│   ├── STIMULI_SPEC.md                 # Stimuli timing, resolution, and AOI schemas
+│   ├── ETHICS_PROTOCOL.md              # Privacy, IRB, and calibration specifications
+│   ├── ML_ROADMAP.md                   # Validation protocols and CoreML export
+│   └── LITERATURE.md                   # Scientific foundations & 12-phase roadmap
 ├── include/
 │   └── curv/domains/
-│       └── AsdBiomarkerPack.hpp   # C++20 API & Apple Health data contracts
-└── src/
-    └── AsdBiomarkerPack.cpp       # Zero-dependency implementation
+│       └── AsdBiomarkerPack.hpp        # C++20 API & Apple Health data contracts
+├── src/
+│   └── AsdBiomarkerPack.cpp            # Zero-dependency implementation
+└── ios/                                # Reusable Swift 6 sensor package (CurvAsdGazeKit)
+    ├── Package.swift
+    ├── Sources/CurvAsdGazeKit/
+    └── Tests/CurvAsdGazeKitTests/
 ```
 
 ---

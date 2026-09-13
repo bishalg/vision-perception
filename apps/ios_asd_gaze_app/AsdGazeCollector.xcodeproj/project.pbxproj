@@ -1,0 +1,405 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		097C3A01FD450EFF0EFD87D1 /* LiquidGlassTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55BEF992E92622FDFF45F7D7 /* LiquidGlassTheme.swift */; };
+		3CFDE5C6155977F6F950CA68 /* ARKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 22E6F2A8134BE4D7D3C40207 /* ARKit.framework */; };
+		6CED98840A9C31074CAF9360 /* StimulusScreeningView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F880C59E682E0DE781F22B2F /* StimulusScreeningView.swift */; };
+		7464913B7891C6A7CE7BAA77 /* CryptoKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CA4E9FE1E111B4651734C739 /* CryptoKit.framework */; };
+		8CA1D85A303FE3DD856F8801 /* CoreMotion.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9C2AE415C19877471ACD26E8 /* CoreMotion.framework */; };
+		904C322537F0DE4C99EB120E /* CurvAsdGazeKit in Frameworks */ = {isa = PBXBuildFile; productRef = B5868E95ED9EBB691A9E914F /* CurvAsdGazeKit */; };
+		A9AB6D6ED95D23E6CEF812AC /* AsdGazeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16633D030005B527C78CD577 /* AsdGazeApp.swift */; };
+		B6B9DF0064AFF850D3948FD5 /* BubbleCalibrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38A98C675F624BB679668AA2 /* BubbleCalibrationView.swift */; };
+		B91A3229B01879F4F75FA00F /* CaregiverDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A64D36BA92966A704E085F52 /* CaregiverDashboardView.swift */; };
+		FEBB2149664384DA4F2312E0 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2A9FB1A18314BE59ECB52E15 /* AVFoundation.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		16633D030005B527C78CD577 /* AsdGazeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsdGazeApp.swift; sourceTree = "<group>"; };
+		22E6F2A8134BE4D7D3C40207 /* ARKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ARKit.framework; path = System/Library/Frameworks/ARKit.framework; sourceTree = SDKROOT; };
+		2A9FB1A18314BE59ECB52E15 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
+		38A98C675F624BB679668AA2 /* BubbleCalibrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BubbleCalibrationView.swift; sourceTree = "<group>"; };
+		55BEF992E92622FDFF45F7D7 /* LiquidGlassTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlassTheme.swift; sourceTree = "<group>"; };
+		9C2AE415C19877471ACD26E8 /* CoreMotion.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMotion.framework; path = System/Library/Frameworks/CoreMotion.framework; sourceTree = SDKROOT; };
+		A64D36BA92966A704E085F52 /* CaregiverDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaregiverDashboardView.swift; sourceTree = "<group>"; };
+		B387D5B6A34396573F150318 /* ios */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ios; path = ../../domains/asd_screening/ios; sourceTree = SOURCE_ROOT; };
+		CA4E9FE1E111B4651734C739 /* CryptoKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CryptoKit.framework; path = System/Library/Frameworks/CryptoKit.framework; sourceTree = SDKROOT; };
+		DE48FCCCDB5EBCB7A99A2EA7 /* AsdGazeCollector.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AsdGazeCollector.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F880C59E682E0DE781F22B2F /* StimulusScreeningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StimulusScreeningView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		51FC8559B2D6AB2454274AB6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				904C322537F0DE4C99EB120E /* CurvAsdGazeKit in Frameworks */,
+				3CFDE5C6155977F6F950CA68 /* ARKit.framework in Frameworks */,
+				FEBB2149664384DA4F2312E0 /* AVFoundation.framework in Frameworks */,
+				8CA1D85A303FE3DD856F8801 /* CoreMotion.framework in Frameworks */,
+				7464913B7891C6A7CE7BAA77 /* CryptoKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		06DC7486BCA971D8A4F4E4C2 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				38A98C675F624BB679668AA2 /* BubbleCalibrationView.swift */,
+				A64D36BA92966A704E085F52 /* CaregiverDashboardView.swift */,
+				F880C59E682E0DE781F22B2F /* StimulusScreeningView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		117E38C49C91182AC8A1CBAE /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				22E6F2A8134BE4D7D3C40207 /* ARKit.framework */,
+				2A9FB1A18314BE59ECB52E15 /* AVFoundation.framework */,
+				9C2AE415C19877471ACD26E8 /* CoreMotion.framework */,
+				CA4E9FE1E111B4651734C739 /* CryptoKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		317C42EC365F7F9989C9298A /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				DE48FCCCDB5EBCB7A99A2EA7 /* AsdGazeCollector.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		4BC02EA4CF346024426976A5 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				55BEF992E92622FDFF45F7D7 /* LiquidGlassTheme.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		74F3F074940ED185A6E5DF92 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				16633D030005B527C78CD577 /* AsdGazeApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		768EFD3F905C1A24F2E12A31 = {
+			isa = PBXGroup;
+			children = (
+				AFABCED5CCB4D47A7AE45A9E /* Packages */,
+				99A282841FC5A9BF25238C63 /* Sources */,
+				117E38C49C91182AC8A1CBAE /* Frameworks */,
+				317C42EC365F7F9989C9298A /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		99A282841FC5A9BF25238C63 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				74F3F074940ED185A6E5DF92 /* App */,
+				4BC02EA4CF346024426976A5 /* UI */,
+				06DC7486BCA971D8A4F4E4C2 /* Views */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		AFABCED5CCB4D47A7AE45A9E /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				B387D5B6A34396573F150318 /* ios */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		5A339C8E397001A08FBAA7AE /* AsdGazeCollector */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7E62ACFD9BB6A88CCD63B00B /* Build configuration list for PBXNativeTarget "AsdGazeCollector" */;
+			buildPhases = (
+				1630A42F15D27381BAF223F9 /* Sources */,
+				51FC8559B2D6AB2454274AB6 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AsdGazeCollector;
+			packageProductDependencies = (
+				B5868E95ED9EBB691A9E914F /* CurvAsdGazeKit */,
+			);
+			productName = AsdGazeCollector;
+			productReference = DE48FCCCDB5EBCB7A99A2EA7 /* AsdGazeCollector.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		1C016CBB98BD28E53A3DEE08 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = 4B07836A83B7884E90F2E57A /* Build configuration list for PBXProject "AsdGazeCollector" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 768EFD3F905C1A24F2E12A31;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				AE1312DE814576C9916D1EC4 /* XCLocalSwiftPackageReference "../../domains/asd_screening/ios" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 317C42EC365F7F9989C9298A /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				5A339C8E397001A08FBAA7AE /* AsdGazeCollector */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		1630A42F15D27381BAF223F9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A9AB6D6ED95D23E6CEF812AC /* AsdGazeApp.swift in Sources */,
+				B6B9DF0064AFF850D3948FD5 /* BubbleCalibrationView.swift in Sources */,
+				B91A3229B01879F4F75FA00F /* CaregiverDashboardView.swift in Sources */,
+				097C3A01FD450EFF0EFD87D1 /* LiquidGlassTheme.swift in Sources */,
+				6CED98840A9C31074CAF9360 /* StimulusScreeningView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		00829F9411005FCEEF3742C0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "TrueDepth camera access is required to track eye gaze and measure social visual attention in real-time. No raw camera frames or videos are ever recorded to storage.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "Device motion data is required to separate device movement from toddler head orientation.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.curv.asd.gazecollector;
+				PRODUCT_NAME = AsdGazeCollector;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		897697468EC7E2E1AC71281C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_BITCODE = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		DEC68B17823FC7814E6A3789 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "TrueDepth camera access is required to track eye gaze and measure social visual attention in real-time. No raw camera frames or videos are ever recorded to storage.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "Device motion data is required to separate device movement from toddler head orientation.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.curv.asd.gazecollector;
+				PRODUCT_NAME = AsdGazeCollector;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		F6268C19C4FD3F237B02B8E3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_BITCODE = NO;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4B07836A83B7884E90F2E57A /* Build configuration list for PBXProject "AsdGazeCollector" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				897697468EC7E2E1AC71281C /* Debug */,
+				F6268C19C4FD3F237B02B8E3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		7E62ACFD9BB6A88CCD63B00B /* Build configuration list for PBXNativeTarget "AsdGazeCollector" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				00829F9411005FCEEF3742C0 /* Debug */,
+				DEC68B17823FC7814E6A3789 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		AE1312DE814576C9916D1EC4 /* XCLocalSwiftPackageReference "../../domains/asd_screening/ios" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../domains/asd_screening/ios;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B5868E95ED9EBB691A9E914F /* CurvAsdGazeKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CurvAsdGazeKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 1C016CBB98BD28E53A3DEE08 /* Project object */;
+}
