@@ -16,6 +16,8 @@
 		A9AB6D6ED95D23E6CEF812AC /* AsdGazeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16633D030005B527C78CD577 /* AsdGazeApp.swift */; };
 		B6B9DF0064AFF850D3948FD5 /* BubbleCalibrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38A98C675F624BB679668AA2 /* BubbleCalibrationView.swift */; };
 		B91A3229B01879F4F75FA00F /* CaregiverDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A64D36BA92966A704E085F52 /* CaregiverDashboardView.swift */; };
+		BAA4122DA672A103917B20C7 /* GazeSessionResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 448AD29ECC98B480318ECCA5 /* GazeSessionResultView.swift */; };
+		E06EBE7828B8F7C724BCA478 /* MainGazeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3111366AAA094728086AD5E8 /* MainGazeScannerView.swift */; };
 		FEBB2149664384DA4F2312E0 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2A9FB1A18314BE59ECB52E15 /* AVFoundation.framework */; };
 /* End PBXBuildFile section */
 
@@ -23,7 +25,9 @@
 		16633D030005B527C78CD577 /* AsdGazeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsdGazeApp.swift; sourceTree = "<group>"; };
 		22E6F2A8134BE4D7D3C40207 /* ARKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ARKit.framework; path = System/Library/Frameworks/ARKit.framework; sourceTree = SDKROOT; };
 		2A9FB1A18314BE59ECB52E15 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
+		3111366AAA094728086AD5E8 /* MainGazeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainGazeScannerView.swift; sourceTree = "<group>"; };
 		38A98C675F624BB679668AA2 /* BubbleCalibrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BubbleCalibrationView.swift; sourceTree = "<group>"; };
+		448AD29ECC98B480318ECCA5 /* GazeSessionResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeSessionResultView.swift; sourceTree = "<group>"; };
 		55BEF992E92622FDFF45F7D7 /* LiquidGlassTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlassTheme.swift; sourceTree = "<group>"; };
 		9C2AE415C19877471ACD26E8 /* CoreMotion.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMotion.framework; path = System/Library/Frameworks/CoreMotion.framework; sourceTree = SDKROOT; };
 		A64D36BA92966A704E085F52 /* CaregiverDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaregiverDashboardView.swift; sourceTree = "<group>"; };
@@ -54,6 +58,8 @@
 			children = (
 				38A98C675F624BB679668AA2 /* BubbleCalibrationView.swift */,
 				A64D36BA92966A704E085F52 /* CaregiverDashboardView.swift */,
+				448AD29ECC98B480318ECCA5 /* GazeSessionResultView.swift */,
+				3111366AAA094728086AD5E8 /* MainGazeScannerView.swift */,
 				F880C59E682E0DE781F22B2F /* StimulusScreeningView.swift */,
 			);
 			path = Views;
@@ -185,7 +191,9 @@
 				A9AB6D6ED95D23E6CEF812AC /* AsdGazeApp.swift in Sources */,
 				B6B9DF0064AFF850D3948FD5 /* BubbleCalibrationView.swift in Sources */,
 				B91A3229B01879F4F75FA00F /* CaregiverDashboardView.swift in Sources */,
+				BAA4122DA672A103917B20C7 /* GazeSessionResultView.swift in Sources */,
 				097C3A01FD450EFF0EFD87D1 /* LiquidGlassTheme.swift in Sources */,
+				E06EBE7828B8F7C724BCA478 /* MainGazeScannerView.swift in Sources */,
 				6CED98840A9C31074CAF9360 /* StimulusScreeningView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

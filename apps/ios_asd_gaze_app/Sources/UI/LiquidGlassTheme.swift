@@ -142,6 +142,61 @@ public enum Localizer {
             "en": "Hold device 40-55 cm from child. Look at the bubble to pop it.",
             "ne": "उपकरण बच्चाबाट ४०-५५ सेमि टाढा राख्नुहोस्। फोका हेरेर फुटाउनुहोस्।",
             "hi": "उपकरण बच्चे से 40-55 सेमी दूर रखें। बुलबुले को देखकर फोड़ें।"
+        ],
+        "scanner_title": [
+            "en": "Interactive Gaze Session",
+            "ne": "अन्तर्क्रियात्मक दृष्टि सत्र",
+            "hi": "इंटरैक्टिव दृष्टि सत्र"
+        ],
+        "complete_observation": [
+            "en": "Complete Observation",
+            "ne": "अवलोकन सम्पन्न गर्नुहोस्",
+            "hi": "अवलोकन पूरा करें"
+        ],
+        "side_by_side": [
+            "en": "Side-by-Side",
+            "ne": "समानान्तर दृश्य",
+            "hi": "समानांतर दृश्य"
+        ],
+        "stimulus_only": [
+            "en": "Stimulus Only",
+            "ne": "सामग्री मात्र",
+            "hi": "केवल सामग्री"
+        ],
+        "pip_mode": [
+            "en": "Picture-in-Picture",
+            "ne": "तस्वीर भित्र तस्वीर",
+            "hi": "पिक्चर-इन-पिक्चर"
+        ],
+        "result_title": [
+            "en": "Observation Evidence Report",
+            "ne": "अवलोकन प्रमाण प्रतिवेदन",
+            "hi": "अवलोकन साक्ष्य रिपोर्ट"
+        ],
+        "biomarkers_title": [
+            "en": "Clinical Social Attention Biomarkers",
+            "ne": "क्लिनिकल सामाजिक ध्यान बायोमार्करहरू",
+            "hi": "क्लिनिकल सामाजिक ध्यान बायोमार्कर्स"
+        ],
+        "emotion_title": [
+            "en": "Facial Affect & Emotion Metrics",
+            "ne": "अनुहारको भाव र संवेग सूचकहरू",
+            "hi": "चेहरे का भाव और संवेग संकेतक"
+        ],
+        "export_researchkit": [
+            "en": "Export ResearchKit JSON",
+            "ne": "ResearchKit JSON निर्यात गर्नुहोस्",
+            "hi": "ResearchKit JSON निर्यात करें"
+        ],
+        "export_pdf": [
+            "en": "Export Clinical PDF",
+            "ne": "क्लिनिकल PDF निर्यात गर्नुहोस्",
+            "hi": "क्लिनिकल PDF निर्यात करें"
+        ],
+        "retake": [
+            "en": "Retake Observation",
+            "ne": "पुन: अवलोकन लिनुहोस्",
+            "hi": "पुनः अवलोकन लें"
         ]
     ]
 

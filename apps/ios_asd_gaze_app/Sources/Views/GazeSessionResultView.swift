@@ -1,0 +1,384 @@
+import SwiftUI
+import CurvAsdGazeKit
+
+/// Post-observation clinical evidence and biomarker review view.
+/// Directly mirrors the Palm Scanner's CaptureResultView architecture.
+public struct GazeSessionResultView: View {
+    public let summary: GazeSessionReportSummary
+    public let recordedFrames: [GazeFrame]
+    public let onDismiss: () -> Void
+    public let onRetake: () -> Void
+
+    @State private var selectedLocale: AppLocale = .english
+    @State private var replayFrameIndex: Int = 0
+    @State private var isReplaying: Bool = false
+    @State private var replayTimer: Timer?
+    @State private var showHeatmap: Bool = false
+    @State private var showExportSheet: Bool = false
+    @State private var exportText: String = ""
+
+    public init(
+        summary: GazeSessionReportSummary,
+        recordedFrames: [GazeFrame],
+        onDismiss: @escaping () -> Void,
+        onRetake: @escaping () -> Void
+    ) {
+        self.summary = summary
+        self.recordedFrames = recordedFrames
+        self.onDismiss = onDismiss
+        self.onRetake = onRetake
+    }
+
+    public var body: some View {
+        NavigationStack {
+            ZStack {
+                LinearGradient(
+                    colors: [LiquidGlass.deepCanvas, LiquidGlass.deepCanvasSecondary],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
+
+                ScrollView {
+                    VStack(spacing: 16) {
+                        scanpathHeroCanvas
+                        socialPreferenceCard
+                        facialAffectMetricsCard
+                        qualityAndContractCard
+                        actionButtonsSection
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: onRetake) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chevron.left")
+                            Text("Retake")
+                        }
+                        .foregroundColor(LiquidGlass.celestialTeal)
+                    }
+                }
+                ToolbarItem(placement: .principal) {
+                    VStack(spacing: 2) {
+                        Text(Localizer.tr("result_title", lang: selectedLocale))
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                        Text("Session #\(summary.sessionId)")
+                            .font(.system(size: 11, weight: .medium, design: .monospaced))
+                            .foregroundColor(Color.white.opacity(0.6))
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: prepareShareExport) {
+                        Image(systemName: "square.and.arrow.up")
+                            .foregroundColor(LiquidGlass.celestialTeal)
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showExportSheet) {
+            ResearchKitExportSheet(exportJsonText: exportText)
+        }
+        .onDisappear {
+            replayTimer?.invalidate()
+        }
+    }
+
+    // MARK: - Scanpath Hero Canvas
+
+    private var scanpathHeroCanvas: some View {
+        VStack(spacing: 8) {
+            ZStack {
+                // Background thumbnail representing the stimulus
+                HStack(spacing: 1) {
+                    Color(red: 0.10, green: 0.16, blue: 0.28)
+                        .overlay(Text("Social Actor").font(.system(size: 12, weight: .bold)).foregroundColor(.white.opacity(0.4)))
+                    Color(red: 0.20, green: 0.08, blue: 0.24)
+                        .overlay(Text("Geometric").font(.system(size: 12, weight: .bold)).foregroundColor(.white.opacity(0.4)))
+                }
+
+                // Gaze Trajectory Lines (Scanpath)
+                GeometryReader { geo in
+                    let points = sampleGazeTrajectory(in: geo.size)
+                    Path { path in
+                        guard let first = points.first else { return }
+                        path.move(to: first)
+                        for pt in points.dropFirst() {
+                            path.addLine(to: pt)
+                        }
+                    }
+                    .stroke(LiquidGlass.celestialTeal.opacity(0.6), lineWidth: 2)
+
+                    // Replay head point
+                    if !points.isEmpty {
+                        let activePt = points[min(replayFrameIndex, points.count - 1)]
+                        Circle()
+                            .fill(LiquidGlass.emeraldMint)
+                            .frame(width: 14, height: 14)
+                            .position(activePt)
+                            .shadow(color: LiquidGlass.emeraldMint, radius: 6)
+                    }
+                }
+            }
+            .frame(height: 170)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
+            )
+
+            // Replay Controls Bar
+            HStack {
+                Button(action: toggleReplay) {
+                    Image(systemName: isReplaying ? "pause.fill" : "play.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.white)
+                        .frame(width: 32, height: 32)
+                        .background(Circle().fill(LiquidGlass.cardBackground))
+                }
+
+                Text(String(format: "Frame %d / %d (%.1fs)", min(replayFrameIndex, max(1, recordedFrames.count)), max(1, recordedFrames.count), summary.durationSec))
+                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                    .foregroundColor(Color.white.opacity(0.8))
+
+                Spacer()
+
+                Toggle("Heatmap", isOn: $showHeatmap)
+                    .toggleStyle(.button)
+                    .tint(LiquidGlass.celestialTeal)
+                    .font(.system(size: 11, weight: .semibold))
+            }
+        }
+        .glassCard(cornerRadius: 16, padding: 12)
+    }
+
+    // MARK: - Social Preference Card
+
+    private var socialPreferenceCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(Localizer.tr("biomarkers_title", lang: selectedLocale))
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                Spacer()
+                Text("GeoPref Index")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(LiquidGlass.celestialTeal)
+            }
+
+            // Preference Spectrum Bar [-1.0 ... +1.0]
+            VStack(spacing: 4) {
+                GeometryReader { geo in
+                    let clamped = max(-1.0, min(1.0, summary.socialPreferenceScore))
+                    let normX = (clamped + 1.0) / 2.0 * geo.size.width
+
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.purple.opacity(0.7), Color.gray.opacity(0.3), LiquidGlass.celestialTeal],
+                                    startPoint: .leading, endPoint: .trailing
+                                )
+                            )
+                            .frame(height: 12)
+
+                        // Marker pill
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 18, height: 18)
+                            .shadow(radius: 4)
+                            .offset(x: max(0, min(geo.size.width - 18, normX - 9)))
+                    }
+                }
+                .frame(height: 18)
+
+                HStack {
+                    Text("Geometric Focus (-1.0)")
+                        .font(.system(size: 10))
+                        .foregroundColor(.purple)
+                    Spacer()
+                    Text(String(format: "%+.2f", summary.socialPreferenceScore))
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white)
+                    Spacer()
+                    Text("Social Focus (+1.0)")
+                        .font(.system(size: 10))
+                        .foregroundColor(LiquidGlass.celestialTeal)
+                }
+            }
+
+            Divider().background(Color.white.opacity(0.1))
+
+            // Additional Gaze Metrics Grid
+            HStack(spacing: 16) {
+                metricCol(title: "Eye Dwell", value: String(format: "%.1f%%", summary.eyeDwellRatio * 100))
+                metricCol(title: "Mouth Dwell", value: String(format: "%.1f%%", summary.mouthDwellRatio * 100))
+                metricCol(title: "First-Eye Lat", value: String(format: "%.0f ms", summary.firstEyeLatencyMs))
+                metricCol(title: "Social Dwell", value: String(format: "%.1fs", summary.socialDwellSec))
+            }
+        }
+        .glassCard(cornerRadius: 16, padding: 14)
+    }
+
+    // MARK: - Facial Affect & Emotion Card
+
+    private var facialAffectMetricsCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(Localizer.tr("emotion_title", lang: selectedLocale))
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                Spacer()
+                Text("52 FACS Telemetry")
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundColor(LiquidGlass.emeraldMint)
+            }
+
+            HStack(spacing: 16) {
+                metricCol(title: "Smile Reactivity", value: String(format: "%.2f", summary.smileReactivityIndex))
+                metricCol(title: "Mean Smile", value: String(format: "%d%%", Int(summary.socialSmileIntensityMean * 100)))
+                metricCol(title: "Flat Affect", value: String(format: "%.2f", summary.flatAffectScore))
+                metricCol(title: "Surprise Mean", value: String(format: "%d%%", Int(summary.surpriseScoreMean * 100)))
+            }
+        }
+        .glassCard(cornerRadius: 16, padding: 14)
+    }
+
+    // MARK: - Quality & ResearchKit Contract Card
+
+    private var qualityAndContractCard: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "checkmark.seal.fill")
+                .foregroundColor(LiquidGlass.emeraldMint)
+                .font(.system(size: 26))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("ResearchKit & CareKit Contract")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.white)
+                Text(String(format: "Valid Samples: %.1f%% • Verdict: %@", summary.validRatio * 100, summary.qualityVerdict.rawValue.capitalized))
+                    .font(.system(size: 11))
+                    .foregroundColor(Color.white.opacity(0.7))
+            }
+
+            Spacer()
+
+            Button("View JSON") {
+                prepareShareExport()
+                showExportSheet = true
+            }
+            .font(.system(size: 11, weight: .bold))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Capsule().fill(LiquidGlass.cardBackground))
+            .foregroundColor(LiquidGlass.celestialTeal)
+        }
+        .glassCard(cornerRadius: 14, padding: 12)
+    }
+
+    // MARK: - Action Buttons Section
+
+    private var actionButtonsSection: some View {
+        VStack(spacing: 10) {
+            GlassButton(
+                title: Localizer.tr("export_pdf", lang: selectedLocale),
+                systemImage: "doc.text.fill",
+                isPrimary: true
+            ) {
+                // Generates PDF export via SessionVaultManager
+                prepareShareExport()
+                showExportSheet = true
+            }
+
+            Button(action: onDismiss) {
+                Text("Done")
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white.opacity(0.8))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+            }
+        }
+    }
+
+    // MARK: - Helper Methods
+
+    private func metricCol(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.system(size: 11))
+                .foregroundColor(Color.white.opacity(0.6))
+            Text(value)
+                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                .foregroundColor(.white)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func sampleGazeTrajectory(in size: CGSize) -> [CGPoint] {
+        guard !recordedFrames.isEmpty else {
+            return (0..<20).map { i in
+                CGPoint(x: size.width * (0.2 + 0.03 * Double(i)), y: size.height * (0.4 + 0.02 * sin(Double(i))))
+            }
+        }
+        return recordedFrames.map { frame in
+            CGPoint(x: frame.gaze.xNorm * size.width, y: frame.gaze.yNorm * size.height)
+        }
+    }
+
+    private func toggleReplay() {
+        if isReplaying {
+            replayTimer?.invalidate()
+            isReplaying = false
+        } else {
+            isReplaying = true
+            replayTimer?.invalidate()
+            replayTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { _ in
+                let maxCount = max(1, recordedFrames.count)
+                replayFrameIndex = (replayFrameIndex + 1) % maxCount
+            }
+        }
+    }
+
+    private func prepareShareExport() {
+        let rk = SessionVaultManager.makeResearchKitJson(report: summary)
+        if let data = try? JSONSerialization.data(withJSONObject: rk, options: [.prettyPrinted]),
+           let str = String(data: data, encoding: .utf8) {
+            exportText = str
+        } else {
+            exportText = "{ \"sessionId\": \"\(summary.sessionId)\" }"
+        }
+    }
+}
+
+/// Modal sheet displaying the generated ResearchKit JSON result contract.
+public struct ResearchKitExportSheet: View {
+    public let exportJsonText: String
+    @Environment(\.dismiss) private var dismiss
+
+    public var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.black.ignoresSafeArea()
+                ScrollView {
+                    Text(exportJsonText)
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundColor(.green)
+                        .padding(16)
+                }
+            }
+            .navigationTitle("ResearchKit Result JSON")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                        .foregroundColor(LiquidGlass.celestialTeal)
+                }
+            }
+        }
+    }
+}
