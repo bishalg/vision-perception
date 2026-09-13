@@ -61,4 +61,27 @@ final class OneEuroFilterTests: XCTestCase {
         let val = filter.filter(value: 0.0, timestamp: 2.0)
         XCTAssertEqual(val, 0.0, accuracy: 1e-6)
     }
+
+    func testConcurrentFilterAndResetThreadSafety() {
+        let filter2D = OneEuroFilter2D(minCutoff: 1.2, beta: 0.015, dCutoff: 1.0)
+        let queue = DispatchQueue(label: "org.curv.test.concurrent", attributes: .concurrent)
+        let group = DispatchGroup()
+
+        // 100 concurrent read/write and reset calls across threads
+        for i in 0..<100 {
+            group.enter()
+            queue.async {
+                let t = Double(i) * 0.016
+                let pt = CGPoint(x: 0.5 + Double(i % 10) * 0.01, y: 0.5)
+                _ = filter2D.filter(point: pt, timestamp: t)
+                if i % 25 == 0 {
+                    filter2D.reset()
+                }
+                group.leave()
+            }
+        }
+
+        let result = group.wait(timeout: .now() + 2.0)
+        XCTAssertEqual(result, .success, "Concurrent filtering and resetting should complete without deadlock or crash")
+    }
 }

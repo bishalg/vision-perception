@@ -101,6 +101,9 @@ public struct BubbleCalibrationView: View {
     /// One robust (median) raw point per completed target, in target order —
     /// fit against `targetPoints` once all 5 are collected.
     @State private var fittedRawPoints: [CGPoint] = []
+    /// Estimated personal eye-offset bias established from Target 0 (Center),
+    /// used to accurately verify intentional saccades toward corner targets.
+    @State private var estimatedBias: CGPoint? = nil
 
     public let onCalibrationComplete: () -> Void
     public var onClose: (() -> Void)?
@@ -502,6 +505,7 @@ public struct BubbleCalibrationView: View {
         trackingDropoutFrames = 0
         collectedRawSamples = []
         fittedRawPoints = []
+        estimatedBias = nil
         isPopping = false
         isLockedOnTarget = false
 
@@ -538,19 +542,25 @@ public struct BubbleCalibrationView: View {
         smoothedGaze = controller.currentRawGazePoint
 
         let target = targetPoints[currentTargetIndex]
-        let targetPt = CGPoint(
-            x: target.x * currentScreenSize.width,
-            y: target.y * currentScreenSize.height
+        // Apply Target 0 personal eye-offset bias for subsequent targets
+        let bias = estimatedBias ?? .zero
+        let expectedNormX = max(0.08, min(0.92, target.x + (currentTargetIndex > 0 ? bias.x : 0.0)))
+        let expectedNormY = max(0.08, min(0.92, target.y + (currentTargetIndex > 0 ? bias.y : 0.0)))
+
+        let expectedPt = CGPoint(
+            x: expectedNormX * currentScreenSize.width,
+            y: expectedNormY * currentScreenSize.height
         )
         let gazePt = CGPoint(
             x: smoothedGaze.x * currentScreenSize.width,
             y: smoothedGaze.y * currentScreenSize.height
         )
-        let distancePoints = hypot(gazePt.x - targetPt.x, gazePt.y - targetPt.y)
+        let distancePoints = hypot(gazePt.x - expectedPt.x, gazePt.y - expectedPt.y)
 
-        // Lock condition: Face is tracked, eyes are open/tracking, and gaze is within generous proximity of the balloon
+        // Lock condition: Face is tracked, eyes are open/tracking, and gaze is directed toward target
         let hasFaceAndEyes = controller.trackingStage.hasFace && controller.trackingStage.hasEyes
-        let isLookingAtTarget = distancePoints < softFeedbackRadiusPoints || controller.isSimulationMode
+        let targetRadius = currentTargetIndex == 0 ? 220.0 : softFeedbackRadiusPoints
+        let isLookingAtTarget = distancePoints < targetRadius || controller.isSimulationMode
         isLockedOnTarget = hasFaceAndEyes && isLookingAtTarget
 
         if isLockedOnTarget {
@@ -610,6 +620,14 @@ public struct BubbleCalibrationView: View {
         // poisons the fit with garbage or crashes it with an empty array.
         let finalizedRaw = medianPoint(collectedRawSamples) ?? targetPoints[currentTargetIndex]
         fittedRawPoints.append(finalizedRaw)
+
+        // Learn personal anatomical offset bias from Target 0 (Center)
+        if currentTargetIndex == 0 {
+            estimatedBias = CGPoint(
+                x: finalizedRaw.x - targetPoints[0].x,
+                y: finalizedRaw.y - targetPoints[0].y
+            )
+        }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.38) {
             isPopping = false

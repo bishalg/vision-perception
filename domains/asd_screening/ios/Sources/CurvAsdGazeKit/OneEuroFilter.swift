@@ -25,6 +25,7 @@ public final class OneEuroFilter: @unchecked Sendable {
     private var xFilt: LowPassFilter
     private var dxFilt: LowPassFilter
     private var lastTimestamp: Double?
+    private let lock = NSLock()
 
     /// - Parameters:
     ///   - minCutoff: Minimum cutoff frequency in Hz. Default 1.2 Hz balances jitter vs responsiveness.
@@ -44,6 +45,9 @@ public final class OneEuroFilter: @unchecked Sendable {
     ///   - timestamp: Wall-clock timestamp in seconds (e.g. from `CACurrentMediaTime()`).
     /// - Returns: The filtered value.
     public func filter(value: Double, timestamp: Double) -> Double {
+        lock.lock()
+        defer { lock.unlock() }
+
         let dt: Double
         if let last = lastTimestamp {
             dt = max(timestamp - last, 1.0 / 240.0) // clamp to prevent dt=0 spikes
@@ -63,6 +67,9 @@ public final class OneEuroFilter: @unchecked Sendable {
 
     /// Resets the filter state (call when switching to a new tracking session).
     public func reset() {
+        lock.lock()
+        defer { lock.unlock() }
+
         xFilt = LowPassFilter(alpha: 1.0)
         dxFilt = LowPassFilter(alpha: 1.0)
         lastTimestamp = nil

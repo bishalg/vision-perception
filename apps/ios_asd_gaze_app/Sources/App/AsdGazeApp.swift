@@ -11,7 +11,11 @@ struct AsdGazeApp: App {
             ZStack {
                 TabView(selection: $selectedTab) {
                     CaregiverDashboardView {
-                        selectedTab = 1
+                        if GazeCalibrationStore.load().isCalibrated {
+                            selectedTab = 1
+                        } else {
+                            selectedTab = 2
+                        }
                     }
                     .tabItem {
                         Label(Localizer.tr("tab_dashboard"), systemImage: "chart.line.uptrend.xyaxis")

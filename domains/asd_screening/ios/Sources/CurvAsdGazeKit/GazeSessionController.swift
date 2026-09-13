@@ -385,9 +385,12 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
             self.recordedFrames.append(frame)
         }
 
+        let smoothedGaze = gazeFilter.filter(point: gazePoint, timestamp: timeSec)
+        let smoothedRaw = rawGazeFilter.filter(point: gazePoint, timestamp: timeSec)
+
         let updateUI = {
-            self.currentGazePoint = gazePoint
-            self.currentRawGazePoint = gazePoint
+            self.currentGazePoint = smoothedGaze
+            self.currentRawGazePoint = smoothedRaw
             self.currentDistanceCm = sample.distanceToScreenCm
             self.currentQuality = eval
             self.currentAffect = affect

@@ -173,4 +173,31 @@ final class ScreenRaycasterTests: XCTestCase {
         XCTAssertEqual(result.normalizedPoint.x, 0.22, accuracy: 0.02)
         XCTAssertEqual(result.normalizedPoint.y, 0.24, accuracy: 0.02)
     }
+
+    func testReverseRaycastIsRejectedAsOutOfBounds() {
+        let raycaster = ScreenRaycaster(
+            screenWidthPoints: 393.0,
+            screenHeightPoints: 852.0,
+            screenWidthMeters: 0.0715,
+            screenHeightMeters: 0.154
+        )
+
+        var faceTransform = matrix_identity_float4x4
+        faceTransform.columns.0 = simd_float4(-1, 0, 0, 0)
+        faceTransform.columns.1 = simd_float4(0, 1, 0, 0)
+        faceTransform.columns.2 = simd_float4(0, 0, -1, 0)
+        // Face is in front of screen (Z = -0.45m)
+        faceTransform.columns.3 = simd_float4(0.0, -0.099, -0.45, 1.0)
+
+        // lookAtPoint pointing backwards (behind the head, towards -Z in camera space, away from Z=0 screen)
+        // targetCam.z < eyeOriginCam.z, so ray direction points away from screen (t < 0)
+        let lookAtBackwards = simd_float3(0.0, 0.0, 1.0) // In face local space, +Z is behind when columns.2.z = -1
+        let result = raycaster.projectGazeToScreen(
+            faceTransform: faceTransform,
+            lookAtPoint: lookAtBackwards
+        )
+
+        // When ray direction is pointing backwards away from the screen, it must not be considered within screen
+        XCTAssertFalse(result.isWithinScreen)
+    }
 }
