@@ -17,10 +17,19 @@ public struct CaptureResultView: View {
     public let selectedLanguage: AppLanguage
     public let overlaySource: CreaseOverlaySource
     public let handSide: HandSide
+    public let padDepths: [String: Float]
     public let onDismiss: () -> Void
     public let onRetake: () -> Void
     public let onProceedToAnalysis: () -> Void
 
+    public enum ResultInspectorTab: String, CaseIterable, Identifiable {
+        case creases = "2D Creases"
+        case topography = "3D Topography"
+        case anthropometry = "Anthropometry"
+        public var id: String { rawValue }
+    }
+
+    @State private var selectedTab: ResultInspectorTab = .creases
     @State private var showEditor: Bool = false
     @State private var selectedSplineId: String?
 
@@ -31,6 +40,7 @@ public struct CaptureResultView: View {
         selectedLanguage: AppLanguage = .english,
         overlaySource: CreaseOverlaySource = .landmarkFallback,
         handSide: HandSide = .right,
+        padDepths: [String: Float] = [:],
         onLanguageChange: ((AppLanguage) -> Void)? = nil,
         onConfirmAdjustedLines: (() -> Void)? = nil,
         onDismiss: @escaping () -> Void = {},
@@ -43,6 +53,7 @@ public struct CaptureResultView: View {
         self.selectedLanguage = selectedLanguage
         self.overlaySource = overlaySource
         self.handSide = handSide
+        self.padDepths = padDepths
         self.onDismiss = onDismiss
         self.onRetake = onRetake
         self.onProceedToAnalysis = {
@@ -63,29 +74,57 @@ public struct CaptureResultView: View {
     public var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Captured Image and Detected Creases Canvas
-                photoCanvas
+                Picker("Inspector Mode", selection: $selectedTab) {
+                    ForEach(ResultInspectorTab.allCases) { tab in
+                        Text(tab.rawValue).tag(tab)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color.black.opacity(0.85))
 
-                // Detected lines as a native list
-                List {
-                    Section(
-                        String(
-                            format: LocalizedStrings.tr("result.detectedCreases", lang: selectedLanguage),
-                            splines.count
-                        )
-                    ) {
-                        ForEach(splines) { spline in
-                            Button {
-                                selectedSplineId = spline.id
-                                showEditor = true
-                            } label: {
-                                lineRow(spline)
+                switch selectedTab {
+                case .creases:
+                    // Captured Image and Detected Creases Canvas
+                    photoCanvas
+
+                    // Detected lines as a native list
+                    List {
+                        Section(
+                            String(
+                                format: LocalizedStrings.tr("result.detectedCreases", lang: selectedLanguage),
+                                splines.count
+                            )
+                        ) {
+                            ForEach(splines) { spline in
+                                Button {
+                                    selectedSplineId = spline.id
+                                    showEditor = true
+                                } label: {
+                                    lineRow(spline)
+                                }
                             }
                         }
                     }
+                    .listStyle(.insetGrouped)
+                    .scrollContentBackground(.hidden)
+
+                case .topography:
+                    HandMeshInspectorView(
+                        landmarks: landmarks,
+                        padDepths: padDepths,
+                        referencePalmWidthMm: 80.0
+                    )
+
+                case .anthropometry:
+                    AnthropometrySummaryView(
+                        landmarks: landmarks,
+                        padDepths: padDepths,
+                        referencePalmWidthMm: 80.0,
+                        handSide: handSide
+                    )
                 }
-                .listStyle(.insetGrouped)
-                .scrollContentBackground(.hidden)
             }
             .background(Color.black.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
@@ -109,13 +148,15 @@ public struct CaptureResultView: View {
                     .foregroundStyle(.white)
                 }
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        if selectedSplineId == nil {
-                            selectedSplineId = splines.first?.id
+                    if selectedTab == .creases {
+                        Button {
+                            if selectedSplineId == nil {
+                                selectedSplineId = splines.first?.id
+                            }
+                            showEditor = true
+                        } label: {
+                            Label(LocalizedStrings.tr("result.edit", lang: selectedLanguage), systemImage: "slider.horizontal.3")
                         }
-                        showEditor = true
-                    } label: {
-                        Label(LocalizedStrings.tr("result.edit", lang: selectedLanguage), systemImage: "slider.horizontal.3")
                     }
                 }
             }

@@ -253,6 +253,7 @@ public struct MainScannerView: View {
                         selectedLanguage: viewModel.currentLanguage,
                         overlaySource: viewModel.overlaySource,
                         handSide: viewModel.selectedHandSide == .auto ? viewModel.detectedHandSide : viewModel.selectedHandSide,
+                        padDepths: viewModel.padDepths,
                         onConfirmAdjustedLines: { viewModel.confirmAdjustedLinesForPrediction() },
                         onDismiss: { viewModel.dismissResultViewer() },
                         onRetake: { viewModel.retake() },

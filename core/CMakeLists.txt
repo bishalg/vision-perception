@@ -18,6 +18,8 @@ add_library(curv_core STATIC
     src/geometry/CurveChunker.cpp
     src/pattern/MicroPatternDetector.cpp
     src/surface/SurfaceRelief.cpp
+    src/geometry/HandAnthropometry.cpp
+    src/surface/HandMeshGenerator.cpp
     src/temporal/OculomotorClassifier.cpp
     src/temporal/DynamicTimeWarping.cpp
 )

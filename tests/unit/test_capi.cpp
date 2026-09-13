@@ -173,3 +173,49 @@ TEST(CapiTest, QualityGateRejectionReturnsStatus) {
     curv_frame_destroy(black_frame);
     curv_pipeline_destroy(pipeline);
 }
+
+TEST(CapiTest, AnthropometryAndMeshJson) {
+    // 21 synthetic normalized landmarks
+    const float lms[42] = {
+        0.50f, 0.85f, // 0: Wrist
+        0.38f, 0.70f, 0.30f, 0.58f, 0.25f, 0.48f, 0.22f, 0.40f, // 1-4: Thumb
+        0.42f, 0.52f, 0.40f, 0.38f, 0.39f, 0.28f, 0.38f, 0.20f, // 5-8: Index
+        0.50f, 0.50f, 0.50f, 0.35f, 0.50f, 0.24f, 0.50f, 0.15f, // 9-12: Middle
+        0.58f, 0.52f, 0.60f, 0.38f, 0.61f, 0.28f, 0.62f, 0.21f, // 13-16: Ring
+        0.66f, 0.56f, 0.69f, 0.46f, 0.71f, 0.38f, 0.72f, 0.31f  // 17-20: Pinky
+    };
+
+    // Invalid arguments
+    std::vector<char> buf(4096, 0);
+    EXPECT_EQ(curv_compute_hand_anthropometry_json(nullptr, 80.0f, nullptr, "auto", buf.data(), static_cast<int>(buf.size())),
+              CURV_STATUS_INVALID_ARGUMENT);
+    EXPECT_EQ(curv_generate_hand_mesh_json(nullptr, 80.0f, nullptr, buf.data(), static_cast<int>(buf.size())),
+              CURV_STATUS_INVALID_ARGUMENT);
+
+    // Buffer too small
+    std::vector<char> tiny_buf(10, 0);
+    EXPECT_EQ(curv_compute_hand_anthropometry_json(lms, 80.0f, "{}", "auto", tiny_buf.data(), static_cast<int>(tiny_buf.size())),
+              CURV_STATUS_BUFFER_TOO_SMALL);
+    EXPECT_EQ(curv_generate_hand_mesh_json(lms, 80.0f, "{}", tiny_buf.data(), static_cast<int>(tiny_buf.size())),
+              CURV_STATUS_BUFFER_TOO_SMALL);
+
+    // Successful anthropometry computation
+    std::vector<char> anthro_buf(16384, 0);
+    int status = curv_compute_hand_anthropometry_json(lms, 80.0f, "{\"thenar\": 2.5}", "right", anthro_buf.data(), static_cast<int>(anthro_buf.size()));
+    EXPECT_EQ(status, CURV_STATUS_SUCCESS);
+    auto anthro_json = nlohmann::json::parse(anthro_buf.data());
+    EXPECT_TRUE(anthro_json.contains("anthropometry"));
+    EXPECT_TRUE(anthro_json["anthropometry"].contains("ratios"));
+    EXPECT_TRUE(anthro_json["anthropometry"]["ratios"].contains("ratio_2d_4d"));
+    EXPECT_GT(anthro_json["anthropometry"]["ratios"]["ratio_2d_4d"].get<float>(), 0.0f);
+
+    // Successful mesh generation
+    std::vector<char> mesh_buf(32768, 0);
+    status = curv_generate_hand_mesh_json(lms, 80.0f, "{\"thenar\": 2.5}", mesh_buf.data(), static_cast<int>(mesh_buf.size()));
+    EXPECT_EQ(status, CURV_STATUS_SUCCESS);
+    auto mesh_json = nlohmann::json::parse(mesh_buf.data());
+    EXPECT_TRUE(mesh_json.contains("mesh"));
+    EXPECT_TRUE(mesh_json["mesh"].contains("vertices"));
+    EXPECT_TRUE(mesh_json["mesh"].contains("triangles"));
+    EXPECT_FALSE(mesh_json["mesh"]["triangles"].empty());
+}

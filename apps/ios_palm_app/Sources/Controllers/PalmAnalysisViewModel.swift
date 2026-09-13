@@ -41,6 +41,16 @@ public final class PalmAnalysisViewModel: ObservableObject {
     @Published public var detectedLandmarks: [CGPoint] = []
     @Published public var isAnalyzing: Bool = false
     @Published public var analysisResult: PalmAnalysisResponse?
+    public var padDepths: [String: Float] {
+        guard let mounts = analysisResult?.domainPayload?.mountRelief?.mounts else { return [:] }
+        var dict: [String: Float] = [:]
+        for m in mounts {
+            if let h = m.heightMm {
+                dict[m.mount] = h
+            }
+        }
+        return dict
+    }
     @Published public var detectedSplines: [CreaseSpline] = []
     @Published public var captureLandmarks: [CGPoint] = []
     @Published public var capturedImage: UIImage?

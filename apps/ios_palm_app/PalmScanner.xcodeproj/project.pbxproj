@@ -10,8 +10,7 @@
 		013263D9291F35C85AD9DCF0 /* CurvPalmOverlay in Frameworks */ = {isa = PBXBuildFile; productRef = 113726120F45BD905558E862 /* CurvPalmOverlay */; };
 		05569F052965F655D5406FF6 /* palm_strings.json in Resources */ = {isa = PBXBuildFile; fileRef = 555E3F877521B427842A4A2B /* palm_strings.json */; };
 		0E45A1E86E0616E6E2EB55F5 /* PalmAnalysisViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EEB0B15D07944D8BF3F476 /* PalmAnalysisViewModel.swift */; };
-		A1B2C3D4E5F60718293A4B5C /* PalmAnalysisViewModel+ScanModes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5061728394A5B6C /* PalmAnalysisViewModel+ScanModes.swift */; };
-		C2D3E4F5061728394A5B6C7D /* PalmScanMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3E4F5061728394A5B6C7D8E /* PalmScanMode.swift */; };
+		1B9C78D03B5351E6714CD1D3 /* PalmAnalysisViewModel+ScanModes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A03EBBB2AC7DB9E5A7CE30B0 /* PalmAnalysisViewModel+ScanModes.swift */; };
 		1F99542221C6EC9D2FA8DFEB /* CurvApple in Frameworks */ = {isa = PBXBuildFile; productRef = F18F74289D90C3B2B20870A4 /* CurvApple */; };
 		211E544517E4DA7197D89A57 /* CreaseSplineOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAA47A720FDE5572D1646BB0 /* CreaseSplineOverlayView.swift */; };
 		3DD481C80F5E54A2159F6F71 /* CurvCameraOverlay in Frameworks */ = {isa = PBXBuildFile; productRef = 97DE29EADC336D7513109EEF /* CurvCameraOverlay */; };
@@ -20,10 +19,13 @@
 		5DD6C50AB3DA1C7EBD4D2229 /* SimplePalmReading.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9E94BB9812BD62ECC5AEA84 /* SimplePalmReading.swift */; };
 		5F8BAFE30DEEDFD5748EB23B /* MagnifyingLoupeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C23CA9724D524227313ED0E7 /* MagnifyingLoupeView.swift */; };
 		64FDF94E7DE4A78348DA5047 /* VisionHandTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 248332063F7DC8A9DEB48F43 /* VisionHandTracker.swift */; };
+		656544DCB94DC7CBF8BC1F98 /* HandMeshInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6C3E4709BD9134875DA06C6 /* HandMeshInspectorView.swift */; };
 		76831FC29FD19F7585D57F80 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7582DE41A497B9558689A2EB /* Assets.xcassets */; };
 		8B49F3CC8F5767FCEE42BAC5 /* CreaseLineEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B9D77E26C37D4EE2A1F5EA5 /* CreaseLineEditorView.swift */; };
 		A037D806C935758987425DE6 /* LocalizedStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B4263A45D6BB454A8D1C5E3 /* LocalizedStrings.swift */; };
+		B9F594EA89680D3EFA65367E /* AnthropometrySummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74A74330413E534E086083C2 /* AnthropometrySummaryView.swift */; };
 		BE3309BBEB88214FB7035EBA /* PalmAnalysisResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD8FE6C0095809F7C6C5E47 /* PalmAnalysisResult.swift */; };
+		CA0C2DB05412425D4D39068F /* PalmScanMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 965F043BA733BE1060A72219 /* PalmScanMode.swift */; };
 		D76B8272311635E1310BDF7A /* PalmScannerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BB3A3841F3F59CF9472772D /* PalmScannerApp.swift */; };
 		EEBE745EFB90024885C691DC /* SamudrikaReadingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B79D06FF501468AED80497B /* SamudrikaReadingSheet.swift */; };
 		EF5D298BE06A29AA1FA0CBBB /* ImageCoordinateMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FC54A6BE9238CDDF01888E1 /* ImageCoordinateMapper.swift */; };
@@ -32,8 +34,6 @@
 /* Begin PBXFileReference section */
 		04145BAF5F6DF10A65698C9A /* CaptureResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureResultView.swift; sourceTree = "<group>"; };
 		06EEB0B15D07944D8BF3F476 /* PalmAnalysisViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalmAnalysisViewModel.swift; sourceTree = "<group>"; };
-		B1C2D3E4F5061728394A5B6C /* PalmAnalysisViewModel+ScanModes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PalmAnalysisViewModel+ScanModes.swift"; sourceTree = "<group>"; };
-		D3E4F5061728394A5B6C7D8E /* PalmScanMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalmScanMode.swift; sourceTree = "<group>"; };
 		21604D61D994310C2854427F /* apple */ = {isa = PBXFileReference; lastKnownFileType = folder; name = apple; path = ../../adapters/apple; sourceTree = SOURCE_ROOT; };
 		23380A94031934043F119E2F /* MainScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainScannerView.swift; sourceTree = "<group>"; };
 		248332063F7DC8A9DEB48F43 /* VisionHandTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionHandTracker.swift; sourceTree = "<group>"; };
@@ -45,9 +45,13 @@
 		5BB3A3841F3F59CF9472772D /* PalmScannerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalmScannerApp.swift; sourceTree = "<group>"; };
 		5FC54A6BE9238CDDF01888E1 /* ImageCoordinateMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCoordinateMapper.swift; sourceTree = "<group>"; };
 		6B4263A45D6BB454A8D1C5E3 /* LocalizedStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizedStrings.swift; sourceTree = "<group>"; };
+		74A74330413E534E086083C2 /* AnthropometrySummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnthropometrySummaryView.swift; sourceTree = "<group>"; };
 		7582DE41A497B9558689A2EB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8B79D06FF501468AED80497B /* SamudrikaReadingSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SamudrikaReadingSheet.swift; sourceTree = "<group>"; };
+		965F043BA733BE1060A72219 /* PalmScanMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalmScanMode.swift; sourceTree = "<group>"; };
+		A03EBBB2AC7DB9E5A7CE30B0 /* PalmAnalysisViewModel+ScanModes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PalmAnalysisViewModel+ScanModes.swift"; sourceTree = "<group>"; };
 		C23CA9724D524227313ED0E7 /* MagnifyingLoupeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnifyingLoupeView.swift; sourceTree = "<group>"; };
+		E6C3E4709BD9134875DA06C6 /* HandMeshInspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandMeshInspectorView.swift; sourceTree = "<group>"; };
 		E9E94BB9812BD62ECC5AEA84 /* SimplePalmReading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimplePalmReading.swift; sourceTree = "<group>"; };
 		FAA47A720FDE5572D1646BB0 /* CreaseSplineOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreaseSplineOverlayView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -114,7 +118,7 @@
 			children = (
 				6B4263A45D6BB454A8D1C5E3 /* LocalizedStrings.swift */,
 				3CD8FE6C0095809F7C6C5E47 /* PalmAnalysisResult.swift */,
-				D3E4F5061728394A5B6C7D8E /* PalmScanMode.swift */,
+				965F043BA733BE1060A72219 /* PalmScanMode.swift */,
 				E9E94BB9812BD62ECC5AEA84 /* SimplePalmReading.swift */,
 			);
 			path = Models;
@@ -140,9 +144,11 @@
 		C3D629DF27816546537E8598 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				74A74330413E534E086083C2 /* AnthropometrySummaryView.swift */,
 				04145BAF5F6DF10A65698C9A /* CaptureResultView.swift */,
 				3B9D77E26C37D4EE2A1F5EA5 /* CreaseLineEditorView.swift */,
 				FAA47A720FDE5572D1646BB0 /* CreaseSplineOverlayView.swift */,
+				E6C3E4709BD9134875DA06C6 /* HandMeshInspectorView.swift */,
 				5FC54A6BE9238CDDF01888E1 /* ImageCoordinateMapper.swift */,
 				C23CA9724D524227313ED0E7 /* MagnifyingLoupeView.swift */,
 				23380A94031934043F119E2F /* MainScannerView.swift */,
@@ -163,7 +169,7 @@
 			isa = PBXGroup;
 			children = (
 				06EEB0B15D07944D8BF3F476 /* PalmAnalysisViewModel.swift */,
-				B1C2D3E4F5061728394A5B6C /* PalmAnalysisViewModel+ScanModes.swift */,
+				A03EBBB2AC7DB9E5A7CE30B0 /* PalmAnalysisViewModel+ScanModes.swift */,
 				248332063F7DC8A9DEB48F43 /* VisionHandTracker.swift */,
 			);
 			path = Controllers;
@@ -292,17 +298,19 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B9F594EA89680D3EFA65367E /* AnthropometrySummaryView.swift in Sources */,
 				4C266A227BD5EEF084A180FF /* CaptureResultView.swift in Sources */,
 				8B49F3CC8F5767FCEE42BAC5 /* CreaseLineEditorView.swift in Sources */,
 				211E544517E4DA7197D89A57 /* CreaseSplineOverlayView.swift in Sources */,
+				656544DCB94DC7CBF8BC1F98 /* HandMeshInspectorView.swift in Sources */,
 				EF5D298BE06A29AA1FA0CBBB /* ImageCoordinateMapper.swift in Sources */,
 				A037D806C935758987425DE6 /* LocalizedStrings.swift in Sources */,
 				5F8BAFE30DEEDFD5748EB23B /* MagnifyingLoupeView.swift in Sources */,
 				58A086084D286C34069060F5 /* MainScannerView.swift in Sources */,
 				BE3309BBEB88214FB7035EBA /* PalmAnalysisResult.swift in Sources */,
+				1B9C78D03B5351E6714CD1D3 /* PalmAnalysisViewModel+ScanModes.swift in Sources */,
 				0E45A1E86E0616E6E2EB55F5 /* PalmAnalysisViewModel.swift in Sources */,
-				A1B2C3D4E5F60718293A4B5C /* PalmAnalysisViewModel+ScanModes.swift in Sources */,
-				C2D3E4F5061728394A5B6C7D /* PalmScanMode.swift in Sources */,
+				CA0C2DB05412425D4D39068F /* PalmScanMode.swift in Sources */,
 				D76B8272311635E1310BDF7A /* PalmScannerApp.swift in Sources */,
 				EEBE745EFB90024885C691DC /* SamudrikaReadingSheet.swift in Sources */,
 				5DD6C50AB3DA1C7EBD4D2229 /* SimplePalmReading.swift in Sources */,

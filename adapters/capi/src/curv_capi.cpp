@@ -27,10 +27,12 @@
 #include "curv/domains/FloorPlanDomainPack.hpp"
 #include "curv/domains/PalmDomainPack.hpp"
 #include "curv/domains/SurfaceInspectionPack.hpp"
+#include "curv/geometry/HandAnthropometry.hpp"
 #include "curv/geometry/RoiWarper.hpp"
 #include "curv/pipeline/SyncPerceptionPipeline.hpp"
 #include "curv/quality/LaplacianQualityAnalyzer.hpp"
 #include "curv/ridge/StegerRidgeExtractor.hpp"
+#include "curv/surface/HandMeshGenerator.hpp"
 
 namespace {
 
@@ -738,6 +740,82 @@ int curv_pipeline_get_last_json(CurvPipelineHandle pipeline, char* out_json_buff
         return CURV_STATUS_INTERNAL_ERROR;
     } catch (...) {
         spdlog::error("[curv_capi] get_last_json failed with unknown exception");
+        return CURV_STATUS_INTERNAL_ERROR;
+    }
+}
+
+int curv_compute_hand_anthropometry_json(const float* landmarks_42_floats,
+                                         float reference_palm_width_mm,
+                                         const char* pad_depth_json,
+                                         const char* hand_side,
+                                         char* out_json_buffer,
+                                         int out_json_buffer_size) {
+    if (!landmarks_42_floats) {
+        return CURV_STATUS_INVALID_ARGUMENT;
+    }
+    try {
+        std::vector<std::array<float, 2>> lms(21);
+        for (size_t i = 0; i < 21; ++i) {
+            lms[i] = {landmarks_42_floats[2 * i], landmarks_42_floats[2 * i + 1]};
+        }
+        std::unordered_map<std::string, float> pad_depths;
+        if (pad_depth_json && std::strlen(pad_depth_json) > 0) {
+            auto parsed = nlohmann::json::parse(pad_depth_json);
+            if (parsed.is_object()) {
+                for (const auto& [key, val] : parsed.items()) {
+                    if (val.is_number()) {
+                        pad_depths[key] = val.get<float>();
+                    }
+                }
+            }
+        }
+        const std::string side_str = hand_side ? hand_side : "auto";
+        const float ref_w = reference_palm_width_mm > 0.0f ? reference_palm_width_mm : 80.0f;
+        const auto report = CurvEngine::geometry::HandAnthropometer::compute(lms, 1000, 1000, ref_w, pad_depths, side_str);
+        nlohmann::json root = {{"anthropometry", report.toJson()}};
+        return copy_json_to_buffer(root, out_json_buffer, out_json_buffer_size);
+    } catch (const std::exception& e) {
+        spdlog::error("[curv_capi] compute_hand_anthropometry failed: {}", e.what());
+        return CURV_STATUS_INTERNAL_ERROR;
+    } catch (...) {
+        spdlog::error("[curv_capi] compute_hand_anthropometry failed with unknown exception");
+        return CURV_STATUS_INTERNAL_ERROR;
+    }
+}
+
+int curv_generate_hand_mesh_json(const float* landmarks_42_floats,
+                                 float reference_palm_width_mm,
+                                 const char* pad_depth_json,
+                                 char* out_json_buffer,
+                                 int out_json_buffer_size) {
+    if (!landmarks_42_floats) {
+        return CURV_STATUS_INVALID_ARGUMENT;
+    }
+    try {
+        std::vector<std::array<float, 2>> lms(21);
+        for (size_t i = 0; i < 21; ++i) {
+            lms[i] = {landmarks_42_floats[2 * i], landmarks_42_floats[2 * i + 1]};
+        }
+        std::unordered_map<std::string, float> pad_depths;
+        if (pad_depth_json && std::strlen(pad_depth_json) > 0) {
+            auto parsed = nlohmann::json::parse(pad_depth_json);
+            if (parsed.is_object()) {
+                for (const auto& [key, val] : parsed.items()) {
+                    if (val.is_number()) {
+                        pad_depths[key] = val.get<float>();
+                    }
+                }
+            }
+        }
+        const float ref_w = reference_palm_width_mm > 0.0f ? reference_palm_width_mm : 80.0f;
+        const auto mesh = CurvEngine::surface::HandMeshGenerator::generate(lms, pad_depths, ref_w, 1000, 1000);
+        nlohmann::json root = {{"mesh", mesh.toJson()}};
+        return copy_json_to_buffer(root, out_json_buffer, out_json_buffer_size);
+    } catch (const std::exception& e) {
+        spdlog::error("[curv_capi] generate_hand_mesh failed: {}", e.what());
+        return CURV_STATUS_INTERNAL_ERROR;
+    } catch (...) {
+        spdlog::error("[curv_capi] generate_hand_mesh failed with unknown exception");
         return CURV_STATUS_INTERNAL_ERROR;
     }
 }

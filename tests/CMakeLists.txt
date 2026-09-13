@@ -638,4 +638,15 @@ target_link_libraries(test_fingertip_pattern
 vision_set_compiler_warnings(test_fingertip_pattern)
 add_test(NAME test_fingertip_pattern COMMAND test_fingertip_pattern)
 
+add_executable(test_hand_anthropometry
+    core/test_hand_anthropometry.cpp
+)
+target_link_libraries(test_hand_anthropometry
+    PRIVATE
+        curv_core
+        GTest::gtest_main
+)
+vision_set_compiler_warnings(test_hand_anthropometry)
+add_test(NAME test_hand_anthropometry COMMAND test_hand_anthropometry)
+
 
