@@ -148,6 +148,8 @@ Seeded 2026-09-12 from recent iOS commits; statuses verified against code
 | Sheet presentation (detents vs ModalBottomSheet), nav chrome (toolbar vs TopAppBar), icons (SF vs Material) | Native expression of the same UX. |
 | Android `Theme.kt` / `MainActivity.kt` have no iOS counterparts | App-shell/theming layer, not a feature. |
 | `HandOutlineOverlay` is a separate file on Android, inline in iOS `CaptureResultView.swift`; `MagnifyingLoupeView` is a separate file on iOS, inline in Android's editor | Verified by checker (needle must remain in host file). |
+| `OrbitBin` is a separate file on iOS, inline in Android's `OrbitCaptureSession.kt`; `PalmAnalysisViewModel+ScanModes` is a Swift extension file, inline in Android's `PalmAnalysisViewModel.kt` | Language/file organization idiom. Verified by checker. |
+| Enriched 3D scan mode guidance (`CloseUpTileCapture`, `FingertipCaptureGuidance`, `OrbitCaptureGuidance`, `RigidHandChecker`, `MountReliefEstimator`) | iOS leads; Android flow deferred (data models `OrbitCaptureSession`, `PhotoDepthMap`, `MountDepthSampler` ported and ready). |
 
 ## 7. Quick commands
 

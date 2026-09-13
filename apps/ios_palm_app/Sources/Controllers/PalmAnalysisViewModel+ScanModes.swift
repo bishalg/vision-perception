@@ -97,6 +97,11 @@ extension PalmAnalysisViewModel {
         let rigid = RigidHandChecker.evaluate(current: landmarks, reference: orbitGuidance.orbitSession.referenceLandmarks?.map {
             CGPoint(x: CGFloat($0[0]), y: CGFloat($0[1]))
         })
+        // Hardware depth (LiDAR/disparity) when this keyframe delivered it.
+        // Nil on unsupported devices — estimator and native engine fall back.
+        let depthMm = photo.depthMap.flatMap {
+            MountDepthSampler.sampleMountMeansMm(depthMap: $0, landmarks: lm)
+        }
         let frame = OrbitFrame(
             bin: bin,
             timestamp: Date().timeIntervalSince1970,
@@ -107,7 +112,9 @@ extension PalmAnalysisViewModel {
             imageWidth: w,
             imageHeight: h,
             digitSpreadOk: rigid.digitSpreadOk,
-            maxJointDrift: Float(rigid.maxDrift)
+            maxJointDrift: Float(rigid.maxDrift),
+            depthMm: depthMm,
+            depthSource: depthMm != nil ? photo.depthMap?.source : nil
         )
         orbitGuidance.recordFrame(frame)
         let relief = MountReliefEstimator.estimate(from: orbitGuidance.orbitSession)

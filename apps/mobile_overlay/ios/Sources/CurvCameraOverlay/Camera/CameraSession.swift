@@ -18,9 +18,13 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
 
     public var onFrameReceived: ((CVPixelBuffer) -> Void)?
     private var photoCaptureCompletion: ((Result<CapturedPhoto, Error>) -> Void)?
+    private var pendingDepthSource: String?
     private weak var activeCaptureDevice: AVCaptureDevice?
 
     private var isConfigured: Bool = false
+    /// Hardware depth probe result. All-false on Simulator / single-camera
+    /// devices; every consumer must treat that as "use the fallback path".
+    public private(set) var depthCapability = DepthCapability()
 
     public override init() {
         super.init()
@@ -96,6 +100,7 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
 
             self.captureSession.commitConfiguration()
             self.isConfigured = true
+            self.depthCapability = DepthCapability.probe(photoOutput: self.photoOutput)
             self.logger.info("CameraSession configured successfully (1080p stream + photo)")
         }
     }
@@ -150,6 +155,16 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
             } else {
                 settings.isHighResolutionPhotoEnabled = true
             }
+            // Opportunistic hardware depth: strictly guarded, never throws.
+            // Unsupported devices keep these off and flow through the fallback.
+            if self.depthCapability.photoDepthSupported {
+                settings.isDepthDataDeliveryEnabled = true
+            }
+            if self.depthCapability.calibrationDataSupported {
+                settings.isCameraCalibrationDataDeliveryEnabled = true
+            }
+            self.pendingDepthSource =
+                self.depthCapability.supported ? self.depthCapability.depthSource : nil
             self.photoOutput.capturePhoto(with: settings, delegate: self)
         }
     }
@@ -222,8 +237,46 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
         }
         let w = CVPixelBufferGetWidth(pixelBuffer)
         let h = CVPixelBufferGetHeight(pixelBuffer)
-        let intrinsics = intrinsicsForDevice(imageWidth: w, imageHeight: h)
-        photoCaptureCompletion?(.success(CapturedPhoto(pixelBuffer: pixelBuffer, intrinsics: intrinsics)))
+        let calibration = photo.cameraCalibrationData
+        // True intrinsics from calibration when delivered; FOV approximation
+        // otherwise. Either way the pipeline keeps working.
+        let intrinsics: CameraIntrinsics
+        if let calibration,
+           let calibrated = Self.intrinsicsFromCalibration(calibration, imageWidth: w, imageHeight: h) {
+            intrinsics = calibrated
+        } else {
+            intrinsics = intrinsicsForDevice(imageWidth: w, imageHeight: h)
+        }
+        let depthMap = photo.depthData.flatMap {
+            PhotoDepthMap.from(depthData: $0, calibration: calibration,
+                               source: self.pendingDepthSource ?? "depth_v1")
+        }
+        self.pendingDepthSource = nil
+        photoCaptureCompletion?(.success(CapturedPhoto(
+            pixelBuffer: pixelBuffer, intrinsics: intrinsics, depthMap: depthMap
+        )))
         photoCaptureCompletion = nil
+    }
+
+    /// Scale the calibration intrinsic matrix (defined for its reference
+    /// dimensions) onto the delivered still size.
+    private static func intrinsicsFromCalibration(
+        _ calibration: AVCameraCalibrationData, imageWidth w: Int, imageHeight h: Int
+    ) -> CameraIntrinsics? {
+        let ref = calibration.intrinsicMatrixReferenceDimensions
+        guard ref.width > 0, ref.height > 0, w > 0, h > 0 else { return nil }
+        let sx = Float(w) / Float(ref.width)
+        let sy = Float(h) / Float(ref.height)
+        let m = calibration.intrinsicMatrix
+        guard m.columns.0.x > 0, m.columns.1.y > 0 else { return nil }
+        return CameraIntrinsics(
+            focalLengthX: m.columns.0.x * sx,
+            focalLengthY: m.columns.1.y * sy,
+            principalPointX: m.columns.2.x * sx,
+            principalPointY: m.columns.2.y * sy,
+            imageWidth: w,
+            imageHeight: h,
+            fieldOfViewDeg: nil
+        )
     }
 }

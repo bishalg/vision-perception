@@ -82,9 +82,13 @@ public struct CameraIntrinsics: Codable, Equatable, Sendable {
 public struct CapturedPhoto: Sendable {
     public let pixelBuffer: CVPixelBuffer
     public let intrinsics: CameraIntrinsics
+    /// Downsampled hardware depth in meters, when the device delivered it.
+    /// Nil on unsupported devices — consumers must fall back, never crash.
+    public let depthMap: PhotoDepthMap?
 
-    public init(pixelBuffer: CVPixelBuffer, intrinsics: CameraIntrinsics) {
+    public init(pixelBuffer: CVPixelBuffer, intrinsics: CameraIntrinsics, depthMap: PhotoDepthMap? = nil) {
         self.pixelBuffer = pixelBuffer
         self.intrinsics = intrinsics
+        self.depthMap = depthMap
     }
 }

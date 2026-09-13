@@ -46,5 +46,12 @@ data class CapturedPhoto(
     val width: Int,
     val height: Int,
     val stride: Int,
-    val intrinsics: CameraIntrinsics
+    val intrinsics: CameraIntrinsics,
+    /**
+     * Measured per-mount depth in mm from hardware depth. Null until a
+     * Camera2 depth still pipeline lands; consumers must fall back.
+     */
+    val depthMap: PhotoDepthMap? = null,
+    val depthMm: Map<String, Float>? = null,
+    val depthSource: String? = null
 )

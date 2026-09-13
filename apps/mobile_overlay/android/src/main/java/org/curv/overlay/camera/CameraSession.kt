@@ -28,6 +28,17 @@ class CameraSession(private val context: Context) {
 
     var onFrameAnalysis: ((ImageProxy) -> Unit)? = null
 
+    /**
+     * Hardware depth probe (Camera2 DEPTH_OUTPUT capability). False on most
+     * devices; the orbit pipeline treats that as "use the fallback path".
+     * Captured CameraX stills carry no depth yet — see [DepthCapability].
+     */
+    val depthCapability: DepthCapability by lazy {
+        val cap = DepthCapability.probe(context)
+        Log.i(tag, "Depth capability: supported=${cap.supported}")
+        cap
+    }
+
     /** When false, incoming analysis frames are dropped (battery save during review/reading). */
     @Volatile
     var frameAnalysisEnabled: Boolean = true
@@ -133,6 +144,19 @@ class CameraSession(private val context: Context) {
                 }
             }
         )
+    }
+
+    /**
+     * Samples per-mount mean depth in mm from an available [PhotoDepthMap]
+     * against normalized palm landmarks. Returns null when depth is unsupported,
+     * invalid, or below quality thresholds (caller falls back to metric parallax).
+     */
+    fun sampleMountDepth(
+        depthMap: PhotoDepthMap?,
+        landmarks: List<List<Float>>
+    ): Map<String, Float>? {
+        if (depthMap == null || !depthCapability.supported) return null
+        return org.curv.overlay.palm.MountDepthSampler.sampleMountMeansMm(depthMap, landmarks)
     }
 
     fun shutdown() {

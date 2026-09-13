@@ -81,14 +81,25 @@ ALIASES = {
 INLINE_IOS_COMPONENTS = {
     # iOS-only file; Android implements the loupe inline in its editor.
     "MagnifyingLoupeView": (ANDROID_APP / "view/CreaseLineEditorScreen.kt", "loupe"),
+    # Swift file extension split; Android handles scan modes in PalmAnalysisViewModel.
+    "PalmAnalysisViewModel+ScanModes": (ANDROID_APP / "controller/PalmAnalysisViewModel.kt", "class palmanalysisviewmodel"),
+    # iOS separates OrbitBin enum; Android defines it inside OrbitCaptureSession.kt.
+    "OrbitBin": (ANDROID_OVERLAY / "guidance/OrbitCaptureSession.kt", "enum class orbitbin"),
 }
 INLINE_ANDROID_COMPONENTS = {
     # Android-only file; iOS defines it inside its result view.
     "HandOutlineOverlay": (IOS_APP / "Views/CaptureResultView.swift", "HandOutlineOverlay"),
 }
 
-# Overlay files that are platform-specific by nature (no counterpart needed).
-OVERLAY_EXCLUDE = set()
+# Overlay files that are platform-specific by nature or deferred per docs/mobile_parity.md §6.
+OVERLAY_EXCLUDE = {
+    # Mode B/C/D scan protocol guidance currently iOS-first; Android flow deferred per docs/mobile_parity.md §6.
+    "CloseUpTileCapture",
+    "FingertipCaptureGuidance",
+    "OrbitCaptureGuidance",
+    "RigidHandChecker",
+    "MountReliefEstimator",
+}
 
 TR_LITERAL = re.compile(r'tr\(\s*"([^"]+)"')
 

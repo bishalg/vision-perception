@@ -240,6 +240,27 @@ std::vector<ReliefSample> SurfaceRelief::estimateMetricRelief(
     }
     const float depth_plane = medianOf(measured_means);
 
+    // z-scores of measured heights so prominence grading on the depth path
+    // reflects measured millimeters, not the tilt prior.
+    std::unordered_map<std::string, float> measured_z;
+    {
+        std::unordered_map<std::string, float> measured_acc;
+        std::unordered_map<std::string, int> measured_counts;
+        for (const auto& id : region_ids) {
+            const auto it = depth_counts.find(id);
+            if (it != depth_counts.end() && it->second > 0) {
+                measured_acc[id] = (depth_acc[id] / static_cast<float>(it->second)) - depth_plane;
+                measured_counts[id] = 1;
+            }
+        }
+        float m_mean = 0.0f;
+        float m_std = 1.0f;
+        accumulateMeanStd(measured_acc, measured_counts, region_ids, m_mean, m_std);
+        for (const auto& kv : measured_acc) {
+            measured_z[kv.first] = zscore(kv.second, m_mean, m_std);
+        }
+    }
+
     std::vector<ReliefSample> out;
     out.reserve(region_ids.size());
     for (const auto& id : region_ids) {
@@ -272,6 +293,9 @@ std::vector<ReliefSample> SurfaceRelief::estimateMetricRelief(
             // Hardware depth wins over the parallax estimate when present.
             sample.height_mm = (depth_acc[id] / static_cast<float>(depth_it->second)) - depth_plane;
             sample.measured_depth = true;
+            if (measured_z.count(id) > 0) {
+                sample.height_relative = measured_z.at(id);
+            }
         }
         sample.confidence = std::min(0.95f, 0.35f + static_cast<float>(sample.view_count) * 0.1f);
         out.push_back(sample);

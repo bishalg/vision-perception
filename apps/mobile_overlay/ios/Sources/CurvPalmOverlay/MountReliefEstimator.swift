@@ -65,16 +65,8 @@ public enum MountReliefEstimator {
 
     private static let mountNames = ["jupiter", "saturn", "apollo", "mercury", "venus", "luna", "mars"]
 
-    /// Must match `mountAnchors()` in MountReliefAnalyzer.cpp.
-    private static let anchors: [String: [Int]] = [
-        "venus": [1, 2, 5],
-        "jupiter": [5, 6, 7],
-        "saturn": [9, 10, 11],
-        "apollo": [13, 14, 15],
-        "mercury": [17, 18, 19],
-        "luna": [0, 17, 18],
-        "mars": [5, 9, 13, 17]
-    ]
+    /// Probe indices shared with the hardware-depth sampler (single source).
+    private static var anchors: [String: [Int]] { MountDepthSampler.anchors }
 
     /// Estimate relative mount heights from an orbit session.
     public static func estimate(from session: OrbitCaptureSession) -> MountReliefMap {
@@ -167,6 +159,16 @@ public enum MountReliefEstimator {
         }
         let depthPlane = median(measuredMeans)
 
+        var measuredAcc: [String: Float] = [:]
+        var measuredCounts: [String: Int] = [:]
+        for mount in mountNames {
+            if let c = depthCounts[mount], c > 0 {
+                measuredAcc[mount] = (depthAcc[mount, default: 0] / Float(c)) - depthPlane
+                measuredCounts[mount] = 1
+            }
+        }
+        let (measuredMean, measuredStd) = meanStd(mountNames, acc: measuredAcc, counts: measuredCounts)
+
         var entries: [MountReliefEntry] = []
         for mount in mountNames {
             let views = viewCounts[mount, default: 0]
@@ -187,7 +189,11 @@ public enum MountReliefEstimator {
                 heightMm = (fused >= 0 ? 1 : -1) * mag
             }
             if let dc = depthCounts[mount], dc > 0 {
-                heightMm = depthAcc[mount, default: 0] / Float(dc) - depthPlane
+                let diff = depthAcc[mount, default: 0] / Float(dc) - depthPlane
+                heightMm = diff
+                if let mz = measuredAcc[mount] {
+                    fused = zscore(mz, mean: measuredMean, std: measuredStd)
+                }
             }
             let prominence: MountProminence = fused > 0.45 ? .elevated : (fused < -0.45 ? .deficient : .average)
             let conf = min(0.95, 0.35 + Float(views) * 0.1)
