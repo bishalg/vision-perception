@@ -360,7 +360,6 @@ public struct BubbleCalibrationView: View {
             }
             .position(x: posX, y: posY)
             .opacity(controller.currentQuality.isValid ? 0.85 : 0.0)
-            .animation(.linear(duration: 0.033), value: smoothedGaze)
             .allowsHitTesting(false)
         }
     }
@@ -368,44 +367,83 @@ public struct BubbleCalibrationView: View {
     // MARK: - Guidance & Distance HUD
 
     private var topGuidanceHUD: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 10) {
-                // Step progress badge
-                HStack(spacing: 4) {
-                    Image(systemName: "scope")
-                        .font(.system(size: 13, weight: .bold))
-                    Text("\(currentTargetIndex + 1) / \(targetPoints.count)")
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
-                }
-                .foregroundColor(LiquidGlass.celestialTeal)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Capsule().fill(LiquidGlass.cardBackground))
-                .overlay(Capsule().stroke(LiquidGlass.cardBorder, lineWidth: 0.8))
-
-                Spacer()
-
-                // Distance guidance meter (40-50 cm)
-                distanceBadge
-
-                // Eye tracking lock badge
-                trackingLockBadge
-            }
-
-            // Dwell progress bar indicator
-            if isLockedOnTarget {
+        HStack(alignment: .center, spacing: 10) {
+            VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
-                    ProgressView(value: dwellProgress, total: 1.0)
-                        .tint(LiquidGlass.emeraldMint)
-                        .frame(maxWidth: 160)
-                    Text("\(Int(dwellProgress * 100))%")
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
-                        .foregroundColor(LiquidGlass.emeraldMint)
+                    // Step progress badge
+                    HStack(spacing: 4) {
+                        Image(systemName: "scope")
+                            .font(.system(size: 11, weight: .bold))
+                        Text("\(currentTargetIndex + 1) / \(targetPoints.count)")
+                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    }
+                    .foregroundColor(LiquidGlass.celestialTeal)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(LiquidGlass.cardBackground))
+                    .overlay(Capsule().stroke(LiquidGlass.cardBorder, lineWidth: 0.8))
+
+                    // 3-Stage Pipeline Status Badge
+                    stageBadge
+
+                    // Distance guidance badge
+                    distanceBadge
                 }
-                .transition(.opacity)
+
+                // Dwell progress bar indicator
+                if isLockedOnTarget {
+                    HStack(spacing: 6) {
+                        ProgressView(value: dwellProgress, total: 1.0)
+                            .tint(LiquidGlass.emeraldMint)
+                            .frame(maxWidth: 160)
+                        Text("\(Int(dwellProgress * 100))%")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundColor(LiquidGlass.emeraldMint)
+                    }
+                    .transition(.opacity)
+                }
             }
+
+            Spacer()
+
+            // Live Picture-In-Picture Camera Feed & 3D Mesh Tracking
+            ARFaceCameraView(
+                session: controller.arSession,
+                isSimulation: controller.isSimulationMode,
+                headYawDeg: controller.headYawDeg,
+                headPitchDeg: controller.headPitchDeg,
+                smileIntensity: controller.currentAffect.socialSmileIntensity,
+                surpriseScore: controller.currentAffect.surpriseScore,
+                distressScore: controller.currentAffect.distressScore,
+                dominantEmotion: controller.currentAffect.dominantEmotion,
+                isValid: controller.currentQuality.isValid
+            )
+            .frame(width: 58, height: 72)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(controller.trackingStage.hasEyes ? LiquidGlass.emeraldMint.opacity(0.85) : LiquidGlass.warmAmber.opacity(0.85), lineWidth: 1.5)
+            )
         }
         .glassCard(cornerRadius: 14, padding: 10)
+    }
+
+    private var stageBadge: some View {
+        let isGaze = controller.trackingStage.isGazeActive
+        let hasEyes = controller.trackingStage.hasEyes
+        let color = isGaze ? LiquidGlass.emeraldMint : (hasEyes ? LiquidGlass.celestialTeal : LiquidGlass.warmAmber)
+
+        return HStack(spacing: 4) {
+            Circle()
+                .fill(color)
+                .frame(width: 6, height: 6)
+            Text(controller.trackingStage.label)
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+        }
+        .foregroundColor(color)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 4)
+        .background(Capsule().fill(color.opacity(0.18)))
     }
 
     private var distanceBadge: some View {
@@ -416,13 +454,13 @@ public struct BubbleCalibrationView: View {
 
         return HStack(spacing: 4) {
             Image(systemName: iconName)
-                .font(.system(size: 11))
-            Text("\(dist) cm (40–50)")
-                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .font(.system(size: 10))
+            Text("\(dist) cm")
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
         }
         .foregroundColor(statusColor)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 4)
         .background(Capsule().fill(statusColor.opacity(0.18)))
     }
 
@@ -496,14 +534,8 @@ public struct BubbleCalibrationView: View {
             controller.tickSimulatedFrame(timeSec: now)
         }
 
-        // Display-only smoothing of the RAW point (never the calibrated one —
-        // this screen is what produces the calibration, so it must show and
-        // collect the uncorrected signal).
-        let rawGaze = controller.currentRawGazePoint
-        smoothedGaze = CGPoint(
-            x: smoothedGaze.x * 0.65 + rawGaze.x * 0.35,
-            y: smoothedGaze.y * 0.65 + rawGaze.y * 0.35
-        )
+        // Point is already 1 Euro filtered by GazeSessionController — no double EMA needed
+        smoothedGaze = controller.currentRawGazePoint
 
         let target = targetPoints[currentTargetIndex]
         let targetPt = CGPoint(
@@ -516,37 +548,28 @@ public struct BubbleCalibrationView: View {
         )
         let distancePoints = hypot(gazePt.x - targetPt.x, gazePt.y - targetPt.y)
 
-        // Soft visual feedback only (glow radius is generous — 160pt — because
-        // uncalibrated gaze legitimately drifts this far from the true target;
-        // this never blocks or decays progress, unlike the old hit-test gate).
-        isLockedOnTarget = distancePoints < softFeedbackRadiusPoints && controller.currentQuality.isValid
+        // Lock condition: Face is tracked, eyes are open/tracking, and gaze is within generous proximity of the balloon
+        let hasFaceAndEyes = controller.trackingStage.hasFace && controller.trackingStage.hasEyes
+        let isLookingAtTarget = distancePoints < softFeedbackRadiusPoints || controller.isSimulationMode
+        isLockedOnTarget = hasFaceAndEyes && isLookingAtTarget
 
-        // Progress is wall-clock time, NOT gaze accuracy — that's the Option 1
-        // fix. But time must still only advance while a face is actually being
-        // tracked: a short dropout (a blink) is tolerated, but a sustained one
-        // (no face in frame at all) freezes progress instead of ticking blindly.
-        // Ticking unconditionally was the regression — it popped balloons with
-        // nobody in frame because 1.6s of wall-clock time always elapses.
-        if controller.currentQuality.isValid {
+        if isLockedOnTarget {
             trackingDropoutFrames = 0
             windowElapsedSec += 1.0 / 60.0
-            // Collect raw samples only once the initial saccade has settled.
+            // Collect raw samples only once initial saccade has settled on the target
             if windowElapsedSec >= settleDelaySec {
                 collectedRawSamples.append(controller.currentRawGazePoint)
             }
         } else {
             trackingDropoutFrames += 1
-            // ~250ms grace for a natural blink: keep the window running so a
-            // blink mid-fixation doesn't restart the whole target. Beyond that,
-            // freeze — this is a real dropout (looked away, left the frame),
-            // not a blink, and must never silently finish the window.
-            if trackingDropoutFrames <= 15 {
-                windowElapsedSec += 1.0 / 60.0
+            // 200ms grace for a natural blink; beyond that, smoothly decay progress so balloons never auto-pop when looking away
+            if trackingDropoutFrames > 12 {
+                windowElapsedSec = max(0.0, windowElapsedSec - (0.4 / 60.0))
             }
         }
         dwellProgress = min(1.0, windowElapsedSec / attentionWindowSec)
 
-        if windowElapsedSec >= attentionWindowSec && !isPopping {
+        if dwellProgress >= 1.0 && !isPopping {
             triggerPop()
         }
     }

@@ -190,6 +190,7 @@ public struct MainGazeScannerView: View {
             }
         }
         .onAppear {
+            controller.reloadCalibrationProfile()
             startSessionLoop()
         }
         .onDisappear {
@@ -201,16 +202,30 @@ public struct MainGazeScannerView: View {
     // MARK: - Top Status Bar (Stable, Non-Flickering)
 
     private var topStatusBar: some View {
-        HStack(spacing: 10) {
-            // Quality status
+        HStack(spacing: 8) {
+            // Progressive 3-Stage Tracking status
             HStack(spacing: 5) {
                 Circle()
-                    .fill(controller.currentQuality.isValid ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber)
+                    .fill(controller.trackingStage.isGazeActive ? LiquidGlass.emeraldMint : (controller.trackingStage.hasFace ? LiquidGlass.celestialTeal : LiquidGlass.warmAmber))
                     .frame(width: 7, height: 7)
-                Text(controller.currentQuality.isValid ? "Tracking" : "Searching...")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                Text(controller.trackingStage.label)
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .foregroundColor(LiquidGlass.textPrimary)
             }
+
+            Spacer()
+
+            // Calibration status badge
+            HStack(spacing: 4) {
+                Image(systemName: controller.calibrationProfile.isCalibrated ? "checkmark.seal.fill" : "target")
+                    .font(.system(size: 10))
+                Text(controller.calibrationProfile.isCalibrated ? "Calibrated" : "Uncalibrated")
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+            }
+            .foregroundColor(controller.calibrationProfile.isCalibrated ? LiquidGlass.emeraldMint : LiquidGlass.textSecondary)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(Capsule().fill((controller.calibrationProfile.isCalibrated ? LiquidGlass.emeraldMint : LiquidGlass.textSecondary).opacity(0.15)))
 
             Spacer()
 
@@ -240,7 +255,7 @@ public struct MainGazeScannerView: View {
                     .foregroundColor(LiquidGlass.textPrimary)
             }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .glassCard(cornerRadius: 12, padding: 4)
     }

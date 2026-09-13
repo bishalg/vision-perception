@@ -86,10 +86,13 @@ public struct ScreenRaycaster: Sendable {
         // Ray equation: R(t) = eyeOriginCam + t * (targetCam - eyeOriginCam)
         let rayDir = targetCam - eyeOriginCam
         let hitScreenCam: simd_float3
+        let validForwardRay: Bool
         if abs(rayDir.z) > 0.001 {
             let t = -eyeOriginCam.z / rayDir.z
+            validForwardRay = t > 0
             hitScreenCam = eyeOriginCam + t * rayDir
         } else {
+            validForwardRay = true
             hitScreenCam = targetCam
         }
 
@@ -105,7 +108,7 @@ public struct ScreenRaycaster: Sendable {
 
         let clampedX = min(max(normX, 0.0), 1.0)
         let clampedY = min(max(normY, 0.0), 1.0)
-        let isWithin = (normX >= 0.0 && normX <= 1.0 && normY >= 0.0 && normY <= 1.0)
+        let isWithin = validForwardRay && (normX >= 0.0 && normX <= 1.0 && normY >= 0.0 && normY <= 1.0)
 
         let screenPoint = CGPoint(
             x: clampedX * screenWidthPoints,

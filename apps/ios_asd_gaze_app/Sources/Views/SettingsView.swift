@@ -144,6 +144,7 @@ public struct SettingsView: View {
     private func resetCalibration() {
         GazeCalibrationStore.reset()
         calibrationProfile = .identity
+        NotificationCenter.default.post(name: GazeSessionController.didUpdateCalibrationNotification, object: nil)
     }
 
     // MARK: - Section 3: Privacy & Security

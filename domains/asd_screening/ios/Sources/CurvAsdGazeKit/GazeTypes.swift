@@ -134,3 +134,56 @@ public struct CalibrationTarget: Identifiable, Sendable {
         self.isPopped = isPopped
     }
 }
+
+// MARK: - 3-Stage Tracking Pipeline
+
+/// Represents the current stage in the eye-gaze tracking pipeline.
+///
+/// The pipeline has 3 progressive stages that must all be healthy before a
+/// calibrated gaze coordinate is trustworthy. The UI observes this enum to show
+/// clear actionable guidance to the caregiver at each stage.
+///
+/// Stage order: `.searchingFace` → `.faceAligned` → `.eyesTracking` → `.gazeActive`
+public enum TrackingStage: Equatable, Sendable {
+    /// No face anchor detected by ARKit.
+    case searchingFace
+
+    /// Face detected and within usable distance/angle bounds.
+    case faceAligned(distanceCm: Double)
+
+    /// Face aligned and both eyes are open and being tracked.
+    case eyesTracking(leftOpenness: Double, rightOpenness: Double)
+
+    /// All stages healthy — a calibrated gaze coordinate is being produced.
+    case gazeActive
+
+    /// Returns true when face is detected (stage ≥ 1).
+    public var hasFace: Bool {
+        if case .searchingFace = self { return false }
+        return true
+    }
+
+    /// Returns true when both face and eye tracking are healthy (stage ≥ 2).
+    public var hasEyes: Bool {
+        switch self {
+        case .eyesTracking, .gazeActive: return true
+        default: return false
+        }
+    }
+
+    /// Returns true when all pipeline stages are healthy.
+    public var isGazeActive: Bool {
+        if case .gazeActive = self { return true }
+        return false
+    }
+
+    /// Human-readable status label for UI display.
+    public var label: String {
+        switch self {
+        case .searchingFace:        return "Searching for face…"
+        case .faceAligned(let d):   return "Face aligned • \(Int(d)) cm"
+        case .eyesTracking:         return "Eyes detected"
+        case .gazeActive:           return "Gaze active ✓"
+        }
+    }
+}

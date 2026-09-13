@@ -65,7 +65,7 @@ public struct GazeSessionReportSummary: Codable, Sendable, Equatable {
 /// Supports both TrueDepth hardware (`ARSession`) and deterministic mathematical simulation.
 public final class GazeSessionController: NSObject, ObservableObject, @unchecked Sendable {
     @Published public var currentGazePoint: CGPoint = CGPoint(x: 0.5, y: 0.5)
-    /// Uncalibrated raycast output (still EMA-smoothed). `BubbleCalibrationView`
+    /// Uncalibrated raycast output (1 Euro filtered). `BubbleCalibrationView`
     /// fits `calibrationProfile` against this, never against `currentGazePoint`
     /// (which is already-corrected once a profile exists, and fitting a
     /// correction against an already-corrected signal would compound errors).
@@ -75,6 +75,7 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
     /// instance (each screen owns its own) picks up the last calibration.
     @Published public private(set) var calibrationProfile: GazeCalibrationProfile
     @Published public var currentDistanceCm: Double = 48.0
+    /// Starts as invalid — only becomes valid once a real ARKit frame arrives.
     @Published public var currentQuality: GazeQualityGate.Evaluation
     @Published public var currentAffect: FacialAffectMetrics = .neutral
     @Published public var activeAOIs: [String] = []
@@ -83,6 +84,9 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
     @Published public var headPitchDeg: Double = 0.0
     @Published public var headRollDeg: Double = 0.0
     @Published public var recordedFrames: [GazeFrame] = []
+    /// Current position in the 3-stage tracking pipeline. Observed by UI
+    /// for per-stage status banners and dwell gating.
+    @Published public private(set) var trackingStage: TrackingStage = .searchingFace
 
     public let raycaster: ScreenRaycaster
     public let qualityGate: GazeQualityGate
@@ -91,6 +95,18 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
     private var sessionStartTime: Date?
     public var isSimulationMode: Bool = false
     @Published public var calibrationTarget: CGPoint? = nil
+
+    /// Adaptive 1 Euro Filter for calibrated gaze — eliminates flicker at fixation
+    /// while preserving low latency during fast saccades.
+    private let gazeFilter = OneEuroFilter2D(minCutoff: 1.2, beta: 0.015, dCutoff: 1.0)
+    /// Separate filter for the raw (uncalibrated) signal collected during calibration.
+    private let rawGazeFilter = OneEuroFilter2D(minCutoff: 1.2, beta: 0.015, dCutoff: 1.0)
+
+    /// Notification posted whenever the calibration profile is saved or reset,
+    /// so all active `GazeSessionController` instances reload immediately.
+    public static let didUpdateCalibrationNotification = Notification.Name("CurvAsdGazeKit.calibrationDidUpdate")
+
+    private var calibrationObserver: NSObjectProtocol?
 
     #if canImport(ARKit) && !os(macOS)
     @Published public var arSession: ARSession?
@@ -105,12 +121,25 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
         self.raycaster = raycaster
         self.qualityGate = qualityGate
         self.aoiTracker = aoiTracker
-        self.currentQuality = GazeQualityGate.Evaluation(isValid: true, verdict: .optimal)
+        // Start as invalid — no frames have arrived yet.
+        self.currentQuality = GazeQualityGate.Evaluation(isValid: false, verdict: .rejected, failureReasons: ["Waiting for camera…"])
         self.calibrationProfile = GazeCalibrationStore.load()
         super.init()
+
+        // Reload calibration whenever any controller or the Settings screen saves a new profile.
+        calibrationObserver = NotificationCenter.default.addObserver(
+            forName: GazeSessionController.didUpdateCalibrationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.reloadCalibrationProfile()
+        }
     }
 
     deinit {
+        if let obs = calibrationObserver {
+            NotificationCenter.default.removeObserver(obs)
+        }
         #if canImport(ARKit) && !os(macOS)
         arSession?.pause()
         arSession?.delegate = nil
@@ -120,10 +149,14 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
     }
 
     /// Persists a freshly-fit calibration and makes it take effect immediately
-    /// for this controller instance (subsequent frames use it right away).
+    /// for this controller instance and all other live controllers via notification.
     public func applyAndPersist(calibrationProfile profile: GazeCalibrationProfile) {
         calibrationProfile = profile
         GazeCalibrationStore.save(profile)
+        // Reset filters so they start fresh with the new calibration applied.
+        gazeFilter.reset()
+        rawGazeFilter.reset()
+        NotificationCenter.default.post(name: GazeSessionController.didUpdateCalibrationNotification, object: nil)
     }
 
     /// Drops back to the uncalibrated identity transform (e.g. before
@@ -131,7 +164,17 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
     public func resetCalibration() {
         calibrationProfile = .identity
         GazeCalibrationStore.reset()
+        gazeFilter.reset()
+        rawGazeFilter.reset()
+        NotificationCenter.default.post(name: GazeSessionController.didUpdateCalibrationNotification, object: nil)
     }
+
+    /// Reloads the persisted calibration profile from UserDefaults.
+    /// Called automatically when `didUpdateCalibrationNotification` fires.
+    public func reloadCalibrationProfile() {
+        calibrationProfile = GazeCalibrationStore.load()
+    }
+
 
     /// Starts telemetry capture. Automatically activates TrueDepth camera if available,
     /// or falls back to synthetic simulation on Simulator/macOS.
@@ -142,6 +185,16 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
         self.recordedFrames.removeAll()
         self.sessionStartTime = Date()
         self.isRecording = true
+        // Always reload the latest saved profile so newly calibrated sessions
+        // immediately benefit from the calibration.
+        reloadCalibrationProfile()
+        // Reset smoothing filters so the previous session's state doesn't bleed in.
+        gazeFilter.reset()
+        rawGazeFilter.reset()
+        // Start at searching — will update to faceAligned/eyesTracking/gazeActive
+        // once ARKit frames arrive.
+        trackingStage = .searchingFace
+        currentQuality = GazeQualityGate.Evaluation(isValid: false, verdict: .rejected, failureReasons: ["Waiting for camera…"])
 
         #if canImport(ARKit) && !os(macOS)
         if ARFaceTrackingConfiguration.isSupported {
@@ -165,6 +218,7 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
 
         // Fallback for Simulator or devices without TrueDepth
         self.isSimulationMode = true
+
     }
 
     /// Ends the session and computes the comprehensive biomarker report.
@@ -338,6 +392,7 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
             self.currentQuality = eval
             self.currentAffect = affect
             self.activeAOIs = activeHits
+            self.trackingStage = .gazeActive
             self.headYawDeg = sample.headYawRad * 180.0 / .pi
             self.headPitchDeg = sample.headPitchRad * 180.0 / .pi
             self.headRollDeg = sample.headRollRad * 180.0 / .pi
@@ -354,12 +409,13 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
 #if canImport(ARKit) && !os(macOS)
 extension GazeSessionController: ARSessionDelegate {
     public func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {
-        guard let faceAnchor = anchors.compactMap({ $0 as? ARFaceAnchor }).first else {
+        guard let faceAnchor = anchors.compactMap({ $0 as? ARFaceAnchor }).first, faceAnchor.isTracked else {
             DispatchQueue.main.async { [weak self] in
+                self?.trackingStage = .searchingFace
                 self?.currentQuality = GazeQualityGate.Evaluation(
                     isValid: false,
                     verdict: .rejected,
-                    failureReasons: ["Face anchor lost"]
+                    failureReasons: ["Face anchor lost or untracked"]
                 )
             }
             return
@@ -375,10 +431,6 @@ extension GazeSessionController: ARSessionDelegate {
             rightEyeTransform: faceAnchor.rightEyeTransform
         )
         // Correct the raw anatomical estimate with the user's fitted profile
-        // (identity/no-op until they've calibrated). Everything downstream —
-        // AOI hit-testing, the recorded telemetry sample, the UI cursor — uses
-        // this corrected point; only `currentRawGazePoint` stays uncorrected,
-        // for the calibration screen itself to fit against.
         let calibratedPoint = calibrationProfile.apply(to: raycast.normalizedPoint)
 
         // Decompose Euler angles from face transform matrix
@@ -386,8 +438,13 @@ extension GazeSessionController: ARSessionDelegate {
         let yaw = Double(atan2(faceAnchor.transform.columns.2.x, faceAnchor.transform.columns.2.z))
         let roll = Double(atan2(faceAnchor.transform.columns.0.y, faceAnchor.transform.columns.1.y))
 
-        // Extract blend shapes for facial affect
+        // Extract blend shapes for facial affect & eye openness
         let shapes = faceAnchor.blendShapes
+        let leftBlink = shapes[.eyeBlinkLeft]?.doubleValue ?? 0
+        let rightBlink = shapes[.eyeBlinkRight]?.doubleValue ?? 0
+        let leftEyeOpenness = max(0.0, min(1.0, 1.0 - leftBlink))
+        let rightEyeOpenness = max(0.0, min(1.0, 1.0 - rightBlink))
+
         let affect = FacialAffectMetrics(
             mouthSmileLeft: shapes[.mouthSmileLeft]?.doubleValue ?? 0,
             mouthSmileRight: shapes[.mouthSmileRight]?.doubleValue ?? 0,
@@ -414,8 +471,8 @@ extension GazeSessionController: ARSessionDelegate {
             xNorm: calibratedPoint.x,
             yNorm: calibratedPoint.y,
             confidence: 0.95,
-            leftEyeOpenness: 1.0 - (shapes[.eyeBlinkLeft]?.doubleValue ?? 0),
-            rightEyeOpenness: 1.0 - (shapes[.eyeBlinkRight]?.doubleValue ?? 0),
+            leftEyeOpenness: leftEyeOpenness,
+            rightEyeOpenness: rightEyeOpenness,
             headPitchRad: pitch,
             headYawRad: yaw,
             headRollRad: roll,
@@ -433,33 +490,49 @@ extension GazeSessionController: ARSessionDelegate {
             qualityVerdict: eval.verdict
         )
 
+        // Evaluate progressive 3-stage tracking pipeline
+        let stage: TrackingStage
+        let eyesOpen = leftEyeOpenness >= 0.40 && rightEyeOpenness >= 0.40
+        if !eyesOpen {
+            stage = .faceAligned(distanceCm: distanceCm)
+        } else if eval.isValid && raycast.isWithinScreen {
+            stage = .gazeActive
+        } else {
+            stage = .eyesTracking(leftOpenness: leftEyeOpenness, rightOpenness: rightEyeOpenness)
+        }
+
+        // Apply 1 Euro Filter for smooth, adaptive, jitter-free tracking
+        let nowSec = Date().timeIntervalSince1970
+        let smoothedCalibrated = gazeFilter.filter(point: calibratedPoint, timestamp: nowSec)
+        let smoothedRaw = rawGazeFilter.filter(point: raycast.normalizedPoint, timestamp: nowSec)
+
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            let pt = calibratedPoint
-            let dist = hypot(pt.x - self.currentGazePoint.x, pt.y - self.currentGazePoint.y)
-            let alpha: CGFloat = dist > 0.08 ? 0.85 : 0.28
-            self.currentGazePoint = CGPoint(
-                x: self.currentGazePoint.x * (1.0 - alpha) + pt.x * alpha,
-                y: self.currentGazePoint.y * (1.0 - alpha) + pt.y * alpha
-            )
-
-            let rawPt = raycast.normalizedPoint
-            let rawDist = hypot(rawPt.x - self.currentRawGazePoint.x, rawPt.y - self.currentRawGazePoint.y)
-            let rawAlpha: CGFloat = rawDist > 0.08 ? 0.85 : 0.28
-            self.currentRawGazePoint = CGPoint(
-                x: self.currentRawGazePoint.x * (1.0 - rawAlpha) + rawPt.x * rawAlpha,
-                y: self.currentRawGazePoint.y * (1.0 - rawAlpha) + rawPt.y * rawAlpha
-            )
-
+            self.currentGazePoint = smoothedCalibrated
+            self.currentRawGazePoint = smoothedRaw
             self.currentDistanceCm = distanceCm
             self.currentQuality = eval
             self.currentAffect = affect
             self.activeAOIs = activeHits
+            self.trackingStage = stage
             self.headYawDeg = yaw * 180.0 / .pi
             self.headPitchDeg = pitch * 180.0 / .pi
             self.headRollDeg = roll * 180.0 / .pi
             if self.isRecording {
                 self.recordedFrames.append(frame)
+            }
+        }
+    }
+
+    public func session(_ session: ARSession, didRemove anchors: [ARAnchor]) {
+        if anchors.contains(where: { $0 is ARFaceAnchor }) {
+            DispatchQueue.main.async { [weak self] in
+                self?.trackingStage = .searchingFace
+                self?.currentQuality = GazeQualityGate.Evaluation(
+                    isValid: false,
+                    verdict: .rejected,
+                    failureReasons: ["Face anchor removed"]
+                )
             }
         }
     }
