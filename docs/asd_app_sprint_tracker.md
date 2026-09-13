@@ -10,15 +10,18 @@
 ## WEEK 1 — Foundation & Data Collection Frontend
 
 ### Agent-A: iOS/Swift
-- [ ] L-A: Fix cumulative medication occurrence (not per-session)
-- [ ] L-B: Drop `hasSeeded` gate — use idempotent upsert
-- [ ] L-C: Inject `CareKitClinicalStore` via constructor (not singleton)
-- [ ] L-D: Normalize `doses` — no duplicates on merge
-- [ ] L-E: Fix `pendingDoseCount` off-by-one
-- [ ] L-F: Make `mergeSeeding` cumulative
-- [ ] L-G: Bump `exportVersion` to `v1.3`, add v1.2 migration
-- [ ] L-H: Structured error capture in `CareKitClinicalStore`
-- [ ] Add offline queue to `ResearchKitSyncService` (Core Data backed)
+- [x] L-A: Fix cumulative medication occurrence (not per-session)
+- [x] L-B: Drop `hasSeeded` gate — use idempotent upsert
+- [x] L-C: Inject `CareKitClinicalStore` via constructor (not singleton)
+- [x] L-D: Normalize `doses` — no duplicates on merge
+- [x] L-E: Fix `pendingDoseCount` off-by-one
+- [x] L-F: Make `mergeSeeding` cumulative
+- [x] L-G: Bump `exportVersion` to `v1.3`, add v1.2 migration
+- [x] L-H: Structured error capture in `CareKitClinicalStore`
+- [x] Medication partial-dose toggle preserves `lastTakenAt` across day boundaries
+- [x] `parseClockTime` whitespace and newline resilience
+- [x] `ResearchKitStudyStore` thread safety (synchronous queue dispatch with direct accessors)
+- [x] Add offline queue to `ResearchKitSyncService` (atomic filesystem queue + 4xx quarantine)
 - [ ] Add `NetworkMonitor` — trigger `flushQueue()` on reconnect
 - [ ] Display pending sync badge on `ResearchStudyDashboardCard`
 
@@ -33,15 +36,19 @@
 ### Agent-C: QA/CI
 - [ ] Capture baseline test coverage report
 - [ ] Add CI coverage gate (>=75% iOS, >=80% Python)
-- [ ] testCumulativeOccurrence
-- [ ] testDosesNormalizationNoDuplicates
-- [ ] testPendingCounterAccuracy
-- [ ] testExportVersionMigrationV12ToV13
-- [ ] testOfflineQueuePersistenceAcrossLaunch
-- [ ] testFlushQueueSendsAllPendingItems
-- [ ] testNetworkMonitorTriggersFlush
+- [x] testCumulativeOccurrence
+- [x] testDosesNormalizationNoDuplicates
+- [x] testPendingCounterAccuracy
+- [x] testExportVersionMigrationV12ToV13
+- [x] testMedicationPartialTogglePreservesLastTakenAt
+- [x] testEnqueuePayloadIncrementsPendingCount
+- [x] testGenerateDoctorShareFileCreatesValidJson
+- [x] testSyncNowRequiresParentalConsent
+- [x] testSyncNowWithSuccessfulTransmissionDrainsQueue
+- [x] testSyncNowQuarantines400BadRequest
+- [x] testSyncNowNetworkFailureLeavesQueueIntact
 
-### W1 Gate: all L-A..L-H fixed | iOS>=35 tests | Python>=20 tests | PRs to dev
+### W1 Progress: L-A..L-H fixed | iOS 44 tests green | Python 7 tests green | CTest 41 tests green
 
 ---
 

@@ -43,18 +43,26 @@ public final class ResearchKitSyncService: ObservableObject {
     private let serverURL: URL
     private let fileManager = FileManager.default
     private let queueDirectory: URL
+    private let session: URLSession
 
     public init(
         store: ResearchKitStudyStore = .shared,
-        serverURL: URL = URL(string: "http://127.0.0.1:8089/api/v1/research/ingest")!
+        serverURL: URL = URL(string: "http://127.0.0.1:8089/api/v1/research/ingest")!,
+        queueDirectory: URL? = nil,
+        session: URLSession = .shared
     ) {
         self.store = store
         self.serverURL = serverURL
+        self.session = session
 
-        // Initialize local queue directory in app documents / sandbox
-        let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first ?? URL(fileURLWithPath: NSTemporaryDirectory())
-        self.queueDirectory = docs.appendingPathComponent("ResearchStudyQueue", isDirectory: true)
-        try? fileManager.createDirectory(at: queueDirectory, withIntermediateDirectories: true)
+        // Initialize local queue directory in app documents / sandbox or injected test directory
+        if let queueDirectory {
+            self.queueDirectory = queueDirectory
+        } else {
+            let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first ?? URL(fileURLWithPath: NSTemporaryDirectory())
+            self.queueDirectory = docs.appendingPathComponent("ResearchStudyQueue", isDirectory: true)
+        }
+        try? fileManager.createDirectory(at: self.queueDirectory, withIntermediateDirectories: true)
         updatePendingCount()
     }
 
@@ -128,8 +136,18 @@ public final class ResearchKitSyncService: ObservableObject {
                     lastReceipt = receipt
                     try? fileManager.removeItem(at: file)
                     successCount += 1
-                } catch {
-                    Self.logger.error("Transmission failed for \(file.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                } catch let err as NSError {
+                    Self.logger.error("Transmission failed for \(file.lastPathComponent, privacy: .public): \(err.localizedDescription, privacy: .public)")
+                    // 4xx status codes indicate permanent payload/client errors.
+                    // Quarantine so this file does not block future sync runs.
+                    if (400...499).contains(err.code) {
+                        let quarantineDir = self.queueDirectory.appendingPathComponent("Quarantine", isDirectory: true)
+                        try? self.fileManager.createDirectory(at: quarantineDir, withIntermediateDirectories: true)
+                        let dest = quarantineDir.appendingPathComponent(file.lastPathComponent)
+                        try? self.fileManager.removeItem(at: dest)
+                        try? self.fileManager.moveItem(at: file, to: dest)
+                        Self.logger.warning("Quarantined invalid payload \(file.lastPathComponent, privacy: .public) (HTTP \(err.code))")
+                    }
                 }
             }
 
@@ -178,7 +196,7 @@ public final class ResearchKitSyncService: ObservableObject {
         request.httpBody = data
         request.timeoutInterval = 15.0
 
-        let (respData, response) = try await URLSession.shared.data(for: request)
+        let (respData, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw NSError(domain: "ResearchSync", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid server response"])
         }

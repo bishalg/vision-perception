@@ -105,6 +105,51 @@ final class CarePlanStoreTests: XCTestCase {
     }
 
     @MainActor
+    func testMedicationPartialTogglePreservesLastTakenAt() {
+        let store = makeStore()
+        guard let multiDoseMed = store.medications.first(where: { $0.schedule.count >= 2 }) else {
+            XCTFail("Must have at least one multi-dose medication")
+            return
+        }
+
+        // Initially ensure both are false
+        if multiDoseMed.dosesTakenToday[0] {
+            store.toggleMedicationTaken(id: multiDoseMed.id, doseIndex: 0)
+        }
+        if multiDoseMed.dosesTakenToday[1] {
+            store.toggleMedicationTaken(id: multiDoseMed.id, doseIndex: 1)
+        }
+
+        // 1. Take dose 0
+        store.toggleMedicationTaken(id: multiDoseMed.id, doseIndex: 0)
+        let medAfterDose0 = store.medications.first(where: { $0.id == multiDoseMed.id })!
+        XCTAssertTrue(medAfterDose0.dosesTakenToday[0])
+        XCTAssertNotNil(medAfterDose0.lastTakenAt)
+        let dose0Time = medAfterDose0.lastTakenAt
+
+        // 2. Take dose 1
+        store.toggleMedicationTaken(id: multiDoseMed.id, doseIndex: 1)
+        let medAfterBoth = store.medications.first(where: { $0.id == multiDoseMed.id })!
+        XCTAssertTrue(medAfterBoth.dosesTakenToday[0])
+        XCTAssertTrue(medAfterBoth.dosesTakenToday[1])
+        XCTAssertNotNil(medAfterBoth.lastTakenAt)
+
+        // 3. Untoggle dose 1 (dose 0 remains taken) -> lastTakenAt must NOT be wiped to nil!
+        store.toggleMedicationTaken(id: multiDoseMed.id, doseIndex: 1)
+        let medAfterUntoggle1 = store.medications.first(where: { $0.id == multiDoseMed.id })!
+        XCTAssertTrue(medAfterUntoggle1.dosesTakenToday[0])
+        XCTAssertFalse(medAfterUntoggle1.dosesTakenToday[1])
+        XCTAssertNotNil(medAfterUntoggle1.lastTakenAt, "lastTakenAt must NOT be cleared while dose 0 remains active")
+
+        // 4. Untoggle dose 0 (now no doses taken) -> lastTakenAt should be nil
+        store.toggleMedicationTaken(id: multiDoseMed.id, doseIndex: 0)
+        let medAfterBothUntoggled = store.medications.first(where: { $0.id == multiDoseMed.id })!
+        XCTAssertFalse(medAfterBothUntoggled.dosesTakenToday[0])
+        XCTAssertFalse(medAfterBothUntoggled.dosesTakenToday[1])
+        XCTAssertNil(medAfterBothUntoggled.lastTakenAt, "lastTakenAt must be nil when all doses are untoggled")
+    }
+
+    @MainActor
     func testMedicationDecodeNormalizesDoseArray() throws {
         let json = """
         {"id":"m","name":"N","dose":"1","instructions":"I","schedule":["08:00","20:00"],"dosesTakenToday":[true],"lastTakenAt":null}

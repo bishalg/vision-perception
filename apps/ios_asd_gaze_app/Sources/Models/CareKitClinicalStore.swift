@@ -99,9 +99,11 @@ public final class CareKitClinicalStore: @unchecked Sendable {
 
     /// Parse a "HH:MM" clock string into hour/minute, or nil.
     public static func parseClockTime(_ time: String) -> (hour: Int, minute: Int)? {
-        let parts = time.split(separator: ":")
+        let trimmed = time.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = trimmed.split(separator: ":")
         guard parts.count == 2,
-              let hour = Int(parts[0]), let minute = Int(parts[1]),
+              let hour = Int(parts[0].trimmingCharacters(in: .whitespacesAndNewlines)),
+              let minute = Int(parts[1].trimmingCharacters(in: .whitespacesAndNewlines)),
               (0...23).contains(hour), (0...59).contains(minute) else { return nil }
         return (hour, minute)
     }

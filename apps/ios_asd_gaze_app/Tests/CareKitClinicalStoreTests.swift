@@ -74,6 +74,10 @@ final class CareKitClinicalStoreTests: XCTestCase {
     func testParseClockTime() {
         XCTAssertEqual(CareKitClinicalStore.parseClockTime("08:30")?.hour, 8)
         XCTAssertEqual(CareKitClinicalStore.parseClockTime("08:30")?.minute, 30)
+        XCTAssertEqual(CareKitClinicalStore.parseClockTime("  08:30  ")?.hour, 8)
+        XCTAssertEqual(CareKitClinicalStore.parseClockTime("  08:30  ")?.minute, 30)
+        XCTAssertEqual(CareKitClinicalStore.parseClockTime(" 8:05 \n")?.hour, 8)
+        XCTAssertEqual(CareKitClinicalStore.parseClockTime(" 8:05 \n")?.minute, 5)
         XCTAssertNil(CareKitClinicalStore.parseClockTime("25:00"))
         XCTAssertNil(CareKitClinicalStore.parseClockTime("8"))
     }

@@ -30,6 +30,10 @@ public final class ResearchKitStudyStore: @unchecked Sendable {
 
     /// Retrieve the current research study enrollment profile.
     public func fetchEnrollment() -> ResearchStudyEnrollment {
+        researchQueue.sync { fetchEnrollmentDirect() }
+    }
+
+    private func fetchEnrollmentDirect() -> ResearchStudyEnrollment {
         guard let data = userDefaults.data(forKey: enrollmentKey),
               let profile = try? JSONDecoder().decode(ResearchStudyEnrollment.self, from: data) else {
             return ResearchStudyEnrollment()
@@ -44,9 +48,8 @@ public final class ResearchKitStudyStore: @unchecked Sendable {
         childAgeMonths: Int = 24,
         completion: (@Sendable (ResearchStudyEnrollment) -> Void)? = nil
     ) {
-        researchQueue.async { [weak self] in
-            guard let self else { return }
-            var profile = self.fetchEnrollment()
+        researchQueue.sync {
+            var profile = self.fetchEnrollmentDirect()
             if let participantId, !participantId.isEmpty {
                 profile.participantId = participantId
             }
@@ -68,9 +71,8 @@ public final class ResearchKitStudyStore: @unchecked Sendable {
     /// Revoke parental consent. Disables research synchronization without
     /// deleting local caregiver CareKit care plans.
     public func revokeConsent(completion: (@Sendable () -> Void)? = nil) {
-        researchQueue.async { [weak self] in
-            guard let self else { return }
-            var profile = self.fetchEnrollment()
+        researchQueue.sync {
+            var profile = self.fetchEnrollmentDirect()
             profile.isConsented = false
             profile.consentSignature = nil
 
@@ -92,47 +94,45 @@ public final class ResearchKitStudyStore: @unchecked Sendable {
         telemetrySampleCount: Int = 0,
         completion: (@Sendable (ORKTaskResult?) -> Void)? = nil
     ) -> ORKTaskResult? {
-        let profile = fetchEnrollment()
-        guard profile.isConsented else {
-            Self.logger.warning("Screening completed but ResearchKit study participation is not consented; skipping study write")
-            Self.dispatch(completion, value: nil)
-            return nil
-        }
+        researchQueue.sync {
+            let profile = fetchEnrollmentDirect()
+            guard profile.isConsented else {
+                Self.logger.warning("Screening completed but ResearchKit study participation is not consented; skipping study write")
+                Self.dispatch(completion, value: nil)
+                return nil
+            }
 
-        let activeResult = ORKActiveStepResult(summary: summary, telemetrySampleCount: telemetrySampleCount)
-        var taskResult = ORKTaskResult(
-            participantId: profile.participantId,
-            startDate: Date().addingTimeInterval(-summary.durationSec),
-            endDate: Date(),
-            activeStepResult: activeResult
-        )
-
-        // Attach consent reference step result
-        if let sig = profile.consentSignature {
-            let consentStep = ORKStepResult(
-                identifier: "consent_review",
-                stepType: "ORKConsentReviewStep",
-                startDate: sig.signedDate,
-                endDate: sig.signedDate,
-                results: [
-                    "signatureToken": .string(sig.signatureToken),
-                    "consentVersion": .string(sig.consentVersion),
-                    "participantId": .string(profile.participantId)
-                ]
+            let activeResult = ORKActiveStepResult(summary: summary, telemetrySampleCount: telemetrySampleCount)
+            var taskResult = ORKTaskResult(
+                participantId: profile.participantId,
+                startDate: Date().addingTimeInterval(-summary.durationSec),
+                endDate: Date(),
+                activeStepResult: activeResult
             )
-            taskResult.stepResults.append(consentStep)
-        }
 
-        researchQueue.async { [weak self] in
-            guard let self else { return }
+            // Attach consent reference step result
+            if let sig = profile.consentSignature {
+                let consentStep = ORKStepResult(
+                    identifier: "consent_review",
+                    stepType: "ORKConsentReviewStep",
+                    startDate: sig.signedDate,
+                    endDate: sig.signedDate,
+                    results: [
+                        "signatureToken": .string(sig.signatureToken),
+                        "consentVersion": .string(sig.consentVersion),
+                        "participantId": .string(profile.participantId)
+                    ]
+                )
+                taskResult.stepResults.append(consentStep)
+            }
+
             var results = self.fetchStoredTaskResults()
             results.append(taskResult)
             self.persistTaskResults(results)
             Self.logger.info("Persisted ORKTaskResult for session \(summary.sessionId, privacy: .public) with participant \(profile.participantId, privacy: .public)")
             Self.dispatch(completion, value: taskResult)
+            return taskResult
         }
-
-        return taskResult
     }
 
     // MARK: - Standardized Survey Recording (M-CHAT-R/F)
@@ -143,10 +143,9 @@ public final class ResearchKitStudyStore: @unchecked Sendable {
         completion: (@Sendable (MCHATScoreResult) -> Void)? = nil
     ) {
         let score = MCHATSurveyEngine.evaluate(answers: answers)
-        let profile = fetchEnrollment()
 
-        researchQueue.async { [weak self] in
-            guard let self else { return }
+        researchQueue.sync {
+            let profile = fetchEnrollmentDirect()
             // Persist structured survey score
             var storedSurveys = self.fetchStoredSurveyResults()
             storedSurveys.append(score)
@@ -193,19 +192,23 @@ public final class ResearchKitStudyStore: @unchecked Sendable {
     // MARK: - Query & Study Bundle Compilation
 
     public func fetchCompletedTaskResults() -> [ORKTaskResult] {
-        fetchStoredTaskResults()
+        researchQueue.sync { fetchStoredTaskResults() }
     }
 
     public func fetchCompletedSurveys() -> [MCHATScoreResult] {
-        fetchStoredSurveyResults()
+        researchQueue.sync { fetchStoredSurveyResults() }
     }
 
     /// Compile a de-identified ResearchKit study bundle ready for transmission
     /// to the doctor or research server, including SHA-256 cryptographic digest.
     public func compileStudyBundle() -> [String: Any] {
-        let profile = fetchEnrollment()
-        let tasks = fetchCompletedTaskResults()
-        let surveys = fetchCompletedSurveys()
+        researchQueue.sync { compileStudyBundleDirect() }
+    }
+
+    private func compileStudyBundleDirect() -> [String: Any] {
+        let profile = fetchEnrollmentDirect()
+        let tasks = fetchStoredTaskResults()
+        let surveys = fetchStoredSurveyResults()
 
         let taskDicts: [[String: Any]] = tasks.compactMap { task in
             guard let data = try? JSONEncoder().encode(task),

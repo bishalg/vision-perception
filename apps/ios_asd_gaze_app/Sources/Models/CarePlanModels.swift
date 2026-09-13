@@ -314,7 +314,14 @@ public final class CarePlanStore: ObservableObject {
         guard let index = medications.firstIndex(where: { $0.id == id }),
               medications[index].dosesTakenToday.indices.contains(doseIndex) else { return }
         medications[index].dosesTakenToday[doseIndex].toggle()
-        medications[index].lastTakenAt = medications[index].dosesTakenToday[doseIndex] ? Date() : nil
+        let isNowTaken = medications[index].dosesTakenToday[doseIndex]
+        if medications[index].dosesTakenToday.contains(true) {
+            if isNowTaken || medications[index].lastTakenAt == nil {
+                medications[index].lastTakenAt = Date()
+            }
+        } else {
+            medications[index].lastTakenAt = nil
+        }
         saveMedications()
         let med = medications[index]
         let key = "med_\(med.id)"
