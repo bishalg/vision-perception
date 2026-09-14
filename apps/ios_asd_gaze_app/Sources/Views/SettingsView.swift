@@ -8,9 +8,11 @@ import ARKit
 /// Directs language localization to iOS Settings and displays sensor telemetry status.
 public struct SettingsView: View {
     @Environment(\.openURL) private var openURL
+    @ObservedObject private var childProfileStore = ChildProfileStore.shared
     @State private var calibrationProfile: GazeCalibrationProfile = GazeCalibrationStore.load()
     @State private var showQuickCalibrate: Bool = false
     @State private var showCameraCheck: Bool = false
+    @State private var showOnboardingFlow: Bool = false
 
     public init() {}
 
@@ -67,6 +69,13 @@ public struct SettingsView: View {
                             .padding(16)
                     }
                 }
+            }
+            .fullScreenCover(isPresented: $showOnboardingFlow) {
+                OnboardingFlowView(
+                    onCompleted: {
+                        showOnboardingFlow = false
+                    }
+                )
             }
         }
     }
@@ -148,7 +157,10 @@ public struct SettingsView: View {
     // MARK: - Section 1: Participant & Caregiver Profile
 
     private var profileSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        let profile = childProfileStore.profile
+        let childName = profile.childName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Liam G." : profile.childName
+
+        return VStack(alignment: .leading, spacing: 10) {
             GlassSectionHeader(title: "Caregiver & Participant Profile", icon: "person.crop.circle.fill")
 
             VStack(spacing: 12) {
@@ -167,10 +179,10 @@ public struct SettingsView: View {
 
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 6) {
-                            Text("Liam G.")
+                            Text(childName)
                                 .font(.system(size: 17, weight: .bold, design: .rounded))
                                 .foregroundColor(LiquidGlass.textPrimary)
-                            Text("24m")
+                            Text(profile.ageBracket.rawValue)
                                 .font(.system(size: 11, weight: .bold, design: .rounded))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
@@ -178,11 +190,11 @@ public struct SettingsView: View {
                                 .foregroundColor(LiquidGlass.celestialTeal)
                         }
 
-                        Text("Participant: child-7294 • Toddler Cohort")
+                        Text("Cohort: \(profile.ageBracket.developmentalStage)")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(LiquidGlass.textSecondary)
 
-                        Text("Primary Caregiver: Parent / Guardian")
+                        Text("Language: \(languageDisplayName(for: profile.preferredLanguage))")
                             .font(.system(size: 11, weight: .regular))
                             .foregroundColor(LiquidGlass.textTertiary)
                     }
@@ -193,13 +205,13 @@ public struct SettingsView: View {
                 GlassDivider()
 
                 HStack {
-                    Label("Clinical Study Enrollment", systemImage: "cross.case.fill")
+                    Label("Privacy & PIA Protocol", systemImage: "hand.raised.shield.fill")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(LiquidGlass.textPrimary)
                     Spacer()
-                    Text("GeoPref Protocol v1.3")
+                    Text(profile.hasConsentedPIA ? "Verified On-Device" : "Consent Pending")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(LiquidGlass.emeraldMint)
+                        .foregroundColor(profile.hasConsentedPIA ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber)
                 }
 
                 GlassDivider()
@@ -213,8 +225,36 @@ public struct SettingsView: View {
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(LiquidGlass.celestialTeal)
                 }
+
+                GlassDivider()
+
+                Button {
+                    showOnboardingFlow = true
+                } label: {
+                    HStack {
+                        Image(systemName: "slider.horizontal.3")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text("Edit Profile & Re-run Onboarding")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundColor(LiquidGlass.celestialTeal)
+                    .padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
             }
             .glassCard(cornerRadius: 14, padding: 14)
+        }
+    }
+
+    private func languageDisplayName(for code: String) -> String {
+        switch code {
+        case "hi": return "हिन्दी (Hindi)"
+        case "ne": return "नेपाली (Nepali)"
+        case "zh": return "中文 (Mandarin)"
+        default: return "English"
         }
     }
 

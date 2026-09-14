@@ -100,6 +100,32 @@ final class ScreenRaycasterTests: XCTestCase {
         XCTAssertTrue(expiredHits.isEmpty)
     }
 
+    func testStandard10ClipBatteryAndProceduralMath() {
+        let battery = StimulusAOITracker.makeStandard10ClipBattery()
+        XCTAssertEqual(battery.count, 10)
+        XCTAssertNotNil(battery["stim_01_social_peekaboo_8s"])
+        XCTAssertNotNil(battery["stim_02_gaze_cue_right_8s"])
+        XCTAssertNotNil(battery["stim_05_geopref_split_10s"])
+
+        // Test dynamic lookup
+        let peekTracker = StimulusAOITracker.tracker(forVideoNamed: "stim_01_social_peekaboo_8s.mp4")
+        let hits = peekTracker.activeAOIs(atTimeSec: 2.0, xNorm: 0.5, yNorm: 0.35)
+        XCTAssertTrue(hits.contains("Eye_Region") || hits.contains("Face_Center"))
+
+        // Test procedural math calculations
+        let smoothPursuitPt = ProceduralOculomotorMath.targetCoordinate(mode: .smoothPursuit, timeSec: 0.0)
+        XCTAssertEqual(smoothPursuitPt.x, 0.82, accuracy: 0.01)
+        XCTAssertEqual(smoothPursuitPt.y, 0.50, accuracy: 0.01)
+
+        let saccadePt = ProceduralOculomotorMath.targetCoordinate(mode: .saccadicStep, timeSec: 0.5)
+        XCTAssertEqual(saccadePt.x, 0.50, accuracy: 0.01)
+        XCTAssertEqual(saccadePt.y, 0.50, accuracy: 0.01)
+
+        let saccadeStep1 = ProceduralOculomotorMath.targetCoordinate(mode: .saccadicStep, timeSec: 1.6)
+        XCTAssertEqual(saccadeStep1.x, 0.18, accuracy: 0.01)
+        XCTAssertEqual(saccadeStep1.y, 0.30, accuracy: 0.01)
+    }
+
     func testScreenRaycasterAutoDeviceDefaults() {
         let raycaster = ScreenRaycaster()
         XCTAssertGreaterThan(raycaster.screenWidthPoints, 300.0)

@@ -14,20 +14,56 @@ public struct GazeStimulusScreeningView: View {
     @StateObject private var controller = GazeSessionController()
     @State private var sessionTimer: Timer?
     @State private var elapsedSeconds: Double = 0.0
+    @State private var currentClipElapsedSec: Double = 0.0
+    @State private var currentClipIndex: Int = 0
     @State private var cartoonBlink: Bool = false
     @State private var cartoonBounce: CGFloat = 0.0
     @State private var showAbortConfirm: Bool = false
 
-    private let sessionDurationSec: Double = 30.0
+    public let playlist: [StimulusPlaylistItem]
+    public let proceduralMode: ProceduralStimulusMode?
 
     // Callbacks
     public let onComplete: (GazeSessionReportSummary, [GazeFrame], BiomarkerClassificationResult) -> Void
     public let onAbort: () -> Void
 
+    public var sessionDurationSec: Double {
+        let total = playlist.reduce(0.0) { $0 + $1.targetDurationSec }
+        return total > 0 ? total : 30.0
+    }
+
+    private var currentClip: StimulusPlaylistItem? {
+        guard currentClipIndex >= 0 && currentClipIndex < playlist.count else { return nil }
+        return playlist[currentClipIndex]
+    }
+
     public init(
+        playlist: [StimulusPlaylistItem] = StimulusPlaylistBattery.standard30s,
+        proceduralMode: ProceduralStimulusMode? = nil,
         onComplete: @escaping (GazeSessionReportSummary, [GazeFrame], BiomarkerClassificationResult) -> Void,
         onAbort: @escaping () -> Void
     ) {
+        self.playlist = playlist.isEmpty ? StimulusPlaylistBattery.standard30s : playlist
+        self.proceduralMode = proceduralMode
+        self.onComplete = onComplete
+        self.onAbort = onAbort
+    }
+
+    public init(
+        videoName: String = "stim_05_geopref_split_10s",
+        proceduralMode: ProceduralStimulusMode? = nil,
+        onComplete: @escaping (GazeSessionReportSummary, [GazeFrame], BiomarkerClassificationResult) -> Void,
+        onAbort: @escaping () -> Void
+    ) {
+        self.playlist = [
+            StimulusPlaylistItem(
+                videoName: videoName,
+                title: videoName.replacingOccurrences(of: "_", with: " ").capitalized,
+                category: "Clinical Stimulus",
+                targetDurationSec: 30.0
+            )
+        ]
+        self.proceduralMode = proceduralMode
         self.onComplete = onComplete
         self.onAbort = onAbort
     }
@@ -60,16 +96,19 @@ public struct GazeStimulusScreeningView: View {
                     .allowsHitTesting(false)
 
                     // 3. Floating HUD Overlays (Top Controls + Bottom Emotion HUD)
-                    VStack {
+                    let topSafeInset = max(geo.safeAreaInsets.top, 44.0)
+                    let bottomSafeInset = max(geo.safeAreaInsets.bottom, 16.0)
+
+                    VStack(spacing: 0) {
                         topControlsBar
                             .padding(.horizontal, 16)
-                            .padding(.top, 14)
+                            .padding(.top, topSafeInset + 8)
 
                         Spacer()
 
                         bottomEmotionHUD
                             .padding(.horizontal, 16)
-                            .padding(.bottom, 22)
+                            .padding(.bottom, bottomSafeInset + 10)
                     }
                 }
             }
@@ -92,10 +131,10 @@ public struct GazeStimulusScreeningView: View {
         }
     }
 
-    // MARK: - Top Controls Bar (Timer at Top-Right, Progress Bar at Top-Center)
+    // MARK: - Top Controls Bar (Timer, Progress Bar, & Sequence Dots)
 
     private var topControlsBar: some View {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(alignment: .top, spacing: 8) {
             // Top-Left: Discreet Caregiver Exit / Abort Button
             Button {
                 showAbortConfirm = true
@@ -106,22 +145,23 @@ public struct GazeStimulusScreeningView: View {
                     Text("Exit")
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
                 }
-                .foregroundColor(Color.white.opacity(0.75))
+                .foregroundColor(Color.white.opacity(0.85))
                 .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Capsule().fill(.ultraThinMaterial.opacity(0.7)))
-                .overlay(Capsule().stroke(Color.white.opacity(0.15), lineWidth: 0.8))
+                .padding(.vertical, 7)
+                .background(Capsule().fill(.ultraThinMaterial.opacity(0.75)))
+                .overlay(Capsule().stroke(Color.white.opacity(0.18), lineWidth: 0.8))
             }
             .buttonStyle(.plain)
 
-            Spacer()
+            Spacer(minLength: 2)
 
-            // Top-Center: Continuous Progress Bar
-            VStack(spacing: 3) {
+            // Top-Center: Continuous Progress Bar + Dots for Multiple Videos
+            VStack(spacing: 5) {
+                // Continuous Session Progress Bar
                 ZStack(alignment: .leading) {
                     Capsule()
                         .fill(Color.white.opacity(0.2))
-                        .frame(width: 130, height: 6)
+                        .frame(width: 130, height: 5)
                     Capsule()
                         .fill(
                             LinearGradient(
@@ -130,19 +170,56 @@ public struct GazeStimulusScreeningView: View {
                                 endPoint: .trailing
                             )
                         )
-                        .frame(width: max(6, 130 * CGFloat(min(elapsedSeconds / sessionDurationSec, 1.0))), height: 6)
+                        .frame(
+                            width: max(5, 130 * CGFloat(min(elapsedSeconds / max(1.0, sessionDurationSec), 1.0))),
+                            height: 5
+                        )
                         .shadow(color: LiquidGlass.emeraldMint.opacity(0.5), radius: 3)
                 }
 
+                // Numeric Timer Progress Display
                 Text("\(Int(min(elapsedSeconds, sessionDurationSec)))s / \(Int(sessionDurationSec))s")
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
-                    .foregroundColor(Color.white.opacity(0.7))
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(Capsule().fill(.ultraThinMaterial.opacity(0.5)))
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundColor(Color.white.opacity(0.85))
 
-            Spacer()
+                // Progress Indicator Dots for Multiple Videos (Directly below timer progress)
+                HStack(spacing: 6) {
+                    ForEach(0..<playlist.count, id: \.self) { idx in
+                        if idx < currentClipIndex {
+                            // Completed clip: Solid Emerald Mint dot
+                            Circle()
+                                .fill(LiquidGlass.emeraldMint)
+                                .frame(width: 6, height: 6)
+                                .shadow(color: LiquidGlass.emeraldMint.opacity(0.6), radius: 2)
+                        } else if idx == currentClipIndex {
+                            // Current Active clip: Glowing elongated Celestial Teal capsule
+                            Capsule()
+                                .fill(LiquidGlass.celestialTeal)
+                                .frame(width: 16, height: 6)
+                                .shadow(color: LiquidGlass.celestialTeal.opacity(0.8), radius: 4)
+                        } else {
+                            // Upcoming clip: Translucent dot
+                            Circle()
+                                .fill(Color.white.opacity(0.3))
+                                .frame(width: 6, height: 6)
+                        }
+                    }
+                }
+
+                // Active Clip Title / Category Tag
+                if let clip = currentClip {
+                    Text("\(currentClipIndex + 1)/\(playlist.count) • \(clip.title)")
+                        .font(.system(size: 9, weight: .medium, design: .rounded))
+                        .foregroundColor(Color.white.opacity(0.75))
+                        .lineLimit(1)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(.ultraThinMaterial.opacity(0.65)))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 0.8))
+
+            Spacer(minLength: 2)
 
             // Top-Right: Time Value Badge
             HStack(spacing: 5) {
@@ -152,14 +229,14 @@ public struct GazeStimulusScreeningView: View {
                 Text(String(format: "%02d:%02d",
                             Int(elapsedSeconds) / 60,
                             Int(elapsedSeconds) % 60))
-                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
                     .monospacedDigit()
                     .foregroundColor(.white)
             }
             .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Capsule().fill(.ultraThinMaterial.opacity(0.7)))
-            .overlay(Capsule().stroke(Color.white.opacity(0.15), lineWidth: 0.8))
+            .padding(.vertical, 7)
+            .background(Capsule().fill(.ultraThinMaterial.opacity(0.75)))
+            .overlay(Capsule().stroke(Color.white.opacity(0.18), lineWidth: 0.8))
         }
     }
 
@@ -265,65 +342,83 @@ public struct GazeStimulusScreeningView: View {
         }
     }
 
-    // MARK: - Stimulus Content (GeoPref Split-Screen)
+    // MARK: - Stimulus Content (Video / Procedural / Fallback)
 
     @ViewBuilder
     private func stimulusContent() -> some View {
         GeometryReader { geometry in
             ZStack {
-                // GeoPref Split-Screen: Social Actor vs Geometric Pattern
-                HStack(spacing: 0) {
-                    // Left: Social scene (Actor)
-                    ZStack {
-                        LinearGradient(
-                            colors: [LiquidGlass.stimulusSocialTop, LiquidGlass.stimulusSocialBottom],
-                            startPoint: .top, endPoint: .bottom
-                        )
-                        VStack(spacing: 14) {
-                            // Animated cartoon character (child-facing stimulus)
-                            ZStack {
-                                Circle()
-                                    .fill(RadialGradient(
-                                        colors: [Color.yellow, Color.orange],
-                                        center: .center, startRadius: 10, endRadius: 50
-                                    ))
-                                    .frame(width: 100, height: 100)
-                                    .shadow(color: Color.orange.opacity(0.5), radius: 18)
+                if let proceduralMode = proceduralMode {
+                    ProceduralOculomotorStimulusView(
+                        mode: proceduralMode,
+                        elapsedSec: elapsedSeconds
+                    )
+                } else if let clip = currentClip,
+                          let videoURL = OnDemandStimulusManager.shared.resolveVideoURL(name: clip.videoName) {
+                    StimulusVideoPlayerView(
+                        videoURL: videoURL,
+                        isLooping: true,
+                        onEnded: {
+                            advanceToNextClipIfNeeded()
+                        }
+                    )
+                    .id(clip.videoName)
+                    .transition(.opacity.animation(.easeInOut(duration: 0.35)))
+                } else {
+                    // Fallback GeoPref Split-Screen: Social Actor vs Geometric Pattern
+                    HStack(spacing: 0) {
+                        // Left: Social scene (Actor)
+                        ZStack {
+                            LinearGradient(
+                                colors: [LiquidGlass.stimulusSocialTop, LiquidGlass.stimulusSocialBottom],
+                                startPoint: .top, endPoint: .bottom
+                            )
+                            VStack(spacing: 14) {
+                                // Animated cartoon character (child-facing stimulus)
+                                ZStack {
+                                    Circle()
+                                        .fill(RadialGradient(
+                                            colors: [Color.yellow, Color.orange],
+                                            center: .center, startRadius: 10, endRadius: 50
+                                        ))
+                                        .frame(width: 100, height: 100)
+                                        .shadow(color: Color.orange.opacity(0.5), radius: 18)
 
-                                VStack(spacing: 8) {
-                                    HStack(spacing: 20) {
-                                        Circle().fill(Color.black)
-                                            .frame(width: 9, height: cartoonBlink ? 2 : 14)
-                                        Circle().fill(Color.black)
-                                            .frame(width: 9, height: cartoonBlink ? 2 : 14)
+                                    VStack(spacing: 8) {
+                                        HStack(spacing: 20) {
+                                            Circle().fill(Color.black)
+                                                .frame(width: 9, height: cartoonBlink ? 2 : 14)
+                                            Circle().fill(Color.black)
+                                                .frame(width: 9, height: cartoonBlink ? 2 : 14)
+                                        }
+                                        Capsule().fill(Color.red).frame(width: 26, height: 9)
                                     }
-                                    Capsule().fill(Color.red).frame(width: 26, height: 9)
                                 }
+                                .offset(y: cartoonBounce)
                             }
-                            .offset(y: cartoonBounce)
                         }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                    // Right: Dynamic Geometric Pattern
-                    ZStack {
-                        LinearGradient(
-                            colors: [LiquidGlass.stimulusGeometryTop, LiquidGlass.stimulusGeometryBottom],
-                            startPoint: .top, endPoint: .bottom
-                        )
-                        VStack(spacing: 14) {
-                            Image(systemName: "hexagon.fill")
-                                .font(.system(size: 54))
-                                .foregroundColor(LiquidGlass.celestialTeal.opacity(0.8))
-                                .rotationEffect(.degrees(elapsedSeconds * 60))
+                        // Right: Dynamic Geometric Pattern
+                        ZStack {
+                            LinearGradient(
+                                colors: [LiquidGlass.stimulusGeometryTop, LiquidGlass.stimulusGeometryBottom],
+                                startPoint: .top, endPoint: .bottom
+                            )
+                            VStack(spacing: 14) {
+                                Image(systemName: "hexagon.fill")
+                                    .font(.system(size: 54))
+                                    .foregroundColor(LiquidGlass.celestialTeal.opacity(0.8))
+                                    .rotationEffect(.degrees(elapsedSeconds * 60))
 
-                            Image(systemName: "star.fill")
-                                .font(.system(size: 28))
-                                .foregroundColor(LiquidGlass.warmAmber.opacity(0.75))
-                                .rotationEffect(.degrees(-elapsedSeconds * 90))
+                                Image(systemName: "star.fill")
+                                    .font(.system(size: 28))
+                                    .foregroundColor(LiquidGlass.warmAmber.opacity(0.75))
+                                    .rotationEffect(.degrees(-elapsedSeconds * 90))
+                            }
                         }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
 
                 // Real-time gaze reticle (caregiver feedback)
@@ -345,25 +440,61 @@ public struct GazeStimulusScreeningView: View {
 
     private func startSession() {
         controller.reloadCalibrationProfile()
-        controller.startSession()
-        elapsedSeconds = 0
+        currentClipIndex = 0
+        currentClipElapsedSec = 0.0
+        elapsedSeconds = 0.0
+
+        let initialBattery: StimulusAOITracker
+        if let clip = currentClip {
+            initialBattery = StimulusAOITracker.tracker(forVideoNamed: clip.videoName)
+        } else {
+            initialBattery = StimulusAOITracker.makeGeoPrefBattery()
+        }
+
+        controller.startSession(battery: initialBattery)
+
         sessionTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { _ in
             MainActor.assumeIsolated {
                 elapsedSeconds += 1.0 / 60.0
+                currentClipElapsedSec += 1.0 / 60.0
 
                 if controller.isSimulationMode {
-                    controller.tickSimulatedFrame(timeSec: elapsedSeconds)
+                    controller.tickSimulatedFrame(timeSec: elapsedSeconds, clipTimeSec: currentClipElapsedSec)
                 }
 
                 // Cartoon animation
                 cartoonBounce = sin(elapsedSeconds * 4.2) * 9.0
                 cartoonBlink = fmod(elapsedSeconds, 3.5) < 0.15
 
-                // Auto-complete at 30 s
+                // Advance to next video in playlist if target clip duration reached
+                if let clip = currentClip, currentClipElapsedSec >= clip.targetDurationSec {
+                    advanceToNextClipIfNeeded()
+                }
+
+                // Auto-complete when total session duration is reached
                 if elapsedSeconds >= sessionDurationSec {
                     finishSession()
                 }
             }
+        }
+    }
+
+    private func advanceToNextClipIfNeeded() {
+        guard currentClipIndex + 1 < playlist.count else {
+            if elapsedSeconds >= sessionDurationSec {
+                finishSession()
+            }
+            return
+        }
+
+        withAnimation(.easeInOut(duration: 0.3)) {
+            currentClipIndex += 1
+            currentClipElapsedSec = 0.0
+        }
+
+        if let nextClip = currentClip {
+            let nextBattery = StimulusAOITracker.tracker(forVideoNamed: nextClip.videoName)
+            controller.switchStimulusClip(battery: nextBattery)
         }
     }
 
@@ -377,6 +508,7 @@ public struct GazeStimulusScreeningView: View {
         let summary = controller.stopSession()
         let frames = controller.recordedFrames
         let classification = BiomarkerClassificationEngine.shared.classifySync(summary: summary)
+        let activeBatteryName = proceduralMode?.rawValue ?? (playlist.count > 1 ? "MultiClipBattery_\(playlist.count)Clips" : (currentClip?.videoName ?? "SingleClip"))
 
         // Persist encrypted vault off main thread
         Task.detached(priority: .userInitiated) {
@@ -384,7 +516,7 @@ public struct GazeStimulusScreeningView: View {
             let header = SessionHeader(
                 sessionId: summary.sessionId,
                 participantToken: "child-\(summary.sessionId.prefix(6))",
-                stimulusBattery: "GeoPref_v1",
+                stimulusBattery: activeBatteryName,
                 stimulusDurationSec: summary.durationSec
             )
             _ = try? vault.saveSession(

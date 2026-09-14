@@ -6,6 +6,7 @@ import CurvAsdGazeKit
 public enum ScreeningWizardStep: Equatable {
     case positioning
     case calibrating
+    case gate
     case stimulus
     case summary(GazeSessionReportSummary, [GazeFrame], BiomarkerClassificationResult)
 
@@ -13,6 +14,7 @@ public enum ScreeningWizardStep: Equatable {
         switch (lhs, rhs) {
         case (.positioning, .positioning),
              (.calibrating, .calibrating),
+             (.gate, .gate),
              (.stimulus, .stimulus):
             return true
         case (.summary, .summary):
@@ -57,6 +59,23 @@ public struct GazeScreeningWizardView: View {
                 BubbleCalibrationView(
                     onClose: nil,
                     onCalibrationComplete: {
+                        withAnimation(.easeInOut(duration: 0.3)) { step = .gate }
+                    }
+                )
+                .transition(.asymmetric(
+                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                    removal: .move(edge: .leading).combined(with: .opacity)
+                ))
+
+            case .gate:
+                let profile = ChildProfileStore.shared.profile
+                StimulusDownloadGateView(
+                    childAgeMonths: profile.ageBracket.midpointMonths,
+                    localeCode: profile.preferredLanguage,
+                    onReady: {
+                        withAnimation(.easeInOut(duration: 0.3)) { step = .stimulus }
+                    },
+                    onFallback: {
                         withAnimation(.easeInOut(duration: 0.3)) { step = .stimulus }
                     }
                 )
@@ -66,7 +85,10 @@ public struct GazeScreeningWizardView: View {
                 ))
 
             case .stimulus:
+                let durationSec = Double(ChildProfileStore.shared.profile.sessionDurationSec)
+                let activePlaylist = StimulusPlaylistBattery.playlist(forTargetDuration: durationSec)
                 GazeStimulusScreeningView(
+                    playlist: activePlaylist,
                     onComplete: { summary, frames, classification in
                         withAnimation(.easeInOut(duration: 0.25)) {
                             step = .summary(summary, frames, classification)

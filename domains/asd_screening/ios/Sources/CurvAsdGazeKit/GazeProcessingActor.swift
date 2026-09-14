@@ -136,6 +136,7 @@ public actor GazeProcessingActor {
     private var volatileFrameBuffer: [GazeFrame] = []
     public private(set) var isRecording: Bool = false
     private var sessionStartTime: Date?
+    private var clipStartTime: Date?
 
     public init(
         raycaster: ScreenRaycaster = ScreenRaycaster(),
@@ -164,12 +165,19 @@ public actor GazeProcessingActor {
         }
         self.volatileFrameBuffer.removeAll(keepingCapacity: true)
         self.sessionStartTime = Date()
+        self.clipStartTime = Date()
         self.isRecording = true
         self.lastValidCalibratedPoint = CGPoint(x: 0.5, y: 0.5)
         self.lastValidRawPoint = CGPoint(x: 0.5, y: 0.5)
         self.blinkRecoveryFramesRemaining = 0
         self.gazeFilter.reset()
         self.rawGazeFilter.reset()
+    }
+
+    /// Dynamically switches the active stimulus clip and AOI battery mid-session.
+    public func switchStimulusClip(battery: StimulusAOITracker) {
+        self.aoiTracker = battery
+        self.clipStartTime = Date()
     }
 
     /// Updates calibration profile and resets smoothing filters.
@@ -269,9 +277,10 @@ public actor GazeProcessingActor {
         )
 
         // 5. Query dynamic Area of Interest (AOI) bounding boxes (suppressed during ocular artifacts)
+        let clipElapsedSec = clipStartTime.map { Date().timeIntervalSince($0) } ?? elapsedSec
         let activeHits: [String] = isOcularArtifact
             ? []
-            : aoiTracker.activeAOIs(atTimeSec: elapsedSec, xNorm: calibratedPoint.x, yNorm: calibratedPoint.y)
+            : aoiTracker.activeAOIs(atTimeSec: clipElapsedSec, xNorm: calibratedPoint.x, yNorm: calibratedPoint.y)
 
         // 6. Evaluate Quality Gate tolerances (freeze coordinate at last valid position during blinks)
         let gazeCoord = isOcularArtifact ? lastValidCalibratedPoint : calibratedPoint

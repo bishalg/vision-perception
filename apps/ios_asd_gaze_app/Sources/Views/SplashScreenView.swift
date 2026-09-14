@@ -1,11 +1,13 @@
 import SwiftUI
 
-/// Animated Liquid Glass splash screen presenting the app icon and title on app launch.
+/// Animated Liquid Glass splash screen presenting the app icon, title, and custom animated loader.
 public struct SplashScreenView: View {
     @State private var iconScale: CGFloat = 0.82
     @State private var iconOpacity: Double = 0.0
     @State private var textOpacity: Double = 0.0
     @State private var glowRadius: CGFloat = 8.0
+    @State private var spinnerRotation: Double = 0.0
+    @State private var spinnerPulse: Bool = false
 
     public let onFinished: () -> Void
 
@@ -74,12 +76,31 @@ public struct SplashScreenView: View {
 
                 Spacer()
 
-                // Subtle activity indicator
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: LiquidGlass.celestialTeal))
-                    .scaleEffect(0.9)
-                    .opacity(textOpacity)
-                    .padding(.bottom, 36)
+                // Custom Liquid Glass Spinner (custom circular gradient loader)
+                ZStack {
+                    Circle()
+                        .stroke(LiquidGlass.celestialTeal.opacity(0.18), lineWidth: 3)
+                        .frame(width: 38, height: 38)
+
+                    Circle()
+                        .trim(from: 0.0, to: 0.72)
+                        .stroke(
+                            AngularGradient(
+                                colors: [LiquidGlass.celestialTeal, LiquidGlass.emeraldMint, Color.clear],
+                                center: .center
+                            ),
+                            style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                        )
+                        .frame(width: 38, height: 38)
+                        .rotationEffect(.degrees(spinnerRotation))
+
+                    Circle()
+                        .fill(LiquidGlass.emeraldMint)
+                        .frame(width: 6, height: 6)
+                        .scaleEffect(spinnerPulse ? 1.35 : 0.8)
+                }
+                .opacity(textOpacity)
+                .padding(.bottom, 42)
             }
         }
         .onAppear {
@@ -93,8 +114,16 @@ public struct SplashScreenView: View {
                 textOpacity = 1.0
             }
 
-            // Transition into main experience after brief branded introduction
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
+            withAnimation(.linear(duration: 1.0).repeatForever(autoreverses: false)) {
+                spinnerRotation = 360.0
+            }
+
+            withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                spinnerPulse = true
+            }
+
+            // Transition into app after custom loader display
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
                 withAnimation(.easeInOut(duration: 0.35)) {
                     onFinished()
                 }

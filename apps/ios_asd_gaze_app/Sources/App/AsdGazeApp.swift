@@ -3,46 +3,27 @@ import CurvAsdGazeKit
 
 @main
 struct AsdGazeApp: App {
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @State private var selectedTab: Int = 0
     @State private var showSplashScreen: Bool = true
 
     var body: some Scene {
         WindowGroup {
             ZStack {
-                TabView(selection: $selectedTab) {
-                    // Tab 0: Longitudinal CareKit Dashboard
-                    CaregiverDashboardView {
-                        selectedTab = 1
-                    }
-                    .tabItem {
-                        Label(Localizer.tr("tab_dashboard"), systemImage: "chart.line.uptrend.xyaxis")
-                    }
-                    .tag(0)
-
-                    // Tab 1: 3-Step Guided Clinical Screening Wizard
-                    // Step 1 → Face Alignment & Distance
-                    // Step 2 → 5-Point Bubble Calibration
-                    // Step 3 → Full-Screen Stimulus + 1:1 Affect Logging
-                    GazeScreeningWizardView(
-                        onOpenHistory: {
-                            selectedTab = 0
+                // Main Application Layer (routes between Onboarding and TabView)
+                if hasCompletedOnboarding {
+                    mainTabView
+                        .transition(.opacity)
+                } else {
+                    OnboardingFlowView {
+                        withAnimation(.easeInOut(duration: 0.4)) {
+                            hasCompletedOnboarding = true
                         }
-                    )
-                    .tabItem {
-                        Label(Localizer.tr("tab_gaze"), systemImage: "eye.circle.fill")
                     }
-                    .tag(1)
-
-                    // Tab 2: Settings (includes Screening & Calibration Tools section)
-                    SettingsView()
-                        .tabItem {
-                            Label(Localizer.tr("tab_settings"), systemImage: "gearshape.fill")
-                        }
-                        .tag(2)
+                    .transition(.opacity)
                 }
-                .tint(LiquidGlass.celestialTeal)
 
-                // Animated App Icon Launch & Splash Screen
+                // Branded Launch Splash Screen with Custom Liquid Glass Spinner
                 if showSplashScreen {
                     SplashScreenView {
                         withAnimation(.easeInOut(duration: 0.35)) {
@@ -60,5 +41,39 @@ struct AsdGazeApp: App {
                 )
             }
         }
+    }
+
+    // MARK: - Main Tab Bar View
+
+    private var mainTabView: some View {
+        TabView(selection: $selectedTab) {
+            // Tab 0: Longitudinal CareKit Dashboard
+            CaregiverDashboardView {
+                selectedTab = 1
+            }
+            .tabItem {
+                Label(Localizer.tr("tab_dashboard"), systemImage: "chart.line.uptrend.xyaxis")
+            }
+            .tag(0)
+
+            // Tab 1: Guided Clinical Screening Wizard
+            GazeScreeningWizardView(
+                onOpenHistory: {
+                    selectedTab = 0
+                }
+            )
+            .tabItem {
+                Label(Localizer.tr("tab_gaze"), systemImage: "eye.circle.fill")
+            }
+            .tag(1)
+
+            // Tab 2: Settings & Diagnostics
+            SettingsView()
+                .tabItem {
+                    Label(Localizer.tr("tab_settings"), systemImage: "gearshape.fill")
+                }
+                .tag(2)
+        }
+        .tint(LiquidGlass.celestialTeal)
     }
 }

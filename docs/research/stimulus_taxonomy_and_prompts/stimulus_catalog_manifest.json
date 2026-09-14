@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "name": "CurvAsdStimulusCatalog",
+  "description": "Multi-ethnic, multilingual stimulus catalog and dynamic AOI registry for ASD pediatric screening.",
+  "items": [
+    {
+      "id": "stim_01_social_peekaboo_8s",
+      "fileName": "stim_01_social_peekaboo_8s.mp4",
+      "title": "Peek-a-Boo Direct Engagement",
+      "ageBracketMonths": [12, 24],
+      "durationSec": 8.0,
+      "language": "en",
+      "ethnicity": "caucasian_universal",
+      "category": "social_affect",
+      "odrTag": "pack_age_12_24_en",
+      "targetBiomarkers": ["eye_dwell_ratio", "smile_reactivity_index", "first_eye_latency_ms"],
+      "aois": [
+        {"name": "Face_Center", "startTime": 0.0, "endTime": 8.0, "rect": [0.25, 0.15, 0.75, 0.85]},
+        {"name": "Eye_Region", "startTime": 0.0, "endTime": 8.0, "rect": [0.35, 0.28, 0.65, 0.46]}
+      ]
+    },
+    {
+      "id": "stim_02_gaze_cue_right_8s",
+      "fileName": "stim_02_gaze_cue_right_8s.mp4",
+      "title": "Joint Attention & Gaze Cueing (Right-Shift)",
+      "ageBracketMonths": [18, 36],
+      "durationSec": 8.0,
+      "language": "en",
+      "ethnicity": "caucasian_universal",
+      "category": "joint_attention",
+      "odrTag": "pack_age_24_36_en",
+      "targetBiomarkers": ["saccade_latency_ms", "gaze_cue_accuracy"],
+      "aois": [
+        {"name": "Actor_Face", "startTime": 0.0, "endTime": 3.5, "rect": [0.30, 0.18, 0.70, 0.70]},
+        {"name": "Gaze_Target_Right", "startTime": 3.5, "endTime": 8.0, "rect": [0.65, 0.08, 0.98, 0.45]}
+      ]
+    },
+    {
+      "id": "stim_03_gaze_cue_left_8s",
+      "fileName": "stim_03_gaze_cue_left_8s.mp4",
+      "title": "Joint Attention & Gaze Cueing (Left-Shift)",
+      "ageBracketMonths": [18, 36],
+      "durationSec": 8.0,
+      "language": "en",
+      "ethnicity": "caucasian_universal",
+      "category": "joint_attention",
+      "odrTag": "pack_age_24_36_en",
+      "targetBiomarkers": ["saccade_latency_ms", "gaze_cue_accuracy"],
+      "aois": [
+        {"name": "Actor_Face", "startTime": 0.0, "endTime": 3.0, "rect": [0.30, 0.18, 0.70, 0.70]},
+        {"name": "Gaze_Target_Left", "startTime": 3.0, "endTime": 8.0, "rect": [0.02, 0.08, 0.35, 0.45]}
+      ]
+    },
+    {
+      "id": "stim_04_surprise_giftbox_10s",
+      "fileName": "stim_04_surprise_giftbox_10s.mp4",
+      "title": "Surprise Gift Box Opening",
+      "ageBracketMonths": [18, 48],
+      "durationSec": 8.0,
+      "language": "en",
+      "ethnicity": "caucasian_universal",
+      "category": "social_affect",
+      "odrTag": "pack_age_24_36_en",
+      "targetBiomarkers": ["smile_reactivity_index", "facial_action_unit_12"],
+      "aois": [
+        {"name": "Actor_Eyes", "startTime": 0.0, "endTime": 8.0, "rect": [0.36, 0.20, 0.64, 0.38]},
+        {"name": "Gift_Box", "startTime": 0.0, "endTime": 8.0, "rect": [0.28, 0.55, 0.72, 0.95]}
+      ]
+    },
+    {
+      "id": "stim_05_geopref_split_10s",
+      "fileName": "stim_05_geopref_split_10s.mp4",
+      "title": "GeoPref Split-Screen (Biological vs Geometric)",
+      "ageBracketMonths": [12, 48],
+      "durationSec": 8.0,
+      "language": "universal",
+      "ethnicity": "universal",
+      "category": "geopref",
+      "odrTag": "pack_core_baseline",
+      "targetBiomarkers": ["geo_preference_percentage", "social_dwell_ratio"],
+      "aois": [
+        {"name": "Social_Actor", "startTime": 0.0, "endTime": 8.0, "rect": [0.0, 0.0, 0.5, 1.0]},
+        {"name": "Geometric_Pattern", "startTime": 0.0, "endTime": 8.0, "rect": [0.5, 0.0, 1.0, 1.0]}
+      ]
+    },
+    {
+      "id": "stim_06_dynamic_gears_marbles_8s",
+      "fileName": "stim_06_dynamic_gears_marbles_8s.mp4",
+      "title": "Dynamic Mechanical Toy (Gears & Marbles)",
+      "ageBracketMonths": [12, 40],
+      "durationSec": 8.0,
+      "language": "universal",
+      "ethnicity": "universal",
+      "category": "mechanical_toy",
+      "odrTag": "pack_universal_animals",
+      "targetBiomarkers": ["non_social_salience", "fixation_count"],
+      "aois": [
+        {"name": "Mechanical_Motion", "startTime": 0.0, "endTime": 8.0, "rect": [0.10, 0.10, 0.90, 0.90]}
+      ]
+    },
+    {
+      "id": "stim_07_cartoon_slapstick_penguin_8s",
+      "fileName": "stim_07_cartoon_slapstick_penguin_8s.mp4",
+      "title": "Animated Slapstick Cartoon Penguin",
+      "ageBracketMonths": [24, 60],
+      "durationSec": 8.0,
+      "language": "universal",
+      "ethnicity": "universal",
+      "category": "cartoon_humor",
+      "odrTag": "pack_age_36_60_en",
+      "targetBiomarkers": ["humor_smile_response", "visual_anticipation"],
+      "aois": [
+        {"name": "Cartoon_Character", "startTime": 0.0, "endTime": 8.0, "rect": [0.30, 0.30, 0.70, 0.78]}
+      ]
+    },
+    {
+      "id": "stim_08_recenter_bubble_fox_3s",
+      "fileName": "stim_08_recenter_bubble_fox_3s.mp4",
+      "title": "Attention Recentering Bubble Fox",
+      "ageBracketMonths": [12, 60],
+      "durationSec": 8.0,
+      "language": "universal",
+      "ethnicity": "universal",
+      "category": "recalibration",
+      "odrTag": "pack_core_baseline",
+      "targetBiomarkers": ["recenter_saccade_latency_ms", "fixation_stability"],
+      "aois": [
+        {"name": "Center_Fixation_Target", "startTime": 0.0, "endTime": 8.0, "rect": [0.38, 0.38, 0.62, 0.62]}
+      ]
+    },
+    {
+      "id": "stim_09_social_turn_taking_10s",
+      "fileName": "stim_09_social_turn_taking_10s.mp4",
+      "title": "Social Turn-Taking Nursery Teacher",
+      "ageBracketMonths": [24, 60],
+      "durationSec": 8.0,
+      "language": "en",
+      "ethnicity": "caucasian_universal",
+      "category": "social_communication",
+      "odrTag": "pack_age_24_36_en",
+      "targetBiomarkers": ["eye_dwell_ratio", "mouth_dwell_ratio", "social_preference_score"],
+      "aois": [
+        {"name": "Teacher_Face", "startTime": 0.0, "endTime": 8.0, "rect": [0.28, 0.15, 0.72, 0.75]},
+        {"name": "Teacher_Mouth", "startTime": 0.0, "endTime": 8.0, "rect": [0.40, 0.48, 0.60, 0.64]}
+      ]
+    },
+    {
+      "id": "stim_10_animal_puppy_play_8s",
+      "fileName": "stim_10_animal_puppy_play_8s.mp4",
+      "title": "Biological Motion Control (Puppies Playing)",
+      "ageBracketMonths": [12, 60],
+      "durationSec": 8.0,
+      "language": "universal",
+      "ethnicity": "universal",
+      "category": "biological_animal",
+      "odrTag": "pack_universal_animals",
+      "targetBiomarkers": ["biological_motion_preference", "pupillary_light_reflex"],
+      "aois": [
+        {"name": "Animal_Puppies", "startTime": 0.0, "endTime": 8.0, "rect": [0.18, 0.25, 0.82, 0.85]}
+      ]
+    }
+  ]
+}

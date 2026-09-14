@@ -96,6 +96,7 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
     public let processingActor: GazeProcessingActor
 
     private var sessionStartTime: Date?
+    public private(set) var clipStartTime: Date?
     public var isSimulationMode: Bool = false
     @Published public var calibrationTarget: CGPoint? = nil
 
@@ -126,24 +127,24 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
     public init(
         raycaster: ScreenRaycaster = ScreenRaycaster(),
         qualityGate: GazeQualityGate = GazeQualityGate(),
-        aoiTracker: StimulusAOITracker = StimulusAOITracker.makeGeoPrefBattery()
+        aoiTracker: StimulusAOITracker = StimulusAOITracker.makeGeoPrefBattery(),
+        calibrationProfile: GazeCalibrationProfile = GazeCalibrationStore.load()
     ) {
         self.raycaster = raycaster
         self.qualityGate = qualityGate
         self.aoiTracker = aoiTracker
-        self.currentQuality = GazeQualityGate.Evaluation(isValid: false, verdict: .rejected, failureReasons: ["Waiting for camera…"])
-        let loadedProfile = GazeCalibrationStore.load()
-        self.calibrationProfile = loadedProfile
+        self.calibrationProfile = calibrationProfile
         self.processingActor = GazeProcessingActor(
             raycaster: raycaster,
             qualityGate: qualityGate,
             aoiTracker: aoiTracker,
-            calibrationProfile: loadedProfile
+            calibrationProfile: calibrationProfile
         )
+        self.currentQuality = GazeQualityGate.Evaluation(isValid: false, verdict: .rejected, failureReasons: ["Not started"])
         super.init()
 
         calibrationObserver = NotificationCenter.default.addObserver(
-            forName: GazeSessionController.didUpdateCalibrationNotification,
+            forName: Self.didUpdateCalibrationNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
@@ -152,8 +153,8 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
     }
 
     deinit {
-        if let obs = calibrationObserver {
-            NotificationCenter.default.removeObserver(obs)
+        if let observer = calibrationObserver {
+            NotificationCenter.default.removeObserver(observer)
         }
         #if canImport(ARKit) && !os(macOS)
         arSession?.pause()
@@ -207,6 +208,7 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
 
         self.recordedFrames.removeAll()
         self.sessionStartTime = Date()
+        self.clipStartTime = Date()
         self.isRecording = true
 
         reloadCalibrationProfile()
@@ -246,6 +248,15 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
         #endif
 
         self.isSimulationMode = true
+    }
+
+    /// Dynamically switches the active stimulus clip and AOI battery mid-session.
+    public func switchStimulusClip(battery: StimulusAOITracker) {
+        self.aoiTracker = battery
+        self.clipStartTime = Date()
+        Task { [weak processingActor] in
+            await processingActor?.switchStimulusClip(battery: battery)
+        }
     }
 
     /// Ends the session, computes the comprehensive biomarker report, and exposes recorded frames.
@@ -366,7 +377,7 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
     }
 
     /// Ingests a single synthetic frame (used for preview animation, unit testing, and Simulator).
-    public func tickSimulatedFrame(timeSec: Double) {
+    public func tickSimulatedFrame(timeSec: Double, clipTimeSec: Double? = nil) {
         let gazePoint: CGPoint
         if let target = calibrationTarget {
             let jitterX = 0.015 * sin(timeSec * 7.2)
@@ -382,7 +393,7 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
             gazePoint = CGPoint(x: max(0.05, min(0.95, x)), y: max(0.05, min(0.95, y)))
         }
 
-        let activeHits = aoiTracker.activeAOIs(atTimeSec: timeSec, xNorm: gazePoint.x, yNorm: gazePoint.y)
+        let activeHits = aoiTracker.activeAOIs(atTimeSec: clipTimeSec ?? timeSec, xNorm: gazePoint.x, yNorm: gazePoint.y)
 
         let phase = fmod(timeSec, 16.0)
         let isSmiling = (phase < 4.0)
@@ -543,11 +554,12 @@ extension GazeSessionController: ARSessionDelegate {
         )
 
         let elapsedSec = sessionStartTime.map { Date().timeIntervalSince($0) } ?? 0.0
+        let clipElapsedSec = clipStartTime.map { Date().timeIntervalSince($0) } ?? elapsedSec
 
         // Suppress false Area of Interest (AOI) hits during downward blink plunge
         let activeHits: [String] = isOcularArtifact
             ? []
-            : aoiTracker.activeAOIs(atTimeSec: elapsedSec, xNorm: calibratedPoint.x, yNorm: calibratedPoint.y)
+            : aoiTracker.activeAOIs(atTimeSec: clipElapsedSec, xNorm: calibratedPoint.x, yNorm: calibratedPoint.y)
 
         // Hold last valid coordinate during blink instead of plunging down to screen bottom
         let gazeCoord = isOcularArtifact ? lastValidCalibratedPoint : calibratedPoint
