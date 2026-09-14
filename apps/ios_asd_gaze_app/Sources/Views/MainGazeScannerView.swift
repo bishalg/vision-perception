@@ -703,6 +703,16 @@ public struct MainGazeScannerView: View {
         // 1. Run ML inference on Apple Neural Engine (ANE)
         let classification = BiomarkerClassificationEngine.shared.classifySync(summary: summary)
 
+        // 1b. Build the de-identified session record and persist it to the
+        // on-device history (dashboard trends, weekly badges, doctor report).
+        let enrollment = ResearchKitStudyStore.shared.fetchEnrollment()
+        let participantCode = enrollment.isConsented
+            ? enrollment.participantId
+            : "child-\(summary.sessionId.prefix(8))"
+        GazeSessionHistoryStore.shared.record(
+            GazeSessionRecord(summary: summary, participantId: participantCode)
+        )
+
         // 2. Batch encrypt & persist volatile RAM frames to disk atomically off main thread
         Task.detached(priority: .userInitiated) {
             let vault = SessionVaultManager()
@@ -720,8 +730,14 @@ public struct MainGazeScannerView: View {
             )
         }
 
-        // 3. Mark in CarePlan and CareKit store
-        CarePlanStore.shared.markScreeningCompleted(socialScore: summary.socialPreferenceScore)
+        // 3. Mark in CarePlan and CareKit store (with the full summary so the
+        // ResearchKit track compiles the ORK step result, using the measured
+        // validity instead of the placeholder default).
+        CarePlanStore.shared.markScreeningCompleted(
+            socialScore: summary.socialPreferenceScore,
+            validFramePercentage: summary.validRatio * 100.0,
+            summary: summary
+        )
         CareKitClinicalStore.shared.recordScreeningOutcome(
             socialScore: summary.socialPreferenceScore,
             validFramePercentage: summary.validRatio * 100.0,

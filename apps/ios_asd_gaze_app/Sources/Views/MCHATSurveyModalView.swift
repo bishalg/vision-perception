@@ -256,6 +256,34 @@ public struct MCHATSurveyModalView: View {
                 .foregroundColor(.primary)
                 .lineSpacing(3)
 
+            // M-CHAT-R/F protocol: medium scores must complete the structured
+            // Follow-Up interview before any referral decision is made.
+            if result.requiresFollowUpInterview {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(LiquidGlass.warmAmber)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Follow-Up Interview Needed")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundColor(LiquidGlass.warmAmber)
+                        Text("Ask the clinician for the M-CHAT Follow-Up questions for the \(result.failedQuestionIds.count) flagged items.")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(LiquidGlass.warmAmber.opacity(0.12))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(LiquidGlass.warmAmber.opacity(0.45), lineWidth: 1)
+                        )
+                )
+            }
+
             Button(action: {
                 // Save to CareKit & ResearchKit
                 CarePlanStore.shared.recordMCHATSurvey(answers: answers)
@@ -298,5 +326,103 @@ public struct MCHATSurveyModalView: View {
         case .medium: return LiquidGlass.warmAmber
         case .high: return Color.red
         }
+    }
+}
+
+// MARK: - M-CHAT Survey History (data review)
+
+/// Lists every persisted M-CHAT-R/F result (newest first) with risk and
+/// follow-up badges. Reads the ResearchKit vault; no new storage.
+public struct MCHATHistoryView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var surveys: [MCHATScoreResult] = []
+
+    public init() {}
+
+    public var body: some View {
+        NavigationStack {
+            ZStack {
+                LiquidGlass.deepCanvas.ignoresSafeArea()
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        if surveys.isEmpty {
+                            VStack(spacing: 10) {
+                                Image(systemName: "list.clipboard")
+                                    .font(.system(size: 34))
+                                    .foregroundColor(.secondary)
+                                Text("No surveys yet")
+                                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                                    .foregroundColor(.primary)
+                                Text("Completed M-CHAT-R/F surveys will appear here with their risk levels.")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 40)
+                        } else {
+                            ForEach(surveys.reversed()) { survey in
+                                historyRow(survey)
+                            }
+                        }
+                    }
+                    .padding(20)
+                }
+            }
+            .navigationTitle("Survey History")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                        .foregroundColor(LiquidGlass.celestialTeal)
+                }
+            }
+            .onAppear {
+                surveys = ResearchKitStudyStore.shared.fetchCompletedSurveys()
+            }
+        }
+    }
+
+    private func historyRow(_ survey: MCHATScoreResult) -> some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(riskColor(survey.riskLevel))
+                .frame(width: 10, height: 10)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(survey.riskLevel.rawValue)
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(riskColor(survey.riskLevel))
+                    if survey.requiresFollowUpInterview {
+                        Text("Follow-Up Due")
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundColor(LiquidGlass.warmAmber)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(LiquidGlass.warmAmber.opacity(0.15)))
+                    }
+                }
+                Text("\(survey.totalFailed) of 20 failed • \(survey.completionDate.formatted(date: .abbreviated, time: .shortened))")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard(cornerRadius: 12, padding: 12)
+    }
+
+    private func riskColor(_ risk: MCHATRiskLevel) -> Color {
+        switch risk {
+        case .low: return LiquidGlass.emeraldMint
+        case .medium: return LiquidGlass.warmAmber
+        case .high: return Color.red
+        }
+    }
+}
+
+extension MCHATScoreResult: Identifiable {
+    public var id: String {
+        "\(completionDate.timeIntervalSince1970)-\(totalFailed)"
     }
 }

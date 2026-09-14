@@ -158,4 +158,75 @@ final class DoctorReportGeneratorTests: XCTestCase {
         XCTAssertNotNil(pdfDoc)
         XCTAssertEqual(pdfDoc?.pageCount, 1)
     }
+
+    // MARK: - Session History Store (data collection)
+
+    @MainActor
+    func testSessionHistoryPersistsAndRoundTrips() {
+        let defaults = UserDefaults(suiteName: "GazeHistoryTests_\(UUID().uuidString)")!
+        let store = GazeSessionHistoryStore(defaults: defaults)
+        XCTAssertTrue(store.fetchAll().isEmpty)
+
+        let record = GazeSessionRecord(
+            sessionId: "SESS-HIST-1",
+            participantId: "P-1",
+            startedAt: Date().addingTimeInterval(-60),
+            endedAt: Date(),
+            durationSec: 60.0,
+            socialPreferenceScore: 0.5,
+            validFrameRatio: 0.9,
+            eyeDwellRatio: 0.4,
+            mouthDwellRatio: 0.15
+        )
+        store.record(record)
+        XCTAssertEqual(store.fetchAll().count, 1)
+        XCTAssertEqual(store.lastRecord?.sessionId, "SESS-HIST-1")
+
+        // A fresh store over the same defaults sees the persisted record.
+        let reopened = GazeSessionHistoryStore(defaults: defaults)
+        XCTAssertEqual(reopened.fetchAll().count, 1)
+        XCTAssertEqual(reopened.lastRecord?.socialPreferenceScore, 0.5)
+    }
+
+    @MainActor
+    func testSessionHistoryDedupesBySessionId() {
+        let defaults = UserDefaults(suiteName: "GazeHistoryTests_\(UUID().uuidString)")!
+        let store = GazeSessionHistoryStore(defaults: defaults)
+        let base = Date()
+        for score in [0.1, 0.9] {
+            store.record(GazeSessionRecord(
+                sessionId: "SESS-DUPE",
+                participantId: "P-1",
+                startedAt: base.addingTimeInterval(-60),
+                endedAt: base,
+                durationSec: 60.0,
+                socialPreferenceScore: score,
+                validFrameRatio: 0.9,
+                eyeDwellRatio: 0.4,
+                mouthDwellRatio: 0.15
+            ))
+        }
+        XCTAssertEqual(store.fetchAll().count, 1, "re-exports must not double-count")
+        XCTAssertEqual(store.lastRecord?.socialPreferenceScore, 0.9, "latest write wins")
+    }
+
+    @MainActor
+    func testSessionsThisWeekFiltersOldRecords() {
+        let defaults = UserDefaults(suiteName: "GazeHistoryTests_\(UUID().uuidString)")!
+        let store = GazeSessionHistoryStore(defaults: defaults)
+        let now = Date()
+        func record(id: String, ended: Date) {
+            store.record(GazeSessionRecord(
+                sessionId: id, participantId: "P-1",
+                startedAt: ended.addingTimeInterval(-60), endedAt: ended,
+                durationSec: 60.0, socialPreferenceScore: 0.5,
+                validFrameRatio: 0.9, eyeDwellRatio: 0.4, mouthDwellRatio: 0.15
+            ))
+        }
+        record(id: "recent", ended: now.addingTimeInterval(-3600))
+        record(id: "old", ended: now.addingTimeInterval(-10 * 24 * 3600))
+        let week = store.sessionsThisWeek(now: now)
+        XCTAssertEqual(week.count, 1)
+        XCTAssertEqual(week.first?.sessionId, "recent")
+    }
 }

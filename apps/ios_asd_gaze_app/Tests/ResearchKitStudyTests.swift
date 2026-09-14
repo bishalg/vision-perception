@@ -131,6 +131,77 @@ final class ResearchKitStudyTests: XCTestCase {
         XCTAssertEqual(completed.first?.riskLevel, .low)
     }
 
+    // MARK: - M-CHAT-R/F Instrument Verification (data validity)
+
+    /// The official M-CHAT-R/F has exactly 20 items numbered 1–20.
+    func testMCHATHasTwentyUniqueQuestions() {
+        let questions = MCHATSurveyEngine.questions
+        XCTAssertEqual(questions.count, 20)
+        XCTAssertEqual(Set(questions.map(\.id)), Set(1...20))
+    }
+
+    /// Official polarity: every item fails on "No" except 2, 5, 12 (fail on "Yes").
+    func testMCHATFailPolarityMatchesOfficialInstrument() {
+        let reversed = Set(MCHATSurveyEngine.questions.filter(\.failAnswer).map(\.id))
+        XCTAssertEqual(reversed, [2, 5, 12])
+    }
+
+    private func mchatAnswers(failing ids: Set<Int>) -> [Int: Bool] {
+        var answers: [Int: Bool] = [:]
+        for q in MCHATSurveyEngine.questions {
+            answers[q.id] = ids.contains(q.id) ? q.failAnswer : !q.failAnswer
+        }
+        return answers
+    }
+
+    /// Official M-CHAT-R/F bands: 0–2 low, 3–7 medium, 8–20 high.
+    func testMCHATScoringBandsBorderlineCases() {
+        XCTAssertEqual(MCHATSurveyEngine.evaluate(answers: mchatAnswers(failing: [])).riskLevel, .low)
+        XCTAssertEqual(MCHATSurveyEngine.evaluate(answers: mchatAnswers(failing: [1, 2])).riskLevel, .low)
+        XCTAssertEqual(MCHATSurveyEngine.evaluate(answers: mchatAnswers(failing: [1, 2, 3])).riskLevel, .medium)
+        XCTAssertEqual(MCHATSurveyEngine.evaluate(answers: mchatAnswers(failing: [1, 2, 3, 4, 5, 6, 7])).riskLevel, .medium)
+        XCTAssertEqual(MCHATSurveyEngine.evaluate(answers: mchatAnswers(failing: [1, 2, 3, 4, 5, 6, 7, 8])).riskLevel, .high)
+        XCTAssertEqual(MCHATSurveyEngine.evaluate(answers: mchatAnswers(failing: Set(1...20))).riskLevel, .high)
+    }
+
+    /// Bands depend only on the failed count — critical-item flags never
+    /// change the level (M-CHAT-R/F is total-score based).
+    func testMCHATCriticalFlagsDoNotAffectLevel() {
+        let criticalFails = Set(MCHATSurveyEngine.questions.filter(\.isCritical).map(\.id))
+        let plainFails = Set([3, 4, 6, 8, 11, 12])
+        XCTAssertEqual(criticalFails.count, plainFails.count)
+        XCTAssertEqual(
+            MCHATSurveyEngine.evaluate(answers: mchatAnswers(failing: criticalFails)).riskLevel,
+            MCHATSurveyEngine.evaluate(answers: mchatAnswers(failing: plainFails)).riskLevel
+        )
+    }
+
+    /// M-CHAT-R/F protocol: only medium scores (3–7) require the Follow-Up interview.
+    func testMCHATFollowUpFlagOnlyOnMediumRisk() {
+        XCTAssertFalse(MCHATSurveyEngine.evaluate(answers: mchatAnswers(failing: [1, 2])).requiresFollowUpInterview)
+        XCTAssertTrue(MCHATSurveyEngine.evaluate(answers: mchatAnswers(failing: [1, 2, 3])).requiresFollowUpInterview)
+        XCTAssertTrue(MCHATSurveyEngine.evaluate(answers: mchatAnswers(failing: [1, 2, 3, 4, 5, 6, 7])).requiresFollowUpInterview)
+        XCTAssertFalse(MCHATSurveyEngine.evaluate(answers: mchatAnswers(failing: [1, 2, 3, 4, 5, 6, 7, 8])).requiresFollowUpInterview)
+    }
+
+    /// The follow-up flag survives the persisted survey round-trip.
+    func testRecordSurveyResultPersistsFollowUpFlag() {
+        let sig = ORKConsentSignature(guardianFullName: "FollowUp Guardian", signatureToken: "SIG-FU-01")
+        researchStore.saveConsent(signature: sig)
+
+        let exp = expectation(description: "record medium survey")
+        researchStore.recordSurveyResult(answers: mchatAnswers(failing: [1, 2, 3, 4])) { result in
+            XCTAssertEqual(result.riskLevel, .medium)
+            XCTAssertTrue(result.requiresFollowUpInterview)
+            exp.fulfill()
+        }
+        wait(for: [exp], timeout: 5.0)
+
+        let completed = researchStore.fetchCompletedSurveys()
+        XCTAssertEqual(completed.last?.riskLevel, .medium)
+        XCTAssertTrue(completed.last?.requiresFollowUpInterview ?? false)
+    }
+
     // MARK: - Active Step & Parallel Dual-Store Writes
 
     func testActiveStepResultRequiresConsent() {

@@ -490,6 +490,7 @@ public struct ResearchStudyDashboardCard: View {
     @State private var enrollment: ResearchStudyEnrollment = ResearchKitStudyStore.shared.fetchEnrollment()
     @State private var showConsentSheet: Bool = false
     @State private var showSurveySheet: Bool = false
+    @State private var showHistorySheet: Bool = false
     @State private var showExportSheet: Bool = false
 
     public init() {}
@@ -620,6 +621,21 @@ public struct ResearchStudyDashboardCard: View {
                 Spacer()
 
                 Button {
+                    showHistorySheet = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock.arrow.circlepath")
+                        Text("History")
+                            .fontWeight(.medium)
+                    }
+                    .font(.system(size: 12))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .foregroundColor(LiquidGlass.celestialTeal)
+                }
+                .buttonStyle(.plain)
+
+                Button {
                     showExportSheet = true
                 } label: {
                     HStack(spacing: 4) {
@@ -651,6 +667,9 @@ public struct ResearchStudyDashboardCard: View {
         }
         .sheet(isPresented: $showSurveySheet) {
             MCHATSurveyModalView()
+        }
+        .sheet(isPresented: $showHistorySheet) {
+            MCHATHistoryView()
         }
         .sheet(isPresented: $showExportSheet) {
             ResearchKitDoctorExportModal()

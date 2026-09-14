@@ -104,3 +104,62 @@ public struct GazeSessionRecord: Identifiable, Codable, Sendable, Equatable {
         )
     }
 }
+
+// MARK: - Session History Store (data collection)
+
+/// On-device history of completed gaze screenings, persisted as Codable JSON.
+/// Feeds the dashboard trend badges, weekly summaries, and the doctor report.
+/// De-identified: records carry the study participant token, never raw video.
+@MainActor
+public final class GazeSessionHistoryStore: ObservableObject {
+    public static let shared = GazeSessionHistoryStore()
+
+    /// Cap so the history file stays small on-device.
+    public static let maxStoredRecords = 100
+
+    @Published public private(set) var records: [GazeSessionRecord] = []
+
+    private let storageKey = "org.curv.asd.gaze_session_history"
+    private let defaults: UserDefaults
+
+    public init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        if let data = defaults.data(forKey: storageKey),
+           let decoded = try? JSONDecoder().decode([GazeSessionRecord].self, from: data) {
+            self.records = decoded
+        }
+    }
+
+    /// Records a completed session. Replaces any prior entry with the same
+    /// session id (re-exports and retries must not double-count).
+    public func record(_ record: GazeSessionRecord) {
+        records.removeAll { $0.sessionId == record.sessionId }
+        records.append(record)
+        records.sort { $0.endedAt < $1.endedAt }
+        if records.count > Self.maxStoredRecords {
+            records.removeFirst(records.count - Self.maxStoredRecords)
+        }
+        persist()
+    }
+
+    public func fetchAll() -> [GazeSessionRecord] { records }
+
+    public var lastRecord: GazeSessionRecord? { records.last }
+
+    /// Sessions finished in the trailing 7 days (dashboard weekly badges).
+    public func sessionsThisWeek(now: Date = Date()) -> [GazeSessionRecord] {
+        let cutoff = now.addingTimeInterval(-7 * 24 * 3600)
+        return records.filter { $0.endedAt >= cutoff }
+    }
+
+    public func clear() {
+        records = []
+        defaults.removeObject(forKey: storageKey)
+    }
+
+    private func persist() {
+        if let data = try? JSONEncoder().encode(records) {
+            defaults.set(data, forKey: storageKey)
+        }
+    }
+}

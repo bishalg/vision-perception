@@ -7,11 +7,43 @@ public struct CaregiverDashboardView: View {
     public let onStartScreening: () -> Void
 
     @StateObject private var carePlanStore = CarePlanStore.shared
+    @StateObject private var sessionHistory = GazeSessionHistoryStore.shared
     @State private var showingExportSheet = false
     @State private var showingClinicalDetailsSheet = false
     @State private var isAdvisoryDismissed = false
     @State private var selectedMilestone: MilestoneItem?
     @State private var diaryNotesText: String = ""
+    @State private var lastMchat: MCHATScoreResult?
+
+    /// Mean social-preference of the stored week (0–1), nil when no data yet.
+    private var trendAverage: Double? {
+        let scores = carePlanStore.weeklyHistory.map(\.socialPreferenceScore)
+        guard !scores.isEmpty else { return nil }
+        return scores.reduce(0, +) / Double(scores.count)
+    }
+
+    /// Trailing-7-day window label (e.g. "8–14 Sep"), computed live.
+    private var trendDateRange: String {
+        let cal = Calendar.current
+        let end = Date()
+        let start = cal.date(byAdding: .day, value: -6, to: end) ?? end
+        let fmt = DateFormatter()
+        fmt.dateFormat = "d MMM"
+        return "\(fmt.string(from: start))–\(fmt.string(from: end))"
+    }
+
+    private func refreshLiveData() {
+        diaryNotesText = carePlanStore.diaryEntry.notes
+        lastMchat = ResearchKitStudyStore.shared.fetchCompletedSurveys().last
+    }
+
+    private func mchatRiskColor(_ risk: MCHATRiskLevel) -> Color {
+        switch risk {
+        case .low: return LiquidGlass.emeraldMint
+        case .medium: return LiquidGlass.warmAmber
+        case .high: return Color.red
+        }
+    }
 
     public init(onStartScreening: @escaping () -> Void) {
         self.onStartScreening = onStartScreening
@@ -64,6 +96,16 @@ public struct CaregiverDashboardView: View {
                     .padding(.horizontal, 20)
                     .padding(.vertical, 14)
                 }
+                .refreshable {
+                    // Pull-to-refresh flushes the research sync queue, then the
+                    // live badges above re-read the on-device stores.
+                    await withCheckedContinuation { continuation in
+                        ResearchKitSyncService.shared.syncNow(forceBundleCompile: false) { _ in
+                            continuation.resume()
+                        }
+                    }
+                    refreshLiveData()
+                }
             }
             .navigationTitle(Localizer.tr("dashboard_title"))
             .navigationBarTitleDisplayMode(.large)
@@ -91,7 +133,7 @@ public struct CaregiverDashboardView: View {
                 MilestoneDetailModalView(milestone: milestone)
             }
             .onAppear {
-                diaryNotesText = carePlanStore.diaryEntry.notes
+                refreshLiveData()
             }
         }
     }
@@ -270,6 +312,42 @@ public struct CaregiverDashboardView: View {
             Text("Interactive calibration followed by standardized pediatric visual attention screening.")
                 .font(.system(size: 13))
                 .foregroundColor(.secondary)
+
+            // Live data badges: last M-CHAT risk + screenings this week.
+            HStack(spacing: 8) {
+                if let mchat = lastMchat {
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(mchatRiskColor(mchat.riskLevel))
+                            .frame(width: 7, height: 7)
+                        Text("M-CHAT: \(mchat.riskLevel.rawValue)")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundColor(mchatRiskColor(mchat.riskLevel))
+                        if mchat.requiresFollowUpInterview {
+                            Text("Follow-Up Due")
+                                .font(.system(size: 10, weight: .bold, design: .rounded))
+                                .foregroundColor(LiquidGlass.warmAmber)
+                        }
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Capsule().fill(LiquidGlass.cardBackground))
+                }
+
+                HStack(spacing: 5) {
+                    Image(systemName: "eyes")
+                        .font(.system(size: 11))
+                        .foregroundColor(LiquidGlass.celestialTeal)
+                    Text("\(sessionHistory.sessionsThisWeek().count) screenings this week")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(LiquidGlass.cardBackground))
+
+                Spacer(minLength: 0)
+            }
 
             GlassButton(
                 title: Localizer.tr("start_screening"),
@@ -596,7 +674,7 @@ public struct CaregiverDashboardView: View {
                     Spacer()
 
                     HStack(spacing: 4) {
-                        Text("7–13 Sep")
+                        Text(trendDateRange)
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                         Image(systemName: "chevron.right")
@@ -605,10 +683,10 @@ public struct CaregiverDashboardView: View {
                     }
                 }
 
-                // Big Headline Value + Target Status Badge
+                // Big Headline Value + Target Status Badge (live weekly mean)
                 HStack(alignment: .firstTextBaseline) {
                     HStack(alignment: .firstTextBaseline, spacing: 3) {
-                        Text("68%")
+                        Text(trendAverage.map { "\(Int($0 * 100))%" } ?? "—")
                             .font(.system(size: 28, weight: .bold, design: .rounded))
                             .foregroundColor(.primary)
                         Text("Average")

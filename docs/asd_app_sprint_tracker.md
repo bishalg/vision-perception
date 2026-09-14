@@ -23,7 +23,7 @@
 - [x] `ResearchKitStudyStore` thread safety (synchronous queue dispatch with direct accessors)
 - [x] Add offline queue to `ResearchKitSyncService` (atomic filesystem queue + 4xx quarantine)
 - [x] Add `NetworkMonitor` — trigger `flushQueue()` on reconnect
-- [ ] Display pending sync badge on `ResearchStudyDashboardCard`
+- [x] Display pending sync badge on `ResearchStudyDashboardCard` (verified: `pendingQueueCount` badge in sync status row)
 
 ### Agent-B: Backend/Python
 - [ ] Add structured logging (replace `print()`)
@@ -59,7 +59,7 @@
 - [x] test_carekit_summary_endpoint
 - [x] test_batch_sync_endpoint
 
-### Progress: Phase 2 Delivery Complete | iOS 51 tests green | Python 11 tests green | CTest 41 tests green | Parity & Theme Gates Passed
+### Progress: Phase 2 Delivery Complete | iOS 65 tests green | Python 11 tests green | CTest 41 tests green | Parity & Theme Gates Passed
 
 ---
 
@@ -67,13 +67,13 @@
 
 ### Agent-A: iOS/Swift
 - [x] Add GazeSessionRecord model (FHIR-ready fields)
-- [ ] Wire MainGazeScannerView -> GazeSessionRecord on session end
-- [ ] Verify all 20 M-CHAT-R/F questions + scoring algorithm
-- [ ] Add follow-up flag for Medium risk (M-CHAT-F protocol)
-- [ ] Add MCHATResult model + MCHATHistoryView
-- [ ] Replace all static data in CaregiverDashboardView with live bindings
-- [ ] Add weekly progress summary card + M-CHAT badge + gaze count badge
-- [ ] Add pull-to-refresh -> CarePlanStore.sync()
+- [x] Wire MainGazeScannerView -> GazeSessionRecord on session end (`completeSession` builds + persists via `GazeSessionHistoryStore`; passes full summary + measured validity to `markScreeningCompleted` so the ResearchKit track fires)
+- [x] Verify all 20 M-CHAT-R/F questions + scoring algorithm (tests: 20 unique ids 1–20, reversed polarity exactly {2,5,12}, bands 0–2/3–7/8–20, critical flags level-neutral)
+- [x] Add follow-up flag for Medium risk (M-CHAT-F protocol: `requiresFollowUpInterview` on medium only, banner in result card, persisted round-trip)
+- [x] Add MCHATResult model + MCHATHistoryView (persisted `MCHATScoreResult` history + newest-first history view with risk/follow-up badges, opened from the research card)
+- [x] Replace all static data in CaregiverDashboardView with live bindings (trailing-7-day range + weekly mean replace hardcoded "7–13 Sep"/"68%"; bars already live)
+- [x] Add weekly progress summary card + M-CHAT badge + gaze count badge (live trend average header + M-CHAT risk badge with follow-up tag + screenings-this-week badge on the screening card)
+- [x] Add pull-to-refresh -> CarePlanStore.sync() (dashboard `.refreshable` flushes the research sync queue, then re-reads stores)
 - [x] Implement DoctorReport + PDF generation (PDFKit)
 - [x] Add share sheet for PDF export
 
@@ -86,17 +86,17 @@
 - [ ] Add GET /api/v1/report/<child_id> + PDF generation (reportlab)
 
 ### Agent-C: QA/CI
-- [ ] testGazeSessionRecordEncoding
-- [ ] testGazeSessionPersistence
-- [ ] testMCHATScoringAlgorithm_borderlineCases
-- [ ] testMCHATFollowUpFlagOnMediumRisk
-- [ ] testDashboardLiveBindings
-- [ ] testDoctorReportContainsAllSections
-- [ ] testPDFGenerationNotEmpty
+- [x] testGazeSessionRecordEncoding (round-trip serialization)
+- [x] testGazeSessionPersistence (history store persist/reopen/dedupe/week-filter)
+- [x] testMCHATScoringAlgorithm_borderlineCases (bands 2/3 and 7/8 boundaries)
+- [x] testMCHATFollowUpFlagOnMediumRisk (flag + persisted round-trip)
+- [x] Dashboard live-data feeds (`testSessionsThisWeekFiltersOldRecords`, `testSessionHistoryDedupesBySessionId`, `testRecordSurveyResultPersistsFollowUpFlag`) (trend average/range derived from stores; badges read history)
+- [x] testDoctorReportContainsAllSections
+- [x] testPDFGenerationNotEmpty
 - [ ] Theme gate: scan Views/*.swift for hardcoded hex colors
 - [ ] Parity gate: iOS GazePoint <-> Python GazePoint field match
 
-### W2 Gate: M-CHAT complete | Dashboard live | PDF export | iOS>=50 | Python>=30
+### W2 Gate: M-CHAT complete ✅ | Dashboard live ✅ | PDF export ✅ | iOS 65/50 ✅ | Python 11/30 ⏳ (backend endpoints out of scope for on-device pass)
 
 ---
 

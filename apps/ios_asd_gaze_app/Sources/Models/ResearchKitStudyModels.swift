@@ -209,6 +209,10 @@ public struct MCHATScoreResult: Sendable, Codable, Equatable {
     public let clinicalRecommendation: String
     public let completionDate: Date
 
+    /// M-CHAT-R/F protocol: medium scores (3–7) require the structured
+    /// Follow-Up interview before any referral decision.
+    public var requiresFollowUpInterview: Bool { riskLevel == .medium }
+
     public init(
         totalFailed: Int,
         riskLevel: MCHATRiskLevel,
