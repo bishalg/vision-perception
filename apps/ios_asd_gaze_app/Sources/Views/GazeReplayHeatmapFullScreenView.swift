@@ -4,15 +4,15 @@ import CurvAsdGazeKit
 // MARK: - Replay Visualization Mode
 
 public enum ReplayVisualizationMode: String, CaseIterable, Identifiable {
-    case scanpath = "Scanpath Flow"
-    case heatmap = "Fixation Heatmap"
+    case scanpath = "FLOW"
+    case heatmap = "HEATMAP"
 
     public var id: String { rawValue }
 }
 
 public enum ReplayTailMode: String, CaseIterable, Identifiable {
-    case trailing5s = "Last 5s Tail"
-    case fullPath = "Full Path"
+    case trailing5s = "5S TAIL"
+    case fullPath = "FULL PATH"
 
     public var id: String { rawValue }
 }
@@ -82,7 +82,7 @@ public struct GazeReplayHeatmapFullScreenView: View {
             }
             .ignoresSafeArea()
 
-            // Top Header Bar
+            // Top Header Bar & Controls
             VStack {
                 topNavigationBar
                     .padding(.horizontal, 16)
@@ -100,54 +100,60 @@ public struct GazeReplayHeatmapFullScreenView: View {
         .onDisappear(perform: stopPlayback)
     }
 
-    // MARK: - Top Navigation Bar
+    // MARK: - Top Navigation Bar (Standard iOS Design & Full-Width Controls)
 
     private var topNavigationBar: some View {
-        HStack {
-            Button {
-                dismiss()
-            } label: {
-                HStack(spacing: 5) {
+        VStack(spacing: 10) {
+            // Top Row: Standard iOS Back Chevron "<" Button
+            HStack {
+                Button {
+                    dismiss()
+                } label: {
                     Image(systemName: "chevron.left")
-                        .font(.system(size: 14, weight: .bold))
-                    Text("Report")
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(width: 38, height: 38)
+                        .background(Circle().fill(.ultraThinMaterial.opacity(0.85)))
+                        .overlay(Circle().stroke(Color.white.opacity(0.2), lineWidth: 1))
+                        .shadow(color: Color.black.opacity(0.2), radius: 4, y: 2)
                 }
-                .foregroundColor(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(Capsule().fill(.ultraThinMaterial.opacity(0.8)))
+                .buttonStyle(.plain)
+                .accessibilityLabel("Back")
+
+                Spacer()
+
+                // Subtle title badge
+                Text("REPLAY")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .tracking(1.2)
+                    .foregroundColor(.white.opacity(0.85))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(.ultraThinMaterial.opacity(0.75)))
+                    .overlay(Capsule().stroke(Color.white.opacity(0.15), lineWidth: 1))
             }
-            .buttonStyle(.plain)
 
-            Spacer()
-
-            // Mode Selector: Scanpath vs Heatmap
+            // Row 2: Mode Segmented Controller (Full Width)
             Picker("Mode", selection: $visualizationMode) {
                 ForEach(ReplayVisualizationMode.allCases) { mode in
                     Text(mode.rawValue).tag(mode)
                 }
             }
             .pickerStyle(.segmented)
-            .frame(width: 220)
-            .background(.ultraThinMaterial.opacity(0.7))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .frame(maxWidth: .infinity)
+            .background(.ultraThinMaterial.opacity(0.75))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
-            Spacer()
-
-            // Active Emotion Tag at this frame
-            if let frame = activeFrame {
-                HStack(spacing: 4) {
-                    Text(frame.affect.dominantEmotion.emoji)
-                        .font(.system(size: 14))
-                    Text(frame.affect.dominantEmotion.rawValue)
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundColor(.white)
+            // Row 3: Tail Mode Segmented Controller (Full Width)
+            Picker("Tail Mode", selection: $tailMode) {
+                ForEach(ReplayTailMode.allCases) { mode in
+                    Text(mode.rawValue).tag(mode)
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Capsule().fill(.ultraThinMaterial.opacity(0.8)))
             }
+            .pickerStyle(.segmented)
+            .frame(maxWidth: .infinity)
+            .background(.ultraThinMaterial.opacity(0.75))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
     }
 
@@ -273,9 +279,17 @@ public struct GazeReplayHeatmapFullScreenView: View {
     @ViewBuilder
     private func fixationHeatmapOverlay(in size: CGSize) -> some View {
         let maxIdx = min(currentFrameIndex, recordedFrames.count)
-        let validSampledFrames = Array(recordedFrames.prefix(maxIdx).filter {
-            $0.gaze.isValid && $0.qualityVerdict != .rejected
-        })
+        let validSampledFrames: [GazeFrame] = {
+            let validSubarray = recordedFrames.prefix(maxIdx).filter {
+                $0.gaze.isValid && $0.qualityVerdict != .rejected
+            }
+            if tailMode == .fullPath {
+                return Array(validSubarray)
+            } else {
+                let cutoffTime = max(0, currentTimeSec - 5.0)
+                return validSubarray.filter { $0.gaze.videoTimeSec >= cutoffTime }
+            }
+        }()
 
         ZStack {
             ForEach(Array(validSampledFrames.enumerated()), id: \.offset) { item in
@@ -324,6 +338,43 @@ public struct GazeReplayHeatmapFullScreenView: View {
 
     private var floatingControlsPanel: some View {
         VStack(spacing: 12) {
+            // Emotion & Excitement Pill (Centered directly above timeline values)
+            if let frame = activeFrame {
+                HStack(spacing: 8) {
+                    Text(frame.affect.dominantEmotion.emoji)
+                        .font(.system(size: 15))
+
+                    Text(frame.affect.dominantEmotion.rawValue.uppercased())
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+
+                    Text("•")
+                        .foregroundColor(.white.opacity(0.4))
+                        .font(.system(size: 10))
+
+                    let smilePct = Int(frame.affect.socialSmileIntensity * 100)
+                    Text("Smile \(smilePct)%")
+                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .foregroundColor(LiquidGlass.emeraldMint)
+
+                    Text("•")
+                        .foregroundColor(.white.opacity(0.4))
+                        .font(.system(size: 10))
+
+                    let excitementPct = Int(frame.affect.expressivityIndex * 100)
+                    Text("Excitement \(excitementPct)%")
+                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .foregroundColor(LiquidGlass.celestialTeal)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+                .background(Capsule().fill(.ultraThinMaterial.opacity(0.85)))
+                .overlay(
+                    Capsule().stroke(Color.white.opacity(0.18), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.2), radius: 6, y: 2)
+            }
+
             // Timeline Scrubber Slider
             HStack(spacing: 12) {
                 Text(String(format: "%02d:%02d", Int(currentTimeSec) / 60, Int(currentTimeSec) % 60))
@@ -346,8 +397,19 @@ public struct GazeReplayHeatmapFullScreenView: View {
                     .foregroundColor(Color.white.opacity(0.65))
             }
 
-            // Controls Row: Play/Pause, Speed, and Tail Toggle
+            // Controls Row: Step Backward, Play/Pause, Step Forward, Speed Menu, Frame Info
             HStack(spacing: 14) {
+                // Step Backward 1s (60 frames)
+                Button {
+                    currentFrameIndex = max(0, currentFrameIndex - 60)
+                } label: {
+                    Image(systemName: "gobackward.10")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.85))
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(.plain)
+
                 // Play / Pause Button
                 Button {
                     togglePlayback()
@@ -355,36 +417,48 @@ public struct GazeReplayHeatmapFullScreenView: View {
                     Image(systemName: isPlaying ? "pause.fill" : "play.fill")
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(.black)
-                        .frame(width: 40, height: 40)
+                        .frame(width: 42, height: 42)
                         .background(Circle().fill(LiquidGlass.emeraldMint))
                         .shadow(color: LiquidGlass.emeraldMint.opacity(0.4), radius: 6)
                 }
                 .buttonStyle(.plain)
 
-                // Speed Selector
+                // Step Forward 1s (60 frames)
+                Button {
+                    currentFrameIndex = min(max(0, recordedFrames.count - 1), currentFrameIndex + 60)
+                } label: {
+                    Image(systemName: "goforward.10")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.85))
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                // Speed Selector Menu
                 Menu {
                     Button("0.5x Speed") { playbackSpeed = 0.5; updatePlaybackTimer() }
                     Button("1.0x Normal") { playbackSpeed = 1.0; updatePlaybackTimer() }
                     Button("2.0x Fast") { playbackSpeed = 2.0; updatePlaybackTimer() }
                 } label: {
-                    Text(String(format: "%.1fx", playbackSpeed))
-                        .font(.system(size: 12, weight: .bold, design: .monospaced))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(Capsule().fill(.ultraThinMaterial.opacity(0.7)))
-                }
-
-                Spacer()
-
-                // Tail Removal Toggle (Last 5s vs Full Path)
-                Picker("Tail Mode", selection: $tailMode) {
-                    ForEach(ReplayTailMode.allCases) { mode in
-                        Text(mode.rawValue).tag(mode)
+                    HStack(spacing: 4) {
+                        Image(systemName: "speedometer")
+                            .font(.system(size: 11))
+                        Text(String(format: "%.1fx", playbackSpeed))
+                            .font(.system(size: 12, weight: .bold, design: .monospaced))
                     }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(Capsule().fill(.ultraThinMaterial.opacity(0.7)))
+                    .overlay(Capsule().stroke(Color.white.opacity(0.2), lineWidth: 1))
                 }
-                .pickerStyle(.segmented)
-                .frame(width: 170)
+
+                // Frame info badge
+                Text(String(format: "%d / %d", min(currentFrameIndex + 1, recordedFrames.count), recordedFrames.count))
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.6))
             }
         }
         .padding(.horizontal, 18)
