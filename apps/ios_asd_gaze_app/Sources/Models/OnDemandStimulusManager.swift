@@ -9,6 +9,16 @@ import os
 /// 1. Prioritizes pre-bundled local files.
 /// 2. If an ODR pack is requested, checks local cache before initiating App Store CDN fetch.
 /// 3. Falls back gracefully to bundled baseline assets or procedural engine if offline.
+/// Staged progress for the onboarding download splash: the splash renders
+/// these as a checklist so caregivers can see gradual Apple-CDN progress.
+public enum StimulusPackStage: String, Sendable, Equatable {
+    case idle
+    case checkingLocal
+    case downloading
+    case verifying
+    case ready
+}
+
 @MainActor
 public final class OnDemandStimulusManager: ObservableObject {
     public static let shared = OnDemandStimulusManager()
@@ -19,6 +29,12 @@ public final class OnDemandStimulusManager: ObservableObject {
     @Published public private(set) var isDownloading: Bool = false
     @Published public private(set) var activeTag: String? = nil
     @Published public private(set) var lastError: String? = nil
+    /// Live Apple-CDN transfer counters (bytes) for the splash MB readout.
+    @Published public private(set) var downloadedBytes: Int64 = 0
+    @Published public private(set) var totalBytes: Int64 = 0
+    /// True when the CDN was unreachable and bundled/procedural assets stand in.
+    @Published public private(set) var usedOfflineFallback: Bool = false
+    @Published public private(set) var stage: StimulusPackStage = .idle
 
     private var currentRequest: NSBundleResourceRequest?
     private var progressObserver: AnyCancellable?
@@ -81,13 +97,24 @@ public final class OnDemandStimulusManager: ObservableObject {
         self.isDownloading = true
         self.downloadProgress = 0.0
         self.lastError = nil
+        self.usedOfflineFallback = false
+        self.downloadedBytes = 0
+        self.totalBytes = 0
+        self.stage = .checkingLocal
 
-        // Observe fraction completed
+        // Observe fraction completed + byte counters for the splash UI.
         progressObserver = request.progress
             .publisher(for: \.fractionCompleted)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] fraction in
                 self?.downloadProgress = fraction
+                if let progress = self?.currentRequest?.progress {
+                    self?.downloadedBytes = progress.completedUnitCount
+                    self?.totalBytes = progress.totalUnitCount
+                    if fraction > 0, self?.stage == .checkingLocal {
+                        self?.stage = .downloading
+                    }
+                }
             }
 
         // 1. Check if baseline stimuli are already present locally in app bundle
@@ -97,6 +124,7 @@ public final class OnDemandStimulusManager: ObservableObject {
             self.activeTag = tag
             self.isDownloading = false
             self.downloadProgress = 1.0
+            self.stage = .ready
             self.lastError = nil
             return true
         }
@@ -108,17 +136,22 @@ public final class OnDemandStimulusManager: ObservableObject {
             self.activeTag = tag
             self.isDownloading = false
             self.downloadProgress = 1.0
+            self.stage = .ready
             self.lastError = nil
             return true
         }
 
         // 3. Fetch from Apple CDN (with seamless graceful fallback)
+        self.stage = .downloading
         do {
             try await request.beginAccessingResources()
             Self.logger.info("Successfully fetched ODR pack: \(tag, privacy: .public)")
+            self.stage = .verifying
             self.activeTag = tag
             self.isDownloading = false
             self.downloadProgress = 1.0
+            self.downloadedBytes = self.totalBytes
+            self.stage = .ready
             self.lastError = nil
             return true
         } catch {
@@ -126,6 +159,8 @@ public final class OnDemandStimulusManager: ObservableObject {
             self.activeTag = tag
             self.isDownloading = false
             self.downloadProgress = 1.0
+            self.usedOfflineFallback = true
+            self.stage = .ready
             self.lastError = nil
             return true
         }
@@ -189,5 +224,9 @@ public final class OnDemandStimulusManager: ObservableObject {
         activeTag = nil
         isDownloading = false
         downloadProgress = 0.0
+        downloadedBytes = 0
+        totalBytes = 0
+        usedOfflineFallback = false
+        stage = .idle
     }
 }

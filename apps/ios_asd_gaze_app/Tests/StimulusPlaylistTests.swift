@@ -43,6 +43,21 @@ final class StimulusPlaylistTests: XCTestCase {
     }
 
     @MainActor
+    func testOnboardingPackTagResolution() {
+        let manager = OnDemandStimulusManager.shared
+        // Age band midpoints from the onboarding profile step...
+        XCTAssertEqual(manager.resolveTag(ageMonths: 14, localeCode: "en"), "pack_age_12_24_en")
+        XCTAssertEqual(manager.resolveTag(ageMonths: 28, localeCode: "en"), "pack_age_24_36_en")
+        XCTAssertEqual(manager.resolveTag(ageMonths: 54, localeCode: "en"), "pack_age_36_60_en")
+        // ...crossed with the onboarding language/region pick.
+        XCTAssertEqual(manager.resolveTag(ageMonths: 20, localeCode: "hi"), "pack_age_12_24_hi")
+        XCTAssertEqual(manager.resolveTag(ageMonths: 20, localeCode: "ne"), "pack_age_12_24_ne")
+        XCTAssertEqual(manager.resolveTag(ageMonths: 40, localeCode: "zh"), "pack_age_36_60_zh")
+        // Unknown regions fall back to English packs, never to nothing.
+        XCTAssertEqual(manager.resolveTag(ageMonths: 20, localeCode: "xx"), "pack_age_12_24_en")
+    }
+
+    @MainActor
     func testChildProfileDurationPersistence() {
         let store = ChildProfileStore.shared
         let original = store.profile

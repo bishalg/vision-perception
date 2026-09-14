@@ -1,17 +1,23 @@
 import SwiftUI
 
-/// 3-Step Liquid Glass onboarding experience for pediatric ASD gaze screening:
+/// 4-Step Liquid Glass onboarding experience for pediatric ASD gaze screening:
 /// Step 1 → Privacy Impact Assessment (PIA), HIPAA/COPPA Security, Zero-Video Consent
 /// Step 2 → Child Profile Setup (Name, 5-Tier Granular Age Bracket, Language)
-/// Step 3 → Environmental Guidance (Distance sweet spot 45–55 cm, ambient lighting)
+/// Step 3 → Resource Download Splash (progressive Apple-CDN fetch of the
+///           age + language stimulus pack selected in Step 2)
+/// Step 4 → Environmental Guidance (Distance sweet spot 45–55 cm, ambient lighting)
 public struct OnboardingFlowView: View {
     @ObservedObject private var profileStore = ChildProfileStore.shared
+    @ObservedObject private var stimulusManager = OnDemandStimulusManager.shared
     @State private var currentStep: Int = 1
     @State private var childNameInput: String = ""
     @State private var selectedAgeBracket: PediatricAgeBracket = .months18_23
     @State private var selectedLanguage: String = "en"
     @State private var consentAgreed: Bool = false
     @State private var showLanguagePickerSheet: Bool = false
+    /// ODR tag the splash has fully resolved — avoids re-downloading when the
+    /// caregiver steps back and forth without changing age/language.
+    @State private var downloadedTag: String? = nil
 
     public let onCompleted: () -> Void
 
@@ -44,7 +50,9 @@ public struct OnboardingFlowView: View {
                         case 2:
                             step2ChildProfileView
                         case 3:
-                            step3EnvironmentGuidanceView
+                            step3DownloadSplashView
+                        case 4:
+                            step4EnvironmentGuidanceView
                         default:
                             EmptyView()
                         }
@@ -58,6 +66,13 @@ public struct OnboardingFlowView: View {
                 bottomActionBar
                     .padding(.horizontal, 24)
                     .padding(.vertical, 20)
+            }
+        }
+        .onChange(of: currentStep) { _, newStep in
+            // The moment the download splash appears, progressively fetch the
+            // exact age + language pack chosen in Step 2 from the Apple CDN.
+            if newStep == 3 {
+                startResourceDownload()
             }
         }
         .sheet(isPresented: $showLanguagePickerSheet) {
@@ -75,7 +90,7 @@ public struct OnboardingFlowView: View {
 
     private var stepProgressBar: some View {
         HStack(spacing: 8) {
-            ForEach(1...3, id: \.self) { step in
+            ForEach(1...4, id: \.self) { step in
                 Capsule()
                     .fill(
                         step <= currentStep
@@ -315,9 +330,164 @@ public struct OnboardingFlowView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    // MARK: - Step 3: Screening Environment Guidance
+    // MARK: - Step 3: Resource Download Splash (progressive Apple-CDN fetch)
 
-    private var step3EnvironmentGuidanceView: some View {
+    /// Splash shown immediately after the language/regional pick: progressively
+    /// downloads the matching stimulus pack while the caregiver watches staged,
+    /// gradual progress. Offline-safe — bundled/procedural assets stand in.
+    private var step3DownloadSplashView: some View {
+        let languageItem = ScreeningLanguages.item(for: selectedLanguage)
+        let expectedTag = stimulusManager.resolveTag(
+            ageMonths: selectedAgeBracket.midpointMonths,
+            localeCode: selectedLanguage
+        )
+        let isReady = !stimulusManager.isDownloading
+            && stimulusManager.downloadProgress >= 1.0
+            && stimulusManager.activeTag == expectedTag
+
+        return VStack(alignment: .leading, spacing: 20) {
+            // Header
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Downloading Activities")
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .foregroundColor(LiquidGlass.textHeadline)
+
+                Text("Fetching the visual activities for your child's age and language. This happens once.")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(LiquidGlass.textSecondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            // Selected pack identity card
+            HStack(spacing: 12) {
+                Text(languageItem.flag)
+                    .font(.system(size: 34))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(languageItem.displayName)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(LiquidGlass.textPrimary)
+                    Text("\(languageItem.region) • \(selectedAgeBracket.rawValue)")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(LiquidGlass.textSecondary)
+                }
+                Spacer(minLength: 0)
+                if isReady {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(LiquidGlass.emeraldMint)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassCard(cornerRadius: 14, padding: 14)
+
+            // Staged gradual progress checklist
+            VStack(alignment: .leading, spacing: 10) {
+                downloadStageRow(
+                    done: true,
+                    active: false,
+                    title: "Checked this iPhone",
+                    detail: "Looked for ready-to-play activities"
+                )
+                downloadStageRow(
+                    done: isReady,
+                    active: stimulusManager.isDownloading,
+                    title: "Downloading from Apple",
+                    detail: downloadByteDetail
+                )
+                downloadStageRow(
+                    done: isReady,
+                    active: false,
+                    title: "Verified & ready",
+                    detail: stimulusManager.usedOfflineFallback
+                        ? "Offline — built-in activities will play instead"
+                        : "Saved on this iPhone for offline screening"
+                )
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassCard(cornerRadius: 14, padding: 14)
+
+            // Big gradual progress bar
+            VStack(spacing: 8) {
+                ProgressView(value: stimulusManager.downloadProgress, total: 1.0)
+                    .progressViewStyle(.linear)
+                    .tint(LiquidGlass.emeraldMint)
+                Text("\(Int(stimulusManager.downloadProgress * 100))%")
+                    .font(.system(size: 15, weight: .bold, design: .monospaced))
+                    .foregroundColor(LiquidGlass.emeraldMint)
+            }
+            .frame(maxWidth: .infinity)
+            .glassCard(cornerRadius: 14, padding: 14)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var downloadByteDetail: String {
+        let manager = stimulusManager
+        if manager.totalBytes > 0 {
+            return "\(Self.formatMB(manager.downloadedBytes)) of \(Self.formatMB(manager.totalBytes))"
+        }
+        if manager.isDownloading {
+            return "Fetching activity videos…"
+        }
+        if manager.activeTag != nil {
+            return "Already on this iPhone"
+        }
+        return "Preparing…"
+    }
+
+    private static func formatMB(_ bytes: Int64) -> String {
+        String(format: "%.1f MB", Double(bytes) / 1_000_000.0)
+    }
+
+    private func downloadStageRow(done: Bool, active: Bool, title: String, detail: String) -> some View {
+        HStack(spacing: 12) {
+            if done {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(LiquidGlass.emeraldMint)
+            } else if active {
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .tint(LiquidGlass.celestialTeal)
+                    .frame(width: 20, height: 20)
+            } else {
+                Image(systemName: "circle")
+                    .font(.system(size: 20))
+                    .foregroundColor(LiquidGlass.textTertiary)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(LiquidGlass.textPrimary)
+                Text(detail)
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundColor(LiquidGlass.textSecondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Starts the progressive Apple-CDN fetch for the current age + language
+    /// pick. Skips silently when that exact pack is already resolved.
+    private func startResourceDownload() {
+        let tag = stimulusManager.resolveTag(
+            ageMonths: selectedAgeBracket.midpointMonths,
+            localeCode: selectedLanguage
+        )
+        guard downloadedTag != tag else { return }
+        downloadedTag = tag
+        Task {
+            _ = await stimulusManager.preloadStimulusPack(
+                ageMonths: selectedAgeBracket.midpointMonths,
+                localeCode: selectedLanguage
+            )
+        }
+    }
+
+    // MARK: - Step 4: Screening Environment Guidance
+
+    private var step4EnvironmentGuidanceView: some View {
         VStack(alignment: .leading, spacing: 20) {
             // Header
             VStack(alignment: .leading, spacing: 6) {
@@ -502,7 +672,9 @@ public struct OnboardingFlowView: View {
             }
 
             Button {
-                if currentStep < 3 {
+                if currentStep < 4 {
+                    // Leaving the profile step toward the splash is always
+                    // allowed; the splash itself starts the download on appear.
                     withAnimation(.easeInOut(duration: 0.25)) {
                         currentStep += 1
                     }
@@ -511,9 +683,9 @@ public struct OnboardingFlowView: View {
                 }
             } label: {
                 HStack(spacing: 6) {
-                    Text(currentStep == 3 ? "Complete Setup & Enter App" : "Continue")
+                    Text(currentStep == 4 ? "Complete Setup & Enter App" : "Continue")
                         .font(.system(size: 16, weight: .bold, design: .rounded))
-                    Image(systemName: currentStep == 3 ? "checkmark.circle.fill" : "arrow.right.circle.fill")
+                    Image(systemName: currentStep == 4 ? "checkmark.circle.fill" : "arrow.right.circle.fill")
                         .font(.system(size: 17))
                 }
                 .frame(maxWidth: .infinity)
@@ -547,6 +719,16 @@ public struct OnboardingFlowView: View {
             return consentAgreed
         case 2:
             return !childNameInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case 3:
+            // Continue unlocks once the splash has resolved this exact pack
+            // (CDN, cache, bundled, or offline fallback — all are playable).
+            let expectedTag = stimulusManager.resolveTag(
+                ageMonths: selectedAgeBracket.midpointMonths,
+                localeCode: selectedLanguage
+            )
+            return !stimulusManager.isDownloading
+                && stimulusManager.downloadProgress >= 1.0
+                && stimulusManager.activeTag == expectedTag
         default:
             return true
         }
