@@ -54,10 +54,19 @@ public struct SettingsView: View {
                 )
             }
             .fullScreenCover(isPresented: $showCameraCheck) {
-                GazePositioningStepView(
-                    onReady: { showCameraCheck = false },
-                    onClose: { showCameraCheck = false }
-                )
+                ZStack(alignment: .topTrailing) {
+                    GazePositioningStepView(
+                        onReady: { showCameraCheck = false }
+                    )
+                    Button {
+                        showCameraCheck = false
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(Color.white.opacity(0.8))
+                            .padding(16)
+                    }
+                }
             }
         }
     }

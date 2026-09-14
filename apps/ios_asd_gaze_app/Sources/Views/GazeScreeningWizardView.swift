@@ -55,9 +55,7 @@ public struct GazeScreeningWizardView: View {
 
             case .calibrating:
                 BubbleCalibrationView(
-                    onClose: {
-                        withAnimation(.easeInOut(duration: 0.3)) { step = .positioning }
-                    },
+                    onClose: nil,
                     onCalibrationComplete: {
                         withAnimation(.easeInOut(duration: 0.3)) { step = .stimulus }
                     }

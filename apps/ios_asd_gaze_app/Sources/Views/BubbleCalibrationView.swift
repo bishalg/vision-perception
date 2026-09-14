@@ -88,7 +88,8 @@ public struct BubbleCalibrationView: View {
     @State private var smoothedGaze: CGPoint = CGPoint(x: 0.5, y: 0.5)
     @State private var currentScreenSize: CGSize = CGSize(width: 393, height: 852)
     @State private var popShockwaveScale: CGFloat = 0.0
-    @State private var showGazeReticle: Bool = false
+    @State private var showGazeReticle: Bool = true
+    @State private var simulationElapsedSec: Double = 0.0
 
     // Attention-guided calibration state
     @State private var windowElapsedSec: Double = 0.0
@@ -498,6 +499,8 @@ public struct BubbleCalibrationView: View {
     private func startCalibrationSession() {
         currentTargetIndex = 0
         controller.calibrationTarget = targetPoints[0]
+        smoothedGaze = targetPoints[0]
+        simulationElapsedSec = 0.0
         controller.startSession()
         loopTimer?.invalidate()
         dwellProgress = 0.0
@@ -528,18 +531,22 @@ public struct BubbleCalibrationView: View {
         guard !isPopping else { return }
         guard currentTargetIndex < targetPoints.count else { return }
 
-        let now = Date().timeIntervalSince1970
+        simulationElapsedSec += 1.0 / 60.0
 
         // Subtle balloon string sway
-        stringSway = sin(now * 2.5)
+        stringSway = sin(simulationElapsedSec * 2.5)
 
         // Advance simulated frame if in simulation mode
         if controller.isSimulationMode {
-            controller.tickSimulatedFrame(timeSec: now)
+            controller.tickSimulatedFrame(timeSec: simulationElapsedSec)
         }
 
-        // Point is already 1 Euro filtered by GazeSessionController — no double EMA needed
-        smoothedGaze = controller.currentRawGazePoint
+        // Dual-stage display smoothing: 1-Euro filtered from controller + gentle temporal blend
+        let rawPt = controller.currentRawGazePoint
+        smoothedGaze = CGPoint(
+            x: smoothedGaze.x * 0.72 + rawPt.x * 0.28,
+            y: smoothedGaze.y * 0.72 + rawPt.y * 0.28
+        )
 
         let target = targetPoints[currentTargetIndex]
         // Apply Target 0 personal eye-offset bias for subsequent targets

@@ -87,12 +87,21 @@ public struct ScreenRaycaster: Sendable {
         let rayDir = targetCam - eyeOriginCam
         let hitScreenCam: simd_float3
         let validForwardRay: Bool
-        if abs(rayDir.z) > 0.001 {
+        
+        // Ray must point forward towards the screen plane (rayDir.z > 0)
+        // and t must be within a plausible geometric range (0.1 to 2.5).
+        // If rayDir.z is too small or negative, dividing by near-zero causes wild spikes and jumping.
+        if rayDir.z > 0.05 {
             let t = -eyeOriginCam.z / rayDir.z
-            validForwardRay = t > 0
-            hitScreenCam = eyeOriginCam + t * rayDir
+            if t >= 0.1 && t <= 2.5 {
+                validForwardRay = true
+                hitScreenCam = eyeOriginCam + t * rayDir
+            } else {
+                validForwardRay = (t > 0)
+                hitScreenCam = targetCam
+            }
         } else {
-            validForwardRay = true
+            validForwardRay = false
             hitScreenCam = targetCam
         }
 
