@@ -226,9 +226,14 @@ public struct GazeSessionResultView: View {
         } label: {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text(Localizer.tr("biomarkers_title"))
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
+                    HStack(spacing: 6) {
+                        Image(systemName: "eyes.inverse")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(LiquidGlass.celestialTeal)
+                        Text(Localizer.tr("biomarkers_title"))
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundColor(.primary)
+                    }
                     Spacer()
                     Image(systemName: "chevron.right")
                         .font(.system(size: 13, weight: .semibold))
@@ -369,9 +374,14 @@ public struct GazeSessionResultView: View {
         } label: {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text(Localizer.tr("emotion_title"))
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundColor(.primary)
+                    HStack(spacing: 6) {
+                        Image(systemName: "face.smiling.fill")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(LiquidGlass.emeraldMint)
+                        Text(Localizer.tr("emotion_title"))
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundColor(.primary)
+                    }
                     Spacer()
                     Image(systemName: "chevron.right")
                         .font(.system(size: 13, weight: .semibold))

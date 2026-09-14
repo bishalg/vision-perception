@@ -184,6 +184,36 @@ public struct BiomarkerDetailView: View {
                             .padding(.vertical, 2)
                             .background(Capsule().fill(Color.black.opacity(0.65)))
                             .position(x: w - 90, y: max(10, thresholdY - 10))
+                    } else if type == .facialAffect {
+                        let thresholdY = h * (1.0 - 0.20)
+                        Path { p in
+                            p.move(to: CGPoint(x: 0, y: thresholdY))
+                            p.addLine(to: CGPoint(x: w, y: thresholdY))
+                        }
+                        .stroke(LiquidGlass.emeraldMint.opacity(0.45), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+
+                        Text("Typical Synchrony (≥20%)")
+                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                            .foregroundColor(LiquidGlass.emeraldMint.opacity(0.85))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.black.opacity(0.65)))
+                            .position(x: w - 90, y: max(10, thresholdY - 10))
+                    } else if type == .dataQuality {
+                        let thresholdY = h * (1.0 - 0.75)
+                        Path { p in
+                            p.move(to: CGPoint(x: 0, y: thresholdY))
+                            p.addLine(to: CGPoint(x: w, y: thresholdY))
+                        }
+                        .stroke(LiquidGlass.emeraldMint.opacity(0.45), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+
+                        Text("Optimal Yield (≥75%)")
+                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                            .foregroundColor(LiquidGlass.emeraldMint.opacity(0.85))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.black.opacity(0.65)))
+                            .position(x: w - 85, y: max(10, thresholdY - 10))
                     }
 
                     // Curve & Area Fill
@@ -336,71 +366,146 @@ public struct BiomarkerDetailView: View {
 
     private var socialPreferenceContent: some View {
         VStack(alignment: .leading, spacing: 18) {
-            // Key Statistics Section
-            GlassSectionHeader(title: "Session Observation Statistics", icon: "scope")
+            let socialPrefPct = Int((summary.socialDwellSec / max(0.1, summary.socialDwellSec + summary.geometricDwellSec)) * 100)
+            let isSocialNormal = socialPrefPct >= 60
+            let isSocialMonitor = socialPrefPct >= 50 && socialPrefPct < 60
+            let socialStatus = isSocialNormal ? "Typical Social Bias" : (isSocialMonitor ? "Borderline Social Bias" : "Reduced Social Bias")
+            let socialColor = isSocialNormal ? LiquidGlass.emeraldMint : (isSocialMonitor ? LiquidGlass.warmAmber : Color.red)
 
-            VStack(spacing: 12) {
-                HStack(spacing: 12) {
+            // Primary Summary Card
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Social Visual Orientation")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.secondary)
+                        HStack(spacing: 8) {
+                            Circle()
+                                .fill(socialColor)
+                                .frame(width: 10, height: 10)
+                            Text(socialStatus)
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
+                                .foregroundColor(socialColor)
+                        }
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(String(format: "%+.2f", summary.socialPreferenceScore))
+                            .font(.system(size: 20, weight: .bold, design: .monospaced))
+                            .foregroundColor(.primary)
+                        Text("GeoPref Score")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                HStack(spacing: 8) {
                     detailMetricTile(
-                        title: "Preference Index",
-                        value: String(format: "%+.2f", summary.socialPreferenceScore),
-                        subtitle: summary.socialPreferenceScore >= 0.20 ? "Typical Social Bias" : "Reduced Social Bias",
-                        color: summary.socialPreferenceScore >= 0.20 ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber
+                        title: "Social Dwell",
+                        value: String(format: "%.1fs", summary.socialDwellSec),
+                        subtitle: "\(socialPrefPct)% Social",
+                        color: LiquidGlass.celestialTeal
                     )
                     detailMetricTile(
-                        title: "First Saccade Latency",
-                        value: String(format: "%.0f ms", summary.firstEyeLatencyMs),
-                        subtitle: summary.firstEyeLatencyMs <= 650 ? "Typical (< 650ms)" : "Delayed Latency",
+                        title: "Geometric",
+                        value: String(format: "%.1fs", summary.geometricDwellSec),
+                        subtitle: "\(100 - socialPrefPct)% Shape",
+                        color: LiquidGlass.warmAmber
+                    )
+                    detailMetricTile(
+                        title: "First Saccade",
+                        value: String(format: "%.0fms", summary.firstEyeLatencyMs),
+                        subtitle: summary.firstEyeLatencyMs <= 650 ? "Rapid" : "Delayed",
                         color: summary.firstEyeLatencyMs <= 650 ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber
                     )
                 }
 
-                HStack(spacing: 12) {
-                    detailMetricTile(
-                        title: "Eye Region Dwell",
-                        value: String(format: "%.1f%%", summary.eyeDwellRatio * 100),
-                        subtitle: "Ocular Fixation",
-                        color: LiquidGlass.celestialTeal
-                    )
-                    detailMetricTile(
-                        title: "Mouth Region Dwell",
-                        value: String(format: "%.1f%%", summary.mouthDwellRatio * 100),
-                        subtitle: "Speech Association",
-                        color: LiquidGlass.celestialTeal
-                    )
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkle.magnifyingglass")
+                        .font(.system(size: 11))
+                        .foregroundColor(LiquidGlass.celestialTeal)
+                    Text("Clinical Finding: \(isSocialNormal ? "Robust preferential orientation to human social scenes." : "Elevated visual preference for geometric animations.")")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.primary)
                 }
-
-                HStack(spacing: 12) {
-                    detailMetricTile(
-                        title: "Social Dwell Duration",
-                        value: String(format: "%.1fs", summary.socialDwellSec),
-                        subtitle: "\(Int(summary.socialDwellSec / max(0.1, summary.socialDwellSec + summary.geometricDwellSec) * 100))% of valid dwell",
-                        color: LiquidGlass.emeraldMint
-                    )
-                    detailMetricTile(
-                        title: "Geometric Dwell Duration",
-                        value: String(format: "%.1fs", summary.geometricDwellSec),
-                        subtitle: "\(Int(summary.geometricDwellSec / max(0.1, summary.socialDwellSec + summary.geometricDwellSec) * 100))% of valid dwell",
-                        color: LiquidGlass.warmAmber
-                    )
-                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.white.opacity(0.04))
+                .cornerRadius(8)
             }
             .glassCard(cornerRadius: 16, padding: 14)
 
-            // Apple Health Style "About This Biomarker" Detailed Explanations
+            // Multi-Variate Biomarker Matrix
+            GlassSectionHeader(title: "Social Attention Biomarker Matrix", icon: "square.grid.2x2")
+
+            VStack(spacing: 10) {
+                biomarkerMatrixCellRow(
+                    icon: "person.2.fill",
+                    title: "Social Actor Fixation Duration",
+                    observed: String(format: "%.1fs (%d%%)", summary.socialDwellSec, socialPrefPct),
+                    target: "≥ 60.0% Dwell",
+                    weight: "Primary Index",
+                    status: isSocialNormal ? "Typical" : (isSocialMonitor ? "Monitor" : "Elevated"),
+                    statusColor: socialColor,
+                    explanation: "Cumulative gaze duration within the social interaction bounding box. Toddlers with ASD spend significantly less time attending to social scenes compared to geometric shapes (Pierce et al., 2011)."
+                )
+
+                biomarkerMatrixCellRow(
+                    icon: "circle.grid.cross.fill",
+                    title: "Dynamic Geometric Fixation Duration",
+                    observed: String(format: "%.1fs (%d%%)", summary.geometricDwellSec, 100 - socialPrefPct),
+                    target: "≤ 40.0% Dwell",
+                    weight: "Contrast Index",
+                    status: (100 - socialPrefPct) <= 40 ? "Normal Contrast" : "Elevated Geometric",
+                    statusColor: (100 - socialPrefPct) <= 40 ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber,
+                    explanation: "Visual dwell directed at high-contrast rotating fractal patterns. Disproportionate geometric fixation (> 50%) is a validated early digital phenotyping biomarker for autism spectrum disorder."
+                )
+
+                let eyePct = summary.eyeDwellRatio * 100
+                biomarkerMatrixCellRow(
+                    icon: "eyes.inverse",
+                    title: "Ocular Eye-Looking Ratio",
+                    observed: String(format: "%.1f%% Eye Dwell", eyePct),
+                    target: "≥ 25.0% of Face",
+                    weight: "Facial Salience",
+                    status: eyePct >= 25.0 ? "Typical Fixation" : (eyePct >= 18.0 ? "Borderline" : "Reduced Gaze"),
+                    statusColor: eyePct >= 25.0 ? LiquidGlass.emeraldMint : (eyePct >= 18.0 ? LiquidGlass.warmAmber : Color.red),
+                    explanation: "Proportion of facial gaze directed to the eye region versus mouth or non-feature contours. Early decline in eye fixation from 2 to 6 months of age predicts social communicative divergence (Klin & Jones, Nature 2013)."
+                )
+
+                let mouthPct = summary.mouthDwellRatio * 100
+                biomarkerMatrixCellRow(
+                    icon: "mouth.fill",
+                    title: "Speech-Associated Mouth Looking",
+                    observed: String(format: "%.1f%% Mouth Dwell", mouthPct),
+                    target: "10.0% – 30.0%",
+                    weight: "Audiovisual Dwell",
+                    status: mouthPct >= 10.0 && mouthPct <= 30.0 ? "Normative" : "Atypical Ratio",
+                    statusColor: mouthPct >= 10.0 && mouthPct <= 30.0 ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber,
+                    explanation: "Fixation on the mouth region during speech. Toddlers learning language alternate between eyes and mouth; abnormal preference for mouth over eyes outside verbal moments can indicate atypical facial processing."
+                )
+
+                let lat = summary.firstEyeLatencyMs
+                biomarkerMatrixCellRow(
+                    icon: "bolt.stop.fill",
+                    title: "First Saccade Latency to Face",
+                    observed: String(format: "%.0f ms", lat),
+                    target: "< 650 ms",
+                    weight: "Subcortical Capture",
+                    status: lat <= 650 ? "Rapid Orienting" : "Delayed Orienting",
+                    statusColor: lat <= 650 ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber,
+                    explanation: "Elapsed time from stimulus onset until the infant's first fixation lands on the social actor. Rapid orienting reflects automated subcortical social salience mechanisms."
+                )
+            }
+
+            // Apple Health Style Educational Cards
             GlassSectionHeader(title: "About Social Visual Attention", icon: "info.circle")
 
             VStack(spacing: 12) {
                 aboutMetricCard(
                     title: "What is Social Visual Attention?",
                     content: "Social visual attention measures the innate neurological tendency of young children to look at other people—their faces, eyes, and social gestures—compared to non-social, repetitive geometric shapes. Typically developing toddlers show an overwhelming, automatic preference for social scenes."
-                )
-
-                aboutMetricCard(
-                    title: "Understanding Your Child's Score (\(String(format: "%+.2f", summary.socialPreferenceScore)))",
-                    content: summary.socialPreferenceScore >= 0.20
-                        ? "Your child directed \(Int(summary.socialDwellSec / max(0.1, summary.socialDwellSec + summary.geometricDwellSec) * 100))% of their visual fixation time to social actor scenes. Scores above +0.20 (≥ 60% social preference) are clinically recognized as typical social visual orienting."
-                        : "Your child allocated \(Int(summary.geometricDwellSec / max(0.1, summary.socialDwellSec + summary.geometricDwellSec) * 100))% of visual attention to geometric patterns. Scores below 0.00 warrant review with your pediatrician, as elevated geometric preference is a validated early digital biomarker."
                 )
 
                 aboutMetricCard(
@@ -411,11 +516,6 @@ public struct BiomarkerDetailView: View {
                 aboutMetricCard(
                     title: "The Role of Eye vs. Mouth Fixation",
                     content: "Seminal eye-tracking studies published in Nature (Klin & Jones, 2013) demonstrated that typically developing toddlers maintain high visual fixation on the eye region of human faces (typically ≥ 25% of face dwell). A progressive decline in eye dwell with preference for mouth or objects is a sensitive biomarker."
-                )
-
-                aboutMetricCard(
-                    title: "First Saccade Latency (\(String(format: "%.0f ms", summary.firstEyeLatencyMs)))",
-                    content: "First Saccade Latency captures how quickly the child's gaze automatically leaps to the face upon stimulus appearance. Typical rapid orienting occurs in under 650 ms, driven by early subcortical social attention pathways."
                 )
 
                 aboutMetricCard(
@@ -439,169 +539,98 @@ public struct BiomarkerDetailView: View {
     // MARK: - 3. Facial Affect Breakdown
 
     private var facialAffectContent: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            GlassSectionHeader(title: "52 FACS Action Units & Synchrony", icon: "face.smiling")
-
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 12) {
-                    detailMetricTile(
-                        title: "Social Smile Mean",
-                        value: String(format: "%.0f%%", summary.socialSmileIntensityMean * 100),
-                        subtitle: "AU6 + AU12 (Duchenne)",
-                        color: LiquidGlass.emeraldMint
-                    )
-                    detailMetricTile(
-                        title: "Smile Reactivity",
-                        value: String(format: "%.2f", summary.smileReactivityIndex),
-                        subtitle: "Stimulus Synchrony",
-                        color: LiquidGlass.emeraldMint
-                    )
-                }
-
-                Divider()
-
-                Text("Action Unit Intensity Breakdown:")
-                    .font(.system(size: 13, weight: .semibold))
-
-                VStack(spacing: 8) {
-                    auProgressRow(title: "AU6 + AU12 (Social Smile)", value: summary.socialSmileIntensityMean)
-                    auProgressRow(title: "AU1 + AU2 (Visual Wonder / Surprise)", value: summary.surpriseScoreMean)
-                    auProgressRow(title: "Flat Affect Baseline Score", value: summary.flatAffectScore)
-                }
-            }
-            .glassCard(cornerRadius: 16, padding: 14)
-
-            GlassSectionHeader(title: "About Facial Affect & Social Synchrony", icon: "info.circle")
-
-            VStack(spacing: 12) {
-                aboutMetricCard(
-                    title: "What is Affective Synchrony?",
-                    content: "Affective synchrony evaluates whether a child mirrors emotions presented on screen—for example, smiling when the social actor laughs or widening eyes in curiosity. Young toddlers with ASD often exhibit flatter affective expressions or delayed affective reciprocity."
-                )
-
-                aboutMetricCard(
-                    title: "The Duchenne Smile (AU6 + AU12)",
-                    content: "The Duchenne smile combines contraction of the zygomaticus major (pulling mouth corners upward) and orbicularis oculi (crinkling eye corners), serving as the clinical hallmark of genuine positive visual engagement."
-                )
-            }
-        }
+        BiomarkerFacialAffectDetailSection(summary: summary)
     }
 
     // MARK: - 4. Data Quality Breakdown
 
     private var dataQualityContent: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            GlassSectionHeader(title: "TrueDepth Telemetry & Precision Audit", icon: "shield.checkered")
-
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 12) {
-                    detailMetricTile(
-                        title: "Valid Frame Ratio",
-                        value: String(format: "%.1f%%", summary.validRatio * 100),
-                        subtitle: "\(summary.validFrames) / \(summary.totalFrames) frames",
-                        color: summary.validRatio > 0.7 ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber
-                    )
-                    detailMetricTile(
-                        title: "Session Duration",
-                        value: String(format: "%.1fs", summary.durationSec),
-                        subtitle: "Continuous Capture",
-                        color: LiquidGlass.celestialTeal
-                    )
-                }
-
-                Divider()
-
-                VStack(spacing: 8) {
-                    clinicalCriteriaRow(
-                        title: "Sensor Distance Compliance",
-                        status: "38–55 cm Target Range",
-                        isNormal: true
-                    )
-                    clinicalCriteriaRow(
-                        title: "Zero Video Recording Guarantee",
-                        status: "Volatile RAM Only (GDPR/HIPAA)",
-                        isNormal: true
-                    )
-                    clinicalCriteriaRow(
-                        title: "Encrypted Session Vault",
-                        status: "AES-GCM-256 On-Device",
-                        isNormal: true
-                    )
-                }
-            }
-            .glassCard(cornerRadius: 16, padding: 14)
-
-            GlassSectionHeader(title: "About TrueDepth Quality & Blink Filtration", icon: "info.circle")
-
-            VStack(spacing: 12) {
-                aboutMetricCard(
-                    title: "Blink Rejection & Downward Spike Filtering",
-                    content: "When an eyelid closes, ARKit's pupil tracking temporarily plummets downward. Our quality gate detects blinks instantly at 45% eye openness, freezes gaze at the last valid fixation, and debounces 3 frames after reopening to guarantee zero artifact skew."
-                )
-
-                aboutMetricCard(
-                    title: "Volatile RAM Zero-Storage Guarantee",
-                    content: "No camera video or biometric photos are ever saved to disk or transmitted across the network. Telemetry runs purely in volatile RAM and is encrypted via AES-GCM-256 into local ResearchKit JSON batches."
-                )
-            }
-        }
+        BiomarkerDataQualityDetailSection(summary: summary)
     }
+
 
     // MARK: - Helper Subviews
 
+    private func biomarkerMatrixCellRow(
+        icon: String,
+        title: String,
+        observed: String,
+        target: String,
+        weight: String,
+        status: String,
+        statusColor: Color,
+        explanation: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(statusColor)
+                Text(title)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                Spacer()
+                Text(status)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(statusColor)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(statusColor.opacity(0.16)))
+            }
+
+            HStack(spacing: 12) {
+                HStack(spacing: 3) {
+                    Text("Observed:")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    Text(observed)
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundColor(.primary)
+                }
+                HStack(spacing: 3) {
+                    Text("Target:")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    Text(target)
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                Text(weight)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(LiquidGlass.celestialTeal)
+            }
+
+            Text(explanation)
+                .font(.system(size: 11, weight: .regular))
+                .foregroundColor(.secondary)
+                .lineSpacing(2.5)
+        }
+        .padding(12)
+        .background(Color.white.opacity(0.04))
+        .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        )
+    }
+
     private func detailMetricTile(title: String, value: String, subtitle: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 3) {
             Text(title)
-                .font(.system(size: 11))
+                .font(.system(size: 10))
                 .foregroundColor(.secondary)
             Text(value)
-                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .font(.system(size: 15, weight: .bold, design: .rounded))
                 .foregroundColor(color)
             Text(subtitle)
-                .font(.system(size: 10))
+                .font(.system(size: 9))
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(Color.white.opacity(0.05))
-        .cornerRadius(10)
-    }
-
-    private func clinicalCriteriaRow(title: String, status: String, isNormal: Bool) -> some View {
-        HStack {
-            Image(systemName: isNormal ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                .foregroundColor(isNormal ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber)
-                .font(.system(size: 14))
-            Text(title)
-                .font(.system(size: 12))
-            Spacer()
-            Text(status)
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .foregroundColor(isNormal ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber)
-        }
-    }
-
-    private func auProgressRow(title: String, value: Double) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(title)
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                Spacer()
-                Text("\(Int(value * 100))%")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .foregroundColor(LiquidGlass.celestialTeal)
-            }
-            GeometryReader { g in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color.white.opacity(0.12))
-                    Capsule()
-                        .fill(LiquidGlass.celestialTeal)
-                        .frame(width: g.size.width * CGFloat(min(value, 1.0)))
-                }
-            }
-            .frame(height: 5)
-        }
+        .padding(8)
+        .background(Color.white.opacity(0.04))
+        .cornerRadius(8)
     }
 
     private func aboutMetricCard(title: String, content: String) -> some View {

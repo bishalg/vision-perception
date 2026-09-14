@@ -53,6 +53,7 @@
 		BB1111AA1111AA11AA111111 /* BiomarkerDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2222BB2222BB22BB222222 /* BiomarkerDetailViews.swift */; };
 		BB3333CC3333CC33CC333333 /* GazeReplayHeatmapFullScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4444DD4444DD44DD444444 /* GazeReplayHeatmapFullScreenView.swift */; };
 		CC5555AA5555AA55AA555555 /* BiomarkerRiskStratificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC6666BB6666BB66BB666666 /* BiomarkerRiskStratificationView.swift */; };
+		DD5555AA5555AA55AA555555 /* BiomarkerAffectAndQualityViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD6666BB6666BB66BB666666 /* BiomarkerAffectAndQualityViews.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -109,6 +110,7 @@
 		BB2222BB2222BB22BB222222 /* BiomarkerDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiomarkerDetailViews.swift; sourceTree = "<group>"; };
 		BB4444DD4444DD44DD444444 /* GazeReplayHeatmapFullScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeReplayHeatmapFullScreenView.swift; sourceTree = "<group>"; };
 		CC6666BB6666BB66BB666666 /* BiomarkerRiskStratificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiomarkerRiskStratificationView.swift; sourceTree = "<group>"; };
+		DD6666BB6666BB66BB666666 /* BiomarkerAffectAndQualityViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiomarkerAffectAndQualityViews.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -156,6 +158,7 @@
 				BB2222BB2222BB22BB222222 /* BiomarkerDetailViews.swift */,
 				BB4444DD4444DD44DD444444 /* GazeReplayHeatmapFullScreenView.swift */,
 				CC6666BB6666BB66BB666666 /* BiomarkerRiskStratificationView.swift */,
+				DD6666BB6666BB66BB666666 /* BiomarkerAffectAndQualityViews.swift */,
 				3111366AAA094728086AD5E8 /* MainGazeScannerView.swift */,
 				EF98BBCFAACCAC600C07B3B9 /* MCHATSurveyModalView.swift */,
 				A63371C06337F00E97F6D0C9 /* ResearchStudyConsentView.swift */,
@@ -387,6 +390,7 @@
 				BB1111AA1111AA11AA111111 /* BiomarkerDetailViews.swift in Sources */,
 				BB3333CC3333CC33CC333333 /* GazeReplayHeatmapFullScreenView.swift in Sources */,
 				CC5555AA5555AA55AA555555 /* BiomarkerRiskStratificationView.swift in Sources */,
+				DD5555AA5555AA55AA555555 /* BiomarkerAffectAndQualityViews.swift in Sources */,
 				097C3A01FD450EFF0EFD87D1 /* LiquidGlassTheme.swift in Sources */,
 				AA7777AA7777AA77AA777777 /* AppLocalizer.swift in Sources */,
 				A9BFB17FF83C49850FCBA258 /* MCHATSurveyModalView.swift in Sources */,
