@@ -63,6 +63,12 @@ import org.curv.palmapp.model.CreaseSpline
 import org.curv.palmapp.model.LocalizedStrings
 import org.curv.palmapp.ui.theme.PalmAppTheme
 
+enum class ResultInspectorTab(val label: String) {
+    CREASES("2D Creases"),
+    TOPOGRAPHY("3D Topography"),
+    ANTHROPOMETRY("Anthropometry")
+}
+
 /**
  * Post-capture review: photo + verified crease overlays.
  * Phase 2 of Palm Scanner workflow — native Material3 structure:
@@ -81,6 +87,7 @@ fun CaptureResultView(
     selectedLanguage: AppLanguage,
     overlaySource: CreaseOverlaySource,
     handSide: HandSide = HandSide.RIGHT,
+    padDepths: Map<String, Float> = emptyMap(),
     onSplinesChange: (List<CreaseSpline>) -> Unit,
     onLanguageChange: (AppLanguage) -> Unit = {},
     onRetake: () -> Unit,
@@ -89,6 +96,7 @@ fun CaptureResultView(
     onProceedToAnalysis: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    var selectedTab by remember { mutableStateOf(ResultInspectorTab.CREASES) }
     var showEditor by remember { mutableStateOf(false) }
     var selectedSplineId by remember(splines) { mutableStateOf<String?>(null) }
 
@@ -171,84 +179,126 @@ fun CaptureResultView(
             }
         ) { innerPadding ->
             Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-                // Captured image + detected creases canvas.
-                BoxWithConstraints(
-                    modifier = Modifier.weight(1f).fillMaxWidth().background(Color.Black)
+                // Segmented tab row
+                TabRow(
+                    selectedTabIndex = selectedTab.ordinal,
+                    containerColor = Color.Black.copy(alpha = 0.85f),
+                    contentColor = Color.White
                 ) {
-                    val density = LocalDensity.current
-                    val viewSize = Size(constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat())
-                    val imgSize = if (bitmap != null) Size(bitmap.width.toFloat(), bitmap.height.toFloat()) else viewSize
-                    val drawRect = ImageCoordinateMapper.imageRect(imgSize, viewSize, ImageCoordinateMapper.ContentMode.FIT)
-                    val rectWdp = with(density) { drawRect.width.toDp() }
-                    val rectHdp = with(density) { drawRect.height.toDp() }
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        if (bitmap != null) {
-                            Image(
-                                bitmap = bitmap.asImageBitmap(),
-                                contentDescription = null,
-                                modifier = Modifier.width(rectWdp).height(rectHdp).align(Alignment.Center),
-                                contentScale = ContentScale.FillBounds
-                            )
-                        } else {
-                            Text(
-                                LocalizedStrings.tr("result.noPhoto", selectedLanguage),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.align(Alignment.Center)
-                            )
-                        }
-                        // Soft top/bottom scrim for legibility.
-                        Box(
-                            modifier = Modifier.fillMaxSize().background(
-                                Brush.verticalGradient(
-                                    listOf(
-                                        Color.Black.copy(alpha = 0.2f),
-                                        Color.Transparent,
-                                        Color.Black.copy(alpha = 0.3f)
-                                    )
-                                )
-                            )
-                        )
-                        HandOutlineOverlay(
-                            landmarks = landmarks,
-                            imageRect = drawRect,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                        CreaseSplineOverlayView(
-                            splines = splines,
-                            imageRect = drawRect,
-                            selectedSplineId = selectedSplineId,
-                            isEditing = false,
-                            useScaffoldStyle = needsManual,
-                            modifier = Modifier.fillMaxSize()
+                    ResultInspectorTab.values().forEach { tab ->
+                        Tab(
+                            selected = selectedTab == tab,
+                            onClick = { selectedTab = tab },
+                            text = { Text(tab.label) }
                         )
                     }
                 }
 
-                // Detected lines as native list items.
-                LazyColumn(modifier = Modifier.fillMaxWidth().height(220.dp)) {
-                    item {
-                        Text(
-                            text = LocalizedStrings.tr("result.detectedCreases", selectedLanguage)
-                                .format(splines.size),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.surface)
-                                .padding(horizontal = 20.dp, vertical = 8.dp)
-                        )
-                    }
-                    itemsIndexed(splines, key = { _, s -> s.id }) { index, spline ->
-                        CreaseLineRow(
-                            spline = spline,
-                            selectedLanguage = selectedLanguage,
-                            onClick = {
-                                selectedSplineId = spline.id
-                                showEditor = true
+                when (selectedTab) {
+                    ResultInspectorTab.CREASES -> {
+                        // Captured image + detected creases canvas.
+                        BoxWithConstraints(
+                            modifier = Modifier.weight(1f).fillMaxWidth().background(Color.Black)
+                        ) {
+                            val density = LocalDensity.current
+                            val viewSize = Size(constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat())
+                            val imgSize = if (bitmap != null) Size(bitmap.width.toFloat(), bitmap.height.toFloat()) else viewSize
+                            val drawRect = ImageCoordinateMapper.imageRect(imgSize, viewSize, ImageCoordinateMapper.ContentMode.FIT)
+                            val rectWdp = with(density) { drawRect.width.toDp() }
+                            val rectHdp = with(density) { drawRect.height.toDp() }
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                if (bitmap != null) {
+                                    Image(
+                                        bitmap = bitmap.asImageBitmap(),
+                                        contentDescription = null,
+                                        modifier = Modifier.width(rectWdp).height(rectHdp).align(Alignment.Center),
+                                        contentScale = ContentScale.FillBounds
+                                    )
+                                } else {
+                                    Text(
+                                        LocalizedStrings.tr("result.noPhoto", selectedLanguage),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier.align(Alignment.Center)
+                                    )
+                                }
+                                // Soft top/bottom scrim for legibility.
+                                Box(
+                                    modifier = Modifier.fillMaxSize().background(
+                                        Brush.verticalGradient(
+                                            listOf(
+                                                Color.Black.copy(alpha = 0.2f),
+                                                Color.Transparent,
+                                                Color.Black.copy(alpha = 0.3f)
+                                            )
+                                        )
+                                    )
+                                )
+                                HandOutlineOverlay(
+                                    landmarks = landmarks,
+                                    imageRect = drawRect,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                                CreaseSplineOverlayView(
+                                    splines = splines,
+                                    imageRect = drawRect,
+                                    selectedSplineId = selectedSplineId,
+                                    isEditing = false,
+                                    useScaffoldStyle = needsManual,
+                                    modifier = Modifier.fillMaxSize()
+                                )
                             }
-                        )
-                        if (index < splines.lastIndex) {
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp))
+                        }
+
+                        // Detected lines as native list items.
+                        LazyColumn(modifier = Modifier.fillMaxWidth().height(220.dp)) {
+                            item {
+                                Text(
+                                    text = LocalizedStrings.tr("result.detectedCreases", selectedLanguage)
+                                        .format(splines.size),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.fillMaxWidth()
+                                        .background(MaterialTheme.colorScheme.surface)
+                                        .padding(horizontal = 20.dp, vertical = 8.dp)
+                                )
+                            }
+                            itemsIndexed(splines, key = { _, s -> s.id }) { index, spline ->
+                                CreaseLineRow(
+                                    spline = spline,
+                                    selectedLanguage = selectedLanguage,
+                                    onClick = {
+                                        selectedSplineId = spline.id
+                                        showEditor = true
+                                    }
+                                )
+                                if (index < splines.lastIndex) {
+                                    HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp))
+                                }
+                            }
+                        }
+                    }
+
+                    ResultInspectorTab.TOPOGRAPHY -> {
+                        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                            HandMeshInspectorView(
+                                landmarks = landmarks,
+                                padDepths = padDepths,
+                                referencePalmWidthMm = 80.0f,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+
+                    ResultInspectorTab.ANTHROPOMETRY -> {
+                        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                            AnthropometrySummaryView(
+                                landmarks = landmarks,
+                                padDepths = padDepths,
+                                referencePalmWidthMm = 80.0f,
+                                handSide = handSide.name.lowercase(),
+                                modifier = Modifier.fillMaxSize()
+                            )
                         }
                     }
                 }

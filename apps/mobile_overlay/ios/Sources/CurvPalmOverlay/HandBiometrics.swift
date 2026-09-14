@@ -235,14 +235,19 @@ public enum HandBiometricsCalculator {
         handSide: String = "auto"
     ) -> HandBiometricsReport? {
         guard landmarks.count >= 21 else { return nil }
+        for i in 0..<21 {
+            let pt = landmarks[i]
+            guard pt.count >= 2, pt[0].isFinite, pt[1].isFinite else { return nil }
+        }
 
+        let refBreadth = referencePalmWidthMm > 0.0 ? referencePalmWidthMm : 80.0
         // Scale factor: Landmark 5 (Index MCP) to 17 (Pinky MCP)
         let p5 = [landmarks[5][0] * imageWidth, landmarks[5][1] * imageHeight]
         let p17 = [landmarks[17][0] * imageWidth, landmarks[17][1] * imageHeight]
         let palmBreadthPx = dist(p5, p17)
-        guard palmBreadthPx > 1.0 else { return nil }
+        guard palmBreadthPx.isFinite, palmBreadthPx > 1.0 else { return nil }
 
-        let mmPerPx = referencePalmWidthMm / palmBreadthPx
+        let mmPerPx = refBreadth / palmBreadthPx
         let pxToMm = { (px: Float) in px * mmPerPx }
 
         // Palm length: wrist (0) to middle MCP (9)
@@ -254,10 +259,15 @@ public enum HandBiometricsCalculator {
         let p12 = [landmarks[12][0] * imageWidth, landmarks[12][1] * imageHeight]
         let totalHandLengthMm = pxToMm(dist(p0, p12))
 
-        let metacarpalBreadthMm = referencePalmWidthMm
-        let aspectRatio = palmLengthMm > 1e-3 ? (metacarpalBreadthMm / palmLengthMm) : 1.0
-        let areaCm2 = (metacarpalBreadthMm * palmLengthMm * 0.85) / 100.0
-        let shapeType = aspectRatio > 0.9 ? "broad" : (aspectRatio < 0.75 ? "elongated" : "proportional")
+        let metacarpalBreadthMm = refBreadth
+        let aspectRatio = palmLengthMm > 1e-3 ? (metacarpalBreadthMm / palmLengthMm) : 0.0
+        let p1 = [landmarks[1][0] * imageWidth, landmarks[1][1] * imageHeight]
+        let wristWidthPx = dist(p1, p17) * 0.75
+        let areaPx2 = 0.5 * (palmBreadthPx + wristWidthPx) * (palmLengthMm / mmPerPx)
+        let areaCm2 = (areaPx2 * mmPerPx * mmPerPx) / 100.0
+        let shapeType = palmLengthMm > 1e-3
+            ? (aspectRatio > 1.0 ? "broad" : (aspectRatio < 0.82 ? "elongated" : "proportional"))
+            : "unknown"
 
         let palm = PalmDimensions(
             metacarpalBreadthMm: metacarpalBreadthMm,

@@ -324,27 +324,22 @@ public struct HandMeshInspectorView: View {
             indices.append(contentsOf: [palmCenterIdx, palmRing[i], palmRing[i + 1]])
         }
 
-        // Digit phalangeal quads (each quad split into 2 triangles)
-        let chains: [[Int32]] = [
-            [1, 2, 3, 4],
-            [5, 6, 7, 8],
-            [9, 10, 11, 12],
-            [13, 14, 15, 16],
-            [17, 18, 19, 20]
-        ]
-        for chain in chains {
-            for j in 0..<(chain.count - 1) {
-                let a = chain[j]
-                let b = chain[j + 1]
-                indices.append(contentsOf: [palmCenterIdx, a, b])
-            }
-        }
-
-        // Interdigital webs
+        // Interdigital webs & MCP bridges
         indices.append(contentsOf: [2, 5, palmCenterIdx])
-        indices.append(contentsOf: [5, 9, palmCenterIdx])
-        indices.append(contentsOf: [9, 13, palmCenterIdx])
-        indices.append(contentsOf: [13, 17, palmCenterIdx])
+        indices.append(contentsOf: [5, 6, 9])
+        indices.append(contentsOf: [6, 10, 9])
+        indices.append(contentsOf: [9, 10, 13])
+        indices.append(contentsOf: [10, 14, 13])
+        indices.append(contentsOf: [13, 14, 17])
+        indices.append(contentsOf: [14, 18, 17])
+
+        // Intermediate interdigital webbing
+        indices.append(contentsOf: [6, 7, 10])
+        indices.append(contentsOf: [7, 11, 10])
+        indices.append(contentsOf: [10, 11, 14])
+        indices.append(contentsOf: [11, 15, 14])
+        indices.append(contentsOf: [14, 15, 18])
+        indices.append(contentsOf: [15, 19, 18])
 
         return (vertices, colors, indices)
     }

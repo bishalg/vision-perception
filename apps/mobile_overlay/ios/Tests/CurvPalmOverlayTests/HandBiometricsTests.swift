@@ -97,4 +97,28 @@ final class HandBiometricsTests: XCTestCase {
         XCTAssertNotNil(mlc)
         XCTAssertEqual(mlc?.traditionalAlias, "fate")
     }
+
+    func testCorruptAndBoundaryInputs() {
+        let scaffold = PalmRegionGeometry.scaffoldLandmarks()
+
+        // 1. NaN coordinate in landmarks
+        var nanLms: [[Float]] = scaffold.map { [Float($0.x), Float($0.y)] }
+        nanLms[5][0] = Float.nan
+        XCTAssertNil(HandBiometricsCalculator.compute(landmarks: nanLms))
+
+        // 2. Inf coordinate in landmarks
+        var infLms: [[Float]] = scaffold.map { [Float($0.x), Float($0.y)] }
+        infLms[17][1] = Float.infinity
+        XCTAssertNil(HandBiometricsCalculator.compute(landmarks: infLms))
+
+        // 3. Degenerate collapsed landmarks (all at same coordinate)
+        let collapsed: [[Float]] = (0..<21).map { _ in [0.5, 0.5] }
+        XCTAssertNil(HandBiometricsCalculator.compute(landmarks: collapsed))
+
+        // 4. Negative reference width (falls back to 80.0mm)
+        let validLms: [[Float]] = scaffold.map { [Float($0.x), Float($0.y)] }
+        let report = HandBiometricsCalculator.compute(landmarks: validLms, referencePalmWidthMm: -40.0)
+        XCTAssertNotNil(report)
+        XCTAssertEqual(report?.palm.metacarpalBreadthMm ?? 0, 80.0, accuracy: 0.01)
+    }
 }

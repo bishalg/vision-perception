@@ -108,13 +108,18 @@ object HandBiometricsCalculator {
         handSide: String = "auto"
     ): HandBiometricsReport? {
         if (landmarks.size < 21) return null
+        for (i in 0 until 21) {
+            val pt = landmarks[i]
+            if (pt.size < 2 || !pt[0].isFinite() || !pt[1].isFinite()) return null
+        }
 
+        val refBreadth = if (referencePalmWidthMm > 0.0f) referencePalmWidthMm else 80.0f
         val p5 = listOf(landmarks[5][0] * imageWidth, landmarks[5][1] * imageHeight)
         val p17 = listOf(landmarks[17][0] * imageWidth, landmarks[17][1] * imageHeight)
         val palmBreadthPx = dist(p5, p17)
-        if (palmBreadthPx <= 1.0f) return null
+        if (!palmBreadthPx.isFinite() || palmBreadthPx <= 1.0f) return null
 
-        val mmPerPx = referencePalmWidthMm / palmBreadthPx
+        val mmPerPx = refBreadth / palmBreadthPx
         val pxToMm = { px: Float -> px * mmPerPx }
 
         val p0 = listOf(landmarks[0][0] * imageWidth, landmarks[0][1] * imageHeight)
@@ -124,13 +129,20 @@ object HandBiometricsCalculator {
         val p12 = listOf(landmarks[12][0] * imageWidth, landmarks[12][1] * imageHeight)
         val totalHandLengthMm = pxToMm(dist(p0, p12))
 
-        val metacarpalBreadthMm = referencePalmWidthMm
-        val aspectRatio = if (palmLengthMm > 1e-3f) metacarpalBreadthMm / palmLengthMm else 1.0f
-        val areaCm2 = (metacarpalBreadthMm * palmLengthMm * 0.85f) / 100.0f
-        val shapeType = when {
-            aspectRatio > 0.9f -> "broad"
-            aspectRatio < 0.75f -> "elongated"
-            else -> "proportional"
+        val metacarpalBreadthMm = refBreadth
+        val aspectRatio = if (palmLengthMm > 1e-3f) metacarpalBreadthMm / palmLengthMm else 0.0f
+        val p1 = listOf(landmarks[1][0] * imageWidth, landmarks[1][1] * imageHeight)
+        val wristWidthPx = dist(p1, p17) * 0.75f
+        val areaPx2 = 0.5f * (palmBreadthPx + wristWidthPx) * (palmLengthMm / mmPerPx)
+        val areaCm2 = (areaPx2 * mmPerPx * mmPerPx) / 100.0f
+        val shapeType = if (palmLengthMm > 1e-3f) {
+            when {
+                aspectRatio > 1.0f -> "broad"
+                aspectRatio < 0.82f -> "elongated"
+                else -> "proportional"
+            }
+        } else {
+            "unknown"
         }
 
         val palm = PalmDimensions(

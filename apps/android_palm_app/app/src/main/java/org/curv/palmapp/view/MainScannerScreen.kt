@@ -219,6 +219,7 @@ fun MainScannerScreen(
                 selectedLanguage = currentLanguage,
                 overlaySource = overlaySource,
                 handSide = if (selectedHandSide != HandSide.AUTO) selectedHandSide else detectedHandSide,
+                padDepths = viewModel.padDepths,
                 onSplinesChange = { viewModel.updateSplines(it) },
                 onLanguageChange = { viewModel.setLanguage(it) },
                 onRetake = { viewModel.retake() },

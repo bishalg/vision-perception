@@ -73,7 +73,7 @@ data class FateReport(
     val broken: Boolean? = null,
     val gapCount: Int? = null,
     val stopsAtHeart: Boolean? = null,
-    val stopsAtHead: Bool? = null,
+    val stopsAtHead: Boolean? = null,
     val mergedHead: Boolean? = null,
     val ageAtEnd: Float? = null,
     val ageAtBreak: Float? = null,

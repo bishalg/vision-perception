@@ -88,23 +88,37 @@ HandMeshPayload HandMeshGenerator::generate(
     HandMeshPayload payload;
     if (lm.size() < 21) return payload;
 
+    for (size_t i = 0; i < 21; ++i) {
+        if (!std::isfinite(lm[i][0]) || !std::isfinite(lm[i][1])) {
+            return payload;
+        }
+    }
+
+    const float ref_breadth = palm_breadth_mm > 0.0f ? palm_breadth_mm : 80.0f;
     const float w = static_cast<float>(std::max(1, image_width));
     const float h = static_cast<float>(std::max(1, image_height));
 
     const float dx = (lm[17][0] - lm[5][0]) * w;
     const float dy = (lm[17][1] - lm[5][1]) * h;
     const float breadth_px = std::sqrt(dx * dx + dy * dy);
-    if (breadth_px <= 1e-4f) return payload;
+    if (!std::isfinite(breadth_px) || breadth_px <= 1e-4f) return payload;
 
-    const float mm_per_px = palm_breadth_mm / breadth_px;
+    const float mm_per_px = ref_breadth / breadth_px;
+    if (!std::isfinite(mm_per_px) || mm_per_px <= 0.0f) return payload;
 
     // Center on mid-palm (average of wrist and middle MCP)
     const float cx = 0.5f * (lm[0][0] + lm[9][0]);
     const float cy = 0.5f * (lm[0][1] + lm[9][1]);
 
     auto padH = [&](const std::string& name, const std::string& legacy_alt, float def_h) -> float {
-        if (pad_heights.count(name) > 0) return pad_heights.at(name);
-        if (pad_heights.count(legacy_alt) > 0) return pad_heights.at(legacy_alt);
+        if (pad_heights.count(name) > 0) {
+            float v = pad_heights.at(name);
+            if (std::isfinite(v)) return v;
+        }
+        if (pad_heights.count(legacy_alt) > 0) {
+            float v = pad_heights.at(legacy_alt);
+            if (std::isfinite(v)) return v;
+        }
         return def_h;
     };
 
@@ -166,8 +180,8 @@ HandMeshPayload HandMeshGenerator::generate(
     }
 
     // Fossa center vertex (21)
-    const float fx = (cx - cx) * w * mm_per_px;
-    const float fy = (cy - cy) * h * mm_per_px;
+    const float fx = 0.0f;
+    const float fy = 0.0f;
     payload.vertices[21].position = {fx, fy, z_vals[21]};
     payload.vertices[21].color = elevationColor((z_vals[21] - min_z) / z_range);
     payload.vertices[21].normal = {0.0f, 0.0f, 1.0f};
@@ -178,22 +192,22 @@ HandMeshPayload HandMeshGenerator::generate(
         payload.triangles.push_back({21, palmar_ring[i], palmar_ring[i + 1]});
     }
 
-    // Inter-MCP bridge triangles
-    payload.triangles.push_back({5, 9, 21});
-    payload.triangles.push_back({9, 13, 21});
-    payload.triangles.push_back({13, 17, 21});
+    // Inter-MCP / interdigital web triangles (connecting adjacent digits)
+    payload.triangles.push_back({2, 5, 21});
+    payload.triangles.push_back({5, 6, 9});
+    payload.triangles.push_back({6, 10, 9});
+    payload.triangles.push_back({9, 10, 13});
+    payload.triangles.push_back({10, 14, 13});
+    payload.triangles.push_back({13, 14, 17});
+    payload.triangles.push_back({14, 18, 17});
 
-    // Digit segment quads (represented as triangles)
-    auto addDigitChain = [&](int a, int b, int c, int d) {
-        payload.triangles.push_back({a, b, c});
-        payload.triangles.push_back({b, d, c});
-    };
-
-    addDigitChain(1, 2, 3, 4);
-    addDigitChain(5, 6, 7, 8);
-    addDigitChain(9, 10, 11, 12);
-    addDigitChain(13, 14, 15, 16);
-    addDigitChain(17, 18, 19, 20);
+    // Intermediate interdigital webbing
+    payload.triangles.push_back({6, 7, 10});
+    payload.triangles.push_back({7, 11, 10});
+    payload.triangles.push_back({10, 11, 14});
+    payload.triangles.push_back({11, 15, 14});
+    payload.triangles.push_back({14, 15, 18});
+    payload.triangles.push_back({15, 19, 18});
 
     // Compute smoothed surface normals from face normals
     for (const auto& tri : payload.triangles) {

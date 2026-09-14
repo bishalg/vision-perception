@@ -56,6 +56,9 @@ class PalmAnalysisViewModel : ViewModel() {
     private val _analysisResult = MutableStateFlow<PalmAnalysisResponse?>(null)
     val analysisResult: StateFlow<PalmAnalysisResponse?> = _analysisResult.asStateFlow()
 
+    val padDepths: Map<String, Float>
+        get() = emptyMap()
+
     private val _detectedSplines = MutableStateFlow<List<CreaseSpline>>(emptyList())
     val detectedSplines: StateFlow<List<CreaseSpline>> = _detectedSplines.asStateFlow()
 

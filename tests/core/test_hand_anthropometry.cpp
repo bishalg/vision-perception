@@ -117,4 +117,73 @@ TEST(HandMeshGenerator, Generates3DSurfaceAndObj) {
     EXPECT_TRUE(json.contains("vertices"));
     EXPECT_TRUE(json.contains("triangles"));
     EXPECT_TRUE(json.contains("colors"));
+
+    // Check normal vectors are unit length and finite
+    for (const auto& v : mesh.vertices) {
+        EXPECT_TRUE(std::isfinite(v.normal[0]));
+        EXPECT_TRUE(std::isfinite(v.normal[1]));
+        EXPECT_TRUE(std::isfinite(v.normal[2]));
+        const float len = std::sqrt(v.normal[0] * v.normal[0] + v.normal[1] * v.normal[1] + v.normal[2] * v.normal[2]);
+        EXPECT_NEAR(len, 1.0f, 0.05f);
+    }
 }
+
+TEST(HandAnthropometry, HandlesCorruptAndBoundaryInputs) {
+    // 1. Empty landmarks
+    const auto empty_report = CurvEngine::geometry::HandAnthropometer::compute({});
+    EXPECT_TRUE(empty_report.digits.empty());
+    EXPECT_FLOAT_EQ(empty_report.mm_per_pixel, 0.0f);
+
+    // 2. Insufficient landmarks (< 21)
+    std::vector<std::array<float, 2>> partial(15, {0.5f, 0.5f});
+    const auto partial_report = CurvEngine::geometry::HandAnthropometer::compute(partial);
+    EXPECT_TRUE(partial_report.digits.empty());
+
+    // 3. Landmarks containing NaN / Inf
+    auto nan_lms = scaffoldLandmarks();
+    nan_lms[5][0] = std::numeric_limits<float>::quiet_NaN();
+    const auto nan_report = CurvEngine::geometry::HandAnthropometer::compute(nan_lms);
+    EXPECT_TRUE(nan_report.digits.empty());
+    EXPECT_NO_THROW({
+        auto j = nan_report.toJson();
+        (void)j.dump();
+    });
+
+    auto inf_lms = scaffoldLandmarks();
+    inf_lms[17][1] = std::numeric_limits<float>::infinity();
+    const auto inf_report = CurvEngine::geometry::HandAnthropometer::compute(inf_lms);
+    EXPECT_TRUE(inf_report.digits.empty());
+
+    // 4. Degenerate landmarks (all at same coordinate -> zero breadth)
+    std::vector<std::array<float, 2>> collapsed(21, {0.5f, 0.5f});
+    const auto collapsed_report = CurvEngine::geometry::HandAnthropometer::compute(collapsed);
+    EXPECT_TRUE(collapsed_report.digits.empty());
+    EXPECT_FLOAT_EQ(collapsed_report.mm_per_pixel, 0.0f);
+
+    // 5. Negative reference width (should clamp to 80mm fallback)
+    const auto valid_lms = scaffoldLandmarks();
+    const auto fallback_report = CurvEngine::geometry::HandAnthropometer::compute(valid_lms, 1000, 1000, -50.0f);
+    EXPECT_FLOAT_EQ(fallback_report.palm.metacarpal_breadth_mm, 80.0f);
+    EXPECT_GT(fallback_report.palm.palm_length_mm, 0.0f);
+}
+
+TEST(HandMeshGenerator, HandlesCorruptAndBoundaryInputs) {
+    // 1. Empty landmarks
+    const auto empty_mesh = CurvEngine::surface::HandMeshGenerator::generate({});
+    EXPECT_TRUE(empty_mesh.vertices.empty());
+    EXPECT_TRUE(empty_mesh.triangles.empty());
+
+    // 2. NaN landmarks
+    auto nan_lms = scaffoldLandmarks();
+    nan_lms[0][0] = std::numeric_limits<float>::quiet_NaN();
+    const auto nan_mesh = CurvEngine::surface::HandMeshGenerator::generate(nan_lms);
+    EXPECT_TRUE(nan_mesh.vertices.empty());
+    EXPECT_TRUE(nan_mesh.triangles.empty());
+
+    // 3. Degenerate collapsed landmarks
+    std::vector<std::array<float, 2>> collapsed(21, {0.5f, 0.5f});
+    const auto collapsed_mesh = CurvEngine::surface::HandMeshGenerator::generate(collapsed);
+    EXPECT_TRUE(collapsed_mesh.vertices.empty());
+    EXPECT_TRUE(collapsed_mesh.triangles.empty());
+}
+

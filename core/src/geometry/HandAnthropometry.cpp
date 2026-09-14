@@ -136,33 +136,46 @@ HandAnthropometryReport HandAnthropometer::compute(
         return report;
     }
 
+    // Validate that all 21 landmarks have finite coordinates
+    for (size_t i = 0; i < 21; ++i) {
+        if (!std::isfinite(lm[i][0]) || !std::isfinite(lm[i][1])) {
+            return report;
+        }
+    }
+
+    const float ref_w = reference_palm_width_mm > 0.0f ? reference_palm_width_mm : 80.0f;
     const float w = static_cast<float>(std::max(1, image_width));
     const float h = static_cast<float>(std::max(1, image_height));
 
     // Metacarpal breadth in pixels (index MCP 5 to pinky MCP 17)
     const float breadth_px = distPx(lm[5], lm[17], w, h);
-    if (breadth_px <= 1e-4f) {
+    if (!std::isfinite(breadth_px) || breadth_px <= 1e-4f) {
         return report;
     }
 
-    const float mm_per_px = reference_palm_width_mm / breadth_px;
+    const float mm_per_px = ref_w / breadth_px;
+    if (!std::isfinite(mm_per_px) || mm_per_px <= 0.0f) {
+        return report;
+    }
     report.mm_per_pixel = mm_per_px;
 
     // Palm dimensions
-    report.palm.metacarpal_breadth_mm = reference_palm_width_mm;
+    report.palm.metacarpal_breadth_mm = ref_w;
     report.palm.palm_length_mm = distPx(lm[0], lm[9], w, h) * mm_per_px;
     report.palm.total_hand_length_mm = distPx(lm[0], lm[12], w, h) * mm_per_px;
 
     if (report.palm.palm_length_mm > 1e-3f) {
         report.palm.aspect_ratio = report.palm.metacarpal_breadth_mm / report.palm.palm_length_mm;
-    }
-
-    if (report.palm.aspect_ratio > 1.05f) {
-        report.palm.hand_shape_type = "broad";
-    } else if (report.palm.aspect_ratio < 0.85f) {
-        report.palm.hand_shape_type = "elongated";
+        if (report.palm.aspect_ratio > 1.0f) {
+            report.palm.hand_shape_type = "broad";
+        } else if (report.palm.aspect_ratio < 0.82f) {
+            report.palm.hand_shape_type = "elongated";
+        } else {
+            report.palm.hand_shape_type = "proportional";
+        }
     } else {
-        report.palm.hand_shape_type = "proportional";
+        report.palm.aspect_ratio = 0.0f;
+        report.palm.hand_shape_type = "unknown";
     }
 
     // Estimated palm surface area (cm^2): trapezoid over wrist and MCPs
@@ -244,9 +257,11 @@ HandAnthropometryReport HandAnthropometer::compute(
         m.pad_name = pad_pair.first;
         // Check if measured depth exists under anatomical name or legacy mount name
         if (pad_depth_mm.count(pad_pair.first) > 0) {
-            m.height_mm = pad_depth_mm.at(pad_pair.first);
+            const float val = pad_depth_mm.at(pad_pair.first);
+            m.height_mm = std::isfinite(val) ? val : 0.0f;
         } else if (pad_depth_mm.count(pad_pair.second) > 0) {
-            m.height_mm = pad_depth_mm.at(pad_pair.second);
+            const float val = pad_depth_mm.at(pad_pair.second);
+            m.height_mm = std::isfinite(val) ? val : 0.0f;
         }
         report.pads.push_back(m);
     }

@@ -42,6 +42,9 @@ public final class PalmAnalysisViewModel: ObservableObject {
     @Published public var isAnalyzing: Bool = false
     @Published public var analysisResult: PalmAnalysisResponse?
     public var padDepths: [String: Float] {
+        if !mountReliefHeat.isEmpty {
+            return mountReliefHeat
+        }
         guard let mounts = analysisResult?.domainPayload?.mountRelief?.mounts else { return [:] }
         var dict: [String: Float] = [:]
         for m in mounts {
