@@ -10,6 +10,7 @@
 		009DC93A3CCBEE25B3B75A6F /* ResearchKitStudyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 581CB2A8A2DD547E98C49E96 /* ResearchKitStudyTests.swift */; };
 		02218DEC5DD4CCD746E79866 /* CareKitStore in Frameworks */ = {isa = PBXBuildFile; productRef = D70B6E3928D5B5C50D4C16AE /* CareKitStore */; };
 		097C3A01FD450EFF0EFD87D1 /* LiquidGlassTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55BEF992E92622FDFF45F7D7 /* LiquidGlassTheme.swift */; };
+		AA7777AA7777AA77AA777777 /* AppLocalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA8888BB8888BB88BB888888 /* AppLocalizer.swift */; };
 		172F76895B2ADF8D0D67596C /* CareKitClinicalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFF20B6639768C9A0E7E78FB /* CareKitClinicalStore.swift */; };
 		27355FA13ED6B22D40A3ACD5 /* DoctorReportGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 439D9846928A6D348C3DA218 /* DoctorReportGeneratorTests.swift */; };
 		35719B322FBE06434A10E9A0 /* PDFKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D055165C8B89ACF21CA75796 /* PDFKit.framework */; };
@@ -46,6 +47,9 @@
 		F29EF67E775D57809CC2DEEC /* ResearchKitStudyModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E430E43FC538AE0C5060FCE8 /* ResearchKitStudyModels.swift */; };
 		FB3DA6633752366F6F863F26 /* CareKitDashboardModals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75A2150C5701F544F4545D7A /* CareKitDashboardModals.swift */; };
 		FEBB2149664384DA4F2312E0 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2A9FB1A18314BE59ECB52E15 /* AVFoundation.framework */; };
+		AA1111AA1111AA11AA111111 /* GazePositioningStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2222BB2222BB22BB222222 /* GazePositioningStepView.swift */; };
+		AA3333CC3333CC33CC333333 /* GazeScreeningWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA4444DD4444DD44DD444444 /* GazeScreeningWizardView.swift */; };
+		AA5555EE5555EE55EE555555 /* GazeStimulusScreeningView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA6666FF6666FF66FF666666 /* GazeStimulusScreeningView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -71,6 +75,7 @@
 		448AD29ECC98B480318ECCA5 /* GazeSessionResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeSessionResultView.swift; sourceTree = "<group>"; };
 		48B1E6902FFE822878A6BA04 /* SceneKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SceneKit.framework; path = System/Library/Frameworks/SceneKit.framework; sourceTree = SDKROOT; };
 		55BEF992E92622FDFF45F7D7 /* LiquidGlassTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlassTheme.swift; sourceTree = "<group>"; };
+		AA8888BB8888BB88BB888888 /* AppLocalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLocalizer.swift; sourceTree = "<group>"; };
 		581CB2A8A2DD547E98C49E96 /* ResearchKitStudyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResearchKitStudyTests.swift; sourceTree = "<group>"; };
 		5AA127E5B31E63B996A6A629 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		6465958CA4E2F60B4DA0E0EB /* ARFaceCameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARFaceCameraView.swift; sourceTree = "<group>"; };
@@ -95,6 +100,9 @@
 		EF98BBCFAACCAC600C07B3B9 /* MCHATSurveyModalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCHATSurveyModalView.swift; sourceTree = "<group>"; };
 		F5E5E1EBF0E152FE5F8C0375 /* ResearchKitSyncServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResearchKitSyncServiceTests.swift; sourceTree = "<group>"; };
 		F880C59E682E0DE781F22B2F /* StimulusScreeningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StimulusScreeningView.swift; sourceTree = "<group>"; };
+		AA2222BB2222BB22BB222222 /* GazePositioningStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazePositioningStepView.swift; sourceTree = "<group>"; };
+		AA4444DD4444DD44DD444444 /* GazeScreeningWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeScreeningWizardView.swift; sourceTree = "<group>"; };
+		AA6666FF6666FF66FF666666 /* GazeStimulusScreeningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeStimulusScreeningView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -135,7 +143,10 @@
 				38A98C675F624BB679668AA2 /* BubbleCalibrationView.swift */,
 				A64D36BA92966A704E085F52 /* CaregiverDashboardView.swift */,
 				75A2150C5701F544F4545D7A /* CareKitDashboardModals.swift */,
+				AA2222BB2222BB22BB222222 /* GazePositioningStepView.swift */,
+				AA4444DD4444DD44DD444444 /* GazeScreeningWizardView.swift */,
 				448AD29ECC98B480318ECCA5 /* GazeSessionResultView.swift */,
+				AA6666FF6666FF66FF666666 /* GazeStimulusScreeningView.swift */,
 				3111366AAA094728086AD5E8 /* MainGazeScannerView.swift */,
 				EF98BBCFAACCAC600C07B3B9 /* MCHATSurveyModalView.swift */,
 				A63371C06337F00E97F6D0C9 /* ResearchStudyConsentView.swift */,
@@ -172,6 +183,7 @@
 		4BC02EA4CF346024426976A5 /* UI */ = {
 			isa = PBXGroup;
 			children = (
+				AA8888BB8888BB88BB888888 /* AppLocalizer.swift */,
 				55BEF992E92622FDFF45F7D7 /* LiquidGlassTheme.swift */,
 			);
 			path = UI;
@@ -358,9 +370,13 @@
 				5A61BCD83A8B643E6B5D450C /* CarePlanModels.swift in Sources */,
 				B91A3229B01879F4F75FA00F /* CaregiverDashboardView.swift in Sources */,
 				8C111BD51FBFD274F67C5434 /* DoctorReportGenerator.swift in Sources */,
+				AA1111AA1111AA11AA111111 /* GazePositioningStepView.swift in Sources */,
+				AA3333CC3333CC33CC333333 /* GazeScreeningWizardView.swift in Sources */,
 				B14E9B1D6BD842D04EF1FF39 /* GazeSessionRecord.swift in Sources */,
 				BAA4122DA672A103917B20C7 /* GazeSessionResultView.swift in Sources */,
+				AA5555EE5555EE55EE555555 /* GazeStimulusScreeningView.swift in Sources */,
 				097C3A01FD450EFF0EFD87D1 /* LiquidGlassTheme.swift in Sources */,
+				AA7777AA7777AA77AA777777 /* AppLocalizer.swift in Sources */,
 				A9BFB17FF83C49850FCBA258 /* MCHATSurveyModalView.swift in Sources */,
 				E06EBE7828B8F7C724BCA478 /* MainGazeScannerView.swift in Sources */,
 				F29EF67E775D57809CC2DEEC /* ResearchKitStudyModels.swift in Sources */,
@@ -405,6 +421,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 6J3WY94J6T;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "ASD Gaze";
 				INFOPLIST_KEY_NSCameraUsageDescription = "TrueDepth camera access is required to track eye gaze and measure social visual attention in real-time. No raw camera frames or videos are ever recorded to storage.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "Device motion data is required to separate device movement from toddler head orientation.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -532,6 +549,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 6J3WY94J6T;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "ASD Gaze";
 				INFOPLIST_KEY_NSCameraUsageDescription = "TrueDepth camera access is required to track eye gaze and measure social visual attention in real-time. No raw camera frames or videos are ever recorded to storage.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "Device motion data is required to separate device movement from toddler head orientation.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

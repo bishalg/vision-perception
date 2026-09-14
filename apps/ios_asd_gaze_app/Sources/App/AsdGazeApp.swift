@@ -10,21 +10,20 @@ struct AsdGazeApp: App {
         WindowGroup {
             ZStack {
                 TabView(selection: $selectedTab) {
+                    // Tab 0: Longitudinal CareKit Dashboard
                     CaregiverDashboardView {
-                        if GazeCalibrationStore.load().isCalibrated {
-                            selectedTab = 1
-                        } else {
-                            selectedTab = 2
-                        }
+                        selectedTab = 1
                     }
                     .tabItem {
                         Label(Localizer.tr("tab_dashboard"), systemImage: "chart.line.uptrend.xyaxis")
                     }
                     .tag(0)
 
-                    MainGazeScannerView(
-                        onClose: nil,
-                        onComplete: nil,
+                    // Tab 1: 3-Step Guided Clinical Screening Wizard
+                    // Step 1 → Face Alignment & Distance
+                    // Step 2 → 5-Point Bubble Calibration
+                    // Step 3 → Full-Screen Stimulus + 1:1 Affect Logging
+                    GazeScreeningWizardView(
                         onOpenHistory: {
                             selectedTab = 0
                         }
@@ -34,22 +33,12 @@ struct AsdGazeApp: App {
                     }
                     .tag(1)
 
-                    BubbleCalibrationView(
-                        onClose: nil,
-                        onCalibrationComplete: {
-                            selectedTab = 1
-                        }
-                    )
-                    .tabItem {
-                        Label(Localizer.tr("tab_calibrate"), systemImage: "target")
-                    }
-                    .tag(2)
-
+                    // Tab 2: Settings (includes Screening & Calibration Tools section)
                     SettingsView()
                         .tabItem {
                             Label(Localizer.tr("tab_settings"), systemImage: "gearshape.fill")
                         }
-                        .tag(3)
+                        .tag(2)
                 }
                 .tint(LiquidGlass.celestialTeal)
 
@@ -65,17 +54,11 @@ struct AsdGazeApp: App {
                 }
             }
             .task {
-                // Seed the on-device CareKit store once per launch (idempotent):
-                // care-plan tasks + caregiver diary + medication tasks.
                 CareKitClinicalStore.shared.seedTasks(
                     CarePlanStore.shared.tasks,
                     medications: CarePlanStore.shared.medications
                 )
             }
-            // No preferredColorScheme: the app follows the system theme on
-            // launch. Camera/stimulus fields stay dark media surfaces; all
-            // chrome uses the adaptive LiquidGlass tokens + semantic text.
         }
     }
 }
-

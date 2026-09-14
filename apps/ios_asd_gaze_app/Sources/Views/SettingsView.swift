@@ -9,6 +9,8 @@ import ARKit
 public struct SettingsView: View {
     @Environment(\.openURL) private var openURL
     @State private var calibrationProfile: GazeCalibrationProfile = GazeCalibrationStore.load()
+    @State private var showQuickCalibrate: Bool = false
+    @State private var showCameraCheck: Bool = false
 
     public init() {}
 
@@ -24,6 +26,8 @@ public struct SettingsView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
+                        profileSection
+                        screeningToolsSection
                         languageSection
                         sensorDiagnosticsSection
                         privacySecuritySection
@@ -36,8 +40,172 @@ public struct SettingsView: View {
             .navigationTitle(Localizer.tr("tab_settings"))
             .navigationBarTitleDisplayMode(.large)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-            // Re-read on every appearance: calibrating happens in a sibling tab.
             .onAppear { calibrationProfile = GazeCalibrationStore.load() }
+            .fullScreenCover(isPresented: $showQuickCalibrate) {
+                BubbleCalibrationView(
+                    onClose: {
+                        showQuickCalibrate = false
+                        calibrationProfile = GazeCalibrationStore.load()
+                    },
+                    onCalibrationComplete: {
+                        showQuickCalibrate = false
+                        calibrationProfile = GazeCalibrationStore.load()
+                    }
+                )
+            }
+            .fullScreenCover(isPresented: $showCameraCheck) {
+                GazePositioningStepView(
+                    onReady: { showCameraCheck = false },
+                    onClose: { showCameraCheck = false }
+                )
+            }
+        }
+    }
+
+    // MARK: - Section 0.5: Screening & Calibration Tools
+
+    private var screeningToolsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            GlassSectionHeader(
+                title: Localizer.tr("settings_screening_tools_section"),
+                icon: "waveform.path.ecg",
+                iconColor: LiquidGlass.celestialTeal
+            )
+
+            VStack(spacing: 0) {
+                // Quick Calibrate
+                Button {
+                    showQuickCalibrate = true
+                } label: {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(LiquidGlass.celestialTeal.opacity(0.15))
+                                .frame(width: 36, height: 36)
+                            Image(systemName: "target")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(LiquidGlass.celestialTeal)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(Localizer.tr("settings_quick_calibrate"))
+                                .glassStyle(.headline)
+                            Text(Localizer.tr("settings_quick_calibrate_sub"))
+                                .glassStyle(.caption)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(LiquidGlass.textTertiary)
+                    }
+                    .padding(.vertical, 12)
+                }
+                .buttonStyle(.plain)
+
+                GlassDivider()
+
+                // Camera & Distance Check
+                Button {
+                    showCameraCheck = true
+                } label: {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(LiquidGlass.warmAmber.opacity(0.15))
+                                .frame(width: 36, height: 36)
+                            Image(systemName: "camera.viewfinder")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(LiquidGlass.warmAmber)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(Localizer.tr("settings_camera_check"))
+                                .glassStyle(.headline)
+                            Text(Localizer.tr("settings_camera_check_sub"))
+                                .glassStyle(.caption)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(LiquidGlass.textTertiary)
+                    }
+                    .padding(.vertical, 12)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 14)
+            .glassCard(cornerRadius: 14, padding: 0)
+        }
+    }
+
+    // MARK: - Section 1: Participant & Caregiver Profile
+
+    private var profileSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            GlassSectionHeader(title: "Caregiver & Participant Profile", icon: "person.crop.circle.fill")
+
+            VStack(spacing: 12) {
+                HStack(spacing: 14) {
+                    ZStack {
+                        Circle()
+                            .fill(LiquidGlass.celestialTeal.opacity(0.18))
+                            .frame(width: 52, height: 52)
+                        Circle()
+                            .stroke(LiquidGlass.celestialTeal.opacity(0.4), lineWidth: 1.2)
+                            .frame(width: 52, height: 52)
+                        Image(systemName: "person.crop.circle.fill")
+                            .font(.system(size: 38))
+                            .foregroundColor(LiquidGlass.celestialTeal)
+                    }
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 6) {
+                            Text("Liam G.")
+                                .font(.system(size: 17, weight: .bold, design: .rounded))
+                                .foregroundColor(LiquidGlass.textPrimary)
+                            Text("24m")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(LiquidGlass.celestialTeal.opacity(0.18)))
+                                .foregroundColor(LiquidGlass.celestialTeal)
+                        }
+
+                        Text("Participant: child-7294 • Toddler Cohort")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(LiquidGlass.textSecondary)
+
+                        Text("Primary Caregiver: Parent / Guardian")
+                            .font(.system(size: 11, weight: .regular))
+                            .foregroundColor(LiquidGlass.textTertiary)
+                    }
+
+                    Spacer()
+                }
+
+                GlassDivider()
+
+                HStack {
+                    Label("Clinical Study Enrollment", systemImage: "cross.case.fill")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(LiquidGlass.textPrimary)
+                    Spacer()
+                    Text("GeoPref Protocol v1.3")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(LiquidGlass.emeraldMint)
+                }
+
+                GlassDivider()
+
+                HStack {
+                    Label("CareKit Sync Status", systemImage: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(LiquidGlass.textPrimary)
+                    Spacer()
+                    Text("Encrypted On-Device")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(LiquidGlass.celestialTeal)
+                }
+            }
+            .glassCard(cornerRadius: 14, padding: 14)
         }
     }
 
@@ -204,7 +372,7 @@ public struct SettingsView: View {
                         )
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Curv ASD Gaze")
+                        Text("ASD Gaze")
                             .font(.system(size: 15, weight: .bold, design: .rounded))
                             .foregroundColor(LiquidGlass.textPrimary)
                         Text("Pediatric Vision Perception")
