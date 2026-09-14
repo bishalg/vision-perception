@@ -536,6 +536,7 @@ public struct ResearchKitDoctorExportModal: View {
     @ObservedObject private var syncService = ResearchKitSyncService.shared
     @State private var jsonString: String = ""
     @State private var shareURL: URL?
+    @State private var pdfShareURL: URL?
 
     public init() {}
 
@@ -564,6 +565,7 @@ public struct ResearchKitDoctorExportModal: View {
             .onAppear {
                 jsonString = ResearchKitStudyStore.shared.exportResearchKitJSON()
                 shareURL = syncService.generateDoctorShareFile()
+                pdfShareURL = syncService.generateDoctorReportPDF()
             }
         }
     }
@@ -644,6 +646,21 @@ public struct ResearchKitDoctorExportModal: View {
                     .padding(.vertical, 12)
                     .background(LiquidGlass.cardBackground)
                     .foregroundColor(LiquidGlass.emeraldMint)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+            }
+
+            if let pdfShareURL {
+                ShareLink(item: pdfShareURL) {
+                    HStack {
+                        Image(systemName: "doc.text.fill")
+                        Text("Export Clinical Doctor Report (PDF)")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(LiquidGlass.cardBackground)
+                    .foregroundColor(LiquidGlass.celestialTeal)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
             }

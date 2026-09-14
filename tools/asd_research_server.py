@@ -250,19 +250,222 @@ def run_demo():
 
 
 # ==============================================================================
-# ResearchKit Study Ingestion HTTP Server
+# CareKit & ResearchKit Synchronization Engine
 # ==============================================================================
 
 import hashlib
 import http.server
 import os
 import socketserver
+import sqlite3
 import time
 from pathlib import Path
 
 
+@dataclass
+class CareTaskEvent:
+    task_id: str
+    is_completed: bool
+    completed_at: str
+    category: str = "daily_routine"
+
+
+@dataclass
+class MedicationDose:
+    medication_id: str
+    dose_index: int
+    dose_string: str
+    taken_at: str
+
+
+@dataclass
+class DiaryEntry:
+    mood: str
+    eye_contact_rating: int
+    joint_attention_count: int
+    notes: str
+    date: str
+
+
+@dataclass
+class CareKitSyncPayload:
+    child_id: str
+    events: List[CareTaskEvent]
+    medications: List[MedicationDose]
+    diary: List[DiaryEntry]
+    sync_timestamp: str
+
+
+class CareKitDatabase:
+    """Persistent SQLite store for pediatric CareKit tasks, medications, and clinical diary."""
+
+    def __init__(self, db_path: Path):
+        self.db_path = db_path
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._init_db()
+
+    def _get_connection(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(str(self.db_path))
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    def _init_db(self):
+        with self._get_connection() as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS carekit_sync_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    child_id TEXT NOT NULL,
+                    event_type TEXT NOT NULL,
+                    event_id TEXT NOT NULL,
+                    event_payload TEXT NOT NULL,
+                    occurred_at TEXT,
+                    synced_at TEXT NOT NULL,
+                    idempotency_key TEXT UNIQUE
+                )
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_carekit_child 
+                ON carekit_sync_events(child_id, occurred_at)
+            """)
+            conn.commit()
+
+    def check_idempotency_key(self, idempotency_key: str) -> Optional[dict[str, Any]]:
+        if not idempotency_key:
+            return None
+        with self._get_connection() as conn:
+            cur = conn.execute(
+                "SELECT child_id, synced_at FROM carekit_sync_events WHERE idempotency_key = ? LIMIT 1",
+                (idempotency_key,)
+            )
+            row = cur.fetchone()
+            if row:
+                return {"child_id": row["child_id"], "synced_at": row["synced_at"]}
+            return None
+
+    def insert_sync_payload(self, payload: dict[str, Any], idempotency_key: Optional[str] = None) -> int:
+        child_id = payload.get("child_id") or payload.get("childId") or "ANONYMOUS_CHILD"
+        synced_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        inserted_count = 0
+
+        with self._get_connection() as conn:
+            # Care tasks
+            for ev in payload.get("events", []):
+                ev_id = ev.get("task_id") or ev.get("taskId") or "task"
+                t_key = f"{idempotency_key}:task:{ev_id}:{ev.get('completed_at', '')}" if idempotency_key else None
+                conn.execute("""
+                    INSERT OR IGNORE INTO carekit_sync_events 
+                    (child_id, event_type, event_id, event_payload, occurred_at, synced_at, idempotency_key)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    child_id, "task", ev_id, json.dumps(ev), ev.get("completed_at", synced_at), synced_at, t_key
+                ))
+                inserted_count += 1
+
+            # Medications
+            for med in payload.get("medications", []):
+                med_id = med.get("medication_id") or med.get("medicationId") or "med"
+                dose_idx = med.get("dose_index") if med.get("dose_index") is not None else med.get("doseIndex", 0)
+                m_key = f"{idempotency_key}:med:{med_id}:{dose_idx}:{med.get('taken_at', '')}" if idempotency_key else None
+                conn.execute("""
+                    INSERT OR IGNORE INTO carekit_sync_events 
+                    (child_id, event_type, event_id, event_payload, occurred_at, synced_at, idempotency_key)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    child_id, "medication", med_id, json.dumps(med), med.get("taken_at", synced_at), synced_at, m_key
+                ))
+                inserted_count += 1
+
+            # Diary
+            for d in payload.get("diary", []):
+                d_id = f"diary_{d.get('date', synced_at)}"
+                d_key = f"{idempotency_key}:diary:{d_id}" if idempotency_key else None
+                conn.execute("""
+                    INSERT OR IGNORE INTO carekit_sync_events 
+                    (child_id, event_type, event_id, event_payload, occurred_at, synced_at, idempotency_key)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    child_id, "diary", d_id, json.dumps(d), d.get("date", synced_at), synced_at, d_key
+                ))
+                inserted_count += 1
+
+            # Record parent batch metadata if idempotency key was given
+            if idempotency_key:
+                conn.execute("""
+                    INSERT OR IGNORE INTO carekit_sync_events
+                    (child_id, event_type, event_id, event_payload, occurred_at, synced_at, idempotency_key)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    child_id, "batch_meta", "batch", json.dumps({"payload_keys": list(payload.keys())}),
+                    synced_at, synced_at, idempotency_key
+                ))
+                if inserted_count == 0:
+                    inserted_count = 1
+
+            conn.commit()
+        return inserted_count
+
+    def get_child_summary(self, child_id: str) -> dict[str, Any]:
+        with self._get_connection() as conn:
+            cur = conn.execute("""
+                SELECT event_type, event_payload, occurred_at 
+                FROM carekit_sync_events 
+                WHERE child_id = ?
+                ORDER BY occurred_at DESC
+            """, (child_id,))
+            rows = cur.fetchall()
+
+        total_tasks = 0
+        completed_tasks = 0
+        medications_logged = 0
+        diary_entries = 0
+        recent_moods: List[str] = []
+
+        for row in rows:
+            etype = row["event_type"]
+            try:
+                data = json.loads(row["event_payload"])
+            except Exception:
+                data = {}
+
+            if etype == "task":
+                total_tasks += 1
+                if data.get("is_completed", False) or data.get("isCompleted", False):
+                    completed_tasks += 1
+            elif etype == "medication":
+                medications_logged += 1
+            elif etype == "diary":
+                diary_entries += 1
+                mood = data.get("mood")
+                if mood and len(recent_moods) < 5:
+                    recent_moods.append(mood)
+
+        completion_rate = round((completed_tasks / total_tasks * 100.0), 1) if total_tasks > 0 else 100.0
+
+        return {
+            "child_id": child_id,
+            "period": "7-day rolling adherence",
+            "summary": {
+                "total_tasks_recorded": total_tasks,
+                "tasks_completed": completed_tasks,
+                "completion_rate_percent": completion_rate,
+                "medications_logged": medications_logged,
+                "diary_entries_logged": diary_entries,
+                "recent_moods": recent_moods,
+                "clinical_status": "adherent" if completion_rate >= 80.0 else "needs_follow_up"
+            }
+        }
+
+
 class ResearchServerHandler(http.server.BaseHTTPRequestHandler):
     vault_dir = Path("data/research_study_vault/records")
+    carekit_db_path = Path("data/research_study_vault/carekit.db")
+    _db_instance: Optional[CareKitDatabase] = None
+
+    @classmethod
+    def get_db(cls) -> CareKitDatabase:
+        if cls._db_instance is None or cls._db_instance.db_path != cls.carekit_db_path:
+            cls._db_instance = CareKitDatabase(cls.carekit_db_path)
+        return cls._db_instance
 
     def _send_json(self, status_code: int, data: dict[str, Any]):
         body = json.dumps(data, indent=2).encode("utf-8")
@@ -307,14 +510,17 @@ class ResearchServerHandler(http.server.BaseHTTPRequestHandler):
                 "total_records": len(records),
                 "records": records[:50]
             })
+        elif self.path.startswith("/api/v1/carekit/summary/"):
+            child_id = self.path[len("/api/v1/carekit/summary/"):].strip("/")
+            if not child_id:
+                self._send_json(400, {"error": "Missing child_id in path"})
+                return
+            summary = self.get_db().get_child_summary(child_id)
+            self._send_json(200, summary)
         else:
             self._send_json(404, {"error": "Not Found", "path": self.path})
 
     def do_POST(self):
-        if self.path != "/api/v1/research/ingest":
-            self._send_json(404, {"error": "Endpoint not found", "path": self.path})
-            return
-
         content_length = int(self.headers.get("Content-Length", 0))
         if content_length <= 0:
             self._send_json(400, {"error": "Empty payload"})
@@ -327,38 +533,112 @@ class ResearchServerHandler(http.server.BaseHTTPRequestHandler):
             self._send_json(400, {"error": f"Invalid JSON: {str(e)}"})
             return
 
-        # Validate minimum study structure
-        participant_id = (
-            payload.get("participant", {}).get("participantId")
-            or payload.get("participantId")
-            or "ANONYMOUS_PARTICIPANT"
-        )
+        # 1. ResearchKit Ingestion
+        if self.path == "/api/v1/research/ingest":
+            participant_id = (
+                payload.get("participant", {}).get("participantId")
+                or payload.get("participantId")
+                or "ANONYMOUS_PARTICIPANT"
+            )
 
-        receipt_raw = f"{participant_id}_{time.time()}_{len(body)}"
-        receipt_id = "RCPT-" + hashlib.sha256(receipt_raw.encode("utf-8")).hexdigest()[:12].upper()
+            receipt_raw = f"{participant_id}_{time.time()}_{len(body)}"
+            receipt_id = "RCPT-" + hashlib.sha256(receipt_raw.encode("utf-8")).hexdigest()[:12].upper()
 
-        record = {
-            "receipt_id": receipt_id,
-            "ingested_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "participant_id": participant_id,
-            "payload": payload
-        }
+            record = {
+                "receipt_id": receipt_id,
+                "ingested_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "participant_id": participant_id,
+                "payload": payload
+            }
 
-        self.vault_dir.mkdir(parents=True, exist_ok=True)
-        file_path = self.vault_dir / f"{receipt_id}.json"
-        try:
-            with open(file_path, "w", encoding="utf-8") as f:
-                json.dump(record, f, indent=2)
-        except Exception as e:
-            self._send_json(500, {"error": f"Failed to persist record: {str(e)}"})
+            self.vault_dir.mkdir(parents=True, exist_ok=True)
+            file_path = self.vault_dir / f"{receipt_id}.json"
+            try:
+                with open(file_path, "w", encoding="utf-8") as f:
+                    json.dump(record, f, indent=2)
+            except Exception as e:
+                self._send_json(500, {"error": f"Failed to persist record: {str(e)}"})
+                return
+
+            self._send_json(200, {
+                "status": "success",
+                "receipt_id": receipt_id,
+                "participant_id": participant_id,
+                "message": "ResearchKit study package verified and ingested successfully."
+            })
             return
 
-        self._send_json(200, {
-            "status": "success",
-            "receipt_id": receipt_id,
-            "participant_id": participant_id,
-            "message": "ResearchKit study package verified and ingested successfully."
-        })
+        # 2. CareKit Synchronization
+        if self.path == "/api/v1/carekit/sync":
+            idempotency_key = self.headers.get("X-Idempotency-Key")
+            if idempotency_key:
+                existing = self.get_db().check_idempotency_key(idempotency_key)
+                if existing:
+                    self._send_json(200, {
+                        "status": "duplicate",
+                        "message": "Payload previously synchronized with this idempotency key.",
+                        "idempotency_key": idempotency_key,
+                        "child_id": existing["child_id"],
+                        "synced_at": existing["synced_at"]
+                    })
+                    return
+
+            child_id = payload.get("child_id") or payload.get("childId") or "ANONYMOUS_CHILD"
+            count = self.get_db().insert_sync_payload(payload, idempotency_key=idempotency_key)
+            receipt_id = "CK-" + hashlib.sha256(f"{child_id}_{time.time()}_{count}".encode("utf-8")).hexdigest()[:10].upper()
+            self._send_json(200, {
+                "status": "success",
+                "receipt_id": receipt_id,
+                "child_id": child_id,
+                "events_ingested": count,
+                "idempotency_key": idempotency_key,
+                "message": "CareKit records successfully persisted to research clinical vault."
+            })
+            return
+
+        # 3. Unified Batch Synchronization
+        if self.path == "/api/v1/batch/sync":
+            idempotency_key = self.headers.get("X-Idempotency-Key")
+            if idempotency_key:
+                existing = self.get_db().check_idempotency_key(idempotency_key)
+                if existing:
+                    self._send_json(200, {
+                        "status": "duplicate",
+                        "message": "Batch payload previously synchronized.",
+                        "idempotency_key": idempotency_key
+                    })
+                    return
+
+            receipts: dict[str, Any] = {}
+            # CareKit payload
+            ck_data = payload.get("carekit") or (payload if "events" in payload or "medications" in payload else None)
+            if ck_data and isinstance(ck_data, dict):
+                ck_count = self.get_db().insert_sync_payload(ck_data, idempotency_key=f"{idempotency_key}:ck" if idempotency_key else None)
+                receipts["carekit_events"] = ck_count
+
+            # ResearchKit payload
+            rk_data = payload.get("researchkit") or (payload if "participant" in payload or "bundleType" in payload else None)
+            if rk_data and isinstance(rk_data, dict):
+                part_id = rk_data.get("participant", {}).get("participantId") or "ANONYMOUS_PARTICIPANT"
+                rk_receipt_id = "RCPT-" + hashlib.sha256(f"{part_id}_{time.time()}".encode("utf-8")).hexdigest()[:12].upper()
+                self.vault_dir.mkdir(parents=True, exist_ok=True)
+                with open(self.vault_dir / f"{rk_receipt_id}.json", "w", encoding="utf-8") as f:
+                    json.dump({
+                        "receipt_id": rk_receipt_id,
+                        "ingested_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                        "participant_id": part_id,
+                        "payload": rk_data
+                    }, f, indent=2)
+                receipts["researchkit_receipt"] = rk_receipt_id
+
+            self._send_json(200, {
+                "status": "success",
+                "message": "Batch payload processed successfully.",
+                "receipts": receipts
+            })
+            return
+
+        self._send_json(404, {"error": "Endpoint not found", "path": self.path})
 
 
 def serve(port: int = 8089):

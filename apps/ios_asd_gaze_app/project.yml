@@ -57,6 +57,8 @@ targets:
       - sdk: AVFoundation.framework
       - sdk: CoreMotion.framework
       - sdk: CryptoKit.framework
+      - sdk: Network.framework
+      - sdk: PDFKit.framework
 
   AsdGazeCollectorTests:
     type: bundle.unit-test
@@ -71,5 +73,7 @@ targets:
       - package: CurvAsdGazeKit
       - package: CareKit
         product: CareKitStore
+      - sdk: Network.framework
+      - sdk: PDFKit.framework
 
 

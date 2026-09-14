@@ -1,6 +1,7 @@
 import Combine
 import CryptoKit
 import Foundation
+import Network
 import os
 
 /// State of research study synchronization with the clinical backend.
@@ -38,18 +39,22 @@ public final class ResearchKitSyncService: ObservableObject {
 
     @Published public private(set) var syncState: ResearchSyncState = .idle
     @Published public private(set) var pendingQueueCount: Int = 0
+    @Published public private(set) var isOnline: Bool = true
 
     private let store: ResearchKitStudyStore
     private let serverURL: URL
     private let fileManager = FileManager.default
     private let queueDirectory: URL
     private let session: URLSession
+    private let pathMonitor: NWPathMonitor?
+    private let monitorQueue = DispatchQueue(label: "org.curv.researchkit.network", qos: .utility)
 
     public init(
         store: ResearchKitStudyStore = .shared,
         serverURL: URL = URL(string: "http://127.0.0.1:8089/api/v1/research/ingest")!,
         queueDirectory: URL? = nil,
-        session: URLSession = .shared
+        session: URLSession = .shared,
+        startMonitoring: Bool = true
     ) {
         self.store = store
         self.serverURL = serverURL
@@ -62,8 +67,39 @@ public final class ResearchKitSyncService: ObservableObject {
             let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first ?? URL(fileURLWithPath: NSTemporaryDirectory())
             self.queueDirectory = docs.appendingPathComponent("ResearchStudyQueue", isDirectory: true)
         }
+        if startMonitoring {
+            self.pathMonitor = NWPathMonitor()
+        } else {
+            self.pathMonitor = nil
+        }
         try? fileManager.createDirectory(at: self.queueDirectory, withIntermediateDirectories: true)
         updatePendingCount()
+
+        if let monitor = self.pathMonitor {
+            monitor.pathUpdateHandler = { [weak self] path in
+                Task { @MainActor in
+                    self?.handlePathUpdate(status: path.status)
+                }
+            }
+            monitor.start(queue: monitorQueue)
+        }
+    }
+
+    deinit {
+        pathMonitor?.cancel()
+    }
+
+    /// Internal handler when network connectivity transitions
+    public func handlePathUpdate(status: NWPath.Status) {
+        let wasOnline = isOnline
+        isOnline = (status == .satisfied)
+        Self.logger.info("Network path status changed to \(self.isOnline ? "online" : "offline", privacy: .public)")
+
+        // If we transitioned from offline to online and have pending items, trigger background flush
+        if !wasOnline && isOnline && pendingQueueCount > 0 && !syncState.isSyncing {
+            Self.logger.info("Auto-triggering flush of \(self.pendingQueueCount) queued research study bundles on network reconnect")
+            syncNow(forceBundleCompile: false)
+        }
     }
 
     // MARK: - Queue Management
@@ -181,6 +217,44 @@ public final class ResearchKitSyncService: ObservableObject {
             return tempURL
         } catch {
             Self.logger.error("Failed to generate doctor share file: \(error.localizedDescription, privacy: .public)")
+            return nil
+        }
+    }
+
+    /// Generates a standardized clinical PDF Doctor Report using PDFKit.
+    public func generateDoctorReportPDF(
+        gazeRecord: GazeSessionRecord? = nil,
+        mchatResult: MCHATScoreResult? = nil,
+        careKitCompletionRate: Double? = nil,
+        careKitMedicationsLogged: Int? = nil,
+        careKitDiaryEntriesLogged: Int? = nil
+    ) -> URL? {
+        let enrollment = store.fetchEnrollment()
+        let guardian = enrollment.consentSignature?.guardianFullName ?? "Parent / Legal Guardian"
+
+        let input = DoctorReportInput(
+            participantId: enrollment.participantId,
+            childAgeMonths: enrollment.childAgeMonths,
+            guardianName: guardian,
+            assessmentDate: Date(),
+            gazeRecord: gazeRecord,
+            mchatResult: mchatResult,
+            careKitCompletionRate: careKitCompletionRate,
+            careKitMedicationsLogged: careKitMedicationsLogged,
+            careKitDiaryEntriesLogged: careKitDiaryEntriesLogged
+        )
+
+        let pdfData = DoctorReportGenerator.generatePDFData(input: input)
+        guard !pdfData.isEmpty else { return nil }
+
+        let fileName = "Pediatric_Doctor_Report_\(enrollment.participantId)_\(Int(Date().timeIntervalSince1970)).pdf"
+        let tempURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(fileName)
+
+        do {
+            try pdfData.write(to: tempURL, options: .atomic)
+            return tempURL
+        } catch {
+            Self.logger.error("Failed to write doctor report PDF: \(error.localizedDescription, privacy: .public)")
             return nil
         }
     }

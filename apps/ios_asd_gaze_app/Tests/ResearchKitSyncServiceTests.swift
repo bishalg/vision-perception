@@ -108,6 +108,34 @@ final class ResearchKitSyncServiceTests: XCTestCase {
     }
 
     @MainActor
+    func testGenerateDoctorReportPDFCreatesValidPdf() {
+        let sig = ORKConsentSignature(guardianFullName: "PDF Parent", signatureToken: "SIG-PDF-001")
+        researchStore.saveConsent(signature: sig, participantId: "STUDY-PDF-TEST")
+
+        let service = ResearchKitSyncService(
+            store: researchStore,
+            queueDirectory: tempQueueDir,
+            session: mockSession
+        )
+
+        let fileURL = service.generateDoctorReportPDF(
+            careKitCompletionRate: 95.0,
+            careKitMedicationsLogged: 10,
+            careKitDiaryEntriesLogged: 5
+        )
+        XCTAssertNotNil(fileURL)
+        guard let url = fileURL else { return }
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
+        let data = (try? Data(contentsOf: url)) ?? Data()
+        XCTAssertFalse(data.isEmpty)
+        // PDF header magic bytes %PDF
+        XCTAssertTrue(data.starts(with: [0x25, 0x50, 0x44, 0x46]))
+
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    @MainActor
     func testSyncNowRequiresParentalConsent() {
         let service = ResearchKitSyncService(
             store: researchStore,
@@ -248,6 +276,60 @@ final class ResearchKitSyncServiceTests: XCTestCase {
             XCTAssertTrue(reason.contains("Data safely queued"))
         } else {
             XCTFail("Expected syncState to be failed")
+        }
+    }
+
+    @MainActor
+    func testNetworkReconnectTriggersAutoSyncWhenPendingItemsExist() {
+        let sig = ORKConsentSignature(guardianFullName: "Reconnect Parent", signatureToken: "SIG-RECONNECT")
+        researchStore.saveConsent(signature: sig, participantId: "STUDY-RECONNECT")
+
+        let service = ResearchKitSyncService(
+            store: researchStore,
+            queueDirectory: tempQueueDir,
+            session: mockSession,
+            startMonitoring: false
+        )
+
+        service.enqueueStudyPayload(bundle: ["study": "CURV-ASD", "autoSync": true])
+        XCTAssertEqual(service.pendingQueueCount, 1)
+
+        MockURLProtocol.requestHandler = { request in
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: ["Content-Type": "application/json"]
+            )!
+            let data = """
+            {"status": "ingested", "receipt_id": "RCPT-AUTO-RECONNECT"}
+            """.data(using: .utf8)!
+            return (response, data)
+        }
+
+        // 1. Transition to offline
+        service.handlePathUpdate(status: .unsatisfied)
+        XCTAssertFalse(service.isOnline)
+        XCTAssertEqual(service.pendingQueueCount, 1)
+
+        // 2. Transition to online -> triggers auto-sync
+        service.handlePathUpdate(status: .satisfied)
+        XCTAssertTrue(service.isOnline)
+
+        // Wait for background Task to finish and queue to drain
+        var drained = false
+        for _ in 0..<40 {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+            if service.pendingQueueCount == 0 {
+                drained = true
+                break
+            }
+        }
+        XCTAssertTrue(drained, "Pending items must be flushed automatically when transitioning back online")
+        if case .synced(_, let receipt) = service.syncState {
+            XCTAssertEqual(receipt, "RCPT-AUTO-RECONNECT")
+        } else {
+            XCTFail("Expected syncState to be synced on auto-flush")
         }
     }
 }

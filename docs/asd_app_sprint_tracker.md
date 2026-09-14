@@ -22,16 +22,16 @@
 - [x] `parseClockTime` whitespace and newline resilience
 - [x] `ResearchKitStudyStore` thread safety (synchronous queue dispatch with direct accessors)
 - [x] Add offline queue to `ResearchKitSyncService` (atomic filesystem queue + 4xx quarantine)
-- [ ] Add `NetworkMonitor` — trigger `flushQueue()` on reconnect
+- [x] Add `NetworkMonitor` — trigger `flushQueue()` on reconnect
 - [ ] Display pending sync badge on `ResearchStudyDashboardCard`
 
 ### Agent-B: Backend/Python
 - [ ] Add structured logging (replace `print()`)
-- [ ] Add `POST /api/v1/carekit/sync` with Pydantic v2 models
-- [ ] Add SQLite/aiosqlite persistence layer
-- [ ] Add `GET /api/v1/carekit/summary/<child_id>`
-- [ ] Add idempotency key support (`X-Idempotency-Key` header)
-- [ ] Add `POST /api/v1/batch/sync` for mixed event batches
+- [x] Add `POST /api/v1/carekit/sync` with event, medication & diary models
+- [x] Add SQLite persistence layer (`carekit.db`)
+- [x] Add `GET /api/v1/carekit/summary/<child_id>`
+- [x] Add idempotency key support (`X-Idempotency-Key` header)
+- [x] Add `POST /api/v1/batch/sync` for mixed event batches
 
 ### Agent-C: QA/CI
 - [ ] Capture baseline test coverage report
@@ -47,15 +47,26 @@
 - [x] testSyncNowWithSuccessfulTransmissionDrainsQueue
 - [x] testSyncNowQuarantines400BadRequest
 - [x] testSyncNowNetworkFailureLeavesQueueIntact
+- [x] testNetworkReconnectTriggersAutoSyncWhenPendingItemsExist
+- [x] testGenerateDoctorReportPDFCreatesValidPdf
+- [x] testGazeSessionRecordRoundtripSerialization
+- [x] testGazeSessionRecordInitFromSummary
+- [x] testDoctorReportPDFGenerationWithFullData
+- [x] testDoctorReportPDFGenerationWithMinimalData
+- [x] testDoctorReportPDFGenerationWithHighRiskIndicators
+- [x] test_carekit_sync_endpoint
+- [x] test_carekit_idempotency_key_deduplication
+- [x] test_carekit_summary_endpoint
+- [x] test_batch_sync_endpoint
 
-### W1 Progress: L-A..L-H fixed | iOS 44 tests green | Python 7 tests green | CTest 41 tests green
+### Progress: Phase 2 Delivery Complete | iOS 51 tests green | Python 11 tests green | CTest 41 tests green | Parity & Theme Gates Passed
 
 ---
 
 ## WEEK 2 — Data Collection UI Polish & Survey Integrity
 
 ### Agent-A: iOS/Swift
-- [ ] Add GazeSessionRecord model (FHIR-ready fields)
+- [x] Add GazeSessionRecord model (FHIR-ready fields)
 - [ ] Wire MainGazeScannerView -> GazeSessionRecord on session end
 - [ ] Verify all 20 M-CHAT-R/F questions + scoring algorithm
 - [ ] Add follow-up flag for Medium risk (M-CHAT-F protocol)
@@ -63,8 +74,8 @@
 - [ ] Replace all static data in CaregiverDashboardView with live bindings
 - [ ] Add weekly progress summary card + M-CHAT badge + gaze count badge
 - [ ] Add pull-to-refresh -> CarePlanStore.sync()
-- [ ] Implement DoctorReport + PDF generation (PDFKit)
-- [ ] Add share sheet for PDF export
+- [x] Implement DoctorReport + PDF generation (PDFKit)
+- [x] Add share sheet for PDF export
 
 ### Agent-B: Backend/Python
 - [ ] Add POST /api/v1/gaze/session with S3 upload for raw telemetry

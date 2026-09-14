@@ -31,6 +31,8 @@ def server_port(tmp_path_factory):
     port = get_free_port()
     tmp_vault = tmp_path_factory.mktemp("test_research_vault")
     ResearchServerHandler.vault_dir = tmp_vault
+    ResearchServerHandler.carekit_db_path = tmp_vault / "carekit_test.db"
+    ResearchServerHandler._db_instance = None
 
     httpd = socketserver.TCPServer(("127.0.0.1", port), ResearchServerHandler)
     t = threading.Thread(target=httpd.serve_forever, daemon=True)
@@ -167,3 +169,112 @@ def test_ingest_empty_payload_rejected(server_port):
     res = conn.getresponse()
     assert res.status == 400
     conn.close()
+
+
+def test_carekit_sync_endpoint(server_port):
+    payload = {
+        "child_id": "PEDIATRIC-TEST-001",
+        "events": [
+            {"task_id": "morning_eye_contact", "is_completed": True, "completed_at": "2026-09-14T08:00:00Z", "category": "social"},
+            {"task_id": "afternoon_play", "is_completed": True, "completed_at": "2026-09-14T14:00:00Z", "category": "play"}
+        ],
+        "medications": [
+            {"medication_id": "omega3", "dose_index": 0, "dose_string": "1 capsule", "taken_at": "2026-09-14T08:05:00Z"}
+        ],
+        "diary": [
+            {"mood": "happy", "eye_contact_rating": 4, "joint_attention_count": 8, "notes": "Engaged well today", "date": "2026-09-14"}
+        ],
+        "sync_timestamp": "2026-09-14T08:15:00Z"
+    }
+
+    body = json.dumps(payload).encode("utf-8")
+    conn = HTTPConnection("127.0.0.1", server_port)
+    conn.request(
+        "POST",
+        "/api/v1/carekit/sync",
+        body=body,
+        headers={"Content-Type": "application/json", "X-Idempotency-Key": "CK-IDEMP-001"}
+    )
+    res = conn.getresponse()
+    assert res.status == 200
+    data = json.loads(res.read().decode("utf-8"))
+    assert data["status"] == "success"
+    assert data["child_id"] == "PEDIATRIC-TEST-001"
+    assert data["events_ingested"] >= 4
+    assert data["receipt_id"].startswith("CK-")
+    conn.close()
+
+
+def test_carekit_idempotency_key_deduplication(server_port):
+    payload = {
+        "child_id": "PEDIATRIC-TEST-001",
+        "events": [{"task_id": "duplicate_check", "is_completed": True, "completed_at": "2026-09-14T09:00:00Z"}]
+    }
+    body = json.dumps(payload).encode("utf-8")
+    key = "CK-IDEMP-DUP-999"
+
+    # First request
+    conn = HTTPConnection("127.0.0.1", server_port)
+    conn.request("POST", "/api/v1/carekit/sync", body=body, headers={"Content-Type": "application/json", "X-Idempotency-Key": key})
+    res = conn.getresponse()
+    assert res.status == 200
+    d1 = json.loads(res.read().decode("utf-8"))
+    assert d1["status"] == "success"
+    conn.close()
+
+    # Second request with identical key -> duplicate
+    conn2 = HTTPConnection("127.0.0.1", server_port)
+    conn2.request("POST", "/api/v1/carekit/sync", body=body, headers={"Content-Type": "application/json", "X-Idempotency-Key": key})
+    res2 = conn2.getresponse()
+    assert res2.status == 200
+    d2 = json.loads(res2.read().decode("utf-8"))
+    assert d2["status"] == "duplicate"
+    assert d2["idempotency_key"] == key
+    conn2.close()
+
+
+def test_carekit_summary_endpoint(server_port):
+    conn = HTTPConnection("127.0.0.1", server_port)
+    conn.request("GET", "/api/v1/carekit/summary/PEDIATRIC-TEST-001")
+    res = conn.getresponse()
+    assert res.status == 200
+    data = json.loads(res.read().decode("utf-8"))
+    assert data["child_id"] == "PEDIATRIC-TEST-001"
+    assert "summary" in data
+    summary = data["summary"]
+    assert summary["tasks_completed"] >= 2
+    assert summary["medications_logged"] >= 1
+    assert summary["diary_entries_logged"] >= 1
+    assert summary["completion_rate_percent"] >= 50.0
+    assert "happy" in summary["recent_moods"]
+    conn.close()
+
+
+def test_batch_sync_endpoint(server_port):
+    batch_payload = {
+        "carekit": {
+            "child_id": "BATCH-CHILD-01",
+            "events": [{"task_id": "speech_session", "is_completed": True, "completed_at": "2026-09-14T10:00:00Z"}],
+            "medications": [],
+            "diary": []
+        },
+        "researchkit": {
+            "bundleType": "ResearchKitStudyPackage",
+            "schemaVersion": "v1.4",
+            "participant": {"participantId": "BATCH-PART-01"},
+            "taskResults": []
+        }
+    }
+
+    body = json.dumps(batch_payload).encode("utf-8")
+    conn = HTTPConnection("127.0.0.1", server_port)
+    conn.request("POST", "/api/v1/batch/sync", body=body, headers={"Content-Type": "application/json"})
+    res = conn.getresponse()
+    assert res.status == 200
+    data = json.loads(res.read().decode("utf-8"))
+    assert data["status"] == "success"
+    assert "receipts" in data
+    assert data["receipts"]["carekit_events"] >= 1
+    assert data["receipts"]["researchkit_receipt"].startswith("RCPT-")
+    conn.close()
+
