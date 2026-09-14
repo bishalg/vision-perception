@@ -5,26 +5,18 @@ import CurvAsdGazeKit
 
 /// Wizard Step 3 — Full-screen clinical stimulus with invisible 60 Hz TrueDepth tracking.
 ///
-/// Key design decisions grounded in research docs:
-/// • Zero camera preview shown to the child (prevents self-mirror distraction).
-/// • TrueDepth runs in volatile RAM at 60 Hz — zero raw video persisted (ETHICS_PROTOCOL.md §2).
-/// • 1:1 temporal synchrony: every sample is tagged with its exact stimulus AOI, gaze (x,y),
-///   and instantaneous facial affect — enabling clinicians to ask "at this scene moment,
-///   did the child smile back?" (STIMULI_SPEC.md §2, ARCHITECTURE.md).
-/// • Faint caregiver HUD at the bottom: stopwatch, affect pill, and discrete abort button.
+/// Layout:
+/// • Edge-to-edge full screen stimulus (zero child mirror preview, ETHICS_PROTOCOL §2)
+/// • Top-center: Sleek continuous screening progress bar
+/// • Top-right: Real-time session elapsed timer
+/// • Bottom: Dedicated, expansive Real-Time Emotion & Facial Affect HUD
 public struct GazeStimulusScreeningView: View {
     @StateObject private var controller = GazeSessionController()
     @State private var sessionTimer: Timer?
     @State private var elapsedSeconds: Double = 0.0
     @State private var cartoonBlink: Bool = false
     @State private var cartoonBounce: CGFloat = 0.0
-    @State private var displayMode: ScannerDisplayMode = .stimulusOnly
     @State private var showAbortConfirm: Bool = false
-    @State private var presentedReport: (
-        summary: GazeSessionReportSummary,
-        frames: [GazeFrame],
-        classification: BiomarkerClassificationResult
-    )?
 
     private let sessionDurationSec: Double = 30.0
 
@@ -42,16 +34,16 @@ public struct GazeStimulusScreeningView: View {
 
     public var body: some View {
         ZStack {
-            // Deep black stimulus canvas — minimise reflections (STIMULI_SPEC.md §3)
+            // Full-screen deep canvas
             Color.black.ignoresSafeArea()
 
             GeometryReader { geo in
                 ZStack {
-                    // Full-Screen Clinical Stimulus (no camera shown to child)
+                    // 1. Full-Screen Clinical Stimulus
                     stimulusContent()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                    // Invisible TrueDepth session kept alive (camera never shown)
+                    // 2. Invisible TrueDepth camera tracking session kept alive
                     ARFaceCameraView(
                         session: controller.arSession,
                         isSimulation: controller.isSimulationMode,
@@ -67,14 +59,22 @@ public struct GazeStimulusScreeningView: View {
                     .opacity(0.001)
                     .allowsHitTesting(false)
 
-                    // Faint Caregiver HUD at bottom (non-intrusive)
+                    // 3. Floating HUD Overlays (Top Controls + Bottom Emotion HUD)
                     VStack {
+                        topControlsBar
+                            .padding(.horizontal, 16)
+                            .padding(.top, 14)
+
                         Spacer()
-                        caregiverHUD
+
+                        bottomEmotionHUD
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 22)
                     }
                 }
             }
         }
+        .ignoresSafeArea()
         .onAppear(perform: startSession)
         .onDisappear(perform: stopSession)
         .confirmationDialog(
@@ -92,6 +92,179 @@ public struct GazeStimulusScreeningView: View {
         }
     }
 
+    // MARK: - Top Controls Bar (Timer at Top-Right, Progress Bar at Top-Center)
+
+    private var topControlsBar: some View {
+        HStack(alignment: .center, spacing: 12) {
+            // Top-Left: Discreet Caregiver Exit / Abort Button
+            Button {
+                showAbortConfirm = true
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .bold))
+                    Text("Exit")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                }
+                .foregroundColor(Color.white.opacity(0.75))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Capsule().fill(.ultraThinMaterial.opacity(0.7)))
+                .overlay(Capsule().stroke(Color.white.opacity(0.15), lineWidth: 0.8))
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+
+            // Top-Center: Continuous Progress Bar
+            VStack(spacing: 3) {
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.2))
+                        .frame(width: 130, height: 6)
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [LiquidGlass.celestialTeal, LiquidGlass.emeraldMint],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: max(6, 130 * CGFloat(min(elapsedSeconds / sessionDurationSec, 1.0))), height: 6)
+                        .shadow(color: LiquidGlass.emeraldMint.opacity(0.5), radius: 3)
+                }
+
+                Text("\(Int(min(elapsedSeconds, sessionDurationSec)))s / \(Int(sessionDurationSec))s")
+                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .foregroundColor(Color.white.opacity(0.7))
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(.ultraThinMaterial.opacity(0.5)))
+
+            Spacer()
+
+            // Top-Right: Time Value Badge
+            HStack(spacing: 5) {
+                Image(systemName: "stopwatch.fill")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(LiquidGlass.emeraldMint)
+                Text(String(format: "%02d:%02d",
+                            Int(elapsedSeconds) / 60,
+                            Int(elapsedSeconds) % 60))
+                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .monospacedDigit()
+                    .foregroundColor(.white)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Capsule().fill(.ultraThinMaterial.opacity(0.7)))
+            .overlay(Capsule().stroke(Color.white.opacity(0.15), lineWidth: 0.8))
+        }
+    }
+
+    // MARK: - Bottom Emotion & Facial Affect HUD (Dedicated Spacious Area)
+
+    private var bottomEmotionHUD: some View {
+        HStack(spacing: 14) {
+            // Emotion Avatar Icon with Dynamic Halo
+            ZStack {
+                Circle()
+                    .fill(emotionAccentColor.opacity(0.2))
+                    .frame(width: 48, height: 48)
+                Circle()
+                    .stroke(emotionAccentColor.opacity(0.6), lineWidth: 1.5)
+                    .frame(width: 48, height: 48)
+                Text(controller.currentAffect.dominantEmotion.emoji)
+                    .font(.system(size: 26))
+            }
+
+            // Emotion Labels and Real-Time Biomarker Meters
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 6) {
+                    Text(controller.currentAffect.dominantEmotion.rawValue)
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+
+                    Circle()
+                        .fill(controller.currentQuality.isValid ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber)
+                        .frame(width: 6, height: 6)
+
+                    Spacer()
+
+                    Text(controller.currentQuality.isValid ? "Tracked 60Hz" : "Aligning...")
+                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        .foregroundColor(controller.currentQuality.isValid ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber)
+                }
+
+                // Affect Breakdown Meters
+                HStack(spacing: 16) {
+                    // Smile Intensity Meter
+                    HStack(spacing: 5) {
+                        Text("Smile:")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color.white.opacity(0.65))
+
+                        GeometryReader { g in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(Color.white.opacity(0.2))
+                                Capsule()
+                                    .fill(LiquidGlass.emeraldMint)
+                                    .frame(width: g.size.width * CGFloat(min(controller.currentAffect.socialSmileIntensity, 1.0)))
+                            }
+                        }
+                        .frame(width: 50, height: 4)
+
+                        Text("\(Int(controller.currentAffect.socialSmileIntensity * 100))%")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundColor(LiquidGlass.emeraldMint)
+                    }
+
+                    // Visual Engagement / Attention Meter
+                    HStack(spacing: 5) {
+                        Text("Attention:")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color.white.opacity(0.65))
+
+                        GeometryReader { g in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(Color.white.opacity(0.2))
+                                Capsule()
+                                    .fill(LiquidGlass.celestialTeal)
+                                    .frame(width: g.size.width * CGFloat(min(controller.currentAffect.surpriseScore, 1.0)))
+                            }
+                        }
+                        .frame(width: 50, height: 4)
+
+                        Text("\(Int(controller.currentAffect.surpriseScore * 100))%")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundColor(LiquidGlass.celestialTeal)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial.opacity(0.72))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(LiquidGlass.cardBorder, lineWidth: 0.8)
+        )
+        .shadow(color: Color.black.opacity(0.3), radius: 10, y: 5)
+    }
+
+    private var emotionAccentColor: Color {
+        switch controller.currentAffect.dominantEmotion {
+        case .joy, .excited:
+            return LiquidGlass.emeraldMint
+        case .surprise, .calm:
+            return LiquidGlass.celestialTeal
+        case .distress:
+            return LiquidGlass.warmAmber
+        }
+    }
+
     // MARK: - Stimulus Content (GeoPref Split-Screen)
 
     @ViewBuilder
@@ -100,7 +273,7 @@ public struct GazeStimulusScreeningView: View {
             ZStack {
                 // GeoPref Split-Screen: Social Actor vs Geometric Pattern
                 HStack(spacing: 0) {
-                    // Left: Social scene
+                    // Left: Social scene (Actor)
                     ZStack {
                         LinearGradient(
                             colors: [LiquidGlass.stimulusSocialTop, LiquidGlass.stimulusSocialBottom],
@@ -153,11 +326,11 @@ public struct GazeStimulusScreeningView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
 
-                // Real-time gaze reticle (shown to caregiver, not visible to child during clinical use)
+                // Real-time gaze reticle (caregiver feedback)
                 Circle()
                     .stroke(LiquidGlass.celestialTeal, lineWidth: 3)
                     .background(Circle().fill(LiquidGlass.celestialTeal.opacity(0.3)))
-                    .frame(width: 30, height: 30)
+                    .frame(width: 28, height: 28)
                     .position(
                         x: controller.currentGazePoint.x * geometry.size.width,
                         y: controller.currentGazePoint.y * geometry.size.height
@@ -166,67 +339,6 @@ public struct GazeStimulusScreeningView: View {
                     .opacity(controller.currentQuality.isValid ? 0.85 : 0.0)
             }
         }
-    }
-
-    // MARK: - Caregiver HUD (Non-Intrusive Bottom Strip)
-
-    private var caregiverHUD: some View {
-        HStack(spacing: 12) {
-            // Timer
-            HStack(spacing: 5) {
-                Image(systemName: "stopwatch.fill")
-                    .font(.system(size: 11))
-                    .foregroundColor(Color.white.opacity(0.7))
-                Text(String(format: "%02d:%02d",
-                            Int(elapsedSeconds) / 60,
-                            Int(elapsedSeconds) % 60))
-                    .font(.system(size: 13, weight: .bold, design: .monospaced))
-                    .monospacedDigit()
-                    .foregroundColor(.white)
-            }
-            .padding(.horizontal, 9)
-            .padding(.vertical, 5)
-            .background(Capsule().fill(.ultraThinMaterial.opacity(0.6)))
-
-            // Progress bar
-            GeometryReader { g in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color.white.opacity(0.12)).frame(height: 4)
-                    Capsule()
-                        .fill(LiquidGlass.celestialTeal.opacity(0.8))
-                        .frame(width: g.size.width * CGFloat(min(elapsedSeconds / sessionDurationSec, 1.0)), height: 4)
-                }
-            }
-            .frame(height: 4)
-
-            // Live emotion affect pill
-            HStack(spacing: 4) {
-                Text(controller.currentAffect.dominantEmotion.emoji)
-                    .font(.system(size: 13))
-                Text(controller.currentAffect.dominantEmotion.rawValue)
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundColor(.white)
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
-            .background(Capsule().fill(.ultraThinMaterial.opacity(0.6)))
-
-            // Abort button
-            Button {
-                showAbortConfirm = true
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(Color.white.opacity(0.6))
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 10)
-        .background(.ultraThinMaterial.opacity(0.55))
-        .clipShape(Capsule())
-        .padding(.horizontal, 20)
-        .padding(.bottom, 24)
     }
 
     // MARK: - Session Management

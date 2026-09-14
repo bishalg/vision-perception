@@ -100,5 +100,6 @@ public struct GazeScreeningWizardView: View {
             }
         }
         .animation(.easeInOut(duration: 0.3), value: step)
+        .toolbar(step == .stimulus ? .hidden : .visible, for: .tabBar)
     }
 }
