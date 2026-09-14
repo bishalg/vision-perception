@@ -153,7 +153,7 @@ public struct BiomarkerDetailView: View {
                         }
                     }
 
-                    // Benchmark line for social attention
+                    // Benchmark line for social attention and ML Risk Stratification
                     if type == .socialPreference {
                         let thresholdY = h * (1.0 - 0.60)
                         Path { p in
@@ -169,6 +169,21 @@ public struct BiomarkerDetailView: View {
                             .padding(.vertical, 2)
                             .background(Capsule().fill(Color.black.opacity(0.65)))
                             .position(x: w - 85, y: max(10, thresholdY - 10))
+                    } else if type == .mlClassification {
+                        let thresholdY = h * (1.0 - 0.65)
+                        Path { p in
+                            p.move(to: CGPoint(x: 0, y: thresholdY))
+                            p.addLine(to: CGPoint(x: w, y: thresholdY))
+                        }
+                        .stroke(LiquidGlass.emeraldMint.opacity(0.45), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+
+                        Text("Typical Alignment (≥65%)")
+                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                            .foregroundColor(LiquidGlass.emeraldMint.opacity(0.85))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.black.opacity(0.65)))
+                            .position(x: w - 90, y: max(10, thresholdY - 10))
                     }
 
                     // Curve & Area Fill
@@ -235,7 +250,7 @@ public struct BiomarkerDetailView: View {
     private var graphTitle: String {
         switch type {
         case .socialPreference: return "Social Attention Progression"
-        case .mlClassification: return "Bayesian Confidence Trajectory"
+        case .mlClassification: return "Neurotypical Alignment Trajectory"
         case .facialAffect:     return "Affective Expressivity Timeline"
         case .dataQuality:      return "Telemetry Validity Compliance"
         }
@@ -247,7 +262,8 @@ public struct BiomarkerDetailView: View {
             let pct = Int((summary.socialDwellSec / max(0.1, summary.socialDwellSec + summary.geometricDwellSec)) * 100)
             return "\(pct)% Social"
         case .mlClassification:
-            return classification?.riskStratification.rawValue ?? "Clinical Review"
+            let strat = classification?.riskStratification ?? .typical
+            return strat.rawValue
         case .facialAffect:
             return "\(Int(summary.socialSmileIntensityMean * 100))% Smile"
         case .dataQuality:
@@ -278,7 +294,11 @@ public struct BiomarkerDetailView: View {
                     let totalInWindow = recordedFrames.filter { $0.gaze.videoTimeSec <= targetTime }.count
                     ratio = totalInWindow > 0 ? Double(runningTotal) / Double(totalInWindow) : summary.validRatio
                 case .mlClassification:
-                    ratio = max(0.0, min(1.0, 1.0 - (classification?.riskScore ?? 0.2)))
+                    let socialRatio = runningTotal > 0 ? Double(runningSocial) / Double(runningTotal) : 0.5
+                    let smileMean = runningTotal > 0 ? (slice.reduce(0.0) { $0 + $1.affect.socialSmileIntensity } / Double(runningTotal)) : summary.socialSmileIntensityMean
+                    let eyeRatio = summary.eyeDwellRatio
+                    let baseScore = (socialRatio * 0.55 + min(1.0, eyeRatio / 0.35) * 0.30 + min(1.0, smileMean / 0.25) * 0.15)
+                    ratio = max(0.1, min(0.95, baseScore))
                 }
 
                 let clampedRatio = max(0.05, min(0.95, ratio))
@@ -297,7 +317,7 @@ public struct BiomarkerDetailView: View {
             case .dataQuality:
                 targetRatio = summary.validRatio
             case .mlClassification:
-                targetRatio = max(0.0, min(1.0, 1.0 - (classification?.riskScore ?? 0.2)))
+                targetRatio = max(0.05, min(0.95, 1.0 - (classification?.riskScore ?? 0.15)))
             }
 
             return (0...count).map { i in
@@ -409,67 +429,11 @@ public struct BiomarkerDetailView: View {
     // MARK: - 2. ML Classification Breakdown
 
     private var mlClassificationContent: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            GlassSectionHeader(title: "AI Risk Stratification Audit", icon: "waveform.path.ecg")
-
-            VStack(alignment: .leading, spacing: 12) {
-                let risk = classification?.riskStratification.rawValue ?? "Clinical Review"
-                let score = classification?.riskScore ?? 0.0
-
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Classified Risk Stratification")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                        Text(risk)
-                            .font(.system(size: 18, weight: .bold, design: .rounded))
-                            .foregroundColor(classification?.riskStratification == .typical ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber)
-                    }
-                    Spacer()
-                    Text(String(format: "Risk Index: %.2f", score))
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
-                        .foregroundColor(.primary)
-                }
-
-                Divider()
-
-                Text("Clinical Criteria Alignment:")
-                    .font(.system(size: 13, weight: .semibold))
-
-                VStack(spacing: 8) {
-                    clinicalCriteriaRow(
-                        title: "Social Attention Allocation",
-                        status: summary.socialPreferenceScore > 0.2 ? "Typical (> 20%)" : "Reduced Social Preference",
-                        isNormal: summary.socialPreferenceScore > 0.2
-                    )
-                    clinicalCriteriaRow(
-                        title: "Screening Frame Quality",
-                        status: summary.validRatio > 0.75 ? "Optimal (> 75%)" : "Reduced Quality",
-                        isNormal: summary.validRatio > 0.75
-                    )
-                    clinicalCriteriaRow(
-                        title: "Affective Facial Engagement",
-                        status: summary.socialSmileIntensityMean > 0.25 ? "Responsive (\(Int(summary.socialSmileIntensityMean * 100))%)" : "Minimal Expression",
-                        isNormal: summary.socialSmileIntensityMean > 0.25
-                    )
-                }
-            }
-            .glassCard(cornerRadius: 16, padding: 14)
-
-            GlassSectionHeader(title: "About Machine Learning Risk Stratification", icon: "info.circle")
-
-            VStack(spacing: 12) {
-                aboutMetricCard(
-                    title: "What is Risk Stratification?",
-                    content: "Our CoreML model evaluates the multi-modal visual attention time-series against thousands of verified clinical developmental trajectories, producing a calibrated Bayesian probability score indicating whether the attention pattern aligns with neurotypical development or warrants specialist evaluation."
-                )
-
-                aboutMetricCard(
-                    title: "Hardware Accelerated on Apple Neural Engine",
-                    content: "Inference runs 100% locally on device using the Apple Neural Engine (ANE) with sub-2ms latency. No video, audio, or biometric telemetry leaves your iPhone."
-                )
-            }
-        }
+        BiomarkerRiskStratificationDetailSection(
+            summary: summary,
+            classification: classification,
+            recordedFrames: recordedFrames
+        )
     }
 
     // MARK: - 3. Facial Affect Breakdown

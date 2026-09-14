@@ -230,14 +230,9 @@ public struct GazeSessionResultView: View {
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundColor(.primary)
                     Spacer()
-                    HStack(spacing: 4) {
-                        Text("GeoPref Breakdown")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(LiquidGlass.celestialTeal)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(LiquidGlass.celestialTeal)
-                    }
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.secondary)
                 }
 
                 // Preference Spectrum Bar [-1.0 ... +1.0]
@@ -321,14 +316,9 @@ public struct GazeSessionResultView: View {
                             .foregroundColor(.primary)
                     }
                     Spacer()
-                    HStack(spacing: 4) {
-                        Text("Clinical Rationale")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundColor(LiquidGlass.celestialTeal)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(LiquidGlass.celestialTeal)
-                    }
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.secondary)
                 }
 
                 HStack(spacing: 10) {
@@ -383,14 +373,9 @@ public struct GazeSessionResultView: View {
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundColor(.primary)
                     Spacer()
-                    HStack(spacing: 4) {
-                        Text("52 FACS AU Detail")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(LiquidGlass.emeraldMint)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(LiquidGlass.emeraldMint)
-                    }
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.secondary)
                 }
 
                 HStack(spacing: 16) {
@@ -427,14 +412,9 @@ public struct GazeSessionResultView: View {
 
                 Spacer()
 
-                HStack(spacing: 4) {
-                    Text("Audit")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(LiquidGlass.celestialTeal)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(LiquidGlass.celestialTeal)
-                }
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.secondary)
             }
             .glassCard(cornerRadius: 14, padding: 12)
         }
