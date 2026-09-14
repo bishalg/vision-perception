@@ -46,4 +46,48 @@ public enum OrbitBin: String, CaseIterable, Codable, Sendable {
         case .tiltForward: return ["venus", "saturn", "apollo"]
         }
     }
+
+    public var systemImageName: String {
+        switch self {
+        case .flatCenter: return "hand.raised.fill"
+        case .tiltLeft: return "arrow.left.circle.fill"
+        case .tiltRight: return "arrow.right.circle.fill"
+        case .thumbToward: return "arrow.clockwise.circle.fill"
+        case .thumbAway: return "arrow.counterclockwise.circle.fill"
+        case .tiltForward: return "arrow.up.circle.fill"
+        }
+    }
+
+    public var arrowSymbol: String {
+        switch self {
+        case .flatCenter: return "✋"
+        case .tiltLeft: return "⇦"
+        case .tiltRight: return "⇨"
+        case .thumbToward: return "↻"
+        case .thumbAway: return "↺"
+        case .tiltForward: return "⇧"
+        }
+    }
+
+    public var shortLabel: String {
+        switch self {
+        case .flatCenter: return "Flat"
+        case .tiltLeft: return "Tilt Left"
+        case .tiltRight: return "Tilt Right"
+        case .thumbToward: return "Thumb In"
+        case .thumbAway: return "Thumb Out"
+        case .tiltForward: return "Fingers Up"
+        }
+    }
+
+    public var coachingTip: String {
+        switch self {
+        case .flatCenter: return "Align palm flat to establish base 3D hand reference plane"
+        case .tiltLeft: return "Tilt hand left ~20° to expose Thenar & Jupiter elevation contours"
+        case .tiltRight: return "Tilt hand right ~20° to expose Hypothenar & Mercury relief"
+        case .thumbToward: return "Rotate thumb slightly toward camera to map thenar muscle pad"
+        case .thumbAway: return "Rotate thumb slightly outward to capture hypothenar slope"
+        case .tiltForward: return "Tilt fingers forward to map interdigital mount summits"
+        }
+    }
 }

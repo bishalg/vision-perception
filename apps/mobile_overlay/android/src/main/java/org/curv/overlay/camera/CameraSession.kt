@@ -45,8 +45,15 @@ class CameraSession(private val context: Context) {
 
     private var boundLifecycleOwner: LifecycleOwner? = null
     private var boundSurfaceProvider: Preview.SurfaceProvider? = null
+    private var activeCamera: androidx.camera.core.Camera? = null
     @Volatile
     private var paused: Boolean = false
+
+    fun setMacroFocus(enabled: Boolean) {
+        val camera = activeCamera ?: return
+        val zoomRatio = if (enabled) 2.0f else 1.0f
+        camera.cameraControl.setZoomRatio(zoomRatio)
+    }
 
     fun startCamera(
         lifecycleOwner: LifecycleOwner,
@@ -86,7 +93,7 @@ class CameraSession(private val context: Context) {
                     .build()
 
                 cameraProvider?.unbindAll()
-                cameraProvider?.bindToLifecycle(
+                activeCamera = cameraProvider?.bindToLifecycle(
                     lifecycleOwner,
                     CameraSelector.DEFAULT_BACK_CAMERA,
                     preview,

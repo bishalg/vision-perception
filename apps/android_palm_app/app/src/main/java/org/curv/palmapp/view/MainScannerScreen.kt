@@ -60,14 +60,9 @@ fun MainScannerScreen(
     val cameraSession = remember { CameraSession(context) }
     var previewView by remember { mutableStateOf<PreviewView?>(null) }
 
-    // Corridor guides ship default-off (spec §4); persists across launches.
-    val prefs = remember(context) {
-        context.getSharedPreferences("palm_prefs", android.content.Context.MODE_PRIVATE)
-    }
-    var showCorridors by remember {
-        mutableStateOf(prefs.getBoolean("showPalmCorridors", false))
-    }
-
+    val scanMode by viewModel.scanMode.collectAsState()
+    val orbitSession by viewModel.orbitSession.collectAsState()
+    val orbitState by viewModel.orbitState.collectAsState()
     val guidanceState by viewModel.guidanceState.collectAsState()
     val metrics by viewModel.qualityMetrics.collectAsState()
     val isAnalyzing by viewModel.isAnalyzing.collectAsState()
@@ -130,6 +125,20 @@ fun MainScannerScreen(
                 viewModel.triggerCapture(cameraSession) {
                     view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                 }
+            },
+            bottomLeading = {
+                org.curv.overlay.palm.LeftHandSideButton(
+                    selection = selectedHandSide,
+                    autoDetected = detectedHandSide,
+                    onSelect = { viewModel.selectHandSide(it) }
+                )
+            },
+            bottomTrailing = {
+                org.curv.overlay.palm.RightHandSideButton(
+                    selection = selectedHandSide,
+                    autoDetected = detectedHandSide,
+                    onSelect = { viewModel.selectHandSide(it) }
+                )
             }
         ) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
@@ -140,38 +149,20 @@ fun MainScannerScreen(
                     isHandDetected = detectedLandmarks.isNotEmpty()
                 )
 
-                // Center-top inside the camera box reticle frame
-                HandSideToggle(
-                    selection = selectedHandSide,
-                    autoDetected = detectedHandSide,
-                    isHandDetected = detectedLandmarks.isNotEmpty(),
-                    onSelect = { viewModel.selectHandSide(it) },
+                // Center-top inside the camera box reticle frame: Camera Mode Selector
+                CameraModeSelector(
+                    selectedMode = scanMode,
+                    onSelect = { viewModel.setScanMode(it, cameraSession) },
                     modifier = Modifier.padding(top = 14.dp)
                 )
             }
         }
 
-        // Optional corridors toggle (bottom-left, above telemetry chips).
-        // Native toggle chip: selected state + checkmark come from Material3.
-        if (!showResultViewer && detectedLandmarks.isNotEmpty()) {
-            FilterChip(
-                selected = showCorridors,
-                onClick = {
-                    showCorridors = !showCorridors
-                    prefs.edit().putBoolean("showPalmCorridors", showCorridors).apply()
-                },
-                label = { Text(LocalizedStrings.tr("camera.corridors", currentLanguage)) },
-                leadingIcon = {
-                    if (showCorridors) {
-                        Icon(
-                            Icons.Filled.Check,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                },
-                modifier = Modifier.align(Alignment.BottomStart)
-                    .padding(start = 22.dp, bottom = 134.dp)
+        // 3D Orbit Scan Guidance HUD (animated arrows, % progress, angle pips, coaching)
+        if (scanMode == PalmScanMode.ORBIT_SCAN && !showResultViewer) {
+            org.curv.overlay.guidance.OrbitGuidanceOverlayView(
+                session = orbitSession,
+                state = orbitState
             )
         }
 
@@ -180,14 +171,14 @@ fun MainScannerScreen(
             HandOutlineOverlay(landmarks = detectedLandmarks, modifier = Modifier.fillMaxSize())
         }
 
-        // Live sci-fi region overlay (mounts + optional corridors).
+        // Live sci-fi region overlay (mounts).
         // Live landmarks are already in image space and anatomically invariant:
         // no mirroring (parity with iOS MainScannerView shouldMirror).
         if (detectedLandmarks.isNotEmpty() && !showResultViewer) {
             RegionOverlayView(
                 landmarks = detectedLandmarks,
                 isReady = guidanceState.isReady,
-                showCorridors = showCorridors,
+                showCorridors = false,
                 mirror = false,
                 imageRect = null,
                 modifier = Modifier.fillMaxSize()
@@ -244,3 +235,71 @@ fun MainScannerScreen(
         }
     }
 }
+
+/**
+ * Top Camera Mode Selector capsule for Android.
+ * Replaces the old "AUTO - L R" reticle header.
+ */
+@Composable
+fun CameraModeSelector(
+    selectedMode: PalmScanMode,
+    onSelect: (PalmScanMode) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color.Black.copy(alpha = 0.65f))
+            .border(0.8.dp, Color.White.copy(alpha = 0.24f), RoundedCornerShape(20.dp))
+            .padding(3.dp)
+    ) {
+        androidx.compose.foundation.layout.Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            PalmScanMode.all.forEach { mode ->
+                val isSelected = (mode == selectedMode)
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            if (isSelected) {
+                                when (mode) {
+                                    PalmScanMode.ORBIT_SCAN -> Color.Cyan.copy(alpha = 0.35f)
+                                    PalmScanMode.STILL_PHOTO -> Color(0xFF33D64A).copy(alpha = 0.35f)
+                                    else -> Color.White.copy(alpha = 0.25f)
+                                }
+                            } else Color.Transparent
+                        )
+                        .border(
+                            1.dp,
+                            if (isSelected) {
+                                when (mode) {
+                                    PalmScanMode.ORBIT_SCAN -> Color.Cyan
+                                    PalmScanMode.STILL_PHOTO -> Color(0xFF33D64A)
+                                    else -> Color.White.copy(alpha = 0.7f)
+                                }
+                            } else Color.Transparent,
+                            RoundedCornerShape(16.dp)
+                        )
+                        .clickable { onSelect(mode) }
+                        .padding(horizontal = 9.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = when (mode) {
+                            PalmScanMode.STILL_PHOTO -> "Still"
+                            PalmScanMode.ORBIT_SCAN -> "3D Orbit"
+                            PalmScanMode.CLOSE_UP_MOSAIC -> "Close-Up"
+                            PalmScanMode.FINGERTIP_SCAN -> "Fingertips"
+                        },
+                        color = if (isSelected) Color.White else Color.White.copy(alpha = 0.70f),
+                        fontSize = 11.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                    )
+                }
+            }
+        }
+    }
+}
+

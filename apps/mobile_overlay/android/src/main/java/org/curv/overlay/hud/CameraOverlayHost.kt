@@ -40,6 +40,8 @@ fun CameraOverlayHost(
     onManualCapture: () -> Unit,
     statusMessageOverride: String? = null,
     deviceRollDeg: Float? = null,
+    bottomLeading: @Composable () -> Unit = {},
+    bottomTrailing: @Composable () -> Unit = {},
     overlayContent: @Composable () -> Unit
 ) {
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
@@ -52,6 +54,8 @@ fun CameraOverlayHost(
             onManualCapture = onManualCapture,
             statusMessageOverride = statusMessageOverride,
             deviceRollDeg = deviceRollDeg,
+            bottomLeading = bottomLeading,
+            bottomTrailing = bottomTrailing,
             overlayContent = overlayContent
         )
 

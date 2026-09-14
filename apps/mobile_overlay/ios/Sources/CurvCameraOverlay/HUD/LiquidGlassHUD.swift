@@ -11,12 +11,14 @@ public enum OverlayPalette {
  * App-specific artwork is injected through `overlayContent` (palm silhouette,
  * vastu mandala, document quad, ...).
  */
-public struct LiquidGlassHUD<OverlayContent: View>: View {
+public struct LiquidGlassHUD<OverlayContent: View, BottomLeading: View, BottomTrailing: View>: View {
     public let profile: OverlayProfile
     public let guidanceState: GuidanceState
     public let metrics: QualityMetrics
     public let statusMessageOverride: String?
     public let overlayContent: OverlayContent
+    public let bottomLeading: BottomLeading
+    public let bottomTrailing: BottomTrailing
     public let onManualCapture: () -> Void
     /// Device roll vs gravity in degrees (0 = vertical). nil = use live gyro.
     public var deviceRollDeg: Float?
@@ -30,6 +32,8 @@ public struct LiquidGlassHUD<OverlayContent: View>: View {
         statusMessageOverride: String? = nil,
         deviceRollDeg: Float? = nil,
         onManualCapture: @escaping () -> Void,
+        @ViewBuilder bottomLeading: () -> BottomLeading,
+        @ViewBuilder bottomTrailing: () -> BottomTrailing,
         @ViewBuilder overlayContent: () -> OverlayContent
     ) {
         self.profile = profile
@@ -38,6 +42,8 @@ public struct LiquidGlassHUD<OverlayContent: View>: View {
         self.statusMessageOverride = statusMessageOverride
         self.deviceRollDeg = deviceRollDeg
         self.onManualCapture = onManualCapture
+        self.bottomLeading = bottomLeading()
+        self.bottomTrailing = bottomTrailing()
         self.overlayContent = overlayContent()
     }
 
@@ -154,14 +160,25 @@ public struct LiquidGlassHUD<OverlayContent: View>: View {
                     Spacer()
 
                     VStack(spacing: 16) {
-                        HStack(spacing: 12) {
-                            ForEach(profile.telemetry, id: \.rawValue) { channel in
-                                telemetryChip(channel)
-                                    .animation(.easeOut(duration: 0.12), value: metrics.meanLuminance)
-                                    .animation(.easeOut(duration: 0.12), value: metrics.glareRatio)
-                                    .animation(.easeOut(duration: 0.12), value: metrics.rollAngleDeg)
+                        HStack(spacing: 8) {
+                            bottomLeading
+
+                            Spacer()
+
+                            HStack(spacing: 8) {
+                                ForEach(profile.telemetry, id: \.rawValue) { channel in
+                                    telemetryChip(channel)
+                                        .animation(.easeOut(duration: 0.12), value: metrics.meanLuminance)
+                                        .animation(.easeOut(duration: 0.12), value: metrics.glareRatio)
+                                        .animation(.easeOut(duration: 0.12), value: metrics.rollAngleDeg)
+                                }
                             }
+
+                            Spacer()
+
+                            bottomTrailing
                         }
+                        .padding(.horizontal, 16)
 
                         Button(action: onManualCapture) {
                             ZStack {
@@ -221,6 +238,30 @@ public struct LiquidGlassHUD<OverlayContent: View>: View {
             Capsule()
                 .fill(Color.black.opacity(0.4))
                 .overlay(Capsule().stroke(Color.white.opacity(0.15), lineWidth: 0.5))
+        )
+    }
+}
+
+extension LiquidGlassHUD where BottomLeading == EmptyView, BottomTrailing == EmptyView {
+    public init(
+        profile: OverlayProfile,
+        guidanceState: GuidanceState,
+        metrics: QualityMetrics,
+        statusMessageOverride: String? = nil,
+        deviceRollDeg: Float? = nil,
+        onManualCapture: @escaping () -> Void,
+        @ViewBuilder overlayContent: () -> OverlayContent
+    ) {
+        self.init(
+            profile: profile,
+            guidanceState: guidanceState,
+            metrics: metrics,
+            statusMessageOverride: statusMessageOverride,
+            deviceRollDeg: deviceRollDeg,
+            onManualCapture: onManualCapture,
+            bottomLeading: { EmptyView() },
+            bottomTrailing: { EmptyView() },
+            overlayContent: overlayContent
         )
     }
 }

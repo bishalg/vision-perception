@@ -4,7 +4,8 @@
 > **Platform**: iOS / iPadOS 17.0+ (TrueDepth ARKit 6, Swift 6 Concurrency)  
 > **Architecture**: Model-View-Controller (MVC) + Apple ResearchKit & CareKit + Liquid Glass Design  
 > **Package Link**: [`domains/asd_screening/ios`](../../domains/asd_screening/ios) (`CurvAsdGazeKit`)  
-> **Full Specifications**: [`domains/asd_screening/docs/IOS_APP_DESIGN_AND_ROADMAP.md`](../../domains/asd_screening/docs/IOS_APP_DESIGN_AND_ROADMAP.md)  
+> **Full Architecture & Handover Guide**: [`docs/ASD_GAZE_TRACKER_ARCHITECTURE.md`](../../docs/ASD_GAZE_TRACKER_ARCHITECTURE.md)  
+> **Roadmap & Specifications**: [`domains/asd_screening/docs/IOS_APP_DESIGN_AND_ROADMAP.md`](../../domains/asd_screening/docs/IOS_APP_DESIGN_AND_ROADMAP.md)  
 
 ---
 

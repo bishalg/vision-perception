@@ -15,6 +15,8 @@ extension PalmAnalysisViewModel {
         if mode == .orbitScan {
             deviceTiltProvider.start()
         }
+        let isMacro = (mode == .closeUpMosaic || mode == .fingertipScan)
+        cameraSession.setMacroFocus(enabled: isMacro)
         statusMessageOverride = mode.subtitle
     }
 

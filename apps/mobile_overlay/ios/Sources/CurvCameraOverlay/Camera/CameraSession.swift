@@ -56,7 +56,17 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
             self.captureSession.beginConfiguration()
             self.captureSession.sessionPreset = .hd1920x1080
 
-            guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
+            let discovery = AVCaptureDevice.DiscoverySession(
+                deviceTypes: [
+                    .builtInTripleCamera,
+                    .builtInDualWideCamera,
+                    .builtInDualCamera,
+                    .builtInWideAngleCamera
+                ],
+                mediaType: .video,
+                position: .back
+            )
+            guard let device = discovery.devices.first ?? AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
                   let input = try? AVCaptureDeviceInput(device: device) else {
                 self.logger.error("Failed to acquire back camera device")
                 self.captureSession.commitConfiguration()
@@ -126,6 +136,38 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
         sessionQueue.async { [weak self] in
             guard let self, self.captureSession.isRunning else { return }
             self.captureSession.stopRunning()
+        }
+    }
+
+    /// Configures close-up / macro auto-focus parameters for fine crease and fingertip scans.
+    public func setMacroFocus(enabled: Bool) {
+        sessionQueue.async { [weak self] in
+            guard let self, let device = self.activeCaptureDevice else { return }
+            do {
+                try device.lockForConfiguration()
+                if device.isAutoFocusRangeRestrictionSupported {
+                    device.autoFocusRangeRestriction = enabled ? .near : .none
+                }
+                if device.isFocusModeSupported(.continuousAutoFocus) {
+                    device.focusMode = .continuousAutoFocus
+                }
+                if device.isFocusPointOfInterestSupported {
+                    device.focusPointOfInterest = CGPoint(x: 0.5, y: 0.5)
+                }
+                if device.isExposurePointOfInterestSupported {
+                    device.exposurePointOfInterest = CGPoint(x: 0.5, y: 0.5)
+                }
+                if device.isSubjectAreaChangeMonitoringEnabled == false {
+                    device.isSubjectAreaChangeMonitoringEnabled = true
+                }
+                let targetZoom: CGFloat = enabled ? 2.0 : 1.0
+                let clampedZoom = min(max(targetZoom, device.minAvailableVideoZoomFactor), min(device.maxAvailableVideoZoomFactor, 3.0))
+                device.videoZoomFactor = clampedZoom
+                device.unlockForConfiguration()
+                self.logger.info("Macro focus restriction: \(enabled ? "near (2.0x zoom)" : "none (1.0x)")")
+            } catch {
+                self.logger.error("Failed to update macro focus configuration: \(error.localizedDescription)")
+            }
         }
     }
 

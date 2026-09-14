@@ -4,7 +4,7 @@ import SwiftUI
  * Shared scanner chrome: live camera + Liquid Glass HUD + brand breadcrumb +
  * analyzing veil. Apps layer domain results (splines, sheets) on top.
  */
-public struct CameraOverlayHost<OverlayContent: View>: View {
+public struct CameraOverlayHost<OverlayContent: View, BottomLeading: View, BottomTrailing: View>: View {
     public let profile: OverlayProfile
     public let session: CameraSession
     public let guidanceState: GuidanceState
@@ -12,6 +12,8 @@ public struct CameraOverlayHost<OverlayContent: View>: View {
     public let isAnalyzing: Bool
     public let statusMessageOverride: String?
     public let deviceRollDeg: Float?
+    public let bottomLeading: BottomLeading
+    public let bottomTrailing: BottomTrailing
     public let overlayContent: OverlayContent
     public let onManualCapture: () -> Void
 
@@ -24,6 +26,8 @@ public struct CameraOverlayHost<OverlayContent: View>: View {
         statusMessageOverride: String? = nil,
         deviceRollDeg: Float? = nil,
         onManualCapture: @escaping () -> Void,
+        @ViewBuilder bottomLeading: () -> BottomLeading,
+        @ViewBuilder bottomTrailing: () -> BottomTrailing,
         @ViewBuilder overlayContent: () -> OverlayContent
     ) {
         self.profile = profile
@@ -34,6 +38,8 @@ public struct CameraOverlayHost<OverlayContent: View>: View {
         self.statusMessageOverride = statusMessageOverride
         self.deviceRollDeg = deviceRollDeg
         self.onManualCapture = onManualCapture
+        self.bottomLeading = bottomLeading()
+        self.bottomTrailing = bottomTrailing()
         self.overlayContent = overlayContent()
     }
 
@@ -48,7 +54,9 @@ public struct CameraOverlayHost<OverlayContent: View>: View {
                 metrics: metrics,
                 statusMessageOverride: statusMessageOverride,
                 deviceRollDeg: deviceRollDeg,
-                onManualCapture: onManualCapture
+                onManualCapture: onManualCapture,
+                bottomLeading: { bottomLeading },
+                bottomTrailing: { bottomTrailing }
             ) {
                 overlayContent
             }
@@ -101,5 +109,33 @@ public struct CameraOverlayHost<OverlayContent: View>: View {
                 }
             }
         }
+    }
+}
+
+extension CameraOverlayHost where BottomLeading == EmptyView, BottomTrailing == EmptyView {
+    public init(
+        profile: OverlayProfile,
+        session: CameraSession,
+        guidanceState: GuidanceState,
+        metrics: QualityMetrics,
+        isAnalyzing: Bool,
+        statusMessageOverride: String? = nil,
+        deviceRollDeg: Float? = nil,
+        onManualCapture: @escaping () -> Void,
+        @ViewBuilder overlayContent: () -> OverlayContent
+    ) {
+        self.init(
+            profile: profile,
+            session: session,
+            guidanceState: guidanceState,
+            metrics: metrics,
+            isAnalyzing: isAnalyzing,
+            statusMessageOverride: statusMessageOverride,
+            deviceRollDeg: deviceRollDeg,
+            onManualCapture: onManualCapture,
+            bottomLeading: { EmptyView() },
+            bottomTrailing: { EmptyView() },
+            overlayContent: overlayContent
+        )
     }
 }

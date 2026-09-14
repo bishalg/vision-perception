@@ -96,7 +96,23 @@ class PalmAnalysisViewModel : ViewModel() {
     private val _detectedHandSide = MutableStateFlow(HandSide.RIGHT)
     val detectedHandSide: StateFlow<HandSide> = _detectedHandSide.asStateFlow()
 
+    private val _scanMode = MutableStateFlow(PalmScanMode.STILL_PHOTO)
+    val scanMode: StateFlow<PalmScanMode> = _scanMode.asStateFlow()
+
+    private val _orbitSession = MutableStateFlow(org.curv.overlay.guidance.OrbitCaptureSession(handSide = "auto"))
+    val orbitSession: StateFlow<org.curv.overlay.guidance.OrbitCaptureSession> = _orbitSession.asStateFlow()
+
+    private val _orbitState = MutableStateFlow<org.curv.overlay.guidance.OrbitGuidanceState>(org.curv.overlay.guidance.OrbitGuidanceState.Idle)
+    val orbitState: StateFlow<org.curv.overlay.guidance.OrbitGuidanceState> = _orbitState.asStateFlow()
+
     fun selectHandSide(side: HandSide) { _selectedHandSide.value = side }
+
+    fun setScanMode(mode: PalmScanMode, cameraSession: CameraSession? = null) {
+        _scanMode.value = mode
+        val isMacro = (mode == PalmScanMode.CLOSE_UP_MOSAIC || mode == PalmScanMode.FINGERTIP_SCAN)
+        cameraSession?.setMacroFocus(isMacro)
+        _statusOverride.value = mode.subtitle
+    }
 
     private var isCapturing = false
     private var suppressAutoCaptureUntilNs: Long = 0L

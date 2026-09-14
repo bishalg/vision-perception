@@ -5,13 +5,19 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
 
-enum class OrbitBin(val key: String, val displayName: String) {
-    FLAT_CENTER("flat_center", "Hold palm flat, centered"),
-    TILT_LEFT("tilt_left", "Tilt hand left ~20°"),
-    TILT_RIGHT("tilt_right", "Tilt hand right ~20°"),
-    THUMB_TOWARD("thumb_toward", "Rotate thumb toward camera"),
-    THUMB_AWAY("thumb_away", "Rotate thumb away from camera"),
-    TILT_FORWARD("tilt_forward", "Tilt fingers toward camera");
+enum class OrbitBin(
+    val key: String,
+    val displayName: String,
+    val arrowSymbol: String,
+    val shortLabel: String,
+    val coachingTip: String
+) {
+    FLAT_CENTER("flat_center", "Hold palm flat, centered", "✋", "Flat", "Align palm flat to establish base 3D hand reference plane"),
+    TILT_LEFT("tilt_left", "Tilt hand left ~20°", "⇦", "Tilt Left", "Tilt hand left ~20° to expose Thenar & Jupiter elevation contours"),
+    TILT_RIGHT("tilt_right", "Tilt hand right ~20°", "⇨", "Tilt Right", "Tilt hand right ~20° to expose Hypothenar & Mercury relief"),
+    THUMB_TOWARD("thumb_toward", "Rotate thumb toward camera", "↻", "Thumb In", "Rotate thumb slightly toward camera to map thenar muscle pad"),
+    THUMB_AWAY("thumb_away", "Rotate thumb away from camera", "↺", "Thumb Out", "Rotate thumb slightly outward to capture hypothenar slope"),
+    TILT_FORWARD("tilt_forward", "Tilt fingers toward camera", "⇧", "Fingers Up", "Tilt fingers forward to map interdigital mount summits");
 
     companion object {
         val all = entries.toList()

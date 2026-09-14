@@ -48,6 +48,8 @@ fun LiquidGlassHUD(
     modifier: Modifier = Modifier,
     statusMessageOverride: String? = null,
     deviceRollDeg: Float? = null,
+    bottomLeading: @Composable () -> Unit = {},
+    bottomTrailing: @Composable () -> Unit = {},
     overlayContent: @Composable () -> Unit
 ) {
     val isReady = guidanceState.isReady
@@ -139,26 +141,38 @@ fun LiquidGlassHUD(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                profile.telemetry.forEach { channel ->
-                    when (channel) {
-                        TelemetryChannel.LUX -> TelemetryChip(
-                            "Lux",
-                            String.format("%.0f", metrics.meanLuminance),
-                            metrics.isIlluminationOk
-                        )
-                        TelemetryChannel.GLARE -> TelemetryChip(
-                            "Glare",
-                            String.format("%.1f%%", metrics.glareRatio * 100f),
-                            metrics.glareRatio <= profile.thresholds.maxGlareRatio
-                        )
-                        TelemetryChannel.TILT -> TelemetryChip(
-                            "Tilt",
-                            String.format("%.0f°", metrics.rollAngleDeg),
-                            metrics.isAngleOk
-                        )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                bottomLeading()
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    profile.telemetry.forEach { channel ->
+                        when (channel) {
+                            TelemetryChannel.LUX -> TelemetryChip(
+                                "Lux",
+                                String.format("%.0f", metrics.meanLuminance),
+                                metrics.isIlluminationOk
+                            )
+                            TelemetryChannel.GLARE -> TelemetryChip(
+                                "Glare",
+                                String.format("%.1f%%", metrics.glareRatio * 100f),
+                                metrics.glareRatio <= profile.thresholds.maxGlareRatio
+                            )
+                            TelemetryChannel.TILT -> TelemetryChip(
+                                "Tilt",
+                                String.format("%.0f°", metrics.rollAngleDeg),
+                                metrics.isAngleOk
+                            )
+                        }
                     }
                 }
+
+                bottomTrailing()
             }
 
             Box(

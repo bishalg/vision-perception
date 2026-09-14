@@ -10,9 +10,6 @@ import CurvPalmOverlay
  */
 public struct MainScannerView: View {
     @StateObject private var viewModel = PalmAnalysisViewModel()
-    /// Corridor guides ship default-off (spec §4); persists across launches.
-    @AppStorage("showPalmCorridors") private var showCorridors = false
-    @State private var showScanModePicker = false
 
     /// Drives the post-capture "hero" flight: a large centered flash of the
     /// still shrinks into the bottom-left filmstrip slot, matching the shared
@@ -77,7 +74,19 @@ public struct MainScannerView: View {
                     metrics: viewModel.qualityMetrics,
                     isAnalyzing: viewModel.isAnalyzing,
                     statusMessageOverride: viewModel.statusMessageOverride,
-                    onManualCapture: { viewModel.manualCapture() }
+                    onManualCapture: { viewModel.manualCapture() },
+                    bottomLeading: {
+                        LeftHandSideButton(
+                            selection: $viewModel.selectedHandSide,
+                            autoDetected: viewModel.detectedHandSide
+                        )
+                    },
+                    bottomTrailing: {
+                        RightHandSideButton(
+                            selection: $viewModel.selectedHandSide,
+                            autoDetected: viewModel.detectedHandSide
+                        )
+                    }
                 ) {
                     // Inside the reticle box:
                     ZStack(alignment: .top) {
@@ -89,86 +98,23 @@ public struct MainScannerView: View {
                             isHandDetected: !viewModel.detectedLandmarks.isEmpty
                         )
 
-                        // Center-top inside the camera box reticle frame
-                        HandSideToggleView(
-                            selection: $viewModel.selectedHandSide,
-                            autoDetected: viewModel.detectedHandSide,
-                            isHandDetected: !viewModel.detectedLandmarks.isEmpty
+                        // Center-top inside the camera box reticle frame: Camera Mode Selector
+                        CameraModeSelectorView(
+                            selectedMode: viewModel.scanMode,
+                            onSelect: { viewModel.setScanMode($0) }
                         )
                         .padding(.top, 14)
                     }
                 }
 
-                // Scan mode + orbit coverage HUD
-                if !viewModel.showResultViewer {
-                    VStack {
-                        HStack {
-                            Button(action: { showScanModePicker = true }) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: viewModel.scanMode == .stillPhoto ? "camera" : "rotate.3d")
-                                    Text(viewModel.scanMode.displayName)
-                                        .font(.footnote.bold())
-                                }
-                                .foregroundColor(.white.opacity(0.9))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(
-                                    Capsule()
-                                        .fill(Color.black.opacity(0.62))
-                                        .overlay(Capsule().stroke(Color.white.opacity(0.28), lineWidth: 0.8))
-                                )
-                            }
-                            Spacer()
-                            if viewModel.scanMode == .orbitScan {
-                                Text("Venus \(viewModel.orbitSession.mountViewCounts()["venus", default: 0])/\(OrbitBin.allCases.count)")
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundColor(.white.opacity(0.95))
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(
-                                        Capsule()
-                                            .fill(Color.black.opacity(0.62))
-                                            .overlay(Capsule().stroke(Color.white.opacity(0.28), lineWidth: 0.8))
-                                    )
-                            }
-                        }
-                        .padding(.horizontal, 22)
-                        .padding(.top, 56)
-                        Spacer()
-                    }
+                // 3D Orbit Scan Guidance HUD (animated arrows, % progress, angle pips, coaching)
+                if viewModel.scanMode == .orbitScan && !viewModel.showResultViewer {
+                    OrbitGuidanceOverlayView(
+                        session: viewModel.orbitSession,
+                        state: viewModel.orbitState
+                    )
+                    .padding(.top, 100)
                     .zIndex(2)
-                }
-
-                // Optional corridors toggle (bottom left, above telemetry chips)
-                if !viewModel.showResultViewer && !regionLandmarks.isEmpty {
-                    VStack {
-                        Spacer()
-                        HStack {
-                            Button(action: { showCorridors.toggle() }) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: showCorridors ? "dot.scope" : "circle.dotted")
-                                    Text(LocalizedStrings.tr("camera.corridors", lang: viewModel.currentLanguage))
-                                        .font(.footnote)
-                                        .bold()
-                                }
-                                .foregroundColor(.white.opacity(showCorridors ? 0.95 : 0.75))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(
-                                    Capsule()
-                                        .fill(Color.black.opacity(0.62))
-                                        .overlay(Capsule().stroke(Color.white.opacity(showCorridors ? 0.55 : 0.22), lineWidth: 0.8))
-                                )
-                            }
-                            .accessibilityLabel(LocalizedStrings.tr("camera.corridors", lang: viewModel.currentLanguage))
-                            .accessibilityValue(showCorridors ? Text("On") : Text("Off"))
-                            .accessibilityAddTraits(showCorridors ? [.isButton, .isSelected] : .isButton)
-                            Spacer()
-                        }
-                        .padding(.horizontal, 22)
-                        .padding(.bottom, 134)
-                    }
-                    .zIndex(1)
                 }
 
                 // Live landmark skeleton while hand is detected
@@ -182,12 +128,12 @@ public struct MainScannerView: View {
                     .zIndex(1)
                 }
 
-                // Live sci-fi region overlay (mounts + optional corridors).
+                // Live sci-fi region overlay (mounts).
                 if !regionLandmarks.isEmpty && !viewModel.showResultViewer {
                     RegionOverlayView(
                         landmarks: regionLandmarks,
                         isReady: viewModel.scanMode == .stillPhoto ? viewModel.guidanceState.isReady : viewModel.orbitSession.coverageFraction > 0.3,
-                        showCorridors: showCorridors,
+                        showCorridors: false,
                         mirror: shouldMirror,
                         imageRect: imageRect,
                         mountReliefHeat: viewModel.mountReliefHeat
@@ -297,14 +243,6 @@ public struct MainScannerView: View {
                 viewModel.cameraSession.start()
             }
         }
-        .confirmationDialog("Scan mode", isPresented: $showScanModePicker, titleVisibility: .visible) {
-            ForEach(PalmScanMode.allCases) { mode in
-                Button(mode.displayName) { viewModel.setScanMode(mode) }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Mode A still photo, or enriched 3D orbit / close-up / fingertip scans.")
-        }
         .onAppear { viewModel.start() }
         .onDisappear { viewModel.stop() }
     }
@@ -363,3 +301,70 @@ private struct ShakeEffect: GeometryEffect {
         return ProjectionTransform(CGAffineTransform(translationX: dx, y: 0))
     }
 }
+
+/**
+ * Top Camera Mode Selector capsule.
+ * Replaces the old "AUTO - L R" reticle header.
+ * Allows instant switching between:
+ * - Still Photo (classic single shot)
+ * - 3D Orbit Scan (mount topography / metric relief)
+ * - Close-up Lines (macro focus for deep creases)
+ * - Fingertips (macro focus for dermatoglyphic patterns)
+ */
+struct CameraModeSelectorView: View {
+    let selectedMode: PalmScanMode
+    let onSelect: (PalmScanMode) -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(PalmScanMode.allCases) { mode in
+                let isSelected = (mode == selectedMode)
+                Button(action: {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                        onSelect(mode)
+                    }
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: mode.iconName)
+                            .font(.system(size: 11, weight: isSelected ? .bold : .medium))
+                            .foregroundColor(isSelected ? .white : .white.opacity(0.65))
+
+                        Text(mode.shortTitle)
+                            .font(.system(size: 11, weight: isSelected ? .bold : .medium, design: .rounded))
+                            .foregroundColor(isSelected ? .white : .white.opacity(0.70))
+                    }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(
+                                isSelected
+                                    ? (mode == .orbitScan ? Color.cyan.opacity(0.35) : (mode == .stillPhoto ? OverlayPalette.emerald.opacity(0.35) : Color.white.opacity(0.25)))
+                                    : Color.clear
+                            )
+                            .overlay(
+                                Capsule()
+                                    .stroke(
+                                        isSelected
+                                            ? (mode == .orbitScan ? Color.cyan : (mode == .stillPhoto ? OverlayPalette.emerald : Color.white.opacity(0.7)))
+                                            : Color.clear,
+                                        lineWidth: 1
+                                    )
+                            )
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(mode.displayName)
+                .accessibilityValue(isSelected ? "Selected" : "")
+            }
+        }
+        .padding(3)
+        .background(
+            Capsule()
+                .fill(Color.black.opacity(0.65))
+                .overlay(Capsule().stroke(Color.white.opacity(0.24), lineWidth: 0.8))
+        )
+        .shadow(color: Color.black.opacity(0.35), radius: 8, y: 3)
+    }
+}
+

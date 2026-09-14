@@ -28,4 +28,22 @@ public enum PalmScanMode: String, CaseIterable, Identifiable {
         case .fingertipScan: return "Dermatoglyphic pattern class"
         }
     }
+
+    public var iconName: String {
+        switch self {
+        case .stillPhoto: return "camera.fill"
+        case .orbitScan: return "rotate.3d"
+        case .closeUpMosaic: return "plus.magnifyingglass"
+        case .fingertipScan: return "hand.point.up.fill"
+        }
+    }
+
+    public var shortTitle: String {
+        switch self {
+        case .stillPhoto: return "Still"
+        case .orbitScan: return "3D Orbit"
+        case .closeUpMosaic: return "Close-Up"
+        case .fingertipScan: return "Fingertips"
+        }
+    }
 }
