@@ -15,7 +15,6 @@ public struct GazeSessionResultView: View {
     @State private var isReplaying: Bool = false
     @State private var replayTimer: Timer?
     @State private var showFullScreenReplay: Bool = false
-    @State private var selectedBiomarkerDetail: BiomarkerDetailType? = nil
     @State private var showExportSheet: Bool = false
     @State private var showShareSheet: Bool = false
     @State private var shareItems: [Any] = []
@@ -90,18 +89,13 @@ public struct GazeSessionResultView: View {
                     .accessibilityLabel("Share Clinical Report")
                 }
             }
-            .navigationDestination(isPresented: Binding(
-                get: { selectedBiomarkerDetail != nil },
-                set: { if !$0 { selectedBiomarkerDetail = nil } }
-            )) {
-                if let detailType = selectedBiomarkerDetail {
-                    BiomarkerDetailView(
-                        type: detailType,
-                        summary: summary,
-                        classification: classification,
-                        recordedFrames: recordedFrames
-                    )
-                }
+            .navigationDestination(for: BiomarkerDetailType.self) { detailType in
+                BiomarkerDetailView(
+                    type: detailType,
+                    summary: summary,
+                    classification: classification,
+                    recordedFrames: recordedFrames
+                )
             }
         }
         .fullScreenCover(isPresented: $showFullScreenReplay) {
@@ -221,9 +215,7 @@ public struct GazeSessionResultView: View {
     // MARK: - Social Preference Card (Drillable)
 
     private var socialPreferenceCard: some View {
-        Button {
-            selectedBiomarkerDetail = .socialPreference
-        } label: {
+        NavigationLink(value: BiomarkerDetailType.socialPreference) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     HStack(spacing: 6) {
@@ -307,9 +299,7 @@ public struct GazeSessionResultView: View {
             }
         }()
 
-        return Button {
-            selectedBiomarkerDetail = .mlClassification
-        } label: {
+        return NavigationLink(value: BiomarkerDetailType.mlClassification) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     HStack(spacing: 6) {
@@ -369,9 +359,7 @@ public struct GazeSessionResultView: View {
     // MARK: - Facial Affect Card (Drillable)
 
     private var facialAffectMetricsCard: some View {
-        Button {
-            selectedBiomarkerDetail = .facialAffect
-        } label: {
+        NavigationLink(value: BiomarkerDetailType.facialAffect) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     HStack(spacing: 6) {
@@ -403,9 +391,7 @@ public struct GazeSessionResultView: View {
     // MARK: - Quality & ResearchKit Card (Drillable)
 
     private var qualityAndContractCard: some View {
-        Button {
-            selectedBiomarkerDetail = .dataQuality
-        } label: {
+        NavigationLink(value: BiomarkerDetailType.dataQuality) {
             HStack(spacing: 14) {
                 Image(systemName: "checkmark.seal.fill")
                     .foregroundColor(LiquidGlass.emeraldMint)

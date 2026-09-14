@@ -3,7 +3,7 @@ import CurvAsdGazeKit
 
 // MARK: - Biomarker Detail Type
 
-public enum BiomarkerDetailType: String, Identifiable {
+public enum BiomarkerDetailType: String, Identifiable, Hashable, CaseIterable {
     case socialPreference = "Social Visual Preference (GeoPref)"
     case mlClassification = "Clinical Risk Stratification"
     case facialAffect = "Facial Affect & Social Reciprocity"
@@ -302,12 +302,13 @@ public struct BiomarkerDetailView: View {
     }
 
     private func sampleGraphPoints(width w: CGFloat, height h: CGFloat) -> [CGPoint] {
+        guard w > 10 && h > 10 else { return [] }
         let count = 30
         let validFrames = recordedFrames.filter { $0.gaze.isValid && $0.qualityVerdict != .rejected }
 
         if !validFrames.isEmpty {
             var pts: [CGPoint] = []
-            for sec in 1...count {
+            for sec in 0...count {
                 let targetTime = Double(sec)
                 let slice = validFrames.filter { $0.gaze.videoTimeSec <= targetTime }
                 let runningTotal = slice.count
