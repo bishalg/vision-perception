@@ -90,9 +90,19 @@ public struct GazeSessionResultView: View {
                     .accessibilityLabel("Share Clinical Report")
                 }
             }
-        }
-        .sheet(item: $selectedBiomarkerDetail) { detailType in
-            BiomarkerDetailSheet(type: detailType, summary: summary, classification: classification)
+            .navigationDestination(isPresented: Binding(
+                get: { selectedBiomarkerDetail != nil },
+                set: { if !$0 { selectedBiomarkerDetail = nil } }
+            )) {
+                if let detailType = selectedBiomarkerDetail {
+                    BiomarkerDetailView(
+                        type: detailType,
+                        summary: summary,
+                        classification: classification,
+                        recordedFrames: recordedFrames
+                    )
+                }
+            }
         }
         .fullScreenCover(isPresented: $showFullScreenReplay) {
             GazeReplayHeatmapFullScreenView(
