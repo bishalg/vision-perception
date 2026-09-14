@@ -134,6 +134,25 @@ public struct OrbitCaptureSession: Codable, Sendable {
         Float(filledBins.count) / Float(OrbitBin.allCases.count)
     }
 
+    /**
+     * UI-facing progress: completed bins plus live partial credit for the
+     * bin currently being held. A finished FLAT step immediately reads 1/6
+     * instead of 0%, and holding the current angle visibly climbs toward
+     * the next step so the user can tell the scan is alive.
+     */
+    public func displayProgress(for state: OrbitGuidanceState) -> Float {
+        var credit = Float(filledBins.count)
+        switch state {
+        case .holdSteady(let bin, let p) where !filledBins.contains(bin):
+            credit += p * 0.9
+        case .capturing(let bin) where !filledBins.contains(bin):
+            credit += 1
+        default:
+            break
+        }
+        return min(1, credit / Float(OrbitBin.allCases.count))
+    }
+
     public func mountViewCounts() -> [String: Int] {
         var counts: [String: Int] = [:]
         for frame in frames {

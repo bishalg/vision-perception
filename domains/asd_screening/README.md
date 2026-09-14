@@ -130,3 +130,28 @@ if (report.is_valid) {
   }
 }
 ```
+
+---
+
+## 5. Swift Sensor Kit (`CurvAsdGazeKit`, `ios/`)
+
+Reusable Swift 6 package linked by `apps/ios_asd_gaze_app`. TrueDepth
+`ARFaceAnchor` 3D face-mesh tracking → 60 Hz numerical gaze telemetry; zero
+raw video is ever stored.
+
+| Unit | Role |
+| :--- | :--- |
+| `GazeSessionController` | ARSession ownership, per-frame face-anchor ingest, head-pose + distance |
+| `ScreenRaycaster` | Face/eye 3D transforms + `lookAtPoint` → screen-point gaze projection |
+| `GazeProcessingActor` | OneEuro filtering, blink rejection, fixation/saccade (I-VT) pipeline |
+| `GazeCalibrationProfile` | 5-point bubble calibration mapping |
+| `StimulusAOITracker` | Dynamic AOI dwell, GeoPref split-screen scoring |
+| `FacialAffectMetrics` | 52-field FACS blendshape affect vector |
+| `ProceduralOculomotorStimulusView` | Code-drawn pursuit/saccade targets (no video files) |
+| `BiomarkerClassificationEngine` | On-device biomarker scoring → risk stratum |
+| `SessionVaultManager` / `GazeQualityGate` | AES-GCM-256 session vault, validity gating |
+
+61 unit tests (`ios/Tests/`); app-level suites (playlist integrity, CareKit,
+ResearchKit sync, report generation) live in `apps/ios_asd_gaze_app/Tests/`
+(55 tests). App features and screening flow:
+[`apps/ios_asd_gaze_app/README.md`](../../apps/ios_asd_gaze_app/README.md).

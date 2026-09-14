@@ -48,3 +48,22 @@ is **robust result analysis**, not a new detector. See
 wire `CreaseChainLinker` as the named-line source of truth, emit geometric
 `palm_analysis` / `user_report`, and stop sending hundreds of raw ridge
 candidates to the VLM.
+
+## Orbit mount relief (3D scan backend)
+
+`MountReliefAnalyzer::analyzeOrbitSession` consumes `curv_orbit_session_v1`
+JSON (6 keyframe bins: flat/tilts/thumb-twists/fingers-forward) and emits a
+`MountReliefMap`: per-mount `height_mm`, relative ranking, prominence grade
+(`Deficient` / `Average` / `Elevated`), and `venus_elevated`.
+
+Three sourcing tiers, best-available-wins per session:
+- `orbit_depth_v1` — hardware depth (`depth_mm` per mount from LiDAR/disparity
+  stills, plane-subtracted, z-scored for grading).
+- `orbit_metric_v1` — parallax disparity vs the flat reference landmarks,
+  scaled by the 80 mm metacarpal prior and gravity-measured viewpoint rotation
+  (`curv::surface::SurfaceRelief::estimateMetricRelief`), ±6 mm clamped.
+- `orbit_tilt_proxy_v1` — tilt-exposure fallback, relative only.
+
+Exposed over the C-ABI as `curv_analyze_orbit_session_json`
+(`adapters/capi`). Covered by `tests/palm/test_mount_relief.cpp` and the iOS
+`OrbitCaptureTests` suite.

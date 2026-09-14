@@ -20,6 +20,9 @@ public struct LiquidGlassHUD<OverlayContent: View, BottomLeading: View, BottomTr
     public let bottomLeading: BottomLeading
     public let bottomTrailing: BottomTrailing
     public let onManualCapture: () -> Void
+    /// When false the bottom shutter button is hidden (e.g. auto-capture
+    /// orbit mode, where a manual still capture would corrupt the session).
+    public var showsShutter: Bool = true
     /// Device roll vs gravity in degrees (0 = vertical). nil = use live gyro.
     public var deviceRollDeg: Float?
 
@@ -32,6 +35,7 @@ public struct LiquidGlassHUD<OverlayContent: View, BottomLeading: View, BottomTr
         statusMessageOverride: String? = nil,
         deviceRollDeg: Float? = nil,
         onManualCapture: @escaping () -> Void,
+        showsShutter: Bool = true,
         @ViewBuilder bottomLeading: () -> BottomLeading,
         @ViewBuilder bottomTrailing: () -> BottomTrailing,
         @ViewBuilder overlayContent: () -> OverlayContent
@@ -42,6 +46,7 @@ public struct LiquidGlassHUD<OverlayContent: View, BottomLeading: View, BottomTr
         self.statusMessageOverride = statusMessageOverride
         self.deviceRollDeg = deviceRollDeg
         self.onManualCapture = onManualCapture
+        self.showsShutter = showsShutter
         self.bottomLeading = bottomLeading()
         self.bottomTrailing = bottomTrailing()
         self.overlayContent = overlayContent()
@@ -180,23 +185,25 @@ public struct LiquidGlassHUD<OverlayContent: View, BottomLeading: View, BottomTr
                         }
                         .padding(.horizontal, 16)
 
-                        Button(action: onManualCapture) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color.black.opacity(0.55))
-                                    .frame(width: 76, height: 76)
-                                    .overlay(Circle().strokeBorder(Color.white.opacity(0.6), lineWidth: 2))
+                        if showsShutter {
+                            Button(action: onManualCapture) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.black.opacity(0.55))
+                                        .frame(width: 76, height: 76)
+                                        .overlay(Circle().strokeBorder(Color.white.opacity(0.6), lineWidth: 2))
 
-                                Circle()
-                                    .fill(isReady ? OverlayPalette.emerald : Color.white)
-                                    .frame(width: 60, height: 60)
-                                    .shadow(
-                                        color: (isReady ? OverlayPalette.emerald : Color.white).opacity(0.5),
-                                        radius: 8
-                                    )
+                                    Circle()
+                                        .fill(isReady ? OverlayPalette.emerald : Color.white)
+                                        .frame(width: 60, height: 60)
+                                        .shadow(
+                                            color: (isReady ? OverlayPalette.emerald : Color.white).opacity(0.5),
+                                            radius: 8
+                                        )
+                                }
                             }
+                            .padding(.bottom, 40)
                         }
-                        .padding(.bottom, 40)
                     }
                 }
             }
@@ -250,6 +257,7 @@ extension LiquidGlassHUD where BottomLeading == EmptyView, BottomTrailing == Emp
         statusMessageOverride: String? = nil,
         deviceRollDeg: Float? = nil,
         onManualCapture: @escaping () -> Void,
+        showsShutter: Bool = true,
         @ViewBuilder overlayContent: () -> OverlayContent
     ) {
         self.init(
@@ -259,6 +267,7 @@ extension LiquidGlassHUD where BottomLeading == EmptyView, BottomTrailing == Emp
             statusMessageOverride: statusMessageOverride,
             deviceRollDeg: deviceRollDeg,
             onManualCapture: onManualCapture,
+            showsShutter: showsShutter,
             bottomLeading: { EmptyView() },
             bottomTrailing: { EmptyView() },
             overlayContent: overlayContent

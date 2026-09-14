@@ -16,6 +16,8 @@ public struct CameraOverlayHost<OverlayContent: View, BottomLeading: View, Botto
     public let bottomTrailing: BottomTrailing
     public let overlayContent: OverlayContent
     public let onManualCapture: () -> Void
+    /// Hides the bottom shutter button (auto-capture modes supply their own UI).
+    public let showsShutter: Bool
 
     public init(
         profile: OverlayProfile,
@@ -26,6 +28,7 @@ public struct CameraOverlayHost<OverlayContent: View, BottomLeading: View, Botto
         statusMessageOverride: String? = nil,
         deviceRollDeg: Float? = nil,
         onManualCapture: @escaping () -> Void,
+        showsShutter: Bool = true,
         @ViewBuilder bottomLeading: () -> BottomLeading,
         @ViewBuilder bottomTrailing: () -> BottomTrailing,
         @ViewBuilder overlayContent: () -> OverlayContent
@@ -38,6 +41,7 @@ public struct CameraOverlayHost<OverlayContent: View, BottomLeading: View, Botto
         self.statusMessageOverride = statusMessageOverride
         self.deviceRollDeg = deviceRollDeg
         self.onManualCapture = onManualCapture
+        self.showsShutter = showsShutter
         self.bottomLeading = bottomLeading()
         self.bottomTrailing = bottomTrailing()
         self.overlayContent = overlayContent()
@@ -55,36 +59,15 @@ public struct CameraOverlayHost<OverlayContent: View, BottomLeading: View, Botto
                 statusMessageOverride: statusMessageOverride,
                 deviceRollDeg: deviceRollDeg,
                 onManualCapture: onManualCapture,
+                showsShutter: showsShutter,
                 bottomLeading: { bottomLeading },
                 bottomTrailing: { bottomTrailing }
             ) {
                 overlayContent
             }
 
-            VStack {
-                HStack(spacing: 6) {
-                    Image(systemName: "sparkles")
-                        .foregroundColor(OverlayPalette.emerald)
-                    Text(profile.brand)
-                        .font(.system(size: 13, weight: .regular))
-                        .foregroundColor(.white.opacity(0.7))
-                    Text("/")
-                        .foregroundColor(.white.opacity(0.4))
-                    Text(profile.productTitle)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.white)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(
-                    Capsule()
-                        .fill(.ultraThinMaterial)
-                        .overlay(Capsule().stroke(Color.white.opacity(0.2), lineWidth: 1))
-                )
-                .padding(.top, 10)
-
-                Spacer()
-            }
+            // NOTE: no brand breadcrumb — the top notch area stays fully clear
+            // for the mode capsule and scan progress.
 
             if isAnalyzing {
                 ZStack {
@@ -122,6 +105,7 @@ extension CameraOverlayHost where BottomLeading == EmptyView, BottomTrailing == 
         statusMessageOverride: String? = nil,
         deviceRollDeg: Float? = nil,
         onManualCapture: @escaping () -> Void,
+        showsShutter: Bool = true,
         @ViewBuilder overlayContent: () -> OverlayContent
     ) {
         self.init(
@@ -133,6 +117,7 @@ extension CameraOverlayHost where BottomLeading == EmptyView, BottomTrailing == 
             statusMessageOverride: statusMessageOverride,
             deviceRollDeg: deviceRollDeg,
             onManualCapture: onManualCapture,
+            showsShutter: showsShutter,
             bottomLeading: { EmptyView() },
             bottomTrailing: { EmptyView() },
             overlayContent: overlayContent

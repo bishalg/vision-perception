@@ -137,4 +137,18 @@ Stage 1: Static Images ✅          ──►  Stage 2: Recorded Video ✅  ─�
 - [ ] **Milestone 14: Phase 5 Flood Alert Production Demo** — scheduled ingest → flood heuristics → alert banner on twin
 - [ ] Next phase: mobile packaging remains parallel track
 
+---
+
+## 7. Mobile Apps (parallel track)
+
+| App | What it does today |
+| :--- | :--- |
+| **Palm reader** (`apps/ios_palm_app`) | Still / **3D Orbit** / Close-Up / Fingertips capture modes. The guided 6-angle orbit scan builds a mount-topography map with automatic depth sourcing — hardware LiDAR (`orbit_depth_v1`) → metric parallax in mm (`orbit_metric_v1`) → tilt fallback — analysed on-device via `curv_analyze_orbit_session_json`, with human-in-the-loop crease correction feeding the Samudrika reading. |
+| **Pediatric gaze collector** (`apps/ios_asd_gaze_app`) | TrueDepth `ARFaceAnchor` 3D face-mesh eye tracking at 60 Hz (screen-raycast gaze + 52 FACS affect metrics, zero raw video stored). Onboarding + `ChildProfile`, Standard-30 s / Comprehensive-60 s stimulus batteries, offline-first stimulus manager with download gate, procedural oculomotor stimuli, 5-point bubble calibration, biomarker detail + risk-stratification views, replay heatmaps, doctor PDF reports, CareKit/ResearchKit loop. |
+| Shared camera chrome | `apps/mobile_overlay` — domain-agnostic Liquid Glass HUD, orbit guidance state machine, palm/vastu plugins (iOS SwiftPM + Android library). |
+
+Details: [`apps/ios_palm_app/README.md`](apps/ios_palm_app/README.md),
+[`apps/ios_asd_gaze_app/README.md`](apps/ios_asd_gaze_app/README.md),
+[`apps/mobile_overlay/README.md`](apps/mobile_overlay/README.md).
+
 

@@ -51,11 +51,15 @@ extension PalmAnalysisViewModel {
         now: CFTimeInterval
     ) {
         guard !isCapturing else { return }
+        // NOTE: no device-roll argument — tilt bins are measured on hand
+        // landmarks, so the phone may stay perfectly still.
+        // Pose is passed whenever a hand is framed (not only fully in
+        // frame) so the guidance can coach the user into place instead of
+        // sitting silent at 0%.
         let eval = orbitGuidance.evaluate(
-            pose: tipsOK ? pose : nil,
+            pose: pose,
             landmarks: landmarks,
             photometrics: photometrics,
-            deviceRollDeg: deviceTiltProvider.deviceRollDeg,
             timestamp: now
         )
         orbitGuidance.setLastState(eval.state)
@@ -69,7 +73,8 @@ extension PalmAnalysisViewModel {
             if eval.shouldCapture, let landmarks, let pose {
                 self.captureOrbitKeyframe(landmarks: landmarks, bin: {
                     if case .capturing(let b) = eval.state { return b }
-                    return self.orbitGuidance.orbitSession.filledBins.isEmpty ? .flatCenter : .tiltLeft
+                    let filled = self.orbitGuidance.orbitSession.filledBins
+                    return OrbitBin.allCases.first(where: { !filled.contains($0) }) ?? .flatCenter
                 }())
             }
         }

@@ -14,12 +14,12 @@ public enum OrbitBin: String, CaseIterable, Codable, Sendable {
 
     public var displayName: String {
         switch self {
-        case .flatCenter: return "Hold palm flat, centered"
-        case .tiltLeft: return "Tilt hand left ~20°"
-        case .tiltRight: return "Tilt hand right ~20°"
-        case .thumbToward: return "Rotate thumb toward camera"
-        case .thumbAway: return "Rotate thumb away from camera"
-        case .tiltForward: return "Tilt fingers toward camera"
+        case .flatCenter: return "Hold your palm flat"
+        case .tiltLeft: return "Tilt your hand a little to the left"
+        case .tiltRight: return "Tilt your hand a little to the right"
+        case .thumbToward: return "Turn your thumb slightly toward you"
+        case .thumbAway: return "Turn your thumb slightly away"
+        case .tiltForward: return "Tip your fingertips toward the camera"
         }
     }
 
@@ -82,12 +82,12 @@ public enum OrbitBin: String, CaseIterable, Codable, Sendable {
 
     public var coachingTip: String {
         switch self {
-        case .flatCenter: return "Align palm flat to establish base 3D hand reference plane"
-        case .tiltLeft: return "Tilt hand left ~20° to expose Thenar & Jupiter elevation contours"
-        case .tiltRight: return "Tilt hand right ~20° to expose Hypothenar & Mercury relief"
-        case .thumbToward: return "Rotate thumb slightly toward camera to map thenar muscle pad"
-        case .thumbAway: return "Rotate thumb slightly outward to capture hypothenar slope"
-        case .tiltForward: return "Tilt fingers forward to map interdigital mount summits"
+        case .flatCenter: return "Face your open palm flat to the camera. This sets the base level."
+        case .tiltLeft: return "Keep the phone steady — slowly tilt only your hand left. When the ring turns green, hold still."
+        case .tiltRight: return "Keep the phone steady — slowly tilt only your hand right. When the ring turns green, hold still."
+        case .thumbToward: return "Keep the phone steady — turn your thumb a little toward the camera, then hold still."
+        case .thumbAway: return "Keep the phone steady — turn your thumb a little away from the camera, then hold still."
+        case .tiltForward: return "Keep the phone steady — tip your fingers slightly toward the camera, then hold still."
         }
     }
 }

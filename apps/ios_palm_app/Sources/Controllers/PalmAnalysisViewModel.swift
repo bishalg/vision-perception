@@ -430,6 +430,9 @@ public final class PalmAnalysisViewModel: ObservableObject {
     }
 
     public func manualCapture() {
+        // The still shutter is hidden in orbit mode; guard anyway so a stray
+        // tap can never fire a single-photo analysis mid-orbit.
+        guard scanMode != .orbitScan else { return }
         guard !isCapturing && !isAnalyzing && !showResultViewer, !detectedLandmarks.isEmpty else { return }
         guard let framing = HandLandmarkPose.framing(from: detectedLandmarks), framing.isFullyInFrame else { return }
         triggerCapture(landmarks: detectedLandmarks)

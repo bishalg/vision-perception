@@ -44,21 +44,69 @@ Boots the first available iPhone simulator, builds, installs, and launches autom
 
 ---
 
-## 3. Directory Layout
+## 3. Screening Flow & Stimulus Batteries
+
+1. **Onboarding** (`OnboardingFlowView`): caregiver intro → `ChildProfile`
+   (age band 12–60 mo, session language, 30 s vs 60 s battery) → consent.
+2. **Stimulus battery** (`StimulusPlaylist`): age-matched clinical clip list —
+   **Standard 30 s** express battery (4 clips) or **Comprehensive 60 s** battery
+   (8 clips). `OnDemandStimulusManager` resolves playback offline-first;
+   `StimulusDownloadGateView` blocks the session until clips are cached and
+   `StimulusVideoPlayerView` plays them gaze-synced.
+3. **Procedural oculomotor stimuli** (`ProceduralOculomotorStimulusView` in
+   `CurvAsdGazeKit`): code-drawn smooth-pursuit / saccade targets for
+   calibration and oculomotor probes — no video files needed.
+4. **3D face-mesh eye tracking**: every frame reads the TrueDepth
+   `ARFaceAnchor` (face + per-eye 3D transforms, `lookAtPoint`, 52 FACS
+   blendshapes) and `ScreenRaycaster` projects gaze onto screen AOIs at
+   60 Hz. Zero raw video is ever stored — only numerical telemetry,
+   AES-GCM-256 encrypted (`SessionVaultManager`).
+5. **Results & care loop**: biomarker detail views, AI risk-stratification
+   matrix, replay heatmaps, doctor PDF report (`DoctorReportGenerator`),
+   CareKit milestones/diaries, ResearchKit study sync.
+
+## 4. Directory Layout
 
 ```text
 apps/ios_asd_gaze_app/
 ├── README.md                           # This setup guide
 ├── project.yml                         # XcodeGen project specification
-└── Sources/
-    ├── App/
-    │   └── AsdGazeApp.swift            # SwiftUI App entry point & root router
-    ├── UI/
-    │   └── LiquidGlassTheme.swift      # GlassCard, GlassInput & color tokens
-    └── Views/
-        ├── MainGazeScannerView.swift   # Palm-scanner style side-by-side live scanner
-        ├── GazeSessionResultView.swift # Post-capture analysis & clinical evidence report
-        ├── CaregiverDashboardView.swift# Longitudinal milestones & history
-        ├── BubbleCalibrationView.swift # Interactive 5-point calibration target
-        └── StimulusScreeningView.swift # Synchronized video player + real-time gaze HUD
+├── Sources/
+│   ├── App/
+│   │   └── AsdGazeApp.swift            # SwiftUI App entry point & root router
+│   ├── Models/
+│   │   ├── ChildProfile.swift          # Age band, language, 30/60 s battery
+│   │   ├── StimulusPlaylist.swift      # Standard-30 s / Comprehensive-60 s batteries
+│   │   ├── OnDemandStimulusManager.swift # Offline-first stimulus resolution
+│   │   ├── ResearchKitStudyModels/Store/SyncService.swift
+│   │   ├── CarePlanModels.swift        # CareKit tasks, diary, milestones
+│   │   ├── CareKitClinicalStore.swift
+│   │   ├── DoctorReportGenerator.swift # PDF clinical report
+│   │   └── GazeSessionRecord.swift
+│   ├── UI/
+│   │   ├── AppLocalizer.swift
+│   │   └── LiquidGlassTheme.swift      # GlassCard, GlassInput & color tokens
+│   └── Views/
+│       ├── SplashScreenView.swift
+│       ├── OnboardingFlowView.swift
+│       ├── MCHATSurveyModalView.swift
+│       ├── ResearchStudyConsentView.swift
+│       ├── GazePositioningStepView.swift
+│       ├── BubbleCalibrationView.swift # Interactive 5-point calibration target
+│       ├── MainGazeScannerView.swift
+│       ├── ARFaceCameraView.swift      # TrueDepth face-mesh camera feed
+│       ├── StimulusScreeningView.swift # Legacy screening container
+│       ├── GazeStimulusScreeningView.swift # Playlist-driven screening session
+│       ├── StimulusVideoPlayerView.swift
+│       ├── StimulusDownloadGateView.swift
+│       ├── GazeScreeningWizardView.swift
+│       ├── GazeSessionResultView.swift
+│       ├── GazeReplayHeatmapFullScreenView.swift
+│       ├── BiomarkerDetailViews.swift
+│       ├── BiomarkerAffectAndQualityViews.swift
+│       ├── BiomarkerRiskStratificationView.swift
+│       ├── CaregiverDashboardView.swift
+│       └── CareKitDashboardModals.swift
+└── Tests/                              # 55 tests: playlist integrity, CareKit,
+                                        # ResearchKit sync, report generation
 ```

@@ -43,3 +43,24 @@ apps/mobile_overlay/
 | :--- | :--- | :--- |
 | `apps/ios_palm_app`, `apps/android_palm_app` | Palm | `palm` |
 | `apps/ios_vastu_app`, `apps/android_vastu_app` | Vastu | `floor_plan` |
+
+## Orbit guidance (palm 3D scan)
+
+`CurvCameraOverlay/Guidance/` hosts the shared 6-bin orbit state machine used
+by the palm 3D scan:
+
+- `OrbitBin` — Flat / Tilt Left / Tilt Right / Thumb In / Thumb Out /
+  Fingers Up, with plain-language coaching strings.
+- `OrbitCaptureGuidance.evaluate` — hand-measured pose gates (MCP-axis
+  rotation / fingertip excursion vs the flat reference; **device roll is never
+  required**), per-bin rigidity references, explicit setup states (`fitHand`,
+  `moveCloser`, `addLight`), continuous `displayProgress` with partial credit
+  for the active hold.
+- `OrbitCaptureSession` — serializable `curv_orbit_session_v1` evidence bag
+  (frames, reference landmarks/gravity, optional `depth_mm` hardware channel).
+- `OrbitGuidanceOverlayView` / `OrbitProgressHeaderView` — center arrow UI and
+  the progress header (rendered in the app's bottom card; top stays clear).
+- `LiquidGlassHUD`/`CameraOverlayHost` take `showsShutter` (default `true`) so
+  auto-capture modes can replace the still shutter with their own UI. The HUD
+  reticle subtree is `allowsHitTesting(false)` — tappable controls must live as
+  siblings of the host, never inside reticle content.

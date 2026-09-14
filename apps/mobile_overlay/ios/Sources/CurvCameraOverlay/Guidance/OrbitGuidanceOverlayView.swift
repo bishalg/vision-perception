@@ -34,14 +34,21 @@ public struct OrbitGuidanceOverlayView: View {
         return nil
     }
 
-    private var progressPercent: Int {
-        Int(round(session.coverageFraction * 100))
-    }
-
     private var isGoodAngle: Bool {
         if case .holdSteady = state { return true }
         if case .capturing = state { return true }
         return false
+    }
+
+    /// Center arrow/badge only make sense once the hand is trackable in a
+    /// target angle — during setup states the bottom card owns the message.
+    private var showsDirectionUI: Bool {
+        switch state {
+        case .coach, .holdSteady, .capturing, .rejected:
+            return true
+        default:
+            return false
+        }
     }
 
     private var isRejected: Bool {
@@ -51,65 +58,13 @@ public struct OrbitGuidanceOverlayView: View {
 
     public var body: some View {
         VStack(spacing: 12) {
-            // ── Top Header: Overall % and discrete angle pips ──
-            VStack(spacing: 8) {
-                HStack {
-                    Image(systemName: "rotate.3d")
-                        .foregroundColor(OverlayPalette.emerald)
-                    Text("3D HAND MESH SCAN")
-                        .font(.system(size: 11, weight: .heavy, design: .rounded))
-                        .foregroundColor(.white.opacity(0.85))
-                    Spacer()
-                    Text("\(progressPercent)% • \(session.filledBins.count)/\(OrbitBin.allCases.count)")
-                        .font(.system(size: 12, weight: .bold, design: .monospaced))
-                        .foregroundColor(session.coverageFraction >= 1.0 ? OverlayPalette.emerald : .white)
-                }
-
-                // Progress track
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(Color.white.opacity(0.18))
-                            .frame(height: 4)
-
-                        Capsule()
-                            .fill(
-                                LinearGradient(
-                                    colors: [OverlayPalette.emerald, Color.cyan],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                            .frame(width: max(0, geo.size.width * CGFloat(session.coverageFraction)), height: 4)
-                            .animation(.spring(response: 0.35), value: session.coverageFraction)
-                    }
-                }
-                .frame(height: 4)
-
-                // 6 Angle Pips
-                HStack(spacing: 6) {
-                    ForEach(OrbitBin.allCases, id: \.rawValue) { bin in
-                        pipView(for: bin)
-                    }
-                }
-                .padding(.top, 4)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.black.opacity(0.68))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(Color.white.opacity(0.20), lineWidth: 0.8)
-                    )
-            )
-            .padding(.horizontal, 16)
-
+            // NOTE: the progress header (%, bar, angle pips) now lives in the
+            // bottom scan card — top of the screen stays clear. Center keeps
+            // only the direction arrow + live status badge.
             Spacer()
 
             // ── Center Motion Direction & Coaching Feedback ──
-            if let bin = activeBin, session.coverageFraction < 1.0 {
+            if showsDirectionUI, let bin = activeBin, session.coverageFraction < 1.0 {
                 VStack(spacing: 8) {
                     // Animated Direction Indicator
                     ZStack {
@@ -135,22 +90,9 @@ public struct OrbitGuidanceOverlayView: View {
                             .offset(x: horizontalOffset(for: bin), y: verticalOffset(for: bin))
                     }
 
-                    // Real-time Status Badge
+                    // Real-time Status Badge (the what-to-do instruction lives in
+                    // the bottom scan card, so the hand stays unobstructed here).
                     statusBadge(for: bin)
-
-                    // Educational Coaching Tip
-                    Text(bin.coachingTip)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.white.opacity(0.85))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 6)
-                        .background(
-                            Capsule()
-                                .fill(Color.black.opacity(0.55))
-                                .overlay(Capsule().stroke(Color.white.opacity(0.16), lineWidth: 0.6))
-                        )
-                        .padding(.horizontal, 24)
                 }
                 .transition(.scale.combined(with: .opacity))
             } else if session.coverageFraction >= 1.0 {
@@ -181,47 +123,6 @@ public struct OrbitGuidanceOverlayView: View {
                 arrowPulse = true
             }
         }
-    }
-
-    // ── Angle Pip ──
-    @ViewBuilder
-    private func pipView(for bin: OrbitBin) -> some View {
-        let isDone = session.filledBins.contains(bin)
-        let isActive = (bin == activeBin && !isDone)
-
-        HStack(spacing: 3) {
-            if isDone {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 8, weight: .heavy))
-                    .foregroundColor(.white)
-            } else {
-                Text(bin.arrowSymbol)
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(isActive ? (isGoodAngle ? OverlayPalette.emerald : .white) : .white.opacity(0.5))
-            }
-            Text(bin.shortLabel)
-                .font(.system(size: 9, weight: isActive ? .bold : .medium, design: .rounded))
-                .foregroundColor(isDone ? .white : (isActive ? .white : .white.opacity(0.55)))
-        }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 4)
-        .background(
-            Capsule()
-                .fill(
-                    isDone
-                        ? OverlayPalette.emeraldDeep.opacity(0.85)
-                        : (isActive ? Color.white.opacity(0.22) : Color.white.opacity(0.08))
-                )
-                .overlay(
-                    Capsule()
-                        .stroke(
-                            isDone
-                                ? OverlayPalette.emerald
-                                : (isActive ? (isGoodAngle ? OverlayPalette.emerald : Color.white.opacity(0.6)) : Color.clear),
-                            lineWidth: isActive ? 1.4 : 0.8
-                        )
-                )
-        )
     }
 
     // ── Real-time Status Badge ──
@@ -311,5 +212,124 @@ public struct OrbitGuidanceOverlayView: View {
         case .tiltForward: return arrowPulse ? -6 : 0
         default: return 0
         }
+    }
+}
+
+/**
+ * Progress header for the 3D orbit scan: title, overall %, progress track,
+ * and the 6 discrete angle pips. Rendered inside the bottom scan card so
+ * the top of the screen stays clear.
+ */
+public struct OrbitProgressHeaderView: View {
+    public let session: OrbitCaptureSession
+    public let state: OrbitGuidanceState
+
+    public init(session: OrbitCaptureSession, state: OrbitGuidanceState) {
+        self.session = session
+        self.state = state
+    }
+
+    private var activeBin: OrbitBin? {
+        switch state {
+        case .coach(let bin), .holdSteady(let bin, _), .capturing(let bin):
+            return bin
+        default:
+            return OrbitBin.allCases.first(where: { !session.filledBins.contains($0) })
+        }
+    }
+
+    private var isGoodAngle: Bool {
+        if case .holdSteady = state { return true }
+        if case .capturing = state { return true }
+        return false
+    }
+
+    private var progressPercent: Int {
+        Int(round(session.displayProgress(for: state) * 100))
+    }
+
+    public var body: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Image(systemName: "rotate.3d")
+                    .foregroundColor(OverlayPalette.emerald)
+                Text("3D HAND MESH SCAN")
+                    .font(.system(size: 11, weight: .heavy, design: .rounded))
+                    .foregroundColor(.white.opacity(0.85))
+                Spacer()
+                Text("\(progressPercent)% • \(session.filledBins.count)/\(OrbitBin.allCases.count)")
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .foregroundColor(session.coverageFraction >= 1.0 ? OverlayPalette.emerald : .white)
+            }
+
+            // Progress track
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.18))
+                        .frame(height: 4)
+
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [OverlayPalette.emerald, Color.cyan],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: max(0, geo.size.width * CGFloat(session.displayProgress(for: state))), height: 4)
+                        .animation(.spring(response: 0.35), value: session.coverageFraction)
+                }
+            }
+            .frame(height: 4)
+
+            // 6 Angle Pips
+            HStack(spacing: 6) {
+                ForEach(OrbitBin.allCases, id: \.rawValue) { bin in
+                    pipView(for: bin)
+                }
+            }
+            .padding(.top, 4)
+        }
+    }
+
+    @ViewBuilder
+    private func pipView(for bin: OrbitBin) -> some View {
+        let isDone = session.filledBins.contains(bin)
+        let isActive = (bin == activeBin && !isDone)
+
+        HStack(spacing: 3) {
+            if isDone {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 8, weight: .heavy))
+                    .foregroundColor(.white)
+            } else {
+                Text(bin.arrowSymbol)
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(isActive ? (isGoodAngle ? OverlayPalette.emerald : .white) : .white.opacity(0.5))
+            }
+            Text(bin.shortLabel)
+                .font(.system(size: 9, weight: isActive ? .bold : .medium, design: .rounded))
+                .foregroundColor(isDone ? .white : (isActive ? .white : .white.opacity(0.55)))
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .background(
+            Capsule()
+                .fill(
+                    isDone
+                        ? OverlayPalette.emeraldDeep.opacity(0.85)
+                        : (isActive ? Color.white.opacity(0.22) : Color.white.opacity(0.08))
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(
+                            isDone
+                                ? OverlayPalette.emerald
+                                : (isActive ? (isGoodAngle ? OverlayPalette.emerald : Color.white.opacity(0.6)) : Color.clear),
+                            lineWidth: isActive ? 1.4 : 0.8
+                        )
+                )
+        )
     }
 }
