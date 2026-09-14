@@ -50,6 +50,8 @@
 		AA1111AA1111AA11AA111111 /* GazePositioningStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2222BB2222BB22BB222222 /* GazePositioningStepView.swift */; };
 		AA3333CC3333CC33CC333333 /* GazeScreeningWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA4444DD4444DD44DD444444 /* GazeScreeningWizardView.swift */; };
 		AA5555EE5555EE55EE555555 /* GazeStimulusScreeningView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA6666FF6666FF66FF666666 /* GazeStimulusScreeningView.swift */; };
+		BB1111AA1111AA11AA111111 /* BiomarkerDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2222BB2222BB22BB222222 /* BiomarkerDetailViews.swift */; };
+		BB3333CC3333CC33CC333333 /* GazeReplayHeatmapFullScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4444DD4444DD44DD444444 /* GazeReplayHeatmapFullScreenView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -103,6 +105,8 @@
 		AA2222BB2222BB22BB222222 /* GazePositioningStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazePositioningStepView.swift; sourceTree = "<group>"; };
 		AA4444DD4444DD44DD444444 /* GazeScreeningWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeScreeningWizardView.swift; sourceTree = "<group>"; };
 		AA6666FF6666FF66FF666666 /* GazeStimulusScreeningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeStimulusScreeningView.swift; sourceTree = "<group>"; };
+		BB2222BB2222BB22BB222222 /* BiomarkerDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiomarkerDetailViews.swift; sourceTree = "<group>"; };
+		BB4444DD4444DD44DD444444 /* GazeReplayHeatmapFullScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeReplayHeatmapFullScreenView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -147,6 +151,8 @@
 				AA4444DD4444DD44DD444444 /* GazeScreeningWizardView.swift */,
 				448AD29ECC98B480318ECCA5 /* GazeSessionResultView.swift */,
 				AA6666FF6666FF66FF666666 /* GazeStimulusScreeningView.swift */,
+				BB2222BB2222BB22BB222222 /* BiomarkerDetailViews.swift */,
+				BB4444DD4444DD44DD444444 /* GazeReplayHeatmapFullScreenView.swift */,
 				3111366AAA094728086AD5E8 /* MainGazeScannerView.swift */,
 				EF98BBCFAACCAC600C07B3B9 /* MCHATSurveyModalView.swift */,
 				A63371C06337F00E97F6D0C9 /* ResearchStudyConsentView.swift */,
@@ -375,6 +381,8 @@
 				B14E9B1D6BD842D04EF1FF39 /* GazeSessionRecord.swift in Sources */,
 				BAA4122DA672A103917B20C7 /* GazeSessionResultView.swift in Sources */,
 				AA5555EE5555EE55EE555555 /* GazeStimulusScreeningView.swift in Sources */,
+				BB1111AA1111AA11AA111111 /* BiomarkerDetailViews.swift in Sources */,
+				BB3333CC3333CC33CC333333 /* GazeReplayHeatmapFullScreenView.swift in Sources */,
 				097C3A01FD450EFF0EFD87D1 /* LiquidGlassTheme.swift in Sources */,
 				AA7777AA7777AA77AA777777 /* AppLocalizer.swift in Sources */,
 				A9BFB17FF83C49850FCBA258 /* MCHATSurveyModalView.swift in Sources */,
