@@ -43,7 +43,7 @@ public struct MainGazeScannerView: View {
     @State private var elapsedSeconds: Double = 0.0
     @State private var cartoonBlink: Bool = false
     @State private var cartoonBounce: CGFloat = 0.0
-    @State private var presentedReport: (summary: GazeSessionReportSummary, frames: [GazeFrame])?
+    @State private var presentedReport: (summary: GazeSessionReportSummary, frames: [GazeFrame], classification: BiomarkerClassificationResult)?
 
     public var onClose: (() -> Void)?
     public let onComplete: ((GazeSessionReportSummary, [GazeFrame]) -> Void)?
@@ -180,6 +180,7 @@ public struct MainGazeScannerView: View {
                     GazeSessionResultView(
                         summary: rep.summary,
                         recordedFrames: rep.frames,
+                        classification: rep.classification,
                         onDismiss: { presentedReport = nil },
                         onRetake: {
                             presentedReport = nil
@@ -542,11 +543,42 @@ public struct MainGazeScannerView: View {
             ) {
                 sessionTimer?.invalidate()
                 let summary = controller.stopSession()
+                let frames = controller.recordedFrames
+
+                // 1. Run ML inference on Apple Neural Engine (ANE)
+                let classification = BiomarkerClassificationEngine.shared.classifySync(summary: summary)
+
+                // 2. Batch encrypt & persist volatile RAM frames to disk atomically off main thread
+                Task.detached(priority: .userInitiated) {
+                    let vault = SessionVaultManager()
+                    let header = SessionHeader(
+                        sessionId: summary.sessionId,
+                        participantToken: "child-\(summary.sessionId.prefix(6))",
+                        stimulusBattery: "GeoPref_v1",
+                        stimulusDurationSec: summary.durationSec
+                    )
+                    _ = try? vault.saveSession(
+                        header: header,
+                        frames: frames,
+                        report: summary,
+                        classification: classification
+                    )
+                }
+
+                // 3. Mark in CarePlan and CareKit store
                 CarePlanStore.shared.markScreeningCompleted(socialScore: summary.socialPreferenceScore)
+                CareKitClinicalStore.shared.recordScreeningOutcome(
+                    socialScore: summary.socialPreferenceScore,
+                    validFramePercentage: summary.validRatio * 100.0,
+                    knownTasks: CarePlanStore.shared.tasks,
+                    riskScore: classification.riskScore,
+                    riskStratification: classification.riskStratification.rawValue
+                )
+
                 if let onComplete {
-                    onComplete(summary, controller.recordedFrames)
+                    onComplete(summary, frames)
                 } else {
-                    presentedReport = (summary, controller.recordedFrames)
+                    presentedReport = (summary, frames, classification)
                 }
             }
         }

@@ -26,11 +26,12 @@ public struct SessionVaultManager: Sendable {
         }
     }
 
-    /// Encrypts and writes session header, frames, and report to disk.
+    /// Encrypts and writes session header, frames, report, and optional classification to disk as a single post-session batch.
     public func saveSession(
         header: SessionHeader,
         frames: [GazeFrame],
-        report: GazeSessionReportSummary
+        report: GazeSessionReportSummary,
+        classification: BiomarkerClassificationResult? = nil
     ) throws -> URL {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
@@ -46,6 +47,9 @@ public struct SessionVaultManager: Sendable {
         }
         if let reportData = try? encoder.encode(report), let reportStr = String(data: reportData, encoding: .utf8) {
             lines.append(reportStr)
+        }
+        if let cl = classification, let clData = try? encoder.encode(cl), let clStr = String(data: clData, encoding: .utf8) {
+            lines.append(clStr)
         }
 
         let plainText = lines.joined(separator: "\n")
@@ -63,6 +67,30 @@ public struct SessionVaultManager: Sendable {
         return fileURL
     }
 
+    /// Asynchronously batches, encrypts, and writes session to disk off the main thread.
+    public func saveSessionBatchAsync(
+        header: SessionHeader,
+        frames: [GazeFrame],
+        report: GazeSessionReportSummary,
+        classification: BiomarkerClassificationResult? = nil
+    ) async throws -> URL {
+        return try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    let url = try self.saveSession(
+                        header: header,
+                        frames: frames,
+                        report: report,
+                        classification: classification
+                    )
+                    continuation.resume(returning: url)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
     /// Reads and decrypts a session file from the vault.
     public func readSessionPlainText(from fileURL: URL) throws -> String {
         let encryptedData = try Data(contentsOf: fileURL)
@@ -75,8 +103,11 @@ public struct SessionVaultManager: Sendable {
     }
 
     /// Exports the session report conforming to the Apple ResearchKit ORKActiveStepResult schema.
-    public static func makeResearchKitJson(report: GazeSessionReportSummary) -> [String: Any] {
-        return [
+    public static func makeResearchKitJson(
+        report: GazeSessionReportSummary,
+        classification: BiomarkerClassificationResult? = nil
+    ) -> [String: Any] {
+        var base: [String: Any] = [
             "identifier": "ORKActiveStepResult",
             "type": "social_attention_gaze_result",
             "sessionId": report.sessionId,
@@ -95,20 +126,41 @@ public struct SessionVaultManager: Sendable {
                 "surpriseScoreMean": report.surpriseScoreMean
             ]
         ]
+        if let cl = classification {
+            base["classification"] = [
+                "riskScore": cl.riskScore,
+                "confidence": cl.confidence,
+                "riskStratification": cl.riskStratification.rawValue,
+                "primaryContributingFeature": cl.primaryContributingFeature,
+                "executionDevice": cl.executionDevice.rawValue,
+                "inferenceLatencyMs": cl.inferenceLatencyMs
+            ]
+        }
+        return base
     }
 
     /// Exports the session report conforming to the Apple CareKit OCKCarePlanActivity schema.
-    public static func makeCareKitJson(report: GazeSessionReportSummary) -> [String: Any] {
+    public static func makeCareKitJson(
+        report: GazeSessionReportSummary,
+        classification: BiomarkerClassificationResult? = nil
+    ) -> [String: Any] {
+        var outcome: [String: Any] = [
+            "socialPreferenceScore": report.socialPreferenceScore,
+            "qualityVerdict": report.qualityVerdict.rawValue,
+            "timestamp": ISO8601DateFormatter().string(from: Date())
+        ]
+        if let cl = classification {
+            outcome["riskScore"] = cl.riskScore
+            outcome["riskStratification"] = cl.riskStratification.rawValue
+            outcome["confidence"] = cl.confidence
+            outcome["executionDevice"] = cl.executionDevice.rawValue
+        }
         return [
             "identifier": "OCKCarePlanActivity",
             "title": "Pediatric Visual Attention Screening",
             "sessionId": report.sessionId,
             "status": "completed",
-            "outcome": [
-                "socialPreferenceScore": report.socialPreferenceScore,
-                "qualityVerdict": report.qualityVerdict.rawValue,
-                "timestamp": ISO8601DateFormatter().string(from: Date())
-            ]
+            "outcome": outcome
         ]
     }
 }

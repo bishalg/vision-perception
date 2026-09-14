@@ -14,11 +14,14 @@
 | **[`realtime_spatial_perception_architecture.md`](realtime_spatial_perception_architecture.md)** | `DOC-ARCH-005` | System-Wide Real-Time Ingestion | • Multi-tier architecture: Ingestion $\to$ Core $\to$ Cloud $\to$ 3D Twin.<br>• Thread-safe ring-buffer zero-latency frame ingestion.<br>• 4-Phase implementation roadmap (CCTV $\to$ SAR $\to$ Viewshed $\to$ Twin). |
 | **[`github_reuse_matrix.md`](github_reuse_matrix.md)** | `DOC-RES-001` | Open-Source Component Audit | • License audit (Apache-2.0, MIT, BSD vs GPL rejection).<br>• OpenCV core/imgproc, Steger reference, spline libraries. |
 | **[`palm_next_phase.md`](palm_next_phase.md)** | `DOC-RES-006` | Palm app next phase (analysis, not detector) | • Do not rebuild Steger / U-Net / Canny.<br>• Borrow feature lists from GitHub palmistry, not their code.<br>• `palm_analysis` + `user_report` contract; shrink VLM prompt.<br>• Phases P0–P3: wire linker → geometry → user report → mobile. |
+| **[`asd_gaze_biomarkers/`](asd_gaze_biomarkers/README.md)** | `DOC-RES-ASD-LIB` | ASD Pediatric Eye-Tracking & Digital Phenotyping | • 4 Landmark papers (JAMA 2023 EarliPoint, NEJM AI 2024 SenseToKnow, eLife 2019 GeoPref/DMN, JBI 2022 ML Review).<br>• Master comparative benchmark matrix, full citation networks.<br>• Clinical translation guide for `apps/ios_asd_gaze_app`. |
 
 ---
 
 ## 2. Related Core Specifications
 
+- **[`docs/ASD_GAZE_TRACKER_ARCHITECTURE.md`](../ASD_GAZE_TRACKER_ARCHITECTURE.md)**: Production iOS pediatric gaze tracking, TrueDepth raycasting, and liquid-glass clinical screening app architecture.
+- **[`docs/research/asd_gaze_biomarkers/05_app_design_and_clinical_translation_guide.md`](asd_gaze_biomarkers/05_app_design_and_clinical_translation_guide.md)**: Clinical-to-code engineering specification for 16 digital biomarkers, 1-Euro filtering, and Doctor Report generation.
 - **[`docs/flood_realtime_architecture.md`](../flood_realtime_architecture.md)**: Production real-time glacier-collapse and flash flood monitoring specification (Sentinel-1 SAR, Sentinel-2 L2A, river CCTV, DHM hydrometeorology, AWS Bedrock dispatch).
 - **[`docs/flood_nepal_2026.md`](../flood_nepal_2026.md)**: Empirical validation of the Lende Khola / Bhote Koshi disaster in Nepal (+88.4% flood surge, +121.1% channel widening, dual controls passing).
 - **[`docs/architecture.md`](../architecture.md)**: Domain-agnostic C++20 core rules, MVC boundaries, and zero-domain-pollution invariants.

@@ -63,19 +63,17 @@ public struct GazeSessionReportSummary: Codable, Sendable, Equatable {
 
 /// Coordinates live 60 Hz gaze, facial affect, and head pose telemetry acquisition.
 /// Supports both TrueDepth hardware (`ARSession`) and deterministic mathematical simulation.
+///
+/// Concurrency architecture (Swift 6):
+/// - Math, raycasting, 1-Euro filtering, and volatile telemetry buffering run strictly off
+///   the Main Thread (`arDelegateQueue` / `GazeProcessingActor`).
+/// - Telemetry buffer is held purely in volatile RAM during recording (no disk writes at 60 Hz).
+/// - Only lightweight `GazeUIState` snapshots are dispatched to `@MainActor` to update HUD reticles.
 public final class GazeSessionController: NSObject, ObservableObject, @unchecked Sendable {
     @Published public var currentGazePoint: CGPoint = CGPoint(x: 0.5, y: 0.5)
-    /// Uncalibrated raycast output (1 Euro filtered). `BubbleCalibrationView`
-    /// fits `calibrationProfile` against this, never against `currentGazePoint`
-    /// (which is already-corrected once a profile exists, and fitting a
-    /// correction against an already-corrected signal would compound errors).
     @Published public var currentRawGazePoint: CGPoint = CGPoint(x: 0.5, y: 0.5)
-    /// Per-user affine correction (see `GazeCalibrationProfile`). Loaded from
-    /// the on-device profile at init so every new `GazeSessionController`
-    /// instance (each screen owns its own) picks up the last calibration.
     @Published public private(set) var calibrationProfile: GazeCalibrationProfile
     @Published public var currentDistanceCm: Double = 48.0
-    /// Starts as invalid — only becomes valid once a real ARKit frame arrives.
     @Published public var currentQuality: GazeQualityGate.Evaluation
     @Published public var currentAffect: FacialAffectMetrics = .neutral
     @Published public var activeAOIs: [String] = []
@@ -83,29 +81,34 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
     @Published public var headYawDeg: Double = 0.0
     @Published public var headPitchDeg: Double = 0.0
     @Published public var headRollDeg: Double = 0.0
+
+    /// Post-session finalized frames. Kept off `@MainActor` during active 60 Hz streaming,
+    /// and populated once the session is completed to avoid 60 Hz SwiftUI view tree invalidations.
     @Published public var recordedFrames: [GazeFrame] = []
-    /// Current position in the 3-stage tracking pipeline. Observed by UI
-    /// for per-stage status banners and dwell gating.
+
     @Published public private(set) var trackingStage: TrackingStage = .searchingFace
 
     public let raycaster: ScreenRaycaster
     public let qualityGate: GazeQualityGate
     public var aoiTracker: StimulusAOITracker
 
+    /// Swift 6 background actor for direct asynchronous processing pipelines.
+    public let processingActor: GazeProcessingActor
+
     private var sessionStartTime: Date?
     public var isSimulationMode: Bool = false
     @Published public var calibrationTarget: CGPoint? = nil
 
-    /// Adaptive 1 Euro Filter for calibrated gaze — eliminates flicker at fixation
-    /// while preserving low latency during fast saccades.
+    /// High-frequency volatile RAM buffer for telemetry frames during recording.
+    private let frameBufferLock = NSLock()
+    private var volatileFrameBuffer: [GazeFrame] = []
+
+    /// Adaptive 1 Euro Filter for calibrated gaze.
     private let gazeFilter = OneEuroFilter2D(minCutoff: 1.2, beta: 0.015, dCutoff: 1.0)
-    /// Separate filter for the raw (uncalibrated) signal collected during calibration.
+    /// Separate filter for uncalibrated raw signal.
     private let rawGazeFilter = OneEuroFilter2D(minCutoff: 1.2, beta: 0.015, dCutoff: 1.0)
 
-    /// Notification posted whenever the calibration profile is saved or reset,
-    /// so all active `GazeSessionController` instances reload immediately.
     public static let didUpdateCalibrationNotification = Notification.Name("CurvAsdGazeKit.calibrationDidUpdate")
-
     private var calibrationObserver: NSObjectProtocol?
 
     #if canImport(ARKit) && !os(macOS)
@@ -121,12 +124,17 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
         self.raycaster = raycaster
         self.qualityGate = qualityGate
         self.aoiTracker = aoiTracker
-        // Start as invalid — no frames have arrived yet.
         self.currentQuality = GazeQualityGate.Evaluation(isValid: false, verdict: .rejected, failureReasons: ["Waiting for camera…"])
-        self.calibrationProfile = GazeCalibrationStore.load()
+        let loadedProfile = GazeCalibrationStore.load()
+        self.calibrationProfile = loadedProfile
+        self.processingActor = GazeProcessingActor(
+            raycaster: raycaster,
+            qualityGate: qualityGate,
+            aoiTracker: aoiTracker,
+            calibrationProfile: loadedProfile
+        )
         super.init()
 
-        // Reload calibration whenever any controller or the Settings screen saves a new profile.
         calibrationObserver = NotificationCenter.default.addObserver(
             forName: GazeSessionController.didUpdateCalibrationNotification,
             object: nil,
@@ -148,51 +156,62 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
         #endif
     }
 
-    /// Persists a freshly-fit calibration and makes it take effect immediately
-    /// for this controller instance and all other live controllers via notification.
+    /// Persists freshly fitted calibration profile.
     public func applyAndPersist(calibrationProfile profile: GazeCalibrationProfile) {
         calibrationProfile = profile
         GazeCalibrationStore.save(profile)
-        // Reset filters so they start fresh with the new calibration applied.
         gazeFilter.reset()
         rawGazeFilter.reset()
+        Task { [weak processingActor] in
+            await processingActor?.updateCalibrationProfile(profile)
+        }
         NotificationCenter.default.post(name: GazeSessionController.didUpdateCalibrationNotification, object: nil)
     }
 
-    /// Drops back to the uncalibrated identity transform (e.g. before
-    /// screening a different child, or if a calibration run looked bad).
+    /// Resets calibration profile to identity transform.
     public func resetCalibration() {
         calibrationProfile = .identity
         GazeCalibrationStore.reset()
         gazeFilter.reset()
         rawGazeFilter.reset()
+        Task { [weak processingActor] in
+            await processingActor?.resetCalibration()
+        }
         NotificationCenter.default.post(name: GazeSessionController.didUpdateCalibrationNotification, object: nil)
     }
 
-    /// Reloads the persisted calibration profile from UserDefaults.
-    /// Called automatically when `didUpdateCalibrationNotification` fires.
+    /// Reloads persisted profile from store.
     public func reloadCalibrationProfile() {
         calibrationProfile = GazeCalibrationStore.load()
+        let profile = calibrationProfile
+        Task { [weak processingActor] in
+            await processingActor?.updateCalibrationProfile(profile)
+        }
     }
 
-
-    /// Starts telemetry capture. Automatically activates TrueDepth camera if available,
-    /// or falls back to synthetic simulation on Simulator/macOS.
+    /// Starts telemetry capture. Volatile RAM buffer is reset.
     public func startSession(battery: StimulusAOITracker? = nil) {
         if let battery = battery {
             self.aoiTracker = battery
         }
+        frameBufferLock.lock()
+        volatileFrameBuffer.removeAll(keepingCapacity: true)
+        frameBufferLock.unlock()
+
         self.recordedFrames.removeAll()
         self.sessionStartTime = Date()
         self.isRecording = true
-        // Always reload the latest saved profile so newly calibrated sessions
-        // immediately benefit from the calibration.
+
         reloadCalibrationProfile()
-        // Reset smoothing filters so the previous session's state doesn't bleed in.
         gazeFilter.reset()
         rawGazeFilter.reset()
-        // Start at searching — will update to faceAligned/eyesTracking/gazeActive
-        // once ARKit frames arrive.
+
+        let profile = calibrationProfile
+        let batt = battery
+        Task { [weak processingActor] in
+            await processingActor?.startSession(battery: batt, profile: profile)
+        }
+
         trackingStage = .searchingFace
         currentQuality = GazeQualityGate.Evaluation(isValid: false, verdict: .rejected, failureReasons: ["Waiting for camera…"])
 
@@ -216,12 +235,10 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
         }
         #endif
 
-        // Fallback for Simulator or devices without TrueDepth
         self.isSimulationMode = true
-
     }
 
-    /// Ends the session and computes the comprehensive biomarker report.
+    /// Ends the session, computes the comprehensive biomarker report, and exposes recorded frames.
     public func stopSession() -> GazeSessionReportSummary {
         self.isRecording = false
 
@@ -232,7 +249,13 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
         arSession = nil
         #endif
 
-        let totalFrames = recordedFrames.count
+        frameBufferLock.lock()
+        let framesSnapshot = volatileFrameBuffer
+        frameBufferLock.unlock()
+
+        self.recordedFrames = framesSnapshot
+        let totalFrames = framesSnapshot.count
+
         guard totalFrames > 0 else {
             return GazeSessionReportSummary(
                 durationSec: 0,
@@ -246,10 +269,9 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
             )
         }
 
-        let validFrames = recordedFrames.filter { $0.qualityVerdict != .rejected }
+        let validFrames = framesSnapshot.filter { $0.qualityVerdict != .rejected }
         let validRatio = Double(validFrames.count) / Double(totalFrames)
 
-        // Compute dwell durations for Social vs Geometric AOIs
         var socialCount = 0
         var geometricCount = 0
         var eyeCount = 0
@@ -284,7 +306,6 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
         let meanSmile = validFrames.isEmpty ? 0.0 : smileSum / Double(validFrames.count)
         let meanSurprise = validFrames.isEmpty ? 0.0 : surpriseSum / Double(validFrames.count)
 
-        // Flat affect proxy: inverted normalized variance of expressivity
         let meanExpressivity = expressivityList.isEmpty ? 0.0 : expressivityList.reduce(0, +) / Double(expressivityList.count)
         let flatAffectScore = max(0.0, min(1.0, 1.0 - (meanExpressivity * 50.0)))
 
@@ -310,11 +331,34 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
         )
     }
 
+    /// Asynchronously stops session and persists the volatile RAM buffer as an encrypted batch to disk.
+    public func stopAndPersistBatchAsync(
+        participantToken: String,
+        stimulusBattery: String = "GeoPref_v1",
+        vault: SessionVaultManager = SessionVaultManager(),
+        classification: BiomarkerClassificationResult? = nil
+    ) async throws -> (summary: GazeSessionReportSummary, vaultURL: URL) {
+        let summary = stopSession()
+        let frames = self.recordedFrames
+        let header = SessionHeader(
+            sessionId: summary.sessionId,
+            participantToken: participantToken,
+            stimulusBattery: stimulusBattery,
+            stimulusDurationSec: summary.durationSec
+        )
+        let url = try await vault.saveSessionBatchAsync(
+            header: header,
+            frames: frames,
+            report: summary,
+            classification: classification
+        )
+        return (summary, url)
+    }
+
     /// Ingests a single synthetic frame (used for preview animation, unit testing, and Simulator).
     public func tickSimulatedFrame(timeSec: Double) {
         let gazePoint: CGPoint
         if let target = calibrationTarget {
-            // Realistic micro-saccadic jitter around active calibration target
             let jitterX = 0.015 * sin(timeSec * 7.2)
             let jitterY = 0.015 * cos(timeSec * 6.4)
             gazePoint = CGPoint(
@@ -322,7 +366,6 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
                 y: max(0.05, min(0.95, target.y + jitterY))
             )
         } else {
-            // Naturalistic oscillating gaze with preference toward Social side [0.15, 0.45]
             let wave = sin(timeSec * 1.8)
             let x = wave > -0.2 ? (0.28 + 0.12 * sin(timeSec * 3.5)) : (0.72 + 0.10 * cos(timeSec * 2.2))
             let y = 0.40 + 0.10 * sin(timeSec * 2.0)
@@ -331,8 +374,6 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
 
         let activeHits = aoiTracker.activeAOIs(atTimeSec: timeSec, xNorm: gazePoint.x, yNorm: gazePoint.y)
 
-        // Dynamic emotion synthesis for realistic Simulator playback and verification:
-        // Cycles across Joy/Smile -> Surprise/Alert -> High Excitement -> Calm Focus
         let phase = fmod(timeSec, 16.0)
         let isSmiling = (phase < 4.0)
         let isSurprised = (phase >= 4.0 && phase < 8.0)
@@ -382,30 +423,48 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
         )
 
         if self.isRecording {
-            self.recordedFrames.append(frame)
+            frameBufferLock.lock()
+            self.volatileFrameBuffer.append(frame)
+            frameBufferLock.unlock()
         }
 
         let smoothedGaze = gazeFilter.filter(point: gazePoint, timestamp: timeSec)
         let smoothedRaw = rawGazeFilter.filter(point: gazePoint, timestamp: timeSec)
 
-        let updateUI = {
-            self.currentGazePoint = smoothedGaze
-            self.currentRawGazePoint = smoothedRaw
-            self.currentDistanceCm = sample.distanceToScreenCm
-            self.currentQuality = eval
-            self.currentAffect = affect
-            self.activeAOIs = activeHits
-            self.trackingStage = .gazeActive
-            self.headYawDeg = sample.headYawRad * 180.0 / .pi
-            self.headPitchDeg = sample.headPitchRad * 180.0 / .pi
-            self.headRollDeg = sample.headRollRad * 180.0 / .pi
-        }
+        let state = GazeUIState(
+            currentGazePoint: smoothedGaze,
+            currentRawGazePoint: smoothedRaw,
+            distanceCm: sample.distanceToScreenCm,
+            currentQuality: eval,
+            currentAffect: affect,
+            activeAOIs: activeHits,
+            trackingStage: .gazeActive,
+            headYawDeg: sample.headYawRad * 180.0 / .pi,
+            headPitchDeg: sample.headPitchRad * 180.0 / .pi,
+            headRollDeg: sample.headRollRad * 180.0 / .pi
+        )
 
         if Thread.isMainThread {
-            updateUI()
+            self.applyUIState(state)
         } else {
-            DispatchQueue.main.async(execute: updateUI)
+            DispatchQueue.main.async { [weak self] in
+                self?.applyUIState(state)
+            }
         }
+    }
+
+    /// Consolidates UI property assignments on `@MainActor`.
+    private func applyUIState(_ state: GazeUIState) {
+        self.currentGazePoint = state.currentGazePoint
+        self.currentRawGazePoint = state.currentRawGazePoint
+        self.currentDistanceCm = state.distanceCm
+        self.currentQuality = state.currentQuality
+        self.currentAffect = state.currentAffect
+        self.activeAOIs = state.activeAOIs
+        self.trackingStage = state.trackingStage
+        self.headYawDeg = state.headYawDeg
+        self.headPitchDeg = state.headPitchDeg
+        self.headRollDeg = state.headRollDeg
     }
 }
 
@@ -424,6 +483,7 @@ extension GazeSessionController: ARSessionDelegate {
             return
         }
 
+        // Heavy geometric math executes on background queue `arDelegateQueue`
         let distanceMeters = max(0.2, -faceAnchor.transform.columns.3.z)
         let distanceCm = Double(distanceMeters * 100.0)
 
@@ -433,15 +493,12 @@ extension GazeSessionController: ARSessionDelegate {
             leftEyeTransform: faceAnchor.leftEyeTransform,
             rightEyeTransform: faceAnchor.rightEyeTransform
         )
-        // Correct the raw anatomical estimate with the user's fitted profile
         let calibratedPoint = calibrationProfile.apply(to: raycast.normalizedPoint)
 
-        // Decompose Euler angles from face transform matrix
         let pitch = Double(asin(max(-1.0, min(1.0, -faceAnchor.transform.columns.2.y))))
         let yaw = Double(atan2(faceAnchor.transform.columns.2.x, faceAnchor.transform.columns.2.z))
         let roll = Double(atan2(faceAnchor.transform.columns.0.y, faceAnchor.transform.columns.1.y))
 
-        // Extract blend shapes for facial affect & eye openness
         let shapes = faceAnchor.blendShapes
         let leftBlink = shapes[.eyeBlinkLeft]?.doubleValue ?? 0
         let rightBlink = shapes[.eyeBlinkRight]?.doubleValue ?? 0
@@ -493,7 +550,6 @@ extension GazeSessionController: ARSessionDelegate {
             qualityVerdict: eval.verdict
         )
 
-        // Evaluate progressive 3-stage tracking pipeline
         let stage: TrackingStage
         let eyesOpen = leftEyeOpenness >= 0.40 && rightEyeOpenness >= 0.40
         if !eyesOpen {
@@ -504,26 +560,33 @@ extension GazeSessionController: ARSessionDelegate {
             stage = .eyesTracking(leftOpenness: leftEyeOpenness, rightOpenness: rightEyeOpenness)
         }
 
-        // Apply 1 Euro Filter for smooth, adaptive, jitter-free tracking
         let nowSec = Date().timeIntervalSince1970
         let smoothedCalibrated = gazeFilter.filter(point: calibratedPoint, timestamp: nowSec)
         let smoothedRaw = rawGazeFilter.filter(point: raycast.normalizedPoint, timestamp: nowSec)
 
+        // Buffer frame in volatile RAM without touching main thread
+        if self.isRecording {
+            frameBufferLock.lock()
+            self.volatileFrameBuffer.append(frame)
+            frameBufferLock.unlock()
+        }
+
+        // Only dispatch lightweight UI state to main thread
+        let uiState = GazeUIState(
+            currentGazePoint: smoothedCalibrated,
+            currentRawGazePoint: smoothedRaw,
+            distanceCm: distanceCm,
+            currentQuality: eval,
+            currentAffect: affect,
+            activeAOIs: activeHits,
+            trackingStage: stage,
+            headYawDeg: yaw * 180.0 / .pi,
+            headPitchDeg: pitch * 180.0 / .pi,
+            headRollDeg: roll * 180.0 / .pi
+        )
+
         DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            self.currentGazePoint = smoothedCalibrated
-            self.currentRawGazePoint = smoothedRaw
-            self.currentDistanceCm = distanceCm
-            self.currentQuality = eval
-            self.currentAffect = affect
-            self.activeAOIs = activeHits
-            self.trackingStage = stage
-            self.headYawDeg = yaw * 180.0 / .pi
-            self.headPitchDeg = pitch * 180.0 / .pi
-            self.headRollDeg = roll * 180.0 / .pi
-            if self.isRecording {
-                self.recordedFrames.append(frame)
-            }
+            self?.applyUIState(uiState)
         }
     }
 

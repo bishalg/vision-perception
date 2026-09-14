@@ -109,13 +109,25 @@ public final class CareKitClinicalStore: @unchecked Sendable {
     }
 
     /// Outcome values for a completed screening session.
-    public static func screeningOutcomeValues(socialScore: Double, validFramePercentage: Double,
-                                              completedAt: Date) -> [OCKOutcomeValue] {
-        [
+    public static func screeningOutcomeValues(
+        socialScore: Double,
+        validFramePercentage: Double,
+        completedAt: Date,
+        riskScore: Double? = nil,
+        riskStratification: String? = nil
+    ) -> [OCKOutcomeValue] {
+        var values = [
             OCKOutcomeValue(socialScore),
             OCKOutcomeValue(validFramePercentage),
             OCKOutcomeValue(completedAt),
         ]
+        if let risk = riskScore {
+            values.append(OCKOutcomeValue(risk))
+        }
+        if let strat = riskStratification {
+            values.append(OCKOutcomeValue(strat))
+        }
+        return values
     }
 
     /// Outcome values for a toggled daily task.
@@ -168,11 +180,17 @@ public final class CareKitClinicalStore: @unchecked Sendable {
         }
     }
 
-    /// Records a completed gaze screening session with its scores.
+    /// Records a completed gaze screening session with its scores and ML risk stratification.
     /// `completion` fires on the main actor once the outcome is written.
-    public func recordScreeningOutcome(socialScore: Double, validFramePercentage: Double,
-                                       knownTasks: [CarePlanTask], date: Date = Date(),
-                                       completion: (@Sendable () -> Void)? = nil) {
+    public func recordScreeningOutcome(
+        socialScore: Double,
+        validFramePercentage: Double,
+        knownTasks: [CarePlanTask],
+        riskScore: Double? = nil,
+        riskStratification: String? = nil,
+        date: Date = Date(),
+        completion: (@Sendable () -> Void)? = nil
+    ) {
         mutationQueue.async {
             self.performSeed(tasks: knownTasks, on: date)
             guard let observation = knownTasks.first(where: { $0.category == .observation }) else {
@@ -180,9 +198,13 @@ public final class CareKitClinicalStore: @unchecked Sendable {
                 return
             }
             self.ensureTask(Self.makeTask(from: observation, startOfDay: Calendar.current.startOfDay(for: date)))
-            let values = Self.screeningOutcomeValues(socialScore: socialScore,
-                                                     validFramePercentage: validFramePercentage,
-                                                     completedAt: date)
+            let values = Self.screeningOutcomeValues(
+                socialScore: socialScore,
+                validFramePercentage: validFramePercentage,
+                completedAt: date,
+                riskScore: riskScore,
+                riskStratification: riskStratification
+            )
             self.upsertOutcome(taskID: "ock_\(observation.id)", date: date, values: values)
             Self.dispatch(completion)
         }

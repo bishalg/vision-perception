@@ -16,7 +16,7 @@ public struct GazeQualityGate: Sendable {
         case rejected
     }
 
-    public struct Evaluation: Sendable {
+    public struct Evaluation: Sendable, Equatable {
         public let isValid: Bool
         public let verdict: Verdict
         public let failureReasons: [String]

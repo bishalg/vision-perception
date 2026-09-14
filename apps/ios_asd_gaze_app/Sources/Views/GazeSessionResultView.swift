@@ -6,6 +6,7 @@ import CurvAsdGazeKit
 public struct GazeSessionResultView: View {
     public let summary: GazeSessionReportSummary
     public let recordedFrames: [GazeFrame]
+    public let classification: BiomarkerClassificationResult?
     public let onDismiss: () -> Void
     public let onRetake: () -> Void
 
@@ -19,11 +20,13 @@ public struct GazeSessionResultView: View {
     public init(
         summary: GazeSessionReportSummary,
         recordedFrames: [GazeFrame],
+        classification: BiomarkerClassificationResult? = nil,
         onDismiss: @escaping () -> Void,
         onRetake: @escaping () -> Void
     ) {
         self.summary = summary
         self.recordedFrames = recordedFrames
+        self.classification = classification
         self.onDismiss = onDismiss
         self.onRetake = onRetake
     }
@@ -42,6 +45,7 @@ public struct GazeSessionResultView: View {
                     VStack(spacing: 16) {
                         scanpathHeroCanvas
                         socialPreferenceCard
+                        mlClassificationCard
                         facialAffectMetricsCard
                         qualityAndContractCard
                         actionButtonsSection
@@ -257,6 +261,82 @@ public struct GazeSessionResultView: View {
         .glassCard(cornerRadius: 16, padding: 14)
     }
 
+    // MARK: - CoreML Biomarker Risk Stratification Card
+
+    private var mlClassificationCard: some View {
+        let result = classification ?? BiomarkerClassificationEngine.shared.classifySync(summary: summary)
+        let stratColor: Color = {
+            switch result.riskStratification {
+            case .typical: return LiquidGlass.emeraldMint
+            case .monitor: return LiquidGlass.warmAmber
+            case .elevatedRisk: return Color.red
+            }
+        }()
+
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "cpu.fill")
+                        .font(.system(size: 13))
+                        .foregroundColor(LiquidGlass.celestialTeal)
+                    Text("CoreML Biomarker Risk Stratification")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+                }
+                Spacer()
+                Text(result.executionDevice == .appleNeuralEngine ? "ANE Accelerated" : "Clinical Baseline")
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .foregroundColor(LiquidGlass.celestialTeal)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(LiquidGlass.celestialTeal.opacity(0.15)))
+            }
+
+            // Stratification Badge Banner
+            HStack(spacing: 10) {
+                Circle()
+                    .fill(stratColor)
+                    .frame(width: 10, height: 10)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(result.riskStratification.rawValue)
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+                    Text("Primary Contributing Feature: \(result.primaryContributingFeature)")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(String(format: "%.0f%%", result.confidence * 100))
+                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                        .foregroundColor(.primary)
+                    Text("Confidence")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(10)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(LiquidGlass.cardBackground)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(LiquidGlass.cardBorder, lineWidth: 1)
+            )
+
+            HStack(spacing: 12) {
+                metricCol(title: "Risk Probability", value: String(format: "%.1f%%", result.riskScore * 100))
+                metricCol(title: "Inference Latency", value: String(format: "%.1f ms", result.inferenceLatencyMs))
+                metricCol(title: "Execution Device", value: result.executionDevice == .appleNeuralEngine ? "ANE" : "CPU")
+            }
+        }
+        .glassCard(cornerRadius: 16, padding: 14)
+    }
+
     // MARK: - Quality & ResearchKit Contract Card
 
     private var qualityAndContractCard: some View {
@@ -355,7 +435,8 @@ public struct GazeSessionResultView: View {
     }
 
     private func prepareShareExport() {
-        let rk = SessionVaultManager.makeResearchKitJson(report: summary)
+        let result = classification ?? BiomarkerClassificationEngine.shared.classifySync(summary: summary)
+        let rk = SessionVaultManager.makeResearchKitJson(report: summary, classification: result)
         if let data = try? JSONSerialization.data(withJSONObject: rk, options: [.prettyPrinted]),
            let str = String(data: data, encoding: .utf8) {
             exportText = str
