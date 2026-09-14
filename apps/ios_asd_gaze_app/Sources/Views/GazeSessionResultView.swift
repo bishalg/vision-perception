@@ -124,26 +124,34 @@ public struct GazeSessionResultView: View {
                         .overlay(Text("Geometric").font(.system(size: 11, weight: .bold)).foregroundColor(.white.opacity(0.4)))
                 }
 
-                // Gaze Trajectory Lines (Scanpath)
+                // Gaze Trajectory Lines (Scanpath with Blink Discontinuity Handling)
                 GeometryReader { geo in
-                    let points = sampleGazeTrajectory(in: geo.size)
+                    let validFrames = recordedFrames.filter { $0.gaze.isValid && $0.qualityVerdict != .rejected }
                     Path { path in
-                        guard let first = points.first else { return }
-                        path.move(to: first)
-                        for pt in points.dropFirst() {
-                            path.addLine(to: pt)
+                        guard validFrames.count > 1 else { return }
+                        for i in 1..<validFrames.count {
+                            let prev = validFrames[i - 1].gaze
+                            let curr = validFrames[i].gaze
+                            let dt = curr.videoTimeSec - prev.videoTimeSec
+                            // Skip connecting lines across blink gaps or tracking drops
+                            guard dt > 0 && dt <= 0.12 else { continue }
+                            path.move(to: CGPoint(x: prev.xNorm * geo.size.width, y: prev.yNorm * geo.size.height))
+                            path.addLine(to: CGPoint(x: curr.xNorm * geo.size.width, y: curr.yNorm * geo.size.height))
                         }
                     }
                     .stroke(LiquidGlass.celestialTeal.opacity(0.6), lineWidth: 2)
 
                     // Replay head point
-                    if !points.isEmpty {
-                        let activePt = points[min(replayFrameIndex, points.count - 1)]
+                    if !recordedFrames.isEmpty {
+                        let activeFrame = recordedFrames[min(replayFrameIndex, recordedFrames.count - 1)]
+                        let isValid = activeFrame.gaze.isValid && activeFrame.qualityVerdict != .rejected
+                        let activePt = CGPoint(x: activeFrame.gaze.xNorm * geo.size.width, y: activeFrame.gaze.yNorm * geo.size.height)
                         Circle()
-                            .fill(LiquidGlass.emeraldMint)
+                            .fill(isValid ? LiquidGlass.emeraldMint : Color.gray.opacity(0.5))
                             .frame(width: 14, height: 14)
                             .position(activePt)
-                            .shadow(color: LiquidGlass.emeraldMint, radius: 6)
+                            .shadow(color: isValid ? LiquidGlass.emeraldMint : .clear, radius: 6)
+                            .opacity(isValid ? 1.0 : 0.35)
                     }
                 }
             }
@@ -470,16 +478,6 @@ public struct GazeSessionResultView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func sampleGazeTrajectory(in size: CGSize) -> [CGPoint] {
-        guard !recordedFrames.isEmpty else {
-            return (0..<20).map { i in
-                CGPoint(x: size.width * (0.2 + 0.03 * Double(i)), y: size.height * (0.4 + 0.02 * sin(Double(i))))
-            }
-        }
-        return recordedFrames.map { frame in
-            CGPoint(x: frame.gaze.xNorm * size.width, y: frame.gaze.yNorm * size.height)
-        }
-    }
 
     private func toggleReplay() {
         if isReplaying {

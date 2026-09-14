@@ -2,25 +2,17 @@ import SwiftUI
 import CurvAsdGazeKit
 
 public enum ScannerDisplayMode: String, CaseIterable, Identifiable {
-    case sideBySide = "Side-by-Side"
-    case pictureInPicture = "Picture-in-Picture"
-    case stimulusOnly = "Full Screen"
+    case sideBySide = "Split"
+    case pictureInPicture = "PiP"
+    case stimulusOnly = "Full"
 
     public var id: String { rawValue }
 
     public var title: String {
         switch self {
-        case .sideBySide: return "Side-by-Side (Split View)"
-        case .pictureInPicture: return "Picture-in-Picture (Floating)"
-        case .stimulusOnly: return "Full Screen (Stimulus Only)"
-        }
-    }
-
-    public var description: String {
-        switch self {
-        case .sideBySide: return "Stimulus & Face Tracking together"
-        case .pictureInPicture: return "Maximized video with floating camera"
-        case .stimulusOnly: return "Full video only without camera HUD"
+        case .sideBySide: return "Split"
+        case .pictureInPicture: return "PiP"
+        case .stimulusOnly: return "Full"
         }
     }
 
@@ -44,19 +36,23 @@ public struct MainGazeScannerView: View {
     @State private var cartoonBlink: Bool = false
     @State private var cartoonBounce: CGFloat = 0.0
     @State private var presentedReport: (summary: GazeSessionReportSummary, frames: [GazeFrame], classification: BiomarkerClassificationResult)?
+    @State private var showCalibrationSheet: Bool = false
 
     public var onClose: (() -> Void)?
     public let onComplete: ((GazeSessionReportSummary, [GazeFrame]) -> Void)?
     public let onOpenHistory: (() -> Void)?
+    public let onNavigateToCalibration: (() -> Void)?
 
     public init(
         onClose: (() -> Void)? = nil,
         onComplete: ((GazeSessionReportSummary, [GazeFrame]) -> Void)? = nil,
-        onOpenHistory: (() -> Void)? = nil
+        onOpenHistory: (() -> Void)? = nil,
+        onNavigateToCalibration: (() -> Void)? = nil
     ) {
         self.onClose = onClose
         self.onComplete = onComplete
         self.onOpenHistory = onOpenHistory
+        self.onNavigateToCalibration = onNavigateToCalibration
     }
 
     public var body: some View {
@@ -71,14 +67,14 @@ public struct MainGazeScannerView: View {
                 .ignoresSafeArea()
 
                 VStack(spacing: 8) {
-                    topStatusBar
+                    topHeaderBar
                     mainContentPane
                     bottomControlBar
                 }
                 .padding(.horizontal, 12)
                 .padding(.bottom, 8)
             }
-            .navigationTitle(Localizer.tr("dev_gaze_title"))
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .toolbar {
@@ -92,82 +88,6 @@ public struct MainGazeScannerView: View {
                                     .font(.system(size: 15, weight: .medium))
                             }
                             .foregroundColor(LiquidGlass.celestialTeal)
-                        }
-                    }
-                }
-
-                ToolbarItem(placement: .principal) {
-                    HStack(spacing: 6) {
-                        Text(Localizer.tr("dev_gaze_title"))
-                            .font(.system(size: 15, weight: .bold, design: .rounded))
-                            .foregroundColor(LiquidGlass.textPrimary)
-                        Image(systemName: controller.currentQuality.isValid ? "eye.fill" : "eye.slash")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(controller.currentQuality.isValid ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber)
-                    }
-                }
-
-                ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: 8) {
-                        // Intuitive Layout Selector Menu with active layout label & chevron
-                        Menu {
-                            Section("SWITCH SCREEN LAYOUT") {
-                                ForEach(ScannerDisplayMode.allCases) { mode in
-                                    Button {
-                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                            displayMode = mode
-                                        }
-                                    } label: {
-                                        HStack {
-                                            Label(mode.title, systemImage: mode.icon)
-                                            if displayMode == mode {
-                                                Image(systemName: "checkmark")
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: displayMode.icon)
-                                    .font(.system(size: 13, weight: .semibold))
-                                Text(displayMode.rawValue)
-                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 8, weight: .bold))
-                            }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 5)
-                            .background(Capsule().fill(LiquidGlass.celestialTeal.opacity(0.18)))
-                            .foregroundColor(LiquidGlass.celestialTeal)
-                        }
-
-                        Menu {
-                            Button(action: {
-                                controller.isSimulationMode.toggle()
-                            }) {
-                                Label(
-                                    controller.isSimulationMode ? "Switch to TrueDepth" : "Switch to Simulation",
-                                    systemImage: controller.isSimulationMode ? "camera.viewfinder" : "cpu"
-                                )
-                            }
-
-                            Button(action: {
-                                elapsedSeconds = 0.0
-                                controller.startSession()
-                            }) {
-                                Label("Reset Observation", systemImage: "arrow.counterclockwise")
-                            }
-
-                            if let onOpenHistory {
-                                Button(action: onOpenHistory) {
-                                    Label("Caregiver History", systemImage: "chart.line.uptrend.xyaxis")
-                                }
-                            }
-                        } label: {
-                            Image(systemName: "ellipsis.circle")
-                                .font(.system(size: 17))
-                                .foregroundColor(LiquidGlass.celestialTeal)
                         }
                     }
                 }
@@ -189,6 +109,18 @@ public struct MainGazeScannerView: View {
                     )
                 }
             }
+            .fullScreenCover(isPresented: $showCalibrationSheet) {
+                BubbleCalibrationView(
+                    onClose: {
+                        showCalibrationSheet = false
+                        controller.reloadCalibrationProfile()
+                    },
+                    onCalibrationComplete: {
+                        showCalibrationSheet = false
+                        controller.reloadCalibrationProfile()
+                    }
+                )
+            }
         }
         .onAppear {
             controller.reloadCalibrationProfile()
@@ -200,75 +132,124 @@ public struct MainGazeScannerView: View {
         }
     }
 
-    // MARK: - Top Status Bar (Stable, Non-Flickering)
+    // MARK: - Top Header Bar (Clean 3-Mode Toggle Only)
 
-    private var topStatusBar: some View {
-        HStack(spacing: 8) {
-            // Progressive 3-Stage Tracking status
-            HStack(spacing: 5) {
-                Circle()
-                    .fill(controller.trackingStage.isGazeActive ? LiquidGlass.emeraldMint : (controller.trackingStage.hasFace ? LiquidGlass.celestialTeal : LiquidGlass.warmAmber))
-                    .frame(width: 7, height: 7)
-                Text(controller.trackingStage.label)
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundColor(LiquidGlass.textPrimary)
-            }
-
+    private var topHeaderBar: some View {
+        HStack {
             Spacer()
-
-            // Calibration status badge
-            HStack(spacing: 4) {
-                Image(systemName: controller.calibrationProfile.isCalibrated ? "checkmark.seal.fill" : "target")
-                    .font(.system(size: 10))
-                Text(controller.calibrationProfile.isCalibrated ? "Calibrated" : "Uncalibrated")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-            }
-            .foregroundColor(controller.calibrationProfile.isCalibrated ? LiquidGlass.emeraldMint : LiquidGlass.textSecondary)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(Capsule().fill((controller.calibrationProfile.isCalibrated ? LiquidGlass.emeraldMint : LiquidGlass.textSecondary).opacity(0.15)))
-
+            modeToggleSelector
             Spacer()
-
-            // Active visual focus pill (fixed layout)
-            HStack(spacing: 4) {
-                Image(systemName: "eye.fill")
-                    .font(.system(size: 10))
-                    .foregroundColor(LiquidGlass.celestialTeal)
-                Text(controller.activeAOIs.contains("Social_Actor") ? "Focus: Social Scene" : "Focus: Dynamic Patterns")
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .foregroundColor(LiquidGlass.celestialTeal)
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(Capsule().fill(LiquidGlass.celestialTeal.opacity(0.16)))
-
-            Spacer()
-
-            // Timer with tabular monospaced digits (stable width)
-            HStack(spacing: 4) {
-                Image(systemName: "stopwatch.fill")
-                    .font(.system(size: 10))
-                    .foregroundColor(LiquidGlass.textSecondary)
-                Text(String(format: "%02d:%02d", Int(elapsedSeconds) / 60, Int(elapsedSeconds) % 60))
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    .monospacedDigit()
-                    .foregroundColor(LiquidGlass.textPrimary)
-            }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .glassCard(cornerRadius: 12, padding: 4)
+        .padding(.vertical, 4)
     }
 
-    private func cycleDisplayMode() {
-        withAnimation(.easeInOut(duration: 0.25)) {
-            switch displayMode {
-            case .sideBySide: displayMode = .pictureInPicture
-            case .pictureInPicture: displayMode = .stimulusOnly
-            case .stimulusOnly: displayMode = .sideBySide
+    private var modeToggleSelector: some View {
+        HStack(spacing: 2) {
+            ForEach(ScannerDisplayMode.allCases) { mode in
+                Button {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                        displayMode = mode
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: mode.icon)
+                            .font(.system(size: 11, weight: .semibold))
+                        Text(mode.title)
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(displayMode == mode ? LiquidGlass.celestialTeal.opacity(0.28) : Color.clear)
+                    )
+                    .overlay(
+                        Capsule()
+                            .stroke(
+                                displayMode == mode ? LiquidGlass.celestialTeal.opacity(0.85) : Color.clear,
+                                lineWidth: 1
+                            )
+                    )
+                    .foregroundColor(displayMode == mode ? LiquidGlass.celestialTeal : LiquidGlass.textSecondary)
+                }
+                .buttonStyle(.plain)
             }
         }
+        .padding(3)
+        .background(Capsule().fill(LiquidGlass.cardBackground))
+        .overlay(Capsule().stroke(LiquidGlass.cardBorder, lineWidth: 0.8))
+    }
+
+    // MARK: - Faint Transparent HUD Floating Indicators
+
+    private var faintEyeStatusIndicator: some View {
+        let isActive = controller.trackingStage.isGazeActive && controller.currentQuality.isValid
+        let isAcquiring = controller.trackingStage.hasFace
+        let eyeColor: Color = isActive
+            ? LiquidGlass.emeraldMint
+            : (isAcquiring ? LiquidGlass.celestialTeal : LiquidGlass.deactivatedBrown)
+        let iconName = isActive ? "eye.fill" : (isAcquiring ? "eye" : "eye.slash.fill")
+
+        return ZStack {
+            Circle()
+                .fill(.ultraThinMaterial.opacity(0.65))
+                .frame(width: 28, height: 28)
+            Circle()
+                .stroke(eyeColor.opacity(0.45), lineWidth: 0.9)
+                .frame(width: 28, height: 28)
+            Image(systemName: iconName)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(eyeColor.opacity(0.9))
+        }
+        .shadow(color: Color.black.opacity(0.12), radius: 4, x: 0, y: 2)
+        .accessibilityLabel(isActive ? "Tracking Active" : "Tracking Inactive")
+    }
+
+    private var faintCalibrationIndicator: some View {
+        let isCalibrated = controller.calibrationProfile.isCalibrated
+        let targetColor: Color = isCalibrated
+            ? LiquidGlass.emeraldMint
+            : LiquidGlass.deactivatedBrown
+
+        return Button(action: handleNavigateToCalibration) {
+            ZStack {
+                Circle()
+                    .fill(.ultraThinMaterial.opacity(0.65))
+                    .frame(width: 28, height: 28)
+                Circle()
+                    .stroke(targetColor.opacity(0.45), lineWidth: 0.9)
+                    .frame(width: 28, height: 28)
+                Image(systemName: "target")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(targetColor.opacity(0.9))
+            }
+            .shadow(color: Color.black.opacity(0.12), radius: 4, x: 0, y: 2)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isCalibrated ? "Calibrated (Tap to recalibrate)" : "Uncalibrated (Tap to calibrate)")
+    }
+
+    private var faintTimerBadge: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "stopwatch.fill")
+                .font(.system(size: 9))
+                .foregroundColor(LiquidGlass.textSecondary.opacity(0.85))
+            Text(String(format: "%02d:%02d", Int(elapsedSeconds) / 60, Int(elapsedSeconds) % 60))
+                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                .monospacedDigit()
+                .foregroundColor(LiquidGlass.textPrimary.opacity(0.9))
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 4)
+        .background(
+            Capsule()
+                .fill(.ultraThinMaterial.opacity(0.65))
+        )
+        .overlay(
+            Capsule()
+                .stroke(Color.white.opacity(0.15), lineWidth: 0.8)
+        )
+        .shadow(color: Color.black.opacity(0.12), radius: 4, x: 0, y: 2)
     }
 
     // MARK: - Main Content Split Pane
@@ -276,20 +257,53 @@ public struct MainGazeScannerView: View {
     @ViewBuilder
     private var mainContentPane: some View {
         GeometryReader { geometry in
-            switch displayMode {
-            case .sideBySide:
-                HStack(spacing: 8) {
-                    stimulusPlayerPane(size: CGSize(width: geometry.size.width * 0.58, height: geometry.size.height))
-                    faceAlignmentHUDPane(size: CGSize(width: geometry.size.width * 0.40, height: geometry.size.height))
+            let totalWidth = geometry.size.width
+            let totalHeight = geometry.size.height
+
+            ZStack(alignment: .bottomTrailing) {
+                switch displayMode {
+                case .sideBySide:
+                    HStack(spacing: 8) {
+                        stimulusPlayerPane(size: CGSize(width: totalWidth * 0.58, height: totalHeight))
+                            .frame(width: totalWidth * 0.58, height: totalHeight)
+
+                        faceAlignmentHUDPane(size: CGSize(width: totalWidth * 0.40, height: totalHeight))
+                            .frame(width: totalWidth * 0.40, height: totalHeight)
+                    }
+                    .frame(width: totalWidth, height: totalHeight)
+
+                case .pictureInPicture:
+                    ZStack(alignment: .bottomTrailing) {
+                        stimulusPlayerPane(size: geometry.size)
+                            .frame(width: totalWidth, height: totalHeight)
+
+                        compactFaceFloatingHUD
+                            .frame(width: 135, height: 175)
+                            .shadow(color: Color.black.opacity(0.45), radius: 10, x: 0, y: 5)
+                            .padding(.trailing, 10)
+                            .padding(.bottom, 10)
+                    }
+                    .frame(width: totalWidth, height: totalHeight)
+
+                case .stimulusOnly:
+                    ZStack {
+                        stimulusPlayerPane(size: geometry.size)
+                            .frame(width: totalWidth, height: totalHeight)
+
+                        // Keep camera session alive invisibly so ARSession is uninterrupted
+                        ARFaceCameraView(
+                            session: controller.arSession,
+                            isSimulation: controller.isSimulationMode,
+                            headYawDeg: controller.headYawDeg,
+                            headPitchDeg: controller.headPitchDeg,
+                            isValid: controller.currentQuality.isValid
+                        )
+                        .frame(width: 1, height: 1)
+                        .opacity(0.001)
+                        .allowsHitTesting(false)
+                    }
+                    .frame(width: totalWidth, height: totalHeight)
                 }
-            case .pictureInPicture:
-                ZStack(alignment: .bottomTrailing) {
-                    stimulusPlayerPane(size: geometry.size)
-                    faceAlignmentHUDPane(size: CGSize(width: 140, height: 190))
-                        .padding(12)
-                }
-            case .stimulusOnly:
-                stimulusPlayerPane(size: geometry.size)
             }
         }
     }
@@ -375,6 +389,33 @@ public struct MainGazeScannerView: View {
                     y: controller.currentGazePoint.y * size.height
                 )
                 .shadow(color: LiquidGlass.celestialTeal, radius: 10)
+
+            // Faint Floating HUD Overlays
+            VStack {
+                // Top-Right: Monospaced Stopwatch Timer
+                HStack {
+                    Spacer()
+                    faintTimerBadge
+                }
+                .padding(.top, 8)
+                .padding(.trailing, 8)
+
+                Spacer()
+
+                // Bottom: Eye Indicator (Left) & Calibration Indicator (Right if Full Screen mode)
+                HStack(alignment: .bottom) {
+                    faintEyeStatusIndicator
+                        .padding(.leading, 8)
+
+                    Spacer()
+
+                    if displayMode == .stimulusOnly {
+                        faintCalibrationIndicator
+                            .padding(.trailing, 8)
+                    }
+                }
+                .padding(.bottom, 8)
+            }
         }
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
@@ -383,7 +424,7 @@ public struct MainGazeScannerView: View {
         )
     }
 
-    // MARK: - Pane B: Live Front Camera / Face HUD
+    // MARK: - Pane B: Live Front Camera / Face HUD (Full)
 
     private func faceAlignmentHUDPane(size: CGSize) -> some View {
         let affect = controller.currentAffect
@@ -398,7 +439,7 @@ public struct MainGazeScannerView: View {
         }()
 
         return VStack(spacing: 8) {
-            ZStack {
+            ZStack(alignment: .bottomTrailing) {
                 ARFaceCameraView(
                     session: controller.arSession,
                     isSimulation: controller.isSimulationMode,
@@ -427,6 +468,11 @@ public struct MainGazeScannerView: View {
                     .overlay(Capsule().stroke(LiquidGlass.cardBorder, lineWidth: 0.8))
                     .padding(.bottom, 6)
                 }
+
+                // Faint Calibration Indicator docked at bottom-right inside camera
+                faintCalibrationIndicator
+                    .padding(.trailing, 8)
+                    .padding(.bottom, 6)
             }
             .frame(maxHeight: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -485,7 +531,62 @@ public struct MainGazeScannerView: View {
             }
             .padding(.horizontal, 4)
         }
+        .frame(width: size.width, height: size.height)
         .glassCard(cornerRadius: 14, padding: 8)
+    }
+
+    // MARK: - Pane C: Floating Picture-in-Picture Face HUD
+
+    private var compactFaceFloatingHUD: some View {
+        let affect = controller.currentAffect
+        let emotion = affect.dominantEmotion
+
+        return ZStack(alignment: .bottom) {
+            ARFaceCameraView(
+                session: controller.arSession,
+                isSimulation: controller.isSimulationMode,
+                headYawDeg: controller.headYawDeg,
+                headPitchDeg: controller.headPitchDeg,
+                smileIntensity: affect.socialSmileIntensity,
+                surpriseScore: affect.surpriseScore,
+                distressScore: affect.distressScore,
+                dominantEmotion: emotion,
+                isValid: controller.currentQuality.isValid
+            )
+
+            // Compact Floating Controls & Telemetry
+            HStack(spacing: 4) {
+                // Telemetry Badge on bottom-leading
+                HStack(spacing: 3) {
+                    Text(emotion.emoji)
+                        .font(.system(size: 10))
+                    Text("\(Int(controller.currentDistanceCm))cm")
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .monospacedDigit()
+                        .foregroundColor(
+                            (controller.currentDistanceCm >= 38 && controller.currentDistanceCm <= 55)
+                                ? LiquidGlass.emeraldMint
+                                : LiquidGlass.warmAmber
+                        )
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(Capsule().fill(.ultraThinMaterial))
+                .overlay(Capsule().stroke(LiquidGlass.cardBorder, lineWidth: 0.8))
+
+                Spacer()
+
+                // Faint Calibration Indicator on bottom-trailing inside camera
+                faintCalibrationIndicator
+            }
+            .padding(.horizontal, 6)
+            .padding(.bottom, 6)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(LiquidGlass.celestialTeal.opacity(0.65), lineWidth: 1.2)
+        )
     }
 
     private func emotionMicroChip(emoji: String, label: String, score: Double, activeColor: Color) -> some View {
@@ -518,73 +619,71 @@ public struct MainGazeScannerView: View {
 
     private var bottomControlBar: some View {
         HStack(spacing: 12) {
-            Button(action: {
-                elapsedSeconds = 0.0
-                controller.startSession()
-            }) {
-                Image(systemName: "arrow.counterclockwise")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(LiquidGlass.textPrimary)
-                    .frame(width: 44, height: 44)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(LiquidGlass.cardBackground)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(LiquidGlass.cardBorder, lineWidth: 1)
-                    )
-            }
-
             GlassButton(
                 title: Localizer.tr("complete_observation"),
                 systemImage: "checkmark.circle.fill",
                 isPrimary: true
             ) {
-                sessionTimer?.invalidate()
-                let summary = controller.stopSession()
-                let frames = controller.recordedFrames
+                completeSession()
+            }
+            .frame(maxWidth: .infinity)
 
-                // 1. Run ML inference on Apple Neural Engine (ANE)
-                let classification = BiomarkerClassificationEngine.shared.classifySync(summary: summary)
+            // Three-dot Options Menu on bottom right
+            threeDotsMenuButton
+        }
+    }
 
-                // 2. Batch encrypt & persist volatile RAM frames to disk atomically off main thread
-                Task.detached(priority: .userInitiated) {
-                    let vault = SessionVaultManager()
-                    let header = SessionHeader(
-                        sessionId: summary.sessionId,
-                        participantToken: "child-\(summary.sessionId.prefix(6))",
-                        stimulusBattery: "GeoPref_v1",
-                        stimulusDurationSec: summary.durationSec
-                    )
-                    _ = try? vault.saveSession(
-                        header: header,
-                        frames: frames,
-                        report: summary,
-                        classification: classification
-                    )
-                }
+    private var threeDotsMenuButton: some View {
+        Menu {
+            Button(action: {
+                elapsedSeconds = 0.0
+                controller.startSession()
+            }) {
+                Label("Reset Observation", systemImage: "arrow.counterclockwise")
+            }
 
-                // 3. Mark in CarePlan and CareKit store
-                CarePlanStore.shared.markScreeningCompleted(socialScore: summary.socialPreferenceScore)
-                CareKitClinicalStore.shared.recordScreeningOutcome(
-                    socialScore: summary.socialPreferenceScore,
-                    validFramePercentage: summary.validRatio * 100.0,
-                    knownTasks: CarePlanStore.shared.tasks,
-                    riskScore: classification.riskScore,
-                    riskStratification: classification.riskStratification.rawValue
+            Button(action: {
+                controller.isSimulationMode.toggle()
+            }) {
+                Label(
+                    controller.isSimulationMode ? "Switch to TrueDepth" : "Switch to Simulation",
+                    systemImage: controller.isSimulationMode ? "camera.viewfinder" : "cpu"
                 )
+            }
 
-                if let onComplete {
-                    onComplete(summary, frames)
-                } else {
-                    presentedReport = (summary, frames, classification)
+            Button(action: handleNavigateToCalibration) {
+                Label("Calibrate Gaze", systemImage: "target")
+            }
+
+            if let onOpenHistory {
+                Button(action: onOpenHistory) {
+                    Label("Caregiver History", systemImage: "chart.line.uptrend.xyaxis")
                 }
+            }
+        } label: {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(LiquidGlass.cardBackground)
+                    .frame(width: 44, height: 44)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(LiquidGlass.cardBorder, lineWidth: 1)
+                    .frame(width: 44, height: 44)
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(LiquidGlass.celestialTeal)
             }
         }
     }
 
-    // MARK: - Session Loop & Actions
+    // MARK: - Actions
+
+    private func handleNavigateToCalibration() {
+        if let onNavigateToCalibration {
+            onNavigateToCalibration()
+        } else {
+            showCalibrationSheet = true
+        }
+    }
 
     private func handleClose() {
         sessionTimer?.invalidate()
@@ -593,6 +692,48 @@ public struct MainGazeScannerView: View {
             onClose()
         } else {
             dismiss()
+        }
+    }
+
+    private func completeSession() {
+        sessionTimer?.invalidate()
+        let summary = controller.stopSession()
+        let frames = controller.recordedFrames
+
+        // 1. Run ML inference on Apple Neural Engine (ANE)
+        let classification = BiomarkerClassificationEngine.shared.classifySync(summary: summary)
+
+        // 2. Batch encrypt & persist volatile RAM frames to disk atomically off main thread
+        Task.detached(priority: .userInitiated) {
+            let vault = SessionVaultManager()
+            let header = SessionHeader(
+                sessionId: summary.sessionId,
+                participantToken: "child-\(summary.sessionId.prefix(6))",
+                stimulusBattery: "GeoPref_v1",
+                stimulusDurationSec: summary.durationSec
+            )
+            _ = try? vault.saveSession(
+                header: header,
+                frames: frames,
+                report: summary,
+                classification: classification
+            )
+        }
+
+        // 3. Mark in CarePlan and CareKit store
+        CarePlanStore.shared.markScreeningCompleted(socialScore: summary.socialPreferenceScore)
+        CareKitClinicalStore.shared.recordScreeningOutcome(
+            socialScore: summary.socialPreferenceScore,
+            validFramePercentage: summary.validRatio * 100.0,
+            knownTasks: CarePlanStore.shared.tasks,
+            riskScore: classification.riskScore,
+            riskStratification: classification.riskStratification.rawValue
+        )
+
+        if let onComplete {
+            onComplete(summary, frames)
+        } else {
+            presentedReport = (summary, frames, classification)
         }
     }
 

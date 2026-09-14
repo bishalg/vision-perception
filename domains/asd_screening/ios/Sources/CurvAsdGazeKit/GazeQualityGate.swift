@@ -20,11 +20,18 @@ public struct GazeQualityGate: Sendable {
         public let isValid: Bool
         public let verdict: Verdict
         public let failureReasons: [String]
+        public let isBlink: Bool
 
-        public init(isValid: Bool, verdict: Verdict, failureReasons: [String] = []) {
+        public init(
+            isValid: Bool,
+            verdict: Verdict,
+            failureReasons: [String] = [],
+            isBlink: Bool = false
+        ) {
             self.isValid = isValid
             self.verdict = verdict
             self.failureReasons = failureReasons
+            self.isBlink = isBlink
         }
     }
 
@@ -34,7 +41,7 @@ public struct GazeQualityGate: Sendable {
         maxYawRad: Double = 0.61,    // ~35 degrees
         maxPitchRad: Double = 0.52,  // ~30 degrees
         minConfidence: Double = 0.50,
-        blinkThreshold: Double = 0.15
+        blinkThreshold: Double = 0.45
     ) {
         self.minDistanceCm = minDistanceCm
         self.maxDistanceCm = maxDistanceCm
@@ -63,8 +70,9 @@ public struct GazeQualityGate: Sendable {
             reasons.append("Excessive head pitch (> \(Int(maxPitchRad * 180 / .pi))°)")
         }
 
-        // 3. Eye closure / blink check
-        if sample.leftEyeOpenness < blinkThreshold && sample.rightEyeOpenness < blinkThreshold {
+        // 3. Eye closure / blink check (either eye occluded triggers blink rejection)
+        let isBlink = sample.leftEyeOpenness < blinkThreshold || sample.rightEyeOpenness < blinkThreshold
+        if isBlink {
             reasons.append("Blink or ocular occlusion")
         }
 
@@ -74,10 +82,10 @@ public struct GazeQualityGate: Sendable {
         }
 
         if !reasons.isEmpty {
-            let verdict: Verdict = reasons.count > 2 ? .rejected : .degraded
-            return Evaluation(isValid: false, verdict: verdict, failureReasons: reasons)
+            let verdict: Verdict = (isBlink || reasons.count > 2) ? .rejected : .degraded
+            return Evaluation(isValid: false, verdict: verdict, failureReasons: reasons, isBlink: isBlink)
         }
 
-        return Evaluation(isValid: true, verdict: .optimal)
+        return Evaluation(isValid: true, verdict: .optimal, isBlink: false)
     }
 }

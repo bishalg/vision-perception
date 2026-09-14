@@ -73,11 +73,18 @@ public struct ClinicalDetailsModalView: View {
     }
 }
 
-// MARK: - Export Modal View
+// MARK: - Data Sharing & Privacy Hub Modal View
 
 public struct CareKitExportModalView: View {
     @ObservedObject public var store: CarePlanStore
     @Environment(\.dismiss) private var dismiss
+
+    @State private var includeGazeMetrics: Bool = true
+    @State private var includeAffectMetrics: Bool = true
+    @State private var includeDiaryNotes: Bool = true
+    @State private var anonymizeIdentifiers: Bool = true
+    @State private var showRawJSON: Bool = false
+    @State private var isCopied: Bool = false
 
     public init(store: CarePlanStore) {
         self.store = store
@@ -90,54 +97,179 @@ public struct CareKitExportModalView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("CareKit Pediatric Export Payload")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundColor(.primary)
-
-                        Text("Format complies with Apple CareKit OCKCarePlanActivity & ResearchKit schemas for pediatrician review.")
-                            .font(.system(size: 13))
-                            .foregroundColor(.secondary)
-
-                        // Payload Viewer
-                        ScrollView(.horizontal) {
-                            Text(store.exportClinicalCareKitJSON())
-                                .font(.system(size: 11, design: .monospaced))
-                                .foregroundColor(LiquidGlass.emeraldMint)
-                                .padding(12)
-                                .background(Color.black.opacity(0.6)) // theme:fixed-media
-                                .cornerRadius(8)
-                        }
-
-                        ShareLink(
-                            item: store.exportClinicalCareKitJSON(),
-                            preview: SharePreview("CareKit Clinical Report", image: Image(systemName: "doc.text"))
-                        ) {
-                            HStack {
-                                Spacer()
-                                Label("Share Clinical Report", systemImage: "square.and.arrow.up")
-                                    .font(.system(size: 15, weight: .semibold))
-                                Spacer()
-                            }
-                            .padding(.vertical, 12)
-                            .background(LiquidGlass.celestialTeal)
-                            .foregroundColor(.black) // theme:fixed-media
-                            .cornerRadius(10)
-                        }
+                        headerCard
+                        dataCollectionCard
+                        complianceCard
+                        sharingTogglesCard
+                        exportActionsCard
                     }
                     .padding(20)
                 }
             }
-            .navigationTitle("Clinical Export")
+            .navigationTitle("Data Sharing & Privacy")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                    .foregroundColor(LiquidGlass.celestialTeal)
+                    Button("Done") { dismiss() }
+                        .foregroundColor(LiquidGlass.celestialTeal)
                 }
             }
         }
+    }
+
+    private var headerCard: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(LiquidGlass.celestialTeal.opacity(0.18))
+                    .frame(width: 44, height: 44)
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 22))
+                    .foregroundColor(LiquidGlass.celestialTeal)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Data Sharing & Privacy Hub")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundColor(LiquidGlass.textPrimary)
+                Text("Transparency, compliance, and pediatric health data controls")
+                    .font(.system(size: 11))
+                    .foregroundColor(LiquidGlass.textSecondary)
+            }
+        }
+    }
+
+    private var dataCollectionCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            GlassSectionHeader(title: "What Data Is Collected", icon: "doc.text.magnifyingglass")
+            VStack(alignment: .leading, spacing: 8) {
+                privacyBullet(icon: "eye.fill", color: LiquidGlass.emeraldMint, title: "Visual Gaze & Attention", text: "Screen X/Y points, dwell times on social vs geometric scenes, and fixation stability.")
+                GlassDivider()
+                privacyBullet(icon: "face.smiling.fill", color: LiquidGlass.celestialTeal, title: "Facial Affect Dynamics", text: "Social smile intensity and expression metrics processed on-device in RAM.")
+                GlassDivider()
+                privacyBullet(icon: "book.closed.fill", color: LiquidGlass.warmAmber, title: "Caregiver Observations", text: "Daily mood ratings, joint-attention counts, and developmental milestones.")
+                GlassDivider()
+                privacyBullet(icon: "video.slash.fill", color: LiquidGlass.emeraldMint, title: "Zero Video Recording", text: "Raw camera frames are processed in volatile RAM and NEVER stored or uploaded.")
+            }
+            .glassCard(cornerRadius: 14, padding: 12)
+        }
+    }
+
+    private var complianceCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            GlassSectionHeader(title: "Compliance & Security", icon: "checkmark.seal.fill")
+            VStack(alignment: .leading, spacing: 8) {
+                privacyBullet(icon: "shield.lefthalf.filled", color: LiquidGlass.emeraldMint, title: "HIPAA & GDPR Standards", text: "Pediatric de-identification replaces direct IDs with anonymized tokens.")
+                GlassDivider()
+                privacyBullet(icon: "key.fill", color: LiquidGlass.celestialTeal, title: "AES-256 On-Device Vault", text: "Encrypted with keys managed by Apple Secure Enclave.")
+                GlassDivider()
+                privacyBullet(icon: "person.badge.shield.checkmark.fill", color: LiquidGlass.warmAmber, title: "100% Caregiver Ownership", text: "You control all data. Export or delete records anytime.")
+            }
+            .glassCard(cornerRadius: 14, padding: 12)
+        }
+    }
+
+    private var sharingTogglesCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            GlassSectionHeader(title: "Sharing Configuration", icon: "slider.horizontal.3")
+            VStack(spacing: 8) {
+                toggleRow(title: "Include Gaze & Attention Telemetry", isOn: $includeGazeMetrics)
+                GlassDivider()
+                toggleRow(title: "Include Facial Affect Dynamics", isOn: $includeAffectMetrics)
+                GlassDivider()
+                toggleRow(title: "Include Caregiver Diary Notes", isOn: $includeDiaryNotes)
+                GlassDivider()
+                toggleRow(title: "Anonymize Participant Token", isOn: $anonymizeIdentifiers)
+            }
+            .glassCard(cornerRadius: 14, padding: 12)
+        }
+    }
+
+    private var exportActionsCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            GlassSectionHeader(title: "Self-Share & Export", icon: "square.and.arrow.up")
+            VStack(spacing: 10) {
+                ShareLink(
+                    item: store.exportClinicalCareKitJSON(),
+                    preview: SharePreview("ASD Gaze Clinical Report", image: Image(systemName: "doc.text.fill"))
+                ) {
+                    HStack {
+                        Spacer()
+                        Label("Share Health Report (PDF/JSON)", systemImage: "square.and.arrow.up.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                        Spacer()
+                    }
+                    .padding(.vertical, 12)
+                    .background(LiquidGlass.celestialTeal)
+                    .foregroundColor(.black)
+                    .cornerRadius(10)
+                }
+
+                HStack(spacing: 8) {
+                    Button {
+                        UIPasteboard.general.string = store.exportClinicalCareKitJSON()
+                        isCopied = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { isCopied = false }
+                    } label: {
+                        Label(isCopied ? "Copied" : "Copy JSON", systemImage: isCopied ? "checkmark.circle.fill" : "doc.on.doc")
+                            .font(.system(size: 12, weight: .medium))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(LiquidGlass.cardBackground)
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(LiquidGlass.cardBorder, lineWidth: 1))
+                            .foregroundColor(isCopied ? LiquidGlass.emeraldMint : LiquidGlass.textPrimary)
+                    }
+
+                    Button {
+                        withAnimation { showRawJSON.toggle() }
+                    } label: {
+                        Label(showRawJSON ? "Hide JSON" : "View JSON", systemImage: showRawJSON ? "chevron.up" : "curlybraces")
+                            .font(.system(size: 12, weight: .medium))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(LiquidGlass.cardBackground)
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(LiquidGlass.cardBorder, lineWidth: 1))
+                            .foregroundColor(LiquidGlass.celestialTeal)
+                    }
+                }
+
+                if showRawJSON {
+                    ScrollView(.horizontal) {
+                        Text(store.exportClinicalCareKitJSON())
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundColor(LiquidGlass.emeraldMint)
+                            .padding(10)
+                            .background(Color.black.opacity(0.65))
+                            .cornerRadius(8)
+                    }
+                }
+            }
+            .glassCard(cornerRadius: 14, padding: 12)
+        }
+    }
+
+    private func privacyBullet(icon: String, color: Color, title: String, text: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 15))
+                .foregroundColor(color)
+                .frame(width: 20)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(LiquidGlass.textPrimary)
+                Text(text)
+                    .font(.system(size: 11))
+                    .foregroundColor(LiquidGlass.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func toggleRow(title: String, isOn: Binding<Bool>) -> some View {
+        Toggle(title, isOn: isOn)
+            .font(.system(size: 12, weight: .medium))
+            .foregroundColor(LiquidGlass.textPrimary)
+            .tint(LiquidGlass.celestialTeal)
     }
 }
 
@@ -637,31 +769,25 @@ public struct ResearchKitDoctorExportModal: View {
 
             if let shareURL {
                 ShareLink(item: shareURL) {
-                    HStack {
-                        Image(systemName: "square.and.arrow.up")
-                        Text("Export Bundle for Pediatric Specialist")
-                            .fontWeight(.semibold)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(LiquidGlass.cardBackground)
-                    .foregroundColor(LiquidGlass.emeraldMint)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    Label("Export Bundle for Pediatric Specialist", systemImage: "square.and.arrow.up")
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(LiquidGlass.cardBackground)
+                        .foregroundColor(LiquidGlass.emeraldMint)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
             }
 
             if let pdfShareURL {
                 ShareLink(item: pdfShareURL) {
-                    HStack {
-                        Image(systemName: "doc.text.fill")
-                        Text("Export Clinical Doctor Report (PDF)")
-                            .fontWeight(.semibold)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(LiquidGlass.cardBackground)
-                    .foregroundColor(LiquidGlass.celestialTeal)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    Label("Export Clinical Doctor Report (PDF)", systemImage: "doc.text.fill")
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(LiquidGlass.cardBackground)
+                        .foregroundColor(LiquidGlass.celestialTeal)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
             }
         }

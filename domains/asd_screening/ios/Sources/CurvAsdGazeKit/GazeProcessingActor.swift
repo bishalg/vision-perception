@@ -124,6 +124,13 @@ public actor GazeProcessingActor {
     private let gazeFilter: OneEuroFilter2D
     private let rawGazeFilter: OneEuroFilter2D
 
+    /// Last verified valid fixation points to freeze reticle during eyelid occlusion / blinks.
+    private var lastValidCalibratedPoint: CGPoint = CGPoint(x: 0.5, y: 0.5)
+    private var lastValidRawPoint: CGPoint = CGPoint(x: 0.5, y: 0.5)
+    /// Post-blink debounce counter (~50ms / 3 frames) to allow pupil tracking settling after eye reopening.
+    private var blinkRecoveryFramesRemaining: Int = 0
+    private let blinkRecoveryFramesCount: Int = 3
+
     /// Volatile in-memory telemetry buffer. Kept strictly in RAM during active recording.
     /// Under 2 MB footprint for 7,200 samples (2-minute session at 60 Hz).
     private var volatileFrameBuffer: [GazeFrame] = []
@@ -158,6 +165,9 @@ public actor GazeProcessingActor {
         self.volatileFrameBuffer.removeAll(keepingCapacity: true)
         self.sessionStartTime = Date()
         self.isRecording = true
+        self.lastValidCalibratedPoint = CGPoint(x: 0.5, y: 0.5)
+        self.lastValidRawPoint = CGPoint(x: 0.5, y: 0.5)
+        self.blinkRecoveryFramesRemaining = 0
         self.gazeFilter.reset()
         self.rawGazeFilter.reset()
     }
@@ -165,6 +175,9 @@ public actor GazeProcessingActor {
     /// Updates calibration profile and resets smoothing filters.
     public func updateCalibrationProfile(_ profile: GazeCalibrationProfile) {
         self.calibrationProfile = profile
+        self.lastValidCalibratedPoint = CGPoint(x: 0.5, y: 0.5)
+        self.lastValidRawPoint = CGPoint(x: 0.5, y: 0.5)
+        self.blinkRecoveryFramesRemaining = 0
         self.gazeFilter.reset()
         self.rawGazeFilter.reset()
     }
@@ -172,6 +185,9 @@ public actor GazeProcessingActor {
     /// Resets calibration profile to identity.
     public func resetCalibration() {
         self.calibrationProfile = .identity
+        self.lastValidCalibratedPoint = CGPoint(x: 0.5, y: 0.5)
+        self.lastValidRawPoint = CGPoint(x: 0.5, y: 0.5)
+        self.blinkRecoveryFramesRemaining = 0
         self.gazeFilter.reset()
         self.rawGazeFilter.reset()
     }
@@ -225,6 +241,16 @@ public actor GazeProcessingActor {
         let leftEyeOpenness = max(0.0, min(1.0, 1.0 - leftBlink))
         let rightEyeOpenness = max(0.0, min(1.0, 1.0 - rightBlink))
 
+        // Blink detection & post-blink recovery debounce window
+        let isBlink = leftEyeOpenness < qualityGate.blinkThreshold || rightEyeOpenness < qualityGate.blinkThreshold
+        let isRecoveringFromBlink = blinkRecoveryFramesRemaining > 0
+        if isBlink {
+            blinkRecoveryFramesRemaining = blinkRecoveryFramesCount
+        } else if isRecoveringFromBlink {
+            blinkRecoveryFramesRemaining -= 1
+        }
+        let isOcularArtifact = isBlink || isRecoveringFromBlink
+
         let affect = FacialAffectMetrics(
             mouthSmileLeft: shapes["mouthSmileLeft"] ?? 0.0,
             mouthSmileRight: shapes["mouthSmileRight"] ?? 0.0,
@@ -242,41 +268,57 @@ public actor GazeProcessingActor {
             mouthFrownRight: shapes["mouthFrownRight"] ?? 0.0
         )
 
-        // 5. Query dynamic Area of Interest (AOI) bounding boxes
-        let activeHits = aoiTracker.activeAOIs(atTimeSec: elapsedSec, xNorm: calibratedPoint.x, yNorm: calibratedPoint.y)
+        // 5. Query dynamic Area of Interest (AOI) bounding boxes (suppressed during ocular artifacts)
+        let activeHits: [String] = isOcularArtifact
+            ? []
+            : aoiTracker.activeAOIs(atTimeSec: elapsedSec, xNorm: calibratedPoint.x, yNorm: calibratedPoint.y)
 
-        // 6. Evaluate Quality Gate tolerances
+        // 6. Evaluate Quality Gate tolerances (freeze coordinate at last valid position during blinks)
+        let gazeCoord = isOcularArtifact ? lastValidCalibratedPoint : calibratedPoint
+        let sampleIsValid = raycast.isWithinScreen && !isOcularArtifact
+
         let sample = GazeTelemetrySample(
             timestampMs: elapsedSec * 1000.0,
             videoTimeSec: elapsedSec,
-            xNorm: calibratedPoint.x,
-            yNorm: calibratedPoint.y,
-            confidence: 0.95,
+            xNorm: gazeCoord.x,
+            yNorm: gazeCoord.y,
+            confidence: isOcularArtifact ? 0.0 : 0.95,
             leftEyeOpenness: leftEyeOpenness,
             rightEyeOpenness: rightEyeOpenness,
             headPitchRad: pitch,
             headYawRad: yaw,
             headRollRad: roll,
             distanceToScreenCm: distanceCm,
-            isValid: raycast.isWithinScreen
+            isValid: sampleIsValid
         )
         let eval = qualityGate.evaluateSample(sample)
 
         // 7. Progressive 3-Stage Tracking pipeline
         let stage: TrackingStage
-        let eyesOpen = leftEyeOpenness >= 0.40 && rightEyeOpenness >= 0.40
+        let eyesOpen = leftEyeOpenness >= qualityGate.blinkThreshold && rightEyeOpenness >= qualityGate.blinkThreshold
         if !eyesOpen {
             stage = .faceAligned(distanceCm: distanceCm)
-        } else if eval.isValid && raycast.isWithinScreen {
+        } else if eval.isValid && sampleIsValid {
             stage = .gazeActive
         } else {
             stage = .eyesTracking(leftOpenness: leftEyeOpenness, rightOpenness: rightEyeOpenness)
         }
 
-        // 8. 1-Euro adaptive low-pass filter
+        // 8. 1-Euro adaptive low-pass filter (isolated during blinks to prevent downward plunge)
         let nowSec = Date().timeIntervalSince1970
-        let smoothedCalibrated = gazeFilter.filter(point: calibratedPoint, timestamp: nowSec)
-        let smoothedRaw = rawGazeFilter.filter(point: raycast.normalizedPoint, timestamp: nowSec)
+        let smoothedCalibrated: CGPoint
+        let smoothedRaw: CGPoint
+
+        if isOcularArtifact {
+            // Freeze gaze at last steady fixation — DO NOT pollute 1-Euro filter with downward plunge
+            smoothedCalibrated = lastValidCalibratedPoint
+            smoothedRaw = lastValidRawPoint
+        } else {
+            smoothedCalibrated = gazeFilter.filter(point: calibratedPoint, timestamp: nowSec)
+            smoothedRaw = rawGazeFilter.filter(point: raycast.normalizedPoint, timestamp: nowSec)
+            lastValidCalibratedPoint = smoothedCalibrated
+            lastValidRawPoint = smoothedRaw
+        }
 
         // 9. Volatile RAM buffering (no disk writes during 60 Hz stream)
         let frame = GazeFrame(
@@ -414,7 +456,7 @@ public actor GazeProcessingActor {
             return (emptySummary, framesSnapshot)
         }
 
-        let validFrames = framesSnapshot.filter { $0.qualityVerdict != .rejected }
+        let validFrames = framesSnapshot.filter { $0.gaze.isValid && $0.qualityVerdict != .rejected }
         let validRatio = Double(validFrames.count) / Double(totalFrames)
 
         var socialCount = 0

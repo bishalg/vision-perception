@@ -42,7 +42,26 @@ The following table summarizes the four foundational publications establishing m
 
 ---
 
-## 3. Protocol for Adding Future Research Papers
+## 3. Shareable Publication-Grade Clinical PDFs
+
+Two publication-grade PDF documents have been compiled for medical doctors, clinical investigators, and research sharing. They can be re-generated at any time using [`scripts/generate_clinical_and_research_pdfs.py`](../../../scripts/generate_clinical_and_research_pdfs.py):
+
+| Document | File Path / Link | Target Audience & Contents |
+| :--- | :--- | :--- |
+| **PDF 1: Research Evidence Dossier** | [`ASD_External_Research_Synthesis_and_Evidence_Dossier.pdf`](ASD_External_Research_Synthesis_and_Evidence_Dossier.pdf) | **For Researchers & Clinicians**: 3-page scientific synthesis of JAMA 2023, NEJM AI 2024, eLife 2019, and JBI 2022. Includes full comparative benchmark table, clinical accuracy (AUC/Sens/Spec), DMN neuroimaging findings, and citation bibliography. |
+| **PDF 2: Clinical Architecture & Roadmap** | [`ASD_Clinical_System_Architecture_and_Roadmap.pdf`](ASD_Clinical_System_Architecture_and_Roadmap.pdf) | **For Pediatricians & Doctor Reviewers**: 3-page non-technical guide explaining passive infrared tracking, zero-video privacy architecture, current capabilities, **synchronized facial emotion tracking**, **age-based developmental emotion matrix (12–48 mo)**, and 4-phase clinical deployment roadmap. |
+
+> **Automated Re-Generation**:  
+> To re-compile both PDFs at any time, run:  
+> ```bash
+> python3 scripts/generate_clinical_and_research_pdfs.py
+> ```  
+> Output copies are placed in `docs/research/asd_gaze_biomarkers/` and mirrored to `output/clinical_pdfs/`.
+
+---
+
+## 4. Protocol for Adding Future Research Papers
+
 
 To ensure this research library remains well-organized, scalable, and directly actionable for ongoing app development, adhere to the following protocol when adding new papers:
 

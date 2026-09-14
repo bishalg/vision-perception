@@ -217,12 +217,15 @@ public struct GazeReplayHeatmapFullScreenView: View {
     private func scanpathFlowOverlay(in size: CGSize) -> some View {
         let maxIdx = min(currentFrameIndex, recordedFrames.count)
         let visibleFrames: [GazeFrame] = {
+            let validSubarray = recordedFrames.prefix(maxIdx).filter { f in
+                f.gaze.isValid && f.qualityVerdict != .rejected
+            }
             if tailMode == .fullPath {
-                return Array(recordedFrames.prefix(maxIdx))
+                return Array(validSubarray)
             } else {
                 // 5-second trailing window: only points where time >= (currentTime - 5.0)
                 let cutoffTime = max(0, currentTimeSec - 5.0)
-                return recordedFrames.prefix(maxIdx).filter { f in
+                return validSubarray.filter { f in
                     f.gaze.videoTimeSec >= cutoffTime
                 }
             }
@@ -234,6 +237,10 @@ public struct GazeReplayHeatmapFullScreenView: View {
             for i in 1..<visibleFrames.count {
                 let prev = visibleFrames[i - 1].gaze
                 let curr = visibleFrames[i].gaze
+
+                // Suppress spurious connector lines across blink gaps or loss of tracking
+                let dt = curr.videoTimeSec - prev.videoTimeSec
+                guard dt > 0 && dt <= 0.12 else { continue }
 
                 var path = Path()
                 path.move(to: CGPoint(x: prev.xNorm * canvasSize.width, y: prev.yNorm * canvasSize.height))
@@ -266,10 +273,12 @@ public struct GazeReplayHeatmapFullScreenView: View {
     @ViewBuilder
     private func fixationHeatmapOverlay(in size: CGSize) -> some View {
         let maxIdx = min(currentFrameIndex, recordedFrames.count)
-        let sampledFrames = recordedFrames.prefix(maxIdx)
+        let validSampledFrames = Array(recordedFrames.prefix(maxIdx).filter {
+            $0.gaze.isValid && $0.qualityVerdict != .rejected
+        })
 
         ZStack {
-            ForEach(Array(sampledFrames.enumerated()), id: \.offset) { item in
+            ForEach(Array(validSampledFrames.enumerated()), id: \.offset) { item in
                 if item.offset % 3 == 0 { // Sample every 3rd frame for performant Gaussian density
                     let pt = item.element.gaze
                     Circle()
@@ -294,19 +303,21 @@ public struct GazeReplayHeatmapFullScreenView: View {
     // MARK: - Active Gaze Cursor
 
     private func activeGazeCursor(frame: GazeFrame, in size: CGSize) -> some View {
+        let isOcularLoss = !frame.gaze.isValid || frame.qualityVerdict == .rejected
         let pt = CGPoint(x: frame.gaze.xNorm * size.width, y: frame.gaze.yNorm * size.height)
 
         return ZStack {
             Circle()
-                .stroke(LiquidGlass.emeraldMint, lineWidth: 2.5)
+                .stroke(isOcularLoss ? Color.gray.opacity(0.4) : LiquidGlass.emeraldMint, lineWidth: 2.5)
                 .frame(width: 32, height: 32)
-                .shadow(color: LiquidGlass.emeraldMint.opacity(0.8), radius: 8)
+                .shadow(color: isOcularLoss ? .clear : LiquidGlass.emeraldMint.opacity(0.8), radius: 8)
 
             Circle()
-                .fill(LiquidGlass.emeraldMint)
+                .fill(isOcularLoss ? Color.gray.opacity(0.5) : LiquidGlass.emeraldMint)
                 .frame(width: 10, height: 10)
         }
         .position(pt)
+        .opacity(isOcularLoss ? 0.35 : 1.0)
     }
 
     // MARK: - Floating Playback Controls Panel

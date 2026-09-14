@@ -22,6 +22,7 @@
 
 # Raw LLVM coverage profiles and root-dir test artifacts
 *.profraw
+*.pdf
 /evidence.json
 /canonical_palm.png
 /overlay_palm.png

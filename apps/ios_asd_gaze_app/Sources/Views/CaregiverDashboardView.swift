@@ -70,32 +70,15 @@ public struct CaregiverDashboardView: View {
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack(spacing: 12) {
-                        // Export Report
-                        Button {
-                            showingExportSheet = true
-                        } label: {
-                            Image(systemName: "square.and.arrow.up")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundColor(LiquidGlass.celestialTeal)
-                        }
-                        .accessibilityLabel(Localizer.tr("carekit_export_title"))
-
-                        // Apple Health Profile Avatar Button
-                        Button {
-                            showingExportSheet = true
-                        } label: {
-                            ZStack {
-                                Circle()
-                                    .fill(LiquidGlass.celestialTeal.opacity(0.2))
-                                    .frame(width: 32, height: 32)
-                                Image(systemName: "person.crop.circle.fill")
-                                    .font(.system(size: 26))
-                                    .foregroundColor(LiquidGlass.celestialTeal)
-                            }
-                        }
-                        .accessibilityLabel("Caregiver Profile & Export")
+                    // Data Sharing & Privacy Hub Export Button
+                    Button {
+                        showingExportSheet = true
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(LiquidGlass.celestialTeal)
                     }
+                    .accessibilityLabel("Data Sharing & Privacy Export")
                 }
             }
             .sheet(isPresented: $showingExportSheet) {
@@ -734,4 +717,3 @@ public struct CaregiverDashboardView: View {
         )
     }
 }
-

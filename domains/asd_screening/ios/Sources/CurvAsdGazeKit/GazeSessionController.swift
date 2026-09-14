@@ -108,6 +108,13 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
     /// Separate filter for uncalibrated raw signal.
     private let rawGazeFilter = OneEuroFilter2D(minCutoff: 1.2, beta: 0.015, dCutoff: 1.0)
 
+    /// Last verified valid fixation points to freeze reticle during eyelid occlusion / blinks.
+    private var lastValidCalibratedPoint: CGPoint = CGPoint(x: 0.5, y: 0.5)
+    private var lastValidRawPoint: CGPoint = CGPoint(x: 0.5, y: 0.5)
+    /// Post-blink debounce counter (~50ms / 3 frames) to allow pupil tracking settling after eye reopening.
+    private var blinkRecoveryFramesRemaining: Int = 0
+    private let blinkRecoveryFramesCount: Int = 3
+
     public static let didUpdateCalibrationNotification = Notification.Name("CurvAsdGazeKit.calibrationDidUpdate")
     private var calibrationObserver: NSObjectProtocol?
 
@@ -214,6 +221,9 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
 
         trackingStage = .searchingFace
         currentQuality = GazeQualityGate.Evaluation(isValid: false, verdict: .rejected, failureReasons: ["Waiting for camera…"])
+        lastValidCalibratedPoint = CGPoint(x: 0.5, y: 0.5)
+        lastValidRawPoint = CGPoint(x: 0.5, y: 0.5)
+        blinkRecoveryFramesRemaining = 0
 
         #if canImport(ARKit) && !os(macOS)
         if ARFaceTrackingConfiguration.isSupported {
@@ -269,7 +279,7 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
             )
         }
 
-        let validFrames = framesSnapshot.filter { $0.qualityVerdict != .rejected }
+        let validFrames = framesSnapshot.filter { $0.gaze.isValid && $0.qualityVerdict != .rejected }
         let validRatio = Double(validFrames.count) / Double(totalFrames)
 
         var socialCount = 0
@@ -505,6 +515,16 @@ extension GazeSessionController: ARSessionDelegate {
         let leftEyeOpenness = max(0.0, min(1.0, 1.0 - leftBlink))
         let rightEyeOpenness = max(0.0, min(1.0, 1.0 - rightBlink))
 
+        // Blink detection & post-blink recovery debounce window
+        let isBlink = leftEyeOpenness < qualityGate.blinkThreshold || rightEyeOpenness < qualityGate.blinkThreshold
+        let isRecoveringFromBlink = blinkRecoveryFramesRemaining > 0
+        if isBlink {
+            blinkRecoveryFramesRemaining = blinkRecoveryFramesCount
+        } else if isRecoveringFromBlink {
+            blinkRecoveryFramesRemaining -= 1
+        }
+        let isOcularArtifact = isBlink || isRecoveringFromBlink
+
         let affect = FacialAffectMetrics(
             mouthSmileLeft: shapes[.mouthSmileLeft]?.doubleValue ?? 0,
             mouthSmileRight: shapes[.mouthSmileRight]?.doubleValue ?? 0,
@@ -523,21 +543,29 @@ extension GazeSessionController: ARSessionDelegate {
         )
 
         let elapsedSec = sessionStartTime.map { Date().timeIntervalSince($0) } ?? 0.0
-        let activeHits = aoiTracker.activeAOIs(atTimeSec: elapsedSec, xNorm: calibratedPoint.x, yNorm: calibratedPoint.y)
+
+        // Suppress false Area of Interest (AOI) hits during downward blink plunge
+        let activeHits: [String] = isOcularArtifact
+            ? []
+            : aoiTracker.activeAOIs(atTimeSec: elapsedSec, xNorm: calibratedPoint.x, yNorm: calibratedPoint.y)
+
+        // Hold last valid coordinate during blink instead of plunging down to screen bottom
+        let gazeCoord = isOcularArtifact ? lastValidCalibratedPoint : calibratedPoint
+        let sampleIsValid = raycast.isWithinScreen && !isOcularArtifact
 
         let sample = GazeTelemetrySample(
             timestampMs: elapsedSec * 1000.0,
             videoTimeSec: elapsedSec,
-            xNorm: calibratedPoint.x,
-            yNorm: calibratedPoint.y,
-            confidence: 0.95,
+            xNorm: gazeCoord.x,
+            yNorm: gazeCoord.y,
+            confidence: isOcularArtifact ? 0.0 : 0.95,
             leftEyeOpenness: leftEyeOpenness,
             rightEyeOpenness: rightEyeOpenness,
             headPitchRad: pitch,
             headYawRad: yaw,
             headRollRad: roll,
             distanceToScreenCm: distanceCm,
-            isValid: raycast.isWithinScreen
+            isValid: sampleIsValid
         )
 
         let eval = qualityGate.evaluateSample(sample)
@@ -551,18 +579,29 @@ extension GazeSessionController: ARSessionDelegate {
         )
 
         let stage: TrackingStage
-        let eyesOpen = leftEyeOpenness >= 0.40 && rightEyeOpenness >= 0.40
+        let eyesOpen = leftEyeOpenness >= qualityGate.blinkThreshold && rightEyeOpenness >= qualityGate.blinkThreshold
         if !eyesOpen {
             stage = .faceAligned(distanceCm: distanceCm)
-        } else if eval.isValid && raycast.isWithinScreen {
+        } else if eval.isValid && sampleIsValid {
             stage = .gazeActive
         } else {
             stage = .eyesTracking(leftOpenness: leftEyeOpenness, rightOpenness: rightEyeOpenness)
         }
 
         let nowSec = Date().timeIntervalSince1970
-        let smoothedCalibrated = gazeFilter.filter(point: calibratedPoint, timestamp: nowSec)
-        let smoothedRaw = rawGazeFilter.filter(point: raycast.normalizedPoint, timestamp: nowSec)
+        let smoothedCalibrated: CGPoint
+        let smoothedRaw: CGPoint
+
+        if isOcularArtifact {
+            // Freeze gaze at last steady fixation — DO NOT pollute 1-Euro filter with downward plunge
+            smoothedCalibrated = lastValidCalibratedPoint
+            smoothedRaw = lastValidRawPoint
+        } else {
+            smoothedCalibrated = gazeFilter.filter(point: calibratedPoint, timestamp: nowSec)
+            smoothedRaw = rawGazeFilter.filter(point: raycast.normalizedPoint, timestamp: nowSec)
+            lastValidCalibratedPoint = smoothedCalibrated
+            lastValidRawPoint = smoothedRaw
+        }
 
         // Buffer frame in volatile RAM without touching main thread
         if self.isRecording {
