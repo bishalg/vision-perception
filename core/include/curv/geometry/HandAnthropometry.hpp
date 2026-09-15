@@ -39,11 +39,11 @@ struct DigitRatios {
  * @brief Overall palmar dimensions and standard anthropometric indices.
  */
 struct PalmDimensions {
-    float metacarpal_breadth_mm{0.0f}; // Width (index MCP to pinky MCP)
-    float palm_length_mm{0.0f};        // Length (wrist to middle MCP)
-    float total_hand_length_mm{0.0f};  // Total length (wrist to middle tip)
-    float aspect_ratio{0.0f};          // breadth / length
-    float palm_surface_area_cm2{0.0f}; // Estimated 2D palm area
+    float metacarpal_breadth_mm{0.0f};           // Width (index MCP to pinky MCP)
+    float palm_length_mm{0.0f};                  // Length (wrist to middle MCP)
+    float total_hand_length_mm{0.0f};            // Total length (wrist to middle tip)
+    float aspect_ratio{0.0f};                    // breadth / length
+    float palm_surface_area_cm2{0.0f};           // Estimated 2D palm area
     std::string hand_shape_type{"proportional"}; // "broad", "elongated", "proportional"
 
     [[nodiscard]] nlohmann::json toJson() const;
@@ -69,7 +69,8 @@ struct InterdigitalSpan {
  * @brief Morphometry of anatomical palmar pads (independent of astrological interpretations).
  */
 struct AnatomicalPadMetric {
-    std::string pad_name; // "thenar", "hypothenar", "radial_interdigital", "central_interdigital", "ring_interdigital", "ulnar_interdigital", "palmar_fossa"
+    std::string pad_name; // "thenar", "hypothenar", "radial_interdigital", "central_interdigital", "ring_interdigital",
+                          // "ulnar_interdigital", "palmar_fossa"
     float height_mm{0.0f};
     float relative_prominence{0.0f};
     float area_mm2{0.0f};
@@ -82,7 +83,8 @@ struct AnatomicalPadMetric {
  * @brief Morphometry of palmar flexion creases using standard anatomical nomenclature.
  */
 struct PalmarCreaseMetric {
-    std::string anatomical_name; // "distal_transverse_crease", "proximal_transverse_crease", "thenar_longitudinal_crease", "median_longitudinal_crease"
+    std::string anatomical_name;   // "distal_transverse_crease", "proximal_transverse_crease",
+                                   // "thenar_longitudinal_crease", "median_longitudinal_crease"
     std::string traditional_alias; // "heart", "head", "life", "fate"
     float arc_length_mm{0.0f};
     float chord_length_mm{0.0f};
@@ -114,14 +116,10 @@ struct HandAnthropometryReport {
  */
 class HandAnthropometer {
 public:
-    [[nodiscard]] static HandAnthropometryReport compute(
-        const std::vector<std::array<float, 2>>& landmarks_21,
-        int image_width = 1000,
-        int image_height = 1000,
-        float reference_palm_width_mm = 80.0f,
-        const std::unordered_map<std::string, float>& pad_depth_mm = {},
-        const std::string& hand_side = "auto"
-    );
+    [[nodiscard]] static HandAnthropometryReport
+    compute(const std::vector<std::array<float, 2>>& landmarks_21, int image_width = 1000, int image_height = 1000,
+            float reference_palm_width_mm = 80.0f, const std::unordered_map<std::string, float>& pad_depth_mm = {},
+            const std::string& hand_side = "auto");
 };
 
 } // namespace CurvEngine::geometry

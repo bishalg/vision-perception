@@ -16,9 +16,8 @@ namespace {
 /// mounts sit under their MCP/finger chains; Mars is the mid-palm plain.
 const std::unordered_map<std::string, std::vector<int>>& mountAnchors() {
     static const std::unordered_map<std::string, std::vector<int>> kAnchors = {
-        {"venus", {1, 2, 5}},   {"jupiter", {5, 6, 7}},  {"saturn", {9, 10, 11}},
-        {"apollo", {13, 14, 15}}, {"mercury", {17, 18, 19}}, {"luna", {0, 17, 18}},
-        {"mars", {5, 9, 13, 17}}};
+        {"venus", {1, 2, 5}},      {"jupiter", {5, 6, 7}}, {"saturn", {9, 10, 11}}, {"apollo", {13, 14, 15}},
+        {"mercury", {17, 18, 19}}, {"luna", {0, 17, 18}},  {"mars", {5, 9, 13, 17}}};
     return kAnchors;
 }
 
@@ -110,8 +109,7 @@ MountReliefMap MountReliefAnalyzer::analyzeOrbitSession(const nlohmann::json& or
         return result;
     }
 
-    static const std::vector<std::string> kMounts = {"jupiter", "saturn", "apollo", "mercury",
-                                                     "venus",   "luna",   "mars"};
+    static const std::vector<std::string> kMounts = {"jupiter", "saturn", "apollo", "mercury", "venus", "luna", "mars"};
 
     std::vector<CurvEngine::surface::OrbitFrameMeta> frames;
     std::vector<float> ref_gravity;

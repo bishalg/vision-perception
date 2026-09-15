@@ -12,9 +12,8 @@ float distPx(const std::array<float, 2>& a, const std::array<float, 2>& b, float
     return std::sqrt(dx * dx + dy * dy);
 }
 
-float angleDeg(const std::array<float, 2>& a, const std::array<float, 2>& b,
-               const std::array<float, 2>& c, const std::array<float, 2>& d,
-               float w, float h) {
+float angleDeg(const std::array<float, 2>& a, const std::array<float, 2>& b, const std::array<float, 2>& c,
+               const std::array<float, 2>& d, float w, float h) {
     const float v1x = (b[0] - a[0]) * w;
     const float v1y = (b[1] - a[1]) * h;
     const float v2x = (d[0] - c[0]) * w;
@@ -30,69 +29,48 @@ float angleDeg(const std::array<float, 2>& a, const std::array<float, 2>& b,
 } // anonymous namespace
 
 nlohmann::json DigitMeasurement::toJson() const {
-    return {
-        {"name", name},
-        {"total_length_mm", total_length_mm},
-        {"proximal_phalanx_mm", proximal_phalanx_mm},
-        {"intermediate_phalanx_mm", intermediate_phalanx_mm},
-        {"distal_phalanx_mm", distal_phalanx_mm},
-        {"length_relative_to_hand", length_relative_to_hand}
-    };
+    return {{"name", name},
+            {"total_length_mm", total_length_mm},
+            {"proximal_phalanx_mm", proximal_phalanx_mm},
+            {"intermediate_phalanx_mm", intermediate_phalanx_mm},
+            {"distal_phalanx_mm", distal_phalanx_mm},
+            {"length_relative_to_hand", length_relative_to_hand}};
 }
 
 nlohmann::json DigitRatios::toJson() const {
-    return {
-        {"ratio_2d_4d", ratio_2d_4d},
-        {"ratio_2d_3d", ratio_2d_3d},
-        {"ratio_3d_4d", ratio_3d_4d},
-        {"ratio_4d_5d", ratio_4d_5d},
-        {"thumb_to_index", thumb_to_index}
-    };
+    return {{"ratio_2d_4d", ratio_2d_4d},
+            {"ratio_2d_3d", ratio_2d_3d},
+            {"ratio_3d_4d", ratio_3d_4d},
+            {"ratio_4d_5d", ratio_4d_5d},
+            {"thumb_to_index", thumb_to_index}};
 }
 
 nlohmann::json PalmDimensions::toJson() const {
-    return {
-        {"metacarpal_breadth_mm", metacarpal_breadth_mm},
-        {"palm_length_mm", palm_length_mm},
-        {"total_hand_length_mm", total_hand_length_mm},
-        {"aspect_ratio", aspect_ratio},
-        {"palm_surface_area_cm2", palm_surface_area_cm2},
-        {"hand_shape_type", hand_shape_type}
-    };
+    return {{"metacarpal_breadth_mm", metacarpal_breadth_mm}, {"palm_length_mm", palm_length_mm},
+            {"total_hand_length_mm", total_hand_length_mm},   {"aspect_ratio", aspect_ratio},
+            {"palm_surface_area_cm2", palm_surface_area_cm2}, {"hand_shape_type", hand_shape_type}};
 }
 
 nlohmann::json InterdigitalSpan::toJson() const {
     return {
-        {"thumb_index_angle_deg", thumb_index_angle_deg},
-        {"index_middle_angle_deg", index_middle_angle_deg},
-        {"middle_ring_angle_deg", middle_ring_angle_deg},
-        {"ring_pinky_angle_deg", ring_pinky_angle_deg},
-        {"thumb_index_distance_mm", thumb_index_distance_mm},
-        {"index_middle_distance_mm", index_middle_distance_mm},
-        {"middle_ring_distance_mm", middle_ring_distance_mm},
-        {"ring_pinky_distance_mm", ring_pinky_distance_mm}
-    };
+        {"thumb_index_angle_deg", thumb_index_angle_deg},     {"index_middle_angle_deg", index_middle_angle_deg},
+        {"middle_ring_angle_deg", middle_ring_angle_deg},     {"ring_pinky_angle_deg", ring_pinky_angle_deg},
+        {"thumb_index_distance_mm", thumb_index_distance_mm}, {"index_middle_distance_mm", index_middle_distance_mm},
+        {"middle_ring_distance_mm", middle_ring_distance_mm}, {"ring_pinky_distance_mm", ring_pinky_distance_mm}};
 }
 
 nlohmann::json AnatomicalPadMetric::toJson() const {
-    return {
-        {"pad_name", pad_name},
-        {"height_mm", height_mm},
-        {"relative_prominence", relative_prominence},
-        {"area_mm2", area_mm2},
-        {"curvature", curvature}
-    };
+    return {{"pad_name", pad_name},
+            {"height_mm", height_mm},
+            {"relative_prominence", relative_prominence},
+            {"area_mm2", area_mm2},
+            {"curvature", curvature}};
 }
 
 nlohmann::json PalmarCreaseMetric::toJson() const {
-    return {
-        {"anatomical_name", anatomical_name},
-        {"traditional_alias", traditional_alias},
-        {"arc_length_mm", arc_length_mm},
-        {"chord_length_mm", chord_length_mm},
-        {"tortuosity", tortuosity},
-        {"is_simian_variant", is_simian_variant}
-    };
+    return {{"anatomical_name", anatomical_name}, {"traditional_alias", traditional_alias},
+            {"arc_length_mm", arc_length_mm},     {"chord_length_mm", chord_length_mm},
+            {"tortuosity", tortuosity},           {"is_simian_variant", is_simian_variant}};
 }
 
 nlohmann::json HandAnthropometryReport::toJson() const {
@@ -108,27 +86,15 @@ nlohmann::json HandAnthropometryReport::toJson() const {
     for (const auto& c : creases) {
         creases_arr.push_back(c.toJson());
     }
-    return {
-        {"schema_version", schema_version},
-        {"palm", palm.toJson()},
-        {"digits", digits_arr},
-        {"ratios", ratios.toJson()},
-        {"spans", spans.toJson()},
-        {"pads", pads_arr},
-        {"creases", creases_arr},
-        {"mm_per_pixel", mm_per_pixel},
-        {"hand_side", hand_side}
-    };
+    return {{"schema_version", schema_version}, {"palm", palm.toJson()},        {"digits", digits_arr},
+            {"ratios", ratios.toJson()},        {"spans", spans.toJson()},      {"pads", pads_arr},
+            {"creases", creases_arr},           {"mm_per_pixel", mm_per_pixel}, {"hand_side", hand_side}};
 }
 
-HandAnthropometryReport HandAnthropometer::compute(
-    const std::vector<std::array<float, 2>>& lm,
-    int image_width,
-    int image_height,
-    float reference_palm_width_mm,
-    const std::unordered_map<std::string, float>& pad_depth_mm,
-    const std::string& hand_side
-) {
+HandAnthropometryReport HandAnthropometer::compute(const std::vector<std::array<float, 2>>& lm, int image_width,
+                                                   int image_height, float reference_palm_width_mm,
+                                                   const std::unordered_map<std::string, float>& pad_depth_mm,
+                                                   const std::string& hand_side) {
     HandAnthropometryReport report;
     report.hand_side = hand_side;
 
@@ -188,13 +154,11 @@ HandAnthropometryReport HandAnthropometer::compute(
         std::string name;
         size_t p0, p1, p2, p3;
     };
-    static const ChainDef chains[5] = {
-        {"thumb", 1UL, 2UL, 3UL, 4UL},
-        {"index", 5UL, 6UL, 7UL, 8UL},
-        {"middle", 9UL, 10UL, 11UL, 12UL},
-        {"ring", 13UL, 14UL, 15UL, 16UL},
-        {"pinky", 17UL, 18UL, 19UL, 20UL}
-    };
+    static const ChainDef chains[5] = {{"thumb", 1UL, 2UL, 3UL, 4UL},
+                                       {"index", 5UL, 6UL, 7UL, 8UL},
+                                       {"middle", 9UL, 10UL, 11UL, 12UL},
+                                       {"ring", 13UL, 14UL, 15UL, 16UL},
+                                       {"pinky", 17UL, 18UL, 19UL, 20UL}};
 
     float total_hand = std::max(1e-3f, report.palm.total_hand_length_mm);
 
@@ -242,15 +206,13 @@ HandAnthropometryReport HandAnthropometer::compute(
     report.spans.ring_pinky_distance_mm = distPx(lm[16], lm[20], w, h) * mm_per_px;
 
     // Anatomical pads
-    static const std::vector<std::pair<std::string, std::string>> kPadMapping = {
-        {"thenar", "venus"},
-        {"hypothenar", "luna"},
-        {"radial_interdigital", "jupiter"},
-        {"central_interdigital", "saturn"},
-        {"ring_interdigital", "apollo"},
-        {"ulnar_interdigital", "mercury"},
-        {"palmar_fossa", "mars"}
-    };
+    static const std::vector<std::pair<std::string, std::string>> kPadMapping = {{"thenar", "venus"},
+                                                                                 {"hypothenar", "luna"},
+                                                                                 {"radial_interdigital", "jupiter"},
+                                                                                 {"central_interdigital", "saturn"},
+                                                                                 {"ring_interdigital", "apollo"},
+                                                                                 {"ulnar_interdigital", "mercury"},
+                                                                                 {"palmar_fossa", "mars"}};
 
     for (const auto& pad_pair : kPadMapping) {
         AnatomicalPadMetric m;
@@ -269,47 +231,23 @@ HandAnthropometryReport HandAnthropometer::compute(
     // Palmar flexion creases (standard anatomical nomenclature)
     // 1. Distal transverse crease (Heart line equivalent)
     const float dtc_chord = distPx(lm[17], lm[6], w, h) * mm_per_px * 0.9f;
-    report.creases.push_back(PalmarCreaseMetric{
-        "distal_transverse_crease",
-        "heart",
-        dtc_chord * 1.05f,
-        dtc_chord,
-        1.05f,
-        false
-    });
+    report.creases.push_back(
+        PalmarCreaseMetric{"distal_transverse_crease", "heart", dtc_chord * 1.05f, dtc_chord, 1.05f, false});
 
     // 2. Proximal transverse crease (Head line equivalent)
     const float ptc_chord = distPx(lm[5], lm[18], w, h) * mm_per_px * 0.85f;
-    report.creases.push_back(PalmarCreaseMetric{
-        "proximal_transverse_crease",
-        "head",
-        ptc_chord * 1.04f,
-        ptc_chord,
-        1.04f,
-        false
-    });
+    report.creases.push_back(
+        PalmarCreaseMetric{"proximal_transverse_crease", "head", ptc_chord * 1.04f, ptc_chord, 1.04f, false});
 
     // 3. Thenar longitudinal crease (Life line equivalent)
     const float tlc_chord = distPx(lm[2], lm[0], w, h) * mm_per_px * 0.95f;
-    report.creases.push_back(PalmarCreaseMetric{
-        "thenar_longitudinal_crease",
-        "life",
-        tlc_chord * 1.15f,
-        tlc_chord,
-        1.15f,
-        false
-    });
+    report.creases.push_back(
+        PalmarCreaseMetric{"thenar_longitudinal_crease", "life", tlc_chord * 1.15f, tlc_chord, 1.15f, false});
 
     // 4. Median longitudinal crease (Fate line equivalent)
     const float mlc_chord = distPx(lm[0], lm[9], w, h) * mm_per_px * 0.75f;
-    report.creases.push_back(PalmarCreaseMetric{
-        "median_longitudinal_crease",
-        "fate",
-        mlc_chord * 1.02f,
-        mlc_chord,
-        1.02f,
-        false
-    });
+    report.creases.push_back(
+        PalmarCreaseMetric{"median_longitudinal_crease", "fate", mlc_chord * 1.02f, mlc_chord, 1.02f, false});
 
     return report;
 }

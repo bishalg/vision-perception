@@ -644,18 +644,17 @@ int curv_pipeline_process_landmarks_roi_extended(CurvPipelineHandle pipeline, Cu
 
         const float img_w = static_cast<float>(f_ctx->frame.width());
         const float img_h = static_cast<float>(f_ctx->frame.height());
-        const float palm_w = static_cast<float>(cv::norm(
-            cv::Point2f(lms.points[17].x * img_w, lms.points[17].y * img_h) -
-            cv::Point2f(lms.points[5].x * img_w, lms.points[5].y * img_h)));
+        const float palm_w =
+            static_cast<float>(cv::norm(cv::Point2f(lms.points[17].x * img_w, lms.points[17].y * img_h) -
+                                        cv::Point2f(lms.points[5].x * img_w, lms.points[5].y * img_h)));
         const float palm_radius = palm_w * 0.5f;
         auto fine_cfg = CurvEngine::domains::PalmParameters::computeFineStegerConfig(palm_radius);
         auto fine_extractor = std::make_shared<CurvEngine::ridge::StegerRidgeExtractor>(fine_cfg);
         CurvEngine::pipeline::SyncPerceptionPipeline fine_pipeline(nullptr, fine_extractor);
         auto fine_result = fine_pipeline.process(warped_frame);
 
-        const auto minor =
-            CurvEngine::domain::MinorRidgeExtractor::extract(fine_result.ridge_graph, fine_result.ridge_graph,
-                                                             target_dim, is_left);
+        const auto minor = CurvEngine::domain::MinorRidgeExtractor::extract(
+            fine_result.ridge_graph, fine_result.ridge_graph, target_dim, is_left);
 
         nlohmann::json root = nlohmann::json::parse(p_ctx->last_json);
         if (!root.contains("domain_payload")) {
@@ -670,9 +669,8 @@ int curv_pipeline_process_landmarks_roi_extended(CurvPipelineHandle pipeline, Cu
     }
 }
 
-int curv_classify_fingertip_roi(CurvPipelineHandle pipeline, CurvFrameHandle frame,
-                                const float* landmarks_42_floats, const char* digit_name, char* out_json_buffer,
-                                int out_json_buffer_size) {
+int curv_classify_fingertip_roi(CurvPipelineHandle pipeline, CurvFrameHandle frame, const float* landmarks_42_floats,
+                                const char* digit_name, char* out_json_buffer, int out_json_buffer_size) {
     if (!pipeline || !frame || !landmarks_42_floats || !digit_name) {
         return CURV_STATUS_INVALID_ARGUMENT;
     }
@@ -693,9 +691,9 @@ int curv_classify_fingertip_roi(CurvPipelineHandle pipeline, CurvFrameHandle fra
 
         const float img_w = static_cast<float>(f_ctx->frame.width());
         const float img_h = static_cast<float>(f_ctx->frame.height());
-        const float palm_w = static_cast<float>(cv::norm(
-            cv::Point2f(lms.points[17].x * img_w, lms.points[17].y * img_h) -
-            cv::Point2f(lms.points[5].x * img_w, lms.points[5].y * img_h)));
+        const float palm_w =
+            static_cast<float>(cv::norm(cv::Point2f(lms.points[17].x * img_w, lms.points[17].y * img_h) -
+                                        cv::Point2f(lms.points[5].x * img_w, lms.points[5].y * img_h)));
         auto fine_cfg = CurvEngine::domains::PalmParameters::computeFineStegerConfig(palm_w * 0.5f);
         auto fine_extractor = std::make_shared<CurvEngine::ridge::StegerRidgeExtractor>(fine_cfg);
         CurvEngine::pipeline::SyncPerceptionPipeline fine_pipeline(nullptr, fine_extractor);
@@ -744,11 +742,8 @@ int curv_pipeline_get_last_json(CurvPipelineHandle pipeline, char* out_json_buff
     }
 }
 
-int curv_compute_hand_anthropometry_json(const float* landmarks_42_floats,
-                                         float reference_palm_width_mm,
-                                         const char* pad_depth_json,
-                                         const char* hand_side,
-                                         char* out_json_buffer,
+int curv_compute_hand_anthropometry_json(const float* landmarks_42_floats, float reference_palm_width_mm,
+                                         const char* pad_depth_json, const char* hand_side, char* out_json_buffer,
                                          int out_json_buffer_size) {
     if (!landmarks_42_floats) {
         return CURV_STATUS_INVALID_ARGUMENT;
@@ -771,7 +766,8 @@ int curv_compute_hand_anthropometry_json(const float* landmarks_42_floats,
         }
         const std::string side_str = hand_side ? hand_side : "auto";
         const float ref_w = reference_palm_width_mm > 0.0f ? reference_palm_width_mm : 80.0f;
-        const auto report = CurvEngine::geometry::HandAnthropometer::compute(lms, 1000, 1000, ref_w, pad_depths, side_str);
+        const auto report =
+            CurvEngine::geometry::HandAnthropometer::compute(lms, 1000, 1000, ref_w, pad_depths, side_str);
         nlohmann::json root = {{"anthropometry", report.toJson()}};
         return copy_json_to_buffer(root, out_json_buffer, out_json_buffer_size);
     } catch (const std::exception& e) {
@@ -783,11 +779,8 @@ int curv_compute_hand_anthropometry_json(const float* landmarks_42_floats,
     }
 }
 
-int curv_generate_hand_mesh_json(const float* landmarks_42_floats,
-                                 float reference_palm_width_mm,
-                                 const char* pad_depth_json,
-                                 char* out_json_buffer,
-                                 int out_json_buffer_size) {
+int curv_generate_hand_mesh_json(const float* landmarks_42_floats, float reference_palm_width_mm,
+                                 const char* pad_depth_json, char* out_json_buffer, int out_json_buffer_size) {
     if (!landmarks_42_floats) {
         return CURV_STATUS_INVALID_ARGUMENT;
     }

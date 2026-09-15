@@ -187,27 +187,22 @@ CURV_API int curv_classify_fingertip_roi(CurvPipelineHandle pipeline, CurvFrameH
                                          char* out_json_buffer, int out_json_buffer_size);
 
 /**
- * @brief Computes pure scientific anthropometric metrics (2D:4D ratio, digit lengths, palm dimensions) from 21 landmarks.
+ * @brief Computes pure scientific anthropometric metrics (2D:4D ratio, digit lengths, palm dimensions) from 21
+ * landmarks.
  * @param landmarks_42_floats Array of 42 floats (21 (x, y) normalized pairs).
  * @param reference_palm_width_mm Anatomical metacarpal breadth scale prior (typically 80.0 mm).
  * @param pad_depth_json Optional JSON object string mapping pad names to millimeter depth, or NULL.
  * @param hand_side e.g. "left", "right", "auto".
  */
-CURV_API int curv_compute_hand_anthropometry_json(const float* landmarks_42_floats,
-                                                  float reference_palm_width_mm,
-                                                  const char* pad_depth_json,
-                                                  const char* hand_side,
-                                                  char* out_json_buffer,
-                                                  int out_json_buffer_size);
+CURV_API int curv_compute_hand_anthropometry_json(const float* landmarks_42_floats, float reference_palm_width_mm,
+                                                  const char* pad_depth_json, const char* hand_side,
+                                                  char* out_json_buffer, int out_json_buffer_size);
 
 /**
  * @brief Generates a 3D surface mesh and elevation heatmap from 21 landmarks.
  */
-CURV_API int curv_generate_hand_mesh_json(const float* landmarks_42_floats,
-                                          float reference_palm_width_mm,
-                                          const char* pad_depth_json,
-                                          char* out_json_buffer,
-                                          int out_json_buffer_size);
+CURV_API int curv_generate_hand_mesh_json(const float* landmarks_42_floats, float reference_palm_width_mm,
+                                          const char* pad_depth_json, char* out_json_buffer, int out_json_buffer_size);
 
 #ifdef __cplusplus
 }

@@ -1,8 +1,10 @@
 # OpenCV AI Competition 2026, Powered by AWS — Reference & Checklist
 
 > **Devpost Link**: [OpenCV AI Competition 2026](https://opencv26.devpost.com/)  
-> **Deadline**: **October 27, 2026 @ 12:15 PM GMT+5:30**  
-> **Total Prizes**: **$20,250 in cash**  
+> **Final Submissions Due**: **October 26, 2026 @ 11:59 PM PDT** *(October 27, 2026 @ 12:44 PM NPT)*  
+> **Judging Period**: **October 27 – November 9, 2026**  
+> **Winners Announced**: **November 10, 2026** (on OpenCV Live!)  
+> **Total Prizes**: **$12,000+ in cash awards** ($5k 1st, $3k 2nd, $2k 3rd, $1k Best Use of COOL, $1k Agentic Vision)  
 > **IP / Repo Visibility**: **Can be Private / Judge-Accessible** (No requirement to make source public).
 
 ---

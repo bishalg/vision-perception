@@ -45,8 +45,8 @@ struct MetricScale {
 
 class SurfaceRelief {
 public:
-    [[nodiscard]] static std::vector<ReliefSample>
-    estimateFromOrbitFrames(const std::vector<OrbitFrameMeta>& frames, const std::vector<std::string>& region_ids);
+    [[nodiscard]] static std::vector<ReliefSample> estimateFromOrbitFrames(const std::vector<OrbitFrameMeta>& frames,
+                                                                           const std::vector<std::string>& region_ids);
 
     /**
      * @brief Metric relief from multi-view parallax + optional measured depth.

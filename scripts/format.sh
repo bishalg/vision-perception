@@ -34,7 +34,8 @@ find \
     "$ROOT_DIR/domains" \
     "$ROOT_DIR/apps" \
     "$ROOT_DIR/tools" \
-    -type f \( -name '*.cpp' -o -name '*.cc' -o -name '*.hpp' -o -name '*.h' \) 2>/dev/null >"$FILE_LIST"
+    \( -path '*/.*' -o -path '*/build*' -o -path '*/DerivedData*' -o -path '*/Intermediates*' \) -prune -o \
+    -type f \( -name '*.cpp' -o -name '*.cc' -o -name '*.hpp' -o -name '*.h' \) -print 2>/dev/null >"$FILE_LIST"
 
 COUNT=0
 EXIT_CODE=0

@@ -51,8 +51,8 @@ void accumulateMeanStd(const std::unordered_map<std::string, float>& acc,
             values.push_back(acc.at(id) / static_cast<float>(count_it->second));
         }
     }
-    mean = values.empty() ? 0.0f
-                          : std::accumulate(values.begin(), values.end(), 0.0f) / static_cast<float>(values.size());
+    mean =
+        values.empty() ? 0.0f : std::accumulate(values.begin(), values.end(), 0.0f) / static_cast<float>(values.size());
     float var = 0.0f;
     for (float v : values) {
         const float d = v - mean;
@@ -85,9 +85,8 @@ std::vector<ReliefSample> SurfaceRelief::estimateFromOrbitFrames(const std::vect
         }
     }
 
-    const float mean = values.empty() ? 0.0f
-                                      : std::accumulate(values.begin(), values.end(), 0.0f) /
-                                            static_cast<float>(values.size());
+    const float mean =
+        values.empty() ? 0.0f : std::accumulate(values.begin(), values.end(), 0.0f) / static_cast<float>(values.size());
     float var = 0.0f;
     for (float v : values) {
         const float d = v - mean;
@@ -114,10 +113,11 @@ std::vector<ReliefSample> SurfaceRelief::estimateFromOrbitFrames(const std::vect
     return out;
 }
 
-std::vector<ReliefSample> SurfaceRelief::estimateMetricRelief(
-    const std::vector<OrbitFrameMeta>& frames, const std::vector<std::array<float, 2>>& reference_landmarks,
-    float palm_width_px, const MetricScale& scale, const std::vector<std::string>& region_ids,
-    const std::unordered_map<std::string, std::vector<int>>& region_anchors) {
+std::vector<ReliefSample>
+SurfaceRelief::estimateMetricRelief(const std::vector<OrbitFrameMeta>& frames,
+                                    const std::vector<std::array<float, 2>>& reference_landmarks, float palm_width_px,
+                                    const MetricScale& scale, const std::vector<std::string>& region_ids,
+                                    const std::unordered_map<std::string, std::vector<int>>& region_anchors) {
     // Tilt-exposure prior (identical to estimateFromOrbitFrames).
     std::unordered_map<std::string, float> tilt_acc;
     std::unordered_map<std::string, int> view_counts;
@@ -183,8 +183,7 @@ std::vector<ReliefSample> SurfaceRelief::estimateMetricRelief(
             }
             dirx /= len;
             diry /= len;
-            radials.push_back(((dxs[i] - tx) * dirx + (dys[i] - ty) * diry) *
-                              static_cast<float>(frame.image_width));
+            radials.push_back(((dxs[i] - tx) * dirx + (dys[i] - ty) * diry) * static_cast<float>(frame.image_width));
         }
         if (radials.empty()) {
             continue;
@@ -277,11 +276,9 @@ std::vector<ReliefSample> SurfaceRelief::estimateMetricRelief(
         float fused = tilt_z;
         float height_mag_mm = -1.0f;
         if (has_parallax) {
-            const float par_z =
-                zscore(par_acc[id] / static_cast<float>(par_it->second), par_mean, par_std);
+            const float par_z = zscore(par_acc[id] / static_cast<float>(par_it->second), par_mean, par_std);
             fused = kTiltWeight * tilt_z + kParallaxWeight * par_z;
-            height_mag_mm =
-                std::min(kMaxReliefMm, par_acc[id] / static_cast<float>(par_it->second));
+            height_mag_mm = std::min(kMaxReliefMm, par_acc[id] / static_cast<float>(par_it->second));
         }
         sample.height_relative = fused;
         if (height_mag_mm >= 0.0f) {

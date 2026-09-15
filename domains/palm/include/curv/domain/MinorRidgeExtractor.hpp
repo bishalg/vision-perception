@@ -20,8 +20,7 @@ public:
     };
 
     [[nodiscard]] static std::vector<MinorSegment>
-    extract(const RidgeGraph& fine_ridges, const RidgeGraph& major_ridge_ids_filter, int zone_dim,
-            bool is_left_hand);
+    extract(const RidgeGraph& fine_ridges, const RidgeGraph& major_ridge_ids_filter, int zone_dim, bool is_left_hand);
 
     [[nodiscard]] static nlohmann::json toJson(const std::vector<MinorSegment>& segments);
 };

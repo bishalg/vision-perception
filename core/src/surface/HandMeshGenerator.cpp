@@ -22,11 +22,7 @@ std::array<float, 3> elevationColor(float t) {
 }
 
 std::array<float, 3> cross(const std::array<float, 3>& a, const std::array<float, 3>& b) {
-    return {
-        a[1] * b[2] - a[2] * b[1],
-        a[2] * b[0] - a[0] * b[2],
-        a[0] * b[1] - a[1] * b[0]
-    };
+    return {a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]};
 }
 
 std::array<float, 3> normalize(const std::array<float, 3>& v) {
@@ -50,41 +46,34 @@ nlohmann::json HandMeshPayload::toJson() const {
     for (const auto& t : triangles) {
         tris_arr.push_back(t);
     }
-    return {
-        {"vertices", verts_arr},
-        {"normals", norms_arr},
-        {"colors", colors_arr},
-        {"triangles", tris_arr},
-        {"min_elevation_mm", min_elevation_mm},
-        {"max_elevation_mm", max_elevation_mm}
-    };
+    return {{"vertices", verts_arr},
+            {"normals", norms_arr},
+            {"colors", colors_arr},
+            {"triangles", tris_arr},
+            {"min_elevation_mm", min_elevation_mm},
+            {"max_elevation_mm", max_elevation_mm}};
 }
 
 std::string HandMeshPayload::toWavefrontObj() const {
     std::ostringstream ss;
     ss << "# CurvEngine Hand 3D Topographic Mesh\n";
     for (const auto& v : vertices) {
-        ss << "v " << v.position[0] << " " << v.position[1] << " " << v.position[2]
-           << " " << v.color[0] << " " << v.color[1] << " " << v.color[2] << "\n";
+        ss << "v " << v.position[0] << " " << v.position[1] << " " << v.position[2] << " " << v.color[0] << " "
+           << v.color[1] << " " << v.color[2] << "\n";
     }
     for (const auto& v : vertices) {
         ss << "vn " << v.normal[0] << " " << v.normal[1] << " " << v.normal[2] << "\n";
     }
     for (const auto& t : triangles) {
-        ss << "f " << (t[0] + 1) << "//" << (t[0] + 1) << " "
-                   << (t[1] + 1) << "//" << (t[1] + 1) << " "
-                   << (t[2] + 1) << "//" << (t[2] + 1) << "\n";
+        ss << "f " << (t[0] + 1) << "//" << (t[0] + 1) << " " << (t[1] + 1) << "//" << (t[1] + 1) << " " << (t[2] + 1)
+           << "//" << (t[2] + 1) << "\n";
     }
     return ss.str();
 }
 
-HandMeshPayload HandMeshGenerator::generate(
-    const std::vector<std::array<float, 2>>& lm,
-    const std::unordered_map<std::string, float>& pad_heights,
-    float palm_breadth_mm,
-    int image_width,
-    int image_height
-) {
+HandMeshPayload HandMeshGenerator::generate(const std::vector<std::array<float, 2>>& lm,
+                                            const std::unordered_map<std::string, float>& pad_heights,
+                                            float palm_breadth_mm, int image_width, int image_height) {
     HandMeshPayload payload;
     if (lm.size() < 21) return payload;
 

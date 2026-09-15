@@ -46,7 +46,7 @@ function saveLastChoice(menuKey, choiceIndex) {
 }
 
 const groups = await Promise.all(
-  ['palm', 'flood', 'core', 'labeling', 'mobile', 'quality'].map((g) => import(`./menu/${g}.mjs`)),
+  ['hackathon', 'palm', 'flood', 'core', 'labeling', 'mobile', 'quality'].map((g) => import(`./menu/${g}.mjs`)),
 );
 
 const rl = readline.createInterface({ input, output });

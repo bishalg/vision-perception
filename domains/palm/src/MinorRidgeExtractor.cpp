@@ -8,8 +8,8 @@
 namespace CurvEngine::domain {
 
 std::vector<MinorRidgeExtractor::MinorSegment>
-MinorRidgeExtractor::extract(const RidgeGraph& fine_ridges, const RidgeGraph& /*major_ridge_ids_filter*/,
-                             int zone_dim, bool is_left_hand) {
+MinorRidgeExtractor::extract(const RidgeGraph& fine_ridges, const RidgeGraph& /*major_ridge_ids_filter*/, int zone_dim,
+                             bool is_left_hand) {
     const auto zones = PalmZones::getCanonicalPalmZones(zone_dim, is_left_hand);
     const float inv_dim = 1.0f / static_cast<float>(std::max(1, zone_dim));
 
