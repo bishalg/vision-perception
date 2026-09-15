@@ -143,6 +143,7 @@ public final class CareKitClinicalStore: @unchecked Sendable {
             OCKOutcomeValue(entry.eyeContactRating),
             OCKOutcomeValue(entry.jointAttentionCount),
             OCKOutcomeValue(entry.notes),
+            OCKOutcomeValue(entry.sensoryLoad),
         ]
     }
 
@@ -249,6 +250,28 @@ public final class CareKitClinicalStore: @unchecked Sendable {
                 if let occurrence = self.occurrenceForDose(taskID: taskID, doseTime: doseTime, date: markedAt) {
                     self.deleteOutcomeIfPresent(taskID: taskID, occurrence: occurrence, date: markedAt)
                 }
+            }
+            Self.dispatch(completion)
+        }
+    }
+
+    public func replaceMedicationTask(from item: MedicationItem, date: Date = Date(),
+                                      completion: (@Sendable () -> Void)? = nil) {
+        mutationQueue.async {
+            let taskID = "ock_med_\(item.id)"
+            if let existing = self.fetchTasksNow().first(where: { $0.id == taskID }) {
+                self.deleteTasksNow([existing])
+            }
+            self.addTasksNow([Self.makeMedicationTask(from: item, startOfDay: Calendar.current.startOfDay(for: date))])
+            Self.dispatch(completion)
+        }
+    }
+
+    public func deleteMedicationTask(id: String, completion: (@Sendable () -> Void)? = nil) {
+        mutationQueue.async {
+            let taskID = "ock_med_\(id)"
+            if let existing = self.fetchTasksNow().first(where: { $0.id == taskID }) {
+                self.deleteTasksNow([existing])
             }
             Self.dispatch(completion)
         }
@@ -386,6 +409,22 @@ public final class CareKitClinicalStore: @unchecked Sendable {
         store.addTasks(tasks, callbackQueue: .main) { outcome in
             if case .failure(let error) = outcome {
                 Self.logger.error("addTasks failed: \(error.localizedDescription, privacy: .public)")
+            } else {
+                box.value = true
+            }
+            semaphore.signal()
+        }
+        semaphore.wait()
+        return box.value
+    }
+
+    @discardableResult
+    private func deleteTasksNow(_ tasks: [OCKTask]) -> Bool {
+        let box = Box(false)
+        let semaphore = DispatchSemaphore(value: 0)
+        store.deleteTasks(tasks, callbackQueue: .main) { outcome in
+            if case .failure(let error) = outcome {
+                Self.logger.error("deleteTasks failed: \(error.localizedDescription, privacy: .public)")
             } else {
                 box.value = true
             }

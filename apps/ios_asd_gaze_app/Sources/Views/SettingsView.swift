@@ -9,6 +9,8 @@ import ARKit
 public struct SettingsView: View {
     @Environment(\.openURL) private var openURL
     @ObservedObject private var childProfileStore = ChildProfileStore.shared
+    @ObservedObject private var alertPreferences = CareAlertPreferences.shared
+    @State private var newConditionTitle: String = ""
     @State private var calibrationProfile: GazeCalibrationProfile = GazeCalibrationStore.load()
     @State private var showQuickCalibrate: Bool = false
     @State private var showCameraCheck: Bool = false
@@ -29,6 +31,8 @@ public struct SettingsView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
                         profileSection
+                        medicalConditionsSection
+                        careAlertsSection
                         screeningToolsSection
                         languageSection
                         sensorDiagnosticsSection
@@ -244,6 +248,78 @@ public struct SettingsView: View {
                     .padding(.vertical, 4)
                 }
                 .buttonStyle(.plain)
+            }
+            .glassCard(cornerRadius: 14, padding: 14)
+        }
+    }
+
+    private var medicalConditionsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            GlassSectionHeader(title: "Medical conditions", icon: "cross.case.fill")
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Caregiver-entered conditions and allergies for medication context. Not a diagnosis from gaze screening.")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+
+                TextField("Allergies", text: Binding(
+                    get: { childProfileStore.profile.allergies },
+                    set: { childProfileStore.profile.allergies = $0 }
+                ))
+                .textFieldStyle(.roundedBorder)
+
+                ForEach(childProfileStore.profile.medicalConditions) { condition in
+                    HStack {
+                        Text(condition.title)
+                        Spacer()
+                        Button(role: .destructive) {
+                            childProfileStore.profile.medicalConditions.removeAll { $0.id == condition.id }
+                        } label: {
+                            Image(systemName: "trash")
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                HStack {
+                    TextField("Add condition", text: $newConditionTitle)
+                        .textFieldStyle(.roundedBorder)
+                    Button("Add") {
+                        let title = newConditionTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !title.isEmpty else { return }
+                        childProfileStore.profile.medicalConditions.append(MedicalCondition(title: title))
+                        newConditionTitle = ""
+                    }
+                }
+            }
+            .glassCard(cornerRadius: 14, padding: 14)
+        }
+    }
+
+    private var careAlertsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            GlassSectionHeader(title: "Notifications & alerts", icon: "bell.badge.fill")
+
+            VStack(alignment: .leading, spacing: 12) {
+                Toggle("Enable reminders and alerts", isOn: $alertPreferences.masterEnabled)
+                    .onChange(of: alertPreferences.masterEnabled) { _, enabled in
+                        Task {
+                            if enabled { await CareAlertScheduler.shared.requestAuthorizationIfNeeded() }
+                            await CarePlanStore.shared.resyncAlerts()
+                        }
+                    }
+                Toggle("Use AlarmKit when available", isOn: $alertPreferences.useAlarmKitWhenAvailable)
+                    .disabled(!CareAlertPreferences.isAlarmKitAvailable)
+                    .onChange(of: alertPreferences.useAlarmKitWhenAvailable) { _, _ in
+                        Task { await CarePlanStore.shared.resyncAlerts() }
+                    }
+                Toggle("Dynamic Island countdown (opt-in)", isOn: $alertPreferences.useLiveActivityCountdown)
+                    .onChange(of: alertPreferences.useLiveActivityCountdown) { _, _ in
+                        Task { await CarePlanStore.shared.resyncAlerts() }
+                    }
+                Text("Medication doses and diary check-ins share the same reminder, alarm, and countdown architecture. You can still turn each time on or off in the dashboard editors.")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
             }
             .glassCard(cornerRadius: 14, padding: 14)
         }

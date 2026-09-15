@@ -1,6 +1,21 @@
 import Foundation
 import SwiftUI
 
+/// Caregiver-entered medical condition (tracking aid, not a diagnosis).
+public struct MedicalCondition: Identifiable, Codable, Sendable, Equatable {
+    public var id: String
+    public var title: String
+    public var notes: String
+    public var isActive: Bool
+
+    public init(id: String = UUID().uuidString, title: String, notes: String = "", isActive: Bool = true) {
+        self.id = id
+        self.title = title
+        self.notes = notes
+        self.isActive = isActive
+    }
+}
+
 // MARK: - USCDI v5 Sex Parameter for Clinical Use (SPCU)
 
 /// Distinguishes anatomical/biological sex parameters used in normative
@@ -79,6 +94,9 @@ public struct ChildProfile: Codable, Sendable, Equatable {
     /// USCDI v5 Sex Parameter for Clinical Use (SPCU).
     /// Separates anatomical sex for normative gaze baselines from administrative gender.
     public var biologicalSexForNormativeBaseline: SexParameterForClinicalUse
+    /// Caregiver-entered conditions (not a screening diagnosis).
+    public var medicalConditions: [MedicalCondition]
+    public var allergies: String
 
     public init(
         childName: String = "",
@@ -87,7 +105,9 @@ public struct ChildProfile: Codable, Sendable, Equatable {
         sessionDurationSec: Int = 30,
         hasConsentedPIA: Bool = false,
         consentTimestamp: Date? = nil,
-        biologicalSexForNormativeBaseline: SexParameterForClinicalUse = .unknown
+        biologicalSexForNormativeBaseline: SexParameterForClinicalUse = .unknown,
+        medicalConditions: [MedicalCondition] = [],
+        allergies: String = ""
     ) {
         self.childName = childName
         self.ageBracket = ageBracket
@@ -96,6 +116,23 @@ public struct ChildProfile: Codable, Sendable, Equatable {
         self.hasConsentedPIA = hasConsentedPIA
         self.consentTimestamp = consentTimestamp
         self.biologicalSexForNormativeBaseline = biologicalSexForNormativeBaseline
+        self.medicalConditions = medicalConditions
+        self.allergies = allergies
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            childName: (try? container.decode(String.self, forKey: .childName)) ?? "",
+            ageBracket: (try? container.decode(PediatricAgeBracket.self, forKey: .ageBracket)) ?? .months18_23,
+            preferredLanguage: (try? container.decode(String.self, forKey: .preferredLanguage)) ?? "en",
+            sessionDurationSec: (try? container.decode(Int.self, forKey: .sessionDurationSec)) ?? 30,
+            hasConsentedPIA: (try? container.decode(Bool.self, forKey: .hasConsentedPIA)) ?? false,
+            consentTimestamp: try? container.decode(Date.self, forKey: .consentTimestamp),
+            biologicalSexForNormativeBaseline: (try? container.decode(SexParameterForClinicalUse.self, forKey: .biologicalSexForNormativeBaseline)) ?? .unknown,
+            medicalConditions: (try? container.decode([MedicalCondition].self, forKey: .medicalConditions)) ?? [],
+            allergies: (try? container.decode(String.self, forKey: .allergies)) ?? ""
+        )
     }
 
     public static let defaultProfile = ChildProfile(

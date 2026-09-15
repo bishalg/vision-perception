@@ -52,7 +52,7 @@ final class CareKitClinicalStoreTests: XCTestCase {
     func testDiaryOutcomeValues() {
         let entry = DailyDiaryEntry(mood: .engaged, notes: "Great eye contact", eyeContactRating: 5, jointAttentionCount: 4)
         let values = CareKitClinicalStore.diaryOutcomeValues(from: entry)
-        XCTAssertEqual(values.count, 4)
+        XCTAssertEqual(values.count, 5)
     }
 
     func testMedicationTaskDailyMultiDose() {
@@ -155,12 +155,12 @@ final class CareKitClinicalStoreTests: XCTestCase {
                 exp.fulfill()
             }
             wait(for: [exp], timeout: 2.0)
-            if valueCount == 4 {
+            if valueCount == 5 {
                 found = true
                 break
             }
         }
-        XCTAssertTrue(found, "diary entry must land as a 4-value outcome")
+        XCTAssertTrue(found, "diary entry must land as a 5-value outcome")
     }
 
     func testRecordMedicationPrunesAndReTogglesSameDoseWithoutDuplicates() throws {

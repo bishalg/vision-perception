@@ -14,6 +14,9 @@ public struct CaregiverDashboardView: View {
     @State private var selectedMilestone: MilestoneItem?
     @State private var diaryNotesText: String = ""
     @State private var lastMchat: MCHATScoreResult?
+    @State private var editingMedication: MedicationItem?
+    @State private var showingAddMedication = false
+    @State private var showingDiaryEditor = false
 
     /// Mean social-preference of the stored week (0–1), nil when no data yet.
     private var trendAverage: Double? {
@@ -131,6 +134,15 @@ public struct CaregiverDashboardView: View {
             }
             .sheet(item: $selectedMilestone) { milestone in
                 MilestoneDetailModalView(milestone: milestone)
+            }
+            .sheet(item: $editingMedication) { item in
+                MedicationEditorView(store: carePlanStore, existing: item)
+            }
+            .sheet(isPresented: $showingAddMedication) {
+                MedicationEditorView(store: carePlanStore, existing: nil)
+            }
+            .sheet(isPresented: $showingDiaryEditor) {
+                DiaryHistoryEditorView(store: carePlanStore)
             }
             .onAppear {
                 refreshLiveData()
@@ -448,6 +460,27 @@ public struct CaregiverDashboardView: View {
                 Text("\(Int(carePlanStore.medicationCompletionRatio * 100))% today")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(LiquidGlass.celestialTeal)
+
+                Button {
+                    showingAddMedication = true
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(LiquidGlass.celestialTeal)
+                }
+                .accessibilityLabel("Add medicine")
+            }
+
+            if carePlanStore.medications.isEmpty {
+                Button {
+                    showingAddMedication = true
+                } label: {
+                    Text("Add a medicine or supplement and set reminder times.")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
             }
 
             VStack(spacing: 8) {
@@ -478,9 +511,20 @@ public struct CaregiverDashboardView: View {
 
                 Spacer()
 
-                Text("\(medication.dosesTakenToday.filter { $0 }.count)/\(medication.schedule.count)")
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    .foregroundColor(LiquidGlass.emeraldMint)
+                HStack(spacing: 6) {
+                    if medication.reminderSlots.contains(where: \.remindersEnabled) {
+                        Image(systemName: "bell.fill").font(.system(size: 11))
+                    }
+                    if medication.reminderSlots.contains(where: \.alarmsEnabled) {
+                        Image(systemName: "alarm.fill").font(.system(size: 11))
+                    }
+                    if medication.reminderSlots.contains(where: \.liveActivityEnabled) {
+                        Image(systemName: "clock.badge.checkmark").font(.system(size: 11))
+                    }
+                    Text("\(medication.dosesTakenToday.filter { $0 }.count)/\(medication.schedule.count)")
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .foregroundColor(LiquidGlass.emeraldMint)
+                }
             }
 
             HStack(spacing: 10) {
@@ -522,17 +566,43 @@ public struct CaregiverDashboardView: View {
                     .buttonStyle(.plain)
                 }
             }
+
+            Button {
+                editingMedication = medication
+            } label: {
+                Text("Edit schedule & reminders")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(LiquidGlass.celestialTeal)
+            }
+            .buttonStyle(.plain)
         }
         .glassCard(cornerRadius: 12, padding: 12)
+        .contextMenu {
+            Button("Edit") { editingMedication = medication }
+            Button("Delete", role: .destructive) {
+                carePlanStore.deleteMedication(id: medication.id)
+            }
+        }
     }
 
     // MARK: - 6. Daily Sensory & Mood Diary (2 Items Per Row Grid)
 
     private var dailyDiarySection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(Localizer.tr("carekit_diary_title"))
-                .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundColor(.primary)
+            HStack {
+                Text(Localizer.tr("carekit_diary_title"))
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                Spacer()
+                Button {
+                    showingDiaryEditor = true
+                } label: {
+                    Text("History & reminders")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(LiquidGlass.celestialTeal)
+                }
+                .buttonStyle(.plain)
+            }
 
             VStack(alignment: .leading, spacing: 14) {
                 // Diary Header
@@ -547,9 +617,9 @@ public struct CaregiverDashboardView: View {
 
                     Spacer()
 
-                    Text("Logged Today")
+                    Text(carePlanStore.diaryEntry.hasCaregiverInput ? "Logged today" : "Not logged")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(LiquidGlass.emeraldMint)
+                        .foregroundColor(carePlanStore.diaryEntry.hasCaregiverInput ? LiquidGlass.emeraldMint : .secondary)
                 }
 
                 // 2 ITEMS PER ROW GRID FOR CHILD MOOD OPTIONS
@@ -628,6 +698,37 @@ public struct CaregiverDashboardView: View {
                             }
                             .buttonStyle(.plain)
                         }
+                    }
+                }
+
+                HStack {
+                    Text("Sensory load")
+                        .font(.system(size: 13, weight: .medium))
+                    Spacer()
+                    HStack(spacing: 6) {
+                        ForEach(1...5, id: \.self) { level in
+                            Button {
+                                carePlanStore.updateSensoryLoad(level)
+                            } label: {
+                                Circle()
+                                    .fill(level <= carePlanStore.diaryEntry.sensoryLoad ? LiquidGlass.warmAmber : Color.primary.opacity(0.15))
+                                    .frame(width: 12, height: 12)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                HStack {
+                    Text("Joint attention")
+                        .font(.system(size: 13, weight: .medium))
+                    Spacer()
+                    Stepper(value: Binding(
+                        get: { carePlanStore.diaryEntry.jointAttentionCount },
+                        set: { carePlanStore.updateJointAttentionCount($0) }
+                    ), in: 0...20) {
+                        Text("\(carePlanStore.diaryEntry.jointAttentionCount)")
+                            .font(.system(size: 13, weight: .semibold, design: .monospaced))
                     }
                 }
 

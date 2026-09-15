@@ -19,6 +19,8 @@ settings:
 packages:
   CurvAsdGazeKit:
     path: ../../domains/asd_screening/ios
+  CareActivityKit:
+    path: CareActivityKit
   CareKit:
     url: https://github.com/carekit-apple/CareKit.git
     exactVersion: 4.1.0
@@ -44,14 +46,19 @@ targets:
         GENERATE_INFOPLIST_FILE: true
         INFOPLIST_KEY_NSCameraUsageDescription: "TrueDepth camera access is required to track eye gaze and measure social visual attention in real-time. No raw camera frames or videos are ever recorded to storage."
         INFOPLIST_KEY_NSMotionUsageDescription: "Device motion data is required to separate device movement from toddler head orientation."
+        INFOPLIST_KEY_NSUserNotificationsUsageDescription: "Medication and sensory diary reminders use local notifications so caregivers can be alerted at scheduled times."
+        INFOPLIST_KEY_NSSupportsLiveActivities: true
         INFOPLIST_KEY_UILaunchScreen_Generation: true
         INFOPLIST_KEY_UIRequiresFullScreen: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
     dependencies:
       - package: CurvAsdGazeKit
+      - package: CareActivityKit
       - package: CareKit
         product: CareKitStore
+      - target: AsdGazeCareWidget
+        embed: true
       - sdk: ARKit.framework
       - sdk: SceneKit.framework
       - sdk: AVFoundation.framework
@@ -59,6 +66,37 @@ targets:
       - sdk: CryptoKit.framework
       - sdk: Network.framework
       - sdk: PDFKit.framework
+      - sdk: UserNotifications.framework
+      - sdk: ActivityKit.framework
+      - sdk: WidgetKit.framework
+
+  AsdGazeCareWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widget
+    info:
+      path: Widget/Info.plist
+      properties:
+        CFBundleDisplayName: Care Alerts
+        NSSupportsLiveActivities: true
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.curv.asd.gazecollector.carewidget
+        PRODUCT_NAME: AsdGazeCareWidget
+        GENERATE_INFOPLIST_FILE: true
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        SWIFT_VERSION: "5.9"
+        DEVELOPMENT_TEAM: 6J3WY94J6T
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "1,2"
+    dependencies:
+      - package: CareActivityKit
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+      - sdk: ActivityKit.framework
 
   AsdGazeCollectorTests:
     type: bundle.unit-test
@@ -71,6 +109,7 @@ targets:
     dependencies:
       - target: AsdGazeCollector
       - package: CurvAsdGazeKit
+      - package: CareActivityKit
       - package: CareKit
         product: CareKitStore
       - sdk: Network.framework

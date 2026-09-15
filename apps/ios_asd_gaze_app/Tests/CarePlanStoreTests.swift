@@ -176,6 +176,69 @@ final class CarePlanStoreTests: XCTestCase {
     }
 
     @MainActor
+    func testMedicationUpsertEditAndDelete() {
+        let store = makeStore()
+        let id = "med_test_\(UUID().uuidString)"
+        var item = MedicationItem(
+            id: id, name: "Iron", dose: "10 mg", instructions: "With food",
+            schedule: ["09:00"],
+            reminderSlots: [CareReminderSlot(clockTime: "09:00", remindersEnabled: true)]
+        )
+        store.upsertMedication(item)
+        XCTAssertTrue(store.medications.contains(where: { $0.id == id }))
+        item.setSchedule(["09:00", "21:00"])
+        item.name = "Iron drops"
+        store.upsertMedication(item)
+        let saved = store.medications.first(where: { $0.id == id })
+        XCTAssertEqual(saved?.name, "Iron drops")
+        XCTAssertEqual(saved?.schedule, ["09:00", "21:00"])
+        XCTAssertEqual(saved?.reminderSlots.count, 2)
+        store.deleteMedication(id: id)
+        XCTAssertFalse(store.medications.contains(where: { $0.id == id }))
+    }
+
+    @MainActor
+    func testDiaryHistoryUpsertPastDayAndReminders() {
+        let store = makeStore()
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+        store.upsertDiary(DailyDiaryEntry(
+            date: yesterday, mood: .overwhelmed, notes: "Loud environment",
+            eyeContactRating: 2, jointAttentionCount: 1, sensoryLoad: 5
+        ))
+        let loaded = store.diary(for: yesterday)
+        XCTAssertEqual(loaded.mood, .overwhelmed)
+        XCTAssertEqual(loaded.sensoryLoad, 5)
+        XCTAssertTrue(loaded.hasCaregiverInput)
+        XCTAssertTrue(store.recentDiaryEntries.contains(where: { Calendar.current.isDate($0.date, inSameDayAs: yesterday) }))
+
+        let slot = CareReminderSlot(id: "diary_noon", clockTime: "12:30", remindersEnabled: true, liveActivityEnabled: true)
+        store.upsertDiaryReminderSlot(slot)
+        XCTAssertTrue(store.diaryReminderSlots.contains(where: { $0.id == "diary_noon" }))
+        store.deleteDiaryReminderSlot(id: "diary_noon")
+        XCTAssertFalse(store.diaryReminderSlots.contains(where: { $0.id == "diary_noon" }))
+    }
+
+    @MainActor
+    func testSharedAlertRequestsCoverMedsAndDiary() {
+        let med = MedicationItem(
+            id: "m1", name: "Vit D", dose: "400 IU", instructions: "AM",
+            schedule: ["08:00"],
+            reminderSlots: [CareReminderSlot(clockTime: "08:00", remindersEnabled: true, alarmsEnabled: true)]
+        )
+        let slots = [CareReminderSlot(id: "d1", clockTime: "20:00", remindersEnabled: true, liveActivityEnabled: true)]
+        let requests = CareAlertScheduler.shared.buildRequests(
+            medications: [med], diarySlots: slots, diaryLoggedToday: false
+        )
+        XCTAssertEqual(requests.count, 2)
+        XCTAssertEqual(requests.first?.kind, .medicationDose)
+        XCTAssertEqual(requests.last?.kind, .diaryCheckIn)
+        XCTAssertEqual(CareClockTime.parse("08:00")?.hour, 8)
+        XCTAssertNil(CareClockTime.parse("25:99"))
+        let next = CareClockTime.nextDate(clockTime: "00:00", from: Date(), skipToday: true)
+        XCTAssertNotNil(next)
+    }
+
+    @MainActor
     func testClinicalCareKitJSONExport() {
         let store = makeStore()
         let jsonString = store.exportClinicalCareKitJSON()
@@ -195,6 +258,7 @@ final class CarePlanStoreTests: XCTestCase {
         XCTAssertNotNil(dict["activeTasks"])
         XCTAssertNotNil(dict["medications"])
         XCTAssertNotNil(dict["todayDiary"])
+        XCTAssertNotNil(dict["diaryHistory"])
         XCTAssertNotNil(dict["weeklyAttentionTrend"])
         XCTAssertNotNil(dict["milestonesStatus"])
     }
