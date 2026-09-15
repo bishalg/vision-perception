@@ -83,6 +83,15 @@
 		C0400002C0400002C0400002 /* ClinicalDevelopmentModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0400001C0400001C0400001 /* ClinicalDevelopmentModelsTests.swift */; };
 		C0420001C0420001C0420001 /* Speech.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C0420000C0420000C0420000 /* Speech.framework */; };
 		C0430001C0430001C0430001 /* PhotosUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C0430000C0430000C0430000 /* PhotosUI.framework */; };
+		C0500002C0500002C0500002 /* MoodDiaryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0500001C0500001C0500001 /* MoodDiaryModels.swift */; };
+		C0510002C0510002C0510002 /* HealthKitMoodStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0510001C0510001C0510001 /* HealthKitMoodStore.swift */; };
+		C0520002C0520002C0520002 /* MoodDiaryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0520001C0520001C0520001 /* MoodDiaryStore.swift */; };
+		C0530002C0530002C0530002 /* MoodDiaryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0530001C0530001C0530001 /* MoodDiaryViewModel.swift */; };
+		C0540002C0540002C0540002 /* ARKitMoodFusionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0540001C0540001C0540001 /* ARKitMoodFusionController.swift */; };
+		C0550002C0550002C0550002 /* BlendShapeCSVLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0550001C0550001C0550001 /* BlendShapeCSVLogger.swift */; };
+		C0560002C0560002C0560002 /* MoodDiaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0560001C0560001C0560001 /* MoodDiaryView.swift */; };
+		C0570002C0570002C0570002 /* MoodDiaryModuleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0570001C0570001C0570001 /* MoodDiaryModuleTests.swift */; };
+		C0590001C0590001C0590001 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C0590000C0590000C0590000 /* HealthKit.framework */; };
 		C0110001C0110001C0110001 /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C0100001C0100001C0100001 /* UserNotifications.framework */; };
 		C0110002C0110002C0110002 /* ActivityKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C0100002C0100002C0100002 /* ActivityKit.framework */; };
 		C0110003C0110003C0110003 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C0100003C0100003C0100003 /* WidgetKit.framework */; };
@@ -171,7 +180,16 @@
 		C0380001C0380001C0380001 /* MilestoneDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MilestoneDetailView.swift; sourceTree = "<group>"; };
 		C0390001C0390001C0390001 /* PediatricReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PediatricReportView.swift; sourceTree = "<group>"; };
 		C0400001C0400001C0400001 /* ClinicalDevelopmentModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClinicalDevelopmentModelsTests.swift; sourceTree = "<group>"; };
-		C0410000C0410000C0410000 /* Charts.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Charts.framework; path = System/Library/Frameworks/Charts.framework; sourceTree = SDKROOT; };
+		C0500001C0500001C0500001 /* MoodDiaryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoodDiaryModels.swift; sourceTree = "<group>"; };
+		C0510001C0510001C0510001 /* HealthKitMoodStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitMoodStore.swift; sourceTree = "<group>"; };
+		C0520001C0520001C0520001 /* MoodDiaryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoodDiaryStore.swift; sourceTree = "<group>"; };
+		C0530001C0530001C0530001 /* MoodDiaryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoodDiaryViewModel.swift; sourceTree = "<group>"; };
+		C0540001C0540001C0540001 /* ARKitMoodFusionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARKitMoodFusionController.swift; sourceTree = "<group>"; };
+		C0550001C0550001C0550001 /* BlendShapeCSVLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlendShapeCSVLogger.swift; sourceTree = "<group>"; };
+		C0560001C0560001C0560001 /* MoodDiaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoodDiaryView.swift; sourceTree = "<group>"; };
+		C0570001C0570001C0570001 /* MoodDiaryModuleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoodDiaryModuleTests.swift; sourceTree = "<group>"; };
+		C0580001C0580001C0580001 /* AsdGazeCollector.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AsdGazeCollector.entitlements; sourceTree = "<group>"; };
+		C0590000C0590000C0590000 /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
 		C0420000C0420000C0420000 /* Speech.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Speech.framework; path = System/Library/Frameworks/Speech.framework; sourceTree = SDKROOT; };
 		C0430000C0430000C0430000 /* PhotosUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = PhotosUI.framework; path = System/Library/Frameworks/PhotosUI.framework; sourceTree = SDKROOT; };
 		C0100001C0100001C0100001 /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
@@ -200,6 +218,7 @@
 				C0110003C0110003C0110003 /* WidgetKit.framework in Frameworks */,
 				C0420001C0420001C0420001 /* Speech.framework in Frameworks */,
 				C0430001C0430001C0430001 /* PhotosUI.framework in Frameworks */,
+				C0590001C0590001C0590001 /* HealthKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -250,6 +269,7 @@
 				C0370001C0370001C0370001 /* GazeTelemetryReviewCard.swift */,
 				C0380001C0380001C0380001 /* MilestoneDetailView.swift */,
 				C0390001C0390001C0390001 /* PediatricReportView.swift */,
+				C0560001C0560001C0560001 /* MoodDiaryView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -269,6 +289,7 @@
 				C0100003C0100003C0100003 /* WidgetKit.framework */,
 				C0420000C0420000C0420000 /* Speech.framework */,
 				C0430000C0430000C0430000 /* PhotosUI.framework */,
+				C0590000C0590000C0590000 /* HealthKit.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -312,6 +333,12 @@
 				C0310001C0310001C0310001 /* ClinicalDevelopmentModels.swift */,
 				C0320001C0320001C0320001 /* ClinicalMilestoneCatalog.swift */,
 				C0330001C0330001C0330001 /* ClinicalDashboardViewModel.swift */,
+				C0500001C0500001C0500001 /* MoodDiaryModels.swift */,
+				C0510001C0510001C0510001 /* HealthKitMoodStore.swift */,
+				C0520001C0520001C0520001 /* MoodDiaryStore.swift */,
+				C0530001C0530001C0530001 /* MoodDiaryViewModel.swift */,
+				C0540001C0540001C0540001 /* ARKitMoodFusionController.swift */,
+				C0550001C0550001C0550001 /* BlendShapeCSVLogger.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -352,6 +379,7 @@
 			children = (
 				5AA127E5B31E63B996A6A629 /* Assets.xcassets */,
 				EE7777AA7777AA77AA777777 /* Videos */,
+				C0580001C0580001C0580001 /* AsdGazeCollector.entitlements */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -376,6 +404,7 @@
 				FF1111AA1111AA11AA111133 /* StimulusPlaylistTests.swift */,
 				D3330001D3330001D3330001 /* ClinicalInteroperabilityTests.swift */,
 				C0400001C0400001C0400001 /* ClinicalDevelopmentModelsTests.swift */,
+				C0570001C0570001C0570001 /* MoodDiaryModuleTests.swift */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -534,6 +563,13 @@
 				C0370002C0370002C0370002 /* GazeTelemetryReviewCard.swift in Sources */,
 				C0380002C0380002C0380002 /* MilestoneDetailView.swift in Sources */,
 				C0390002C0390002C0390002 /* PediatricReportView.swift in Sources */,
+				C0500002C0500002C0500002 /* MoodDiaryModels.swift in Sources */,
+				C0510002C0510002C0510002 /* HealthKitMoodStore.swift in Sources */,
+				C0520002C0520002C0520002 /* MoodDiaryStore.swift in Sources */,
+				C0530002C0530002C0530002 /* MoodDiaryViewModel.swift in Sources */,
+				C0540002C0540002C0540002 /* ARKitMoodFusionController.swift in Sources */,
+				C0550002C0550002C0550002 /* BlendShapeCSVLogger.swift in Sources */,
+				C0560002C0560002C0560002 /* MoodDiaryView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -549,6 +585,7 @@
 				FF2222BB2222BB22BB222244 /* StimulusPlaylistTests.swift in Sources */,
 				D3330002D3330002D3330002 /* ClinicalInteroperabilityTests.swift in Sources */,
 				C0400002C0400002C0400002 /* ClinicalDevelopmentModelsTests.swift in Sources */,
+				C0570002C0570002C0570002 /* MoodDiaryModuleTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -579,6 +616,9 @@
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Speech-to-text lets caregivers dictate today's observation notes. Audio is processed on device when possible and is not stored as a recording.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "The microphone is used only while you hold the dictate button for observation notes.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "You may attach a photo to today's observation. Photos stay on this device and are never uploaded as raw video.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Mood and emotion diary entries can be read from Apple Health State of Mind so caregivers see one history across apps.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "When you log a mood in this app, we can save a State of Mind sample to Apple Health.";
+				CODE_SIGN_ENTITLEMENTS = Resources/AsdGazeCollector.entitlements;
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
@@ -712,6 +752,9 @@
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Speech-to-text lets caregivers dictate today's observation notes. Audio is processed on device when possible and is not stored as a recording.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "The microphone is used only while you hold the dictate button for observation notes.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "You may attach a photo to today's observation. Photos stay on this device and are never uploaded as raw video.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Mood and emotion diary entries can be read from Apple Health State of Mind so caregivers see one history across apps.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "When you log a mood in this app, we can save a State of Mind sample to Apple Health.";
+				CODE_SIGN_ENTITLEMENTS = Resources/AsdGazeCollector.entitlements;
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;

@@ -20,6 +20,8 @@ public struct CaregiverDashboardView: View {
     @StateObject private var dashboardModel = ClinicalDashboardViewModel()
     @State private var showingPediatricReport = false
     @State private var showingMCHAT = false
+    @State private var showingDiaryEditor = false
+    @State private var showingMoodDiary = false
 
     /// Mean social-preference of the stored week (0–1), nil when no data yet.
     private var trendAverage: Double? {
@@ -186,6 +188,9 @@ public struct CaregiverDashboardView: View {
             }
             .sheet(isPresented: $showingDiaryEditor) {
                 DiaryHistoryEditorView(store: carePlanStore)
+            }
+            .sheet(isPresented: $showingMoodDiary) {
+                MoodDiaryView()
             }
             .onAppear {
                 refreshLiveData()
@@ -688,6 +693,14 @@ public struct CaregiverDashboardView: View {
                     .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
                 Spacer()
+                Button {
+                    showingMoodDiary = true
+                } label: {
+                    Text("Log emotion")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(LiquidGlass.celestialTeal)
+                }
+                .buttonStyle(.plain)
                 Button {
                     showingDiaryEditor = true
                 } label: {

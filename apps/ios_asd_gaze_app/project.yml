@@ -50,6 +50,9 @@ targets:
         INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "Speech-to-text lets caregivers dictate today's observation notes. Audio is processed on device when possible and is not stored as a recording."
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "The microphone is used only while you hold the dictate button for observation notes."
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "You may attach a photo to today's observation. Photos stay on this device and are never uploaded as raw video."
+        INFOPLIST_KEY_NSHealthShareUsageDescription: "Mood and emotion diary entries can be read from Apple Health State of Mind so caregivers see one history across apps."
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: "When you log a mood in this app, we can save a State of Mind sample to Apple Health."
+        CODE_SIGN_ENTITLEMENTS: Resources/AsdGazeCollector.entitlements
         INFOPLIST_KEY_NSSupportsLiveActivities: true
         INFOPLIST_KEY_UILaunchScreen_Generation: true
         INFOPLIST_KEY_UIRequiresFullScreen: YES
@@ -74,6 +77,7 @@ targets:
       - sdk: WidgetKit.framework
       - sdk: Speech.framework
       - sdk: PhotosUI.framework
+      - sdk: HealthKit.framework
 
   AsdGazeCareWidget:
     type: app-extension

@@ -11,6 +11,7 @@ public struct SettingsView: View {
     @Environment(\.openURL) private var openURL
     @ObservedObject private var childProfileStore = ChildProfileStore.shared
     @ObservedObject private var alertPreferences = CareAlertPreferences.shared
+    @ObservedObject private var healthKitMood = HealthKitMoodStore.shared
     @State private var newConditionTitle: String = ""
     @State private var notificationStatusText: String = "Not determined"
     @State private var calibrationProfile: GazeCalibrationProfile = GazeCalibrationStore.load()
@@ -210,6 +211,10 @@ public struct SettingsView: View {
 
                     Spacer()
                 }
+
+                GlassDivider()
+
+                healthKitMoodRow
 
                 GlassDivider()
 
@@ -577,6 +582,35 @@ public struct SettingsView: View {
         #else
         return false
         #endif
+    }
+
+    private var healthKitMoodRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label("Apple Health mood", systemImage: "heart.text.square")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(LiquidGlass.textPrimary)
+                Spacer()
+                Text(healthKitMood.authorizationStatusText)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(LiquidGlass.celestialTeal)
+                    .multilineTextAlignment(.trailing)
+            }
+            Text("Manual emotion logs can write State of Mind samples to the Health app. Blend-shape CSVs stay on this device.")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+            Button("Authorize HealthKit") {
+                Task { await healthKitMood.requestAuthorization() }
+            }
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundColor(LiquidGlass.celestialTeal)
+            .buttonStyle(.plain)
+            if let err = healthKitMood.lastErrorMessage {
+                Text(err)
+                    .font(.caption2)
+                    .foregroundColor(.red)
+            }
+        }
     }
 
     private func refreshNotificationStatus() {

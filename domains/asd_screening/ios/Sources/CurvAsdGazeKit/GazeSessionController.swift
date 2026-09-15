@@ -117,6 +117,16 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
     private let blinkRecoveryFramesCount: Int = 3
 
     public static let didUpdateCalibrationNotification = Notification.Name("CurvAsdGazeKit.calibrationDidUpdate")
+    public static let didUpdateFaceBlendShapesNotification = Notification.Name("CurvAsdGazeKit.faceBlendShapesDidUpdate")
+    public static let didStartRecordingNotification = Notification.Name("CurvAsdGazeKit.recordingDidStart")
+    public static let didStopRecordingNotification = Notification.Name("CurvAsdGazeKit.recordingDidStop")
+    public static let blendShapesUserInfoKey = "blendShapes"
+    public static let affectUserInfoKey = "affect"
+    public static let isRecordingUserInfoKey = "isRecording"
+    public static let sessionIdUserInfoKey = "sessionId"
+
+    private var lastBlendShapeBroadcast: TimeInterval = 0
+    private var recordingSessionToken: String = UUID().uuidString
     private var calibrationObserver: NSObjectProtocol?
 
     #if canImport(ARKit) && !os(macOS)
@@ -210,6 +220,8 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
         self.sessionStartTime = Date()
         self.clipStartTime = Date()
         self.isRecording = true
+        self.recordingSessionToken = UUID().uuidString
+        NotificationCenter.default.post(name: Self.didStartRecordingNotification, object: self)
 
         reloadCalibrationProfile()
         gazeFilter.reset()
@@ -262,6 +274,7 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
     /// Ends the session, computes the comprehensive biomarker report, and exposes recorded frames.
     public func stopSession() -> GazeSessionReportSummary {
         self.isRecording = false
+        NotificationCenter.default.post(name: Self.didStopRecordingNotification, object: self)
 
         #if canImport(ARKit) && !os(macOS)
         arSession?.pause()
@@ -467,9 +480,11 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
 
         if Thread.isMainThread {
             self.applyUIState(state)
+            self.broadcastBlendShapes(affect: affect, shapes: [:])
         } else {
             DispatchQueue.main.async { [weak self] in
                 self?.applyUIState(state)
+                self?.broadcastBlendShapes(affect: affect, shapes: [:])
             }
         }
     }
@@ -486,6 +501,46 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
         self.headYawDeg = state.headYawDeg
         self.headPitchDeg = state.headPitchDeg
         self.headRollDeg = state.headRollDeg
+    }
+
+    /// Throttled numeric blend-shape fan-out for mood fusion and Core ML CSV (no frames).
+    func broadcastBlendShapes(affect: FacialAffectMetrics, shapes: [String: Double]) {
+        let now = Date().timeIntervalSince1970
+        guard now - lastBlendShapeBroadcast >= 0.2 else { return }
+        lastBlendShapeBroadcast = now
+        var info: [String: Any] = [
+            Self.affectUserInfoKey: affect,
+            Self.blendShapesUserInfoKey: shapes,
+            Self.isRecordingUserInfoKey: isRecording,
+            Self.sessionIdUserInfoKey: recordingSessionToken
+        ]
+        if shapes.isEmpty {
+            info[Self.blendShapesUserInfoKey] = blendShapeMap(from: affect)
+        }
+        NotificationCenter.default.post(
+            name: Self.didUpdateFaceBlendShapesNotification,
+            object: self,
+            userInfo: info
+        )
+    }
+
+    private func blendShapeMap(from affect: FacialAffectMetrics) -> [String: Double] {
+        [
+            "mouthSmileLeft": affect.mouthSmileLeft,
+            "mouthSmileRight": affect.mouthSmileRight,
+            "cheekSquintLeft": affect.cheekSquintLeft,
+            "cheekSquintRight": affect.cheekSquintRight,
+            "browInnerUp": affect.browInnerUp,
+            "browOuterUpLeft": affect.browOuterUpLeft,
+            "browOuterUpRight": affect.browOuterUpRight,
+            "eyeWideLeft": affect.eyeWideLeft,
+            "eyeWideRight": affect.eyeWideRight,
+            "jawOpen": affect.jawOpen,
+            "browDownLeft": affect.browDownLeft,
+            "browDownRight": affect.browDownRight,
+            "mouthFrownLeft": affect.mouthFrownLeft,
+            "mouthFrownRight": affect.mouthFrownRight
+        ]
     }
 }
 
@@ -638,6 +693,11 @@ extension GazeSessionController: ARSessionDelegate {
 
         DispatchQueue.main.async { [weak self] in
             self?.applyUIState(uiState)
+            var map: [String: Double] = [:]
+            for (key, value) in shapes {
+                map[key.rawValue] = value.doubleValue
+            }
+            self?.broadcastBlendShapes(affect: affect, shapes: map)
         }
     }
 
