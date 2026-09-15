@@ -6,6 +6,8 @@ struct AsdGazeApp: App {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @State private var selectedTab: Int = 0
     @State private var showSplashScreen: Bool = true
+    @State private var showMoodDiaryFromSuggestion: Bool = false
+    @ObservedObject private var moodFusion = ARKitMoodFusionController.shared
 
     var body: some Scene {
         WindowGroup {
@@ -39,6 +41,8 @@ struct AsdGazeApp: App {
                     CarePlanStore.shared.tasks,
                     medications: CarePlanStore.shared.medications
                 )
+                ARKitMoodFusionController.shared.startListening()
+                BlendShapeCSVLogger.shared.startListening()
             }
         }
     }
@@ -75,5 +79,23 @@ struct AsdGazeApp: App {
                 .tag(2)
         }
         .tint(LiquidGlass.celestialTeal)
+        .alert(
+            "Mood diary",
+            isPresented: Binding(
+                get: { moodFusion.pendingSuggestion != nil && !showMoodDiaryFromSuggestion },
+                set: { if !$0 { moodFusion.dismissSuggestion() } }
+            )
+        ) {
+            Button("Log this") { showMoodDiaryFromSuggestion = true }
+            Button("Not now", role: .cancel) { moodFusion.dismissSuggestion() }
+        } message: {
+            Text(moodFusion.pendingSuggestion?.prompt
+                 ?? "We noticed some distress earlier. Would you like to log this?")
+        }
+        .sheet(isPresented: $showMoodDiaryFromSuggestion, onDismiss: {
+            moodFusion.dismissSuggestion()
+        }) {
+            MoodDiaryView(suggestion: moodFusion.pendingSuggestion)
+        }
     }
 }

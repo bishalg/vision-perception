@@ -14,6 +14,14 @@ public struct CaregiverDashboardView: View {
     @State private var selectedMilestone: MilestoneItem?
     @State private var diaryNotesText: String = ""
     @State private var lastMchat: MCHATScoreResult?
+    @State private var editingMedication: MedicationItem?
+    @State private var showingAddMedication = false
+    @StateObject private var observationLog = ObservationLogStore.shared
+    @StateObject private var dashboardModel = ClinicalDashboardViewModel()
+    @State private var showingPediatricReport = false
+    @State private var showingMCHAT = false
+    @State private var showingDiaryEditor = false
+    @State private var showingMoodDiary = false
 
     /// Mean social-preference of the stored week (0–1), nil when no data yet.
     private var trendAverage: Double? {
@@ -51,74 +59,102 @@ public struct CaregiverDashboardView: View {
 
     public var body: some View {
         NavigationStack {
-            ZStack {
-                // Liquid Glass twilight gradient background
-                LinearGradient(
-                    colors: [LiquidGlass.deepCanvas, LiquidGlass.deepCanvasSecondary],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
-
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 18) {
-                        headerSection
-
-                        // Apple Health Style Clinical Advisory Alert
-                        if !isAdvisoryDismissed {
-                            clinicalAdvisoryBanner
-                        }
-
-                        // Apple Health Style 3-Column Activity & Care Protocol Card
-                        careKitActivityCard
-
-                        // Apple ResearchKit Clinical Study Card (Parallel Research Track)
-                        ResearchStudyDashboardCard()
-
-                        // Standardized Screening Action Card
-                        screeningActionCard
-
-                        // Pinned Care Plan Interventions
-                        todayCarePlanSection
-
-                        // Caregiver-Logged Medication Schedule
-                        medicationsSection
-
-                        // Daily Sensory & Mood Diary (2-Item-Per-Row Grid)
-                        dailyDiarySection
-
-                        // 7-Day Attention Trend with Bar Chart & Highlights
-                        longitudinalTrendSection
-
-                        // CDC / AAP Developmental Milestones
-                        milestonesSection
+            List {
+                if !isAdvisoryDismissed {
+                    Section {
+                        clinicalAdvisoryBanner
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 14)
                 }
-                .refreshable {
-                    // Pull-to-refresh flushes the research sync queue, then the
-                    // live badges above re-read the on-device stores.
-                    await withCheckedContinuation { continuation in
-                        ResearchKitSyncService.shared.syncNow(forceBundleCompile: false) { _ in
-                            continuation.resume()
-                        }
+
+                Section {
+                    AttentionTrendChartView(
+                        points: dashboardModel.trendPoints(
+                            weekly: carePlanStore.weeklyHistory,
+                            sessions: sessionHistory.records
+                        ),
+                        average: trendAverage
+                    )
+                } header: {
+                    Text("Social attention trend")
+                } footer: {
+                    ClinicalTermTooltip(term: ClinicalGlossary.geopref)
+                }
+
+                Section {
+                    ObservationQuickLogBar(store: observationLog)
+                }
+
+                Section("Developmental domains") {
+                    domainGauges
+                }
+
+                Section("M-CHAT-R/F") {
+                    mchatRiskRow
+                }
+
+                if let last = sessionHistory.lastRecord {
+                    Section("Gaze telemetry") {
+                        GazeTelemetryReviewCard(session: GazeTelemetrySession(from: last))
+                        Button("Start ResearchKit gaze task", action: onStartScreening)
                     }
-                    refreshLiveData()
+                } else {
+                    Section("Gaze telemetry") {
+                        Text("No on-device session yet. Visual attention calibration and GeoPref run as a ResearchKit-style ordered task. No raw video is stored.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Button("Start gaze task", action: onStartScreening)
+                    }
                 }
+
+                Section {
+                    careKitActivityCard
+                    ResearchStudyDashboardCard()
+                    screeningActionCard
+                } header: {
+                    Text("Care protocol")
+                }
+
+                Section {
+                    todayCarePlanSection
+                }
+
+                Section {
+                    medicationsSection
+                }
+
+                Section {
+                    dailyDiarySection
+                }
+
+                DevelopmentalMilestonesSectionView(milestones: carePlanStore.milestones) { selectedMilestone = $0 }
+            }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.visible)
+            .background(Color(.systemGroupedBackground))
+            .refreshable {
+                await withCheckedContinuation { continuation in
+                    ResearchKitSyncService.shared.syncNow(forceBundleCompile: false) { _ in
+                        continuation.resume()
+                    }
+                }
+                refreshLiveData()
             }
             .navigationTitle(Localizer.tr("dashboard_title"))
             .navigationBarTitleDisplayMode(.large)
-            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    // Data Sharing & Privacy Hub Export Button
+                    Button {
+                        showingPediatricReport = true
+                    } label: {
+                        Image(systemName: "doc.richtext")
+                    }
+                    .accessibilityLabel("Pediatric PDF report")
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         showingExportSheet = true
                     } label: {
                         Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(LiquidGlass.celestialTeal)
                     }
                     .accessibilityLabel("Data Sharing & Privacy Export")
                 }
@@ -129,12 +165,74 @@ public struct CaregiverDashboardView: View {
             .sheet(isPresented: $showingClinicalDetailsSheet) {
                 ClinicalDetailsModalView()
             }
+            .sheet(isPresented: $showingPediatricReport) {
+                PediatricReportView(
+                    store: carePlanStore,
+                    sessions: sessionHistory.records,
+                    mchat: lastMchat
+                )
+            }
+            .sheet(isPresented: $showingMCHAT) {
+                MCHATSurveyModalView { result in
+                    lastMchat = result
+                }
+            }
             .sheet(item: $selectedMilestone) { milestone in
-                MilestoneDetailModalView(milestone: milestone)
+                MilestoneDetailView(milestoneId: milestone.id, store: carePlanStore)
+            }
+            .sheet(item: $editingMedication) { item in
+                MedicationEditorView(store: carePlanStore, existing: item)
+            }
+            .sheet(isPresented: $showingAddMedication) {
+                MedicationEditorView(store: carePlanStore, existing: nil)
+            }
+            .sheet(isPresented: $showingDiaryEditor) {
+                DiaryHistoryEditorView(store: carePlanStore)
+            }
+            .sheet(isPresented: $showingMoodDiary) {
+                MoodDiaryView()
             }
             .onAppear {
                 refreshLiveData()
             }
+        }
+    }
+
+    private var domainGauges: some View {
+        HStack(spacing: 12) {
+            ForEach(DevelopmentalDomain.allCases) { domain in
+                VStack(spacing: 8) {
+                    ProgressView(value: carePlanStore.domainCompletion(domain), total: 1)
+                        .progressViewStyle(.circular)
+                        .tint(.accentColor)
+                    Text(domain.shortLabel)
+                        .font(.caption2)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var mchatRiskRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let lastMchat {
+                let score = ScreeningRiskScore(from: lastMchat)
+                Text(score.riskLevel.rawValue)
+                    .font(.headline)
+                    .foregroundStyle(mchatRiskColor(score.riskLevel))
+                Text("Failed items: \(score.totalFailed) of 20  ·  Bands: 0–2 low, 3–7 Follow-Up, 8–20 seek evaluation.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(score.clinicalRecommendation)
+                    .font(.subheadline)
+            } else {
+                Text("No M-CHAT-R/F on file. Complete the 20-item caregiver questionnaire.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Button("Open M-CHAT-R/F") { showingMCHAT = true }
         }
     }
 
@@ -448,6 +546,27 @@ public struct CaregiverDashboardView: View {
                 Text("\(Int(carePlanStore.medicationCompletionRatio * 100))% today")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(LiquidGlass.celestialTeal)
+
+                Button {
+                    showingAddMedication = true
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(LiquidGlass.celestialTeal)
+                }
+                .accessibilityLabel(Localizer.tr("meds_add"))
+            }
+
+            if carePlanStore.medications.isEmpty {
+                Button {
+                    showingAddMedication = true
+                } label: {
+                    Text(Localizer.tr("meds_empty"))
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
             }
 
             VStack(spacing: 8) {
@@ -478,9 +597,20 @@ public struct CaregiverDashboardView: View {
 
                 Spacer()
 
-                Text("\(medication.dosesTakenToday.filter { $0 }.count)/\(medication.schedule.count)")
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    .foregroundColor(LiquidGlass.emeraldMint)
+                HStack(spacing: 6) {
+                    if medication.reminderSlots.contains(where: \.remindersEnabled) {
+                        Image(systemName: "bell.fill").font(.system(size: 11))
+                    }
+                    if medication.reminderSlots.contains(where: \.alarmsEnabled) {
+                        Image(systemName: "alarm.fill").font(.system(size: 11))
+                    }
+                    if medication.reminderSlots.contains(where: \.liveActivityEnabled) {
+                        Image(systemName: "clock.badge.checkmark").font(.system(size: 11))
+                    }
+                    Text("\(medication.dosesTakenToday.filter { $0 }.count)/\(medication.schedule.count)")
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .foregroundColor(LiquidGlass.emeraldMint)
+                }
             }
 
             HStack(spacing: 10) {
@@ -522,17 +652,64 @@ public struct CaregiverDashboardView: View {
                     .buttonStyle(.plain)
                 }
             }
+
+            Button {
+                editingMedication = medication
+            } label: {
+                Text(Localizer.tr("meds_edit_schedule"))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(LiquidGlass.celestialTeal)
+            }
+            .buttonStyle(.plain)
         }
         .glassCard(cornerRadius: 12, padding: 12)
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(role: .destructive) {
+                carePlanStore.deleteMedication(id: medication.id)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+            Button {
+                editingMedication = medication
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            .tint(LiquidGlass.celestialTeal)
+        }
+        .contextMenu {
+            Button("Edit") { editingMedication = medication }
+            Button("Delete", role: .destructive) {
+                carePlanStore.deleteMedication(id: medication.id)
+            }
+        }
     }
 
     // MARK: - 6. Daily Sensory & Mood Diary (2 Items Per Row Grid)
 
     private var dailyDiarySection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(Localizer.tr("carekit_diary_title"))
-                .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundColor(.primary)
+            HStack {
+                Text(Localizer.tr("carekit_diary_title"))
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                Spacer()
+                Button {
+                    showingMoodDiary = true
+                } label: {
+                    Text("Log emotion")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(LiquidGlass.celestialTeal)
+                }
+                .buttonStyle(.plain)
+                Button {
+                    showingDiaryEditor = true
+                } label: {
+                    Text(Localizer.tr("diary_history_reminders"))
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(LiquidGlass.celestialTeal)
+                }
+                .buttonStyle(.plain)
+            }
 
             VStack(alignment: .leading, spacing: 14) {
                 // Diary Header
@@ -547,9 +724,9 @@ public struct CaregiverDashboardView: View {
 
                     Spacer()
 
-                    Text("Logged Today")
+                    Text(carePlanStore.diaryEntry.hasCaregiverInput ? "Logged today" : "Not logged")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(LiquidGlass.emeraldMint)
+                        .foregroundColor(carePlanStore.diaryEntry.hasCaregiverInput ? LiquidGlass.emeraldMint : .secondary)
                 }
 
                 // 2 ITEMS PER ROW GRID FOR CHILD MOOD OPTIONS
@@ -628,6 +805,37 @@ public struct CaregiverDashboardView: View {
                             }
                             .buttonStyle(.plain)
                         }
+                    }
+                }
+
+                HStack {
+                    Text("Sensory load")
+                        .font(.system(size: 13, weight: .medium))
+                    Spacer()
+                    HStack(spacing: 6) {
+                        ForEach(1...5, id: \.self) { level in
+                            Button {
+                                carePlanStore.updateSensoryLoad(level)
+                            } label: {
+                                Circle()
+                                    .fill(level <= carePlanStore.diaryEntry.sensoryLoad ? LiquidGlass.warmAmber : Color.primary.opacity(0.15))
+                                    .frame(width: 12, height: 12)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                HStack {
+                    Text("Joint attention")
+                        .font(.system(size: 13, weight: .medium))
+                    Spacer()
+                    Stepper(value: Binding(
+                        get: { carePlanStore.diaryEntry.jointAttentionCount },
+                        set: { carePlanStore.updateJointAttentionCount($0) }
+                    ), in: 0...20) {
+                        Text("\(carePlanStore.diaryEntry.jointAttentionCount)")
+                            .font(.system(size: 13, weight: .semibold, design: .monospaced))
                     }
                 }
 
@@ -795,3 +1003,6 @@ public struct CaregiverDashboardView: View {
         )
     }
 }
+
+/// HIG grouped dashboard entry point.
+public typealias DashboardView = CaregiverDashboardView

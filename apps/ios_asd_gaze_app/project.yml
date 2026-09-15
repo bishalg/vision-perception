@@ -19,6 +19,8 @@ settings:
 packages:
   CurvAsdGazeKit:
     path: ../../domains/asd_screening/ios
+  CareActivityKit:
+    path: CareActivityKit
   CareKit:
     url: https://github.com/carekit-apple/CareKit.git
     exactVersion: 4.1.0
@@ -44,14 +46,25 @@ targets:
         GENERATE_INFOPLIST_FILE: true
         INFOPLIST_KEY_NSCameraUsageDescription: "TrueDepth camera access is required to track eye gaze and measure social visual attention in real-time. No raw camera frames or videos are ever recorded to storage."
         INFOPLIST_KEY_NSMotionUsageDescription: "Device motion data is required to separate device movement from toddler head orientation."
+        INFOPLIST_KEY_NSUserNotificationsUsageDescription: "Medication and sensory diary reminders use local notifications so caregivers can be alerted at scheduled times."
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "Speech-to-text lets caregivers dictate today's observation notes. Audio is processed on device when possible and is not stored as a recording."
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "The microphone is used only while you hold the dictate button for observation notes."
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "You may attach a photo to today's observation. Photos stay on this device and are never uploaded as raw video."
+        INFOPLIST_KEY_NSHealthShareUsageDescription: "Mood and emotion diary entries can be read from Apple Health State of Mind so caregivers see one history across apps."
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: "When you log a mood in this app, we can save a State of Mind sample to Apple Health."
+        CODE_SIGN_ENTITLEMENTS: Resources/AsdGazeCollector.entitlements
+        INFOPLIST_KEY_NSSupportsLiveActivities: true
         INFOPLIST_KEY_UILaunchScreen_Generation: true
         INFOPLIST_KEY_UIRequiresFullScreen: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
     dependencies:
       - package: CurvAsdGazeKit
+      - package: CareActivityKit
       - package: CareKit
         product: CareKitStore
+      - target: AsdGazeCareWidget
+        embed: true
       - sdk: ARKit.framework
       - sdk: SceneKit.framework
       - sdk: AVFoundation.framework
@@ -59,6 +72,40 @@ targets:
       - sdk: CryptoKit.framework
       - sdk: Network.framework
       - sdk: PDFKit.framework
+      - sdk: UserNotifications.framework
+      - sdk: ActivityKit.framework
+      - sdk: WidgetKit.framework
+      - sdk: Speech.framework
+      - sdk: PhotosUI.framework
+      - sdk: HealthKit.framework
+
+  AsdGazeCareWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widget
+    info:
+      path: Widget/Info.plist
+      properties:
+        CFBundleDisplayName: Care Alerts
+        NSSupportsLiveActivities: true
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.curv.asd.gazecollector.carewidget
+        PRODUCT_NAME: AsdGazeCareWidget
+        GENERATE_INFOPLIST_FILE: true
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        SWIFT_VERSION: "5.9"
+        DEVELOPMENT_TEAM: 6J3WY94J6T
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "1,2"
+    dependencies:
+      - package: CareActivityKit
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+      - sdk: ActivityKit.framework
 
   AsdGazeCollectorTests:
     type: bundle.unit-test
@@ -71,6 +118,7 @@ targets:
     dependencies:
       - target: AsdGazeCollector
       - package: CurvAsdGazeKit
+      - package: CareActivityKit
       - package: CareKit
         product: CareKitStore
       - sdk: Network.framework

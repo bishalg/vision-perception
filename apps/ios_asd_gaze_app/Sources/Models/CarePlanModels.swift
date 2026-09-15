@@ -126,14 +126,22 @@ public enum ChildMood: String, Codable, CaseIterable, Identifiable, Sendable {
     }
 }
 
-/// Daily sensory and observation diary entry.
-public struct DailyDiaryEntry: Identifiable, Codable, Sendable {
+/// Daily sensory and observation diary entry (one per calendar day).
+public struct DailyDiaryEntry: Identifiable, Codable, Sendable, Equatable {
     public var id: UUID
     public var date: Date
     public var mood: ChildMood
     public var notes: String
     public var eyeContactRating: Int // 1 to 5 scale
     public var jointAttentionCount: Int
+    /// Caregiver-rated sensory load (1 calm … 5 overloaded).
+    public var sensoryLoad: Int
+    public var lastEditedAt: Date?
+
+    /// True when the caregiver has added notes or changed defaults for the day.
+    public var hasCaregiverInput: Bool {
+        lastEditedAt != nil || !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     /// Standard SNOMED CT affect concept for the logged mood (ObsRO).
     public var snomedAffect: ClinicalCoding { mood.snomedAffect }
@@ -152,14 +160,32 @@ public struct DailyDiaryEntry: Identifiable, Codable, Sendable {
         mood: ChildMood = .calm,
         notes: String = "",
         eyeContactRating: Int = 3,
-        jointAttentionCount: Int = 2
+        jointAttentionCount: Int = 2,
+        sensoryLoad: Int = 3,
+        lastEditedAt: Date? = nil
     ) {
         self.id = id
         self.date = date
         self.mood = mood
         self.notes = notes
-        self.eyeContactRating = eyeContactRating
-        self.jointAttentionCount = jointAttentionCount
+        self.eyeContactRating = max(1, min(5, eyeContactRating))
+        self.jointAttentionCount = max(0, jointAttentionCount)
+        self.sensoryLoad = max(1, min(5, sensoryLoad))
+        self.lastEditedAt = lastEditedAt
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            id: (try? container.decode(UUID.self, forKey: .id)) ?? UUID(),
+            date: (try? container.decode(Date.self, forKey: .date)) ?? Date(),
+            mood: (try? container.decode(ChildMood.self, forKey: .mood)) ?? .calm,
+            notes: (try? container.decode(String.self, forKey: .notes)) ?? "",
+            eyeContactRating: (try? container.decode(Int.self, forKey: .eyeContactRating)) ?? 3,
+            jointAttentionCount: (try? container.decode(Int.self, forKey: .jointAttentionCount)) ?? 2,
+            sensoryLoad: (try? container.decode(Int.self, forKey: .sensoryLoad)) ?? 3,
+            lastEditedAt: try? container.decode(Date.self, forKey: .lastEditedAt)
+        )
     }
 }
 
@@ -172,10 +198,13 @@ public struct MedicationItem: Identifiable, Codable, Sendable, Equatable {
     public var dose: String
     public var instructions: String
     /// "HH:MM" dose times, e.g. ["08:00", "20:00"].
-    public let schedule: [String]
+    public var schedule: [String]
     /// Per-dose completion for today, aligned with `schedule`.
     public var dosesTakenToday: [Bool]
     public var lastTakenAt: Date?
+    public var reminderSlots: [CareReminderSlot]
+    public var linkedConditionId: String?
+    public var notes: String
 
     public init(
         id: String,
@@ -184,7 +213,10 @@ public struct MedicationItem: Identifiable, Codable, Sendable, Equatable {
         instructions: String,
         schedule: [String],
         dosesTakenToday: [Bool] = [],
-        lastTakenAt: Date? = nil
+        lastTakenAt: Date? = nil,
+        reminderSlots: [CareReminderSlot] = [],
+        linkedConditionId: String? = nil,
+        notes: String = ""
     ) {
         self.id = id
         self.name = name
@@ -193,6 +225,9 @@ public struct MedicationItem: Identifiable, Codable, Sendable, Equatable {
         self.schedule = schedule
         self.dosesTakenToday = Self.alignedDoses(dosesTakenToday, to: schedule)
         self.lastTakenAt = lastTakenAt
+        self.reminderSlots = reminderSlots.synced(to: schedule)
+        self.linkedConditionId = linkedConditionId
+        self.notes = notes
     }
 
     /// Decode leniently: persisted `dosesTakenToday` from an older schedule
@@ -208,8 +243,17 @@ public struct MedicationItem: Identifiable, Codable, Sendable, Equatable {
             instructions: try container.decode(String.self, forKey: .instructions),
             schedule: schedule,
             dosesTakenToday: (try? container.decode([Bool].self, forKey: .dosesTakenToday)) ?? [],
-            lastTakenAt: try? container.decode(Date.self, forKey: .lastTakenAt)
+            lastTakenAt: try? container.decode(Date.self, forKey: .lastTakenAt),
+            reminderSlots: (try? container.decode([CareReminderSlot].self, forKey: .reminderSlots)) ?? [],
+            linkedConditionId: try? container.decode(String.self, forKey: .linkedConditionId),
+            notes: (try? container.decode(String.self, forKey: .notes)) ?? ""
         )
+    }
+
+    public mutating func setSchedule(_ times: [String]) {
+        schedule = times
+        dosesTakenToday = Self.alignedDoses(dosesTakenToday, to: times)
+        reminderSlots = reminderSlots.synced(to: times)
     }
 
     /// Resize a taken-array to the schedule length (prefix preserved).
@@ -244,32 +288,6 @@ public struct LongitudinalAttentionPoint: Identifiable, Codable, Sendable {
     }
 }
 
-/// CDC / AAP developmental milestone item.
-public struct MilestoneItem: Identifiable, Codable, Sendable {
-    public let id: String
-    public let ageMonths: Int
-    public let title: String
-    public let dueDateString: String
-    public var isCompleted: Bool
-    public let checklist: [String]
-
-    public init(
-        id: String,
-        ageMonths: Int,
-        title: String,
-        dueDateString: String,
-        isCompleted: Bool,
-        checklist: [String]
-    ) {
-        self.id = id
-        self.ageMonths = ageMonths
-        self.title = title
-        self.dueDateString = dueDateString
-        self.isCompleted = isCompleted
-        self.checklist = checklist
-    }
-}
-
 /// Observable store managing daily CareKit tasks, diary, streak, and longitudinal analytics.
 @MainActor
 public final class CarePlanStore: ObservableObject {
@@ -283,6 +301,8 @@ public final class CarePlanStore: ObservableObject {
 
     @Published public var tasks: [CarePlanTask] = []
     @Published public var diaryEntry: DailyDiaryEntry = DailyDiaryEntry()
+    @Published public var diaryHistory: [DailyDiaryEntry] = []
+    @Published public var diaryReminderSlots: [CareReminderSlot] = []
     @Published public var medications: [MedicationItem] = []
     @Published public var streakDays: Int = 5
     @Published public var weeklyHistory: [LongitudinalAttentionPoint] = []
@@ -293,9 +313,12 @@ public final class CarePlanStore: ObservableObject {
 
     private let tasksKey = "org.curv.asd.careplan.tasks"
     private let diaryKey = "org.curv.asd.careplan.diary"
+    private let diaryHistoryKey = "org.curv.asd.careplan.diary.history"
+    private let diaryRemindersKey = "org.curv.asd.careplan.diary.reminders"
     private let medicationsKey = "org.curv.asd.careplan.medications"
     private let streakKey = "org.curv.asd.careplan.streak"
     private let historyKey = "org.curv.asd.careplan.history"
+    private let milestonesKey = "org.curv.asd.careplan.milestones.v2"
 
     public init(
         clinicalStore: CareKitClinicalStore = .shared,
@@ -304,6 +327,7 @@ public final class CarePlanStore: ObservableObject {
         self.clinicalStore = clinicalStore
         self.researchStore = researchStore
         loadState()
+        Task { await resyncAlerts() }
     }
 
     /// Progress ratio of today's completed tasks (0.0 to 1.0).
@@ -316,6 +340,20 @@ public final class CarePlanStore: ObservableObject {
     /// Number of completed tasks today.
     public var completedTaskCount: Int {
         tasks.filter { $0.isCompleted }.count
+    }
+
+    public func toggleMilestoneItem(milestoneId: String, itemId: String) {
+        guard let mIdx = milestones.firstIndex(where: { $0.id == milestoneId }),
+              let iIdx = milestones[mIdx].items.firstIndex(where: { $0.id == itemId }) else { return }
+        milestones[mIdx].items[iIdx].isCompleted.toggle()
+        milestones[mIdx].isCompleted = milestones[mIdx].items.allSatisfy(\.isCompleted)
+        saveMilestones()
+    }
+
+    public func domainCompletion(_ domain: DevelopmentalDomain) -> Double {
+        let items = milestones.filter { $0.domain == domain }
+        guard !items.isEmpty else { return 0 }
+        return items.map(\.completionRatio).reduce(0, +) / Double(items.count)
     }
 
     /// Toggle task completion status and save.
@@ -346,28 +384,98 @@ public final class CarePlanStore: ObservableObject {
         }
     }
 
+    /// Diary for a calendar day, or a blank template if none is stored.
+    public func diary(for date: Date) -> DailyDiaryEntry {
+        let day = Calendar.current.startOfDay(for: date)
+        if let existing = diaryHistory.first(where: { Calendar.current.isDate($0.date, inSameDayAs: day) }) {
+            return existing
+        }
+        if Calendar.current.isDateInToday(day) {
+            return diaryEntry
+        }
+        return DailyDiaryEntry(date: day)
+    }
+
+    /// Recent diary days, newest first (includes today even if blank).
+    public var recentDiaryEntries: [DailyDiaryEntry] {
+        let today = diary(for: Date())
+        var items = diaryHistory.sorted { $0.date > $1.date }
+        if !items.contains(where: { Calendar.current.isDateInToday($0.date) }) {
+            items.insert(today, at: 0)
+        }
+        return items
+    }
+
     /// Update mood entry and persist.
     public func updateMood(_ mood: ChildMood) {
-        diaryEntry.mood = mood
-        saveDiary()
+        mutateTodayDiary { $0.mood = mood }
     }
 
     /// Update caregiver diary notes and persist.
     public func updateNotes(_ notes: String) {
-        diaryEntry.notes = notes
-        saveDiary()
+        mutateTodayDiary { $0.notes = notes }
     }
 
     /// Update eye contact rating (1-5) and persist.
     public func updateEyeContactRating(_ rating: Int) {
-        diaryEntry.eyeContactRating = max(1, min(5, rating))
-        saveDiary()
+        mutateTodayDiary { $0.eyeContactRating = max(1, min(5, rating)) }
     }
 
     /// Update spontaneous joint-attention count for today and persist.
     public func updateJointAttentionCount(_ count: Int) {
-        diaryEntry.jointAttentionCount = max(0, count)
-        saveDiary()
+        mutateTodayDiary { $0.jointAttentionCount = max(0, count) }
+    }
+
+    public func updateSensoryLoad(_ load: Int) {
+        mutateTodayDiary { $0.sensoryLoad = max(1, min(5, load)) }
+    }
+
+    public func upsertDiary(_ entry: DailyDiaryEntry) {
+        var copy = entry
+        copy.date = Calendar.current.startOfDay(for: entry.date)
+        copy.lastEditedAt = Date()
+        if let index = diaryHistory.firstIndex(where: { Calendar.current.isDate($0.date, inSameDayAs: copy.date) }) {
+            diaryHistory[index] = copy
+        } else {
+            diaryHistory.append(copy)
+        }
+        if Calendar.current.isDateInToday(copy.date) {
+            diaryEntry = copy
+        }
+        persistDiary()
+        clinicalStore.recordDiaryEntry(copy, date: copy.date)
+        Task { await resyncAlerts() }
+    }
+
+    public func deleteDiary(on date: Date) {
+        diaryHistory.removeAll { Calendar.current.isDate($0.date, inSameDayAs: date) }
+        if Calendar.current.isDateInToday(date) {
+            diaryEntry = DailyDiaryEntry(date: Calendar.current.startOfDay(for: date))
+        }
+        persistDiary()
+        Task { await resyncAlerts() }
+    }
+
+    public func upsertDiaryReminderSlot(_ slot: CareReminderSlot) {
+        if let index = diaryReminderSlots.firstIndex(where: { $0.id == slot.id }) {
+            diaryReminderSlots[index] = slot
+        } else {
+            diaryReminderSlots.append(slot)
+        }
+        saveDiaryReminders()
+        Task { await resyncAlerts() }
+    }
+
+    public func deleteDiaryReminderSlot(id: String) {
+        diaryReminderSlots.removeAll { $0.id == id }
+        saveDiaryReminders()
+        Task { await resyncAlerts() }
+    }
+
+    private func mutateTodayDiary(_ body: (inout DailyDiaryEntry) -> Void) {
+        var entry = diary(for: Date())
+        body(&entry)
+        upsertDiary(entry)
     }
 
     /// Toggle one scheduled dose time of a medication for today.
@@ -395,6 +503,50 @@ public final class CarePlanStore: ObservableObject {
                 self?.decrementPending(for: key)
             }
         }
+        Task { await resyncAlerts() }
+    }
+
+    public func upsertMedication(_ item: MedicationItem) {
+        var copy = item
+        copy.setSchedule(item.schedule)
+        if let index = medications.firstIndex(where: { $0.id == copy.id }) {
+            copy.dosesTakenToday = Self.mergeTaken(
+                existing: medications[index].dosesTakenToday,
+                incoming: copy.dosesTakenToday,
+                scheduleCount: copy.schedule.count
+            )
+            medications[index] = copy
+        } else {
+            medications.append(copy)
+        }
+        saveMedications()
+        clinicalStore.replaceMedicationTask(from: copy)
+        Task { await resyncAlerts() }
+    }
+
+    public func deleteMedication(id: String) {
+        medications.removeAll { $0.id == id }
+        saveMedications()
+        clinicalStore.deleteMedicationTask(id: id)
+        Task { await resyncAlerts() }
+    }
+
+    private static func mergeTaken(existing: [Bool], incoming: [Bool], scheduleCount: Int) -> [Bool] {
+        if incoming.count == scheduleCount, incoming.contains(true) { return incoming }
+        var fixed = Array(existing.prefix(scheduleCount))
+        while fixed.count < scheduleCount { fixed.append(false) }
+        return fixed
+    }
+
+    public func resyncAlerts() async {
+        let prefs = CareAlertPreferences.shared
+        let loggedToday = diary(for: Date()).hasCaregiverInput
+        let requests = CareAlertScheduler.shared.buildRequests(
+            medications: medications,
+            diarySlots: diaryReminderSlots,
+            diaryLoggedToday: loggedToday
+        )
+        await CareAlertScheduler.shared.resync(requests: requests, preferences: prefs)
     }
 
     /// Proportion of today's scheduled doses that have been given (0.0 to 1.0).
@@ -453,8 +605,9 @@ public final class CarePlanStore: ObservableObject {
     ) {
         researchStore.recordSurveyResult(answers: answers) { [weak self] result in
             Task { @MainActor in
-                if let idx = self?.milestones.firstIndex(where: { $0.ageMonths == 24 || $0.id.contains("mchat") }) {
+                if let idx = self?.milestones.firstIndex(where: { $0.ageMonths == 24 && $0.domain == .languageCommunication }) {
                     self?.milestones[idx].isCompleted = true
+                    self?.saveMilestones()
                 }
                 completion?(result)
             }
@@ -473,6 +626,7 @@ public final class CarePlanStore: ObservableObject {
             let streakDays: Int
             let completionRate: Double
             let todayDiary: DailyDiaryEntry
+            let diaryHistory: [DailyDiaryEntry]
             let activeTasks: [CarePlanTask]
             let medications: [MedicationItem]
             let weeklyAttentionTrend: [LongitudinalAttentionPoint]
@@ -485,6 +639,7 @@ public final class CarePlanStore: ObservableObject {
             streakDays: streakDays,
             completionRate: completionRatio,
             todayDiary: diaryEntry,
+            diaryHistory: diaryHistory,
             activeTasks: tasks,
             medications: medications,
             weeklyAttentionTrend: weeklyHistory,
@@ -509,12 +664,29 @@ public final class CarePlanStore: ObservableObject {
             self.tasks = Self.defaultTasks
         }
 
-        // Load diary
-        if let data = UserDefaults.standard.data(forKey: diaryKey),
-           let saved = try? JSONDecoder().decode(DailyDiaryEntry.self, from: data) {
+        // Load diary (legacy single entry + history)
+        if let data = UserDefaults.standard.data(forKey: diaryHistoryKey),
+           let saved = try? JSONDecoder().decode([DailyDiaryEntry].self, from: data),
+           !saved.isEmpty {
+            self.diaryHistory = saved
+            self.diaryEntry = diary(for: Date())
+        } else if let data = UserDefaults.standard.data(forKey: diaryKey),
+                  let saved = try? JSONDecoder().decode(DailyDiaryEntry.self, from: data) {
             self.diaryEntry = saved
+            self.diaryHistory = [saved]
         } else {
             self.diaryEntry = DailyDiaryEntry()
+            self.diaryHistory = [self.diaryEntry]
+        }
+
+        if let data = UserDefaults.standard.data(forKey: diaryRemindersKey),
+           let saved = try? JSONDecoder().decode([CareReminderSlot].self, from: data),
+           !saved.isEmpty {
+            self.diaryReminderSlots = saved
+        } else {
+            self.diaryReminderSlots = [
+                CareReminderSlot(id: "diary_evening", clockTime: "20:00", remindersEnabled: true)
+            ]
         }
 
         // Load medications (reset per-dose taken state when crossing a new day)
@@ -545,7 +717,14 @@ public final class CarePlanStore: ObservableObject {
         }
 
         // Milestones
-        self.milestones = Self.defaultMilestones
+        // Milestones (CDC / AAP catalog)
+        if let data = UserDefaults.standard.data(forKey: milestonesKey),
+           let saved = try? JSONDecoder().decode([Milestone].self, from: data),
+           saved.count >= 20 {
+            self.milestones = saved
+        } else {
+            self.milestones = Self.defaultMilestones
+        }
     }
 
     private func saveTasks() {
@@ -554,12 +733,25 @@ public final class CarePlanStore: ObservableObject {
         }
     }
 
-    private func saveDiary() {
+    private func saveMilestones() {
+        if let data = try? JSONEncoder().encode(milestones) {
+            UserDefaults.standard.set(data, forKey: milestonesKey)
+        }
+    }
+
+    private func persistDiary() {
         if let data = try? JSONEncoder().encode(diaryEntry) {
             UserDefaults.standard.set(data, forKey: diaryKey)
         }
-        // Mirror the diary into the on-device CareKit clinical record (fire-and-forget).
-        clinicalStore.recordDiaryEntry(diaryEntry)
+        if let data = try? JSONEncoder().encode(diaryHistory) {
+            UserDefaults.standard.set(data, forKey: diaryHistoryKey)
+        }
+    }
+
+    private func saveDiaryReminders() {
+        if let data = try? JSONEncoder().encode(diaryReminderSlots) {
+            UserDefaults.standard.set(data, forKey: diaryRemindersKey)
+        }
     }
 
     private func saveMedications() {
@@ -657,47 +849,7 @@ public final class CarePlanStore: ObservableObject {
         ]
     }
 
-    private static var defaultMilestones: [MilestoneItem] {
-        [
-            MilestoneItem(
-                id: "ms_18m",
-                ageMonths: 18,
-                title: "18-Month Early Milestones",
-                dueDateString: "Completed May 15, 2026",
-                isCompleted: true,
-                checklist: [
-                    "Maintains reciprocal eye contact during peek-a-boo",
-                    "Points to show something interesting (declarative pointing)",
-                    "Follows parent's pointing gesture to target",
-                    "Responds consistently to name within 2 calls"
-                ]
-            ),
-            MilestoneItem(
-                id: "ms_24m",
-                ageMonths: 24,
-                title: "24-Month Follow-Up Check",
-                dueDateString: "Due Window: Nov 2026",
-                isCompleted: false,
-                checklist: [
-                    "Notices when others are hurt or upset",
-                    "Uses 2-word phrases autonomously",
-                    "Engages in simple pretend play (feeding a doll)",
-                    "Prefers social interaction over repetitive visual objects"
-                ]
-            ),
-            MilestoneItem(
-                id: "ms_36m",
-                ageMonths: 36,
-                title: "36-Month Longitudinal Review",
-                dueDateString: "Scheduled: Nov 2027",
-                isCompleted: false,
-                checklist: [
-                    "Engages in cooperative group play with peers",
-                    "Understands conversational turn-taking",
-                    "Displays varied emotional facial expressions matching context",
-                    "Stable social gaze preference (>50% visual attention)"
-                ]
-            )
-        ]
+    private static var defaultMilestones: [Milestone] {
+        ClinicalMilestoneCatalog.all(completedAges: [9, 12, 18])
     }
 }

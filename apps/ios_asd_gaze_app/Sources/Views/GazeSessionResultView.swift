@@ -47,6 +47,12 @@ public struct GazeSessionResultView: View {
                 ScrollView {
                     VStack(spacing: 16) {
                         scanpathHeroCanvas
+                        GazeTelemetryReviewCard(
+                            session: GazeTelemetrySession(from: GazeSessionRecord(
+                                summary: summary,
+                                participantId: ChildProfileStore.shared.profile.childName
+                            ))
+                        )
                         socialPreferenceCard
                         mlClassificationCard
                         facialAffectMetricsCard

@@ -1,5 +1,6 @@
 import SwiftUI
 import CurvAsdGazeKit
+import UserNotifications
 #if canImport(ARKit)
 import ARKit
 #endif
@@ -9,6 +10,10 @@ import ARKit
 public struct SettingsView: View {
     @Environment(\.openURL) private var openURL
     @ObservedObject private var childProfileStore = ChildProfileStore.shared
+    @ObservedObject private var alertPreferences = CareAlertPreferences.shared
+    @ObservedObject private var healthKitMood = HealthKitMoodStore.shared
+    @State private var newConditionTitle: String = ""
+    @State private var notificationStatusText: String = "Not determined"
     @State private var calibrationProfile: GazeCalibrationProfile = GazeCalibrationStore.load()
     @State private var showQuickCalibrate: Bool = false
     @State private var showCameraCheck: Bool = false
@@ -29,6 +34,8 @@ public struct SettingsView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
                         profileSection
+                        medicalConditionsSection
+                        careAlertsSection
                         screeningToolsSection
                         languageSection
                         sensorDiagnosticsSection
@@ -42,7 +49,10 @@ public struct SettingsView: View {
             .navigationTitle(Localizer.tr("tab_settings"))
             .navigationBarTitleDisplayMode(.large)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-            .onAppear { calibrationProfile = GazeCalibrationStore.load() }
+            .onAppear {
+                calibrationProfile = GazeCalibrationStore.load()
+                refreshNotificationStatus()
+            }
             .fullScreenCover(isPresented: $showQuickCalibrate) {
                 BubbleCalibrationView(
                     onClose: {
@@ -204,6 +214,10 @@ public struct SettingsView: View {
 
                 GlassDivider()
 
+                healthKitMoodRow
+
+                GlassDivider()
+
                 HStack {
                     Label("Privacy & PIA Protocol", systemImage: "hand.raised.shield.fill")
                         .font(.system(size: 13, weight: .medium))
@@ -244,6 +258,100 @@ public struct SettingsView: View {
                     .padding(.vertical, 4)
                 }
                 .buttonStyle(.plain)
+            }
+            .glassCard(cornerRadius: 14, padding: 14)
+        }
+    }
+
+    private var medicalConditionsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            GlassSectionHeader(title: Localizer.tr("settings_conditions_section"), icon: "cross.case.fill")
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Caregiver-entered conditions and allergies for medication context. Not a diagnosis from gaze screening.")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+
+                TextField("Allergies", text: Binding(
+                    get: { childProfileStore.profile.allergies },
+                    set: { childProfileStore.profile.allergies = $0 }
+                ))
+                .textFieldStyle(.roundedBorder)
+
+                ForEach(childProfileStore.profile.medicalConditions) { condition in
+                    HStack {
+                        Text(condition.title)
+                        Spacer()
+                        Button(role: .destructive) {
+                            childProfileStore.profile.medicalConditions.removeAll { $0.id == condition.id }
+                        } label: {
+                            Image(systemName: "trash")
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                HStack {
+                    TextField("Add condition", text: $newConditionTitle)
+                        .textFieldStyle(.roundedBorder)
+                    Button("Add") {
+                        let title = newConditionTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !title.isEmpty else { return }
+                        childProfileStore.profile.medicalConditions.append(MedicalCondition(title: title))
+                        newConditionTitle = ""
+                    }
+                }
+            }
+            .glassCard(cornerRadius: 14, padding: 14)
+        }
+    }
+
+    private var careAlertsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            GlassSectionHeader(title: Localizer.tr("settings_alerts_section"), icon: "bell.badge.fill")
+
+            VStack(alignment: .leading, spacing: 12) {
+                Toggle(Localizer.tr("settings_alerts_master"), isOn: $alertPreferences.masterEnabled)
+                    .onChange(of: alertPreferences.masterEnabled) { _, enabled in
+                        Task {
+                            if enabled { await CareAlertScheduler.shared.requestAuthorizationIfNeeded() }
+                            await CarePlanStore.shared.resyncAlerts()
+                            refreshNotificationStatus()
+                        }
+                    }
+                Toggle(Localizer.tr("settings_alerts_alarmkit"), isOn: $alertPreferences.useAlarmKitWhenAvailable)
+                    .disabled(!CareAlertPreferences.isAlarmKitAvailable)
+                    .onChange(of: alertPreferences.useAlarmKitWhenAvailable) { _, _ in
+                        Task { await CarePlanStore.shared.resyncAlerts() }
+                    }
+                Toggle(Localizer.tr("settings_alerts_island"), isOn: $alertPreferences.useLiveActivityCountdown)
+                    .onChange(of: alertPreferences.useLiveActivityCountdown) { _, _ in
+                        Task { await CarePlanStore.shared.resyncAlerts() }
+                    }
+
+                HStack {
+                    Text(Localizer.tr("settings_alerts_status"))
+                        .font(.system(size: 13, weight: .medium))
+                    Spacer()
+                    Text(notificationStatusText)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(LiquidGlass.celestialTeal)
+                }
+
+                Button(action: openSystemSettings) {
+                    HStack {
+                        Text(Localizer.tr("settings_alerts_open"))
+                            .font(.system(size: 13, weight: .semibold))
+                        Spacer()
+                        Image(systemName: "arrow.up.forward.app")
+                    }
+                    .foregroundColor(LiquidGlass.celestialTeal)
+                }
+                .buttonStyle(.plain)
+
+                Text("Medication doses and diary check-ins share the same reminder, alarm, and countdown architecture. You can still turn each time on or off in the dashboard editors.")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
             }
             .glassCard(cornerRadius: 14, padding: 14)
         }
@@ -474,6 +582,50 @@ public struct SettingsView: View {
         #else
         return false
         #endif
+    }
+
+    private var healthKitMoodRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label("Apple Health mood", systemImage: "heart.text.square")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(LiquidGlass.textPrimary)
+                Spacer()
+                Text(healthKitMood.authorizationStatusText)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(LiquidGlass.celestialTeal)
+                    .multilineTextAlignment(.trailing)
+            }
+            Text("Manual emotion logs can write State of Mind samples to the Health app. Blend-shape CSVs stay on this device.")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+            Button("Authorize HealthKit") {
+                Task { await healthKitMood.requestAuthorization() }
+            }
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundColor(LiquidGlass.celestialTeal)
+            .buttonStyle(.plain)
+            if let err = healthKitMood.lastErrorMessage {
+                Text(err)
+                    .font(.caption2)
+                    .foregroundColor(.red)
+            }
+        }
+    }
+
+    private func refreshNotificationStatus() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            let text: String
+            switch settings.authorizationStatus {
+            case .authorized, .provisional, .ephemeral: text = "Allowed"
+            case .denied: text = "Denied — enable in iOS Settings"
+            case .notDetermined: text = "Not determined"
+            @unknown default: text = "Unknown"
+            }
+            DispatchQueue.main.async {
+                notificationStatusText = text
+            }
+        }
     }
 
     private func openSystemSettings() {
