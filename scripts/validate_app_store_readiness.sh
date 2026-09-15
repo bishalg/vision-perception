@@ -18,15 +18,15 @@ echo ""
 # 1. PalmReader
 echo ">>> [1/2] Validating PalmReader (apps/ios_palm_app)..."
 cd "$ROOT_DIR/apps/ios_palm_app/fastlane"
-fastlane validate_metadata
+fastlane ios validate_metadata
 echo "✅ PalmReader is fully App Store ready!"
 echo ""
 
-# 2. EarlyGaze
-echo ">>> [2/2] Validating EarlyGaze (apps/ios_asd_gaze_app)..."
+# 2. EarlyGaze / ASD Gaze Collector
+echo ">>> [2/2] Validating ASD Gaze Collector (apps/ios_asd_gaze_app)..."
 cd "$ROOT_DIR/apps/ios_asd_gaze_app/fastlane"
-fastlane validate_metadata
-echo "✅ EarlyGaze is fully App Store ready!"
+fastlane ios validate_metadata
+echo "✅ ASD Gaze Collector is fully App Store ready!"
 echo ""
 
 echo "================================================================="

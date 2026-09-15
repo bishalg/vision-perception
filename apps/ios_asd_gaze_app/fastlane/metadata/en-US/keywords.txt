@@ -1,1 +1,1 @@
-autism screening, ASD, gaze tracking, eye tracking, pediatric, developmental screening, M-CHAT, early intervention, telehealth, digital biomarker
+autism screening,ASD,eye tracking,gaze,pediatric,M-CHAT,early intervention,biomarker,telehealth
