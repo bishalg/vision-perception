@@ -524,6 +524,61 @@ public enum Localizer {
             "en": "Reset Eye-Tracking Calibration",
             "ne": "दृष्टि क्यालिब्रेसन रिसेट गर्नुहोस्",
             "hi": "दृष्टि कैलिब्रेशन रीसेट करें"
+        ],
+        "meds_add": [
+            "en": "Add medicine",
+            "ne": "औषधि थप्नुहोस्",
+            "hi": "दवा जोड़ें"
+        ],
+        "meds_empty": [
+            "en": "Add a medicine or supplement and set reminder times.",
+            "ne": "औषधि वा सप्लिमेन्ट थप्नुहोस् र रिमाइन्डर समय सेट गर्नुहोस्।",
+            "hi": "दवा या सप्लिमेंट जोड़ें और रिमाइंडर समय सेट करें।"
+        ],
+        "meds_edit_schedule": [
+            "en": "Edit schedule & reminders",
+            "ne": "तालिका र रिमाइन्डर सम्पादन गर्नुहोस्",
+            "hi": "शेड्यूल और रिमाइंडर संपादित करें"
+        ],
+        "diary_history_reminders": [
+            "en": "History & reminders",
+            "ne": "इतिहास र रिमाइन्डर",
+            "hi": "इतिहास और रिमाइंडर"
+        ],
+        "settings_alerts_section": [
+            "en": "Notifications & alerts",
+            "ne": "सूचना र अलर्ट",
+            "hi": "सूचनाएं और अलर्ट"
+        ],
+        "settings_alerts_master": [
+            "en": "Enable reminders and alerts",
+            "ne": "रिमाइन्डर र अलर्ट सक्षम गर्नुहोस्",
+            "hi": "रिमाइंडर और अलर्ट चालू करें"
+        ],
+        "settings_alerts_alarmkit": [
+            "en": "Use AlarmKit when available",
+            "ne": "उपलब्ध भए AlarmKit प्रयोग गर्नुहोस्",
+            "hi": "उपलब्ध होने पर AlarmKit उपयोग करें"
+        ],
+        "settings_alerts_island": [
+            "en": "Dynamic Island countdown (opt-in)",
+            "ne": "Dynamic Island काउन्टडाउन (ऐच्छिक)",
+            "hi": "Dynamic Island काउंटडाउन (वैकल्पिक)"
+        ],
+        "settings_alerts_status": [
+            "en": "Notification permission",
+            "ne": "सूचना अनुमति",
+            "hi": "सूचना अनुमति"
+        ],
+        "settings_alerts_open": [
+            "en": "Open iOS Settings",
+            "ne": "iOS सेटिङ खोल्नुहोस्",
+            "hi": "iOS सेटिंग खोलें"
+        ],
+        "settings_conditions_section": [
+            "en": "Medical conditions",
+            "ne": "चिकित्सा अवस्थाहरू",
+            "hi": "चिकित्सा स्थितियाँ"
         ]
     ]
 

@@ -454,4 +454,66 @@ final class CareKitClinicalStoreTests: XCTestCase {
         }
         XCTAssertTrue(found, "all tasks must merge when medication is seeded first")
     }
+
+    func testReplaceAndDeleteMedicationTask() throws {
+        let store = OCKStore(name: "TestReplaceDeleteMed", type: .inMemory)
+        let recorder = CareKitClinicalStore(store: store)
+        let original = MedicationItem(
+            id: "med_replace", name: "Iron", dose: "10 mg",
+            instructions: "Morning", schedule: ["08:00"]
+        )
+        let replacedExp = expectation(description: "replace settled")
+        recorder.replaceMedicationTask(from: original) { replacedExp.fulfill() }
+        wait(for: [replacedExp], timeout: 10.0)
+
+        var updated = original
+        updated.setSchedule(["08:00", "20:00"])
+        updated.name = "Iron drops"
+        let updatedExp = expectation(description: "replace again")
+        recorder.replaceMedicationTask(from: updated) { updatedExp.fulfill() }
+        wait(for: [updatedExp], timeout: 10.0)
+
+        var foundUpdated = false
+        for _ in 0..<40 {
+            let exp = expectation(description: "fetch replaced")
+            var title = ""
+            var eventCount = 0
+            store.fetchTasks(callbackQueue: .main) { result in
+                let tasks = (try? result.get()) ?? []
+                if let task = tasks.first(where: { $0.id == "ock_med_med_replace" }) {
+                    title = task.title ?? ""
+                    let start = Calendar.current.startOfDay(for: Date())
+                    let end = Calendar.current.date(byAdding: .day, value: 1, to: start)!
+                    eventCount = task.schedule.events(from: start, to: end).count
+                }
+                exp.fulfill()
+            }
+            wait(for: [exp], timeout: 2.0)
+            if title == "Iron drops" && eventCount == 2 {
+                foundUpdated = true
+                break
+            }
+        }
+        XCTAssertTrue(foundUpdated, "replace must rewrite title and two daily dose events")
+
+        let deleteExp = expectation(description: "delete settled")
+        recorder.deleteMedicationTask(id: "med_replace") { deleteExp.fulfill() }
+        wait(for: [deleteExp], timeout: 10.0)
+
+        var gone = false
+        for _ in 0..<40 {
+            let exp = expectation(description: "fetch deleted")
+            var ids: [String] = []
+            store.fetchTasks(callbackQueue: .main) { result in
+                ids = (try? result.get().map(\.id)) ?? []
+                exp.fulfill()
+            }
+            wait(for: [exp], timeout: 2.0)
+            if !ids.contains("ock_med_med_replace") {
+                gone = true
+                break
+            }
+        }
+        XCTAssertTrue(gone, "deleteMedicationTask must remove ock_med_med_replace")
+    }
 }

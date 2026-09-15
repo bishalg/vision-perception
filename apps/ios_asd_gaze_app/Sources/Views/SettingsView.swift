@@ -1,5 +1,6 @@
 import SwiftUI
 import CurvAsdGazeKit
+import UserNotifications
 #if canImport(ARKit)
 import ARKit
 #endif
@@ -11,6 +12,7 @@ public struct SettingsView: View {
     @ObservedObject private var childProfileStore = ChildProfileStore.shared
     @ObservedObject private var alertPreferences = CareAlertPreferences.shared
     @State private var newConditionTitle: String = ""
+    @State private var notificationStatusText: String = "Not determined"
     @State private var calibrationProfile: GazeCalibrationProfile = GazeCalibrationStore.load()
     @State private var showQuickCalibrate: Bool = false
     @State private var showCameraCheck: Bool = false
@@ -46,7 +48,10 @@ public struct SettingsView: View {
             .navigationTitle(Localizer.tr("tab_settings"))
             .navigationBarTitleDisplayMode(.large)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-            .onAppear { calibrationProfile = GazeCalibrationStore.load() }
+            .onAppear {
+                calibrationProfile = GazeCalibrationStore.load()
+                refreshNotificationStatus()
+            }
             .fullScreenCover(isPresented: $showQuickCalibrate) {
                 BubbleCalibrationView(
                     onClose: {
@@ -255,7 +260,7 @@ public struct SettingsView: View {
 
     private var medicalConditionsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            GlassSectionHeader(title: "Medical conditions", icon: "cross.case.fill")
+            GlassSectionHeader(title: Localizer.tr("settings_conditions_section"), icon: "cross.case.fill")
 
             VStack(alignment: .leading, spacing: 10) {
                 Text("Caregiver-entered conditions and allergies for medication context. Not a diagnosis from gaze screening.")
@@ -298,25 +303,47 @@ public struct SettingsView: View {
 
     private var careAlertsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            GlassSectionHeader(title: "Notifications & alerts", icon: "bell.badge.fill")
+            GlassSectionHeader(title: Localizer.tr("settings_alerts_section"), icon: "bell.badge.fill")
 
             VStack(alignment: .leading, spacing: 12) {
-                Toggle("Enable reminders and alerts", isOn: $alertPreferences.masterEnabled)
+                Toggle(Localizer.tr("settings_alerts_master"), isOn: $alertPreferences.masterEnabled)
                     .onChange(of: alertPreferences.masterEnabled) { _, enabled in
                         Task {
                             if enabled { await CareAlertScheduler.shared.requestAuthorizationIfNeeded() }
                             await CarePlanStore.shared.resyncAlerts()
+                            refreshNotificationStatus()
                         }
                     }
-                Toggle("Use AlarmKit when available", isOn: $alertPreferences.useAlarmKitWhenAvailable)
+                Toggle(Localizer.tr("settings_alerts_alarmkit"), isOn: $alertPreferences.useAlarmKitWhenAvailable)
                     .disabled(!CareAlertPreferences.isAlarmKitAvailable)
                     .onChange(of: alertPreferences.useAlarmKitWhenAvailable) { _, _ in
                         Task { await CarePlanStore.shared.resyncAlerts() }
                     }
-                Toggle("Dynamic Island countdown (opt-in)", isOn: $alertPreferences.useLiveActivityCountdown)
+                Toggle(Localizer.tr("settings_alerts_island"), isOn: $alertPreferences.useLiveActivityCountdown)
                     .onChange(of: alertPreferences.useLiveActivityCountdown) { _, _ in
                         Task { await CarePlanStore.shared.resyncAlerts() }
                     }
+
+                HStack {
+                    Text(Localizer.tr("settings_alerts_status"))
+                        .font(.system(size: 13, weight: .medium))
+                    Spacer()
+                    Text(notificationStatusText)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(LiquidGlass.celestialTeal)
+                }
+
+                Button(action: openSystemSettings) {
+                    HStack {
+                        Text(Localizer.tr("settings_alerts_open"))
+                            .font(.system(size: 13, weight: .semibold))
+                        Spacer()
+                        Image(systemName: "arrow.up.forward.app")
+                    }
+                    .foregroundColor(LiquidGlass.celestialTeal)
+                }
+                .buttonStyle(.plain)
+
                 Text("Medication doses and diary check-ins share the same reminder, alarm, and countdown architecture. You can still turn each time on or off in the dashboard editors.")
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
@@ -550,6 +577,21 @@ public struct SettingsView: View {
         #else
         return false
         #endif
+    }
+
+    private func refreshNotificationStatus() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            let text: String
+            switch settings.authorizationStatus {
+            case .authorized, .provisional, .ephemeral: text = "Allowed"
+            case .denied: text = "Denied — enable in iOS Settings"
+            case .notDetermined: text = "Not determined"
+            @unknown default: text = "Unknown"
+            }
+            DispatchQueue.main.async {
+                notificationStatusText = text
+            }
+        }
     }
 
     private func openSystemSettings() {

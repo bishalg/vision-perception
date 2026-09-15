@@ -198,6 +198,17 @@ final class CarePlanStoreTests: XCTestCase {
     }
 
     @MainActor
+    func testMedicationLinkedConditionPersists() {
+        let store = makeStore()
+        let id = "med_cond_\(UUID().uuidString)"
+        store.upsertMedication(MedicationItem(
+            id: id, name: "Melatonin", dose: "1 mg", instructions: "Bedtime",
+            schedule: ["19:30"], linkedConditionId: "cond_sleep"
+        ))
+        XCTAssertEqual(store.medications.first(where: { $0.id == id })?.linkedConditionId, "cond_sleep")
+    }
+
+    @MainActor
     func testDiaryHistoryUpsertPastDayAndReminders() {
         let store = makeStore()
         let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
@@ -232,6 +243,12 @@ final class CarePlanStoreTests: XCTestCase {
         XCTAssertEqual(requests.count, 2)
         XCTAssertEqual(requests.first?.kind, .medicationDose)
         XCTAssertEqual(requests.last?.kind, .diaryCheckIn)
+        var taken = med
+        taken.dosesTakenToday = [true]
+        let skipped = CareAlertScheduler.shared.buildRequests(
+            medications: [taken], diarySlots: [], diaryLoggedToday: true
+        )
+        XCTAssertTrue(skipped[0].skipToday)
         XCTAssertEqual(CareClockTime.parse("08:00")?.hour, 8)
         XCTAssertNil(CareClockTime.parse("25:99"))
         let next = CareClockTime.nextDate(clockTime: "00:00", from: Date(), skipToday: true)

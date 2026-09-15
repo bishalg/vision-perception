@@ -468,14 +468,14 @@ public struct CaregiverDashboardView: View {
                         .font(.system(size: 20))
                         .foregroundColor(LiquidGlass.celestialTeal)
                 }
-                .accessibilityLabel("Add medicine")
+                .accessibilityLabel(Localizer.tr("meds_add"))
             }
 
             if carePlanStore.medications.isEmpty {
                 Button {
                     showingAddMedication = true
                 } label: {
-                    Text("Add a medicine or supplement and set reminder times.")
+                    Text(Localizer.tr("meds_empty"))
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -570,13 +570,26 @@ public struct CaregiverDashboardView: View {
             Button {
                 editingMedication = medication
             } label: {
-                Text("Edit schedule & reminders")
+                Text(Localizer.tr("meds_edit_schedule"))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(LiquidGlass.celestialTeal)
             }
             .buttonStyle(.plain)
         }
         .glassCard(cornerRadius: 12, padding: 12)
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(role: .destructive) {
+                carePlanStore.deleteMedication(id: medication.id)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+            Button {
+                editingMedication = medication
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            .tint(LiquidGlass.celestialTeal)
+        }
         .contextMenu {
             Button("Edit") { editingMedication = medication }
             Button("Delete", role: .destructive) {
@@ -597,7 +610,7 @@ public struct CaregiverDashboardView: View {
                 Button {
                     showingDiaryEditor = true
                 } label: {
-                    Text("History & reminders")
+                    Text(Localizer.tr("diary_history_reminders"))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(LiquidGlass.celestialTeal)
                 }
