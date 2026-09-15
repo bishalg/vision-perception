@@ -307,10 +307,10 @@ public enum MCHATSurveyEngine {
             rec = "Low developmental risk score. Continue monitoring milestones during routine pediatric well-child checks."
         } else if total <= 7 {
             risk = .medium
-            rec = "Medium risk score. Clinical follow-up with developmental pediatrician or early intervention assessment recommended."
+            rec = "Medium risk (3–7). Complete the official M-CHAT-R Follow-Up interview before referral; do not treat this score as a diagnosis."
         } else {
             risk = .high
-            rec = "High risk score. Prompt referral for comprehensive multidisciplinary developmental evaluation strongly recommended."
+            rec = "High risk (8–20). Seek prompt clinical evaluation with a pediatrician or developmental specialist. This score is a screening result, not a diagnosis."
         }
 
         return MCHATScoreResult(

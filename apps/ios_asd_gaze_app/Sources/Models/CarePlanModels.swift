@@ -288,32 +288,6 @@ public struct LongitudinalAttentionPoint: Identifiable, Codable, Sendable {
     }
 }
 
-/// CDC / AAP developmental milestone item.
-public struct MilestoneItem: Identifiable, Codable, Sendable {
-    public let id: String
-    public let ageMonths: Int
-    public let title: String
-    public let dueDateString: String
-    public var isCompleted: Bool
-    public let checklist: [String]
-
-    public init(
-        id: String,
-        ageMonths: Int,
-        title: String,
-        dueDateString: String,
-        isCompleted: Bool,
-        checklist: [String]
-    ) {
-        self.id = id
-        self.ageMonths = ageMonths
-        self.title = title
-        self.dueDateString = dueDateString
-        self.isCompleted = isCompleted
-        self.checklist = checklist
-    }
-}
-
 /// Observable store managing daily CareKit tasks, diary, streak, and longitudinal analytics.
 @MainActor
 public final class CarePlanStore: ObservableObject {
@@ -344,6 +318,7 @@ public final class CarePlanStore: ObservableObject {
     private let medicationsKey = "org.curv.asd.careplan.medications"
     private let streakKey = "org.curv.asd.careplan.streak"
     private let historyKey = "org.curv.asd.careplan.history"
+    private let milestonesKey = "org.curv.asd.careplan.milestones.v2"
 
     public init(
         clinicalStore: CareKitClinicalStore = .shared,
@@ -365,6 +340,20 @@ public final class CarePlanStore: ObservableObject {
     /// Number of completed tasks today.
     public var completedTaskCount: Int {
         tasks.filter { $0.isCompleted }.count
+    }
+
+    public func toggleMilestoneItem(milestoneId: String, itemId: String) {
+        guard let mIdx = milestones.firstIndex(where: { $0.id == milestoneId }),
+              let iIdx = milestones[mIdx].items.firstIndex(where: { $0.id == itemId }) else { return }
+        milestones[mIdx].items[iIdx].isCompleted.toggle()
+        milestones[mIdx].isCompleted = milestones[mIdx].items.allSatisfy(\.isCompleted)
+        saveMilestones()
+    }
+
+    public func domainCompletion(_ domain: DevelopmentalDomain) -> Double {
+        let items = milestones.filter { $0.domain == domain }
+        guard !items.isEmpty else { return 0 }
+        return items.map(\.completionRatio).reduce(0, +) / Double(items.count)
     }
 
     /// Toggle task completion status and save.
@@ -616,8 +605,9 @@ public final class CarePlanStore: ObservableObject {
     ) {
         researchStore.recordSurveyResult(answers: answers) { [weak self] result in
             Task { @MainActor in
-                if let idx = self?.milestones.firstIndex(where: { $0.ageMonths == 24 || $0.id.contains("mchat") }) {
+                if let idx = self?.milestones.firstIndex(where: { $0.ageMonths == 24 && $0.domain == .languageCommunication }) {
                     self?.milestones[idx].isCompleted = true
+                    self?.saveMilestones()
                 }
                 completion?(result)
             }
@@ -727,12 +717,25 @@ public final class CarePlanStore: ObservableObject {
         }
 
         // Milestones
-        self.milestones = Self.defaultMilestones
+        // Milestones (CDC / AAP catalog)
+        if let data = UserDefaults.standard.data(forKey: milestonesKey),
+           let saved = try? JSONDecoder().decode([Milestone].self, from: data),
+           saved.count >= 20 {
+            self.milestones = saved
+        } else {
+            self.milestones = Self.defaultMilestones
+        }
     }
 
     private func saveTasks() {
         if let data = try? JSONEncoder().encode(tasks) {
             UserDefaults.standard.set(data, forKey: tasksKey)
+        }
+    }
+
+    private func saveMilestones() {
+        if let data = try? JSONEncoder().encode(milestones) {
+            UserDefaults.standard.set(data, forKey: milestonesKey)
         }
     }
 
@@ -846,47 +849,7 @@ public final class CarePlanStore: ObservableObject {
         ]
     }
 
-    private static var defaultMilestones: [MilestoneItem] {
-        [
-            MilestoneItem(
-                id: "ms_18m",
-                ageMonths: 18,
-                title: "18-Month Early Milestones",
-                dueDateString: "Completed May 15, 2026",
-                isCompleted: true,
-                checklist: [
-                    "Maintains reciprocal eye contact during peek-a-boo",
-                    "Points to show something interesting (declarative pointing)",
-                    "Follows parent's pointing gesture to target",
-                    "Responds consistently to name within 2 calls"
-                ]
-            ),
-            MilestoneItem(
-                id: "ms_24m",
-                ageMonths: 24,
-                title: "24-Month Follow-Up Check",
-                dueDateString: "Due Window: Nov 2026",
-                isCompleted: false,
-                checklist: [
-                    "Notices when others are hurt or upset",
-                    "Uses 2-word phrases autonomously",
-                    "Engages in simple pretend play (feeding a doll)",
-                    "Prefers social interaction over repetitive visual objects"
-                ]
-            ),
-            MilestoneItem(
-                id: "ms_36m",
-                ageMonths: 36,
-                title: "36-Month Longitudinal Review",
-                dueDateString: "Scheduled: Nov 2027",
-                isCompleted: false,
-                checklist: [
-                    "Engages in cooperative group play with peers",
-                    "Understands conversational turn-taking",
-                    "Displays varied emotional facial expressions matching context",
-                    "Stable social gaze preference (>50% visual attention)"
-                ]
-            )
-        ]
+    private static var defaultMilestones: [Milestone] {
+        ClinicalMilestoneCatalog.all(completedAges: [9, 12, 18])
     }
 }

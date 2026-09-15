@@ -47,6 +47,9 @@ targets:
         INFOPLIST_KEY_NSCameraUsageDescription: "TrueDepth camera access is required to track eye gaze and measure social visual attention in real-time. No raw camera frames or videos are ever recorded to storage."
         INFOPLIST_KEY_NSMotionUsageDescription: "Device motion data is required to separate device movement from toddler head orientation."
         INFOPLIST_KEY_NSUserNotificationsUsageDescription: "Medication and sensory diary reminders use local notifications so caregivers can be alerted at scheduled times."
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "Speech-to-text lets caregivers dictate today's observation notes. Audio is processed on device when possible and is not stored as a recording."
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "The microphone is used only while you hold the dictate button for observation notes."
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "You may attach a photo to today's observation. Photos stay on this device and are never uploaded as raw video."
         INFOPLIST_KEY_NSSupportsLiveActivities: true
         INFOPLIST_KEY_UILaunchScreen_Generation: true
         INFOPLIST_KEY_UIRequiresFullScreen: YES
@@ -69,6 +72,8 @@ targets:
       - sdk: UserNotifications.framework
       - sdk: ActivityKit.framework
       - sdk: WidgetKit.framework
+      - sdk: Speech.framework
+      - sdk: PhotosUI.framework
 
   AsdGazeCareWidget:
     type: app-extension
