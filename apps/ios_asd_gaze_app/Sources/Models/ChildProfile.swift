@@ -1,6 +1,26 @@
 import Foundation
 import SwiftUI
 
+// MARK: - USCDI v5 Sex Parameter for Clinical Use (SPCU)
+
+/// Distinguishes anatomical/biological sex parameters used in normative
+/// gaze modeling from administrative gender identity (USCDI v5 SPCU).
+public enum SexParameterForClinicalUse: String, Codable, Sendable, CaseIterable {
+    case male = "M"
+    case female = "F"
+    case other = "O"
+    case unknown = "U"
+
+    public var display: String {
+        switch self {
+        case .male: return "Male"
+        case .female: return "Female"
+        case .other: return "Other"
+        case .unknown: return "Unknown / Not Specified"
+        }
+    }
+}
+
 // MARK: - Pediatric Age Bracket
 
 /// Standardized 5-tier pediatric age brackets derived from landmark ASD gaze research
@@ -56,13 +76,18 @@ public struct ChildProfile: Codable, Sendable, Equatable {
     public var hasConsentedPIA: Bool
     public var consentTimestamp: Date?
 
+    /// USCDI v5 Sex Parameter for Clinical Use (SPCU).
+    /// Separates anatomical sex for normative gaze baselines from administrative gender.
+    public var biologicalSexForNormativeBaseline: SexParameterForClinicalUse
+
     public init(
         childName: String = "",
         ageBracket: PediatricAgeBracket = .months18_23,
         preferredLanguage: String = "en",
         sessionDurationSec: Int = 30,
         hasConsentedPIA: Bool = false,
-        consentTimestamp: Date? = nil
+        consentTimestamp: Date? = nil,
+        biologicalSexForNormativeBaseline: SexParameterForClinicalUse = .unknown
     ) {
         self.childName = childName
         self.ageBracket = ageBracket
@@ -70,6 +95,7 @@ public struct ChildProfile: Codable, Sendable, Equatable {
         self.sessionDurationSec = sessionDurationSec
         self.hasConsentedPIA = hasConsentedPIA
         self.consentTimestamp = consentTimestamp
+        self.biologicalSexForNormativeBaseline = biologicalSexForNormativeBaseline
     }
 
     public static let defaultProfile = ChildProfile(
@@ -78,7 +104,8 @@ public struct ChildProfile: Codable, Sendable, Equatable {
         preferredLanguage: "en",
         sessionDurationSec: 30,
         hasConsentedPIA: false,
-        consentTimestamp: nil
+        consentTimestamp: nil,
+        biologicalSexForNormativeBaseline: .unknown
     )
 }
 

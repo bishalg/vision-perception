@@ -393,3 +393,83 @@ public enum DoctorReportGenerator {
         text.draw(at: CGPoint(x: margin, y: y), withAttributes: attr)
     }
 }
+
+// MARK: - FHIR R4 DocumentReference (STAGE 2)
+
+extension DoctorReportInput {
+    /// Converts this doctor report input into an HL7 FHIR Release 4 `DocumentReference` resource dictionary.
+    /// Used for uploading the generated PDF to EHR systems via SMART on FHIR.
+    public func toFHIRDocumentReference(
+        pdfData: Data,
+        participantId: String,
+        authorPractitionerId: String? = nil
+    ) -> [String: AnyCodableValue] {
+        let timestamp = ISO8601DateFormatter().string(from: assessmentDate)
+        let base64 = pdfData.base64EncodedString()
+
+        let authorArray: [AnyCodableValue] = authorPractitionerId.map {
+            [.dictionary(["reference": .string("Practitioner/\($0)")])]
+        } ?? []
+
+        return [
+            "resourceType": .string("DocumentReference"),
+            "id": .string("doc-pediatric-report-\(participantId)-\(UUID().uuidString.prefix(8))"),
+            "status": .string("current"),
+            "type": .dictionary([
+                "coding": .array([
+                    .dictionary([
+                        "system": .string("http://loinc.org"),
+                        "code": .string("34108-1"),
+                        "display": .string("Outpatient note")
+                    ])
+                ])
+            ]),
+            "category": .array([
+                .dictionary([
+                    "coding": .array([
+                        .dictionary([
+                            "system": .string("http://hl7.org/fhir/us/core/CodeSystem/us-core-documentreference-category"),
+                            "code": .string("clinical-note"),
+                            "display": .string("Clinical Note")
+                        ])
+                    ])
+                ])
+            ]),
+            "subject": .dictionary([
+                "reference": .string("Patient/\(participantId)"),
+                "display": .string("Study Participant")
+            ]),
+            "date": .string(timestamp),
+            "author": .array(authorArray),
+            "description": .string("Pediatric ASD Gaze Screening Clinical Report"),
+            "content": .array([
+                .dictionary([
+                    "attachment": .dictionary([
+                        "contentType": .string("application/pdf"),
+                        "language": .string("en"),
+                        "data": .string(base64),
+                        "title": .string("Pediatric ASD Gaze Screening Report")
+                    ]),
+                    "format": .dictionary([
+                        "system": .string("http://ihe.net/fhir/ValueSet/IHE.FormatCode.codesystem"),
+                        "code": .string("urn:ihe:iti:xfdf:2008"),
+                        "display": .string("PDF Document")
+                    ])
+                ])
+            ]),
+            "context": .dictionary([
+                "event": .array([
+                    .dictionary([
+                        "coding": .array([
+                            .dictionary([
+                                "system": .string("http://snomed.info/sct"),
+                                "code": .string("713444003"),
+                                "display": .string("Eye tracking examination (procedure)")
+                            ])
+                        ])
+                    ])
+                ])
+            ])
+        ]
+    }
+}

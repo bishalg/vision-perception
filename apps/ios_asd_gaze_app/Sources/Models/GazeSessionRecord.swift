@@ -105,6 +105,27 @@ public struct GazeSessionRecord: Identifiable, Codable, Sendable, Equatable {
     }
 }
 
+// MARK: - FHIR R4 Serialization (STAGE 2)
+
+extension GazeSessionRecord {
+    /// Converts this gaze session record into an HL7 FHIR Release 4 `Observation` resource dictionary.
+    /// Includes USCDI v5 `basedOn` linkage for ServiceRequest traceability.
+    public func toFHIRObservation(basedOn serviceRequestId: String? = nil) -> [String: AnyCodableValue] {
+        var obs = FHIRInteroperabilityMapper.makeFHIRObservation(from: self, participantId: participantId)
+        if let serviceRequestId = serviceRequestId {
+            obs["basedOn"] = .array([
+                .dictionary(["reference": .string("ServiceRequest/\(serviceRequestId)")])
+            ])
+        }
+        return obs
+    }
+
+    /// Converts this gaze session record into OMOP CDM `MEASUREMENT` tabular rows.
+    public func toOMOPMeasurements(personId: String) -> [OMOPMeasurementRecord] {
+        FHIRInteroperabilityMapper.makeOMOPMeasurements(from: self, personId: personId)
+    }
+}
+
 // MARK: - Session History Store (data collection)
 
 /// On-device history of completed gaze screenings, persisted as Codable JSON.

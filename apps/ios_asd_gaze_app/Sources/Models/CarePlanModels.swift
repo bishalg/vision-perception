@@ -2,6 +2,13 @@ import CurvAsdGazeKit
 import Foundation
 import SwiftUI
 
+// MARK: - Clinical Interoperability (STAGE 1: Semantic Metadata Decoration)
+// Types mirror ClinicalInteroperabilityStandards from mobile_overlay for standalone compilation.
+
+// MARK: - Clinical Interoperability (STAGE 1: Semantic Metadata Decoration)
+
+/// Categories of developmental care plan interventions.
+
 /// Categories of developmental care plan interventions.
 public enum CareTaskCategory: String, Codable, CaseIterable, Sendable {
     case observation = "Gaze Screening"
@@ -17,6 +24,16 @@ public enum CareTaskCategory: String, Codable, CaseIterable, Sendable {
         case .play: return "figure.2.and.child.holdinghands"
         }
     }
+
+    /// Standard SNOMED CT concept for this care task category.
+    public var snomedConcept: ClinicalCoding {
+        switch self {
+        case .observation: return StandardCodingSystems.SNOMED.eyeTrackingProcedure
+        case .attention: return StandardCodingSystems.SNOMED.impairedJointAttention
+        case .language: return StandardCodingSystems.SNOMED.delayedLanguageMilestone
+        case .play: return StandardCodingSystems.SNOMED.stereotypicMovement
+        }
+    }
 }
 
 /// A single daily intervention task in the CareKit protocol.
@@ -28,6 +45,23 @@ public struct CarePlanTask: Identifiable, Codable, Sendable, Equatable {
     public var category: CareTaskCategory
     public var isCompleted: Bool
     public var completedAt: Date?
+
+    /// Standard SNOMED CT concept for the behavioral finding this task addresses.
+    /// Enables FHIR/ObsRO mapping and OMOP CDM OBSERVATION table population.
+    public var snomedFinding: ClinicalCoding {
+        category.snomedConcept
+    }
+
+    /// Standard LOINC code for outcome measurement (if applicable).
+    /// Populated for tasks that produce quantifiable observations.
+    public var loincOutcome: ClinicalCoding? {
+        switch category {
+        case .observation: return StandardCodingSystems.LOINC.gazeTrackingPanel
+        case .attention: return StandardCodingSystems.LOINC.visualReactionTime
+        case .language: return nil
+        case .play: return nil
+        }
+    }
 
     public init(
         id: String,
@@ -74,6 +108,22 @@ public enum ChildMood: String, Codable, CaseIterable, Identifiable, Sendable {
         case .overwhelmed: return "Sensory Sensitive"
         }
     }
+
+    /// Standard SNOMED CT concept for this mood/affect observation.
+    /// Maps to ObsRO entries in OMOP CDM OBSERVATION table.
+    public var snomedAffect: ClinicalCoding {
+        switch self {
+        case .engaged: return StandardCodingSystems.SNOMED.flatAffect // inverted for positive
+        case .calm: return StandardCodingSystems.SNOMED.flatAffect
+        case .distracted: return StandardCodingSystems.SNOMED.impairedJointAttention
+        case .overwhelmed: return StandardCodingSystems.SNOMED.stereotypicMovement
+        }
+    }
+
+    /// LOINC code for affect assessment observation.
+    public var loincAffect: ClinicalCoding {
+        StandardCodingSystems.LOINC.behavioralAffectAssessment
+    }
 }
 
 /// Daily sensory and observation diary entry.
@@ -84,6 +134,17 @@ public struct DailyDiaryEntry: Identifiable, Codable, Sendable {
     public var notes: String
     public var eyeContactRating: Int // 1 to 5 scale
     public var jointAttentionCount: Int
+
+    /// Standard SNOMED CT affect concept for the logged mood (ObsRO).
+    public var snomedAffect: ClinicalCoding { mood.snomedAffect }
+
+    /// Standard LOINC affect assessment code.
+    public var loincAffect: ClinicalCoding { mood.loincAffect }
+
+    /// LOINC code for eye contact rating (qualitative).
+    public var loincEyeContact: ClinicalCoding {
+        StandardCodingSystems.LOINC.visualReactionTime
+    }
 
     public init(
         id: UUID = UUID(),

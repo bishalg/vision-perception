@@ -188,6 +188,11 @@ public struct MCHATQuestion: Sendable, Codable, Identifiable {
     public let failAnswer: Bool
     public let isCritical: Bool
 
+    /// Standard LOINC code (LOINC panel 80628-1 item code: 80629-9 to 80648-9).
+    public var loincCode: String {
+        StandardCodingSystems.LOINC.loincCode(forMCHATQuestionId: id) ?? "80628-1"
+    }
+
     public init(id: Int, text: String, failAnswer: Bool, isCritical: Bool = false) {
         self.id = id
         self.text = text
@@ -209,6 +214,10 @@ public struct MCHATScoreResult: Sendable, Codable, Equatable {
     public let clinicalRecommendation: String
     public let completionDate: Date
 
+    /// Standard LOINC coding for M-CHAT-R score and risk interpretation.
+    public var loincScoreCoding: ClinicalCoding { StandardCodingSystems.LOINC.mchatRTotalScore }
+    public var loincRiskCoding: ClinicalCoding { StandardCodingSystems.LOINC.mchatRRiskLevel }
+
     /// M-CHAT-R/F protocol: medium scores (3–7) require the structured
     /// Follow-Up interview before any referral decision.
     public var requiresFollowUpInterview: Bool { riskLevel == .medium }
@@ -225,6 +234,36 @@ public struct MCHATScoreResult: Sendable, Codable, Equatable {
         self.failedQuestionIds = failedQuestionIds
         self.clinicalRecommendation = clinicalRecommendation
         self.completionDate = completionDate
+    }
+}
+
+// MARK: - FHIR R4 Serialization (STAGE 2)
+
+extension MCHATScoreResult {
+    /// Converts this M-CHAT-R/F result into an HL7 FHIR Release 4 `QuestionnaireResponse` resource dictionary.
+    public func toFHIRQuestionnaireResponse(answers: [Int: Bool] = [:], participantId: String) -> [String: AnyCodableValue] {
+        FHIRInteroperabilityMapper.makeFHIRQuestionnaireResponse(from: self, answers: answers, participantId: participantId)
+    }
+
+    /// Converts this M-CHAT-R/F result into OMOP CDM `OBSERVATION` tabular rows.
+    public func toOMOPObservations(personId: String, answers: [Int: Bool]) -> [OMOPObservationRecord] {
+        let dateStr = ISO8601DateFormatter().string(from: completionDate).prefix(10)
+        var records: [OMOPObservationRecord] = []
+        for qId in 1...20 {
+            let loincCode = StandardCodingSystems.LOINC.loincCode(forMCHATQuestionId: qId) ?? "80628-1"
+            let ansBool = answers[qId]
+            let valueConceptId = ansBool == true ? 4188539 : (ansBool == false ? 4188540 : nil)
+            records.append(OMOPObservationRecord(
+                personId: personId,
+                observationConceptId: Int(loincCode) ?? 806281,
+                observationDate: String(dateStr),
+                valueAsString: ansBool.map { $0 ? "Yes" : "No" },
+                valueAsConceptId: valueConceptId,
+                qualifierConceptId: nil,
+                observationSourceValue: "MCHAT-R-Q\(qId)"
+            ))
+        }
+        return records
     }
 }
 
@@ -360,6 +399,15 @@ public struct ORKActiveStepResult: Sendable, Codable, Equatable {
             telemetrySampleCount: telemetrySampleCount
         )
     }
+
+    /// Regulatory eCOA / Digital Biomarker classification.
+    public var outcomeType: ClinicalOutcomeAssessmentType { .digitalBiomarker }
+
+    /// Standard LOINC panel coding.
+    public var loincPanelCoding: ClinicalCoding { StandardCodingSystems.LOINC.gazeTrackingPanel }
+
+    /// Standard SNOMED CT procedure coding.
+    public var snomedProcedureCoding: ClinicalCoding { StandardCodingSystems.SNOMED.eyeTrackingProcedure }
 }
 
 // MARK: - Step Result and Task Result
