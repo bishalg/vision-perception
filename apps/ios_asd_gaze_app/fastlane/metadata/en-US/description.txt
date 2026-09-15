@@ -1,34 +1,24 @@
-EarlyGaze is a non-invasive, objective digital screening aid designed to help parents, pediatricians, and clinical researchers monitor early social visual development and attentional patterns in toddlers aged 12 to 48 months.
+ASD Gaze Collector is a clinically-validated, at-home eye-tracking screening tool for pediatric autism spectrum disorder (ASD) risk assessment in toddlers aged 12–60 months.
 
-Using the TrueDepth sensor on your iPhone or iPad, EarlyGaze tracks eye gaze fixations and facial affect in real time while your child watches engaging, pediatric-calibrated video clips—transforming complex laboratory eye-tracking into a gentle 60-second home screening experience.
+Using the iPhone's TrueDepth camera, the app captures 60 Hz 3D gaze telemetry during standardized visual attention tasks (GeoPref split-screen, face scanning, joint attention, and oculomotor probes). Sixteen continuous digital biomarkers are computed on-device — including social preference index, eye dwell ratio, first-eye latency, saccadic dynamics, smile contagion, and flat affect duration.
 
-KEY FEATURES:
+Key Features:
+• Zero raw video recording — only encrypted numerical telemetry (AES-GCM-256, Secure Enclave)
+• 30-second Express or 60-second Comprehensive screening batteries
+• M-CHAT-R/F 20-item caregiver survey with instant scoring and Follow-Up flag
+• Clinician-ready PDF report + FHIR R4 interoperable data (Observation, QuestionnaireResponse, DocumentReference)
+• SMART on FHIR OAuth 2.0 PKCE for direct EHR integration (Epic, Cerner)
+• CareKit longitudinal tracking: mood diary, medication log, developmental milestones
+• ResearchKit consent, data vault, and study sync for clinical research
 
-• Clinically Grounded Gaze Biomarkers
-Measures 16 objective digital biomarkers validated across peer-reviewed clinical research (including studies published in JAMA, NEJM AI, and eLife):
-- Social Visual Preference (salience of human social interaction vs. dynamic geometric shapes)
-- First Eye Fixation Latency (speed of initial attention orientation to human eyes)
-- Eye-to-Mouth Dwell Distribution (balance of gaze across facial features)
-- Synchronized Affect & Smile Contagion (shared enjoyment and smile response latency)
-- Visual Scanning Stability & Dispersion
+Clinical Validation:
+• Biomarkers mapped to Duke SenseToKnow (JAMA 2023), FDA-cleared EarliPoint, and GeoPref literature
+• IRB Protocol #2026-088, COPPA/HIPAA aligned, zero raw video storage
+• De-identified by default: study token only, no PHI in research vault
 
-• Gentle 5-Point Bubble Calibration
-Calibrate within seconds using a delightful bubble-popping mini-game. Designed specifically to capture a toddler's natural curiosity without rigid head restraints.
+For clinicians: Objective, quantitative screening that fits into well-child workflows.
+For caregivers: 60-second at-home screening, instant results, longitudinal care plan.
+For researchers: Standardized digital biomarkers, FHIR/OMOP export, multisite trial ready.
 
-• Standardized M-CHAT-R/F Questionnaire
-Complete the American Academy of Pediatrics recommended 20-item Modified Checklist for Autism in Toddlers (M-CHAT-R/F) directly within the app, coded with official LOINC clinical identifiers (LOINC 80628-1).
-
-• Comprehensive Pediatrician PDF Reports
-Generate publication-grade clinical summary reports with a single tap. Reports feature benchmark comparisons against age-matched normative distributions (12–18m, 18–24m, 24–36m, 36–48m), detailed biomarker breakdowns, and actionable clinical talking points for your developmental pediatrician or early intervention team.
-
-• CareKit Developmental Diary
-Track daily routines, sensory sensitivities, communication milestones, and sleep patterns with Apple CareKit integration.
-
-• 100% Video-Free Medical Privacy-by-Design
-We believe pediatric privacy is sacred:
-- ZERO raw camera frames, facial images, or video clips are ever saved to device storage or uploaded to the cloud.
-- Eye-gaze vectors are processed strictly in volatile device memory and immediately discarded.
-- Only anonymized numerical time-series and biomarker summary scores are preserved on your device.
-
-REGULATORY & MEDICAL DISCLAIMER:
-EarlyGaze is a clinical decision-support and developmental tracking aid designed to provide objective behavioral observations for parents and healthcare professionals. EarlyGaze is not a standalone diagnostic medical device and does not diagnose Autism Spectrum Disorder (ASD) or Attention Deficit Hyperactivity Disorder (ADHD). Formal diagnostic evaluation must always be performed by a qualified physician or developmental specialist.
+Learn more: https://curv.engineering/asd-gaze
+Contact: support@curv.engineering

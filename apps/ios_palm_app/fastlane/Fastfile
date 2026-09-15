@@ -1,39 +1,38 @@
 # Fastfile for PalmReader iOS App
 # Production App Store Connect & TestFlight automation pipeline
-
-default_platform(:ios)
+# 
+# Import shared lanes from monorepo tooling
+import "../../../fastlane/tooling/Fastfile.shared"
 
 require 'yaml'
 require 'fileutils'
 
-CONFIG = YAML.load_file('config.yml') rescue {}
+CONFIG = YAML.load_file('fastlane/config.yml') rescue {}
 
 platform :ios do
   before_all do
     Dotenv.load if defined?(Dotenv)
 
-    # Configure App Store Connect API Key if environment variables are provided
-    if ENV["ASC_KEY_ID"] && ENV["ASC_ISSUER_ID"]
+    # Configure App Store Connect API Key
+    if ENV["ASC_KEY_ID"] && ENV["ASC_ISSUER_ID"] && ENV["ASC_API_KEY_PATH"]
       app_store_connect_api_key(
         key_id: ENV["ASC_KEY_ID"],
         issuer_id: ENV["ASC_ISSUER_ID"],
-        key_filepath: ENV["ASC_KEY_FILEPATH"],
+        key_filepath: ENV["ASC_API_KEY_PATH"],
+        is_key_content_base64: false
+      )
+    elsif ENV["ASC_KEY_ID"] && ENV["ASC_ISSUER_ID"] && ENV["ASC_KEY_CONTENT"]
+      app_store_connect_api_key(
+        key_id: ENV["ASC_KEY_ID"],
+        issuer_id: ENV["ASC_ISSUER_ID"],
         key_content: ENV["ASC_KEY_CONTENT"],
         is_key_content_base64: ENV["ASC_IS_KEY_CONTENT_BASE64"] == "true"
-      )
-    elsif ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"] && ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"]
-      app_store_connect_api_key(
-        key_id: ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"],
-        issuer_id: ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"],
-        key_filepath: ENV["APP_STORE_CONNECT_API_KEY_KEY_FILEPATH"],
-        key_content: ENV["APP_STORE_CONNECT_API_KEY_KEY_CONTENT"],
-        is_key_content_base64: ENV["APP_STORE_CONNECT_API_KEY_IS_KEY_CONTENT_BASE64"] == "true"
       )
     end
   end
 
   # =========================================================================
-  # 1. METADATA VALIDATION & PRE-SUBMISSION CHECKS
+  # 0. VALIDATION & PRE-SUBMISSION CHECKS
   # =========================================================================
 
   desc "Run local pre-submission validation on files and structure"
@@ -151,42 +150,16 @@ platform :ios do
   end
 
   # =========================================================================
-  # 2. CODE SIGNING & CERTIFICATES
+  # 1. CODE SIGNING & CERTIFICATES (using shared sync_dist_certs)
   # =========================================================================
-
   desc "Sync App Store distribution certificates and provisioning profiles"
   lane :sync_certs do |options|
     readonly = options.fetch(:readonly, is_ci)
-    app_id = CONFIG["app_identifier"] || "org.curv.palmapp"
-    team_id = CONFIG["team_id"] || "6J3WY94J6T"
-
-    UI.message("🔐 Syncing code signing certificates for #{app_id}...")
-
-    if ENV["MATCH_GIT_URL"] && !ENV["MATCH_GIT_URL"].empty?
-      match(
-        type: "appstore",
-        app_identifier: [app_id],
-        team_id: team_id,
-        git_url: ENV["MATCH_GIT_URL"],
-        git_branch: ENV.fetch("MATCH_GIT_BRANCH", "main"),
-        storage_mode: ENV.fetch("MATCH_STORAGE_MODE", "git"),
-        readonly: readonly,
-        clone_branch_directly: false
-      )
-    else
-      UI.message("MATCH_GIT_URL not set. Falling back to cert + sigh...")
-      cert(development: false)
-      sigh(
-        development: false,
-        app_identifier: app_id,
-        team_id: team_id
-      )
-    end
-    UI.success("✅ Certificates and provisioning profiles ready!")
+    sync_dist_certs(readonly: readonly)
   end
 
   # =========================================================================
-  # 3. BUILD
+  # 2. BUILD
   # =========================================================================
 
   desc "Build and archive production .ipa"
@@ -215,7 +188,7 @@ platform :ios do
   end
 
   # =========================================================================
-  # 4. TESTFLIGHT (BETA) & APP STORE RELEASE
+  # 3. TESTFLIGHT (BETA) & APP STORE RELEASE
   # =========================================================================
 
   desc "Build and deploy to TestFlight"
@@ -241,7 +214,7 @@ platform :ios do
   end
 
   # =========================================================================
-  # 5. METADATA & SCREENSHOT SYNC (DELIVER)
+  # 4. METADATA & SCREENSHOT SYNC (DELIVER)
   # =========================================================================
 
   desc "Upload metadata only to App Store Connect"
@@ -328,5 +301,108 @@ platform :ios do
       run_precheck_before_submit: false
     )
     UI.success("📬 App submitted for App Store review!")
+  end
+
+  # =========================================================================
+  # 5. COMPLETE RELEASE PIPELINES
+  # =========================================================================
+
+  desc "Complete TestFlight + App Store release pipeline"
+  lane :production_release do
+    # 1. Build and upload to TestFlight first
+    beta
+
+    # 2. Validate app locally
+    validate_app_local
+
+    # 3. Update metadata and screenshots
+    update_metadata
+    upload_screenshots
+
+    # 4. Submit for review
+    submit_app_store
+  end
+
+  desc "Complete release process: metadata + screenshots + submit"
+  lane :release do
+    update_metadata
+    upload_screenshots
+    submit_app_store
+  end
+
+  desc "Create app icons from source image"
+  lane :create_icons do
+    appicon(
+      appicon_image_file: './assets/icon.png',
+      appicon_devices: [:iphone, :ipad, :ios_marketing],
+      appicon_path: './ios/PalmScanner/Images.xcassets/AppIcon.appiconset'
+    )
+  end
+
+  desc "Update provisioning profiles"
+  lane :update_profiles do
+    match_with_clone_retry({
+      type: 'appstore',
+      app_identifier: CONFIG["app_identifier"] || "org.curv.palmapp",
+      force: true
+    })
+  end
+
+  desc "Create a new app version in App Store Connect"
+  lane :create_version do
+    version_number = ask("New version number: ")
+
+    deliver(
+      app_identifier: CONFIG["app_identifier"] || "org.curv.palmapp",
+      app_version: version_number,
+      skip_screenshots: true,
+      skip_metadata: true,
+      skip_app_version_update: false,
+      force: true
+    )
+  end
+
+  desc "Validate all metadata and screenshots"
+  lane :validate_all do
+    validate_metadata
+    verify_screenshots
+  end
+
+  desc "Run tests before release"
+  lane :test do
+    run_tests(
+      scheme: "PalmScanner",
+      project: "PalmScanner.xcodeproj",
+      devices: ["iPhone 16 Pro"],
+      clean: true
+    )
+  end
+
+  desc "Check app size and performance"
+  lane :analyze_app do
+    app_store_build_number(
+      live: false,
+      app_identifier: CONFIG["app_identifier"] || "org.curv.palmapp"
+    )
+    ensure_no_debug_code(path: './PalmScanner.xcodeproj')
+  end
+
+  desc "Generate and upload dSYMs for crash reporting"
+  lane :upload_dsyms do
+    upload_symbols_to_crashlytics(
+      dsym_path: './build/PalmReader.app.dSYM.zip',
+      gsp_path: ENV.fetch("GOOGLE_SERVICES_PLIST_PATH", "./ios/GoogleService-Info.plist")
+    )
+  end
+
+  # =========================================================================
+  # 7. BUILD NUMBER MANAGEMENT
+  # =========================================================================
+
+  desc "Increment build number using git commit count"
+  lane :bump_build do
+    build_number = `git rev-list --count HEAD`.strip.to_i
+    increment_build_number(build_number: build_number)
+    UI.success("✅ Build number set to #{build_number}")
   end
 end

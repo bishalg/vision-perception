@@ -1,1 +1,25 @@
-Initial release of EarlyGaze featuring passive toddler gaze tracking, GeoPref screening batteries, M-CHAT-R questionnaire, and pediatrician PDF reports.
+Version 1.0.0 - Initial Release
+
+🎉 First release of ASD Gaze Collector — the first FDA-grade at-home autism screening tool on iPhone.
+
+NEW FEATURES:
+• 30-second Express and 60-second Comprehensive screening batteries
+• GeoPref split-screen, Face Scanning, Joint Attention, and Oculomotor stimulus clips
+• 16 continuous digital biomarkers computed on-device at 60 Hz
+• M-CHAT-R/F 20-item caregiver survey with instant scoring and Follow-Up flag
+• Clinician-ready PDF report + FHIR R4 interoperable data export
+• SMART on FHIR OAuth 2.0 PKCE for direct EHR integration (Epic, Cerner)
+• CareKit longitudinal tracking: mood diary, medication log, milestones
+• ResearchKit consent, encrypted data vault, study sync
+• Zero raw video recording — AES-GCM-256 encrypted telemetry only
+
+CLINICAL VALIDATION:
+• Biomarkers mapped to Duke SenseToKnow, EarliPoint, GeoPref literature
+• IRB Protocol #2026-088, COPPA/HIPAA aligned
+• De-identified by default, zero raw video storage
+
+SUPPORTED DEVICES:
+• iPhone 12 or later with TrueDepth camera
+• iOS 18.0+
+
+Learn more: https://curv.engineering/asd-gaze

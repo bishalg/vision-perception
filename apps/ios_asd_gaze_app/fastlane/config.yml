@@ -1,55 +1,78 @@
-# Fastlane Configuration for EarlyGaze (ASD Gaze Collector) iOS App
-# Standard metadata, contact, and submission settings
+# ASD Gaze Collector Fastlane Config
+# Customize this file for your app's specific settings
 
-# App Store Connect Configuration
-app_identifier: 'org.curv.asd.gazecollector'
-apple_id: 'binodprasadghimire@yahoo.com'
-team_id: '6J3WY94J6T'
-team_name: 'Binod Ghimire (Individual)'
+# ─────────────────────────────────────────────────────────────────────────────
+# App Identity
+# ─────────────────────────────────────────────────────────────────────────────
+app_identifier: "org.curv.asd.gazecollector"
+apple_id: "binodprasadghimire@yahoo.com"
+team_id: "6J3WY94J6T"
+team_name: "Binod Ghimire (Individual)"
 
-# Build Configuration
-version: '1.0.0'
-project: 'AsdGazeCollector.xcodeproj'
-scheme: 'AsdGazeCollector'
-export_method: 'app-store'
+# ─────────────────────────────────────────────────────────────────────────────
+# iOS Project Structure
+# ─────────────────────────────────────────────────────────────────────────────
+project: "AsdGazeCollector.xcodeproj"
+scheme: "AsdGazeCollector"
+workspace: ""  # Optional: auto-detected from .xcworkspace
 
-# TestFlight Configuration
-beta_app_description: 'EarlyGaze - Non-invasive Toddler Eye-Tracking & Autism Screening Decision Support'
-beta_app_feedback_email: 'support@astro-fusion.com'
+# ─────────────────────────────────────────────────────────────────────────────
+# Match / Certificates
+# ─────────────────────────────────────────────────────────────────────────────
+match_git_url: "git@github.com:curv/fastlane-certs.git"
+match_git_branch: "main"
+match_storage_mode: "git"  # git, google_cloud, or s3
+match_readonly_ci: true
 
-# App Store Categories
-primary_category: 'Medical'
-secondary_category: 'Healthcare & Fitness'
+# ─────────────────────────────────────────────────────────────────────────────
+# App Store Connect
+# ─────────────────────────────────────────────────────────────────────────────
+# Set via environment variables in CI:
+#   ASC_KEY_ID
+#   ASC_ISSUER_ID
+#   ASC_API_KEY_PATH (or ASC_KEY_CONTENT base64)
+#   ASC_API_KEY_PATH_LOCAL (for local dev)
 
-# App Review Information
-app_review_contact:
-  first_name: 'Bishal'
-  last_name: 'Ghimire'
-  phone_number: '+977-9802030896'
-  email_address: 'bishal.ghimire@gmail.com'
+# ─────────────────────────────────────────────────────────────────────────────
+# Build Settings
+# ─────────────────────────────────────────────────────────────────────────────
+build_clean: true
+incremental_build: true  # AF_XCODE_INCREMENTAL=1 in CI
+export_method: "app-store"
+include_bitcode: false
+include_symbols: true
 
-# Test / Review Account
-demo_account:
-  username: 'doctor.review@curv.org'
-  password: 'ClinicalPass2026!'
+# ─────────────────────────────────────────────────────────────────────────────
+# TestFlight
+# ─────────────────────────────────────────────────────────────────────────────
+testflight_groups:
+  - "Internal Testers"
+testflight_distribute_external: false
+testflight_notify_external: false
 
-# URLs
-marketing_url: 'https://astro-fusion.com'
-support_url: 'https://astro-fusion.com/support'
-privacy_policy_url: 'https://astro-fusion.com/privacy'
+# ─────────────────────────────────────────────────────────────────────────────
+# Deliver / Metadata
+# ─────────────────────────────────────────────────────────────────────────────
+metadata_path: "./fastlane/metadata"
+screenshots_path: "./fastlane/screenshots"
+submit_for_review: false
+automatic_release: false
+force: true
 
-# App Information
-copyright: '© 2026 Binod Ghimire. All rights reserved.'
+# ─────────────────────────────────────────────────────────────────────────────
+# Screenshots (snapshot)
+# ─────────────────────────────────────────────────────────────────────────────
+snapshot_devices:
+  - "iPhone 16 Pro Max"
+  - "iPhone 16 Pro"
+  - "iPhone 15"
+snapshot_languages:
+  - "en-US"
+snapshot_scheme: "AsdGazeCollector"
+snapshot_clear_previous: true
+snapshot_reinstall_app: true
 
-# Screenshots Configuration
-screenshots_devices:
-  - 'iPhone 16 Pro Max'
-  - 'iPad Pro (12.9-inch)'
-screenshots_languages:
-  - 'en-US'
-  - 'hi'
-  - 'ne-NP'
-
-# Version Strategy
-version_strategy: 'manual'
-build_number_strategy: 'increment'
+# ─────────────────────────────────────────────────────────────────────────────
+# Slack / Notifications
+# ─────────────────────────────────────────────────────────────────────────────
+slack_webhook_url: ""  # Set via SLACK_WEBHOOK_URL env var
