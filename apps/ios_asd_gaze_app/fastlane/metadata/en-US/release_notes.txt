@@ -1,0 +1,1 @@
+Initial release of EarlyGaze featuring passive toddler gaze tracking, GeoPref screening batteries, M-CHAT-R questionnaire, and pediatrician PDF reports.

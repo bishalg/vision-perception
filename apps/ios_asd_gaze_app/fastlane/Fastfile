@@ -1,0 +1,332 @@
+# Fastfile for EarlyGaze (ASD Gaze Collector) iOS App
+# Production App Store Connect & TestFlight automation pipeline
+
+default_platform(:ios)
+
+require 'yaml'
+require 'fileutils'
+
+CONFIG = YAML.load_file('config.yml') rescue {}
+
+platform :ios do
+  before_all do
+    Dotenv.load if defined?(Dotenv)
+
+    # Configure App Store Connect API Key if environment variables are provided
+    if ENV["ASC_KEY_ID"] && ENV["ASC_ISSUER_ID"]
+      app_store_connect_api_key(
+        key_id: ENV["ASC_KEY_ID"],
+        issuer_id: ENV["ASC_ISSUER_ID"],
+        key_filepath: ENV["ASC_KEY_FILEPATH"],
+        key_content: ENV["ASC_KEY_CONTENT"],
+        is_key_content_base64: ENV["ASC_IS_KEY_CONTENT_BASE64"] == "true"
+      )
+    elsif ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"] && ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"]
+      app_store_connect_api_key(
+        key_id: ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"],
+        issuer_id: ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"],
+        key_filepath: ENV["APP_STORE_CONNECT_API_KEY_KEY_FILEPATH"],
+        key_content: ENV["APP_STORE_CONNECT_API_KEY_KEY_CONTENT"],
+        is_key_content_base64: ENV["APP_STORE_CONNECT_API_KEY_IS_KEY_CONTENT_BASE64"] == "true"
+      )
+    end
+  end
+
+  # =========================================================================
+  # 1. METADATA VALIDATION & PRE-SUBMISSION CHECKS
+  # =========================================================================
+
+  desc "Run local pre-submission validation on files and structure"
+  lane :validate_app_local do
+    UI.message("🔍 Validating EarlyGaze local App Store assets...")
+
+    app_root = File.expand_path("..", __dir__)
+    Dir.chdir(app_root) do
+      # 1. Check metadata directory
+      metadata_path = "fastlane/metadata"
+      if Dir.exist?(metadata_path)
+        meta_files = Dir.glob("#{metadata_path}/**/*").select { |f| File.file?(f) }
+        UI.success("✅ Metadata directory exists with #{meta_files.count} files")
+      else
+        UI.user_error!("❌ Metadata directory missing at #{metadata_path}")
+      end
+
+      # 2. Check screenshots directory
+      screenshots_path = "fastlane/screenshots"
+      if Dir.exist?(screenshots_path)
+        sc_files = Dir.glob("#{screenshots_path}/**/*").select { |f| File.file?(f) }
+        UI.success("✅ Screenshots directory exists with #{sc_files.count} files")
+      else
+        UI.user_error!("❌ Screenshots directory missing at #{screenshots_path}")
+      end
+
+      # 3. Check App Identifier
+      app_id = CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
+      if app_id.match?(/^([a-zA-Z0-9_]+\.)*[a-zA-Z0-9_]+$/)
+        UI.success("✅ App Identifier is valid: #{app_id}")
+      else
+        UI.user_error!("❌ Invalid App Identifier: #{app_id}")
+      end
+
+      # 4. Check required metadata files
+      required_files = [
+        "fastlane/metadata/en-US/name.txt",
+        "fastlane/metadata/en-US/subtitle.txt",
+        "fastlane/metadata/en-US/description.txt",
+        "fastlane/metadata/en-US/keywords.txt",
+        "fastlane/metadata/en-US/privacy_url.txt",
+        "fastlane/metadata/en-US/support_url.txt"
+      ]
+
+      missing = required_files.select { |f| !File.exist?(f) }
+      if missing.empty?
+        UI.success("✅ All essential metadata files exist")
+      else
+        UI.user_error!("❌ Missing required metadata files: #{missing.join(', ')}")
+      end
+    end
+  end
+
+  desc "Validate App Store metadata string lengths and character constraints"
+  lane :validate_metadata do
+    validate_app_local
+
+    UI.message("📏 Checking App Store metadata limits (Apple ASO constraints)...")
+    base = "metadata"
+
+    %w[en-US hi ne-NP].each do |locale|
+      loc_dir = File.join(base, locale)
+      next unless Dir.exist?(loc_dir)
+
+      # Name: max 30 chars
+      name_file = File.join(loc_dir, "name.txt")
+      if File.exist?(name_file)
+        val = File.read(name_file).strip
+        UI.user_error!("Name in #{locale} exceeds 30 chars: #{val.length} ('#{val}')") if val.length > 30
+        UI.success("  [#{locale}] Name: #{val.length}/30 ('#{val}')")
+      end
+
+      # Subtitle: max 30 chars
+      sub_file = File.join(loc_dir, "subtitle.txt")
+      if File.exist?(sub_file)
+        val = File.read(sub_file).strip
+        UI.user_error!("Subtitle in #{locale} exceeds 30 chars: #{val.length} ('#{val}')") if val.length > 30
+        UI.success("  [#{locale}] Subtitle: #{val.length}/30 ('#{val}')")
+      end
+
+      # Keywords: max 100 chars
+      kw_file = File.join(loc_dir, "keywords.txt")
+      if File.exist?(kw_file)
+        val = File.read(kw_file).strip
+        UI.user_error!("Keywords in #{locale} exceeds 100 chars: #{val.length}") if val.length > 100
+        UI.success("  [#{locale}] Keywords: #{val.length}/100")
+      end
+
+      # Promotional Text: max 170 chars
+      promo_file = File.join(loc_dir, "promotional_text.txt")
+      if File.exist?(promo_file)
+        val = File.read(promo_file).strip
+        UI.user_error!("Promotional text in #{locale} exceeds 170 chars: #{val.length}") if val.length > 170
+        UI.success("  [#{locale}] Promo text: #{val.length}/170")
+      end
+
+      # Description: max 4000 chars
+      desc_file = File.join(loc_dir, "description.txt")
+      if File.exist?(desc_file)
+        val = File.read(desc_file).strip
+        UI.user_error!("Description in #{locale} exceeds 4000 chars: #{val.length}") if val.length > 4000
+        UI.success("  [#{locale}] Description length: #{val.length}/4000")
+      end
+    end
+
+    UI.success("🎯 All metadata constraints satisfied successfully!")
+  end
+
+  desc "Run App Store precheck rules on metadata"
+  lane :appstore_precheck do
+    precheck(
+      app_identifier: CONFIG["app_identifier"] || "org.curv.asd.gazecollector",
+      include_in_app_purchases: false
+    )
+  end
+
+  # =========================================================================
+  # 2. CODE SIGNING & CERTIFICATES
+  # =========================================================================
+
+  desc "Sync App Store distribution certificates and provisioning profiles"
+  lane :sync_certs do |options|
+    readonly = options.fetch(:readonly, is_ci)
+    app_id = CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
+    team_id = CONFIG["team_id"] || "6J3WY94J6T"
+
+    UI.message("🔐 Syncing code signing certificates for #{app_id}...")
+
+    if ENV["MATCH_GIT_URL"] && !ENV["MATCH_GIT_URL"].empty?
+      match(
+        type: "appstore",
+        app_identifier: [app_id],
+        team_id: team_id,
+        git_url: ENV["MATCH_GIT_URL"],
+        git_branch: ENV.fetch("MATCH_GIT_BRANCH", "main"),
+        storage_mode: ENV.fetch("MATCH_STORAGE_MODE", "git"),
+        readonly: readonly,
+        clone_branch_directly: false
+      )
+    else
+      UI.message("MATCH_GIT_URL not set. Falling back to cert + sigh...")
+      cert(development: false)
+      sigh(
+        development: false,
+        app_identifier: app_id,
+        team_id: team_id
+      )
+    end
+    UI.success("✅ Certificates and provisioning profiles ready!")
+  end
+
+  # =========================================================================
+  # 3. BUILD
+  # =========================================================================
+
+  desc "Build and archive production .ipa"
+  lane :build_app_store do |options|
+    app_id = CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
+    output_dir = options[:output_directory] || "./build"
+    FileUtils.mkdir_p(output_dir)
+
+    UI.message("🔨 Building EarlyGaze for App Store...")
+
+    build_app(
+      project: "AsdGazeCollector.xcodeproj",
+      scheme: "AsdGazeCollector",
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: output_dir,
+      output_name: "EarlyGaze.ipa",
+      clean: true,
+      include_symbols: true,
+      include_bitcode: false
+    )
+
+    ipa = File.join(output_dir, "EarlyGaze.ipa")
+    UI.success("✅ IPA built successfully at: #{ipa}")
+    ipa
+  end
+
+  # =========================================================================
+  # 4. TESTFLIGHT (BETA) & APP STORE RELEASE
+  # =========================================================================
+
+  desc "Build and deploy to TestFlight"
+  lane :beta do |options|
+    validate_metadata
+    sync_certs(readonly: true)
+
+    # Auto-increment build number
+    increment_build_number(
+      build_number: options[:build_number] || (is_ci ? ENV["BUILD_NUMBER"] : nil)
+    )
+
+    ipa = build_app_store
+
+    upload_to_testflight(
+      app_identifier: CONFIG["app_identifier"] || "org.curv.asd.gazecollector",
+      ipa: ipa,
+      skip_waiting_for_build_processing: true,
+      distribute_external: options.fetch(:distribute_external, false),
+      changelog: options[:changelog] || "EarlyGaze clinical beta with 16 objective gaze biomarkers and M-CHAT-R questionnaire."
+    )
+    UI.success("🚀 Uploaded to TestFlight!")
+  end
+
+  # =========================================================================
+  # 5. METADATA & SCREENSHOT SYNC (DELIVER)
+  # =========================================================================
+
+  desc "Upload metadata only to App Store Connect"
+  lane :update_metadata do |options|
+    validate_metadata
+    app_id = CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
+
+    meta_path = File.expand_path("metadata", __dir__)
+    review_dir = File.join(meta_path, "review_information")
+    review_backup = nil
+
+    # Deliver safety: park review_information if initial release
+    park = options.fetch(:park_review_information, ENV.fetch("PARK_REVIEW_INFORMATION", "0") == "1")
+    if park && Dir.exist?(review_dir)
+      begin
+        review_backup = "#{review_dir}.pending"
+        FileUtils.rm_rf(review_backup)
+        FileUtils.mv(review_dir, review_backup)
+        UI.important("⚠️ Parked review_information for initial deliver")
+      rescue StandardError => e
+        UI.important("Could not park review_information: #{e.message}")
+        review_backup = nil
+      end
+    end
+
+    begin
+      deliver(
+        app_identifier: app_id,
+        metadata_path: meta_path,
+        skip_screenshots: true,
+        skip_metadata: false,
+        skip_app_version_update: true,
+        force: true,
+        ignore_language_directory_validation: true,
+        run_precheck_before_submit: false
+      )
+    ensure
+      if review_backup && Dir.exist?(review_backup) && !Dir.exist?(review_dir)
+        FileUtils.mv(review_backup, review_dir)
+        UI.message("Restored review_information/")
+      end
+    end
+    UI.success("✅ App Store Connect metadata synchronized!")
+  end
+
+  desc "Upload screenshots only to App Store Connect"
+  lane :upload_screenshots do |options|
+    app_id = CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
+    sc_path = File.expand_path("screenshots", __dir__)
+
+    deliver(
+      app_identifier: app_id,
+      screenshots_path: sc_path,
+      skip_screenshots: false,
+      skip_metadata: true,
+      skip_app_version_update: true,
+      force: true,
+      ignore_language_directory_validation: true,
+      run_precheck_before_submit: false
+    )
+    UI.success("✅ App Store Connect screenshots uploaded!")
+  end
+
+  desc "Synchronize full store listing (metadata + screenshots)"
+  lane :sync_store_listing do |options|
+    update_metadata(options)
+    upload_screenshots(options)
+    UI.success("🎉 Complete App Store listing synchronized!")
+  end
+
+  desc "Submit app for App Store review"
+  lane :submit_app_store do |options|
+    app_id = CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
+
+    deliver(
+      app_identifier: app_id,
+      submit_for_review: true,
+      automatic_release: false,
+      skip_screenshots: true,
+      skip_metadata: true,
+      submission_information: {
+        add_id_info_uses_idfa: false
+      },
+      run_precheck_before_submit: false
+    )
+    UI.success("📬 App submitted for App Store review!")
+  end
+end

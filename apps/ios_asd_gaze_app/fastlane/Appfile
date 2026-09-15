@@ -1,0 +1,11 @@
+# Appfile for EarlyGaze (ASD Gaze Collector) iOS App
+# Team and App Store Connect configuration
+
+app_identifier "org.curv.asd.gazecollector"
+apple_id "binodprasadghimire@yahoo.com"
+team_id "6J3WY94J6T"
+team_name "Binod Ghimire (Individual)"
+itc_team_id ""
+
+# For more information about the Appfile, see:
+# https://docs.fastlane.tools/advanced/Appfile/

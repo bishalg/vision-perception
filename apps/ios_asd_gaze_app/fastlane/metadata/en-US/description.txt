@@ -1,0 +1,34 @@
+EarlyGaze is a non-invasive, objective digital screening aid designed to help parents, pediatricians, and clinical researchers monitor early social visual development and attentional patterns in toddlers aged 12 to 48 months.
+
+Using the TrueDepth sensor on your iPhone or iPad, EarlyGaze tracks eye gaze fixations and facial affect in real time while your child watches engaging, pediatric-calibrated video clips—transforming complex laboratory eye-tracking into a gentle 60-second home screening experience.
+
+KEY FEATURES:
+
+• Clinically Grounded Gaze Biomarkers
+Measures 16 objective digital biomarkers validated across peer-reviewed clinical research (including studies published in JAMA, NEJM AI, and eLife):
+- Social Visual Preference (salience of human social interaction vs. dynamic geometric shapes)
+- First Eye Fixation Latency (speed of initial attention orientation to human eyes)
+- Eye-to-Mouth Dwell Distribution (balance of gaze across facial features)
+- Synchronized Affect & Smile Contagion (shared enjoyment and smile response latency)
+- Visual Scanning Stability & Dispersion
+
+• Gentle 5-Point Bubble Calibration
+Calibrate within seconds using a delightful bubble-popping mini-game. Designed specifically to capture a toddler's natural curiosity without rigid head restraints.
+
+• Standardized M-CHAT-R/F Questionnaire
+Complete the American Academy of Pediatrics recommended 20-item Modified Checklist for Autism in Toddlers (M-CHAT-R/F) directly within the app, coded with official LOINC clinical identifiers (LOINC 80628-1).
+
+• Comprehensive Pediatrician PDF Reports
+Generate publication-grade clinical summary reports with a single tap. Reports feature benchmark comparisons against age-matched normative distributions (12–18m, 18–24m, 24–36m, 36–48m), detailed biomarker breakdowns, and actionable clinical talking points for your developmental pediatrician or early intervention team.
+
+• CareKit Developmental Diary
+Track daily routines, sensory sensitivities, communication milestones, and sleep patterns with Apple CareKit integration.
+
+• 100% Video-Free Medical Privacy-by-Design
+We believe pediatric privacy is sacred:
+- ZERO raw camera frames, facial images, or video clips are ever saved to device storage or uploaded to the cloud.
+- Eye-gaze vectors are processed strictly in volatile device memory and immediately discarded.
+- Only anonymized numerical time-series and biomarker summary scores are preserved on your device.
+
+REGULATORY & MEDICAL DISCLAIMER:
+EarlyGaze is a clinical decision-support and developmental tracking aid designed to provide objective behavioral observations for parents and healthcare professionals. EarlyGaze is not a standalone diagnostic medical device and does not diagnose Autism Spectrum Disorder (ASD) or Attention Deficit Hyperactivity Disorder (ADHD). Formal diagnostic evaluation must always be performed by a qualified physician or developmental specialist.

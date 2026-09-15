@@ -1,12 +1,27 @@
+# Fastfile for PalmReader iOS App
+# Production App Store Connect & TestFlight automation pipeline
+
 default_platform(:ios)
+
+require 'yaml'
+require 'fileutils'
+
+CONFIG = YAML.load_file('config.yml') rescue {}
 
 platform :ios do
   before_all do
-    # Load .env file if present
     Dotenv.load if defined?(Dotenv)
 
     # Configure App Store Connect API Key if environment variables are provided
-    if ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"] && ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"]
+    if ENV["ASC_KEY_ID"] && ENV["ASC_ISSUER_ID"]
+      app_store_connect_api_key(
+        key_id: ENV["ASC_KEY_ID"],
+        issuer_id: ENV["ASC_ISSUER_ID"],
+        key_filepath: ENV["ASC_KEY_FILEPATH"],
+        key_content: ENV["ASC_KEY_CONTENT"],
+        is_key_content_base64: ENV["ASC_IS_KEY_CONTENT_BASE64"] == "true"
+      )
+    elsif ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"] && ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"]
       app_store_connect_api_key(
         key_id: ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"],
         issuer_id: ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"],
@@ -18,133 +33,300 @@ platform :ios do
   end
 
   # =========================================================================
-  # 1. CERTIFICATES & CODE SIGNING MANAGEMENT
+  # 1. METADATA VALIDATION & PRE-SUBMISSION CHECKS
   # =========================================================================
-  desc "Sync development certificates & provisioning profiles"
-  lane :sync_dev_certs do
-    if ENV["MATCH_GIT_URL"] && !ENV["MATCH_GIT_URL"].empty?
-      match(
-        type: "development",
-        app_identifier: [ENV["APP_IDENTIFIER"] || "org.curv.palmapp"],
-        readonly: is_ci
-      )
-    else
-      UI.message("MATCH_GIT_URL not configured. Using cert + sigh directly...")
-      cert(development: true)
-      sigh(
-        development: true,
-        app_identifier: ENV["APP_IDENTIFIER"] || "org.curv.palmapp"
-      )
+
+  desc "Run local pre-submission validation on files and structure"
+  lane :validate_app_local do
+    UI.message("🔍 Validating PalmReader local App Store assets...")
+
+    app_root = File.expand_path("..", __dir__)
+    Dir.chdir(app_root) do
+      # 1. Check metadata directory
+      metadata_path = "fastlane/metadata"
+      if Dir.exist?(metadata_path)
+        meta_files = Dir.glob("#{metadata_path}/**/*").select { |f| File.file?(f) }
+        UI.success("✅ Metadata directory exists with #{meta_files.count} files")
+      else
+        UI.user_error!("❌ Metadata directory missing at #{metadata_path}")
+      end
+
+      # 2. Check screenshots directory
+      screenshots_path = "fastlane/screenshots"
+      if Dir.exist?(screenshots_path)
+        sc_files = Dir.glob("#{screenshots_path}/**/*").select { |f| File.file?(f) }
+        UI.success("✅ Screenshots directory exists with #{sc_files.count} files")
+      else
+        UI.user_error!("❌ Screenshots directory missing at #{screenshots_path}")
+      end
+
+      # 3. Check App Identifier
+      app_id = CONFIG["app_identifier"] || "org.curv.palmapp"
+      if app_id.match?(/^([a-zA-Z0-9_]+\.)*[a-zA-Z0-9_]+$/)
+        UI.success("✅ App Identifier is valid: #{app_id}")
+      else
+        UI.user_error!("❌ Invalid App Identifier: #{app_id}")
+      end
+
+      # 4. Check required metadata files
+      required_files = [
+        "fastlane/metadata/en-US/name.txt",
+        "fastlane/metadata/en-US/subtitle.txt",
+        "fastlane/metadata/en-US/description.txt",
+        "fastlane/metadata/en-US/keywords.txt",
+        "fastlane/metadata/en-US/privacy_url.txt",
+        "fastlane/metadata/en-US/support_url.txt"
+      ]
+
+      missing = required_files.select { |f| !File.exist?(f) }
+      if missing.empty?
+        UI.success("✅ All essential metadata files exist")
+      else
+        UI.user_error!("❌ Missing required metadata files: #{missing.join(', ')}")
+      end
     end
   end
 
-  desc "Sync distribution certificates & provisioning profiles for TestFlight/AppStore"
-  lane :sync_dist_certs do
+  desc "Validate App Store metadata string lengths and character constraints"
+  lane :validate_metadata do
+    validate_app_local
+
+    UI.message("📏 Checking App Store metadata limits (Apple ASO constraints)...")
+    base = "metadata"
+
+    %w[en-US hi ne-NP].each do |locale|
+      loc_dir = File.join(base, locale)
+      next unless Dir.exist?(loc_dir)
+
+      # Name: max 30 chars
+      name_file = File.join(loc_dir, "name.txt")
+      if File.exist?(name_file)
+        val = File.read(name_file).strip
+        UI.user_error!("Name in #{locale} exceeds 30 chars: #{val.length} ('#{val}')") if val.length > 30
+        UI.success("  [#{locale}] Name: #{val.length}/30 ('#{val}')")
+      end
+
+      # Subtitle: max 30 chars
+      sub_file = File.join(loc_dir, "subtitle.txt")
+      if File.exist?(sub_file)
+        val = File.read(sub_file).strip
+        UI.user_error!("Subtitle in #{locale} exceeds 30 chars: #{val.length} ('#{val}')") if val.length > 30
+        UI.success("  [#{locale}] Subtitle: #{val.length}/30 ('#{val}')")
+      end
+
+      # Keywords: max 100 chars
+      kw_file = File.join(loc_dir, "keywords.txt")
+      if File.exist?(kw_file)
+        val = File.read(kw_file).strip
+        UI.user_error!("Keywords in #{locale} exceeds 100 chars: #{val.length}") if val.length > 100
+        UI.success("  [#{locale}] Keywords: #{val.length}/100")
+      end
+
+      # Promotional Text: max 170 chars
+      promo_file = File.join(loc_dir, "promotional_text.txt")
+      if File.exist?(promo_file)
+        val = File.read(promo_file).strip
+        UI.user_error!("Promotional text in #{locale} exceeds 170 chars: #{val.length}") if val.length > 170
+        UI.success("  [#{locale}] Promo text: #{val.length}/170")
+      end
+
+      # Description: max 4000 chars
+      desc_file = File.join(loc_dir, "description.txt")
+      if File.exist?(desc_file)
+        val = File.read(desc_file).strip
+        UI.user_error!("Description in #{locale} exceeds 4000 chars: #{val.length}") if val.length > 4000
+        UI.success("  [#{locale}] Description length: #{val.length}/4000")
+      end
+    end
+
+    UI.success("🎯 All metadata constraints satisfied successfully!")
+  end
+
+  desc "Run App Store precheck rules on metadata"
+  lane :appstore_precheck do
+    precheck(
+      app_identifier: CONFIG["app_identifier"] || "org.curv.palmapp",
+      include_in_app_purchases: false
+    )
+  end
+
+  # =========================================================================
+  # 2. CODE SIGNING & CERTIFICATES
+  # =========================================================================
+
+  desc "Sync App Store distribution certificates and provisioning profiles"
+  lane :sync_certs do |options|
+    readonly = options.fetch(:readonly, is_ci)
+    app_id = CONFIG["app_identifier"] || "org.curv.palmapp"
+    team_id = CONFIG["team_id"] || "6J3WY94J6T"
+
+    UI.message("🔐 Syncing code signing certificates for #{app_id}...")
+
     if ENV["MATCH_GIT_URL"] && !ENV["MATCH_GIT_URL"].empty?
       match(
         type: "appstore",
-        app_identifier: [ENV["APP_IDENTIFIER"] || "org.curv.palmapp"],
-        readonly: is_ci
+        app_identifier: [app_id],
+        team_id: team_id,
+        git_url: ENV["MATCH_GIT_URL"],
+        git_branch: ENV.fetch("MATCH_GIT_BRANCH", "main"),
+        storage_mode: ENV.fetch("MATCH_STORAGE_MODE", "git"),
+        readonly: readonly,
+        clone_branch_directly: false
       )
     else
-      UI.message("MATCH_GIT_URL not configured. Using cert + sigh directly...")
+      UI.message("MATCH_GIT_URL not set. Falling back to cert + sigh...")
       cert(development: false)
       sigh(
         development: false,
-        app_identifier: ENV["APP_IDENTIFIER"] || "org.curv.palmapp"
+        app_identifier: app_id,
+        team_id: team_id
       )
     end
+    UI.success("✅ Certificates and provisioning profiles ready!")
   end
 
   # =========================================================================
-  # 2. TESTING & CI VALIDATION
+  # 3. BUILD
   # =========================================================================
-  desc "Run automated unit & integration tests"
-  lane :test do
-    run_tests(
-      scheme: "PalmScanner",
-      project: "PalmScanner.xcodeproj",
-      devices: ["iPhone 16 Pro"],
-      clean: true,
-      fail_build: true
-    )
-  end
 
-  # =========================================================================
-  # 3. AUTOMATED SCREENSHOTS
-  # =========================================================================
-  desc "Capture localized screenshots across multiple device form-factors"
-  lane :screenshots do
-    snapshot
-    # Frame screenshots with mockups if frameit is desired:
-    # frameit(silver: true)
-  end
+  desc "Build and archive production .ipa"
+  lane :build_app_store do |options|
+    app_id = CONFIG["app_identifier"] || "org.curv.palmapp"
+    output_dir = options[:output_directory] || "./build"
+    FileUtils.mkdir_p(output_dir)
 
-  # =========================================================================
-  # 4. LOCAL DEVICE RUNNER
-  # =========================================================================
-  desc "Build and install app directly onto connected physical iPhone"
-  lane :install_device do
-    sync_dev_certs
+    UI.message("🔨 Building PalmReader for App Store...")
 
     build_app(
-      scheme: "PalmScanner",
       project: "PalmScanner.xcodeproj",
-      export_method: "development",
-      clean: true
+      scheme: "PalmScanner",
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: output_dir,
+      output_name: "PalmReader.ipa",
+      clean: true,
+      include_symbols: true,
+      include_bitcode: false
     )
 
-    install_on_device(
-      ipa: Actions.lane_context[SharedValues::IPA_OUTPUT_PATH]
-    )
+    ipa = File.join(output_dir, "PalmReader.ipa")
+    UI.success("✅ IPA built successfully at: #{ipa}")
+    ipa
   end
 
   # =========================================================================
-  # 5. TESTFLIGHT (BETA) DEPLOYMENT
+  # 4. TESTFLIGHT (BETA) & APP STORE RELEASE
   # =========================================================================
-  desc "Build and upload new beta build to TestFlight"
+
+  desc "Build and deploy to TestFlight"
   lane :beta do |options|
-    sync_dist_certs
+    validate_metadata
+    sync_certs(readonly: true)
 
     # Auto-increment build number
     increment_build_number(
       build_number: options[:build_number] || (is_ci ? ENV["BUILD_NUMBER"] : nil)
     )
 
-    build_app(
-      scheme: "PalmScanner",
-      project: "PalmScanner.xcodeproj",
-      export_method: "app-store",
-      clean: true
-    )
+    ipa = build_app_store
 
     upload_to_testflight(
+      app_identifier: CONFIG["app_identifier"] || "org.curv.palmapp",
+      ipa: ipa,
       skip_waiting_for_build_processing: true,
-      changelog: options[:changelog] || "Automated build from CI/CD pipeline"
+      distribute_external: options.fetch(:distribute_external, false),
+      changelog: options[:changelog] || "PalmReader beta build with AI crease detection and Samudrika Shastra reading."
     )
+    UI.success("🚀 Uploaded to TestFlight!")
   end
 
   # =========================================================================
-  # 6. APP STORE (PRODUCTION RELEASE)
+  # 5. METADATA & SCREENSHOT SYNC (DELIVER)
   # =========================================================================
-  desc "Deliver full App Store release with metadata, screenshots, and binary"
-  lane :release do |options|
-    sync_dist_certs
 
-    build_app(
-      scheme: "PalmScanner",
-      project: "PalmScanner.xcodeproj",
-      export_method: "app-store",
-      clean: true
-    )
+  desc "Upload metadata only to App Store Connect"
+  lane :update_metadata do |options|
+    validate_metadata
+    app_id = CONFIG["app_identifier"] || "org.curv.palmapp"
+
+    meta_path = File.expand_path("metadata", __dir__)
+    review_dir = File.join(meta_path, "review_information")
+    review_backup = nil
+
+    # Deliver safety: park review_information if first version lacks review detail
+    park = options.fetch(:park_review_information, ENV.fetch("PARK_REVIEW_INFORMATION", "0") == "1")
+    if park && Dir.exist?(review_dir)
+      begin
+        review_backup = "#{review_dir}.pending"
+        FileUtils.rm_rf(review_backup)
+        FileUtils.mv(review_dir, review_backup)
+        UI.important("⚠️ Parked review_information for initial deliver")
+      rescue StandardError => e
+        UI.important("Could not park review_information: #{e.message}")
+        review_backup = nil
+      end
+    end
+
+    begin
+      deliver(
+        app_identifier: app_id,
+        metadata_path: meta_path,
+        skip_screenshots: true,
+        skip_metadata: false,
+        skip_app_version_update: true,
+        force: true,
+        ignore_language_directory_validation: true,
+        run_precheck_before_submit: false
+      )
+    ensure
+      if review_backup && Dir.exist?(review_backup) && !Dir.exist?(review_dir)
+        FileUtils.mv(review_backup, review_dir)
+        UI.message("Restored review_information/")
+      end
+    end
+    UI.success("✅ App Store Connect metadata synchronized!")
+  end
+
+  desc "Upload screenshots only to App Store Connect"
+  lane :upload_screenshots do |options|
+    app_id = CONFIG["app_identifier"] || "org.curv.palmapp"
+    sc_path = File.expand_path("screenshots", __dir__)
 
     deliver(
-      submit_for_review: false, # Set to true to automatically submit for Apple review
-      automatic_release: false,
-      force: true, # Skips HTML preview verification dialog in CI
-      skip_screenshots: options[:skip_screenshots] || false,
-      metadata_path: "./fastlane/metadata",
-      screenshots_path: "./fastlane/screenshots"
+      app_identifier: app_id,
+      screenshots_path: sc_path,
+      skip_screenshots: false,
+      skip_metadata: true,
+      skip_app_version_update: true,
+      force: true,
+      ignore_language_directory_validation: true,
+      run_precheck_before_submit: false
     )
+    UI.success("✅ App Store Connect screenshots uploaded!")
+  end
+
+  desc "Synchronize full store listing (metadata + screenshots)"
+  lane :sync_store_listing do |options|
+    update_metadata(options)
+    upload_screenshots(options)
+    UI.success("🎉 Complete App Store listing synchronized!")
+  end
+
+  desc "Submit app for App Store review"
+  lane :submit_app_store do |options|
+    app_id = CONFIG["app_identifier"] || "org.curv.palmapp"
+
+    deliver(
+      app_identifier: app_id,
+      submit_for_review: true,
+      automatic_release: false,
+      skip_screenshots: true,
+      skip_metadata: true,
+      submission_information: {
+        add_id_info_uses_idfa: false
+      },
+      run_precheck_before_submit: false
+    )
+    UI.success("📬 App submitted for App Store review!")
   end
 end

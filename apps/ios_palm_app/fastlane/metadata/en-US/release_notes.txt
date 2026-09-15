@@ -1,1 +1,1 @@
-First release: guided palm capture, editable Life/Heart/Head/Fate lines, and on-device reading from confirmed geometry.
+Initial release of PalmReader featuring real-time AI palm detection, crease line tracing, and authentic Vedic Samudrika Shastra hand analysis.

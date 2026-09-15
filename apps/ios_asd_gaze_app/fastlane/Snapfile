@@ -1,0 +1,29 @@
+# Fastlane Snapfile for ASD Gaze Collector iOS App
+# Reference: https://docs.fastlane.tools/actions/snapshot/
+
+devices([
+  "iPhone 16 Pro Max",
+  "iPhone 16 Pro",
+  "iPhone 15"
+])
+
+languages([
+  "en-US"
+])
+
+scheme("AsdGazeCollector")
+output_directory("./fastlane/screenshots")
+clear_previous_screenshots(true)
+reinstall_app(true)
+
+# Optional: Custom snapshot configuration
+# launch_arguments([
+#   "-snapshot-mode", "true",
+#   "-skip-onboarding", "true"
+# ])
+
+# Optional: Custom output directory per device
+# output_directory("./fastlane/screenshots")
+
+# Optional: Skip certain devices if needed
+# skip_device_simulator_check_for_devices(["iPhone 15"])

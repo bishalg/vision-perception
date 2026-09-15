@@ -1,17 +1,19 @@
-# Fastlane Snapfile for PalmScanner iOS App
-# Reference: https://docs.fastlane.tools/actions/snapshot/
+# Snapfile for PalmReader iOS App
+# Automated screenshot capture settings
 
 devices([
   "iPhone 16 Pro Max",
   "iPhone 16 Pro",
-  "iPhone 15"
+  "iPhone 8 Plus"
 ])
 
 languages([
-  "en-US"
+  "en-US",
+  "hi",
+  "ne-NP"
 ])
 
 scheme("PalmScanner")
 output_directory("./fastlane/screenshots")
-clear_previous_screenshots(true)
-reinstall_app(true)
+clear_previous_screenshots(false)
+override_status_bar(true)

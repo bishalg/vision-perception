@@ -1,0 +1,392 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Fastfile.shared — vision-perception Monorepo Shared Fastlane Lanes
+# 
+# Imported by each app's Fastfile:
+#   import "../../../fastlane/tooling/Fastfile.shared"
+#
+# Provides shared lanes for:
+#   - match: certificate + provisioning profile sync (iOS)
+#   - gym:   build + archive + export (.ipa)
+#   - pilot: upload to TestFlight
+#   - deliver: App Store metadata + screenshots
+# ─────────────────────────────────────────────────────────────────────────────
+
+require 'shellwords'
+require 'json'
+require 'fileutils'
+require 'pathname'
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+# Local match clones can fail with transient git errors. Retry instead of
+# failing the whole pipeline.
+def match_with_clone_retry(params)
+  attempts = 0
+  max_attempts = 3
+  begin
+    attempts += 1
+    match(params)
+  rescue => e
+    clone_like = e.message =~ /cloning certificates|failed to copy file|Error cloning|No such file or directory/
+    if clone_like && attempts < max_attempts
+      UI.important("⚠️ match git clone failed (attempt #{attempts}/#{max_attempts}): #{e.message.lines.first.to_s.strip}")
+      sleep(2 * attempts)
+      retry
+    end
+    raise
+  end
+end
+
+# Build and return the App Store Connect API Key hash from env vars.
+# Falls back to Blitz ASC agent config (~/.blitz/asc-agent/config.json), then nil.
+def asc_api_key
+  key_id     = ENV["ASC_API_KEY_ID"] || ENV["ASC_KEY_ID"]
+  issuer_id  = ENV["ASC_ISSUER_ID"]
+  key_path   = ENV["ASC_API_KEY_PATH"]
+
+  if (!key_id || !issuer_id || !key_path) && File.exist?(File.expand_path("~/.blitz/asc-agent/config.json"))
+    begin
+      blitz = JSON.parse(File.read(File.expand_path("~/.blitz/asc-agent/config.json")))
+      entry = (blitz["keys"] || []).find { |k| k.is_a?(Hash) && k["key_id"] } || {}
+      key_id    ||= blitz["key_id"] || entry["key_id"]
+      issuer_id ||= blitz["issuer_id"] || entry["issuer_id"]
+      key_path  ||= blitz["private_key_path"] || entry["private_key_path"]
+      UI.message("🔑 ASC API key loaded from Blitz agent config") if key_id && issuer_id && key_path
+    rescue StandardError => e
+      UI.important("⚠️  Could not read Blitz ASC config: #{e.message}")
+    end
+  end
+
+  return nil unless key_id && issuer_id && key_path
+
+  key_path = File.expand_path(key_path)
+  unless File.exist?(key_path)
+    UI.important("⚠️  ASC_API_KEY_PATH set but file not found: #{key_path}")
+    return nil
+  end
+
+  # altool / transporter expect AuthKey_<KEY_ID>.p8 under ~/.appstoreconnect/private_keys
+  auth_dir = File.expand_path("~/.appstoreconnect/private_keys")
+  FileUtils.mkdir_p(auth_dir)
+  auth_key = File.join(auth_dir, "AuthKey_#{key_id}.p8")
+  FileUtils.cp(key_path, auth_key) unless File.exist?(auth_key)
+
+  # Token.from(**hash) requires `filepath` and/or `key` (PEM contents).
+  {
+    key_id:    key_id,
+    issuer_id: issuer_id,
+    filepath:  key_path,
+    key:       File.binread(key_path),
+    in_house:  false
+  }
+end
+
+# Enable Developer Portal App ID capabilities via produce.
+# Uses ASC API key when available (no Apple ID / 2FA).
+def produce_app_capabilities!(app_identifier:, team_id:, enable_services:)
+  if ENV["AF_SKIP_PRODUCE"] == "1"
+    UI.message("   ⏭️  produce skipped (AF_SKIP_PRODUCE=1) for #{app_identifier}")
+    return
+  end
+
+  api_key = asc_api_key
+  strict = ENV["AF_ENSURE_CAPABILITIES"] == "1" || ENV["AF_MATCH_FORCE"] == "1"
+
+  if api_key
+    app_store_connect_api_key(
+      key_id:       api_key[:key_id],
+      issuer_id:    api_key[:issuer_id],
+      key_filepath: api_key[:filepath],
+      duration:     1200,
+      in_house:     false
+    )
+    UI.message("   Auth: App Store Connect API key (produce)")
+  end
+
+  params = {
+    app_identifier:  app_identifier,
+    team_id:         team_id,
+    skip_itc:        true,
+    enable_services: enable_services,
+  }
+
+  produce(params)
+  UI.success("   ✓ Capabilities enabled for #{app_identifier}")
+rescue StandardError => e
+  portal_hint = <<~HINT.chomp
+    Enable capabilities on #{app_identifier} at https://developer.apple.com/account/resources/identifiers/list
+    (Push Notifications, Sign in with Apple, Associated Domains, App Groups as needed), then re-run with AF_MATCH_FORCE=1.
+    Or set AF_SKIP_PRODUCE=1 if portal is already configured.
+  HINT
+
+  if api_key && !strict
+    UI.important(
+      "   ⚠️  produce for #{app_identifier} failed (#{e.message}) — continuing with match " \
+      "(portal capabilities assumed configured; set AF_ENSURE_CAPABILITIES=1 or AF_MATCH_FORCE=1 to fail hard)"
+    )
+    return
+  end
+
+  UI.error("   ❌ produce for #{app_identifier} failed: #{e.message}")
+  UI.error(portal_hint)
+  raise e
+end
+
+# Resolve team ID from env or Appfile default
+def resolve_team_id
+  ENV["APPLE_TEAM_ID"] || "6J3WY94J6T"
+end
+
+# Resolve app root directory (one level up from fastlane/)
+def resolve_app_root
+  File.expand_path("..")
+end
+
+# Resolve iOS workspace path
+def resolve_ios_workspace(app_root)
+  xcworkspace = Dir.glob(File.join(app_root, "*.xcworkspace")).first
+  raise "No .xcworkspace found in #{app_root}" unless xcworkspace
+  xcworkspace
+end
+
+# Resolve iOS scheme
+def resolve_ios_scheme(app_root)
+  xcodeproj = Dir.glob(File.join(app_root, "*.xcodeproj")).first
+  raise "No .xcodeproj found in #{app_root}" unless xcodeproj
+  File.basename(xcodeproj, ".xcodeproj")
+end
+
+# Resolve metadata path (fastlane/metadata or fastlane/metadata/en-US)
+def resolve_metadata_path
+  meta = File.join(resolve_app_root, "fastlane", "metadata")
+  File.exist?(meta) ? meta : File.join(resolve_app_root, "fastlane", "metadata", "en-US")
+end
+
+# Resolve provisioning profiles mapping for gym
+def resolve_provisioning_profiles(app_identifier, widget_identifier = nil)
+  profiles = {}
+  main_profile = ENV["sigh_#{app_identifier}_appstore_profile-name"]
+  profiles[app_identifier] = main_profile if main_profile
+  
+  if widget_identifier
+    widget_profile = ENV["sigh_#{widget_identifier}_appstore_profile-name"]
+    profiles[widget_identifier] = widget_profile if widget_profile
+  end
+  
+  profiles
+end
+
+# Build manual signing xcargs for gym
+def ios_gym_manual_xcargs(team_id:, signing_ctx:, extra: "")
+  base = "CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION=YES "
+  base += "CODE_SIGN_IDENTITY=\"#{signing_ctx[:identity]}\" "
+  base += "PROVISIONING_PROFILE_SPECIFIER=\"#{signing_ctx[:main_profile]}\" "
+  base += "PRODUCT_BUNDLE_IDENTIFIER=\"#{signing_ctx[:main_bundle_id]}\" "
+  base += "DEVELOPMENT_TEAM=#{team_id} "
+  base + extra
+end
+
+# Configure manual signing for gym (iOS app-store)
+def configure_ios_manual_appstore_signing!(
+  project_path:,
+  team_id:,
+  main_target:,
+  main_bundle_id:,
+  widget_target: nil,
+  widget_bundle_id: nil,
+  signing_ctx:
+)
+  # Main target
+  update_code_signing_settings(
+    use_automatic_signing: false,
+    path: project_path,
+    team_id: team_id,
+    targets: [main_target],
+    bundle_identifier: main_bundle_id,
+    profile_name: signing_ctx[:main_profile],
+    code_sign_identity: signing_ctx[:identity]
+  )
+
+  # Widget target if provided
+  if widget_target && widget_bundle_id
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: project_path,
+      team_id: team_id,
+      targets: [widget_target],
+      bundle_identifier: widget_bundle_id,
+      profile_name: signing_ctx[:widget_profile],
+      code_sign_identity: signing_ctx[:identity]
+    )
+  end
+
+  signing_ctx[:identity]
+end
+
+# Sync certificates using match (with retry)
+def sync_certs(app_identifier:, additional_identifiers: [], force_identifiers: [], readonly: false)
+  all_ids = [app_identifier] + additional_identifiers
+  force = force_identifiers.any?
+  
+  all_ids.each do |id|
+    match_with_clone_retry({
+      type: "appstore",
+      app_identifier: [id],
+      readonly: readonly,
+      force: force && force_identifiers.include?(id)
+    })
+  end
+end
+
+# Increment build number from git commit count or manual
+def bump_build_number(app_json:, use_git_count: false)
+  if use_git_count
+    count = `git rev-list --count HEAD`.strip
+    new_build = count.to_i
+  else
+    # Read current build from app.json or Info.plist
+    if File.exist?(app_json)
+      data = JSON.parse(File.read(app_json))
+      current = data.dig("expo", "versionCode") || data.dig("ios", "buildNumber") || 1
+      new_build = current.to_i + 1
+    else
+      new_build = 1
+    end
+  end
+  
+  increment_build_number(build_number: new_build)
+  new_build
+end
+
+# Generate release notes from git log or metadata
+def generate_release_notes
+  notes_path = File.join(resolve_metadata_path, "en-US", "release_notes.txt")
+  if File.exist?(notes_path)
+    UI.message("📝 Release notes loaded from #{notes_path}")
+  else
+    UI.message("📝 No release notes file found, using git log...")
+    system("git log --oneline -10 > #{notes_path} 2>/dev/null || true")
+  end
+end
+
+# Ensure iOS match signing context is ready
+def ensure_ios_match_signing_for_app!(main_bundle_id, widget_bundle_id = nil, extra_ids: [], team_id:)
+  main_profile = ENV["sigh_#{main_bundle_id}_appstore_profile-name"]
+  widget_profile = widget_bundle_id ? ENV["sigh_#{widget_bundle_id}_appstore_profile-name"] : nil
+  
+  extra_profiles = {}
+  extra_ids.each do |id|
+    extra_profiles[id] = ENV["sigh_#{id}_appstore_profile-name"]
+  end
+  
+  identity = ENV["CERTSIGN_IDENTITY"] || "Apple Distribution"
+  
+  {
+    identity: identity,
+    main_bundle_id: main_bundle_id,
+    main_profile: main_profile,
+    widget_bundle_id: widget_bundle_id,
+    widget_profile: widget_profile,
+    extra_profiles: extra_profiles
+  }
+end
+
+# ios_appstore_export_options - generates exportOptions.plist hash
+def ios_appstore_export_options(team_id:, provisioning_profiles:, signing_ctx:)
+  {
+    method: "app-store",
+    teamID: team_id,
+    provisioningProfiles: provisioning_profiles,
+    signingStyle: "manual",
+    signingCertificate: signing_ctx[:identity],
+    stripSwiftSymbols: true,
+    uploadBitcode: false,
+    uploadSymbols: true,
+    compileBitcode: false
+  }
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Shared Lanes
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Sync certs + profiles (appstore)
+lane :sync_dist_certs do
+  app_id = ENV["APP_IDENTIFIER"] || CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
+  match_with_clone_retry({
+    type: "appstore",
+    app_identifier: [app_id],
+    readonly: is_ci
+  })
+end
+
+# Sync certs + profiles (development)
+lane :sync_dev_certs do
+  app_id = ENV["APP_IDENTIFIER"] || CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
+  match_with_clone_retry({
+    type: "development",
+    app_identifier: [app_id],
+    readonly: is_ci
+  })
+end
+
+# Run tests
+lane :test do
+  run_tests(
+    scheme: ENV["SCHEME"] || CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier),
+    project: ENV["PROJECT"] || Dir.glob("*.xcodeproj").first,
+    devices: ["iPhone 16 Pro"],
+    clean: true,
+    fail_build: true
+  )
+end
+
+# Generate release notes from git
+lane :generate_release_notes do
+  notes_path = File.join(resolve_metadata_path, "en-US", "release_notes.txt")
+  if File.exist?(notes_path)
+    UI.message("📝 Release notes loaded from #{notes_path}")
+  else
+    system("git log --oneline -10 > #{notes_path} 2>/dev/null || true")
+  end
+end
+
+# Validate app metadata and screenshots locally
+lane :validate_app_local do
+  UI.message("🔍 Running basic app validation checks...")
+  project_root = resolve_app_root
+  Dir.chdir(project_root) do
+    metadata_path = './fastlane/metadata'
+    if Dir.exist?(metadata_path)
+      metadata_files = Dir.glob("#{metadata_path}/**/*").select { |f| File.file?(f) }
+      if metadata_files.any?
+        UI.success("✅ Metadata directory exists with #{metadata_files.count} files")
+      else
+        UI.error("❌ Metadata directory exists but is empty")
+      end
+    else
+      UI.error("❌ Metadata directory missing")
+    end
+
+    screenshots_path = './fastlane/screenshots'
+    if Dir.exist?(screenshots_path)
+      screenshot_files = Dir.glob("#{screenshots_path}/**/*").select { |f| File.file?(f) }
+      if screenshot_files.any?
+        UI.success("✅ Screenshots directory exists with #{screenshot_files.count} files")
+      else
+        UI.error("❌ Screenshots directory exists but is empty")
+      end
+    else
+      UI.error("❌ Screenshots directory missing")
+    end
+  end
+end
+
+# Create app icons from source image
+lane :create_icons do
+  appicon(
+    appicon_image_file: './assets/icon.png',
+    appicon_devices: [:iphone, :ipad, :ios_marketing],
+    appicon_path: './ios/Images.xcassets/AppIcon.appiconset'
+  )
+end

@@ -1,0 +1,84 @@
+# vision-perception Shared Fastlane Config Template
+# Copy to each app's fastlane/config.yml and customize
+
+# ─────────────────────────────────────────────────────────────────────────────
+# App Identity
+# ─────────────────────────────────────────────────────────────────────────────
+app_identifier: "org.curv.palmapp"              # Change per app
+apple_id: "binodprasadghimire@yahoo.com"
+team_id: "6J3WY94J6T"
+team_name: "Binod Ghimire (Individual)"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# iOS Project Structure
+# ─────────────────────────────────────────────────────────────────────────────
+project: "PalmScanner.xcodeproj"
+scheme: "PalmScanner"
+workspace: ""  # Optional: auto-detected from .xcworkspace
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Match / Certificates
+# ─────────────────────────────────────────────────────────────────────────────
+match_git_url: "git@github.com:curv/fastlane-certs.git"
+match_git_branch: "main"
+match_storage_mode: "git"  # git, google_cloud, or s3
+match_readonly_ci: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# App Store Connect
+# ─────────────────────────────────────────────────────────────────────────────
+# Set via environment variables in CI:
+#   ASC_KEY_ID
+#   ASC_ISSUER_ID
+#   ASC_API_KEY_PATH (or ASC_KEY_CONTENT base64)
+#   ASC_API_KEY_PATH_LOCAL (for local dev)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Build Settings
+# ─────────────────────────────────────────────────────────────────────────────
+build_clean: true
+incremental_build: true  # AF_XCODE_INCREMENTAL=1 in CI
+export_method: "app-store"
+include_bitcode: false
+include_symbols: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TestFlight
+# ─────────────────────────────────────────────────────────────────────────────
+testflight_groups:
+  - "Internal Testers"
+testflight_distribute_external: false
+testflight_notify_external: false
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Deliver / Metadata
+# ─────────────────────────────────────────────────────────────────────────────
+metadata_path: "./fastlane/metadata"
+screenshots_path: "./fastlane/screenshots"
+submit_for_review: false
+automatic_release: false
+force: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Screenshots (snapshot)
+# ─────────────────────────────────────────────────────────────────────────────
+snapshot_devices:
+  - "iPhone 16 Pro Max"
+  - "iPhone 16 Pro"
+  - "iPhone 15"
+snapshot_languages:
+  - "en-US"
+snapshot_scheme: "PalmScanner"
+snapshot_clear_previous: true
+snapshot_reinstall_app: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Slack / Notifications
+# ─────────────────────────────────────────────────────────────────────────────
+slack_webhook_url: ""  # Set via SLACK_WEBHOOK_URL env var
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Android (if applicable)
+# ─────────────────────────────────────────────────────────────────────────────
+android_package: "org.curv.palmapp"
+play_store_key: "fastlane/play-store-key.json"

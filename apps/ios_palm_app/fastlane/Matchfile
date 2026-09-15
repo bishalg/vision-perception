@@ -1,11 +1,17 @@
-# Fastlane Matchfile for PalmScanner iOS App
-# Reference: https://docs.fastlane.tools/actions/match/
+# Matchfile for PalmReader iOS App
+# Manages provisioning profiles and certificates centrally.
 
-git_url(ENV["MATCH_GIT_URL"] || "")
-storage_mode(ENV["MATCH_STORAGE_MODE"] || "git") # 'git', 'google_cloud', or 's3'
-type("development")
+git_url(ENV.fetch("MATCH_GIT_URL", "git@github.com:astro-fusion/fastlane-certs.git"))
+git_branch(ENV.fetch("MATCH_GIT_BRANCH", "main"))
+storage_mode(ENV.fetch("MATCH_STORAGE_MODE", "git"))
 
-app_identifier(["org.curv.palmapp"])
-username(ENV["APPLE_ID"] || "")
-team_id(ENV["APPLE_TEAM_ID"] || "6J3WY94J6T")
-clone_branch_headless(true)
+type("appstore")
+
+app_identifier([
+  "org.curv.palmapp"
+])
+team_id(ENV.fetch("APPLE_TEAM_ID", "6J3WY94J6T"))
+
+# Set to true in CI to never modify the certs repo
+readonly(ENV.fetch("MATCH_READONLY", "false") == "true")
+clone_branch_directly(false)

@@ -1,0 +1,20 @@
+Dear App Review Team,
+
+Thank you for reviewing PalmReader. Below is a guide on how to test the application:
+
+1. HARDWARE & PERMISSIONS:
+- The app requires standard camera access to detect the user's palm in real time.
+- All optical processing and computer vision occur 100% on the device. No camera frames, videos, or photos are ever saved to the device's storage or sent over the network (Guideline 5.1.1 & 5.1.2 compliant).
+
+2. HOW TO TEST:
+- Launch the application and accept the Camera permission dialog.
+- Hold an open hand facing the camera within the visual guide frame shown on screen.
+- When the hand is detected and steady, the green alignment guide will illuminate and automatically capture the palm contours.
+- Tap "Analyze Creases" to see the extracted Heart, Head, Life, and Fate lines rendered with smooth interactive splines.
+- Touch any point on the lines to open the interactive magnifying loupe editor.
+- Tap "Samudrika Insights" to view the authentic Vedic hand analysis, finger ratios, and planetary mount interpretations.
+
+3. CONTACT:
+If you experience any issues during review, please contact Bishal Ghimire at bishal.ghimire@gmail.com or +977-9802030896.
+
+Thank you!

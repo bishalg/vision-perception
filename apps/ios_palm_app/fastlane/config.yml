@@ -1,0 +1,56 @@
+# Fastlane Configuration for PalmReader iOS App
+# Standard metadata, contact, and submission settings
+
+# App Store Connect Configuration
+app_identifier: 'org.curv.palmapp'
+apple_id: 'binodprasadghimire@yahoo.com'
+team_id: '6J3WY94J6T'
+team_name: 'Binod Ghimire (Individual)'
+
+# Build Configuration
+version: '1.0.0'
+project: 'PalmScanner.xcodeproj'
+scheme: 'PalmScanner'
+export_method: 'app-store'
+
+# TestFlight Configuration
+beta_app_description: 'PalmReader - Real-time AI Palm Scanning & Vedic Samudrika Shastra'
+beta_app_feedback_email: 'support@astro-fusion.com'
+
+# App Store Categories
+primary_category: 'Lifestyle'
+secondary_category: 'Entertainment'
+
+# App Review Information
+app_review_contact:
+  first_name: 'Bishal'
+  last_name: 'Ghimire'
+  phone_number: '+977-9802030896'
+  email_address: 'bishal.ghimire@gmail.com'
+
+# Test / Review Account
+demo_account:
+  username: 'reviewer@curv.org'
+  password: 'ReviewerPass2026!'
+
+# URLs
+marketing_url: 'https://astro-fusion.com'
+support_url: 'https://astro-fusion.com/support'
+privacy_policy_url: 'https://astro-fusion.com/privacy'
+
+# App Information
+copyright: '© 2026 Binod Ghimire. All rights reserved.'
+
+# Screenshots Configuration
+screenshots_devices:
+  - 'iPhone 16 Pro Max'
+  - 'iPhone 16 Pro'
+  - 'iPhone 8 Plus'
+screenshots_languages:
+  - 'en-US'
+  - 'hi'
+  - 'ne-NP'
+
+# Version Strategy
+version_strategy: 'manual'
+build_number_strategy: 'increment'
