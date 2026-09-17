@@ -44,7 +44,22 @@ public struct SamudrikaReadingSheet: View {
     public var body: some View {
         NavigationStack {
             List {
-                if let summary = SimplePalmReading.scanSummary(from: .from(payload: result?.domainPayload)) {
+                Section {
+                    PalmReadingSafetyNotice(selectedLanguage: selectedLanguage)
+                }
+                if splines.isEmpty {
+                    Section {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label(LocalizedStrings.tr("sheet.emptyTitle", lang: selectedLanguage), systemImage: "hand.raised")
+                                .font(.headline)
+                            Text(LocalizedStrings.tr("sheet.emptyBody", lang: selectedLanguage))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+                #if DEBUG
+                if !splines.isEmpty, let summary = SimplePalmReading.scanSummary(from: .from(payload: result?.domainPayload)) {
                     Section {
                         Text(summary)
                             .font(.subheadline)
@@ -53,6 +68,7 @@ public struct SamudrikaReadingSheet: View {
                         Text("3D Scan Summary")
                     }
                 }
+                #endif
                 ForEach(splines) { spline in
                     Section {
                         VStack(alignment: .leading, spacing: 8) {
@@ -145,5 +161,26 @@ public struct SamudrikaReadingSheet: View {
             }
         }
         .tint(Color(hex: "34C759"))
+    }
+}
+
+/// Shared, visible before capture and before any interpretive reading.
+struct PalmReadingSafetyNotice: View {
+    let selectedLanguage: AppLanguage
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label(LocalizedStrings.tr("safety.title", lang: selectedLanguage), systemImage: "info.circle")
+                .font(.subheadline.weight(.semibold))
+            Text(LocalizedStrings.tr("safety.disclaimer", lang: selectedLanguage))
+                .font(.subheadline)
+                .fixedSize(horizontal: false, vertical: true)
+            if let url = URL(string: "https://astro-fusion.com/privacy") {
+                Link(LocalizedStrings.tr("safety.privacy", lang: selectedLanguage), destination: url)
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.vertical, 6)
+            }
+        }
+        .foregroundStyle(.primary)
     }
 }

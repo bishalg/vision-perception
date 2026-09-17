@@ -1,1 +1,1 @@
-Initial release of PalmReader featuring real-time AI palm detection, crease line tracing, and authentic Vedic Samudrika Shastra hand analysis.
+Improved App Store readiness: clearer cultural/entertainment framing, an in-app non-medical disclaimer with a privacy link, and an empty-state message when no palm lines are available.

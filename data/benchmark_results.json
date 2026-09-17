@@ -3,14 +3,14 @@
   "arch": "arm64",
   "opencv_variant": "Apple-Accelerate-OpenCV",
   "runs": 2,
-  "latency_mean_ms": 204.59,
-  "latency_p50_ms": 206.09,
-  "latency_p90_ms": 206.09,
-  "latency_p95_ms": 206.09,
-  "latency_min_ms": 203.09,
-  "latency_max_ms": 206.09,
-  "cost_per_image_usd": 1.855e-05,
-  "throughput_images_per_dollar": 53909.6,
+  "latency_mean_ms": 207.1,
+  "latency_p50_ms": 209.25,
+  "latency_p90_ms": 209.25,
+  "latency_p95_ms": 209.25,
+  "latency_min_ms": 204.94,
+  "latency_max_ms": 209.25,
+  "cost_per_image_usd": 1.878e-05,
+  "throughput_images_per_dollar": 53257.1,
   "hourly_instance_price_usd": 0.3264,
-  "timestamp": "2026-09-15T11:10:49.881030+00:00"
+  "timestamp": "2026-09-15T11:26:34.551378+00:00"
 }

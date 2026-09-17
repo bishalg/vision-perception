@@ -56,6 +56,16 @@ targets:
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: 6J3WY94J6T
         IPHONEOS_DEPLOYMENT_TARGET: "16.3"
+    preBuildScripts:
+      - name: RequireNativeEngine
+        basedOnDependencyAnalysis: false
+        script: |
+          for framework in CurvEngine opencv2; do
+            if [ ! -d "${SRCROOT}/../../build/${framework}.xcframework" ]; then
+              echo "error: Missing ${framework}.xcframework. Build the native iOS dependencies before building PalmScanner."
+              exit 1
+            fi
+          done
     dependencies:
       - package: CurvCameraOverlayKit
         product: CurvCameraOverlay
@@ -63,6 +73,8 @@ targets:
         product: CurvPalmOverlay
       - package: CurvApple
         product: CurvApple
+      - target: OpenCVPrivacy
+        embed: true
     # opencv2.xcframework is a static framework (ar archive). Xcode 16+ validates
     # frameworks in App/Frameworks/ and rejects static ones with "missing or
     # invalid CFBundleExecutable". It is already linked statically via
@@ -85,6 +97,8 @@ targets:
       path: AppHost/Info.plist
       properties:
         CFBundleDisplayName: Palm Reader
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         UILaunchScreen:
           UIColorName: LaunchBackground
           UIImageName: LaunchLogo
@@ -92,6 +106,42 @@ targets:
         NSCameraUsageDescription: Camera access is required to capture your palm for real-time guidance and crease analysis.
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+  OpenCVPrivacy:
+    type: bundle
+    platform: iOS
+    sources:
+      - path: ../../third_party/ios/opencv-src-4.11.0/platforms/ios/PrivacyInfo.xcprivacy
+        buildPhase: resources
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: org.opencv.privacy
+        SKIP_INSTALL: YES
+  PalmScannerTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: PalmScanner
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: org.curv.palmapp.tests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/PalmScanner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PalmScanner"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+  PalmScannerUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: PalmScannerUITests
+    dependencies:
+      - target: PalmScanner
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: org.curv.palmapp.uitests
+        TEST_TARGET_NAME: PalmScanner
 schemes:
   PalmScanner:
     build:
@@ -100,3 +150,9 @@ schemes:
     run:
       config: Debug
       askForAppToLaunch: false
+    test:
+      config: Debug
+      gatherCoverageData: true
+      targets:
+        - PalmScannerTests
+        - PalmScannerUITests

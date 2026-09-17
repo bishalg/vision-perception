@@ -119,10 +119,13 @@ public struct MainScannerView: View {
                 // reticle's top edge: inside the reticle it would be visible but
                 // untappable because the HUD reticle subtree is allowsHitTesting(false).
                 VStack(spacing: 8) {
+                    #if DEBUG
+                    // Advanced capture protocols are not yet release-validated.
                     CameraModeSelectorView(
                         selectedMode: viewModel.scanMode,
                         onSelect: { viewModel.setScanMode($0) }
                     )
+                    #endif
                     // Orbit direction chip: the center arrow sits behind the
                     // user's hand, so the "which way" cue lives here at top.
                     if viewModel.scanMode == .orbitScan && !viewModel.showResultViewer {
@@ -245,6 +248,15 @@ public struct MainScannerView: View {
             // all chrome around it follows the system theme on launch.
         }
         .ignoresSafeArea()
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if !viewModel.showResultViewer {
+                PalmReadingSafetyNotice(selectedLanguage: viewModel.currentLanguage)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.regularMaterial)
+            }
+        }
         .animation(.easeInOut(duration: 0.22), value: viewModel.showResultViewer)
         .onChange(of: viewModel.captureTick) { _ in animateNewCapture() }
         // Phase 3: Dedicated Samudrika Reading Sheet (native sheet chrome)

@@ -1,34 +1,15 @@
 #!/usr/bin/env bash
-# =============================================================================
-# App Store Readiness Validation Script for Vision-Perception Apps:
-# 1. PalmReader (apps/ios_palm_app)
-# 2. EarlyGaze (apps/ios_asd_gaze_app)
-# =============================================================================
-
-set -e
+# Local metadata checks only; this is not an App Store submission certification.
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
-echo "================================================================="
-echo "  Validating App Store Fastlane & Metadata Readiness"
-echo "================================================================="
-echo ""
+for app in ios_palm_app ios_asd_gaze_app; do
+    printf '\nValidating local metadata: %s\n' "$app"
+    (cd "$ROOT_DIR/apps/$app/fastlane" && fastlane ios validate_metadata)
+    printf 'Local metadata validation passed: %s\n' "$app"
+done
 
-# 1. PalmReader
-echo ">>> [1/2] Validating PalmReader (apps/ios_palm_app)..."
-cd "$ROOT_DIR/apps/ios_palm_app/fastlane"
-fastlane ios validate_metadata
-echo "✅ PalmReader is fully App Store ready!"
-echo ""
-
-# 2. EarlyGaze / ASD Gaze Collector
-echo ">>> [2/2] Validating ASD Gaze Collector (apps/ios_asd_gaze_app)..."
-cd "$ROOT_DIR/apps/ios_asd_gaze_app/fastlane"
-fastlane ios validate_metadata
-echo "✅ ASD Gaze Collector is fully App Store ready!"
-echo ""
-
-echo "================================================================="
-echo "  🎉 All Vision-Perception iOS apps passed App Store validation!"
-echo "================================================================="
+printf '\nMetadata checks passed only. Not checked: builds/signing, privacy declarations,\n'
+printf 'real screenshots, device QA, TestFlight, agreements, or Apple review status.\n'

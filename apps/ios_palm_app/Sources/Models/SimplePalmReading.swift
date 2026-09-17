@@ -103,9 +103,14 @@ public struct SimplePalmReading {
         default:
             sideCue = ""
         }
+        #if DEBUG
         let measured = measuredClause(for: spline, reports: reports)
         let enrichment = enrichmentClause(for: spline, reports: reports)
         return base + sideCue + measured + enrichment
+        #else
+        // Uncalibrated engine thresholds and advanced scan reports are debug-only.
+        return base + sideCue
+        #endif
     }
 
     /// Single-line without side.
@@ -132,7 +137,6 @@ public struct SimplePalmReading {
             default: break
             }
             if rep.broken == true { bits.append("interrupted (\(rep.gapCount ?? 1) gaps)") }
-            if let age = rep.ageAtEnd, age > 0 { bits.append("extends to ~\(Int(age))") }
             if rep.stopsAtHeart == true { bits.append("ends at heart line") }
             if rep.stopsAtHead == true { bits.append("ends at head line") }
             if rep.badSaturnMount == true { bits.append("Saturn mount afflicted") }
@@ -147,9 +151,6 @@ public struct SimplePalmReading {
             if rep.simianMerge == true || rep.mergedHeart == true { bits.append("fused with head/heart (Simian crease)") }
             if rep.joinedLifeOrigin == true { bits.append("shares origin with life") }
             if rep.terminatesFate == true { bits.append("terminates fate line") }
-            if spline.lineType == .life, let age = rep.ageAtEnd, age > 0 {
-                bits.append("arc reaches ~\(Int(age))")
-            }
         }
         guard !bits.isEmpty else { return "" }
         return " Measured: " + bits.joined(separator: "; ") + " (development thresholds)."
@@ -267,14 +268,14 @@ public struct SimplePalmReading {
             let lenHint = len < 95 ? "concise, to-the-point focus" : len > 170 ? "extended analytical reach" : "even, sustained focus"
             return "Head Line — \(curveNote), \(focus); \(lengthNote) (\(lenHint)), \(clarity)."
         case .life:
-            let vigor: String = {
-                if tort > 1.32 { return "adaptive, draws around obstacles" }
-                if tort > 1.18 { return "gentle arc — resilient" }
-                return "steady stamina and vigor"
+            let arcNote: String = {
+                if tort > 1.32 { return "strongly curved arc" }
+                if tort > 1.18 { return "gentle arc" }
+                return "steady, even arc"
             }()
-            let lenHint = len < 110 ? "shorter arc — conserve energy, pace well" : len > 200 ? "long arc — strong vitality, wide circle" : "medium arc — even vitality"
-            let confHint = conf < 0.5 ? "lighter — nurture routines" : "well-marked"
-            return "Life Line — \(vigor); \(lengthNote) (\(lenHint)), \(clarity) (\(confHint))."
+            let lenHint = len < 110 ? "shorter arc" : len > 200 ? "long arc, wide sweep" : "medium arc"
+            let confHint = conf < 0.5 ? "lightly marked" : "well-marked"
+            return "Life Line — \(arcNote); \(lengthNote) (\(lenHint)), \(clarity) (\(confHint))."
         case .fate:
             let presence: String = {
                 if conf < 0.38 { return "faint / intermittent — path shaped more by choice than circumstance" }

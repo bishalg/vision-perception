@@ -1,35 +1,21 @@
-Discover the ancient wisdom of your hands through modern computer vision. PalmReader combines cutting-edge real-time optical palm scanning with the timeless principles of Vedic Samudrika Shastra to deliver deep, personalized insights into your life journey, personality, and natural talents.
+Explore palm lines through modern computer vision and the cultural traditions of Samudrika Shastra. PalmReader combines guided photo capture, editable line overlays, and simple rule-based interpretations for entertainment and personal reflection.
 
 KEY FEATURES:
 
-• Real-Time Optical Palm Scanner
-Align your hand within our intuitive augmented guide. Advanced on-device edge detection and landmark tracking ensure crisp, glare-free, and distortion-free capture every time.
+• Guided Palm Capture
+Use the live hand guide and feedback on positioning, lighting, and steadiness to help capture your palm. Capture quality varies with your camera and surroundings.
 
-• Intelligent Crease Line Extraction
-Our specialized computer vision engine traces your primary palm lines with remarkable accuracy:
-- The Heart Line (Emotional life, relationships, empathy)
-- The Head Line (Intellect, focus, decision-making style)
-- The Life Line (Vitality, resilience, major life transitions)
-- The Fate Line (Career path, external influences, vocation)
+• Palm Line Overlays
+Review suggested Heart, Head, Life, and Fate lines on your photo. Detection can be uncertain; review and adjust the lines before continuing.
 
 • Interactive Line Editor with Magnifying Loupe
-Fine-tune and verify detected crease splines with pixel-level precision. Our custom magnifying loupe allows you to inspect intricate branches, forks, and islands on your palm.
+Move points, redraw curves, and change line labels. Zoom and use the magnifying loupe to inspect visible creases.
 
-• Authentic Vedic Samudrika Shastra
-Receive comprehensive readings grounded in classical Vedic tradition. Understand your planetary mounts:
-- Jupiter Mount (Ambition, leadership, ethics)
-- Saturn Mount (Discipline, wisdom, perseverance)
-- Sun Mount (Creativity, confidence, reputation)
-- Mercury Mount (Communication, commerce, adaptability)
-- Venus Mount (Sensibility, love, vitality)
-- Moon Mount (Intuition, imagination, travels)
-- Mars Mount (Courage, endurance, initiative)
+• Cultural Palm Readings
+Read simple local interpretations based on the shape, length, and clarity of the lines you review. These are cultural interpretations, not scientifically validated assessments of personality or predictions of future events. Life-line length does not indicate lifespan or health.
 
-• Biometric Hand Anthropometry
-Analyze finger-to-palm proportions, digit length ratios (including the 2D:4D ratio), mount elevations, and hand typology (Earth, Air, Fire, Water hands).
-
-• Privacy First by Design
-Your privacy is our utmost priority. All hand scans, biometric measurements, and image processing happen entirely on your device in volatile memory. No photographs or palm videos are ever saved to camera roll or uploaded to external servers.
+• Privacy Policy
+Review how your information is handled: https://astro-fusion.com/privacy
 
 DISCLAIMER:
-PalmReader is intended for personal self-reflection, educational, and entertainment purposes based on historical Samudrika Shastra traditions. It is not intended as medical, financial, or legal advice.
+PalmReader is for entertainment, cultural exploration, and personal reflection. It cannot determine health, lifespan, or future events and does not provide medical, financial, or legal advice. Do not use readings to make health or other important life decisions.

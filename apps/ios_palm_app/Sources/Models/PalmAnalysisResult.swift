@@ -250,9 +250,8 @@ public struct PalmAnalysisResponse: Codable {
         do {
             return try JSONDecoder().decode(PalmAnalysisResponse.self, from: data)
         } catch {
-            // Keep a short prefix so Console shows which field failed without dumping MBs.
-            let prefix = String(jsonString.prefix(280))
-            print("[PalmAnalysisResponse] JSON decode failed: \(error). prefix=\(prefix)")
+            // Decode failure detail without echoing palm analysis JSON into logs.
+            print("[PalmAnalysisResponse] JSON decode failed: \(error)")
             return nil
         }
     }
