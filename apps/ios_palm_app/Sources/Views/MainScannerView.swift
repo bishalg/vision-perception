@@ -130,7 +130,7 @@ public struct MainScannerView: View {
                     .zIndex(2)
                 }
 
-                // MARK: Mode selector capsule + mode coaching chips
+                // MARK: Top HUD Controls (cleanly below top notch & safe area)
                 VStack(spacing: 8) {
                     HStack(spacing: 8) {
                         CameraModeSelectorView(
@@ -155,6 +155,22 @@ public struct MainScannerView: View {
                             .buttonStyle(.plain)
                             .accessibilityLabel("Show Safety Notice")
                         }
+                    }
+
+                    // Floating dismissible privacy & safety banner (placed right below mode selector)
+                    if showSafetyNotice && !viewModel.showResultViewer {
+                        DismissibleSafetyNoticeBanner(
+                            selectedLanguage: viewModel.currentLanguage,
+                            onDismiss: {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                    showSafetyNotice = false
+                                }
+                            }
+                        )
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .top).combined(with: .opacity),
+                            removal: .move(edge: .top).combined(with: .opacity)
+                        ))
                     }
 
                     if !viewModel.showResultViewer {
@@ -184,8 +200,8 @@ public struct MainScannerView: View {
 
                     Spacer()
                 }
-                .padding(.top, max(geometry.safeAreaInsets.top, 8))
-                .zIndex(2)
+                .padding(.top, max(geometry.safeAreaInsets.top, 44) + 6)
+                .zIndex(3)
 
                 // MARK: Live landmark overlays
                 if !viewModel.detectedLandmarks.isEmpty && !viewModel.showResultViewer {
@@ -349,26 +365,6 @@ public struct MainScannerView: View {
                     )
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .zIndex(3)
-                }
-                // MARK: Floating dismissible privacy & safety banner
-                if showSafetyNotice && !viewModel.showResultViewer {
-                    VStack {
-                        DismissibleSafetyNoticeBanner(
-                            selectedLanguage: viewModel.currentLanguage,
-                            onDismiss: {
-                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                    showSafetyNotice = false
-                                }
-                            }
-                        )
-                        .padding(.top, max(geometry.safeAreaInsets.top, 10))
-                        Spacer()
-                    }
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .top).combined(with: .opacity),
-                        removal: .move(edge: .top).combined(with: .opacity)
-                    ))
-                    .zIndex(5)
                 }
             }
         }
