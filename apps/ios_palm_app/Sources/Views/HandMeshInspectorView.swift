@@ -23,7 +23,7 @@ public struct HandMeshInspectorView: View {
     @State private var showWireframe: Bool = false
     @State private var showCalipers: Bool = true
     @State private var showMountPins: Bool = true
-    @State private var elevationScale: Float = 1.8
+    @State private var elevationScale: Float = 1.2
     @State private var sceneId: UUID = UUID()
 
     public init(
@@ -110,10 +110,10 @@ public struct HandMeshInspectorView: View {
 
             // Relief exaggeration cycler
             Button {
-                if elevationScale < 1.4 {
+                if elevationScale < 1.3 {
+                    elevationScale = 1.4
+                } else if elevationScale < 1.7 {
                     elevationScale = 1.8
-                } else if elevationScale < 2.2 {
-                    elevationScale = 2.8
                 } else {
                     elevationScale = 1.0
                 }
@@ -259,19 +259,24 @@ public struct HandMeshInspectorView: View {
         let handNode = SCNNode()
 
         // 1. Generate 3D Vertices from normalized 2D landmarks + depth
-        let (vertices, colors, indices, landmark3DPositions) = buildMeshGeometry()
+        let meshResult = HandMeshGeometryBuilder.buildMeshGeometry(
+            landmarks: landmarks,
+            padDepths: padDepths,
+            referencePalmWidthMm: referencePalmWidthMm,
+            elevationScale: elevationScale
+        )
 
         let vertexSource = SCNGeometrySource(
-            vertices: vertices.map { SCNVector3($0.x, $0.y, $0.z) }
+            vertices: meshResult.vertices.map { SCNVector3($0.x, $0.y, $0.z) }
         )
         let normalSource = SCNGeometrySource(
-            normals: computeNormals(vertices: vertices, indices: indices)
+            normals: HandMeshGeometryBuilder.computeNormals(vertices: meshResult.vertices, indices: meshResult.indices)
         )
-        let colorData = Data(bytes: colors, count: colors.count * MemoryLayout<Float>.size)
+        let colorData = Data(bytes: meshResult.colors, count: meshResult.colors.count * MemoryLayout<Float>.size)
         let colorSource = SCNGeometrySource(
             data: colorData,
             semantic: .color,
-            vectorCount: colors.count / 4,
+            vectorCount: meshResult.colors.count / 4,
             usesFloatComponents: true,
             componentsPerVector: 4,
             bytesPerComponent: MemoryLayout<Float>.size,
@@ -280,304 +285,139 @@ public struct HandMeshInspectorView: View {
         )
 
         let element = SCNGeometryElement(
-            indices: indices,
+            indices: meshResult.indices,
             primitiveType: .triangles
         )
 
         let geometry = SCNGeometry(sources: [vertexSource, normalSource, colorSource], elements: [element])
         let material = SCNMaterial()
         material.isDoubleSided = true
-        material.lightingModel = .lambert
+        // Phong shading gives the surface a natural depth and highlights that read as 3D skin
+        material.lightingModel = showWireframe ? .constant : .phong
         material.fillMode = showWireframe ? .lines : .fill
         material.diffuse.contents = UIColor.white
+        // Soft specular gives a subtle skin-like sheen over the elevation heatmap
+        material.specular.contents = UIColor(white: 0.28, alpha: 1.0)
+        material.shininess = 18
         geometry.materials = [material]
 
         let meshNode = SCNNode(geometry: geometry)
         handNode.addChildNode(meshNode)
 
-        // 2. Skeletal joint nodes & connecting caliper bones
-        if showCalipers && landmark3DPositions.count >= 21 {
-            let caliperNode = makeCaliperHierarchy(landmarks: landmark3DPositions)
+        // 2. Scan-point landmark dots: emissive glow on each of the 21 tracked points
+        //    These make it unmistakably feel like a structured-light scanner result.
+        let scanPointNode = makeScanPointCloud(landmarks: meshResult.landmark3DPositions)
+        handNode.addChildNode(scanPointNode)
+
+        // 3. Skeletal joint nodes & connecting caliper bones
+        if showCalipers && meshResult.landmark3DPositions.count >= 21 {
+            let caliperNode = makeCaliperHierarchy(landmarks: meshResult.landmark3DPositions)
             handNode.addChildNode(caliperNode)
         }
 
-        // 3. 3D Mount Elevation Pins
-        if showMountPins && landmark3DPositions.count >= 21 {
-            let pinsNode = makeMountPinsHierarchy(landmarks: landmark3DPositions)
+        // 4. 3D Mount Elevation Pins
+        if showMountPins && meshResult.landmark3DPositions.count >= 21 {
+            let pinsNode = makeMountPinsHierarchy(landmarks: meshResult.landmark3DPositions)
             handNode.addChildNode(pinsNode)
         }
 
         scene.rootNode.addChildNode(handNode)
 
-        // Camera: zNear must be tiny (0.001m) to prevent clipping at close distance!
+        // Camera: closer FOV (42°) fills the screen with the hand, feels like a real scan viewer
         let cameraNode = SCNNode()
         cameraNode.name = "primaryCamera"
         let camera = SCNCamera()
         camera.zNear = 0.001
-        camera.zFar = 10.0
+        camera.zFar = 5.0
         camera.automaticallyAdjustsZRange = true
-        camera.fieldOfView = 50.0
+        camera.fieldOfView = 42.0  // tighter: hand fills more of the frame
         cameraNode.camera = camera
-        cameraNode.position = SCNVector3(0, -0.012, 0.28)
-        cameraNode.look(at: SCNVector3(0, -0.012, 0))
+        cameraNode.position = SCNVector3(0, 0.015, 0.22)
+        cameraNode.look(at: SCNVector3(0, 0.015, 0))
         scene.rootNode.addChildNode(cameraNode)
 
-        // Ambient & Directional Lighting
+        // Ambient: keep dark so specular lights pop against the elevation heatmap
         let ambient = SCNLight()
         ambient.type = .ambient
-        ambient.color = UIColor(white: 0.65, alpha: 1.0)
+        ambient.color = UIColor(white: 0.45, alpha: 1.0)
         let ambientNode = SCNNode()
         ambientNode.light = ambient
         scene.rootNode.addChildNode(ambientNode)
 
-        // Key light (upper-right front)
+        // Key light: upper-right front — main shape definition
         let keyLight = SCNLight()
         keyLight.type = .directional
-        keyLight.color = UIColor(white: 0.85, alpha: 1.0)
+        keyLight.color = UIColor(white: 0.90, alpha: 1.0)
         let keyLightNode = SCNNode()
         keyLightNode.light = keyLight
-        keyLightNode.position = SCNVector3(0.15, 0.25, 0.35)
+        keyLightNode.position = SCNVector3(0.12, 0.22, 0.30)
         keyLightNode.look(at: SCNVector3(0, 0, 0))
         scene.rootNode.addChildNode(keyLightNode)
 
-        // Fill light (lower-left front)
+        // Fill light: lower-left front — softens shadows on the palm side
         let fillLight = SCNLight()
         fillLight.type = .directional
-        fillLight.color = UIColor(white: 0.45, alpha: 1.0)
+        fillLight.color = UIColor(white: 0.40, alpha: 1.0)
         let fillLightNode = SCNNode()
         fillLightNode.light = fillLight
-        fillLightNode.position = SCNVector3(-0.15, -0.15, 0.25)
+        fillLightNode.position = SCNVector3(-0.12, -0.10, 0.22)
         fillLightNode.look(at: SCNVector3(0, 0, 0))
         scene.rootNode.addChildNode(fillLightNode)
+
+        // Rim light: behind + right — creates edge separation from background, depth illusion
+        let rimLight = SCNLight()
+        rimLight.type = .directional
+        rimLight.color = UIColor(red: 0.2, green: 0.85, blue: 0.75, alpha: 0.55)
+        let rimLightNode = SCNNode()
+        rimLightNode.light = rimLight
+        rimLightNode.position = SCNVector3(0.20, 0.10, -0.30)
+        rimLightNode.look(at: SCNVector3(0, 0, 0))
+        scene.rootNode.addChildNode(rimLightNode)
 
         return scene
     }
 
-    // MARK: - Mesh Geometry Builder
+    // MARK: - Scan-Point Cloud Overlay
 
-    private struct Vertex3D {
-        var x: Float
-        var y: Float
-        var z: Float
-    }
+    /// Creates emissive glow spheres on all 21 MediaPipe landmarks.
+    /// Wrist = amber anchor, MCPs = cyan, fingertips = bright green, PIP/DIP = small white.
+    private func makeScanPointCloud(landmarks: [SCNVector3]) -> SCNNode {
+        let root = SCNNode()
+        guard landmarks.count >= 21 else { return root }
 
-    private func buildMeshGeometry() -> (
-        vertices: [Vertex3D],
-        colors: [Float],
-        indices: [Int32],
-        landmarkPositions: [SCNVector3]
-    ) {
-        var vertices: [Vertex3D] = []
-        var colors: [Float] = []
-        var landmark3D: [SCNVector3] = []
+        let mcpSet: Set<Int> = [1, 5, 9, 13, 17]
+        let tipSet: Set<Int> = [4, 8, 12, 16, 20]
 
-        // Human hand span metric scale (~0.18m wrist to middle fingertip)
-        let scale: Float = 0.18
-
-        // Compute centroid of the 21 landmarks
-        var cx: Float = 0
-        var cy: Float = 0
-        for pt in landmarks.prefix(21) {
-            cx += Float(pt.x)
-            cy += Float(pt.y)
-        }
-        cx /= 21.0
-        cy /= 21.0
-
-        for (idx, pt) in landmarks.prefix(21).enumerated() {
-            let x = (Float(pt.x) - cx) * scale
-            let y = -(Float(pt.y) - cy) * scale // flip upright
-
-            // Z elevation: compute based on pad depths
-            var zMm: Float = 0.0
-            if idx == 1 || idx == 2 {
-                zMm = padDepths["thenar"] ?? padDepths["venus"] ?? 2.5
-            } else if idx == 5 || idx == 6 {
-                zMm = padDepths["radial_interdigital"] ?? padDepths["jupiter"] ?? 1.8
-            } else if idx == 9 || idx == 10 {
-                zMm = padDepths["central_interdigital"] ?? padDepths["saturn"] ?? 1.5
-            } else if idx == 13 || idx == 14 {
-                zMm = padDepths["ring_interdigital"] ?? padDepths["apollo"] ?? 1.6
-            } else if idx == 17 || idx == 18 {
-                zMm = padDepths["ulnar_interdigital"] ?? padDepths["mercury"] ?? 1.2
-            } else if idx == 0 {
-                zMm = -0.5
+        for (idx, pos) in landmarks.prefix(21).enumerated() {
+            let (dotRadius, dotColor): (CGFloat, UIColor)
+            if idx == 0 {
+                dotRadius = 0.0026
+                dotColor = UIColor(red: 1.0, green: 0.60, blue: 0.0, alpha: 1.0)
+            } else if mcpSet.contains(idx) {
+                dotRadius = 0.0020
+                dotColor = UIColor(red: 0.15, green: 0.88, blue: 0.82, alpha: 1.0)
+            } else if tipSet.contains(idx) {
+                dotRadius = 0.0018
+                dotColor = UIColor(red: 0.30, green: 0.98, blue: 0.55, alpha: 1.0)
             } else {
-                zMm = 0.4
+                dotRadius = 0.0012
+                dotColor = UIColor(white: 0.95, alpha: 0.85)
             }
 
-            let z = (zMm * 0.001) * elevationScale
-            vertices.append(Vertex3D(x: x, y: y, z: z))
-            landmark3D.append(SCNVector3(x, y, z))
+            let sphere = SCNSphere(radius: dotRadius)
+            sphere.segmentCount = 8  // low-poly spheres keep scene fast
+            let mat = SCNMaterial()
+            mat.diffuse.contents = dotColor
+            // Strong emission makes them glow like structured-light scan points
+            mat.emission.contents = dotColor.withAlphaComponent(0.80)
+            mat.lightingModel = .constant
+            sphere.materials = [mat]
 
-            let t = max(0.0, min(1.0, (zMm + 2.0) / 6.0))
-            let (r, g, b) = elevationColor(t: t)
-            colors.append(contentsOf: [r, g, b, 1.0])
+            let node = SCNNode(geometry: sphere)
+            node.position = SCNVector3(pos.x, pos.y, pos.z + 0.0004) // float just above mesh
+            root.addChildNode(node)
         }
-
-        // Add palm center vertex for fan triangulation
-        let palmCenterIdx = Int32(vertices.count)
-        let palmZ = ((padDepths["palmar_fossa"] ?? padDepths["mars"] ?? -1.5) * 0.001) * elevationScale
-        vertices.append(Vertex3D(x: 0, y: -0.015, z: palmZ))
-        let (fR, fG, fB) = elevationColor(t: 0.12)
-        colors.append(contentsOf: [fR, fG, fB, 1.0])
-
-        // Add Luna (hypothenar) pad vertex
-        let lunaIdx = Int32(vertices.count)
-        let v0 = vertices[0]
-        let v17 = vertices[17]
-        let lunaZ = ((padDepths["hypothenar"] ?? padDepths["luna"] ?? 2.0) * 0.001) * elevationScale
-        vertices.append(Vertex3D(
-            x: (v0.x * 0.4 + v17.x * 0.6) + 0.008,
-            y: (v0.y * 0.4 + v17.y * 0.6),
-            z: lunaZ
-        ))
-        let (lR, lG, lB) = elevationColor(t: 0.65)
-        colors.append(contentsOf: [lR, lG, lB, 1.0])
-
-        // Add Venus (thenar) pad center vertex
-        let venusIdx = Int32(vertices.count)
-        let v1 = vertices[1]
-        let v2 = vertices[2]
-        let venusZ = (((padDepths["thenar"] ?? padDepths["venus"] ?? 2.5) + 0.8) * 0.001) * elevationScale
-        vertices.append(Vertex3D(
-            x: (v0.x * 0.3 + v1.x * 0.35 + v2.x * 0.35) - 0.006,
-            y: (v0.y * 0.3 + v1.y * 0.35 + v2.y * 0.35),
-            z: venusZ
-        ))
-        let (vR, vG, vB) = elevationColor(t: 0.82)
-        colors.append(contentsOf: [vR, vG, vB, 1.0])
-
-        // Anatomical Triangulation Index Buffer
-        var indices: [Int32] = []
-
-        // Palm fan connected to wrist, thenar, MCPs, and hypothenar
-        let palmRing: [Int32] = [0, venusIdx, 1, 2, 5, 9, 13, 17, lunaIdx, 0]
-        for i in 0..<(palmRing.count - 1) {
-            indices.append(contentsOf: [palmCenterIdx, palmRing[i], palmRing[i + 1]])
-        }
-
-        // Interdigital webbing triangles
-        indices.append(contentsOf: [2, 5, palmCenterIdx])
-        indices.append(contentsOf: [5, 6, 9])
-        indices.append(contentsOf: [6, 10, 9])
-        indices.append(contentsOf: [9, 10, 13])
-        indices.append(contentsOf: [10, 14, 13])
-        indices.append(contentsOf: [13, 14, 17])
-        indices.append(contentsOf: [14, 18, 17])
-
-        indices.append(contentsOf: [6, 7, 10])
-        indices.append(contentsOf: [7, 11, 10])
-        indices.append(contentsOf: [10, 11, 14])
-        indices.append(contentsOf: [11, 15, 14])
-        indices.append(contentsOf: [14, 15, 18])
-        indices.append(contentsOf: [15, 19, 18])
-
-        // Complete 5-digit 3D ribbon mesh
-        let digits: [[Int]] = [
-            [1, 2, 3, 4],       // Thumb
-            [5, 6, 7, 8],       // Index
-            [9, 10, 11, 12],    // Middle
-            [13, 14, 15, 16],   // Ring
-            [17, 18, 19, 20]    // Pinky
-        ]
-        let fingerWidths: [Float] = [0.008, 0.007, 0.007, 0.0065, 0.0055]
-
-        for (dIdx, chain) in digits.enumerated() {
-            let baseWidth = fingerWidths[dIdx]
-            var leftIndices: [Int32] = []
-            var rightIndices: [Int32] = []
-
-            for (segIdx, jointIdx) in chain.enumerated() {
-                let jPt = vertices[jointIdx]
-                let taper = 1.0 - (Float(segIdx) * 0.18)
-                let halfW = baseWidth * taper
-
-                // Compute normal perpendicular to finger segment direction
-                let nextIdx = segIdx < chain.count - 1 ? chain[segIdx + 1] : jointIdx
-                let prevIdx = segIdx > 0 ? chain[segIdx - 1] : jointIdx
-                let refPtA = vertices[prevIdx]
-                let refPtB = vertices[nextIdx]
-                var dx = refPtB.x - refPtA.x
-                var dy = refPtB.y - refPtA.y
-                let len = sqrt(dx * dx + dy * dy)
-                if len > 0.0001 {
-                    dx /= len
-                    dy /= len
-                } else {
-                    dx = 0
-                    dy = 1
-                }
-                let perpX = -dy * halfW
-                let perpY = dx * halfW
-
-                let lIdx = Int32(vertices.count)
-                vertices.append(Vertex3D(x: jPt.x + perpX, y: jPt.y + perpY, z: jPt.z))
-                colors.append(contentsOf: [0.35, 0.75, 0.55, 0.95])
-                leftIndices.append(lIdx)
-
-                let rIdx = Int32(vertices.count)
-                vertices.append(Vertex3D(x: jPt.x - perpX, y: jPt.y - perpY, z: jPt.z))
-                colors.append(contentsOf: [0.35, 0.75, 0.55, 0.95])
-                rightIndices.append(rIdx)
-            }
-
-            // Triangulate finger quads
-            for s in 0..<(chain.count - 1) {
-                let lA = leftIndices[s]
-                let rA = rightIndices[s]
-                let lB = leftIndices[s + 1]
-                let rB = rightIndices[s + 1]
-                let cA = Int32(chain[s])
-                let cB = Int32(chain[s + 1])
-
-                indices.append(contentsOf: [lA, cA, lB])
-                indices.append(contentsOf: [cA, cB, lB])
-                indices.append(contentsOf: [cA, rA, cB])
-                indices.append(contentsOf: [rA, rB, cB])
-            }
-
-            // Cap the fingertip
-            let tipJoint = Int32(chain.last!)
-            let lastL = leftIndices.last!
-            let lastR = rightIndices.last!
-            indices.append(contentsOf: [lastL, tipJoint, lastR])
-        }
-
-        return (vertices, colors, indices, landmark3D)
-    }
-
-    // MARK: - Normal Computation
-
-    private func computeNormals(vertices: [Vertex3D], indices: [Int32]) -> [SCNVector3] {
-        var normals = [simd_float3](repeating: simd_float3(0, 0, 1), count: vertices.count)
-
-        var i = 0
-        while i < indices.count - 2 {
-            let i0 = Int(indices[i])
-            let i1 = Int(indices[i + 1])
-            let i2 = Int(indices[i + 2])
-            if i0 < vertices.count && i1 < vertices.count && i2 < vertices.count {
-                let p0 = simd_float3(vertices[i0].x, vertices[i0].y, vertices[i0].z)
-                let p1 = simd_float3(vertices[i1].x, vertices[i1].y, vertices[i1].z)
-                let p2 = simd_float3(vertices[i2].x, vertices[i2].y, vertices[i2].z)
-                let n = simd_cross(p1 - p0, p2 - p0)
-                let len = simd_length(n)
-                if len > 0.00001 {
-                    let norm = n / len
-                    normals[i0] += norm
-                    normals[i1] += norm
-                    normals[i2] += norm
-                }
-            }
-            i += 3
-        }
-
-        return normals.map {
-            let l = simd_length($0)
-            let unit = l > 0.0001 ? $0 / l : simd_float3(0, 0, 1)
-            return SCNVector3(unit.x, unit.y, unit.z)
-        }
+        return root
     }
 
     // MARK: - Caliper & Bone Hierarchy
@@ -744,23 +584,5 @@ public struct HandMeshInspectorView: View {
         }
 
         return node
-    }
-
-    // MARK: - Colormap
-
-    private func elevationColor(t: Float) -> (Float, Float, Float) {
-        if t < 0.25 {
-            let u = t / 0.25
-            return (0.1 + 0.05 * u, 0.35 + 0.35 * u, 0.9 - 0.2 * u) // deep blue -> cyan
-        } else if t < 0.55 {
-            let u = (t - 0.25) / 0.30
-            return (0.15 + 0.15 * u, 0.70 + 0.20 * u, 0.70 - 0.35 * u) // cyan -> emerald
-        } else if t < 0.80 {
-            let u = (t - 0.55) / 0.25
-            return (0.30 + 0.65 * u, 0.90 - 0.15 * u, 0.35 - 0.20 * u) // emerald -> gold
-        } else {
-            let u = (t - 0.80) / 0.20
-            return (0.95, 0.75 - 0.55 * u, 0.15 + 0.05 * u) // gold -> crimson
-        }
     }
 }

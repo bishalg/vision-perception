@@ -19,7 +19,7 @@ public final class PalmAnalysisViewModel: ObservableObject {
 
     public let profile = PalmOverlay.profile
     public let cameraSession = CameraSession()
-    private let handTracker = VisionHandTracker()
+    let handTracker = VisionHandTracker()
     private let guidanceEngine: CaptureGuidance
     let orbitGuidance = OrbitCaptureGuidance()
     let closeUpGuidance = CloseUpTileGuidance()
@@ -49,13 +49,13 @@ public final class PalmAnalysisViewModel: ObservableObject {
         var dict: [String: Float] = [:]
         if let map = mountReliefMap {
             for entry in map.mounts {
-                let h = entry.heightMm ?? (entry.heightRelative * 3.0)
-                dict[entry.mount] = h
+                let rawH = entry.heightMm ?? (entry.heightRelative * 2.2)
+                dict[entry.mount] = max(-2.5, min(4.0, rawH))
             }
         } else if let mounts = analysisResult?.domainPayload?.mountRelief?.mounts {
             for m in mounts {
-                if let h = m.heightMm {
-                    dict[m.mount] = h
+                if let rawH = m.heightMm {
+                    dict[m.mount] = max(-2.5, min(4.0, rawH))
                 }
             }
         }

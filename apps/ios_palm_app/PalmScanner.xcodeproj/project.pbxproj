@@ -27,8 +27,10 @@
 		6084314E044C3CA768336E83 /* ScannerSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4C295D1FA27C1233401038 /* ScannerSmokeTests.swift */; };
 		64FDF94E7DE4A78348DA5047 /* VisionHandTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 248332063F7DC8A9DEB48F43 /* VisionHandTracker.swift */; };
 		656544DCB94DC7CBF8BC1F98 /* HandMeshInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6C3E4709BD9134875DA06C6 /* HandMeshInspectorView.swift */; };
+		1B9C78D03B5351E6714CD1D5 /* HandMeshGeometryBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6C3E4709BD9134875DA06C7 /* HandMeshGeometryBuilder.swift */; };
 		72085905BF8A68E2DCD4D66B /* LocalizedStringsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76BE74BFDEFE85FAFE27E319 /* LocalizedStringsTests.swift */; };
 		73E13E4278AD959FE7956B9D /* PalmScanModeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2465C0A515C6435FA3DEF8B /* PalmScanModeTests.swift */; };
+		73E13E4278AD959FE7956B9E /* HandMeshGeometryBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2465C0A515C6435FA3DEF8C /* HandMeshGeometryBuilderTests.swift */; };
 		76831FC29FD19F7585D57F80 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7582DE41A497B9558689A2EB /* Assets.xcassets */; };
 		85CB5E1D1B68AF4FED787ADD /* CreaseSplineGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8285B3803DA610FC9D46C1B3 /* CreaseSplineGeometryTests.swift */; };
 		8666675539C9B280CF886C4A /* FingertipPatternsInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 582C64B394AC158FFAF4ED1D /* FingertipPatternsInspectorView.swift */; };
@@ -106,6 +108,7 @@
 		A03EBBB2AC7DB9E5A7CE30B0 /* PalmAnalysisViewModel+ScanModes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PalmAnalysisViewModel+ScanModes.swift"; sourceTree = "<group>"; };
 		A03EBBB2AC7DB9E5A7CE30B1 /* PalmAnalysisViewModel+ImageProcessing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PalmAnalysisViewModel+ImageProcessing.swift"; sourceTree = "<group>"; };
 		A2465C0A515C6435FA3DEF8B /* PalmScanModeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalmScanModeTests.swift; sourceTree = "<group>"; };
+		A2465C0A515C6435FA3DEF8C /* HandMeshGeometryBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandMeshGeometryBuilderTests.swift; sourceTree = "<group>"; };
 		B418AAAF968D631DC049BFC0 /* CameraModeSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraModeSelectorView.swift; sourceTree = "<group>"; };
 		BEFA1AD56BA20C69CF3D03D1 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		C23CA9724D524227313ED0E7 /* MagnifyingLoupeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagnifyingLoupeView.swift; sourceTree = "<group>"; };
@@ -113,6 +116,7 @@
 		CC5537B809AE75EAAA4B4796 /* PalmScannerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PalmScannerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF4990463CB349DBE1EF2331 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		E6C3E4709BD9134875DA06C6 /* HandMeshInspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandMeshInspectorView.swift; sourceTree = "<group>"; };
+		E6C3E4709BD9134875DA06C7 /* HandMeshGeometryBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandMeshGeometryBuilder.swift; sourceTree = "<group>"; };
 		E9E94BB9812BD62ECC5AEA84 /* SimplePalmReading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimplePalmReading.swift; sourceTree = "<group>"; };
 		FAA47A720FDE5572D1646BB0 /* CreaseSplineOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreaseSplineOverlayView.swift; sourceTree = "<group>"; };
 		FB646576D48B0CF232AFB4F9 /* OpenCVPrivacy.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OpenCVPrivacy.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -282,6 +286,7 @@
 				FAA47A720FDE5572D1646BB0 /* CreaseSplineOverlayView.swift */,
 				582C64B394AC158FFAF4ED1D /* FingertipPatternsInspectorView.swift */,
 				E6C3E4709BD9134875DA06C6 /* HandMeshInspectorView.swift */,
+				E6C3E4709BD9134875DA06C7 /* HandMeshGeometryBuilder.swift */,
 				5FC54A6BE9238CDDF01888E1 /* ImageCoordinateMapper.swift */,
 				C23CA9724D524227313ED0E7 /* MagnifyingLoupeView.swift */,
 				23380A94031934043F119E2F /* MainScannerView.swift */,
@@ -345,6 +350,7 @@
 				76BE74BFDEFE85FAFE27E319 /* LocalizedStringsTests.swift */,
 				0B5245A55580633A6A190540 /* PalmAnalysisResultTests.swift */,
 				A2465C0A515C6435FA3DEF8B /* PalmScanModeTests.swift */,
+				A2465C0A515C6435FA3DEF8C /* HandMeshGeometryBuilderTests.swift */,
 				CB3AC5986A6BE334DF0F689F /* SimplePalmReadingTests.swift */,
 			);
 			path = Tests;
@@ -558,6 +564,7 @@
 				72085905BF8A68E2DCD4D66B /* LocalizedStringsTests.swift in Sources */,
 				2225D0120622850398D854C0 /* PalmAnalysisResultTests.swift in Sources */,
 				73E13E4278AD959FE7956B9D /* PalmScanModeTests.swift in Sources */,
+				73E13E4278AD959FE7956B9E /* HandMeshGeometryBuilderTests.swift in Sources */,
 				A4559898B51DB1F4C9A4B11C /* SimplePalmReadingTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -575,6 +582,7 @@
 				8666675539C9B280CF886C4A /* FingertipPatternsInspectorView.swift in Sources */,
 				EC1AEA397337EEC4D9A5331F /* FingertipScanOverlay.swift in Sources */,
 				656544DCB94DC7CBF8BC1F98 /* HandMeshInspectorView.swift in Sources */,
+				1B9C78D03B5351E6714CD1D5 /* HandMeshGeometryBuilder.swift in Sources */,
 				EF5D298BE06A29AA1FA0CBBB /* ImageCoordinateMapper.swift in Sources */,
 				A037D806C935758987425DE6 /* LocalizedStrings.swift in Sources */,
 				5F8BAFE30DEEDFD5748EB23B /* MagnifyingLoupeView.swift in Sources */,

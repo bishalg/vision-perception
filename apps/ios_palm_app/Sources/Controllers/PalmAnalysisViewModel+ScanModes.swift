@@ -146,9 +146,14 @@ extension PalmAnalysisViewModel {
             MountDepthSampler.sampleMountMeansMm(depthMap: $0, landmarks: lm)
         }
         let upright = Self.uprightImage(from: photo.pixelBuffer).0
+        var keyframeLandmarks = landmarks
+        if let cgImage = upright?.cgImage,
+           let tracking = self.handTracker.processCGImageWithResult(cgImage, orientation: .up) {
+            keyframeLandmarks = tracking.landmarks
+        }
         if bin == .flatCenter || self.flatKeyframeImage == nil {
             self.flatKeyframeImage = upright
-            self.flatKeyframeLandmarks = landmarks
+            self.flatKeyframeLandmarks = keyframeLandmarks
         }
         let frame = OrbitFrame(
             bin: bin,

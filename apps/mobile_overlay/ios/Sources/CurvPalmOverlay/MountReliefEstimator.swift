@@ -190,7 +190,7 @@ public enum MountReliefEstimator {
             }
             if let dc = depthCounts[mount], dc > 0 {
                 let diff = depthAcc[mount, default: 0] / Float(dc) - depthPlane
-                heightMm = diff
+                heightMm = max(-2.5, min(maxReliefMm, diff))
                 if let mz = measuredAcc[mount] {
                     fused = zscore(mz, mean: measuredMean, std: measuredStd)
                 }
