@@ -27,11 +27,41 @@ public struct CaptureResultView: View {
     public let onProceedToAnalysis: () -> Void
 
     public enum ResultInspectorTab: String, CaseIterable, Identifiable {
-        case creases = "2D Creases"
-        case topography = "3D Topography"
-        case fingertips = "Fingertips"
-        case anthropometry = "Anthropometry"
+        case creases = "creases"
+        case topography = "topography"
+        case fingertips = "fingertips"
+        case anthropometry = "anthropometry"
         public var id: String { rawValue }
+
+        /// Short label shown in the tab picker (number + acronym, always 2–4 chars)
+        var shortLabel: String {
+            switch self {
+            case .creases: return "2D"
+            case .topography: return "3D"
+            case .fingertips: return "Tips"
+            case .anthropometry: return "Metrics"
+            }
+        }
+
+        /// Step number badge
+        var stepNumber: Int {
+            switch self {
+            case .creases: return 1
+            case .topography: return 2
+            case .fingertips: return 3
+            case .anthropometry: return 4
+            }
+        }
+
+        /// Navigation bar title per tab — simple, no subtitle
+        var navTitle: String {
+            switch self {
+            case .creases: return "Palm Creases"
+            case .topography: return "3D Topography"
+            case .fingertips: return "Fingertip Prints"
+            case .anthropometry: return "Measurements"
+            }
+        }
     }
 
     public let initialTab: ResultInspectorTab
@@ -74,41 +104,6 @@ public struct CaptureResultView: View {
         self.onProceedToAnalysis = {
             onConfirmAdjustedLines?()
             onProceedToAnalysis?()
-        }
-    }
-
-    private var currentTitle: String {
-        switch selectedTab {
-        case .creases:
-            return LocalizedStrings.tr("result.title", lang: selectedLanguage)
-        case .topography:
-            return "3D Topography & Surface Mesh"
-        case .fingertips:
-            return "Dermatoglyphic Patterns"
-        case .anthropometry:
-            return "Anthropometry & Metrics"
-        }
-    }
-
-    private var currentSubtitle: String {
-        switch selectedTab {
-        case .creases:
-            return sourceSubtitle
-        case .topography:
-            return "Continuous 3D Surface Reconstruction"
-        case .fingertips:
-            return fingertipSession != nil ? "5 Digits Classified" : "Pattern Classification"
-        case .anthropometry:
-            return "Biometric Dimensions & Ratios"
-        }
-    }
-
-    private var sourceSubtitle: String {
-        switch overlaySource {
-        case .nativeEngine:
-            return LocalizedStrings.tr("result.native", lang: selectedLanguage)
-        case .landmarkFallback:
-            return LocalizedStrings.tr("result.landmark", lang: selectedLanguage)
         }
     }
 
@@ -218,20 +213,12 @@ public struct CaptureResultView: View {
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(action: onDismiss) {
-                        Text(LocalizedStrings.tr("editor.cancel", lang: selectedLanguage))
-                    }
-                }
+                // No Cancel button — user navigates back via swipe or parent navigation
                 ToolbarItem(placement: .principal) {
-                    VStack(spacing: 2) {
-                        Text(currentTitle)
-                            .font(.headline)
-                        Text(currentSubtitle)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .foregroundStyle(Color.primary)
+                    // Simple OS-standard title, no subtitle
+                    Text(selectedTab.navTitle)
+                        .font(.headline)
+                        .foregroundStyle(Color.primary)
                 }
                 ToolbarItem(placement: .primaryAction) {
                     if selectedTab == .creases {
@@ -247,7 +234,7 @@ public struct CaptureResultView: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                // Retake / Analyze Reading action bar with native button styles
+                // Retake / Analyze action bar
                 HStack(spacing: 12) {
                     Button(action: onRetake) {
                         Label(LocalizedStrings.tr("result.retake", lang: selectedLanguage), systemImage: "arrow.counterclockwise")
@@ -258,7 +245,7 @@ public struct CaptureResultView: View {
                     .tint(Color.primary)
 
                     Button(action: onProceedToAnalysis) {
-                        Label(LocalizedStrings.tr("result.continueReading", lang: selectedLanguage), systemImage: "sparkles")
+                        Label("Analyze", systemImage: "sparkles")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
@@ -342,7 +329,7 @@ public struct CaptureResultView: View {
         .frame(minHeight: 220)
     }
 
-    // MARK: - Native inspector segmented tab bar
+    // MARK: - Tab picker: number badge + short label, stacked vertically
 
     private var tabPicker: some View {
         HStack(spacing: 4) {
@@ -353,20 +340,28 @@ public struct CaptureResultView: View {
                         selectedTab = tab
                     }
                 } label: {
-                    Text(tab.rawValue)
-                        .font(.system(size: 13, weight: isSelected ? .semibold : .medium, design: .rounded))
-                        .foregroundColor(isSelected ? Color.primary : Color.secondary)
-                        .padding(.vertical, 7)
-                        .frame(maxWidth: .infinity)
-                        .background {
-                            if isSelected {
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .fill(Color(uiColor: .secondarySystemGroupedBackground))
-                                    .shadow(color: Color.black.opacity(0.10), radius: 3, y: 1)
-                            }
+                    VStack(spacing: 2) {
+                        Text("\(tab.stepNumber)")
+                            .font(.system(size: 10, weight: .semibold, design: .rounded))
+                            .foregroundStyle(isSelected ? Color.primary : Color.secondary.opacity(0.6))
+                        Text(tab.shortLabel)
+                            .font(.system(size: 12, weight: isSelected ? .semibold : .medium, design: .rounded))
+                            .foregroundStyle(isSelected ? Color.primary : Color.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                    .padding(.vertical, 6)
+                    .frame(maxWidth: .infinity)
+                    .background {
+                        if isSelected {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                                .shadow(color: Color.black.opacity(0.10), radius: 3, y: 1)
                         }
+                    }
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(tab.navTitle)
                 .accessibilityIdentifier(tab.rawValue)
             }
         }

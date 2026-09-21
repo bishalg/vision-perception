@@ -23,7 +23,8 @@ public struct HandMeshInspectorView: View {
     @State private var showWireframe: Bool = false
     @State private var showCalipers: Bool = true
     @State private var showMountPins: Bool = true
-    @State private var elevationScale: Float = 1.2
+    /// Fixed relief exaggeration — controls depth appearance of the 3D mesh.
+    private let elevationScale: Float = 1.4
     @State private var sceneId: UUID = UUID()
 
     public init(
@@ -82,67 +83,67 @@ public struct HandMeshInspectorView: View {
 
     // MARK: - Control Bar
 
-    private var topControlBar: some View {
-        HStack(spacing: 8) {
-            Toggle(isOn: $showWireframe) {
-                Label("Wireframe", systemImage: "square.split.diagonal.2x2")
-                    .font(.caption2.bold())
+    /// Compact toggle chip: SF Symbol icon stacked above a short label.
+    /// Fits all 3 toggles into a narrow bar without overflow.
+    private func toggleChip(
+        isOn: Binding<Bool>,
+        icon: String,
+        label: String,
+        activeColor: Color
+    ) -> some View {
+        Button {
+            isOn.wrappedValue.toggle()
+            sceneId = UUID()
+        } label: {
+            VStack(spacing: 2) {
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .medium))
+                Text(label)
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
             }
-            .toggleStyle(.button)
-            .tint(Color(hex: "007AFF"))
-            .onChange(of: showWireframe) { _ in sceneId = UUID() }
-
-            Toggle(isOn: $showCalipers) {
-                Label("Calipers", systemImage: "ruler")
-                    .font(.caption2.bold())
-            }
-            .toggleStyle(.button)
-            .tint(Color(hex: "34C759"))
-            .onChange(of: showCalipers) { _ in sceneId = UUID() }
-
-            Toggle(isOn: $showMountPins) {
-                Label("Mounts", systemImage: "mappin.and.ellipse")
-                    .font(.caption2.bold())
-            }
-            .toggleStyle(.button)
-            .tint(Color(hex: "FF9500"))
-            .onChange(of: showMountPins) { _ in sceneId = UUID() }
-
-            // Relief exaggeration cycler
-            Button {
-                if elevationScale < 1.3 {
-                    elevationScale = 1.4
-                } else if elevationScale < 1.7 {
-                    elevationScale = 1.8
-                } else {
-                    elevationScale = 1.0
-                }
-                sceneId = UUID()
-            } label: {
-                Text(String(format: "%.1fx 3D", elevationScale))
-                    .font(.caption2.monospacedDigit().bold())
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
-                    .background(Color.secondary.opacity(0.18))
-                    .clipShape(Capsule())
-            }
-            .foregroundStyle(Color.primary)
-
-            Spacer()
-
-            Button {
-                sceneId = UUID()
-            } label: {
-                Image(systemName: "arrow.counterclockwise")
-                    .font(.caption)
-                    .padding(8)
-                    .background(Color.secondary.opacity(0.18))
-                    .clipShape(Circle())
-            }
-            .foregroundStyle(Color.primary)
+            .foregroundStyle(isOn.wrappedValue ? activeColor : Color.secondary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 7)
+            .background(
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(isOn.wrappedValue
+                        ? activeColor.opacity(0.14)
+                        : Color.clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .stroke(isOn.wrappedValue
+                        ? activeColor.opacity(0.55)
+                        : Color.secondary.opacity(0.18),
+                        lineWidth: 1)
+            )
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .buttonStyle(.plain)
+    }
+
+    private var topControlBar: some View {
+        HStack(spacing: 6) {
+            toggleChip(
+                isOn: $showWireframe,
+                icon: "square.split.diagonal.2x2",
+                label: "Wire",
+                activeColor: Color(hex: "007AFF")
+            )
+            toggleChip(
+                isOn: $showCalipers,
+                icon: "ruler",
+                label: "Calipers",
+                activeColor: Color(hex: "34C759")
+            )
+            toggleChip(
+                isOn: $showMountPins,
+                icon: "mappin.and.ellipse",
+                label: "Mounts",
+                activeColor: Color(hex: "FF9500")
+            )
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 14))
     }
