@@ -129,40 +129,39 @@ public struct MainScannerView: View {
                     .zIndex(2)
                 }
 
-                // MARK: Fingertip guidance HUD
-                if viewModel.scanMode == .fingertipScan && !viewModel.showResultViewer {
-                    FingertipGuidanceOverlayView(
-                        session: viewModel.fingertipSession,
-                        state: viewModel.fingertipState,
-                        holdProgress: viewModel.fingertipHoldProgress,
-                        isCapturing: viewModel.isCapturing
-                    )
-                    .zIndex(2)
-                }
-
-                // MARK: Close-Up guidance HUD
-                if viewModel.scanMode == .closeUpMosaic && !viewModel.showResultViewer {
-                    CloseUpGuidanceOverlayView(
-                        currentTile: CloseUpTile(rawValue: viewModel.closeUpTileStatus),
-                        statusMessage: viewModel.statusMessageOverride ?? "Move in close",
-                        dwellProgress: viewModel.closeUpDwellProgress
-                    )
-                    .zIndex(2)
-                }
-
-                // MARK: Mode selector capsule + orbit direction chip
+                // MARK: Mode selector capsule + mode coaching chips
                 VStack(spacing: 8) {
                     CameraModeSelectorView(
                         selectedMode: viewModel.scanMode,
                         completedModes: viewModel.completedScanModes,
                         onSelect: { viewModel.setScanMode($0) }
                     )
-                    if viewModel.scanMode == .orbitScan && !viewModel.showResultViewer {
-                        OrbitDirectionChip(
-                            session: viewModel.orbitSession,
-                            state: viewModel.orbitState
-                        )
+
+                    if !viewModel.showResultViewer {
+                        switch viewModel.scanMode {
+                        case .stillPhoto:
+                            EmptyView()
+                        case .orbitScan:
+                            OrbitDirectionChip(
+                                session: viewModel.orbitSession,
+                                state: viewModel.orbitState
+                            )
+                        case .fingertipScan:
+                            FingertipGuidanceOverlayView(
+                                session: viewModel.fingertipSession,
+                                state: viewModel.fingertipState,
+                                holdProgress: viewModel.fingertipHoldProgress,
+                                isCapturing: viewModel.isCapturing
+                            )
+                        case .closeUpMosaic:
+                            CloseUpGuidanceOverlayView(
+                                currentTile: CloseUpTile(rawValue: viewModel.closeUpTileStatus),
+                                statusMessage: viewModel.statusMessageOverride ?? "Move in close",
+                                dwellProgress: viewModel.closeUpDwellProgress
+                            )
+                        }
                     }
+
                     Spacer()
                 }
                 .padding(.top, max(geometry.safeAreaInsets.top, 8))
@@ -334,6 +333,15 @@ public struct MainScannerView: View {
             }
         }
         .ignoresSafeArea()
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if !viewModel.showResultViewer {
+                PalmReadingSafetyNotice(selectedLanguage: viewModel.currentLanguage)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.regularMaterial)
+            }
+        }
         .animation(.easeInOut(duration: 0.22), value: viewModel.showResultViewer)
         .onChange(of: viewModel.captureTick) { _ in animateNewCapture() }
         // Phase 3 — Reading sheet

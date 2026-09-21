@@ -14,7 +14,7 @@ final class CloseUpDwellTests: XCTestCase {
 
     func testEvaluateReturnsReadyWhenPoseAndLightingOK() {
         let guidance = CloseUpTileGuidance()
-        let photometrics = PhotometricSample(meanLuminance: 0.45, glareRatio: 0.05)
+        let photometrics = PhotometricSample(meanLuminance: 100.0, glareRatio: 0.02)
         let pose = SubjectPose(
             centroid: CGPoint(x: 0.5, y: 0.5),
             scale: 0.55,
@@ -27,7 +27,7 @@ final class CloseUpDwellTests: XCTestCase {
 
     func testEvaluateNotReadyWhenScaleTooLow() {
         let guidance = CloseUpTileGuidance()
-        let photometrics = PhotometricSample(meanLuminance: 0.45, glareRatio: 0.05)
+        let photometrics = PhotometricSample(meanLuminance: 100.0, glareRatio: 0.02)
         let pose = SubjectPose(
             centroid: CGPoint(x: 0.5, y: 0.5),
             scale: 0.30,   // Too small for thenar (needs >= 0.52)
@@ -40,7 +40,7 @@ final class CloseUpDwellTests: XCTestCase {
 
     func testEvaluateNotReadyWhenLuminanceTooLow() {
         let guidance = CloseUpTileGuidance()
-        let photometrics = PhotometricSample(meanLuminance: 0.05, glareRatio: 0.0) // below min
+        let photometrics = PhotometricSample(meanLuminance: 50.0, glareRatio: 0.0) // below 70.0 min
         let pose = SubjectPose(
             centroid: CGPoint(x: 0.5, y: 0.5),
             scale: 0.60,
@@ -53,7 +53,7 @@ final class CloseUpDwellTests: XCTestCase {
 
     func testEvaluateNotReadyWhenNoPose() {
         let guidance = CloseUpTileGuidance()
-        let photometrics = PhotometricSample(meanLuminance: 0.45, glareRatio: 0.05)
+        let photometrics = PhotometricSample(meanLuminance: 100.0, glareRatio: 0.02)
         let result = guidance.evaluate(pose: nil, photometrics: photometrics, target: .midPalm)
         XCTAssertFalse(result.ready, "Should NOT be ready with no pose")
         XCTAssertFalse(result.message.isEmpty, "Should provide a coaching message when no pose")
@@ -108,6 +108,9 @@ final class CloseUpDwellTests: XCTestCase {
         var gate = CloseUpDwellGate(requiredDuration: 0.6)
         let t0: CFTimeInterval = 1000.0
 
+        // Arm at t0
+        _ = gate.update(evalReady: true, now: t0)
+
         // Fire once
         XCTAssertTrue(gate.shouldFire(evalReady: true, now: t0 + 0.60))
 
@@ -123,7 +126,8 @@ final class CloseUpDwellTests: XCTestCase {
         var gate = CloseUpDwellGate(requiredDuration: 0.6)
         let t0: CFTimeInterval = 2000.0
 
-        // Tile 1 fires
+        // Tile 1 arms at t0 and fires at t0 + 0.60
+        _ = gate.update(evalReady: true, now: t0)
         XCTAssertTrue(gate.shouldFire(evalReady: true, now: t0 + 0.60))
         gate.reset()
 

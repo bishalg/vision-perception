@@ -117,56 +117,53 @@ private struct CornerBracket: View {
 
 // MARK: - Guidance Coaching Pill (ZStack sibling over camera)
 
-/// HUD coaching pill for close-up mode: shows current tile name + dwell progress.
+/// HUD coaching chip for close-up mode: shows current tile name + dwell progress.
 struct CloseUpGuidanceOverlayView: View {
     let currentTile: CloseUpTile?
     let statusMessage: String
     var dwellProgress: Float = 0.0
 
     var body: some View {
-        VStack {
-            if let tile = currentTile {
-                VStack(spacing: 5) {
-                    HStack(spacing: 7) {
-                        Image(systemName: "magnifyingglass.circle.fill")
+        if let tile = currentTile {
+            VStack(spacing: 5) {
+                HStack(spacing: 7) {
+                    Image(systemName: "magnifyingglass.circle.fill")
+                        .foregroundColor(.orange)
+                    Text(tile.rawValue.capitalized.replacingOccurrences(of: "_", with: " "))
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                }
+
+                if dwellProgress > 0.05 {
+                    HStack(spacing: 6) {
+                        Text("HOLD STEADY")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
                             .foregroundColor(.orange)
-                        Text(tile.rawValue.capitalized.replacingOccurrences(of: "_", with: " "))
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        Text("\(Int(dwellProgress * 100))%")
+                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
                             .foregroundColor(.white)
                     }
-
-                    if dwellProgress > 0.05 {
-                        HStack(spacing: 6) {
-                            Text("HOLD STEADY")
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
-                                .foregroundColor(.orange)
-                            Text("\(Int(dwellProgress * 100))%")
-                                .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                                .foregroundColor(.white)
-                        }
-                    } else {
-                        Text(statusMessage)
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                            .foregroundColor(.white.opacity(0.75))
-                    }
+                } else {
+                    Text(statusMessage)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundColor(.white.opacity(0.75))
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(
-                    Capsule()
-                        .fill(Color.black.opacity(0.75))
-                        .overlay(
-                            Capsule().stroke(
-                                dwellProgress > 0 ? Color.orange : Color.orange.opacity(0.5),
-                                lineWidth: dwellProgress > 0 ? 1.5 : 1.0
-                            )
-                        )
-                )
-                .padding(.top, 100)
             }
-            Spacer()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(
+                Capsule()
+                    .fill(Color.black.opacity(0.75))
+                    .overlay(
+                        Capsule().stroke(
+                            dwellProgress > 0 ? Color.orange : Color.orange.opacity(0.5),
+                            lineWidth: dwellProgress > 0 ? 1.5 : 1.0
+                        )
+                    )
+            )
+            .shadow(color: .black.opacity(0.4), radius: 8, y: 3)
+            .allowsHitTesting(false)
         }
-        .allowsHitTesting(false)
     }
 }
 

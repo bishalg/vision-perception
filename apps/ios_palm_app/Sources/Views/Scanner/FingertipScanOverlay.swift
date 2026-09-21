@@ -87,7 +87,7 @@ struct FingertipMacroReticleView: View {
 
 // MARK: - Guidance Overlay (ZStack sibling over camera feed)
 
-/// HUD overlay displaying the target digit name and coaching above the reticle.
+/// HUD coaching chip displaying the target digit name and coaching below mode switcher.
 /// Shows "HOLD STEADY XX%" during dwell accumulation.
 struct FingertipGuidanceOverlayView: View {
     let session: FingertipScanSession
@@ -100,47 +100,44 @@ struct FingertipGuidanceOverlayView: View {
     }
 
     var body: some View {
-        VStack {
-            if let digit = nextDigit {
-                VStack(spacing: 6) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "hand.point.up.fill")
+        if let digit = nextDigit {
+            VStack(spacing: 5) {
+                HStack(spacing: 8) {
+                    Image(systemName: "hand.point.up.fill")
+                        .foregroundColor(OverlayPalette.emerald)
+                    Text("Target: \(digit.displayName) Pad")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                }
+
+                if holdProgress > 0.05 {
+                    HStack(spacing: 6) {
+                        Text("HOLD STEADY")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
                             .foregroundColor(OverlayPalette.emerald)
-                        Text("Target: \(digit.displayName) Pad")
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        Text("\(Int(holdProgress * 100))%")
+                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
                             .foregroundColor(.white)
                     }
-
-                    if holdProgress > 0.05 {
-                        HStack(spacing: 6) {
-                            Text("HOLD STEADY")
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
-                                .foregroundColor(OverlayPalette.emerald)
-                            Text("\(Int(holdProgress * 100))%")
-                                .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                                .foregroundColor(.white)
-                        }
-                    }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(
-                    Capsule()
-                        .fill(Color.black.opacity(0.75))
-                        .overlay(
-                            Capsule().stroke(
-                                holdProgress > 0 ?
-                                    OverlayPalette.emerald :
-                                    OverlayPalette.emerald.opacity(0.5),
-                                lineWidth: holdProgress > 0 ? 1.5 : 1.0
-                            )
-                        )
-                )
-                .padding(.top, 100)
             }
-            Spacer()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(
+                Capsule()
+                    .fill(Color.black.opacity(0.75))
+                    .overlay(
+                        Capsule().stroke(
+                            holdProgress > 0 ?
+                                OverlayPalette.emerald :
+                                OverlayPalette.emerald.opacity(0.5),
+                            lineWidth: holdProgress > 0 ? 1.5 : 1.0
+                        )
+                    )
+            )
+            .shadow(color: .black.opacity(0.4), radius: 8, y: 3)
+            .allowsHitTesting(false)
         }
-        .allowsHitTesting(false)
     }
 }
 

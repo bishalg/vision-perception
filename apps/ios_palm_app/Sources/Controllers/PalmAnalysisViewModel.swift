@@ -79,7 +79,7 @@ public final class PalmAnalysisViewModel: ObservableObject {
         if orbitSession.filledBins.count >= 4 || mountReliefMap != nil {
             set.insert(.orbitScan)
         }
-        if !closeUpSession.tiles.isEmpty {
+        if closeUpSession.filledTiles.count >= CloseUpTile.allCases.count {
             set.insert(.closeUpMosaic)
         }
         if fingertipSession.scannedDigits.count >= FingertipDigit.allCases.count {
