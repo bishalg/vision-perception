@@ -46,17 +46,31 @@ public final class PalmAnalysisViewModel: ObservableObject {
     @Published public var isAnalyzing: Bool = false
     @Published public var analysisResult: PalmAnalysisResponse?
     public var padDepths: [String: Float] {
-        if !mountReliefHeat.isEmpty {
-            return mountReliefHeat
-        }
-        guard let mounts = analysisResult?.domainPayload?.mountRelief?.mounts else { return [:] }
         var dict: [String: Float] = [:]
-        for m in mounts {
-            if let h = m.heightMm {
-                dict[m.mount] = h
+        if let map = mountReliefMap {
+            for entry in map.mounts {
+                let h = entry.heightMm ?? (entry.heightRelative * 3.0)
+                dict[entry.mount] = h
+            }
+        } else if let mounts = analysisResult?.domainPayload?.mountRelief?.mounts {
+            for m in mounts {
+                if let h = m.heightMm {
+                    dict[m.mount] = h
+                }
             }
         }
-        return dict
+        if !dict.isEmpty {
+            // Map anatomical key aliases required by HandBiometricsCalculator and 3D mesh
+            if let v = dict["venus"] { dict["thenar"] = v }
+            if let j = dict["jupiter"] { dict["radial_interdigital"] = j }
+            if let s = dict["saturn"] { dict["central_interdigital"] = s }
+            if let a = dict["apollo"] { dict["ring_interdigital"] = a }
+            if let m = dict["mercury"] { dict["ulnar_interdigital"] = m }
+            if let l = dict["luna"] { dict["hypothenar"] = l }
+            if let ma = dict["mars"] { dict["palmar_fossa"] = -abs(ma * 0.5) }
+            return dict
+        }
+        return [:]
     }
     @Published public var detectedSplines: [CreaseSpline] = []
     @Published public var captureLandmarks: [CGPoint] = []

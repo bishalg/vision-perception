@@ -277,7 +277,14 @@ public struct MainScannerView: View {
                                 onSkip: { viewModel.skipOrbitAngle() },
                                 onFinishEarly: { viewModel.finishOrbitScanEarly() },
                                 onRestart: { viewModel.setScanMode(.orbitScan) },
-                                onView3D: { viewModel.showResultViewer = true }
+                                onView3D: {
+                                    viewModel.resultViewerInitialTab = .topography
+                                    if viewModel.captureLandmarks.count < 21 && viewModel.detectedLandmarks.count >= 21 {
+                                        let bestImage = viewModel.flatKeyframeImage ?? viewModel.capturedImage ?? viewModel.capturedShots.last ?? UIImage()
+                                        viewModel.setOrbitCaptureResult(image: bestImage, landmarks: viewModel.detectedLandmarks)
+                                    }
+                                    viewModel.showResultViewer = true
+                                }
                             )
                             .padding(.horizontal, 16)
                             .padding(.bottom, max(geometry.safeAreaInsets.bottom, 16) + 12)
@@ -372,6 +379,7 @@ public struct MainScannerView: View {
                         onRetake: { viewModel.retake() },
                         onProceedToAnalysis: { viewModel.proceedToAnalysis() }
                     )
+                    .id(viewModel.resultViewerInitialTab)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .zIndex(3)
                 }

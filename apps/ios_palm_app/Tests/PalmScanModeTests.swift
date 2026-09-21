@@ -203,5 +203,33 @@ final class PalmScanModeTests: XCTestCase {
         vm.setScanMode(.stillPhoto)
         XCTAssertEqual(vm.scanMode, .stillPhoto)
     }
+
+    func testPadDepthsReturnsMillimeterHeightsWithAnatomicalKeys() {
+        let vm = PalmAnalysisViewModel()
+        let map = MountReliefMap(
+            mounts: [
+                MountReliefEntry(mount: "venus", heightMm: 3.5, heightRelative: 0.8, prominence: .elevated, confidence: 0.9, viewCount: 3),
+                MountReliefEntry(mount: "jupiter", heightMm: 2.1, heightRelative: 0.5, prominence: .average, confidence: 0.85, viewCount: 2),
+                MountReliefEntry(mount: "mars", heightMm: 1.0, heightRelative: -0.3, prominence: .average, confidence: 0.8, viewCount: 2)
+            ],
+            venusElevated: true,
+            source: "test"
+        )
+        vm.mountReliefMap = map
+        let depths = vm.padDepths
+        XCTAssertEqual(depths["venus"], 3.5)
+        XCTAssertEqual(depths["thenar"], 3.5)
+        XCTAssertEqual(depths["jupiter"], 2.1)
+        XCTAssertEqual(depths["radial_interdigital"], 2.1)
+        XCTAssertEqual(depths["mars"], 1.0)
+        XCTAssertEqual(depths["palmar_fossa"], -0.5)
+    }
+
+    func testHandMeshInspectorViewInstantiatesSuccessfully() {
+        let dummyPoints = (0..<21).map { CGPoint(x: 0.5 + Double($0) * 0.01, y: 0.5 + Double($0) * 0.01) }
+        let depths: [String: Float] = ["venus": 3.0, "thenar": 3.0, "jupiter": 1.5]
+        let view = HandMeshInspectorView(landmarks: dummyPoints, padDepths: depths)
+        XCTAssertNotNil(view.body)
+    }
 }
 

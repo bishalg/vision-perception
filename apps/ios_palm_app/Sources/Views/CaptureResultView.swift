@@ -33,6 +33,7 @@ public struct CaptureResultView: View {
         public var id: String { rawValue }
     }
 
+    public let initialTab: ResultInspectorTab
     @State private var selectedTab: ResultInspectorTab = .creases
     @State private var showEditor: Bool = false
     @State private var selectedSplineId: String?
@@ -62,6 +63,7 @@ public struct CaptureResultView: View {
         self.handSide = handSide
         self.padDepths = padDepths
         self.fingertipSession = fingertipSession
+        self.initialTab = initialTab
         self.onPatternOverride = onPatternOverride
         self._selectedTab = State(initialValue: initialTab)
         self.onDismiss = onDismiss
@@ -69,6 +71,32 @@ public struct CaptureResultView: View {
         self.onProceedToAnalysis = {
             onConfirmAdjustedLines?()
             onProceedToAnalysis?()
+        }
+    }
+
+    private var currentTitle: String {
+        switch selectedTab {
+        case .creases:
+            return LocalizedStrings.tr("result.title", lang: selectedLanguage)
+        case .topography:
+            return "3D Topography & Surface Mesh"
+        case .fingertips:
+            return "Dermatoglyphic Patterns"
+        case .anthropometry:
+            return "Anthropometry & Metrics"
+        }
+    }
+
+    private var currentSubtitle: String {
+        switch selectedTab {
+        case .creases:
+            return sourceSubtitle
+        case .topography:
+            return "Continuous 3D Surface Reconstruction"
+        case .fingertips:
+            return fingertipSession != nil ? "5 Digits Classified" : "Pattern Classification"
+        case .anthropometry:
+            return "Biometric Dimensions & Ratios"
         }
     }
 
@@ -157,9 +185,9 @@ public struct CaptureResultView: View {
                 }
                 ToolbarItem(placement: .principal) {
                     VStack(spacing: 2) {
-                        Text(LocalizedStrings.tr("result.title", lang: selectedLanguage))
+                        Text(currentTitle)
                             .font(.headline)
-                        Text(sourceSubtitle)
+                        Text(currentSubtitle)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -196,11 +224,17 @@ public struct CaptureResultView: View {
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
                     .tint(Color(hex: "34C759"))
-                    .disabled(splines.isEmpty)
+                    .disabled(selectedTab == .creases && splines.isEmpty)
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
                 .background(Color(uiColor: .secondarySystemBackground))
+            }
+            .onAppear {
+                selectedTab = initialTab
+            }
+            .onChange(of: initialTab) { newTab in
+                selectedTab = newTab
             }
         }
         .fullScreenCover(isPresented: $showEditor) {

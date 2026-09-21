@@ -106,10 +106,9 @@ extension PalmAnalysisViewModel {
         let relief = MountReliefEstimator.estimate(from: orbitGuidance.orbitSession)
         mountReliefMap = relief
         updateMountReliefHeat()
-        if let bestImage = flatKeyframeImage ?? capturedImage {
-            let lms = !flatKeyframeLandmarks.isEmpty ? flatKeyframeLandmarks : detectedLandmarks
-            setOrbitCaptureResult(image: bestImage, landmarks: lms)
-        }
+        let bestImage = flatKeyframeImage ?? capturedImage ?? capturedShots.last ?? UIImage()
+        let lms = !flatKeyframeLandmarks.isEmpty ? flatKeyframeLandmarks : (detectedLandmarks.count >= 21 ? detectedLandmarks : captureLandmarks)
+        setOrbitCaptureResult(image: bestImage, landmarks: lms)
         resultViewerInitialTab = .topography
         statusMessageOverride = "3D Topography computed from \(orbitSession.filledBins.count) angles."
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -182,12 +181,15 @@ extension PalmAnalysisViewModel {
             self.mountReliefMap = relief
             self.updateMountReliefHeat()
             self.isCapturing = false
+            let isNowComplete = self.orbitGuidance.orbitSession.filledBins.count >= OrbitBin.allCases.count
+            if isNowComplete {
+                self.orbitState = .complete
+            }
             if case .complete = self.orbitState {
                 self.successHaptic.notificationOccurred(.success)
-                if let bestImage = self.flatKeyframeImage ?? upright {
-                    let lms = !self.flatKeyframeLandmarks.isEmpty ? self.flatKeyframeLandmarks : landmarks
-                    self.setOrbitCaptureResult(image: bestImage, landmarks: lms)
-                }
+                let bestImage = self.flatKeyframeImage ?? upright ?? self.capturedImage ?? UIImage()
+                let lms = !self.flatKeyframeLandmarks.isEmpty ? self.flatKeyframeLandmarks : (landmarks.count >= 21 ? landmarks : self.detectedLandmarks)
+                self.setOrbitCaptureResult(image: bestImage, landmarks: lms)
                 self.resultViewerInitialTab = .topography
                 self.statusMessageOverride = "Orbit scan complete! 3D Topography ready."
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
