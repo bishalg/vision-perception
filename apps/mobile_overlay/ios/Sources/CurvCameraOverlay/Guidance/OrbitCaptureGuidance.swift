@@ -151,6 +151,7 @@ public final class OrbitCaptureGuidance {
         // Check if hand or device is in target angle
         if !poseGateSatisfied(for: targetBin, landmarks: landmarks, deviceRoll: deviceRollDeg) {
             decayDwell(timestamp: timestamp)
+            referenceLandmarks = nil
             return (.coach(bin: targetBin), false, nil)
         }
 
@@ -162,7 +163,11 @@ public final class OrbitCaptureGuidance {
         let rigid = RigidHandChecker.evaluate(current: landmarks, reference: referenceLandmarks)
         if !rigid.accepted {
             decayDwell(timestamp: timestamp)
-            return (.rejected(reason: rigid.reason ?? "Keep hand rigid"), false, rigid)
+            // As user settles into the target angle, update reference so moving INTO position is not rejected
+            if dwellProgress <= 0.10 {
+                referenceLandmarks = landmarks
+            }
+            return (.rejected(reason: rigid.reason ?? "Keep hand steady"), false, rigid)
         }
 
         // Smooth dwell accumulation (resilient against single-frame jitters)
@@ -261,16 +266,20 @@ public final class OrbitCaptureGuidance {
             return true
 
         case .tiltLeft:
-            let inPlaneTilt = abs(deltaAngle) >= 7.0
-            let yawForeshortened = widthRatio < 0.92
-            let lateralShift = (curPinkyLat - flatPinkyLat) < -0.015 || (curThumbLat - flatThumbLat) < -0.015
-            return inPlaneTilt || yawForeshortened || lateralShift
+            // Tilting left: negative deltaAngle (<= -5.0 deg), positive device roll (>= 6.0 deg), or left lateral displacement
+            let inPlaneTiltLeft = deltaAngle <= -5.0
+            let gyroTiltLeft = (deviceRoll ?? 0) >= 6.0
+            let lateralShiftLeft = (curPinkyLat - flatPinkyLat) < -0.012 || (curThumbLat - flatThumbLat) < -0.012
+            let yawLeft = widthRatio < 0.94 && deltaAngle <= 0.0
+            return inPlaneTiltLeft || gyroTiltLeft || lateralShiftLeft || yawLeft
 
         case .tiltRight:
-            let inPlaneTilt = abs(deltaAngle) >= 7.0
-            let yawForeshortened = widthRatio < 0.92
-            let lateralShift = (curPinkyLat - flatPinkyLat) > 0.015 || (curThumbLat - flatThumbLat) > 0.015
-            return inPlaneTilt || yawForeshortened || lateralShift
+            // Tilting right: positive deltaAngle (>= 5.0 deg), negative device roll (<= -6.0 deg), or right lateral displacement
+            let inPlaneTiltRight = deltaAngle >= 5.0
+            let gyroTiltRight = (deviceRoll ?? 0) <= -6.0
+            let lateralShiftRight = (curPinkyLat - flatPinkyLat) > 0.012 || (curThumbLat - flatThumbLat) > 0.012
+            let yawRight = widthRatio < 0.94 && deltaAngle >= 0.0
+            return inPlaneTiltRight || gyroTiltRight || lateralShiftRight || yawRight
 
         case .thumbToward:
             let thumbDistance = hypot(landmarks[4].x - landmarks[9].x, landmarks[4].y - landmarks[9].y)
