@@ -12,6 +12,7 @@
 		095C8DD7547CBB69DC069E81 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = CF4990463CB349DBE1EF2331 /* PrivacyInfo.xcprivacy */; };
 		0E45A1E86E0616E6E2EB55F5 /* PalmAnalysisViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06EEB0B15D07944D8BF3F476 /* PalmAnalysisViewModel.swift */; };
 		1B9C78D03B5351E6714CD1D3 /* PalmAnalysisViewModel+ScanModes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A03EBBB2AC7DB9E5A7CE30B0 /* PalmAnalysisViewModel+ScanModes.swift */; };
+		1B9C78D03B5351E6714CD1D4 /* PalmAnalysisViewModel+ImageProcessing.swift in Sources */ = {isa = PBXBuildFile; fileRef = A03EBBB2AC7DB9E5A7CE30B1 /* PalmAnalysisViewModel+ImageProcessing.swift */; };
 		1F99542221C6EC9D2FA8DFEB /* CurvApple in Frameworks */ = {isa = PBXBuildFile; productRef = F18F74289D90C3B2B20870A4 /* CurvApple */; };
 		211E544517E4DA7197D89A57 /* CreaseSplineOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAA47A720FDE5572D1646BB0 /* CreaseSplineOverlayView.swift */; };
 		2225D0120622850398D854C0 /* PalmAnalysisResultTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B5245A55580633A6A190540 /* PalmAnalysisResultTests.swift */; };
@@ -103,6 +104,7 @@
 		95AA0F49E82AFDD89709D65A /* OrbitScanOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbitScanOverlay.swift; sourceTree = "<group>"; };
 		965F043BA733BE1060A72219 /* PalmScanMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalmScanMode.swift; sourceTree = "<group>"; };
 		A03EBBB2AC7DB9E5A7CE30B0 /* PalmAnalysisViewModel+ScanModes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PalmAnalysisViewModel+ScanModes.swift"; sourceTree = "<group>"; };
+		A03EBBB2AC7DB9E5A7CE30B1 /* PalmAnalysisViewModel+ImageProcessing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PalmAnalysisViewModel+ImageProcessing.swift"; sourceTree = "<group>"; };
 		A2465C0A515C6435FA3DEF8B /* PalmScanModeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PalmScanModeTests.swift; sourceTree = "<group>"; };
 		B418AAAF968D631DC049BFC0 /* CameraModeSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraModeSelectorView.swift; sourceTree = "<group>"; };
 		BEFA1AD56BA20C69CF3D03D1 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -305,6 +307,7 @@
 			children = (
 				06EEB0B15D07944D8BF3F476 /* PalmAnalysisViewModel.swift */,
 				A03EBBB2AC7DB9E5A7CE30B0 /* PalmAnalysisViewModel+ScanModes.swift */,
+				A03EBBB2AC7DB9E5A7CE30B1 /* PalmAnalysisViewModel+ImageProcessing.swift */,
 				248332063F7DC8A9DEB48F43 /* VisionHandTracker.swift */,
 			);
 			path = Controllers;
@@ -579,6 +582,7 @@
 				EAAF4B2B7B5B113240930D83 /* OrbitScanOverlay.swift in Sources */,
 				BE3309BBEB88214FB7035EBA /* PalmAnalysisResult.swift in Sources */,
 				1B9C78D03B5351E6714CD1D3 /* PalmAnalysisViewModel+ScanModes.swift in Sources */,
+				1B9C78D03B5351E6714CD1D4 /* PalmAnalysisViewModel+ImageProcessing.swift in Sources */,
 				0E45A1E86E0616E6E2EB55F5 /* PalmAnalysisViewModel.swift in Sources */,
 				CA0C2DB05412425D4D39068F /* PalmScanMode.swift in Sources */,
 				D76B8272311635E1310BDF7A /* PalmScannerApp.swift in Sources */,

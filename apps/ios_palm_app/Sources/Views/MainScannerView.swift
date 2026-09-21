@@ -103,23 +103,9 @@ public struct MainScannerView: View {
                     isAnalyzing: viewModel.isAnalyzing,
                     statusMessageOverride: viewModel.statusMessageOverride,
                     onManualCapture: { viewModel.manualCapture() },
-                    showsShutter: viewModel.scanMode == .stillPhoto,
-                    bottomLeading: {
-                        if viewModel.scanMode == .stillPhoto {
-                            LeftHandSideButton(
-                                selection: $viewModel.selectedHandSide,
-                                autoDetected: viewModel.detectedHandSide
-                            )
-                        }
-                    },
-                    bottomTrailing: {
-                        if viewModel.scanMode == .stillPhoto {
-                            RightHandSideButton(
-                                selection: $viewModel.selectedHandSide,
-                                autoDetected: viewModel.detectedHandSide
-                            )
-                        }
-                    }
+                    showsShutter: false,
+                    bottomLeading: {},
+                    bottomTrailing: {}
                 ) {
                     reticleContent()
                 }
@@ -137,11 +123,32 @@ public struct MainScannerView: View {
                 // MARK: Top HUD Controls (cleanly below top notch & safe area)
                 VStack(spacing: 8) {
                     HStack(spacing: 8) {
-                        CameraModeSelectorView(
-                            selectedMode: viewModel.scanMode,
-                            completedModes: viewModel.completedScanModes,
-                            onSelect: { viewModel.setScanMode($0) }
+                        // Sleek 3D Hand Scanner brand pill
+                        HStack(spacing: 6) {
+                            Image(systemName: "cube.transparent")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(.cyan)
+
+                            Text("3D Hand Scanner")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+
+                            // Hand side badge
+                            let sideText = viewModel.detectedHandSide == .left ? "L" : "R"
+                            Text(sideText)
+                                .font(.system(size: 10, weight: .bold, design: .rounded))
+                                .foregroundColor(.black)
+                                .frame(width: 16, height: 16)
+                                .background(Circle().fill(Color.cyan))
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule()
+                                .fill(Color.black.opacity(0.65))
+                                .overlay(Capsule().stroke(Color.white.opacity(0.24), lineWidth: 0.8))
                         )
+                        .shadow(color: Color.black.opacity(0.35), radius: 8, y: 3)
 
                         if !showSafetyNotice && !viewModel.showResultViewer {
                             Button(action: {
@@ -374,6 +381,9 @@ public struct MainScannerView: View {
                         onPatternOverride: { digit, pattern in
                             viewModel.overrideFingertipPattern(digit: digit, pattern: pattern)
                         },
+                        onStartFingertipScan: {
+                            viewModel.startFingertipDeepDive()
+                        },
                         onConfirmAdjustedLines: { viewModel.confirmAdjustedLinesForPrediction() },
                         onDismiss: { viewModel.dismissResultViewer() },
                         onRetake: { viewModel.retake() },
@@ -387,7 +397,7 @@ public struct MainScannerView: View {
         }
         .ignoresSafeArea()
         .animation(.easeInOut(duration: 0.22), value: viewModel.showResultViewer)
-        .onChange(of: viewModel.captureTick) { _ in animateNewCapture() }
+        .onChange(of: viewModel.captureTick) { _, _ in animateNewCapture() }
         // Phase 3 — Reading sheet
         .sheet(isPresented: $viewModel.showAnalysisReading) {
             SamudrikaReadingSheet(
@@ -406,7 +416,7 @@ public struct MainScannerView: View {
             .presentationDragIndicator(.visible)
         }
         // Camera session lifecycle
-        .onChange(of: viewModel.showResultViewer) { showing in
+        .onChange(of: viewModel.showResultViewer) { _, showing in
             if showing {
                 viewModel.cameraSession.stop()
             } else if !viewModel.showAnalysisReading {

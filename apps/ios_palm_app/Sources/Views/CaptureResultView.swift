@@ -21,6 +21,7 @@ public struct CaptureResultView: View {
     public let padDepths: [String: Float]
     public let fingertipSession: FingertipScanSession?
     public let onPatternOverride: ((FingertipDigit, DermatoglyphicPattern) -> Void)?
+    public let onStartFingertipScan: (() -> Void)?
     public let onDismiss: () -> Void
     public let onRetake: () -> Void
     public let onProceedToAnalysis: () -> Void
@@ -49,6 +50,7 @@ public struct CaptureResultView: View {
         fingertipSession: FingertipScanSession? = nil,
         initialTab: ResultInspectorTab = .creases,
         onPatternOverride: ((FingertipDigit, DermatoglyphicPattern) -> Void)? = nil,
+        onStartFingertipScan: (() -> Void)? = nil,
         onLanguageChange: ((AppLanguage) -> Void)? = nil,
         onConfirmAdjustedLines: (() -> Void)? = nil,
         onDismiss: @escaping () -> Void = {},
@@ -65,6 +67,7 @@ public struct CaptureResultView: View {
         self.fingertipSession = fingertipSession
         self.initialTab = initialTab
         self.onPatternOverride = onPatternOverride
+        self.onStartFingertipScan = onStartFingertipScan
         self._selectedTab = State(initialValue: initialTab)
         self.onDismiss = onDismiss
         self.onRetake = onRetake
@@ -147,21 +150,58 @@ public struct CaptureResultView: View {
                     )
 
                 case .fingertips:
-                    if let session = fingertipSession {
+                    if let session = fingertipSession, !session.results.isEmpty {
                         FingertipPatternsInspectorView(
                             session: session,
                             onPatternOverride: onPatternOverride
                         )
                     } else {
-                        VStack(spacing: 8) {
-                            Image(systemName: "touchid")
-                                .font(.system(size: 32))
-                                .foregroundColor(.secondary)
-                            Text("No fingertip data captured")
-                                .font(.system(size: 14, weight: .medium, design: .rounded))
-                                .foregroundColor(.secondary)
+                        VStack(spacing: 20) {
+                            Spacer()
+
+                            ZStack {
+                                Circle()
+                                    .fill(Color.cyan.opacity(0.12))
+                                    .frame(width: 80, height: 80)
+
+                                Image(systemName: "touchid")
+                                    .font(.system(size: 40, weight: .light))
+                                    .foregroundColor(.cyan)
+                            }
+
+                            VStack(spacing: 8) {
+                                Text("Capture Fingertip Prints")
+                                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                                    .foregroundColor(.primary)
+
+                                Text("Record macro dermatoglyphic patterns (whorl, loop, arch) across all 5 digits for deeper biometric analysis.")
+                                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 32)
+                            }
+
+                            if let onStartFingertipScan {
+                                Button(action: onStartFingertipScan) {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "hand.tap.fill")
+                                        Text("Start Fingertip Scan (Optional)")
+                                    }
+                                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                    .padding(.horizontal, 22)
+                                    .padding(.vertical, 12)
+                                    .background(Capsule().fill(Color.cyan.opacity(0.16)))
+                                    .overlay(Capsule().stroke(Color.cyan.opacity(0.6), lineWidth: 1.2))
+                                    .foregroundColor(.cyan)
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.top, 6)
+                            }
+
+                            Spacer()
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(uiColor: .systemGroupedBackground))
                     }
 
                 case .anthropometry:
@@ -233,7 +273,7 @@ public struct CaptureResultView: View {
             .onAppear {
                 selectedTab = initialTab
             }
-            .onChange(of: initialTab) { newTab in
+            .onChange(of: initialTab) { _, newTab in
                 selectedTab = newTab
             }
         }

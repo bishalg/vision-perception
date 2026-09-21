@@ -69,7 +69,7 @@ extension PalmAnalysisViewModel {
             self.orbitSession = self.orbitGuidance.orbitSession
             self.updateMountReliefHeat()
 
-            if eval.shouldCapture, let landmarks, let pose {
+            if eval.shouldCapture, let landmarks {
                 self.captureOrbitKeyframe(landmarks: landmarks, bin: {
                     if case .capturing(let b) = eval.state { return b }
                     let filled = self.orbitGuidance.orbitSession.filledBins
@@ -268,7 +268,7 @@ extension PalmAnalysisViewModel {
         if case .success(let json) = engine.processPixelBuffer(pixelBuffer: buffer, landmarks: flat, includeMinorRidges: true),
            let parsed = PalmAnalysisResponse.from(jsonString: json) {
             DispatchQueue.main.async {
-                if var existing = self.analysisResult {
+                if let existing = self.analysisResult {
                     // Merge minor ridges into existing result
                     self.analysisResult = parsed
                     _ = existing
@@ -439,7 +439,7 @@ extension PalmAnalysisViewModel {
         relief: MountReliefMap,
         intrinsics: CameraIntrinsics
     ) -> PalmAnalysisResponse? {
-        guard var response else { return nil }
+        guard let response else { return nil }
         let payload = MountReliefPayload(
             mounts: relief.mounts.map {
                 MountReliefEntryPayload(

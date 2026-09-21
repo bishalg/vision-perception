@@ -1,4 +1,5 @@
 import XCTest
+import SwiftUI
 @testable import PalmScanner
 import CurvCameraOverlay
 import CurvPalmOverlay
@@ -229,6 +230,50 @@ final class PalmScanModeTests: XCTestCase {
         let dummyPoints = (0..<21).map { CGPoint(x: 0.5 + Double($0) * 0.01, y: 0.5 + Double($0) * 0.01) }
         let depths: [String: Float] = ["venus": 3.0, "thenar": 3.0, "jupiter": 1.5]
         let view = HandMeshInspectorView(landmarks: dummyPoints, padDepths: depths)
+        XCTAssertNotNil(view.body)
+    }
+
+    func testDefaultScanModeIs3DOrbit() {
+        let vm = PalmAnalysisViewModel()
+        XCTAssertEqual(vm.scanMode, .orbitScan)
+    }
+
+    func testStartFingertipDeepDiveSwitchesMode() {
+        let vm = PalmAnalysisViewModel()
+        vm.showResultViewer = true
+        vm.startFingertipDeepDive()
+        XCTAssertFalse(vm.showResultViewer)
+        XCTAssertEqual(vm.scanMode, .fingertipScan)
+    }
+
+    func testSetOrbitCaptureResultProvidesMajorCreaseLines() {
+        let vm = PalmAnalysisViewModel()
+        let dummyImage = UIGraphicsImageRenderer(size: CGSize(width: 100, height: 100)).image { ctx in
+            UIColor.white.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 100, height: 100))
+        }
+        let dummyPoints = (0..<21).map { CGPoint(x: 0.5 + Double($0) * 0.01, y: 0.5 + Double($0) * 0.01) }
+        vm.setOrbitCaptureResult(image: dummyImage, landmarks: dummyPoints)
+
+        XCTAssertNotNil(vm.capturedImage)
+        XCTAssertEqual(vm.captureLandmarks.count, 21)
+        XCTAssertEqual(vm.detectedSplines.count, 4)
+        let lineTypes = Set(vm.detectedSplines.map { $0.lineType })
+        XCTAssertTrue(lineTypes.contains(.heart))
+        XCTAssertTrue(lineTypes.contains(.head))
+        XCTAssertTrue(lineTypes.contains(.life))
+        XCTAssertTrue(lineTypes.contains(.fate))
+    }
+
+    func testCaptureResultViewWithFingertipDeepDive() {
+        let dummyPoints = (0..<21).map { CGPoint(x: 0.5 + Double($0) * 0.01, y: 0.5 + Double($0) * 0.01) }
+        var splines: [CreaseSpline] = []
+        let view = CaptureResultView(
+            image: nil,
+            landmarks: dummyPoints,
+            splines: Binding(get: { splines }, set: { splines = $0 }),
+            onStartFingertipScan: {}
+        )
         XCTAssertNotNil(view.body)
     }
 }

@@ -277,7 +277,6 @@ public struct MCHATSurveyModalView: View {
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(LiquidGlass.warmAmber.opacity(0.12))
-                        )
                 )
             }
 

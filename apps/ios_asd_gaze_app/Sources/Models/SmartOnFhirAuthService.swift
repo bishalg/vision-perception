@@ -10,7 +10,7 @@ import AuthenticationServices
 ///
 /// Reference: DOC-RES-ASD-006 §2.2, §7 (STAGE 3 Implementation Plan)
 @MainActor
-public final class SmartOnFhirAuthService: ObservableObject {
+public final class SmartOnFhirAuthService: NSObject, ObservableObject {
     public static let shared = SmartOnFhirAuthService()
 
     // MARK: - Published State
@@ -30,7 +30,8 @@ public final class SmartOnFhirAuthService: ObservableObject {
     private let tokenStorageKey = "org.curv.asd.smart.tokens"
     private let configStorageKey = "org.curv.asd.smart.config"
 
-    private init() {
+    private override init() {
+        super.init()
         restoreTokens()
     }
 
@@ -239,7 +240,7 @@ public final class SmartOnFhirAuthService: ObservableObject {
     // MARK: - Secure Keychain Storage
 
     private func savePKCE(codeVerifier: String) {
-        keychain[codeVerifier] = pkceStorageKey
+        keychain[pkceStorageKey] = codeVerifier
     }
 
     private func loadPKCE() -> String? {
@@ -265,7 +266,7 @@ public final class SmartOnFhirAuthService: ObservableObject {
             expiresAt: Date().addingTimeInterval(TimeInterval(response.expiresIn))
         )
         let data = try JSONEncoder().encode(bundle)
-        keychain[data] = tokenStorageKey
+        keychain[tokenStorageKey] = data
         self.accessToken = response.accessToken
         self.refreshToken = response.refreshToken
         self.idToken = response.idToken
@@ -303,7 +304,7 @@ public final class SmartOnFhirAuthService: ObservableObject {
 
     private func saveConfiguration(_ config: SmartConfiguration) throws {
         let data = try JSONEncoder().encode(config)
-        keychain[data] = configStorageKey
+        keychain[configStorageKey] = data
     }
 
     // MARK: - JWT Decode (id_token)
