@@ -23,6 +23,7 @@ public struct MainScannerView: View {
     @State private var showCaptureFlash = false
     @State private var flashImage: UIImage?
     @State private var filmstripShakeTicks: CGFloat = 0
+    @State private var showSafetyNotice = true
 
     public init() {}
 
@@ -131,11 +132,30 @@ public struct MainScannerView: View {
 
                 // MARK: Mode selector capsule + mode coaching chips
                 VStack(spacing: 8) {
-                    CameraModeSelectorView(
-                        selectedMode: viewModel.scanMode,
-                        completedModes: viewModel.completedScanModes,
-                        onSelect: { viewModel.setScanMode($0) }
-                    )
+                    HStack(spacing: 8) {
+                        CameraModeSelectorView(
+                            selectedMode: viewModel.scanMode,
+                            completedModes: viewModel.completedScanModes,
+                            onSelect: { viewModel.setScanMode($0) }
+                        )
+
+                        if !showSafetyNotice && !viewModel.showResultViewer {
+                            Button(action: {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                    showSafetyNotice = true
+                                }
+                            }) {
+                                Image(systemName: "info.circle")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(.white.opacity(0.85))
+                                    .frame(width: 28, height: 28)
+                                    .background(Circle().fill(Color.black.opacity(0.60)))
+                                    .overlay(Circle().stroke(Color.white.opacity(0.25), lineWidth: 0.8))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Show Safety Notice")
+                        }
+                    }
 
                     if !viewModel.showResultViewer {
                         switch viewModel.scanMode {
@@ -330,18 +350,29 @@ public struct MainScannerView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .zIndex(3)
                 }
+                // MARK: Floating dismissible privacy & safety banner
+                if showSafetyNotice && !viewModel.showResultViewer {
+                    VStack {
+                        DismissibleSafetyNoticeBanner(
+                            selectedLanguage: viewModel.currentLanguage,
+                            onDismiss: {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                    showSafetyNotice = false
+                                }
+                            }
+                        )
+                        .padding(.top, max(geometry.safeAreaInsets.top, 10))
+                        Spacer()
+                    }
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .top).combined(with: .opacity),
+                        removal: .move(edge: .top).combined(with: .opacity)
+                    ))
+                    .zIndex(5)
+                }
             }
         }
         .ignoresSafeArea()
-        .safeAreaInset(edge: .top, spacing: 0) {
-            if !viewModel.showResultViewer {
-                PalmReadingSafetyNotice(selectedLanguage: viewModel.currentLanguage)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.regularMaterial)
-            }
-        }
         .animation(.easeInOut(duration: 0.22), value: viewModel.showResultViewer)
         .onChange(of: viewModel.captureTick) { _ in animateNewCapture() }
         // Phase 3 — Reading sheet
@@ -436,5 +467,76 @@ private struct ShakeEffect: GeometryEffect {
     func effectValue(size: CGSize) -> ProjectionTransform {
         let dx = travel * sin(Double(animatableData) * .pi * oscillations)
         return ProjectionTransform(CGAffineTransform(translationX: dx, y: 0))
+    }
+}
+
+// MARK: - Dismissible Safety Notice Banner
+
+/// Floating error/info banner style notice that can be dismissed with "OK" or "X",
+/// preventing obstruction of the underlying camera viewfinder.
+struct DismissibleSafetyNoticeBanner: View {
+    let selectedLanguage: AppLanguage
+    let onDismiss: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "info.circle.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.cyan)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(LocalizedStrings.tr("safety.title", lang: selectedLanguage))
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+
+                    Text(LocalizedStrings.tr("safety.disclaimer", lang: selectedLanguage))
+                        .font(.system(size: 11, weight: .regular, design: .rounded))
+                        .foregroundColor(.white.opacity(0.85))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 4)
+
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(.white.opacity(0.7))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Dismiss Notice")
+            }
+
+            HStack {
+                if let url = URL(string: "https://astro-fusion.com/privacy") {
+                    Link(LocalizedStrings.tr("safety.privacy", lang: selectedLanguage), destination: url)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundColor(.cyan)
+                }
+
+                Spacer()
+
+                Button(action: onDismiss) {
+                    Text("OK")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 5)
+                        .background(Capsule().fill(Color.white))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.black.opacity(0.82))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.white.opacity(0.25), lineWidth: 0.8)
+                )
+        )
+        .shadow(color: Color.black.opacity(0.5), radius: 12, y: 4)
+        .padding(.horizontal, 16)
     }
 }

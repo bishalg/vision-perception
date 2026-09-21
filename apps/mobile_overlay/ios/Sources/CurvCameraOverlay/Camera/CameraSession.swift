@@ -58,6 +58,7 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
 
             let discovery = AVCaptureDevice.DiscoverySession(
                 deviceTypes: [
+                    .builtInLiDARDepthCamera,
                     .builtInTripleCamera,
                     .builtInDualWideCamera,
                     .builtInDualCamera,
