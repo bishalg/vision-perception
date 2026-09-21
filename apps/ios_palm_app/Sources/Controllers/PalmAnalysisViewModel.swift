@@ -32,6 +32,10 @@ public final class PalmAnalysisViewModel: ObservableObject {
     @Published public var orbitSession: OrbitCaptureSession = OrbitCaptureSession(handSide: "auto")
     @Published public var closeUpSession = CloseUpMosaicSession()
     @Published public var fingertipSession = FingertipScanSession()
+    @Published public var fingertipState: FingertipGuidanceState = .searching
+    @Published public var fingertipHoldProgress: Float = 0.0
+    @Published public var closeUpDwellProgress: Float = 0.0
+    @Published public var closeUpTileStatus: String = ""
     @Published public var mountReliefMap: MountReliefMap?
     @Published public var mountReliefHeat: [String: Float] = [:]
 
@@ -67,8 +71,27 @@ public final class PalmAnalysisViewModel: ObservableObject {
     /// landing/shake animation exactly once per new shot.
     @Published public private(set) var captureTick: Int = 0
     public var isCaptureSessionComplete: Bool { capturedShots.count >= requiredShotCount }
+    public var completedScanModes: Set<PalmScanMode> {
+        var set = Set<PalmScanMode>()
+        if !capturedShots.isEmpty || analysisResult != nil {
+            set.insert(.stillPhoto)
+        }
+        if orbitSession.filledBins.count >= 4 || mountReliefMap != nil {
+            set.insert(.orbitScan)
+        }
+        if !closeUpSession.tiles.isEmpty {
+            set.insert(.closeUpMosaic)
+        }
+        if fingertipSession.scannedDigits.count >= FingertipDigit.allCases.count {
+            set.insert(.fingertipScan)
+        }
+        return set
+    }
     /// Full-screen overlay review (opened from the camera-roll style thumbnail).
     @Published public var showResultViewer: Bool = false
+    @Published public var resultViewerInitialTab: CaptureResultView.ResultInspectorTab = .creases
+    public var flatKeyframeImage: UIImage?
+    public var flatKeyframeLandmarks: [CGPoint] = []
     @Published public var usedNativeEngine: Bool = false
     @Published public var overlaySource: CreaseOverlaySource = .landmarkFallback
     /// Adjusted lines ready for prediction / VLM (set by "Use for reading").
@@ -92,6 +115,8 @@ public final class PalmAnalysisViewModel: ObservableObject {
     let successHaptic = UINotificationFeedbackGenerator()
     /// Throttle UI metric publishes so Lux/Glare/Tilt stay smooth (~15 Hz).
     private var lastMetricsPublish: CFTimeInterval = 0
+    /// Dwell gate for close-up mosaic auto-capture (0.6 s hold required).
+    var closeUpDwellGate = CloseUpDwellGate(requiredDuration: 0.6)
 
     public init() {
         self.guidanceEngine = CaptureGuidance(thresholds: PalmOverlay.profile.thresholds)
@@ -191,16 +216,6 @@ public final class PalmAnalysisViewModel: ObservableObject {
 
     /// Attach orbit / close-up / fingertip scan data to the reading payload.
     public func mergeScanEnrichmentIntoAnalysisResult() {
-        guard var response = analysisResult, let payload = response.domainPayload else {
-            if let relief = mountReliefMap {
-                analysisResult = analysisResultWithMountRelief(
-                    analysisResult,
-                    relief: relief,
-                    intrinsics: CameraIntrinsics.fromFieldOfView(imageWidth: 1920, imageHeight: 1080, fovHorizontalDeg: 68)
-                )
-            }
-            return
-        }
         let reliefPayload: MountReliefPayload? = mountReliefMap.map { map in
             MountReliefPayload(
                 mounts: map.mounts.map {
@@ -217,7 +232,7 @@ public final class PalmAnalysisViewModel: ObservableObject {
                 source: map.source
             )
         }
-        let tipPayload: FingertipPatternPayload? = fingertipSession.results.first.map {
+        let tipsPayload: [FingertipPatternPayload] = fingertipSession.results.map {
             FingertipPatternPayload(
                 digit: $0.digit.rawValue,
                 pattern: $0.pattern.rawValue,
@@ -225,6 +240,22 @@ public final class PalmAnalysisViewModel: ObservableObject {
                 quality: $0.quality
             )
         }
+        let tipPayload = tipsPayload.first
+
+        guard var response = analysisResult, let payload = response.domainPayload else {
+            let emptyPayload = PalmDomainPayload(
+                mountRelief: reliefPayload,
+                fingertipPattern: tipPayload,
+                fingertipPatterns: !tipsPayload.isEmpty ? tipsPayload : nil
+            )
+            analysisResult = PalmAnalysisResponse(
+                isUsable: true,
+                totalDurationUs: 0,
+                domainPayload: emptyPayload
+            )
+            return
+        }
+
         let merged = PalmDomainPayload(
             majorLines: payload.majorLines,
             dominantLine: payload.dominantLine,
@@ -235,7 +266,8 @@ public final class PalmAnalysisViewModel: ObservableObject {
             lifeAnalysis: payload.lifeAnalysis,
             mountRelief: reliefPayload ?? payload.mountRelief,
             minorRidges: payload.minorRidges,
-            fingertipPattern: tipPayload ?? payload.fingertipPattern
+            fingertipPattern: tipPayload ?? payload.fingertipPattern,
+            fingertipPatterns: !tipsPayload.isEmpty ? tipsPayload : payload.fingertipPatterns
         )
         if let data = try? JSONEncoder().encode(PalmAnalysisResponseWrapper(
             isUsable: response.isUsable,
@@ -244,6 +276,16 @@ public final class PalmAnalysisViewModel: ObservableObject {
         )), let str = String(data: data, encoding: .utf8) {
             analysisResult = PalmAnalysisResponse.from(jsonString: str)
         }
+    }
+
+    public func setOrbitCaptureResult(image: UIImage, landmarks: [CGPoint]) {
+        self.capturedImage = image
+        if self.capturedShots.isEmpty {
+            self.capturedShots.append(image)
+        }
+        self.captureLandmarks = landmarks
+        self.detectedLandmarks = landmarks
+        self.detectedSplines = self.fallbackLandmarkCreases(landmarks: landmarks)
     }
 
     /// Lock current (possibly edited) lines as the prediction input.
@@ -463,7 +505,12 @@ public final class PalmAnalysisViewModel: ObservableObject {
             guard let self else { return }
             switch result {
             case .success(let captured):
-                self.finishCapture(photoBuffer: captured.pixelBuffer, intrinsics: captured.intrinsics, landmarks: landmarks)
+                self.finishCapture(
+                    photoBuffer: captured.pixelBuffer,
+                    intrinsics: captured.intrinsics,
+                    depthMap: captured.depthMap,
+                    landmarks: landmarks
+                )
             case .failure(let error):
                 self.logger.error("Photo capture failed: \(error.localizedDescription)")
                 DispatchQueue.main.async {
@@ -476,7 +523,12 @@ public final class PalmAnalysisViewModel: ObservableObject {
         }
     }
 
-    private func finishCapture(photoBuffer: CVPixelBuffer, intrinsics: CameraIntrinsics, landmarks videoLandmarks: [CGPoint]) {
+    private func finishCapture(
+        photoBuffer: CVPixelBuffer,
+        intrinsics: CameraIntrinsics,
+        depthMap: PhotoDepthMap? = nil,
+        landmarks videoLandmarks: [CGPoint]
+    ) {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else { return }
 
@@ -498,6 +550,16 @@ public final class PalmAnalysisViewModel: ObservableObject {
                 self.logger.info("Re-detected landmarks on photo buffer (side: \(stillSide.rawValue))")
             } else {
                 self.logger.error("Still re-detect failed — falling back to video landmarks (likely misaligned)")
+            }
+
+            // Sample real depth elevations if LiDAR or disparity map is available
+            if let depth = depthMap, !photoLandmarks.isEmpty {
+                let lm = photoLandmarks.map { [Float($0.x), Float($0.y)] }
+                if let sampled = MountDepthSampler.sampleMountMeansMm(depthMap: depth, landmarks: lm) {
+                    DispatchQueue.main.async {
+                        self.mountReliefHeat = sampled
+                    }
+                }
             }
 
             // Anatomical landmark scaffold: always provides all 4 major lines (Heart, Head, Life, Fate).

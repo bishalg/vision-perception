@@ -11,6 +11,7 @@ extension PalmAnalysisViewModel {
         scanMode = mode
         orbitGuidance.reset(handSide: detectedHandSide.rawValue)
         closeUpSession = CloseUpMosaicSession()
+        closeUpDwellGate.reset()
         fingertipSession = FingertipScanSession()
         if mode == .orbitScan {
             deviceTiltProvider.start()
@@ -18,6 +19,8 @@ extension PalmAnalysisViewModel {
         let isMacro = (mode == .closeUpMosaic || mode == .fingertipScan)
         cameraSession.setMacroFocus(enabled: isMacro)
         statusMessageOverride = mode.subtitle
+        closeUpDwellProgress = 0.0
+        closeUpTileStatus = ""
     }
 
     func processScanModeFrame(
@@ -109,6 +112,11 @@ extension PalmAnalysisViewModel {
         let depthMm = photo.depthMap.flatMap {
             MountDepthSampler.sampleMountMeansMm(depthMap: $0, landmarks: lm)
         }
+        let upright = Self.uprightImage(from: photo.pixelBuffer).0
+        if bin == .flatCenter || self.flatKeyframeImage == nil {
+            self.flatKeyframeImage = upright
+            self.flatKeyframeLandmarks = landmarks
+        }
         let frame = OrbitFrame(
             bin: bin,
             timestamp: Date().timeIntervalSince1970,
@@ -142,6 +150,17 @@ extension PalmAnalysisViewModel {
             self.isCapturing = false
             if case .complete = self.orbitState {
                 self.successHaptic.notificationOccurred(.success)
+                if let bestImage = self.flatKeyframeImage ?? upright {
+                    let lms = !self.flatKeyframeLandmarks.isEmpty ? self.flatKeyframeLandmarks : landmarks
+                    self.setOrbitCaptureResult(image: bestImage, landmarks: lms)
+                }
+                self.resultViewerInitialTab = .topography
+                self.statusMessageOverride = "Orbit scan complete! 3D Topography ready."
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    if self.orbitState == .complete && !self.showResultViewer {
+                        self.showResultViewer = true
+                    }
+                }
             } else {
                 self.lightHaptic.impactOccurred()
             }
@@ -154,15 +173,34 @@ extension PalmAnalysisViewModel {
         photometrics: PhotometricSample,
         now: CFTimeInterval
     ) {
-        guard !isCapturing, let target = closeUpGuidance.nextTile(in: closeUpSession) else {
-            DispatchQueue.main.async { self.statusMessageOverride = "Close-up mosaic complete" }
+        guard !isCapturing else { return }
+        guard let target = closeUpGuidance.nextTile(in: closeUpSession) else {
+            closeUpDwellGate.reset()
+            DispatchQueue.main.async {
+                self.closeUpDwellProgress = 0.0
+                self.closeUpTileStatus = ""
+                self.statusMessageOverride = "Close-up mosaic complete"
+            }
             return
         }
         let eval = closeUpGuidance.evaluate(pose: pose, photometrics: photometrics, target: target)
+        let landmarksOK = (landmarks?.count ?? 0) >= 21
+        let allReady = eval.ready && landmarksOK
+
+        // Accumulate dwell progress — resets immediately if readiness breaks
+        let progress = closeUpDwellGate.update(evalReady: allReady, now: now)
         DispatchQueue.main.async {
-            self.statusMessageOverride = eval.message
+            self.closeUpDwellProgress = progress
+            self.closeUpTileStatus = target.rawValue
+            self.statusMessageOverride = allReady
+                ? (progress >= 1.0 ? "Capturing \(target.rawValue)…" : eval.message)
+                : eval.message
         }
-        guard eval.ready, let landmarks, landmarks.count >= 21 else { return }
+
+        // Fire only after 0.6 s continuous hold
+        guard closeUpDwellGate.shouldFire(evalReady: allReady, now: now),
+              let landmarks else { return }
+        closeUpDwellGate.reset()
         isCapturing = true
         cameraSession.capturePhoto { [weak self] result in
             guard let self else { return }
@@ -179,10 +217,13 @@ extension PalmAnalysisViewModel {
             )
             DispatchQueue.main.async {
                 self.closeUpSession.tiles.append(tile)
+                self.closeUpDwellProgress = 0.0
+                self.lightHaptic.impactOccurred()
                 self.processCloseUpWithEngine(photo: photo, landmarks: landmarks)
             }
         }
     }
+
 
     private func processCloseUpWithEngine(photo: CapturedPhoto, landmarks: [CGPoint]) {
         guard let engine = curvEngine else { return }
@@ -208,21 +249,95 @@ extension PalmAnalysisViewModel {
         now: CFTimeInterval
     ) {
         guard !isCapturing,
-              let target = fingertipGuidance.nextDigit(in: fingertipSession),
-              let landmarks else { return }
-        let eval = fingertipGuidance.evaluate(landmarks: landmarks, target: target, photometrics: photometrics)
-        DispatchQueue.main.async { self.statusMessageOverride = eval.message }
+              let target = fingertipGuidance.nextDigit(in: fingertipSession) else { return }
+        let lms = landmarks ?? []
+        let eval = fingertipGuidance.evaluate(landmarks: lms, target: target, photometrics: photometrics, timestamp: now)
+        DispatchQueue.main.async {
+            self.fingertipState = eval.state
+            self.fingertipHoldProgress = eval.progress
+            self.statusMessageOverride = eval.message
+        }
         guard eval.ready else { return }
         isCapturing = true
         cameraSession.capturePhoto { [weak self] result in
             guard let self else { return }
             defer { DispatchQueue.main.async { self.isCapturing = false } }
             guard case .success(let photo) = result else { return }
-            let pattern = self.classifyFingertip(photo: photo, landmarks: landmarks, digit: target)
+            let pattern = self.classifyFingertip(photo: photo, landmarks: lms, digit: target)
             DispatchQueue.main.async {
                 self.fingertipSession.results.append(pattern)
+                self.fingertipGuidance.notifyCaptured(digit: target, timestamp: CACurrentMediaTime())
+                self.fingertipHoldProgress = 0.0
+                self.lightHaptic.impactOccurred()
+                if self.fingertipSession.scannedDigits.count >= FingertipDigit.allCases.count {
+                    self.successHaptic.notificationOccurred(.success)
+                    self.fingertipState = .complete
+                    self.statusMessageOverride = "All 5 fingertips captured! Dermatoglyphics ready."
+                } else if let next = self.fingertipGuidance.nextDigit(in: self.fingertipSession) {
+                    self.statusMessageOverride = "\(target.displayName) captured (\(pattern.pattern.rawValue.capitalized)). Next: \(next.displayName)"
+                }
             }
         }
+    }
+
+    public func manualFingertipCapture() {
+        guard scanMode == .fingertipScan, !isCapturing,
+              let target = fingertipGuidance.nextDigit(in: fingertipSession) else { return }
+        isCapturing = true
+        cameraSession.capturePhoto { [weak self] result in
+            guard let self else { return }
+            defer { DispatchQueue.main.async { self.isCapturing = false } }
+            guard case .success(let photo) = result else { return }
+            let pattern = self.classifyFingertip(photo: photo, landmarks: self.detectedLandmarks, digit: target)
+            DispatchQueue.main.async {
+                self.fingertipSession.results.append(pattern)
+                self.fingertipGuidance.notifyCaptured(digit: target, timestamp: CACurrentMediaTime())
+                self.fingertipHoldProgress = 0.0
+                self.lightHaptic.impactOccurred()
+                if self.fingertipSession.scannedDigits.count >= FingertipDigit.allCases.count {
+                    self.successHaptic.notificationOccurred(.success)
+                    self.fingertipState = .complete
+                    self.statusMessageOverride = "All 5 fingertips captured! Dermatoglyphics ready."
+                } else if let next = self.fingertipGuidance.nextDigit(in: self.fingertipSession) {
+                    self.statusMessageOverride = "\(target.displayName) captured (\(pattern.pattern.rawValue.capitalized)). Next: \(next.displayName)"
+                }
+            }
+        }
+    }
+
+    public func resetFingertipScan() {
+        fingertipGuidance.reset()
+        fingertipSession = FingertipScanSession()
+        fingertipState = .searching
+        fingertipHoldProgress = 0.0
+        let targetName = FingertipDigit.allCases.first?.displayName ?? "Index"
+        statusMessageOverride = "Place \(targetName) pad in circle to begin"
+    }
+
+    public func overrideFingertipPattern(digit: FingertipDigit, pattern: DermatoglyphicPattern) {
+        if let idx = fingertipSession.results.firstIndex(where: { $0.digit == digit }) {
+            let existing = fingertipSession.results[idx]
+            fingertipSession.results[idx] = FingertipScanResult(
+                id: existing.id,
+                digit: digit,
+                pattern: pattern,
+                ridgeFrequency: existing.ridgeFrequency,
+                quality: 1.0,
+                timestamp: existing.timestamp,
+                imagePath: existing.imagePath
+            )
+        } else {
+            fingertipSession.results.append(
+                FingertipScanResult(
+                    digit: digit,
+                    pattern: pattern,
+                    ridgeFrequency: 0.8,
+                    quality: 1.0,
+                    timestamp: Date().timeIntervalSince1970
+                )
+            )
+        }
+        mergeScanEnrichmentIntoAnalysisResult()
     }
 
     private func classifyFingertip(photo: CapturedPhoto, landmarks: [CGPoint], digit: FingertipDigit) -> FingertipScanResult {
@@ -241,12 +356,10 @@ extension PalmAnalysisViewModel {
                 )
             }
         }
-        return FingertipScanResult(
-            digit: digit,
-            pattern: .loop,
-            ridgeFrequency: 0.8,
-            quality: 0.4,
-            timestamp: Date().timeIntervalSince1970
+        return DermatoglyphicClassifier.classify(
+            pixelBuffer: photo.pixelBuffer,
+            landmarks: landmarks,
+            digit: digit
         )
     }
 
