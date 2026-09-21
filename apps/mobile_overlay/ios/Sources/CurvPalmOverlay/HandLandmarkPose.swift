@@ -26,16 +26,17 @@ public enum HandLandmarkPose {
         let middleMcp = landmarks[9]
         let middleTip = landmarks[12]
         let pinkyMcp = landmarks[17]
-        let tips = [landmarks[4], landmarks[8], middleTip, landmarks[16], landmarks[20], wrist]
+        let fingerTips = [landmarks[4], landmarks[8], middleTip, landmarks[16], landmarks[20]]
 
-        // Hard reject only when geometry is unusable (off-screen).
-        for tip in tips {
+        // Hard reject only when finger geometry is off-screen.
+        // Wrist is allowed to extend towards the bottom edge where hand enters frame.
+        for tip in fingerTips {
             if tip.x < hardMargin || tip.x > 1 - hardMargin || tip.y < hardMargin || tip.y > 1 - hardMargin {
                 return nil
             }
         }
 
-        let fullyInFrame = tips.allSatisfy {
+        let fullyInFrame = fingerTips.allSatisfy {
             $0.x >= softMargin && $0.x <= 1 - softMargin &&
             $0.y >= softMargin && $0.y <= 1 - softMargin
         }

@@ -7,7 +7,7 @@ import Foundation
  */
 public enum RigidHandChecker {
     /// Maximum normalized displacement allowed per landmark vs reference (hand-normalized).
-    public static let maxJointDrift: CGFloat = 0.080
+    public static let maxJointDrift: CGFloat = 0.095
     /// Minimum spread between index and pinky MCP (normalized) — fingers must stay open.
     public static let minMcpSpread: CGFloat = 0.10
 
@@ -43,15 +43,17 @@ public enum RigidHandChecker {
             return Result(isRigid: true, digitSpreadOk: true, maxDrift: 0)
         }
 
-        // Compensate for global hand translation & scale so normal movement across frame doesn't false-reject
-        let baseIndices = [0, 5, 9, 13, 17]
+        // Anchor on the rigid metacarpal arch (knuckles 5, 9, 13, 17) — excluding wrist (0)
+        // so bending or tilting at the wrist joint does NOT cause false rejects!
+        let baseIndices = [5, 9, 13, 17]
         let curBaseX = baseIndices.map { current[$0].x }.reduce(0, +) / CGFloat(baseIndices.count)
         let curBaseY = baseIndices.map { current[$0].y }.reduce(0, +) / CGFloat(baseIndices.count)
         let refBaseX = baseIndices.map { reference[$0].x }.reduce(0, +) / CGFloat(baseIndices.count)
         let refBaseY = baseIndices.map { reference[$0].y }.reduce(0, +) / CGFloat(baseIndices.count)
 
-        let curSpan = hypot(current[9].x - current[0].x, current[9].y - current[0].y)
-        let refSpan = hypot(reference[9].x - reference[0].x, reference[9].y - reference[0].y)
+        // Scale reference is palm breadth (5 to 17), strictly on the palm plate and invariant to wrist bending
+        let curSpan = hypot(current[17].x - current[5].x, current[17].y - current[5].y)
+        let refSpan = hypot(reference[17].x - reference[5].x, reference[17].y - reference[5].y)
         let scaleFactor = (refSpan > 0.001 && curSpan > 0.001) ? (curSpan / refSpan) : 1.0
 
         // Finger tips (4–8, 12, 16, 20) and IPs are most sensitive to flex.
