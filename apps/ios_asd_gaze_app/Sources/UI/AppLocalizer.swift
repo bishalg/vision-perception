@@ -476,14 +476,14 @@ public enum Localizer {
             "hi": "एप्लिकेशन संस्करण"
         ],
         "settings_regulatory_class": [
-            "en": "Regulatory Classification",
-            "ne": "नियामक वर्गीकरण",
-            "hi": "नियामक वर्गीकरण"
+            "en": "Clinical Category",
+            "ne": "क्लिनिकल वर्ग",
+            "hi": "क्लिनिकल श्रेणी"
         ],
         "settings_regulatory_value": [
-            "en": "Investigational Device Exemption (IDE)",
-            "ne": "अनुसन्धान उपकरण छुट (IDE)",
-            "hi": "अनुसंधान उपकरण छूट (IDE)"
+            "en": "Developmental Observation Tool",
+            "ne": "विकासात्मक अनुगमन उपकरण",
+            "hi": "विकासात्मक निगरानी उपकरण"
         ],
         "settings_dev_lab": [
             "en": "Developer & Clinical Lab",

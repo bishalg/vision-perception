@@ -83,4 +83,86 @@ final class SimplePalmReadingTests: XCTestCase {
         let input = [spline(.life), spline(.head)]
         XCTAssertEqual(SimplePalmReading.reading(for: input), input.map { SimplePalmReading.readingText(for: $0, handSide: .right) })
     }
+
+    func testMultiDigitFingertipPatternEnrichment() throws {
+        let json = """
+        {
+            "fingertip_patterns": [
+                {"digit": "thumb", "pattern": "whorl", "ridge_frequency": 0.85, "quality": 0.9},
+                {"digit": "index", "pattern": "loop", "ridge_frequency": 0.82, "quality": 0.88}
+            ]
+        }
+        """
+        let reports = try reports(json)
+        XCTAssertEqual(reports.enrichment.fingertipSummary, "thumb: whorl, index: loop")
+        let head = SimplePalmReading.readingText(for: spline(.head), handSide: .right, reports: reports)
+        XCTAssertTrue(head.contains("finger pads: thumb whorl, index loop"))
+    }
+
+    func testDermatoglyphicClassifierOrientationAndClassification() throws {
+        let size = 128
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
+        guard let context = CGContext(
+            data: nil,
+            width: size,
+            height: size,
+            bitsPerComponent: 8,
+            bytesPerRow: size * 4,
+            space: colorSpace,
+            bitmapInfo: bitmapInfo
+        ) else {
+            XCTFail("Failed to create CGContext")
+            return
+        }
+
+        // Draw concentric rings (whorl pattern)
+        context.setFillColor(UIColor.black.cgColor)
+        context.fill(CGRect(x: 0, y: 0, width: size, height: size))
+        context.setStrokeColor(UIColor.white.cgColor)
+        context.setLineWidth(2.5)
+        let center = CGPoint(x: size / 2, y: size / 2)
+        for r in stride(from: 8, to: 56, by: 6) {
+            context.strokeEllipse(in: CGRect(x: center.x - CGFloat(r), y: center.y - CGFloat(r), width: CGFloat(r * 2), height: CGFloat(r * 2)))
+        }
+
+        guard let cgImage = context.makeImage() else {
+            XCTFail("Failed to make CGImage")
+            return
+        }
+
+        var maybeBuffer: CVPixelBuffer?
+        let attrs: [CFString: Any] = [
+            kCVPixelBufferCGImageCompatibilityKey: true,
+            kCVPixelBufferCGBitmapContextCompatibilityKey: true
+        ]
+        CVPixelBufferCreate(kCFAllocatorDefault, size, size, kCVPixelFormatType_32BGRA, attrs as CFDictionary, &maybeBuffer)
+        guard let pixelBuffer = maybeBuffer else {
+            XCTFail("Failed to create CVPixelBuffer")
+            return
+        }
+        CVPixelBufferLockBaseAddress(pixelBuffer, [])
+        if let baseAddress = CVPixelBufferGetBaseAddress(pixelBuffer) {
+            let bufContext = CGContext(
+                data: baseAddress,
+                width: size,
+                height: size,
+                bitsPerComponent: 8,
+                bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer),
+                space: colorSpace,
+                bitmapInfo: bitmapInfo
+            )
+            bufContext?.draw(cgImage, in: CGRect(x: 0, y: 0, width: size, height: size))
+        }
+        CVPixelBufferUnlockBaseAddress(pixelBuffer, [])
+
+        let result = DermatoglyphicClassifier.classify(
+            pixelBuffer: pixelBuffer,
+            landmarks: [],
+            digit: .thumb
+        )
+        XCTAssertEqual(result.digit, .thumb)
+        XCTAssertEqual(result.pattern, .whorl)
+        XCTAssertGreaterThan(result.quality, 0.4)
+    }
 }

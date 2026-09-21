@@ -15,6 +15,7 @@ require 'shellwords'
 require 'json'
 require 'fileutils'
 require 'pathname'
+require_relative 'ios_signing_helpers'
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -388,5 +389,131 @@ lane :create_icons do
     appicon_image_file: './assets/icon.png',
     appicon_devices: [:iphone, :ipad, :ios_marketing],
     appicon_path: './ios/Images.xcassets/AppIcon.appiconset'
+  )
+end
+
+# Helper to validate iOS PrivacyInfo.xcprivacy manifest
+def check_privacy_manifest_file(manifest_path, warn_only: false)
+  if manifest_path.nil? || !File.exist?(manifest_path)
+    UI.error("❌ Missing PrivacyInfo.xcprivacy at: #{manifest_path}")
+    UI.error("Apple requires a Privacy Manifest for all submissions utilizing Required Reason APIs.")
+    UI.user_error!("Privacy manifest missing") unless warn_only
+    return false
+  end
+
+  UI.success("✅ Privacy manifest exists: #{manifest_path}")
+
+  begin
+    require 'plist'
+    manifest = Plist.parse_xml(manifest_path)
+    if manifest
+      tracking = manifest["NSPrivacyTracking"]
+      api_types = manifest["NSPrivacyAccessedAPITypes"] || []
+      data_types = manifest["NSPrivacyCollectedDataTypes"] || []
+
+      UI.message("  Tracking enabled:    #{tracking}")
+      UI.message("  Declared API types:  #{api_types.length}")
+      api_types.each do |api|
+        reasons = (api["NSPrivacyAccessedAPITypeReasons"] || []).join(', ')
+        UI.message("    • #{api['NSPrivacyAccessedAPIType']} => [#{reasons}]")
+      end
+      UI.message("  Declared data types: #{data_types.length}")
+      data_types.each do |dt|
+        UI.message("    • #{dt['NSPrivacyCollectedDataType']}")
+      end
+      UI.success("🎯 Privacy manifest structure verified successfully!")
+      return true
+    else
+      UI.important("⚠️  Could not parse PrivacyInfo.xcprivacy as XML plist")
+      return false
+    end
+  rescue LoadError
+    content = File.read(manifest_path)
+    if content.include?("NSPrivacyAccessedAPITypes")
+      UI.success("✅ Privacy manifest contains NSPrivacyAccessedAPITypes declaration")
+      return true
+    else
+      UI.error("❌ Privacy manifest missing NSPrivacyAccessedAPITypes")
+      return false
+    end
+  end
+end
+
+# Validate iOS PrivacyInfo.xcprivacy manifest (Apple Spring 2024 requirement)
+lane :validate_privacy_manifest do |options|
+  app_root = resolve_app_root
+  candidates = [
+    options[:manifest_path],
+    File.join(app_root, "Resources", "PrivacyInfo.xcprivacy"),
+    File.join(app_root, "PrivacyInfo.xcprivacy"),
+    File.join(app_root, "ios", "PrivacyInfo.xcprivacy")
+  ].compact
+
+  manifest_path = candidates.find { |p| File.exist?(p) } || candidates.first
+  check_privacy_manifest_file(manifest_path, warn_only: options[:warn_only])
+end
+
+# Validate App Store metadata constraints (string lengths and required files)
+lane :validate_metadata do |options|
+  validate_app_local
+
+  UI.message("📏 Checking App Store metadata limits (Apple ASO constraints)...")
+  base_path = File.join(resolve_app_root, "fastlane", "metadata")
+  locales = options[:locales] || %w[en-US hi ne-NP]
+
+  locales.each do |locale|
+    loc_dir = File.join(base_path, locale)
+    next unless Dir.exist?(loc_dir)
+
+    # Name: max 30 chars
+    name_file = File.join(loc_dir, "name.txt")
+    if File.exist?(name_file)
+      val = File.read(name_file).strip
+      UI.user_error!("Name in #{locale} exceeds 30 chars: #{val.length} ('#{val}')") if val.length > 30
+      UI.success("  [#{locale}] Name: #{val.length}/30 ('#{val}')")
+    end
+
+    # Subtitle: max 30 chars
+    sub_file = File.join(loc_dir, "subtitle.txt")
+    if File.exist?(sub_file)
+      val = File.read(sub_file).strip
+      UI.user_error!("Subtitle in #{locale} exceeds 30 chars: #{val.length} ('#{val}')") if val.length > 30
+      UI.success("  [#{locale}] Subtitle: #{val.length}/30 ('#{val}')")
+    end
+
+    # Keywords: max 100 chars
+    kw_file = File.join(loc_dir, "keywords.txt")
+    if File.exist?(kw_file)
+      val = File.read(kw_file).strip
+      UI.user_error!("Keywords in #{locale} exceeds 100 chars: #{val.length}") if val.length > 100
+      UI.success("  [#{locale}] Keywords: #{val.length}/100")
+    end
+
+    # Promotional Text: max 170 chars
+    promo_file = File.join(loc_dir, "promotional_text.txt")
+    if File.exist?(promo_file)
+      val = File.read(promo_file).strip
+      UI.user_error!("Promotional text in #{locale} exceeds 170 chars: #{val.length}") if val.length > 170
+      UI.success("  [#{locale}] Promo text: #{val.length}/170")
+    end
+
+    # Description: max 4000 chars
+    desc_file = File.join(loc_dir, "description.txt")
+    if File.exist?(desc_file)
+      val = File.read(desc_file).strip
+      UI.user_error!("Description in #{locale} exceeds 4000 chars: #{val.length}") if val.length > 4000
+      UI.success("  [#{locale}] Description length: #{val.length}/4000")
+    end
+  end
+
+  UI.success("🎯 All metadata constraints satisfied successfully!")
+end
+
+# App Store precheck rules
+lane :appstore_precheck do |options|
+  app_id = options[:app_identifier] || ENV["APP_IDENTIFIER"] || CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
+  precheck(
+    app_identifier: app_id,
+    include_in_app_purchases: false
   )
 end

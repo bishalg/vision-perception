@@ -8,6 +8,9 @@ require 'fileutils'
 
 CONFIG = YAML.load_file('config.yml') rescue {}
 
+# Import shared monorepo lanes & helpers (from vision-perception tooling)
+import "../../../fastlane/tooling/Fastfile.shared"
+
 platform :ios do
   before_all do
     Dotenv.load if defined?(Dotenv)
@@ -142,6 +145,13 @@ platform :ios do
     UI.success("🎯 All metadata constraints satisfied successfully!")
   end
 
+  desc "Validate iOS PrivacyInfo.xcprivacy manifest"
+  lane :validate_privacy_manifest do |options|
+    app_root = File.expand_path("..", __dir__)
+    path = options[:manifest_path] || File.join(app_root, "Resources", "PrivacyInfo.xcprivacy")
+    check_privacy_manifest_file(path, warn_only: options[:warn_only])
+  end
+
   desc "Run App Store precheck rules on metadata"
   lane :appstore_precheck do
     precheck(
@@ -151,21 +161,23 @@ platform :ios do
   end
 
   # =========================================================================
-  # 2. CODE SIGNING & CERTIFICATES
+  # 2. CODE SIGNING & CERTIFICATES (ASTROFUSION BATTLE-TESTED MATCH PIPELINE)
   # =========================================================================
 
-  desc "Sync App Store distribution certificates and provisioning profiles"
+  desc "Sync App Store distribution certificates and provisioning profiles for App & Extensions"
   lane :sync_certs do |options|
     readonly = options.fetch(:readonly, is_ci)
     app_id = CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
+    widget_id = CONFIG["widget_identifier"] || "org.curv.asd.gazecollector.carewidget"
     team_id = CONFIG["team_id"] || "6J3WY94J6T"
+    all_ids = [app_id, widget_id].compact.uniq
 
-    UI.message("🔐 Syncing code signing certificates for #{app_id}...")
+    UI.message("🔐 Syncing code signing certificates for #{all_ids.join(', ')}...")
 
     if ENV["MATCH_GIT_URL"] && !ENV["MATCH_GIT_URL"].empty?
       match(
         type: "appstore",
-        app_identifier: [app_id],
+        app_identifier: all_ids,
         team_id: team_id,
         git_url: ENV["MATCH_GIT_URL"],
         git_branch: ENV.fetch("MATCH_GIT_BRANCH", "main"),
@@ -176,13 +188,18 @@ platform :ios do
     else
       UI.message("MATCH_GIT_URL not set. Falling back to cert + sigh...")
       cert(development: false)
-      sigh(
-        development: false,
-        app_identifier: app_id,
-        team_id: team_id
-      )
+      all_ids.each do |id|
+        sigh(
+          development: false,
+          app_identifier: id,
+          team_id: team_id
+        )
+      end
     end
-    UI.success("✅ Certificates and provisioning profiles ready!")
+
+    # Keychain hardening & orphan cert pruning from AstroFusion tooling
+    IosSigningHelpers.ensure_match_signing!(all_ids, team_id: team_id, ui: UI)
+    UI.success("✅ Certificates and provisioning profiles ready for App & Widget!")
   end
 
   # =========================================================================
@@ -192,16 +209,40 @@ platform :ios do
   desc "Build and archive production .ipa"
   lane :build_app_store do |options|
     app_id = CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
+    widget_id = CONFIG["widget_identifier"] || "org.curv.asd.gazecollector.carewidget"
+    team_id = CONFIG["team_id"] || "6J3WY94J6T"
     output_dir = options[:output_directory] || "./build"
     FileUtils.mkdir_p(output_dir)
 
     UI.message("🔨 Building EarlyGaze for App Store...")
+
+    # Validate privacy manifest before archiving
+    check_privacy_manifest_file(
+      File.expand_path("../Resources/PrivacyInfo.xcprivacy", __dir__)
+    )
+
+    # Resolve signing context using AstroFusion helper
+    signing_ctx = IosSigningHelpers.resolve_match_signing_context(
+      [app_id, widget_id].compact,
+      team_id: team_id
+    )
+
+    profiles = {}
+    profiles[app_id] = ENV["sigh_#{app_id}_appstore_profile-name"] if ENV["sigh_#{app_id}_appstore_profile-name"]
+    profiles[widget_id] = ENV["sigh_#{widget_id}_appstore_profile-name"] if ENV["sigh_#{widget_id}_appstore_profile-name"]
+
+    export_opts = IosSigningHelpers.build_appstore_export_options(
+      team_id: team_id,
+      provisioning_profiles: profiles,
+      signing_certificate: signing_ctx[:signing_certificate]
+    )
 
     build_app(
       project: "AsdGazeCollector.xcodeproj",
       scheme: "AsdGazeCollector",
       configuration: "Release",
       export_method: "app-store",
+      export_options: export_opts,
       output_directory: output_dir,
       output_name: "EarlyGaze.ipa",
       clean: true,
@@ -221,6 +262,9 @@ platform :ios do
   desc "Build and deploy to TestFlight"
   lane :beta do |options|
     validate_metadata
+    check_privacy_manifest_file(
+      File.expand_path("../Resources/PrivacyInfo.xcprivacy", __dir__)
+    )
     sync_certs(readonly: true)
 
     # Auto-increment build number
@@ -235,7 +279,7 @@ platform :ios do
       ipa: ipa,
       skip_waiting_for_build_processing: true,
       distribute_external: options.fetch(:distribute_external, false),
-      changelog: options[:changelog] || "EarlyGaze clinical beta with 16 objective gaze biomarkers and M-CHAT-R questionnaire."
+      changelog: options[:changelog] || "EarlyGaze developmental observation beta with 16 objective gaze biomarkers and M-CHAT-R questionnaire."
     )
     UI.success("🚀 Uploaded to TestFlight!")
   end

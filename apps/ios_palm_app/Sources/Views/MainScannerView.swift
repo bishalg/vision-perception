@@ -369,7 +369,7 @@ public struct MainScannerView: View {
                 viewModel.cameraSession.start()
             }
         }
-        .onChange(of: viewModel.showAnalysisReading) { showing in
+        .onChange(of: viewModel.showAnalysisReading) { _, showing in
             if showing {
                 viewModel.cameraSession.stop()
             } else if !viewModel.showResultViewer {

@@ -79,7 +79,7 @@ public struct HandMeshInspectorView: View {
             }
             .toggleStyle(.button)
             .tint(Color(hex: "007AFF"))
-            .onChange(of: showWireframe) { _ in sceneId = UUID() }
+            .onChange(of: showWireframe) { sceneId = UUID() }
 
             Toggle(isOn: $showCalipers) {
                 Label("Calipers", systemImage: "ruler")
@@ -87,7 +87,7 @@ public struct HandMeshInspectorView: View {
             }
             .toggleStyle(.button)
             .tint(Color(hex: "34C759"))
-            .onChange(of: showCalipers) { _ in sceneId = UUID() }
+            .onChange(of: showCalipers) { sceneId = UUID() }
 
             Spacer()
 
@@ -97,10 +97,10 @@ public struct HandMeshInspectorView: View {
                 Image(systemName: "arrow.counterclockwise")
                     .font(.caption)
                     .padding(8)
-                    .background(Color.white.opacity(0.15))
+                    .background(Color.secondary.opacity(0.18))
                     .clipShape(Circle())
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(Color.primary)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -121,7 +121,7 @@ public struct HandMeshInspectorView: View {
             HStack {
                 Text("3D Topography & Metrics")
                     .font(.caption.bold())
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.primary)
                 Spacer()
                 if let ratio = biometrics?.ratios.ratio2D4D {
                     Text(String(format: "2D:4D: %.3f", ratio))

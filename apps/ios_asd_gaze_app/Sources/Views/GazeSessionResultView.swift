@@ -54,6 +54,7 @@ public struct GazeSessionResultView: View {
                             ))
                         )
                         socialPreferenceCard
+                        medicalDisclaimerBanner
                         mlClassificationCard
                         facialAffectMetricsCard
                         qualityAndContractCard
@@ -359,6 +360,33 @@ public struct GazeSessionResultView: View {
             .glassCard(cornerRadius: 16, padding: 14)
         }
         .buttonStyle(.plain)
+    }
+
+    private var medicalDisclaimerBanner: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "cross.case.fill")
+                .foregroundColor(LiquidGlass.warmAmber)
+                .font(.system(size: 16))
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Observational Reference — Not a Medical Diagnosis")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundColor(LiquidGlass.textPrimary)
+
+                Text("EarlyGaze provides developmental visual attention metrics for parent monitoring and pediatrician review. It is not an FDA-cleared diagnostic device. Always consult a pediatrician before making clinical decisions.")
+                    .font(.system(size: 11))
+                    .foregroundColor(LiquidGlass.textSecondary)
+                    .lineSpacing(2)
+            }
+        }
+        .padding(12)
+        .background(LiquidGlass.warmAmber.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(LiquidGlass.warmAmber.opacity(0.35), lineWidth: 1)
+        )
     }
 
     // MARK: - Facial Affect Card (Drillable)

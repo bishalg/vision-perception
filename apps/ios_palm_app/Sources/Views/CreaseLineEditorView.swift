@@ -91,7 +91,7 @@ public struct CreaseLineEditorView: View {
     public var body: some View {
         NavigationStack {
             ZStack {
-                Color.black.ignoresSafeArea()
+                Color(uiColor: .systemBackground).ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     // Segmented line selector (Heart / Head / Life / Fate)
@@ -320,7 +320,7 @@ public struct CreaseLineEditorView: View {
                     } label: {
                         Label(LocalizedStrings.tr("editor.toolAdjust", lang: selectedLanguage), systemImage: "slider.horizontal.3")
                     }
-                    .tint(!isDrawMode ? Color(hex: "34C759") : .white)
+                    .tint(!isDrawMode ? Color(hex: "34C759") : Color.primary)
 
                     Spacer()
 
@@ -331,7 +331,7 @@ public struct CreaseLineEditorView: View {
                     } label: {
                         Label(LocalizedStrings.tr("editor.toolDraw", lang: selectedLanguage), systemImage: "pencil.line")
                     }
-                    .tint(isDrawMode ? Color(hex: "34C759") : .white)
+                    .tint(isDrawMode ? Color(hex: "34C759") : Color.primary)
 
                     Spacer()
 
@@ -537,16 +537,46 @@ public struct CreaseLineEditorView: View {
     // MARK: - Native segmented line selector
 
     private var linePicker: some View {
-        Picker("Line", selection: $selectedSplineId) {
+        HStack(spacing: 4) {
             ForEach(workingSplines) { spline in
-                Text(LocalizedStrings.tr(spline.lineType.displayNameKey, lang: selectedLanguage))
-                    .tag(spline.id as String?)
+                let isSelected = spline.id == selectedSplineId
+                let lineColor = Color(hex: spline.lineType.hexColor)
+                Button {
+                    selectedSplineId = spline.id
+                } label: {
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(lineColor)
+                            .frame(width: 7, height: 7)
+                        Text(LocalizedStrings.tr(spline.lineType.displayNameKey, lang: selectedLanguage))
+                            .font(.system(size: 13, weight: isSelected ? .semibold : .medium, design: .rounded))
+                            .foregroundColor(isSelected ? Color.primary : Color.secondary)
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 7)
+                    .frame(maxWidth: .infinity)
+                    .background {
+                        if isSelected {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                                .shadow(color: Color.black.opacity(0.10), radius: 3, y: 1)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier(LocalizedStrings.tr(spline.lineType.displayNameKey, lang: selectedLanguage))
             }
         }
-        .pickerStyle(.segmented)
+        .padding(3)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color(uiColor: .tertiarySystemFill))
+        )
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .onChange(of: selectedSplineId) { _ in
+        .background(Color(uiColor: .systemBackground))
+        .onChange(of: selectedSplineId) {
             selectedVertexIndex = nil
             lightHaptic.impactOccurred()
             if let id = selectedSplineId,

@@ -67,8 +67,21 @@ public struct LiquidGlassHUD<OverlayContent: View, BottomLeading: View, BottomTr
         GeometryReader { proxy in
             let width = proxy.size.width
             let height = proxy.size.height
-            let reticleW = width * profile.reticleWidthFraction
-            let reticleH = height * profile.reticleHeightFraction
+
+            // Device-aware boundaries protecting top chrome (Dynamic Island / notch / mode bar)
+            // and bottom chrome (controls / cards / home indicator bar)
+            let topInset = max(proxy.safeAreaInsets.top, 0)
+            let bottomInset = max(proxy.safeAreaInsets.bottom, 16)
+
+            // Top chrome: Mode capsule (~36pt) + coaching chip (~36pt) + safe margin
+            let topBoundary = topInset + 88
+            // Bottom chrome: Shutter / bottom card (~140pt) + bottom safe area
+            let bottomBoundary = height - (bottomInset + (showsShutter ? 134 : 158))
+            let availableH = max(240, bottomBoundary - topBoundary)
+            let reticleCenterY = topBoundary + availableH / 2
+
+            let reticleH = min(height * profile.reticleHeightFraction, availableH - 8)
+            let reticleW = min(width * profile.reticleWidthFraction, reticleH * 0.65)
 
             ZStack {
                 Color.black.opacity(0.35)
@@ -77,6 +90,7 @@ public struct LiquidGlassHUD<OverlayContent: View, BottomLeading: View, BottomTr
                             .overlay(
                                 RoundedRectangle(cornerRadius: profile.reticleCornerRadius, style: .continuous)
                                     .frame(width: reticleW, height: reticleH)
+                                    .position(x: width / 2, y: reticleCenterY)
                                     .blendMode(.destinationOut)
                             )
                     )
@@ -104,6 +118,11 @@ public struct LiquidGlassHUD<OverlayContent: View, BottomLeading: View, BottomTr
                         radius: 16
                     )
                     .overlay(overlayContent)
+                    .overlay(alignment: .top) {
+                        // Simple status instruction pill inside camera interior frame
+                        statusInstructionPill
+                            .padding(.top, 12)
+                    }
                     .overlay {
                         if let digit = profile.copy.countdownDigit(for: guidanceState) {
                             Text("\(digit)")
@@ -114,6 +133,7 @@ public struct LiquidGlassHUD<OverlayContent: View, BottomLeading: View, BottomTr
                                 .animation(.easeInOut(duration: 0.2), value: digit)
                         }
                     }
+                    .position(x: width / 2, y: reticleCenterY)
                     .allowsHitTesting(false)
 
                 // ── Left / Right tilt rails ──
@@ -130,62 +150,37 @@ public struct LiquidGlassHUD<OverlayContent: View, BottomLeading: View, BottomTr
                         isLeft: false
                     )
                 }
-                .padding(.horizontal, 10)
+                .frame(width: reticleW + 28, height: reticleH)
+                .position(x: width / 2, y: reticleCenterY)
                 .allowsHitTesting(false)
                 .animation(.easeOut(duration: 0.12), value: effectiveDeviceRoll)
                 .animation(.easeOut(duration: 0.12), value: metrics.rollAngleDeg)
 
-                VStack {
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(statusColor)
-                            .frame(width: 10, height: 10)
-                            .shadow(color: statusColor.opacity(0.8), radius: 4)
+                if showsShutter {
+                    VStack {
+                        Spacer()
 
-                        Text(statusText)
-                            .font(.system(
-                                size: profile.copy.countdownDigit(for: guidanceState) != nil ? 22 : 15,
-                                weight: .semibold,
-                                design: .rounded
-                            ))
-                            .foregroundColor(.white)
-                            .contentTransition(.numericText())
-                            .animation(.easeInOut(duration: 0.15), value: statusText)
-                    }
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 10)
-                    .background(
-                        Capsule()
-                            .fill(Color.black.opacity(0.62))
-                            .overlay(Capsule().strokeBorder(Color.white.opacity(0.28), lineWidth: 1))
-                    )
-                    .shadow(color: Color.black.opacity(0.25), radius: 10, y: 4)
-                    .padding(.top, 60)
-
-                    Spacer()
-
-                    VStack(spacing: 16) {
-                        HStack(spacing: 8) {
-                            bottomLeading
-
-                            Spacer()
-
+                        VStack(spacing: 14) {
                             HStack(spacing: 8) {
-                                ForEach(profile.telemetry, id: \.rawValue) { channel in
-                                    telemetryChip(channel)
-                                        .animation(.easeOut(duration: 0.12), value: metrics.meanLuminance)
-                                        .animation(.easeOut(duration: 0.12), value: metrics.glareRatio)
-                                        .animation(.easeOut(duration: 0.12), value: metrics.rollAngleDeg)
+                                bottomLeading
+
+                                Spacer()
+
+                                HStack(spacing: 8) {
+                                    ForEach(profile.telemetry, id: \.rawValue) { channel in
+                                        telemetryChip(channel)
+                                            .animation(.easeOut(duration: 0.12), value: metrics.meanLuminance)
+                                            .animation(.easeOut(duration: 0.12), value: metrics.glareRatio)
+                                            .animation(.easeOut(duration: 0.12), value: metrics.rollAngleDeg)
+                                    }
                                 }
+
+                                Spacer()
+
+                                bottomTrailing
                             }
+                            .padding(.horizontal, 16)
 
-                            Spacer()
-
-                            bottomTrailing
-                        }
-                        .padding(.horizontal, 16)
-
-                        if showsShutter {
                             Button(action: onManualCapture) {
                                 ZStack {
                                     Circle()
@@ -202,8 +197,8 @@ public struct LiquidGlassHUD<OverlayContent: View, BottomLeading: View, BottomTr
                                         )
                                 }
                             }
-                            .padding(.bottom, 40)
                         }
+                        .padding(.bottom, bottomInset + 12)
                     }
                 }
             }
@@ -226,6 +221,35 @@ public struct LiquidGlassHUD<OverlayContent: View, BottomLeading: View, BottomTr
         case .tilt:
             chip(title: "Tilt", value: String(format: "%.0f°", metrics.rollAngleDeg), isValid: metrics.isAngleOk)
         }
+    }
+
+    private var statusInstructionPill: some View {
+        HStack(spacing: 7) {
+            Circle()
+                .fill(statusColor)
+                .frame(width: 8, height: 8)
+                .shadow(color: statusColor.opacity(0.8), radius: 3)
+
+            Text(statusText)
+                .font(.system(
+                    size: profile.copy.countdownDigit(for: guidanceState) != nil ? 18 : 13,
+                    weight: .semibold,
+                    design: .rounded
+                ))
+                .foregroundColor(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .contentTransition(.numericText())
+                .animation(.easeInOut(duration: 0.15), value: statusText)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 7)
+        .background(
+            Capsule()
+                .fill(Color.black.opacity(0.65))
+                .overlay(Capsule().strokeBorder(Color.white.opacity(0.24), lineWidth: 0.8))
+        )
+        .shadow(color: Color.black.opacity(0.3), radius: 6, y: 2)
     }
 
     private func chip(title: String, value: String, isValid: Bool) -> some View {

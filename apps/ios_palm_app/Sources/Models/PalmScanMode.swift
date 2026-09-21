@@ -46,4 +46,17 @@ public enum PalmScanMode: String, CaseIterable, Identifiable {
         case .fingertipScan: return "Fingertips"
         }
     }
+
+    public var stepNumber: Int {
+        switch self {
+        case .stillPhoto: return 1
+        case .orbitScan: return 2
+        case .closeUpMosaic: return 3
+        case .fingertipScan: return 4
+        }
+    }
+
+    public var stepBadge: String {
+        "Step \(stepNumber)"
+    }
 }

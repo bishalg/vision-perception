@@ -277,12 +277,19 @@ public struct MCHATSurveyModalView: View {
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(LiquidGlass.warmAmber.opacity(0.12))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(LiquidGlass.warmAmber.opacity(0.45), lineWidth: 1)
                         )
                 )
             }
+
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "info.circle.fill")
+                    .foregroundColor(LiquidGlass.textSecondary)
+                    .font(.system(size: 13))
+                Text("The M-CHAT-R/F is a parent-reported screening tool, not a clinical diagnosis. Always discuss results with your pediatrician.")
+                    .font(.system(size: 11))
+                    .foregroundColor(LiquidGlass.textSecondary)
+            }
+            .padding(.vertical, 4)
 
             Button(action: {
                 // Save to CareKit & ResearchKit

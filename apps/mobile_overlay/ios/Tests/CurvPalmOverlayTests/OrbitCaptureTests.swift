@@ -410,4 +410,42 @@ final class OrbitCaptureTests: XCTestCase {
             XCTFail("dark frame must ask to addLight, got \(dark.state)")
         }
     }
+
+    func testFingertipGuidanceRequiresDwellHoldAndEnforcesCooldown() {
+        let guidance = FingertipCaptureGuidance(dwellDuration: 1.0, cooldownDuration: 1.5)
+        let sample = PhotometricSample(meanLuminance: 0.30, glareRatio: 0.05)
+
+        // Frame 1 at t=0: should start dwelling (progress 0)
+        let eval1 = guidance.evaluate(landmarks: [], target: .index, photometrics: sample, timestamp: 0.0)
+        XCTAssertFalse(eval1.ready)
+        XCTAssertEqual(eval1.progress, 0.0)
+
+        // Frame 2 at t=0.5: half dwell hold
+        let eval2 = guidance.evaluate(landmarks: [], target: .index, photometrics: sample, timestamp: 0.5)
+        XCTAssertFalse(eval2.ready)
+        XCTAssertEqual(eval2.progress, 0.5, accuracy: 0.01)
+
+        // Frame 3 at t=1.0: dwell satisfied -> ready to capture
+        let eval3 = guidance.evaluate(landmarks: [], target: .index, photometrics: sample, timestamp: 1.0)
+        XCTAssertTrue(eval3.ready)
+        XCTAssertEqual(eval3.progress, 1.0)
+
+        // Notify captured at t=1.0 -> enters 1.5s cooldown
+        guidance.notifyCaptured(digit: .index, timestamp: 1.0)
+
+        // Frame 4 at t=1.5 (during cooldown): must NOT trigger next digit
+        let eval4 = guidance.evaluate(landmarks: [], target: .middle, photometrics: sample, timestamp: 1.5)
+        XCTAssertFalse(eval4.ready)
+        if case .cooldown(let remaining, let lastDigit) = eval4.state {
+            XCTAssertEqual(lastDigit, .index)
+            XCTAssertGreaterThan(remaining, 0)
+        } else {
+            XCTFail("Must be in cooldown state, got \(eval4.state)")
+        }
+
+        // Frame 5 at t=2.6 (cooldown elapsed): ready to start dwelling for next digit
+        let eval5 = guidance.evaluate(landmarks: [], target: .middle, photometrics: sample, timestamp: 2.6)
+        XCTAssertFalse(eval5.ready)
+        XCTAssertEqual(eval5.progress, 0.0)
+    }
 }

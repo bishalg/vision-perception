@@ -33,6 +33,9 @@ public struct BiomarkerRiskStratificationDetailSection: View {
                 }
             }()
 
+            // 0. Guideline 1.4.1 Medical Disclaimer Banner
+            medicalDisclaimerCard
+
             // 1. Primary Classification Summary Card
             primarySummaryCard(result: result, strat: strat, stratColor: stratColor)
 
@@ -46,6 +49,33 @@ public struct BiomarkerRiskStratificationDetailSection: View {
 
             aboutCardsSection
         }
+    }
+
+    private var medicalDisclaimerCard: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "cross.case.fill")
+                .foregroundColor(LiquidGlass.warmAmber)
+                .font(.system(size: 16))
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Observational Screening Aid — Not a Medical Diagnosis")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundColor(LiquidGlass.textPrimary)
+
+                Text("Risk stratification scores reflect statistical visual engagement comparisons against published cohort research. This tool does NOT provide a diagnosis of Autism Spectrum Disorder (ASD). Always consult a licensed pediatrician or healthcare professional before making any clinical decisions.")
+                    .font(.system(size: 11))
+                    .foregroundColor(LiquidGlass.textSecondary)
+                    .lineSpacing(2)
+            }
+        }
+        .padding(12)
+        .background(LiquidGlass.warmAmber.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(LiquidGlass.warmAmber.opacity(0.35), lineWidth: 1)
+        )
     }
 
     // MARK: - Primary Summary Card

@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import CurvCameraOverlay
 import CurvPalmOverlay
 
 /**
@@ -18,6 +19,8 @@ public struct CaptureResultView: View {
     public let overlaySource: CreaseOverlaySource
     public let handSide: HandSide
     public let padDepths: [String: Float]
+    public let fingertipSession: FingertipScanSession?
+    public let onPatternOverride: ((FingertipDigit, DermatoglyphicPattern) -> Void)?
     public let onDismiss: () -> Void
     public let onRetake: () -> Void
     public let onProceedToAnalysis: () -> Void
@@ -25,6 +28,7 @@ public struct CaptureResultView: View {
     public enum ResultInspectorTab: String, CaseIterable, Identifiable {
         case creases = "2D Creases"
         case topography = "3D Topography"
+        case fingertips = "Fingertips"
         case anthropometry = "Anthropometry"
         public var id: String { rawValue }
     }
@@ -41,6 +45,9 @@ public struct CaptureResultView: View {
         overlaySource: CreaseOverlaySource = .landmarkFallback,
         handSide: HandSide = .right,
         padDepths: [String: Float] = [:],
+        fingertipSession: FingertipScanSession? = nil,
+        initialTab: ResultInspectorTab = .creases,
+        onPatternOverride: ((FingertipDigit, DermatoglyphicPattern) -> Void)? = nil,
         onLanguageChange: ((AppLanguage) -> Void)? = nil,
         onConfirmAdjustedLines: (() -> Void)? = nil,
         onDismiss: @escaping () -> Void = {},
@@ -54,6 +61,9 @@ public struct CaptureResultView: View {
         self.overlaySource = overlaySource
         self.handSide = handSide
         self.padDepths = padDepths
+        self.fingertipSession = fingertipSession
+        self.onPatternOverride = onPatternOverride
+        self._selectedTab = State(initialValue: initialTab)
         self.onDismiss = onDismiss
         self.onRetake = onRetake
         self.onProceedToAnalysis = {
@@ -74,15 +84,7 @@ public struct CaptureResultView: View {
     public var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                Picker("Inspector Mode", selection: $selectedTab) {
-                    ForEach(ResultInspectorTab.allCases) { tab in
-                        Text(tab.rawValue).tag(tab)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(Color.black.opacity(0.85))
+                tabPicker
 
                 switch selectedTab {
                 case .creases:
@@ -108,7 +110,6 @@ public struct CaptureResultView: View {
                         }
                     }
                     .listStyle(.insetGrouped)
-                    .scrollContentBackground(.hidden)
 
                 case .topography:
                     HandMeshInspectorView(
@@ -116,6 +117,24 @@ public struct CaptureResultView: View {
                         padDepths: padDepths,
                         referencePalmWidthMm: 80.0
                     )
+
+                case .fingertips:
+                    if let session = fingertipSession {
+                        FingertipPatternsInspectorView(
+                            session: session,
+                            onPatternOverride: onPatternOverride
+                        )
+                    } else {
+                        VStack(spacing: 8) {
+                            Image(systemName: "touchid")
+                                .font(.system(size: 32))
+                                .foregroundColor(.secondary)
+                            Text("No fingertip data captured")
+                                .font(.system(size: 14, weight: .medium, design: .rounded))
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
 
                 case .anthropometry:
                     AnthropometrySummaryView(
@@ -126,11 +145,10 @@ public struct CaptureResultView: View {
                     )
                 }
             }
-            .background(Color.black.ignoresSafeArea())
+            .background(Color(uiColor: .systemBackground).ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarBackground(Color.black.opacity(0.72), for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarBackground(Color(uiColor: .systemBackground), for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(action: onDismiss) {
@@ -145,7 +163,7 @@ public struct CaptureResultView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.primary)
                 }
                 ToolbarItem(placement: .primaryAction) {
                     if selectedTab == .creases {
@@ -169,7 +187,7 @@ public struct CaptureResultView: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.large)
-                    .tint(.white)
+                    .tint(Color.primary)
 
                     Button(action: onProceedToAnalysis) {
                         Label(LocalizedStrings.tr("result.continueReading", lang: selectedLanguage), systemImage: "sparkles")
@@ -182,7 +200,7 @@ public struct CaptureResultView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
-                .background(Color.black.opacity(0.78))
+                .background(Color(uiColor: .secondarySystemBackground))
             }
         }
         .fullScreenCover(isPresented: $showEditor) {
@@ -248,6 +266,44 @@ public struct CaptureResultView: View {
             }
         }
         .frame(minHeight: 220)
+    }
+
+    // MARK: - Native inspector segmented tab bar
+
+    private var tabPicker: some View {
+        HStack(spacing: 4) {
+            ForEach(ResultInspectorTab.allCases) { tab in
+                let isSelected = tab == selectedTab
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        selectedTab = tab
+                    }
+                } label: {
+                    Text(tab.rawValue)
+                        .font(.system(size: 13, weight: isSelected ? .semibold : .medium, design: .rounded))
+                        .foregroundColor(isSelected ? Color.primary : Color.secondary)
+                        .padding(.vertical, 7)
+                        .frame(maxWidth: .infinity)
+                        .background {
+                            if isSelected {
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                                    .shadow(color: Color.black.opacity(0.10), radius: 3, y: 1)
+                            }
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier(tab.rawValue)
+            }
+        }
+        .padding(3)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color(uiColor: .tertiarySystemFill))
+        )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(Color(uiColor: .systemBackground))
     }
 
     // MARK: - Native list row

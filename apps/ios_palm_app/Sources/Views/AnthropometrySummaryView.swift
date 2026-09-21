@@ -57,7 +57,7 @@ public struct AnthropometrySummaryView: View {
             }
             .padding(16)
         }
-        .background(Color.black.ignoresSafeArea())
+        .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
         .sheet(isPresented: $showingShareSheet) {
             ShareSheet(activityItems: [exportedJsonString])
         }
@@ -71,7 +71,7 @@ public struct AnthropometrySummaryView: View {
             HStack {
                 Label("Digit Ratios & Biomarkers", systemImage: "chart.bar.xaxis")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.primary)
                 Spacer()
                 Text("2D:4D Biomarker")
                     .font(.caption)
@@ -85,7 +85,7 @@ public struct AnthropometrySummaryView: View {
             HStack(alignment: .lastTextBaseline, spacing: 8) {
                 Text(String(format: "%.3f", ratios.ratio2D4D))
                     .font(.system(size: 38, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.primary)
                 Text("Index (2D) / Ring (4D)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -105,7 +105,7 @@ public struct AnthropometrySummaryView: View {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         Capsule()
-                            .fill(Color.white.opacity(0.12))
+                            .fill(Color(uiColor: .tertiarySystemFill))
                             .frame(height: 6)
 
                         // Median tick
@@ -117,7 +117,7 @@ public struct AnthropometrySummaryView: View {
                         // Current value marker
                         let normVal = CGFloat(max(0.0, min(1.0, (ratios.ratio2D4D - 0.85) / 0.30)))
                         Circle()
-                            .fill(Color.white)
+                            .fill(Color.primary)
                             .frame(width: 10, height: 10)
                             .offset(x: max(0, min(geo.size.width - 10, normVal * geo.size.width - 5)))
                     }
@@ -125,7 +125,7 @@ public struct AnthropometrySummaryView: View {
                 .frame(height: 10)
             }
 
-            Divider().background(Color.white.opacity(0.15))
+            Divider()
 
             // Secondary Ratios Grid
             Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 8) {
@@ -140,7 +140,7 @@ public struct AnthropometrySummaryView: View {
             }
         }
         .padding(16)
-        .background(Color(white: 0.10))
+        .background(Color(uiColor: .secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
@@ -151,7 +151,7 @@ public struct AnthropometrySummaryView: View {
                 .foregroundStyle(.secondary)
             Text(String(format: "%.3f", value))
                 .font(.subheadline.monospacedDigit().bold())
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.primary)
         }
     }
 
@@ -162,7 +162,7 @@ public struct AnthropometrySummaryView: View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Palmar Morphometry", systemImage: "hand.raised")
                 .font(.headline)
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.primary)
 
             HStack(spacing: 12) {
                 metricCell(
@@ -201,7 +201,7 @@ public struct AnthropometrySummaryView: View {
             }
         }
         .padding(16)
-        .background(Color(white: 0.10))
+        .background(Color(uiColor: .secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
@@ -212,14 +212,14 @@ public struct AnthropometrySummaryView: View {
                 .foregroundStyle(.secondary)
             Text(value)
                 .font(.subheadline.monospacedDigit().bold())
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.primary)
             Text(subtitle)
                 .font(.system(size: 9))
                 .foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(8)
-        .background(Color.white.opacity(0.05))
+        .background(Color(uiColor: .tertiarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
@@ -230,14 +230,14 @@ public struct AnthropometrySummaryView: View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Digit Kinematics & Phalanges", systemImage: "ruler")
                 .font(.headline)
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.primary)
 
             ForEach(digits) { d in
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text(d.name.capitalized)
                             .font(.subheadline.bold())
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Color.primary)
                         Spacer()
                         Text(String(format: "%.1f mm", d.totalLengthMm))
                             .font(.subheadline.monospacedDigit().bold())
@@ -265,12 +265,12 @@ public struct AnthropometrySummaryView: View {
                     }
                 }
                 .padding(10)
-                .background(Color.white.opacity(0.04))
+                .background(Color(uiColor: .tertiarySystemGroupedBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             }
         }
         .padding(16)
-        .background(Color(white: 0.10))
+        .background(Color(uiColor: .secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
@@ -281,14 +281,14 @@ public struct AnthropometrySummaryView: View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Anatomical Palmar Pads (3D Topography)", systemImage: "mountain.2")
                 .font(.headline)
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.primary)
 
             ForEach(pads) { pad in
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(pad.anatomicalPad?.scientificDisplayName ?? pad.padName)
                             .font(.subheadline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Color.primary)
                         if let astro = pad.anatomicalPad?.astrologicalMountName {
                             Text("Traditional: \(astro.capitalized)")
                                 .font(.caption2)
@@ -306,12 +306,12 @@ public struct AnthropometrySummaryView: View {
                     }
                 }
                 .padding(8)
-                .background(Color.white.opacity(0.04))
+                .background(Color(uiColor: .tertiarySystemGroupedBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
         .padding(16)
-        .background(Color(white: 0.10))
+        .background(Color(uiColor: .secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
@@ -322,14 +322,14 @@ public struct AnthropometrySummaryView: View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Palmar Flexure Creases (Anatomical)", systemImage: "waveform.path")
                 .font(.headline)
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.primary)
 
             ForEach(creases) { crease in
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(crease.scientificDisplayName)
                             .font(.subheadline)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Color.primary)
                         Text("Traditional: \(crease.traditionalAlias.capitalized) Line")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
@@ -345,12 +345,12 @@ public struct AnthropometrySummaryView: View {
                     }
                 }
                 .padding(8)
-                .background(Color.white.opacity(0.04))
+                .background(Color(uiColor: .tertiarySystemGroupedBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
         .padding(16)
-        .background(Color(white: 0.10))
+        .background(Color(uiColor: .secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 

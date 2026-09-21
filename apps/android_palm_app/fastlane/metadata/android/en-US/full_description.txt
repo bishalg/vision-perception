@@ -1,0 +1,15 @@
+Explore the ancient art of palmistry through cutting-edge on-device computer vision and the classical principles of Vedic Samudrika Shastra with PalmReader.
+
+Combining guided camera palm scanning, interactive line adjustment, and traditional hand reading analysis, PalmReader delivers a modern, privacy-first palmistry experience.
+
+KEY PALMISTRY FEATURES:
+• Guided Real-Time Palm Scanning: Capture clear hand photos with interactive guidance on hand positioning, lighting, and steadiness.
+• Major Palm Line Detection: Automatically detect and highlight the primary creases of the hand — the Life line, Heart line, Head line, and Fate line.
+• Interactive Line Adjustment: Easily fine-tune detected contours using touch controls and an integrated magnifying loupe for sub-millimeter inspection.
+• Classical Samudrika Shastra Readings: Explore traditional cultural interpretations based on palm line curvature, depth, length, and prominent hand mounts (Jupiter, Saturn, Sun, Mercury, Venus).
+• 100% Private On-Device Processing: All vision models run locally on your device; your personal hand photographs are never uploaded to remote servers.
+
+DISCLAIMER:
+PalmReader is designed for cultural exploration, self-reflection, and entertainment. Palm readings do not provide scientific personality evaluations, medical assessments, lifespan predictions, or financial advice.
+
+Download PalmReader today and discover the wisdom written in your hand.

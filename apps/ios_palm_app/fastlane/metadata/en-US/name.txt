@@ -1,1 +1,1 @@
-PalmReader: Vedic Hand Read
+PalmReader: Hand Line Scanner

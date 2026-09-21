@@ -8,7 +8,7 @@ public enum PalmOverlay {
         productTitle: "Palm Perception",
         domainId: "palm",
         reticleWidthFraction: 0.84,
-        reticleHeightFraction: 0.72,
+        reticleHeightFraction: 0.64,
         reticleCornerRadius: 28,
         thresholds: CaptureThresholds(
             requireDetectedSubject: true,

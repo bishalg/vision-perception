@@ -7,9 +7,9 @@ import Foundation
  */
 public enum RigidHandChecker {
     /// Maximum normalized displacement allowed per landmark vs reference.
-    public static let maxJointDrift: CGFloat = 0.045
+    public static let maxJointDrift: CGFloat = 0.065
     /// Minimum spread between index and pinky MCP (normalized) — fingers must stay open.
-    public static let minMcpSpread: CGFloat = 0.18
+    public static let minMcpSpread: CGFloat = 0.14
 
     public struct Result: Sendable {
         public let isRigid: Bool

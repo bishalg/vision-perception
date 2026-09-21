@@ -19,6 +19,14 @@ public struct SimplePalmReading {
         public var minorRidgeCount: Int
         public var fingertipPatterns: [FingertipPatternPayload]
 
+        public var fingertipSummary: String? {
+            let valid = fingertipPatterns.compactMap { tip -> String? in
+                guard let d = tip.digit, let p = tip.pattern, !d.isEmpty, !p.isEmpty else { return nil }
+                return "\(d): \(p)"
+            }
+            return valid.isEmpty ? nil : valid.joined(separator: ", ")
+        }
+
         public init(
             mountRelief: MountReliefPayload? = nil,
             minorRidgeCount: Int = 0,
@@ -31,10 +39,11 @@ public struct SimplePalmReading {
 
         public static func from(payload: PalmDomainPayload?) -> EnrichmentContext {
             guard let payload else { return EnrichmentContext() }
+            let tips = payload.fingertipPatterns ?? (payload.fingertipPattern.map { [$0] } ?? [])
             return EnrichmentContext(
                 mountRelief: payload.mountRelief,
                 minorRidgeCount: payload.minorRidges?.count ?? 0,
-                fingertipPatterns: payload.fingertipPattern.map { [$0] } ?? []
+                fingertipPatterns: tips
             )
         }
     }
@@ -240,7 +249,7 @@ public struct SimplePalmReading {
         }()
 
         // Points density
-        let detailNote = pts < 4 ? "few anchor points" : pts <= 6 ? "well-traced" : "finely traced (\(pts) pts)"
+		_ = pts < 4 ? "few anchor points" : pts <= 6 ? "well-traced" : "finely traced (\(pts) pts)"
 
         // Tortuosity tier
         let curveNote: String = {

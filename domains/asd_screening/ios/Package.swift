@@ -16,7 +16,10 @@ let package = Package(
     targets: [
         .target(
             name: "CurvAsdGazeKit",
-            path: "Sources/CurvAsdGazeKit"
+            path: "Sources/CurvAsdGazeKit",
+            resources: [
+                .process("Resources")
+            ]
         ),
         .testTarget(
             name: "CurvAsdGazeKitTests",

@@ -420,8 +420,8 @@ extension PalmAnalysisViewModel {
         )
         // Re-encode with mount_relief merged — lightweight JSON patch.
         guard let existing = response.domainPayload else { return response }
-        var fingertip = existing.fingertipPattern
-        var minor = existing.minorRidges
+		let fingertip = existing.fingertipPattern
+		let minor = existing.minorRidges
         let merged = PalmDomainPayload(
             majorLines: existing.majorLines,
             dominantLine: existing.dominantLine,
