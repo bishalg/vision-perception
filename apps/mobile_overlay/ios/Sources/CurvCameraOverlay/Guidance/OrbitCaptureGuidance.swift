@@ -22,19 +22,16 @@ public enum OrbitGuidanceState: Equatable, Sendable {
 public final class OrbitCaptureGuidance {
     public var thresholds: CaptureThresholds
     private var session: OrbitCaptureSession
-    /// Rigidity reference for the CURRENT bin only — refreshed on every bin
-    /// change. (Comparing every bin against the flat pose made any real
-    /// tilt/twist fail the rigid check and stalled scans near 0%.)
     private var referenceLandmarks: [CGPoint]?
-    /// Frozen flat-view reference + MCP-axis angle. All per-bin "did the hand
-    /// actually move" gates are measured on the HAND against this — never on
-    /// device roll, so a propped-up or steady phone works fine.
     private var flatReference: [CGPoint]?
     private var flatAxisAngle: CGFloat?
     private var lastTargetBin: OrbitBin?
     private var currentBinIndex: Int = 0
     private var steadyStart: TimeInterval?
-    private let steadyDuration: TimeInterval = 0.55
+    private var dwellProgress: Float = 0.0
+    private var lastEvalTime: TimeInterval?
+    private let requiredHoldDuration: TimeInterval = 0.38
+    private var skippedBins: Set<OrbitBin> = []
 
     public init(thresholds: CaptureThresholds = CaptureThresholds(), handSide: String = "auto") {
         self.thresholds = thresholds
@@ -42,6 +39,10 @@ public final class OrbitCaptureGuidance {
     }
 
     public var orbitSession: OrbitCaptureSession { session }
+
+    public var canCompleteEarly: Bool {
+        session.filledBins.count >= 3 && session.filledBins.contains(.flatCenter)
+    }
 
     public func reset(handSide: String = "auto") {
         session = OrbitCaptureSession(handSide: handSide)
@@ -51,77 +52,108 @@ public final class OrbitCaptureGuidance {
         lastTargetBin = nil
         currentBinIndex = 0
         steadyStart = nil
+        dwellProgress = 0.0
+        lastEvalTime = nil
+        skippedBins.removeAll()
+        lastState = .idle
+    }
+
+    public func skipCurrentBin() {
+        let remaining = OrbitBin.allCases.filter { !session.filledBins.contains($0) && !skippedBins.contains($0) }
+        if let current = remaining.first {
+            skippedBins.insert(current)
+            referenceLandmarks = nil
+            steadyStart = nil
+            dwellProgress = 0.0
+        }
+    }
+
+    public func forceComplete() {
+        session.completedAt = Date().timeIntervalSince1970
+        lastState = .complete
+    }
+
+    private func decayDwell(timestamp: TimeInterval) {
+        if let last = lastEvalTime {
+            let dt = Float(max(0, timestamp - last))
+            dwellProgress = max(0, dwellProgress - dt * 1.5)
+        } else {
+            dwellProgress = 0
+        }
+        lastEvalTime = timestamp
+        steadyStart = nil
     }
 
     public func evaluate(
         pose: SubjectPose?,
         landmarks: [CGPoint]?,
         photometrics: PhotometricSample,
-        timestamp: TimeInterval
+        timestamp: TimeInterval,
+        deviceRollDeg: Float? = nil
     ) -> (state: OrbitGuidanceState, shouldCapture: Bool, rigidCheck: RigidHandChecker.Result?) {
-        // No hand tracked at all vs hand visible but unusable — coached
-        // differently so the user is never stuck guessing.
+        // No hand tracked at all vs hand visible but unusable
         guard let landmarks, landmarks.count >= 21 else {
-            steadyStart = nil
+            decayDwell(timestamp: timestamp)
             return (.searching, false, nil)
         }
         guard let pose else {
-            steadyStart = nil
+            decayDwell(timestamp: timestamp)
             return (.fitHand, false, nil)
         }
 
-        // Center + scale + illumination (skip roll/flatness for orbit).
+        // Center + scale + illumination (tolerant for mobile freehand tilt)
         let centerDx = Float(pose.centroid.x - 0.5)
         let centerDy = Float(pose.centroid.y - 0.5)
         let centerOffset = sqrt(centerDx * centerDx + centerDy * centerDy)
-        let illumOk = photometrics.meanLuminance >= thresholds.minLuminance &&
-            photometrics.glareRatio <= thresholds.maxGlareRatio
 
-        if centerOffset > thresholds.maxCenterOffset {
-            steadyStart = nil
+        let maxCenter: Float = max(thresholds.maxCenterOffset, 0.28)
+        let minScale: Float = min(thresholds.minScale * 0.92, 0.22)
+        let maxScale: Float = max(thresholds.maxScale * 1.15, 0.72)
+        let minLum: Float = min(thresholds.minLuminance, 25.0)
+        let maxGlare: Float = max(thresholds.maxGlareRatio, 0.08)
+
+        let illumOk = photometrics.meanLuminance >= minLum && photometrics.glareRatio <= maxGlare
+
+        if centerOffset > maxCenter {
+            decayDwell(timestamp: timestamp)
             return (.lockPose, false, nil)
         }
-        if pose.scale < thresholds.minScale * 0.92 {
-            steadyStart = nil
+        if pose.scale < minScale {
+            decayDwell(timestamp: timestamp)
             return (.moveCloser, false, nil)
         }
-        if pose.scale > thresholds.maxScale * 1.1 {
-            steadyStart = nil
+        if pose.scale > maxScale {
+            decayDwell(timestamp: timestamp)
             return (.fitHand, false, nil)
         }
         if !illumOk {
-            steadyStart = nil
+            decayDwell(timestamp: timestamp)
             return (.addLight, false, nil)
         }
 
-        let remaining = OrbitBin.allCases.filter { !session.filledBins.contains($0) }
+        let remaining = OrbitBin.allCases.filter { !session.filledBins.contains($0) && !skippedBins.contains($0) }
         guard let targetBin = remaining.first else {
             session.completedAt = timestamp
             return (.complete, false, nil)
         }
 
-        // Advance bin index to first unfilled.
         if let idx = OrbitBin.allCases.firstIndex(of: targetBin) {
             currentBinIndex = idx
         }
 
-        // New angle → drop the old rigidity reference. It is re-latched below
-        // once the hand is actually in the new angle, so moving between bins
-        // is never punished as "not rigid".
         if targetBin != lastTargetBin {
             lastTargetBin = targetBin
             referenceLandmarks = nil
             steadyStart = nil
+            dwellProgress = 0.0
         }
 
-        // Pose gate first: is the hand actually in the target angle? Measured
-        // on hand landmarks only — tilting the phone is never required.
-        if !poseGateSatisfied(for: targetBin, landmarks: landmarks) {
-            steadyStart = nil
+        // Check if hand or device is in target angle
+        if !poseGateSatisfied(for: targetBin, landmarks: landmarks, deviceRoll: deviceRollDeg) {
+            decayDwell(timestamp: timestamp)
             return (.coach(bin: targetBin), false, nil)
         }
 
-        // Latch the rigidity reference on the first in-angle frame.
         if referenceLandmarks == nil {
             referenceLandmarks = landmarks
             session.referenceLandmarks = landmarks.map { [Float($0.x), Float($0.y)] }
@@ -129,29 +161,30 @@ public final class OrbitCaptureGuidance {
 
         let rigid = RigidHandChecker.evaluate(current: landmarks, reference: referenceLandmarks)
         if !rigid.accepted {
-            steadyStart = nil
+            decayDwell(timestamp: timestamp)
             return (.rejected(reason: rigid.reason ?? "Keep hand rigid"), false, rigid)
         }
 
+        // Smooth dwell accumulation (resilient against single-frame jitters)
         if steadyStart == nil {
             steadyStart = timestamp
         }
-        let elapsed = timestamp - (steadyStart ?? timestamp)
-        let progress = Float(min(1.0, elapsed / steadyDuration))
+        let dt = Float(max(0, timestamp - (lastEvalTime ?? timestamp)))
+        lastEvalTime = timestamp
+        dwellProgress = min(1.0, dwellProgress + (dt > 0 ? dt / Float(requiredHoldDuration) : Float(1.0 / 30.0 / requiredHoldDuration)))
 
-        if progress >= 1.0 {
+        if dwellProgress >= 1.0 {
             steadyStart = nil
+            dwellProgress = 0.0
             return (.capturing(bin: targetBin), true, rigid)
         }
-        return (.holdSteady(bin: targetBin, progress: progress), false, rigid)
+        return (.holdSteady(bin: targetBin, progress: dwellProgress), false, rigid)
     }
 
     public func recordFrame(_ frame: OrbitFrame) {
         if session.referenceGravity == nil {
             session.referenceGravity = frame.gravity
         }
-        // Freeze the flat-view reference from the captured flat keyframe.
-        // All per-bin pose gates compare against this.
         if frame.bin == .flatCenter, flatReference == nil {
             let pts = frame.landmarks.map { CGPoint(x: CGFloat($0[0]), y: CGFloat($0[1])) }
             if pts.count >= 21 {
@@ -160,16 +193,14 @@ public final class OrbitCaptureGuidance {
             }
         }
         session.frames.append(frame)
-        if session.filledBins.count >= OrbitBin.allCases.count {
+        let unhandled = OrbitBin.allCases.filter { !session.filledBins.contains($0) && !skippedBins.contains($0) }
+        if unhandled.isEmpty || session.filledBins.count >= OrbitBin.allCases.count {
             session.completedAt = frame.timestamp
         }
     }
 
-    // MARK: - Hand-measured pose gates
+    // MARK: - Hand & Gyro pose gates
 
-    /// MCP-axis angle (index knuckle -> pinky knuckle) in degrees, image space.
-    /// Rotation magnitude is mirror/hand-agnostic, so left and right hands
-    /// pass the tilt bins identically.
     private static func mcpAxisAngleDeg(_ landmarks: [CGPoint]) -> CGFloat? {
         guard landmarks.count > 17 else { return nil }
         let a = landmarks[5]
@@ -184,24 +215,79 @@ public final class OrbitCaptureGuidance {
         return d
     }
 
-    /// Direction-agnostic "is the hand actually in this angle" check.
-    /// Thresholds deliberately lenient: a false pass costs one imperfect
-    /// viewpoint frame, while a false reject stalls the whole scan.
-    private func poseGateSatisfied(for bin: OrbitBin, landmarks: [CGPoint]) -> Bool {
+    private func poseGateSatisfied(for bin: OrbitBin, landmarks: [CGPoint], deviceRoll: Float? = nil) -> Bool {
         guard bin != .flatCenter else { return true }
         guard let flat = flatReference, flat.count >= 21, landmarks.count >= 21 else { return true }
+
+        // 1. Hardware device gyro fallback: user tilted phone to target angle
+        if let roll = deviceRoll {
+            switch bin {
+            case .tiltLeft:
+                if roll >= 10.0 { return true }
+            case .tiltRight:
+                if roll <= -10.0 { return true }
+            default:
+                break
+            }
+        }
+
+        // 2. In-plane roll & 3D yaw/foreshortening
+        let flatAngle = flatAxisAngle ?? Self.mcpAxisAngleDeg(flat) ?? 0
+        let currentAngle = Self.mcpAxisAngleDeg(landmarks) ?? 0
+        let deltaAngle = Self.angleDeltaDeg(flatAngle, currentAngle)
+
+        let p0 = landmarks[0]
+        let p9 = landmarks[9]
+        let axisDx = p9.x - p0.x
+        let axisDy = p9.y - p0.y
+        let axisLen = hypot(axisDx, axisDy)
+        let normAxisX = axisLen > 1e-4 ? axisDx / axisLen : 0
+        let normAxisY = axisLen > 1e-4 ? axisDy / axisLen : 1
+        let perpX = -normAxisY
+        let perpY = normAxisX
+
+        let curThumbLat = (landmarks[4].x - p0.x) * perpX + (landmarks[4].y - p0.y) * perpY
+        let curPinkyLat = (landmarks[17].x - p0.x) * perpX + (landmarks[17].y - p0.y) * perpY
+        let flatP0 = flat[0]
+        let flatThumbLat = (flat[4].x - flatP0.x) * perpX + (flat[4].y - flatP0.y) * perpY
+        let flatPinkyLat = (flat[17].x - flatP0.x) * perpX + (flat[17].y - flatP0.y) * perpY
+
+        let curPalmWidth = hypot(landmarks[17].x - landmarks[5].x, landmarks[17].y - landmarks[5].y)
+        let flatPalmWidth = hypot(flat[17].x - flat[5].x, flat[17].y - flat[5].y)
+        let widthRatio = flatPalmWidth > 1e-4 ? (curPalmWidth / flatPalmWidth) : 1.0
+
         switch bin {
         case .flatCenter:
             return true
-        case .tiltLeft, .tiltRight:
-            guard let f = flatAxisAngle, let c = Self.mcpAxisAngleDeg(landmarks) else { return true }
-            return abs(Self.angleDeltaDeg(f, c)) >= 8
-        case .thumbToward, .thumbAway:
-            return hypot(landmarks[4].x - flat[4].x, landmarks[4].y - flat[4].y) >= 0.03
+
+        case .tiltLeft:
+            let inPlaneTilt = abs(deltaAngle) >= 7.0
+            let yawForeshortened = widthRatio < 0.92
+            let lateralShift = (curPinkyLat - flatPinkyLat) < -0.015 || (curThumbLat - flatThumbLat) < -0.015
+            return inPlaneTilt || yawForeshortened || lateralShift
+
+        case .tiltRight:
+            let inPlaneTilt = abs(deltaAngle) >= 7.0
+            let yawForeshortened = widthRatio < 0.92
+            let lateralShift = (curPinkyLat - flatPinkyLat) > 0.015 || (curThumbLat - flatThumbLat) > 0.015
+            return inPlaneTilt || yawForeshortened || lateralShift
+
+        case .thumbToward:
+            let thumbDistance = hypot(landmarks[4].x - landmarks[9].x, landmarks[4].y - landmarks[9].y)
+            let flatThumbDistance = hypot(flat[4].x - flat[9].x, flat[4].y - flat[9].y)
+            return (thumbDistance < flatThumbDistance - 0.012) || hypot(landmarks[4].x - flat[4].x, landmarks[4].y - flat[4].y) >= 0.022
+
+        case .thumbAway:
+            let thumbDistance = hypot(landmarks[4].x - landmarks[9].x, landmarks[4].y - landmarks[9].y)
+            let flatThumbDistance = hypot(flat[4].x - flat[9].x, flat[4].y - flat[9].y)
+            return (thumbDistance > flatThumbDistance + 0.012) || hypot(landmarks[4].x - flat[4].x, landmarks[4].y - flat[4].y) >= 0.022
+
         case .tiltForward:
-            let tips = [8, 12, 16, 20]
-            let peak = tips.map { hypot(landmarks[$0].x - flat[$0].x, landmarks[$0].y - flat[$0].y) }.max() ?? 0
-            return peak >= 0.025
+            let curFingerLen = hypot(landmarks[12].x - landmarks[9].x, landmarks[12].y - landmarks[9].y)
+            let flatFingerLen = hypot(flat[12].x - flat[9].x, flat[12].y - flat[9].y)
+            let foreshortened = curFingerLen < flatFingerLen * 0.92
+            let tipsDisplaced = [8, 12, 16, 20].map { hypot(landmarks[$0].x - flat[$0].x, landmarks[$0].y - flat[$0].y) }.max() ?? 0
+            return foreshortened || tipsDisplaced >= 0.018
         }
     }
 
@@ -209,15 +295,15 @@ public final class OrbitCaptureGuidance {
         switch evaluateStateOnly() {
         case .idle: return "Orbit scan ready"
         case .searching: return "Show your open palm"
-        case .lockPose: return "Move your palm to the center"
-        case .fitHand: return "Pull back — keep the whole hand visible"
-        case .moveCloser: return "Move your hand closer to the camera"
-        case .addLight: return "Add more light, avoid glare"
+        case .lockPose: return "Center palm in frame"
+        case .fitHand: return "Pull back slightly — show whole hand"
+        case .moveCloser: return "Move hand closer to camera"
+        case .addLight: return "Add more light"
         case .coach(let bin): return bin.displayName
         case .holdSteady(let bin, let p): return "\(bin.displayName) — hold (\(Int(p * 100))%)"
         case .capturing(let bin): return "Capturing \(bin.rawValue)…"
         case .rejected(let reason): return reason
-        case .complete: return "Orbit scan complete"
+        case .complete: return "3D Orbit scan complete"
         }
     }
 

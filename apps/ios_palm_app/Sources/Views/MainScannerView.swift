@@ -105,16 +105,20 @@ public struct MainScannerView: View {
                     onManualCapture: { viewModel.manualCapture() },
                     showsShutter: viewModel.scanMode == .stillPhoto,
                     bottomLeading: {
-                        LeftHandSideButton(
-                            selection: $viewModel.selectedHandSide,
-                            autoDetected: viewModel.detectedHandSide
-                        )
+                        if viewModel.scanMode == .stillPhoto {
+                            LeftHandSideButton(
+                                selection: $viewModel.selectedHandSide,
+                                autoDetected: viewModel.detectedHandSide
+                            )
+                        }
                     },
                     bottomTrailing: {
-                        RightHandSideButton(
-                            selection: $viewModel.selectedHandSide,
-                            autoDetected: viewModel.detectedHandSide
-                        )
+                        if viewModel.scanMode == .stillPhoto {
+                            RightHandSideButton(
+                                selection: $viewModel.selectedHandSide,
+                                autoDetected: viewModel.detectedHandSide
+                            )
+                        }
                     }
                 ) {
                     reticleContent()
@@ -267,6 +271,11 @@ public struct MainScannerView: View {
                             OrbitScanBottomCard(
                                 session: viewModel.orbitSession,
                                 state: viewModel.orbitState,
+                                isCapturing: viewModel.isCapturing,
+                                canCompleteEarly: viewModel.orbitGuidance.canCompleteEarly,
+                                onCapture: { viewModel.manualOrbitCapture() },
+                                onSkip: { viewModel.skipOrbitAngle() },
+                                onFinishEarly: { viewModel.finishOrbitScanEarly() },
                                 onRestart: { viewModel.setScanMode(.orbitScan) },
                                 onView3D: { viewModel.showResultViewer = true }
                             )

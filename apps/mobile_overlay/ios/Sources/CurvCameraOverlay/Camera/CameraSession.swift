@@ -107,6 +107,13 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
                     self.photoOutput.isHighResolutionCaptureEnabled = true
                 }
                 self.applyPortraitOrientation(to: self.photoOutput)
+                // Enable depth delivery on the output *inside* the configuration block.
+                // AVCapturePhotoSettings.isDepthDataDeliveryEnabled can only be set to true
+                // when AVCapturePhotoOutput.isDepthDataDeliveryEnabled is also true; enabling
+                // it here (before commitConfiguration) satisfies that requirement on all devices.
+                if self.photoOutput.isDepthDataDeliverySupported {
+                    self.photoOutput.isDepthDataDeliveryEnabled = true
+                }
             }
 
             self.captureSession.commitConfiguration()
@@ -199,8 +206,10 @@ public final class CameraSession: NSObject, AVCaptureVideoDataOutputSampleBuffer
                 settings.isHighResolutionPhotoEnabled = true
             }
             // Opportunistic hardware depth: strictly guarded, never throws.
-            // Unsupported devices keep these off and flow through the fallback.
-            if self.depthCapability.photoDepthSupported {
+            // Double-guard: photoOutput.isDepthDataDeliveryEnabled must be true (set during
+            // session configuration) *and* the capability must be reported as supported,
+            // otherwise the settings flag throws NSInvalidArgumentException.
+            if self.depthCapability.photoDepthSupported && self.photoOutput.isDepthDataDeliveryEnabled {
                 settings.isDepthDataDeliveryEnabled = true
             }
             if self.depthCapability.calibrationDataSupported {

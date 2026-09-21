@@ -66,7 +66,7 @@ public struct OrbitGuidanceOverlayView: View {
             // ── Center Motion Direction & Coaching Feedback ──
             if showsDirectionUI, let bin = activeBin, session.coverageFraction < 1.0 {
                 VStack(spacing: 8) {
-                    // Animated Direction Indicator
+                    // Animated Direction Indicator with circular hold ring
                     ZStack {
                         Circle()
                             .fill(Color.black.opacity(0.72))
@@ -84,14 +84,22 @@ public struct OrbitGuidanceOverlayView: View {
                                 radius: isGoodAngle ? 14 : 6
                             )
 
+                        if let p = holdProgress, p > 0.02 {
+                            Circle()
+                                .trim(from: 0.0, to: CGFloat(p))
+                                .stroke(OverlayPalette.emerald, style: StrokeStyle(lineWidth: 3.5, lineCap: .round))
+                                .rotationEffect(.degrees(-90))
+                                .frame(width: 80, height: 80)
+                                .animation(.linear(duration: 0.08), value: p)
+                        }
+
                         Text(bin.arrowSymbol)
                             .font(.system(size: 36, weight: .bold))
                             .foregroundColor(isGoodAngle ? OverlayPalette.emerald : .white)
                             .offset(x: horizontalOffset(for: bin), y: verticalOffset(for: bin))
                     }
 
-                    // Real-time Status Badge (the what-to-do instruction lives in
-                    // the bottom scan card, so the hand stays unobstructed here).
+                    // Real-time Status Badge (only active during hold / capture / rejection)
                     statusBadge(for: bin)
                 }
                 .transition(.scale.combined(with: .opacity))
@@ -182,18 +190,7 @@ public struct OrbitGuidanceOverlayView: View {
             )
 
         default:
-            HStack(spacing: 6) {
-                Text(bin.displayName.uppercased())
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 7)
-            .background(
-                Capsule()
-                    .fill(Color.black.opacity(0.65))
-                    .overlay(Capsule().stroke(Color.white.opacity(0.35), lineWidth: 1))
-            )
+            EmptyView()
         }
     }
 

@@ -54,16 +54,12 @@ extension PalmAnalysisViewModel {
         now: CFTimeInterval
     ) {
         guard !isCapturing else { return }
-        // NOTE: no device-roll argument — tilt bins are measured on hand
-        // landmarks, so the phone may stay perfectly still.
-        // Pose is passed whenever a hand is framed (not only fully in
-        // frame) so the guidance can coach the user into place instead of
-        // sitting silent at 0%.
         let eval = orbitGuidance.evaluate(
             pose: pose,
             landmarks: landmarks,
             photometrics: photometrics,
-            timestamp: now
+            timestamp: now,
+            deviceRollDeg: deviceTiltProvider.deviceRollDeg
         )
         orbitGuidance.setLastState(eval.state)
 
@@ -80,6 +76,44 @@ extension PalmAnalysisViewModel {
                     return OrbitBin.allCases.first(where: { !filled.contains($0) }) ?? .flatCenter
                 }())
             }
+        }
+    }
+
+    public func manualOrbitCapture() {
+        guard scanMode == .orbitScan, !isCapturing else { return }
+        guard detectedLandmarks.count >= 21 else {
+            statusMessageOverride = "Place hand in frame to capture angle"
+            return
+        }
+        let remaining = OrbitBin.allCases.filter { !orbitGuidance.orbitSession.filledBins.contains($0) }
+        guard let targetBin = remaining.first else { return }
+        captureOrbitKeyframe(landmarks: detectedLandmarks, bin: targetBin)
+    }
+
+    public func skipOrbitAngle() {
+        orbitGuidance.skipCurrentBin()
+        orbitSession = orbitGuidance.orbitSession
+        statusMessageOverride = orbitGuidance.statusMessage
+        lightHaptic.impactOccurred()
+    }
+
+    public func finishOrbitScanEarly() {
+        guard orbitGuidance.canCompleteEarly else { return }
+        orbitGuidance.forceComplete()
+        orbitState = .complete
+        orbitSession = orbitGuidance.orbitSession
+        successHaptic.notificationOccurred(.success)
+        let relief = MountReliefEstimator.estimate(from: orbitGuidance.orbitSession)
+        mountReliefMap = relief
+        updateMountReliefHeat()
+        if let bestImage = flatKeyframeImage ?? capturedImage {
+            let lms = !flatKeyframeLandmarks.isEmpty ? flatKeyframeLandmarks : detectedLandmarks
+            setOrbitCaptureResult(image: bestImage, landmarks: lms)
+        }
+        resultViewerInitialTab = .topography
+        statusMessageOverride = "3D Topography computed from \(orbitSession.filledBins.count) angles."
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            self.showResultViewer = true
         }
     }
 

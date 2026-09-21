@@ -119,9 +119,11 @@ public struct LiquidGlassHUD<OverlayContent: View, BottomLeading: View, BottomTr
                     )
                     .overlay(overlayContent)
                     .overlay(alignment: .top) {
-                        // Simple status instruction pill inside camera interior frame
-                        statusInstructionPill
-                            .padding(.top, 12)
+                        // Status instruction pill shown during still photo mode (other modes own their HUD)
+                        if showsShutter {
+                            statusInstructionPill
+                                .padding(.top, 12)
+                        }
                     }
                     .overlay {
                         if let digit = profile.copy.countdownDigit(for: guidanceState) {
