@@ -30,7 +30,7 @@ public final class OrbitCaptureGuidance {
     private var steadyStart: TimeInterval?
     private var dwellProgress: Float = 0.0
     private var lastEvalTime: TimeInterval?
-    private let requiredHoldDuration: TimeInterval = 0.26
+    private let requiredHoldDuration: TimeInterval = 0.38
     private var skippedBins: Set<OrbitBin> = []
 
     public init(thresholds: CaptureThresholds = CaptureThresholds(), handSide: String = "auto") {

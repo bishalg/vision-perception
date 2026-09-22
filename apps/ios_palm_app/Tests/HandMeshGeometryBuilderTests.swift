@@ -135,9 +135,37 @@ final class HandMeshGeometryBuilderTests: XCTestCase {
 
         // Blue has high blue component
         XCTAssertGreaterThan(blue.2, blue.0)
-        // Coral has high red component
-        XCTAssertGreaterThan(coral.0, coral.2)
+        // Cyan has high green and blue
+        XCTAssertGreaterThan(cyan.1, 0.5)
+        XCTAssertGreaterThan(cyan.2, 0.5)
         // Green has high green component
         XCTAssertGreaterThan(green.1, green.0)
+        // Amber has high red and green
+        XCTAssertGreaterThan(amber.0, 0.5)
+        // Coral has high red component
+        XCTAssertGreaterThan(coral.0, coral.2)
+    }
+
+    func testLeftHandChiralityPutsThumbOnAnatomicalRight() {
+        // Build mesh for Left Hand
+        let leftMesh = HandMeshGeometryBuilder.buildMeshGeometry(
+            landmarks: sampleLandmarks,
+            padDepths: [:],
+            handSide: .left
+        )
+        // Landmark 4 is thumb tip, Landmark 20 is pinky tip
+        let thumbTip = leftMesh.landmark3DPositions[4]
+        let pinkyTip = leftMesh.landmark3DPositions[20]
+        XCTAssertGreaterThan(thumbTip.x, pinkyTip.x, "In left hand palm view, thumb must be on the anatomical right (+X)")
+
+        // Build mesh for Right Hand
+        let rightMesh = HandMeshGeometryBuilder.buildMeshGeometry(
+            landmarks: sampleLandmarks,
+            padDepths: [:],
+            handSide: .right
+        )
+        let rightThumbTip = rightMesh.landmark3DPositions[4]
+        let rightPinkyTip = rightMesh.landmark3DPositions[20]
+        XCTAssertLessThan(rightThumbTip.x, rightPinkyTip.x, "In right hand palm view, thumb must be on the anatomical left (-X)")
     }
 }

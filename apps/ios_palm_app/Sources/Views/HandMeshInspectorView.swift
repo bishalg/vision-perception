@@ -19,7 +19,12 @@ public struct HandMeshInspectorView: View {
     public let landmarks: [CGPoint]
     public let padDepths: [String: Float]
     public let referencePalmWidthMm: Float
+    public let handSide: HandSide
 
+    // Wireframe defaults OFF — user sees the solid heatmap surface, not just edges.
+    // autoenablesDefaultLighting is intentionally ABSENT: we provide 3 custom lights
+    // (key, fill, rim) calibrated for the elevation heatmap. Adding a 4th default light
+    // washes out the vertex color gradients and kills the scan depth effect.
     @State private var showWireframe: Bool = false
     @State private var showCalipers: Bool = true
     @State private var showMountPins: Bool = true
@@ -30,11 +35,13 @@ public struct HandMeshInspectorView: View {
     public init(
         landmarks: [CGPoint],
         padDepths: [String: Float] = [:],
-        referencePalmWidthMm: Float = 80.0
+        referencePalmWidthMm: Float = 80.0,
+        handSide: HandSide = .right
     ) {
         self.landmarks = landmarks
         self.padDepths = padDepths
         self.referencePalmWidthMm = referencePalmWidthMm
+        self.handSide = handSide
     }
 
     public var body: some View {
@@ -44,7 +51,9 @@ public struct HandMeshInspectorView: View {
             if landmarks.count >= 21 {
                 SceneView(
                     scene: makeScene(),
-                    options: [.allowsCameraControl, .autoenablesDefaultLighting]
+                    // Only camera orbit — no autoenablesDefaultLighting.
+                    // We manage all lights ourselves for correct heatmap rendering.
+                    options: [.allowsCameraControl]
                 )
                 .id(sceneId)
                 .ignoresSafeArea()
@@ -264,7 +273,8 @@ public struct HandMeshInspectorView: View {
             landmarks: landmarks,
             padDepths: padDepths,
             referencePalmWidthMm: referencePalmWidthMm,
-            elevationScale: elevationScale
+            elevationScale: elevationScale,
+            handSide: handSide
         )
 
         let vertexSource = SCNGeometrySource(
@@ -293,13 +303,24 @@ public struct HandMeshInspectorView: View {
         let geometry = SCNGeometry(sources: [vertexSource, normalSource, colorSource], elements: [element])
         let material = SCNMaterial()
         material.isDoubleSided = true
-        // Phong shading gives the surface a natural depth and highlights that read as 3D skin
-        material.lightingModel = showWireframe ? .constant : .phong
-        material.fillMode = showWireframe ? .lines : .fill
-        material.diffuse.contents = UIColor.white
-        // Soft specular gives a subtle skin-like sheen over the elevation heatmap
-        material.specular.contents = UIColor(white: 0.28, alpha: 1.0)
-        material.shininess = 18
+        if showWireframe {
+            // Wireframe: constant rendering, edges only
+            material.lightingModel = .constant
+            material.fillMode = .lines
+            material.diffuse.contents = UIColor.white
+        } else {
+            // Solid surface: Phong with emission base glow.
+            // Emission ensures vertex colors are always visible even in shadow areas —
+            // without this, deep-blue elevation areas disappear into the black background.
+            material.lightingModel = .phong
+            material.fillMode = .fill
+            material.diffuse.contents = UIColor.white
+            // Base glow: 25% of vertex color always emitted regardless of light angle.
+            // This is critical — low-elevation (blue/cool) palm zones must not vanish.
+            material.emission.contents = UIColor(white: 0.25, alpha: 1.0)
+            material.specular.contents = UIColor(white: 0.22, alpha: 1.0)
+            material.shininess = 22
+        }
         geometry.materials = [material]
 
         let meshNode = SCNNode(geometry: geometry)
@@ -500,27 +521,47 @@ public struct HandMeshInspectorView: View {
 
     private func makeMountPinsHierarchy(landmarks: [SCNVector3]) -> SCNNode {
         let root = SCNNode()
+        guard landmarks.count >= 21 else { return root }
 
-        let mountProbes: [(name: String, anchorIdx: Int, depthKey: String, offset: SCNVector3)] = [
-            ("Venus", 1, "venus", SCNVector3(-0.008, -0.005, 0.003)),
-            ("Jupiter", 5, "jupiter", SCNVector3(-0.004, -0.006, 0.003)),
-            ("Saturn", 9, "saturn", SCNVector3(0, -0.006, 0.003)),
-            ("Apollo", 13, "apollo", SCNVector3(0.004, -0.006, 0.003)),
-            ("Mercury", 17, "mercury", SCNVector3(0.008, -0.006, 0.003)),
-            ("Luna", 17, "luna", SCNVector3(0.012, -0.028, 0.002))
+        let v0 = landmarks[0]
+        let v1 = landmarks[1]
+        let v2 = landmarks[2]
+        let v5 = landmarks[5]
+        let v9 = landmarks[9]
+        let v13 = landmarks[13]
+        let v17 = landmarks[17]
+
+        let palmCenter = SCNVector3(
+            (v0.x + v9.x) * 0.5,
+            (v0.y + v9.y) * 0.5,
+            (v0.z + v9.z) * 0.5
+        )
+
+        func mountTowardCenter(from base: SCNVector3, inwardDist: Float, zOffset: Float) -> SCNVector3 {
+            let dx = palmCenter.x - base.x
+            let dy = palmCenter.y - base.y
+            let len = sqrt(dx * dx + dy * dy)
+            let nx = len > 1e-4 ? dx / len : 0
+            let ny = len > 1e-4 ? dy / len : 0
+            return SCNVector3(
+                base.x + nx * inwardDist,
+                base.y + ny * inwardDist,
+                base.z + zOffset
+            )
+        }
+
+        let mountProbes: [(name: String, position: SCNVector3, depthKey: String)] = [
+            ("Venus", SCNVector3(v0.x * 0.30 + v1.x * 0.40 + v2.x * 0.30, v0.y * 0.30 + v1.y * 0.40 + v2.y * 0.30, (v1.z + v2.z) * 0.5 + 0.003), "venus"),
+            ("Jupiter", mountTowardCenter(from: v5, inwardDist: 0.007, zOffset: 0.003), "jupiter"),
+            ("Saturn", mountTowardCenter(from: v9, inwardDist: 0.007, zOffset: 0.003), "saturn"),
+            ("Apollo", mountTowardCenter(from: v13, inwardDist: 0.007, zOffset: 0.003), "apollo"),
+            ("Mercury", mountTowardCenter(from: v17, inwardDist: 0.007, zOffset: 0.003), "mercury"),
+            ("Luna", SCNVector3(v0.x * 0.45 + v17.x * 0.55, v0.y * 0.45 + v17.y * 0.55, (v0.z + v17.z) * 0.5 + 0.002), "luna")
         ]
 
         for probe in mountProbes {
-            guard probe.anchorIdx < landmarks.count else { continue }
-            let base = landmarks[probe.anchorIdx]
-            let pos = SCNVector3(
-                base.x + probe.offset.x,
-                base.y + probe.offset.y,
-                base.z + probe.offset.z
-            )
             let hMm = padDepths[probe.depthKey] ?? padDepths[probe.name.lowercased()] ?? 1.5
-
-            let pin = makePinNode(at: pos, title: probe.name, valMm: hMm)
+            let pin = makePinNode(at: probe.position, title: probe.name, valMm: hMm)
             root.addChildNode(pin)
         }
 

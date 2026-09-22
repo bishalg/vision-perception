@@ -157,28 +157,28 @@
 		16077B853964E6059FCCE816 /* StimulusDownloadGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StimulusDownloadGateView.swift; sourceTree = "<group>"; };
 		16633D030005B527C78CD577 /* AsdGazeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsdGazeApp.swift; sourceTree = "<group>"; };
 		1A12D94D7B76B41E158A1C2F /* HealthKitMoodStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitMoodStore.swift; sourceTree = "<group>"; };
-		1D2872BCDCFE9D5F5FF11CAA /* stim_07_cartoon_slapstick_penguin_8s.mp4 */ = {isa = PBXFileReference; path = stim_07_cartoon_slapstick_penguin_8s.mp4; sourceTree = "<group>"; };
+		1D2872BCDCFE9D5F5FF11CAA /* stim_07_cartoon_slapstick_penguin_8s.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = stim_07_cartoon_slapstick_penguin_8s.mp4; sourceTree = "<group>"; };
 		1E01DC03541654B1592941EC /* AppLocalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLocalizer.swift; sourceTree = "<group>"; };
 		1E5C0EEC1D6F532BF41105B4 /* MilestoneDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MilestoneDetailView.swift; sourceTree = "<group>"; };
 		20F54BD401B98FED6FAD3055 /* BiomarkerRiskStratificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiomarkerRiskStratificationView.swift; sourceTree = "<group>"; };
 		220C4058D7B72B1A80C2AF2C /* CarePlanModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarePlanModels.swift; sourceTree = "<group>"; };
 		22E6F2A8134BE4D7D3C40207 /* ARKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ARKit.framework; path = System/Library/Frameworks/ARKit.framework; sourceTree = SDKROOT; };
-		23524784DEDC9F72D5C0770E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		23524784DEDC9F72D5C0770E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		2A9FB1A18314BE59ECB52E15 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
-		2AF78C23D83CEC35FF7CF9CA /* stim_02_gaze_cue_right_8s.mp4 */ = {isa = PBXFileReference; path = stim_02_gaze_cue_right_8s.mp4; sourceTree = "<group>"; };
+		2AF78C23D83CEC35FF7CF9CA /* stim_02_gaze_cue_right_8s.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = stim_02_gaze_cue_right_8s.mp4; sourceTree = "<group>"; };
 		30843A265B32FE1A7C81CB2B /* SplashScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashScreenView.swift; sourceTree = "<group>"; };
 		3111366AAA094728086AD5E8 /* MainGazeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainGazeScannerView.swift; sourceTree = "<group>"; };
 		319C2C9DF38E48593AFC3E4A /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
-		36AA1BA891D699EB46EC830A /* stim_01_social_peekaboo_8s.mp4 */ = {isa = PBXFileReference; path = stim_01_social_peekaboo_8s.mp4; sourceTree = "<group>"; };
+		36AA1BA891D699EB46EC830A /* stim_01_social_peekaboo_8s.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = stim_01_social_peekaboo_8s.mp4; sourceTree = "<group>"; };
 		388C0EDE3C0D58F10B124580 /* ChildProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChildProfile.swift; sourceTree = "<group>"; };
 		38A98C675F624BB679668AA2 /* BubbleCalibrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BubbleCalibrationView.swift; sourceTree = "<group>"; };
 		38B5C98A8DC049CA9448B7E1 /* ARKitMoodFusionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARKitMoodFusionController.swift; sourceTree = "<group>"; };
-		398D47A0037DA9F90E75721C /* stim_05_geopref_split_10s.mp4 */ = {isa = PBXFileReference; path = stim_05_geopref_split_10s.mp4; sourceTree = "<group>"; };
-		3D0CAADFB6B3C9205622483D /* stim_08_recenter_bubble_fox_3s.mp4 */ = {isa = PBXFileReference; path = stim_08_recenter_bubble_fox_3s.mp4; sourceTree = "<group>"; };
+		398D47A0037DA9F90E75721C /* stim_05_geopref_split_10s.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = stim_05_geopref_split_10s.mp4; sourceTree = "<group>"; };
+		3D0CAADFB6B3C9205622483D /* stim_08_recenter_bubble_fox_3s.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = stim_08_recenter_bubble_fox_3s.mp4; sourceTree = "<group>"; };
 		42B86B5FECB656A3C08D6995 /* AttentionTrendChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttentionTrendChartView.swift; sourceTree = "<group>"; };
 		439D9846928A6D348C3DA218 /* DoctorReportGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoctorReportGeneratorTests.swift; sourceTree = "<group>"; };
 		448AD29ECC98B480318ECCA5 /* GazeSessionResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeSessionResultView.swift; sourceTree = "<group>"; };
-		47464ADA3137E9AF46BD2852 /* stim_04_surprise_giftbox_10s.mp4 */ = {isa = PBXFileReference; path = stim_04_surprise_giftbox_10s.mp4; sourceTree = "<group>"; };
+		47464ADA3137E9AF46BD2852 /* stim_04_surprise_giftbox_10s.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = stim_04_surprise_giftbox_10s.mp4; sourceTree = "<group>"; };
 		48B1E6902FFE822878A6BA04 /* SceneKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SceneKit.framework; path = System/Library/Frameworks/SceneKit.framework; sourceTree = SDKROOT; };
 		4B37E4FE99D79271873B231C /* MoodDiaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoodDiaryView.swift; sourceTree = "<group>"; };
 		4C4E1DA6CDFFFC55B1FDE950 /* StimulusVideoPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StimulusVideoPlayerView.swift; sourceTree = "<group>"; };
@@ -189,13 +189,13 @@
 		581CB2A8A2DD547E98C49E96 /* ResearchKitStudyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResearchKitStudyTests.swift; sourceTree = "<group>"; };
 		5AA127E5B31E63B996A6A629 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		5BCA612032241BBB37AE08CC /* Speech.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Speech.framework; path = System/Library/Frameworks/Speech.framework; sourceTree = SDKROOT; };
-		5E16E2BF993D77A082DCA597 /* stim_03_gaze_cue_left_8s.mp4 */ = {isa = PBXFileReference; path = stim_03_gaze_cue_left_8s.mp4; sourceTree = "<group>"; };
+		5E16E2BF993D77A082DCA597 /* stim_03_gaze_cue_left_8s.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = stim_03_gaze_cue_left_8s.mp4; sourceTree = "<group>"; };
 		612AFD4BB220098D276A59DE /* MoodDiaryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoodDiaryStore.swift; sourceTree = "<group>"; };
 		6131F4DD41BFC27E93725D50 /* StimulusPlaylist.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StimulusPlaylist.swift; sourceTree = "<group>"; };
 		6465958CA4E2F60B4DA0E0EB /* ARFaceCameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARFaceCameraView.swift; sourceTree = "<group>"; };
 		67C87761633083196B3CE214 /* PhotosUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = PhotosUI.framework; path = System/Library/Frameworks/PhotosUI.framework; sourceTree = SDKROOT; };
 		69BC081BE97D2D513587F078 /* FHIRInteroperabilityMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FHIRInteroperabilityMapper.swift; sourceTree = "<group>"; };
-		6C0062C6D7EEBF81C6AE25E1 /* AsdGazeCareWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = AsdGazeCareWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		6C0062C6D7EEBF81C6AE25E1 /* AsdGazeCareWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AsdGazeCareWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		6F3583A2BB261CA58D5C12A4 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		75053E80AAB8A4C1494A61D5 /* GazeScreeningWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeScreeningWizardView.swift; sourceTree = "<group>"; };
 		7587971C40BCA5A14C0F2135 /* ClinicalInteroperabilityStandards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClinicalInteroperabilityStandards.swift; sourceTree = "<group>"; };
@@ -204,7 +204,7 @@
 		7AB99C7116FFBE3F3BA0684F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		7BC871417B12A12C3BBA06BF /* ResearchKitSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResearchKitSyncService.swift; sourceTree = "<group>"; };
 		7C493F4E1B47C5201FFFB71C /* CareReminderSlotsEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareReminderSlotsEditor.swift; sourceTree = "<group>"; };
-		7E1AEC983F7CAAB7C7572A1D /* stim_06_dynamic_gears_marbles_8s.mp4 */ = {isa = PBXFileReference; path = stim_06_dynamic_gears_marbles_8s.mp4; sourceTree = "<group>"; };
+		7E1AEC983F7CAAB7C7572A1D /* stim_06_dynamic_gears_marbles_8s.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = stim_06_dynamic_gears_marbles_8s.mp4; sourceTree = "<group>"; };
 		7F2CFE3B14E1756934ED26EF /* CareCountdownLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareCountdownLiveActivity.swift; sourceTree = "<group>"; };
 		82F2AE9490B590F4773EB2C7 /* BiomarkerAffectAndQualityViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiomarkerAffectAndQualityViews.swift; sourceTree = "<group>"; };
 		83F6B3B68EF088EBD5929E3D /* Network.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Network.framework; path = System/Library/Frameworks/Network.framework; sourceTree = SDKROOT; };
@@ -212,7 +212,7 @@
 		869BC9A2A7BE8A3C527D271E /* GazePositioningStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazePositioningStepView.swift; sourceTree = "<group>"; };
 		89D3CA3B939BBF06DFC923BD /* ClinicalInteroperabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClinicalInteroperabilityTests.swift; sourceTree = "<group>"; };
 		8A342C1C8613ECBEAD66DE16 /* ObservationQuickLogBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObservationQuickLogBar.swift; sourceTree = "<group>"; };
-		90EBDBBF152C6DA8BDFEBEA6 /* CareActivityKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = CareActivityKit; path = CareActivityKit; sourceTree = SOURCE_ROOT; };
+		90EBDBBF152C6DA8BDFEBEA6 /* CareActivityKit */ = {isa = PBXFileReference; lastKnownFileType = folder; path = CareActivityKit; sourceTree = SOURCE_ROOT; };
 		941B39E3F663044B60693CA2 /* ResearchKitStudyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResearchKitStudyStore.swift; sourceTree = "<group>"; };
 		98EE536B2A1BB98FBDC5B10D /* CareAlertPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareAlertPreferences.swift; sourceTree = "<group>"; };
 		9B8571A70F409315436A3E01 /* GazeReplayHeatmapFullScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeReplayHeatmapFullScreenView.swift; sourceTree = "<group>"; };
@@ -227,7 +227,7 @@
 		B0C302E49E1425EA5CCFB052 /* MoodDiaryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoodDiaryViewModel.swift; sourceTree = "<group>"; };
 		B387D5B6A34396573F150318 /* ios */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ios; path = ../../domains/asd_screening/ios; sourceTree = SOURCE_ROOT; };
 		B3E9070E87CB086B06E8B635 /* MoodDiaryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoodDiaryModels.swift; sourceTree = "<group>"; };
-		B5A67C4561BFA7326E8ABAC1 /* stim_10_animal_puppy_play_8s.mp4 */ = {isa = PBXFileReference; path = stim_10_animal_puppy_play_8s.mp4; sourceTree = "<group>"; };
+		B5A67C4561BFA7326E8ABAC1 /* stim_10_animal_puppy_play_8s.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = stim_10_animal_puppy_play_8s.mp4; sourceTree = "<group>"; };
 		B8F0FFAA4FBEA2BBC44701EC /* CarePlanStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarePlanStoreTests.swift; sourceTree = "<group>"; };
 		BBED732DAB0236044946C9E7 /* SmartOnFhirAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartOnFhirAuthService.swift; sourceTree = "<group>"; };
 		BFF20B6639768C9A0E7E78FB /* CareKitClinicalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareKitClinicalStore.swift; sourceTree = "<group>"; };
@@ -240,12 +240,12 @@
 		D46DDA36376F5DF620259376 /* BiomarkerDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiomarkerDetailViews.swift; sourceTree = "<group>"; };
 		DAFD4387A17CEC332C4C3C71 /* AsdGazeCollectorTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AsdGazeCollectorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		DD1DB7F2655A5B1BBC5C5FC7 /* BlendShapeCSVLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlendShapeCSVLogger.swift; sourceTree = "<group>"; };
-		DE48FCCCDB5EBCB7A99A2EA7 /* AsdGazeCollector.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AsdGazeCollector.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DE48FCCCDB5EBCB7A99A2EA7 /* AsdGazeCollector.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AsdGazeCollector.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E430E43FC538AE0C5060FCE8 /* ResearchKitStudyModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResearchKitStudyModels.swift; sourceTree = "<group>"; };
 		E5B67CCC538018766DBC2B17 /* GazeTelemetryReviewCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeTelemetryReviewCard.swift; sourceTree = "<group>"; };
 		EDE50C72023F79984C64779C /* ClinicalDevelopmentModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClinicalDevelopmentModels.swift; sourceTree = "<group>"; };
 		EF98BBCFAACCAC600C07B3B9 /* MCHATSurveyModalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCHATSurveyModalView.swift; sourceTree = "<group>"; };
-		F24ED023DC6A9AB009C0DD96 /* stim_09_social_turn_taking_10s.mp4 */ = {isa = PBXFileReference; path = stim_09_social_turn_taking_10s.mp4; sourceTree = "<group>"; };
+		F24ED023DC6A9AB009C0DD96 /* stim_09_social_turn_taking_10s.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = stim_09_social_turn_taking_10s.mp4; sourceTree = "<group>"; };
 		F5E5E1EBF0E152FE5F8C0375 /* ResearchKitSyncServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResearchKitSyncServiceTests.swift; sourceTree = "<group>"; };
 		F74642FAE5CE051648BFDB4E /* MedicationEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicationEditorView.swift; sourceTree = "<group>"; };
 		F880C59E682E0DE781F22B2F /* StimulusScreeningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StimulusScreeningView.swift; sourceTree = "<group>"; };
@@ -585,7 +585,6 @@
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
 					5A339C8E397001A08FBAA7AE = {
-						DevelopmentTeam = 6J3WY94J6T;
 						ProvisioningStyle = Automatic;
 					};
 					A52C4057F06565202E072FAF = {
@@ -789,6 +788,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 6J3WY94J6T;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Widget/Info.plist;
@@ -798,6 +798,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.curv.asd.gazecollector.carewidget;
 				PRODUCT_NAME = AsdGazeCareWidget;
 				SDKROOT = iphoneos;
@@ -810,6 +811,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 6J3WY94J6T;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Widget/Info.plist;
@@ -819,6 +821,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = org.curv.asd.gazecollector.carewidget;
 				PRODUCT_NAME = AsdGazeCareWidget;
 				SDKROOT = iphoneos;

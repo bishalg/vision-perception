@@ -141,7 +141,8 @@ public struct CaptureResultView: View {
                     HandMeshInspectorView(
                         landmarks: landmarks,
                         padDepths: padDepths,
-                        referencePalmWidthMm: 80.0
+                        referencePalmWidthMm: 80.0,
+                        handSide: handSide
                     )
 
                 case .fingertips:
