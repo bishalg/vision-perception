@@ -1,6 +1,7 @@
 #include "curv/ridge/StegerRidgeExtractor.hpp"
 #include "curv/ridge/HessianMath.hpp"
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <deque>
 #include <opencv2/imgproc.hpp>
@@ -117,6 +118,15 @@ RidgeGraph StegerRidgeExtractor::extractRidgeGraph(const cv::Mat& image) const {
     // 4. Multi-Threaded Pixel-wise Hessian Decomposition & Sub-Pixel Localization via cv::parallel_for_
     std::vector<CandidatePoint> candidates(static_cast<size_t>(rows * cols));
 
+    // Publish barrier: each parallel chunk release-increments after finishing
+    // its rows; the caller acquire-loads the final count below. cv::parallel_for_
+    // already joins, but the Homebrew OpenCV dylib is not TSan-instrumented, so
+    // the join's happens-before edge is invisible to ThreadSanitizer — this
+    // release sequence makes the worker→caller ordering explicit and standard-
+    // compliant (RMWs extend the release sequence; the acquire load of the last
+    // value synchronizes with every chunk's release).
+    std::atomic<std::uint32_t> chunk_completion{0};
+
     cv::parallel_for_(cv::Range(0, rows), [&](const cv::Range& range) {
         for (int y = range.start; y < range.end; ++y) {
             const float* p_rx = rx.ptr<float>(y);
@@ -166,7 +176,9 @@ RidgeGraph StegerRidgeExtractor::extractRidgeGraph(const cv::Mat& image) const {
                 }
             }
         }
+        chunk_completion.fetch_add(1, std::memory_order_release);
     });
+    (void)chunk_completion.load(std::memory_order_acquire);
 
     // 5. Hysteresis Linking along Tangent Direction
     std::vector<uint8_t> visited(static_cast<size_t>(rows * cols), 0);

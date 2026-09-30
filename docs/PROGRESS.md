@@ -6,6 +6,22 @@
 
 ---
 
+## §0b. Core-engine robustness phase 1 (2026-09-29, "robust core, zero app-side changes")
+
+Scope agreed with user: harden the **main core engine + native shared boundary** only — strictly additive tests/fixes, no application-side changes required (all apps keep working as-is).
+
+**Done this session:**
+1. **Baseline verified**: Release build clean, 42/42 ctest green (after `--fresh` reconfigure — the build dirs cached a stale Xcode (`Xcode-27.0.0-Release.Candidate`) whose `CURL::libcurl` referenced a deleted SDK; any future toolchain move needs `cmake --preset <name> --fresh`).
+2. **Current coverage gap list measured** (52→51 files; core-first priorities in `todos`). Suite now 42 binaries / 89 gated files.
+3. **`curv_capi.cpp` (the native C-ABI boundary) 73.5%→89.7% lines, 71.8%→88.3% branches, 100% of API functions exercised** — 10 new tests in `tests/unit/test_capi.cpp`: orbit-session analysis (valid/malformed/null), `process_landmarks_roi_extended` (minor-ridge on/off/invalid), `classify_fingertip_roi`, `get_last_json` size-query/exact-fit contract, `pipeline_create` domain aliases (null/unknown/vastu/long-form), frame formats (GRAY/RGBA/BGRA/exact stride), anthropometry/mesh argument variants, degenerate quad-ROI corners (no exception crosses the ABI), zero-size buffer edges. Remaining 65 lines are defensive catch-alls + the structurally unreachable `warpLandmarksToCanonical(is_normalized=false)` / `applyAffine2x3(non-CV_64F)` paths — exemption candidates with the rationale above.
+4. **`HandLandmarkDetector` (opencv_dnn) 54→83+ lines / 8→17+ branches** — new `tests/unit/test_hand_landmark_detector.cpp` (9 tests) synthesizes **minimal valid ONNX graphs by hand-encoding protobuf bytes** (no Python/asset dependency): `Mul(x,K)` with declared 4D input exercises model load, inference, clamp-high/low and in-range decode; `GlobalAveragePool` forces the short-output stride-2 path; plus garbage/missing model rejection, ctor-with-model, heuristic fallback & left-hand mirror. NOTE: OpenCV 5 re-infers shapes from the actual blob — declared output shapes are ignored; initializer-only graphs fail `setInput` ("ninputs == 1") — declare exactly one graph input.
+5. **Real data race found & fixed by the first-ever TSan run** (`core/src/ridge/StegerRidgeExtractor.cpp`): parallel chunk writes to `candidates[]` vs post-join reads had no TSan-visible happens-before (Homebrew OpenCV dylib is not TSan-instrumented, hiding the pool's join sync). Fixed with a standard-compliant release-sequence barrier: per-chunk `fetch_add(release)` + caller `load(acquire)` — zero behavior change, correct ordering now explicit. **TSan suite: 42/42 green** (`OPENCV_FOR_THREADS_NUM=1` set in the `tsan` test preset to serialize the uninstrumented OpenCV pool; std::thread logic in tests remains checked). ASan suite: 42/42 green.
+6. clang-format: all 145 files conform. `tests/` is out of `scripts/lint.sh` default scope (core/domains/apps/tools/adapters only).
+
+**Next in phase 1 (priority order):** `MicroPatternDetector.cpp` (170/243 lines, 60/124 br — biggest core gap) → `SurfaceRelief.cpp` (117/142 br) → `CurveChunker.cpp` → `HandAnthropometry.cpp` → `OculomotorClassifier.cpp` → `DynamicTimeWarping.cpp` → `HandMeshGenerator.cpp` (46/54 br) → `StegerRidgeExtractor` 3 residual branches → header-only branch gaps (`GazeTypes.hpp` 7/8, `LineLengthThresholds.hpp` 7/8) → opencv adapters (`HandBoundaryDetector` 47/64 br, `OverlayRenderer` 67/112 br) → `curv_jni.cpp` testability or documented exemption → then the palm/floor-plan domain packs (application-adjacent, separate waves).
+
+---
+
 ## 0. CI stabilization ledger (2026-09-06, runs 34015384328 → 34016519940)
 
 Issues surfaced by Linux CI that macOS never showed, and their fixes:

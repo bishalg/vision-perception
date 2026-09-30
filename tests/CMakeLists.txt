@@ -126,6 +126,21 @@ vision_set_compiler_warnings(test_hand_boundary_detector)
 add_test(NAME test_hand_boundary_detector COMMAND test_hand_boundary_detector)
 
 # ------------------------------------------------------------------------------
+# Unit Test: test_hand_landmark_detector (OpenCV DNN path + synthetic ONNX)
+# ------------------------------------------------------------------------------
+add_executable(test_hand_landmark_detector
+    unit/test_hand_landmark_detector.cpp
+)
+target_link_libraries(test_hand_landmark_detector
+    PRIVATE
+        curv_adapters
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_hand_landmark_detector)
+add_test(NAME test_hand_landmark_detector COMMAND test_hand_landmark_detector)
+
+# ------------------------------------------------------------------------------
 # Unit Test: test_roi_warper
 # ------------------------------------------------------------------------------
 add_executable(test_roi_warper
