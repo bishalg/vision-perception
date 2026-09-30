@@ -100,6 +100,25 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
     public var isSimulationMode: Bool = false
     @Published public var calibrationTarget: CGPoint? = nil
 
+    /// Lock-guarded clip attribution state — written on the main thread by playback UI,
+    /// read from `arDelegateQueue` at 60 Hz.
+    private let clipStateLock = NSLock()
+    private var _currentStimulusId: String?
+    private var _clipMediaTimeSec: Double?
+
+    /// Stimulus clip currently playing (playlist video name). Nil when no playlist context.
+    public var currentStimulusId: String? {
+        clipStateLock.lock()
+        defer { clipStateLock.unlock() }
+        return _currentStimulusId
+    }
+    /// AVPlayer media clock seconds within the active clip (wraps on loop). Nil until reported.
+    public var clipMediaTime: Double? {
+        clipStateLock.lock()
+        defer { clipStateLock.unlock() }
+        return _clipMediaTimeSec
+    }
+
     /// High-frequency volatile RAM buffer for telemetry frames during recording.
     private let frameBufferLock = NSLock()
     private var volatileFrameBuffer: [GazeFrame] = []
@@ -208,7 +227,7 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
     }
 
     /// Starts telemetry capture. Volatile RAM buffer is reset.
-    public func startSession(battery: StimulusAOITracker? = nil) {
+    public func startSession(battery: StimulusAOITracker? = nil, stimulusId: String? = nil) {
         if let battery = battery {
             self.aoiTracker = battery
         }
@@ -219,6 +238,10 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
         self.recordedFrames.removeAll()
         self.sessionStartTime = Date()
         self.clipStartTime = Date()
+        clipStateLock.lock()
+        _currentStimulusId = stimulusId
+        _clipMediaTimeSec = nil
+        clipStateLock.unlock()
         self.isRecording = true
         self.recordingSessionToken = UUID().uuidString
         NotificationCenter.default.post(name: Self.didStartRecordingNotification, object: self)
@@ -263,11 +286,26 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
     }
 
     /// Dynamically switches the active stimulus clip and AOI battery mid-session.
-    public func switchStimulusClip(battery: StimulusAOITracker) {
+    public func switchStimulusClip(battery: StimulusAOITracker, stimulusId: String? = nil) {
         self.aoiTracker = battery
         self.clipStartTime = Date()
+        clipStateLock.lock()
+        _currentStimulusId = stimulusId
+        _clipMediaTimeSec = nil
+        clipStateLock.unlock()
         Task { [weak processingActor] in
-            await processingActor?.switchStimulusClip(battery: battery)
+            await processingActor?.switchStimulusClip(battery: battery, stimulusId: stimulusId)
+        }
+    }
+
+    /// Receives the authoritative AVPlayer media clock for the active clip (10 Hz periodic observer).
+    /// Time-coded AOI windows and per-clip segmentation align to this clock, not wall-clock.
+    public func updateClipMediaTime(_ timeSec: Double) {
+        clipStateLock.lock()
+        _clipMediaTimeSec = timeSec
+        clipStateLock.unlock()
+        Task { [weak processingActor] in
+            await processingActor?.updateClipMediaTime(timeSec)
         }
     }
 
@@ -390,7 +428,12 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
     }
 
     /// Ingests a single synthetic frame (used for preview animation, unit testing, and Simulator).
-    public func tickSimulatedFrame(timeSec: Double, clipTimeSec: Double? = nil) {
+    public func tickSimulatedFrame(
+        timeSec: Double,
+        clipTimeSec: Double? = nil,
+        stimulusId: String? = nil,
+        clipMediaTimeSec: Double? = nil
+    ) {
         let gazePoint: CGPoint
         if let target = calibrationTarget {
             let jitterX = 0.015 * sin(timeSec * 7.2)
@@ -443,7 +486,9 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
             headYawRad: 0.03 * cos(timeSec * 0.7),
             headRollRad: 0.01 * sin(timeSec * 0.5),
             distanceToScreenCm: 48.0 + 1.5 * sin(timeSec * 0.3),
-            isValid: true
+            isValid: true,
+            stimulusId: stimulusId ?? currentStimulusId,
+            clipMediaTimeSec: clipMediaTimeSec ?? clipMediaTime
         )
 
         let eval = qualityGate.evaluateSample(sample)
@@ -453,7 +498,9 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
             activeAOINames: activeHits,
             aoiDwellMs: 16.67,
             stimulusEventTag: isSmiling ? "character_laugh_onset" : nil,
-            qualityVerdict: eval.verdict
+            qualityVerdict: eval.verdict,
+            stimulusId: stimulusId ?? currentStimulusId,
+            clipMediaTimeSec: clipMediaTimeSec ?? clipMediaTime
         )
 
         if self.isRecording {
@@ -610,11 +657,15 @@ extension GazeSessionController: ARSessionDelegate {
 
         let elapsedSec = sessionStartTime.map { Date().timeIntervalSince($0) } ?? 0.0
         let clipElapsedSec = clipStartTime.map { Date().timeIntervalSince($0) } ?? elapsedSec
+        let activeStimulusId = currentStimulusId
+        let activeClipMediaTime = clipMediaTime
 
         // Suppress false Area of Interest (AOI) hits during downward blink plunge
+        // AOI time windows align to the AVPlayer media clock when the periodic observer is live
+        let aoiTimeSec = activeClipMediaTime ?? clipElapsedSec
         let activeHits: [String] = isOcularArtifact
             ? []
-            : aoiTracker.activeAOIs(atTimeSec: clipElapsedSec, xNorm: calibratedPoint.x, yNorm: calibratedPoint.y)
+            : aoiTracker.activeAOIs(atTimeSec: aoiTimeSec, xNorm: calibratedPoint.x, yNorm: calibratedPoint.y)
 
         // Hold last valid coordinate during blink instead of plunging down to screen bottom
         let gazeCoord = isOcularArtifact ? lastValidCalibratedPoint : calibratedPoint
@@ -632,7 +683,9 @@ extension GazeSessionController: ARSessionDelegate {
             headYawRad: yaw,
             headRollRad: roll,
             distanceToScreenCm: distanceCm,
-            isValid: sampleIsValid
+            isValid: sampleIsValid,
+            stimulusId: activeStimulusId,
+            clipMediaTimeSec: activeClipMediaTime
         )
 
         let eval = qualityGate.evaluateSample(sample)
@@ -642,7 +695,9 @@ extension GazeSessionController: ARSessionDelegate {
             activeAOINames: activeHits,
             aoiDwellMs: 16.67,
             stimulusEventTag: nil,
-            qualityVerdict: eval.verdict
+            qualityVerdict: eval.verdict,
+            stimulusId: activeStimulusId,
+            clipMediaTimeSec: activeClipMediaTime
         )
 
         let stage: TrackingStage

@@ -31,6 +31,10 @@ public struct GazeSessionRecord: Identifiable, Codable, Sendable, Equatable {
     public let schemaVersion: String
     public let zeroRawVideoEnforced: Bool
 
+    // Per-Stimulus Matrix (v1.5, additive; nil for legacy records)
+    public let perVideoComposite: Double?
+    public let perVideo: [PerVideoScoreReport]?
+
     public init(
         id: String = UUID().uuidString,
         sessionId: String,
@@ -50,8 +54,10 @@ public struct GazeSessionRecord: Identifiable, Codable, Sendable, Equatable {
         flatAffectScore: Double = 0.12,
         surpriseScoreMean: Double = 0.24,
         notes: String? = nil,
-        schemaVersion: String = "v1.4",
-        zeroRawVideoEnforced: Bool = true
+        schemaVersion: String = "v1.5",
+        zeroRawVideoEnforced: Bool = true,
+        perVideoComposite: Double? = nil,
+        perVideo: [PerVideoScoreReport]? = nil
     ) {
         self.id = id
         self.sessionId = sessionId
@@ -73,13 +79,17 @@ public struct GazeSessionRecord: Identifiable, Codable, Sendable, Equatable {
         self.notes = notes
         self.schemaVersion = schemaVersion
         self.zeroRawVideoEnforced = zeroRawVideoEnforced
+        self.perVideoComposite = perVideoComposite
+        self.perVideo = perVideo
     }
 
     public init(
         summary: GazeSessionReportSummary,
         participantId: String,
         calibratedDistanceCm: Double = 35.0,
-        notes: String? = nil
+        notes: String? = nil,
+        perVideoComposite: Double? = nil,
+        perVideo: [PerVideoScoreReport]? = nil
     ) {
         let now = Date()
         let start = now.addingTimeInterval(-summary.durationSec)
@@ -100,7 +110,9 @@ public struct GazeSessionRecord: Identifiable, Codable, Sendable, Equatable {
             smileReactivityIndex: summary.smileReactivityIndex,
             flatAffectScore: summary.flatAffectScore,
             surpriseScoreMean: summary.surpriseScoreMean,
-            notes: notes
+            notes: notes,
+            perVideoComposite: perVideoComposite,
+            perVideo: perVideo
         )
     }
 }

@@ -31,7 +31,9 @@ public struct SessionVaultManager: Sendable {
         header: SessionHeader,
         frames: [GazeFrame],
         report: GazeSessionReportSummary,
-        classification: BiomarkerClassificationResult? = nil
+        classification: BiomarkerClassificationResult? = nil,
+        perVideoScore: PerVideoSessionScore? = nil,
+        collectionMetadata: NormCollectionMetadata? = nil
     ) throws -> URL {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
@@ -50,6 +52,16 @@ public struct SessionVaultManager: Sendable {
         }
         if let cl = classification, let clData = try? encoder.encode(cl), let clStr = String(data: clData, encoding: .utf8) {
             lines.append(clStr)
+        }
+        if let pv = perVideoScore,
+           let pvData = try? encoder.encode(pv),
+           let pvStr = String(data: pvData, encoding: .utf8) {
+            lines.append("{\"type\":\"per_video_score\",\"score\":\(pvStr)}")
+        }
+        if let collection = collectionMetadata,
+           let cData = try? encoder.encode(collection),
+           let cStr = String(data: cData, encoding: .utf8) {
+            lines.append("{\"type\":\"norm_collection_meta\",\"collection\":\(cStr)}")
         }
 
         let plainText = lines.joined(separator: "\n")
@@ -72,7 +84,9 @@ public struct SessionVaultManager: Sendable {
         header: SessionHeader,
         frames: [GazeFrame],
         report: GazeSessionReportSummary,
-        classification: BiomarkerClassificationResult? = nil
+        classification: BiomarkerClassificationResult? = nil,
+        perVideoScore: PerVideoSessionScore? = nil,
+        collectionMetadata: NormCollectionMetadata? = nil
     ) async throws -> URL {
         return try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
@@ -81,7 +95,9 @@ public struct SessionVaultManager: Sendable {
                         header: header,
                         frames: frames,
                         report: report,
-                        classification: classification
+                        classification: classification,
+                        perVideoScore: perVideoScore,
+                        collectionMetadata: collectionMetadata
                     )
                     continuation.resume(returning: url)
                 } catch {
@@ -105,7 +121,9 @@ public struct SessionVaultManager: Sendable {
     /// Exports the session report conforming to the Apple ResearchKit ORKActiveStepResult schema.
     public static func makeResearchKitJson(
         report: GazeSessionReportSummary,
-        classification: BiomarkerClassificationResult? = nil
+        classification: BiomarkerClassificationResult? = nil,
+        perVideoScore: PerVideoSessionScore? = nil,
+        collection: [String: Any]? = nil
     ) -> [String: Any] {
         var base: [String: Any] = [
             "identifier": "ORKActiveStepResult",
@@ -134,6 +152,43 @@ public struct SessionVaultManager: Sendable {
                 "primaryContributingFeature": cl.primaryContributingFeature,
                 "executionDevice": cl.executionDevice.rawValue,
                 "inferenceLatencyMs": cl.inferenceLatencyMs
+            ]
+        }
+        if let collection = collection {
+            base["collection"] = collection
+        }
+        if let pv = perVideoScore {
+            base["per_video"] = [
+                "ageBracketId": pv.ageBracketId,
+                "ageMonths": pv.ageMonths,
+                "compositeScore": pv.compositeScore,
+                "baselineStatus": pv.baselineStatus,
+                "baselineSchemaVersion": pv.baselineSchemaVersion,
+                "scoredAtUtc": pv.scoredAtUtc,
+                "videos": pv.videos.map { video in
+                    [
+                        "stimulusId": video.stimulusId,
+                        "title": video.title,
+                        "subscore": video.subscore,
+                        "hasBaseline": video.hasBaseline,
+                        "lowConfidence": video.lowConfidence,
+                        "validSampleRatio": video.validSampleRatio,
+                        "rows": video.rows.map { row in
+                            [
+                                "segmentId": row.segmentId,
+                                "biomarker": row.biomarker,
+                                "targetAOI": row.targetAOI as Any?,
+                                "observed": row.observed,
+                                "expected": row.expected as Any?,
+                                "status": row.status.rawValue,
+                                "score": row.score,
+                                "imputed": row.imputed,
+                                "citation": row.citation,
+                                "source": row.source
+                            ] as [String: Any]
+                        }
+                    ] as [String: Any]
+                }
             ]
         }
         return base

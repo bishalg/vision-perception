@@ -240,6 +240,10 @@ public struct GazeFrame: Codable, Sendable {
     public let aoiDwellMs: Double
     public let stimulusEventTag: String?
     public let qualityVerdict: GazeQualityGate.Verdict
+    /// Stimulus clip playing when this frame was captured. Nil for legacy/unattributed capture.
+    public let stimulusId: String?
+    /// AVPlayer media clock seconds within the active clip (wraps on loop). Nil when unavailable.
+    public let clipMediaTimeSec: Double?
 
     public init(
         gaze: GazeTelemetrySample,
@@ -247,7 +251,9 @@ public struct GazeFrame: Codable, Sendable {
         activeAOINames: [String] = [],
         aoiDwellMs: Double = 0.0,
         stimulusEventTag: String? = nil,
-        qualityVerdict: GazeQualityGate.Verdict = .optimal
+        qualityVerdict: GazeQualityGate.Verdict = .optimal,
+        stimulusId: String? = nil,
+        clipMediaTimeSec: Double? = nil
     ) {
         self.gaze = gaze
         self.affect = affect
@@ -255,6 +261,8 @@ public struct GazeFrame: Codable, Sendable {
         self.aoiDwellMs = aoiDwellMs
         self.stimulusEventTag = stimulusEventTag
         self.qualityVerdict = qualityVerdict
+        self.stimulusId = stimulusId
+        self.clipMediaTimeSec = clipMediaTimeSec
     }
 }
 

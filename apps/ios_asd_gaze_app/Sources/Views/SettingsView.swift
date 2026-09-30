@@ -12,6 +12,7 @@ public struct SettingsView: View {
     @ObservedObject private var childProfileStore = ChildProfileStore.shared
     @ObservedObject private var alertPreferences = CareAlertPreferences.shared
     @ObservedObject private var healthKitMood = HealthKitMoodStore.shared
+    @ObservedObject private var appMode = AppModeStore.shared
     @State private var newConditionTitle: String = ""
     @State private var notificationStatusText: String = "Not determined"
     @State private var calibrationProfile: GazeCalibrationProfile = GazeCalibrationStore.load()
@@ -33,6 +34,7 @@ public struct SettingsView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
+                        appModeSection
                         profileSection
                         medicalConditionsSection
                         careAlertsSection
@@ -474,6 +476,39 @@ public struct SettingsView: View {
 
     // MARK: - Section 3: Privacy & Security
 
+    /// Parent/clinic mode switcher — the same choice made at first launch, changeable anytime.
+    private var appModeSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            GlassSectionHeader(title: "App Mode", icon: "arrow.triangle.2.circlepath")
+
+            VStack(alignment: .leading, spacing: 12) {
+                Picker("App Mode", selection: Binding(
+                    get: { appMode.mode },
+                    set: { newValue in
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            appMode.select(newValue)
+                        }
+                    }
+                )) {
+                    ForEach(AppMode.allCases) { mode in
+                        Label(mode.displayName, systemImage: mode.systemImage).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                Text(appMode.mode.tagline)
+                    .glassStyle(.subheadline)
+
+                if appMode.mode == .clinic {
+                    Label("Shared-device mode: role-based access controls and per-child profiles roll out in upcoming updates.", systemImage: "info.circle")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(LiquidGlass.warmAmber)
+                }
+            }
+            .glassCard(cornerRadius: 14, padding: 14)
+        }
+    }
+
     private var privacySecuritySection: some View {
         VStack(alignment: .leading, spacing: 10) {
             GlassSectionHeader(title: Localizer.tr("settings_privacy_section"), icon: "lock.shield.fill")
@@ -504,6 +539,10 @@ public struct SettingsView: View {
                             .glassStyle(.subheadline)
                     }
                 }
+
+                GlassDivider()
+
+                NormCollectionToggleRow()
             }
             .glassCard(cornerRadius: 14, padding: 14)
         }
@@ -638,5 +677,49 @@ public struct SettingsView: View {
             }
         }
         #endif
+    }
+}
+
+// MARK: - Normative Data Collection Opt-In
+
+/// Consent-gated opt-in that contributes de-identified per-video metric sets toward
+/// building our own age-bracketed normative references (requires active research consent;
+/// simulation sessions are always excluded by the gate).
+struct NormCollectionToggleRow: View {
+    @State private var isOptedIn: Bool = false
+    @State private var hasConsent: Bool = false
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "chart.bar.xaxis")
+                .foregroundColor(hasConsent ? LiquidGlass.emeraldMint : .secondary)
+                .font(.system(size: 18))
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Normative Data Collection")
+                    .glassStyle(.headline)
+                Text("Contribute de-identified per-video gaze metrics to help build age-based reference ranges. Requires research consent; never includes video or images.")
+                    .glassStyle(.subheadline)
+                Toggle(isOn: Binding(
+                    get: { isOptedIn },
+                    set: { newValue in
+                        guard hasConsent else { return }
+                        ResearchKitStudyStore.shared.setNormCollectionOptIn(newValue)
+                        isOptedIn = newValue
+                    }
+                )) {
+                    Text(hasConsent ? "Contribute to reference data" : "Requires research consent")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .toggleStyle(.switch)
+                .tint(hasConsent ? LiquidGlass.emeraldMint : .gray)
+                .disabled(!hasConsent)
+                .accessibilityLabel("Normative data collection opt-in")
+            }
+        }
+        .onAppear {
+            let enrollment = ResearchKitStudyStore.shared.fetchEnrollment()
+            hasConsent = enrollment.isConsented
+            isOptedIn = enrollment.normCollectionOptIn == true
+        }
     }
 }

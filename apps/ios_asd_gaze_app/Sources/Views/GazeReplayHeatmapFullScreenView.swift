@@ -36,6 +36,8 @@ public struct GazeReplayHeatmapFullScreenView: View {
     @State private var playbackSpeed: Double = 1.0
     @State private var visualizationMode: ReplayVisualizationMode = .scanpath
     @State private var tailMode: ReplayTailMode = .trailing5s
+    /// Per-clip filter (stimulus id); nil replays the whole session.
+    @State private var clipFilter: String?
 
     public init(
         summary: GazeSessionReportSummary,
@@ -45,10 +47,33 @@ public struct GazeReplayHeatmapFullScreenView: View {
         self.recordedFrames = recordedFrames
     }
 
+    /// Frame source honoring the per-clip filter; frames without a stimulus id group under the untagged clip.
+    private var frames: [GazeFrame] {
+        guard let filter = clipFilter else { return recordedFrames }
+        return recordedFrames.filter { ($0.stimulusId ?? PerVideoMetricsExtractor.untaggedClipId) == filter }
+    }
+
+    /// Distinct clips present in the recording, in capture order; filter chips are hidden for a single clip.
+    private var availableClips: [String] {
+        var order: [String] = []
+        for frame in recordedFrames {
+            let id = frame.stimulusId ?? PerVideoMetricsExtractor.untaggedClipId
+            if !order.contains(id) { order.append(id) }
+        }
+        return order
+    }
+
+    private func chipLabel(for clipId: String) -> String {
+        guard clipId != PerVideoMetricsExtractor.untaggedClipId else { return "Untagged" }
+        return clipId
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "stim", with: "Clip")
+    }
+
     private var activeFrame: GazeFrame? {
-        guard !recordedFrames.isEmpty else { return nil }
-        let idx = max(0, min(currentFrameIndex, recordedFrames.count - 1))
-        return recordedFrames[idx]
+        guard !frames.isEmpty else { return nil }
+        let idx = max(0, min(currentFrameIndex, frames.count - 1))
+        return frames[idx]
     }
 
     private var currentTimeSec: Double {
@@ -154,7 +179,42 @@ public struct GazeReplayHeatmapFullScreenView: View {
             .frame(maxWidth: .infinity)
             .background(.ultraThinMaterial.opacity(0.75))
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+            // Row 4: Per-clip filter chips (only when multiple clips were captured)
+            if availableClips.count > 1 {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        filterChip(title: "All Clips", clipId: nil)
+                        ForEach(availableClips, id: \.self) { clipId in
+                            filterChip(title: chipLabel(for: clipId), clipId: clipId)
+                        }
+                    }
+                    .padding(.horizontal, 2)
+                    .padding(.vertical, 1)
+                }
+            }
         }
+        .onChange(of: clipFilter) { _ in
+            // Reset playback into the newly selected clip's frame range.
+            currentFrameIndex = 0
+        }
+    }
+
+    private func filterChip(title: String, clipId: String?) -> some View {
+        let isSelected = clipFilter == clipId
+        return Button {
+            clipFilter = clipId
+        } label: {
+            Text(title)
+                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .lineLimit(1)
+                .foregroundColor(isSelected ? .black : .white.opacity(0.8))
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(isSelected ? AnyShapeStyle(LiquidGlass.emeraldMint) : AnyShapeStyle(.ultraThinMaterial.opacity(0.75))))
+                .overlay(Capsule().stroke(Color.white.opacity(0.15), lineWidth: 0.8))
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Stimulus Background (Social Actor vs Geometric)
@@ -221,9 +281,9 @@ public struct GazeReplayHeatmapFullScreenView: View {
 
     @ViewBuilder
     private func scanpathFlowOverlay(in size: CGSize) -> some View {
-        let maxIdx = min(currentFrameIndex, recordedFrames.count)
+        let maxIdx = min(currentFrameIndex, frames.count)
         let visibleFrames: [GazeFrame] = {
-            let validSubarray = recordedFrames.prefix(maxIdx).filter { f in
+            let validSubarray = frames.prefix(maxIdx).filter { f in
                 f.gaze.isValid && f.qualityVerdict != .rejected
             }
             if tailMode == .fullPath {
@@ -278,9 +338,9 @@ public struct GazeReplayHeatmapFullScreenView: View {
 
     @ViewBuilder
     private func fixationHeatmapOverlay(in size: CGSize) -> some View {
-        let maxIdx = min(currentFrameIndex, recordedFrames.count)
+        let maxIdx = min(currentFrameIndex, frames.count)
         let validSampledFrames: [GazeFrame] = {
-            let validSubarray = recordedFrames.prefix(maxIdx).filter {
+            let validSubarray = frames.prefix(maxIdx).filter {
                 $0.gaze.isValid && $0.qualityVerdict != .rejected
             }
             if tailMode == .fullPath {
@@ -388,7 +448,7 @@ public struct GazeReplayHeatmapFullScreenView: View {
                             currentFrameIndex = Int(newIdx)
                         }
                     ),
-                    in: 0...Double(max(1, recordedFrames.count - 1))
+                    in: 0...Double(max(1, frames.count - 1))
                 )
                 .tint(LiquidGlass.emeraldMint)
 
@@ -425,7 +485,7 @@ public struct GazeReplayHeatmapFullScreenView: View {
 
                 // Step Forward 1s (60 frames)
                 Button {
-                    currentFrameIndex = min(max(0, recordedFrames.count - 1), currentFrameIndex + 60)
+                    currentFrameIndex = min(max(0, frames.count - 1), currentFrameIndex + 60)
                 } label: {
                     Image(systemName: "goforward.10")
                         .font(.system(size: 14, weight: .semibold))
@@ -456,7 +516,7 @@ public struct GazeReplayHeatmapFullScreenView: View {
                 }
 
                 // Frame info badge
-                Text(String(format: "%d / %d", min(currentFrameIndex + 1, recordedFrames.count), recordedFrames.count))
+                Text(String(format: "%d / %d", min(currentFrameIndex + 1, frames.count), frames.count))
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
                     .foregroundColor(.white.opacity(0.6))
             }
@@ -500,8 +560,8 @@ public struct GazeReplayHeatmapFullScreenView: View {
         let interval = (1.0 / 60.0) / playbackSpeed
         playbackTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
             MainActor.assumeIsolated {
-                guard !recordedFrames.isEmpty else { return }
-                if currentFrameIndex + 1 < recordedFrames.count {
+                guard !frames.isEmpty else { return }
+                if currentFrameIndex + 1 < frames.count {
                     currentFrameIndex += 1
                 } else {
                     currentFrameIndex = 0 // loop

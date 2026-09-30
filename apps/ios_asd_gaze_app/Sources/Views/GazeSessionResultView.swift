@@ -19,6 +19,8 @@ public struct GazeSessionResultView: View {
     @State private var showShareSheet: Bool = false
     @State private var shareItems: [Any] = []
     @State private var exportText: String = ""
+    @State private var perVideoScore: PerVideoSessionScore?
+    @State private var perVideoBaselineStatus: String?
 
     public init(
         summary: GazeSessionReportSummary,
@@ -54,6 +56,7 @@ public struct GazeSessionResultView: View {
                             ))
                         )
                         socialPreferenceCard
+                        perVideoMatrixEntry
                         medicalDisclaimerBanner
                         mlClassificationCard
                         facialAffectMetricsCard
@@ -102,6 +105,29 @@ public struct GazeSessionResultView: View {
                     classification: classification,
                     recordedFrames: recordedFrames
                 )
+            }
+            .navigationDestination(for: PerVideoNavRoute.self) { route in
+                switch route {
+                case .summary:
+                    if let score = perVideoScore {
+                        PerVideoSummaryListView(score: score)
+                    }
+                case .video:
+                    if let score = perVideoScore {
+                        PerVideoResultDetailView(score: score, route: route)
+                    }
+                }
+            }
+            .onAppear {
+                // Per-video scoring is linear over frames; compute once per presentation.
+                if perVideoScore == nil {
+                    let model = PerVideoMatrixModel(
+                        recordedFrames: recordedFrames,
+                        childAgeMonths: ChildProfileStore.shared.profile.ageBracket.midpointMonths
+                    )
+                    perVideoScore = model.sessionScore
+                    perVideoBaselineStatus = model.baselineStatus
+                }
             }
         }
         .fullScreenCover(isPresented: $showFullScreenReplay) {
@@ -219,6 +245,17 @@ public struct GazeSessionResultView: View {
     }
 
     // MARK: - Social Preference Card (Drillable)
+
+    /// Entry point into the per-stimulus report stack: summary card that pushes the sub-report landing page.
+    @ViewBuilder
+    private var perVideoMatrixEntry: some View {
+        if let score = perVideoScore, score.videos.contains(where: { $0.hasBaseline }) {
+            NavigationLink(value: PerVideoNavRoute.summary) {
+                PerVideoMatrixCardView(score: score, baselineStatus: perVideoBaselineStatus)
+            }
+            .buttonStyle(.plain)
+        }
+    }
 
     private var socialPreferenceCard: some View {
         NavigationLink(value: BiomarkerDetailType.socialPreference) {
@@ -529,7 +566,11 @@ public struct GazeSessionResultView: View {
 
     private func prepareShareExport() {
         let result = classification ?? BiomarkerClassificationEngine.shared.classifySync(summary: summary)
-        let rk = SessionVaultManager.makeResearchKitJson(report: summary, classification: result)
+        let rk = SessionVaultManager.makeResearchKitJson(
+            report: summary,
+            classification: result,
+            perVideoScore: perVideoScore
+        )
         if let data = try? JSONSerialization.data(withJSONObject: rk, options: [.prettyPrinted, .sortedKeys]),
            let str = String(data: data, encoding: .utf8) {
             exportText = str

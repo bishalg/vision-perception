@@ -75,6 +75,10 @@ public enum DoctorReportGenerator {
             currentY = drawGazeSection(record: input.gazeRecord, at: currentY)
             currentY += 14
 
+            // 4. Per-Stimulus Expected-vs-Recorded Matrix Breakdown
+            currentY = drawPerVideoMatrixSection(record: input.gazeRecord, at: currentY)
+            currentY += 14
+
             // 5. M-CHAT-R/F Standardized Behavioral Results
             currentY = drawMChatSection(result: input.mchatResult, at: currentY)
             currentY += 14
@@ -239,9 +243,97 @@ public enum DoctorReportGenerator {
         return currentY + 68
     }
 
+    /// Per-stimulus expected-vs-recorded matrix table (v1.5 records); compact no-op box otherwise.
+    private static func drawPerVideoMatrixSection(record: GazeSessionRecord?, at y: CGFloat) -> CGFloat {
+        var currentY = y
+        drawSectionHeading("2. Per-Stimulus Engagement Matrix (Expected vs Recorded)", at: currentY)
+        currentY += 18
+
+        guard let rec = record, let perVideo = rec.perVideo, perVideo.contains(where: { $0.hasBaseline }) else {
+            let boxRect = CGRect(x: margin, y: currentY, width: contentWidth, height: 40)
+            let path = UIBezierPath(roundedRect: boxRect, cornerRadius: 6)
+            UIColor.secondarySystemBackground.setFill()
+            path.fill()
+            "Per-stimulus breakdown unavailable for this session (legacy record or single-stimulus capture).".draw(
+                at: CGPoint(x: margin + 12, y: currentY + 16),
+                withAttributes: [.font: UIFont.systemFont(ofSize: 9.5, weight: .regular), .foregroundColor: UIColor.secondaryLabel]
+            )
+            return currentY + 40
+        }
+
+        let rowAttr: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 9, weight: .regular),
+            .foregroundColor: UIColor.label
+        ]
+        let dimAttr: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 8, weight: .regular),
+            .foregroundColor: UIColor.secondaryLabel
+        ]
+        let valueAttr: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 9, weight: .bold),
+            .foregroundColor: UIColor.label
+        ]
+
+        if let composite = rec.perVideoComposite {
+            "COMPOSITE ENGAGEMENT SCORE".draw(at: CGPoint(x: margin + 4, y: currentY), withAttributes: dimAttr)
+            let pct = Int((composite * 100).rounded())
+            let color: UIColor = pct >= 65 ? .systemGreen : (pct >= 35 ? .systemOrange : .systemRed)
+            "\(pct)/100".draw(at: CGPoint(x: margin + contentWidth - 60, y: currentY - 3), withAttributes: [
+                .font: UIFont.systemFont(ofSize: 12, weight: .bold), .foregroundColor: color
+            ])
+            currentY += 16
+        }
+
+        for video in perVideo where video.hasBaseline {
+            let statusText: String
+            let pct = Int((video.subscore * 100).rounded())
+            let color: UIColor = pct >= 65 ? .systemGreen : (pct >= 35 ? .systemOrange : .systemRed)
+            switch video.subscore {
+            case ..<0.35: statusText = "Atypical"
+            case ..<0.65: statusText = "Monitor"
+            default: statusText = "On Target"
+            }
+
+            video.title.draw(at: CGPoint(x: margin + 4, y: currentY), withAttributes: rowAttr)
+            "\(pct)/100".draw(at: CGPoint(x: margin + contentWidth - 190, y: currentY), withAttributes: [
+                .font: UIFont.systemFont(ofSize: 9, weight: .bold), .foregroundColor: color
+            ])
+            statusText.draw(at: CGPoint(x: margin + contentWidth - 120, y: currentY), withAttributes: [
+                .font: UIFont.systemFont(ofSize: 9, weight: .semibold), .foregroundColor: color
+            ])
+            if video.lowConfidence {
+                "low quality".draw(at: CGPoint(x: margin + contentWidth - 60, y: currentY), withAttributes: dimAttr)
+            }
+            currentY += 13
+
+            // Expectation rows for this clip
+            for row in video.rows {
+                let name = row.biomarker.replacingOccurrences(of: "_", with: " ")
+                let observed: String
+                if row.biomarker.contains("latency") {
+                    observed = "\(Int(row.observed)) ms"
+                } else if row.biomarker == "fixation_count" {
+                    observed = String(format: "%.0f", row.observed)
+                } else {
+                    observed = "\(Int(row.observed * 100))%"
+                }
+                let suffix = row.imputed ? " (never fixated)" : ""
+                "• \(name): \(observed)\(suffix)".draw(at: CGPoint(x: margin + 14, y: currentY), withAttributes: dimAttr)
+                currentY += 11
+            }
+            currentY += 4
+        }
+
+        "Baseline \(rec.perVideoComposite != nil ? "provisional-literature-seeded" : "") — values compare against age-expectation references, not a diagnosis.".draw(
+            at: CGPoint(x: margin + 4, y: currentY),
+            withAttributes: dimAttr
+        )
+        return currentY + 14
+    }
+
     private static func drawMChatSection(result: MCHATScoreResult?, at y: CGFloat) -> CGFloat {
         var currentY = y
-        drawSectionHeading("2. M-CHAT-R/F Standardized Behavioral Risk Stratification", at: currentY)
+        drawSectionHeading("3. M-CHAT-R/F Standardized Behavioral Risk Stratification", at: currentY)
         currentY += 18
 
         let boxRect = CGRect(x: margin, y: currentY, width: contentWidth, height: 60)
@@ -294,7 +386,7 @@ public enum DoctorReportGenerator {
 
     private static func drawCareKitSection(input: DoctorReportInput, at y: CGFloat) -> CGFloat {
         var currentY = y
-        drawSectionHeading("3. CareKit In-Home 7-Day Treatment & Activity Adherence", at: currentY)
+        drawSectionHeading("4. CareKit In-Home 7-Day Treatment & Activity Adherence", at: currentY)
         currentY += 18
 
         let boxRect = CGRect(x: margin, y: currentY, width: contentWidth, height: 48)
@@ -328,7 +420,7 @@ public enum DoctorReportGenerator {
 
     private static func drawRecommendations(input: DoctorReportInput, at y: CGFloat) -> CGFloat {
         var currentY = y
-        drawSectionHeading("4. Clinical Synthesis & Action Plan", at: currentY)
+        drawSectionHeading("5. Clinical Synthesis & Action Plan", at: currentY)
         currentY += 18
 
         let isHighRisk = (input.mchatResult?.riskLevel == .high) || ((input.gazeRecord?.socialPreferenceScore ?? 1.0) < -0.15)

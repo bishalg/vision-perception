@@ -137,6 +137,10 @@ public actor GazeProcessingActor {
     public private(set) var isRecording: Bool = false
     private var sessionStartTime: Date?
     private var clipStartTime: Date?
+    /// Stimulus clip currently playing (playlist video name). Nil when no playlist context.
+    public private(set) var currentStimulusId: String?
+    /// AVPlayer media clock seconds within the active clip (wraps on loop). Nil until reported.
+    public private(set) var clipMediaTimeSec: Double?
 
     public init(
         raycaster: ScreenRaycaster = ScreenRaycaster(),
@@ -166,6 +170,8 @@ public actor GazeProcessingActor {
         self.volatileFrameBuffer.removeAll(keepingCapacity: true)
         self.sessionStartTime = Date()
         self.clipStartTime = Date()
+        self.currentStimulusId = nil
+        self.clipMediaTimeSec = nil
         self.isRecording = true
         self.lastValidCalibratedPoint = CGPoint(x: 0.5, y: 0.5)
         self.lastValidRawPoint = CGPoint(x: 0.5, y: 0.5)
@@ -175,9 +181,16 @@ public actor GazeProcessingActor {
     }
 
     /// Dynamically switches the active stimulus clip and AOI battery mid-session.
-    public func switchStimulusClip(battery: StimulusAOITracker) {
+    public func switchStimulusClip(battery: StimulusAOITracker, stimulusId: String? = nil) {
         self.aoiTracker = battery
         self.clipStartTime = Date()
+        self.currentStimulusId = stimulusId
+        self.clipMediaTimeSec = nil
+    }
+
+    /// Receives the authoritative AVPlayer media clock for the active clip (10 Hz periodic observer).
+    public func updateClipMediaTime(_ timeSec: Double) {
+        self.clipMediaTimeSec = timeSec
     }
 
     /// Updates calibration profile and resets smoothing filters.
@@ -277,10 +290,12 @@ public actor GazeProcessingActor {
         )
 
         // 5. Query dynamic Area of Interest (AOI) bounding boxes (suppressed during ocular artifacts)
+        // AOI time windows align to the AVPlayer media clock when the periodic observer is live
         let clipElapsedSec = clipStartTime.map { Date().timeIntervalSince($0) } ?? elapsedSec
+        let aoiTimeSec = clipMediaTimeSec ?? clipElapsedSec
         let activeHits: [String] = isOcularArtifact
             ? []
-            : aoiTracker.activeAOIs(atTimeSec: clipElapsedSec, xNorm: calibratedPoint.x, yNorm: calibratedPoint.y)
+            : aoiTracker.activeAOIs(atTimeSec: aoiTimeSec, xNorm: calibratedPoint.x, yNorm: calibratedPoint.y)
 
         // 6. Evaluate Quality Gate tolerances (freeze coordinate at last valid position during blinks)
         let gazeCoord = isOcularArtifact ? lastValidCalibratedPoint : calibratedPoint
@@ -298,7 +313,9 @@ public actor GazeProcessingActor {
             headYawRad: yaw,
             headRollRad: roll,
             distanceToScreenCm: distanceCm,
-            isValid: sampleIsValid
+            isValid: sampleIsValid,
+            stimulusId: currentStimulusId,
+            clipMediaTimeSec: clipMediaTimeSec
         )
         let eval = qualityGate.evaluateSample(sample)
 
@@ -336,7 +353,9 @@ public actor GazeProcessingActor {
             activeAOINames: activeHits,
             aoiDwellMs: 16.67,
             stimulusEventTag: nil,
-            qualityVerdict: eval.verdict
+            qualityVerdict: eval.verdict,
+            stimulusId: currentStimulusId,
+            clipMediaTimeSec: clipMediaTimeSec
         )
         if isRecording {
             volatileFrameBuffer.append(frame)
@@ -357,7 +376,12 @@ public actor GazeProcessingActor {
     }
 
     /// Ingests a simulated frame (for Simulator and mathematical testing).
-    public func processSimulatedFrame(timeSec: Double, target: CGPoint?) -> GazeUIState {
+    public func processSimulatedFrame(
+        timeSec: Double,
+        target: CGPoint?,
+        stimulusId: String? = nil,
+        clipMediaTimeSec: Double? = nil
+    ) -> GazeUIState {
         let gazePoint: CGPoint
         if let target = target {
             let jitterX = 0.015 * sin(timeSec * 7.2)
@@ -410,7 +434,9 @@ public actor GazeProcessingActor {
             headYawRad: 0.03 * cos(timeSec * 0.7),
             headRollRad: 0.01 * sin(timeSec * 0.5),
             distanceToScreenCm: 48.0 + 1.5 * sin(timeSec * 0.3),
-            isValid: true
+            isValid: true,
+            stimulusId: stimulusId ?? currentStimulusId,
+            clipMediaTimeSec: clipMediaTimeSec ?? self.clipMediaTimeSec
         )
 
         let eval = qualityGate.evaluateSample(sample)
@@ -420,7 +446,9 @@ public actor GazeProcessingActor {
             activeAOINames: activeHits,
             aoiDwellMs: 16.67,
             stimulusEventTag: isSmiling ? "character_laugh_onset" : nil,
-            qualityVerdict: eval.verdict
+            qualityVerdict: eval.verdict,
+            stimulusId: stimulusId ?? currentStimulusId,
+            clipMediaTimeSec: clipMediaTimeSec ?? self.clipMediaTimeSec
         )
 
         if isRecording {

@@ -15,6 +15,11 @@ public struct GazeTelemetrySample: Codable, Sendable, Equatable {
     public let headRollRad: Double
     public let distanceToScreenCm: Double
     public let isValid: Bool
+    /// Identifier of the stimulus clip playing when this sample was captured (e.g. "stim_05_geopref_split_10s").
+    /// Nil for legacy sessions and single-battery GeoPref capture without playlist context.
+    public let stimulusId: String?
+    /// AVPlayer media clock seconds within the active clip (wraps on loop). Nil when unavailable.
+    public let clipMediaTimeSec: Double?
 
     public init(
         timestampMs: Double,
@@ -28,7 +33,9 @@ public struct GazeTelemetrySample: Codable, Sendable, Equatable {
         headYawRad: Double = 0.0,
         headRollRad: Double = 0.0,
         distanceToScreenCm: Double = 45.0,
-        isValid: Bool = true
+        isValid: Bool = true,
+        stimulusId: String? = nil,
+        clipMediaTimeSec: Double? = nil
     ) {
         self.timestampMs = timestampMs
         self.videoTimeSec = videoTimeSec
@@ -42,6 +49,8 @@ public struct GazeTelemetrySample: Codable, Sendable, Equatable {
         self.headRollRad = headRollRad
         self.distanceToScreenCm = distanceToScreenCm
         self.isValid = isValid
+        self.stimulusId = stimulusId
+        self.clipMediaTimeSec = clipMediaTimeSec
     }
 
     enum CodingKeys: String, CodingKey {
@@ -57,6 +66,8 @@ public struct GazeTelemetrySample: Codable, Sendable, Equatable {
         case headRollRad = "head_roll_rad"
         case distanceToScreenCm = "distance_to_screen_cm"
         case isValid = "valid"
+        case stimulusId = "stimulus_id"
+        case clipMediaTimeSec = "clip_media_time_sec"
     }
 }
 

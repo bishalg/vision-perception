@@ -290,6 +290,16 @@ Sources/
   - Incorporates a deterministic clinical baseline fallback (calibrated against Pierce et al. GeoPref & Jones & Klin saccade latency literature) for test environments and uncompiled deployments.
   - Produces structured `BiomarkerClassificationResult` (`.typical`, `.monitor`, `.elevatedRisk`) embedded in ResearchKit/CareKit schemas and rendered in `GazeSessionResultView`.
 
+### D. Per-Stimulus Expected-vs-Recorded Matrix (schema v1.5, 2026-09)
+- **Challenge**: Session-wide aggregates blur which video elicited which response, and expectations were age-blind static strings baked into views.
+- **Solution**:
+  - Every 60 Hz frame is tagged with `stimulusId` and the authoritative AVPlayer media clock (`clipMediaTimeSec`, 10 Hz periodic observer); time-coded AOI windows align to media time, not wall-clock.
+  - `PerVideoMetricsExtractor` computes per-clip metric sets (AOI dwell, first-entry latency, GeoPref pair, I-VT fixations, affect, quality).
+  - `normative_baselines.json` (bundled, versioned, `provisional-literature-seeded`) maps each video → time-coded content segments → age-bracketed expected ranges with citations. See `domains/asd_screening/docs/NORMATIVE_BASELINES.md`.
+  - `PerVideoScoringEngine` emits the expected-vs-recorded matrix rows (onTarget/monitor/atypical + continuous score) and a weighted composite. The classification engine above is unchanged — the matrix displays alongside it until empirically validated.
+  - Persisted additively: `GazeSessionRecord` v1.5, vault `per_video_score` lines, ResearchKit `per_video` block, FHIR local-code components, doctor PDF §2.
+  - Normative collection mode (consent + opt-in gated, simulation excluded) feeds `tools/asd_norm_aggregator.py` to build candidate age-bracketed norms from collected sessions (min n = 12 per cell, human review before promotion).
+
 ---
 
 ## 9. Summary for Future Engineers & Researchers

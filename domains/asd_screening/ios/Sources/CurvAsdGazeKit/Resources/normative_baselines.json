@@ -1,0 +1,403 @@
+{
+  "schemaVersion": "1.0.0",
+  "status": "provisional-literature-seeded",
+  "provenance": "Seeded from docs/research/asd_gaze_biomarkers digests (Pierce eLife 2019; Jones et al. JAMA 2023; Perochon et al. NEJM AI 2024; JBI 2022 systematic review) and the Curv clinical baseline (BiomarkerClassificationEngine). NOT empirically validated on device-captured data. Per-bracket overrides are developmental interpolations (source: interpolated), not measured norms. See domains/asd_screening/docs/NORMATIVE_BASELINES.md.",
+  "ageBrackets": [
+    { "id": "12-17", "minMonths": 12, "maxMonths": 17 },
+    { "id": "18-23", "minMonths": 18, "maxMonths": 23 },
+    { "id": "24-35", "minMonths": 24, "maxMonths": 35 },
+    { "id": "36-47", "minMonths": 36, "maxMonths": 47 },
+    { "id": "48-60", "minMonths": 48, "maxMonths": 60 }
+  ],
+  "videos": {
+    "stim_01_social_peekaboo_8s": {
+      "title": "Direct Social Eye Contact",
+      "category": "Social Engagement",
+      "weight": 0.20,
+      "segments": [
+        {
+          "id": "peekaboo_direct_gaze",
+          "description": "Actor plays peek-a-boo with direct eye contact toward the camera.",
+          "startSec": 0.0,
+          "endSec": 8.0,
+          "expectations": [
+            {
+              "biomarker": "eye_dwell_ratio",
+              "direction": "band",
+              "targetAOI": null,
+              "byAge": {
+                "default": { "expected": 0.35, "acceptableLow": 0.25, "acceptableHigh": 0.45 }
+              },
+              "citation": "Eye-region share of face dwell; typical 0.25-0.45 (Curv clinical baseline; JBI 2022 feature set).",
+              "source": "literature"
+            },
+            {
+              "biomarker": "first_entry_latency_ms",
+              "direction": "lowerBetter",
+              "targetAOI": "Eye_Region",
+              "byAge": {
+                "default": { "expected": 420.0, "acceptableHigh": 600.0 },
+                "12-17": { "expected": 500.0, "acceptableHigh": 750.0 }
+              },
+              "citation": "Typical first-eye latency <420ms, prolonged >600ms (Curv clinical baseline; Jones et al. JAMA 2023 time-to-first-fixation). Younger bracket interpolated.",
+              "source": "literature"
+            },
+            {
+              "biomarker": "smile_reactivity_index",
+              "direction": "higherBetter",
+              "targetAOI": null,
+              "byAge": {
+                "default": { "expected": 0.20, "acceptableLow": 0.10 }
+              },
+              "citation": "Smile reactivity <0.20 attenuated, >=0.30 strong (Curv clinical baseline; Perochon et al. NEJM AI 2024 smile-frequency biomarkers).",
+              "source": "literature"
+            }
+          ]
+        }
+      ]
+    },
+    "stim_02_gaze_cue_right_8s": {
+      "title": "Joint Attention: Rightward Cue",
+      "category": "Joint Attention",
+      "weight": 0.15,
+      "segments": [
+        {
+          "id": "cue_face",
+          "description": "Actor faces the camera and looks straight ahead.",
+          "startSec": 0.0,
+          "endSec": 3.5,
+          "expectations": [
+            {
+              "biomarker": "aoi_dwell_ratio",
+              "direction": "higherBetter",
+              "targetAOI": "Actor_Face",
+              "byAge": {
+                "default": { "expected": 0.35, "acceptableLow": 0.15 }
+              },
+              "citation": "Face reference before the cue; developmental interpolation (no numeric anchor in digest set).",
+              "source": "interpolated"
+            }
+          ]
+        },
+        {
+          "id": "gaze_follow_right",
+          "description": "Actor turns gaze to the right-side target object.",
+          "startSec": 3.5,
+          "endSec": 8.0,
+          "expectations": [
+            {
+              "biomarker": "first_entry_latency_ms",
+              "direction": "lowerBetter",
+              "targetAOI": "Gaze_Target_Right",
+              "byAge": {
+                "default": { "expected": 600.0, "acceptableHigh": 1200.0 },
+                "12-17": { "expected": 800.0, "acceptableHigh": 1500.0 }
+              },
+              "citation": "Saccadic latency to gaze-cue target; Curv baseline normalization range 300-800ms (JBI 2022 latency features). Bracket margins interpolated.",
+              "source": "literature"
+            },
+            {
+              "biomarker": "aoi_dwell_ratio",
+              "direction": "higherBetter",
+              "targetAOI": "Gaze_Target_Right",
+              "byAge": {
+                "default": { "expected": 0.15, "acceptableLow": 0.05 }
+              },
+              "citation": "Dwell on cued target across the clip; developmental interpolation (target window is ~56% of clip).",
+              "source": "interpolated"
+            }
+          ]
+        }
+      ]
+    },
+    "stim_03_gaze_cue_left_8s": {
+      "title": "Joint Attention: Leftward Cue",
+      "category": "Joint Attention",
+      "weight": 0.15,
+      "segments": [
+        {
+          "id": "cue_face",
+          "description": "Actor faces the camera and looks straight ahead.",
+          "startSec": 0.0,
+          "endSec": 3.0,
+          "expectations": [
+            {
+              "biomarker": "aoi_dwell_ratio",
+              "direction": "higherBetter",
+              "targetAOI": "Actor_Face",
+              "byAge": {
+                "default": { "expected": 0.30, "acceptableLow": 0.12 }
+              },
+              "citation": "Face reference before the cue; developmental interpolation (no numeric anchor in digest set).",
+              "source": "interpolated"
+            }
+          ]
+        },
+        {
+          "id": "gaze_follow_left",
+          "description": "Actor turns gaze to the left-side target object.",
+          "startSec": 3.0,
+          "endSec": 8.0,
+          "expectations": [
+            {
+              "biomarker": "first_entry_latency_ms",
+              "direction": "lowerBetter",
+              "targetAOI": "Gaze_Target_Left",
+              "byAge": {
+                "default": { "expected": 600.0, "acceptableHigh": 1200.0 },
+                "12-17": { "expected": 800.0, "acceptableHigh": 1500.0 }
+              },
+              "citation": "Saccadic latency to gaze-cue target; Curv baseline normalization range 300-800ms (JBI 2022 latency features). Bracket margins interpolated.",
+              "source": "literature"
+            },
+            {
+              "biomarker": "aoi_dwell_ratio",
+              "direction": "higherBetter",
+              "targetAOI": "Gaze_Target_Left",
+              "byAge": {
+                "default": { "expected": 0.15, "acceptableLow": 0.05 }
+              },
+              "citation": "Dwell on cued target across the clip; developmental interpolation (target window is ~63% of clip).",
+              "source": "interpolated"
+            }
+          ]
+        }
+      ]
+    },
+    "stim_04_surprise_giftbox_10s": {
+      "title": "Affective Surprise Discovery",
+      "category": "Facial Affect",
+      "weight": 0.10,
+      "segments": [
+        {
+          "id": "surprise_giftbox",
+          "description": "Actor opens a gift box with a surprised then joyful reaction.",
+          "startSec": 0.0,
+          "endSec": 8.0,
+          "expectations": [
+            {
+              "biomarker": "smile_reactivity_index",
+              "direction": "higherBetter",
+              "targetAOI": null,
+              "byAge": {
+                "default": { "expected": 0.20, "acceptableLow": 0.10 }
+              },
+              "citation": "Smile reactivity <0.20 attenuated (Curv clinical baseline; NEJM AI 2024 smile biomarkers).",
+              "source": "literature"
+            },
+            {
+              "biomarker": "flat_affect_score",
+              "direction": "lowerBetter",
+              "targetAOI": null,
+              "byAge": {
+                "default": { "expected": 0.30, "acceptableHigh": 0.50 }
+              },
+              "citation": "Flat affect >0.30 at-risk signal (Curv clinical baseline; DATA_STORAGE_AND_PIPELINE D3.3).",
+              "source": "literature"
+            },
+            {
+              "biomarker": "surprise_score_mean",
+              "direction": "higherBetter",
+              "targetAOI": null,
+              "byAge": {
+                "default": { "expected": 0.15, "acceptableLow": 0.05 }
+              },
+              "citation": "Mean surprise engagement during novel event; developmental interpolation (no numeric anchor in digest set).",
+              "source": "interpolated"
+            }
+          ]
+        }
+      ]
+    },
+    "stim_05_geopref_split_10s": {
+      "title": "Geometric vs Social Preference",
+      "category": "GeoPref",
+      "weight": 0.30,
+      "segments": [
+        {
+          "id": "social_geo_split",
+          "description": "Split screen: social actor on the left half, dynamic geometric pattern on the right half.",
+          "startSec": 0.0,
+          "endSec": 8.0,
+          "expectations": [
+            {
+              "biomarker": "social_dwell_ratio",
+              "direction": "higherBetter",
+              "targetAOI": null,
+              "byAge": {
+                "default": { "expected": 0.70, "acceptableLow": 0.55 }
+              },
+              "citation": "Neurotypical toddlers spend >70% of viewing time on the social side (Pierce et al., eLife 2019; Pierce 2011/2016).",
+              "source": "literature"
+            },
+            {
+              "biomarker": "geometric_dwell_ratio",
+              "direction": "lowerBetter",
+              "targetAOI": null,
+              "byAge": {
+                "default": { "expected": 0.30, "acceptableHigh": 0.60 }
+              },
+              "citation": "Geometric fixation >=69% marks the ASD-Geo subtype at 98-99% specificity (Pierce et al., eLife 2019); this band flags above 60% so the 69% rule sits inside the atypical zone.",
+              "source": "literature"
+            },
+            {
+              "biomarker": "social_preference_score",
+              "direction": "higherBetter",
+              "targetAOI": null,
+              "byAge": {
+                "default": { "expected": 0.40, "acceptableLow": 0.10 }
+              },
+              "citation": "Derived from the >70% social-dwell anchor: (0.70-0.30)/(0.70+0.30) = 0.40 expected preference index; margins interpolated.",
+              "source": "interpolated"
+            }
+          ]
+        }
+      ]
+    },
+    "stim_06_dynamic_gears_marbles_8s": {
+      "title": "Dynamic Gears & Marbles",
+      "category": "Mechanical Control",
+      "weight": 0.05,
+      "segments": [
+        {
+          "id": "mechanical_motion",
+          "description": "Gears and marbles in motion; non-social salience control clip.",
+          "startSec": 0.0,
+          "endSec": 8.0,
+          "expectations": [
+            {
+              "biomarker": "aoi_dwell_ratio",
+              "direction": "higherBetter",
+              "targetAOI": "Mechanical_Motion",
+              "byAge": {
+                "default": { "expected": 0.60, "acceptableLow": 0.30 }
+              },
+              "citation": "Control clip: typical toddlers attend to salient mechanical motion; very low dwell suggests non-specific disengagement (developmental interpolation).",
+              "source": "interpolated"
+            }
+          ]
+        }
+      ]
+    },
+    "stim_07_cartoon_slapstick_penguin_8s": {
+      "title": "Animated Affect & Anticipation",
+      "category": "Dynamic Affect",
+      "weight": 0.05,
+      "segments": [
+        {
+          "id": "cartoon_slapstick",
+          "description": "Slapstick cartoon penguin with humorous anticipation beats.",
+          "startSec": 0.0,
+          "endSec": 8.0,
+          "expectations": [
+            {
+              "biomarker": "social_smile_intensity_mean",
+              "direction": "higherBetter",
+              "targetAOI": null,
+              "byAge": {
+                "default": { "expected": 0.25, "acceptableLow": 0.10 }
+              },
+              "citation": "Humor smile response; Curv baseline uses >=20% smile intensity as typical anchor; margins interpolated.",
+              "source": "literature"
+            },
+            {
+              "biomarker": "aoi_dwell_ratio",
+              "direction": "higherBetter",
+              "targetAOI": "Cartoon_Character",
+              "byAge": {
+                "default": { "expected": 0.50, "acceptableLow": 0.25 }
+              },
+              "citation": "Dwell on the animated character; developmental interpolation.",
+              "source": "interpolated"
+            }
+          ]
+        }
+      ]
+    },
+    "stim_08_recenter_bubble_fox_3s": {
+      "title": "Center Fixation Recenter",
+      "category": "Fixation Recenter",
+      "weight": 0.05,
+      "segments": [
+        {
+          "id": "center_fixation",
+          "description": "Central bubble-fox fixation target used to recenter gaze between clips.",
+          "startSec": 0.0,
+          "endSec": 4.0,
+          "expectations": [
+            {
+              "biomarker": "first_entry_latency_ms",
+              "direction": "lowerBetter",
+              "targetAOI": "Center_Fixation_Target",
+              "byAge": {
+                "default": { "expected": 500.0, "acceptableHigh": 1000.0 }
+              },
+              "citation": "Recenter saccade latency to the central target; developmental interpolation (manifest biomarker recenter_saccade_latency_ms).",
+              "source": "interpolated"
+            }
+          ]
+        }
+      ]
+    },
+    "stim_09_social_turn_taking_10s": {
+      "title": "Turn-Taking & Conversational Gaze",
+      "category": "Social Communication",
+      "weight": 0.10,
+      "segments": [
+        {
+          "id": "teacher_turn_taking",
+          "description": "Nursery teacher in conversational turn-taking gaze exchange.",
+          "startSec": 0.0,
+          "endSec": 8.0,
+          "expectations": [
+            {
+              "biomarker": "aoi_dwell_ratio",
+              "direction": "higherBetter",
+              "targetAOI": "Teacher_Face",
+              "byAge": {
+                "default": { "expected": 0.45, "acceptableLow": 0.25 }
+              },
+              "citation": "Face dwell during conversational gaze exchange; developmental interpolation (face-scanning battery anchor).",
+              "source": "interpolated"
+            },
+            {
+              "biomarker": "aoi_dwell_ratio",
+              "direction": "band",
+              "targetAOI": "Teacher_Mouth",
+              "byAge": {
+                "default": { "expected": 0.12, "acceptableLow": 0.03, "acceptableHigh": 0.35 }
+              },
+              "citation": "Mouth scanning share; both avoidance and mouth-dominant fixation are atypical (developmental interpolation on face-scanning battery anchor).",
+              "source": "interpolated"
+            }
+          ]
+        }
+      ]
+    },
+    "stim_10_animal_puppy_play_8s": {
+      "title": "Biological Non-Human Motion",
+      "category": "Biological Control",
+      "weight": 0.05,
+      "segments": [
+        {
+          "id": "puppy_play",
+          "description": "Puppies playing; biological non-human motion control clip.",
+          "startSec": 0.0,
+          "endSec": 8.0,
+          "expectations": [
+            {
+              "biomarker": "aoi_dwell_ratio",
+              "direction": "higherBetter",
+              "targetAOI": "Animal_Puppies",
+              "byAge": {
+                "default": { "expected": 0.45, "acceptableLow": 0.20 }
+              },
+              "citation": "Control clip: biological-motion preference distinguishes human-specific disengagement from universal disinterest (developmental interpolation).",
+              "source": "interpolated"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

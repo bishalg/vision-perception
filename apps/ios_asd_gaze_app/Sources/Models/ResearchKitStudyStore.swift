@@ -75,12 +75,27 @@ public final class ResearchKitStudyStore: @unchecked Sendable {
             var profile = self.fetchEnrollmentDirect()
             profile.isConsented = false
             profile.consentSignature = nil
+            profile.normCollectionOptIn = false
 
             if let data = try? JSONEncoder().encode(profile) {
                 self.userDefaults.set(data, forKey: self.enrollmentKey)
                 Self.logger.info("ResearchKit consent revoked for \(profile.participantId, privacy: .public)")
             }
             Self.dispatch(completion)
+        }
+    }
+
+    /// Toggles contribution of de-identified per-video metrics to normative reference collection.
+    /// Only meaningful while research consent is active.
+    public func setNormCollectionOptIn(_ enabled: Bool, completion: (@Sendable (ResearchStudyEnrollment) -> Void)? = nil) {
+        researchQueue.sync {
+            var profile = self.fetchEnrollmentDirect()
+            profile.normCollectionOptIn = enabled
+            if let data = try? JSONEncoder().encode(profile) {
+                self.userDefaults.set(data, forKey: self.enrollmentKey)
+                Self.logger.info("Norm collection opt-in \(enabled) for \(profile.participantId, privacy: .public)")
+            }
+            Self.dispatch(completion, value: profile)
         }
     }
 

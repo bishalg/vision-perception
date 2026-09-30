@@ -478,6 +478,10 @@ public struct ResearchStudyEnrollment: Sendable, Codable, Equatable {
     public var cloudSyncOptIn: Bool
     public var lastSyncTimestamp: Date?
     public var totalScreeningsSynced: Int
+    /// Opt-in to contribute de-identified per-video metric sets toward building our own
+    /// age-bracketed normative references. Optional for backward-compatible decoding of
+    /// pre-existing enrollment payloads (nil = not opted in).
+    public var normCollectionOptIn: Bool?
 
     public init(
         participantId: String = ResearchStudyEnrollment.generateParticipantId(),
@@ -486,7 +490,8 @@ public struct ResearchStudyEnrollment: Sendable, Codable, Equatable {
         childAgeMonths: Int = 24,
         cloudSyncOptIn: Bool = true,
         lastSyncTimestamp: Date? = nil,
-        totalScreeningsSynced: Int = 0
+        totalScreeningsSynced: Int = 0,
+        normCollectionOptIn: Bool? = nil
     ) {
         self.participantId = participantId
         self.isConsented = isConsented
@@ -495,11 +500,58 @@ public struct ResearchStudyEnrollment: Sendable, Codable, Equatable {
         self.cloudSyncOptIn = cloudSyncOptIn
         self.lastSyncTimestamp = lastSyncTimestamp
         self.totalScreeningsSynced = totalScreeningsSynced
+        self.normCollectionOptIn = normCollectionOptIn
     }
 
     public static func generateParticipantId() -> String {
         let hex = UUID().uuidString.prefix(6).uppercased()
         return "STUDY-ASD-\(hex)"
+    }
+}
+
+// MARK: - Normative Data Collection Gate
+
+/// Shared gate deciding whether a session contributes to normative reference collection.
+/// Requires research consent, explicit norm-collection opt-in, and live TrueDepth capture
+/// (deterministic simulation frames must never enter a normative distribution).
+public enum NormCollectionGate {
+    public static func isActive(
+        enrollment: ResearchStudyEnrollment?,
+        isSimulationMode: Bool
+    ) -> Bool {
+        guard let enrollment = enrollment else { return false }
+        return enrollment.isConsented
+            && enrollment.normCollectionOptIn == true
+            && !isSimulationMode
+    }
+
+    /// Builds the export payload for an opted-in session; nil when the gate is closed.
+    public static func collectionMetadata(
+        enrollment: ResearchStudyEnrollment?,
+        childAgeMonths: Int,
+        isSimulationMode: Bool
+    ) -> NormCollectionMetadata? {
+        guard isActive(enrollment: enrollment, isSimulationMode: isSimulationMode),
+              let enrollment = enrollment else { return nil }
+        return NormCollectionMetadata(
+            consentVersion: enrollment.consentSignature?.consentVersion ?? "unsigned",
+            studyIdentifier: "CURV-ASD-GAZE-2026",
+            participantId: enrollment.participantId,
+            childAgeMonths: childAgeMonths,
+            deviceModel: deviceModel(),
+            isSimulator: isSimulationMode,
+            collectedAtUtc: ISO8601DateFormatter().string(from: Date())
+        )
+    }
+
+    private static func deviceModel() -> String {
+        var systemInfo = utsname()
+        uname(&systemInfo)
+        let mirror = Mirror(reflecting: systemInfo.machine)
+        return mirror.children.reduce(into: "") { result, element in
+            guard let value = element.value as? Int8, value != 0 else { return }
+            result.append(Character(UnicodeScalar(UInt8(value))))
+        }
     }
 }
 

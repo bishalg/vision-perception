@@ -8,12 +8,20 @@ struct AsdGazeApp: App {
     @State private var showSplashScreen: Bool = true
     @State private var showMoodDiaryFromSuggestion: Bool = false
     @ObservedObject private var moodFusion = ARKitMoodFusionController.shared
+    @ObservedObject private var appMode = AppModeStore.shared
 
     var body: some Scene {
         WindowGroup {
             ZStack {
-                // Main Application Layer (routes between Onboarding and TabView)
-                if hasCompletedOnboarding {
+                // Main Application Layer (routes Mode Selection → Onboarding → TabView)
+                if !appMode.hasSelectedMode {
+                    AppModeSelectionView { chosenMode in
+                        withAnimation(.easeInOut(duration: 0.4)) {
+                            appMode.select(chosenMode)
+                        }
+                    }
+                    .transition(.opacity)
+                } else if hasCompletedOnboarding {
                     mainTabView
                         .transition(.opacity)
                 } else {
@@ -51,12 +59,15 @@ struct AsdGazeApp: App {
 
     private var mainTabView: some View {
         TabView(selection: $selectedTab) {
-            // Tab 0: Longitudinal CareKit Dashboard
+            // Tab 0: Longitudinal CareKit Dashboard (label reflects the chosen mode)
             CaregiverDashboardView {
                 selectedTab = 1
             }
             .tabItem {
-                Label(Localizer.tr("tab_dashboard"), systemImage: "chart.line.uptrend.xyaxis")
+                Label(
+                    appMode.mode == .clinic ? "Clinic Dashboard" : Localizer.tr("tab_dashboard"),
+                    systemImage: "chart.line.uptrend.xyaxis"
+                )
             }
             .tag(0)
 

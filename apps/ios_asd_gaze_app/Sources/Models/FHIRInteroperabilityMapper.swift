@@ -103,6 +103,50 @@ public enum FHIRInteroperabilityMapper {
             ])
         ])
 
+        // Components 6+: Per-Stimulus Matrix subscores (v1.5 records only; local Curv code system
+        // until standardized codes exist for per-stimulus engagement metrics)
+        let curvMatrixSystem = "http://curv.org/fhir/CodeSystem/per-stimulus-matrix"
+        if let composite = record.perVideoComposite {
+            components.append([
+                "code": .dictionary([
+                    "coding": .array([
+                        .dictionary([
+                            "system": .string(curvMatrixSystem),
+                            "code": .string("composite-engagement"),
+                            "display": .string("Per-Stimulus Composite Engagement Score")
+                        ])
+                    ]),
+                    "text": .string("Per-Stimulus Composite Engagement Score")
+                ]),
+                "valueQuantity": .dictionary([
+                    "value": .double(composite),
+                    "unit": .string("score"),
+                    "system": .string(StandardCodingSystems.ucumURI),
+                    "code": .string("1")
+                ])
+            ])
+        }
+        for video in record.perVideo ?? [] where video.hasBaseline {
+            components.append([
+                "code": .dictionary([
+                    "coding": .array([
+                        .dictionary([
+                            "system": .string(curvMatrixSystem),
+                            "code": .string("clip-score-\(video.stimulusId)"),
+                            "display": .string(video.title)
+                        ])
+                    ]),
+                    "text": .string("Stimulus subscore: \(video.title)")
+                ]),
+                "valueQuantity": .dictionary([
+                    "value": .double(video.subscore),
+                    "unit": .string("score"),
+                    "system": .string(StandardCodingSystems.ucumURI),
+                    "code": .string("1")
+                ])
+            ])
+        }
+
         return [
             "resourceType": .string("Observation"),
             "id": .string("obs-asd-gaze-\(record.sessionId)"),

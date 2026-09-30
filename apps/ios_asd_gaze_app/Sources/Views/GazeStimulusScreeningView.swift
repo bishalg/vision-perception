@@ -15,6 +15,9 @@ public struct GazeStimulusScreeningView: View {
     @State private var sessionTimer: Timer?
     @State private var elapsedSeconds: Double = 0.0
     @State private var currentClipElapsedSec: Double = 0.0
+    /// Authoritative AVPlayer media clock for the active clip (from the 10 Hz periodic observer).
+    /// Falls back to timer accumulation when no video is playing (procedural/fallback stimuli).
+    @State private var currentClipMediaTimeSec: Double = 0.0
     @State private var currentClipIndex: Int = 0
     @State private var cartoonBlink: Bool = false
     @State private var cartoonBounce: CGFloat = 0.0
@@ -360,6 +363,10 @@ public struct GazeStimulusScreeningView: View {
                         isLooping: true,
                         onEnded: {
                             advanceToNextClipIfNeeded()
+                        },
+                        onMediaUpdate: { mediaTime in
+                            currentClipMediaTimeSec = mediaTime
+                            controller.updateClipMediaTime(mediaTime)
                         }
                     )
                     .id(clip.videoName)
@@ -442,6 +449,7 @@ public struct GazeStimulusScreeningView: View {
         controller.reloadCalibrationProfile()
         currentClipIndex = 0
         currentClipElapsedSec = 0.0
+        currentClipMediaTimeSec = 0.0
         elapsedSeconds = 0.0
 
         let initialBattery: StimulusAOITracker
@@ -451,15 +459,26 @@ public struct GazeStimulusScreeningView: View {
             initialBattery = StimulusAOITracker.makeGeoPrefBattery()
         }
 
-        controller.startSession(battery: initialBattery)
+        controller.startSession(battery: initialBattery, stimulusId: currentClip?.videoName)
 
         sessionTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { _ in
             MainActor.assumeIsolated {
                 elapsedSeconds += 1.0 / 60.0
                 currentClipElapsedSec += 1.0 / 60.0
 
+                // Prefer the AVPlayer media clock once the periodic observer is live; the
+                // wall-clock accumulation stays as fallback for procedural/fallback stimuli
+                // and stalled playback (advance on whichever reports the clip duration first).
+                let mediaClockActive = currentClipMediaTimeSec > 0.01
+                let effectiveClipTime = mediaClockActive ? currentClipMediaTimeSec : currentClipElapsedSec
+
                 if controller.isSimulationMode {
-                    controller.tickSimulatedFrame(timeSec: elapsedSeconds, clipTimeSec: currentClipElapsedSec)
+                    controller.tickSimulatedFrame(
+                        timeSec: elapsedSeconds,
+                        clipTimeSec: effectiveClipTime,
+                        stimulusId: currentClip?.videoName,
+                        clipMediaTimeSec: mediaClockActive ? currentClipMediaTimeSec : nil
+                    )
                 }
 
                 // Cartoon animation
@@ -467,7 +486,8 @@ public struct GazeStimulusScreeningView: View {
                 cartoonBlink = fmod(elapsedSeconds, 3.5) < 0.15
 
                 // Advance to next video in playlist if target clip duration reached
-                if let clip = currentClip, currentClipElapsedSec >= clip.targetDurationSec {
+                if let clip = currentClip,
+                   currentClipElapsedSec >= clip.targetDurationSec || effectiveClipTime >= clip.targetDurationSec {
                     advanceToNextClipIfNeeded()
                 }
 
@@ -490,11 +510,12 @@ public struct GazeStimulusScreeningView: View {
         withAnimation(.easeInOut(duration: 0.3)) {
             currentClipIndex += 1
             currentClipElapsedSec = 0.0
+            currentClipMediaTimeSec = 0.0
         }
 
         if let nextClip = currentClip {
             let nextBattery = StimulusAOITracker.tracker(forVideoNamed: nextClip.videoName)
-            controller.switchStimulusClip(battery: nextBattery)
+            controller.switchStimulusClip(battery: nextBattery, stimulusId: nextClip.videoName)
         }
     }
 
@@ -510,7 +531,25 @@ public struct GazeStimulusScreeningView: View {
         let classification = BiomarkerClassificationEngine.shared.classifySync(summary: summary)
         let activeBatteryName = proceduralMode?.rawValue ?? (playlist.count > 1 ? "MultiClipBattery_\(playlist.count)Clips" : (currentClip?.videoName ?? "SingleClip"))
 
-        // Persist encrypted vault off main thread
+        // Per-stimulus expected-vs-recorded scoring against the bundled provisional baseline.
+        // Extraction is linear over frames and runs once here; the result view reuses the tagged frames.
+        let childAgeMonths = ChildProfileStore.shared.profile.ageBracket.midpointMonths
+        let perVideoScore: PerVideoSessionScore? = NormativeBaselineLibrary.loadBundled().map { baseline in
+            PerVideoScoringEngine.score(
+                metricSets: PerVideoMetricsExtractor.extract(from: frames),
+                baseline: baseline,
+                ageMonths: childAgeMonths
+            )
+        }
+
+        // Norm-collection contribution: only for consented + opted-in live (non-simulation) sessions.
+        let collectionMetadata = NormCollectionGate.collectionMetadata(
+            enrollment: ResearchKitStudyStore.shared.fetchEnrollment(),
+            childAgeMonths: childAgeMonths,
+            isSimulationMode: controller.isSimulationMode
+        )
+
+        // Persist encrypted vault off main thread (frames now carry per-clip stimulus attribution)
         Task.detached(priority: .userInitiated) {
             let vault = SessionVaultManager()
             let header = SessionHeader(
@@ -523,9 +562,21 @@ public struct GazeStimulusScreeningView: View {
                 header: header,
                 frames: frames,
                 report: summary,
-                classification: classification
+                classification: classification,
+                perVideoScore: perVideoScore,
+                collectionMetadata: collectionMetadata
             )
         }
+
+        // History record (schema v1.5 carries the per-video matrix for trend + export)
+        GazeSessionHistoryStore.shared.record(
+            GazeSessionRecord(
+                summary: summary,
+                participantId: ChildProfileStore.shared.profile.childName,
+                perVideoComposite: perVideoScore?.compositeScore,
+                perVideo: perVideoScore?.videos
+            )
+        )
 
         // CareKit sync
         CarePlanStore.shared.markScreeningCompleted(socialScore: summary.socialPreferenceScore)

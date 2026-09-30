@@ -197,3 +197,54 @@
 ---
 
 *Updated by agents after each task. See monthly_dev_roadmap.md for full hourly breakdown.*
+
+---
+
+## WEEK 5 — Per-Stimulus Expected-vs-Recorded Matrix + Norm-Collection Mode (2026-09-28)
+
+### Motto
+Map each video → its content (time-coded segments) → expected-behavior baseline per age bracket → what it can measure → the score matrix mapping recorded values onto the baseline.
+
+### Agent-A: Stimulus-aware capture plumbing
+- [x] `GazeTelemetrySample` / `GazeFrame` carry `stimulusId` + `clipMediaTimeSec` (optional, backward-compatible)
+- [x] `StimulusVideoPlayerView` AVPlayer periodic time observer (10 Hz) → authoritative media clock
+- [x] `GazeSessionController` / `GazeProcessingActor`: clip-state (lock-guarded), `updateClipMediaTime`, media-clock AOI alignment
+- [x] `GazeStimulusScreeningView`: media-clock-driven clip advance with wall-clock fallback; per-clip stimulus tagging
+
+### Agent-B: Per-video metrics + baselines + scoring
+- [x] `PerVideoMetrics.swift` — per-clip grouping, AOI dwell/latency, GeoPref pair, I-VT fixations (5 u/s normalized), affect, quality
+- [x] `normative_baselines.json` — 10 videos × 5 age brackets; literature-anchored + marked interpolations (schema 1.0.0, provisional)
+- [x] `NormativeBaselineLibrary.swift` — decode, bracket resolution/clamping, coverage validation
+- [x] `PerVideoScoringEngine.swift` — direction-aware status bands (onTarget/monitor/atypical), piecewise scores, weighted composite, 0.60 low-confidence gate
+- [x] 22 new kit tests (83 total green)
+
+### Agent-C: Mobile-first results UI (navigation stack)
+- [x] `PerVideoMatrixCardView` — summary card in `GazeSessionResultView` (entry point)
+- [x] `PerVideoSummaryListView` — high-level landing page listing sub-reports (composite ring + per-clip rows)
+- [x] `PerVideoResultDetailView` — pushed per-clip page: deviation chart (Swift Charts), expected-vs-recorded rows, segment grouping, citation "Basis" footnotes, provisional + low-quality badges
+- [x] `GazeReplayHeatmapFullScreenView` — per-clip filter chips for FLOW/HEATMAP replay
+- [x] Existing ML risk card intentionally unchanged (matrix displays alongside)
+
+### Agent-D: Persistence + exports
+- [x] `GazeSessionRecord` v1.5 — additive `perVideo` + `perVideoComposite` (v1.4 decode-safe)
+- [x] Vault `per_video_score` + `norm_collection_meta` JSONL lines; wizard flow now records history
+- [x] ResearchKit JSON `per_video` block; FHIR Observation components (local Curv code system, composite + per-clip subscores)
+- [x] Doctor PDF §2 "Per-Stimulus Engagement Matrix" (sections renumbered)
+
+### Agent-E: Norm-collection mode (own norms later)
+- [x] `ResearchStudyEnrollment.normCollectionOptIn` (optional, decode-safe) + `ResearchKitStudyStore.setNormCollectionOptIn`
+- [x] `NormCollectionGate` — consented + opted-in + non-simulation only
+- [x] Settings → Privacy & Security toggle row
+- [x] `tools/asd_norm_aggregator.py` — n≥12-per-cell guard, imputed excluded, candidate baseline output; 11 pytest green
+- [x] `domains/asd_screening/docs/NORMATIVE_BASELINES.md` — schema, anchors, promotion workflow, limitations
+- [x] Fixed pre-existing widget install failure: `AsdGazeCareWidget` missing CURRENT_PROJECT_VERSION/MARKETING_VERSION in project.yml
+
+### W5 Gate: Kit 83/83 ✅ | Python 21/21 ✅ | App build ✅ | App unit tests 91 executed — 88 green ✅ | 3 pre-existing CareKit store failures confirmed on clean tree via stash (environment, not this workstream)
+
+### W5b — App Mode (Parent / Clinic) + First-Launch Onboarding Choice (2026-09-28)
+- [x] `AppMode` enum + `AppModeStore` (persisted, `@MainActor`, changeable anytime; existing installs see the choice once after update)
+- [x] `AppModeSelectionView` — first-launch choice screen: Parent & Caregiver vs Clinic / Professional cards with details, explicit Continue, Liquid Glass mobile-first styling
+- [x] `AsdGazeApp` entry routing: Mode Selection → Onboarding → TabView; dashboard tab label reflects mode ("Clinic Dashboard")
+- [x] Settings → new "App Mode" segmented switcher with mode tagline + clinic rollout note
+- [x] `AppModeStoreTests` (3 tests); app suite 94 executed — 91 green, 3 pre-existing CareKit store failures (unrelated, confirmed on clean tree)
+- Note: mode is the front door for the planned profile system (Phase 1 multi-profile core → Phase 2 clinic RBAC → Phase 3 SMART-on-FHIR institutional sync)
