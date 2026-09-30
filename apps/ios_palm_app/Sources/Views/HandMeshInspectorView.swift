@@ -20,6 +20,10 @@ public struct HandMeshInspectorView: View {
     public let padDepths: [String: Float]
     public let referencePalmWidthMm: Float
     public let handSide: HandSide
+    public let capturedImage: UIImage?
+    /// Richer per-mount relief (relative height, prominence, confidence, views)
+    /// from the orbit analyzer; optional — chips fall back to padDepths mm.
+    public let mountReliefMap: MountReliefMap?
 
     // Wireframe defaults OFF — user sees the solid heatmap surface, not just edges.
     // autoenablesDefaultLighting is intentionally ABSENT: we provide 3 custom lights
@@ -28,6 +32,10 @@ public struct HandMeshInspectorView: View {
     @State private var showWireframe: Bool = false
     @State private var showCalipers: Bool = true
     @State private var showMountPins: Bool = true
+    /// Photo underlay defaults OFF — it is a validation aid, not the primary view.
+    @State private var showPhotoOverlay: Bool = false
+    /// Mount chip taps open the detail sheet (region + relief data + reading).
+    @State private var selectedMount: PalmMount?
     /// Fixed relief exaggeration — controls depth appearance of the 3D mesh.
     private let elevationScale: Float = 1.4
     @State private var sceneId: UUID = UUID()
@@ -36,12 +44,18 @@ public struct HandMeshInspectorView: View {
         landmarks: [CGPoint],
         padDepths: [String: Float] = [:],
         referencePalmWidthMm: Float = 80.0,
-        handSide: HandSide = .right
+        handSide: HandSide = .right,
+        capturedImage: UIImage? = nil,
+        mountReliefMap: MountReliefMap? = nil,
+        initialPhotoOverlay: Bool = false
     ) {
         self.landmarks = landmarks
         self.padDepths = padDepths
         self.referencePalmWidthMm = referencePalmWidthMm
         self.handSide = handSide
+        self.capturedImage = capturedImage
+        self.mountReliefMap = mountReliefMap
+        self._showPhotoOverlay = State(initialValue: initialPhotoOverlay)
     }
 
     public var body: some View {
@@ -69,6 +83,24 @@ public struct HandMeshInspectorView: View {
                 insufficientLandmarksView
             }
         }
+        .sheet(item: $selectedMount) { mount in
+            MountDetailSheet(
+                mount: mount,
+                entry: mountReliefMap?.entry(for: mount),
+                fallbackMm: fallbackMm(for: mount),
+                capturedImage: capturedImage,
+                landmarks: landmarks,
+                handSide: handSide
+            )
+        }
+    }
+
+    /// First available pad-depth fallback for a mount (chip values and sheet).
+    private func fallbackMm(for mount: PalmMount) -> Float? {
+        for key in Self.mountChipSpecs.first(where: { $0.mount == mount })?.fallbackKeys ?? [] {
+            if let v = padDepths[key] { return v }
+        }
+        return nil
     }
 
     // MARK: - Insufficient Data View
@@ -150,6 +182,14 @@ public struct HandMeshInspectorView: View {
                 label: "Mounts",
                 activeColor: Color(hex: "FF9500")
             )
+            if capturedImage != nil {
+                toggleChip(
+                    isOn: $showPhotoOverlay,
+                    icon: "photo",
+                    label: "Photo",
+                    activeColor: Color(hex: "AF52DE")
+                )
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -182,6 +222,12 @@ public struct HandMeshInspectorView: View {
                             .foregroundStyle(Color(hex: "34C759"))
                     }
                 }
+            }
+
+            if showPhotoOverlay && capturedImage != nil {
+                Text("Photo underlay — validate region map against the captured palm photo")
+                    .font(.system(size: 9, weight: .medium, design: .rounded))
+                    .foregroundStyle(Color(hex: "AF52DE"))
             }
 
             // Elevation Heatmap gradient legend
@@ -220,17 +266,20 @@ public struct HandMeshInspectorView: View {
                 .foregroundStyle(.secondary)
             }
 
-            // Prominent Mount Heights Chips
-            if !padDepths.isEmpty {
+            // Prominent Mount Heights Chips — tap for the mount detail sheet.
+            if !padDepths.isEmpty || mountReliefMap != nil {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
-                        mountChip(name: "Venus", val: padDepths["venus"] ?? padDepths["thenar"])
-                        mountChip(name: "Jupiter", val: padDepths["jupiter"] ?? padDepths["radial_interdigital"])
-                        mountChip(name: "Saturn", val: padDepths["saturn"] ?? padDepths["central_interdigital"])
-                        mountChip(name: "Apollo", val: padDepths["apollo"] ?? padDepths["ring_interdigital"])
-                        mountChip(name: "Mercury", val: padDepths["mercury"] ?? padDepths["ulnar_interdigital"])
-                        mountChip(name: "Luna", val: padDepths["luna"] ?? padDepths["hypothenar"])
-                        mountChip(name: "Mars", val: padDepths["mars"] ?? padDepths["palmar_fossa"])
+                        ForEach(Self.mountChipSpecs, id: \.mount.rawValue) { spec in
+                            let val = mountReliefMap?.entry(for: spec.mount)?.heightMm
+                                ?? spec.fallbackKeys.compactMap { padDepths[$0] }.first
+                            Button {
+                                selectedMount = spec.mount
+                            } label: {
+                                mountChip(name: spec.display, val: val)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                 }
             }
@@ -325,6 +374,16 @@ public struct HandMeshInspectorView: View {
 
         let meshNode = SCNNode(geometry: geometry)
         handNode.addChildNode(meshNode)
+
+        // 1b. Photo validation underlay: captured palm photo aligned behind the mesh.
+        // Mesh fades to a ghost so the elevation colormap can be checked against
+        // the real anatomy; scan dots / calipers / mount pins stay solid.
+        if showPhotoOverlay, let image = capturedImage {
+            meshNode.opacity = 0.72
+            if let photoNode = makePhotoPlaneNode(image: image, meshResult: meshResult) {
+                handNode.addChildNode(photoNode)
+            }
+        }
 
         // 2. Scan-point landmark dots: emissive glow on each of the 21 tracked points
         //    These make it unmistakably feel like a structured-light scanner result.
@@ -440,6 +499,67 @@ public struct HandMeshInspectorView: View {
             root.addChildNode(node)
         }
         return root
+    }
+
+    // MARK: - Photo Underlay Plane
+
+    /// Captured palm photo as an unlit quad laid in the mesh's palm plane, aligned
+    /// through a least-squares affine fit of the 21 landmarks. Used to validate that
+    /// the 3D region map (elevation colormap, mount mounds) sits over the real anatomy.
+    private func makePhotoPlaneNode(image: UIImage, meshResult: HandMeshGeometryResult) -> SCNNode? {
+        guard landmarks.count >= 21,
+              meshResult.landmark3DPositions.count >= 21,
+              let fit = HandMeshGeometryBuilder.affineImageToMeshFit(
+                  imageLandmarks: landmarks,
+                  meshLandmarks: meshResult.landmark3DPositions
+              )
+        else { return nil }
+
+        let minZ = meshResult.vertices.map(\.z).min() ?? 0
+        let planeZ = minZ - 0.004  // float just behind the lowest palm surface point
+
+        // Image corners in normalized landmark space (top-left origin, y-down).
+        let corners: [SIMD2<Float>] = [
+            SIMD2(0, 0), SIMD2(1, 0), SIMD2(1, 1), SIMD2(0, 1)
+        ]
+        // SceneKit samples UIImage textures with UV (0,0) at the image's top-left,
+        // so UVs map 1:1 from normalized image space (verified against device render).
+        let uvs: [SIMD2<Float>] = [
+            SIMD2(0, 0), SIMD2(1, 0), SIMD2(1, 1), SIMD2(0, 1)
+        ]
+
+        var verts: [SCNVector3] = []
+        verts.reserveCapacity(corners.count)
+        for c in corners {
+            let q = fit * SIMD3(c.x, c.y, 1)
+            verts.append(SCNVector3(q.x, q.y, planeZ))
+        }
+
+        let vertexSource = SCNGeometrySource(vertices: verts)
+        let uvSource = SCNGeometrySource(
+            data: Data(bytes: uvs, count: uvs.count * MemoryLayout<SIMD2<Float>>.stride),
+            semantic: .texcoord,
+            vectorCount: uvs.count,
+            usesFloatComponents: true,
+            componentsPerVector: 2,
+            bytesPerComponent: MemoryLayout<Float>.size,
+            dataOffset: 0,
+            dataStride: MemoryLayout<SIMD2<Float>>.stride
+        )
+        // Double-sided: a chirality-mirrored fit reverses winding, so keep both faces.
+        let element = SCNGeometryElement(
+            indices: [Int32(0), 1, 2, 0, 2, 3],
+            primitiveType: .triangles
+        )
+
+        let geometry = SCNGeometry(sources: [vertexSource, uvSource], elements: [element])
+        let material = SCNMaterial()
+        material.lightingModel = .constant  // unlit: photo keeps its true colors
+        material.isDoubleSided = true
+        material.diffuse.contents = image
+        geometry.materials = [material]
+
+        return SCNNode(geometry: geometry)
     }
 
     // MARK: - Caliper & Bone Hierarchy
@@ -627,4 +747,28 @@ public struct HandMeshInspectorView: View {
 
         return node
     }
+
+    // MARK: - Mount Chip Specs
+
+    struct MountChipSpec {
+        let mount: PalmMount
+        let display: String
+        /// padDepths keys probed in order when the relief map has no entry.
+        let fallbackKeys: [String]
+    }
+
+    static let mountChipSpecs: [MountChipSpec] = [
+        .init(mount: .venus, display: "Venus", fallbackKeys: ["venus", "thenar"]),
+        .init(mount: .jupiter, display: "Jupiter", fallbackKeys: ["jupiter", "radial_interdigital"]),
+        .init(mount: .saturn, display: "Saturn", fallbackKeys: ["saturn", "central_interdigital"]),
+        .init(mount: .apollo, display: "Apollo", fallbackKeys: ["apollo", "ring_interdigital"]),
+        .init(mount: .mercury, display: "Mercury", fallbackKeys: ["mercury", "ulnar_interdigital"]),
+        .init(mount: .luna, display: "Luna", fallbackKeys: ["luna", "hypothenar"]),
+        .init(mount: .mars, display: "Mars", fallbackKeys: ["mars", "palmar_fossa"]),
+    ]
+}
+
+/// Retroactive: the sheet presenter uses `.sheet(item:)`, which needs Identifiable.
+extension PalmMount: Identifiable {
+    public var id: String { rawValue }
 }

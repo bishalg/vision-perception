@@ -478,4 +478,55 @@ public enum HandMeshGeometryBuilder {
             return SCNVector3(u.x, u.y, u.z)
         }
     }
+
+    // MARK: - Image ↔ Mesh Alignment (Photo Underlay)
+
+    /// Closed-form least-squares 2D affine fit mapping normalized image space
+    /// (0…1, top-left origin) onto the mesh's XY plane, through the 21 landmark
+    /// correspondences. Absorbs the builder's rotation, metric scale, and
+    /// chirality mirror — and stays correct if that alignment math ever changes.
+    ///
+    /// Convention: `(x, y, 1)ᵀ · M → (x′, y′, 1)ᵀ`.
+    /// Returns nil for fewer than 3 correspondences or a degenerate (collinear) set.
+    public static func affineImageToMeshFit(
+        imageLandmarks: [CGPoint],
+        meshLandmarks: [SCNVector3]
+    ) -> simd_float3x3? {
+        let n = min(imageLandmarks.count, meshLandmarks.count)
+        guard n >= 3 else { return nil }
+
+        var sxx: Float = 0; var sxy: Float = 0; var syy: Float = 0
+        var sx: Float = 0;  var sy: Float = 0
+        var sxX: Float = 0; var syX: Float = 0; var sX: Float = 0
+        var sxY: Float = 0; var syY: Float = 0; var sY: Float = 0
+
+        for i in 0..<n {
+            let p = imageLandmarks[i]
+            let q = meshLandmarks[i]
+            let x = Float(p.x), y = Float(p.y)
+            let X = Float(q.x), Y = Float(q.y)
+            sxx += x * x; sxy += x * y; syy += y * y
+            sx += x; sy += y
+            sxX += x * X; syX += y * X; sX += X
+            sxY += x * Y; syY += y * Y; sY += Y
+        }
+
+        // Normal equations (symmetric) for both output rows; solve via 3×3 inverse.
+        let normal = simd_float3x3(
+            SIMD3(sxx, sxy, sx),
+            SIMD3(sxy, syy, sy),
+            SIMD3(sx, sy, Float(n))
+        )
+        guard abs(simd_determinant(normal)) > 1e-5 else { return nil }
+        let inv = normal.inverse
+
+        let abc = inv * SIMD3(sxX, syX, sX)   // x′ = a·x + b·y + c
+        let def = inv * SIMD3(sxY, syY, sY)   // y′ = d·x + e·y + f
+
+        return simd_float3x3(
+            SIMD3(abc.x, def.x, 0),
+            SIMD3(abc.y, def.y, 0),
+            SIMD3(abc.z, def.z, 1)
+        )
+    }
 }

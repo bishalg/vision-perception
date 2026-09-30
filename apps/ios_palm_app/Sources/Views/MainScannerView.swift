@@ -376,6 +376,7 @@ public struct MainScannerView: View {
                             ? viewModel.detectedHandSide
                             : viewModel.selectedHandSide,
                         padDepths: viewModel.padDepths,
+                        mountReliefMap: viewModel.mountReliefMap,
                         fingertipSession: viewModel.fingertipSession,
                         initialTab: viewModel.resultViewerInitialTab,
                         onPatternOverride: { digit, pattern in
@@ -397,7 +398,7 @@ public struct MainScannerView: View {
         }
         .ignoresSafeArea()
         .animation(.easeInOut(duration: 0.22), value: viewModel.showResultViewer)
-        .onChange(of: viewModel.captureTick) { _, _ in animateNewCapture() }
+        .onChange(of: viewModel.captureTick) { _ in animateNewCapture() }
         // Phase 3 — Reading sheet
         .sheet(isPresented: $viewModel.showAnalysisReading) {
             SamudrikaReadingSheet(
@@ -410,20 +411,24 @@ public struct MainScannerView: View {
                     : viewModel.selectedHandSide,
                 selectedLanguage: viewModel.currentLanguage,
                 onLanguageChange: { viewModel.currentLanguage = $0 },
-                onRetake: { viewModel.retake() }
+                onRetake: { viewModel.retake() },
+                mountReliefMap: viewModel.mountReliefMap,
+                padDepths: viewModel.padDepths,
+                landmarks: viewModel.captureLandmarks,
+                capturedImage: viewModel.capturedImage
             )
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }
         // Camera session lifecycle
-        .onChange(of: viewModel.showResultViewer) { _, showing in
+        .onChange(of: viewModel.showResultViewer) { showing in
             if showing {
                 viewModel.cameraSession.stop()
             } else if !viewModel.showAnalysisReading {
                 viewModel.cameraSession.start()
             }
         }
-        .onChange(of: viewModel.showAnalysisReading) { _, showing in
+        .onChange(of: viewModel.showAnalysisReading) { showing in
             if showing {
                 viewModel.cameraSession.stop()
             } else if !viewModel.showResultViewer {

@@ -168,4 +168,150 @@ final class HandMeshGeometryBuilderTests: XCTestCase {
         let rightPinkyTip = rightMesh.landmark3DPositions[20]
         XCTAssertLessThan(rightThumbTip.x, rightPinkyTip.x, "In right hand palm view, thumb must be on the anatomical left (-X)")
     }
+
+    // MARK: - affineImageToMeshFit (Photo Underlay Alignment)
+
+    private func apply(_ m: simd_float3x3, _ p: CGPoint) -> CGPoint {
+        let q = m * SIMD3(Float(p.x), Float(p.y), 1)
+        return CGPoint(x: CGFloat(q.x), y: CGFloat(q.y))
+    }
+
+    private func assertAffine(
+        _ m: simd_float3x3,
+        columns c0: (Float, Float), c1: (Float, Float), c2: (Float, Float),
+        accuracy: Float,
+        _ message: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        XCTAssertEqual(m.columns.0.x, c0.0, accuracy: accuracy, message, file: file, line: line)
+        XCTAssertEqual(m.columns.0.y, c0.1, accuracy: accuracy, message, file: file, line: line)
+        XCTAssertEqual(m.columns.1.x, c1.0, accuracy: accuracy, message, file: file, line: line)
+        XCTAssertEqual(m.columns.1.y, c1.1, accuracy: accuracy, message, file: file, line: line)
+        XCTAssertEqual(m.columns.2.x, c2.0, accuracy: accuracy, message, file: file, line: line)
+        XCTAssertEqual(m.columns.2.y, c2.1, accuracy: accuracy, message, file: file, line: line)
+    }
+
+    func testAffineFitRecoversKnownRotationScaleTranslation() throws {
+        let theta: Float = 20.0 * Float.pi / 180.0
+        let s: Float = 0.09
+        let tx: Float = 0.02, ty: Float = -0.05
+
+        let targets = sampleLandmarks.map { p -> CGPoint in
+            let x = Float(p.x), y = Float(p.y)
+            return CGPoint(
+                x: CGFloat(s * (cos(theta) * x - sin(theta) * y) + tx),
+                y: CGFloat(s * (sin(theta) * x + cos(theta) * y) + ty)
+            )
+        }
+        let meshPts = targets.map { SCNVector3($0.x, $0.y, 0) }
+
+        let fit = HandMeshGeometryBuilder.affineImageToMeshFit(
+            imageLandmarks: sampleLandmarks,
+            meshLandmarks: meshPts
+        )
+        let m = try XCTUnwrap(fit, "Fit must succeed for a full landmark set")
+        assertAffine(
+            m,
+            columns: (s * cos(theta), s * sin(theta)),
+            c1: (-s * sin(theta), s * cos(theta)),
+            c2: (tx, ty),
+            accuracy: 1e-4,
+            "Fit must recover the known rotation/scale/translation"
+        )
+        // Spot-check an off-correspondence point maps consistently too.
+        let probe = CGPoint(x: 0.13, y: 0.77)
+        let mapped = apply(m, probe)
+        let expected = CGPoint(
+            x: CGFloat(s * (cos(theta) * 0.13 - sin(theta) * 0.77) + tx),
+            y: CGFloat(s * (sin(theta) * 0.13 + cos(theta) * 0.77) + ty)
+        )
+        XCTAssertEqual(mapped.x, expected.x, accuracy: 1e-4, "Probe X mapping")
+        XCTAssertEqual(mapped.y, expected.y, accuracy: 1e-4, "Probe Y mapping")
+    }
+
+    func testAffineFitRecoversReflectedTransform() throws {
+        // Chirality mirror (x -> -x) composed with rotation/scale/translation.
+        let theta: Float = -15.0 * Float.pi / 180.0
+        let s: Float = 0.075
+        let tx: Float = -0.03, ty: Float = 0.04
+
+        let targets = sampleLandmarks.map { p -> CGPoint in
+            let x = Float(p.x), y = Float(p.y)
+            let mx = -x
+            return CGPoint(
+                x: CGFloat(s * (cos(theta) * mx - sin(theta) * y) + tx),
+                y: CGFloat(s * (sin(theta) * mx + cos(theta) * y) + ty)
+            )
+        }
+        let meshPts = targets.map { SCNVector3($0.x, $0.y, 0) }
+
+        let fit = HandMeshGeometryBuilder.affineImageToMeshFit(
+            imageLandmarks: sampleLandmarks,
+            meshLandmarks: meshPts
+        )
+        let m = try XCTUnwrap(fit, "Fit must succeed for a full landmark set")
+        // Mirror: 2x2 linear part has negative determinant.
+        let det = m.columns.0.x * m.columns.1.y - m.columns.1.x * m.columns.0.y
+        XCTAssertLessThan(det, 0, "Reflected transform must be recovered (negative determinant)")
+        assertAffine(
+            m,
+            columns: (-s * cos(theta), -s * sin(theta)),
+            c1: (-s * sin(theta), s * cos(theta)),
+            c2: (tx, ty),
+            accuracy: 1e-4,
+            "Fit must recover the known reflection + rotation/scale/translation"
+        )
+    }
+
+    func testAffineFitMapsBuiltMeshLandmarksEndToEnd() throws {
+        let mesh = HandMeshGeometryBuilder.buildMeshGeometry(
+            landmarks: sampleLandmarks,
+            padDepths: ["venus": 2.5, "luna": 2.0, "palmar_fossa": -1.0],
+            referencePalmWidthMm: 80.0,
+            elevationScale: 1.2,
+            handSide: .right
+        )
+
+        let fit = HandMeshGeometryBuilder.affineImageToMeshFit(
+            imageLandmarks: sampleLandmarks,
+            meshLandmarks: mesh.landmark3DPositions
+        )
+        let m = try XCTUnwrap(fit, "Fit must succeed for a built mesh")
+
+        // Every landmark must map onto its own mesh XY position — the photo
+        // underlay alignment is only valid if this holds for all 21 points.
+        for (i, p) in sampleLandmarks.enumerated() {
+            let mapped = apply(m, p)
+            let target = mesh.landmark3DPositions[i]
+            XCTAssertEqual(mapped.x, CGFloat(target.x), accuracy: 1e-4, "Landmark \(i) X mapping")
+            XCTAssertEqual(mapped.y, CGFloat(target.y), accuracy: 1e-4, "Landmark \(i) Y mapping")
+        }
+    }
+
+    func testAffineFitDegenerateInputsReturnNil() {
+        let meshPts = sampleLandmarks.map { SCNVector3($0.x, $0.y, 0) }
+
+        // Too few correspondences
+        XCTAssertNil(
+            HandMeshGeometryBuilder.affineImageToMeshFit(
+                imageLandmarks: Array(sampleLandmarks.prefix(2)),
+                meshLandmarks: Array(meshPts.prefix(2))
+            ),
+            "Fewer than 3 correspondences must return nil"
+        )
+
+        // Collinear correspondences are degenerate
+        let collinear = [CGPoint(x: 0.0, y: 0.0), CGPoint(x: 0.5, y: 0.5), CGPoint(x: 1.0, y: 1.0)]
+        let collinearTargets: [SCNVector3] = [
+            SCNVector3(0.0, 0.0, 0), SCNVector3(0.1, 0.1, 0), SCNVector3(0.2, 0.2, 0)
+        ]
+        XCTAssertNil(
+            HandMeshGeometryBuilder.affineImageToMeshFit(
+                imageLandmarks: collinear,
+                meshLandmarks: collinearTargets
+            ),
+            "Collinear correspondences must return nil"
+        )
+    }
 }

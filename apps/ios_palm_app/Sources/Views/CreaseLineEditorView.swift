@@ -576,7 +576,7 @@ public struct CreaseLineEditorView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(Color(uiColor: .systemBackground))
-        .onChange(of: selectedSplineId) {
+        .onChange(of: selectedSplineId) { _ in
             selectedVertexIndex = nil
             lightHaptic.impactOccurred()
             if let id = selectedSplineId,

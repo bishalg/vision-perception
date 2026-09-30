@@ -19,6 +19,7 @@ public struct CaptureResultView: View {
     public let overlaySource: CreaseOverlaySource
     public let handSide: HandSide
     public let padDepths: [String: Float]
+    public let mountReliefMap: MountReliefMap?
     public let fingertipSession: FingertipScanSession?
     public let onPatternOverride: ((FingertipDigit, DermatoglyphicPattern) -> Void)?
     public let onStartFingertipScan: (() -> Void)?
@@ -77,6 +78,7 @@ public struct CaptureResultView: View {
         overlaySource: CreaseOverlaySource = .landmarkFallback,
         handSide: HandSide = .right,
         padDepths: [String: Float] = [:],
+        mountReliefMap: MountReliefMap? = nil,
         fingertipSession: FingertipScanSession? = nil,
         initialTab: ResultInspectorTab = .creases,
         onPatternOverride: ((FingertipDigit, DermatoglyphicPattern) -> Void)? = nil,
@@ -94,6 +96,7 @@ public struct CaptureResultView: View {
         self.overlaySource = overlaySource
         self.handSide = handSide
         self.padDepths = padDepths
+        self.mountReliefMap = mountReliefMap
         self.fingertipSession = fingertipSession
         self.initialTab = initialTab
         self.onPatternOverride = onPatternOverride
@@ -142,7 +145,9 @@ public struct CaptureResultView: View {
                         landmarks: landmarks,
                         padDepths: padDepths,
                         referencePalmWidthMm: 80.0,
-                        handSide: handSide
+                        handSide: handSide,
+                        capturedImage: image,
+                        mountReliefMap: mountReliefMap
                     )
 
                 case .fingertips:
@@ -261,7 +266,7 @@ public struct CaptureResultView: View {
             .onAppear {
                 selectedTab = initialTab
             }
-            .onChange(of: initialTab) { _, newTab in
+            .onChange(of: initialTab) { newTab in
                 selectedTab = newTab
             }
         }
