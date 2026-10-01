@@ -323,7 +323,8 @@ int curv_pipeline_process_frame(CurvPipelineHandle pipeline, CurvFrameHandle fra
         }
 
         if (p_ctx->domain_pack && result.is_usable) {
-            CurvEngine::DomainInput const d_in{f_ctx->frame, result.ridge_graph, result.quality};
+            CurvEngine::DomainInput const d_in{f_ctx->frame, result.ridge_graph, result.quality, nullptr,
+                                               p_ctx->preprocess_config.enabled ? "flat_field_clahe_v1" : "none"};
             auto const d_out = p_ctx->domain_pack->process(d_in);
             for (const auto& ev : d_out.domain_evidence) {
                 evidence_arr.push_back(ev.to_json());
@@ -429,7 +430,8 @@ int curv_pipeline_process_quad_roi(CurvPipelineHandle pipeline, CurvFrameHandle 
         }
 
         if (p_ctx->domain_pack && result.is_usable) {
-            CurvEngine::DomainInput const d_in{f_ctx->frame, result.ridge_graph, result.quality};
+            CurvEngine::DomainInput const d_in{f_ctx->frame, result.ridge_graph, result.quality, nullptr,
+                                               p_ctx->preprocess_config.enabled ? "flat_field_clahe_v1" : "none"};
             auto const d_out = p_ctx->domain_pack->process(d_in);
             for (const auto& ev : d_out.domain_evidence) {
                 evidence_arr.push_back(ev.to_json());

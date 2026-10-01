@@ -350,8 +350,11 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
     std::vector<CurvEngine::pattern::DetectedPattern> micro_signs;
     spdlog::debug("[palm] micro-sign graph: segments={} connected={} junctions={}", sign_graph.segments.size(),
                   connected_ids.size(), sign_graph.junctions.size());
+    bool sign_budget_skipped = false;
     if (connected_ids.size() <= 420) {
         micro_signs = pattern::MicroPatternDetector::detectAll(sign_graph, sign_cfg);
+    } else {
+        sign_budget_skipped = true;
     }
     std::vector<pattern::HostPolyline> host_lines;
     host_lines.reserve(4);
@@ -386,9 +389,15 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
 #endif
         signs_json.push_back(std::move(entry));
     }
-    const nlohmann::json micro_signs_payload = {{"schema_version", 1}, {"signs", signs_json}};
+    nlohmann::json micro_signs_payload = {{"schema_version", 1}, {"signs", signs_json}};
+    if (sign_budget_skipped) {
+        // Optional field: distinguishes "no signs found" from "detection skipped for
+        // compute budget" in field telemetry. Schema stays v1.
+        micro_signs_payload["skipped"] = {{"reason", "segment_budget"}, {"k", connected_ids.size()}};
+    }
 
     output.domain_payload = {{"status", "analyzed"},
+                             {"preprocessing", (input.preprocessing != nullptr) ? input.preprocessing : "none"},
                              {"palm_height_px", palm_height},
                              {"is_left_hand", is_left_hand},
                              {"heart_line_id", get_primary_id("heart_line")},

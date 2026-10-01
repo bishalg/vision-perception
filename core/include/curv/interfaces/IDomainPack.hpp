@@ -20,6 +20,10 @@ struct DomainInput {
     const QualityReport& quality;
     /// Optional 21-point landmarks in the same space as `ridges` (usually canonical patch).
     const geometry::HandLandmarks* landmarks{nullptr};
+    /// Self-describing provenance for the ridge graph's input image, e.g.
+    /// "flat_field_clahe_v1" or "none" — exported verbatim into the domain payload so
+    /// every JSON capture states how it was produced.
+    const char* preprocessing{"none"};
 };
 
 /**

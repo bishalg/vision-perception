@@ -350,7 +350,8 @@ int runCurvCli(int argc, char* argv[], std::ostream& out, std::ostream& err) {
     if (domain_pack) {
         out << "[STAGE 3] Executing domain pack: " << domain_pack->name() << " (v" << domain_pack->version() << ")"
             << '\n';
-        CurvEngine::DomainInput const d_in{frame, result.ridge_graph, result.quality};
+        CurvEngine::DomainInput const d_in{frame, result.ridge_graph, result.quality, nullptr,
+                                           flat_field ? "flat_field_clahe_v1" : "none"};
         auto d_out = domain_pack->process(d_in);
         domain_payload = d_out.domain_payload;
         domain_evidence = std::move(d_out.domain_evidence);
