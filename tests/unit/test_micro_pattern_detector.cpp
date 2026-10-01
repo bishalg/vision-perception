@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "curv/pattern/MicroPatternDetector.hpp"
 #include "curv/pattern/PatternValidation.hpp"
+#include "curv/geometry/JunctionDeriver.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -9,6 +10,7 @@
 
 using namespace CurvEngine;
 using namespace CurvEngine::pattern;
+using CurvEngine::geometry::deriveJunctions;
 
 TEST(MicroPatternDetectorTest, DetectsCross) {
     RidgeGraph graph;
@@ -490,4 +492,61 @@ TEST(MicroSignValidation, RandomArrangementFalsePositiveGate) {
     EXPECT_LE(validated.size(), legacy.size());
     // FP gate (< 0.5 signs/image would be ideal; pinned to the measured value + slack).
     EXPECT_LE(validated.size(), 2u);
+}
+
+// ---------------------------------------------------------------------------
+// Junction derivation (segments-only graphs -> topology the detectors can read)
+// ---------------------------------------------------------------------------
+
+TEST(JunctionDeriverTest, EndpointClustersMergeIntoJunctions) {
+    RidgeGraph g;
+    // Four segments whose endpoints meet at (100,100) with sub-pixel jitter.
+    g.segments.push_back(makeSeg(0, {P(80.0F, 99.0F), P(100.0F, 100.0F)}));
+    g.segments.push_back(makeSeg(1, {P(100.5F, 101.0F), P(120.0F, 100.0F)}));
+    g.segments.push_back(makeSeg(2, {P(100.0F, 100.5F), P(100.0F, 120.0F)}));
+    g.segments.push_back(makeSeg(3, {P(99.5F, 99.5F), P(80.0F, 80.0F)}));
+    EXPECT_EQ(deriveJunctions(g, 2.5F), 1u);
+    ASSERT_EQ(g.junctions.size(), 1u);
+    EXPECT_EQ(g.junctions[0].connected_segment_ids.size(), 4u);
+    EXPECT_NEAR(g.junctions[0].position.x, 100.0F, 1.0F);
+    EXPECT_NEAR(g.junctions[0].position.y, 100.0F, 1.0F);
+    EXPECT_EQ(g.segments.size(), 4u); // no crossings: segments untouched
+}
+
+TEST(JunctionDeriverTest, ThroughCrossingSplitsIntoFourArms) {
+    RidgeGraph g;
+    // Two short creases traced straight through each other (no shared endpoints).
+    g.segments.push_back(makeSeg(0, {P(95.0F, 110.0F), P(125.0F, 110.0F)}));
+    g.segments.push_back(makeSeg(1, {P(110.0F, 95.0F), P(110.0F, 125.0F)}));
+    EXPECT_EQ(deriveJunctions(g, 2.5F), 1u);
+    ASSERT_EQ(g.junctions.size(), 1u);
+    EXPECT_NEAR(g.junctions[0].position.x, 110.0F, 0.5F);
+    EXPECT_NEAR(g.junctions[0].position.y, 110.0F, 0.5F);
+    EXPECT_EQ(g.junctions[0].connected_segment_ids.size(), 4u); // split into 4 pieces
+    EXPECT_EQ(g.segments.size(), 4u);
+
+    // The validated detector now sees a proper cross sign.
+    auto crosses = MicroPatternDetector::findCrosses(g, cfgFor());
+    ASSERT_EQ(crosses.size(), 1u);
+    EXPECT_GE(crosses[0].confidence, 0.6F);
+}
+
+TEST(JunctionDeriverTest, NoJunctionWithoutContact) {
+    RidgeGraph g;
+    g.segments.push_back(makeSeg(0, {P(50.0F, 50.0F), P(80.0F, 50.0F)}));
+    g.segments.push_back(makeSeg(1, {P(120.0F, 120.0F), P(150.0F, 120.0F)}));
+    EXPECT_EQ(deriveJunctions(g, 2.5F), 0u);
+    EXPECT_TRUE(g.junctions.empty());
+    EXPECT_EQ(g.segments.size(), 2u);
+}
+
+TEST(JunctionDeriverTest, IslandLoopDetectedFromDerivedJunctions) {
+    // Pipeline reality: a segments-only graph (no junction entries). The theta loop's
+    // shared endpoints must merge into two junctions and the island must surface.
+    RidgeGraph g = islandGraph();
+    g.junctions.clear();
+    EXPECT_EQ(deriveJunctions(g, 2.5F), 2u);
+    auto islands = MicroPatternDetector::findIslands(g, cfgFor());
+    ASSERT_EQ(islands.size(), 1u);
+    EXPECT_GE(islands[0].confidence, 0.6F);
 }
