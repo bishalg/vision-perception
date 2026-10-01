@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "curv/pattern/MicroPatternDetector.hpp"
 #include "curv/pattern/PatternValidation.hpp"
+#include "curv/pattern/HostAttribution.hpp"
 #include "curv/geometry/JunctionDeriver.hpp"
 
 #include <algorithm>
@@ -492,6 +493,33 @@ TEST(MicroSignValidation, RandomArrangementFalsePositiveGate) {
     EXPECT_LE(validated.size(), legacy.size());
     // FP gate (< 0.5 signs/image would be ideal; pinned to the measured value + slack).
     EXPECT_LE(validated.size(), 2u);
+}
+
+// --- host-line attribution ---
+
+TEST(HostAttributionTest, ProjectsToNearestHostWithinBand) {
+    std::vector<HostPolyline> hosts;
+    HostPolyline heart;
+    heart.curve_id = 0;
+    heart.name = "heart_line";
+    heart.points = {P(0.0F, 300.0F), P(200.0F, 300.0F)};
+    hosts.push_back(heart);
+    HostPolyline head;
+    head.curve_id = 1;
+    head.name = "head_line";
+    head.points = {P(0.0F, 200.0F), P(200.0F, 200.0F)};
+    hosts.push_back(head);
+
+    const auto hit = attributeHost(P(120.0F, 195.0F), hosts, 10.0F);
+    ASSERT_TRUE(hit.attributed());
+    EXPECT_EQ(hit.host_curve_id, 1);
+    EXPECT_EQ(hit.host_name, "head_line");
+    EXPECT_NEAR(hit.host_arc_s, 0.6F, 0.01F);
+    EXPECT_NEAR(hit.dist_px, 5.0F, 0.01F);
+
+    const auto miss = attributeHost(P(120.0F, 250.0F), hosts, 10.0F);
+    EXPECT_FALSE(miss.attributed());
+    EXPECT_NEAR(miss.dist_px, 50.0F, 0.01F);
 }
 
 // ---------------------------------------------------------------------------

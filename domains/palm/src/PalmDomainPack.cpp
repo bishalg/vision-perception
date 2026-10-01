@@ -7,6 +7,10 @@
 #include "curv/domain/LineLengthThresholds.hpp"
 #include "curv/domain/MountMarkDetector.hpp"
 #include "curv/domain/PalmZones.hpp"
+#include "curv/geometry/JunctionDeriver.hpp"
+#include "curv/pattern/HostAttribution.hpp"
+#include "curv/pattern/MicroPatternDetector.hpp"
+#include "curv/pattern/PatternValidation.hpp"
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -322,6 +326,44 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
     const auto head_report = CurvEngine::domain::HeadLineAnalyzer::analyze(
         (head_it != major_creases.end()) ? head_it->second : empty_line, heart_ptr, life_ptr, zone_dim, palm_width);
 
+    // Validated micro-sign detection (soft geometric filters, palm-width normalized) plus
+    // host-line attribution. The FateReport P2 has_* flags above remain the documented
+    // heuristic stubs; micro_signs is the trusted export path.
+    //
+    // Ridge segments are traced independently and carry no junctions; derive the
+    // connection points (endpoint clusters + through-crossings) on a local copy so
+    // topology detection sees them. input.ridges stays untouched for the analyzers above.
+    const pattern::SignScale sign_scale{palm_width};
+    const pattern::MicroSignConfig sign_cfg{sign_scale, pattern::MicroSignRanges{}};
+    RidgeGraph sign_graph = input.ridges;
+    geometry::deriveJunctions(sign_graph, sign_scale.px(0.009F));
+    auto micro_signs = pattern::MicroPatternDetector::detectAll(sign_graph, sign_cfg);
+    std::vector<pattern::HostPolyline> host_lines;
+    host_lines.reserve(4);
+    constexpr const char* kHostNames[4] = {"heart_line", "head_line", "life_line", "fate_line"};
+    for (int host_id = 0; host_id < 4; ++host_id) {
+        const auto it = major_creases.find(kHostNames[host_id]);
+        if (it != major_creases.end() && it->second.is_valid && it->second.points.size() >= 2) {
+            host_lines.push_back({host_id, kHostNames[host_id], it->second.points});
+        }
+    }
+    const float host_band_px = sign_scale.px(sign_cfg.ranges.host_band_norm);
+    nlohmann::json signs_json = nlohmann::json::array();
+    for (const auto& sign : micro_signs) {
+        const auto att = pattern::attributeHost(sign.centroid, host_lines, host_band_px);
+        nlohmann::json entry = {{"type", pattern::patternTypeName(sign.type)},
+                                {"name", sign.name},
+                                {"confidence", sign.confidence},
+                                {"x", sign.centroid.x},
+                                {"y", sign.centroid.y}};
+        if (att.attributed()) {
+            entry["host_curve_id"] = att.host_curve_id;
+            entry["host"] = att.host_name;
+            entry["host_arc_s"] = att.host_arc_s;
+        }
+        signs_json.push_back(std::move(entry));
+    }
+
     output.domain_payload = {{"status", "analyzed"},
                              {"palm_height_px", palm_height},
                              {"is_left_hand", is_left_hand},
@@ -332,6 +374,7 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
                              {"major_lines", major_lines_json},
                              {"palm_analysis", palm_analysis},
                              {"fate_analysis", fate_report_mutable.toJson()},
+                             {"micro_signs", signs_json},
                              {"heart_analysis", heart_report.toJson()},
                              {"head_analysis", head_report.toJson()},
                              {"life_analysis", life_report.toJson()},

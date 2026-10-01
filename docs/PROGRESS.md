@@ -22,6 +22,22 @@ Scope agreed with user: harden the **main core engine + native shared boundary**
 
 ---
 
+## §0c. Micro-sign detection layer (2026-10-01, palm P2 "topology exists → robust sign recognition")
+
+Scope: turn the 8 topology stub detectors (`MicroPatternDetector`) into geometry-validated sign detection, per the approved palm-sign plan (PR1–PR3 core side). FateReport `has_*` flags stay the documented heuristic stubs; the new `domain_payload.micro_signs` export is the trusted path. Suite: 42/42 ctest green.
+
+1. **Validation framework** (`core/include/curv/pattern/PatternValidation.hpp` + `.cpp`): `SignScale` (palm-width normalization), `softRange` (1.0 in-range, linear falloff over margin — near-miss geometry scores low instead of binary reject), `LoopStats` (shoelace area, perimeter, 2nd-moment ellipse elongation, circularity), `maxChordDeviation` (straightness), `MicroSignRanges` config (all thresholds normalized by palm width; tune per sign without code changes).
+2. **Validated detector overloads** (`MicroPatternDetector::detectAll/find*` with `MicroSignConfig`): topology proposes, soft filters score (island size/elongation, triangle/square size/angles + grid-cell guard, cross stroke angle + arm bounds, star arm count/gap, trident pairwise/coherence/prong bounds, net cluster spacing/links, fish tail distance/aspect). Legacy zero-config overloads kept byte-compatible. Found + fixed: `angleBetween` needed length normalization (polygon corner angles collapsed to 0°), and degenerate cycles (segments through a single junction) must be dropped in real graphs while segment-less synthetic graphs keep prior confidence.
+3. **Host attribution** (`core/src/pattern/HostAttribution.cpp`): point-to-polyline projection with arc position + band rejection → fills `host_curve_id`/`host_arc_s` (island on the head line vs mount mark).
+4. **Junction derivation — the real blocker found**: nothing in the pipeline ever populated `graph.junctions`; all topology consumers (micro-signs, fate forks, mount grills) read an always-empty list on real captures. New `core/src/geometry/JunctionDeriver.cpp`: derives endpoint clusters (within tol) AND through-crossings (polyline pairs intersecting strictly inside both), splitting segments at crossings so a crossing looks like the 4-piece meeting the topology expects. Wired in `PalmDomainPack` on a local graph copy only (`input.ridges` untouched — fate/mount behavior unchanged).
+5. **Export**: `domain_payload.micro_signs[]` = `{type, name, confidence, x, y, host_curve_id?, host?, host_arc_s?}` — flows through capi JSON; iOS decode/overlay is the next step (PR3 UI).
+6. **Tests** (`test_micro_pattern_detector.cpp`, 20 → 24): soft-range math, LoopStats, per-sign geometry fixtures + soft-fail sweeps (oversized triangle, needle/oversized cross, 5-arm star degradation), grid emits net-only (cells suppressed), scale invariance, legacy API unchanged, host attribution, junction deriver (endpoint clusters, through-crossing splits, no-contact), and a seeded 12-line random arrangement FP gate: **legacy 272 candidates → validated 0**.
+7. **End-to-end** (`curv_cli --image canonical_palm.png --domain palm`): previously 0 junctions/0 signs; now 4 signs with sane tiering — island on head line @arc 0.42 (conf 0.95), Fish at same site (conf 0.81), two faint unattributed traces (conf 0.23–0.26).
+
+**Next (micro-sign track):** PR3 UI (iOS decode `micro_signs` + overlay with confidence-tiered wording) → PR4 preprocessor (CLAHE/flat-field + multi-frame stack; `IPreprocessor` still unimplemented) → PR5 missing detectors (Circle via `is_closed`; Supporting/Chained/Tassel via 1D perpendicular profiles along host splines) → PR6 propose→verify patch classifier + labeled captures. VLM sign evidence feed (text-only, prompt-only constraint) is a cheap add-on to `VlmPromptFormatter`.
+
+---
+
 ## 0. CI stabilization ledger (2026-09-06, runs 34015384328 → 34016519940)
 
 Issues surfaced by Linux CI that macOS never showed, and their fixes:

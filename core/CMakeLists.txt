@@ -19,6 +19,7 @@ add_library(curv_core STATIC
     src/pattern/MicroPatternDetector.cpp
     src/pattern/PatternValidation.cpp
     src/geometry/JunctionDeriver.cpp
+    src/pattern/HostAttribution.cpp
     src/surface/SurfaceRelief.cpp
     src/geometry/HandAnthropometry.cpp
     src/surface/HandMeshGenerator.cpp
