@@ -14,6 +14,8 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <set>
+#include <spdlog/spdlog.h>
 #include <unordered_map>
 
 namespace CurvEngine::domains {
@@ -337,7 +339,20 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
     const pattern::MicroSignConfig sign_cfg{sign_scale, pattern::MicroSignRanges{}};
     RidgeGraph sign_graph = input.ridges;
     geometry::deriveJunctions(sign_graph, sign_scale.px(0.009F));
-    auto micro_signs = pattern::MicroPatternDetector::detectAll(sign_graph, sign_cfg);
+    // Bounded-cost guard: the cycle-enumerating finders are O(k^3)/O(k^4) in the
+    // junction-connected segment count. Contrast-lifted captures (CLAHE) can multiply
+    // skin-texture ridges several-fold; beyond the cap, sign detection is skipped
+    // rather than stalling the frame. The masked fine-scale pass (PR4b) replaces this.
+    std::set<int> connected_ids;
+    for (const auto& j : sign_graph.junctions) {
+        connected_ids.insert(j.connected_segment_ids.begin(), j.connected_segment_ids.end());
+    }
+    std::vector<CurvEngine::pattern::DetectedPattern> micro_signs;
+    spdlog::debug("[palm] micro-sign graph: segments={} connected={} junctions={}", sign_graph.segments.size(),
+                  connected_ids.size(), sign_graph.junctions.size());
+    if (connected_ids.size() <= 420) {
+        micro_signs = pattern::MicroPatternDetector::detectAll(sign_graph, sign_cfg);
+    }
     std::vector<pattern::HostPolyline> host_lines;
     host_lines.reserve(4);
     constexpr const char* kHostNames[4] = {"heart_line", "head_line", "life_line", "fate_line"};

@@ -560,3 +560,12 @@ TEST(CapiTest, ProcessFrameZeroSizeBufferIsInvalidArgument) {
     curv_frame_destroy(frame);
     curv_pipeline_destroy(pipeline);
 }
+
+TEST(CapiTest, SetPreprocessingToggle) {
+    CurvPipelineHandle pipeline = curv_pipeline_create("palm");
+    ASSERT_NE(pipeline, nullptr);
+    EXPECT_EQ(curv_pipeline_set_preprocessing(pipeline, 0), CURV_STATUS_SUCCESS);
+    EXPECT_EQ(curv_pipeline_set_preprocessing(pipeline, 1), CURV_STATUS_SUCCESS);
+    EXPECT_EQ(curv_pipeline_set_preprocessing(nullptr, 0), CURV_STATUS_INVALID_ARGUMENT);
+    curv_pipeline_destroy(pipeline);
+}

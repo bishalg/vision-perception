@@ -1,5 +1,7 @@
 #include "curv/curv_capi.h"
 
+#include "curv/preprocess/FlatFieldCLAHEPreprocessor.hpp"
+
 #include <array>
 #include <atomic>
 #include <cstring>
@@ -114,6 +116,7 @@ struct PipelineContext {
     std::unique_ptr<CurvEngine::pipeline::SyncPerceptionPipeline> pipeline;
     std::unique_ptr<CurvEngine::IDomainPack> domain_pack;
     CurvEngine::config::DynamicParameterResolver param_resolver;
+    CurvEngine::preprocess::FlatFieldCLAHEConfig preprocess_config;
     CurvQualityResult last_quality{0.0, 0.0, 0.0, 0};
     std::string domain_id;
     std::string last_json;
@@ -457,6 +460,28 @@ int curv_pipeline_process_quad_roi(CurvPipelineHandle pipeline, CurvFrameHandle 
     }
 }
 
+namespace {
+
+// Applies the pipeline's palm preprocessing (illumination flatten + CLAHE) to a canonical
+// patch; palm width from the canonical index/pinky MCP span drives the closing kernel.
+extern "C++" cv::Mat applyPalmPreprocess(const PipelineContext* p_ctx, const cv::Mat& canonical, const cv::Point2f& p5,
+                                         const cv::Point2f& p17) {
+    const CurvEngine::preprocess::FlatFieldCLAHEPreprocessor prep(p_ctx->preprocess_config);
+    const float palm_w = static_cast<float>(cv::norm(p17 - p5));
+    return prep.apply(canonical, palm_w);
+}
+
+} // namespace
+
+int curv_pipeline_set_preprocessing(CurvPipelineHandle pipeline, int enabled) {
+    if (!pipeline) {
+        return CURV_STATUS_INVALID_ARGUMENT;
+    }
+    auto* p_ctx = static_cast<PipelineContext*>(pipeline);
+    p_ctx->preprocess_config.enabled = (enabled != 0);
+    return CURV_STATUS_SUCCESS;
+}
+
 int curv_pipeline_process_landmarks_roi(CurvPipelineHandle pipeline, CurvFrameHandle frame,
                                         const float* landmarks_42_floats, char* out_json_buffer,
                                         int out_json_buffer_size) {
@@ -481,7 +506,16 @@ int curv_pipeline_process_landmarks_roi(CurvPipelineHandle pipeline, CurvFrameHa
 
         cv::Mat const warped = CurvEngine::geometry::warpToCanonical(f_ctx->frame.image, transform.M, target_dim);
 
-        CurvEngine::Frame warped_frame(warped, f_ctx->frame.source_id + "_canonical_palm", f_ctx->frame.timestamp_ms);
+        // Preprocessing feeds the extraction pipeline only; the original warped image
+        // stays untouched for boundary detection and other downstream consumers.
+        const auto landmarks_canonical_early =
+            warpLandmarksToCanonical(lms, transform, f_ctx->frame.width(), f_ctx->frame.height());
+        cv::Mat preprocessed = applyPalmPreprocess(
+            p_ctx, warped, cv::Point2f(landmarks_canonical_early.points[5].x, landmarks_canonical_early.points[5].y),
+            cv::Point2f(landmarks_canonical_early.points[17].x, landmarks_canonical_early.points[17].y));
+
+        CurvEngine::Frame warped_frame(preprocessed, f_ctx->frame.source_id + "_canonical_palm",
+                                       f_ctx->frame.timestamp_ms);
 
         // Detect handedness (left vs right hand) and propagate into frame metadata for PalmZones
         const bool is_left = CurvEngine::geometry::detectIsLeftHand(lms);
@@ -501,8 +535,14 @@ int curv_pipeline_process_landmarks_roi(CurvPipelineHandle pipeline, CurvFrameHa
         auto result = custom_pipeline.process(warped_frame);
 
         // Still compute quality for diagnostics / status, without gating extraction.
+        // The gate judges the RAW canonical image: its absolute brightness/contrast
+        // thresholds assume un-normalized input, while extraction consumes the
+        // flat-fielded frame. (Gate-vs-preprocessor ordering is revisited at PR4c
+        // recalibration.)
         if (p_ctx->quality_analyzer) {
-            result.quality = p_ctx->quality_analyzer->analyze(warped_frame);
+            CurvEngine::Frame raw_canonical(warped, f_ctx->frame.source_id + "_canonical_palm_raw",
+                                            f_ctx->frame.timestamp_ms);
+            result.quality = p_ctx->quality_analyzer->analyze(raw_canonical);
             result.is_usable = result.quality.is_usable;
         }
 
@@ -637,7 +677,12 @@ int curv_pipeline_process_landmarks_roi_extended(CurvPipelineHandle pipeline, Cu
         const int target_dim = 512;
         const auto transform = CurvEngine::geometry::computeCanonicalPalmTransform(lms, f_ctx->frame.width(),
                                                                                    f_ctx->frame.height(), target_dim);
-        cv::Mat const warped = CurvEngine::geometry::warpToCanonical(f_ctx->frame.image, transform.M, target_dim);
+        cv::Mat warped = CurvEngine::geometry::warpToCanonical(f_ctx->frame.image, transform.M, target_dim);
+        const auto lms_canonical_fine =
+            warpLandmarksToCanonical(lms, transform, f_ctx->frame.width(), f_ctx->frame.height());
+        warped = applyPalmPreprocess(p_ctx, warped,
+                                     cv::Point2f(lms_canonical_fine.points[5].x, lms_canonical_fine.points[5].y),
+                                     cv::Point2f(lms_canonical_fine.points[17].x, lms_canonical_fine.points[17].y));
         CurvEngine::Frame warped_frame(warped, f_ctx->frame.source_id + "_fine", f_ctx->frame.timestamp_ms);
         const bool is_left = CurvEngine::geometry::detectIsLeftHand(lms);
         warped_frame.metadata["is_left_hand"] = is_left ? "true" : "false";

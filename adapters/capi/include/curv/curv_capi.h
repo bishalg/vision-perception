@@ -81,6 +81,15 @@ CURV_API CurvPipelineHandle curv_pipeline_create(const char* domain_id);
 CURV_API void curv_pipeline_destroy(CurvPipelineHandle pipeline);
 
 /**
+ * @brief Toggles palm-path image preprocessing (illumination flattening + CLAHE).
+ *        Enabled by default for the palm domain; applies to the canonical warped image
+ *        before the quality gate and ridge extraction.
+ * @param enabled Non-zero to enable, zero to bypass.
+ * @return CURV_STATUS_SUCCESS, or CURV_STATUS_INVALID_ARGUMENT on NULL handle.
+ */
+CURV_API int curv_pipeline_set_preprocessing(CurvPipelineHandle pipeline, int enabled);
+
+/**
  * @brief Creates a Curv frame from an external memory buffer.
  * Copies the image data into an internal buffer.
  *

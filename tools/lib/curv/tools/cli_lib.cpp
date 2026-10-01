@@ -25,6 +25,7 @@
 #include "curv/domains/PalmDomainPack.hpp"
 #include "curv/domains/SurfaceInspectionPack.hpp"
 #include "curv/pipeline/SyncPerceptionPipeline.hpp"
+#include "curv/preprocess/FlatFieldCLAHEPreprocessor.hpp"
 #include "curv/quality/LaplacianQualityAnalyzer.hpp"
 #include "curv/ridge/StegerRidgeExtractor.hpp"
 #include "curv/tools/benchmark_lib.hpp"
@@ -200,6 +201,7 @@ int runCurvCli(int argc, char* argv[], std::ostream& out, std::ostream& err) {
     bool draw_normals = false;
     bool draw_ribbons = false;
     bool run_bench = false;
+    bool flat_field = false;
 
     // Parse command-line arguments
     try {
@@ -211,6 +213,10 @@ int runCurvCli(int argc, char* argv[], std::ostream& out, std::ostream& err) {
                 domain_name = argv[++i];
             } else if (arg == "--svg" && i + 1 < argc) {
                 out_svg_path = argv[++i];
+            } else if (arg == "--flat-field") {
+                flat_field = true;
+            } else if (arg == "--no-flat-field") {
+                flat_field = false;
             } else if (arg == "--hud") {
                 draw_hud = true;
             } else if (arg == "--no-hud") {
@@ -277,7 +283,7 @@ int runCurvCli(int argc, char* argv[], std::ostream& out, std::ostream& err) {
 
     // 1. Ingest Image
     out << "[STAGE 1] Ingesting image: " << image_path << '\n';
-    cv::Mat const input_image = cv::imread(image_path, cv::IMREAD_COLOR);
+    cv::Mat input_image = cv::imread(image_path, cv::IMREAD_COLOR);
     if (input_image.empty()) {
         err << "[ERROR] Failed to load image from: " << image_path << '\n';
         return 1;
@@ -285,6 +291,11 @@ int runCurvCli(int argc, char* argv[], std::ostream& out, std::ostream& err) {
     out << "  - Resolution: " << input_image.cols << "x" << input_image.rows << " (" << input_image.channels()
         << " channels)" << '\n';
 
+    if (flat_field) {
+        CurvEngine::preprocess::FlatFieldCLAHEPreprocessor prep;
+        input_image = prep.apply(input_image, 0.55F * static_cast<float>(std::min(input_image.cols, input_image.rows)));
+        out << "[STAGE 1b] Flat-field + CLAHE preprocessing applied." << '\n';
+    }
     CurvEngine::Frame const frame(input_image, image_path, 0);
 
     // 2. Configure Pipeline
