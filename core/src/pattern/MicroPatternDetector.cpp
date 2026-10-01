@@ -3,6 +3,7 @@
 #include <cmath>
 #include <map>
 #include <set>
+#include <unordered_map>
 
 namespace CurvEngine::pattern {
 
@@ -320,14 +321,63 @@ const char* patternTypeName(PatternType type) {
 
 namespace {
 
-const CurveSegment* findSegmentById(const RidgeGraph& graph, int id) {
-    for (const auto& seg : graph.segments) {
-        if (seg.id == id) {
-            return &seg;
+// Per-call O(1) lookups: the validated finders emit many candidates on dense graphs,
+// and per-candidate linear scans (segment-by-id, junction-by-position) dominated the
+// profile. Built once per finder call, passed down through the validators.
+class GraphLookup {
+public:
+    explicit GraphLookup(const RidgeGraph& graph) {
+        for (const auto& seg : graph.segments) {
+            segs_[seg.id] = &seg;
+        }
+        for (const auto& j : graph.junctions) {
+            junctions_[junctionKey(j.position)].push_back(&j);
         }
     }
-    return nullptr;
-}
+
+    [[nodiscard]] const CurveSegment* segment(int id) const {
+        const auto it = segs_.find(id);
+        return (it != segs_.end()) ? it->second : nullptr;
+    }
+
+    // Nearest junction within 0.5 px (the junctionNear tolerance), via 1px buckets.
+    [[nodiscard]] const Junction* junctionNear(const Point2D& pos) const {
+        const int bx = static_cast<int>(std::floor(pos.x));
+        const int by = static_cast<int>(std::floor(pos.y));
+        const Junction* best = nullptr;
+        float best_d2 = 0.25F;
+        for (int dy = -1; dy <= 1; ++dy) {
+            for (int dx = -1; dx <= 1; ++dx) {
+                const auto it = junctions_.find(junctionKey(bx + dx, by + dy));
+                if (it == junctions_.end()) {
+                    continue;
+                }
+                for (const Junction* j : it->second) {
+                    const float ddx = j->position.x - pos.x;
+                    const float ddy = j->position.y - pos.y;
+                    const float d2 = ddx * ddx + ddy * ddy;
+                    if (d2 <= best_d2) {
+                        best_d2 = d2;
+                        best = j;
+                    }
+                }
+            }
+        }
+        return best;
+    }
+
+private:
+    static long long junctionKey(int bx, int by) {
+        return static_cast<long long>(bx) * 100000L + static_cast<long long>(by);
+    }
+    static long long junctionKey(float x, float y) {
+        return static_cast<long long>(std::floor(x)) * 100000L + static_cast<long long>(std::floor(y));
+    }
+    [[nodiscard]] static long long junctionKey(const Point2D& p) { return junctionKey(p.x, p.y); }
+
+    std::unordered_map<int, const CurveSegment*> segs_;
+    std::unordered_map<long long, std::vector<const Junction*>> junctions_;
+};
 
 // Legacy fixed confidences double as topology priors for the validated path.
 float topologyPrior(PatternType type) {
@@ -361,11 +411,11 @@ struct ArmDir {
 
 // Arm directions at a junction: direction from the junction to the farthest point of each
 // attached segment (junctions do not record their attachment point on the segment).
-std::vector<ArmDir> armsAt(const RidgeGraph& graph, const Junction& junc) {
+std::vector<ArmDir> armsAt(const GraphLookup& lookup, const Junction& junc) {
     std::vector<ArmDir> arms;
     arms.reserve(junc.connected_segment_ids.size());
     for (int id : junc.connected_segment_ids) {
-        const CurveSegment* seg = findSegmentById(graph, id);
+        const CurveSegment* seg = lookup.segment(id);
         if (seg == nullptr || seg->points.empty()) {
             continue;
         }
@@ -392,39 +442,25 @@ std::vector<ArmDir> armsAt(const RidgeGraph& graph, const Junction& junc) {
     return arms;
 }
 
-const Junction* junctionNear(const RidgeGraph& graph, const Point2D& pos) {
-    constexpr float kTol2 = 0.25F; // 0.5 px
-    for (const auto& j : graph.junctions) {
-        const float dx = j.position.x - pos.x;
-        const float dy = j.position.y - pos.y;
-        if (dx * dx + dy * dy <= kTol2) {
-            return &j;
-        }
-    }
-    return nullptr;
-}
-
 // Counts vertices that coincide with a degree-4+ junction (grid cells share 4 of those).
-int degree4VertexCount(const RidgeGraph& graph, const std::vector<Point2D>& vertices) {
+int degree4VertexCount(const GraphLookup& lookup, const std::vector<Point2D>& vertices) {
     int count = 0;
     for (const auto& v : vertices) {
-        if (junctionNear(graph, v) != nullptr) {
-            const auto* j = junctionNear(graph, v);
-            if (j != nullptr && j->connected_segment_ids.size() >= 4) {
-                ++count;
-            }
+        const Junction* j = lookup.junctionNear(v);
+        if (j != nullptr && j->connected_segment_ids.size() >= 4) {
+            ++count;
         }
     }
     return count;
 }
 
 // Reconstructs the island's closed loop from its two shared arc segments.
-std::vector<Point2D> islandLoopPoints(const RidgeGraph& graph, const DetectedPattern& isl) {
+std::vector<Point2D> islandLoopPoints(const GraphLookup& lookup, const DetectedPattern& isl) {
     if (isl.source_segment_ids.size() < 2) {
         return {};
     }
-    const CurveSegment* a = findSegmentById(graph, isl.source_segment_ids[0]);
-    const CurveSegment* b = findSegmentById(graph, isl.source_segment_ids[1]);
+    const CurveSegment* a = lookup.segment(isl.source_segment_ids[0]);
+    const CurveSegment* b = lookup.segment(isl.source_segment_ids[1]);
     if (a == nullptr || b == nullptr || a->points.size() < 2 || b->points.size() < 2) {
         return {};
     }
@@ -530,11 +566,170 @@ private:
     float product_{1.0F};
 };
 
-void validateIsland(DetectedPattern& pat, const RidgeGraph& graph, const MicroSignConfig& cfg) {
+// Junction positions shared by at least two of the given segments (vertex set for
+// cycle candidates).
+// Junction positions keyed by segment pair: consecutive sides of a cycle meet at known
+// junctions, so vertices come from this map instead of a per-candidate scan over all
+// junctions. A pair sharing two junctions (an island) stores both positions.
+using PairPositions = std::unordered_map<long long, std::vector<Point2D>>;
+
+PairPositions buildPairPositions(const RidgeGraph& graph) {
+    PairPositions map;
+    for (const auto& j : graph.junctions) {
+        const auto& ids = j.connected_segment_ids;
+        for (size_t a = 0; a + 1 < ids.size(); ++a) {
+            for (size_t b = a + 1; b < ids.size(); ++b) {
+                const long long lo = std::min(ids[a], ids[b]);
+                const long long hi = std::max(ids[a], ids[b]);
+                map[lo * 100000L + hi].push_back(j.position);
+            }
+        }
+    }
+    return map;
+}
+
+const std::vector<Point2D>* pairPositions(const PairPositions& map, int a, int b) {
+    const long long lo = std::min(a, b);
+    const long long hi = std::max(a, b);
+    const auto it = map.find(lo * 100000L + hi);
+    return (it != map.end()) ? &it->second : nullptr;
+}
+
+// True when the given vertex sets (one per cycle corner) span a region small enough that
+// the size filters could ever accept it. Pure prune: anything rejected here would fail
+// the validator's size bound anyway (>2x margin).
+bool cycleSpreadWithin(const std::vector<const std::vector<Point2D>*>& corners, float max_extent_px) {
+    std::vector<Point2D> pts;
+    for (const auto* c : corners) {
+        if (c == nullptr) {
+            return true; // unknown geometry: do not prune
+        }
+        for (const auto& p : *c) {
+            pts.push_back(p);
+        }
+    }
+    if (pts.empty()) {
+        return true;
+    }
+    float max_d2 = 0.0F;
+    for (size_t i = 0; i < pts.size(); ++i) {
+        for (size_t j = i + 1; j < pts.size(); ++j) {
+            const float dx = pts[i].x - pts[j].x;
+            const float dy = pts[i].y - pts[j].y;
+            max_d2 = std::max(max_d2, dx * dx + dy * dy);
+        }
+    }
+    return max_d2 <= max_extent_px * max_extent_px;
+}
+
+std::vector<DetectedPattern> findTrianglesFast(const RidgeGraph& graph) {
+    const auto adj = buildSegmentAdjacency(graph);
+    const PairPositions pair_pos = buildPairPositions(graph);
+    const float graph_extent = 0.55F * static_cast<float>(graph.debug_mask.cols ? graph.debug_mask.cols : 512);
+    std::vector<DetectedPattern> out;
+    for (const auto& [a, neighbors_a] : adj) {
+        for (int b : neighbors_a) {
+            if (b <= a) {
+                continue;
+            }
+            const auto it_b = adj.find(b);
+            if (it_b == adj.end()) {
+                continue;
+            }
+            for (int c : it_b->second) {
+                if (c <= b) {
+                    continue;
+                }
+                if (neighbors_a.count(c) == 0) {
+                    continue;
+                }
+                const std::vector<Point2D>* ab = pairPositions(pair_pos, a, b);
+                const std::vector<Point2D>* bc = pairPositions(pair_pos, b, c);
+                const std::vector<Point2D>* ca = pairPositions(pair_pos, c, a);
+                if (!cycleSpreadWithin({ab, bc, ca}, 0.35F * graph_extent)) {
+                    continue;
+                }
+                DetectedPattern pat;
+                pat.type = PatternType::Triangle;
+                pat.name = "Triangle";
+                pat.confidence = 0.90f;
+                pat.source_segment_ids = {a, b, c};
+                for (const auto* corner : {ab, bc, ca}) {
+                    if (corner != nullptr) {
+                        pat.points.insert(pat.points.end(), corner->begin(), corner->end());
+                    }
+                }
+                pat.centroid = computeCentroid(pat.points);
+                out.push_back(std::move(pat));
+            }
+        }
+    }
+    return out;
+}
+
+// Adjacency-driven 4-cycle enumeration: u is the minimum id of the cycle, v < x the two
+// neighbors of u, w closes the ring via adj(v) ∩ adj(x). Cost is bounded by the local
+// junction degree instead of C(k,4).
+std::vector<DetectedPattern> findSquaresFast(const RidgeGraph& graph) {
+    const auto adj = buildSegmentAdjacency(graph);
+    const PairPositions pair_pos = buildPairPositions(graph);
+    const float graph_extent = 0.55F * static_cast<float>(graph.debug_mask.cols ? graph.debug_mask.cols : 512);
+    std::vector<DetectedPattern> out;
+    for (const auto& [u, neighbors_u] : adj) {
+        if (neighbors_u.size() < 2) {
+            continue;
+        }
+        for (auto v_it = neighbors_u.begin(); v_it != neighbors_u.end(); ++v_it) {
+            const int v = *v_it;
+            const auto it_v = adj.find(v);
+            if (it_v == adj.end()) {
+                continue;
+            }
+            for (auto x_it = std::next(v_it); x_it != neighbors_u.end(); ++x_it) {
+                const int x = *x_it;
+                const auto it_x = adj.find(x);
+                if (it_x == adj.end()) {
+                    continue;
+                }
+                for (int w : it_v->second) {
+                    if (w <= u || w == v || w == x) {
+                        continue;
+                    }
+                    if (it_x->second.count(w) == 0) {
+                        continue;
+                    }
+                    const std::vector<Point2D>* uv = pairPositions(pair_pos, u, v);
+                    const std::vector<Point2D>* vw = pairPositions(pair_pos, v, w);
+                    const std::vector<Point2D>* wx = pairPositions(pair_pos, w, x);
+                    const std::vector<Point2D>* xu = pairPositions(pair_pos, x, u);
+                    if (!cycleSpreadWithin({uv, vw, wx, xu}, 0.35F * graph_extent)) {
+                        continue;
+                    }
+                    DetectedPattern pat;
+                    pat.type = PatternType::Square;
+                    pat.name = "Square";
+                    pat.confidence = 0.85f;
+                    pat.source_segment_ids = {u, v, w, x};
+                    for (const auto* corner : {uv, vw, wx, xu}) {
+                        if (corner != nullptr) {
+                            pat.points.insert(pat.points.end(), corner->begin(), corner->end());
+                        }
+                    }
+                    pat.centroid = computeCentroid(pat.points);
+                    out.push_back(std::move(pat));
+                }
+            }
+        }
+    }
+    return out;
+}
+
+void validateIsland(DetectedPattern& pat, const RidgeGraph& graph, const GraphLookup& lookup,
+                    const MicroSignConfig& cfg) {
     if (graph.segments.empty()) {
         return; // legacy synthetic graph: no geometry to validate, keep topology prior
     }
-    const std::vector<Point2D> loop = islandLoopPoints(graph, pat);
+    const std::vector<Point2D> loop = islandLoopPoints(lookup, pat);
     if (loop.size() < 3) {
         pat.confidence = 0.0F; // collapsed loop in a real graph: reject
         pat.filter_trace = {FilterScore{"degenerate", 0.0F}};
@@ -550,7 +745,8 @@ void validateIsland(DetectedPattern& pat, const RidgeGraph& graph, const MicroSi
     pat.confidence = topologyPrior(pat.type) * trace.product();
 }
 
-void validateTriangle(DetectedPattern& pat, const RidgeGraph& graph, const MicroSignConfig& cfg) {
+void validateTriangle(DetectedPattern& pat, const RidgeGraph& graph, const GraphLookup& lookup,
+                      const MicroSignConfig& cfg) {
     if (graph.segments.empty()) {
         return; // legacy synthetic graph: no geometry to validate, keep topology prior
     }
@@ -580,7 +776,7 @@ void validateTriangle(DetectedPattern& pat, const RidgeGraph& graph, const Micro
     bool have_straightness = false;
     float straight_score = 1.0F;
     for (int id : pat.source_segment_ids) {
-        const CurveSegment* seg = findSegmentById(graph, id);
+        const CurveSegment* seg = lookup.segment(id);
         if (seg == nullptr || seg->points.size() < 3) {
             continue;
         }
@@ -592,14 +788,15 @@ void validateTriangle(DetectedPattern& pat, const RidgeGraph& graph, const Micro
         trace.add("straight", straight_score);
     }
 
-    if (degree4VertexCount(graph, ordered) > r.tri_max_degree4_vertices) {
+    if (degree4VertexCount(lookup, ordered) > r.tri_max_degree4_vertices) {
         trace.add("not_net", 0.0F); // grid cell, not a sign
     }
     pat.filter_trace = trace.take();
     pat.confidence = topologyPrior(pat.type) * trace.product();
 }
 
-void validateSquare(DetectedPattern& pat, const RidgeGraph& graph, const MicroSignConfig& cfg) {
+void validateSquare(DetectedPattern& pat, const RidgeGraph& graph, const GraphLookup& lookup,
+                    const MicroSignConfig& cfg) {
     if (graph.segments.empty()) {
         return; // legacy synthetic graph: no geometry to validate, keep topology prior
     }
@@ -636,19 +833,19 @@ void validateSquare(DetectedPattern& pat, const RidgeGraph& graph, const MicroSi
         }
     }
 
-    if (degree4VertexCount(graph, ordered) > r.sq_max_degree4_vertices) {
+    if (degree4VertexCount(lookup, ordered) > r.sq_max_degree4_vertices) {
         trace.add("not_net", 0.0F); // grid cell, not a sign
     }
     pat.filter_trace = trace.take();
     pat.confidence = topologyPrior(pat.type) * trace.product();
 }
 
-void validateJunctionFan(DetectedPattern& pat, const RidgeGraph& graph, const MicroSignConfig& cfg) {
-    const Junction* junc = junctionNear(graph, pat.centroid);
+void validateJunctionFan(DetectedPattern& pat, const GraphLookup& lookup, const MicroSignConfig& cfg) {
+    const Junction* junc = lookup.junctionNear(pat.centroid);
     if (junc == nullptr) {
         return; // no arm geometry available -> keep topology prior
     }
-    const std::vector<ArmDir> arms = armsAt(graph, *junc);
+    const std::vector<ArmDir> arms = armsAt(lookup, *junc);
     if (arms.size() < 3) {
         return;
     }
@@ -699,7 +896,7 @@ void validateJunctionFan(DetectedPattern& pat, const RidgeGraph& graph, const Mi
         float straight_score = 1.0F;
         bool have_straightness = false;
         for (int id : pat.source_segment_ids) {
-            const CurveSegment* seg = findSegmentById(graph, id);
+            const CurveSegment* seg = lookup.segment(id);
             if (seg == nullptr || seg->points.size() < 3) {
                 continue;
             }
@@ -856,6 +1053,7 @@ std::vector<DetectedPattern> findNetsValidated(const RidgeGraph& graph, const Mi
 // (Legacy considered triangle bodies only; islands carry the "island_fish" flag too.)
 std::vector<DetectedPattern> findFishValidated(const RidgeGraph& graph, const MicroSignConfig& cfg) {
     const MicroSignRanges& r = cfg.ranges;
+    const GraphLookup lookup(graph);
     std::vector<DetectedPattern> out;
     auto try_tail = [&](DetectedPattern body, bool island_body) {
         const Junction* tail = nullptr;
@@ -878,7 +1076,7 @@ std::vector<DetectedPattern> findFishValidated(const RidgeGraph& graph, const Mi
         ScoreTrace trace;
         trace.add("tail_dist", softRange(cfg.scale.norm(tail_d), 0.0F, r.fish_tail_dist_hi, r.fish_tail_dist_margin));
 
-        const std::vector<Point2D> loop = island_body ? islandLoopPoints(graph, body) : body.points;
+        const std::vector<Point2D> loop = island_body ? islandLoopPoints(lookup, body) : body.points;
         if (loop.size() >= 3) {
             const LoopStats stats = computeLoopStats(loop);
             trace.add("body_size", softRange(cfg.scale.norm(std::sqrt(std::max(stats.area_px, 0.0F))), r.fish_size_lo,
@@ -954,26 +1152,29 @@ void dedupeOverlappingSupport(std::vector<DetectedPattern>& pats, float max_over
 
 std::vector<DetectedPattern> MicroPatternDetector::findIslands(const RidgeGraph& graph, const MicroSignConfig& cfg) {
     auto pats = findIslands(graph);
+    const GraphLookup lookup(graph);
     for (auto& pat : pats) {
-        validateIsland(pat, graph, cfg);
+        validateIsland(pat, graph, lookup, cfg);
     }
     dropBelowMinConfidence(pats, cfg.ranges.min_confidence);
     return pats;
 }
 
 std::vector<DetectedPattern> MicroPatternDetector::findTriangles(const RidgeGraph& graph, const MicroSignConfig& cfg) {
-    auto pats = findTriangles(graph);
+    auto pats = findTrianglesFast(graph);
+    const GraphLookup lookup(graph);
     for (auto& pat : pats) {
-        validateTriangle(pat, graph, cfg);
+        validateTriangle(pat, graph, lookup, cfg);
     }
     dropBelowMinConfidence(pats, cfg.ranges.min_confidence);
     return pats;
 }
 
 std::vector<DetectedPattern> MicroPatternDetector::findSquares(const RidgeGraph& graph, const MicroSignConfig& cfg) {
-    auto pats = findSquares(graph);
+    auto pats = findSquaresFast(graph);
+    const GraphLookup lookup(graph);
     for (auto& pat : pats) {
-        validateSquare(pat, graph, cfg);
+        validateSquare(pat, graph, lookup, cfg);
     }
     dropBelowMinConfidence(pats, cfg.ranges.min_confidence);
     return pats;
@@ -981,8 +1182,9 @@ std::vector<DetectedPattern> MicroPatternDetector::findSquares(const RidgeGraph&
 
 std::vector<DetectedPattern> MicroPatternDetector::findCrosses(const RidgeGraph& graph, const MicroSignConfig& cfg) {
     auto pats = findCrosses(graph);
+    const GraphLookup lookup(graph);
     for (auto& pat : pats) {
-        validateJunctionFan(pat, graph, cfg);
+        validateJunctionFan(pat, lookup, cfg);
     }
     dropBelowMinConfidence(pats, cfg.ranges.min_confidence);
     return pats;
@@ -990,8 +1192,9 @@ std::vector<DetectedPattern> MicroPatternDetector::findCrosses(const RidgeGraph&
 
 std::vector<DetectedPattern> MicroPatternDetector::findStars(const RidgeGraph& graph, const MicroSignConfig& cfg) {
     auto pats = findStars(graph);
+    const GraphLookup lookup(graph);
     for (auto& pat : pats) {
-        validateJunctionFan(pat, graph, cfg);
+        validateJunctionFan(pat, lookup, cfg);
     }
     dropBelowMinConfidence(pats, cfg.ranges.min_confidence);
     return pats;
@@ -999,8 +1202,9 @@ std::vector<DetectedPattern> MicroPatternDetector::findStars(const RidgeGraph& g
 
 std::vector<DetectedPattern> MicroPatternDetector::findTridents(const RidgeGraph& graph, const MicroSignConfig& cfg) {
     auto pats = findTridents(graph);
+    const GraphLookup lookup(graph);
     for (auto& pat : pats) {
-        validateJunctionFan(pat, graph, cfg);
+        validateJunctionFan(pat, lookup, cfg);
     }
     dropBelowMinConfidence(pats, cfg.ranges.min_confidence);
     return pats;

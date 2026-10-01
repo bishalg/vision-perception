@@ -599,6 +599,21 @@ vision_set_compiler_warnings(test_preprocessor)
 add_test(NAME test_preprocessor COMMAND test_preprocessor)
 
 # ------------------------------------------------------------------------------
+# Unit Test: test_pattern_perf (locality bounds for cycle finders + deriver)
+# ------------------------------------------------------------------------------
+add_executable(test_pattern_perf
+    unit/test_pattern_perf.cpp
+)
+target_link_libraries(test_pattern_perf
+    PRIVATE
+        curv_core
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+vision_set_compiler_warnings(test_pattern_perf)
+add_test(NAME test_pattern_perf COMMAND test_pattern_perf)
+
+# ------------------------------------------------------------------------------
 # Unit Test: test_retina_domain (RetinaDomainPack)
 # ------------------------------------------------------------------------------
 add_executable(test_retina_domain

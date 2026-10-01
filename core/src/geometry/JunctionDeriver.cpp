@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 #include <set>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -133,6 +135,21 @@ size_t deriveJunctions(RidgeGraph& graph, float tol_px) {
         endpoints.push_back({seg.points.front(), i, true});
         endpoints.push_back({seg.points.back(), i, false});
     }
+    // Sparse endpoint grid: cluster members are gathered from the 3x3 cell block around
+    // each seed (cell = tol_px), so clustering is linear-in-endpoints instead of the
+    // O(endpoints^2) scan that stalled on fine-scale graphs.
+    std::unordered_map<long long, std::vector<size_t>> egrid;
+    auto cell_key = [&](const Point2D& p) {
+        return static_cast<long long>(std::floor(p.x / tol_px)) * 100000L +
+               static_cast<long long>(std::floor(p.y / tol_px));
+    };
+    for (size_t i = 0; i < endpoints.size(); ++i) {
+        egrid[cell_key(endpoints[i].pos)].push_back(i);
+    }
+    const int base_cx = 0;
+    const int base_cy = 0;
+    (void)base_cx;
+    (void)base_cy;
     std::vector<EndpointCluster> clusters;
     std::vector<bool> assigned(endpoints.size(), false);
     for (size_t i = 0; i < endpoints.size(); ++i) {
@@ -143,16 +160,26 @@ size_t deriveJunctions(RidgeGraph& graph, float tol_px) {
         cluster.members.push_back(endpoints[i]);
         cluster.seg_idxs.insert(endpoints[i].seg_idx);
         assigned[i] = true;
-        for (size_t j = i + 1; j < endpoints.size(); ++j) {
-            if (assigned[j]) {
-                continue;
-            }
-            const float dx = endpoints[j].pos.x - endpoints[i].pos.x;
-            const float dy = endpoints[j].pos.y - endpoints[i].pos.y;
-            if (dx * dx + dy * dy <= tol2) {
-                assigned[j] = true;
-                cluster.members.push_back(endpoints[j]);
-                cluster.seg_idxs.insert(endpoints[j].seg_idx);
+        const int qc_x = static_cast<int>(std::floor(endpoints[i].pos.x / tol_px));
+        const int qc_y = static_cast<int>(std::floor(endpoints[i].pos.y / tol_px));
+        for (int cy = qc_y - 1; cy <= qc_y + 1; ++cy) {
+            for (int cx = qc_x - 1; cx <= qc_x + 1; ++cx) {
+                const auto it = egrid.find(static_cast<long long>(cx) * 100000L + cy);
+                if (it == egrid.end()) {
+                    continue;
+                }
+                for (size_t j : it->second) {
+                    if (assigned[j]) {
+                        continue;
+                    }
+                    const float dx = endpoints[j].pos.x - endpoints[i].pos.x;
+                    const float dy = endpoints[j].pos.y - endpoints[i].pos.y;
+                    if (dx * dx + dy * dy <= tol2) {
+                        assigned[j] = true;
+                        cluster.members.push_back(endpoints[j]);
+                        cluster.seg_idxs.insert(endpoints[j].seg_idx);
+                    }
+                }
             }
         }
         if (cluster.seg_idxs.size() >= 2) {
@@ -174,20 +201,45 @@ size_t deriveJunctions(RidgeGraph& graph, float tol_px) {
         boxes[i] = segmentBBox(graph.segments[i]);
     }
     std::vector<Crossing> crossings;
-    for (size_t i = 0; i < seg_count; ++i) {
-        if (!boxes[i].valid) {
-            continue;
+    {
+        // Sparse bbox grid: overlapping bboxes always share at least one cell (each bbox
+        // is registered in every cell it spans), so the O(n^2) pair scan becomes
+        // linear-in-k times local density.
+        constexpr float kCell = 96.0F;
+        std::unordered_map<long long, std::vector<size_t>> buckets;
+        for (size_t i = 0; i < seg_count; ++i) {
+            if (!boxes[i].valid) {
+                continue;
+            }
+            const int cx0 = static_cast<int>(std::floor(boxes[i].min_x / kCell));
+            const int cx1 = static_cast<int>(std::floor(boxes[i].max_x / kCell));
+            const int cy0 = static_cast<int>(std::floor(boxes[i].min_y / kCell));
+            const int cy1 = static_cast<int>(std::floor(boxes[i].max_y / kCell));
+            for (int cy = cy0; cy <= cy1; ++cy) {
+                for (int cx = cx0; cx <= cx1; ++cx) {
+                    buckets[static_cast<long long>(cx) * 100000L + cy].push_back(i);
+                }
+            }
         }
-        for (size_t j = i + 1; j < seg_count; ++j) {
-            if (!boxes[j].valid) {
-                continue;
+        std::unordered_set<long long> tested;
+        for (const auto& [key, members] : buckets) {
+            for (size_t a = 0; a + 1 < members.size(); ++a) {
+                for (size_t b = a + 1; b < members.size(); ++b) {
+                    const size_t i = members[a];
+                    const size_t j = members[b];
+                    const long long pair_key =
+                        static_cast<long long>(i) * static_cast<long long>(seg_count) + static_cast<long long>(j);
+                    if (!tested.insert(pair_key).second) {
+                        continue;
+                    }
+                    const auto& bi = boxes[i];
+                    const auto& bj = boxes[j];
+                    if (bi.max_x < bj.min_x || bj.max_x < bi.min_x || bi.max_y < bj.min_y || bj.max_y < bi.min_y) {
+                        continue;
+                    }
+                    collectInteriorCrossings(graph.segments[i], i, graph.segments[j], j, crossings);
+                }
             }
-            const auto& bi = boxes[i];
-            const auto& bj = boxes[j];
-            if (bi.max_x < bj.min_x || bj.max_x < bi.min_x || bi.max_y < bj.min_y || bj.max_y < bi.min_y) {
-                continue;
-            }
-            collectInteriorCrossings(graph.segments[i], i, graph.segments[j], j, crossings);
         }
     }
     // Deterministic order, then drop crossings coinciding with an endpoint cluster or
