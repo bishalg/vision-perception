@@ -286,6 +286,678 @@ std::vector<DetectedPattern> MicroPatternDetector::findFish(const RidgeGraph& gr
     return fish_signs;
 }
 
+const char* patternTypeName(PatternType type) {
+    switch (type) {
+    case PatternType::Square:
+        return "Square";
+    case PatternType::Triangle:
+        return "Triangle";
+    case PatternType::Star:
+        return "Star";
+    case PatternType::Circle:
+        return "Circle";
+    case PatternType::Island:
+        return "Island";
+    case PatternType::Cross:
+        return "Cross";
+    case PatternType::Trident:
+        return "Trident";
+    case PatternType::SupportingLine:
+        return "SupportingLine";
+    case PatternType::ChainedLine:
+        return "ChainedLine";
+    case PatternType::Tassels:
+        return "Tassels";
+    case PatternType::Net:
+        return "Net";
+    case PatternType::Fish:
+        return "Fish";
+    }
+    return "Unknown";
+}
+
+// ===================== Geometry-validated detection (P2 soft filters) =====================
+
+namespace {
+
+const CurveSegment* findSegmentById(const RidgeGraph& graph, int id) {
+    for (const auto& seg : graph.segments) {
+        if (seg.id == id) {
+            return &seg;
+        }
+    }
+    return nullptr;
+}
+
+// Legacy fixed confidences double as topology priors for the validated path.
+float topologyPrior(PatternType type) {
+    switch (type) {
+    case PatternType::Island:
+        return 0.95F;
+    case PatternType::Triangle:
+        return 0.90F;
+    case PatternType::Square:
+        return 0.85F;
+    case PatternType::Cross:
+        return 0.90F;
+    case PatternType::Star:
+        return 0.95F;
+    case PatternType::Trident:
+        return 0.85F;
+    case PatternType::Net:
+        return 0.88F;
+    case PatternType::Fish:
+        return 0.92F;
+    default:
+        return 0.80F;
+    }
+}
+
+struct ArmDir {
+    float ux{0.0F};
+    float uy{0.0F}; // unit direction pointing away from the junction
+    float length{0.0F};
+};
+
+// Arm directions at a junction: direction from the junction to the farthest point of each
+// attached segment (junctions do not record their attachment point on the segment).
+std::vector<ArmDir> armsAt(const RidgeGraph& graph, const Junction& junc) {
+    std::vector<ArmDir> arms;
+    arms.reserve(junc.connected_segment_ids.size());
+    for (int id : junc.connected_segment_ids) {
+        const CurveSegment* seg = findSegmentById(graph, id);
+        if (seg == nullptr || seg->points.empty()) {
+            continue;
+        }
+        const Point2D* far_pt = nullptr;
+        float far_d = -1.0F;
+        for (const auto& p : seg->points) {
+            const float dx = p.x - junc.position.x;
+            const float dy = p.y - junc.position.y;
+            const float d = std::sqrt(dx * dx + dy * dy);
+            if (d > far_d) {
+                far_d = d;
+                far_pt = &p;
+            }
+        }
+        if (far_pt == nullptr || far_d <= 1e-3F) {
+            continue;
+        }
+        ArmDir arm;
+        arm.ux = (far_pt->x - junc.position.x) / far_d;
+        arm.uy = (far_pt->y - junc.position.y) / far_d;
+        arm.length = far_d;
+        arms.push_back(arm);
+    }
+    return arms;
+}
+
+const Junction* junctionNear(const RidgeGraph& graph, const Point2D& pos) {
+    constexpr float kTol2 = 0.25F; // 0.5 px
+    for (const auto& j : graph.junctions) {
+        const float dx = j.position.x - pos.x;
+        const float dy = j.position.y - pos.y;
+        if (dx * dx + dy * dy <= kTol2) {
+            return &j;
+        }
+    }
+    return nullptr;
+}
+
+// Counts vertices that coincide with a degree-4+ junction (grid cells share 4 of those).
+int degree4VertexCount(const RidgeGraph& graph, const std::vector<Point2D>& vertices) {
+    int count = 0;
+    for (const auto& v : vertices) {
+        if (junctionNear(graph, v) != nullptr) {
+            const auto* j = junctionNear(graph, v);
+            if (j != nullptr && j->connected_segment_ids.size() >= 4) {
+                ++count;
+            }
+        }
+    }
+    return count;
+}
+
+// Reconstructs the island's closed loop from its two shared arc segments.
+std::vector<Point2D> islandLoopPoints(const RidgeGraph& graph, const DetectedPattern& isl) {
+    if (isl.source_segment_ids.size() < 2) {
+        return {};
+    }
+    const CurveSegment* a = findSegmentById(graph, isl.source_segment_ids[0]);
+    const CurveSegment* b = findSegmentById(graph, isl.source_segment_ids[1]);
+    if (a == nullptr || b == nullptr || a->points.size() < 2 || b->points.size() < 2) {
+        return {};
+    }
+    std::vector<Point2D> loop = a->points;
+    for (auto it = b->points.rbegin(); it != b->points.rend(); ++it) {
+        loop.push_back(*it);
+    }
+    return loop;
+}
+
+float angleBetween(float ux1, float uy1, float ux2, float uy2) {
+    const float n1 = std::sqrt(ux1 * ux1 + uy1 * uy1);
+    const float n2 = std::sqrt(ux2 * ux2 + uy2 * uy2);
+    if (n1 < 1e-6F || n2 < 1e-6F) {
+        return 0.0F;
+    }
+    const float dot = std::min(std::max((ux1 * ux2 + uy1 * uy2) / (n1 * n2), -1.0F), 1.0F);
+    constexpr float kRadToDeg = 57.2957795F;
+    return std::acos(dot) * kRadToDeg;
+}
+
+float acuteBetween(float ux1, float uy1, float ux2, float uy2) {
+    const float a = angleBetween(ux1, uy1, ux2, uy2);
+    return (a > 90.0F) ? 180.0F - a : a;
+}
+
+// Absolute direction of an arm in [0, 360) degrees.
+float dirAngleDeg(const ArmDir& arm) {
+    const float deg = std::atan2(arm.uy, arm.ux) * 57.2957795F;
+    return (deg < 0.0F) ? deg + 360.0F : deg;
+}
+
+// Minimum angular gap between consecutive arm directions (cyclically sorted). For stars
+// this is the "adjacent arm angle" — opposite arms fold to ~0 under the acute measure
+// and must not count against the fan.
+float minAdjacentGapDeg(const std::vector<ArmDir>& arms) {
+    if (arms.size() < 2) {
+        return 360.0F;
+    }
+    std::vector<float> angles;
+    angles.reserve(arms.size());
+    for (const auto& arm : arms) {
+        angles.push_back(dirAngleDeg(arm));
+    }
+    std::sort(angles.begin(), angles.end());
+    float min_gap = 360.0F;
+    for (size_t i = 0; i < angles.size(); ++i) {
+        const float next = (i + 1 < angles.size()) ? angles[i + 1] : angles[0] + 360.0F;
+        min_gap = std::min(min_gap, next - angles[i]);
+    }
+    return min_gap;
+}
+
+// Angle at vertex b for polygon a-b-c.
+float angleAtVertex(const Point2D& a, const Point2D& b, const Point2D& c) {
+    const float abx = a.x - b.x;
+    const float aby = a.y - b.y;
+    const float cbx = c.x - b.x;
+    const float cby = c.y - b.y;
+    return angleBetween(abx, aby, cbx, cby);
+}
+
+// Orders vertices around their centroid so corner angles / side ratios read the polygon
+// in traversal order regardless of the junction order in the graph.
+std::vector<Point2D> polygonOrdered(const std::vector<Point2D>& pts) {
+    if (pts.size() < 3) {
+        return pts;
+    }
+    float cx = 0.0F;
+    float cy = 0.0F;
+    for (const auto& p : pts) {
+        cx += p.x;
+        cy += p.y;
+    }
+    const float n = static_cast<float>(pts.size());
+    cx /= n;
+    cy /= n;
+    std::vector<Point2D> sorted = pts;
+    std::sort(sorted.begin(), sorted.end(), [cx, cy](const Point2D& a, const Point2D& b) {
+        return std::atan2(a.y - cy, a.x - cx) < std::atan2(b.y - cy, b.x - cx);
+    });
+    return sorted;
+}
+
+void dropBelowMinConfidence(std::vector<DetectedPattern>& pats, float min_confidence) {
+    pats.erase(std::remove_if(pats.begin(), pats.end(),
+                              [min_confidence](const DetectedPattern& p) { return p.confidence < min_confidence; }),
+               pats.end());
+}
+
+void validateIsland(DetectedPattern& pat, const RidgeGraph& graph, const MicroSignConfig& cfg) {
+    if (graph.segments.empty()) {
+        return; // legacy synthetic graph: no geometry to validate, keep topology prior
+    }
+    const std::vector<Point2D> loop = islandLoopPoints(graph, pat);
+    if (loop.size() < 3) {
+        pat.confidence = 0.0F; // collapsed loop in a real graph: reject
+        return;
+    }
+    const LoopStats stats = computeLoopStats(loop);
+    const MicroSignRanges& r = cfg.ranges;
+    pat.confidence = topologyPrior(pat.type) *
+                     softRange(cfg.scale.norm(std::sqrt(std::max(stats.area_px, 0.0F))), r.island_size_lo,
+                               r.island_size_hi, r.island_size_margin) *
+                     softRange(stats.elongation, r.island_elong_lo, r.island_elong_hi, r.island_elong_margin);
+}
+
+void validateTriangle(DetectedPattern& pat, const RidgeGraph& graph, const MicroSignConfig& cfg) {
+    if (graph.segments.empty()) {
+        return; // legacy synthetic graph: no geometry to validate, keep topology prior
+    }
+    const MicroSignRanges& r = cfg.ranges;
+    const std::vector<Point2D> ordered = polygonOrdered(pat.points);
+    if (ordered.size() < 3) {
+        pat.confidence = 0.0F; // degenerate cycle (e.g. segments through one junction)
+        return;
+    }
+    const LoopStats poly = computeLoopStats(ordered);
+    float score = softRange(cfg.scale.norm(std::sqrt(std::max(poly.area_px, 0.0F))), r.tri_size_lo, r.tri_size_hi,
+                            r.tri_size_margin);
+
+    if (ordered.size() == 3) {
+        float min_angle = 180.0F;
+        float max_angle = 0.0F;
+        for (size_t i = 0; i < 3; ++i) {
+            const float a = angleAtVertex(ordered[(i + 2) % 3], ordered[i], ordered[(i + 1) % 3]);
+            min_angle = std::min(min_angle, a);
+            max_angle = std::max(max_angle, a);
+        }
+        score *= softRange(min_angle, r.tri_angle_lo, r.tri_angle_hi, r.tri_angle_margin);
+        score *= softRange(max_angle, r.tri_angle_lo, r.tri_angle_hi, r.tri_angle_margin);
+    }
+
+    bool have_straightness = false;
+    float straight_score = 1.0F;
+    for (int id : pat.source_segment_ids) {
+        const CurveSegment* seg = findSegmentById(graph, id);
+        if (seg == nullptr || seg->points.size() < 3) {
+            continue;
+        }
+        have_straightness = true;
+        straight_score = std::min(
+            straight_score, softRange(maxChordDeviation(seg->points), 0.0F, r.tri_straight_hi, r.tri_straight_margin));
+    }
+    if (have_straightness) {
+        score *= straight_score;
+    }
+
+    if (degree4VertexCount(graph, ordered) > r.tri_max_degree4_vertices) {
+        score = 0.0F; // grid cell, not a sign
+    }
+    pat.confidence = topologyPrior(pat.type) * score;
+}
+
+void validateSquare(DetectedPattern& pat, const RidgeGraph& graph, const MicroSignConfig& cfg) {
+    if (graph.segments.empty()) {
+        return; // legacy synthetic graph: no geometry to validate, keep topology prior
+    }
+    const MicroSignRanges& r = cfg.ranges;
+    const std::vector<Point2D> ordered = polygonOrdered(pat.points);
+    if (ordered.size() < 4) {
+        pat.confidence = 0.0F; // degenerate cycle (e.g. segments through one junction)
+        return;
+    }
+    const LoopStats poly = computeLoopStats(ordered);
+    float score = softRange(cfg.scale.norm(std::sqrt(std::max(poly.area_px, 0.0F))), r.sq_size_lo, r.sq_size_hi,
+                            r.sq_size_margin);
+
+    if (ordered.size() == 4) {
+        float min_angle = 180.0F;
+        float max_angle = 0.0F;
+        float min_side = -1.0F;
+        float max_side = 0.0F;
+        for (size_t i = 0; i < 4; ++i) {
+            const float a = angleAtVertex(ordered[(i + 3) % 4], ordered[i], ordered[(i + 1) % 4]);
+            min_angle = std::min(min_angle, a);
+            max_angle = std::max(max_angle, a);
+            const float dx = ordered[(i + 1) % 4].x - ordered[i].x;
+            const float dy = ordered[(i + 1) % 4].y - ordered[i].y;
+            const float side = std::sqrt(dx * dx + dy * dy);
+            min_side = (min_side < 0.0F) ? side : std::min(min_side, side);
+            max_side = std::max(max_side, side);
+        }
+        score *= softRange(min_angle, r.sq_angle_lo, r.sq_angle_hi, r.sq_angle_margin);
+        score *= softRange(max_angle, r.sq_angle_lo, r.sq_angle_hi, r.sq_angle_margin);
+        if (min_side > 1e-3F) {
+            score *= softRange(max_side / min_side, 0.0F, r.sq_side_ratio_hi, r.sq_side_ratio_margin);
+        }
+    }
+
+    if (degree4VertexCount(graph, ordered) > r.sq_max_degree4_vertices) {
+        score = 0.0F; // grid cell, not a sign
+    }
+    pat.confidence = topologyPrior(pat.type) * score;
+}
+
+void validateJunctionFan(DetectedPattern& pat, const RidgeGraph& graph, const MicroSignConfig& cfg) {
+    const Junction* junc = junctionNear(graph, pat.centroid);
+    if (junc == nullptr) {
+        return; // no arm geometry available -> keep topology prior
+    }
+    const std::vector<ArmDir> arms = armsAt(graph, *junc);
+    if (arms.size() < 3) {
+        return;
+    }
+    const MicroSignRanges& r = cfg.ranges;
+
+    float min_pairwise = 180.0F;
+    float max_pairwise = 0.0F;
+    float sum_x = 0.0F;
+    float sum_y = 0.0F;
+    float min_len = -1.0F;
+    float max_len = 0.0F;
+    for (size_t i = 0; i < arms.size(); ++i) {
+        sum_x += arms[i].ux;
+        sum_y += arms[i].uy;
+        min_len = (min_len < 0.0F) ? arms[i].length : std::min(min_len, arms[i].length);
+        max_len = std::max(max_len, arms[i].length);
+        for (size_t j = i + 1; j < arms.size(); ++j) {
+            const float a = acuteBetween(arms[i].ux, arms[i].uy, arms[j].ux, arms[j].uy);
+            min_pairwise = std::min(min_pairwise, a);
+            max_pairwise = std::max(max_pairwise, a);
+        }
+    }
+
+    float score = 1.0F;
+    if (pat.type == PatternType::Cross && arms.size() == 4) {
+        // Pair the 4 arms into the 2 most collinear strokes; score the stroke axes.
+        static constexpr size_t kPairings[3][4] = {{0, 1, 2, 3}, {0, 2, 1, 3}, {0, 3, 1, 2}};
+        float best_collinearity = -2.0F;
+        size_t best = 0;
+        for (size_t p = 0; p < 3; ++p) {
+            const auto& idx = kPairings[p];
+            const float c1 = std::fabs(arms[idx[0]].ux * arms[idx[1]].ux + arms[idx[0]].uy * arms[idx[1]].uy);
+            const float c2 = std::fabs(arms[idx[2]].ux * arms[idx[3]].ux + arms[idx[2]].uy * arms[idx[3]].uy);
+            const float total = c1 + c2;
+            if (total > best_collinearity) {
+                best_collinearity = total;
+                best = p;
+            }
+        }
+        const auto& idx = kPairings[best];
+        // Stroke-axis angle: acute angle between the leading arm of each paired stroke
+        // (acuteBetween is sign-agnostic, so either arm works as the axis representative).
+        const float stroke_acute = acuteBetween(arms[idx[0]].ux, arms[idx[0]].uy, arms[idx[2]].ux, arms[idx[2]].uy);
+        score *= softRange(stroke_acute, r.cross_acute_lo, r.cross_acute_hi, r.cross_acute_margin);
+        score *= softRange(cfg.scale.norm(min_len), r.cross_arm_lo, r.cross_arm_hi, r.cross_arm_margin);
+        score *= softRange(cfg.scale.norm(max_len), r.cross_arm_lo, r.cross_arm_hi, r.cross_arm_margin);
+
+        float straight_score = 1.0F;
+        bool have_straightness = false;
+        for (int id : pat.source_segment_ids) {
+            const CurveSegment* seg = findSegmentById(graph, id);
+            if (seg == nullptr || seg->points.size() < 3) {
+                continue;
+            }
+            have_straightness = true;
+            straight_score = std::min(straight_score, softRange(maxChordDeviation(seg->points), 0.0F,
+                                                                r.cross_straight_hi, r.cross_straight_margin));
+        }
+        if (have_straightness) {
+            score *= straight_score;
+        }
+    } else if (pat.type == PatternType::Star) {
+        score *= softRange(static_cast<float>(arms.size()), r.star_arms_lo, r.star_arms_hi, r.star_arms_margin);
+        score *= softRange(minAdjacentGapDeg(arms), r.star_pairwise_lo, 360.0F, r.star_pairwise_margin);
+        score *= softRange(cfg.scale.norm(min_len), r.star_arm_lo, r.star_arm_hi, r.star_arm_margin);
+        score *= softRange(cfg.scale.norm(max_len), r.star_arm_lo, r.star_arm_hi, r.star_arm_margin);
+    } else if (pat.type == PatternType::Trident && arms.size() == 3) {
+        score *= softRange(min_pairwise, r.trident_pairwise_lo, 180.0F, r.trident_pairwise_margin);
+        score *= softRange(max_pairwise, 0.0F, r.trident_pairwise_hi, r.trident_pairwise_margin);
+        const float n = static_cast<float>(arms.size());
+        const float coherence = std::sqrt(sum_x * sum_x + sum_y * sum_y) / n;
+        score *= softRange(coherence, r.trident_coherence_lo, 1.0F, r.trident_coherence_margin);
+        if (min_len > 1e-3F) {
+            score *= softRange(max_len / min_len, 0.0F, r.trident_len_ratio_hi, r.trident_len_ratio_margin);
+        }
+        score *= softRange(cfg.scale.norm(min_len), r.trident_prong_lo, r.trident_prong_hi, r.trident_prong_margin);
+        score *= softRange(cfg.scale.norm(max_len), r.trident_prong_lo, r.trident_prong_hi, r.trident_prong_margin);
+    } else {
+        return; // degree/shape mismatch -> keep topology prior
+    }
+    pat.confidence = topologyPrior(pat.type) * score;
+}
+
+// Validated nets: clusters of cross junctions connected through shared segments, with
+// palm-width-normalized nearest-neighbor spacing (legacy emitted one global net).
+std::vector<DetectedPattern> findNetsValidated(const RidgeGraph& graph, const MicroSignConfig& cfg) {
+    const MicroSignRanges& r = cfg.ranges;
+    std::vector<const Junction*> crosses;
+    for (const auto& j : graph.junctions) {
+        if (j.connected_segment_ids.size() >= 4) {
+            crosses.push_back(&j);
+        }
+    }
+    if (static_cast<int>(crosses.size()) < r.net_min_junctions) {
+        return {};
+    }
+
+    const float radius = cfg.scale.px(r.net_cluster_radius_norm);
+    std::vector<bool> used(crosses.size(), false);
+    std::vector<DetectedPattern> nets;
+    for (size_t seed = 0; seed < crosses.size(); ++seed) {
+        if (used[seed]) {
+            continue;
+        }
+        std::vector<const Junction*> cluster{crosses[seed]};
+        used[seed] = true;
+        bool grew = true;
+        while (grew) {
+            grew = false;
+            float cx = 0.0F;
+            float cy = 0.0F;
+            for (const auto* j : cluster) {
+                cx += j->position.x;
+                cy += j->position.y;
+            }
+            const float n = static_cast<float>(cluster.size());
+            cx /= n;
+            cy /= n;
+            for (size_t i = 0; i < crosses.size(); ++i) {
+                if (used[i]) {
+                    continue;
+                }
+                const float dx = crosses[i]->position.x - cx;
+                const float dy = crosses[i]->position.y - cy;
+                if (dx * dx + dy * dy <= radius * radius) {
+                    cluster.push_back(crosses[i]);
+                    used[i] = true;
+                    grew = true;
+                }
+            }
+        }
+        if (static_cast<int>(cluster.size()) < r.net_min_junctions) {
+            continue;
+        }
+
+        float nn_sum = 0.0F;
+        for (const auto* j : cluster) {
+            float nn = -1.0F;
+            for (const auto* other : cluster) {
+                if (other == j) {
+                    continue;
+                }
+                const float dx = other->position.x - j->position.x;
+                const float dy = other->position.y - j->position.y;
+                const float d = std::sqrt(dx * dx + dy * dy);
+                nn = (nn < 0.0F) ? d : std::min(nn, d);
+            }
+            if (nn >= 0.0F) {
+                nn_sum += nn;
+            }
+        }
+        const float count = static_cast<float>(cluster.size());
+        const float mean_nn = nn_sum / count;
+
+        int shared_links = 0;
+        for (size_t i = 0; i < cluster.size(); ++i) {
+            for (size_t j = i + 1; j < cluster.size(); ++j) {
+                for (int id : cluster[i]->connected_segment_ids) {
+                    if (std::find(cluster[j]->connected_segment_ids.begin(), cluster[j]->connected_segment_ids.end(),
+                                  id) != cluster[j]->connected_segment_ids.end()) {
+                        ++shared_links;
+                        break;
+                    }
+                }
+            }
+        }
+
+        float score = softRange(cfg.scale.norm(mean_nn), r.net_spacing_lo, r.net_spacing_hi, r.net_spacing_margin);
+        if (shared_links < r.net_min_shared_links) {
+            score = 0.0F; // unconnected crosses are signs, not a grille
+        }
+        const float confidence = topologyPrior(PatternType::Net) * score;
+        if (confidence < r.min_confidence) {
+            continue;
+        }
+
+        DetectedPattern pat;
+        pat.type = PatternType::Net;
+        pat.name = "Net";
+        pat.confidence = confidence;
+        std::vector<Point2D> pts;
+        pts.reserve(cluster.size());
+        std::set<int> seg_ids;
+        for (const auto* j : cluster) {
+            pts.push_back(j->position);
+            seg_ids.insert(j->connected_segment_ids.begin(), j->connected_segment_ids.end());
+        }
+        pat.points = std::move(pts);
+        pat.centroid = computeCentroid(pat.points);
+        pat.source_segment_ids.assign(seg_ids.begin(), seg_ids.end());
+        nets.push_back(std::move(pat));
+    }
+    return nets;
+}
+
+// Validated fish: elongated island/triangle body with a nearby degree-4 tail junction.
+// (Legacy considered triangle bodies only; islands carry the "island_fish" flag too.)
+std::vector<DetectedPattern> findFishValidated(const RidgeGraph& graph, const MicroSignConfig& cfg) {
+    const MicroSignRanges& r = cfg.ranges;
+    std::vector<DetectedPattern> out;
+    auto try_tail = [&](DetectedPattern body, bool island_body) {
+        const Junction* tail = nullptr;
+        float tail_d = -1.0F;
+        for (const auto& j : graph.junctions) {
+            if (j.connected_segment_ids.size() < 4) {
+                continue;
+            }
+            const float dx = j.position.x - body.centroid.x;
+            const float dy = j.position.y - body.centroid.y;
+            const float d = std::sqrt(dx * dx + dy * dy);
+            if (tail_d < 0.0F || d < tail_d) {
+                tail_d = d;
+                tail = &j;
+            }
+        }
+        if (tail == nullptr) {
+            return;
+        }
+        float score = softRange(cfg.scale.norm(tail_d), 0.0F, r.fish_tail_dist_hi, r.fish_tail_dist_margin);
+
+        const std::vector<Point2D> loop = island_body ? islandLoopPoints(graph, body) : body.points;
+        if (loop.size() >= 3) {
+            const LoopStats stats = computeLoopStats(loop);
+            score *= softRange(cfg.scale.norm(std::sqrt(std::max(stats.area_px, 0.0F))), r.fish_size_lo, r.fish_size_hi,
+                               r.fish_size_margin);
+            score *= softRange(stats.elongation, r.fish_aspect_lo, 8.0F, r.fish_aspect_margin);
+        }
+
+        const float confidence = topologyPrior(PatternType::Fish) * score;
+        if (confidence < r.min_confidence) {
+            return;
+        }
+        body.type = PatternType::Fish;
+        body.name = "Fish (Matsya)";
+        body.confidence = confidence;
+        body.points.push_back(tail->position);
+        out.push_back(std::move(body));
+    };
+
+    for (auto& tri : MicroPatternDetector::findTriangles(graph, cfg)) {
+        try_tail(std::move(tri), false);
+    }
+    for (auto& isl : MicroPatternDetector::findIslands(graph, cfg)) {
+        try_tail(std::move(isl), true);
+    }
+    return out;
+}
+
+} // namespace
+
+std::vector<DetectedPattern> MicroPatternDetector::findIslands(const RidgeGraph& graph, const MicroSignConfig& cfg) {
+    auto pats = findIslands(graph);
+    for (auto& pat : pats) {
+        validateIsland(pat, graph, cfg);
+    }
+    dropBelowMinConfidence(pats, cfg.ranges.min_confidence);
+    return pats;
+}
+
+std::vector<DetectedPattern> MicroPatternDetector::findTriangles(const RidgeGraph& graph, const MicroSignConfig& cfg) {
+    auto pats = findTriangles(graph);
+    for (auto& pat : pats) {
+        validateTriangle(pat, graph, cfg);
+    }
+    dropBelowMinConfidence(pats, cfg.ranges.min_confidence);
+    return pats;
+}
+
+std::vector<DetectedPattern> MicroPatternDetector::findSquares(const RidgeGraph& graph, const MicroSignConfig& cfg) {
+    auto pats = findSquares(graph);
+    for (auto& pat : pats) {
+        validateSquare(pat, graph, cfg);
+    }
+    dropBelowMinConfidence(pats, cfg.ranges.min_confidence);
+    return pats;
+}
+
+std::vector<DetectedPattern> MicroPatternDetector::findCrosses(const RidgeGraph& graph, const MicroSignConfig& cfg) {
+    auto pats = findCrosses(graph);
+    for (auto& pat : pats) {
+        validateJunctionFan(pat, graph, cfg);
+    }
+    dropBelowMinConfidence(pats, cfg.ranges.min_confidence);
+    return pats;
+}
+
+std::vector<DetectedPattern> MicroPatternDetector::findStars(const RidgeGraph& graph, const MicroSignConfig& cfg) {
+    auto pats = findStars(graph);
+    for (auto& pat : pats) {
+        validateJunctionFan(pat, graph, cfg);
+    }
+    dropBelowMinConfidence(pats, cfg.ranges.min_confidence);
+    return pats;
+}
+
+std::vector<DetectedPattern> MicroPatternDetector::findTridents(const RidgeGraph& graph, const MicroSignConfig& cfg) {
+    auto pats = findTridents(graph);
+    for (auto& pat : pats) {
+        validateJunctionFan(pat, graph, cfg);
+    }
+    dropBelowMinConfidence(pats, cfg.ranges.min_confidence);
+    return pats;
+}
+
+std::vector<DetectedPattern> MicroPatternDetector::findNets(const RidgeGraph& graph, const MicroSignConfig& cfg) {
+    return findNetsValidated(graph, cfg);
+}
+
+std::vector<DetectedPattern> MicroPatternDetector::findFish(const RidgeGraph& graph, const MicroSignConfig& cfg) {
+    return findFishValidated(graph, cfg);
+}
+
+std::vector<DetectedPattern> MicroPatternDetector::detectAll(const RidgeGraph& graph, const MicroSignConfig& cfg) {
+    std::vector<DetectedPattern> results;
+
+    auto push_all = [&](std::vector<DetectedPattern>&& pats) {
+        results.insert(results.end(), std::make_move_iterator(pats.begin()), std::make_move_iterator(pats.end()));
+    };
+
+    push_all(findFish(graph, cfg));
+    push_all(findIslands(graph, cfg));
+    push_all(findTriangles(graph, cfg));
+    push_all(findSquares(graph, cfg));
+    push_all(findStars(graph, cfg));
+    push_all(findCrosses(graph, cfg));
+    push_all(findTridents(graph, cfg));
+    push_all(findNets(graph, cfg));
+
+    return results;
+}
+
 std::vector<DetectedPattern> MicroPatternDetector::detectAll(const RidgeGraph& graph) {
     std::vector<DetectedPattern> results;
 
