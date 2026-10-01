@@ -145,7 +145,8 @@ struct MicroSignRanges {
     int net_min_junctions{4};
     int net_min_shared_links{3};
 
-    // Fish: elongated body (island/triangle) with a nearby degree-4 "tail" junction.
+    // Fish: elongated body (island/triangle) with a nearby degree-4 "tail" junction —
+    // the explicitly encoded fish variant; see MicroPatternDetector::findFish.
     float fish_tail_dist_hi{0.12F};
     float fish_tail_dist_margin{0.03F};
     float fish_size_lo{0.020F};
@@ -156,6 +157,11 @@ struct MicroSignRanges {
 
     // Candidates whose validated confidence falls below this are dropped entirely.
     float min_confidence{0.20F};
+
+    // Cross-sign dedup: two candidates sharing more than this fraction of the smaller
+    // one's source segments are one physical mark; the lower-confidence one is dropped.
+    // Nets are excluded (a grille's support is the union of its junctions' pieces).
+    float support_overlap_max{0.5F};
 };
 
 /**

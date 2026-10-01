@@ -461,6 +461,34 @@ TEST(MicroSignValidation, DetectsFishWithTail) {
     EXPECT_EQ(countType(MicroPatternDetector::detectAll(g, cfgFor()), PatternType::Island), 1);
 }
 
+TEST(MicroSignValidation, IslandAndFishDedupeToOneSign) {
+    const RidgeGraph g = fishGraph();
+    const auto all = MicroPatternDetector::detectAll(g, cfgFor());
+    // The island body and its fish share support: one physical mark, one report, and
+    // the higher-confidence island (0.95 prior) outranks the fish.
+    EXPECT_EQ(countType(all, PatternType::Island) + countType(all, PatternType::Fish), 1);
+    EXPECT_EQ(countType(all, PatternType::Island), 1);
+}
+
+TEST(MicroSignValidation, FilterTraceRecordsSoftScores) {
+    auto islands = MicroPatternDetector::findIslands(islandGraph(), cfgFor());
+    ASSERT_EQ(islands.size(), 1u);
+    bool has_size = false;
+    bool has_elong = false;
+    for (const auto& f : islands[0].filter_trace) {
+        if (f.name == "size") {
+            has_size = true;
+            EXPECT_NEAR(f.score, 1.0F, 1e-3F);
+        }
+        if (f.name == "elong") {
+            has_elong = true;
+            EXPECT_NEAR(f.score, 1.0F, 1e-3F);
+        }
+    }
+    EXPECT_TRUE(has_size);
+    EXPECT_TRUE(has_elong);
+}
+
 TEST(MicroSignValidation, ScaleInvariance) {
     const auto small = MicroPatternDetector::findIslands(islandGraph(1.0F), cfgFor(282.0F));
     const auto large = MicroPatternDetector::findIslands(islandGraph(2.0F), cfgFor(564.0F));

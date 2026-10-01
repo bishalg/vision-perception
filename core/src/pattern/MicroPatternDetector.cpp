@@ -515,6 +515,21 @@ void dropBelowMinConfidence(std::vector<DetectedPattern>& pats, float min_confid
                pats.end());
 }
 
+// Accumulates named soft-filter scores and their product for a candidate.
+class ScoreTrace {
+public:
+    void add(const char* name, float score) {
+        trace_.push_back(FilterScore{name, score});
+        product_ *= score;
+    }
+    [[nodiscard]] float product() const { return product_; }
+    [[nodiscard]] std::vector<FilterScore> take() { return std::move(trace_); }
+
+private:
+    std::vector<FilterScore> trace_;
+    float product_{1.0F};
+};
+
 void validateIsland(DetectedPattern& pat, const RidgeGraph& graph, const MicroSignConfig& cfg) {
     if (graph.segments.empty()) {
         return; // legacy synthetic graph: no geometry to validate, keep topology prior
@@ -522,14 +537,17 @@ void validateIsland(DetectedPattern& pat, const RidgeGraph& graph, const MicroSi
     const std::vector<Point2D> loop = islandLoopPoints(graph, pat);
     if (loop.size() < 3) {
         pat.confidence = 0.0F; // collapsed loop in a real graph: reject
+        pat.filter_trace = {FilterScore{"degenerate", 0.0F}};
         return;
     }
     const LoopStats stats = computeLoopStats(loop);
     const MicroSignRanges& r = cfg.ranges;
-    pat.confidence = topologyPrior(pat.type) *
-                     softRange(cfg.scale.norm(std::sqrt(std::max(stats.area_px, 0.0F))), r.island_size_lo,
-                               r.island_size_hi, r.island_size_margin) *
-                     softRange(stats.elongation, r.island_elong_lo, r.island_elong_hi, r.island_elong_margin);
+    ScoreTrace trace;
+    trace.add("size", softRange(cfg.scale.norm(std::sqrt(std::max(stats.area_px, 0.0F))), r.island_size_lo,
+                                r.island_size_hi, r.island_size_margin));
+    trace.add("elong", softRange(stats.elongation, r.island_elong_lo, r.island_elong_hi, r.island_elong_margin));
+    pat.filter_trace = trace.take();
+    pat.confidence = topologyPrior(pat.type) * trace.product();
 }
 
 void validateTriangle(DetectedPattern& pat, const RidgeGraph& graph, const MicroSignConfig& cfg) {
@@ -543,8 +561,9 @@ void validateTriangle(DetectedPattern& pat, const RidgeGraph& graph, const Micro
         return;
     }
     const LoopStats poly = computeLoopStats(ordered);
-    float score = softRange(cfg.scale.norm(std::sqrt(std::max(poly.area_px, 0.0F))), r.tri_size_lo, r.tri_size_hi,
-                            r.tri_size_margin);
+    ScoreTrace trace;
+    trace.add("size", softRange(cfg.scale.norm(std::sqrt(std::max(poly.area_px, 0.0F))), r.tri_size_lo, r.tri_size_hi,
+                                r.tri_size_margin));
 
     if (ordered.size() == 3) {
         float min_angle = 180.0F;
@@ -554,8 +573,8 @@ void validateTriangle(DetectedPattern& pat, const RidgeGraph& graph, const Micro
             min_angle = std::min(min_angle, a);
             max_angle = std::max(max_angle, a);
         }
-        score *= softRange(min_angle, r.tri_angle_lo, r.tri_angle_hi, r.tri_angle_margin);
-        score *= softRange(max_angle, r.tri_angle_lo, r.tri_angle_hi, r.tri_angle_margin);
+        trace.add("angle_lo", softRange(min_angle, r.tri_angle_lo, r.tri_angle_hi, r.tri_angle_margin));
+        trace.add("angle_hi", softRange(max_angle, r.tri_angle_lo, r.tri_angle_hi, r.tri_angle_margin));
     }
 
     bool have_straightness = false;
@@ -570,13 +589,14 @@ void validateTriangle(DetectedPattern& pat, const RidgeGraph& graph, const Micro
             straight_score, softRange(maxChordDeviation(seg->points), 0.0F, r.tri_straight_hi, r.tri_straight_margin));
     }
     if (have_straightness) {
-        score *= straight_score;
+        trace.add("straight", straight_score);
     }
 
     if (degree4VertexCount(graph, ordered) > r.tri_max_degree4_vertices) {
-        score = 0.0F; // grid cell, not a sign
+        trace.add("not_net", 0.0F); // grid cell, not a sign
     }
-    pat.confidence = topologyPrior(pat.type) * score;
+    pat.filter_trace = trace.take();
+    pat.confidence = topologyPrior(pat.type) * trace.product();
 }
 
 void validateSquare(DetectedPattern& pat, const RidgeGraph& graph, const MicroSignConfig& cfg) {
@@ -590,8 +610,9 @@ void validateSquare(DetectedPattern& pat, const RidgeGraph& graph, const MicroSi
         return;
     }
     const LoopStats poly = computeLoopStats(ordered);
-    float score = softRange(cfg.scale.norm(std::sqrt(std::max(poly.area_px, 0.0F))), r.sq_size_lo, r.sq_size_hi,
-                            r.sq_size_margin);
+    ScoreTrace trace;
+    trace.add("size", softRange(cfg.scale.norm(std::sqrt(std::max(poly.area_px, 0.0F))), r.sq_size_lo, r.sq_size_hi,
+                                r.sq_size_margin));
 
     if (ordered.size() == 4) {
         float min_angle = 180.0F;
@@ -608,17 +629,18 @@ void validateSquare(DetectedPattern& pat, const RidgeGraph& graph, const MicroSi
             min_side = (min_side < 0.0F) ? side : std::min(min_side, side);
             max_side = std::max(max_side, side);
         }
-        score *= softRange(min_angle, r.sq_angle_lo, r.sq_angle_hi, r.sq_angle_margin);
-        score *= softRange(max_angle, r.sq_angle_lo, r.sq_angle_hi, r.sq_angle_margin);
+        trace.add("angle_lo", softRange(min_angle, r.sq_angle_lo, r.sq_angle_hi, r.sq_angle_margin));
+        trace.add("angle_hi", softRange(max_angle, r.sq_angle_lo, r.sq_angle_hi, r.sq_angle_margin));
         if (min_side > 1e-3F) {
-            score *= softRange(max_side / min_side, 0.0F, r.sq_side_ratio_hi, r.sq_side_ratio_margin);
+            trace.add("side_ratio", softRange(max_side / min_side, 0.0F, r.sq_side_ratio_hi, r.sq_side_ratio_margin));
         }
     }
 
     if (degree4VertexCount(graph, ordered) > r.sq_max_degree4_vertices) {
-        score = 0.0F; // grid cell, not a sign
+        trace.add("not_net", 0.0F); // grid cell, not a sign
     }
-    pat.confidence = topologyPrior(pat.type) * score;
+    pat.filter_trace = trace.take();
+    pat.confidence = topologyPrior(pat.type) * trace.product();
 }
 
 void validateJunctionFan(DetectedPattern& pat, const RidgeGraph& graph, const MicroSignConfig& cfg) {
@@ -650,7 +672,7 @@ void validateJunctionFan(DetectedPattern& pat, const RidgeGraph& graph, const Mi
         }
     }
 
-    float score = 1.0F;
+    ScoreTrace trace;
     if (pat.type == PatternType::Cross && arms.size() == 4) {
         // Pair the 4 arms into the 2 most collinear strokes; score the stroke axes.
         static constexpr size_t kPairings[3][4] = {{0, 1, 2, 3}, {0, 2, 1, 3}, {0, 3, 1, 2}};
@@ -670,9 +692,9 @@ void validateJunctionFan(DetectedPattern& pat, const RidgeGraph& graph, const Mi
         // Stroke-axis angle: acute angle between the leading arm of each paired stroke
         // (acuteBetween is sign-agnostic, so either arm works as the axis representative).
         const float stroke_acute = acuteBetween(arms[idx[0]].ux, arms[idx[0]].uy, arms[idx[2]].ux, arms[idx[2]].uy);
-        score *= softRange(stroke_acute, r.cross_acute_lo, r.cross_acute_hi, r.cross_acute_margin);
-        score *= softRange(cfg.scale.norm(min_len), r.cross_arm_lo, r.cross_arm_hi, r.cross_arm_margin);
-        score *= softRange(cfg.scale.norm(max_len), r.cross_arm_lo, r.cross_arm_hi, r.cross_arm_margin);
+        trace.add("angle", softRange(stroke_acute, r.cross_acute_lo, r.cross_acute_hi, r.cross_acute_margin));
+        trace.add("arm_lo", softRange(cfg.scale.norm(min_len), r.cross_arm_lo, r.cross_arm_hi, r.cross_arm_margin));
+        trace.add("arm_hi", softRange(cfg.scale.norm(max_len), r.cross_arm_lo, r.cross_arm_hi, r.cross_arm_margin));
 
         float straight_score = 1.0F;
         bool have_straightness = false;
@@ -686,28 +708,33 @@ void validateJunctionFan(DetectedPattern& pat, const RidgeGraph& graph, const Mi
                                                                 r.cross_straight_hi, r.cross_straight_margin));
         }
         if (have_straightness) {
-            score *= straight_score;
+            trace.add("straight", straight_score);
         }
     } else if (pat.type == PatternType::Star) {
-        score *= softRange(static_cast<float>(arms.size()), r.star_arms_lo, r.star_arms_hi, r.star_arms_margin);
-        score *= softRange(minAdjacentGapDeg(arms), r.star_pairwise_lo, 360.0F, r.star_pairwise_margin);
-        score *= softRange(cfg.scale.norm(min_len), r.star_arm_lo, r.star_arm_hi, r.star_arm_margin);
-        score *= softRange(cfg.scale.norm(max_len), r.star_arm_lo, r.star_arm_hi, r.star_arm_margin);
+        trace.add("arms",
+                  softRange(static_cast<float>(arms.size()), r.star_arms_lo, r.star_arms_hi, r.star_arms_margin));
+        trace.add("gap", softRange(minAdjacentGapDeg(arms), r.star_pairwise_lo, 360.0F, r.star_pairwise_margin));
+        trace.add("arm_lo", softRange(cfg.scale.norm(min_len), r.star_arm_lo, r.star_arm_hi, r.star_arm_margin));
+        trace.add("arm_hi", softRange(cfg.scale.norm(max_len), r.star_arm_lo, r.star_arm_hi, r.star_arm_margin));
     } else if (pat.type == PatternType::Trident && arms.size() == 3) {
-        score *= softRange(min_pairwise, r.trident_pairwise_lo, 180.0F, r.trident_pairwise_margin);
-        score *= softRange(max_pairwise, 0.0F, r.trident_pairwise_hi, r.trident_pairwise_margin);
+        trace.add("pairwise_lo", softRange(min_pairwise, r.trident_pairwise_lo, 180.0F, r.trident_pairwise_margin));
+        trace.add("pairwise_hi", softRange(max_pairwise, 0.0F, r.trident_pairwise_hi, r.trident_pairwise_margin));
         const float n = static_cast<float>(arms.size());
         const float coherence = std::sqrt(sum_x * sum_x + sum_y * sum_y) / n;
-        score *= softRange(coherence, r.trident_coherence_lo, 1.0F, r.trident_coherence_margin);
+        trace.add("coherence", softRange(coherence, r.trident_coherence_lo, 1.0F, r.trident_coherence_margin));
         if (min_len > 1e-3F) {
-            score *= softRange(max_len / min_len, 0.0F, r.trident_len_ratio_hi, r.trident_len_ratio_margin);
+            trace.add("len_ratio",
+                      softRange(max_len / min_len, 0.0F, r.trident_len_ratio_hi, r.trident_len_ratio_margin));
         }
-        score *= softRange(cfg.scale.norm(min_len), r.trident_prong_lo, r.trident_prong_hi, r.trident_prong_margin);
-        score *= softRange(cfg.scale.norm(max_len), r.trident_prong_lo, r.trident_prong_hi, r.trident_prong_margin);
+        trace.add("prong_lo",
+                  softRange(cfg.scale.norm(min_len), r.trident_prong_lo, r.trident_prong_hi, r.trident_prong_margin));
+        trace.add("prong_hi",
+                  softRange(cfg.scale.norm(max_len), r.trident_prong_lo, r.trident_prong_hi, r.trident_prong_margin));
     } else {
         return; // degree/shape mismatch -> keep topology prior
     }
-    pat.confidence = topologyPrior(pat.type) * score;
+    pat.filter_trace = trace.take();
+    pat.confidence = topologyPrior(pat.type) * trace.product();
 }
 
 // Validated nets: clusters of cross junctions connected through shared segments, with
@@ -794,11 +821,13 @@ std::vector<DetectedPattern> findNetsValidated(const RidgeGraph& graph, const Mi
             }
         }
 
-        float score = softRange(cfg.scale.norm(mean_nn), r.net_spacing_lo, r.net_spacing_hi, r.net_spacing_margin);
+        ScoreTrace trace;
+        trace.add("spacing",
+                  softRange(cfg.scale.norm(mean_nn), r.net_spacing_lo, r.net_spacing_hi, r.net_spacing_margin));
         if (shared_links < r.net_min_shared_links) {
-            score = 0.0F; // unconnected crosses are signs, not a grille
+            trace.add("links", 0.0F); // unconnected crosses are signs, not a grille
         }
-        const float confidence = topologyPrior(PatternType::Net) * score;
+        const float confidence = topologyPrior(PatternType::Net) * trace.product();
         if (confidence < r.min_confidence) {
             continue;
         }
@@ -807,6 +836,7 @@ std::vector<DetectedPattern> findNetsValidated(const RidgeGraph& graph, const Mi
         pat.type = PatternType::Net;
         pat.name = "Net";
         pat.confidence = confidence;
+        pat.filter_trace = trace.take();
         std::vector<Point2D> pts;
         pts.reserve(cluster.size());
         std::set<int> seg_ids;
@@ -845,23 +875,25 @@ std::vector<DetectedPattern> findFishValidated(const RidgeGraph& graph, const Mi
         if (tail == nullptr) {
             return;
         }
-        float score = softRange(cfg.scale.norm(tail_d), 0.0F, r.fish_tail_dist_hi, r.fish_tail_dist_margin);
+        ScoreTrace trace;
+        trace.add("tail_dist", softRange(cfg.scale.norm(tail_d), 0.0F, r.fish_tail_dist_hi, r.fish_tail_dist_margin));
 
         const std::vector<Point2D> loop = island_body ? islandLoopPoints(graph, body) : body.points;
         if (loop.size() >= 3) {
             const LoopStats stats = computeLoopStats(loop);
-            score *= softRange(cfg.scale.norm(std::sqrt(std::max(stats.area_px, 0.0F))), r.fish_size_lo, r.fish_size_hi,
-                               r.fish_size_margin);
-            score *= softRange(stats.elongation, r.fish_aspect_lo, 8.0F, r.fish_aspect_margin);
+            trace.add("body_size", softRange(cfg.scale.norm(std::sqrt(std::max(stats.area_px, 0.0F))), r.fish_size_lo,
+                                             r.fish_size_hi, r.fish_size_margin));
+            trace.add("aspect", softRange(stats.elongation, r.fish_aspect_lo, 8.0F, r.fish_aspect_margin));
         }
 
-        const float confidence = topologyPrior(PatternType::Fish) * score;
+        const float confidence = topologyPrior(PatternType::Fish) * trace.product();
         if (confidence < r.min_confidence) {
             return;
         }
         body.type = PatternType::Fish;
         body.name = "Fish (Matsya)";
         body.confidence = confidence;
+        body.filter_trace = trace.take();
         body.points.push_back(tail->position);
         out.push_back(std::move(body));
     };
@@ -873,6 +905,49 @@ std::vector<DetectedPattern> findFishValidated(const RidgeGraph& graph, const Mi
         try_tail(std::move(isl), true);
     }
     return out;
+}
+
+// Fraction of the smaller candidate's source segments shared with the other candidate.
+float supportOverlap(const DetectedPattern& a, const DetectedPattern& b) {
+    if (a.source_segment_ids.empty() || b.source_segment_ids.empty()) {
+        return 0.0F;
+    }
+    size_t shared = 0;
+    for (int id : a.source_segment_ids) {
+        if (std::find(b.source_segment_ids.begin(), b.source_segment_ids.end(), id) != b.source_segment_ids.end()) {
+            ++shared;
+        }
+    }
+    const size_t smaller = std::min(a.source_segment_ids.size(), b.source_segment_ids.size());
+    return (smaller > 0) ? static_cast<float>(shared) / static_cast<float>(smaller) : 0.0F;
+}
+
+// Same-locus dedup: candidates sharing more than `max_overlap` of the smaller support
+// are one physical mark; the lower-confidence one is dropped. Nets are excluded on both
+// sides — a grille's support is the union of its junctions' pieces, so it would swamp
+// (or be swamped by) every cross inside it.
+void dedupeOverlappingSupport(std::vector<DetectedPattern>& pats, float max_overlap) {
+    std::stable_sort(pats.begin(), pats.end(),
+                     [](const DetectedPattern& a, const DetectedPattern& b) { return a.confidence > b.confidence; });
+    std::vector<DetectedPattern> kept;
+    kept.reserve(pats.size());
+    for (auto& p : pats) {
+        if (p.type == PatternType::Net) {
+            kept.push_back(std::move(p));
+            continue;
+        }
+        bool dominated = false;
+        for (const auto& k : kept) {
+            if (k.type != PatternType::Net && supportOverlap(p, k) >= max_overlap) {
+                dominated = true;
+                break;
+            }
+        }
+        if (!dominated) {
+            kept.push_back(std::move(p));
+        }
+    }
+    pats = std::move(kept);
 }
 
 } // namespace
@@ -955,6 +1030,7 @@ std::vector<DetectedPattern> MicroPatternDetector::detectAll(const RidgeGraph& g
     push_all(findTridents(graph, cfg));
     push_all(findNets(graph, cfg));
 
+    dedupeOverlappingSupport(results, cfg.ranges.support_overlap_max);
     return results;
 }
 

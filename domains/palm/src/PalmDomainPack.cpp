@@ -361,8 +361,17 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
             entry["host"] = att.host_name;
             entry["host_arc_s"] = att.host_arc_s;
         }
+#ifndef NDEBUG
+        // Per-filter score breakdown for field debugging ("why is this cross 0.4?").
+        nlohmann::json filters = nlohmann::json::array();
+        for (const auto& f : sign.filter_trace) {
+            filters.push_back({{"name", f.name}, {"score", f.score}});
+        }
+        entry["filters"] = std::move(filters);
+#endif
         signs_json.push_back(std::move(entry));
     }
+    const nlohmann::json micro_signs_payload = {{"schema_version", 1}, {"signs", signs_json}};
 
     output.domain_payload = {{"status", "analyzed"},
                              {"palm_height_px", palm_height},
@@ -374,7 +383,7 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
                              {"major_lines", major_lines_json},
                              {"palm_analysis", palm_analysis},
                              {"fate_analysis", fate_report_mutable.toJson()},
-                             {"micro_signs", signs_json},
+                             {"micro_signs", micro_signs_payload},
                              {"heart_analysis", heart_report.toJson()},
                              {"head_analysis", head_report.toJson()},
                              {"life_analysis", life_report.toJson()},

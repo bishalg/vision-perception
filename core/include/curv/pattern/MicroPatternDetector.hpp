@@ -26,6 +26,15 @@ enum class PatternType {
 };
 
 /**
+ * @brief One named soft-filter contribution to a candidate's confidence
+ *        (populated by the validated overloads; serialized only in debug builds).
+ */
+struct FilterScore {
+    std::string name;
+    float score{1.0F};
+};
+
+/**
  * @brief Detected geometric sign or micro-pattern.
  */
 struct DetectedPattern {
@@ -35,6 +44,7 @@ struct DetectedPattern {
     Point2D centroid;
     std::vector<Point2D> points;
     std::vector<int> source_segment_ids;
+    std::vector<FilterScore> filter_trace;
 
     // Optional host line attachment
     int host_curve_id{-1};
@@ -79,6 +89,13 @@ public:
     [[nodiscard]] static std::vector<DetectedPattern> findStars(const RidgeGraph& graph, const MicroSignConfig& cfg);
     [[nodiscard]] static std::vector<DetectedPattern> findTridents(const RidgeGraph& graph, const MicroSignConfig& cfg);
     [[nodiscard]] static std::vector<DetectedPattern> findNets(const RidgeGraph& graph, const MicroSignConfig& cfg);
+
+    /// Validated fish: elongated island/triangle body with an adjacent degree-4 tail
+    /// junction. This is the explicitly encoded topology — the chart's
+    /// 2-strokes/2-crossings fish IS the island body, so it reports as Island unless the
+    /// tail junction is present. detectAll dedupes candidates sharing support and keeps
+    /// the higher-confidence sign, so an island and its fish never both surface for one
+    /// physical mark.
     [[nodiscard]] static std::vector<DetectedPattern> findFish(const RidgeGraph& graph, const MicroSignConfig& cfg);
 };
 
