@@ -33,6 +33,10 @@ set(VISION_SANITIZERS "" CACHE STRING "Comma-separated sanitizer list to enable"
 if(VISION_SANITIZERS)
     add_compile_options(-fsanitize=${VISION_SANITIZERS} -fno-omit-frame-pointer -g)
     add_link_options(-fsanitize=${VISION_SANITIZERS})
+    # Instrumented builds run 20-50x slower, so wall-clock budgets pinned for Release are
+    # unreachable here. Targets that assert a timing bound must scale or skip their
+    # assertion under sanitizers rather than fail unconditionally.
+    add_compile_definitions(VISION_SANITIZED_BUILD=1)
 endif()
 
 # LLVM source-based coverage instrumentation (Apple Clang / Clang).

@@ -18,6 +18,13 @@ struct StegerConfig {
     float high_threshold{1.5f};     ///< Hysteresis seed salience bound (|lambda1|)
     bool extract_dark_lines{false}; ///< True for dark valleys/creases; False for bright ridges
     float min_segment_length{5.0f}; ///< Minimum polyline arc-length (pixels) to retain
+
+    /// Accept both ridge polarities, ignoring extract_dark_lines. Crease polarity depends
+    /// on lighting direction, so a single-polarity pass is blind to half of real captures:
+    /// on the canonical palm the dark-only pass yields no micro-signs at all while the
+    /// light-only pass recovers the head-line island at conf 0.95. Costs no extra pass —
+    /// the polarity test is a per-pixel predicate on the already-computed eigenvalue.
+    bool extract_both_polarities{false};
 };
 
 /**

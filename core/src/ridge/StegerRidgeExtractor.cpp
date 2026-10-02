@@ -142,7 +142,9 @@ RidgeGraph StegerRidgeExtractor::extractRidgeGraph(const cv::Mat& image) const {
 
                 // Polarity test: dark line (valleys) -> lambda1 > 0; bright line (ridges) -> lambda1 < 0
                 const bool correct_polarity =
-                    config_.extract_dark_lines ? (eigen.lambda1 > 0.0f) : (eigen.lambda1 < 0.0f);
+                    config_.extract_both_polarities
+                        ? true
+                        : (config_.extract_dark_lines ? (eigen.lambda1 > 0.0f) : (eigen.lambda1 < 0.0f));
 
                 if (!correct_polarity || salience < config_.low_threshold) {
                     continue;

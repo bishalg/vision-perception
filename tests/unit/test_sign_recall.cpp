@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <cstring>
 #include <functional>
 #include <iostream>
 #include <string>
@@ -161,17 +162,46 @@ void drawSign(cv::Mat& mask, PatternType type, const Point2D& c, float s) {
     }
 }
 
-RidgeGraph extractGraph(const cv::Mat& gray) {
+// Extraction settings for the sweep, overridable so the harness can measure which knob
+// actually moves recall. Defaults are the production fine-crease regime.
+struct SweepExtraction {
+    float sigma{0.80F};
+    float low{0.18F};
+    float high{0.66F};
+    float min_len{6.0F};
+    bool dark{true};
+    float junction_tol{2.5F};
+};
+
+SweepExtraction sweepExtraction() {
+    SweepExtraction e;
+    auto num = [](const char* k, float& dst) {
+        if (const char* v = std::getenv(k)) {
+            dst = std::strtof(v, nullptr);
+        }
+    };
+    num("CURV_SIGN_SIGMA", e.sigma);
+    num("CURV_SIGN_LOW", e.low);
+    num("CURV_SIGN_HIGH", e.high);
+    num("CURV_SIGN_MINLEN", e.min_len);
+    num("CURV_SIGN_JTOL", e.junction_tol);
+    if (const char* v = std::getenv("CURV_SIGN_DARK")) {
+        e.dark = std::strtof(v, nullptr) != 0.0F;
+    }
+    return e;
+}
+
+RidgeGraph extractGraph(const cv::Mat& gray, const SweepExtraction& ex) {
     // Micro-signs are fine-scale structures: the major-line Steger scale (sigma ~1.45)
     // fragments short strokes near crossings (mutual Hessian interference within ~2sigma
     // + min_segment_length), so extraction runs at the fine crease scale instead — the
     // same regime PalmParameters::computeFineStegerConfig targets for minor creases.
     ridge::StegerConfig cfg;
-    cfg.extract_dark_lines = true;
-    cfg.sigma = 0.80F;
-    cfg.low_threshold = 0.18F;
-    cfg.high_threshold = 0.66F;
-    cfg.min_segment_length = 6.0F;
+    cfg.extract_dark_lines = ex.dark;
+    cfg.sigma = ex.sigma;
+    cfg.low_threshold = ex.low;
+    cfg.high_threshold = ex.high;
+    cfg.min_segment_length = ex.min_len;
     ridge::StegerRidgeExtractor extractor(cfg);
     RidgeGraph raw = extractor.extractRidgeGraph(gray);
     // Palm-disc restriction, mirroring the production pipeline's filterGraphByPalmDisc:
@@ -197,7 +227,7 @@ RidgeGraph extractGraph(const cv::Mat& gray) {
             graph.segments.push_back(std::move(seg));
         }
     }
-    geometry::deriveJunctions(graph, 2.5F);
+    geometry::deriveJunctions(graph, ex.junction_tol);
     return graph;
 }
 
@@ -241,7 +271,7 @@ TEST(SignRecallSweep, FlatBackgroundSmoke) {
     cv::Mat rendered;
     darkened.convertTo(rendered, CV_8U);
 
-    const RidgeGraph graph = extractGraph(rendered);
+    const RidgeGraph graph = extractGraph(rendered, sweepExtraction());
     const auto detections = MicroPatternDetector::detectAll(graph, signConfig());
     std::cout << "  [flat diag] segments=" << graph.segments.size() << " junctions=" << graph.junctions.size()
               << " detections=" << detections.size() << "\n";
@@ -284,8 +314,26 @@ TEST(SignRecallSweep, RenderedSignsOnCanonicalPalm) {
     const MicroSignConfig cfg = signConfig();
     const float radius_px = kMatchRadiusNorm * kPalmWidth;
 
+    // Plant size relative to the canonical prototype. The prototypes are drawn at
+    // 1.4-8% of palm width, well below the scale at which the photo's own texture
+    // dominates the fine-scale graph; real palmistry signs span roughly 15-30%. This knob
+    // exists so the harness can measure whether plant scale is what makes the sweep
+    // un-discriminative (CURV_SIGN_PLANT_SCALE=2.0, 3.0, ...).
+    float plant_scale = 1.0F;
+    if (const char* ps = std::getenv("CURV_SIGN_PLANT_SCALE")) {
+        plant_scale = std::strtof(ps, nullptr);
+    }
+    // Stroke softness. The prototypes are blurred before compositing; on the real photo the
+    // skin texture has sharper edges than a blurred stroke, so plants can lose the salience
+    // contest against texture at every hysteresis threshold.
+    float plant_blur = 1.2F;
+    if (const char* pb = std::getenv("CURV_SIGN_PLANT_BLUR")) {
+        plant_blur = std::strtof(pb, nullptr);
+    }
+
     // Baseline detections (no plants) are pre-existing image structure, not FPs.
-    const RidgeGraph baseline_graph = extractGraph(base);
+    const auto ex = sweepExtraction();
+    const RidgeGraph baseline_graph = extractGraph(base, ex);
     const auto baseline = MicroPatternDetector::detectAll(baseline_graph, cfg);
 
     const PatternType kTypes[8] = {PatternType::Island, PatternType::Triangle, PatternType::Square,
@@ -314,11 +362,15 @@ TEST(SignRecallSweep, RenderedSignsOnCanonicalPalm) {
         cv::Mat mask = cv::Mat::zeros(base.size(), CV_8U);
         std::vector<Plant> plants;
         for (int i = 0; i < 8; ++i) {
-            drawSign(mask, kTypes[i], kSites[i], kPalmWidth);
+            drawSign(mask, kTypes[i], kSites[i], kPalmWidth * plant_scale);
             plants.push_back({kTypes[i], kNames[i], kSites[i]});
         }
         cv::Mat blurred;
-        cv::GaussianBlur(mask, blurred, cv::Size(0, 0), 1.2);
+        if (plant_blur > 0.0F) {
+            cv::GaussianBlur(mask, blurred, cv::Size(0, 0), plant_blur);
+        } else {
+            mask.copyTo(blurred);
+        }
         cv::Mat alpha;
         blurred.convertTo(alpha, CV_32F, contrast / 255.0F);
         gray = gray.mul(1.0 - alpha);
@@ -329,7 +381,7 @@ TEST(SignRecallSweep, RenderedSignsOnCanonicalPalm) {
             cv::imwrite("/tmp/mask_050.png", mask);
         }
 
-        const RidgeGraph graph = extractGraph(rendered);
+        const RidgeGraph graph = extractGraph(rendered, ex);
         auto detections = MicroPatternDetector::detectAll(graph, cfg);
         std::vector<bool> consumed(detections.size(), false);
         std::cout << "  [diag] contrast=" << contrast << " base_segments=" << baseline_graph.segments.size()
@@ -400,7 +452,9 @@ TEST(SignRecallSweep, RenderedSignsOnCanonicalPalm) {
                  sum_r / n_scored, img_tp + img_fn, img_tp);
         report += line;
     }
-    std::cout << "---- per-sign precision/recall (rendered on canonical_palm) ----\n" << report;
+    std::cout << "---- per-sign precision/recall (rendered on canonical_palm, plant_scale="
+              << plant_scale << ", blur=" << plant_blur << ") ----\n"
+              << report;
 
     // Floors intentionally NOT asserted yet: the sweep is the measurement instrument
     // for the PR4 recalibration. Pin per-sign precision/recall floors once extraction

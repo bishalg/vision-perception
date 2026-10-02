@@ -168,6 +168,7 @@ target_link_libraries(test_capi
         GTest::gtest_main
         ${OpenCV_LIBS}
 )
+target_compile_definitions(test_capi PRIVATE CURV_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 vision_set_compiler_warnings(test_capi)
 add_test(NAME test_capi COMMAND test_capi)
 
@@ -597,6 +598,22 @@ target_link_libraries(test_preprocessor
 )
 vision_set_compiler_warnings(test_preprocessor)
 add_test(NAME test_preprocessor COMMAND test_preprocessor)
+
+# ------------------------------------------------------------------------------
+# Unit Test: test_palm_sign_graph (micro-signs on their own ridge graph)
+# ------------------------------------------------------------------------------
+add_executable(test_palm_sign_graph
+    unit/test_palm_sign_graph.cpp
+)
+target_link_libraries(test_palm_sign_graph
+    PRIVATE
+        curv_domains
+        GTest::gtest_main
+        ${OpenCV_LIBS}
+)
+target_compile_definitions(test_palm_sign_graph PRIVATE CURV_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+vision_set_compiler_warnings(test_palm_sign_graph)
+add_test(NAME test_palm_sign_graph COMMAND test_palm_sign_graph)
 
 # ------------------------------------------------------------------------------
 # Unit Test: test_pattern_perf (locality bounds for cycle finders + deriver)

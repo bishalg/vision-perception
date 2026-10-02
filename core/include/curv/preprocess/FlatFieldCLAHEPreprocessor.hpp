@@ -18,6 +18,11 @@ struct FlatFieldCLAHEConfig {
     int background_floor{30};       ///< Clamp for the estimated background (protects the division)
     double clahe_clip{2.0};         ///< CLAHE clip limit
     int clahe_tiles{8};             ///< CLAHE tile grid (clahe_tiles x clahe_tiles)
+    /// Enables the CLAHE stage. Illumination flattening and the local contrast lift have
+    /// opposite effects on micro-sign detection: CLAHE helps the major-crease pass but on
+    /// the canonical capture it drives micro-signs to zero (1 sign -> 0 at clip 1.25/2/4).
+    /// Callers that need a flattened image without the local lift set this false.
+    bool enable_clahe{true};
 };
 
 /**

@@ -24,6 +24,12 @@ struct DomainInput {
     /// "flat_field_clahe_v1" or "none" — exported verbatim into the domain payload so
     /// every JSON capture states how it was produced.
     const char* preprocessing{"none"};
+    /// Optional alternate ridge graph used for micro-sign detection instead of `ridges`.
+    /// The major-crease and micro-sign consumers want different images: CLAHE helps the
+    /// major pass but collapses micro-sign detection on the canonical capture (1 -> 0), so
+    /// a caller can pass the contrast-lifted graph as `ridges` and a flattened-only graph
+    /// here. Same crease scale, not a finer one. When null, signs come from `ridges`.
+    const RidgeGraph* sign_ridges{nullptr};
 };
 
 /**

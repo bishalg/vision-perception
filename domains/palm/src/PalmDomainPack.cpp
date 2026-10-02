@@ -22,6 +22,13 @@ namespace CurvEngine::domains {
 
 namespace {
 
+/// Junction-connected segment ceiling for micro-sign detection. Not a stall guard (commit 1
+/// made cost linear in k) but a texture guard: beyond this the graph is dominated by skin
+/// micro-texture and the validators emit confident junk. Measured on the canonical capture,
+/// the sign graph the pipeline supplies (raw patch, light polarity, major scale) stays well
+/// inside it, so the PR4a value is retained unchanged.
+constexpr size_t kSignSegmentBudget = 420;
+
 struct SegmentAnalysis {
     const CurveSegment* seg{nullptr};
     float min_x{std::numeric_limits<float>::max()};
@@ -337,21 +344,30 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
     // topology detection sees them. input.ridges stays untouched for the analyzers above.
     const pattern::SignScale sign_scale{palm_width};
     const pattern::MicroSignConfig sign_cfg{sign_scale, pattern::MicroSignRanges{}};
-    RidgeGraph sign_graph = input.ridges;
+    // Micro-signs are detected on `input.sign_ridges` when the caller supplies it, else on
+    // the major-line graph. The slot exists because the two consumers want different
+    // images: CLAHE measurably helps the major-crease pass but on the canonical capture it
+    // drives micro-signs to zero (1 sign -> 0 at clip 1.25/2/4), so a caller can hand the
+    // major pass the contrast-lifted graph and the sign pass a flattened-but-not-lifted one.
+    const bool using_sign_ridges = input.sign_ridges != nullptr;
+    RidgeGraph sign_graph = using_sign_ridges ? *input.sign_ridges : input.ridges;
     geometry::deriveJunctions(sign_graph, sign_scale.px(0.009F));
-    // Bounded-cost guard: the cycle-enumerating finders are O(k^3)/O(k^4) in the
-    // junction-connected segment count. Contrast-lifted captures (CLAHE) can multiply
-    // skin-texture ridges several-fold; beyond the cap, sign detection is skipped
-    // rather than stalling the frame. The masked fine-scale pass (PR4b) replaces this.
+    // Bounded-cost / signal-quality guard on the sign graph. Commit 1 (spatial locality)
+    // removed the O(k^3)/O(k^4) enumeration — measured junction degree is flat at 4-5
+    // across k=505..2066 and cost is linear (~4.5 us/segment) — so this is no longer a
+    // stall guard. It is a texture guard: contrast-lifted and un-flattened captures
+    // multiply skin-texture ridges until the topology is texture, and detection over
+    // texture returns confident junk (measured: 42 signs, 7 islands at conf 0.95, on a
+    // capture with no planted signs). Skipping beats emitting confident noise.
     std::set<int> connected_ids;
     for (const auto& j : sign_graph.junctions) {
         connected_ids.insert(j.connected_segment_ids.begin(), j.connected_segment_ids.end());
     }
     std::vector<CurvEngine::pattern::DetectedPattern> micro_signs;
-    spdlog::debug("[palm] micro-sign graph: segments={} connected={} junctions={}", sign_graph.segments.size(),
-                  connected_ids.size(), sign_graph.junctions.size());
+    spdlog::debug("[palm] micro-sign graph: source={} segments={} connected={} junctions={}", using_sign_ridges ? "sign_ridges" : "ridges",
+                  sign_graph.segments.size(), connected_ids.size(), sign_graph.junctions.size());
     bool sign_budget_skipped = false;
-    if (connected_ids.size() <= 420) {
+    if (connected_ids.size() <= kSignSegmentBudget) {
         micro_signs = pattern::MicroPatternDetector::detectAll(sign_graph, sign_cfg);
     } else {
         sign_budget_skipped = true;
@@ -389,7 +405,13 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
 #endif
         signs_json.push_back(std::move(entry));
     }
-    nlohmann::json micro_signs_payload = {{"schema_version", 1}, {"signs", signs_json}};
+    // schema_version stays 1: consumers already tolerate unknown keys (the debug-only
+    // "filters" breakdown below is likewise build-conditional inside v1), and "source" only
+    // records which graph produced these signs. Callers with no sign_ridges legitimately
+    // report "ridges", so the fine path's absence is observable rather than implicit.
+    nlohmann::json micro_signs_payload = {{"schema_version", 1},
+                                          {"source", using_sign_ridges ? "sign_ridges" : "ridges"},
+                                          {"signs", signs_json}};
     if (sign_budget_skipped) {
         // Optional field: distinguishes "no signs found" from "detection skipped for
         // compute budget" in field telemetry. Schema stays v1.

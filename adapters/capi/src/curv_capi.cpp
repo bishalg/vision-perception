@@ -563,6 +563,33 @@ int curv_pipeline_process_landmarks_roi(CurvPipelineHandle pipeline, CurvFrameHa
                                                                          anatomy_canonical.central_palm_disc, 0.40f);
         }
 
+        // Sign-detection graph. The major-crease and micro-sign consumers want different
+        // images, so signs get their own graph traced from the RAW canonical patch:
+        //   - CLAHE is excluded because it drives micro-signs to zero on the canonical
+        //     capture (1 sign at clip 0, 0 signs at clip 1.25/2/4) while it measurably helps
+        //     the major pass, so majors keep consuming `preprocessed` unchanged.
+        //   - Illumination flattening is excluded too: measured properly, flattening alone
+        //     already loses the head-line island (5 signs, none on the head line) that the
+        //     un-preprocessed patch yields at conf 0.95. The payload's `preprocessing` field
+        //     still reports the major pass's recipe, and `micro_signs.source` reports which
+        //     graph the signs came from.
+        //   - Light polarity: this capture's creases trace as bright ridges and the dark-only
+        //     pass yields no micro-signs at all. Accepting both polarities was measured and
+        //     rejected — it drops the head-line island from conf 0.95 to 0.38 and returns
+        //     37-60 signs (9-15 of them islands at conf 0.95) on a capture with nothing
+        //     planted. See StegerConfig::extract_both_polarities.
+        // Same crease scale as the major pass: this is a different image, not a finer one.
+        CurvEngine::RidgeGraph sign_graph;
+        if (anatomy_canonical.is_valid && !anatomy_canonical.central_palm_disc.empty()) {
+            auto sign_cfg = tuned_cfg;
+            sign_cfg.extract_dark_lines = false;
+            sign_cfg.extract_both_polarities = false;
+            sign_graph = CurvEngine::ridge::StegerRidgeExtractor(sign_cfg).extractRidgeGraph(warped);
+            CurvEngine::domain::CreaseChainLinker::filterGraphByPalmDisc(sign_graph,
+                                                                        anatomy_canonical.central_palm_disc, 0.40f);
+        }
+        const CurvEngine::RidgeGraph* sign_ridges_ptr = sign_graph.segments.empty() ? nullptr : &sign_graph;
+
         p_ctx->last_quality.blur_score = result.quality.blur_score;
         p_ctx->last_quality.brightness_score = result.quality.brightness_score;
         p_ctx->last_quality.contrast_score = result.quality.contrast_score;
@@ -584,7 +611,12 @@ int curv_pipeline_process_landmarks_roi(CurvPipelineHandle pipeline, CurvFrameHa
 
         // Always emit domain polylines for overlay — quality is advisory on this path.
         if (p_ctx->domain_pack) {
-            CurvEngine::DomainInput const d_in{warped_frame, result.ridge_graph, result.quality, &landmarks_canonical};
+            CurvEngine::DomainInput const d_in{warped_frame,
+                                               result.ridge_graph,
+                                               result.quality,
+                                               &landmarks_canonical,
+                                               p_ctx->preprocess_config.enabled ? "flat_field_clahe_v1" : "none",
+                                               sign_ridges_ptr};
             auto const d_out = p_ctx->domain_pack->process(d_in);
             for (const auto& ev : d_out.domain_evidence) {
                 evidence_arr.push_back(ev.to_json());

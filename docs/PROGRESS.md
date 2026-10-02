@@ -36,6 +36,61 @@ Scope: turn the 8 topology stub detectors (`MicroPatternDetector`) into geometry
 
 **Next (micro-sign track):** punch list (2026-10-01 review): cross-sign dedup by support overlap + explicit fish-variant encoding + `micro_signs` schema v1 (`{schema_version, signs}`) + debug-only per-filter score breakdown → rendered-signs-on-real-palm recall sweep at three contrast levels with per-sign P/R (**instrumented 2026-10-01 as `test_sign_recall`** — flat-background smoke passes with the island chain recovered at conf 0.95; photo sweep runs on demand via `CURV_SIGN_RECALL_FULL=1` and exposed two structural findings that gate per-sign floors: (1) the major-line Steger scale fragments short strokes near crossings — micro-sign detection must run at the fine crease scale; (2) junction behavior at stroke meetings (break vs through-crossing) is fragile, and Steger traces through drawn corners so gap-broken junctions are the reliable source; also fine-scale photo extraction needs palm-disc filtering to stay inside the deriver's O(n²) budget) → **PR4a preprocessor DONE (2026-10-01)**: `FlatFieldCLAHEPreprocessor` (first `IPreprocessor` impl — morphological-close illumination flattening, kernel 20% of palm width + CLAHE 2.0/8×8), wired into both capi palm paths after the canonical warp (extraction eats the flattened image; the quality gate still judges the RAW canonical patch since its absolute thresholds assume un-normalized input — revisit at PR4c), default ON behind `curv_pipeline_set_preprocessing` + CLI `--flat-field` for A/B. Canonical A/B: major-line lengths recovered (life +28%, heart +11%, head +6%) at identical confidences, no gate rejections. **Cost guard added to `PalmDomainPack`**: CLAHE multiplies texture ridges (738→1623 segments), which explodes the cycle-enumerating finders (O(k⁴) in junction-connected segments) — above 420 connected segments sign detection is skipped (bounded ~0.8s instead of a hang); the bounded fix is PR4b's masked fine-scale pass feeding the sign detectors from a dedicated graph. Unit tests `test_preprocessor` (gradient flattening, faint-line lift, disabled identity, channel/degenerate handling) → recalibrate thresholds on the recall benchmark → freeze export schema v1 → iOS overlay with confidence-tiered wording. Filed follow-up: fate forks and mount grills still read the always-empty junction list on real captures — once the deriver has field hours, run it in the main pipeline behind a flag and A/B the fate/mount outputs instead of leaving them silently dead. PR5 missing detectors (Circle via `is_closed`; Supporting/Chained/Tassel via 1D perpendicular profiles along host splines) → PR6 propose→verify patch classifier + labeled captures. VLM sign evidence feed (text-only, prompt-only constraint) is a cheap add-on to `VlmPromptFormatter`.
 
+
+**PR4 audit findings (2026-10-02) — the fine-scale sign path was measured and rejected.** Six
+diagnostics against `canonical_palm.png` overturned the PR4b premise, so the masked fine-scale
+extractor + routing was reverted rather than shipped:
+
+- **Fine scale destroys precision.** Major graph: 1 sign. Fine graph (sigma 0.75): 42 signs,
+  7 islands at conf 0.95 — on a capture with nothing planted. The baseline island reappears as
+  `Star 0.24` / `Trident 0.49`, never Island >= 0.9. Fine sigma resolves skin micro-texture into
+  sign-shaped structure and reclassifies real signs, so the "recover the island via the fine
+  path" gate was unreachable at every sigma and threshold tried.
+- **Commit 1's locality fix is good and stands.** Junction degree is flat at max 4-5 / mean 2.2
+  across k=505..2066, and cost is linear (~4.5 us/segment; full-frame k=2066 measures 9 ms).
+  The old O(k^4) wall is gone.
+- **The 420 segment ceiling is a texture guard, not a stall guard — keep it.** Raising it admits
+  CLAHE-textured graphs (1640 segments) and yields confident junk.
+- **BUG: hysteresis thresholds are inert as configured.** `gray.convertTo(CV_32F)` never
+  normalizes, so `salience=|lambda1|` sits far above the configured range: low 0.5 -> 742 segs,
+  1.5 -> 55, 20 -> 0. Every value in the codebase (0.18-1.5) is in the no-op band, so the
+  "robust: 0.40 -> 0.30" tuning notes describe changes that do nothing. Effective range is ~1-20.
+- **BUG: CLAHE drives micro-signs to zero.** raw 1 sign, flatten-only 1 sign, CLAHE 1.25/2.0/4.0
+  -> 0 signs, while CLAHE measurably helps the major pass. PR4a's A/B validated majors and the
+  quality gate but never `micro_signs`.
+- **BUG: `extract_dark_lines=true` is blind on real captures.** `PalmParameters` sets it, and the
+  canonical capture yields 0 micro-signs dark vs the island at conf 0.95 light.
+- **Both polarities is measured and rejected**: it doubles segment count, trips the texture
+  ceiling, and drops the anchor from conf 0.95 to 0.38. The switch exists
+  (`StegerConfig::extract_both_polarities`) but the sign path does not use it.
+- **The rendered-signs sweep cannot arbitrate anything**: 0/8 recovered at every combination of
+  plant scale (1-4x), sigma (0.8-2.0), threshold (0.66-12) and stroke blur (1.2-0.2). The plants
+  do render (~100 gray levels) and sit inside the palm disc; at sigma 0.8 the photo alone yields
+  1114 texture segments, and detections appear near plants with the wrong type (Net -> Island).
+- **The head-line island is config-fragile, not a property.** It reproduces only at sigma 1.5 /
+  low 0.5 / high 1.5 / minlen 5; perturbing sigma, minlen or the hysteresis pair individually
+  loses it, production's scale-adaptive config does not recover it, and its host arc is
+  path-dependent (0.4228 via `curv_cli`, 1.0000 in-process). It is therefore NOT pinned as an
+  accuracy gate.
+- **Open limitation: host attribution does not span the graph split.** Host curves derive from
+  the major (preprocessed) graph while signs come from the raw-patch sign graph, so a detected
+  sign is not attributed against the preprocessed head line. Pinned by
+  `PalmSignGraph.HostAttributionDoesNotSpanTheGraphSplit`.
+- **Consequence: per-sign accuracy is unvalidated.** There is no ground truth on this capture and
+  the synthetic sweep is blind, so any accuracy claim needs real labeled signs first.
+
+**Shipped instead (PR4c):** micro-signs read their own ridge graph. `DomainInput::sign_ridges`
+(an optional alternate graph, same crease scale) lets the major pass keep the contrast-lifted
+image while signs take the raw canonical patch; `micro_signs.source` (`"sign_ridges"` / `"ridges"`,
+schema still 1) records which. `FlatFieldCLAHEConfig::enable_clahe` isolates the local contrast
+lift. Legacy behavior is byte-identical: verified by full-payload diff (the only change in 4340
+lines of exported JSON is the added `source` key). Covered by `test_palm_sign_graph` (6 tests,
+each pinning an isolated measured variable) and `CapiTest.PalmLandmarksRoiReportsSignGraphSource`.
+`test_pattern_perf`'s wall-clock bound now scales under sanitizers, which fixes a pre-existing
+red `asan`/`tsan` preset (measured 37-39 s instrumented vs ~0.7 s Release). It also degrades to a hard bound when the
+system load average exceeds 8 (measured load 34 from unrelated processes slowed the same code
+~3x uniformly), so the regression gate stays stable on a busy machine.
+
 ---
 
 ## 0. CI stabilization ledger (2026-09-06, runs 34015384328 → 34016519940)

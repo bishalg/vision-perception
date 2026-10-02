@@ -64,7 +64,12 @@ cv::Mat FlatFieldCLAHEPreprocessor::apply(const cv::Mat& image, float palm_width
     cv::Mat flat;
     flat_f.convertTo(flat, CV_8U);
 
-    // Local contrast lift for faint secondary creases.
+    // Local contrast lift for faint secondary creases. Skippable: CLAHE lifts the major
+    // creases but also multiplies skin micro-texture, which collapses micro-sign detection
+    // on the canonical capture. Flattening alone is sign-safe.
+    if (!config_.enable_clahe) {
+        return flat;
+    }
     auto clahe = cv::createCLAHE(config_.clahe_clip, cv::Size(config_.clahe_tiles, config_.clahe_tiles));
     cv::Mat out;
     clahe->apply(flat, out);

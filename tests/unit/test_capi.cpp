@@ -1,4 +1,6 @@
 #include <gtest/gtest.h>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 #include <vector>
 #include <string>
 #include <cstring>
@@ -439,6 +441,52 @@ TEST(CapiTest, LandmarksRoiExtendedWithMinorRidges) {
     // Invalid pipeline handle propagates the base path's invalid-argument status.
     EXPECT_EQ(curv_pipeline_process_landmarks_roi_extended(nullptr, frame, lms.data(), 1, buf.data(), size),
               CURV_STATUS_INVALID_ARGUMENT);
+
+    curv_frame_destroy(frame);
+    curv_pipeline_destroy(pipeline);
+}
+
+// End-to-end proof that the canonical palm path feeds micro-signs from its own ridge
+// graph. The C ABI is where the split actually matters: majors consume the preprocessed
+// image while signs consume the raw canonical patch, and the payload must say which.
+TEST(CapiTest, PalmLandmarksRoiReportsSignGraphSource) {
+    // Uses the real canonical capture, not a synthetic pattern: a synthetic ring yields no
+    // creases inside the palm disc, so the sign graph comes back empty and the C ABI
+    // legitimately falls back to the major graph, which would make this test vacuous.
+    const std::string path = std::string(CURV_SOURCE_DIR) + "/canonical_palm.png";
+    const cv::Mat canonical = cv::imread(path, cv::IMREAD_GRAYSCALE);
+    ASSERT_FALSE(canonical.empty()) << "missing " << path;
+    cv::Mat rgb;
+    cv::cvtColor(canonical, rgb, cv::COLOR_GRAY2BGR);
+
+    CurvPipelineHandle pipeline = curv_pipeline_create("palm");
+    ASSERT_NE(pipeline, nullptr);
+    CurvFrameHandle frame =
+        curv_frame_create_from_buffer(rgb.ptr(0), rgb.cols, rgb.rows, 0, CURV_PIXEL_FORMAT_BGR);
+    ASSERT_NE(frame, nullptr);
+    const std::vector<float> lms = MakePalmLandmarks();
+
+    std::vector<char> buf(4 * 1024 * 1024, 0);
+    const int size = static_cast<int>(buf.size());
+    const int status = curv_pipeline_process_landmarks_roi(pipeline, frame, lms.data(), buf.data(), size);
+    ASSERT_TRUE(status == CURV_STATUS_SUCCESS || status == CURV_STATUS_QUALITY_GATE_REJECTED);
+
+    auto parsed = nlohmann::json::parse(buf.data(), nullptr, false);
+    ASSERT_FALSE(parsed.is_discarded());
+    ASSERT_TRUE(parsed.contains("domain_payload"));
+    const auto& payload = parsed["domain_payload"];
+
+    ASSERT_TRUE(payload.contains("preprocessing"));
+    EXPECT_TRUE(payload["preprocessing"].is_string());
+
+    ASSERT_TRUE(payload.contains("micro_signs"));
+    const auto& ms = payload["micro_signs"];
+    EXPECT_EQ(ms.value("schema_version", 0), 1);
+    ASSERT_TRUE(ms.contains("source")) << "micro_signs must state which graph produced the signs";
+    // The canonical capture has creases inside the palm disc, so the dedicated sign graph
+    // must be the one in use here; a "ridges" fallback means the wiring regressed.
+    EXPECT_EQ(ms.value("source", ""), "sign_ridges")
+        << "the canonical palm path must feed micro-signs from the raw-patch sign graph";
 
     curv_frame_destroy(frame);
     curv_pipeline_destroy(pipeline);
