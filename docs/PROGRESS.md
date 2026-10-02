@@ -76,7 +76,18 @@ extractor + routing was reverted rather than shipped:
   the major (preprocessed) graph while signs come from the raw-patch sign graph, so a detected
   sign is not attributed against the preprocessed head line. Pinned by
   `PalmSignGraph.HostAttributionDoesNotSpanTheGraphSplit`.
-- **Consequence: per-sign accuracy is unvalidated.** There is no ground truth on this capture and
+- **Harness polarity work (2026-10-02, post-audit):** the rendered-signs sweep is now
+polarity-aware (plants composite to match extraction polarity via `compositeStrokes`; defaults
+mirror the production sign graph — light polarity, major crease scale σ1.5/0.5/1.5/minlen 5).
+New measured asymmetry: **synthetic LIGHT strokes are undetectable even on a flat background**
+(0 detections where dark plants + dark extraction recover both islands at conf 0.95), while
+natural light creases on the raw patch DO detect (the anchor island) — the interaction between
+composited strokes and extraction is polarity-dependent in a way real creases are not. The
+photo sweep under the production-matched regime still recovers 0/8 (baseline now 327 segments
+at light polarity vs 687 dark-fine), so the sweep stays formally demoted: regression instrument
+only, never an accuracy arbiter — that role belongs to the labeled-capture program.
+
+**Consequence: per-sign accuracy is unvalidated.** There is no ground truth on this capture and
   the synthetic sweep is blind, so any accuracy claim needs real labeled signs first.
 
 **Shipped instead (PR4c):** micro-signs read their own ridge graph. `DomainInput::sign_ridges`

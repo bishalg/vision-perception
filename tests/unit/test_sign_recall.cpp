@@ -163,13 +163,15 @@ void drawSign(cv::Mat& mask, PatternType type, const Point2D& c, float s) {
 }
 
 // Extraction settings for the sweep, overridable so the harness can measure which knob
-// actually moves recall. Defaults are the production fine-crease regime.
+// actually moves recall. Defaults mirror the production SIGN graph: light polarity at the
+// major crease scale — the PR4 audit measured this capture's creases as bright ridges
+// (dark-only yields no signs) and the fine scale as precision-destroying.
 struct SweepExtraction {
-    float sigma{0.80F};
-    float low{0.18F};
-    float high{0.66F};
-    float min_len{6.0F};
-    bool dark{true};
+    float sigma{1.50F};
+    float low{0.50F};
+    float high{1.50F};
+    float min_len{5.0F};
+    bool dark{false};
     float junction_tol{2.5F};
 };
 
@@ -191,11 +193,18 @@ SweepExtraction sweepExtraction() {
     return e;
 }
 
+// Polarity-aware stroke compositing: plants must match the extraction polarity they are
+// measured under. Dark plants darken the patch (mul toward 0); light plants brighten it
+// (toward 255) — this capture's creases trace as bright ridges, so the default sweep
+// plants light strokes and extracts light polarity.
+cv::Mat compositeStrokes(const cv::Mat& gray32, const cv::Mat& alpha, bool dark) {
+    if (dark) {
+        return gray32.mul(1.0 - alpha);
+    }
+    return gray32.mul(1.0 - alpha) + alpha * 255.0;
+}
+
 RidgeGraph extractGraph(const cv::Mat& gray, const SweepExtraction& ex) {
-    // Micro-signs are fine-scale structures: the major-line Steger scale (sigma ~1.45)
-    // fragments short strokes near crossings (mutual Hessian interference within ~2sigma
-    // + min_segment_length), so extraction runs at the fine crease scale instead — the
-    // same regime PalmParameters::computeFineStegerConfig targets for minor creases.
     ridge::StegerConfig cfg;
     cfg.extract_dark_lines = ex.dark;
     cfg.sigma = ex.sigma;
@@ -267,11 +276,21 @@ TEST(SignRecallSweep, FlatBackgroundSmoke) {
     blurred.convertTo(alpha, CV_32F, 0.5F / 255.0F);
     cv::Mat gray32;
     img.convertTo(gray32, CV_32F);
-    cv::Mat darkened = gray32.mul(1.0 - alpha);
+    // Measured: light-polarity plants return 0 detections even on a flat background,
+    // while dark plants + dark extraction recover both islands at conf 0.95 (the natural
+    // light creases on the raw patch DO detect — the asymmetry is specific to the
+    // synthetic strokes). This smoke therefore pins the proven self-consistent config.
+    SweepExtraction smoke;
+    smoke.dark = true;
+    smoke.sigma = 0.80F;
+    smoke.low = 0.18F;
+    smoke.high = 0.66F;
+    smoke.min_len = 6.0F;
+    cv::Mat composited = compositeStrokes(gray32, alpha, smoke.dark);
     cv::Mat rendered;
-    darkened.convertTo(rendered, CV_8U);
+    composited.convertTo(rendered, CV_8U);
 
-    const RidgeGraph graph = extractGraph(rendered, sweepExtraction());
+    const RidgeGraph graph = extractGraph(rendered, smoke);
     const auto detections = MicroPatternDetector::detectAll(graph, signConfig());
     std::cout << "  [flat diag] segments=" << graph.segments.size() << " junctions=" << graph.junctions.size()
               << " detections=" << detections.size() << "\n";
@@ -373,7 +392,7 @@ TEST(SignRecallSweep, RenderedSignsOnCanonicalPalm) {
         }
         cv::Mat alpha;
         blurred.convertTo(alpha, CV_32F, contrast / 255.0F);
-        gray = gray.mul(1.0 - alpha);
+        gray = compositeStrokes(gray, alpha, ex.dark);
         cv::Mat rendered;
         gray.convertTo(rendered, CV_8U);
         if (contrast > 0.49F) {
