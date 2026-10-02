@@ -3,6 +3,8 @@
 #include <opencv2/imgproc.hpp>
 #include <vector>
 #include <string>
+#include <iostream>
+#include <algorithm>
 #include <cstring>
 #include <nlohmann/json.hpp>
 #include "curv/curv_capi.h"
@@ -487,6 +489,31 @@ TEST(CapiTest, PalmLandmarksRoiReportsSignGraphSource) {
     // must be the one in use here; a "ridges" fallback means the wiring regressed.
     EXPECT_EQ(ms.value("source", ""), "sign_ridges")
         << "the canonical palm path must feed micro-signs from the raw-patch sign graph";
+
+    // End-to-end attribution across the graph split: hosts are chained from the sign
+    // graph, so a high-confidence in-disc island must carry a host line (previously a
+    // pinned limitation). Inventory printed for field review.
+    int islands = 0;
+    int attributed_islands = 0;
+    double best_island_conf = 0.0;
+    for (const auto& s : ms["signs"]) {
+        if (s.value("type", "") != "Island") {
+            continue;
+        }
+        ++islands;
+        const double conf = s.value("confidence", 0.0);
+        best_island_conf = std::max(best_island_conf, conf);
+        if (s.contains("host")) {
+            ++attributed_islands;
+            std::cout << "  [capi e2e] island conf=" << conf << " host=" << s.value("host", "")
+                      << " arc=" << s.value("host_arc_s", -1.0) << "\n";
+        }
+    }
+    std::cout << "  [capi e2e] islands=" << islands << " attributed=" << attributed_islands << "\n";
+    if (best_island_conf >= 0.9) {
+        EXPECT_GE(attributed_islands, 1)
+            << "a conf>=0.9 island on the sign graph must attribute against sign-graph host chains";
+    }
 
     curv_frame_destroy(frame);
     curv_pipeline_destroy(pipeline);

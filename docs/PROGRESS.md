@@ -87,6 +87,33 @@ photo sweep under the production-matched regime still recovers 0/8 (baseline now
 at light polarity vs 687 dark-fine), so the sweep stays formally demoted: regression instrument
 only, never an accuracy arbiter — that role belongs to the labeled-capture program.
 
+**Post-PR4c verification audit (2026-10-02, commits a3e0061 + 4d4e654 + test ext):**
+Regression evidence — legacy (no-landmarks) CLI payload byte-identical to the PR4a-era export
+except the two intended additive keys (`micro_signs.source`, `preprocessing`); ASan suite 46/46;
+capi e2e asserts `source=sign_ridges` through the C ABI. Known-open verification gaps, stated
+rather than assumed: (1) the new capi attribution assertion is conditional — a conf>=0.9 island
+does not currently reproduce under the capi scale-adaptive config (documented fragility), so the
+assertion activates only after recalibration; (2) TSan not rerun this pass (no new threading).
+
+**Strategy loophole register (fresh audit, with owners):**
+1. HIGH — every Steger-based conclusion (light polarity, texture ceiling, CLAHE-zeros-signs,
+   both-polarity rejection) was measured under the INERT hysteresis scale; normalization may
+   flip some. Mitigation: the recalibration session must re-run the audit measurements under
+   the normalized scale before those decisions are treated as final; the sign_ridges split is
+   wiring and survives either outcome.
+2. HIGH until labels — all conclusions are n=1 (one capture, one device). Mitigation: prevalence
+   stream measures per-device variance; the sign-path recipe is provisional; the label record's
+   provenance gains device/lighting fields.
+3. MEDIUM — the enriched (candidate-persisting) stream inherits detector blind spots; classes
+   the detector never proposes cannot enter it. Mitigation: prevalence stream is the unbiased
+   denominator; persist BELOW-FLOOR candidates with their filter trace, not only accepted ones.
+4. MEDIUM by design — recalibration will invalidate pinned tests en masse (all pin the inert
+   regime). Mitigation: tag `calibration-gen-1` at this commit; the recalibration commit updates
+   pins in one wave backed by labeled evidence; pins assert stability within a generation.
+5. LOW accepted — the demoted sweep cannot catch recall regressions (0/8 either way); the labeled
+   split is the real gate. 6. LOW — privacy/consent flow must exist before any capture starts;
+   blocking section of the protocol doc. 7. annotator blinding guards against circular labels.
+
 **Consequence: per-sign accuracy is unvalidated.** There is no ground truth on this capture and
   the synthetic sweep is blind, so any accuracy claim needs real labeled signs first.
 
