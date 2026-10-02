@@ -586,7 +586,7 @@ int curv_pipeline_process_landmarks_roi(CurvPipelineHandle pipeline, CurvFrameHa
             sign_cfg.extract_both_polarities = false;
             sign_graph = CurvEngine::ridge::StegerRidgeExtractor(sign_cfg).extractRidgeGraph(warped);
             CurvEngine::domain::CreaseChainLinker::filterGraphByPalmDisc(sign_graph,
-                                                                        anatomy_canonical.central_palm_disc, 0.40f);
+                                                                         anatomy_canonical.central_palm_disc, 0.40f);
         }
         const CurvEngine::RidgeGraph* sign_ridges_ptr = sign_graph.segments.empty() ? nullptr : &sign_graph;
 

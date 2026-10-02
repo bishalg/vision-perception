@@ -364,20 +364,33 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
         connected_ids.insert(j.connected_segment_ids.begin(), j.connected_segment_ids.end());
     }
     std::vector<CurvEngine::pattern::DetectedPattern> micro_signs;
-    spdlog::debug("[palm] micro-sign graph: source={} segments={} connected={} junctions={}", using_sign_ridges ? "sign_ridges" : "ridges",
-                  sign_graph.segments.size(), connected_ids.size(), sign_graph.junctions.size());
+    spdlog::debug("[palm] micro-sign graph: source={} segments={} connected={} junctions={}",
+                  using_sign_ridges ? "sign_ridges" : "ridges", sign_graph.segments.size(), connected_ids.size(),
+                  sign_graph.junctions.size());
     bool sign_budget_skipped = false;
     if (connected_ids.size() <= kSignSegmentBudget) {
         micro_signs = pattern::MicroPatternDetector::detectAll(sign_graph, sign_cfg);
     } else {
         sign_budget_skipped = true;
     }
+    std::unordered_map<std::string, CurvEngine::domain::ChainedCreaseLine> sign_creases_list_storage;
+    // Host attribution must span the graph split: when signs come from `sign_ridges`,
+    // host curves are chained from THAT graph too, so a sign is attributed against the
+    // same image its geometry was extracted from. The major-pass chains remain the
+    // fallback (and the only hosts when signs ride the major graph).
+    std::vector<CurvEngine::domain::ChainedCreaseLine> sign_creases;
+    const std::unordered_map<std::string, CurvEngine::domain::ChainedCreaseLine>* attribution_creases = &major_creases;
+    if (using_sign_ridges) {
+        sign_creases_list_storage = CurvEngine::domain::CreaseChainLinker::extractMajorLines(
+            *input.sign_ridges, is_left_hand, zone_dim, priors);
+        attribution_creases = &sign_creases_list_storage;
+    }
     std::vector<pattern::HostPolyline> host_lines;
     host_lines.reserve(4);
     constexpr const char* kHostNames[4] = {"heart_line", "head_line", "life_line", "fate_line"};
     for (int host_id = 0; host_id < 4; ++host_id) {
-        const auto it = major_creases.find(kHostNames[host_id]);
-        if (it != major_creases.end() && it->second.is_valid && it->second.points.size() >= 2) {
+        const auto it = attribution_creases->find(kHostNames[host_id]);
+        if (it != attribution_creases->end() && it->second.is_valid && it->second.points.size() >= 2) {
             host_lines.push_back({host_id, kHostNames[host_id], it->second.points});
         }
     }
@@ -409,9 +422,8 @@ DomainOutput PalmDomainPack::process(const DomainInput& input) {
     // "filters" breakdown below is likewise build-conditional inside v1), and "source" only
     // records which graph produced these signs. Callers with no sign_ridges legitimately
     // report "ridges", so the fine path's absence is observable rather than implicit.
-    nlohmann::json micro_signs_payload = {{"schema_version", 1},
-                                          {"source", using_sign_ridges ? "sign_ridges" : "ridges"},
-                                          {"signs", signs_json}};
+    nlohmann::json micro_signs_payload = {
+        {"schema_version", 1}, {"source", using_sign_ridges ? "sign_ridges" : "ridges"}, {"signs", signs_json}};
     if (sign_budget_skipped) {
         // Optional field: distinguishes "no signs found" from "detection skipped for
         // compute budget" in field telemetry. Schema stays v1.

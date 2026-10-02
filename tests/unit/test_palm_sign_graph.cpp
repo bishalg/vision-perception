@@ -216,20 +216,19 @@ TEST(PalmSignGraph, ClaheTripsTheSignCeilingWhileRawDoesNot) {
     printInventory("flatten+CLAHE", on_clahe);
 }
 
-// Host attribution crosses the split and is a known limitation: host curves come from the
-// MAJOR graph (preprocessed image) while signs come from the raw-patch sign graph. The
-// high-confidence island on the raw patch is therefore detected but not attributed to the
-// head line. Pinned so the gap is visible rather than discovered in the field.
-TEST(PalmSignGraph, HostAttributionDoesNotSpanTheGraphSplit) {
+// Host attribution spans the graph split: when signs come from `sign_ridges`, host
+// curves are chained from the SAME sign graph, so a raw-patch sign is attributed against
+// the raw-patch head line (previously a pinned limitation; retired when the chains were
+// moved across the split).
+TEST(PalmSignGraph, HostAttributionSpansTheGraphSplit) {
     const cv::Mat raw = loadCanonical();
     ASSERT_FALSE(raw.empty());
     const auto payload = runPack(raw, raw, referenceConfig());
 
     ASSERT_GE(bestIslandConfidence(payload), 0.9) << "precondition: a high-confidence island is detected";
-    EXPECT_FALSE(hasHeadLineIsland(payload))
-        << "host curves are derived from the major graph, so a raw-patch sign is not attributed "
-           "against the preprocessed head line. If this starts passing, host attribution has been "
-           "reconciled across the split and the note can be retired.";
+    EXPECT_TRUE(hasHeadLineIsland(payload))
+        << "the raw-patch island must attribute against raw-patch host chains; if this "
+           "fails, attribution fell back to major-graph chains";
     printInventory("host attribution across split", payload);
 }
 
