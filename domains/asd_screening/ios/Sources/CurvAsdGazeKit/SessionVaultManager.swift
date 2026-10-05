@@ -1,12 +1,30 @@
 import Foundation
 import CryptoKit
+import Security
 
 /// Manages on-device AES-GCM encrypted storage and export serialization for gaze sessions.
 public struct SessionVaultManager: Sendable {
     public let vaultDirectory: URL
     private let symmetricKey: SymmetricKey
 
+    private static let keychainService = "org.curv.asd.vault"
+    private static let keychainAccount = "vault-key-v1"
+
+    /// True when the vault key is durable across launches (explicit key or Keychain).
+    /// False means the Keychain was unavailable and an ephemeral key is in use.
+    public var isKeyPersisted: Bool {
+        keyDataWasPersisted
+    }
+    private let keyDataWasPersisted: Bool
+
     /// Initializes vault manager with a dedicated sandbox directory and encryption key.
+    ///
+    /// Key resolution order:
+    /// 1. Explicit `keyData` (tests / deterministic round-trips)
+    /// 2. Keychain-persisted vault key — loaded or created on first use, so sessions
+    ///    written in a previous launch remain decryptable (the original implementation
+    ///    generated a fresh key per instance, orphaning every prior session)
+    /// 3. Ephemeral random key — only when the Keychain is unavailable
     public init(vaultDirectory: URL? = nil, keyData: Data? = nil) {
         if let dir = vaultDirectory {
             self.vaultDirectory = dir
@@ -20,10 +38,45 @@ public struct SessionVaultManager: Sendable {
 
         if let keyData = keyData, keyData.count == 32 {
             self.symmetricKey = SymmetricKey(data: keyData)
+            self.keyDataWasPersisted = true
         } else {
-            // Default 256-bit key for local vault
-            self.symmetricKey = SymmetricKey(size: .bits256)
+            let resolved = Self.loadOrCreatePersistentKey()
+            self.symmetricKey = resolved.key
+            self.keyDataWasPersisted = resolved.persisted
         }
+    }
+
+    /// Loads the vault key from the Keychain, creating and storing a new 256-bit key
+    /// when none exists. Falls back to an ephemeral key (matching the old behavior)
+    /// if the Keychain cannot be accessed.
+    private static func loadOrCreatePersistentKey() -> (key: SymmetricKey, persisted: Bool) {
+        let baseQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: keychainAccount
+        ]
+
+        var readQuery = baseQuery
+        readQuery[kSecReturnData as String] = true
+        readQuery[kSecMatchLimit as String] = kSecMatchLimitOne
+        var item: CFTypeRef?
+        let readStatus = SecItemCopyMatching(readQuery as CFDictionary, &item)
+        if readStatus == errSecSuccess, let data = item as? Data, data.count == 32 {
+            return (SymmetricKey(data: data), true)
+        }
+
+        let key = SymmetricKey(size: .bits256)
+        let keyData = key.withUnsafeBytes { Data($0) }
+
+        SecItemDelete(baseQuery as CFDictionary) // clear stale/malformed item before rewrite
+        var addQuery = baseQuery
+        addQuery[kSecValueData as String] = keyData
+        addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+        if addStatus != errSecSuccess {
+            NSLog("[SessionVault] Keychain unavailable (status \(addStatus)) — using an ephemeral vault key; previously saved sessions will not decrypt.")
+        }
+        return (key, addStatus == errSecSuccess)
     }
 
     /// Encrypts and writes session header, frames, report, and optional classification to disk as a single post-session batch.
@@ -177,9 +230,12 @@ public struct SessionVaultManager: Sendable {
                             [
                                 "segmentId": row.segmentId,
                                 "biomarker": row.biomarker,
-                                "targetAOI": row.targetAOI as Any?,
+                                // Nil optionals must become explicit JSON nulls — storing
+                                // Optional.none in [String: Any] makes JSONSerialization throw,
+                                // silently degrading the whole share export to a stub.
+                                "targetAOI": row.targetAOI.map { $0 as Any } ?? NSNull(),
                                 "observed": row.observed,
-                                "expected": row.expected as Any?,
+                                "expected": row.expected.map { $0 as Any } ?? NSNull(),
                                 "status": row.status.rawValue,
                                 "score": row.score,
                                 "imputed": row.imputed,

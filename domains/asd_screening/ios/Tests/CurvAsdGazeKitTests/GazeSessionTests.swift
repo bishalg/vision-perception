@@ -68,6 +68,82 @@ final class GazeSessionTests: XCTestCase {
         try? FileManager.default.removeItem(at: tempDir)
     }
 
+    func testVaultKeyPersistsAcrossManagerInstances() throws {
+        // Mirrors a relaunch: a manager created later must decrypt sessions written
+        // by an earlier one. Skipped when the Keychain is unavailable in this
+        // environment (both instances would then hold unrelated ephemeral keys).
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let first = SessionVaultManager(vaultDirectory: tempDir)
+        try XCTSkipUnless(first.isKeyPersisted, "Keychain unavailable — key persistence not testable here")
+
+        let header = SessionHeader(
+            sessionId: "PERSIST1",
+            participantToken: "child-test-token",
+            stimulusBattery: "GeoPref_v1",
+            stimulusDurationSec: 1.0
+        )
+        let frame = GazeFrame(
+            gaze: GazeTelemetrySample(timestampMs: 0.0, xNorm: 0.5, yNorm: 0.5, confidence: 0.9),
+            affect: .neutral,
+            activeAOINames: [],
+            aoiDwellMs: 16.7,
+            qualityVerdict: .optimal
+        )
+        let report = GazeSessionReportSummary(
+            sessionId: "PERSIST1",
+            durationSec: 1.0,
+            totalFrames: 1,
+            validFrames: 1,
+            validRatio: 1.0,
+            socialPreferenceScore: 0.0,
+            socialDwellSec: 0.5,
+            geometricDwellSec: 0.5
+        )
+        let fileURL = try first.saveSession(header: header, frames: [frame], report: report)
+
+        let second = SessionVaultManager(vaultDirectory: tempDir)
+        XCTAssertTrue(second.isKeyPersisted)
+        let decryptedText = try second.readSessionPlainText(from: fileURL)
+        XCTAssertTrue(decryptedText.contains("PERSIST1"))
+    }
+
+    func testVaultStoresSubjectAgeSignal() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let vault = SessionVaultManager(vaultDirectory: tempDir)
+        let header = SessionHeader(
+            sessionId: "AGESIG1",
+            participantToken: "child-test-token",
+            stimulusBattery: "GeoPref_v1",
+            stimulusDurationSec: 5.0
+        )
+        let report = GazeSessionReportSummary(
+            sessionId: "AGESIG1",
+            durationSec: 5.0,
+            totalFrames: 300,
+            validFrames: 280,
+            validRatio: 0.933,
+            socialPreferenceScore: 0.4,
+            socialDwellSec: 3.0,
+            geometricDwellSec: 2.0,
+            subjectAgeSignal: SubjectAgeSignal(
+                band: .toddler,
+                agreement: 1.0,
+                confidence: 0.82,
+                sampleCount: 12,
+                isStable: true
+            )
+        )
+
+        let fileURL = try vault.saveSession(header: header, frames: [], report: report)
+        let decryptedText = try vault.readSessionPlainText(from: fileURL)
+        XCTAssertTrue(decryptedText.contains("subjectAgeSignal"))
+        XCTAssertTrue(decryptedText.contains("toddler"))
+    }
+
     func testExportSchemas() {
         let report = GazeSessionReportSummary(
             sessionId: "EXP789",
