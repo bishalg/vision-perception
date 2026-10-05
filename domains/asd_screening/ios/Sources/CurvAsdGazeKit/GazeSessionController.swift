@@ -23,6 +23,10 @@ public struct GazeSessionReportSummary: Codable, Sendable, Equatable {
     public let flatAffectScore: Double
     public let surpriseScoreMean: Double
     public let qualityVerdict: GazeQualityGate.Verdict
+    /// Assistive on-device subject age-band signal (nil when no age model is
+    /// installed or the window never stabilized). Band + confidence floats only —
+    /// no face imagery ever persists. Consumed by age-normalized scoring (ML_ROADMAP §3).
+    public let subjectAgeSignal: SubjectAgeSignal?
 
     public init(
         sessionId: String = UUID().uuidString.prefix(8).uppercased(),
@@ -40,7 +44,8 @@ public struct GazeSessionReportSummary: Codable, Sendable, Equatable {
         smileReactivityIndex: Double = 0.38,
         flatAffectScore: Double = 0.12,
         surpriseScoreMean: Double = 0.24,
-        qualityVerdict: GazeQualityGate.Verdict = .optimal
+        qualityVerdict: GazeQualityGate.Verdict = .optimal,
+        subjectAgeSignal: SubjectAgeSignal? = nil
     ) {
         self.sessionId = sessionId
         self.durationSec = durationSec
@@ -58,6 +63,7 @@ public struct GazeSessionReportSummary: Codable, Sendable, Equatable {
         self.flatAffectScore = flatAffectScore
         self.surpriseScoreMean = surpriseScoreMean
         self.qualityVerdict = qualityVerdict
+        self.subjectAgeSignal = subjectAgeSignal
     }
 }
 
@@ -94,6 +100,12 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
 
     /// Swift 6 background actor for direct asynchronous processing pipelines.
     public let processingActor: GazeProcessingActor
+
+    /// Assistive subject-age pipeline running off the ARFrame stream. Inert until an
+    /// age model is installed (`AgeBandEstimationEngine.discoverCompiledModelURL()`).
+    public let subjectAgeEstimator: SubjectAgeEstimator
+    /// Latest windowed subject age-band signal (5 Hz max update rate).
+    @Published public private(set) var subjectAgeSignal: SubjectAgeSignal?
 
     private var sessionStartTime: Date?
     public private(set) var clipStartTime: Date?
@@ -169,6 +181,7 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
             aoiTracker: aoiTracker,
             calibrationProfile: calibrationProfile
         )
+        self.subjectAgeEstimator = SubjectAgeEstimator(engine: AgeBandEstimationEngine.shared)
         self.currentQuality = GazeQualityGate.Evaluation(isValid: false, verdict: .rejected, failureReasons: ["Not started"])
         super.init()
 
@@ -337,7 +350,8 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
                 socialPreferenceScore: 0,
                 socialDwellSec: 0,
                 geometricDwellSec: 0,
-                qualityVerdict: .rejected
+                qualityVerdict: .rejected,
+                subjectAgeSignal: subjectAgeEstimator.currentSignal
             )
         }
 
@@ -399,7 +413,8 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
             smileReactivityIndex: max(0.0, min(1.0, meanSmile * 1.2)),
             flatAffectScore: flatAffectScore,
             surpriseScoreMean: meanSurprise,
-            qualityVerdict: verdict
+            qualityVerdict: verdict,
+            subjectAgeSignal: subjectAgeEstimator.currentSignal
         )
     }
 
@@ -592,7 +607,91 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
 }
 
 #if canImport(ARKit) && !os(macOS)
+import UIKit
+
 extension GazeSessionController: ARSessionDelegate {
+    /// Consumes the raw ARFrame stream for the assistive subject-age pipeline.
+    /// The captured image is handed to the estimator synchronously on this queue
+    /// (ARKit reuses its backing store) and never retained or written to disk.
+    public func session(_ session: ARSession, didUpdate frame: ARFrame) {
+        let metrics = Self.ageFrameMetrics(from: frame)
+        let signal = subjectAgeEstimator.record(
+            capturedImage: frame.capturedImage,
+            faceCenterNorm: metrics?.centerNorm,
+            faceRadiusNorm: metrics?.radiusNorm,
+            yawRad: metrics?.yawRad ?? 0,
+            pitchRad: metrics?.pitchRad ?? 0,
+            distanceCm: metrics?.distanceCm ?? 0,
+            eyeOpenness: metrics?.eyeOpenness ?? 0,
+            timestamp: CFAbsoluteTimeGetCurrent()
+        )
+        guard let signal else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.subjectAgeSignal != signal else { return }
+            self.subjectAgeSignal = signal
+        }
+    }
+
+    /// Projects the face anchor into captured-image normalized coordinates and
+    /// derives the coarse pose metrics the age pipeline gates on. Projection
+    /// conventions have shifted across OS versions, so the result is sanity-clamped
+    /// and the estimator falls back to a centered crop when it looks unreliable.
+    static func ageFrameMetrics(
+        from frame: ARFrame
+    ) -> (centerNorm: CGPoint?, radiusNorm: Double?, yawRad: Double, pitchRad: Double, distanceCm: Double, eyeOpenness: Double)? {
+        guard let faceAnchor = frame.anchors.compactMap({ $0 as? ARFaceAnchor }).first else { return nil }
+        let transform = faceAnchor.transform
+
+        let distanceCm = Double(max(0.2, -transform.columns.3.z) * 100.0)
+        let yawRad = Double(atan2(transform.columns.2.x, transform.columns.2.z))
+        let pitchRad = Double(asin(max(-1.0, min(1.0, -transform.columns.2.y))))
+
+        let shapes = faceAnchor.blendShapes
+        let leftOpenness = max(0.0, min(1.0, 1.0 - (shapes[.eyeBlinkLeft]?.doubleValue ?? 0)))
+        let rightOpenness = max(0.0, min(1.0, 1.0 - (shapes[.eyeBlinkRight]?.doubleValue ?? 0)))
+        let eyeOpenness = min(leftOpenness, rightOpenness)
+
+        let imageWidth = CGFloat(CVPixelBufferGetWidth(frame.capturedImage))
+        let imageHeight = CGFloat(CVPixelBufferGetHeight(frame.capturedImage))
+
+        var centerNorm: CGPoint?
+        var radiusNorm: Double?
+        let faceCenter = simd_float3(
+            transform.columns.3.x,
+            transform.columns.3.y,
+            transform.columns.3.z
+        )
+        let projected = frame.camera.projectPoint(
+            faceCenter,
+            orientation: .landscapeRight,
+            viewportSize: CGSize(width: imageWidth, height: imageHeight)
+        )
+        // Project a point ~11 cm to the face's anatomical right to estimate the
+        // on-screen face radius (half-width) in pixels.
+        let rightVector = simd_float3(
+            transform.columns.0.x,
+            transform.columns.0.y,
+            transform.columns.0.z
+        )
+        let edgePoint = faceCenter + rightVector * 0.11
+        let edgeProjected = frame.camera.projectPoint(
+            edgePoint,
+            orientation: .landscapeRight,
+            viewportSize: CGSize(width: imageWidth, height: imageHeight)
+        )
+        let dx = Double(edgeProjected.x - projected.x)
+        let dy = Double(edgeProjected.y - projected.y)
+        let radiusPx = (dx * dx + dy * dy).squareRoot()
+        let candidateX = Double(projected.x / imageWidth)
+        let candidateY = Double(projected.y / imageHeight)
+        if (0.05...0.95).contains(candidateX), (0.05...0.95).contains(candidateY), radiusPx > 8 {
+            centerNorm = CGPoint(x: candidateX, y: candidateY)
+            radiusNorm = radiusPx / Double(min(imageWidth, imageHeight))
+        }
+
+        return (centerNorm, radiusNorm, yawRad, pitchRad, distanceCm, eyeOpenness)
+    }
+
     public func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {
         guard let faceAnchor = anchors.compactMap({ $0 as? ARFaceAnchor }).first, faceAnchor.isTracked else {
             DispatchQueue.main.async { [weak self] in

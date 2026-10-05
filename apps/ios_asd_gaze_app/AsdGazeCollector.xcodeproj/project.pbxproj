@@ -29,6 +29,7 @@
 		261F460DA890EBB9CB62633C /* ChildProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 388C0EDE3C0D58F10B124580 /* ChildProfile.swift */; };
 		27355FA13ED6B22D40A3ACD5 /* DoctorReportGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 439D9846928A6D348C3DA218 /* DoctorReportGeneratorTests.swift */; };
 		288B7BB22B64FBC0DD5373D1 /* AppModeSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD544B6AE104530F9E0A878 /* AppModeSelectionView.swift */; };
+		2B9E42664B3E3B1FA4F8E242 /* SubjectAgeCheckTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11DF71AD0D8FEC7918EC89F3 /* SubjectAgeCheckTests.swift */; };
 		2C16EF91E993F15C10F182AD /* BiomarkerRiskStratificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20F54BD401B98FED6FAD3055 /* BiomarkerRiskStratificationView.swift */; };
 		35719B322FBE06434A10E9A0 /* PDFKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D055165C8B89ACF21CA75796 /* PDFKit.framework */; };
 		36177A6E5A141007149A2019 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A964440896F4E6DA13B314B1 /* WidgetKit.framework */; };
@@ -49,6 +50,7 @@
 		5E2BA197E451540DEDE7BC5C /* BiomarkerDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D46DDA36376F5DF620259376 /* BiomarkerDetailViews.swift */; };
 		624925F0D505680B230C9B31 /* stim_08_recenter_bubble_fox_3s.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 3D0CAADFB6B3C9205622483D /* stim_08_recenter_bubble_fox_3s.mp4 */; };
 		62E418A8D28D88A070E96C45 /* MedicationEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F74642FAE5CE051648BFDB4E /* MedicationEditorView.swift */; };
+		63C4B43027C7703A0DEC3187 /* AgeAssuranceGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C9D0928DBD5776164DBE31 /* AgeAssuranceGate.swift */; };
 		64ACC82F11CD4887615A3740 /* PDFKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D055165C8B89ACF21CA75796 /* PDFKit.framework */; };
 		65AA1472E19CA9A4138E2B8F /* ClinicalDashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 526122C5EA7A82F90C044C72 /* ClinicalDashboardViewModel.swift */; };
 		66F9D7A619978124018EFDAF /* ARFaceCameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6465958CA4E2F60B4DA0E0EB /* ARFaceCameraView.swift */; };
@@ -108,6 +110,7 @@
 		D52C4373A66D6DBDAD5D8159 /* MilestoneDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5C0EEC1D6F532BF41105B4 /* MilestoneDetailView.swift */; };
 		D77FB22C64EBAF6EF23F875F /* ClinicalDevelopmentModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D063D17414F7406EB0B9E9 /* ClinicalDevelopmentModelsTests.swift */; };
 		DC4351CFF8331089EF4C22B0 /* CareKitStore in Frameworks */ = {isa = PBXBuildFile; productRef = D70B6E3928D5B5C50D4C16AE /* CareKitStore */; };
+		DE3A65E17734FDF035297800 /* SubjectAgeQuickCheckCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 760938E707B2DC30599A6886 /* SubjectAgeQuickCheckCard.swift */; };
 		DF51B7CF0492F80200F9BBFA /* stim_07_cartoon_slapstick_penguin_8s.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 1D2872BCDCFE9D5F5FF11CAA /* stim_07_cartoon_slapstick_penguin_8s.mp4 */; };
 		E06EBE7828B8F7C724BCA478 /* MainGazeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3111366AAA094728086AD5E8 /* MainGazeScannerView.swift */; };
 		E75219426EB87200EFECC910 /* MoodDiaryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0C302E49E1425EA5CCFB052 /* MoodDiaryViewModel.swift */; };
@@ -116,6 +119,7 @@
 		EFF88103F82CFD161D7D39CB /* GazeStimulusScreeningView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA087B3C47AC8A0B4B540148 /* GazeStimulusScreeningView.swift */; };
 		F1140E7565E023A46FDF2A2A /* SceneKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 48B1E6902FFE822878A6BA04 /* SceneKit.framework */; };
 		F29EF67E775D57809CC2DEEC /* ResearchKitStudyModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E430E43FC538AE0C5060FCE8 /* ResearchKitStudyModels.swift */; };
+		F3F362C56CB6240CB3E29EF9 /* SubjectAgeCheckController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 166CC3AEAE68D47F51EDEC6F /* SubjectAgeCheckController.swift */; };
 		F6910970A2B6EA6D62EA018B /* AppModeStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7089A3889716340164998329 /* AppModeStoreTests.swift */; };
 		FB3DA6633752366F6F863F26 /* CareKitDashboardModals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75A2150C5701F544F4545D7A /* CareKitDashboardModals.swift */; };
 		FD9B81D911EB756AD94D3A21 /* DiaryHistoryEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FCF1E0E52117640E2BA8BFD /* DiaryHistoryEditorView.swift */; };
@@ -158,9 +162,11 @@
 		0644C1029B989BD15D1883E8 /* PediatricReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PediatricReportView.swift; sourceTree = "<group>"; };
 		0A1630E44038B9F64982C80C /* GazeSessionRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeSessionRecord.swift; sourceTree = "<group>"; };
 		0FCF1E0E52117640E2BA8BFD /* DiaryHistoryEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryHistoryEditorView.swift; sourceTree = "<group>"; };
+		11DF71AD0D8FEC7918EC89F3 /* SubjectAgeCheckTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubjectAgeCheckTests.swift; sourceTree = "<group>"; };
 		14598D0ED2B1CE4BFDB4156C /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
 		16077B853964E6059FCCE816 /* StimulusDownloadGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StimulusDownloadGateView.swift; sourceTree = "<group>"; };
 		16633D030005B527C78CD577 /* AsdGazeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsdGazeApp.swift; sourceTree = "<group>"; };
+		166CC3AEAE68D47F51EDEC6F /* SubjectAgeCheckController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubjectAgeCheckController.swift; sourceTree = "<group>"; };
 		1A12D94D7B76B41E158A1C2F /* HealthKitMoodStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitMoodStore.swift; sourceTree = "<group>"; };
 		1D2872BCDCFE9D5F5FF11CAA /* stim_07_cartoon_slapstick_penguin_8s.mp4 */ = {isa = PBXFileReference; path = stim_07_cartoon_slapstick_penguin_8s.mp4; sourceTree = "<group>"; };
 		1E01DC03541654B1592941EC /* AppLocalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLocalizer.swift; sourceTree = "<group>"; };
@@ -209,6 +215,7 @@
 		75053E80AAB8A4C1494A61D5 /* GazeScreeningWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeScreeningWizardView.swift; sourceTree = "<group>"; };
 		7587971C40BCA5A14C0F2135 /* ClinicalInteroperabilityStandards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClinicalInteroperabilityStandards.swift; sourceTree = "<group>"; };
 		75A2150C5701F544F4545D7A /* CareKitDashboardModals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareKitDashboardModals.swift; sourceTree = "<group>"; };
+		760938E707B2DC30599A6886 /* SubjectAgeQuickCheckCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubjectAgeQuickCheckCard.swift; sourceTree = "<group>"; };
 		763263288E4294815CD0FD89 /* DoctorReportGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoctorReportGenerator.swift; sourceTree = "<group>"; };
 		7AB99C7116FFBE3F3BA0684F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		7B3C64050069DF6F5046613F /* PerVideoResultViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerVideoResultViews.swift; sourceTree = "<group>"; };
@@ -248,6 +255,7 @@
 		CA4E9FE1E111B4651734C739 /* CryptoKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CryptoKit.framework; path = System/Library/Frameworks/CryptoKit.framework; sourceTree = SDKROOT; };
 		D055165C8B89ACF21CA75796 /* PDFKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = PDFKit.framework; path = System/Library/Frameworks/PDFKit.framework; sourceTree = SDKROOT; };
 		D46DDA36376F5DF620259376 /* BiomarkerDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiomarkerDetailViews.swift; sourceTree = "<group>"; };
+		D4C9D0928DBD5776164DBE31 /* AgeAssuranceGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgeAssuranceGate.swift; sourceTree = "<group>"; };
 		DAFD4387A17CEC332C4C3C71 /* AsdGazeCollectorTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AsdGazeCollectorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		DD1DB7F2655A5B1BBC5C5FC7 /* BlendShapeCSVLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlendShapeCSVLogger.swift; sourceTree = "<group>"; };
 		DE48FCCCDB5EBCB7A99A2EA7 /* AsdGazeCollector.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AsdGazeCollector.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -349,6 +357,7 @@
 				16077B853964E6059FCCE816 /* StimulusDownloadGateView.swift */,
 				F880C59E682E0DE781F22B2F /* StimulusScreeningView.swift */,
 				4C4E1DA6CDFFFC55B1FDE950 /* StimulusVideoPlayerView.swift */,
+				760938E707B2DC30599A6886 /* SubjectAgeQuickCheckCard.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -413,6 +422,7 @@
 		6A65873EEA362AAF39EA2859 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				D4C9D0928DBD5776164DBE31 /* AgeAssuranceGate.swift */,
 				57B7589323D11CE24F631B64 /* AppModeStore.swift */,
 				38B5C98A8DC049CA9448B7E1 /* ARKitMoodFusionController.swift */,
 				DD1DB7F2655A5B1BBC5C5FC7 /* BlendShapeCSVLogger.swift */,
@@ -439,6 +449,7 @@
 				7BC871417B12A12C3BBA06BF /* ResearchKitSyncService.swift */,
 				BBED732DAB0236044946C9E7 /* SmartOnFhirAuthService.swift */,
 				6131F4DD41BFC27E93725D50 /* StimulusPlaylist.swift */,
+				166CC3AEAE68D47F51EDEC6F /* SubjectAgeCheckController.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -518,6 +529,7 @@
 				581CB2A8A2DD547E98C49E96 /* ResearchKitStudyTests.swift */,
 				F5E5E1EBF0E152FE5F8C0375 /* ResearchKitSyncServiceTests.swift */,
 				A0D50DB436426D4B609643B4 /* StimulusPlaylistTests.swift */,
+				11DF71AD0D8FEC7918EC89F3 /* SubjectAgeCheckTests.swift */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -665,6 +677,7 @@
 			files = (
 				66F9D7A619978124018EFDAF /* ARFaceCameraView.swift in Sources */,
 				3C581CEB623A8E80C51BBB61 /* ARKitMoodFusionController.swift in Sources */,
+				63C4B43027C7703A0DEC3187 /* AgeAssuranceGate.swift in Sources */,
 				1D5EDEFD055B15D12F319F16 /* AppLocalizer.swift in Sources */,
 				288B7BB22B64FBC0DD5373D1 /* AppModeSelectionView.swift in Sources */,
 				68AB55F606DF1BD5B6B22407 /* AppModeStore.swift in Sources */,
@@ -725,6 +738,8 @@
 				196DD7D02F853669519BA3A7 /* StimulusPlaylist.swift in Sources */,
 				6CED98840A9C31074CAF9360 /* StimulusScreeningView.swift in Sources */,
 				715E5A2FCF4854B932115C58 /* StimulusVideoPlayerView.swift in Sources */,
+				F3F362C56CB6240CB3E29EF9 /* SubjectAgeCheckController.swift in Sources */,
+				DE3A65E17734FDF035297800 /* SubjectAgeQuickCheckCard.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -751,6 +766,7 @@
 				009DC93A3CCBEE25B3B75A6F /* ResearchKitStudyTests.swift in Sources */,
 				6EF3C2E422234A9DD014A346 /* ResearchKitSyncServiceTests.swift in Sources */,
 				EB7EF5070B1ED51164F0F743 /* StimulusPlaylistTests.swift in Sources */,
+				2B9E42664B3E3B1FA4F8E242 /* SubjectAgeCheckTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -798,6 +814,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
+				OTHER_SWIFT_FLAGS = "$(inherited)";
 				PRODUCT_BUNDLE_IDENTIFIER = org.curv.asd.gazecollector;
 				PRODUCT_NAME = AsdGazeCollector;
 				SDKROOT = iphoneos;
@@ -979,6 +996,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
+				OTHER_SWIFT_FLAGS = "$(inherited) -DASD_APP_STORE_AGE_ASSURANCE";
 				PRODUCT_BUNDLE_IDENTIFIER = org.curv.asd.gazecollector;
 				PRODUCT_NAME = AsdGazeCollector;
 				SDKROOT = iphoneos;

@@ -51,6 +51,7 @@ public struct GazePositioningStepView: View {
     @State private var continuousDetectionSec: Double = 0.0
     @State private var isVerified: Bool = false
     @State private var ovalPulseScale: CGFloat = 1.0
+    @State private var showAdultHoldingHint: Bool = false
 
     public let onReady: () -> Void
 
@@ -83,11 +84,50 @@ public struct GazePositioningStepView: View {
                 Spacer()
                 sweetSpotGuide
                 Spacer()
+                if showAdultHoldingHint {
+                    adultHoldingHint
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 12)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
                 bottomStatusBar
             }
         }
         .onAppear(perform: startTracking)
         .onDisappear(perform: stopTracking)
+        .onChange(of: controller.subjectAgeSignal) { _, signal in
+            withAnimation(.easeInOut(duration: 0.3)) {
+                showAdultHoldingHint = SubjectAgeCheckController.shouldShowAdultHoldingHint(signal: signal)
+            }
+        }
+    }
+
+    /// Assistive wrong-subject hint: a stable teen/adult face dominates the frame
+    /// while this step expects the child. Soft guidance only — never blocks.
+    private var adultHoldingHint: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "person.crop.circle.badge.exclamationmark")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundColor(LiquidGlass.warmAmber)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("It looks like an adult is in front of the camera")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                Text("Bring your child into the oval so the session tracks them.")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color.white.opacity(0.75))
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial.opacity(0.85))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(LiquidGlass.warmAmber.opacity(0.55), lineWidth: 1)
+        )
+        .accessibilityIdentifier("positioning_adult_holding_hint")
     }
 
     // MARK: - Top Bar (Clean, no close button)

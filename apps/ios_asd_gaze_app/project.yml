@@ -58,6 +58,13 @@ targets:
         INFOPLIST_KEY_UIRequiresFullScreen: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+      configs:
+        # App Store builds compile with the age-assurance flag; internal/Debug
+        # builds bypass the Declared Age Range request entirely.
+        Debug:
+          OTHER_SWIFT_FLAGS: "$(inherited)"
+        Release:
+          OTHER_SWIFT_FLAGS: "$(inherited) -DASD_APP_STORE_AGE_ASSURANCE"
     dependencies:
       - package: CurvAsdGazeKit
       - package: CareActivityKit

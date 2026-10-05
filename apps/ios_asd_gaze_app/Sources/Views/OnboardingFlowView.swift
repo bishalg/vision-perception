@@ -252,6 +252,9 @@ public struct OnboardingFlowView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
+            // Assistive subject-age cross-check (on-device, optional, never blocks).
+            SubjectAgeQuickCheckCard(selectedBracket: selectedAgeBracket)
+
             // Multi-Language Selection Section
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
@@ -797,6 +800,13 @@ public struct OnboardingFlowView: View {
         profile.hasConsentedPIA = true
         profile.consentTimestamp = Date()
         profileStore.profile = profile
+
+        // App Store builds only (Release config): ask for the parent-declared age
+        // range via Apple's Declared Age Range API. Internal builds bypass this.
+        Task { @MainActor in
+            _ = await DeclaredAgeRangeService.requestAgeRangeIfEnabled()
+        }
+
         onCompleted()
     }
 }

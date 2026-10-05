@@ -248,3 +248,17 @@ Map each video → its content (time-coded segments) → expected-behavior basel
 - [x] Settings → new "App Mode" segmented switcher with mode tagline + clinic rollout note
 - [x] `AppModeStoreTests` (3 tests); app suite 94 executed — 91 green, 3 pre-existing CareKit store failures (unrelated, confirmed on clean tree)
 - Note: mode is the front door for the planned profile system (Phase 1 multi-profile core → Phase 2 clinic RBAC → Phase 3 SMART-on-FHIR institutional sync)
+
+### W5c — On-Device Subject Age Check (assistive, not verification) + App Store Age-Assurance Flag (2026-10-05)
+- [x] Research verdict: exact age verification of 1–5 yr olds is NOT achievable with public models (young-child overestimation ≫ 12/18/24/36/48 mo bracket granularity); adult-vs-toddler separation IS reliable → shipped design is a coarse 4-band assistive signal (`FacialAgeBand`: toddler/preschool/child/teenAdult)
+- [x] Kit `Inference/AgeBandEstimationEngine.swift` — CoreML classifier wrapper mirroring BiomarkerClassificationEngine optional-model pattern (ANE, inert without model, bundle + Application Support discovery)
+- [x] Kit `Inference/FaceCropExtractor.swift` — pure crop-rect math + CoreImage extraction (224×224 BGRA, upright rotation, head-and-shoulders margin from projected face radius, centered fallback)
+- [x] Kit `Inference/SubjectAgeEstimator.swift` — quality-gated (pose/distance/eyes, GazeQualityGate-aligned) ≤5 Hz inference over a 2.5 s rolling window → `SubjectAgeSignal` (modal band, agreement, confidence, isStable; ties break toward younger)
+- [x] `GazeSessionController`: ARFrame delegate consumes `capturedImage` synchronously on the ARKit queue (never retained); `subjectAgeSignal` published; `GazeSessionReportSummary.subjectAgeSignal` (additive, decode-safe) feeds age-normalized scoring later (ML_ROADMAP §3)
+- [x] App `SubjectAgeCheckController` — pure verdict logic: ≥2-band stable mismatch → soft confirm; 1-band tolerance absorbs overestimation bias; stable teenAdult → positioning hint
+- [x] Onboarding Step 2 `SubjectAgeQuickCheckCard` — optional on-camera cross-check of the picked bracket (graceful on non-TrueDepth devices / no model; never blocks)
+- [x] Wizard positioning step — amber "adult in front of camera" hint when a stable teen/adult face dominates
+- [x] Phase 4 `AgeAssuranceGate` + `DeclaredAgeRangeService` — Apple Declared Age Range API (iOS 26, `AgeRangeService.shared.requestAgeRange(ageGates:13,16,18)`) wired at onboarding completion; Release-only compile flag `-DASD_APP_STORE_AGE_ASSURANCE` in project.yml → internal builds bypass entirely
+- [x] `tools/asd_age_model/` — train.py (MobileNetV3-Small, UTKFace bands, balanced sampler), validate.py (toddler/teenAdult ≥0.90 recall ship gate), convert_coreml.py (baked normalization, classifier output), requirements + README; `models/asd_age/README.md` artifact manifest + license provenance note
+- [x] 20 new kit tests (103 total, green on macOS + iOS simulator) + 9 new app tests (`SubjectAgeCheckTests`); app suite 103 executed — 2 pre-existing CareKit store failures only (confirmed pre-existing)
+- Privacy: fully on-device; no face imagery persisted anywhere — only band + confidence floats in session metadata; no camera-permission change

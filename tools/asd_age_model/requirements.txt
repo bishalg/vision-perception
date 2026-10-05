@@ -1,0 +1,4 @@
+torch>=2.3
+torchvision>=0.18
+coremltools>=8.0
+pillow>=10.0
