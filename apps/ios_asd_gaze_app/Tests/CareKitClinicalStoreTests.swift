@@ -292,7 +292,12 @@ final class CareKitClinicalStoreTests: XCTestCase {
         }
         wait(for: [exp], timeout: 5.0)
         XCTAssertEqual(count, 1, "concurrent diary writes must upsert into one outcome")
-        XCTAssertEqual(valueCount, 4)
+        // Assert against the live schema (mood, eye contact, joint attention, notes,
+        // sensory load) so adding another diary field doesn't stale this test again.
+        XCTAssertEqual(
+            valueCount,
+            CareKitClinicalStore.diaryOutcomeValues(from: DailyDiaryEntry(notes: "first")).count
+        )
     }
 
     /// Toggle on then off must keep exactly one outcome and reflect the
@@ -478,7 +483,9 @@ final class CareKitClinicalStoreTests: XCTestCase {
             let exp = expectation(description: "fetch replaced")
             var title = ""
             var eventCount = 0
-            store.fetchTasks(callbackQueue: .main) { result in
+            // Dated query — a default query would also return stale pre-update
+            // versions (CareKit only resolves tips when an interval is given).
+            store.fetchTasks(query: OCKTaskQuery(for: Date()), callbackQueue: .main) { result in
                 let tasks = (try? result.get()) ?? []
                 if let task = tasks.first(where: { $0.id == "ock_med_med_replace" }) {
                     title = task.title ?? ""
@@ -504,7 +511,7 @@ final class CareKitClinicalStoreTests: XCTestCase {
         for _ in 0..<40 {
             let exp = expectation(description: "fetch deleted")
             var ids: [String] = []
-            store.fetchTasks(callbackQueue: .main) { result in
+            store.fetchTasks(query: OCKTaskQuery(for: Date()), callbackQueue: .main) { result in
                 ids = (try? result.get().map(\.id)) ?? []
                 exp.fulfill()
             }

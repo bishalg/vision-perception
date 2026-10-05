@@ -259,10 +259,17 @@ public final class CareKitClinicalStore: @unchecked Sendable {
                                       completion: (@Sendable () -> Void)? = nil) {
         mutationQueue.async {
             let taskID = "ock_med_\(item.id)"
-            if let existing = self.fetchTasksNow().first(where: { $0.id == taskID }) {
-                self.deleteTasksNow([existing])
+            var replacement = Self.makeMedicationTask(from: item, startOfDay: Calendar.current.startOfDay(for: date))
+            if self.fetchTasksNow().contains(where: { $0.id == taskID }) {
+                // CareKit tasks are versioned: a same-ID replacement must go through
+                // updateTasks (new version, strictly newer effectiveDate). The previous
+                // delete-then-add path tripped OCKStore's unique-ID constraint, so the
+                // add failed and medication edits silently never applied.
+                replacement.effectiveDate = Date()
+                _ = self.updateTasksNow([replacement])
+            } else {
+                _ = self.addTasksNow([replacement])
             }
-            self.addTasksNow([Self.makeMedicationTask(from: item, startOfDay: Calendar.current.startOfDay(for: date))])
             Self.dispatch(completion)
         }
     }
@@ -386,10 +393,21 @@ public final class CareKitClinicalStore: @unchecked Sendable {
     /// Block until CareKit answers, then return the result. The caller must be
     /// on `mutationQueue` (never the main thread) so the main-queue callbacks
     /// below cannot deadlock.
+    ///
+    /// The query MUST carry a date interval: without one CareKit skips its
+    /// tip-version predicate and returns stale pre-delete versions, so soft-deleted
+    /// tasks never disappear from fetches — which silently broke medication
+    /// replace/delete and made re-seeding think deleted tasks still existed.
+    /// A 10-year horizon returns every live tip regardless of schedule dates.
     private func fetchTasksNow() -> [OCKTask] {
         let box = Box<[OCKTask]>([])
         let semaphore = DispatchSemaphore(value: 0)
-        store.fetchTasks(callbackQueue: .main) { outcome in
+        var query = OCKTaskQuery(dateInterval: DateInterval(
+            start: .distantPast,
+            end: Date().addingTimeInterval(315_576_000.0)
+        ))
+        query.excludesTasksWithNoEvents = false
+        store.fetchTasks(query: query, callbackQueue: .main) { outcome in
             switch outcome {
             case .success(let tasks):
                 box.value = tasks
@@ -425,6 +443,22 @@ public final class CareKitClinicalStore: @unchecked Sendable {
         store.deleteTasks(tasks, callbackQueue: .main) { outcome in
             if case .failure(let error) = outcome {
                 Self.logger.error("deleteTasks failed: \(error.localizedDescription, privacy: .public)")
+            } else {
+                box.value = true
+            }
+            semaphore.signal()
+        }
+        semaphore.wait()
+        return box.value
+    }
+
+    @discardableResult
+    private func updateTasksNow(_ tasks: [OCKTask]) -> Bool {
+        let box = Box(false)
+        let semaphore = DispatchSemaphore(value: 0)
+        store.updateTasks(tasks, callbackQueue: .main) { outcome in
+            if case .failure(let error) = outcome {
+                Self.logger.error("updateTasks failed: \(error.localizedDescription, privacy: .public)")
             } else {
                 box.value = true
             }
