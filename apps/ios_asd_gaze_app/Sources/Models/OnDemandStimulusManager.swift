@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import os
+import CurvAsdGazeKit
 
 /// Manages dynamic downloading, local caching, and asset resolution of video stimuli
 /// using Apple On-Demand Resources (ODR / `NSBundleResourceRequest`).
@@ -45,6 +46,9 @@ public final class OnDemandStimulusManager: ObservableObject {
 
     /// Maps child age in months and optional locale code to the appropriate On-Demand Resource tag.
     public func resolveTag(ageMonths: Int, localeCode: String = "en") -> String {
+        if let tag = StimulusCatalog.current.resourcePackTag(ageMonths: ageMonths, localeCode: localeCode) {
+            return tag
+        }
         let ageBracket: String
         switch ageMonths {
         case ..<24:
@@ -54,7 +58,6 @@ public final class OnDemandStimulusManager: ObservableObject {
         default:
             ageBracket = "age_36_60"
         }
-
         let normalizedLang = localeCode.lowercased().prefix(2)
         switch normalizedLang {
         case "hi":

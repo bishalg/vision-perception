@@ -3,18 +3,7 @@ import XCTest
 
 final class NormativeBaselineLibraryTests: XCTestCase {
 
-    static let allVideoIds = [
-        "stim_01_social_peekaboo_8s",
-        "stim_02_gaze_cue_right_8s",
-        "stim_03_gaze_cue_left_8s",
-        "stim_04_surprise_giftbox_10s",
-        "stim_05_geopref_split_10s",
-        "stim_06_dynamic_gears_marbles_8s",
-        "stim_07_cartoon_slapstick_penguin_8s",
-        "stim_08_recenter_bubble_fox_3s",
-        "stim_09_social_turn_taking_10s",
-        "stim_10_animal_puppy_play_8s"
-    ]
+    static var allVideoIds: [String] { StimulusCatalog.current.clipIds }
 
     private var baseline: NormativeBaselineSet {
         guard let set = NormativeBaselineLibrary.loadBundled() else {

@@ -7,6 +7,14 @@ import Foundation
 /// (`Gaze_Target_*`, `Center_Fixation_Target`) stay out of the preference ratio:
 /// they are scored by their own per-clip metrics, and folding them into GeoPref
 /// would credit a look away from a face as social preference.
+public enum AOIRoleKind: String, Sendable {
+    case social
+    case geometric
+    case eye
+    case mouth
+    case orienting
+}
+
 public enum AOIRole {
     public static let social: Set<String> = [
         "Social_Actor",
@@ -53,6 +61,29 @@ public enum AOIRole {
             return true
         }
         return false
+    }
+
+    /// Built-in names plus any area the stimulus catalog tags with this role.
+    /// A new clip opts into scoring by setting roles in the catalog.
+    public static func matches(_ name: String, kind: AOIRoleKind) -> Bool {
+        if set(for: kind).contains(name) {
+            return true
+        }
+        return StimulusCatalog.current.hasRole(name, kind.rawValue)
+    }
+
+    public static func intersects(_ names: [String], kind: AOIRoleKind) -> Bool {
+        names.contains { matches($0, kind: kind) }
+    }
+
+    private static func set(for kind: AOIRoleKind) -> Set<String> {
+        switch kind {
+        case .social: return social
+        case .geometric: return geometric
+        case .eye: return eye
+        case .mouth: return mouth
+        case .orienting: return orienting
+        }
     }
 }
 
@@ -112,21 +143,21 @@ public enum SessionBiomarkerAggregator {
         var baselineCount = 0
 
         for frame in validFrames {
-            if AOIRole.intersects(frame.activeAOINames, role: AOIRole.social) {
+            if AOIRole.intersects(frame.activeAOINames, kind: .social) {
                 socialFrames += 1
             }
-            if AOIRole.intersects(frame.activeAOINames, role: AOIRole.geometric) {
+            if AOIRole.intersects(frame.activeAOINames, kind: .geometric) {
                 geometricFrames += 1
             }
-            if AOIRole.intersects(frame.activeAOINames, role: AOIRole.eye) {
+            if AOIRole.intersects(frame.activeAOINames, kind: .eye) {
                 eyeFrames += 1
             }
-            if AOIRole.intersects(frame.activeAOINames, role: AOIRole.mouth) {
+            if AOIRole.intersects(frame.activeAOINames, kind: .mouth) {
                 mouthFrames += 1
             }
 
             let sessionSec = frame.gaze.videoTimeSec
-            if firstOrientSec == nil, AOIRole.intersects(frame.activeAOINames, role: AOIRole.orienting) {
+            if firstOrientSec == nil, AOIRole.intersects(frame.activeAOINames, kind: .orienting) {
                 firstOrientSec = sessionSec
             }
 
