@@ -50,12 +50,12 @@ public struct StimulusAOITracker: Sendable {
                 StimulusAOI(name: "Gaze_Target_Left", startTimeSec: 3.0, endTimeSec: 8.0, xMin: 0.02, yMin: 0.08, xMax: 0.35, yMax: 0.45)
             ]),
             "stim_04_surprise_giftbox_10s": StimulusAOITracker(aois: [
-                StimulusAOI(name: "Actor_Eyes", startTimeSec: 0.0, endTimeSec: 8.0, xMin: 0.36, yMin: 0.20, xMax: 0.64, yMax: 0.38),
-                StimulusAOI(name: "Gift_Box", startTimeSec: 0.0, endTimeSec: 8.0, xMin: 0.28, yMin: 0.55, xMax: 0.72, yMax: 0.95)
+                StimulusAOI(name: "Actor_Eyes", startTimeSec: 0.0, endTimeSec: 10.0, xMin: 0.36, yMin: 0.20, xMax: 0.64, yMax: 0.38),
+                StimulusAOI(name: "Gift_Box", startTimeSec: 0.0, endTimeSec: 10.0, xMin: 0.28, yMin: 0.55, xMax: 0.72, yMax: 0.95)
             ]),
             "stim_05_geopref_split_10s": StimulusAOITracker(aois: [
-                StimulusAOI(name: "Social_Actor", startTimeSec: 0.0, endTimeSec: 8.0, xMin: 0.0, yMin: 0.0, xMax: 0.5, yMax: 1.0),
-                StimulusAOI(name: "Geometric_Pattern", startTimeSec: 0.0, endTimeSec: 8.0, xMin: 0.5, yMin: 0.0, xMax: 1.0, yMax: 1.0)
+                StimulusAOI(name: "Social_Actor", startTimeSec: 0.0, endTimeSec: 10.0, xMin: 0.0, yMin: 0.0, xMax: 0.5, yMax: 1.0),
+                StimulusAOI(name: "Geometric_Pattern", startTimeSec: 0.0, endTimeSec: 10.0, xMin: 0.5, yMin: 0.0, xMax: 1.0, yMax: 1.0)
             ]),
             "stim_06_dynamic_gears_marbles_8s": StimulusAOITracker(aois: [
                 StimulusAOI(name: "Mechanical_Motion", startTimeSec: 0.0, endTimeSec: 8.0, xMin: 0.10, yMin: 0.10, xMax: 0.90, yMax: 0.90)
@@ -67,11 +67,11 @@ public struct StimulusAOITracker: Sendable {
                 StimulusAOI(name: "Center_Fixation_Target", startTimeSec: 0.0, endTimeSec: 8.0, xMin: 0.38, yMin: 0.38, xMax: 0.62, yMax: 0.62)
             ]),
             "stim_09_social_turn_taking_10s": StimulusAOITracker(aois: [
-                StimulusAOI(name: "Teacher_Face", startTimeSec: 0.0, endTimeSec: 8.0, xMin: 0.28, yMin: 0.15, xMax: 0.72, yMax: 0.75),
-                StimulusAOI(name: "Teacher_Mouth", startTimeSec: 0.0, endTimeSec: 8.0, xMin: 0.40, yMin: 0.48, xMax: 0.60, yMax: 0.64)
+                StimulusAOI(name: "Teacher_Face", startTimeSec: 0.0, endTimeSec: 10.0, xMin: 0.28, yMin: 0.15, xMax: 0.72, yMax: 0.75),
+                StimulusAOI(name: "Teacher_Mouth", startTimeSec: 0.0, endTimeSec: 10.0, xMin: 0.40, yMin: 0.48, xMax: 0.60, yMax: 0.64)
             ]),
             "stim_10_animal_puppy_play_8s": StimulusAOITracker(aois: [
-                StimulusAOI(name: "Animal_Puppies", startTimeSec: 0.0, endTimeSec: 8.0, xMin: 0.18, yMin: 0.25, xMax: 0.82, yMax: 0.85)
+                StimulusAOI(name: "Animal_Puppies", startTimeSec: 0.0, endTimeSec: 9.0, xMin: 0.18, yMin: 0.25, xMax: 0.82, yMax: 0.85)
             ])
         ]
     }
