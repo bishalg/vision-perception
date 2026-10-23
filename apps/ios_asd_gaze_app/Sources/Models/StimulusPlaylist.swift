@@ -112,6 +112,12 @@ public enum StimulusPlaylistBattery {
         )
     ]
 
+    /// Every clip the shipped 30s and 60s batteries can ask for. This is the download checklist.
+    public static var shippedClips: [StimulusPlaylistItem] {
+        var seen = Set<String>()
+        return (standard30s + comprehensive60s).filter { seen.insert($0.videoName).inserted }
+    }
+
     /// Returns the appropriate stimulus battery for the targeted screening session duration.
     public static func playlist(forTargetDuration durationSec: Double) -> [StimulusPlaylistItem] {
         if durationSec >= 50.0 {

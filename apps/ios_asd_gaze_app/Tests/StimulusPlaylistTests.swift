@@ -32,6 +32,17 @@ final class StimulusPlaylistTests: XCTestCase {
         }
     }
 
+    func testShippedClipChecklistCoversBothBatteries() {
+        let clips = StimulusPlaylistBattery.shippedClips
+        let names = clips.map(\.videoName)
+        XCTAssertEqual(Set(names).count, names.count)
+        let required = (StimulusPlaylistBattery.standard30s + StimulusPlaylistBattery.comprehensive60s).map(\.videoName)
+        for name in required {
+            XCTAssertTrue(names.contains(name), name)
+        }
+        XCTAssertEqual(clips.count, 9)
+    }
+
     func testPlaylistFactorySelection() {
         let shortBattery = StimulusPlaylistBattery.playlist(forTargetDuration: 30.0)
         XCTAssertEqual(shortBattery.count, 4)
