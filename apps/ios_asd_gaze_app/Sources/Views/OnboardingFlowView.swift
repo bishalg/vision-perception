@@ -345,8 +345,10 @@ public struct OnboardingFlowView: View {
             localeCode: selectedLanguage
         )
         let isReady = !stimulusManager.isDownloading
-            && stimulusManager.downloadProgress >= 1.0
+            && stimulusManager.stage == .ready
             && stimulusManager.activeTag == expectedTag
+        let allOnDevice = !stimulusManager.clips.isEmpty
+            && stimulusManager.clips.allSatisfy { $0.phase == .onDevice }
 
         return VStack(alignment: .leading, spacing: 20) {
             // Header
@@ -374,7 +376,7 @@ public struct OnboardingFlowView: View {
                         .foregroundColor(LiquidGlass.textSecondary)
                 }
                 Spacer(minLength: 0)
-                if isReady {
+                if allOnDevice {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 22, weight: .bold))
                         .foregroundColor(LiquidGlass.emeraldMint)
@@ -392,18 +394,18 @@ public struct OnboardingFlowView: View {
                     detail: "Looked for ready-to-play activities"
                 )
                 downloadStageRow(
-                    done: isReady,
+                    done: allOnDevice,
                     active: stimulusManager.isDownloading,
-                    title: "Downloading from Apple",
+                    title: "Downloading each clip",
                     detail: downloadByteDetail
                 )
                 downloadStageRow(
-                    done: isReady,
+                    done: isReady && allOnDevice,
                     active: false,
                     title: "Verified & ready",
-                    detail: stimulusManager.usedOfflineFallback
-                        ? "Offline — built-in activities will play instead"
-                        : "Saved on this iPhone for offline screening"
+                    detail: allOnDevice
+                        ? "Saved on this iPhone for offline screening"
+                        : "Listed below. Missing clips use the on-screen activity."
                 )
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -420,6 +422,14 @@ public struct OnboardingFlowView: View {
             }
             .frame(maxWidth: .infinity)
             .glassCard(cornerRadius: 14, padding: 14)
+
+            if !stimulusManager.clips.isEmpty {
+                StimulusClipChecklist(
+                    clips: stimulusManager.clips,
+                    progress: stimulusManager.downloadProgress,
+                    isDownloading: stimulusManager.isDownloading
+                )
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -730,7 +740,7 @@ public struct OnboardingFlowView: View {
                 localeCode: selectedLanguage
             )
             return !stimulusManager.isDownloading
-                && stimulusManager.downloadProgress >= 1.0
+                && stimulusManager.stage == .ready
                 && stimulusManager.activeTag == expectedTag
         default:
             return true

@@ -56,7 +56,7 @@ public struct ARFaceSceneView: UIViewRepresentable {
             let node = SCNNode(geometry: geometry)
             // Translucent celestial teal 3D facial wireframe mesh
             node.geometry?.firstMaterial?.fillMode = .lines
-            node.geometry?.firstMaterial?.diffuse.contents = UIColor(red: 0.0, green: 0.824, blue: 0.769, alpha: 0.65)
+            node.geometry?.firstMaterial?.diffuse.contents = LiquidGlass.celestialTealMesh
             node.geometry?.firstMaterial?.lightingModel = .constant
             node.geometry?.firstMaterial?.isDoubleSided = true
 
@@ -145,7 +145,7 @@ public struct ARFaceCameraView: View {
             ZStack {
                 // Dark studio gradient background
                 LinearGradient(
-                    colors: [Color(red: 0.06, green: 0.10, blue: 0.16), Color(red: 0.02, green: 0.04, blue: 0.08)],
+                    colors: [LiquidGlass.studioMeshTop, LiquidGlass.studioMeshBottom],
                     startPoint: .top,
                     endPoint: .bottom
                 )

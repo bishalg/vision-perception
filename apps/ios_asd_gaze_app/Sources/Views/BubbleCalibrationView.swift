@@ -120,11 +120,11 @@ public struct BubbleCalibrationView: View {
 
     // Balloon themes for visual engagement across points
     private let balloonColors: [[Color]] = [
-        [LiquidGlass.celestialTeal, Color(red: 0.0, green: 0.6, blue: 0.9)],
-        [Color(red: 1.0, green: 0.35, blue: 0.55), Color(red: 0.9, green: 0.1, blue: 0.4)],
-        [Color(red: 0.3, green: 0.85, blue: 0.4), LiquidGlass.emeraldMint],
-        [Color(red: 1.0, green: 0.65, blue: 0.2), LiquidGlass.warmAmber],
-        [Color(red: 0.6, green: 0.4, blue: 0.95), Color(red: 0.4, green: 0.2, blue: 0.85)]
+        [LiquidGlass.celestialTeal, LiquidGlass.balloonSky],
+        [LiquidGlass.balloonRose, LiquidGlass.balloonRoseDeep],
+        [LiquidGlass.balloonLeaf, LiquidGlass.emeraldMint],
+        [LiquidGlass.balloonApricot, LiquidGlass.warmAmber],
+        [LiquidGlass.balloonViolet, LiquidGlass.balloonIndigo]
     ]
 
     // Attention-guided calibration timing (Option 1: timed, not gaze-hit-gated —

@@ -366,6 +366,60 @@ public struct ClinicalAdvisoryBannerView: View {
     }
 }
 
+// MARK: - Research sync status
+
+struct SyncStatusView: View {
+    @ObservedObject var syncService: ResearchKitSyncService
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Image(systemName: syncService.syncState.isSyncing ? "arrow.triangle.2.circlepath" : "icloud.and.arrow.up")
+                    .foregroundColor(LiquidGlass.celestialTeal)
+                    .font(.system(size: 12))
+
+                Text(syncService.syncState.description)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+
+                Spacer(minLength: 8)
+
+                if syncService.pendingQueueCount > 0 {
+                    Text("\(syncService.pendingQueueCount) Pending")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundColor(LiquidGlass.warmAmber)
+                }
+            }
+
+            if let lastSyncedAt = syncService.lastSyncedAt {
+                Text("Last success \(lastSyncedAt.formatted(date: .omitted, time: .shortened))")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(LiquidGlass.textTertiary)
+            }
+
+            if syncService.deadLetterCount > 0 {
+                HStack(spacing: 8) {
+                    Text("\(syncService.deadLetterCount) stuck")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundColor(LiquidGlass.signalAtypical)
+                    Spacer()
+                    Button("Retry stuck") {
+                        syncService.retryDeadLetterItems()
+                        syncService.syncNow(forceBundleCompile: false)
+                    }
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(LiquidGlass.celestialTeal)
+                    .disabled(syncService.syncState.isSyncing)
+                }
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(RoundedRectangle(cornerRadius: 8).fill(LiquidGlass.cardBackground))
+    }
+}
+
 // MARK: - ResearchKit Clinical Study Dashboard Card
 
 public struct ResearchStudyDashboardCard: View {
@@ -420,28 +474,8 @@ public struct ResearchStudyDashboardCard: View {
                     .foregroundColor(.secondary)
             }
 
-            // Sync Status Row
             if enrollment.isConsented {
-                HStack(spacing: 8) {
-                    Image(systemName: syncService.syncState.isSyncing ? "arrow.triangle.2.circlepath" : "icloud.and.arrow.up")
-                        .foregroundColor(LiquidGlass.celestialTeal)
-                        .font(.system(size: 12))
-
-                    Text(syncService.syncState.description)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.secondary)
-
-                    Spacer()
-
-                    if syncService.pendingQueueCount > 0 {
-                        Text("\(syncService.pendingQueueCount) Pending")
-                            .font(.system(size: 10, weight: .bold, design: .monospaced))
-                            .foregroundColor(LiquidGlass.warmAmber)
-                    }
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(RoundedRectangle(cornerRadius: 8).fill(LiquidGlass.cardBackground))
+                SyncStatusView(syncService: syncService)
             }
 
             // Action Buttons
@@ -597,7 +631,8 @@ public struct ResearchKitDoctorExportModal: View {
                 }
             }
             .onAppear {
-                jsonString = ResearchKitStudyStore.shared.exportResearchKitJSON()
+                let diary = MoodDiaryStore.shared.recentEntries.map { DiaryObservationRecord(entry: $0) }
+                jsonString = ResearchKitStudyStore.shared.exportResearchKitJSON(diaryObservations: diary)
                 shareURL = syncService.generateDoctorShareFile()
                 pdfShareURL = syncService.generateDoctorReportPDF()
             }

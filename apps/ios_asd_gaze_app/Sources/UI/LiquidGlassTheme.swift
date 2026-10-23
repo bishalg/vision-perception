@@ -14,6 +14,26 @@ public enum LiquidGlass {
     public static let warmAmber = Color(red: 1.0, green: 0.718, blue: 0.302)
     public static let emeraldMint = Color(red: 0.0, green: 0.902, blue: 0.463)
     public static let deactivatedBrown = Color(red: 0.62, green: 0.42, blue: 0.28)
+    /// Atypical / stuck-item signal. Fixed hue in both modes.
+    public static let signalAtypical = Color(red: 0.937, green: 0.267, blue: 0.267)
+    /// SceneKit wireframe. Matches celestial teal at 65% opacity.
+    public static let celestialTealMesh = UIColor(red: 0.0, green: 0.824, blue: 0.769, alpha: 0.65)
+
+    // Balloon calibration pairs. Fixed hues — they sit on the camera field.
+    public static let balloonSky = Color(red: 0.0, green: 0.6, blue: 0.9)
+    public static let balloonRose = Color(red: 1.0, green: 0.35, blue: 0.55)
+    public static let balloonRoseDeep = Color(red: 0.9, green: 0.1, blue: 0.4)
+    public static let balloonLeaf = Color(red: 0.3, green: 0.85, blue: 0.4)
+    public static let balloonApricot = Color(red: 1.0, green: 0.65, blue: 0.2)
+    public static let balloonViolet = Color(red: 0.6, green: 0.4, blue: 0.95)
+    public static let balloonIndigo = Color(red: 0.4, green: 0.2, blue: 0.85)
+
+    /// Dark studio backdrop behind the synthetic face mesh.
+    public static let studioMeshTop = Color(red: 0.06, green: 0.10, blue: 0.16)
+    public static let studioMeshBottom = Color(red: 0.02, green: 0.04, blue: 0.08)
+    /// Fixed media panes for the scanpath hero. White labels sit on these.
+    public static let stimulusSocialMedia = Color(red: 0.10, green: 0.16, blue: 0.28)
+    public static let stimulusGeometryMedia = Color(red: 0.20, green: 0.08, blue: 0.24)
     public static let deepCanvas = adaptive(
         dark: Color(red: 0.04, green: 0.06, blue: 0.10),
         light: Color(red: 0.95, green: 0.96, blue: 0.98)
