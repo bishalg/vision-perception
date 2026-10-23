@@ -116,10 +116,10 @@ public struct ARFaceCameraView: View {
             if let arSession = session as? ARSession, !isSimulation, ARFaceTrackingConfiguration.isSupported {
                 ARFaceSceneView(session: arSession)
             } else {
-                syntheticFaceMeshView
+                fallbackPreview
             }
             #else
-            syntheticFaceMeshView
+            fallbackPreview
             #endif
 
             // Outer Face Alignment guide reticle
@@ -133,8 +133,25 @@ public struct ARFaceCameraView: View {
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
+    /// Debug simulation shows the synthetic wireframe; Release never draws a fake face
+    /// (SIM-6) and shows an honest "camera unavailable" state instead.
+    @ViewBuilder
+    private var fallbackPreview: some View {
+        #if ASD_SIMULATION_ENABLED
+        syntheticFaceMeshView
+        #else
+        ZStack {
+            Color.black
+            Label("Camera preview unavailable", systemImage: "video.slash")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.white.opacity(0.7))
+        }
+        #endif
+    }
+
     // MARK: - Simulator / Fallback Synthetic Face Wireframe
 
+    #if ASD_SIMULATION_ENABLED
     private var syntheticFaceMeshView: some View {
         GeometryReader { geo in
             let w = geo.size.width
@@ -239,4 +256,5 @@ public struct ARFaceCameraView: View {
             CGPoint(x: centerX, y: centerY - 38)       // Forehead center
         ]
     }
+    #endif
 }

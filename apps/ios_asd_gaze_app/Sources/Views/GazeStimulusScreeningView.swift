@@ -22,6 +22,9 @@ public struct GazeStimulusScreeningView: View {
     @State private var cartoonBlink: Bool = false
     @State private var cartoonBounce: CGFloat = 0.0
     @State private var showAbortConfirm: Bool = false
+    @State private var entryBlock: DeviceBlockReason?
+    /// SIM-2/SIM-7: why capture cannot run right now, if it cannot.
+    private var activeBlock: DeviceBlockReason? { entryBlock ?? controller.blockReason }
 
     public let playlist: [StimulusPlaylistItem]
     public let proceduralMode: ProceduralStimulusMode?
@@ -117,10 +120,15 @@ public struct GazeStimulusScreeningView: View {
             }
         }
         .ignoresSafeArea()
+        .overlay {
+            if let reason = activeBlock {
+                UnsupportedDeviceView(reason: reason, onClose: onAbort)
+            }
+        }
         .onAppear(perform: startSession)
         .onDisappear(perform: stopSession)
         .confirmationDialog(
-            "Abort Screening?",
+            "Stop Observation?",
             isPresented: $showAbortConfirm,
             titleVisibility: .visible
         ) {
@@ -128,7 +136,7 @@ public struct GazeStimulusScreeningView: View {
                 stopSession()
                 onAbort()
             }
-            Button("Continue Screening", role: .cancel) {}
+            Button("Continue Observation", role: .cancel) {}
         } message: {
             Text("Session data collected so far will not be saved.")
         }
@@ -459,7 +467,13 @@ public struct GazeStimulusScreeningView: View {
             initialBattery = StimulusAOITracker.makeGeoPrefBattery()
         }
 
-        controller.startSession(battery: initialBattery, stimulusId: currentClip?.videoName)
+        // CNS-1: consent token required; SIM-2: no simulation fallback on unsupported hardware.
+        guard controller.startSessionWithConsent(battery: initialBattery, stimulusId: currentClip?.videoName) else {
+            entryBlock = .consentRequired
+            return
+        }
+        entryBlock = nil
+        guard controller.blockReason == nil else { return }
 
         sessionTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { _ in
             MainActor.assumeIsolated {
@@ -550,6 +564,10 @@ public struct GazeStimulusScreeningView: View {
         }
 
         if recordedSource != nil {
+            let participantToken = GazeSessionRecord.participantToken(
+                enrollment: ResearchKitStudyStore.shared.fetchEnrollment(),
+                sessionId: summary.sessionId
+            )
             // Norm-collection contribution: only for consented + opted-in live TrueDepth sessions.
             let collectionMetadata = NormCollectionGate.collectionMetadata(
                 enrollment: ResearchKitStudyStore.shared.fetchEnrollment(),
@@ -562,7 +580,7 @@ public struct GazeStimulusScreeningView: View {
                 let vault = SessionVaultManager()
                 let header = SessionHeader(
                     sessionId: summary.sessionId,
-                    participantToken: "child-\(summary.sessionId.prefix(6))",
+                    participantToken: participantToken,
                     stimulusBattery: activeBatteryName,
                     stimulusDurationSec: summary.durationSec,
                     captureSource: summary.captureSource

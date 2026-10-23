@@ -26,10 +26,10 @@ public struct ClinicalDetailsModalView: View {
                             }
 
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Clinical Advisory & Protocol")
+                                Text("Observation Notes & Guidance")
                                     .font(.system(size: 18, weight: .bold, design: .rounded))
                                     .foregroundColor(.primary)
-                                Text("Pediatric Visual Attention Screening")
+                                Text("Visual Attention Observation Diary")
                                     .font(.system(size: 13))
                                     .foregroundColor(.secondary)
                             }
@@ -50,7 +50,7 @@ public struct ClinicalDetailsModalView: View {
                                 .font(.system(size: 15, weight: .bold))
                                 .foregroundColor(.primary)
 
-                            Text("• Share weekly CareKit JSON / PDF export with your child's pediatrician or developmental specialist.\n• Maintain regular daily screenings (30-60 seconds) in a well-lit room.\n• Track behavioral observations and spontaneous eye contact ratings consistently.")
+                            Text("• Share weekly CareKit JSON / PDF export with your child's pediatrician or developmental specialist.\n• Keep a regular daily observation (30-60 seconds) in a well-lit room.\n• Track behavioral observations and spontaneous eye contact ratings consistently.")
                                 .font(.system(size: 13))
                                 .foregroundColor(.secondary)
                         }
@@ -59,7 +59,7 @@ public struct ClinicalDetailsModalView: View {
                     .padding(20)
                 }
             }
-            .navigationTitle("Clinical Advisory")
+            .navigationTitle("Observation Guidance")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -445,7 +445,7 @@ public struct ResearchStudyDashboardCard: View {
                 if enrollment.isConsented {
                     HStack(spacing: 4) {
                         Circle().fill(LiquidGlass.emeraldMint).frame(width: 6, height: 6)
-                        Text("Enrolled • IRB #2026-088")
+                        Text("Sharing on • Optional")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundColor(LiquidGlass.emeraldMint)
                     }
@@ -463,13 +463,13 @@ public struct ResearchStudyDashboardCard: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Pediatric Clinical Research Study")
+                Text("Optional Data Sharing")
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
 
                 Text(enrollment.isConsented
                     ? "Participant \(enrollment.participantId) • Data streams are de-identified and encrypted."
-                    : "Participate in clinical research to advance toddler neurodevelopment screening.")
+                    : "Optionally share de-identified observation data. This is not a diagnosis or a medical assessment.")
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
             }
@@ -643,7 +643,7 @@ public struct ResearchKitDoctorExportModal: View {
         let enrollment = ResearchKitStudyStore.shared.fetchEnrollment()
         return VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Label("IRB-ASD-2026-088", systemImage: "checkmark.seal.fill")
+                Label("Observation record", systemImage: "checkmark.seal.fill")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundColor(LiquidGlass.celestialTeal)
                 Spacer()
@@ -718,7 +718,7 @@ public struct ResearchKitDoctorExportModal: View {
 
             if let pdfShareURL {
                 ShareLink(item: pdfShareURL) {
-                    Label("Export Clinical Doctor Report (PDF)", systemImage: "doc.text.fill")
+                    Label("Export Doctor Report (PDF)", systemImage: "doc.text.fill")
                         .fontWeight(.semibold)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)

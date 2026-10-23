@@ -43,6 +43,19 @@ public struct GazeScreeningWizardView: View {
 
     public var body: some View {
         ZStack {
+            // SIM-7 / CNS-1 entry gate: unsupported hardware (or missing consent) shows an
+            // explanation and offers no way to start a session.
+            if case .blocked(let reason) = CaptureEntryGate.evaluate() {
+                UnsupportedDeviceView(reason: reason)
+            } else {
+                wizardSteps
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var wizardSteps: some View {
+        ZStack {
             switch step {
             case .positioning:
                 GazePositioningStepView(

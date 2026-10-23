@@ -52,6 +52,9 @@ public struct GazePositioningStepView: View {
     @State private var isVerified: Bool = false
     @State private var ovalPulseScale: CGFloat = 1.0
     @State private var showAdultHoldingHint: Bool = false
+    @State private var entryBlock: DeviceBlockReason?
+    /// SIM-2/SIM-7: why capture cannot run right now, if it cannot.
+    private var activeBlock: DeviceBlockReason? { entryBlock ?? controller.blockReason }
 
     public let onReady: () -> Void
 
@@ -91,6 +94,11 @@ public struct GazePositioningStepView: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
                 bottomStatusBar
+            }
+        }
+        .overlay {
+            if let reason = activeBlock {
+                UnsupportedDeviceView(reason: reason)
             }
         }
         .onAppear(perform: startTracking)
@@ -311,7 +319,7 @@ public struct GazePositioningStepView: View {
     // MARK: - Actions
 
     private func startTracking() {
-        controller.startSession()
+        entryBlock = controller.startSessionWithConsent() ? nil : .consentRequired
         elapsedPreviewSec = 0.0
         continuousDetectionSec = 0.0
         isVerified = false
@@ -321,9 +329,11 @@ public struct GazePositioningStepView: View {
                 let dt = 1.0 / 60.0
                 elapsedPreviewSec += dt
 
+                #if ASD_SIMULATION_ENABLED
                 if controller.isSimulationMode {
                     controller.tickSimulatedFrame(timeSec: elapsedPreviewSec)
                 }
+                #endif
 
                 if distanceState == .sweetSpot {
                     continuousDetectionSec += dt

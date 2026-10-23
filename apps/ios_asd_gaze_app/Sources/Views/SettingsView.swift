@@ -273,7 +273,7 @@ public struct SettingsView: View {
             GlassSectionHeader(title: Localizer.tr("settings_conditions_section"), icon: "cross.case.fill")
 
             VStack(alignment: .leading, spacing: 10) {
-                Text("Caregiver-entered conditions and allergies for medication context. Not a diagnosis from gaze screening.")
+                Text("Caregiver-entered conditions and allergies for medication context. Not a diagnosis; gaze observations are not a medical assessment.")
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
 

@@ -90,6 +90,9 @@ public struct BubbleCalibrationView: View {
     @State private var popShockwaveScale: CGFloat = 0.0
     @State private var showGazeReticle: Bool = true
     @State private var simulationElapsedSec: Double = 0.0
+    @State private var entryBlock: DeviceBlockReason?
+    /// SIM-2/SIM-7: why capture cannot run right now, if it cannot.
+    private var activeBlock: DeviceBlockReason? { entryBlock ?? controller.blockReason }
 
     // Attention-guided calibration state
     @State private var windowElapsedSec: Double = 0.0
@@ -221,6 +224,11 @@ public struct BubbleCalibrationView: View {
                             .foregroundColor(showGazeReticle ? LiquidGlass.emeraldMint : LiquidGlass.textSecondary)
                     }
                     .accessibilityLabel("Toggle Gaze Cursor")
+                }
+            }
+            .overlay {
+                if let reason = activeBlock {
+                    UnsupportedDeviceView(reason: reason, onClose: onClose)
                 }
             }
             .onAppear {
@@ -501,7 +509,7 @@ public struct BubbleCalibrationView: View {
         controller.calibrationTarget = targetPoints[0]
         smoothedGaze = targetPoints[0]
         simulationElapsedSec = 0.0
-        controller.startSession()
+        entryBlock = controller.startSessionWithConsent() ? nil : .consentRequired
         loopTimer?.invalidate()
         dwellProgress = 0.0
         windowElapsedSec = 0.0
@@ -537,9 +545,11 @@ public struct BubbleCalibrationView: View {
         stringSway = sin(simulationElapsedSec * 2.5)
 
         // Advance simulated frame if in simulation mode
+        #if ASD_SIMULATION_ENABLED
         if controller.isSimulationMode {
             controller.tickSimulatedFrame(timeSec: simulationElapsedSec)
         }
+        #endif
 
         // Dual-stage display smoothing: 1-Euro filtered from controller + gentle temporal blend
         let rawPt = controller.currentRawGazePoint
@@ -567,7 +577,11 @@ public struct BubbleCalibrationView: View {
         // Lock condition: Face is tracked, eyes are open/tracking, and gaze is directed toward target
         let hasFaceAndEyes = controller.trackingStage.hasFace && controller.trackingStage.hasEyes
         let targetRadius = currentTargetIndex == 0 ? 220.0 : softFeedbackRadiusPoints
-        let isLookingAtTarget = distancePoints < targetRadius || controller.isSimulationMode
+        // SIM-6: the auto-pass exists only in Debug simulation; Release always measures the distance.
+        var isLookingAtTarget = distancePoints < targetRadius
+        #if ASD_SIMULATION_ENABLED
+        isLookingAtTarget = isLookingAtTarget || controller.isSimulationMode
+        #endif
         isLockedOnTarget = hasFaceAndEyes && isLookingAtTarget
 
         if isLockedOnTarget {

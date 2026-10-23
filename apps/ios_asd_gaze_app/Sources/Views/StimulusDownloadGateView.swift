@@ -77,7 +77,7 @@ public struct StimulusDownloadGateView: View {
 
                     // Session Duration & Battery Configuration Card
                     VStack(spacing: 8) {
-                        Text("Screening Session Duration")
+                        Text("Observation Session Duration")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(LiquidGlass.textSecondary)
 
@@ -166,7 +166,7 @@ public struct StimulusDownloadGateView: View {
                     }
                 } label: {
                     HStack(spacing: 8) {
-                        Text(allSessionClipsOnDevice ? "Begin Screening Activity" : "Continue with on-screen activity")
+                        Text(allSessionClipsOnDevice ? "Begin Observation Activity" : "Continue with on-screen activity")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                         Image(systemName: "arrow.right.circle.fill")
                             .font(.system(size: 18))

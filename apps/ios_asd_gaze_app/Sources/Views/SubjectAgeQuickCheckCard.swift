@@ -160,7 +160,7 @@ struct SubjectAgeQuickCheckCard: View {
         case .softConfirm:
             if !checkController.dismissedSoftConfirm {
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("This looks like an adult face. Sessions are designed for your child — keep your child in front of the camera during screening.",
+                    Label("This looks like an adult face. Sessions are designed for your child — keep your child in front of the camera during the observation.",
                           systemImage: "exclamationmark.triangle.fill")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(LiquidGlass.warmAmber)
@@ -185,7 +185,10 @@ struct SubjectAgeQuickCheckCard: View {
     private func startCheck() {
         isChecking = true
         checkController.reset()
-        gazeController.startSession()
+        // CNS-1: consent-gated start; if consent is missing nothing starts and the check ends.
+        if !gazeController.startSessionWithConsent() {
+            isChecking = false
+        }
     }
 
     private func stopCheck() {

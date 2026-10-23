@@ -41,6 +41,9 @@ public struct MainGazeScannerView: View {
     @State private var presentedReport: (summary: GazeSessionReportSummary, frames: [GazeFrame])?
     #endif
     @State private var showCalibrationSheet: Bool = false
+    @State private var entryBlock: DeviceBlockReason?
+    /// SIM-2/SIM-7: why capture cannot run right now, if it cannot.
+    private var activeBlock: DeviceBlockReason? { entryBlock ?? controller.blockReason }
 
     public var onClose: (() -> Void)?
     public let onComplete: ((GazeSessionReportSummary, [GazeFrame]) -> Void)?
@@ -77,6 +80,11 @@ public struct MainGazeScannerView: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.bottom, 8)
+            }
+            .overlay {
+                if let reason = activeBlock {
+                    UnsupportedDeviceView(reason: reason, onClose: onClose)
+                }
             }
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
@@ -653,7 +661,7 @@ public struct MainGazeScannerView: View {
         Menu {
             Button(action: {
                 elapsedSeconds = 0.0
-                controller.startSession()
+                beginConsentedCapture()
             }) {
                 Label("Reset Observation", systemImage: "arrow.counterclockwise")
             }
@@ -663,7 +671,7 @@ public struct MainGazeScannerView: View {
             Button(action: {
                 elapsedSeconds = 0.0
                 if controller.isSimulationMode {
-                    controller.startSession()
+                    beginConsentedCapture()
                 } else {
                     controller.startSimulatedSession()
                 }
@@ -749,7 +757,7 @@ public struct MainGazeScannerView: View {
                 let vault = SessionVaultManager()
                 let header = SessionHeader(
                     sessionId: summary.sessionId,
-                    participantToken: "child-\(summary.sessionId.prefix(6))",
+                    participantToken: participantToken,
                     stimulusBattery: "GeoPref_v1",
                     stimulusDurationSec: summary.durationSec,
                     captureSource: summary.captureSource
@@ -798,8 +806,13 @@ public struct MainGazeScannerView: View {
         }
     }
 
+    /// CNS-1: live capture only starts with a consent token minted from the profile store.
+    private func beginConsentedCapture() {
+        entryBlock = controller.startSessionWithConsent() ? nil : .consentRequired
+    }
+
     private func startSessionLoop() {
-        controller.startSession()
+        beginConsentedCapture()
         sessionTimer?.invalidate()
         sessionTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { _ in
             MainActor.assumeIsolated {

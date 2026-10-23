@@ -48,6 +48,8 @@ jobs:
         run: python3 scripts/check_asd_claims.py --selftest
       - name: Store metadata claims (all locales, iOS + Android)
         run: python3 scripts/check_asd_claims.py
+      - name: In-app Swift copy (non-diagnostic wording, ADR-0004)
+        run: python3 scripts/check_asd_claims.py --swift
       - name: No personal identifiers in fastlane
         run: python3 scripts/check_asd_claims.py --secrets
 
