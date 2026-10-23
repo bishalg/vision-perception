@@ -76,9 +76,37 @@ final class TrackingPipelineTests: XCTestCase {
         XCTAssertFalse(controllerB.calibrationProfile.isCalibrated)
     }
 
+    func testUnavailableStageProperties() {
+        let reasons: [TrackingUnavailableReason] = [.faceTrackingUnsupported, .cameraPermissionDenied, .sessionFailed, .interrupted]
+        var labels = Set<String>()
+        for reason in reasons {
+            let stage = TrackingStage.unavailable(reason: reason)
+            XCTAssertFalse(stage.hasFace)
+            XCTAssertFalse(stage.hasEyes)
+            XCTAssertFalse(stage.isGazeActive)
+            labels.insert(stage.label)
+        }
+        XCTAssertEqual(labels.count, reasons.count, "Each unavailable reason needs a distinct label")
+        XCTAssertEqual(
+            TrackingStage.unavailable(reason: .faceTrackingUnsupported).label,
+            "This device cannot run gaze observations"
+        )
+    }
+
+    func testTickWithoutSimulatedSessionLeavesStageUntouched() {
+        let controller = GazeSessionController()
+        controller.calibrationTarget = CGPoint(x: 0.5, y: 0.5)
+        for i in 0..<5 {
+            controller.tickSimulatedFrame(timeSec: Double(i) * 0.016)
+        }
+        XCTAssertEqual(controller.trackingStage, .searchingFace)
+        XCTAssertFalse(controller.currentQuality.isValid)
+    }
+
+    #if ASD_SIMULATION_ENABLED
     func testSimulationModeProducesSmoothedGazeAndActiveStage() {
         let controller = GazeSessionController()
-        controller.isSimulationMode = true
+        controller.startSimulatedSession()
         controller.calibrationTarget = CGPoint(x: 0.5, y: 0.5)
 
         // Advance simulation by 5 frames
@@ -91,4 +119,5 @@ final class TrackingPipelineTests: XCTestCase {
         XCTAssertEqual(controller.currentGazePoint.x, 0.5, accuracy: 0.05)
         XCTAssertEqual(controller.currentGazePoint.y, 0.5, accuracy: 0.05)
     }
+    #endif
 }

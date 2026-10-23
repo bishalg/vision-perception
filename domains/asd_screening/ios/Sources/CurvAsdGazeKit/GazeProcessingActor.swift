@@ -135,6 +135,8 @@ public actor GazeProcessingActor {
     /// Under 2 MB footprint for 7,200 samples (2-minute session at 60 Hz).
     private var volatileFrameBuffer: [GazeFrame] = []
     public private(set) var isRecording: Bool = false
+    /// Provenance of the current session; `nil` before the first start.
+    public private(set) var captureSource: CaptureSource?
     private var sessionStartTime: Date?
     private var clipStartTime: Date?
     /// Stimulus clip currently playing (playlist video name). Nil when no playlist context.
@@ -156,11 +158,14 @@ public actor GazeProcessingActor {
         self.rawGazeFilter = OneEuroFilter2D(minCutoff: 1.2, beta: 0.015, dCutoff: 1.0)
     }
 
-    /// Prepares actor for a fresh recording session.
+    /// Prepares actor for a fresh recording session. Live (`.trueDepth`) unless the
+    /// caller is the Debug-only simulated path.
     public func startSession(
         battery: StimulusAOITracker? = nil,
-        profile: GazeCalibrationProfile? = nil
+        profile: GazeCalibrationProfile? = nil,
+        captureSource: CaptureSource = .trueDepth
     ) {
+        self.captureSource = captureSource
         if let battery = battery {
             self.aoiTracker = battery
         }
@@ -179,6 +184,16 @@ public actor GazeProcessingActor {
         self.gazeFilter.reset()
         self.rawGazeFilter.reset()
     }
+
+    #if ASD_SIMULATION_ENABLED
+    /// Prepares a simulated session (Debug builds only, SIM-3).
+    public func startSimulatedSession(
+        battery: StimulusAOITracker? = nil,
+        profile: GazeCalibrationProfile? = nil
+    ) {
+        startSession(battery: battery, profile: profile, captureSource: .simulated)
+    }
+    #endif
 
     /// Dynamically switches the active stimulus clip and AOI battery mid-session.
     public func switchStimulusClip(battery: StimulusAOITracker, stimulusId: String? = nil) {
@@ -375,13 +390,19 @@ public actor GazeProcessingActor {
         )
     }
 
-    /// Ingests a simulated frame (for Simulator and mathematical testing).
+    /// Ingests a simulated frame (Debug simulation and mathematical testing).
+    ///
+    /// Returns `nil` and buffers nothing unless the session was started with
+    /// `startSimulatedSession` (SIM-3); synthetic frames never enter a live session.
+    /// Compiled to a stub without `ASD_SIMULATION_ENABLED`.
     public func processSimulatedFrame(
         timeSec: Double,
         target: CGPoint?,
         stimulusId: String? = nil,
         clipMediaTimeSec: Double? = nil
-    ) -> GazeUIState {
+    ) -> GazeUIState? {
+        #if ASD_SIMULATION_ENABLED
+        guard captureSource == .simulated else { return nil }
         let gazePoint: CGPoint
         if let target = target {
             let jitterX = 0.015 * sin(timeSec * 7.2)
@@ -470,90 +491,22 @@ public actor GazeProcessingActor {
             headPitchDeg: sample.headPitchRad * 180.0 / .pi,
             headRollDeg: sample.headRollRad * 180.0 / .pi
         )
+        #else
+        return nil
+        #endif
     }
 
     /// Concludes the session, stops recording, computes clinical aggregates,
     /// and returns the session summary alongside the raw volatile frames.
     public func finalizeSession() -> (summary: GazeSessionReportSummary, frames: [GazeFrame]) {
         self.isRecording = false
-        let totalFrames = volatileFrameBuffer.count
         let framesSnapshot = volatileFrameBuffer
-
-        guard totalFrames > 0 else {
-            let emptySummary = GazeSessionReportSummary(
-                durationSec: 0,
-                totalFrames: 0,
-                validFrames: 0,
-                validRatio: 0,
-                socialPreferenceScore: 0,
-                socialDwellSec: 0,
-                geometricDwellSec: 0,
-                qualityVerdict: .rejected
-            )
-            return (emptySummary, framesSnapshot)
-        }
-
-        let validFrames = framesSnapshot.filter { $0.gaze.isValid && $0.qualityVerdict != .rejected }
-        let validRatio = Double(validFrames.count) / Double(totalFrames)
-
-        var socialCount = 0
-        var geometricCount = 0
-        var eyeCount = 0
-        var mouthCount = 0
-        var smileSum = 0.0
-        var surpriseSum = 0.0
-        var expressivityList: [Double] = []
-
-        for frame in validFrames {
-            if frame.activeAOINames.contains("Social_Actor") { socialCount += 1 }
-            if frame.activeAOINames.contains("Geometric_Pattern") { geometricCount += 1 }
-            if frame.activeAOINames.contains("Eye_Region") { eyeCount += 1 }
-            if frame.activeAOINames.contains("Mouth_Region") { mouthCount += 1 }
-            smileSum += frame.affect.socialSmileIntensity
-            surpriseSum += frame.affect.surpriseScore
-            expressivityList.append(frame.affect.expressivityIndex)
-        }
-
-        let frameIntervalSec = 1.0 / 60.0
-        let socialDwell = Double(socialCount) * frameIntervalSec
-        let geometricDwell = Double(geometricCount) * frameIntervalSec
-        let totalDwell = socialDwell + geometricDwell
-
-        let socialPreferenceScore = totalDwell > 0.0
-            ? (socialDwell - geometricDwell) / totalDwell
-            : 0.0
-
-        let faceHits = Double(eyeCount + mouthCount)
-        let eyeDwellRatio = faceHits > 0.0 ? Double(eyeCount) / faceHits : 0.28
-        let mouthDwellRatio = faceHits > 0.0 ? Double(mouthCount) / faceHits : 0.14
-
-        let meanSmile = validFrames.isEmpty ? 0.0 : smileSum / Double(validFrames.count)
-        let meanSurprise = validFrames.isEmpty ? 0.0 : surpriseSum / Double(validFrames.count)
-
-        let meanExpressivity = expressivityList.isEmpty ? 0.0 : expressivityList.reduce(0, +) / Double(expressivityList.count)
-        let flatAffectScore = max(0.0, min(1.0, 1.0 - (meanExpressivity * 50.0)))
-
-        let verdict: GazeQualityGate.Verdict = validRatio >= 0.75 ? .optimal : (validRatio >= 0.50 ? .acceptable : .degraded)
-        let durationSec = Double(totalFrames) * frameIntervalSec
-
-        let summary = GazeSessionReportSummary(
-            durationSec: durationSec,
-            totalFrames: totalFrames,
-            validFrames: validFrames.count,
-            validRatio: validRatio,
-            socialPreferenceScore: socialPreferenceScore,
-            socialDwellSec: socialDwell,
-            geometricDwellSec: geometricDwell,
-            eyeDwellRatio: eyeDwellRatio,
-            mouthDwellRatio: mouthDwellRatio,
-            firstEyeLatencyMs: 480.0,
-            socialSmileIntensityMean: meanSmile,
-            smileReactivityIndex: max(0.0, min(1.0, meanSmile * 1.2)),
-            flatAffectScore: flatAffectScore,
-            surpriseScoreMean: meanSurprise,
-            qualityVerdict: verdict
+        let summary = GazeSessionReportSummary.aggregate(
+            frames: framesSnapshot,
+            sessionId: GazeSessionReportSummary.makeSessionId(),
+            captureSource: captureSource ?? .trueDepth,
+            subjectAgeSignal: nil
         )
-
         return (summary, framesSnapshot)
     }
 

@@ -38,10 +38,12 @@ final class BiomarkerDetailModelTests: XCTestCase {
 
     // MARK: - 2. Biomarker Classification Engine Stress & Boundary Tests
 
+    #if ASD_RESEARCH_CLASSIFIER
+
     func testClassificationEngineZeroValidFramesSafety() {
         let engine = BiomarkerClassificationEngine.shared
 
-        let zeroReport = GazeSessionReportSummary(
+        let zeroReport = GazeSessionReportSummary.fixture(
             sessionId: "ZERO001",
             durationSec: 0.0,
             totalFrames: 0,
@@ -74,7 +76,7 @@ final class BiomarkerDetailModelTests: XCTestCase {
 
         // Base report with typical features
         func makeReport(latency: Double) -> GazeSessionReportSummary {
-            GazeSessionReportSummary(
+            GazeSessionReportSummary.fixture(
                 sessionId: "LATTEST",
                 durationSec: 30.0,
                 totalFrames: 1800,
@@ -106,7 +108,7 @@ final class BiomarkerDetailModelTests: XCTestCase {
         let engine = BiomarkerClassificationEngine.shared
 
         func makeReport(eyeRatio: Double) -> GazeSessionReportSummary {
-            GazeSessionReportSummary(
+            GazeSessionReportSummary.fixture(
                 sessionId: "EYETEST",
                 durationSec: 30.0,
                 totalFrames: 1800,
@@ -134,6 +136,8 @@ final class BiomarkerDetailModelTests: XCTestCase {
         )
     }
 
+    #endif
+
     // MARK: - 3. Session Controller Biomarker Output Integrity
 
     func testSessionControllerEmptySessionProducesSafeReport() {
@@ -151,9 +155,10 @@ final class BiomarkerDetailModelTests: XCTestCase {
         XCTAssertFalse(summary.sessionId.isEmpty)
     }
 
+    #if ASD_SIMULATION_ENABLED
     func testSessionControllerDwellTimeConservation() {
         let controller = GazeSessionController()
-        controller.startSession()
+        controller.startSimulatedSession()
 
         // Tick 60 frames = exactly 1.0 second
         for i in 0..<60 {
@@ -168,6 +173,7 @@ final class BiomarkerDetailModelTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(summary.geometricDwellSec, 0.0)
         XCTAssertLessThanOrEqual(summary.socialDwellSec + summary.geometricDwellSec, 1.05)
     }
+    #endif
 
     // MARK: - 4. Quality Gate Blink Rejection Precision
 

@@ -81,6 +81,28 @@ public final class SubjectAgeEstimator: @unchecked Sendable {
     private var window: [WindowSample] = []
     private var lastInferenceTimestamp: TimeInterval = -.infinity
     private var cachedSignal: SubjectAgeSignal?
+    private var _isEnabled: Bool = true
+
+    /// When false, `record` is a no-op: no crop, no inference, no window update
+    /// (CNS-8). `GazeSessionController` keeps this off unless its
+    /// `isSubjectAgeEstimationEnabled` is set. Disabling drops the window.
+    public var isEnabled: Bool {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return _isEnabled
+        }
+        set {
+            lock.lock()
+            _isEnabled = newValue
+            if !newValue {
+                window.removeAll(keepingCapacity: false)
+                lastInferenceTimestamp = -.infinity
+                cachedSignal = nil
+            }
+            lock.unlock()
+        }
+    }
 
     public init(
         engine: any AgeBandInferring,
@@ -134,6 +156,9 @@ public final class SubjectAgeEstimator: @unchecked Sendable {
     ) -> SubjectAgeSignal? {
         lock.lock()
         defer { lock.unlock() }
+
+        // Disabled (default for gaze sessions, CNS-8): the frame is not looked at.
+        guard _isEnabled else { return nil }
 
         prune(through: timestamp)
 

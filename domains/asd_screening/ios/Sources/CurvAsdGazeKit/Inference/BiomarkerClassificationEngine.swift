@@ -1,7 +1,12 @@
 import Foundation
-#if canImport(CoreML)
+#if ASD_RESEARCH_CLASSIFIER && canImport(CoreML)
 import CoreML
 #endif
+
+// ADR-0004 / CLM-3: the risk classifier is a research-only (Debug) capability. Only
+// `RiskStratification` (persisted by the app) and `ExecutionDevice` (shared with the
+// age-band engine) compile in every configuration; everything else in this file is
+// under `ASD_RESEARCH_CLASSIFIER`.
 
 /// Risk stratification category produced by the ML biomarker inference engine.
 public enum RiskStratification: String, Codable, Sendable, Equatable {
@@ -26,6 +31,7 @@ public enum ExecutionDevice: String, Codable, Sendable, Equatable {
     case fallbackHeuristic = "Rule-Based Clinical Baseline"
 }
 
+#if ASD_RESEARCH_CLASSIFIER
 /// Comprehensive inference outcome from the ASD Biomarker Classifier.
 public struct BiomarkerClassificationResult: Codable, Sendable, Equatable {
     public let riskScore: Double
@@ -58,13 +64,11 @@ public struct BiomarkerClassificationResult: Codable, Sendable, Equatable {
     }
 }
 
-/// Inference engine executing CoreML classification models on the Apple Neural Engine (ANE)
-/// to produce diagnostic risk probability scores from visual attention telemetry.
+/// Research-only classifier over visual attention telemetry (not a diagnostic tool).
 ///
-/// If a compiled CoreML model (`.mlmodelc`) is present, it executes with `computeUnits = .all`
-/// to guarantee execution on the hardware ANE. When running on simulator or without an external model,
-/// it falls back to a deterministic, clinically validated Bayesian scoring model derived from
-/// landmark ASD visual attention research (GeoPref paradigm & oculomotor saccade literature).
+/// If a compiled CoreML model (`.mlmodelc`) is present, it executes with `computeUnits = .all`.
+/// Otherwise it falls back to a deterministic rule-based heuristic (`.fallbackHeuristic`)
+/// whose weights are informed by GeoPref and oculomotor literature but are not validated.
 public final class BiomarkerClassificationEngine: @unchecked Sendable {
     public static let shared = BiomarkerClassificationEngine()
 
@@ -113,17 +117,19 @@ public final class BiomarkerClassificationEngine: @unchecked Sendable {
         summary: GazeSessionReportSummary,
         startTime: CFAbsoluteTime
     ) -> BiomarkerClassificationResult? {
-        let featureDictionary: [String: Double] = [
+        var featureDictionary: [String: Double] = [
             "socialPreferenceScore": summary.socialPreferenceScore,
-            "eyeDwellRatio": summary.eyeDwellRatio,
-            "mouthDwellRatio": summary.mouthDwellRatio,
-            "firstEyeLatencyMs": summary.firstEyeLatencyMs,
             "socialSmileIntensityMean": summary.socialSmileIntensityMean,
             "smileReactivityIndex": summary.smileReactivityIndex,
             "flatAffectScore": summary.flatAffectScore,
             "surpriseScoreMean": summary.surpriseScoreMean,
             "validRatio": summary.validRatio
         ]
+        // Absent metrics are absent features (PLC-4); a model that requires them
+        // fails prediction and the heuristic path runs instead.
+        if let value = summary.eyeDwellRatio { featureDictionary["eyeDwellRatio"] = value }
+        if let value = summary.mouthDwellRatio { featureDictionary["mouthDwellRatio"] = value }
+        if let value = summary.firstEyeLatencyMs { featureDictionary["firstEyeLatencyMs"] = value }
 
         guard let featureProvider = try? MLDictionaryFeatureProvider(dictionary: featureDictionary as [String: Any]),
               let output = try? model.prediction(from: featureProvider) else {
@@ -165,50 +171,77 @@ public final class BiomarkerClassificationEngine: @unchecked Sendable {
     }
     #endif
 
-    /// Clinically validated scoring baseline derived from Pierce et al. (GeoPref)
-    /// and Jones & Klin (Oculomotor fixation and affect reactivity).
+    /// Rule-based research heuristic loosely derived from Pierce et al. (GeoPref)
+    /// and Jones & Klin. Not validated; research builds only.
+    ///
+    /// PLC-4: a `nil` metric is absent. Its weight is dropped and the remaining
+    /// weights are re-normalised to sum to 1, so no default value stands in for a
+    /// measurement that was not made.
     private func runClinicalBaselineInference(
         summary: GazeSessionReportSummary,
         startTime: CFAbsoluteTime
     ) -> BiomarkerClassificationResult {
-        // 1. Social Preference component:
-        // Score is [-1.0 ... +1.0]. Normalization to [0, 1] where 1.0 is full social preference.
-        let socialPrefNorm = max(0.0, min(1.0, (summary.socialPreferenceScore + 1.0) / 2.0))
-        let socialPrefRiskContrib = (1.0 - socialPrefNorm) * 0.42
+        struct Term {
+            let key: String
+            let label: String
+            let weight: Double
+            /// Risk fraction in [0, 1] for this metric; nil when the metric is absent.
+            let risk: Double?
+        }
 
-        // 2. Eye Dwell component:
-        // Typical range: 0.25 - 0.45. Atypical/reduced: < 0.18
-        let eyeDwellNorm = max(0.0, min(1.0, summary.eyeDwellRatio / 0.40))
-        let eyeDwellRiskContrib = (1.0 - eyeDwellNorm) * 0.24
+        let terms: [Term] = [
+            // Social preference [-1, +1] normalised to [0, 1]; 1 is full social preference.
+            Term(
+                key: "socialPreference",
+                label: "Low Social Preference Index (< 50%)",
+                weight: 0.42,
+                risk: 1.0 - max(0.0, min(1.0, (summary.socialPreferenceScore + 1.0) / 2.0))
+            ),
+            // Eye dwell: typical 0.25 - 0.45, reduced < 0.18.
+            Term(
+                key: "eyeDwell",
+                label: "Reduced Eye Fixation Ratio (< 20%)",
+                weight: 0.24,
+                risk: summary.eyeDwellRatio.map { 1.0 - max(0.0, min(1.0, $0 / 0.40)) }
+            ),
+            // First-eye latency: typical < 420 ms, prolonged > 600 ms.
+            Term(
+                key: "firstEyeLatency",
+                label: "Prolonged Saccade Latency (> 550ms)",
+                weight: 0.14,
+                risk: summary.firstEyeLatencyMs.map { max(0.0, min(1.0, ($0 - 300.0) / 500.0)) }
+            ),
+            Term(
+                key: "flatAffect",
+                label: "Affective Hypomimia (Flat Affect)",
+                weight: 0.12,
+                risk: max(0.0, min(1.0, summary.flatAffectScore))
+            ),
+            Term(
+                key: "smileReactivity",
+                label: "Attenuated Smile Reactivity",
+                weight: 0.08,
+                risk: 1.0 - max(0.0, min(1.0, summary.smileReactivityIndex / 0.50))
+            )
+        ]
 
-        // 3. Saccadic first-eye latency:
-        // Typical: < 420 ms. Elevated/prolonged: > 600 ms
-        let latencyNorm = max(0.0, min(1.0, (summary.firstEyeLatencyMs - 300.0) / 500.0))
-        let latencyRiskContrib = latencyNorm * 0.14
+        let present = terms.filter { $0.risk != nil }
+        let presentWeight = present.reduce(0.0) { $0 + $1.weight }
+        let scale = presentWeight > 0 ? 1.0 / presentWeight : 0.0
 
-        // 4. Flat Affect & Facial Expressivity:
-        // High flat affect (> 0.30) contributes to risk
-        let flatAffectRiskContrib = max(0.0, min(1.0, summary.flatAffectScore)) * 0.12
+        var importances: [String: Double] = [:]
+        var contributions: [(String, Double)] = []
+        for term in present {
+            let contribution = (term.risk ?? 0) * term.weight * scale
+            importances[term.key] = contribution
+            contributions.append((term.label, contribution))
+        }
 
-        // 5. Shared Smile Reactivity:
-        // Low smile reactivity (< 0.20) contributes to risk
-        let smileNorm = max(0.0, min(1.0, summary.smileReactivityIndex / 0.50))
-        let smileRiskContrib = (1.0 - smileNorm) * 0.08
-
-        // Logistic sigmoid mapping to produce calibrated probability [0.0 ... 1.0]
-        let rawSum = socialPrefRiskContrib + eyeDwellRiskContrib + latencyRiskContrib + flatAffectRiskContrib + smileRiskContrib
-        // Scale and center around clinical midpoint
+        // Logistic sigmoid around the heuristic midpoint.
+        let rawSum = importances.values.reduce(0, +)
         let logit = (rawSum - 0.38) * 6.5
         let riskScore = 1.0 / (1.0 + exp(-logit))
 
-        // Find primary contributing feature
-        let contributions: [(String, Double)] = [
-            ("Low Social Preference Index (< 50%)", socialPrefRiskContrib),
-            ("Reduced Eye Fixation Ratio (< 20%)", eyeDwellRiskContrib),
-            ("Prolonged Saccade Latency (> 550ms)", latencyRiskContrib),
-            ("Affective Hypomimia (Flat Affect)", flatAffectRiskContrib),
-            ("Attenuated Smile Reactivity", smileRiskContrib)
-        ]
         let primaryFeature = contributions.max(by: { $0.1 < $1.1 })?.0 ?? "Social Visual Attention Balance"
 
         let stratification: RiskStratification
@@ -229,16 +262,11 @@ public final class BiomarkerClassificationEngine: @unchecked Sendable {
             confidence: confidence,
             riskStratification: stratification,
             primaryContributingFeature: primaryFeature,
-            featureImportances: [
-                "socialPreference": socialPrefRiskContrib,
-                "eyeDwell": eyeDwellRiskContrib,
-                "firstEyeLatency": latencyRiskContrib,
-                "flatAffect": flatAffectRiskContrib,
-                "smileReactivity": smileRiskContrib
-            ],
+            featureImportances: importances,
             executionDevice: .fallbackHeuristic,
             evaluationTimestamp: Date(),
             inferenceLatencyMs: max(0.1, latencyMs)
         )
     }
 }
+#endif

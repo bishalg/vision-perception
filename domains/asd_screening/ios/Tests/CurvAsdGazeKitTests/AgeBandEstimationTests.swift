@@ -328,3 +328,76 @@ final class SubjectAgeEstimatorTests: XCTestCase {
         XCTAssertNil(estimator.currentSignal)
     }
 }
+
+// MARK: - CNS-8: estimator off by default
+
+final class SubjectAgeEstimationGatingTests: XCTestCase {
+    private func feed(_ controller: GazeSessionController, frames: Int) {
+        let buffer = makeBuffer()
+        for frame in 0..<frames {
+            controller.ingestSubjectAgeFrame(
+                capturedImage: buffer,
+                faceCenterNorm: CGPoint(x: 0.5, y: 0.5),
+                faceRadiusNorm: 0.14,
+                yawRad: 0.05,
+                pitchRad: 0.05,
+                distanceCm: 48.0,
+                eyeOpenness: 0.95,
+                timestamp: Double(frame) * 0.2
+            )
+        }
+    }
+
+    func testControllerEstimationDisabledByDefault() {
+        let controller = GazeSessionController()
+        XCTAssertFalse(controller.isSubjectAgeEstimationEnabled)
+        XCTAssertFalse(controller.subjectAgeEstimator.isEnabled)
+    }
+
+    func testEstimatorReceivesNoFramesUnlessEnabled() {
+        let engine = StubAgeBandEngine(estimates: [makeEstimation(.toddler)])
+        let controller = GazeSessionController(subjectAgeEstimator: SubjectAgeEstimator(engine: engine))
+
+        feed(controller, frames: 15)
+        XCTAssertEqual(engine.callCount, 0, "Disabled estimator must never run inference")
+        XCTAssertNil(controller.subjectAgeEstimator.currentSignal)
+
+        controller.isSubjectAgeEstimationEnabled = true
+        XCTAssertTrue(controller.subjectAgeEstimator.isEnabled)
+        feed(controller, frames: 15)
+        XCTAssertGreaterThan(engine.callCount, 0)
+        XCTAssertNotNil(controller.subjectAgeEstimator.currentSignal)
+
+        // Disabling again stops inference and drops the window.
+        controller.isSubjectAgeEstimationEnabled = false
+        let callsBefore = engine.callCount
+        feed(controller, frames: 15)
+        XCTAssertEqual(engine.callCount, callsBefore)
+        XCTAssertNil(controller.subjectAgeEstimator.currentSignal)
+    }
+
+    func testDisabledEstimatorRecordIsNoOp() {
+        let engine = StubAgeBandEngine(estimates: [makeEstimation(.toddler)])
+        let estimator = SubjectAgeEstimator(engine: engine)
+        estimator.isEnabled = false
+        let result = estimator.record(
+            capturedImage: makeBuffer(),
+            faceCenterNorm: CGPoint(x: 0.5, y: 0.5),
+            faceRadiusNorm: 0.14,
+            yawRad: 0,
+            pitchRad: 0,
+            distanceCm: 48,
+            eyeOpenness: 0.95,
+            timestamp: 0
+        )
+        XCTAssertNil(result)
+        XCTAssertEqual(engine.callCount, 0)
+    }
+
+    func testSummaryOmitsAgeSignalWhenDisabled() {
+        let engine = StubAgeBandEngine(estimates: [makeEstimation(.toddler)])
+        let controller = GazeSessionController(subjectAgeEstimator: SubjectAgeEstimator(engine: engine))
+        feed(controller, frames: 15)
+        XCTAssertNil(controller.stopSession().subjectAgeSignal)
+    }
+}

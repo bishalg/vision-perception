@@ -134,11 +134,12 @@ final class ScreenRaycasterTests: XCTestCase {
         XCTAssertGreaterThan(raycaster.screenHeightMeters, 0.10)
     }
 
+    #if ASD_SIMULATION_ENABLED
     func testCalibrationTargetSimulation() {
         let controller = GazeSessionController()
         let target = CGPoint(x: 0.22, y: 0.24)
         controller.calibrationTarget = target
-        controller.startSession()
+        controller.startSimulatedSession()
 
         controller.tickSimulatedFrame(timeSec: 1.0)
         let gaze = controller.currentGazePoint
@@ -147,6 +148,7 @@ final class ScreenRaycasterTests: XCTestCase {
         let distance = hypot(gaze.x - target.x, gaze.y - target.y)
         XCTAssertLessThan(distance, 0.05)
     }
+    #endif
 
     func test3DCameraSpaceRaycastCenter() {
         let raycaster = ScreenRaycaster(

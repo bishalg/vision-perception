@@ -117,9 +117,11 @@ final class FacialAffectMetricsTests: XCTestCase {
             sessionId: "ABCD1234",
             participantToken: "child-token-uuid-v4",
             stimulusBattery: "GeoPref_v1",
-            stimulusDurationSec: 30.0
+            stimulusDurationSec: 30.0,
+            captureSource: .trueDepth
         )
         XCTAssertEqual(header.schemaVersion, "1.1.0")
+        XCTAssertEqual(header.captureSource, .trueDepth)
         XCTAssertFalse(header.sessionStartUtc.isEmpty)
         XCTAssertEqual(header.stimulusBattery, "GeoPref_v1")
     }

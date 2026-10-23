@@ -1,12 +1,13 @@
 import XCTest
 @testable import CurvAsdGazeKit
 
+#if ASD_RESEARCH_CLASSIFIER
 final class BiomarkerClassificationEngineTests: XCTestCase {
     func testTypicalProfileProducesTypicalStratification() {
         let engine = BiomarkerClassificationEngine.shared
 
         // Typical toddler: 78% social preference, strong eye dwell (34%), low flat affect, high smile reactivity
-        let typicalReport = GazeSessionReportSummary(
+        let typicalReport = GazeSessionReportSummary.fixture(
             sessionId: "TYP001",
             durationSec: 60.0,
             totalFrames: 3600,
@@ -38,7 +39,7 @@ final class BiomarkerClassificationEngineTests: XCTestCase {
 
         // Atypical visual attention: negative social preference (geometric focus -0.65),
         // reduced eye fixation (0.06), prolonged saccade latency (680ms), elevated flat affect (0.58)
-        let atypicalReport = GazeSessionReportSummary(
+        let atypicalReport = GazeSessionReportSummary.fixture(
             sessionId: "ATYP001",
             durationSec: 60.0,
             totalFrames: 3600,
@@ -69,7 +70,7 @@ final class BiomarkerClassificationEngineTests: XCTestCase {
         let engine = BiomarkerClassificationEngine.shared
 
         // Borderline profile: 50% split (0.0 score), moderate eye dwell (0.19), 520ms latency
-        let borderlineReport = GazeSessionReportSummary(
+        let borderlineReport = GazeSessionReportSummary.fixture(
             sessionId: "BORD001",
             durationSec: 60.0,
             totalFrames: 3600,
@@ -97,7 +98,7 @@ final class BiomarkerClassificationEngineTests: XCTestCase {
 
     func testAsyncClassificationInvocation() async {
         let engine = BiomarkerClassificationEngine()
-        let report = GazeSessionReportSummary(
+        let report = GazeSessionReportSummary.fixture(
             sessionId: "ASYNC001",
             durationSec: 30.0,
             totalFrames: 1800,
@@ -113,8 +114,66 @@ final class BiomarkerClassificationEngineTests: XCTestCase {
         XCTAssertLessThan(result.riskScore, 1.0)
     }
 
+    // PLC-4
+    func testNilLatencyRenormalises() throws {
+        let engine = BiomarkerClassificationEngine()
+
+        // Every present metric at its maximum-risk extreme; latency absent. With the
+        // latency weight (0.14) dropped and the rest re-normalised, the contributions
+        // must sum to 1.0 (un-normalised they would sum to 0.86).
+        let report = GazeSessionReportSummary.fixture(
+            socialPreferenceScore: -1.0,
+            eyeDwellRatio: 0.0,
+            mouthDwellRatio: nil,
+            firstEyeLatencyMs: nil,
+            smileReactivityIndex: 0.0,
+            flatAffectScore: 1.0
+        )
+        let result = engine.classifySync(summary: report)
+
+        XCTAssertNil(result.featureImportances["firstEyeLatency"], "An absent metric must not contribute")
+        let total = result.featureImportances.values.reduce(0, +)
+        XCTAssertEqual(total, 1.0, accuracy: 1e-9)
+        XCTAssertEqual(result.featureImportances["socialPreference"] ?? 0, 0.42 / 0.86, accuracy: 1e-9)
+        // logit = (1.0 - 0.38) * 6.5 → sigmoid ≈ 0.9825 (≈ 0.958 without re-normalisation).
+        XCTAssertEqual(result.riskScore, 1.0 / (1.0 + exp(-(1.0 - 0.38) * 6.5)), accuracy: 1e-9)
+        XCTAssertEqual(result.executionDevice, .fallbackHeuristic)
+        XCTAssertFalse(result.primaryContributingFeature.contains("CoreML"))
+        XCTAssertFalse(result.primaryContributingFeature.contains("Latency"))
+    }
+
+    func testNilEyeDwellAndLatencyRenormalises() {
+        let engine = BiomarkerClassificationEngine()
+        let report = GazeSessionReportSummary.fixture(
+            socialPreferenceScore: 0.2,
+            eyeDwellRatio: nil,
+            firstEyeLatencyMs: nil,
+            smileReactivityIndex: 0.25,
+            flatAffectScore: 0.3
+        )
+        let result = engine.classifySync(summary: report)
+        XCTAssertNil(result.featureImportances["eyeDwell"])
+        XCTAssertNil(result.featureImportances["firstEyeLatency"])
+        XCTAssertEqual(Set(result.featureImportances.keys), ["socialPreference", "flatAffect", "smileReactivity"])
+        XCTAssertFalse(result.riskScore.isNaN)
+    }
+
+    func testHeuristicFeatureLabelsNeverClaimCoreML() {
+        let engine = BiomarkerClassificationEngine()
+        for social in stride(from: -1.0, through: 1.0, by: 0.5) {
+            let report = GazeSessionReportSummary.fixture(
+                socialPreferenceScore: social,
+                eyeDwellRatio: 0.1,
+                firstEyeLatencyMs: 700
+            )
+            let result = engine.classifySync(summary: report)
+            XCTAssertEqual(result.executionDevice, .fallbackHeuristic)
+            XCTAssertFalse(result.primaryContributingFeature.contains("CoreML"))
+        }
+    }
+
     func testVaultSchemasIncludeClassificationBlock() {
-        let report = GazeSessionReportSummary(
+        let report = GazeSessionReportSummary.fixture(
             sessionId: "VAULT001",
             durationSec: 45.0,
             totalFrames: 2700,
@@ -148,3 +207,4 @@ final class BiomarkerClassificationEngineTests: XCTestCase {
         XCTAssertEqual(ckOutcome?["riskStratification"] as? String, RiskStratification.typical.rawValue)
     }
 }
+#endif

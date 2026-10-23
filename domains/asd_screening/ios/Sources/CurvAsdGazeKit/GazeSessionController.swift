@@ -1,13 +1,21 @@
 import Foundation
 import CoreGraphics
+import CoreVideo
 import Combine
 #if canImport(ARKit) && !os(macOS)
 import ARKit
 #endif
 
 /// Summary report produced at the conclusion of a gaze observation session.
+///
+/// Every stored property is required by the initialiser (PLC-1, SIM-4): there are no
+/// placeholder defaults. A metric that was not measured is `nil` and must be omitted
+/// by every export (PLC-3). Tests build instances through a fixture helper that lives
+/// in the test target.
 public struct GazeSessionReportSummary: Codable, Sendable, Equatable {
     public let sessionId: String
+    /// Capture provenance (SIM-4). Simulated summaries are refused by every clinical sink.
+    public let captureSource: CaptureSource
     public let durationSec: Double
     public let totalFrames: Int
     public let validFrames: Int
@@ -15,21 +23,30 @@ public struct GazeSessionReportSummary: Codable, Sendable, Equatable {
     public let socialPreferenceScore: Double
     public let socialDwellSec: Double
     public let geometricDwellSec: Double
-    public let eyeDwellRatio: Double
-    public let mouthDwellRatio: Double
-    public let firstEyeLatencyMs: Double
+    /// Share of eye-region hits among eye+mouth hits; `nil` when no face AOI hit occurred (PLC-2).
+    public let eyeDwellRatio: Double?
+    /// Share of mouth-region hits among eye+mouth hits; `nil` when no face AOI hit occurred (PLC-2).
+    public let mouthDwellRatio: Double?
+    /// First-look latency to the eye region. `nil` until a real first-fixation
+    /// detector exists (PLC-1); never a constant.
+    public let firstEyeLatencyMs: Double?
     public let socialSmileIntensityMean: Double
     public let smileReactivityIndex: Double
     public let flatAffectScore: Double
     public let surpriseScoreMean: Double
     public let qualityVerdict: GazeQualityGate.Verdict
     /// Assistive on-device subject age-band signal (nil when no age model is
-    /// installed or the window never stabilized). Band + confidence floats only —
-    /// no face imagery ever persists. Consumed by age-normalized scoring (ML_ROADMAP §3).
+    /// installed, estimation is disabled, or the window never stabilized). Band +
+    /// confidence floats only — no face imagery ever persists.
     public let subjectAgeSignal: SubjectAgeSignal?
+    /// Number of camera-session interruptions during recording (CAM-2; filled by WP-2.1).
+    public let interruptionCount: Int
+    /// Seconds spent interrupted during recording (CAM-2; filled by WP-2.1).
+    public let interruptedSec: Double
 
     public init(
-        sessionId: String = UUID().uuidString.prefix(8).uppercased(),
+        sessionId: String,
+        captureSource: CaptureSource,
         durationSec: Double,
         totalFrames: Int,
         validFrames: Int,
@@ -37,17 +54,20 @@ public struct GazeSessionReportSummary: Codable, Sendable, Equatable {
         socialPreferenceScore: Double,
         socialDwellSec: Double,
         geometricDwellSec: Double,
-        eyeDwellRatio: Double = 0.28,
-        mouthDwellRatio: Double = 0.14,
-        firstEyeLatencyMs: Double = 480.0,
-        socialSmileIntensityMean: Double = 0.45,
-        smileReactivityIndex: Double = 0.38,
-        flatAffectScore: Double = 0.12,
-        surpriseScoreMean: Double = 0.24,
-        qualityVerdict: GazeQualityGate.Verdict = .optimal,
-        subjectAgeSignal: SubjectAgeSignal? = nil
+        eyeDwellRatio: Double?,
+        mouthDwellRatio: Double?,
+        firstEyeLatencyMs: Double?,
+        socialSmileIntensityMean: Double,
+        smileReactivityIndex: Double,
+        flatAffectScore: Double,
+        surpriseScoreMean: Double,
+        qualityVerdict: GazeQualityGate.Verdict,
+        subjectAgeSignal: SubjectAgeSignal?,
+        interruptionCount: Int,
+        interruptedSec: Double
     ) {
         self.sessionId = sessionId
+        self.captureSource = captureSource
         self.durationSec = durationSec
         self.totalFrames = totalFrames
         self.validFrames = validFrames
@@ -64,11 +84,161 @@ public struct GazeSessionReportSummary: Codable, Sendable, Equatable {
         self.surpriseScoreMean = surpriseScoreMean
         self.qualityVerdict = qualityVerdict
         self.subjectAgeSignal = subjectAgeSignal
+        self.interruptionCount = interruptionCount
+        self.interruptedSec = interruptedSec
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case sessionId, captureSource, durationSec, totalFrames, validFrames, validRatio
+        case socialPreferenceScore, socialDwellSec, geometricDwellSec
+        case eyeDwellRatio, mouthDwellRatio, firstEyeLatencyMs
+        case socialSmileIntensityMean, smileReactivityIndex, flatAffectScore, surpriseScoreMean
+        case qualityVerdict, subjectAgeSignal, interruptionCount, interruptedSec
+    }
+
+    /// Tolerates summary lines written before provenance and optional metrics existed
+    /// (vault files from earlier builds): optional metrics and interruption fields
+    /// decode as absent/zero. A missing `captureSource` decodes as `.trueDepth`,
+    /// mirroring the legacy rule for `GazeSessionRecord` (SIM-4); every summary
+    /// written from now on carries it explicitly.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        sessionId = try c.decode(String.self, forKey: .sessionId)
+        captureSource = try c.decodeIfPresent(CaptureSource.self, forKey: .captureSource) ?? .trueDepth
+        durationSec = try c.decode(Double.self, forKey: .durationSec)
+        totalFrames = try c.decode(Int.self, forKey: .totalFrames)
+        validFrames = try c.decode(Int.self, forKey: .validFrames)
+        validRatio = try c.decode(Double.self, forKey: .validRatio)
+        socialPreferenceScore = try c.decode(Double.self, forKey: .socialPreferenceScore)
+        socialDwellSec = try c.decode(Double.self, forKey: .socialDwellSec)
+        geometricDwellSec = try c.decode(Double.self, forKey: .geometricDwellSec)
+        eyeDwellRatio = try c.decodeIfPresent(Double.self, forKey: .eyeDwellRatio)
+        mouthDwellRatio = try c.decodeIfPresent(Double.self, forKey: .mouthDwellRatio)
+        firstEyeLatencyMs = try c.decodeIfPresent(Double.self, forKey: .firstEyeLatencyMs)
+        socialSmileIntensityMean = try c.decode(Double.self, forKey: .socialSmileIntensityMean)
+        smileReactivityIndex = try c.decode(Double.self, forKey: .smileReactivityIndex)
+        flatAffectScore = try c.decode(Double.self, forKey: .flatAffectScore)
+        surpriseScoreMean = try c.decode(Double.self, forKey: .surpriseScoreMean)
+        qualityVerdict = try c.decode(GazeQualityGate.Verdict.self, forKey: .qualityVerdict)
+        subjectAgeSignal = try c.decodeIfPresent(SubjectAgeSignal.self, forKey: .subjectAgeSignal)
+        interruptionCount = try c.decodeIfPresent(Int.self, forKey: .interruptionCount) ?? 0
+        interruptedSec = try c.decodeIfPresent(Double.self, forKey: .interruptedSec) ?? 0
+    }
+
+    /// Aggregates buffered frames into a summary. Shared by the controller and
+    /// `GazeProcessingActor` so both paths obey the same no-placeholder rules.
+    /// Durations still assume 60 fps; timestamp-based durations are WP-2.1 (PLC-5).
+    static func aggregate(
+        frames: [GazeFrame],
+        sessionId: String,
+        captureSource: CaptureSource,
+        subjectAgeSignal: SubjectAgeSignal?,
+        interruptionCount: Int = 0,
+        interruptedSec: Double = 0
+    ) -> GazeSessionReportSummary {
+        let totalFrames = frames.count
+        guard totalFrames > 0 else {
+            return GazeSessionReportSummary(
+                sessionId: sessionId,
+                captureSource: captureSource,
+                durationSec: 0,
+                totalFrames: 0,
+                validFrames: 0,
+                validRatio: 0,
+                socialPreferenceScore: 0,
+                socialDwellSec: 0,
+                geometricDwellSec: 0,
+                eyeDwellRatio: nil,
+                mouthDwellRatio: nil,
+                firstEyeLatencyMs: nil,
+                socialSmileIntensityMean: 0,
+                smileReactivityIndex: 0,
+                flatAffectScore: 0,
+                surpriseScoreMean: 0,
+                qualityVerdict: .rejected,
+                subjectAgeSignal: subjectAgeSignal,
+                interruptionCount: interruptionCount,
+                interruptedSec: interruptedSec
+            )
+        }
+
+        let validFrames = frames.filter { $0.gaze.isValid && $0.qualityVerdict != .rejected }
+        let validRatio = Double(validFrames.count) / Double(totalFrames)
+
+        var socialCount = 0
+        var geometricCount = 0
+        var eyeCount = 0
+        var mouthCount = 0
+        var smileSum = 0.0
+        var surpriseSum = 0.0
+        var expressivitySum = 0.0
+
+        for frame in validFrames {
+            if frame.activeAOINames.contains("Social_Actor") { socialCount += 1 }
+            if frame.activeAOINames.contains("Geometric_Pattern") { geometricCount += 1 }
+            if frame.activeAOINames.contains("Eye_Region") { eyeCount += 1 }
+            if frame.activeAOINames.contains("Mouth_Region") { mouthCount += 1 }
+            smileSum += frame.affect.socialSmileIntensity
+            surpriseSum += frame.affect.surpriseScore
+            expressivitySum += frame.affect.expressivityIndex
+        }
+
+        let frameIntervalSec = 1.0 / 60.0
+        let socialDwell = Double(socialCount) * frameIntervalSec
+        let geometricDwell = Double(geometricCount) * frameIntervalSec
+        let totalDwell = socialDwell + geometricDwell
+
+        let socialPreferenceScore = totalDwell > 0.0
+            ? (socialDwell - geometricDwell) / totalDwell
+            : 0.0
+
+        // PLC-2: no face AOI hit means the ratios were not observed.
+        let faceHits = Double(eyeCount + mouthCount)
+        let eyeDwellRatio: Double? = faceHits > 0.0 ? Double(eyeCount) / faceHits : nil
+        let mouthDwellRatio: Double? = faceHits > 0.0 ? Double(mouthCount) / faceHits : nil
+
+        let validCount = Double(validFrames.count)
+        let meanSmile = validFrames.isEmpty ? 0.0 : smileSum / validCount
+        let meanSurprise = validFrames.isEmpty ? 0.0 : surpriseSum / validCount
+        let meanExpressivity = validFrames.isEmpty ? 0.0 : expressivitySum / validCount
+        let flatAffectScore = max(0.0, min(1.0, 1.0 - (meanExpressivity * 50.0)))
+
+        let verdict: GazeQualityGate.Verdict = validRatio >= 0.75 ? .optimal : (validRatio >= 0.50 ? .acceptable : .degraded)
+
+        return GazeSessionReportSummary(
+            sessionId: sessionId,
+            captureSource: captureSource,
+            durationSec: Double(totalFrames) * frameIntervalSec,
+            totalFrames: totalFrames,
+            validFrames: validFrames.count,
+            validRatio: validRatio,
+            socialPreferenceScore: socialPreferenceScore,
+            socialDwellSec: socialDwell,
+            geometricDwellSec: geometricDwell,
+            eyeDwellRatio: eyeDwellRatio,
+            mouthDwellRatio: mouthDwellRatio,
+            firstEyeLatencyMs: nil, // PLC-1: no first-fixation detector yet
+            socialSmileIntensityMean: meanSmile,
+            smileReactivityIndex: max(0.0, min(1.0, meanSmile * 1.2)),
+            flatAffectScore: flatAffectScore,
+            surpriseScoreMean: meanSurprise,
+            qualityVerdict: verdict,
+            subjectAgeSignal: subjectAgeSignal,
+            interruptionCount: interruptionCount,
+            interruptedSec: interruptedSec
+        )
+    }
+
+    /// Short uppercase session identifier used when none is supplied by the caller.
+    static func makeSessionId() -> String {
+        String(UUID().uuidString.prefix(8)).uppercased()
     }
 }
 
 /// Coordinates live 60 Hz gaze, facial affect, and head pose telemetry acquisition.
-/// Supports both TrueDepth hardware (`ARSession`) and deterministic mathematical simulation.
+/// Live capture uses TrueDepth hardware (`ARSession`) and never falls back to
+/// simulation; deterministic simulation exists only in Debug builds
+/// (`ASD_SIMULATION_ENABLED`) behind `startSimulatedSession`.
 ///
 /// Concurrency architecture (Swift 6):
 /// - Math, raycasting, 1-Euro filtering, and volatile telemetry buffering run strictly off
@@ -102,14 +272,28 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
     public let processingActor: GazeProcessingActor
 
     /// Assistive subject-age pipeline running off the ARFrame stream. Inert until an
-    /// age model is installed (`AgeBandEstimationEngine.discoverCompiledModelURL()`).
+    /// age model is installed (`AgeBandEstimationEngine.discoverCompiledModelURL()`)
+    /// and, independently, until `isSubjectAgeEstimationEnabled` is set (CNS-8).
     public let subjectAgeEstimator: SubjectAgeEstimator
+
+    /// Off by default (CNS-8): the estimator receives no frames unless a caller that
+    /// discloses the age-range check (the quick-check card) turns this on for its
+    /// own session. Turning it off drops the estimator's window.
+    public var isSubjectAgeEstimationEnabled: Bool = false {
+        didSet { subjectAgeEstimator.isEnabled = isSubjectAgeEstimationEnabled }
+    }
     /// Latest windowed subject age-band signal (5 Hz max update rate).
     @Published public private(set) var subjectAgeSignal: SubjectAgeSignal?
 
     private var sessionStartTime: Date?
     public private(set) var clipStartTime: Date?
-    public var isSimulationMode: Bool = false
+
+    /// Provenance of the current (or last) recording; `nil` before any session
+    /// started or when live tracking was unavailable (SIM-2).
+    public private(set) var captureSource: CaptureSource?
+
+    /// Read-only compatibility shim for one release; use `captureSource`.
+    public var isSimulationMode: Bool { captureSource == .simulated }
     @Published public var calibrationTarget: CGPoint? = nil
 
     /// Lock-guarded clip attribution state — written on the main thread by playback UI,
@@ -169,7 +353,8 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
         raycaster: ScreenRaycaster = ScreenRaycaster(),
         qualityGate: GazeQualityGate = GazeQualityGate(),
         aoiTracker: StimulusAOITracker = StimulusAOITracker.makeGeoPrefBattery(),
-        calibrationProfile: GazeCalibrationProfile = GazeCalibrationStore.load()
+        calibrationProfile: GazeCalibrationProfile = GazeCalibrationStore.load(),
+        subjectAgeEstimator: SubjectAgeEstimator? = nil
     ) {
         self.raycaster = raycaster
         self.qualityGate = qualityGate
@@ -181,7 +366,9 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
             aoiTracker: aoiTracker,
             calibrationProfile: calibrationProfile
         )
-        self.subjectAgeEstimator = SubjectAgeEstimator(engine: AgeBandEstimationEngine.shared)
+        let estimator = subjectAgeEstimator ?? SubjectAgeEstimator(engine: AgeBandEstimationEngine.shared)
+        estimator.isEnabled = false
+        self.subjectAgeEstimator = estimator
         self.currentQuality = GazeQualityGate.Evaluation(isValid: false, verdict: .rejected, failureReasons: ["Not started"])
         super.init()
 
@@ -239,8 +426,61 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
         }
     }
 
-    /// Starts telemetry capture. Volatile RAM buffer is reset.
+    /// Starts live TrueDepth capture. Volatile RAM buffer is reset.
+    ///
+    /// Never falls back to simulation (SIM-2): when face tracking is unsupported the
+    /// controller moves to `.unavailable(.faceTrackingUnsupported)` and does not record.
     public func startSession(battery: StimulusAOITracker? = nil, stimulusId: String? = nil) {
+        #if canImport(ARKit) && !os(macOS)
+        guard ARFaceTrackingConfiguration.isSupported else {
+            markUnavailable(.faceTrackingUnsupported)
+            return
+        }
+        beginRecording(battery: battery, stimulusId: stimulusId, source: .trueDepth)
+
+        if let existingSession = arSession {
+            existingSession.pause()
+            existingSession.delegate = nil
+            existingSession.delegateQueue = nil
+            self.arSession = nil
+        }
+        let session = ARSession()
+        session.delegateQueue = arDelegateQueue
+        session.delegate = self
+        let config = ARFaceTrackingConfiguration()
+        config.isWorldTrackingEnabled = false
+        session.run(config, options: [.resetTracking, .removeExistingAnchors])
+        self.arSession = session
+        #else
+        markUnavailable(.faceTrackingUnsupported)
+        #endif
+    }
+
+    #if ASD_SIMULATION_ENABLED
+    /// Starts a deterministic simulated session (Debug builds only, SIM-3). Frames
+    /// arrive through `tickSimulatedFrame`; every summary is `.simulated`.
+    public func startSimulatedSession(battery: StimulusAOITracker? = nil, stimulusId: String? = nil) {
+        #if canImport(ARKit) && !os(macOS)
+        if let existingSession = arSession {
+            existingSession.pause()
+            existingSession.delegate = nil
+            existingSession.delegateQueue = nil
+            self.arSession = nil
+        }
+        #endif
+        beginRecording(battery: battery, stimulusId: stimulusId, source: .simulated)
+    }
+    #endif
+
+    /// Leaves the controller idle in an explicit unavailable state (ADR-0001 decision 2).
+    private func markUnavailable(_ reason: TrackingUnavailableReason) {
+        isRecording = false
+        captureSource = nil
+        trackingStage = .unavailable(reason: reason)
+        currentQuality = GazeQualityGate.Evaluation(isValid: false, verdict: .rejected, failureReasons: [trackingStage.label])
+    }
+
+    private func beginRecording(battery: StimulusAOITracker?, stimulusId: String?, source: CaptureSource) {
         if let battery = battery {
             self.aoiTracker = battery
         }
@@ -248,6 +488,7 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
         volatileFrameBuffer.removeAll(keepingCapacity: true)
         frameBufferLock.unlock()
 
+        self.captureSource = source
         self.recordedFrames.removeAll()
         self.sessionStartTime = Date()
         self.clipStartTime = Date()
@@ -266,7 +507,7 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
         let profile = calibrationProfile
         let batt = battery
         Task { [weak processingActor] in
-            await processingActor?.startSession(battery: batt, profile: profile)
+            await processingActor?.startSession(battery: batt, profile: profile, captureSource: source)
         }
 
         trackingStage = .searchingFace
@@ -274,28 +515,6 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
         lastValidCalibratedPoint = CGPoint(x: 0.5, y: 0.5)
         lastValidRawPoint = CGPoint(x: 0.5, y: 0.5)
         blinkRecoveryFramesRemaining = 0
-
-        #if canImport(ARKit) && !os(macOS)
-        if ARFaceTrackingConfiguration.isSupported {
-            if let existingSession = arSession {
-                existingSession.pause()
-                existingSession.delegate = nil
-                existingSession.delegateQueue = nil
-                self.arSession = nil
-            }
-            let session = ARSession()
-            session.delegateQueue = arDelegateQueue
-            session.delegate = self
-            let config = ARFaceTrackingConfiguration()
-            config.isWorldTrackingEnabled = false
-            session.run(config, options: [.resetTracking, .removeExistingAnchors])
-            self.arSession = session
-            self.isSimulationMode = false
-            return
-        }
-        #endif
-
-        self.isSimulationMode = true
     }
 
     /// Dynamically switches the active stimulus clip and AOI battery mid-session.
@@ -339,82 +558,14 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
         frameBufferLock.unlock()
 
         self.recordedFrames = framesSnapshot
-        let totalFrames = framesSnapshot.count
 
-        guard totalFrames > 0 else {
-            return GazeSessionReportSummary(
-                durationSec: 0,
-                totalFrames: 0,
-                validFrames: 0,
-                validRatio: 0,
-                socialPreferenceScore: 0,
-                socialDwellSec: 0,
-                geometricDwellSec: 0,
-                qualityVerdict: .rejected,
-                subjectAgeSignal: subjectAgeEstimator.currentSignal
-            )
-        }
-
-        let validFrames = framesSnapshot.filter { $0.gaze.isValid && $0.qualityVerdict != .rejected }
-        let validRatio = Double(validFrames.count) / Double(totalFrames)
-
-        var socialCount = 0
-        var geometricCount = 0
-        var eyeCount = 0
-        var mouthCount = 0
-        var smileSum = 0.0
-        var surpriseSum = 0.0
-        var expressivityList: [Double] = []
-
-        for frame in validFrames {
-            if frame.activeAOINames.contains("Social_Actor") { socialCount += 1 }
-            if frame.activeAOINames.contains("Geometric_Pattern") { geometricCount += 1 }
-            if frame.activeAOINames.contains("Eye_Region") { eyeCount += 1 }
-            if frame.activeAOINames.contains("Mouth_Region") { mouthCount += 1 }
-            smileSum += frame.affect.socialSmileIntensity
-            surpriseSum += frame.affect.surpriseScore
-            expressivityList.append(frame.affect.expressivityIndex)
-        }
-
-        let frameIntervalSec = 1.0 / 60.0
-        let socialDwell = Double(socialCount) * frameIntervalSec
-        let geometricDwell = Double(geometricCount) * frameIntervalSec
-        let totalDwell = socialDwell + geometricDwell
-
-        let socialPreferenceScore = totalDwell > 0.0
-            ? (socialDwell - geometricDwell) / totalDwell
-            : 0.0
-
-        let faceHits = Double(eyeCount + mouthCount)
-        let eyeDwellRatio = faceHits > 0.0 ? Double(eyeCount) / faceHits : 0.28
-        let mouthDwellRatio = faceHits > 0.0 ? Double(mouthCount) / faceHits : 0.14
-
-        let meanSmile = validFrames.isEmpty ? 0.0 : smileSum / Double(validFrames.count)
-        let meanSurprise = validFrames.isEmpty ? 0.0 : surpriseSum / Double(validFrames.count)
-
-        let meanExpressivity = expressivityList.isEmpty ? 0.0 : expressivityList.reduce(0, +) / Double(expressivityList.count)
-        let flatAffectScore = max(0.0, min(1.0, 1.0 - (meanExpressivity * 50.0)))
-
-        let verdict: GazeQualityGate.Verdict = validRatio >= 0.75 ? .optimal : (validRatio >= 0.50 ? .acceptable : .degraded)
-        let durationSec = Double(totalFrames) * frameIntervalSec
-
-        return GazeSessionReportSummary(
-            durationSec: durationSec,
-            totalFrames: totalFrames,
-            validFrames: validFrames.count,
-            validRatio: validRatio,
-            socialPreferenceScore: socialPreferenceScore,
-            socialDwellSec: socialDwell,
-            geometricDwellSec: geometricDwell,
-            eyeDwellRatio: eyeDwellRatio,
-            mouthDwellRatio: mouthDwellRatio,
-            firstEyeLatencyMs: 480.0,
-            socialSmileIntensityMean: meanSmile,
-            smileReactivityIndex: max(0.0, min(1.0, meanSmile * 1.2)),
-            flatAffectScore: flatAffectScore,
-            surpriseScoreMean: meanSurprise,
-            qualityVerdict: verdict,
-            subjectAgeSignal: subjectAgeEstimator.currentSignal
+        return GazeSessionReportSummary.aggregate(
+            frames: framesSnapshot,
+            sessionId: GazeSessionReportSummary.makeSessionId(),
+            // No session ever started (or live tracking was unavailable): nothing was
+            // captured, the summary is empty and `.rejected`.
+            captureSource: captureSource ?? .trueDepth,
+            subjectAgeSignal: isSubjectAgeEstimationEnabled ? subjectAgeEstimator.currentSignal : nil
         )
     }
 
@@ -422,33 +573,63 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
     public func stopAndPersistBatchAsync(
         participantToken: String,
         stimulusBattery: String = "GeoPref_v1",
-        vault: SessionVaultManager = SessionVaultManager(),
-        classification: BiomarkerClassificationResult? = nil
+        vault: SessionVaultManager = SessionVaultManager()
     ) async throws -> (summary: GazeSessionReportSummary, vaultURL: URL) {
         let summary = stopSession()
-        let frames = self.recordedFrames
-        let header = SessionHeader(
-            sessionId: summary.sessionId,
-            participantToken: participantToken,
-            stimulusBattery: stimulusBattery,
-            stimulusDurationSec: summary.durationSec
-        )
         let url = try await vault.saveSessionBatchAsync(
-            header: header,
-            frames: frames,
+            header: makeHeader(for: summary, participantToken: participantToken, stimulusBattery: stimulusBattery),
+            frames: self.recordedFrames,
+            report: summary
+        )
+        return (summary, url)
+    }
+
+    #if ASD_RESEARCH_CLASSIFIER
+    /// Research builds only (CLM-3): also persists a classifier result line.
+    public func stopAndPersistBatchAsync(
+        participantToken: String,
+        stimulusBattery: String = "GeoPref_v1",
+        vault: SessionVaultManager = SessionVaultManager(),
+        classification: BiomarkerClassificationResult?
+    ) async throws -> (summary: GazeSessionReportSummary, vaultURL: URL) {
+        let summary = stopSession()
+        let url = try await vault.saveSessionBatchAsync(
+            header: makeHeader(for: summary, participantToken: participantToken, stimulusBattery: stimulusBattery),
+            frames: self.recordedFrames,
             report: summary,
             classification: classification
         )
         return (summary, url)
     }
+    #endif
 
-    /// Ingests a single synthetic frame (used for preview animation, unit testing, and Simulator).
+    private func makeHeader(
+        for summary: GazeSessionReportSummary,
+        participantToken: String,
+        stimulusBattery: String
+    ) -> SessionHeader {
+        SessionHeader(
+            sessionId: summary.sessionId,
+            participantToken: participantToken,
+            stimulusBattery: stimulusBattery,
+            stimulusDurationSec: summary.durationSec,
+            captureSource: summary.captureSource
+        )
+    }
+
+    /// Ingests a single synthetic frame (Debug simulation, unit tests).
+    ///
+    /// No-op unless the controller is in a session started by `startSimulatedSession`
+    /// (SIM-3). In builds without `ASD_SIMULATION_ENABLED` the body is compiled out,
+    /// so the Release binary contains no frame synthesiser.
     public func tickSimulatedFrame(
         timeSec: Double,
         clipTimeSec: Double? = nil,
         stimulusId: String? = nil,
         clipMediaTimeSec: Double? = nil
     ) {
+        #if ASD_SIMULATION_ENABLED
+        guard captureSource == .simulated else { return }
         let gazePoint: CGPoint
         if let target = calibrationTarget {
             let jitterX = 0.015 * sin(timeSec * 7.2)
@@ -549,6 +730,34 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
                 self?.broadcastBlendShapes(affect: affect, shapes: [:])
             }
         }
+        #endif
+    }
+
+    /// Feeds one camera frame to the subject-age estimator, only when
+    /// `isSubjectAgeEstimationEnabled` (CNS-8). Called from the ARKit frame
+    /// delegate; platform-independent so the gate is testable on macOS.
+    @discardableResult
+    func ingestSubjectAgeFrame(
+        capturedImage: CVPixelBuffer?,
+        faceCenterNorm: CGPoint?,
+        faceRadiusNorm: Double?,
+        yawRad: Double,
+        pitchRad: Double,
+        distanceCm: Double,
+        eyeOpenness: Double,
+        timestamp: TimeInterval
+    ) -> SubjectAgeSignal? {
+        guard isSubjectAgeEstimationEnabled else { return nil }
+        return subjectAgeEstimator.record(
+            capturedImage: capturedImage,
+            faceCenterNorm: faceCenterNorm,
+            faceRadiusNorm: faceRadiusNorm,
+            yawRad: yawRad,
+            pitchRad: pitchRad,
+            distanceCm: distanceCm,
+            eyeOpenness: eyeOpenness,
+            timestamp: timestamp
+        )
     }
 
     /// Consolidates UI property assignments on `@MainActor`.
@@ -614,8 +823,10 @@ extension GazeSessionController: ARSessionDelegate {
     /// The captured image is handed to the estimator synchronously on this queue
     /// (ARKit reuses its backing store) and never retained or written to disk.
     public func session(_ session: ARSession, didUpdate frame: ARFrame) {
+        // CNS-8: the estimator sees no frames unless explicitly enabled.
+        guard isSubjectAgeEstimationEnabled else { return }
         let metrics = Self.ageFrameMetrics(from: frame)
-        let signal = subjectAgeEstimator.record(
+        let signal = ingestSubjectAgeFrame(
             capturedImage: frame.capturedImage,
             faceCenterNorm: metrics?.centerNorm,
             faceRadiusNorm: metrics?.radiusNorm,

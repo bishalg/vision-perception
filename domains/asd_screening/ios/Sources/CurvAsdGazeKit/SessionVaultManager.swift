@@ -35,6 +35,7 @@ public struct SessionVaultManager: Sendable {
         }
 
         try? FileManager.default.createDirectory(at: self.vaultDirectory, withIntermediateDirectories: true)
+        Self.excludeFromBackup(self.vaultDirectory)
 
         if let keyData = keyData, keyData.count == 32 {
             self.symmetricKey = SymmetricKey(data: keyData)
@@ -79,14 +80,81 @@ public struct SessionVaultManager: Sendable {
         return (key, addStatus == errSecSuccess)
     }
 
-    /// Encrypts and writes session header, frames, report, and optional classification to disk as a single post-session batch.
+    /// Options for every vault file write (CNS-3): atomic, and unreadable while the
+    /// device is locked.
+    public static let fileWritingOptions: Data.WritingOptions = [.atomic, .completeFileProtection]
+
+    /// Filename suffix; simulated sessions are kept apart for developer debugging (SIM-5).
+    static func fileSuffix(for source: CaptureSource) -> String {
+        switch source {
+        case .trueDepth: return ".jsonl.enc"
+        case .simulated: return ".sim.jsonl.enc"
+        }
+    }
+
+    /// Marks the vault directory as excluded from iCloud/iTunes backups (CNS-3).
+    private static func excludeFromBackup(_ directory: URL) {
+        var url = directory
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        do {
+            try url.setResourceValues(values)
+        } catch {
+            NSLog("[SessionVault] Could not exclude vault directory from backup: \(error.localizedDescription)")
+        }
+    }
+
+    /// Encrypts and writes session header, frames and report to disk as a single post-session batch.
     public func saveSession(
         header: SessionHeader,
         frames: [GazeFrame],
         report: GazeSessionReportSummary,
-        classification: BiomarkerClassificationResult? = nil,
         perVideoScore: PerVideoSessionScore? = nil,
         collectionMetadata: NormCollectionMetadata? = nil
+    ) throws -> URL {
+        try writeSession(
+            header: header,
+            frames: frames,
+            report: report,
+            classificationLine: nil,
+            perVideoScore: perVideoScore,
+            collectionMetadata: collectionMetadata
+        )
+    }
+
+    #if ASD_RESEARCH_CLASSIFIER
+    /// Research builds only (CLM-3): also writes a classifier result line.
+    public func saveSession(
+        header: SessionHeader,
+        frames: [GazeFrame],
+        report: GazeSessionReportSummary,
+        classification: BiomarkerClassificationResult?,
+        perVideoScore: PerVideoSessionScore? = nil,
+        collectionMetadata: NormCollectionMetadata? = nil
+    ) throws -> URL {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        let line = classification
+            .flatMap { try? encoder.encode($0) }
+            .flatMap { String(data: $0, encoding: .utf8) }
+        return try writeSession(
+            header: header,
+            frames: frames,
+            report: report,
+            classificationLine: line,
+            perVideoScore: perVideoScore,
+            collectionMetadata: collectionMetadata
+        )
+    }
+    #endif
+
+    private func writeSession(
+        header: SessionHeader,
+        frames: [GazeFrame],
+        report: GazeSessionReportSummary,
+        classificationLine: String?,
+        perVideoScore: PerVideoSessionScore?,
+        collectionMetadata: NormCollectionMetadata?
     ) throws -> URL {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
@@ -103,7 +171,7 @@ public struct SessionVaultManager: Sendable {
         if let reportData = try? encoder.encode(report), let reportStr = String(data: reportData, encoding: .utf8) {
             lines.append(reportStr)
         }
-        if let cl = classification, let clData = try? encoder.encode(cl), let clStr = String(data: clData, encoding: .utf8) {
+        if let clStr = classificationLine {
             lines.append(clStr)
         }
         if let pv = perVideoScore,
@@ -126,9 +194,9 @@ public struct SessionVaultManager: Sendable {
             throw NSError(domain: "SessionVault", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to assemble sealed box"])
         }
 
-        let filename = "session_\(header.sessionId)_\(header.sessionStartUtc.prefix(10)).jsonl.enc"
+        let filename = "session_\(header.sessionId)_\(header.sessionStartUtc.prefix(10))\(Self.fileSuffix(for: header.captureSource))"
         let fileURL = vaultDirectory.appendingPathComponent(filename)
-        try combined.write(to: fileURL, options: .atomic)
+        try combined.write(to: fileURL, options: Self.fileWritingOptions)
         return fileURL
     }
 
@@ -137,22 +205,48 @@ public struct SessionVaultManager: Sendable {
         header: SessionHeader,
         frames: [GazeFrame],
         report: GazeSessionReportSummary,
-        classification: BiomarkerClassificationResult? = nil,
         perVideoScore: PerVideoSessionScore? = nil,
         collectionMetadata: NormCollectionMetadata? = nil
     ) async throws -> URL {
-        return try await withCheckedThrowingContinuation { continuation in
+        try await runOffMain {
+            try self.saveSession(
+                header: header,
+                frames: frames,
+                report: report,
+                perVideoScore: perVideoScore,
+                collectionMetadata: collectionMetadata
+            )
+        }
+    }
+
+    #if ASD_RESEARCH_CLASSIFIER
+    /// Research builds only (CLM-3): async variant that also writes a classifier line.
+    public func saveSessionBatchAsync(
+        header: SessionHeader,
+        frames: [GazeFrame],
+        report: GazeSessionReportSummary,
+        classification: BiomarkerClassificationResult?,
+        perVideoScore: PerVideoSessionScore? = nil,
+        collectionMetadata: NormCollectionMetadata? = nil
+    ) async throws -> URL {
+        try await runOffMain {
+            try self.saveSession(
+                header: header,
+                frames: frames,
+                report: report,
+                classification: classification,
+                perVideoScore: perVideoScore,
+                collectionMetadata: collectionMetadata
+            )
+        }
+    }
+    #endif
+
+    private func runOffMain(_ work: @escaping @Sendable () throws -> URL) async throws -> URL {
+        try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 do {
-                    let url = try self.saveSession(
-                        header: header,
-                        frames: frames,
-                        report: report,
-                        classification: classification,
-                        perVideoScore: perVideoScore,
-                        collectionMetadata: collectionMetadata
-                    )
-                    continuation.resume(returning: url)
+                    continuation.resume(returning: try work())
                 } catch {
                     continuation.resume(throwing: error)
                 }
@@ -171,32 +265,15 @@ public struct SessionVaultManager: Sendable {
         return text
     }
 
-    /// Exports the session report conforming to the Apple ResearchKit ORKActiveStepResult schema.
+    #if ASD_RESEARCH_CLASSIFIER
+    /// Research builds only (CLM-3): ResearchKit JSON with a `classification` block.
     public static func makeResearchKitJson(
         report: GazeSessionReportSummary,
-        classification: BiomarkerClassificationResult? = nil,
+        classification: BiomarkerClassificationResult?,
         perVideoScore: PerVideoSessionScore? = nil,
         collection: [String: Any]? = nil
     ) -> [String: Any] {
-        var base: [String: Any] = [
-            "identifier": "ORKActiveStepResult",
-            "type": "social_attention_gaze_result",
-            "sessionId": report.sessionId,
-            "durationSec": report.durationSec,
-            "isValid": report.validRatio >= 0.60,
-            "validSampleRatio": report.validRatio,
-            "qualityVerdict": report.qualityVerdict.rawValue,
-            "biomarkers": [
-                "socialPreferenceScore": report.socialPreferenceScore,
-                "eyeDwellRatio": report.eyeDwellRatio,
-                "mouthDwellRatio": report.mouthDwellRatio,
-                "firstEyeLatencyMs": report.firstEyeLatencyMs,
-                "socialSmileIntensity": report.socialSmileIntensityMean,
-                "smileReactivityIndex": report.smileReactivityIndex,
-                "flatAffectScore": report.flatAffectScore,
-                "surpriseScoreMean": report.surpriseScoreMean
-            ]
-        ]
+        var base = makeResearchKitJson(report: report, perVideoScore: perVideoScore, collection: collection)
         if let cl = classification {
             base["classification"] = [
                 "riskScore": cl.riskScore,
@@ -207,6 +284,39 @@ public struct SessionVaultManager: Sendable {
                 "inferenceLatencyMs": cl.inferenceLatencyMs
             ]
         }
+        return base
+    }
+    #endif
+
+    /// Exports the session report conforming to the Apple ResearchKit ORKActiveStepResult schema.
+    /// Absent metrics are omitted (PLC-3); nothing substitutes a default.
+    public static func makeResearchKitJson(
+        report: GazeSessionReportSummary,
+        perVideoScore: PerVideoSessionScore? = nil,
+        collection: [String: Any]? = nil
+    ) -> [String: Any] {
+        var biomarkers: [String: Any] = [
+            "socialPreferenceScore": report.socialPreferenceScore,
+            "socialSmileIntensity": report.socialSmileIntensityMean,
+            "smileReactivityIndex": report.smileReactivityIndex,
+            "flatAffectScore": report.flatAffectScore,
+            "surpriseScoreMean": report.surpriseScoreMean
+        ]
+        if let value = report.eyeDwellRatio { biomarkers["eyeDwellRatio"] = value }
+        if let value = report.mouthDwellRatio { biomarkers["mouthDwellRatio"] = value }
+        if let value = report.firstEyeLatencyMs { biomarkers["firstEyeLatencyMs"] = value }
+
+        var base: [String: Any] = [
+            "identifier": "ORKActiveStepResult",
+            "type": "social_attention_gaze_result",
+            "sessionId": report.sessionId,
+            "durationSec": report.durationSec,
+            "isValid": report.validRatio >= 0.60,
+            "validSampleRatio": report.validRatio,
+            "qualityVerdict": report.qualityVerdict.rawValue,
+            "captureSource": report.captureSource.rawValue,
+            "biomarkers": biomarkers
+        ]
         if let collection = collection {
             base["collection"] = collection
         }
@@ -250,22 +360,36 @@ public struct SessionVaultManager: Sendable {
         return base
     }
 
-    /// Exports the session report conforming to the Apple CareKit OCKCarePlanActivity schema.
+    #if ASD_RESEARCH_CLASSIFIER
+    /// Research builds only (CLM-3): CareKit JSON with classifier outcome fields.
     public static func makeCareKitJson(
         report: GazeSessionReportSummary,
-        classification: BiomarkerClassificationResult? = nil
+        classification: BiomarkerClassificationResult?
     ) -> [String: Any] {
-        var outcome: [String: Any] = [
-            "socialPreferenceScore": report.socialPreferenceScore,
-            "qualityVerdict": report.qualityVerdict.rawValue,
-            "timestamp": ISO8601DateFormatter().string(from: Date())
-        ]
+        var outcome: [String: Any] = [:]
         if let cl = classification {
             outcome["riskScore"] = cl.riskScore
             outcome["riskStratification"] = cl.riskStratification.rawValue
             outcome["confidence"] = cl.confidence
             outcome["executionDevice"] = cl.executionDevice.rawValue
         }
+        return careKitJson(report: report, extraOutcome: outcome)
+    }
+    #endif
+
+    /// Exports the session report conforming to the Apple CareKit OCKCarePlanActivity schema.
+    public static func makeCareKitJson(report: GazeSessionReportSummary) -> [String: Any] {
+        careKitJson(report: report, extraOutcome: [:])
+    }
+
+    private static func careKitJson(report: GazeSessionReportSummary, extraOutcome: [String: Any]) -> [String: Any] {
+        var outcome: [String: Any] = [
+            "socialPreferenceScore": report.socialPreferenceScore,
+            "qualityVerdict": report.qualityVerdict.rawValue,
+            "captureSource": report.captureSource.rawValue,
+            "timestamp": ISO8601DateFormatter().string(from: Date())
+        ]
+        outcome.merge(extraOutcome) { _, new in new }
         return [
             "identifier": "OCKCarePlanActivity",
             "title": "Pediatric Visual Attention Screening",

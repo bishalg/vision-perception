@@ -284,12 +284,16 @@ public struct SessionHeader: Codable, Sendable {
     public let arkitVersion: String
     public let appVersion: String
     public let sessionStartUtc: String
+    /// Capture provenance (SIM-4). Required with no default; decoding a header
+    /// without it fails, so a provenance-less file can never pass as live data.
+    public let captureSource: CaptureSource
 
     public init(
         sessionId: String,
         participantToken: String,
         stimulusBattery: String,
         stimulusDurationSec: Double,
+        captureSource: CaptureSource,
         calibrationQuality: String = "validated",
         calibrationErrorDeg: Double = 0.0,
         deviceModel: String = "Unknown",
@@ -315,5 +319,6 @@ public struct SessionHeader: Codable, Sendable {
         self.arkitVersion = arkitVersion
         self.appVersion = appVersion
         self.sessionStartUtc = ISO8601DateFormatter().string(from: Date())
+        self.captureSource = captureSource
     }
 }

@@ -2,9 +2,57 @@ import XCTest
 @testable import CurvAsdGazeKit
 
 final class GazeSessionTests: XCTestCase {
-    func testSessionControllerSimulationRun() {
+    // MARK: - SIM-2: live capture never falls back to simulation
+
+    #if os(macOS)
+    func testStartSessionWithoutFaceTrackingIsUnavailable() {
+        // macOS has no ARFaceTrackingConfiguration; the live path must refuse to
+        // record instead of silently simulating.
         let controller = GazeSessionController()
         controller.startSession()
+        XCTAssertFalse(controller.isRecording)
+        XCTAssertNil(controller.captureSource)
+        XCTAssertFalse(controller.isSimulationMode)
+        XCTAssertEqual(controller.trackingStage, .unavailable(reason: .faceTrackingUnsupported))
+
+        // Simulated ticks after a refused live start record nothing.
+        controller.tickSimulatedFrame(timeSec: 0.1)
+        let summary = controller.stopSession()
+        XCTAssertEqual(summary.totalFrames, 0)
+        XCTAssertEqual(summary.qualityVerdict, .rejected)
+    }
+    #endif
+
+    // MARK: - SIM-3: simulation only through the explicit, Debug-only entry point
+
+    func testSimulatedSessionRequiresExplicitStart() {
+        let controller = GazeSessionController()
+        controller.calibrationTarget = CGPoint(x: 0.5, y: 0.5)
+        for i in 0..<10 {
+            controller.tickSimulatedFrame(timeSec: Double(i) / 60.0)
+        }
+        XCTAssertNil(controller.captureSource)
+        XCTAssertEqual(controller.trackingStage, .searchingFace, "Ticks without a simulated session must not touch UI state")
+        XCTAssertEqual(controller.stopSession().totalFrames, 0)
+
+        #if ASD_SIMULATION_ENABLED
+        controller.startSimulatedSession()
+        XCTAssertEqual(controller.captureSource, .simulated)
+        XCTAssertTrue(controller.isSimulationMode)
+        XCTAssertTrue(controller.isRecording)
+        for i in 0..<10 {
+            controller.tickSimulatedFrame(timeSec: Double(i) / 60.0)
+        }
+        let summary = controller.stopSession()
+        XCTAssertEqual(summary.totalFrames, 10)
+        XCTAssertEqual(summary.captureSource, .simulated)
+        #endif
+    }
+
+    #if ASD_SIMULATION_ENABLED
+    func testSessionControllerSimulationRun() {
+        let controller = GazeSessionController()
+        controller.startSimulatedSession()
         XCTAssertTrue(controller.isRecording)
 
         // Simulate 30 frames at 60 Hz (0.5 seconds)
@@ -16,22 +64,70 @@ final class GazeSessionTests: XCTestCase {
         let summary = controller.stopSession()
         XCTAssertFalse(controller.isRecording)
         XCTAssertEqual(summary.totalFrames, 30)
+        XCTAssertEqual(summary.captureSource, .simulated)
         XCTAssertGreaterThan(summary.validRatio, 0.8)
         XCTAssertGreaterThanOrEqual(summary.socialPreferenceScore, -1.0)
         XCTAssertLessThanOrEqual(summary.socialPreferenceScore, 1.0)
+        XCTAssertEqual(summary.interruptionCount, 0)
+        XCTAssertEqual(summary.interruptedSec, 0)
     }
+
+    // MARK: - PLC-1, PLC-2: no placeholder measurements
+
+    func testNoFaceHitsGiveNilDwellRatios() {
+        // GeoPref battery has no Eye_Region / Mouth_Region AOIs, so no face hit can occur.
+        let controller = GazeSessionController()
+        controller.startSimulatedSession(battery: .makeGeoPrefBattery())
+        for i in 0..<60 {
+            controller.tickSimulatedFrame(timeSec: Double(i) / 60.0)
+        }
+        let summary = controller.stopSession()
+        XCTAssertEqual(summary.totalFrames, 60)
+        XCTAssertNil(summary.eyeDwellRatio, "No eye/mouth hit must yield nil, never 0.28")
+        XCTAssertNil(summary.mouthDwellRatio, "No eye/mouth hit must yield nil, never 0.14")
+        XCTAssertNil(summary.firstEyeLatencyMs, "No first-fixation detector exists; latency must be nil, never 480")
+    }
+
+    func testFaceHitsGiveMeasuredDwellRatiosAndNilLatency() {
+        let controller = GazeSessionController()
+        // Calibration target sits inside the face battery's Eye_Region.
+        controller.calibrationTarget = CGPoint(x: 0.5, y: 0.38)
+        controller.startSimulatedSession(battery: .makeFaceScanningBattery())
+        for i in 0..<60 {
+            controller.tickSimulatedFrame(timeSec: Double(i) / 60.0)
+        }
+        let summary = controller.stopSession()
+        XCTAssertEqual(summary.eyeDwellRatio, 1.0)
+        XCTAssertEqual(summary.mouthDwellRatio, 0.0)
+        XCTAssertNil(summary.firstEyeLatencyMs)
+    }
+
+    func testStopAndPersistCarriesCaptureSourceIntoHeader() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let vault = SessionVaultManager(vaultDirectory: tempDir, keyData: Data(repeating: 7, count: 32))
+
+        let controller = GazeSessionController()
+        controller.startSimulatedSession()
+        for i in 0..<5 {
+            controller.tickSimulatedFrame(timeSec: Double(i) / 60.0)
+        }
+        let result = try await controller.stopAndPersistBatchAsync(participantToken: "child-TEST0000", vault: vault)
+        XCTAssertEqual(result.summary.captureSource, .simulated)
+        XCTAssertTrue(result.vaultURL.lastPathComponent.hasSuffix(".sim.jsonl.enc"))
+        let text = try vault.readSessionPlainText(from: result.vaultURL)
+        XCTAssertTrue(text.contains("\"captureSource\":\"simulated\""))
+    }
+    #endif
+
+    // MARK: - Vault
 
     func testVaultEncryptionAndDecryption() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
         let vault = SessionVaultManager(vaultDirectory: tempDir)
 
-        let header = SessionHeader(
-            sessionId: "TEST1234",
-            participantToken: "child-test-token",
-            stimulusBattery: "GeoPref_v1",
-            stimulusDurationSec: 10.0
-        )
-
+        let header = SessionHeader.fixture(sessionId: "TEST1234")
         let sample = GazeTelemetrySample(
             timestampMs: 100.0,
             xNorm: 0.35,
@@ -45,10 +141,8 @@ final class GazeSessionTests: XCTestCase {
             aoiDwellMs: 100.0,
             qualityVerdict: .optimal
         )
-
-        let report = GazeSessionReportSummary(
+        let report = GazeSessionReportSummary.fixture(
             sessionId: "TEST1234",
-            durationSec: 10.0,
             totalFrames: 1,
             validFrames: 1,
             validRatio: 1.0,
@@ -59,13 +153,44 @@ final class GazeSessionTests: XCTestCase {
 
         let fileURL = try vault.saveSession(header: header, frames: [frame], report: report)
         XCTAssertTrue(FileManager.default.fileExists(atPath: fileURL.path))
+        XCTAssertTrue(fileURL.lastPathComponent.hasSuffix(".jsonl.enc"))
+        XCTAssertFalse(fileURL.lastPathComponent.contains(".sim."), "Live sessions must not carry the simulated suffix")
 
         let decryptedText = try vault.readSessionPlainText(from: fileURL)
         XCTAssertTrue(decryptedText.contains("TEST1234"))
         XCTAssertTrue(decryptedText.contains("Social_Actor"))
         XCTAssertTrue(decryptedText.contains("socialPreferenceScore"))
+        XCTAssertTrue(decryptedText.contains("\"captureSource\":\"truedepth\""))
+    }
 
-        try? FileManager.default.removeItem(at: tempDir)
+    // SIM-5 (vault), CNS-3
+    func testVaultSimulatedSuffixAndProtection() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let vault = SessionVaultManager(vaultDirectory: tempDir, keyData: Data(repeating: 1, count: 32))
+
+        let header = SessionHeader.fixture(sessionId: "SIM00001", captureSource: .simulated)
+        let report = GazeSessionReportSummary.fixture(sessionId: "SIM00001", captureSource: .simulated)
+        let fileURL = try vault.saveSession(header: header, frames: [], report: report)
+
+        XCTAssertTrue(fileURL.lastPathComponent.hasSuffix(".sim.jsonl.enc"), "Got \(fileURL.lastPathComponent)")
+        XCTAssertTrue(fileURL.lastPathComponent.hasPrefix("session_SIM00001_"))
+
+        // Files are written with complete file protection.
+        XCTAssertTrue(SessionVaultManager.fileWritingOptions.contains(.completeFileProtection))
+        XCTAssertTrue(SessionVaultManager.fileWritingOptions.contains(.atomic))
+        #if os(iOS)
+        let attributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
+        XCTAssertEqual(attributes[.protectionKey] as? FileProtectionType, .complete)
+        #endif
+
+        // The vault directory is excluded from device backups.
+        let values = try tempDir.resourceValues(forKeys: [.isExcludedFromBackupKey])
+        XCTAssertEqual(values.isExcludedFromBackup, true)
+
+        // Simulated files still decrypt for developer debugging.
+        let text = try vault.readSessionPlainText(from: fileURL)
+        XCTAssertTrue(text.contains("SIM00001"))
     }
 
     func testVaultKeyPersistsAcrossManagerInstances() throws {
@@ -78,12 +203,7 @@ final class GazeSessionTests: XCTestCase {
         let first = SessionVaultManager(vaultDirectory: tempDir)
         try XCTSkipUnless(first.isKeyPersisted, "Keychain unavailable — key persistence not testable here")
 
-        let header = SessionHeader(
-            sessionId: "PERSIST1",
-            participantToken: "child-test-token",
-            stimulusBattery: "GeoPref_v1",
-            stimulusDurationSec: 1.0
-        )
+        let header = SessionHeader.fixture(sessionId: "PERSIST1", stimulusDurationSec: 1.0)
         let frame = GazeFrame(
             gaze: GazeTelemetrySample(timestampMs: 0.0, xNorm: 0.5, yNorm: 0.5, confidence: 0.9),
             affect: .neutral,
@@ -91,13 +211,12 @@ final class GazeSessionTests: XCTestCase {
             aoiDwellMs: 16.7,
             qualityVerdict: .optimal
         )
-        let report = GazeSessionReportSummary(
+        let report = GazeSessionReportSummary.fixture(
             sessionId: "PERSIST1",
             durationSec: 1.0,
             totalFrames: 1,
             validFrames: 1,
             validRatio: 1.0,
-            socialPreferenceScore: 0.0,
             socialDwellSec: 0.5,
             geometricDwellSec: 0.5
         )
@@ -114,13 +233,8 @@ final class GazeSessionTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let vault = SessionVaultManager(vaultDirectory: tempDir)
-        let header = SessionHeader(
-            sessionId: "AGESIG1",
-            participantToken: "child-test-token",
-            stimulusBattery: "GeoPref_v1",
-            stimulusDurationSec: 5.0
-        )
-        let report = GazeSessionReportSummary(
+        let header = SessionHeader.fixture(sessionId: "AGESIG1", stimulusDurationSec: 5.0)
+        let report = GazeSessionReportSummary.fixture(
             sessionId: "AGESIG1",
             durationSec: 5.0,
             totalFrames: 300,
@@ -144,8 +258,10 @@ final class GazeSessionTests: XCTestCase {
         XCTAssertTrue(decryptedText.contains("toddler"))
     }
 
-    func testExportSchemas() {
-        let report = GazeSessionReportSummary(
+    // MARK: - Export schemas (PLC-3 kit side)
+
+    func testExportSchemas() throws {
+        let report = GazeSessionReportSummary.fixture(
             sessionId: "EXP789",
             durationSec: 30.0,
             totalFrames: 1800,
@@ -160,9 +276,23 @@ final class GazeSessionTests: XCTestCase {
         XCTAssertEqual(rk["identifier"] as? String, "ORKActiveStepResult")
         XCTAssertEqual(rk["sessionId"] as? String, "EXP789")
         XCTAssertEqual(rk["isValid"] as? Bool, true)
+        XCTAssertEqual(rk["captureSource"] as? String, "truedepth")
+        XCTAssertNil(rk["classification"])
+        XCTAssertTrue(JSONSerialization.isValidJSONObject(rk))
 
         let ck = SessionVaultManager.makeCareKitJson(report: report)
         XCTAssertEqual(ck["identifier"] as? String, "OCKCarePlanActivity")
         XCTAssertEqual(ck["sessionId"] as? String, "EXP789")
+        XCTAssertTrue(JSONSerialization.isValidJSONObject(ck))
+    }
+
+    func testResearchKitJsonOmitsAbsentMetrics() throws {
+        let report = GazeSessionReportSummary.fixture(eyeDwellRatio: 0.3, mouthDwellRatio: nil, firstEyeLatencyMs: nil)
+        let rk = SessionVaultManager.makeResearchKitJson(report: report)
+        let biomarkers = try XCTUnwrap(rk["biomarkers"] as? [String: Any])
+        XCTAssertEqual(biomarkers["eyeDwellRatio"] as? Double, 0.3)
+        XCTAssertNil(biomarkers["mouthDwellRatio"], "Absent metric must be omitted, not defaulted")
+        XCTAssertNil(biomarkers["firstEyeLatencyMs"], "Absent metric must be omitted, not defaulted")
+        XCTAssertNoThrow(try JSONSerialization.data(withJSONObject: rk))
     }
 }

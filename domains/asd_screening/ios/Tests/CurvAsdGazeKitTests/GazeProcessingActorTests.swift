@@ -30,9 +30,10 @@ final class GazeProcessingActorTests: XCTestCase {
         XCTAssertEqual(reset.a, 1.0)
     }
 
+    #if ASD_SIMULATION_ENABLED
     func testActorVolatileBufferingCapacity7200Frames() async {
         let actor = GazeProcessingActor()
-        await actor.startSession()
+        await actor.startSimulatedSession()
 
         let isRecording = await actor.isRecording
         XCTAssertTrue(isRecording)
@@ -40,7 +41,9 @@ final class GazeProcessingActorTests: XCTestCase {
         // Simulate 7,200 frames (2 minutes at 60 Hz)
         for i in 0..<7200 {
             let t = Double(i) / 60.0
-            let state = await actor.processSimulatedFrame(timeSec: t, target: nil)
+            guard let state = await actor.processSimulatedFrame(timeSec: t, target: nil) else {
+                return XCTFail("Simulated session must produce UI state")
+            }
             XCTAssertGreaterThanOrEqual(state.currentGazePoint.x, 0.0)
             XCTAssertLessThanOrEqual(state.currentGazePoint.x, 1.0)
         }
@@ -54,8 +57,64 @@ final class GazeProcessingActorTests: XCTestCase {
         XCTAssertGreaterThan(summary.durationSec, 110.0)
         XCTAssertGreaterThan(summary.validRatio, 0.85)
 
+        XCTAssertEqual(summary.captureSource, .simulated)
+        // Default GeoPref battery has no eye/mouth AOIs: ratios absent, never placeholders.
+        XCTAssertNil(summary.eyeDwellRatio)
+        XCTAssertNil(summary.mouthDwellRatio)
+        XCTAssertNil(summary.firstEyeLatencyMs)
+        XCTAssertEqual(summary.interruptionCount, 0)
+        XCTAssertEqual(summary.interruptedSec, 0)
+
         let recordingPostFinalize = await actor.isRecording
         XCTAssertFalse(recordingPostFinalize)
+    }
+    #endif
+
+    // SIM-3 (actor side)
+    func testSimulatedFramesIgnoredInLiveSession() async {
+        let actor = GazeProcessingActor()
+        await actor.startSession()
+        let source = await actor.captureSource
+        XCTAssertEqual(source, .trueDepth)
+
+        for i in 0..<10 {
+            let state = await actor.processSimulatedFrame(timeSec: Double(i) / 60.0, target: nil)
+            XCTAssertNil(state, "Synthetic frames must never enter a live session")
+        }
+        let count = await actor.getRecordedFramesCount()
+        XCTAssertEqual(count, 0)
+    }
+
+    func testLiveFinalizeCarriesTrueDepthAndNilPlaceholders() async {
+        let actor = GazeProcessingActor()
+        await actor.startSession()
+        var transform = matrix_identity_float4x4
+        transform.columns.3 = simd_float4(0.0, 0.02, -0.48, 1.0)
+        let snapshot = FaceAnchorSnapshot(
+            isTracked: true,
+            transform: transform,
+            lookAtPoint: simd_float3(0.0, -0.05, 0.48),
+            blendShapes: ["eyeBlinkLeft": 0.05, "eyeBlinkRight": 0.05]
+        )
+        for i in 0..<20 {
+            _ = await actor.processFaceAnchor(snapshot: snapshot, elapsedSec: Double(i) / 60.0)
+        }
+        let (summary, frames) = await actor.finalizeSession()
+        XCTAssertEqual(frames.count, 20)
+        XCTAssertEqual(summary.captureSource, .trueDepth)
+        XCTAssertNil(summary.eyeDwellRatio)
+        XCTAssertNil(summary.mouthDwellRatio)
+        XCTAssertNil(summary.firstEyeLatencyMs)
+    }
+
+    func testEmptyFinalizeIsRejectedWithNilMetrics() async {
+        let actor = GazeProcessingActor()
+        await actor.startSession()
+        let (summary, frames) = await actor.finalizeSession()
+        XCTAssertTrue(frames.isEmpty)
+        XCTAssertEqual(summary.qualityVerdict, .rejected)
+        XCTAssertNil(summary.eyeDwellRatio)
+        XCTAssertNil(summary.firstEyeLatencyMs)
     }
 
     func testActorProcessesFaceAnchorSnapshot() async {

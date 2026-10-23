@@ -146,6 +146,25 @@ public struct CalibrationTarget: Identifiable, Sendable {
     }
 }
 
+// MARK: - Capture provenance (SIM-1, ADR-0001)
+
+/// Where a session's telemetry came from. Required, never defaulted, on every
+/// structure that leaves the controller (summary, vault header, history record),
+/// so simulated data can be quarantined by type at every sink.
+public enum CaptureSource: String, Codable, Sendable {
+    case trueDepth = "truedepth"
+    case simulated = "simulated"
+}
+
+/// Why live tracking cannot run. Rendered explicitly by the UI; live capture never
+/// falls back to simulation (ADR-0001 decision 2).
+public enum TrackingUnavailableReason: String, Sendable, Codable {
+    case faceTrackingUnsupported
+    case cameraPermissionDenied
+    case sessionFailed
+    case interrupted
+}
+
 // MARK: - 3-Stage Tracking Pipeline
 
 /// Represents the current stage in the eye-gaze tracking pipeline.
@@ -168,10 +187,16 @@ public enum TrackingStage: Equatable, Sendable {
     /// All stages healthy — a calibrated gaze coordinate is being produced.
     case gazeActive
 
+    /// Live tracking cannot run (unsupported hardware, denied permission, session
+    /// failure or interruption). No session is recording in this state.
+    case unavailable(reason: TrackingUnavailableReason)
+
     /// Returns true when face is detected (stage ≥ 1).
     public var hasFace: Bool {
-        if case .searchingFace = self { return false }
-        return true
+        switch self {
+        case .searchingFace, .unavailable: return false
+        case .faceAligned, .eyesTracking, .gazeActive: return true
+        }
     }
 
     /// Returns true when both face and eye tracking are healthy (stage ≥ 2).
@@ -195,6 +220,13 @@ public enum TrackingStage: Equatable, Sendable {
         case .faceAligned(let d):   return "Face aligned • \(Int(d)) cm"
         case .eyesTracking:         return "Eyes detected"
         case .gazeActive:           return "Gaze active ✓"
+        case .unavailable(let reason):
+            switch reason {
+            case .faceTrackingUnsupported: return "This device cannot run gaze observations"
+            case .cameraPermissionDenied:  return "Camera access is turned off"
+            case .sessionFailed:           return "The camera session stopped unexpectedly"
+            case .interrupted:             return "Observation interrupted"
+            }
         }
     }
 }
