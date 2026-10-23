@@ -6,11 +6,9 @@ import XCTest
 final class DoctorReportGeneratorTests: XCTestCase {
 
     func testGazeSessionRecordRoundtripSerialization() throws {
-        let record = GazeSessionRecord(
+        let record = GazeSessionRecord.fixture(
             sessionId: "SESS-12345",
-            participantId: "STUDY-TEST-01",
-            startedAt: Date(),
-            endedAt: Date().addingTimeInterval(30),
+            participantId: "child-SESS-123",
             durationSec: 30.0,
             socialPreferenceScore: 0.72,
             validFrameRatio: 0.94,
@@ -37,7 +35,7 @@ final class DoctorReportGeneratorTests: XCTestCase {
     }
 
     func testGazeSessionRecordInitFromSummary() {
-        let summary = GazeSessionReportSummary(
+        let summary = GazeSessionReportSummary.fixture(
             sessionId: "SESS-SUMM-99",
             durationSec: 25.0,
             totalFrames: 1500,
@@ -51,18 +49,19 @@ final class DoctorReportGeneratorTests: XCTestCase {
             qualityVerdict: .optimal
         )
 
-        let record = GazeSessionRecord(summary: summary, participantId: "STUDY-PART-SUMMARY")
+        let record = GazeSessionRecord(summary: summary, participantToken: "child-SUMMARY")
         XCTAssertEqual(record.sessionId, "SESS-SUMM-99")
-        XCTAssertEqual(record.participantId, "STUDY-PART-SUMMARY")
+        XCTAssertEqual(record.participantId, "child-SUMMARY")
+        XCTAssertEqual(record.captureSource, .trueDepth)
         XCTAssertEqual(record.socialPreferenceScore, -0.45)
         XCTAssertEqual(record.validFrameRatio, 0.946)
         XCTAssertEqual(record.qualityVerdict, "optimal")
     }
 
     func testDoctorReportPDFGenerationWithFullData() {
-        let gazeRecord = GazeSessionRecord(
+        let gazeRecord = GazeSessionRecord.fixture(
             sessionId: "SESS-PDF-FULL",
-            participantId: "PEDIATRIC-CLINICAL-001",
+            participantId: "child-PDFFULL",
             startedAt: Date().addingTimeInterval(-60),
             endedAt: Date(),
             durationSec: 60.0,
@@ -124,9 +123,9 @@ final class DoctorReportGeneratorTests: XCTestCase {
     }
 
     func testDoctorReportPDFGenerationWithHighRiskIndicators() {
-        let gazeRecord = GazeSessionRecord(
+        let gazeRecord = GazeSessionRecord.fixture(
             sessionId: "SESS-HIGH-RISK",
-            participantId: "HIGH-RISK-003",
+            participantId: "child-HIGHRISK",
             startedAt: Date().addingTimeInterval(-45),
             endedAt: Date(),
             durationSec: 45.0,
@@ -159,6 +158,80 @@ final class DoctorReportGeneratorTests: XCTestCase {
         XCTAssertEqual(pdfDoc?.pageCount, 1)
     }
 
+    // MARK: - Claims copy (CLM-3, CLM-4, CLM-5, SIM-5)
+
+    private func pdfText(_ input: DoctorReportInput) throws -> String {
+        let doc = try XCTUnwrap(DoctorReportGenerator.generatePDFDocument(input: input))
+        return doc.string ?? ""
+    }
+
+    /// Eye, mouth and first-look metrics are absent (child never looked at a face region).
+    private func makeSummary(source: CaptureSource) -> GazeSessionReportSummary {
+        GazeSessionReportSummary.fixture(
+            sessionId: "SESS-CLAIMS-01",
+            captureSource: source,
+            durationSec: 30,
+            socialPreferenceScore: -0.45
+        )
+    }
+
+    func testPDFContainsBothMandatorySentencesWithMinimalData() throws {
+        let text = try pdfText(DoctorReportInput(participantId: "MIN-1"))
+        XCTAssertTrue(text.contains("This is not a diagnostic tool."), text)
+        XCTAssertTrue(text.contains("Part of Open Spectrum Tracking"), text)
+    }
+
+    func testPDFWithHighMChatResultNeverSaysElevatedRiskAndNamesInstrument() throws {
+        let mchat = MCHATScoreResult(
+            totalFailed: 9,
+            riskLevel: .high,
+            failedQuestionIds: [1, 5, 7],
+            clinicalRecommendation: "Discuss with your pediatrician."
+        )
+        let input = DoctorReportInput(
+            participantId: "HIGH-1",
+            gazeRecord: GazeSessionRecord(summary: makeSummary(source: .trueDepth), participantToken: "child-SESS-CLA"),
+            mchatResult: mchat
+        )
+        let text = try pdfText(input)
+
+        XCTAssertTrue(text.contains("This is not a diagnostic tool."))
+        XCTAssertTrue(text.contains("Part of Open Spectrum Tracking"))
+        XCTAssertTrue(text.contains("M-CHAT-R/F:"), "instrument name must be present (CLM-4)")
+        for forbidden in ["Elevated Risk", "High Risk", "Risk Stratification", "confidence", "IRB", "FDA", "Atypical"] {
+            XCTAssertFalse(text.localizedCaseInsensitiveContains(forbidden), "PDF must not contain \(forbidden)")
+        }
+        XCTAssertFalse(text.contains("SIMULATED DATA"), "real captures carry no simulated banner")
+    }
+
+    func testPDFAbsentMetricsRenderAsNotObservedNotZero() throws {
+        let input = DoctorReportInput(
+            participantId: "NOEYE-1",
+            gazeRecord: GazeSessionRecord(summary: makeSummary(source: .trueDepth), participantToken: "child-SESS-CLA")
+        )
+        let text = try pdfText(input)
+        XCTAssertTrue(text.contains("Not observed"))
+    }
+
+    func testPDFRendersSimulatedBannerForSimulatedRecord() throws {
+        let input = DoctorReportInput(
+            participantId: "SIM-1",
+            gazeRecord: GazeSessionRecord(summary: makeSummary(source: .simulated), participantToken: "child-SESS-CLA")
+        )
+        let text = try pdfText(input)
+        XCTAssertTrue(text.contains("SIMULATED DATA"), text)
+        XCTAssertTrue(text.contains("This is not a diagnostic tool."))
+    }
+
+    func testMChatLineAlwaysNamesInstrumentAndNextStep() {
+        for level in [MCHATRiskLevel.low, .medium, .high] {
+            let line = ClaimsCopy.mchatLine(for: level)
+            XCTAssertTrue(line.hasPrefix("M-CHAT-R/F:"), line)
+            XCTAssertTrue(line.contains("pediatrician"), line)
+            XCTAssertNotEqual(line, level.rawValue, "bare persisted raw value must never be shown")
+        }
+    }
+
     // MARK: - Session History Store (data collection)
 
     @MainActor
@@ -167,9 +240,9 @@ final class DoctorReportGeneratorTests: XCTestCase {
         let store = GazeSessionHistoryStore(defaults: defaults)
         XCTAssertTrue(store.fetchAll().isEmpty)
 
-        let record = GazeSessionRecord(
+        let record = GazeSessionRecord.fixture(
             sessionId: "SESS-HIST-1",
-            participantId: "P-1",
+            participantId: "child-HIST1",
             startedAt: Date().addingTimeInterval(-60),
             endedAt: Date(),
             durationSec: 60.0,
@@ -194,9 +267,9 @@ final class DoctorReportGeneratorTests: XCTestCase {
         let store = GazeSessionHistoryStore(defaults: defaults)
         let base = Date()
         for score in [0.1, 0.9] {
-            store.record(GazeSessionRecord(
+            store.record(GazeSessionRecord.fixture(
                 sessionId: "SESS-DUPE",
-                participantId: "P-1",
+                participantId: "child-DUPE",
                 startedAt: base.addingTimeInterval(-60),
                 endedAt: base,
                 durationSec: 60.0,
@@ -216,8 +289,8 @@ final class DoctorReportGeneratorTests: XCTestCase {
         let store = GazeSessionHistoryStore(defaults: defaults)
         let now = Date()
         func record(id: String, ended: Date) {
-            store.record(GazeSessionRecord(
-                sessionId: id, participantId: "P-1",
+            store.record(GazeSessionRecord.fixture(
+                sessionId: id, participantId: "child-WEEK",
                 startedAt: ended.addingTimeInterval(-60), endedAt: ended,
                 durationSec: 60.0, socialPreferenceScore: 0.5,
                 validFrameRatio: 0.9, eyeDwellRatio: 0.4, mouthDwellRatio: 0.15

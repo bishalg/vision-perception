@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Liquid Glass presentation of the standardized 20-item M-CHAT-R/F toddler autism screening survey
-/// administered as an Apple ResearchKit `ORKQuestionStep` sequence.
+/// Liquid Glass presentation of the standardized 20-item M-CHAT-R/F parent questionnaire for toddlers.
+/// Results are shown as "M-CHAT-R/F: <category>" with the official next step (CLM-4).
 public struct MCHATSurveyModalView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var answers: [Int: Bool] = [:]
@@ -51,7 +51,7 @@ public struct MCHATSurveyModalView: View {
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Label("Clinical Research Instrument", systemImage: "stethoscope")
+                Label("Published Parent Questionnaire", systemImage: "list.clipboard")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundColor(LiquidGlass.celestialTeal)
                 Spacer()
@@ -60,11 +60,11 @@ public struct MCHATSurveyModalView: View {
                     .foregroundColor(.secondary)
             }
 
-            Text("Modified Checklist for Autism in Toddlers")
+            Text("Modified Checklist for Autism in Toddlers") // claims-ok: official M-CHAT-R/F instrument name
                 .font(.system(size: 18, weight: .bold, design: .rounded))
                 .foregroundColor(.primary)
 
-            Text("Standardized developmental screening validated for toddlers 16–30 months.")
+            Text("A published parent questionnaire for toddlers aged 16–30 months. It is not a diagnosis.")
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
         }
@@ -239,10 +239,10 @@ public struct MCHATSurveyModalView: View {
                     .foregroundColor(riskColor(result.riskLevel))
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(result.riskLevel.rawValue)
-                        .font(.system(size: 18, weight: .bold))
+                    Text(ClaimsCopy.mchatLine(for: result.riskLevel))
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundColor(riskColor(result.riskLevel))
-                    Text("Total At-Risk Items: \(result.totalFailed) of 20")
+                    Text("Items to follow up: \(result.totalFailed) of 20")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
@@ -267,7 +267,7 @@ public struct MCHATSurveyModalView: View {
                         Text("Follow-Up Interview Needed")
                             .font(.system(size: 13, weight: .bold, design: .rounded))
                             .foregroundColor(LiquidGlass.warmAmber)
-                        Text("Ask the clinician for the M-CHAT Follow-Up questions for the \(result.failedQuestionIds.count) flagged items.")
+                        Text("Ask your pediatrician for the M-CHAT Follow-Up questions for the \(result.failedQuestionIds.count) flagged items.")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                     }
@@ -284,21 +284,23 @@ public struct MCHATSurveyModalView: View {
                 Image(systemName: "info.circle.fill")
                     .foregroundColor(LiquidGlass.textSecondary)
                     .font(.system(size: 13))
-                Text("The M-CHAT-R/F is a parent-reported screening tool, not a clinical diagnosis. Always discuss results with your pediatrician.")
+                Text("The M-CHAT-R/F is a parent-reported questionnaire, not a diagnosis. Please discuss the result with your pediatrician.")
                     .font(.system(size: 11))
                     .foregroundColor(LiquidGlass.textSecondary)
             }
             .padding(.vertical, 4)
 
+            NotDiagnosticFooter()
+
             Button(action: {
-                // Save to CareKit & ResearchKit
+                // Save to the care plan
                 CarePlanStore.shared.recordMCHATSurvey(answers: answers)
                 onCompleted?(result)
                 dismiss()
             }) {
                 HStack {
                     Image(systemName: "square.and.arrow.down.fill")
-                    Text("Save to CareKit & Research Vault")
+                    Text("Save to My Diary")
                         .fontWeight(.bold)
                 }
                 .frame(maxWidth: .infinity)
@@ -359,7 +361,7 @@ public struct MCHATHistoryView: View {
                                 Text("No surveys yet")
                                     .font(.system(size: 15, weight: .bold, design: .rounded))
                                     .foregroundColor(.primary)
-                                Text("Completed M-CHAT-R/F surveys will appear here with their risk levels.")
+                                Text("Completed M-CHAT-R/F surveys will appear here with their M-CHAT-R/F categories.")
                                     .font(.system(size: 13))
                                     .foregroundColor(.secondary)
                                     .multilineTextAlignment(.center)
@@ -396,8 +398,8 @@ public struct MCHATHistoryView: View {
                 .frame(width: 10, height: 10)
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    Text(survey.riskLevel.rawValue)
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                    Text(ClaimsCopy.mchatLine(for: survey.riskLevel))
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundColor(riskColor(survey.riskLevel))
                     if survey.requiresFollowUpInterview {
                         Text("Follow-Up Due")
@@ -408,7 +410,7 @@ public struct MCHATHistoryView: View {
                             .background(Capsule().fill(LiquidGlass.warmAmber.opacity(0.15)))
                     }
                 }
-                Text("\(survey.totalFailed) of 20 failed • \(survey.completionDate.formatted(date: .abbreviated, time: .shortened))")
+                Text("\(survey.totalFailed) of 20 flagged • \(survey.completionDate.formatted(date: .abbreviated, time: .shortened))")
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
             }

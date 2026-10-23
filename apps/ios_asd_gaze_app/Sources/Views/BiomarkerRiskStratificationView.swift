@@ -1,11 +1,13 @@
 import SwiftUI
 import CurvAsdGazeKit
 
-// MARK: - Dedicated AI Biomarker Risk Stratification Detail Section
+#if ASD_RESEARCH_CLASSIFIER
 
-/// Detailed Apple Health-style view section for AI Biomarker Risk Stratification.
-/// Displays clinical risk classification, confidence, latency, and a complete multi-variate
-/// feature matrix with dedicated cell rows, observed values, target thresholds, and in-depth explanations.
+// MARK: - Research Classifier Detail Section (Debug builds only)
+
+/// Debug-only research view (ADR-0004 decision 3, CLM-3). The whole file is compiled out of
+/// Release builds, where `AttentionFlag` is the only interpretation layer a parent sees.
+/// Shows the experimental classifier output with its feature matrix for developers.
 public struct BiomarkerRiskStratificationDetailSection: View {
     public let summary: GazeSessionReportSummary
     public let classification: BiomarkerClassificationResult?
@@ -40,12 +42,12 @@ public struct BiomarkerRiskStratificationDetailSection: View {
             primarySummaryCard(result: result, strat: strat, stratColor: stratColor)
 
             // 2. Feature Matrix: All Metrics Well Spread in Dedicated Cell Rows with Details Explained
-            GlassSectionHeader(title: "Multi-Variate Biomarker Matrix", icon: "square.grid.2x2")
+            GlassSectionHeader(title: "Feature Matrix", icon: "square.grid.2x2")
 
             featureMatrixRows
 
             // 3. Apple Health-Style Educational Cards
-            GlassSectionHeader(title: "About Machine Learning Risk Stratification", icon: "info.circle")
+            GlassSectionHeader(title: "About the Research Classifier", icon: "info.circle")
 
             aboutCardsSection
         }
@@ -59,11 +61,11 @@ public struct BiomarkerRiskStratificationDetailSection: View {
                 .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Observational Screening Aid — Not a Medical Diagnosis")
+                Text("Research build only. Not a medical diagnosis.")
                     .font(.system(size: 12, weight: .bold, design: .rounded))
                     .foregroundColor(LiquidGlass.textPrimary)
 
-                Text("Risk stratification scores reflect statistical visual engagement comparisons against published cohort research. This tool does NOT provide a diagnosis of Autism Spectrum Disorder (ASD). Always consult a licensed pediatrician or healthcare professional before making any clinical decisions.")
+                Text("This experimental output exists only in developer builds. It compares visual engagement against published cohort ranges and is not shown to parents. This is not a diagnostic tool. Part of Open Spectrum Tracking.")
                     .font(.system(size: 11))
                     .foregroundColor(LiquidGlass.textSecondary)
                     .lineSpacing(2)
@@ -88,7 +90,7 @@ public struct BiomarkerRiskStratificationDetailSection: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Clinical Risk Stratification")
+                    Text("Experimental classifier output")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.secondary)
                     HStack(spacing: 8) {
@@ -105,7 +107,7 @@ public struct BiomarkerRiskStratificationDetailSection: View {
                     Text(String(format: "%.1f%%", result.riskScore * 100))
                         .font(.system(size: 20, weight: .bold, design: .monospaced))
                         .foregroundColor(.primary)
-                    Text("Risk Index")
+                    Text("Index")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(.secondary)
                 }
@@ -113,9 +115,9 @@ public struct BiomarkerRiskStratificationDetailSection: View {
 
             HStack(spacing: 8) {
                 summaryTile(
-                    title: "Confidence",
+                    title: "Model certainty",
                     value: String(format: "%.0f%%", result.confidence * 100),
-                    subtitle: "Certainty",
+                    subtitle: "Experimental",
                     color: LiquidGlass.celestialTeal
                 )
                 summaryTile(
@@ -157,7 +159,7 @@ public struct BiomarkerRiskStratificationDetailSection: View {
             let socialPrefPct = Int((summary.socialDwellSec / max(0.1, summary.socialDwellSec + summary.geometricDwellSec)) * 100)
             let isSocialNormal = socialPrefPct >= 60
             let isSocialMonitor = socialPrefPct >= 50 && socialPrefPct < 60
-            let socialStatus = isSocialNormal ? "Typical" : (isSocialMonitor ? "Monitor" : "Elevated Risk")
+            let socialStatus = isSocialNormal ? "Typical" : (isSocialMonitor ? "Monitor" : "Outside range")
             let socialColor = isSocialNormal ? LiquidGlass.emeraldMint : (isSocialMonitor ? LiquidGlass.warmAmber : Color.red)
 
             riskMatrixCellRow(
@@ -168,38 +170,40 @@ public struct BiomarkerRiskStratificationDetailSection: View {
                 weight: "42% Weight",
                 status: socialStatus,
                 statusColor: socialColor,
-                explanation: "Measures preferential gaze allocation between dynamic human social actors and moving geometric patterns. Social preference < 50% yields a 94% positive predictive value for autism spectrum disorder (Pierce et al., JAMA Pediatrics)."
+                explanation: "Measures preferential gaze allocation between dynamic human social actors and moving geometric patterns. Compared against published age ranges (Pierce et al., 2011, 2016)."
             )
 
             // Row 2: Eye-Region Fixation Allocation
-            let eyeDwellPct = summary.eyeDwellRatio * 100
-            let isEyeNormal = eyeDwellPct >= 25.0
-            let isEyeMonitor = eyeDwellPct >= 18.0 && eyeDwellPct < 25.0
-            let eyeStatus = isEyeNormal ? "Typical Fixation" : (isEyeMonitor ? "Borderline Dwell" : "Reduced Gaze")
+            let eyeDwellPct = (summary.eyeDwellRatio ?? 0) * 100
+            let hasEye = summary.eyeDwellRatio != nil
+            let isEyeNormal = hasEye && eyeDwellPct >= 25.0
+            let isEyeMonitor = hasEye && eyeDwellPct >= 18.0 && eyeDwellPct < 25.0
+            let eyeStatus = !hasEye ? "Not observed" : (isEyeNormal ? "Typical Fixation" : (isEyeMonitor ? "Borderline Dwell" : "Reduced Gaze"))
             let eyeColor = isEyeNormal ? LiquidGlass.emeraldMint : (isEyeMonitor ? LiquidGlass.warmAmber : Color.red)
 
             riskMatrixCellRow(
                 icon: "eyes.inverse",
                 title: "Eye-Region Fixation Allocation",
-                observed: String(format: "%.1f%% Eye", eyeDwellPct),
+                observed: hasEye ? String(format: "%.1f%% Eye", eyeDwellPct) : "Not observed",
                 target: "≥ 25.0%",
                 weight: "24% Weight",
                 status: eyeStatus,
                 statusColor: eyeColor,
-                explanation: "Quantifies ocular gaze focused on the upper eye region of the human face versus mouth or peripheral shapes. As published in Nature (Klin & Jones, 2013), typically developing infants sustain high eye fixation, whereas an early decline between 2 and 24 months is an early biomarker."
+                explanation: "Quantifies ocular gaze focused on the upper eye region of the human face versus mouth or peripheral shapes. As published in Nature (Klin & Jones, 2013), typically developing infants sustain high eye fixation, whereas an early decline between 2 and 24 months is of research interest."
             )
 
             // Row 3: First Saccade Latency to Social Stimulus
-            let latency = summary.firstEyeLatencyMs
-            let isLatencyNormal = latency < 550.0
-            let isLatencyMonitor = latency >= 550.0 && latency < 750.0
-            let latencyStatus = isLatencyNormal ? "Rapid Orienting" : (isLatencyMonitor ? "Moderate Latency" : "Delayed Orienting")
+            let latency = summary.firstEyeLatencyMs ?? 0
+            let hasLatency = summary.firstEyeLatencyMs != nil
+            let isLatencyNormal = hasLatency && latency < 550.0
+            let isLatencyMonitor = hasLatency && latency >= 550.0 && latency < 750.0
+            let latencyStatus = !hasLatency ? "Not observed" : (isLatencyNormal ? "Rapid Orienting" : (isLatencyMonitor ? "Moderate Latency" : "Delayed Orienting"))
             let latencyColor = isLatencyNormal ? LiquidGlass.emeraldMint : (isLatencyMonitor ? LiquidGlass.warmAmber : Color.red)
 
             riskMatrixCellRow(
                 icon: "bolt.stop.fill",
                 title: "First Saccade Latency to Face",
-                observed: String(format: "%.0f ms", latency),
+                observed: hasLatency ? String(format: "%.0f ms", latency) : "Not observed",
                 target: "< 550 ms",
                 weight: "14% Weight",
                 status: latencyStatus,
@@ -221,7 +225,7 @@ public struct BiomarkerRiskStratificationDetailSection: View {
                 weight: "12% Weight",
                 status: smileStatus,
                 statusColor: smileColor,
-                explanation: "Evaluates emotional reciprocity via TrueDepth 52 Action Units, tracking synchronous activation of the Duchenne smile (AU6 cheek raiser + AU12 lip corner puller) in response to humorous video events. Flat affect correlates with social communication challenges."
+                explanation: "Evaluates emotional reciprocity via TrueDepth 52 Action Units, tracking synchronous activation of the Duchenne smile (AU6 cheek raiser + AU12 lip corner puller) in response to humorous video events. Flat affect is tracked as a research measure."
             )
 
             // Row 5: Sensor Telemetry Yield & Blink Integrity
@@ -238,7 +242,7 @@ public struct BiomarkerRiskStratificationDetailSection: View {
                 weight: "8% Weight",
                 status: validStatus,
                 statusColor: validColor,
-                explanation: "Confirms that 60 Hz TrueDepth infrared depth tracking remained locked within 38–55 cm viewing distance and that blink artifact rejection discarded eyelid closure plummets, ensuring high diagnostic reliability."
+                explanation: "Confirms that 60 Hz TrueDepth infrared depth tracking remained locked within 38–55 cm viewing distance and that blink artifact rejection discarded eyelid closure plummets, supporting reliable measurements."
             )
         }
     }
@@ -249,17 +253,17 @@ public struct BiomarkerRiskStratificationDetailSection: View {
         VStack(spacing: 12) {
             aboutCard(
                 title: "How the Multi-Variate Model Works",
-                content: "Our CoreML classifier integrates multi-modal temporal gaze coordinates, ocular fixations, saccade latencies, and 52 FACS facial action units. By comparing this composite vector against validated clinical developmental cohorts, the model computes a calibrated Bayesian risk probability score."
+                content: "Our CoreML classifier integrates multi-modal temporal gaze coordinates, ocular fixations, saccade latencies, and 52 ARKit facial expression coefficients. The experimental model computes an index from these inputs."
             )
 
             aboutCard(
-                title: "Hardware-Accelerated Apple Neural Engine (ANE)",
-                content: "All inference executes locally on your iPhone using the Apple Neural Engine (ANE) with 16-bit floating point precision and sub-2ms latency. Under strict zero-egress architecture, no camera images, facial geometry, or patient identifiers leave the device."
+                title: "On-Device Inference",
+                content: "All inference executes locally on your iPhone using the Neural Engine with 16-bit floating point precision and sub-2ms latency. Under strict zero-egress architecture, no camera images, facial geometry, or patient identifiers leave the device."
             )
 
             aboutCard(
-                title: "Clinical Decision Support & Regulatory Context",
-                content: "This tool is designed to assist pediatricians and developmental specialists in early screening, referencing FDA De Novo classification standards (EarliPoint ASD Biomarker) and published research from UC San Diego and Duke University. It is an adjunct screening aid and does not replace comprehensive psychiatric evaluation."
+                title: "Research Context",
+                content: "This output is experimental, has not been validated, and is not available in the released app."
             )
         }
     }
@@ -368,3 +372,5 @@ public struct BiomarkerRiskStratificationDetailSection: View {
         )
     }
 }
+
+#endif // ASD_RESEARCH_CLASSIFIER

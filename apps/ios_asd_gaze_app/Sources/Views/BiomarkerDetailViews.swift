@@ -5,25 +5,31 @@ import CurvAsdGazeKit
 
 public enum BiomarkerDetailType: String, Identifiable, Hashable, CaseIterable {
     case socialPreference = "Social Visual Preference (GeoPref)"
-    case mlClassification = "Clinical Risk Stratification"
-    case facialAffect = "Facial Affect & Social Reciprocity"
-    case dataQuality = "Sensor Telemetry & Quality Audit"
+    #if ASD_RESEARCH_CLASSIFIER
+    case mlClassification = "Experimental Classifier (Debug Only)"
+    #endif
+    case facialAffect = "Facial Expression While Watching"
+    case dataQuality = "Recording Quality"
 
     public var id: String { rawValue }
 
     public var shortTitle: String {
         switch self {
         case .socialPreference: return "Social Attention"
-        case .mlClassification: return "Risk Stratification"
-        case .facialAffect:     return "Facial Affect"
-        case .dataQuality:      return "Sensor Audit"
+        #if ASD_RESEARCH_CLASSIFIER
+        case .mlClassification: return "Research Classifier"
+        #endif
+        case .facialAffect:     return "Facial Expression"
+        case .dataQuality:      return "Recording Quality"
         }
     }
 
     public var icon: String {
         switch self {
         case .socialPreference: return "eyes.inverse"
+        #if ASD_RESEARCH_CLASSIFIER
         case .mlClassification: return "brain.head.profile"
+        #endif
         case .facialAffect:     return "face.smiling.fill"
         case .dataQuality:      return "checkmark.shield.fill"
         }
@@ -32,7 +38,9 @@ public enum BiomarkerDetailType: String, Identifiable, Hashable, CaseIterable {
     public var color: Color {
         switch self {
         case .socialPreference: return LiquidGlass.celestialTeal
+        #if ASD_RESEARCH_CLASSIFIER
         case .mlClassification: return LiquidGlass.warmAmber
+        #endif
         case .facialAffect:     return LiquidGlass.emeraldMint
         case .dataQuality:      return Color.blue
         }
@@ -41,15 +49,18 @@ public enum BiomarkerDetailType: String, Identifiable, Hashable, CaseIterable {
 
 // MARK: - Dedicated Biomarker Detail View (Apple Health Style)
 
-/// Dedicated full-page clinical biomarker detail view styled after the Apple Health design language.
-/// Features a continuous progress graph line across the 30-second timeline, comprehensive metric grids,
-/// and in-depth clinical term explanations and normative benchmarks.
+/// Dedicated full-page measurement detail view styled after the Apple Health design language.
+/// Features a continuous progress graph line across the 30-second timeline, metric grids,
+/// and plain-language explanations of each measurement. It reports measurements only.
 public struct BiomarkerDetailView: View {
     public let type: BiomarkerDetailType
     public let summary: GazeSessionReportSummary
+    #if ASD_RESEARCH_CLASSIFIER
     public let classification: BiomarkerClassificationResult?
+    #endif
     public let recordedFrames: [GazeFrame]
 
+    #if ASD_RESEARCH_CLASSIFIER
     public init(
         type: BiomarkerDetailType,
         summary: GazeSessionReportSummary,
@@ -61,6 +72,17 @@ public struct BiomarkerDetailView: View {
         self.classification = classification
         self.recordedFrames = recordedFrames
     }
+    #else
+    public init(
+        type: BiomarkerDetailType,
+        summary: GazeSessionReportSummary,
+        recordedFrames: [GazeFrame] = []
+    ) {
+        self.type = type
+        self.summary = summary
+        self.recordedFrames = recordedFrames
+    }
+    #endif
 
     public var body: some View {
         ZStack {
@@ -68,6 +90,8 @@ public struct BiomarkerDetailView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
+                    SimulatedDataBadge(captureSource: summary.captureSource)
+
                     headerHeroCard
 
                     progressGraphLineCard
@@ -75,13 +99,17 @@ public struct BiomarkerDetailView: View {
                     switch type {
                     case .socialPreference:
                         socialPreferenceContent
+                    #if ASD_RESEARCH_CLASSIFIER
                     case .mlClassification:
                         mlClassificationContent
+                    #endif
                     case .facialAffect:
                         facialAffectContent
                     case .dataQuality:
                         dataQualityContent
                     }
+
+                    NotDiagnosticFooter()
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
@@ -109,7 +137,7 @@ public struct BiomarkerDetailView: View {
                 Text(type.rawValue)
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
-                Text("Clinical Observation Audit · Session #\(summary.sessionId.prefix(8))")
+                Text("Observation details · Session #\(summary.sessionId.prefix(8))")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             }
@@ -153,7 +181,7 @@ public struct BiomarkerDetailView: View {
                         }
                     }
 
-                    // Benchmark line for social attention and ML Risk Stratification
+                    // Reference line for the age-range comparison
                     if type == .socialPreference {
                         let thresholdY = h * (1.0 - 0.60)
                         Path { p in
@@ -162,28 +190,13 @@ public struct BiomarkerDetailView: View {
                         }
                         .stroke(LiquidGlass.emeraldMint.opacity(0.45), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
 
-                        Text("Typical Threshold (≥60%)")
+                        Text("Reference (≥60%)")
                             .font(.system(size: 9, weight: .semibold, design: .monospaced))
                             .foregroundColor(LiquidGlass.emeraldMint.opacity(0.85))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(Capsule().fill(Color.black.opacity(0.65)))
                             .position(x: w - 85, y: max(10, thresholdY - 10))
-                    } else if type == .mlClassification {
-                        let thresholdY = h * (1.0 - 0.65)
-                        Path { p in
-                            p.move(to: CGPoint(x: 0, y: thresholdY))
-                            p.addLine(to: CGPoint(x: w, y: thresholdY))
-                        }
-                        .stroke(LiquidGlass.emeraldMint.opacity(0.45), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
-
-                        Text("Typical Alignment (≥65%)")
-                            .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                            .foregroundColor(LiquidGlass.emeraldMint.opacity(0.85))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Capsule().fill(Color.black.opacity(0.65)))
-                            .position(x: w - 90, y: max(10, thresholdY - 10))
                     } else if type == .facialAffect {
                         let thresholdY = h * (1.0 - 0.20)
                         Path { p in
@@ -192,7 +205,7 @@ public struct BiomarkerDetailView: View {
                         }
                         .stroke(LiquidGlass.emeraldMint.opacity(0.45), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
 
-                        Text("Typical Synchrony (≥20%)")
+                        Text("Reference (≥20%)")
                             .font(.system(size: 9, weight: .semibold, design: .monospaced))
                             .foregroundColor(LiquidGlass.emeraldMint.opacity(0.85))
                             .padding(.horizontal, 6)
@@ -207,7 +220,7 @@ public struct BiomarkerDetailView: View {
                         }
                         .stroke(LiquidGlass.emeraldMint.opacity(0.45), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
 
-                        Text("Optimal Yield (≥75%)")
+                        Text("Good recording (≥75%)")
                             .font(.system(size: 9, weight: .semibold, design: .monospaced))
                             .foregroundColor(LiquidGlass.emeraldMint.opacity(0.85))
                             .padding(.horizontal, 6)
@@ -280,9 +293,11 @@ public struct BiomarkerDetailView: View {
     private var graphTitle: String {
         switch type {
         case .socialPreference: return "Social Attention Progression"
-        case .mlClassification: return "Neurotypical Alignment Trajectory"
-        case .facialAffect:     return "Affective Expressivity Timeline"
-        case .dataQuality:      return "Telemetry Validity Compliance"
+        #if ASD_RESEARCH_CLASSIFIER
+        case .mlClassification: return "Experimental Classifier Trajectory"
+        #endif
+        case .facialAffect:     return "Facial Expression Timeline"
+        case .dataQuality:      return "Usable Gaze Samples"
         }
     }
 
@@ -291,13 +306,14 @@ public struct BiomarkerDetailView: View {
         case .socialPreference:
             let pct = Int((summary.socialDwellSec / max(0.1, summary.socialDwellSec + summary.geometricDwellSec)) * 100)
             return "\(pct)% Social"
+        #if ASD_RESEARCH_CLASSIFIER
         case .mlClassification:
-            let strat = classification?.riskStratification ?? .typical
-            return strat.rawValue
+            return "Debug"
+        #endif
         case .facialAffect:
             return "\(Int(summary.socialSmileIntensityMean * 100))% Smile"
         case .dataQuality:
-            return "\(String(format: "%.1f%%", summary.validRatio * 100)) Yield"
+            return "\(String(format: "%.1f%%", summary.validRatio * 100)) Usable"
         }
     }
 
@@ -324,12 +340,14 @@ public struct BiomarkerDetailView: View {
                 case .dataQuality:
                     let totalInWindow = recordedFrames.filter { $0.gaze.videoTimeSec <= targetTime }.count
                     ratio = totalInWindow > 0 ? Double(runningTotal) / Double(totalInWindow) : summary.validRatio
+                #if ASD_RESEARCH_CLASSIFIER
                 case .mlClassification:
                     let socialRatio = runningTotal > 0 ? Double(runningSocial) / Double(runningTotal) : 0.5
                     let smileMean = runningTotal > 0 ? (slice.reduce(0.0) { $0 + $1.affect.socialSmileIntensity } / Double(runningTotal)) : summary.socialSmileIntensityMean
-                    let eyeRatio = summary.eyeDwellRatio
+                    let eyeRatio = summary.eyeDwellRatio ?? 0
                     let baseScore = (socialRatio * 0.55 + min(1.0, eyeRatio / 0.35) * 0.30 + min(1.0, smileMean / 0.25) * 0.15)
                     ratio = max(0.1, min(0.95, baseScore))
+                #endif
                 }
 
                 let clampedRatio = max(0.05, min(0.95, ratio))
@@ -347,8 +365,10 @@ public struct BiomarkerDetailView: View {
                 targetRatio = summary.socialSmileIntensityMean
             case .dataQuality:
                 targetRatio = summary.validRatio
+            #if ASD_RESEARCH_CLASSIFIER
             case .mlClassification:
                 targetRatio = max(0.05, min(0.95, 1.0 - (classification?.riskScore ?? 0.15)))
+            #endif
             }
 
             return (0...count).map { i in
@@ -370,7 +390,7 @@ public struct BiomarkerDetailView: View {
             let socialPrefPct = Int((summary.socialDwellSec / max(0.1, summary.socialDwellSec + summary.geometricDwellSec)) * 100)
             let isSocialNormal = socialPrefPct >= 60
             let isSocialMonitor = socialPrefPct >= 50 && socialPrefPct < 60
-            let socialStatus = isSocialNormal ? "Typical Social Bias" : (isSocialMonitor ? "Borderline Social Bias" : "Reduced Social Bias")
+            let socialStatus = isSocialNormal ? "Looked mostly at people" : (isSocialMonitor ? "Looked at both" : "Looked mostly at shapes")
             let socialColor = isSocialNormal ? LiquidGlass.emeraldMint : (isSocialMonitor ? LiquidGlass.warmAmber : Color.red)
 
             // Primary Summary Card
@@ -414,10 +434,10 @@ public struct BiomarkerDetailView: View {
                         color: LiquidGlass.warmAmber
                     )
                     detailMetricTile(
-                        title: "First Saccade",
-                        value: String(format: "%.0fms", summary.firstEyeLatencyMs),
-                        subtitle: summary.firstEyeLatencyMs <= 650 ? "Rapid" : "Delayed",
-                        color: summary.firstEyeLatencyMs <= 650 ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber
+                        title: "First Look at Eyes",
+                        value: summary.firstEyeLatencyMs.map { String(format: "%.0fms", $0) } ?? "Not observed",
+                        subtitle: summary.firstEyeLatencyMs == nil ? "No eye look" : ((summary.firstEyeLatencyMs ?? 0) <= 650 ? "Quick" : "Slower"),
+                        color: (summary.firstEyeLatencyMs ?? 0) <= 650 && summary.firstEyeLatencyMs != nil ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber
                     )
                 }
 
@@ -425,7 +445,7 @@ public struct BiomarkerDetailView: View {
                     Image(systemName: "sparkle.magnifyingglass")
                         .font(.system(size: 11))
                         .foregroundColor(LiquidGlass.celestialTeal)
-                    Text("Clinical Finding: \(isSocialNormal ? "Robust preferential orientation to human social scenes." : "Elevated visual preference for geometric animations.")")
+                    Text("Observation: \(isSocialNormal ? "Looked mostly at the people in the video." : "Spent more time on the moving shapes.")")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.primary)
                 }
@@ -438,7 +458,7 @@ public struct BiomarkerDetailView: View {
             .glassCard(cornerRadius: 16, padding: 14)
 
             // Multi-Variate Biomarker Matrix
-            GlassSectionHeader(title: "Social Attention Biomarker Matrix", icon: "square.grid.2x2")
+            GlassSectionHeader(title: "Social Attention Measurements", icon: "square.grid.2x2")
 
             VStack(spacing: 10) {
                 biomarkerMatrixCellRow(
@@ -447,9 +467,9 @@ public struct BiomarkerDetailView: View {
                     observed: String(format: "%.1fs (%d%%)", summary.socialDwellSec, socialPrefPct),
                     target: "≥ 60.0% Dwell",
                     weight: "Primary Index",
-                    status: isSocialNormal ? "Typical" : (isSocialMonitor ? "Monitor" : "Elevated"),
+                    status: isSocialNormal ? "Within reference" : (isSocialMonitor ? "Near reference" : "Below reference"),
                     statusColor: socialColor,
-                    explanation: "Cumulative gaze duration within the social interaction bounding box. Toddlers with ASD spend significantly less time attending to social scenes compared to geometric shapes (Pierce et al., 2011)."
+                    explanation: "Cumulative gaze duration within the social interaction bounding box. Published research compares how long young children look at social scenes versus shapes (Pierce et al., 2011)."
                 )
 
                 biomarkerMatrixCellRow(
@@ -458,77 +478,81 @@ public struct BiomarkerDetailView: View {
                     observed: String(format: "%.1fs (%d%%)", summary.geometricDwellSec, 100 - socialPrefPct),
                     target: "≤ 40.0% Dwell",
                     weight: "Contrast Index",
-                    status: (100 - socialPrefPct) <= 40 ? "Normal Contrast" : "Elevated Geometric",
+                    status: (100 - socialPrefPct) <= 40 ? "Within reference" : "Above reference",
                     statusColor: (100 - socialPrefPct) <= 40 ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber,
-                    explanation: "Visual dwell directed at high-contrast rotating fractal patterns. Disproportionate geometric fixation (> 50%) is a validated early digital phenotyping biomarker for autism spectrum disorder."
+                    explanation: "Visual dwell directed at high-contrast rotating fractal patterns. Published studies report this measure for research purposes. It does not identify any condition."
                 )
 
-                let eyePct = summary.eyeDwellRatio * 100
+                let eyePct = (summary.eyeDwellRatio ?? 0) * 100
+                let hasEye = summary.eyeDwellRatio != nil
                 biomarkerMatrixCellRow(
                     icon: "eyes.inverse",
-                    title: "Ocular Eye-Looking Ratio",
-                    observed: String(format: "%.1f%% Eye Dwell", eyePct),
+                    title: "Looking at Eyes",
+                    observed: hasEye ? String(format: "%.1f%% Eye Dwell", eyePct) : "Not observed",
                     target: "≥ 25.0% of Face",
-                    weight: "Facial Salience",
-                    status: eyePct >= 25.0 ? "Typical Fixation" : (eyePct >= 18.0 ? "Borderline" : "Reduced Gaze"),
-                    statusColor: eyePct >= 25.0 ? LiquidGlass.emeraldMint : (eyePct >= 18.0 ? LiquidGlass.warmAmber : Color.red),
-                    explanation: "Proportion of facial gaze directed to the eye region versus mouth or non-feature contours. Early decline in eye fixation from 2 to 6 months of age predicts social communicative divergence (Klin & Jones, Nature 2013)."
+                    weight: "Face Looking",
+                    status: !hasEye ? "Not observed" : (eyePct >= 25.0 ? "Within reference" : (eyePct >= 18.0 ? "Near reference" : "Below reference")),
+                    statusColor: !hasEye ? Color.gray : (eyePct >= 25.0 ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber),
+                    explanation: hasEye ? "Share of face looking that landed on the eye region rather than the mouth. Published eye-tracking research compares this share across ages (Klin & Jones, Nature 2013)." : "The child did not look at the eye or mouth regions during this session, so no share can be calculated."
                 )
 
-                let mouthPct = summary.mouthDwellRatio * 100
+                let mouthPct = (summary.mouthDwellRatio ?? 0) * 100
+                let hasMouth = summary.mouthDwellRatio != nil
                 biomarkerMatrixCellRow(
                     icon: "mouth.fill",
-                    title: "Speech-Associated Mouth Looking",
-                    observed: String(format: "%.1f%% Mouth Dwell", mouthPct),
+                    title: "Looking at the Mouth",
+                    observed: hasMouth ? String(format: "%.1f%% Mouth Dwell", mouthPct) : "Not observed",
                     target: "10.0% – 30.0%",
-                    weight: "Audiovisual Dwell",
-                    status: mouthPct >= 10.0 && mouthPct <= 30.0 ? "Normative" : "Atypical Ratio",
-                    statusColor: mouthPct >= 10.0 && mouthPct <= 30.0 ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber,
-                    explanation: "Fixation on the mouth region during speech. Toddlers learning language alternate between eyes and mouth; abnormal preference for mouth over eyes outside verbal moments can indicate atypical facial processing."
+                    weight: "Speech Watching",
+                    status: !hasMouth ? "Not observed" : (mouthPct >= 10.0 && mouthPct <= 30.0 ? "Within reference" : "Outside reference"),
+                    statusColor: !hasMouth ? Color.gray : (mouthPct >= 10.0 && mouthPct <= 30.0 ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber),
+                    explanation: hasMouth ? "Share of face looking that landed on the mouth. Children learning language often alternate between the eyes and the mouth while someone speaks." : "The child did not look at the eye or mouth regions during this session, so no share can be calculated."
                 )
 
-                let lat = summary.firstEyeLatencyMs
+                let hasLat = summary.firstEyeLatencyMs != nil
+                let lat = summary.firstEyeLatencyMs ?? 0
                 biomarkerMatrixCellRow(
                     icon: "bolt.stop.fill",
-                    title: "First Saccade Latency to Face",
-                    observed: String(format: "%.0f ms", lat),
+                    title: "Time to First Look at Eyes",
+                    observed: hasLat ? String(format: "%.0f ms", lat) : "Not observed",
                     target: "< 650 ms",
-                    weight: "Subcortical Capture",
-                    status: lat <= 650 ? "Rapid Orienting" : "Delayed Orienting",
-                    statusColor: lat <= 650 ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber,
-                    explanation: "Elapsed time from stimulus onset until the infant's first fixation lands on the social actor. Rapid orienting reflects automated subcortical social salience mechanisms."
+                    weight: "Quick Orienting",
+                    status: !hasLat ? "Not observed" : (lat <= 650 ? "Quick" : "Slower"),
+                    statusColor: !hasLat ? Color.gray : (lat <= 650 ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber),
+                    explanation: hasLat ? "Time from the start of a clip until the child's gaze first landed on the eye region." : "No look at the eye region was detected, so no time can be reported."
                 )
             }
 
             // Apple Health Style Educational Cards
-            GlassSectionHeader(title: "About Social Visual Attention", icon: "info.circle")
+            GlassSectionHeader(title: "About Social Attention", icon: "info.circle")
 
             VStack(spacing: 12) {
                 aboutMetricCard(
                     title: "What is Social Visual Attention?",
-                    content: "Social visual attention measures the innate neurological tendency of young children to look at other people—their faces, eyes, and social gestures—compared to non-social, repetitive geometric shapes. Typically developing toddlers show an overwhelming, automatic preference for social scenes."
+                    content: "Social visual attention describes how long a young child looks at other people, such as faces and gestures, compared with moving shapes. Children differ widely, and one session says little on its own."
                 )
 
                 aboutMetricCard(
                     title: "How the GeoPref Score is Calculated",
-                    content: "Derived from the landmark Pierce et al. protocol:\n\nIndex = (Social Dwell − Geometric Dwell) / Total Valid Dwell\n\nScores range from −1.00 (100% geometric) to +1.00 (100% social). Blinks and off-screen gazes are strictly filtered out to prevent false dwell accumulation."
+                    content: "Based on the method described by Pierce et al.:\n\nIndex = (Social Dwell − Geometric Dwell) / Total Valid Dwell\n\nScores range from −1.00 (100% geometric) to +1.00 (100% social). Blinks and off-screen gazes are strictly filtered out to prevent false dwell accumulation."
                 )
 
                 aboutMetricCard(
-                    title: "The Role of Eye vs. Mouth Fixation",
-                    content: "Seminal eye-tracking studies published in Nature (Klin & Jones, 2013) demonstrated that typically developing toddlers maintain high visual fixation on the eye region of human faces (typically ≥ 25% of face dwell). A progressive decline in eye dwell with preference for mouth or objects is a sensitive biomarker."
+                    title: "Looking at Eyes and Mouth",
+                    content: "Eye-tracking studies (Klin & Jones, Nature 2013) report how young children split their looking between the eyes and the mouth of a face. These are research findings. They do not identify any condition."
                 )
 
                 aboutMetricCard(
-                    title: "Peer-Reviewed Scientific Citations",
-                    content: "• Pierce et al., Archives of General Psychiatry (2011) & JAMA Pediatrics (2016)\n• Klin & Jones, Nature (2013)\n• Egger et al., Duke University SenseToKnow (2021)\n• FDA-cleared EarliPoint Clinical Biomarker De Novo (2023)"
+                    title: "Published Research",
+                    content: "• Pierce et al., Archives of General Psychiatry (2011) and JAMA Pediatrics (2016)\n• Klin & Jones, Nature (2013)\n• Egger et al., Duke University SenseToKnow (2021)"
                 )
             }
         }
     }
 
-    // MARK: - 2. ML Classification Breakdown
+    // MARK: - 2. Research classifier (Debug builds only)
 
+    #if ASD_RESEARCH_CLASSIFIER
     private var mlClassificationContent: some View {
         BiomarkerRiskStratificationDetailSection(
             summary: summary,
@@ -536,6 +560,7 @@ public struct BiomarkerDetailView: View {
             recordedFrames: recordedFrames
         )
     }
+    #endif
 
     // MARK: - 3. Facial Affect Breakdown
 

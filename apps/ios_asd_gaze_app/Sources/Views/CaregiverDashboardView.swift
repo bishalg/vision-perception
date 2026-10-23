@@ -93,16 +93,24 @@ public struct CaregiverDashboardView: View {
                 }
 
                 if let last = sessionHistory.lastRecord {
-                    Section("Gaze telemetry") {
+                    Section {
                         GazeTelemetryReviewCard(session: GazeTelemetrySession(from: last))
-                        Button("Start ResearchKit gaze task", action: onStartScreening)
+                        Button("Start a gaze observation", action: onStartScreening)
+                    } header: {
+                        Text("Gaze observations")
+                    } footer: {
+                        NotDiagnosticFooter()
                     }
                 } else {
-                    Section("Gaze telemetry") {
-                        Text("No on-device session yet. Visual attention calibration and GeoPref run as a ResearchKit-style ordered task. No raw video is stored.")
+                    Section {
+                        Text("No observation yet. Your child watches short clips while the phone measures where they look. No video is stored.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
-                        Button("Start gaze task", action: onStartScreening)
+                        Button("Start a gaze observation", action: onStartScreening)
+                    } header: {
+                        Text("Gaze observations")
+                    } footer: {
+                        NotDiagnosticFooter()
                     }
                 }
 
@@ -111,7 +119,7 @@ public struct CaregiverDashboardView: View {
                     ResearchStudyDashboardCard()
                     screeningActionCard
                 } header: {
-                    Text("Care protocol")
+                    Text("Care routine")
                 }
 
                 Section {
@@ -148,7 +156,7 @@ public struct CaregiverDashboardView: View {
                     } label: {
                         Image(systemName: "doc.richtext")
                     }
-                    .accessibilityLabel("Pediatric PDF report")
+                    .accessibilityLabel("Report for your pediatrician")
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
@@ -219,10 +227,10 @@ public struct CaregiverDashboardView: View {
         VStack(alignment: .leading, spacing: 8) {
             if let lastMchat {
                 let score = ScreeningRiskScore(from: lastMchat)
-                Text(score.riskLevel.rawValue)
+                Text(ClaimsCopy.mchatLine(for: score.riskLevel))
                     .font(.headline)
                     .foregroundStyle(mchatRiskColor(score.riskLevel))
-                Text("Failed items: \(score.totalFailed) of 20  ·  Bands: 0–2 low, 3–7 Follow-Up, 8–20 seek evaluation.")
+                Text("Items to follow up: \(score.totalFailed) of 20. This is a parent-reported questionnaire, not a diagnosis.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Text(score.clinicalRecommendation)
@@ -388,7 +396,7 @@ public struct CaregiverDashboardView: View {
                     .font(.system(size: 15))
                     .foregroundColor(LiquidGlass.celestialTeal)
 
-                Text("Daily Eye Tracking")
+                Text("Daily Gaze Observation")
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
 
@@ -407,7 +415,7 @@ public struct CaregiverDashboardView: View {
                     .foregroundColor(.secondary.opacity(0.6))
             }
 
-            Text("Interactive calibration followed by standardized pediatric visual attention screening.")
+            Text("A short calibration, then clips that show how your child looks at people and shapes.")
                 .font(.system(size: 13))
                 .foregroundColor(.secondary)
 
@@ -418,7 +426,7 @@ public struct CaregiverDashboardView: View {
                         Circle()
                             .fill(mchatRiskColor(mchat.riskLevel))
                             .frame(width: 7, height: 7)
-                        Text("M-CHAT: \(mchat.riskLevel.rawValue)")
+                        Text(ClaimsCopy.mchatLine(for: mchat.riskLevel))
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                             .foregroundColor(mchatRiskColor(mchat.riskLevel))
                         if mchat.requiresFollowUpInterview {
@@ -436,7 +444,7 @@ public struct CaregiverDashboardView: View {
                     Image(systemName: "eyes")
                         .font(.system(size: 11))
                         .foregroundColor(LiquidGlass.celestialTeal)
-                    Text("\(sessionHistory.sessionsThisWeek().count) screenings this week")
+                    Text("\(sessionHistory.sessionsThisWeek().count) observations this week")
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .foregroundColor(.secondary)
                 }
@@ -453,6 +461,8 @@ public struct CaregiverDashboardView: View {
                 isPrimary: true,
                 action: onStartScreening
             )
+
+            NotDiagnosticFooter()
         }
         .glassCard(cornerRadius: 16, padding: 16)
     }

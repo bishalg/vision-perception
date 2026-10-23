@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// 4-Step Liquid Glass onboarding experience for pediatric ASD gaze screening:
-/// Step 1 → Privacy Impact Assessment (PIA), HIPAA/COPPA Security, Zero-Video Consent
+/// 4-Step Liquid Glass onboarding experience for the EarlyGaze Observation Diary:
+/// Step 1 → Privacy summary and parent consent (no video stored, data stays on this device)
 /// Step 2 → Child Profile Setup (Name, 5-Tier Granular Age Bracket, Language)
 /// Step 3 → Resource Download Splash (progressive Apple-CDN fetch of the
 ///           age + language stimulus pack selected in Step 2)
@@ -109,11 +109,11 @@ public struct OnboardingFlowView: View {
         VStack(alignment: .leading, spacing: 18) {
             // Header
             VStack(alignment: .leading, spacing: 6) {
-                Text("Privacy & Clinical Security")
+                Text("Privacy & Security")
                     .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundColor(LiquidGlass.textHeadline)
 
-                Text("Your child’s privacy and biometrics are protected by hardware encryption and zero-video storage.")
+                Text("EarlyGaze Observation Diary keeps your child’s data on this iPhone, encrypted, and never stores video.")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(LiquidGlass.textSecondary)
                     .lineLimit(nil)
@@ -127,32 +127,32 @@ public struct OnboardingFlowView: View {
                     icon: "video.slash.fill",
                     color: LiquidGlass.emeraldMint,
                     title: "Zero Raw Video Recording",
-                    description: "The TrueDepth infrared camera processes facial landmarks exclusively in volatile RAM. No videos or photos of your child are ever recorded or stored."
+                    description: "The front camera measures where your child looks and their facial expression while the clip plays. No videos or photos of your child are recorded or stored."
                 )
 
                 piaFeatureRow(
                     icon: "lock.shield.fill",
                     color: LiquidGlass.celestialTeal,
                     title: "Hardware-Bound Encryption",
-                    description: "All gaze telemetry is encrypted with Apple CryptoKit (AES-GCM-256) tied directly to this device's Secure Enclave."
+                    description: "Saved measurements are encrypted on this device with a key kept in the iOS Keychain."
                 )
 
                 piaFeatureRow(
                     icon: "person.badge.shield.checkmark.fill",
                     color: LiquidGlass.warmAmber,
-                    title: "De-Identified Clinical Tokens",
-                    description: "Screening sessions use randomized UUID hashes. Your child's personal identity is never attached to exported telemetry."
+                    title: "No Name in Saved Data",
+                    description: "Saved observations use a random code instead of your child's name. Reports are shared only when you choose to share them."
                 )
             }
 
             // Consent Agreement Toggle
             Toggle(isOn: $consentAgreed) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Informed Consent Agreement")
+                    Text("Parent Consent")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundColor(LiquidGlass.textPrimary)
 
-                    Text("I understand and authorize digital gaze tracking for developmental observation.")
+                    Text("I am this child’s parent or legal guardian. I agree that the front camera measures where my child looks and their facial expression, on this device only. This is not a diagnostic tool.")
                         .font(.system(size: 12))
                         .foregroundColor(LiquidGlass.textSecondary)
                         .lineLimit(nil)
@@ -176,7 +176,7 @@ public struct OnboardingFlowView: View {
                     .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundColor(LiquidGlass.textHeadline)
 
-                Text("Personalizing age-calibrated visual stimuli and language prompts.")
+                Text("Choosing age-appropriate clips and language prompts.")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(LiquidGlass.textSecondary)
             }
@@ -404,7 +404,7 @@ public struct OnboardingFlowView: View {
                     active: false,
                     title: "Verified & ready",
                     detail: allOnDevice
-                        ? "Saved on this iPhone for offline screening"
+                        ? "Saved on this iPhone for offline use"
                         : "Listed below. Missing clips use the on-screen activity."
                 )
             }
@@ -504,23 +504,23 @@ public struct OnboardingFlowView: View {
         VStack(alignment: .leading, spacing: 20) {
             // Header
             VStack(alignment: .leading, spacing: 6) {
-                Text("Screening Environment")
+                Text("Getting Ready")
                     .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundColor(LiquidGlass.textHeadline)
 
-                Text("Set up optimal conditions before seating your child for visual tracking.")
+                Text("Set up good conditions before your child watches the clips.")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(LiquidGlass.textSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Equal-Width Clinical Guidance Cards
+            // Equal-width guidance cards
             VStack(spacing: 12) {
                 piaFeatureRow(
                     icon: "ruler.fill",
                     color: LiquidGlass.celestialTeal,
                     title: "Viewing Distance: 45–55 cm",
-                    description: "Hold the iPhone at child eye-level approximately an arm's length away. The app automatically verifies face distance before testing."
+                    description: "Hold the iPhone at child eye-level approximately an arm's length away. The app checks the distance before it starts."
                 )
 
                 piaFeatureRow(
@@ -610,7 +610,7 @@ public struct OnboardingFlowView: View {
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(LiquidGlass.textSecondary)
 
-                    Text("Clinical Focus: \(selectedAgeBracket.clinicalFocus)")
+                    Text("Focus: \(selectedAgeBracket.clinicalFocus)")
                         .font(.system(size: 11, weight: .regular))
                         .foregroundColor(LiquidGlass.textTertiary)
                         .lineLimit(2)

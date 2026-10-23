@@ -1,10 +1,10 @@
 import SwiftUI
 import CurvAsdGazeKit
 
-// MARK: - Dedicated Facial Affect & Reciprocity Detail Section
+// MARK: - Facial Expression Detail Section
 
-/// Detailed Apple Health-style view section for Facial Affect & Social Reciprocity.
-/// Displays Duchenne smile intensity, shared reactivity, surprise, and flat affect telemetry.
+/// Apple Health-style detail section for facial expression while watching.
+/// Shows smile intensity, smile reactivity, surprise, and flat expression measurements.
 public struct BiomarkerFacialAffectDetailSection: View {
     public let summary: GazeSessionReportSummary
 
@@ -16,14 +16,14 @@ public struct BiomarkerFacialAffectDetailSection: View {
         VStack(alignment: .leading, spacing: 18) {
             let smilePct = Int(summary.socialSmileIntensityMean * 100)
             let isSmileNormal = smilePct >= 20
-            let affectStatus = isSmileNormal ? "Synchronous Affect" : (smilePct >= 10 ? "Attenuated Affect" : "Blunted Reciprocity")
-            let affectColor = isSmileNormal ? LiquidGlass.emeraldMint : (smilePct >= 10 ? LiquidGlass.warmAmber : Color.red)
+            let affectStatus = isSmileNormal ? "Smiled often" : (smilePct >= 10 ? "Smiled a little" : "Smiled rarely")
+            let affectColor = isSmileNormal ? LiquidGlass.emeraldMint : (smilePct >= 10 ? LiquidGlass.warmAmber : LiquidGlass.warmAmber)
 
             // Primary Summary Card
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Facial Affect & Social Reciprocity")
+                        Text("Facial Expression While Watching")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(.secondary)
                         HStack(spacing: 8) {
@@ -48,21 +48,21 @@ public struct BiomarkerFacialAffectDetailSection: View {
 
                 HStack(spacing: 8) {
                     summaryMetricTile(
-                        title: "Duchenne",
+                        title: "Smile",
                         value: "\(smilePct)%",
-                        subtitle: "AU6 + AU12",
+                        subtitle: "Cheeks + mouth",
                         color: LiquidGlass.emeraldMint
                     )
                     summaryMetricTile(
                         title: "Reactivity",
                         value: String(format: "%.2f", summary.smileReactivityIndex),
-                        subtitle: "Synchrony",
+                        subtitle: "Matches clips",
                         color: LiquidGlass.celestialTeal
                     )
                     summaryMetricTile(
                         title: "Surprise",
                         value: "\(Int(summary.surpriseScoreMean * 100))%",
-                        subtitle: "AU1 + AU2",
+                        subtitle: "Brow raise",
                         color: Color.purple
                     )
                 }
@@ -71,7 +71,7 @@ public struct BiomarkerFacialAffectDetailSection: View {
                     Image(systemName: "sparkle.magnifyingglass")
                         .font(.system(size: 11))
                         .foregroundColor(LiquidGlass.emeraldMint)
-                    Text("Clinical Takeaway: \(isSmileNormal ? "Positive affective mirroring synchronous with comedy stimuli." : "Reduced spontaneous facial smile response to video cues.")")
+                    Text("Observation: \(isSmileNormal ? "Smiled along with the funny moments in the clips." : "Smiled less during the clips.")")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.primary)
                 }
@@ -83,89 +83,80 @@ public struct BiomarkerFacialAffectDetailSection: View {
             }
             .glassCard(cornerRadius: 16, padding: 14)
 
-            // Multi-Variate Biomarker Matrix
-            GlassSectionHeader(title: "Facial Affect Action Unit Matrix", icon: "square.grid.2x2")
+            // Measurements
+            GlassSectionHeader(title: "Facial Expression Measurements", icon: "square.grid.2x2")
 
             VStack(spacing: 10) {
                 biomarkerDetailMatrixRow(
                     icon: "face.smiling.fill",
-                    title: "Duchenne Social Smile (AU6 + AU12)",
+                    title: "Social Smile",
                     observed: "\(smilePct)% Mean Intensity",
                     target: "≥ 20.0%",
                     weight: "Shared Joy",
-                    status: isSmileNormal ? "Synchronous" : (smilePct >= 10 ? "Attenuated" : "Blunted"),
+                    status: isSmileNormal ? "Higher" : (smilePct >= 10 ? "Medium" : "Lower"),
                     statusColor: affectColor,
-                    explanation: "Simultaneous activation of the zygomaticus major (lip corner puller) and orbicularis oculi (cheek raiser). Represents genuine, unforced positive affect and shared social enjoyment in response to video events."
+                    explanation: "How strongly the mouth corners and cheeks lifted while the child watched. A bigger number means a bigger smile."
                 )
 
                 biomarkerDetailMatrixRow(
                     icon: "waveform.path.badge.plus",
-                    title: "Shared Smile Reactivity Index",
+                    title: "Smile Reactivity",
                     observed: String(format: "%.2f Index", summary.smileReactivityIndex),
                     target: "≥ 0.30",
-                    weight: "Temporal Synchrony",
-                    status: summary.smileReactivityIndex >= 0.30 ? "Responsive" : "Low Reactivity",
+                    weight: "Timing",
+                    status: summary.smileReactivityIndex >= 0.30 ? "Responsive" : "Less responsive",
                     statusColor: summary.smileReactivityIndex >= 0.30 ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber,
-                    explanation: "Temporal cross-correlation between infant smiling and high-valence humorous stimulus markers. High synchrony indicates intact emotional contagion and social reciprocity."
+                    explanation: "How closely the child's smiles lined up in time with the funny moments in the clips."
                 )
 
                 let surpPct = Int(summary.surpriseScoreMean * 100)
                 biomarkerDetailMatrixRow(
                     icon: "eye.fill",
-                    title: "Visual Wonder & Surprise (AU1 + AU2)",
+                    title: "Surprise Expression",
                     observed: "\(surpPct)% Mean Intensity",
                     target: "≥ 15.0%",
                     weight: "Novelty Detection",
-                    status: surpPct >= 15 ? "Active Engagement" : "Minimal Expression",
+                    status: surpPct >= 15 ? "Expressive" : "Subtle",
                     statusColor: surpPct >= 15 ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber,
-                    explanation: "Inner and outer brow raiser tracking unexpected visual events. Reflects cognitive novelty detection, curiosity, and exploratory attention."
+                    explanation: "How much the eyebrows lifted when something unexpected happened in a clip."
                 )
 
                 biomarkerDetailMatrixRow(
                     icon: "face.dashed.fill",
-                    title: "Affective Hypomimia (Flat Affect)",
+                    title: "Neutral Expression",
                     observed: String(format: "%.2f Score", summary.flatAffectScore),
                     target: "≤ 0.25 (Low Baseline)",
-                    weight: "Expression Masking",
-                    status: summary.flatAffectScore <= 0.25 ? "Typical Expressivity" : "Elevated Flat Affect",
+                    weight: "Expression Range",
+                    status: summary.flatAffectScore <= 0.25 ? "Expressive" : "More neutral",
                     statusColor: summary.flatAffectScore <= 0.25 ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber,
-                    explanation: "Measures lack of facial mobility or sustained neutral expression during dynamic stimuli. Elevated flat affect (> 0.30) is a known clinical marker associated with ASD."
+                    explanation: "How much of the session the face stayed neutral. Children differ widely, and this number does not identify any condition."
                 )
 
-                biomarkerDetailMatrixRow(
-                    icon: "cpu.fill",
-                    title: "52 FACS Muscle Group Telemetry",
-                    observed: "60 Hz Continuous Capture",
-                    target: "52 Action Units",
-                    weight: "ARKit BlendShapes",
-                    status: "Full Resolution",
-                    statusColor: LiquidGlass.emeraldMint,
-                    explanation: "Continuous 60 Hz measurement of all 52 Facial Action Coding System (FACS) blendshape coefficients mapped through Apple TrueDepth neural face mesh."
-                )
             }
 
             // Apple Health Style Educational Cards
-            GlassSectionHeader(title: "About Facial Affect & Social Synchrony", icon: "info.circle")
+            GlassSectionHeader(title: "About Facial Expression", icon: "info.circle")
 
             VStack(spacing: 12) {
                 biomarkerExplanationCard(
-                    title: "What is Affective Synchrony?",
-                    content: "Affective synchrony evaluates whether a child mirrors emotions presented on screen—for example, smiling when the social actor laughs or widening eyes in curiosity. Young toddlers with ASD often exhibit flatter affective expressions or delayed affective reciprocity."
+                    title: "What is smile reactivity?",
+                    content: "Smile reactivity looks at whether a child smiles along with what is on screen, for example when the person in the video laughs. Every child reacts differently, and one session is only a snapshot."
                 )
 
                 biomarkerExplanationCard(
-                    title: "The Duchenne Smile (AU6 + AU12)",
-                    content: "The Duchenne smile combines contraction of the zygomaticus major (pulling mouth corners upward) and orbicularis oculi (crinkling eye corners), serving as the clinical hallmark of genuine positive visual engagement."
+                    title: "How smiles are measured",
+                    content: "The phone's depth camera tracks how far the mouth corners and cheeks lift. Only these numbers are kept. No pictures or video are stored."
                 )
             }
         }
     }
 }
 
-// MARK: - Dedicated Sensor Telemetry & Quality Detail Section
+// MARK: - Recording Quality Detail Section
 
-/// Detailed Apple Health-style view section for Sensor Telemetry & Quality Audit.
-/// Displays TrueDepth 60 Hz yield, blink artifact suppression gate, screening distance, and HIPAA/GDPR audit.
+/// Apple Health-style detail section for recording quality.
+/// Shows the share of usable gaze samples and how blinks are handled. It displays only values
+/// measured in the session; nothing here is a fixed or placeholder reading.
 public struct BiomarkerDataQualityDetailSection: View {
     public let summary: GazeSessionReportSummary
 
@@ -177,14 +168,14 @@ public struct BiomarkerDataQualityDetailSection: View {
         VStack(alignment: .leading, spacing: 18) {
             let validPct = summary.validRatio * 100
             let isQualityNormal = validPct >= 75.0
-            let qualityStatus = isQualityNormal ? "Audit Passed (Optimal)" : "Review Recommended"
+            let qualityStatus = isQualityNormal ? "Good recording" : "Consider repeating"
             let qualityColor = isQualityNormal ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber
 
             // Primary Summary Card
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Sensor Telemetry & Precision Audit")
+                        Text("Recording Quality")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(.secondary)
                         HStack(spacing: 8) {
@@ -201,7 +192,7 @@ public struct BiomarkerDataQualityDetailSection: View {
                         Text(String(format: "%.1f%%", validPct))
                             .font(.system(size: 20, weight: .bold, design: .monospaced))
                             .foregroundColor(.primary)
-                        Text("Valid Yield")
+                        Text("Usable")
                             .font(.system(size: 10, weight: .medium))
                             .foregroundColor(.secondary)
                     }
@@ -209,7 +200,7 @@ public struct BiomarkerDataQualityDetailSection: View {
 
                 HStack(spacing: 8) {
                     summaryMetricTile(
-                        title: "Valid Frames",
+                        title: "Usable Samples",
                         value: "\(summary.validFrames)",
                         subtitle: "Of \(summary.totalFrames) total",
                         color: LiquidGlass.emeraldMint
@@ -221,9 +212,9 @@ public struct BiomarkerDataQualityDetailSection: View {
                         color: LiquidGlass.celestialTeal
                     )
                     summaryMetricTile(
-                        title: "Security",
-                        value: "AES-256",
-                        subtitle: "Volatile RAM",
+                        title: "Interruptions",
+                        value: "\(summary.interruptionCount)",
+                        subtitle: String(format: "%.1fs paused", summary.interruptedSec),
                         color: Color.blue
                     )
                 }
@@ -232,7 +223,7 @@ public struct BiomarkerDataQualityDetailSection: View {
                     Image(systemName: "checkmark.shield.fill")
                         .font(.system(size: 11))
                         .foregroundColor(LiquidGlass.emeraldMint)
-                    Text("Quality Finding: Session satisfied all clinical data integrity criteria with zero signal corruption.")
+                    Text(isQualityNormal ? "Most of the session had a clear view of the eyes." : "Part of the session had no clear view of the eyes. A repeat may give a better picture.")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.primary)
                 }
@@ -244,78 +235,45 @@ public struct BiomarkerDataQualityDetailSection: View {
             }
             .glassCard(cornerRadius: 16, padding: 14)
 
-            // Multi-Variate Biomarker Matrix
-            GlassSectionHeader(title: "Sensor Precision & Quality Matrix", icon: "square.grid.2x2")
+            // Measurements
+            GlassSectionHeader(title: "Recording Quality Measurements", icon: "square.grid.2x2")
 
             VStack(spacing: 10) {
                 biomarkerDetailMatrixRow(
                     icon: "wave.3.forward.circle.fill",
-                    title: "TrueDepth 60 Hz Tracking Yield",
+                    title: "Usable Gaze Samples",
                     observed: String(format: "%.1f%% (%d frames)", validPct, summary.validFrames),
-                    target: "≥ 75.0% Yield",
-                    weight: "Telemetry Baseline",
-                    status: isQualityNormal ? "Optimal Yield" : "Reduced Yield",
+                    target: "≥ 75.0%",
+                    weight: "Baseline",
+                    status: isQualityNormal ? "Good" : "Lower",
                     statusColor: qualityColor,
-                    explanation: "Percentage of session frames with high-confidence 3D binocular raycasting. Ensures that ML risk stratification and dwell ratios are computed from statistically representative gaze samples."
+                    explanation: "Share of camera frames in which the eyes were clearly visible. The other measurements are computed from these usable samples."
                 )
 
                 biomarkerDetailMatrixRow(
                     icon: "eye.slash.fill",
-                    title: "Algorithmic Blink Rejection Gate",
-                    observed: "45% Threshold (3-Frame Debounce)",
-                    target: "Active Gate",
-                    weight: "Artifact Suppression",
-                    status: "Active & Filtered",
+                    title: "Blink Handling",
+                    observed: "Eyes closed below 45% open",
+                    target: "Excluded",
+                    weight: "Cleaning",
+                    status: "On",
                     statusColor: LiquidGlass.emeraldMint,
-                    explanation: "Instantly flags eyelid closures when ocular openness drops below 0.45, freezes tracking at the last stable fixation, and discards downward pupil plummets to eliminate scanpath contamination."
-                )
-
-                biomarkerDetailMatrixRow(
-                    icon: "arrow.left.and.right.square.fill",
-                    title: "Infrared Screening Distance Compliance",
-                    observed: "42.5 cm Mean Distance",
-                    target: "38.0 – 55.0 cm Target",
-                    weight: "Optical Geometry",
-                    status: "Compliant",
-                    statusColor: LiquidGlass.emeraldMint,
-                    explanation: "Maintains optimal focal distance for the TrueDepth structured light dot projector. Verified within clinical geometric tolerances throughout the entire screening."
-                )
-
-                biomarkerDetailMatrixRow(
-                    icon: "gyroscope",
-                    title: "Head Pose Stability & Angular Limit",
-                    observed: "Pitch: 3.2° · Yaw: 4.1°",
-                    target: "< 15.0° Rotation",
-                    weight: "Oculomotor Reference",
-                    status: "Stable Pose",
-                    statusColor: LiquidGlass.emeraldMint,
-                    explanation: "Ensures the child's head remained facing the display within acceptable angular boundaries, eliminating raycast parallax distortions."
-                )
-
-                biomarkerDetailMatrixRow(
-                    icon: "lock.shield.fill",
-                    title: "Zero-Storage Volatile RAM Guarantee",
-                    observed: "0 KB Stored Biometrics",
-                    target: "100% Volatile RAM",
-                    weight: "HIPAA / GDPR",
-                    status: "Verified Secure",
-                    statusColor: LiquidGlass.emeraldMint,
-                    explanation: "No camera frames, raw video, or identifiable biometric facial imagery are written to persistent flash storage or transmitted off-device. All telemetry resides strictly in volatile RAM."
+                    explanation: "Frames in which the eyelids are mostly closed are left out so a blink is never counted as looking at something."
                 )
             }
 
             // Apple Health Style Educational Cards
-            GlassSectionHeader(title: "About TrueDepth Quality & Data Security", icon: "info.circle")
+            GlassSectionHeader(title: "About Recording Quality and Privacy", icon: "info.circle")
 
             VStack(spacing: 12) {
                 biomarkerExplanationCard(
-                    title: "Blink Rejection & Downward Spike Filtering",
-                    content: "When an eyelid closes, ARKit's pupil tracking temporarily plummets downward. Our quality gate detects blinks instantly at 45% eye openness, freezes gaze at the last valid fixation, and debounces 3 frames after reopening to guarantee zero artifact skew."
+                    title: "Why blinks are left out",
+                    content: "When an eyelid closes, the gaze estimate briefly jumps downward. The app detects closed eyes, ignores those frames, and waits a few frames after the eyes reopen."
                 )
 
                 biomarkerExplanationCard(
-                    title: "Volatile RAM Zero-Storage Guarantee",
-                    content: "No camera video or biometric photos are ever saved to disk or transmitted across the network. Telemetry runs purely in volatile RAM and is encrypted via AES-GCM-256 into local ResearchKit JSON batches."
+                    title: "Privacy",
+                    content: "No camera video or photos are saved. Only gaze and expression numbers are kept, encrypted on this device."
                 )
             }
         }

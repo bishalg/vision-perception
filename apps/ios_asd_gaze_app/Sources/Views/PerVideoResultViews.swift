@@ -94,9 +94,9 @@ extension ExpectationStatus {
 
     var label: String {
         switch self {
-        case .onTarget: return "On Target"
-        case .monitor: return "Monitor"
-        case .atypical: return "Atypical"
+        case .onTarget: return "Within age range"
+        case .monitor: return "Near range edge"
+        case .atypical: return "Outside age range"
         }
     }
 
@@ -256,11 +256,14 @@ struct PerVideoSummaryListView: View {
     }
 
     private var provisionalFooter: some View {
-        Text("Baseline \(score.baselineSchemaVersion) • \(score.baselineStatus). Values are literature-seeded and not a diagnosis.")
-            .font(.system(size: 10))
-            .foregroundColor(.secondary)
-            .multilineTextAlignment(.center)
-            .padding(.top, 6)
+        VStack(spacing: 4) {
+            Text("Baseline \(score.baselineSchemaVersion) • \(score.baselineStatus). Age references come from published literature and are provisional.")
+                .font(.system(size: 10))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            NotDiagnosticFooter()
+        }
+        .padding(.top, 6)
     }
 }
 
@@ -528,7 +531,7 @@ struct ExpectationRowView: View {
             .frame(height: 5)
 
             if row.imputed {
-                Text("Target region never fixated — worst case assumed")
+                Text("Never looked at this area, so it is scored as the lowest value")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundColor(LiquidGlass.warmAmber)
             }

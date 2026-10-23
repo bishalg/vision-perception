@@ -36,14 +36,14 @@ public enum Localizer {
             "hi": "डैशबोर्ड"
         ],
         "dashboard_subtitle": [
-            "en": "Pediatric visual attention & milestone screening",
-            "ne": "बालबालिकाको सामाजिक दृष्टि र विकास चरण परीक्षण",
-            "hi": "बच्चों का सामाजिक दृष्टि और विकास चरण परीक्षण"
+            "en": "Visual attention observations & milestones",
+            "ne": "दृष्टि ध्यान अवलोकन र विकास चरण",
+            "hi": "दृष्टि ध्यान अवलोकन और विकास चरण"
         ],
         "start_screening": [
-            "en": "Start Screening Session",
-            "ne": "परीक्षण सत्र सुरु गर्नुहोस्",
-            "hi": "स्क्रीनिंग सत्र शुरू करें"
+            "en": "Start Observation Session",
+            "ne": "अवलोकन सत्र सुरु गर्नुहोस्",
+            "hi": "अवलोकन सत्र शुरू करें"
         ],
         "calibrate_title": [
             "en": "Pop the Bubbles",
@@ -90,25 +90,25 @@ public enum Localizer {
             "ne": "अवलोकन प्रमाण प्रतिवेदन",
             "hi": "अवलोकन साक्ष्य रिपोर्ट"
         ],
-        "biomarkers_title": [
-            "en": "Clinical Social Attention Biomarkers",
-            "ne": "क्लिनिकल सामाजिक ध्यान बायोमार्करहरू",
-            "hi": "क्लिनिकल सामाजिक ध्यान बायोमार्कर्स"
+        "social_attention_title": [
+            "en": "Social Attention",
+            "ne": "सामाजिक ध्यान",
+            "hi": "सामाजिक ध्यान"
         ],
         "emotion_title": [
-            "en": "Facial Affect & Emotion Metrics",
-            "ne": "अनुहारको भाव र संवेग सूचकहरू",
-            "hi": "चेहरे का भाव और संवेग संकेतक"
+            "en": "Facial Expression",
+            "ne": "अनुहारको भाव",
+            "hi": "चेहरे के भाव"
         ],
         "export_researchkit": [
-            "en": "Export ResearchKit JSON",
-            "ne": "ResearchKit JSON निर्यात गर्नुहोस्",
-            "hi": "ResearchKit JSON निर्यात करें"
+            "en": "Export Data File (JSON)",
+            "ne": "डाटा फाइल (JSON) निर्यात गर्नुहोस्",
+            "hi": "डेटा फ़ाइल (JSON) निर्यात करें"
         ],
         "export_pdf": [
-            "en": "Export Clinical PDF",
-            "ne": "क्लिनिकल PDF निर्यात गर्नुहोस्",
-            "hi": "क्लिनिकल PDF निर्यात करें"
+            "en": "Export PDF Report",
+            "ne": "PDF प्रतिवेदन निर्यात गर्नुहोस्",
+            "hi": "PDF रिपोर्ट निर्यात करें"
         ],
         "retake": [
             "en": "Retake Observation",
@@ -206,14 +206,14 @@ public enum Localizer {
             "hi": "कैलिब्रेशन"
         ],
         "wizard_step3_title": [
-            "en": "Screening",
-            "ne": "स्क्रिनिङ",
-            "hi": "स्क्रीनिंग"
+            "en": "Observation",
+            "ne": "अवलोकन",
+            "hi": "अवलोकन"
         ],
         "wizard_begin_screening": [
-            "en": "Begin Screening",
-            "ne": "स्क्रिनिङ सुरु गर्नुहोस्",
-            "hi": "स्क्रीनिंग शुरू करें"
+            "en": "Begin Observation",
+            "ne": "अवलोकन सुरु गर्नुहोस्",
+            "hi": "अवलोकन शुरू करें"
         ],
         "wizard_ready_calibrate": [
             "en": "Ready – Start Calibration",
@@ -251,9 +251,9 @@ public enum Localizer {
             "hi": "स्थिर रखें"
         ],
         "settings_screening_tools_section": [
-            "en": "Screening & Calibration Tools",
-            "ne": "स्क्रिनिङ र क्यालिब्रेसन उपकरणहरू",
-            "hi": "स्क्रीनिंग और कैलिब्रेशन उपकरण"
+            "en": "Observation & Calibration Tools",
+            "ne": "अवलोकन र क्यालिब्रेसन उपकरणहरू",
+            "hi": "अवलोकन और कैलिब्रेशन उपकरण"
         ],
         "settings_quick_calibrate": [
             "en": "Quick Calibrate",
@@ -271,9 +271,9 @@ public enum Localizer {
             "hi": "कैमरा और दूरी जाँच"
         ],
         "settings_camera_check_sub": [
-            "en": "Verify face positioning before screening",
-            "ne": "स्क्रिनिङ अघि अनुहारको स्थिति जाँच गर्नुहोस्",
-            "hi": "स्क्रीनिंग से पहले चेहरे की स्थिति जाँचें"
+            "en": "Verify face positioning before observing",
+            "ne": "अवलोकन अघि अनुहारको स्थिति जाँच गर्नुहोस्",
+            "hi": "अवलोकन से पहले चेहरे की स्थिति जाँचें"
         ],
         "carekit_today_plan": [
             "en": "Today's Care Plan",
@@ -316,9 +316,9 @@ public enum Localizer {
             "hi": "विकासात्मक मील के पत्थर"
         ],
         "carekit_export_title": [
-            "en": "Export CareKit Clinical Summary",
-            "ne": "CareKit क्लिनिकल प्रतिवेदन निर्यात गर्नुहोस्",
-            "hi": "CareKit क्लिनिकल सारांश निर्यात करें"
+            "en": "Export CareKit Summary",
+            "ne": "CareKit सारांश निर्यात गर्नुहोस्",
+            "hi": "CareKit सारांश निर्यात करें"
         ],
         "carekit_streak": [
             "en": "Day Streak",
@@ -331,19 +331,19 @@ public enum Localizer {
             "hi": "पिन किए गए"
         ],
         "dashboard_clinical_advisory": [
-            "en": "CLINICAL ADVISORY",
-            "ne": "क्लिनिकल सल्लाह",
-            "hi": "क्लिनिकल सलाह"
+            "en": "IMPORTANT NOTE",
+            "ne": "महत्वपूर्ण जानकारी",
+            "hi": "महत्वपूर्ण सूचना"
         ],
         "dashboard_clinical_title": [
-            "en": "Objective Visual Attention Tracking",
-            "ne": "वस्तुनिष्ठ सामाजिक दृष्टि अनुगमन",
-            "hi": "वस्तुनिष्ठ सामाजिक दृष्टि ट्रैकिंग"
+            "en": "Where Your Child Looks",
+            "ne": "तपाईंको बच्चा कहाँ हेर्छ",
+            "hi": "आपका बच्चा कहाँ देखता है"
         ],
         "dashboard_clinical_desc": [
-            "en": "Measures objective visual attention distributions during standardized stimuli. Does not provide standalone diagnostic determinations. Consult a developmental pediatrician.",
-            "ne": "मानकीकृत सामग्रीहरूमा दृश्य ध्यान वितरण मापन गर्दछ। यसले एक्लै निदान प्रदान गर्दैन। बाल रोग विशेषज्ञसँग परामर्श लिनुहोस्।",
-            "hi": "मानकीकृत सामग्री के दौरान दृश्य ध्यान वितरण को मापता है। यह अकेले निदान प्रदान नहीं करता है। बाल रोग विशेषज्ञ से परामर्श लें।"
+            "en": "Measures where your child looks during short clips. This is not a diagnostic tool. Please talk with your pediatrician about any concerns.",
+            "ne": "छोटा क्लिपहरूमा तपाईंको बच्चाले कहाँ हेर्छ भन्ने मापन गर्दछ। यो निदान गर्ने उपकरण होइन। कुनै चिन्ता भए बाल रोग विशेषज्ञसँग कुरा गर्नुहोस्।",
+            "hi": "छोटे क्लिप के दौरान आपका बच्चा कहाँ देखता है, यह मापता है। यह निदान करने का उपकरण नहीं है। कोई चिंता हो तो बाल रोग विशेषज्ञ से बात करें।"
         ],
         "dashboard_more_details": [
             "en": "More Details",
@@ -351,9 +351,9 @@ public enum Localizer {
             "hi": "और विवरण"
         ],
         "dashboard_care_activity": [
-            "en": "Care Protocol Activity",
-            "ne": "हेरचाह प्रोटोकल गतिविधि",
-            "hi": "देखभाल प्रोटोकॉल गतिविधि"
+            "en": "Care Routine Activity",
+            "ne": "हेरचाह दिनचर्या गतिविधि",
+            "hi": "देखभाल दिनचर्या गतिविधि"
         ],
         "dashboard_social_focus": [
             "en": "Social Focus",
@@ -401,9 +401,9 @@ public enum Localizer {
             "hi": "सिस्टम सेटिंग्स खोलें"
         ],
         "settings_sensors_section": [
-            "en": "Sensory & Hardware Diagnostics",
-            "ne": "सेन्सर र हार्डवेयर निदान",
-            "hi": "सेंसरी और हार्डवेयर डायग्नोस्टिक्स"
+            "en": "Sensor & Hardware Checks",
+            "ne": "सेन्सर र हार्डवेयर जाँच",
+            "hi": "सेंसर और हार्डवेयर जाँच"
         ],
         "settings_truedepth_title": [
             "en": "TrueDepth Infrared Array",
@@ -441,9 +441,9 @@ public enum Localizer {
             "hi": "टिल्ट और शेक फ़िल्टर"
         ],
         "settings_privacy_section": [
-            "en": "Privacy & Research Compliance",
-            "ne": "गोपनीयता र अनुसन्धान अनुपालन",
-            "hi": "गोपनीयता और अनुसंधान अनुपालन"
+            "en": "Privacy & Data",
+            "ne": "गोपनीयता र डाटा",
+            "hi": "गोपनीयता और डेटा"
         ],
         "settings_zero_video_title": [
             "en": "Zero Raw Video Recording",
@@ -476,19 +476,19 @@ public enum Localizer {
             "hi": "एप्लिकेशन संस्करण"
         ],
         "settings_regulatory_class": [
-            "en": "Clinical Category",
-            "ne": "क्लिनिकल वर्ग",
-            "hi": "क्लिनिकल श्रेणी"
+            "en": "App Category",
+            "ne": "एप वर्ग",
+            "hi": "ऐप श्रेणी"
         ],
         "settings_regulatory_value": [
-            "en": "Developmental Observation Tool",
-            "ne": "विकासात्मक अनुगमन उपकरण",
-            "hi": "विकासात्मक निगरानी उपकरण"
+            "en": "Observation Diary, not a medical device",
+            "ne": "अवलोकन डायरी, चिकित्सकीय उपकरण होइन",
+            "hi": "अवलोकन डायरी, चिकित्सा उपकरण नहीं"
         ],
         "settings_dev_lab": [
-            "en": "Developer & Clinical Lab",
-            "ne": "विकासकर्ता र क्लिनिकल प्रयोगशाला",
-            "hi": "डेवलपर और क्लिनिकल लैब"
+            "en": "Developer Tools",
+            "ne": "विकासकर्ता उपकरण",
+            "hi": "डेवलपर उपकरण"
         ],
         "settings_status_active": [
             "en": "Active",
