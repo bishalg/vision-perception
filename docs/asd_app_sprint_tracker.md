@@ -93,7 +93,7 @@
 - [x] Dashboard live-data feeds (`testSessionsThisWeekFiltersOldRecords`, `testSessionHistoryDedupesBySessionId`, `testRecordSurveyResultPersistsFollowUpFlag`) (trend average/range derived from stores; badges read history)
 - [x] testDoctorReportContainsAllSections
 - [x] testPDFGenerationNotEmpty
-- [ ] Theme gate: scan Views/*.swift for hardcoded hex colors
+- [x] Theme gate: scan Views/*.swift for hardcoded hex colors (raw RGB lives in `LiquidGlassTheme` only)
 - [ ] Parity gate: iOS GazePoint <-> Python GazePoint field match
 
 ### W2 Gate: M-CHAT complete ✅ | Dashboard live ✅ | PDF export ✅ | iOS 65/50 ✅ | Python 11/30 ⏳ (backend endpoints out of scope for on-device pass)
@@ -107,9 +107,9 @@
 - [ ] Implement CoreDataStack with NSPersistentCloudKitContainer
 - [ ] Migrate ResearchKitStudyStore to Core Data backend
 - [ ] Add @MainActor isolation + actor SyncQueue
-- [ ] Implement exponential backoff (1s->2s->4s->8s->60s max)
-- [ ] Add dead letter queue + UI for stuck items
-- [ ] Add SyncStatusView component
+- [x] Implement exponential backoff (1s->2s->4s->8s->60s max)
+- [x] Add dead letter queue + UI for stuck items
+- [x] Add SyncStatusView component
 - [ ] Add AuditEvent model + AuditLogView
 - [ ] Enable iCloud sync + graceful degradation when signed out
 - [ ] Add CloudSyncStatusBadge to dashboard
@@ -126,9 +126,9 @@
 ### Agent-C: QA/CI
 - [ ] testConcurrentWritesDoNotCorruptStore
 - [ ] testPartialSeedIdempotentResume
-- [ ] testExponentialBackoffTiming
-- [ ] testDeadLetterAfterMaxRetries
-- [ ] testManualRetryFromDeadLetter
+- [x] testExponentialBackoffTiming
+- [x] testDeadLetterAfterMaxRetries
+- [x] testManualRetryFromDeadLetter
 - [ ] testICloudSyncDegradesToLocalWhenSignedOut
 - [ ] testAuditEventCreatedOnSave
 - [ ] testEncryptedFieldsNotReadableInDB
