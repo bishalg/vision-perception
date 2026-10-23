@@ -7,11 +7,12 @@ storage_mode(ENV["MATCH_STORAGE_MODE"] || "git") # 'git', 'google_cloud', or 's3
 
 type("appstore") # The default type, can be: appstore, adhoc, enterprise, development
 
+base_app_id = ENV.fetch("APP_IDENTIFIER", "org.curv.asd.gazecollector")
 app_identifier([
-  "org.curv.asd.gazecollector",
-  "org.curv.asd.gazecollector.carewidget"
+  base_app_id,
+  "#{base_app_id}.carewidget"
 ])
-team_id(ENV.fetch("APPLE_TEAM_ID", "6J3WY94J6T"))
+team_id(ENV["APPLE_TEAM_ID"]) if ENV["APPLE_TEAM_ID"] && !ENV["APPLE_TEAM_ID"].empty?
 
 # Set to true in CI to never modify the certs repo
 readonly(ENV.fetch("MATCH_READONLY", "false") == "true")

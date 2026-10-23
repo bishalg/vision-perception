@@ -64,7 +64,7 @@ platform :ios do
       end
 
       # 3. Check App Identifier
-      app_id = CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
+      app_id = ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
       if app_id.match?(/^([a-zA-Z0-9_]+\.)*[a-zA-Z0-9_]+$/)
         UI.success("✅ App Identifier is valid: #{app_id}")
       else
@@ -155,7 +155,7 @@ platform :ios do
   desc "Run App Store precheck rules on metadata"
   lane :appstore_precheck do
     precheck(
-      app_identifier: CONFIG["app_identifier"] || "org.curv.asd.gazecollector",
+      app_identifier: ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "org.curv.asd.gazecollector",
       include_in_app_purchases: false
     )
   end
@@ -167,9 +167,9 @@ platform :ios do
   desc "Sync App Store distribution certificates and provisioning profiles for App & Extensions"
   lane :sync_certs do |options|
     readonly = options.fetch(:readonly, is_ci)
-    app_id = CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
-    widget_id = CONFIG["widget_identifier"] || "org.curv.asd.gazecollector.carewidget"
-    team_id = CONFIG["team_id"] || "6J3WY94J6T"
+    app_id = ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
+    widget_id = ENV["WIDGET_IDENTIFIER"] || CONFIG["widget_identifier"] || "#{app_id}.carewidget"
+    team_id = ENV["APPLE_TEAM_ID"]
     all_ids = [app_id, widget_id].compact.uniq
 
     UI.message("🔐 Syncing code signing certificates for #{all_ids.join(', ')}...")
@@ -208,9 +208,9 @@ platform :ios do
 
   desc "Build and archive production .ipa"
   lane :build_app_store do |options|
-    app_id = CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
-    widget_id = CONFIG["widget_identifier"] || "org.curv.asd.gazecollector.carewidget"
-    team_id = CONFIG["team_id"] || "6J3WY94J6T"
+    app_id = ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
+    widget_id = ENV["WIDGET_IDENTIFIER"] || CONFIG["widget_identifier"] || "#{app_id}.carewidget"
+    team_id = ENV["APPLE_TEAM_ID"]
     output_dir = options[:output_directory] || "./build"
     FileUtils.mkdir_p(output_dir)
 
@@ -275,7 +275,7 @@ platform :ios do
     ipa = build_app_store
 
     upload_to_testflight(
-      app_identifier: CONFIG["app_identifier"] || "org.curv.asd.gazecollector",
+      app_identifier: ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "org.curv.asd.gazecollector",
       ipa: ipa,
       skip_waiting_for_build_processing: true,
       distribute_external: options.fetch(:distribute_external, false),
@@ -291,49 +291,46 @@ platform :ios do
   desc "Upload metadata only to App Store Connect"
   lane :update_metadata do |options|
     validate_metadata
-    app_id = CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
+    app_id = ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
 
     meta_path = File.expand_path("metadata", __dir__)
-    review_dir = File.join(meta_path, "review_information")
-    review_backup = nil
 
-    # Deliver safety: park review_information if initial release
-    park = options.fetch(:park_review_information, ENV.fetch("PARK_REVIEW_INFORMATION", "0") == "1")
-    if park && Dir.exist?(review_dir)
-      begin
-        review_backup = "#{review_dir}.pending"
-        FileUtils.rm_rf(review_backup)
-        FileUtils.mv(review_dir, review_backup)
-        UI.important("⚠️ Parked review_information for initial deliver")
-      rescue StandardError => e
-        UI.important("Could not park review_information: #{e.message}")
-        review_backup = nil
+    # App Review contact comes from the environment only (CI-4); never from files.
+    review_keys = %w[REVIEW_CONTACT_FIRST_NAME REVIEW_CONTACT_LAST_NAME REVIEW_CONTACT_EMAIL REVIEW_CONTACT_PHONE]
+    review_info = nil
+    if review_keys.all? { |k| ENV[k] && !ENV[k].empty? }
+      review_info = {
+        first_name: ENV["REVIEW_CONTACT_FIRST_NAME"],
+        last_name: ENV["REVIEW_CONTACT_LAST_NAME"],
+        email_address: ENV["REVIEW_CONTACT_EMAIL"],
+        phone_number: ENV["REVIEW_CONTACT_PHONE"]
+      }
+      if ENV["REVIEW_DEMO_USER"] && !ENV["REVIEW_DEMO_USER"].empty?
+        review_info[:demo_user] = ENV["REVIEW_DEMO_USER"]
+        review_info[:demo_password] = ENV["REVIEW_DEMO_PASSWORD"].to_s
       end
+    else
+      UI.important("REVIEW_CONTACT_* not set; deliver will not send app review information")
     end
 
-    begin
-      deliver(
-        app_identifier: app_id,
-        metadata_path: meta_path,
-        skip_screenshots: true,
-        skip_metadata: false,
-        skip_app_version_update: true,
-        force: true,
-        ignore_language_directory_validation: true,
-        run_precheck_before_submit: false
-      )
-    ensure
-      if review_backup && Dir.exist?(review_backup) && !Dir.exist?(review_dir)
-        FileUtils.mv(review_backup, review_dir)
-        UI.message("Restored review_information/")
-      end
-    end
+    deliver_opts = {
+      app_identifier: app_id,
+      metadata_path: meta_path,
+      skip_screenshots: true,
+      skip_metadata: false,
+      skip_app_version_update: true,
+      force: true,
+      ignore_language_directory_validation: true,
+      run_precheck_before_submit: false
+    }
+    deliver_opts[:app_review_information] = review_info if review_info
+    deliver(**deliver_opts)
     UI.success("✅ App Store Connect metadata synchronized!")
   end
 
   desc "Upload screenshots only to App Store Connect"
   lane :upload_screenshots do |options|
-    app_id = CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
+    app_id = ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
     sc_path = File.expand_path("screenshots", __dir__)
 
     deliver(
@@ -358,7 +355,7 @@ platform :ios do
 
   desc "Submit app for App Store review"
   lane :submit_app_store do |options|
-    app_id = CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
+    app_id = ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
 
     deliver(
       app_identifier: app_id,
