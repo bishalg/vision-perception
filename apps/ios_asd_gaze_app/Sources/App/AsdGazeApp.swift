@@ -50,7 +50,10 @@ struct AsdGazeApp: App {
                     medications: CarePlanStore.shared.medications
                 )
                 ARKitMoodFusionController.shared.startListening()
+                #if ASD_ML_DATA_EXPORT
+                // CNS-2: training-data logger exists only in ML data-export builds.
                 BlendShapeCSVLogger.shared.startListening()
+                #endif
             }
         }
     }

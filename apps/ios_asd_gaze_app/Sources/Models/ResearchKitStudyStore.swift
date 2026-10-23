@@ -12,7 +12,12 @@ import os
 /// Thread safety: All mutations are serialized on a dedicated background `researchQueue`.
 /// Public queries return value copies or dispatch to callers on requested queues.
 public final class ResearchKitStudyStore: @unchecked Sendable {
-    public static let shared = ResearchKitStudyStore()
+    /// Production store, wired to purge the shared upload queue on revoke (CNS-5).
+    public static let shared = ResearchKitStudyStore(
+        queuePurger: ResearchKitStudyStore.mainActorPurger {
+            ResearchKitSyncService.shared.purgeAllQueued()
+        }
+    )
 
     private static let logger = Logger(subsystem: "com.visionperception.asd", category: "ResearchKitStudyStore")
 
@@ -21,9 +26,28 @@ public final class ResearchKitStudyStore: @unchecked Sendable {
     private let enrollmentKey = "curv_research_study_enrollment_v1"
     private let taskResultsKey = "curv_research_study_task_results_v1"
     private let surveyResultsKey = "curv_research_study_surveys_v1"
+    /// Purges queued uploads. Injected so the store never knows about the sync
+    /// queue (and stays testable without one). `nil` means nothing to purge.
+    private let queuePurger: (@Sendable () -> Void)?
 
-    public init(userDefaults: UserDefaults = .standard) {
+    public init(userDefaults: UserDefaults = .standard, queuePurger: (@Sendable () -> Void)? = nil) {
         self.userDefaults = userDefaults
+        self.queuePurger = queuePurger
+    }
+
+    /// Wraps main-actor purge work so it runs synchronously when the caller is
+    /// already on the main thread (the Settings revoke path), and is dispatched
+    /// to the main queue otherwise.
+    public static func mainActorPurger(
+        _ body: @escaping @MainActor @Sendable () -> Void
+    ) -> @Sendable () -> Void {
+        return {
+            if Thread.isMainThread {
+                MainActor.assumeIsolated { body() }
+            } else {
+                DispatchQueue.main.async { body() }
+            }
+        }
     }
 
     // MARK: - Study Enrollment & Consent Management
@@ -68,9 +92,11 @@ public final class ResearchKitStudyStore: @unchecked Sendable {
         }
     }
 
-    /// Revoke parental consent. Disables research synchronization without
-    /// deleting local caregiver CareKit care plans.
+    /// Revoke parental consent. Disables research synchronization, purges every
+    /// queued upload and cancels any in-flight one (CNS-5), without deleting
+    /// local caregiver CareKit care plans.
     public func revokeConsent(completion: (@Sendable () -> Void)? = nil) {
+        defer { queuePurger?() }
         researchQueue.sync {
             var profile = self.fetchEnrollmentDirect()
             profile.isConsented = false
@@ -99,6 +125,18 @@ public final class ResearchKitStudyStore: @unchecked Sendable {
         }
     }
 
+    /// Deletes enrollment, M-CHAT results and every stored task result, and
+    /// purges the upload queue. Used by "Delete all observation data" (CNS-6).
+    public func deleteAllStudyData() {
+        defer { queuePurger?() }
+        researchQueue.sync {
+            userDefaults.removeObject(forKey: enrollmentKey)
+            userDefaults.removeObject(forKey: taskResultsKey)
+            userDefaults.removeObject(forKey: surveyResultsKey)
+        }
+        Self.logger.info("Deleted all ResearchKit study data on device")
+    }
+
     // MARK: - Active Step & Screening Recording
 
     /// Package a completed gaze screening session into a ResearchKit `ORKActiveStepResult`
@@ -109,7 +147,13 @@ public final class ResearchKitStudyStore: @unchecked Sendable {
         telemetrySampleCount: Int = 0,
         completion: (@Sendable (ORKTaskResult?) -> Void)? = nil
     ) -> ORKTaskResult? {
-        researchQueue.sync {
+        // SIM-5: simulated sessions are never study data.
+        guard summary.captureSource != .simulated else {
+            Self.logger.warning("Refusing to record simulated session \(summary.sessionId, privacy: .public) as a study result")
+            Self.dispatch(completion, value: nil)
+            return nil
+        }
+        return researchQueue.sync {
             let profile = fetchEnrollmentDirect()
             guard profile.isConsented else {
                 Self.logger.warning("Screening completed but ResearchKit study participation is not consented; skipping study write")

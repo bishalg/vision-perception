@@ -72,6 +72,29 @@ public final class ResearchKitSyncService: ObservableObject {
 
     private static let deadLetterFolder = "DeadLetter"
     private static let quarantineFolder = "Quarantine"
+    static let queueFolder = "ResearchStudyQueue"
+
+    /// Queue payloads may be flushed on reconnect while the device is locked,
+    /// hence "until first user authentication" rather than `.complete` (CNS-4).
+    private static let fileProtection: FileProtectionType = .completeUntilFirstUserAuthentication
+    /// Options for every queue and retry-metadata write. Internal for tests:
+    /// the iOS Simulator does not record per-file protection, so tests assert
+    /// this contract there and the real attribute only on a device.
+    static let writeOptions: Data.WritingOptions = [.atomic, .completeFileProtectionUntilFirstUserAuthentication]
+
+    /// The running flush, cancelled by `purgeAllQueued()` (CNS-5).
+    private var syncTask: Task<Void, Never>?
+    /// Bumped on every purge so a flush that outlives its cancellation never
+    /// writes retry metadata or moves files back into a purged queue.
+    private var queueGeneration = 0
+
+    /// Application Support (not Documents) so the queue is not user-visible and
+    /// can be excluded from backup (CNS-4).
+    public static func defaultQueueDirectory(fileManager: FileManager = .default) -> URL {
+        let base = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSTemporaryDirectory())
+        return base.appendingPathComponent(queueFolder, isDirectory: true)
+    }
 
     public init(
         store: ResearchKitStudyStore = .shared,
@@ -86,19 +109,13 @@ public final class ResearchKitSyncService: ObservableObject {
         self.session = session
         self.now = now
 
-        // Initialize local queue directory in app documents / sandbox or injected test directory
-        if let queueDirectory {
-            self.queueDirectory = queueDirectory
-        } else {
-            let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first ?? URL(fileURLWithPath: NSTemporaryDirectory())
-            self.queueDirectory = docs.appendingPathComponent("ResearchStudyQueue", isDirectory: true)
-        }
+        self.queueDirectory = queueDirectory ?? Self.defaultQueueDirectory()
         if startMonitoring {
             self.pathMonitor = NWPathMonitor()
         } else {
             self.pathMonitor = nil
         }
-        try? fileManager.createDirectory(at: self.queueDirectory, withIntermediateDirectories: true)
+        prepareProtectedDirectory(self.queueDirectory)
         updatePendingCount()
 
         if let monitor = self.pathMonitor {
@@ -140,7 +157,8 @@ public final class ResearchKitSyncService: ObservableObject {
         let fileName = "study_payload_\(UUID().uuidString).json"
         let fileURL = queueDirectory.appendingPathComponent(fileName)
         do {
-            try data.write(to: fileURL, options: .atomic)
+            prepareProtectedDirectory(queueDirectory)
+            try data.write(to: fileURL, options: Self.writeOptions)
             Self.logger.info("Enqueued research study payload to \(fileName, privacy: .public)")
             updatePendingCount()
         } catch {
@@ -154,6 +172,27 @@ public final class ResearchKitSyncService: ObservableObject {
         pendingQueueCount = contents.filter { $0.pathExtension == "json" }.count
         let stuck = (try? fileManager.contentsOfDirectory(at: deadLetterDirectory, includingPropertiesForKeys: nil)) ?? []
         deadLetterCount = stuck.filter { $0.pathExtension == "json" }.count
+    }
+
+    /// Deletes every queued, dead-lettered and quarantined payload and cancels
+    /// any in-flight upload. Called when research consent is revoked (CNS-5)
+    /// and by "Delete all observation data" (CNS-6).
+    public func purgeAllQueued() {
+        queueGeneration += 1
+        syncTask?.cancel()
+        syncTask = nil
+
+        let contents = (try? fileManager.contentsOfDirectory(at: queueDirectory, includingPropertiesForKeys: nil)) ?? []
+        for item in contents {
+            do {
+                try fileManager.removeItem(at: item)
+            } catch {
+                Self.logger.error("Failed to purge \(item.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            }
+        }
+        syncState = .idle
+        updatePendingCount()
+        Self.logger.info("Purged research upload queue, dead-letter and quarantine folders")
     }
 
     /// Move stuck payloads back onto the live queue so the next transmit can try them again.
@@ -200,7 +239,9 @@ public final class ResearchKitSyncService: ObservableObject {
         syncState = .syncing
         Self.logger.info("Starting ResearchKit transmission to \(self.serverURL.absoluteString, privacy: .public)...")
 
-        Task {
+        let generation = queueGeneration
+        syncTask = Task {
+            defer { if generation == queueGeneration { syncTask = nil } }
             let files = (try? fileManager.contentsOfDirectory(at: queueDirectory, includingPropertiesForKeys: nil)) ?? []
             let jsonFiles = files.filter { $0.pathExtension == "json" }
             let startedAt = now()
@@ -211,6 +252,7 @@ public final class ResearchKitSyncService: ObservableObject {
             var lastReceipt = "RCPT-\(UUID().uuidString.prefix(6))"
 
             for file in jsonFiles {
+                guard generation == queueGeneration, !Task.isCancelled else { break }
                 let meta = loadMeta(for: file)
                 if meta.attemptCount > 0 && meta.nextAttemptAt > startedAt.timeIntervalSince1970 {
                     deferredCount += 1
@@ -219,11 +261,15 @@ public final class ResearchKitSyncService: ObservableObject {
                 guard let data = try? Data(contentsOf: file) else { continue }
                 do {
                     let receipt = try await postPayload(data: data)
+                    guard generation == queueGeneration else { break }
                     lastReceipt = receipt
                     try? fileManager.removeItem(at: file)
                     try? fileManager.removeItem(at: metaURL(for: file))
                     successCount += 1
                 } catch let err as NSError {
+                    // Purged while this upload was in flight: the file is gone,
+                    // so record nothing about it.
+                    guard generation == queueGeneration, !Task.isCancelled else { break }
                     Self.logger.error("Transmission failed for \(file.lastPathComponent, privacy: .public): \(err.localizedDescription, privacy: .public)")
                     // 4xx status codes indicate permanent payload/client errors.
                     // Quarantine so this file does not block future sync runs.
@@ -248,6 +294,12 @@ public final class ResearchKitSyncService: ObservableObject {
                         }
                     }
                 }
+            }
+
+            guard generation == queueGeneration else {
+                Self.logger.info("Sync cancelled by queue purge")
+                completion?(false)
+                return
             }
 
             updatePendingCount()
@@ -287,16 +339,34 @@ public final class ResearchKitSyncService: ObservableObject {
 
     private func saveMeta(_ meta: ResearchSyncFileMeta, for file: URL) {
         guard let data = try? JSONEncoder().encode(meta) else { return }
-        try? data.write(to: metaURL(for: file), options: .atomic)
+        try? data.write(to: metaURL(for: file), options: Self.writeOptions)
     }
 
     private func moveAside(_ file: URL, folderName: String) {
         let dir = queueDirectory.appendingPathComponent(folderName, isDirectory: true)
-        try? fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
+        prepareProtectedDirectory(dir)
         let dest = dir.appendingPathComponent(file.lastPathComponent)
         try? fileManager.removeItem(at: dest)
         try? fileManager.moveItem(at: file, to: dest)
         try? fileManager.removeItem(at: metaURL(for: file))
+    }
+
+    /// Creates `dir` with queue file protection and marks it excluded from
+    /// iCloud / Finder backups (CNS-4). Idempotent.
+    private func prepareProtectedDirectory(_ dir: URL) {
+        do {
+            try fileManager.createDirectory(
+                at: dir,
+                withIntermediateDirectories: true,
+                attributes: [.protectionKey: Self.fileProtection]
+            )
+            var url = dir
+            var values = URLResourceValues()
+            values.isExcludedFromBackup = true
+            try url.setResourceValues(values)
+        } catch {
+            Self.logger.error("Failed to prepare protected queue directory: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     // MARK: - Direct Doctor Share Bundle

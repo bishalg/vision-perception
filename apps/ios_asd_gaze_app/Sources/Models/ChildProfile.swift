@@ -153,7 +153,9 @@ public struct ChildProfile: Codable, Sendable, Equatable {
 public final class ChildProfileStore: ObservableObject {
     public static let shared = ChildProfileStore()
 
-    private let storageKey = "org.curv.asd.child_profile"
+    static let storageKey = "org.curv.asd.child_profile"
+
+    private let userDefaults: UserDefaults
 
     @Published public var profile: ChildProfile {
         didSet {
@@ -161,8 +163,14 @@ public final class ChildProfileStore: ObservableObject {
         }
     }
 
-    private init() {
-        if let data = UserDefaults.standard.data(forKey: storageKey),
+    private convenience init() {
+        self.init(userDefaults: .standard)
+    }
+
+    /// Injectable persistence for tests; production code uses `shared`.
+    init(userDefaults: UserDefaults) {
+        self.userDefaults = userDefaults
+        if let data = userDefaults.data(forKey: Self.storageKey),
            let decoded = try? JSONDecoder().decode(ChildProfile.self, from: data) {
             self.profile = decoded
         } else {
@@ -172,13 +180,44 @@ public final class ChildProfileStore: ObservableObject {
 
     public func save() {
         if let encoded = try? JSONEncoder().encode(profile) {
-            UserDefaults.standard.set(encoded, forKey: storageKey)
+            userDefaults.set(encoded, forKey: Self.storageKey)
         }
     }
 
     public func reset() {
         self.profile = .defaultProfile
-        UserDefaults.standard.removeObject(forKey: storageKey)
+        userDefaults.removeObject(forKey: Self.storageKey)
+    }
+
+    /// Only the profile store can mint a consent token (CNS-1, ADR-0002 decision 1).
+    fileprivate var consentTokenIfConsented: ConsentToken? {
+        guard profile.hasConsentedPIA else { return nil }
+        return ConsentToken(consentedAt: profile.consentTimestamp)
+    }
+}
+
+// MARK: - Consent Token (CNS-1)
+
+/// Proof that the parent accepted the onboarding privacy and consent step.
+///
+/// The initialiser is `fileprivate`, so the only way to obtain a token is
+/// `ConsentToken.mint(from:)`, which returns `nil` until
+/// `ChildProfile.hasConsentedPIA` is true. Capture entry points in the app
+/// (`GazeSessionController.startConsentedSession(token:battery:stimulusId:)`)
+/// require a token, so no `ARSession` can be created before consent. The kit
+/// itself stays consent-agnostic.
+public struct ConsentToken: Sendable, Equatable {
+    /// When consent was recorded, if the onboarding flow stamped it.
+    public let consentedAt: Date?
+
+    fileprivate init(consentedAt: Date?) {
+        self.consentedAt = consentedAt
+    }
+
+    /// Returns a token only when the profile records onboarding consent.
+    @MainActor
+    public static func mint(from store: ChildProfileStore) -> ConsentToken? {
+        store.consentTokenIfConsented
     }
 }
 

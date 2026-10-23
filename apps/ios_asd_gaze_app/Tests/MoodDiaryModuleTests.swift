@@ -78,6 +78,7 @@ final class MoodDiaryModuleTests: XCTestCase {
         XCTAssertEqual(fusion.pendingSuggestion?.suggestedEmotion, .overstimulated)
     }
 
+    #if ASD_ML_DATA_EXPORT // CNS-2: the logger only exists in ML data-export builds.
     func testCSVHeaderAndRowIncludeBlendShapeLocations() {
         let logger = BlendShapeCSVLogger()
         XCTAssertTrue(logger.headerLine.contains("browInnerUp"))
@@ -95,6 +96,7 @@ final class MoodDiaryModuleTests: XCTestCase {
         let browIndex = FaceBlendShapeCSV.columns.firstIndex(of: "browInnerUp")!
         XCTAssertEqual(parts[3 + browIndex], "0.42000")
     }
+    #endif
 
     @MainActor
     func testMoodDiaryStorePersistsInIsolatedDefaults() {

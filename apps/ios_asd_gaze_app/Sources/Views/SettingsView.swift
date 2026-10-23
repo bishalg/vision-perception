@@ -19,6 +19,9 @@ public struct SettingsView: View {
     @State private var showQuickCalibrate: Bool = false
     @State private var showCameraCheck: Bool = false
     @State private var showOnboardingFlow: Bool = false
+    @State private var showDeleteAllConfirmation: Bool = false
+    @State private var showDeleteCarePlansPrompt: Bool = false
+    @State private var deletionResultMessage: String?
 
     public init() {}
 
@@ -424,8 +427,8 @@ public struct SettingsView: View {
             VStack(spacing: 12) {
                 GlassDiagnosticRow(
                     title: Localizer.tr("settings_truedepth_title"),
-                    subtitle: isTrueDepthAvailable ? Localizer.tr("settings_truedepth_available") : Localizer.tr("settings_simulation_mode"),
-                    statusText: isTrueDepthAvailable ? Localizer.tr("settings_status_active") : Localizer.tr("settings_status_simulation"),
+                    subtitle: isTrueDepthAvailable ? Localizer.tr("settings_truedepth_available") : "Face tracking unsupported on this device",
+                    statusText: isTrueDepthAvailable ? Localizer.tr("settings_status_active") : "Unsupported",
                     isGood: isTrueDepthAvailable
                 )
 
@@ -543,8 +546,79 @@ public struct SettingsView: View {
                 GlassDivider()
 
                 NormCollectionToggleRow()
+
+                GlassDivider()
+
+                deleteAllDataRow
             }
             .glassCard(cornerRadius: 14, padding: 14)
+        }
+        .confirmationDialog(
+            "Delete all observation data?",
+            isPresented: $showDeleteAllConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete observation data", role: .destructive, action: deleteAllObservationData)
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This permanently removes saved sessions, session history, queued research uploads, calibration, M-CHAT-R/F answers and study enrollment from this device. It cannot be undone.")
+        }
+        .alert("Also delete care plans?", isPresented: $showDeleteCarePlansPrompt) {
+            Button("Keep care plans", role: .cancel) {
+                deletionResultMessage = "Observation data deleted. Your care plans were kept."
+            }
+            Button("Delete care plans", role: .destructive) {
+                DataDeletionService.live().deleteCarePlans()
+                deletionResultMessage = "Observation data and care plans deleted."
+            }
+        } message: {
+            Text("Care plans, medications and milestones are your own notes. They are kept unless you delete them here.")
+        }
+        .alert(
+            "Delete all observation data",
+            isPresented: Binding(
+                get: { deletionResultMessage != nil },
+                set: { if !$0 { deletionResultMessage = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { deletionResultMessage = nil }
+        } message: {
+            Text(deletionResultMessage ?? "")
+        }
+    }
+
+    /// CNS-6: reachable in one tap from Settings, behind a confirmation dialog;
+    /// care plans are offered on a second, separate prompt.
+    private var deleteAllDataRow: some View {
+        Button(role: .destructive) {
+            showDeleteAllConfirmation = true
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "trash.fill")
+                    .font(.system(size: 18))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Delete all observation data")
+                        .font(.system(size: 15, weight: .semibold))
+                    Text("Sessions, history, uploads queue, calibration, M-CHAT-R/F answers and enrollment.")
+                        .glassStyle(.subheadline)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer()
+            }
+        }
+        .buttonStyle(.plain)
+        .foregroundColor(.red)
+        .accessibilityIdentifier("settings_delete_all_data")
+    }
+
+    private func deleteAllObservationData() {
+        let report = DataDeletionService.live().deleteAll(includeCarePlans: false)
+        calibrationProfile = GazeCalibrationStore.load()
+        if report.succeeded {
+            // Present after the confirmation dialog finishes dismissing.
+            DispatchQueue.main.async { showDeleteCarePlansPrompt = true }
+        } else {
+            deletionResultMessage = "Some data could not be deleted: \(report.failures.joined(separator: ", ")). Please try again."
         }
     }
 
@@ -635,7 +709,7 @@ public struct SettingsView: View {
                     .foregroundColor(LiquidGlass.celestialTeal)
                     .multilineTextAlignment(.trailing)
             }
-            Text("Manual emotion logs can write State of Mind samples to the Health app. Blend-shape CSVs stay on this device.")
+            Text("Manual emotion logs can write State of Mind samples to the Health app.")
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
             Button("Authorize HealthKit") {

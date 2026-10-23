@@ -1,4 +1,5 @@
 @testable import AsdGazeCollector
+import CurvAsdGazeKit
 import Foundation
 import XCTest
 
@@ -465,6 +466,263 @@ final class ResearchKitSyncServiceTests: XCTestCase {
         }
     }
 
+    // MARK: - CNS-4 queue location and protection
+
+    @MainActor
+    func testDefaultQueueDirectoryIsApplicationSupportNotDocuments() {
+        let dir = ResearchKitSyncService.defaultQueueDirectory()
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        XCTAssertTrue(dir.standardizedFileURL.path.hasPrefix(appSupport.standardizedFileURL.path))
+        XCTAssertFalse(dir.standardizedFileURL.path.hasPrefix(documents.standardizedFileURL.path))
+        XCTAssertEqual(dir.lastPathComponent, "ResearchStudyQueue")
+    }
+
+    @MainActor
+    func testQueueDirectoryIsExcludedFromBackup() throws {
+        _ = ResearchKitSyncService(
+            store: researchStore,
+            queueDirectory: tempQueueDir,
+            session: mockSession,
+            startMonitoring: false
+        )
+        let values = try tempQueueDir.resourceValues(forKeys: [.isExcludedFromBackupKey])
+        XCTAssertEqual(values.isExcludedFromBackup, true)
+    }
+
+    @MainActor
+    func testEnqueuedPayloadIsWrittenWithFileProtection() throws {
+        let service = ResearchKitSyncService(
+            store: researchStore,
+            queueDirectory: tempQueueDir,
+            session: mockSession,
+            startMonitoring: false
+        )
+        service.enqueueStudyPayload(bundle: ["study": "CURV-ASD", "protected": true])
+
+        let file = try XCTUnwrap(jsonFiles(in: tempQueueDir).first)
+        XCTAssertTrue(ResearchKitSyncService.writeOptions.contains(.completeFileProtectionUntilFirstUserAuthentication))
+        XCTAssertTrue(ResearchKitSyncService.writeOptions.contains(.atomic))
+        #if !targetEnvironment(simulator)
+        // The simulator neither records nor reports per-file protection classes.
+        let attrs = try FileManager.default.attributesOfItem(atPath: file.path)
+        XCTAssertEqual(
+            attrs[.protectionKey] as? FileProtectionType,
+            .completeUntilFirstUserAuthentication
+        )
+        #else
+        XCTAssertTrue(FileManager.default.fileExists(atPath: file.path))
+        #endif
+    }
+
+    @MainActor
+    func testDeadLetterAndQuarantineFoldersAreExcludedFromBackup() throws {
+        let sig = ORKConsentSignature(guardianFullName: "Folder Parent", signatureToken: "SIG-FOLDERS")
+        researchStore.saveConsent(signature: sig, participantId: "STUDY-FOLDERS")
+        let service = ResearchKitSyncService(
+            store: researchStore,
+            queueDirectory: tempQueueDir,
+            session: mockSession,
+            startMonitoring: false
+        )
+        service.enqueueStudyPayload(bundle: ["bad": true])
+        MockURLProtocol.requestHandler = { request in
+            (HTTPURLResponse(url: request.url!, statusCode: 422, httpVersion: nil, headerFields: nil)!, Data())
+        }
+        waitForSync(service, forceBundleCompile: false)
+
+        let quarantine = tempQueueDir.appendingPathComponent("Quarantine", isDirectory: true)
+        XCTAssertEqual(jsonFiles(in: quarantine).count, 1)
+        let values = try quarantine.resourceValues(forKeys: [.isExcludedFromBackupKey])
+        XCTAssertEqual(values.isExcludedFromBackup, true)
+    }
+
+    // MARK: - CNS-5 purge on revoke
+
+    @MainActor
+    func testPurgeAllQueuedEmptiesQueueDeadLetterAndQuarantine() {
+        let service = ResearchKitSyncService(
+            store: researchStore,
+            queueDirectory: tempQueueDir,
+            session: mockSession,
+            startMonitoring: false
+        )
+        for index in 0..<3 {
+            service.enqueueStudyPayload(bundle: ["payload": index])
+        }
+        seedFile(in: "DeadLetter", name: "stuck.json")
+        seedFile(in: "Quarantine", name: "poison.json")
+        try? Data("{}".utf8).write(to: tempQueueDir.appendingPathComponent("orphan.syncmeta"))
+        service.updatePendingCount()
+        XCTAssertEqual(service.pendingQueueCount, 3)
+        XCTAssertEqual(service.deadLetterCount, 1)
+
+        service.purgeAllQueued()
+
+        XCTAssertEqual(service.pendingQueueCount, 0)
+        XCTAssertEqual(service.deadLetterCount, 0)
+        XCTAssertEqual(allFiles(under: tempQueueDir), [], "Queue, dead-letter and quarantine must be empty")
+        XCTAssertEqual(service.syncState, .idle)
+    }
+
+    @MainActor
+    func testRevokeConsentPurgesQueueAndReconnectUploadsNothing() {
+        let box = SyncServiceBox()
+        let store = ResearchKitStudyStore(
+            userDefaults: testUserDefaults,
+            queuePurger: ResearchKitStudyStore.mainActorPurger { box.service?.purgeAllQueued() }
+        )
+        let sig = ORKConsentSignature(guardianFullName: "Revoke Parent", signatureToken: "SIG-REVOKE")
+        store.saveConsent(signature: sig, participantId: "STUDY-REVOKE")
+
+        let service = ResearchKitSyncService(
+            store: store,
+            queueDirectory: tempQueueDir,
+            session: mockSession,
+            startMonitoring: false
+        )
+        box.service = service
+
+        service.handlePathUpdate(status: .unsatisfied)
+        for index in 0..<3 {
+            service.enqueueStudyPayload(bundle: ["offline": index])
+        }
+        seedFile(in: "DeadLetter", name: "stuck.json")
+        seedFile(in: "Quarantine", name: "poison.json")
+        XCTAssertEqual(service.pendingQueueCount, 3)
+
+        store.revokeConsent()
+
+        XCTAssertEqual(service.pendingQueueCount, 0)
+        XCTAssertEqual(allFiles(under: tempQueueDir), [])
+
+        let hits = HitCounter()
+        MockURLProtocol.requestHandler = { request in
+            hits.count += 1
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data())
+        }
+        service.handlePathUpdate(status: .satisfied)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        XCTAssertEqual(hits.count, 0, "Nothing may upload after consent is revoked")
+    }
+
+    @MainActor
+    func testPurgeCancelsInFlightUploadAndLeavesNoFilesBehind() {
+        let sig = ORKConsentSignature(guardianFullName: "Inflight Parent", signatureToken: "SIG-INFLIGHT")
+        researchStore.saveConsent(signature: sig, participantId: "STUDY-INFLIGHT")
+        let service = ResearchKitSyncService(
+            store: researchStore,
+            queueDirectory: tempQueueDir,
+            session: mockSession,
+            startMonitoring: false
+        )
+        service.enqueueStudyPayload(bundle: ["inflight": true])
+
+        let started = DispatchSemaphore(value: 0)
+        let release = DispatchSemaphore(value: 0)
+        MockURLProtocol.requestHandler = { _ in
+            started.signal()
+            _ = release.wait(timeout: .now() + 3)
+            throw URLError(.cannotConnectToHost)
+        }
+
+        let done = expectation(description: "in-flight sync finished")
+        let result = ResultBox()
+        service.syncNow(forceBundleCompile: false) { success in
+            result.value = success
+            done.fulfill()
+        }
+
+        var didStart = false
+        for _ in 0..<60 {
+            if started.wait(timeout: .now()) == .success {
+                didStart = true
+                break
+            }
+            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        }
+        XCTAssertTrue(didStart, "Upload never started")
+
+        service.purgeAllQueued()
+        release.signal()
+        wait(for: [done], timeout: 5.0)
+
+        XCTAssertEqual(result.value, false)
+        XCTAssertEqual(service.pendingQueueCount, 0)
+        XCTAssertEqual(allFiles(under: tempQueueDir), [], "A cancelled upload must not write retry metadata or move files")
+        XCTAssertEqual(service.syncState, .idle)
+    }
+
+    // MARK: - SIM-5 study store refuses simulated sessions
+
+    func testRecordActiveStepResultRefusesSimulatedSummary() throws {
+        let sig = ORKConsentSignature(guardianFullName: "Sim Parent", signatureToken: "SIG-SIM")
+        researchStore.saveConsent(signature: sig, participantId: "STUDY-SIM")
+
+        let simulated = try Self.summary(captureSource: "simulated")
+        XCTAssertNil(researchStore.recordActiveStepResult(summary: simulated))
+        XCTAssertTrue(researchStore.fetchCompletedTaskResults().isEmpty)
+
+        let live = try Self.summary(captureSource: "truedepth")
+        XCTAssertNotNil(researchStore.recordActiveStepResult(summary: live))
+        XCTAssertEqual(researchStore.fetchCompletedTaskResults().count, 1)
+    }
+
+    // MARK: - Helpers
+
+    /// Decoded from JSON so the fixture does not depend on the summary's initialiser shape.
+    private static func summary(captureSource: String) throws -> GazeSessionReportSummary {
+        let json = """
+        {
+          "sessionId": "SIM5TEST",
+          "durationSec": 30,
+          "totalFrames": 1800,
+          "validFrames": 1500,
+          "validRatio": 0.83,
+          "socialPreferenceScore": 0.6,
+          "socialDwellSec": 12,
+          "geometricDwellSec": 8,
+          "eyeDwellRatio": 0.3,
+          "mouthDwellRatio": 0.1,
+          "firstEyeLatencyMs": 500,
+          "socialSmileIntensityMean": 0.4,
+          "smileReactivityIndex": 0.3,
+          "flatAffectScore": 0.1,
+          "surpriseScoreMean": 0.2,
+          "qualityVerdict": "optimal",
+          "captureSource": "\(captureSource)",
+          "interruptionCount": 0,
+          "interruptedSec": 0
+        }
+        """
+        return try JSONDecoder().decode(GazeSessionReportSummary.self, from: Data(json.utf8))
+    }
+
+    private func seedFile(in folder: String, name: String) {
+        let dir = tempQueueDir.appendingPathComponent(folder, isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try? Data("{}".utf8).write(to: dir.appendingPathComponent(name))
+    }
+
+    private func jsonFiles(in dir: URL) -> [URL] {
+        ((try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? [])
+            .filter { $0.pathExtension == "json" }
+    }
+
+    /// Every regular file below `dir`, as paths relative to it.
+    private func allFiles(under dir: URL) -> [String] {
+        guard let enumerator = FileManager.default.enumerator(
+            at: dir,
+            includingPropertiesForKeys: [.isRegularFileKey]
+        ) else { return [] }
+        var files: [String] = []
+        for case let url as URL in enumerator {
+            let isFile = (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) ?? false
+            if isFile { files.append(url.lastPathComponent) }
+        }
+        return files.sorted()
+    }
+
     @MainActor
     private func waitForSync(_ service: ResearchKitSyncService, forceBundleCompile: Bool) {
         let exp = expectation(description: "sync")
@@ -498,4 +756,13 @@ private final class SyncTestClock: @unchecked Sendable {
 
 private final class HitCounter: @unchecked Sendable {
     var count = 0
+}
+
+private final class ResultBox: @unchecked Sendable {
+    var value: Bool?
+}
+
+@MainActor
+private final class SyncServiceBox: @unchecked Sendable {
+    weak var service: ResearchKitSyncService?
 }
