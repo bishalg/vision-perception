@@ -77,6 +77,8 @@ def test_stage3_quantitative_flood_delta_gates():
     assert delta["spatial_control"]["passes_acceptance"] is True
     assert delta["spatial_control"]["spatial_control_pass"] is True
     assert delta["assessment"]["alert_recommendation"] == "CRITICAL"
+    assert delta["assessment"]["status_indicator"] == "red"
+    assert delta["status_indicator"] == "red"
 
 
 def test_stage4_agentic_vision_loop_e2e():

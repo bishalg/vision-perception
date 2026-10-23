@@ -21,6 +21,9 @@ import sys
 import cv2
 import numpy as np
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from flood_status import status_indicator
+
 CONFIG_PATH = "configs/geospatial_wide_ridge.json"
 DATA_DIR = "data/flood_nepal_2026"
 PROC_DIR = os.path.join(DATA_DIR, "processed")
@@ -263,6 +266,7 @@ def main():
         alert_recommendation = "WARNING"
     else:
         alert_recommendation = "NORMAL"
+    indicator = status_indicator(alert_recommendation)
 
     # 9. Assemble flood_delta.json
     flood_delta = {
@@ -348,11 +352,13 @@ def main():
             "spatial_control_pass": spatial_control_pass,
             "temporal_control_pass": temp_control_pass,
             "alert_recommendation": alert_recommendation,
+            "status_indicator": indicator,
             "notes": " ".join(assessment_notes)
         },
         "spatial_control_pass": spatial_control_pass,
         "temporal_control_pass": temp_control_pass,
-        "alert_recommendation": alert_recommendation
+        "alert_recommendation": alert_recommendation,
+        "status_indicator": indicator
     }
 
     serialized_canonical = json.dumps(flood_delta, sort_keys=True)
@@ -368,7 +374,7 @@ def main():
     md_summary = f"""# Flood Disaster Perception Delta Summary
 **Event**: Lende Khola / Bhote Koshi Glacier-Collapse Flood (Rasuwa, Nepal)  
 **Acquisitions**: PRE = 2026-08-24 | POST = 2026-08-27  
-**Overall Assessment**: **{'FLOOD SIGNAL DETECTED ✅' if flood_signal_detected else 'NO FLOOD SIGNAL DETECTED ❌'}**
+**Overall Assessment**: **{'FLOOD SIGNAL DETECTED ✅' if flood_signal_detected else 'NO FLOOD SIGNAL DETECTED ❌'}** ({alert_recommendation} / {indicator})
 
 ---
 
