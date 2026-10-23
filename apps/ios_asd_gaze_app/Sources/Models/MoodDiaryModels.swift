@@ -74,6 +74,34 @@ public enum PediatricEmotion: String, Codable, CaseIterable, Identifiable, Senda
     }
 }
 
+/// Caregiver observation of social recognition during the same diary moment as emotion.
+public enum SocialRecognition: String, Codable, CaseIterable, Identifiable, Sendable {
+    case respondedToName
+    case recognizedFamiliarPerson
+    case sharedAttention
+    case notObserved
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .respondedToName: return "Responded to name"
+        case .recognizedFamiliarPerson: return "Recognized a familiar person"
+        case .sharedAttention: return "Shared attention"
+        case .notObserved: return "Not observed"
+        }
+    }
+
+    public var subtitle: String {
+        switch self {
+        case .respondedToName: return "Looked or turned when called"
+        case .recognizedFamiliarPerson: return "Reacted to a known face or voice"
+        case .sharedAttention: return "Looked where the caregiver looked or pointed"
+        case .notObserved: return "Recognition was not checked this time"
+        }
+    }
+}
+
 public enum MoodContextTag: String, Codable, CaseIterable, Identifiable, Sendable {
     case postSchool = "Post-School"
     case transitionPeriod = "Transition Period"
@@ -100,6 +128,7 @@ public struct MoodDiaryEntry: Identifiable, Codable, Sendable, Equatable {
     public var durationMinutes: Double
     public var tags: [MoodContextTag]
     public var notes: String
+    public var recognition: SocialRecognition?
     public var source: MoodDiarySource
     public var healthKitUUID: UUID?
     public var suggestedFromDistressSeconds: Double?
@@ -108,6 +137,7 @@ public struct MoodDiaryEntry: Identifiable, Codable, Sendable, Equatable {
         id: UUID = UUID(),
         loggedAt: Date = Date(),
         emotion: PediatricEmotion = .engaged,
+        recognition: SocialRecognition? = nil,
         intensity: Double = 0.5,
         durationMinutes: Double = 5,
         tags: [MoodContextTag] = [],
@@ -119,6 +149,7 @@ public struct MoodDiaryEntry: Identifiable, Codable, Sendable, Equatable {
         self.id = id
         self.loggedAt = loggedAt
         self.emotion = emotion
+        self.recognition = recognition
         self.intensity = min(1, max(0, intensity))
         self.durationMinutes = min(180, max(0.5, durationMinutes))
         self.tags = tags

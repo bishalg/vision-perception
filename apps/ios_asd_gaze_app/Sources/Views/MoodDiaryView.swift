@@ -37,6 +37,34 @@ public struct MoodDiaryView: View {
                     Text("Labels follow CDC social-emotional themes (joy, engagement, overload, distress). Choose what the caregiver observed.")
                 }
 
+                Section {
+                    ForEach(SocialRecognition.allCases) { recognition in
+                        Button {
+                            model.recognition = recognition
+                        } label: {
+                            HStack(alignment: .top, spacing: 10) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(recognition.title)
+                                        .foregroundStyle(.primary)
+                                    Text(recognition.subtitle)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                if model.recognition == recognition {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(LiquidGlass.celestialTeal)
+                                }
+                            }
+                        }
+                        .accessibilityAddTraits(model.recognition == recognition ? [.isSelected] : [])
+                    }
+                } header: {
+                    Text("Recognition")
+                } footer: {
+                    Text("What the caregiver saw in the same moment: name response, a familiar person, or shared attention. Leave “Not observed” when it was not checked.")
+                }
+
                 Section("Intensity") {
                     VStack(alignment: .leading, spacing: 8) {
                         Slider(value: $model.intensity, in: 0...1, step: 0.05)
@@ -88,6 +116,9 @@ public struct MoodDiaryView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(entry.emotion.title)
                                     .font(.headline)
+                                Text((entry.recognition ?? .notObserved).title)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
                                 Text(entry.loggedAt.formatted(date: .abbreviated, time: .shortened))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)

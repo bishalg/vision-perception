@@ -112,5 +112,26 @@ final class MoodDiaryModuleTests: XCTestCase {
         XCTAssertEqual(store.entries.count, 1)
         XCTAssertEqual(store.entries.first?.emotion, .joy)
         XCTAssertEqual(store.entries.first?.tags, [.postSchool])
+        XCTAssertNil(store.entries.first?.recognition)
+    }
+
+    func testDiaryRecognitionRoundTripsAndOldEntriesStayReadable() throws {
+        let entry = MoodDiaryEntry(
+            emotion: .engaged,
+            recognition: .sharedAttention,
+            intensity: 0.4,
+            durationMinutes: 6,
+            notes: ""
+        )
+        let data = try JSONEncoder().encode([entry])
+        let decoded = try JSONDecoder().decode([MoodDiaryEntry].self, from: data)
+        XCTAssertEqual(decoded.first?.recognition, .sharedAttention)
+
+        var object = try JSONSerialization.jsonObject(with: data) as! [[String: Any]]
+        object[0].removeValue(forKey: "recognition")
+        let stripped = try JSONSerialization.data(withJSONObject: object)
+        let legacy = try JSONDecoder().decode([MoodDiaryEntry].self, from: stripped)
+        XCTAssertNil(legacy.first?.recognition)
+        XCTAssertEqual(legacy.first?.emotion, .engaged)
     }
 }

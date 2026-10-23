@@ -4,6 +4,7 @@ import Combine
 @MainActor
 public final class MoodDiaryViewModel: ObservableObject {
     @Published public var emotion: PediatricEmotion = .engaged
+    @Published public var recognition: SocialRecognition = .notObserved
     @Published public var intensity: Double = 0.5
     @Published public var durationMinutes: Double = 10
     @Published public var selectedTags: Set<MoodContextTag> = []
@@ -45,6 +46,7 @@ public final class MoodDiaryViewModel: ObservableObject {
         saveError = nil
         let entry = MoodDiaryEntry(
             emotion: emotion,
+            recognition: recognition,
             intensity: intensity,
             durationMinutes: durationMinutes,
             tags: MoodContextTag.allCases.filter { selectedTags.contains($0) },
