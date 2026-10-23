@@ -1,0 +1,160 @@
+{
+  "schemaVersion": "1.0.0",
+  "comment": "Add a clip by appending one object to clips. Set minMonths/maxMonths for the ages that should see it, protocols for which session length plays it (express_30s and/or comprehensive_60s, with order), and roles on each area (social, geometric, eye, mouth, orienting). Then add a matching video entry in normative_baselines.json. Leave roles empty for control targets that must not move the GeoPref ratio. Age packs must be non-overlapping and listed youngest first. A new pack id becomes the On-Demand Resource tag pack_<id>_<language>.",
+  "languages": ["en", "hi", "ne", "zh"],
+  "fallbackLanguage": "en",
+  "agePacks": [
+    { "id": "age_12_24", "minMonths": 0, "maxMonths": 23 },
+    { "id": "age_24_36", "minMonths": 24, "maxMonths": 35 },
+    { "id": "age_36_60", "minMonths": 36, "maxMonths": 1200 }
+  ],
+  "clips": [
+    {
+      "id": "stim_01_social_peekaboo_8s",
+      "title": "Direct Social Eye Contact",
+      "category": "Social Engagement",
+      "durationSec": 8.0,
+      "minMonths": 12,
+      "maxMonths": 60,
+      "protocols": [
+        { "id": "express_30s", "order": 1 },
+        { "id": "comprehensive_60s", "order": 1 }
+      ],
+      "areas": [
+        { "name": "Face_Center", "startSec": 0.0, "endSec": 8.0, "xMin": 0.25, "yMin": 0.15, "xMax": 0.75, "yMax": 0.85, "roles": ["social", "orienting"] },
+        { "name": "Eye_Region", "startSec": 0.0, "endSec": 8.0, "xMin": 0.35, "yMin": 0.28, "xMax": 0.65, "yMax": 0.46, "roles": ["social", "eye", "orienting"] }
+      ]
+    },
+    {
+      "id": "stim_02_gaze_cue_right_8s",
+      "title": "Joint Attention & Gaze Following",
+      "category": "Joint Attention",
+      "durationSec": 7.0,
+      "minMonths": 12,
+      "maxMonths": 60,
+      "protocols": [
+        { "id": "express_30s", "order": 2 },
+        { "id": "comprehensive_60s", "order": 2 }
+      ],
+      "areas": [
+        { "name": "Actor_Face", "startSec": 0.0, "endSec": 3.5, "xMin": 0.30, "yMin": 0.18, "xMax": 0.70, "yMax": 0.70, "roles": ["social", "orienting"] },
+        { "name": "Gaze_Target_Right", "startSec": 3.5, "endSec": 8.0, "xMin": 0.65, "yMin": 0.08, "xMax": 0.98, "yMax": 0.45, "roles": [] }
+      ]
+    },
+    {
+      "id": "stim_03_gaze_cue_left_8s",
+      "title": "Joint Attention: Leftward Cue",
+      "category": "Joint Attention",
+      "durationSec": 7.0,
+      "minMonths": 12,
+      "maxMonths": 60,
+      "protocols": [
+        { "id": "comprehensive_60s", "order": 3 }
+      ],
+      "areas": [
+        { "name": "Actor_Face", "startSec": 0.0, "endSec": 3.0, "xMin": 0.30, "yMin": 0.18, "xMax": 0.70, "yMax": 0.70, "roles": ["social", "orienting"] },
+        { "name": "Gaze_Target_Left", "startSec": 3.0, "endSec": 8.0, "xMin": 0.02, "yMin": 0.08, "xMax": 0.35, "yMax": 0.45, "roles": [] }
+      ]
+    },
+    {
+      "id": "stim_04_surprise_giftbox_10s",
+      "title": "Affective Surprise Discovery",
+      "category": "Facial Affect",
+      "durationSec": 8.0,
+      "minMonths": 12,
+      "maxMonths": 60,
+      "protocols": [
+        { "id": "comprehensive_60s", "order": 4 }
+      ],
+      "areas": [
+        { "name": "Actor_Eyes", "startSec": 0.0, "endSec": 10.0, "xMin": 0.36, "yMin": 0.20, "xMax": 0.64, "yMax": 0.38, "roles": ["social", "eye", "orienting"] },
+        { "name": "Gift_Box", "startSec": 0.0, "endSec": 10.0, "xMin": 0.28, "yMin": 0.55, "xMax": 0.72, "yMax": 0.95, "roles": ["geometric"] }
+      ]
+    },
+    {
+      "id": "stim_05_geopref_split_10s",
+      "title": "Geometric vs Social Preference",
+      "category": "GeoPref",
+      "durationSec": 8.0,
+      "minMonths": 12,
+      "maxMonths": 60,
+      "protocols": [
+        { "id": "express_30s", "order": 0 },
+        { "id": "comprehensive_60s", "order": 0 }
+      ],
+      "areas": [
+        { "name": "Social_Actor", "startSec": 0.0, "endSec": 10.0, "xMin": 0.0, "yMin": 0.0, "xMax": 0.5, "yMax": 1.0, "roles": ["social", "orienting"] },
+        { "name": "Geometric_Pattern", "startSec": 0.0, "endSec": 10.0, "xMin": 0.5, "yMin": 0.0, "xMax": 1.0, "yMax": 1.0, "roles": ["geometric"] }
+      ]
+    },
+    {
+      "id": "stim_06_dynamic_gears_marbles_8s",
+      "title": "Dynamic Gears and Marbles",
+      "category": "Mechanical Motion",
+      "durationSec": 8.0,
+      "minMonths": 12,
+      "maxMonths": 60,
+      "protocols": [],
+      "areas": [
+        { "name": "Mechanical_Motion", "startSec": 0.0, "endSec": 8.0, "xMin": 0.10, "yMin": 0.10, "xMax": 0.90, "yMax": 0.90, "roles": ["geometric"] }
+      ]
+    },
+    {
+      "id": "stim_07_cartoon_slapstick_penguin_8s",
+      "title": "Animated Affect & Anticipation",
+      "category": "Dynamic Affect",
+      "durationSec": 7.0,
+      "minMonths": 12,
+      "maxMonths": 60,
+      "protocols": [
+        { "id": "express_30s", "order": 3 }
+      ],
+      "areas": [
+        { "name": "Cartoon_Character", "startSec": 0.0, "endSec": 8.0, "xMin": 0.30, "yMin": 0.30, "xMax": 0.70, "yMax": 0.78, "roles": ["social"] }
+      ]
+    },
+    {
+      "id": "stim_08_recenter_bubble_fox_3s",
+      "title": "Center Fixation Recenter",
+      "category": "Fixation Recenter",
+      "durationSec": 4.0,
+      "minMonths": 12,
+      "maxMonths": 60,
+      "protocols": [
+        { "id": "comprehensive_60s", "order": 5 }
+      ],
+      "areas": [
+        { "name": "Center_Fixation_Target", "startSec": 0.0, "endSec": 8.0, "xMin": 0.38, "yMin": 0.38, "xMax": 0.62, "yMax": 0.62, "roles": [] }
+      ]
+    },
+    {
+      "id": "stim_09_social_turn_taking_10s",
+      "title": "Turn-Taking & Conversational Gaze",
+      "category": "Social Communication",
+      "durationSec": 9.0,
+      "minMonths": 12,
+      "maxMonths": 60,
+      "protocols": [
+        { "id": "comprehensive_60s", "order": 6 }
+      ],
+      "areas": [
+        { "name": "Teacher_Face", "startSec": 0.0, "endSec": 10.0, "xMin": 0.28, "yMin": 0.15, "xMax": 0.72, "yMax": 0.75, "roles": ["social", "orienting"] },
+        { "name": "Teacher_Mouth", "startSec": 0.0, "endSec": 10.0, "xMin": 0.40, "yMin": 0.48, "xMax": 0.60, "yMax": 0.64, "roles": ["social", "mouth"] }
+      ]
+    },
+    {
+      "id": "stim_10_animal_puppy_play_8s",
+      "title": "Biological Non-Human Motion",
+      "category": "Biological Control",
+      "durationSec": 9.0,
+      "minMonths": 12,
+      "maxMonths": 60,
+      "protocols": [
+        { "id": "comprehensive_60s", "order": 7 }
+      ],
+      "areas": [
+        { "name": "Animal_Puppies", "startSec": 0.0, "endSec": 9.0, "xMin": 0.18, "yMin": 0.25, "xMax": 0.82, "yMax": 0.85, "roles": [] }
+      ]
+    }
+  ]
+}

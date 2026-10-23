@@ -152,8 +152,12 @@ public enum PerVideoMetricsExtractor {
             totalGeoDwell > 0 ? (socialHits - geometricHits) / totalGeoDwell : 0
 
         // -- Face scanning ratios (eye vs mouth share of face hits, mirroring session aggregate)
-        let eyeHits = Double(aoiHitCounts["Eye_Region"] ?? 0)
-        let mouthHits = Double(aoiHitCounts["Mouth_Region"] ?? 0)
+        let eyeHits = aoiHitCounts.reduce(0.0) { partial, entry in
+            partial + (AOIRole.matches(entry.key, kind: .eye) ? Double(entry.value) : 0)
+        }
+        let mouthHits = aoiHitCounts.reduce(0.0) { partial, entry in
+            partial + (AOIRole.matches(entry.key, kind: .mouth) ? Double(entry.value) : 0)
+        }
         let faceHits = eyeHits + mouthHits
         metrics[PerVideoMetricKey.eyeDwellRatio.key(targetAOI: nil)] = faceHits > 0 ? eyeHits / faceHits : 0
         metrics[PerVideoMetricKey.mouthDwellRatio.key(targetAOI: nil)] = faceHits > 0 ? mouthHits / faceHits : 0

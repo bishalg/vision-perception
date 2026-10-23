@@ -165,63 +165,32 @@ public struct GazeSessionReportSummary: Codable, Sendable, Equatable {
         let validFrames = frames.filter { $0.gaze.isValid && $0.qualityVerdict != .rejected }
         let validRatio = Double(validFrames.count) / Double(totalFrames)
 
-        var socialCount = 0
-        var geometricCount = 0
-        var eyeCount = 0
-        var mouthCount = 0
-        var smileSum = 0.0
-        var surpriseSum = 0.0
-        var expressivitySum = 0.0
-
-        for frame in validFrames {
-            if frame.activeAOINames.contains("Social_Actor") { socialCount += 1 }
-            if frame.activeAOINames.contains("Geometric_Pattern") { geometricCount += 1 }
-            if frame.activeAOINames.contains("Eye_Region") { eyeCount += 1 }
-            if frame.activeAOINames.contains("Mouth_Region") { mouthCount += 1 }
-            smileSum += frame.affect.socialSmileIntensity
-            surpriseSum += frame.affect.surpriseScore
-            expressivitySum += frame.affect.expressivityIndex
-        }
-
-        let frameIntervalSec = 1.0 / 60.0
-        let socialDwell = Double(socialCount) * frameIntervalSec
-        let geometricDwell = Double(geometricCount) * frameIntervalSec
-        let totalDwell = socialDwell + geometricDwell
-
-        let socialPreferenceScore = totalDwell > 0.0
-            ? (socialDwell - geometricDwell) / totalDwell
-            : 0.0
-
-        // PLC-2: no face AOI hit means the ratios were not observed.
-        let faceHits = Double(eyeCount + mouthCount)
-        let eyeDwellRatio: Double? = faceHits > 0.0 ? Double(eyeCount) / faceHits : nil
-        let mouthDwellRatio: Double? = faceHits > 0.0 ? Double(mouthCount) / faceHits : nil
-
-        let validCount = Double(validFrames.count)
-        let meanSmile = validFrames.isEmpty ? 0.0 : smileSum / validCount
-        let meanSurprise = validFrames.isEmpty ? 0.0 : surpriseSum / validCount
-        let meanExpressivity = validFrames.isEmpty ? 0.0 : expressivitySum / validCount
-        let flatAffectScore = max(0.0, min(1.0, 1.0 - (meanExpressivity * 50.0)))
+        let durationSec = Double(totalFrames) * SessionBiomarkerAggregator.frameIntervalSec
+        let biomarkers = SessionBiomarkerAggregator.aggregate(
+            validFrames: validFrames,
+            durationSec: durationSec
+        )
 
         let verdict: GazeQualityGate.Verdict = validRatio >= 0.75 ? .optimal : (validRatio >= 0.50 ? .acceptable : .degraded)
 
         return GazeSessionReportSummary(
             sessionId: sessionId,
             captureSource: captureSource,
-            durationSec: Double(totalFrames) * frameIntervalSec,
+            durationSec: durationSec,
             totalFrames: totalFrames,
             validFrames: validFrames.count,
             validRatio: validRatio,
-            socialPreferenceScore: socialPreferenceScore,
-            socialDwellSec: socialDwell,
-            geometricDwellSec: geometricDwell,
-            eyeDwellRatio: eyeDwellRatio,
-            mouthDwellRatio: mouthDwellRatio,
-            firstEyeLatencyMs: nil, // PLC-1: no first-fixation detector yet
-            socialSmileIntensityMean: meanSmile,
-            smileReactivityIndex: max(0.0, min(1.0, meanSmile * 1.2)),
-            flatAffectScore: flatAffectScore,
-            surpriseScoreMean: meanSurprise,
+            socialPreferenceScore: biomarkers.socialPreferenceScore,
+            socialDwellSec: biomarkers.socialDwellSec,
+            geometricDwellSec: biomarkers.geometricDwellSec,
+            // PLC-1/PLC-2: measured from smoothed fixations and catalog AOI roles; nil when unobserved.
+            eyeDwellRatio: biomarkers.eyeDwellRatio,
+            mouthDwellRatio: biomarkers.mouthDwellRatio,
+            firstEyeLatencyMs: biomarkers.firstOrientLatencyMs,
+            socialSmileIntensityMean: biomarkers.socialSmileIntensityMean,
+            smileReactivityIndex: biomarkers.smileReactivityIndex,
+            flatAffectScore: biomarkers.flatAffectScore,
+            surpriseScoreMean: biomarkers.surpriseScoreMean,
             qualityVerdict: verdict,
             subjectAgeSignal: subjectAgeSignal,
             interruptionCount: interruptionCount,
@@ -645,7 +614,13 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
             gazePoint = CGPoint(x: max(0.05, min(0.95, x)), y: max(0.05, min(0.95, y)))
         }
 
-        let activeHits = aoiTracker.activeAOIs(atTimeSec: clipTimeSec ?? timeSec, xNorm: gazePoint.x, yNorm: gazePoint.y)
+        let smoothedGaze = gazeFilter.filter(point: gazePoint, timestamp: timeSec)
+        let smoothedRaw = rawGazeFilter.filter(point: gazePoint, timestamp: timeSec)
+        let activeHits = aoiTracker.activeAOIs(
+            atTimeSec: clipTimeSec ?? timeSec,
+            xNorm: smoothedGaze.x,
+            yNorm: smoothedGaze.y
+        )
 
         let phase = fmod(timeSec, 16.0)
         let isSmiling = (phase < 4.0)
@@ -673,8 +648,8 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
         let sample = GazeTelemetrySample(
             timestampMs: timeSec * 1000.0,
             videoTimeSec: timeSec,
-            xNorm: gazePoint.x,
-            yNorm: gazePoint.y,
+            xNorm: smoothedGaze.x,
+            yNorm: smoothedGaze.y,
             confidence: 0.96,
             leftEyeOpenness: 0.95,
             rightEyeOpenness: 0.95,
@@ -704,9 +679,6 @@ public final class GazeSessionController: NSObject, ObservableObject, @unchecked
             self.volatileFrameBuffer.append(frame)
             frameBufferLock.unlock()
         }
-
-        let smoothedGaze = gazeFilter.filter(point: gazePoint, timestamp: timeSec)
-        let smoothedRaw = rawGazeFilter.filter(point: gazePoint, timestamp: timeSec)
 
         let state = GazeUIState(
             currentGazePoint: smoothedGaze,
@@ -970,15 +942,31 @@ extension GazeSessionController: ARSessionDelegate {
         let activeStimulusId = currentStimulusId
         let activeClipMediaTime = clipMediaTime
 
-        // Suppress false Area of Interest (AOI) hits during downward blink plunge
-        // AOI time windows align to the AVPlayer media clock when the periodic observer is live
+        // Smooth before hit testing so the stored fixation matches the reticle.
+        // Blink samples stay out of the filter and hold the last steady point.
+        let nowSec = Date().timeIntervalSince1970
+        let smoothedCalibrated: CGPoint
+        let smoothedRaw: CGPoint
+        if isOcularArtifact {
+            smoothedCalibrated = lastValidCalibratedPoint
+            smoothedRaw = lastValidRawPoint
+        } else {
+            smoothedCalibrated = gazeFilter.filter(point: calibratedPoint, timestamp: nowSec)
+            smoothedRaw = rawGazeFilter.filter(point: raycast.normalizedPoint, timestamp: nowSec)
+            lastValidCalibratedPoint = smoothedCalibrated
+            lastValidRawPoint = smoothedRaw
+        }
+
         let aoiTimeSec = activeClipMediaTime ?? clipElapsedSec
         let activeHits: [String] = isOcularArtifact
             ? []
-            : aoiTracker.activeAOIs(atTimeSec: aoiTimeSec, xNorm: calibratedPoint.x, yNorm: calibratedPoint.y)
+            : aoiTracker.activeAOIs(
+                atTimeSec: aoiTimeSec,
+                xNorm: smoothedCalibrated.x,
+                yNorm: smoothedCalibrated.y
+            )
 
-        // Hold last valid coordinate during blink instead of plunging down to screen bottom
-        let gazeCoord = isOcularArtifact ? lastValidCalibratedPoint : calibratedPoint
+        let gazeCoord = smoothedCalibrated
         let sampleIsValid = raycast.isWithinScreen && !isOcularArtifact
 
         let sample = GazeTelemetrySample(
@@ -1018,21 +1006,6 @@ extension GazeSessionController: ARSessionDelegate {
             stage = .gazeActive
         } else {
             stage = .eyesTracking(leftOpenness: leftEyeOpenness, rightOpenness: rightEyeOpenness)
-        }
-
-        let nowSec = Date().timeIntervalSince1970
-        let smoothedCalibrated: CGPoint
-        let smoothedRaw: CGPoint
-
-        if isOcularArtifact {
-            // Freeze gaze at last steady fixation — DO NOT pollute 1-Euro filter with downward plunge
-            smoothedCalibrated = lastValidCalibratedPoint
-            smoothedRaw = lastValidRawPoint
-        } else {
-            smoothedCalibrated = gazeFilter.filter(point: calibratedPoint, timestamp: nowSec)
-            smoothedRaw = rawGazeFilter.filter(point: raycast.normalizedPoint, timestamp: nowSec)
-            lastValidCalibratedPoint = smoothedCalibrated
-            lastValidRawPoint = smoothedRaw
         }
 
         // Buffer frame in volatile RAM without touching main thread

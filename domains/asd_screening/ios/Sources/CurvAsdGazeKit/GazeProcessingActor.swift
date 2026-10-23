@@ -304,16 +304,33 @@ public actor GazeProcessingActor {
             mouthFrownRight: shapes["mouthFrownRight"] ?? 0.0
         )
 
-        // 5. Query dynamic Area of Interest (AOI) bounding boxes (suppressed during ocular artifacts)
-        // AOI time windows align to the AVPlayer media clock when the periodic observer is live
+        // 5. 1-Euro adaptive low-pass BEFORE hit testing. AOI reaction and the stored
+        // sample follow the same point the reticle draws. Blink samples never enter the filter.
+        let nowSec = Date().timeIntervalSince1970
+        let smoothedCalibrated: CGPoint
+        let smoothedRaw: CGPoint
+        if isOcularArtifact {
+            smoothedCalibrated = lastValidCalibratedPoint
+            smoothedRaw = lastValidRawPoint
+        } else {
+            smoothedCalibrated = gazeFilter.filter(point: calibratedPoint, timestamp: nowSec)
+            smoothedRaw = rawGazeFilter.filter(point: raycast.normalizedPoint, timestamp: nowSec)
+            lastValidCalibratedPoint = smoothedCalibrated
+            lastValidRawPoint = smoothedRaw
+        }
+
+        // 6. AOI windows align to the AVPlayer media clock when the periodic observer is live.
         let clipElapsedSec = clipStartTime.map { Date().timeIntervalSince($0) } ?? elapsedSec
         let aoiTimeSec = clipMediaTimeSec ?? clipElapsedSec
         let activeHits: [String] = isOcularArtifact
             ? []
-            : aoiTracker.activeAOIs(atTimeSec: aoiTimeSec, xNorm: calibratedPoint.x, yNorm: calibratedPoint.y)
+            : aoiTracker.activeAOIs(
+                atTimeSec: aoiTimeSec,
+                xNorm: smoothedCalibrated.x,
+                yNorm: smoothedCalibrated.y
+            )
 
-        // 6. Evaluate Quality Gate tolerances (freeze coordinate at last valid position during blinks)
-        let gazeCoord = isOcularArtifact ? lastValidCalibratedPoint : calibratedPoint
+        let gazeCoord = smoothedCalibrated
         let sampleIsValid = raycast.isWithinScreen && !isOcularArtifact
 
         let sample = GazeTelemetrySample(
@@ -345,23 +362,7 @@ public actor GazeProcessingActor {
             stage = .eyesTracking(leftOpenness: leftEyeOpenness, rightOpenness: rightEyeOpenness)
         }
 
-        // 8. 1-Euro adaptive low-pass filter (isolated during blinks to prevent downward plunge)
-        let nowSec = Date().timeIntervalSince1970
-        let smoothedCalibrated: CGPoint
-        let smoothedRaw: CGPoint
-
-        if isOcularArtifact {
-            // Freeze gaze at last steady fixation — DO NOT pollute 1-Euro filter with downward plunge
-            smoothedCalibrated = lastValidCalibratedPoint
-            smoothedRaw = lastValidRawPoint
-        } else {
-            smoothedCalibrated = gazeFilter.filter(point: calibratedPoint, timestamp: nowSec)
-            smoothedRaw = rawGazeFilter.filter(point: raycast.normalizedPoint, timestamp: nowSec)
-            lastValidCalibratedPoint = smoothedCalibrated
-            lastValidRawPoint = smoothedRaw
-        }
-
-        // 9. Volatile RAM buffering (no disk writes during 60 Hz stream)
+        // 8. Volatile RAM buffering (no disk writes during 60 Hz stream)
         let frame = GazeFrame(
             gaze: sample,
             affect: affect,
@@ -418,7 +419,14 @@ public actor GazeProcessingActor {
             gazePoint = CGPoint(x: max(0.05, min(0.95, x)), y: max(0.05, min(0.95, y)))
         }
 
-        let activeHits = aoiTracker.activeAOIs(atTimeSec: timeSec, xNorm: gazePoint.x, yNorm: gazePoint.y)
+        let aoiTimeSec = clipMediaTimeSec ?? self.clipMediaTimeSec ?? timeSec
+        let smoothedGaze = gazeFilter.filter(point: gazePoint, timestamp: timeSec)
+        let smoothedRaw = rawGazeFilter.filter(point: gazePoint, timestamp: timeSec)
+        let activeHits = aoiTracker.activeAOIs(
+            atTimeSec: aoiTimeSec,
+            xNorm: smoothedGaze.x,
+            yNorm: smoothedGaze.y
+        )
 
         let phase = fmod(timeSec, 16.0)
         let isSmiling = (phase < 4.0)
@@ -446,8 +454,8 @@ public actor GazeProcessingActor {
         let sample = GazeTelemetrySample(
             timestampMs: timeSec * 1000.0,
             videoTimeSec: timeSec,
-            xNorm: gazePoint.x,
-            yNorm: gazePoint.y,
+            xNorm: smoothedGaze.x,
+            yNorm: smoothedGaze.y,
             confidence: 0.96,
             leftEyeOpenness: 0.95,
             rightEyeOpenness: 0.95,
@@ -475,9 +483,6 @@ public actor GazeProcessingActor {
         if isRecording {
             volatileFrameBuffer.append(frame)
         }
-
-        let smoothedGaze = gazeFilter.filter(point: gazePoint, timestamp: timeSec)
-        let smoothedRaw = rawGazeFilter.filter(point: gazePoint, timestamp: timeSec)
 
         return GazeUIState(
             currentGazePoint: smoothedGaze,

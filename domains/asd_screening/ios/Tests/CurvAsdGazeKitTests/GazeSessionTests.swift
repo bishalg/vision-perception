@@ -74,7 +74,7 @@ final class GazeSessionTests: XCTestCase {
 
     // MARK: - PLC-1, PLC-2: no placeholder measurements
 
-    func testNoFaceHitsGiveNilDwellRatios() {
+    func testNoFaceHitsGiveNilDwellRatios() throws {
         // GeoPref battery has no Eye_Region / Mouth_Region AOIs, so no face hit can occur.
         let controller = GazeSessionController()
         controller.startSimulatedSession(battery: .makeGeoPrefBattery())
@@ -85,10 +85,13 @@ final class GazeSessionTests: XCTestCase {
         XCTAssertEqual(summary.totalFrames, 60)
         XCTAssertNil(summary.eyeDwellRatio, "No eye/mouth hit must yield nil, never 0.28")
         XCTAssertNil(summary.mouthDwellRatio, "No eye/mouth hit must yield nil, never 0.14")
-        XCTAssertNil(summary.firstEyeLatencyMs, "No first-fixation detector exists; latency must be nil, never 480")
+        // GeoPref has a Social_Actor (orienting) AOI, so latency is measured, never the 480 default.
+        let latency = try XCTUnwrap(summary.firstEyeLatencyMs)
+        XCTAssertEqual(latency, 0.0, accuracy: 1e-6)
+        XCTAssertNotEqual(latency, 480.0)
     }
 
-    func testFaceHitsGiveMeasuredDwellRatiosAndNilLatency() {
+    func testFaceHitsGiveMeasuredDwellRatiosAndLatency() throws {
         let controller = GazeSessionController()
         // Calibration target sits inside the face battery's Eye_Region.
         controller.calibrationTarget = CGPoint(x: 0.5, y: 0.38)
@@ -99,7 +102,7 @@ final class GazeSessionTests: XCTestCase {
         let summary = controller.stopSession()
         XCTAssertEqual(summary.eyeDwellRatio, 1.0)
         XCTAssertEqual(summary.mouthDwellRatio, 0.0)
-        XCTAssertNil(summary.firstEyeLatencyMs)
+        XCTAssertEqual(try XCTUnwrap(summary.firstEyeLatencyMs), 0.0, accuracy: 1e-6)
     }
 
     func testStopAndPersistCarriesCaptureSourceIntoHeader() async throws {

@@ -31,7 +31,7 @@ final class GazeProcessingActorTests: XCTestCase {
     }
 
     #if ASD_SIMULATION_ENABLED
-    func testActorVolatileBufferingCapacity7200Frames() async {
+    func testActorVolatileBufferingCapacity7200Frames() async throws {
         let actor = GazeProcessingActor()
         await actor.startSimulatedSession()
 
@@ -61,7 +61,10 @@ final class GazeProcessingActorTests: XCTestCase {
         // Default GeoPref battery has no eye/mouth AOIs: ratios absent, never placeholders.
         XCTAssertNil(summary.eyeDwellRatio)
         XCTAssertNil(summary.mouthDwellRatio)
-        XCTAssertNil(summary.firstEyeLatencyMs)
+        // Latency is measured: the first smoothed fixation lands on Social_Actor at t = 0.
+        let latency = try XCTUnwrap(summary.firstEyeLatencyMs)
+        XCTAssertEqual(latency, 0.0, accuracy: 1e-6)
+        XCTAssertNotEqual(latency, 480.0)
         XCTAssertEqual(summary.interruptionCount, 0)
         XCTAssertEqual(summary.interruptedSec, 0)
 
@@ -85,7 +88,7 @@ final class GazeProcessingActorTests: XCTestCase {
         XCTAssertEqual(count, 0)
     }
 
-    func testLiveFinalizeCarriesTrueDepthAndNilPlaceholders() async {
+    func testLiveFinalizeCarriesTrueDepthAndNilPlaceholders() async throws {
         let actor = GazeProcessingActor()
         await actor.startSession()
         var transform = matrix_identity_float4x4
@@ -104,7 +107,9 @@ final class GazeProcessingActorTests: XCTestCase {
         XCTAssertEqual(summary.captureSource, .trueDepth)
         XCTAssertNil(summary.eyeDwellRatio)
         XCTAssertNil(summary.mouthDwellRatio)
-        XCTAssertNil(summary.firstEyeLatencyMs)
+        // Measured from the first orienting AOI hit (frame 0), never the old 480 ms default.
+        let latency = try XCTUnwrap(summary.firstEyeLatencyMs)
+        XCTAssertEqual(latency, 0.0, accuracy: 1e-6)
     }
 
     func testEmptyFinalizeIsRejectedWithNilMetrics() async {
