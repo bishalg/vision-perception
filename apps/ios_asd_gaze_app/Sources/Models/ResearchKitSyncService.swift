@@ -29,6 +29,24 @@ public enum ResearchSyncState: Sendable, Equatable {
     }
 }
 
+/// Transient-failure schedule for the research upload queue.
+/// Delays are 1s, 2s, 4s, 8s, then 60s. The next failure after that moves the payload to the dead-letter folder.
+public enum ResearchSyncRetryPolicy {
+    public static let delays: [TimeInterval] = [1, 2, 4, 8, 60]
+    /// Failures tolerated before a payload is stuck. One past the last delay.
+    public static let maxAttempts = delays.count + 1
+
+    public static func delay(afterAttempt attempt: Int) -> TimeInterval {
+        let index = min(max(attempt - 1, 0), delays.count - 1)
+        return delays[index]
+    }
+}
+
+private struct ResearchSyncFileMeta: Codable {
+    var attemptCount: Int
+    var nextAttemptAt: TimeInterval
+}
+
 /// Offline-first background synchronization client connecting ResearchKit to
 /// the pediatric research server (`tools/asd_research_server.py` / `/api/v1/research/ingest`).
 @MainActor
@@ -39,6 +57,8 @@ public final class ResearchKitSyncService: ObservableObject {
 
     @Published public private(set) var syncState: ResearchSyncState = .idle
     @Published public private(set) var pendingQueueCount: Int = 0
+    @Published public private(set) var deadLetterCount: Int = 0
+    @Published public private(set) var lastSyncedAt: Date?
     @Published public private(set) var isOnline: Bool = true
 
     private let store: ResearchKitStudyStore
@@ -48,17 +68,23 @@ public final class ResearchKitSyncService: ObservableObject {
     private let session: URLSession
     private let pathMonitor: NWPathMonitor?
     private let monitorQueue = DispatchQueue(label: "org.curv.researchkit.network", qos: .utility)
+    private let now: @Sendable () -> Date
+
+    private static let deadLetterFolder = "DeadLetter"
+    private static let quarantineFolder = "Quarantine"
 
     public init(
         store: ResearchKitStudyStore = .shared,
         serverURL: URL = URL(string: "http://127.0.0.1:8089/api/v1/research/ingest")!,
         queueDirectory: URL? = nil,
         session: URLSession = .shared,
-        startMonitoring: Bool = true
+        startMonitoring: Bool = true,
+        now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.store = store
         self.serverURL = serverURL
         self.session = session
+        self.now = now
 
         // Initialize local queue directory in app documents / sandbox or injected test directory
         if let queueDirectory {
@@ -126,6 +152,20 @@ public final class ResearchKitSyncService: ObservableObject {
     public func updatePendingCount() {
         let contents = (try? fileManager.contentsOfDirectory(at: queueDirectory, includingPropertiesForKeys: nil)) ?? []
         pendingQueueCount = contents.filter { $0.pathExtension == "json" }.count
+        let stuck = (try? fileManager.contentsOfDirectory(at: deadLetterDirectory, includingPropertiesForKeys: nil)) ?? []
+        deadLetterCount = stuck.filter { $0.pathExtension == "json" }.count
+    }
+
+    /// Move stuck payloads back onto the live queue so the next transmit can try them again.
+    public func retryDeadLetterItems() {
+        let stuck = (try? fileManager.contentsOfDirectory(at: deadLetterDirectory, includingPropertiesForKeys: nil)) ?? []
+        for file in stuck where file.pathExtension == "json" {
+            let dest = queueDirectory.appendingPathComponent(file.lastPathComponent)
+            try? fileManager.removeItem(at: dest)
+            try? fileManager.removeItem(at: metaURL(for: dest))
+            try? fileManager.moveItem(at: file, to: dest)
+        }
+        updatePendingCount()
     }
 
     // MARK: - Synchronization Dispatcher
@@ -145,7 +185,8 @@ public final class ResearchKitSyncService: ObservableObject {
         }
 
         if forceBundleCompile {
-            let latestBundle = store.compileStudyBundle()
+            let observations = MoodDiaryStore.shared.recentEntries.map { DiaryObservationRecord(entry: $0) }
+            let latestBundle = store.compileStudyBundle(diaryObservations: observations)
             enqueueStudyPayload(bundle: latestBundle)
         }
 
@@ -162,27 +203,49 @@ public final class ResearchKitSyncService: ObservableObject {
         Task {
             let files = (try? fileManager.contentsOfDirectory(at: queueDirectory, includingPropertiesForKeys: nil)) ?? []
             let jsonFiles = files.filter { $0.pathExtension == "json" }
+            let startedAt = now()
             var successCount = 0
+            var transientFailures = 0
+            var deferredCount = 0
+            var deadLettered = 0
             var lastReceipt = "RCPT-\(UUID().uuidString.prefix(6))"
 
             for file in jsonFiles {
+                let meta = loadMeta(for: file)
+                if meta.attemptCount > 0 && meta.nextAttemptAt > startedAt.timeIntervalSince1970 {
+                    deferredCount += 1
+                    continue
+                }
                 guard let data = try? Data(contentsOf: file) else { continue }
                 do {
                     let receipt = try await postPayload(data: data)
                     lastReceipt = receipt
                     try? fileManager.removeItem(at: file)
+                    try? fileManager.removeItem(at: metaURL(for: file))
                     successCount += 1
                 } catch let err as NSError {
                     Self.logger.error("Transmission failed for \(file.lastPathComponent, privacy: .public): \(err.localizedDescription, privacy: .public)")
                     // 4xx status codes indicate permanent payload/client errors.
                     // Quarantine so this file does not block future sync runs.
                     if (400...499).contains(err.code) {
-                        let quarantineDir = self.queueDirectory.appendingPathComponent("Quarantine", isDirectory: true)
-                        try? self.fileManager.createDirectory(at: quarantineDir, withIntermediateDirectories: true)
-                        let dest = quarantineDir.appendingPathComponent(file.lastPathComponent)
-                        try? self.fileManager.removeItem(at: dest)
-                        try? self.fileManager.moveItem(at: file, to: dest)
+                        moveAside(file, folderName: Self.quarantineFolder)
                         Self.logger.warning("Quarantined invalid payload \(file.lastPathComponent, privacy: .public) (HTTP \(err.code))")
+                    } else {
+                        let nextCount = meta.attemptCount + 1
+                        if nextCount >= ResearchSyncRetryPolicy.maxAttempts {
+                            moveAside(file, folderName: Self.deadLetterFolder)
+                            deadLettered += 1
+                            Self.logger.warning("Dead-lettered \(file.lastPathComponent, privacy: .public) after \(nextCount) attempts")
+                        } else {
+                            let delay = ResearchSyncRetryPolicy.delay(afterAttempt: nextCount)
+                            let updated = ResearchSyncFileMeta(
+                                attemptCount: nextCount,
+                                nextAttemptAt: now().timeIntervalSince1970 + delay
+                            )
+                            saveMeta(updated, for: file)
+                            transientFailures += 1
+                            Self.logger.info("Scheduled retry \(nextCount) for \(file.lastPathComponent, privacy: .public) in \(delay, privacy: .public)s")
+                        }
                     }
                 }
             }
@@ -190,22 +253,58 @@ public final class ResearchKitSyncService: ObservableObject {
             updatePendingCount()
 
             if successCount > 0 {
-                let now = Date()
-                syncState = .synced(timestamp: now, receiptId: lastReceipt)
+                let syncedAt = now()
+                lastSyncedAt = syncedAt
+                syncState = .synced(timestamp: syncedAt, receiptId: lastReceipt)
                 Self.logger.info("Successfully synced \(successCount) ResearchKit bundle(s). Receipt: \(lastReceipt, privacy: .public)")
                 completion?(true)
+            } else if deadLettered > 0 && pendingQueueCount == 0 {
+                syncState = .failed(reason: "Stuck items need a manual retry. Data safely queued.")
+                completion?(false)
             } else {
+                Self.logger.info("Sync held \(transientFailures) retryable failures and \(deferredCount) waiting payloads")
                 syncState = .failed(reason: "Unable to reach research server. Data safely queued.")
                 completion?(false)
             }
         }
     }
 
+    private var deadLetterDirectory: URL {
+        queueDirectory.appendingPathComponent(Self.deadLetterFolder, isDirectory: true)
+    }
+
+    private func metaURL(for file: URL) -> URL {
+        file.deletingPathExtension().appendingPathExtension("syncmeta")
+    }
+
+    private func loadMeta(for file: URL) -> ResearchSyncFileMeta {
+        guard let data = try? Data(contentsOf: metaURL(for: file)),
+              let meta = try? JSONDecoder().decode(ResearchSyncFileMeta.self, from: data) else {
+            return ResearchSyncFileMeta(attemptCount: 0, nextAttemptAt: 0)
+        }
+        return meta
+    }
+
+    private func saveMeta(_ meta: ResearchSyncFileMeta, for file: URL) {
+        guard let data = try? JSONEncoder().encode(meta) else { return }
+        try? data.write(to: metaURL(for: file), options: .atomic)
+    }
+
+    private func moveAside(_ file: URL, folderName: String) {
+        let dir = queueDirectory.appendingPathComponent(folderName, isDirectory: true)
+        try? fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
+        let dest = dir.appendingPathComponent(file.lastPathComponent)
+        try? fileManager.removeItem(at: dest)
+        try? fileManager.moveItem(at: file, to: dest)
+        try? fileManager.removeItem(at: metaURL(for: file))
+    }
+
     // MARK: - Direct Doctor Share Bundle
 
     /// Generates a complete doctor export bundle file URL in the temporary directory.
     public func generateDoctorShareFile() -> URL? {
-        let jsonString = store.exportResearchKitJSON()
+        let observations = MoodDiaryStore.shared.recentEntries.map { DiaryObservationRecord(entry: $0) }
+        let jsonString = store.exportResearchKitJSON(diaryObservations: observations)
         guard let data = jsonString.data(using: .utf8) else { return nil }
 
         let enrollment = store.fetchEnrollment()

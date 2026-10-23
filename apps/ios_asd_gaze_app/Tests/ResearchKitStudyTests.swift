@@ -286,6 +286,26 @@ final class ResearchKitStudyTests: XCTestCase {
         let json = self.researchStore.exportResearchKitJSON()
         XCTAssertTrue(json.contains("STUDY-ASD-SHA256"))
         XCTAssertTrue(json.contains("ORKActiveStepResult"))
+        XCTAssertTrue(json.contains("v1.5"))
+    }
+
+    func testStudyBundleCarriesDiaryEmotionAndRecognition() {
+        let entry = MoodDiaryEntry(
+            emotion: .joy,
+            recognition: .respondedToName,
+            intensity: 0.7,
+            durationMinutes: 8,
+            tags: [.therapy],
+            notes: "Called their name at the table",
+            source: .manual
+        )
+        let bundle = researchStore.compileStudyBundle(diaryObservations: [DiaryObservationRecord(entry: entry)])
+        let rows = bundle["diaryObservations"] as? [[String: Any]]
+        XCTAssertEqual(rows?.count, 1)
+        XCTAssertEqual(rows?.first?["emotion"] as? String, "joy")
+        XCTAssertEqual(rows?.first?["recognition"] as? String, "respondedToName")
+        XCTAssertEqual(rows?.first?["notesPresent"] as? Bool, true)
+        XCTAssertNil(rows?.first?["notes"])
     }
 
     // MARK: - Helper

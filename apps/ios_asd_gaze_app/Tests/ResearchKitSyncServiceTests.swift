@@ -332,4 +332,170 @@ final class ResearchKitSyncServiceTests: XCTestCase {
             XCTFail("Expected syncState to be synced on auto-flush")
         }
     }
+
+    @MainActor
+    func testExponentialBackoffTiming() {
+        XCTAssertEqual(ResearchSyncRetryPolicy.delays, [1, 2, 4, 8, 60])
+        XCTAssertEqual(ResearchSyncRetryPolicy.delay(afterAttempt: 1), 1)
+        XCTAssertEqual(ResearchSyncRetryPolicy.delay(afterAttempt: 2), 2)
+        XCTAssertEqual(ResearchSyncRetryPolicy.delay(afterAttempt: 3), 4)
+        XCTAssertEqual(ResearchSyncRetryPolicy.delay(afterAttempt: 4), 8)
+        XCTAssertEqual(ResearchSyncRetryPolicy.delay(afterAttempt: 5), 60)
+        XCTAssertEqual(ResearchSyncRetryPolicy.delay(afterAttempt: 99), 60)
+
+        let clock = SyncTestClock()
+        let sig = ORKConsentSignature(guardianFullName: "Backoff Parent", signatureToken: "SIG-BACKOFF")
+        researchStore.saveConsent(signature: sig, participantId: "STUDY-BACKOFF")
+        let service = ResearchKitSyncService(
+            store: researchStore,
+            queueDirectory: tempQueueDir,
+            session: mockSession,
+            startMonitoring: false,
+            now: { clock.instant }
+        )
+        service.enqueueStudyPayload(bundle: ["study": "CURV-ASD", "backoff": true])
+
+        let hits = HitCounter()
+        MockURLProtocol.requestHandler = { _ in
+            hits.count += 1
+            throw URLError(.cannotConnectToHost)
+        }
+
+        waitForSync(service, forceBundleCompile: false)
+        XCTAssertEqual(hits.count, 1)
+        var meta = readSyncMeta()
+        XCTAssertEqual(meta?.attemptCount, 1)
+        XCTAssertEqual(meta?.nextAttemptAt ?? 0, clock.instant.timeIntervalSince1970 + 1, accuracy: 0.001)
+
+        let hitsBeforeEarlyRetry = hits.count
+        waitForSync(service, forceBundleCompile: false)
+        XCTAssertEqual(hits.count, hitsBeforeEarlyRetry, "A payload must wait out its backoff before the next attempt")
+        XCTAssertEqual(service.pendingQueueCount, 1)
+
+        let expectedDelays: [TimeInterval] = [2, 4, 8, 60]
+        for delay in expectedDelays {
+            clock.advance(120)
+            waitForSync(service, forceBundleCompile: false)
+            meta = readSyncMeta()
+            XCTAssertEqual(meta?.nextAttemptAt ?? 0, clock.instant.timeIntervalSince1970 + delay, accuracy: 0.001)
+        }
+        XCTAssertEqual(service.deadLetterCount, 0)
+    }
+
+    @MainActor
+    func testDeadLetterAfterMaxRetries() {
+        let clock = SyncTestClock()
+        let sig = ORKConsentSignature(guardianFullName: "Dead Letter Parent", signatureToken: "SIG-DEAD")
+        researchStore.saveConsent(signature: sig, participantId: "STUDY-DEAD")
+        let service = ResearchKitSyncService(
+            store: researchStore,
+            queueDirectory: tempQueueDir,
+            session: mockSession,
+            startMonitoring: false,
+            now: { clock.instant }
+        )
+        service.enqueueStudyPayload(bundle: ["study": "CURV-ASD", "exhaust": true])
+
+        MockURLProtocol.requestHandler = { _ in
+            throw URLError(.timedOut)
+        }
+
+        for _ in 0..<ResearchSyncRetryPolicy.maxAttempts {
+            clock.advance(120)
+            waitForSync(service, forceBundleCompile: false)
+        }
+
+        XCTAssertEqual(service.pendingQueueCount, 0)
+        XCTAssertEqual(service.deadLetterCount, 1)
+        if case .failed(let reason) = service.syncState {
+            XCTAssertTrue(reason.contains("manual retry"))
+        } else {
+            XCTFail("Expected a stuck-item failure after the retry budget")
+        }
+    }
+
+    @MainActor
+    func testManualRetryFromDeadLetter() {
+        let clock = SyncTestClock()
+        let sig = ORKConsentSignature(guardianFullName: "Retry Parent", signatureToken: "SIG-RETRY")
+        researchStore.saveConsent(signature: sig, participantId: "STUDY-RETRY")
+        let service = ResearchKitSyncService(
+            store: researchStore,
+            queueDirectory: tempQueueDir,
+            session: mockSession,
+            startMonitoring: false,
+            now: { clock.instant }
+        )
+        service.enqueueStudyPayload(bundle: ["study": "CURV-ASD", "retryStuck": true])
+
+        MockURLProtocol.requestHandler = { _ in
+            throw URLError(.networkConnectionLost)
+        }
+        for _ in 0..<ResearchSyncRetryPolicy.maxAttempts {
+            clock.advance(120)
+            waitForSync(service, forceBundleCompile: false)
+        }
+        XCTAssertEqual(service.deadLetterCount, 1)
+
+        service.retryDeadLetterItems()
+        XCTAssertEqual(service.pendingQueueCount, 1)
+        XCTAssertEqual(service.deadLetterCount, 0)
+
+        MockURLProtocol.requestHandler = { request in
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: ["Content-Type": "application/json"]
+            )!
+            let data = """
+            {"status": "ingested", "receipt_id": "RCPT-RETRY-STUCK"}
+            """.data(using: .utf8)!
+            return (response, data)
+        }
+
+        waitForSync(service, forceBundleCompile: false)
+        XCTAssertEqual(service.pendingQueueCount, 0)
+        XCTAssertEqual(service.deadLetterCount, 0)
+        XCTAssertNotNil(service.lastSyncedAt)
+        if case .synced(_, let receipt) = service.syncState {
+            XCTAssertEqual(receipt, "RCPT-RETRY-STUCK")
+        } else {
+            XCTFail("Expected the retried payload to sync")
+        }
+    }
+
+    @MainActor
+    private func waitForSync(_ service: ResearchKitSyncService, forceBundleCompile: Bool) {
+        let exp = expectation(description: "sync")
+        service.syncNow(forceBundleCompile: forceBundleCompile) { _ in
+            exp.fulfill()
+        }
+        wait(for: [exp], timeout: 5.0)
+    }
+
+    private func readSyncMeta() -> ResearchSyncFileMetaSnapshot? {
+        let files = (try? FileManager.default.contentsOfDirectory(at: tempQueueDir, includingPropertiesForKeys: nil)) ?? []
+        guard let metaURL = files.first(where: { $0.pathExtension == "syncmeta" }),
+              let data = try? Data(contentsOf: metaURL) else {
+            return nil
+        }
+        return try? JSONDecoder().decode(ResearchSyncFileMetaSnapshot.self, from: data)
+    }
+}
+
+private struct ResearchSyncFileMetaSnapshot: Codable {
+    var attemptCount: Int
+    var nextAttemptAt: TimeInterval
+}
+
+private final class SyncTestClock: @unchecked Sendable {
+    var instant = Date(timeIntervalSince1970: 1_700_000_000)
+    func advance(_ seconds: TimeInterval) {
+        instant = instant.addingTimeInterval(seconds)
+    }
+}
+
+private final class HitCounter: @unchecked Sendable {
+    var count = 0
 }

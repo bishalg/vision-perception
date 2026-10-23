@@ -576,6 +576,51 @@ public struct StudyParticipantMetadata: Sendable, Codable, Equatable {
     }
 }
 
+/// De-identified diary row. Free-text notes stay on device; only whether notes exist is exported.
+public struct DiaryObservationRecord: Sendable, Codable, Equatable {
+    public let loggedAt: String
+    public let emotion: String
+    public let recognition: String
+    public let intensity: Double
+    public let durationMinutes: Double
+    public let tags: [String]
+    public let source: String
+    public let notesPresent: Bool
+
+    public init(
+        loggedAt: String,
+        emotion: String,
+        recognition: String,
+        intensity: Double,
+        durationMinutes: Double,
+        tags: [String],
+        source: String,
+        notesPresent: Bool
+    ) {
+        self.loggedAt = loggedAt
+        self.emotion = emotion
+        self.recognition = recognition
+        self.intensity = intensity
+        self.durationMinutes = durationMinutes
+        self.tags = tags
+        self.source = source
+        self.notesPresent = notesPresent
+    }
+
+    public init(entry: MoodDiaryEntry) {
+        self.init(
+            loggedAt: ISO8601DateFormatter().string(from: entry.loggedAt),
+            emotion: entry.emotion.rawValue,
+            recognition: (entry.recognition ?? .notObserved).rawValue,
+            intensity: entry.intensity,
+            durationMinutes: entry.durationMinutes,
+            tags: entry.tags.map(\.rawValue),
+            source: entry.source.rawValue,
+            notesPresent: !entry.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        )
+    }
+}
+
 public struct ResearchKitStudyPackage: Sendable, Codable, Equatable {
     public let bundleType: String
     public let schemaVersion: String
@@ -585,17 +630,19 @@ public struct ResearchKitStudyPackage: Sendable, Codable, Equatable {
     public let participant: StudyParticipantMetadata
     public let taskResults: [ORKTaskResult]
     public let surveys: [MCHATScoreResult]
+    public let diaryObservations: [DiaryObservationRecord]
     public var payloadSha256: String?
 
     public init(
         bundleType: String = "ResearchKitStudyPackage",
-        schemaVersion: String = "v1.4",
+        schemaVersion: String = "v1.5",
         compiledAt: String = ISO8601DateFormatter().string(from: Date()),
         studyIdentifier: String = "CURV-ASD-GAZE-2026",
         irbProtocolId: String = "IRB-ASD-2026-088",
         participant: StudyParticipantMetadata,
         taskResults: [ORKTaskResult] = [],
         surveys: [MCHATScoreResult] = [],
+        diaryObservations: [DiaryObservationRecord] = [],
         payloadSha256: String? = nil
     ) {
         self.bundleType = bundleType
@@ -606,7 +653,41 @@ public struct ResearchKitStudyPackage: Sendable, Codable, Equatable {
         self.participant = participant
         self.taskResults = taskResults
         self.surveys = surveys
+        self.diaryObservations = diaryObservations
         self.payloadSha256 = payloadSha256
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case bundleType, schemaVersion, compiledAt, studyIdentifier, irbProtocolId
+        case participant, taskResults, surveys, diaryObservations, payloadSha256
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        bundleType = try container.decode(String.self, forKey: .bundleType)
+        schemaVersion = try container.decode(String.self, forKey: .schemaVersion)
+        compiledAt = try container.decode(String.self, forKey: .compiledAt)
+        studyIdentifier = try container.decode(String.self, forKey: .studyIdentifier)
+        irbProtocolId = try container.decode(String.self, forKey: .irbProtocolId)
+        participant = try container.decode(StudyParticipantMetadata.self, forKey: .participant)
+        taskResults = try container.decodeIfPresent([ORKTaskResult].self, forKey: .taskResults) ?? []
+        surveys = try container.decodeIfPresent([MCHATScoreResult].self, forKey: .surveys) ?? []
+        diaryObservations = try container.decodeIfPresent([DiaryObservationRecord].self, forKey: .diaryObservations) ?? []
+        payloadSha256 = try container.decodeIfPresent(String.self, forKey: .payloadSha256)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(bundleType, forKey: .bundleType)
+        try container.encode(schemaVersion, forKey: .schemaVersion)
+        try container.encode(compiledAt, forKey: .compiledAt)
+        try container.encode(studyIdentifier, forKey: .studyIdentifier)
+        try container.encode(irbProtocolId, forKey: .irbProtocolId)
+        try container.encode(participant, forKey: .participant)
+        try container.encode(taskResults, forKey: .taskResults)
+        try container.encode(surveys, forKey: .surveys)
+        try container.encode(diaryObservations, forKey: .diaryObservations)
+        try container.encodeIfPresent(payloadSha256, forKey: .payloadSha256)
     }
 }
 

@@ -216,11 +216,11 @@ public final class ResearchKitStudyStore: @unchecked Sendable {
 
     /// Compile a de-identified ResearchKit study bundle ready for transmission
     /// to the doctor or research server, including SHA-256 cryptographic digest.
-    public func compileStudyBundle() -> [String: Any] {
-        researchQueue.sync { compileStudyBundleDirect() }
+    public func compileStudyBundle(diaryObservations: [DiaryObservationRecord] = []) -> [String: Any] {
+        researchQueue.sync { compileStudyBundleDirect(diaryObservations: diaryObservations) }
     }
 
-    private func compileStudyBundleDirect() -> [String: Any] {
+    private func compileStudyBundleDirect(diaryObservations: [DiaryObservationRecord]) -> [String: Any] {
         let profile = fetchEnrollmentDirect()
         let tasks = fetchStoredTaskResults()
         let surveys = fetchStoredSurveyResults()
@@ -235,7 +235,8 @@ public final class ResearchKitStudyStore: @unchecked Sendable {
         var package = ResearchKitStudyPackage(
             participant: participant,
             taskResults: tasks,
-            surveys: surveys
+            surveys: surveys,
+            diaryObservations: diaryObservations
         )
 
         let encoder = JSONEncoder()
@@ -253,7 +254,7 @@ public final class ResearchKitStudyStore: @unchecked Sendable {
     }
 
     /// Export study bundle as a pretty-printed JSON string.
-    public func exportResearchKitJSON() -> String {
+    public func exportResearchKitJSON(diaryObservations: [DiaryObservationRecord] = []) -> String {
         let profile = fetchEnrollmentDirect()
         let tasks = fetchStoredTaskResults()
         let surveys = fetchStoredSurveyResults()
@@ -268,7 +269,8 @@ public final class ResearchKitStudyStore: @unchecked Sendable {
         var package = ResearchKitStudyPackage(
             participant: participant,
             taskResults: tasks,
-            surveys: surveys
+            surveys: surveys,
+            diaryObservations: diaryObservations
         )
 
         let encoder = JSONEncoder()
