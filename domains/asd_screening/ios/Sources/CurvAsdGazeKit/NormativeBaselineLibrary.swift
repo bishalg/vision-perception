@@ -117,7 +117,7 @@ public enum NormativeBaselineLibrary {
         return try? decoder.decode(NormativeBaselineSet.self, from: data)
     }
 
-    /// Validates coverage: every video referenced by the standard 10-clip battery has a profile,
+    /// Validates coverage: every catalog clip id passed in has a profile,
     /// and every expectation resolves for every declared bracket. Returns human-readable problems.
     public static func validate(_ set: NormativeBaselineSet, requiredVideoIds: [String]) -> [String] {
         var problems: [String] = []

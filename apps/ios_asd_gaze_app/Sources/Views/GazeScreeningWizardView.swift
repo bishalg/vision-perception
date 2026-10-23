@@ -98,8 +98,12 @@ public struct GazeScreeningWizardView: View {
                 ))
 
             case .stimulus:
-                let durationSec = Double(ChildProfileStore.shared.profile.sessionDurationSec)
-                let activePlaylist = StimulusPlaylistBattery.playlist(forTargetDuration: durationSec)
+                let profile = ChildProfileStore.shared.profile
+                let durationSec = Double(profile.sessionDurationSec)
+                let activePlaylist = StimulusPlaylistBattery.playlist(
+                    forTargetDuration: durationSec,
+                    ageMonths: profile.ageBracket.midpointMonths
+                )
                 GazeStimulusScreeningView(
                     playlist: activePlaylist,
                     onComplete: { summary, frames in
