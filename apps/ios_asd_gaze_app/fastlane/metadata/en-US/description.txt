@@ -1,21 +1,23 @@
-EarlyGaze is an at-home developmental visual attention observation and monitoring tool designed for parents and caregivers to track social engagement patterns in toddlers aged 12–60 months.
+EarlyGaze Observation Diary helps parents and caregivers keep a private record of how a young child engages with the world, alongside everyday notes.
 
-Using the iPhone's front-facing TrueDepth camera, EarlyGaze captures real-time 3D gaze direction and facial affect during standardized visual engagement activities (social versus geometric preference, face scanning, and joint attention tasks). Continuous digital engagement metrics are computed entirely on-device — including social visual preference, eye dwell ratio, first-eye orienting latency, and shared facial expressivity.
+Part of Open Spectrum Tracking: parents' daily observations become structured, shareable records, and you decide whether to share them with your child's clinician.
 
-Key Features:
-• Zero Raw Video Storage — camera frames are processed strictly in volatile RAM; no photos or videos of your child are ever stored or transmitted
-• 30-second Express & 60-second Standard observation sessions
-• Standardized M-CHAT-R/F 20-item caregiver questionnaire with instant review
-• Clinician-ready PDF export summarizing visual engagement trends for pediatrician visits
-• CareKit longitudinal tracking: milestone tracker, caregiver mood diary, and routine logs
-• Standardized health interoperability exports (FHIR R4 format) for pediatric records
-• 100% On-Device Processing powered by the Apple Neural Engine (ANE)
+What you can do:
+• Watch short, child-friendly videos while the front TrueDepth camera notes where your child looks and how their face moves, as simple engagement measures
+• Keep a mood diary, milestone list and medication log in one place
+• Review each session as an easy-to-read engagement summary
+• Export a PDF summary to bring to a pediatrician visit
+• Share standard health records (FHIR R4 format) only when you choose
 
-Scientific Foundation:
-EarlyGaze visual engagement metrics reference published pediatric research, including the GeoPref paradigm (Pierce et al., UC San Diego) and Duke University SenseToKnow visual attention studies.
+Privacy first:
+• Camera frames are processed in memory on your device and are never saved or sent anywhere
+• Session data stays on your device, encrypted and excluded from backups
+• You can delete everything from Settings
 
-IMPORTANT MEDICAL DISCLAIMER:
-EarlyGaze is an observational developmental monitoring aid and educational screening reference. It is NOT a medical device, does NOT provide a diagnosis of Autism Spectrum Disorder (ASD) or any medical condition, and does NOT replace professional pediatric or psychiatric evaluation. Always seek the advice of a qualified pediatrician or licensed healthcare professional with any questions regarding your child's developmental health or before making any medical decisions.
+Requires an iPhone with a TrueDepth front camera (iPhone X or later) and iOS 18 or later.
 
-Learn more: https://curv.engineering/asd-gaze
+This is not a diagnostic tool.
+EarlyGaze Observation Diary does not diagnose any condition, is not a medical device, and does not replace advice from a qualified pediatrician or other licensed professional. Talk to your child's doctor about any concerns about their development.
+
 Contact: support@curv.engineering
+Learn more: https://curv.engineering/asd-gaze

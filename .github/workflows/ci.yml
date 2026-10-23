@@ -39,6 +39,18 @@ jobs:
       - name: Check iOS/Android parity contract (see docs/mobile_parity.md)
         run: ./scripts/check_mobile_parity.py
 
+  asd-claims:
+    name: ASD Gaze claims and secrets gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Denylist selftest (seeded failures must be detected)
+        run: python3 scripts/check_asd_claims.py --selftest
+      - name: Store metadata claims (all locales, iOS + Android)
+        run: python3 scripts/check_asd_claims.py
+      - name: No personal identifiers in fastlane
+        run: python3 scripts/check_asd_claims.py --secrets
+
   format-check:
     name: Format (clang-format)
     runs-on: ubuntu-latest

@@ -1,18 +1,17 @@
-EarlyGaze is an at-home developmental visual attention observation and screening tool designed for parents and pediatricians to track social engagement and focus patterns in children aged 12–60 months.
+EarlyGaze Observation Diary helps parents and caregivers keep a private record of how a young child engages with the world, alongside everyday notes.
 
-Using advanced front-facing eye tracking and computer vision, EarlyGaze captures objective visual engagement markers during standardized visual stimuli (social versus geometric preference, joint attention, and face scanning tasks). Digital biomarkers are computed 100% on-device — including gaze fixation duration, saccade frequency, dwell ratio, and attention shifts.
+Part of Open Spectrum Tracking: parents' daily observations become structured, shareable records, and you decide whether to share them with your child's clinician.
 
-KEY SCREENING & MONITORING FEATURES:
-• 100% Video-Free Privacy: Camera video streams are analyzed strictly in temporary device memory. No photos or video recordings of your child are ever stored or transmitted.
-• Objective Visual Attention Metrics: Scientifically grounded visual preference paradigms measuring social response latency and gaze stability.
-• Standardized M-CHAT-R/F Integration: Integrated 20-item Modified Checklist for Autism in Toddlers with instant scoring and follow-up guidance.
-• Comprehensive Pediatric PDF Reports: Generate clear, objective visual engagement summaries to share directly with your child's pediatrician or developmental specialist.
-• Longitudinal Progress Tracking: Monitor attention milestones, developmental shifts, and sensory routines over time.
+What you can do:
+• Watch short, child-friendly videos while the front camera notes where your child looks, as simple engagement measures
+• Keep a mood diary, milestone list and medication log in one place
+• Review each session as an easy-to-read engagement summary
+• Export a PDF summary to bring to a pediatrician visit
 
-SCIENTIFIC FOUNDATION:
-EarlyGaze visual engagement paradigms draw on published research in pediatric visual attention, including the GeoPref paradigm and digital biomarker studies from leading neurodevelopmental laboratories.
+Privacy first:
+• Camera frames are processed in memory on your device and are never saved or sent anywhere
+• Session data stays on your device
+• You can delete everything from Settings
 
-IMPORTANT MEDICAL DISCLAIMER:
-EarlyGaze is an observational screening aid and developmental monitoring reference for parents and caregivers. It is NOT a diagnostic medical device, does NOT diagnose Autism Spectrum Disorder (ASD), ADHD, or any medical condition, and does NOT replace comprehensive evaluation by a licensed pediatrician or child psychologist. Always consult a qualified medical professional regarding developmental concerns.
-
-Download EarlyGaze today to understand and support your child's unique developmental journey.
+This is not a diagnostic tool.
+EarlyGaze Observation Diary does not diagnose any condition, is not a medical device, and does not replace advice from a qualified pediatrician or other licensed professional. Talk to your child's doctor about any concerns about their development.
