@@ -1,4 +1,5 @@
 import CareKitStore
+import CurvAsdGazeKit
 import XCTest
 @testable import AsdGazeCollector
 
@@ -78,7 +79,7 @@ final class CarePlanStoreTests: XCTestCase {
         let store = makeStore()
         let initialSessions = store.weeklyHistory.last?.sessionCount ?? 0
 
-        store.markScreeningCompleted(socialScore: 0.65)
+        store.markScreeningCompleted(captureSource: .trueDepth, socialScore: 0.65)
 
         // Observation task should be completed
         let observationTask = store.tasks.first(where: { $0.category == .observation })
@@ -88,6 +89,70 @@ final class CarePlanStoreTests: XCTestCase {
         // Latest weekly history session count should increment
         let updatedSessions = store.weeklyHistory.last?.sessionCount ?? 0
         XCTAssertEqual(updatedSessions, initialSessions + 1)
+    }
+
+    /// SIM-5: a simulated session changes no care-plan state and writes nothing to CareKit.
+    @MainActor
+    func testMarkScreeningCompletedIgnoresSimulatedSession() {
+        let suite = "CarePlanStoreTests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let ockStore = OCKStore(name: "TestCarePlanSim-\(UUID().uuidString)", type: .inMemory)
+        let store = CarePlanStore(clinicalStore: CareKitClinicalStore(store: ockStore), defaults: defaults)
+        if let idx = store.tasks.firstIndex(where: { $0.category == .observation }) {
+            store.tasks[idx].isCompleted = false
+        }
+        let historyBefore = store.weeklyHistory.map(\.sessionCount)
+
+        store.markScreeningCompleted(
+            captureSource: .simulated,
+            socialScore: 0.9,
+            summary: .fixture(captureSource: .simulated)
+        )
+
+        XCTAssertEqual(store.tasks.first(where: { $0.category == .observation })?.isCompleted, false)
+        XCTAssertEqual(store.weeklyHistory.map(\.sessionCount), historyBefore)
+        XCTAssertTrue(store.pendingCareKitCounts.isEmpty, "no CareKit write may be started")
+    }
+
+    /// Delete-all removes every persisted care-plan key, the in-memory state and the CareKit mirror.
+    @MainActor
+    func testDeleteAllCarePlanDataClearsStateKeysAndCareKitMirror() {
+        let suite = "CarePlanStoreTests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let ockStore = OCKStore(name: "TestCarePlanDelete-\(UUID().uuidString)", type: .inMemory)
+        let store = CarePlanStore(clinicalStore: CareKitClinicalStore(store: ockStore), defaults: defaults)
+        store.updateNotes("Private caregiver note")
+        if let first = store.tasks.first { store.toggleTask(id: first.id) }
+        XCTAssertFalse(defaults.dictionaryRepresentation().keys.filter { $0.hasPrefix("org.curv.asd.careplan.") }.isEmpty)
+
+        let done = expectation(description: "care plan data deleted")
+        store.deleteAllCarePlanData { done.fulfill() }
+        wait(for: [done], timeout: 10.0)
+
+        XCTAssertTrue(store.tasks.isEmpty)
+        XCTAssertTrue(store.medications.isEmpty)
+        XCTAssertTrue(store.diaryHistory.isEmpty)
+        XCTAssertTrue(store.diaryReminderSlots.isEmpty)
+        XCTAssertTrue(store.milestones.isEmpty)
+        XCTAssertTrue(store.weeklyHistory.isEmpty)
+        XCTAssertEqual(store.diaryEntry.notes, "")
+        XCTAssertTrue(
+            defaults.dictionaryRepresentation().keys.filter { $0.hasPrefix("org.curv.asd.careplan.") }.isEmpty,
+            "no care-plan key may survive deletion"
+        )
+
+        let fetched = expectation(description: "fetch tasks")
+        var remaining: [OCKTask] = []
+        var query = OCKTaskQuery(dateInterval: DateInterval(start: .distantPast, end: Date().addingTimeInterval(86_400 * 365)))
+        query.excludesTasksWithNoEvents = false
+        ockStore.fetchTasks(query: query, callbackQueue: .main) { result in
+            remaining = (try? result.get()) ?? []
+            fetched.fulfill()
+        }
+        wait(for: [fetched], timeout: 5.0)
+        XCTAssertTrue(remaining.isEmpty, "the CareKit mirror must be emptied too")
     }
 
     @MainActor

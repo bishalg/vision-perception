@@ -1,4 +1,5 @@
 import CareKitStore
+import CurvAsdGazeKit
 import Foundation
 import os
 
@@ -108,19 +109,34 @@ public final class CareKitClinicalStore: @unchecked Sendable {
         return (hour, minute)
     }
 
-    /// Outcome values for a completed screening session.
+    /// Outcome values for a completed screening session: [social score, valid frame %, date].
     public static func screeningOutcomeValues(
         socialScore: Double,
         validFramePercentage: Double,
-        completedAt: Date,
-        riskScore: Double? = nil,
-        riskStratification: String? = nil
+        completedAt: Date
     ) -> [OCKOutcomeValue] {
-        var values = [
+        [
             OCKOutcomeValue(socialScore),
             OCKOutcomeValue(validFramePercentage),
             OCKOutcomeValue(completedAt),
         ]
+    }
+
+    #if ASD_RESEARCH_CLASSIFIER
+    /// Research builds only (CLM-3): the heuristic classifier's score and label are
+    /// appended to the outcome. Release builds never compile or write these fields.
+    public static func screeningOutcomeValues(
+        socialScore: Double,
+        validFramePercentage: Double,
+        completedAt: Date,
+        riskScore: Double?,
+        riskStratification: String?
+    ) -> [OCKOutcomeValue] {
+        var values = screeningOutcomeValues(
+            socialScore: socialScore,
+            validFramePercentage: validFramePercentage,
+            completedAt: completedAt
+        )
         if let risk = riskScore {
             values.append(OCKOutcomeValue(risk))
         }
@@ -129,6 +145,7 @@ public final class CareKitClinicalStore: @unchecked Sendable {
         }
         return values
     }
+    #endif
 
     /// Outcome values for a toggled daily task.
     public static func taskCompletionValues(completed: Bool, completedAt: Date?) -> [OCKOutcomeValue] {
@@ -181,17 +198,70 @@ public final class CareKitClinicalStore: @unchecked Sendable {
         }
     }
 
-    /// Records a completed gaze screening session with its scores and ML risk stratification.
+    /// Records a completed gaze screening session with its scores. Simulated sessions
+    /// are ignored (SIM-5): nothing is seeded or written, and `completion` still fires.
     /// `completion` fires on the main actor once the outcome is written.
     public func recordScreeningOutcome(
+        captureSource: CaptureSource,
         socialScore: Double,
         validFramePercentage: Double,
         knownTasks: [CarePlanTask],
-        riskScore: Double? = nil,
-        riskStratification: String? = nil,
         date: Date = Date(),
         completion: (@Sendable () -> Void)? = nil
     ) {
+        recordScreeningOutcome(
+            captureSource: captureSource,
+            knownTasks: knownTasks,
+            date: date,
+            values: Self.screeningOutcomeValues(
+                socialScore: socialScore,
+                validFramePercentage: validFramePercentage,
+                completedAt: date
+            ),
+            completion: completion
+        )
+    }
+
+    #if ASD_RESEARCH_CLASSIFIER
+    /// Research builds only (CLM-3): also stores the heuristic classifier's score and label.
+    public func recordScreeningOutcome(
+        captureSource: CaptureSource,
+        socialScore: Double,
+        validFramePercentage: Double,
+        knownTasks: [CarePlanTask],
+        riskScore: Double?,
+        riskStratification: String?,
+        date: Date = Date(),
+        completion: (@Sendable () -> Void)? = nil
+    ) {
+        recordScreeningOutcome(
+            captureSource: captureSource,
+            knownTasks: knownTasks,
+            date: date,
+            values: Self.screeningOutcomeValues(
+                socialScore: socialScore,
+                validFramePercentage: validFramePercentage,
+                completedAt: date,
+                riskScore: riskScore,
+                riskStratification: riskStratification
+            ),
+            completion: completion
+        )
+    }
+    #endif
+
+    private func recordScreeningOutcome(
+        captureSource: CaptureSource,
+        knownTasks: [CarePlanTask],
+        date: Date,
+        values: [OCKOutcomeValue],
+        completion: (@Sendable () -> Void)?
+    ) {
+        guard captureSource != .simulated else {
+            Self.logger.info("Ignoring simulated screening session for CareKit")
+            Self.dispatch(completion)
+            return
+        }
         mutationQueue.async {
             self.performSeed(tasks: knownTasks, on: date)
             guard let observation = knownTasks.first(where: { $0.category == .observation }) else {
@@ -199,13 +269,6 @@ public final class CareKitClinicalStore: @unchecked Sendable {
                 return
             }
             self.ensureTask(Self.makeTask(from: observation, startOfDay: Calendar.current.startOfDay(for: date)))
-            let values = Self.screeningOutcomeValues(
-                socialScore: socialScore,
-                validFramePercentage: validFramePercentage,
-                completedAt: date,
-                riskScore: riskScore,
-                riskStratification: riskStratification
-            )
             self.upsertOutcome(taskID: "ock_\(observation.id)", date: date, values: values)
             Self.dispatch(completion)
         }
@@ -281,6 +344,28 @@ public final class CareKitClinicalStore: @unchecked Sendable {
                 self.deleteTasksNow([existing])
             }
             Self.dispatch(completion)
+        }
+    }
+
+    // MARK: - Deletion
+
+    /// Deletes every task, outcome and other record in the CareKit store, resetting it
+    /// to its initial state (care-plan deletion, CNS-6). Queued behind any pending
+    /// write so nothing recorded before the call survives it. `completion` receives
+    /// `true` on success and fires on the main actor.
+    public func deleteAllRecords(completion: (@Sendable (Bool) -> Void)? = nil) {
+        mutationQueue.async {
+            var succeeded = true
+            do {
+                try self.store.reset()
+                Self.logger.info("Deleted all CareKit records")
+            } catch {
+                succeeded = false
+                Self.logger.error("CareKit reset failed: \(error.localizedDescription, privacy: .public)")
+            }
+            guard let completion else { return }
+            let result = succeeded
+            DispatchQueue.main.async { completion(result) }
         }
     }
 

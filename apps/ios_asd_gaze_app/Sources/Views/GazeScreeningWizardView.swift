@@ -8,7 +8,7 @@ public enum ScreeningWizardStep: Equatable {
     case calibrating
     case gate
     case stimulus
-    case summary(GazeSessionReportSummary, [GazeFrame], BiomarkerClassificationResult)
+    case summary(GazeSessionReportSummary, [GazeFrame])
 
     public static func == (lhs: ScreeningWizardStep, rhs: ScreeningWizardStep) -> Bool {
         switch (lhs, rhs) {
@@ -89,9 +89,9 @@ public struct GazeScreeningWizardView: View {
                 let activePlaylist = StimulusPlaylistBattery.playlist(forTargetDuration: durationSec)
                 GazeStimulusScreeningView(
                     playlist: activePlaylist,
-                    onComplete: { summary, frames, classification in
+                    onComplete: { summary, frames in
                         withAnimation(.easeInOut(duration: 0.25)) {
-                            step = .summary(summary, frames, classification)
+                            step = .summary(summary, frames)
                         }
                     },
                     onAbort: {
@@ -103,11 +103,11 @@ public struct GazeScreeningWizardView: View {
                     removal: .move(edge: .leading).combined(with: .opacity)
                 ))
 
-            case .summary(let summary, let frames, let classification):
+            case .summary(let summary, let frames):
+                // The result view runs the Debug-only classifier itself when compiled (CLM-3).
                 GazeSessionResultView(
                     summary: summary,
                     recordedFrames: frames,
-                    classification: classification,
                     onDismiss: {
                         withAnimation(.easeInOut(duration: 0.3)) { step = .positioning }
                     },

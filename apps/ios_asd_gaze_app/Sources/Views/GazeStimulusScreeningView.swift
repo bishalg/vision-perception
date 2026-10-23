@@ -27,7 +27,7 @@ public struct GazeStimulusScreeningView: View {
     public let proceduralMode: ProceduralStimulusMode?
 
     // Callbacks
-    public let onComplete: (GazeSessionReportSummary, [GazeFrame], BiomarkerClassificationResult) -> Void
+    public let onComplete: (GazeSessionReportSummary, [GazeFrame]) -> Void
     public let onAbort: () -> Void
 
     public var sessionDurationSec: Double {
@@ -43,7 +43,7 @@ public struct GazeStimulusScreeningView: View {
     public init(
         playlist: [StimulusPlaylistItem] = StimulusPlaylistBattery.standard30s,
         proceduralMode: ProceduralStimulusMode? = nil,
-        onComplete: @escaping (GazeSessionReportSummary, [GazeFrame], BiomarkerClassificationResult) -> Void,
+        onComplete: @escaping (GazeSessionReportSummary, [GazeFrame]) -> Void,
         onAbort: @escaping () -> Void
     ) {
         self.playlist = playlist.isEmpty ? StimulusPlaylistBattery.standard30s : playlist
@@ -55,7 +55,7 @@ public struct GazeStimulusScreeningView: View {
     public init(
         videoName: String = "stim_05_geopref_split_10s",
         proceduralMode: ProceduralStimulusMode? = nil,
-        onComplete: @escaping (GazeSessionReportSummary, [GazeFrame], BiomarkerClassificationResult) -> Void,
+        onComplete: @escaping (GazeSessionReportSummary, [GazeFrame]) -> Void,
         onAbort: @escaping () -> Void
     ) {
         self.playlist = [
@@ -472,6 +472,7 @@ public struct GazeStimulusScreeningView: View {
                 let mediaClockActive = currentClipMediaTimeSec > 0.01
                 let effectiveClipTime = mediaClockActive ? currentClipMediaTimeSec : currentClipElapsedSec
 
+                #if ASD_SIMULATION_ENABLED
                 if controller.isSimulationMode {
                     controller.tickSimulatedFrame(
                         timeSec: elapsedSeconds,
@@ -480,6 +481,7 @@ public struct GazeStimulusScreeningView: View {
                         clipMediaTimeSec: mediaClockActive ? currentClipMediaTimeSec : nil
                     )
                 }
+                #endif
 
                 // Cartoon animation
                 cartoonBounce = sin(elapsedSeconds * 4.2) * 9.0
@@ -526,9 +528,14 @@ public struct GazeStimulusScreeningView: View {
 
     private func finishSession() {
         stopSession()
+        // `nil` when nothing recorded (live tracking unavailable): no sink receives
+        // the empty summary in that case.
+        let recordedSource = controller.captureSource
         let summary = controller.stopSession()
         let frames = controller.recordedFrames
+        #if ASD_RESEARCH_CLASSIFIER
         let classification = BiomarkerClassificationEngine.shared.classifySync(summary: summary)
+        #endif
         let activeBatteryName = proceduralMode?.rawValue ?? (playlist.count > 1 ? "MultiClipBattery_\(playlist.count)Clips" : (currentClip?.videoName ?? "SingleClip"))
 
         // Per-stimulus expected-vs-recorded scoring against the bundled provisional baseline.
@@ -542,52 +549,83 @@ public struct GazeStimulusScreeningView: View {
             )
         }
 
-        // Norm-collection contribution: only for consented + opted-in live (non-simulation) sessions.
-        let collectionMetadata = NormCollectionGate.collectionMetadata(
-            enrollment: ResearchKitStudyStore.shared.fetchEnrollment(),
-            childAgeMonths: childAgeMonths,
-            isSimulationMode: controller.isSimulationMode
-        )
+        if recordedSource != nil {
+            // Norm-collection contribution: only for consented + opted-in live TrueDepth sessions.
+            let collectionMetadata = NormCollectionGate.collectionMetadata(
+                enrollment: ResearchKitStudyStore.shared.fetchEnrollment(),
+                childAgeMonths: childAgeMonths,
+                captureSource: summary.captureSource
+            )
 
-        // Persist encrypted vault off main thread (frames now carry per-clip stimulus attribution)
-        Task.detached(priority: .userInitiated) {
-            let vault = SessionVaultManager()
-            let header = SessionHeader(
-                sessionId: summary.sessionId,
-                participantToken: "child-\(summary.sessionId.prefix(6))",
-                stimulusBattery: activeBatteryName,
-                stimulusDurationSec: summary.durationSec
+            // Persist encrypted vault off main thread (frames now carry per-clip stimulus attribution)
+            Task.detached(priority: .userInitiated) {
+                let vault = SessionVaultManager()
+                let header = SessionHeader(
+                    sessionId: summary.sessionId,
+                    participantToken: "child-\(summary.sessionId.prefix(6))",
+                    stimulusBattery: activeBatteryName,
+                    stimulusDurationSec: summary.durationSec,
+                    captureSource: summary.captureSource
+                )
+                #if ASD_RESEARCH_CLASSIFIER
+                _ = try? vault.saveSession(
+                    header: header,
+                    frames: frames,
+                    report: summary,
+                    classification: classification,
+                    perVideoScore: perVideoScore,
+                    collectionMetadata: collectionMetadata
+                )
+                #else
+                _ = try? vault.saveSession(
+                    header: header,
+                    frames: frames,
+                    report: summary,
+                    perVideoScore: perVideoScore,
+                    collectionMetadata: collectionMetadata
+                )
+                #endif
+            }
+
+            // History record (schema v1.6 carries the per-video matrix for trend + export).
+            // Pseudonymous token, never the child's name (CNS-7); simulated sessions are
+            // ignored by the store (SIM-5).
+            GazeSessionHistoryStore.shared.record(
+                GazeSessionRecord(
+                    summary: summary,
+                    participantToken: GazeSessionRecord.participantToken(
+                        enrollment: ResearchKitStudyStore.shared.fetchEnrollment(),
+                        sessionId: summary.sessionId
+                    ),
+                    perVideoComposite: perVideoScore?.compositeScore,
+                    perVideo: perVideoScore?.videos
+                )
             )
-            _ = try? vault.saveSession(
-                header: header,
-                frames: frames,
-                report: summary,
-                classification: classification,
-                perVideoScore: perVideoScore,
-                collectionMetadata: collectionMetadata
+
+            // CareKit sync (both ignore simulated sessions, SIM-5)
+            CarePlanStore.shared.markScreeningCompleted(
+                captureSource: summary.captureSource,
+                socialScore: summary.socialPreferenceScore
             )
+            #if ASD_RESEARCH_CLASSIFIER
+            CareKitClinicalStore.shared.recordScreeningOutcome(
+                captureSource: summary.captureSource,
+                socialScore: summary.socialPreferenceScore,
+                validFramePercentage: summary.validRatio * 100.0,
+                knownTasks: CarePlanStore.shared.tasks,
+                riskScore: classification.riskScore,
+                riskStratification: classification.riskStratification.rawValue
+            )
+            #else
+            CareKitClinicalStore.shared.recordScreeningOutcome(
+                captureSource: summary.captureSource,
+                socialScore: summary.socialPreferenceScore,
+                validFramePercentage: summary.validRatio * 100.0,
+                knownTasks: CarePlanStore.shared.tasks
+            )
+            #endif
         }
 
-        // History record (schema v1.5 carries the per-video matrix for trend + export)
-        GazeSessionHistoryStore.shared.record(
-            GazeSessionRecord(
-                summary: summary,
-                participantId: ChildProfileStore.shared.profile.childName,
-                perVideoComposite: perVideoScore?.compositeScore,
-                perVideo: perVideoScore?.videos
-            )
-        )
-
-        // CareKit sync
-        CarePlanStore.shared.markScreeningCompleted(socialScore: summary.socialPreferenceScore)
-        CareKitClinicalStore.shared.recordScreeningOutcome(
-            socialScore: summary.socialPreferenceScore,
-            validFramePercentage: summary.validRatio * 100.0,
-            knownTasks: CarePlanStore.shared.tasks,
-            riskScore: classification.riskScore,
-            riskStratification: classification.riskStratification.rawValue
-        )
-
-        onComplete(summary, frames, classification)
+        onComplete(summary, frames)
     }
 }

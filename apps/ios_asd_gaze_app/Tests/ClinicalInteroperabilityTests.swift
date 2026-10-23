@@ -49,11 +49,10 @@ final class ClinicalInteroperabilityTests: XCTestCase {
     // MARK: - FHIR R4 Observation Generation Tests
 
     func testFHIRObservationGeneration() {
-        let gazeRecord = GazeSessionRecord(
+        let gazeRecord = GazeSessionRecord.fixture(
             sessionId: "SESS-FHIR-001",
             participantId: "STUDY-ASD-TEST1",
             startedAt: Date(),
-            endedAt: Date().addingTimeInterval(45),
             durationSec: 45.0,
             socialPreferenceScore: 0.68,
             validFrameRatio: 0.96,
@@ -64,10 +63,12 @@ final class ClinicalInteroperabilityTests: XCTestCase {
             qualityVerdict: "optimal"
         )
 
-        let fhirObs = FHIRInteroperabilityMapper.makeFHIRObservation(
+        guard let fhirObs = FHIRInteroperabilityMapper.makeFHIRObservation(
             from: gazeRecord,
             participantId: "STUDY-ASD-TEST1"
-        )
+        ) else {
+            return XCTFail("live TrueDepth record must export")
+        }
 
         XCTAssertEqual(fhirObs["resourceType"], .string("Observation"))
         XCTAssertEqual(fhirObs["status"], .string("final"))
@@ -128,11 +129,10 @@ final class ClinicalInteroperabilityTests: XCTestCase {
     // MARK: - OMOP CDM v5.4 Measurement Generation Tests
 
     func testOMOPMeasurementsGeneration() {
-        let gazeRecord = GazeSessionRecord(
+        let gazeRecord = GazeSessionRecord.fixture(
             sessionId: "SESS-OMOP-001",
             participantId: "P001",
             startedAt: Date(),
-            endedAt: Date().addingTimeInterval(60),
             durationSec: 60.0,
             socialPreferenceScore: 0.75,
             validFrameRatio: 0.94,
@@ -159,6 +159,93 @@ final class ClinicalInteroperabilityTests: XCTestCase {
         let socialRow = measurements.first(where: { $0.standardName == "Social Visual Preference Score" })
         XCTAssertNotNil(socialRow)
         XCTAssertEqual(socialRow?.valueAsNumber, 0.75)
+    }
+
+    // MARK: - SIM-5: simulated input is refused
+
+    func testFHIRObservationRefusesSimulatedRecord() {
+        let simulated = GazeSessionRecord.fixture(
+            sessionId: "SESS-SIM-001",
+            captureSource: .simulated,
+            eyeDwellRatio: 0.5,
+            mouthDwellRatio: 0.2
+        )
+        XCTAssertNil(FHIRInteroperabilityMapper.makeFHIRObservation(from: simulated, participantId: "child-SIM"))
+        XCTAssertNil(simulated.toFHIRObservation())
+        XCTAssertNil(simulated.toFHIRObservation(basedOn: "SR-1"))
+    }
+
+    func testOMOPMeasurementsRefuseSimulatedRecord() {
+        let simulated = GazeSessionRecord.fixture(captureSource: .simulated, firstEyeLatencyMs: 300)
+        XCTAssertTrue(FHIRInteroperabilityMapper.makeOMOPMeasurements(from: simulated, personId: "1").isEmpty)
+        XCTAssertTrue(simulated.toOMOPMeasurements(personId: "1").isEmpty)
+    }
+
+    // MARK: - PLC-3: absent metrics are absent components / rows
+
+    private func componentTexts(_ obs: [String: AnyCodableValue]) -> [String] {
+        guard case let .array(components)? = obs["component"] else { return [] }
+        return components.compactMap { component -> String? in
+            guard case let .dictionary(dict) = component,
+                  case let .dictionary(code)? = dict["code"],
+                  case let .string(text)? = code["text"] else { return nil }
+            return text
+        }
+    }
+
+    private func componentCodes(_ obs: [String: AnyCodableValue]) -> [String] {
+        guard case let .array(components)? = obs["component"] else { return [] }
+        return components.flatMap { component -> [String] in
+            guard case let .dictionary(dict) = component,
+                  case let .dictionary(code)? = dict["code"],
+                  case let .array(codings)? = code["coding"] else { return [] }
+            return codings.compactMap { coding in
+                guard case let .dictionary(c) = coding, case let .string(value)? = c["code"] else { return nil }
+                return value
+            }
+        }
+    }
+
+    func testFHIRObservationOmitsAbsentMetricComponents() throws {
+        let record = GazeSessionRecord.fixture(eyeDwellRatio: nil, mouthDwellRatio: nil, firstEyeLatencyMs: nil)
+        let obs = try XCTUnwrap(FHIRInteroperabilityMapper.makeFHIRObservation(from: record, participantId: "child-1"))
+        let texts = componentTexts(obs)
+        XCTAssertFalse(componentCodes(obs).contains("8692-2"), "no first-look latency component without a measurement")
+        XCTAssertFalse(texts.contains("First Eye Fixation Latency"))
+        XCTAssertFalse(texts.contains("Eye Region Dwell Ratio"))
+        XCTAssertFalse(texts.contains("Mouth Region Dwell Ratio"))
+        XCTAssertTrue(texts.contains("Social Visual Preference Score"))
+        XCTAssertTrue(texts.contains("Valid Frame Quality Ratio"))
+    }
+
+    func testFHIRObservationIncludesMeasuredDwellComponents() throws {
+        let record = GazeSessionRecord.fixture(eyeDwellRatio: 0.6, mouthDwellRatio: 0.4, firstEyeLatencyMs: nil)
+        let obs = try XCTUnwrap(FHIRInteroperabilityMapper.makeFHIRObservation(from: record, participantId: "child-1"))
+        let texts = componentTexts(obs)
+        XCTAssertTrue(texts.contains("Eye Region Dwell Ratio"))
+        XCTAssertTrue(texts.contains("Mouth Region Dwell Ratio"))
+        XCTAssertFalse(componentCodes(obs).contains("8692-2"))
+    }
+
+    func testOMOPMeasurementsOmitAbsentRows() {
+        let record = GazeSessionRecord.fixture(eyeDwellRatio: nil, mouthDwellRatio: nil, firstEyeLatencyMs: nil)
+        let rows = FHIRInteroperabilityMapper.makeOMOPMeasurements(from: record, personId: "10001")
+        XCTAssertEqual(rows.map(\.standardName), ["Social Visual Preference Score"])
+        XCTAssertFalse(rows.contains { $0.measurementConceptId == 37048700 })
+    }
+
+    func testLegacyProvenanceRecordIsLabelledInFHIR() throws {
+        let legacy = GazeSessionRecord.fixture(legacyProvenance: true)
+        let obs = try XCTUnwrap(FHIRInteroperabilityMapper.makeFHIRObservation(from: legacy, participantId: "child-1"))
+        guard case let .dictionary(meta)? = obs["meta"], case let .array(tags)? = meta["tag"],
+              case let .dictionary(tag)? = tags.first else {
+            return XCTFail("legacy record must carry a meta.tag")
+        }
+        XCTAssertEqual(tag["code"], .string("legacy-provenance"))
+
+        let live = GazeSessionRecord.fixture()
+        let liveObs = try XCTUnwrap(FHIRInteroperabilityMapper.makeFHIRObservation(from: live, participantId: "child-1"))
+        XCTAssertNil(liveObs["meta"], "records with recorded provenance carry no legacy tag")
     }
 
     // MARK: - Outcome Assessment Taxonomy Tests

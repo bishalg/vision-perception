@@ -202,6 +202,70 @@ final class ResearchKitStudyTests: XCTestCase {
         XCTAssertTrue(completed.last?.requiresFollowUpInterview ?? false)
     }
 
+    // MARK: - CLM-4: M-CHAT-R/F display names
+
+    func testMCHATRiskLevelRawValuesAreUnchangedBecauseTheyArePersisted() {
+        XCTAssertEqual(MCHATRiskLevel.low.rawValue, "Low Risk")
+        XCTAssertEqual(MCHATRiskLevel.medium.rawValue, "Medium Risk")
+        XCTAssertEqual(MCHATRiskLevel.high.rawValue, "High Risk")
+        let decoded = try? JSONDecoder().decode([MCHATRiskLevel].self, from: Data(#"["Low Risk","Medium Risk","High Risk"]"#.utf8))
+        XCTAssertEqual(decoded, [.low, .medium, .high])
+    }
+
+    func testMCHATRiskLevelDisplayNameNamesInstrumentAndNextStep() {
+        XCTAssertEqual(
+            MCHATRiskLevel.medium.displayName,
+            "M-CHAT-R/F: medium (follow-up interview needed; discuss with your pediatrician)"
+        )
+        XCTAssertEqual(
+            MCHATRiskLevel.high.displayName,
+            "M-CHAT-R/F: high (follow-up needed; discuss with your pediatrician soon)"
+        )
+        XCTAssertEqual(
+            MCHATRiskLevel.low.displayName,
+            "M-CHAT-R/F: low (no follow-up needed now; discuss any concerns with your pediatrician)"
+        )
+        for level in [MCHATRiskLevel.low, .medium, .high] {
+            XCTAssertTrue(level.displayName.hasPrefix("M-CHAT-R/F: "))
+            XCTAssertTrue(level.displayName.contains("pediatrician"))
+            XCTAssertFalse(level.displayName.localizedCaseInsensitiveContains("risk"), "no bare risk label (CLM-4)")
+        }
+    }
+
+    // MARK: - SIM-5: active step results keep absent metrics absent
+
+    func testActiveStepResultKeepsAbsentMetricsAbsent() throws {
+        let result = ORKActiveStepResult(summary: .fixture(eyeDwellRatio: nil, mouthDwellRatio: nil, firstEyeLatencyMs: nil))
+        XCTAssertNil(result.eyeDwellRatio)
+        XCTAssertNil(result.mouthDwellRatio)
+        XCTAssertNil(result.firstEyeLatencyMs)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(result)) as? [String: Any])
+        XCTAssertNil(json["firstEyeLatencyMs"])
+        XCTAssertNil(json["eyeDwellRatio"])
+    }
+
+    @MainActor
+    func testSimulatedScreeningNeverReachesResearchStore() {
+        let clinicalStore = CareKitClinicalStore(store: OCKStore(name: "TestSimDual-\(UUID().uuidString)", type: .inMemory))
+        let suite = "ResearchKitStudyTests-care-\(UUID().uuidString)"
+        let careDefaults = UserDefaults(suiteName: suite)!
+        defer { careDefaults.removePersistentDomain(forName: suite) }
+        let carePlanStore = CarePlanStore(clinicalStore: clinicalStore, researchStore: researchStore, defaults: careDefaults)
+
+        let sig = ORKConsentSignature(guardianFullName: "Test Parent", signatureToken: "SIG-SIM-01")
+        let consentExp = expectation(description: "consent set")
+        researchStore.saveConsent(signature: sig, participantId: "STUDY-ASD-SIM01") { _ in consentExp.fulfill() }
+        wait(for: [consentExp], timeout: 5.0)
+
+        let summary = GazeSessionReportSummary.fixture(sessionId: "sess_sim", captureSource: .simulated)
+        carePlanStore.markScreeningCompleted(captureSource: summary.captureSource, socialScore: 0.5, summary: summary)
+
+        let waitExp = expectation(description: "research queue settles")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { waitExp.fulfill() }
+        wait(for: [waitExp], timeout: 5.0)
+        XCTAssertTrue(researchStore.fetchCompletedTaskResults().isEmpty)
+    }
+
     // MARK: - Active Step & Parallel Dual-Store Writes
 
     func testActiveStepResultRequiresConsent() {
@@ -232,6 +296,7 @@ final class ResearchKitStudyTests: XCTestCase {
         // 4. Mark screening completed
         let summary = sampleSummary(socialScore: 0.84)
         carePlanStore.markScreeningCompleted(
+            captureSource: summary.captureSource,
             socialScore: 0.84,
             validFramePercentage: 96.0,
             summary: summary
@@ -311,7 +376,7 @@ final class ResearchKitStudyTests: XCTestCase {
     // MARK: - Helper
 
     private func sampleSummary(socialScore: Double) -> GazeSessionReportSummary {
-        GazeSessionReportSummary(
+        .fixture(
             sessionId: "sess_unit_test",
             durationSec: 15.0,
             totalFrames: 900,
@@ -322,7 +387,7 @@ final class ResearchKitStudyTests: XCTestCase {
             geometricDwellSec: 5.0,
             eyeDwellRatio: 0.48,
             mouthDwellRatio: 0.26,
-            firstEyeLatencyMs: 280.0,
+            firstEyeLatencyMs: nil,
             socialSmileIntensityMean: 0.70,
             smileReactivityIndex: 0.78,
             flatAffectScore: 0.15,

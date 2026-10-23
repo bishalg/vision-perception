@@ -35,7 +35,11 @@ public struct MainGazeScannerView: View {
     @State private var elapsedSeconds: Double = 0.0
     @State private var cartoonBlink: Bool = false
     @State private var cartoonBounce: CGFloat = 0.0
+    #if ASD_RESEARCH_CLASSIFIER
     @State private var presentedReport: (summary: GazeSessionReportSummary, frames: [GazeFrame], classification: BiomarkerClassificationResult)?
+    #else
+    @State private var presentedReport: (summary: GazeSessionReportSummary, frames: [GazeFrame])?
+    #endif
     @State private var showCalibrationSheet: Bool = false
 
     public var onClose: (() -> Void)?
@@ -97,6 +101,7 @@ public struct MainGazeScannerView: View {
                 set: { if !$0 { presentedReport = nil } }
             )) {
                 if let rep = presentedReport {
+                    #if ASD_RESEARCH_CLASSIFIER
                     GazeSessionResultView(
                         summary: rep.summary,
                         recordedFrames: rep.frames,
@@ -107,6 +112,17 @@ public struct MainGazeScannerView: View {
                             startSessionLoop()
                         }
                     )
+                    #else
+                    GazeSessionResultView(
+                        summary: rep.summary,
+                        recordedFrames: rep.frames,
+                        onDismiss: { presentedReport = nil },
+                        onRetake: {
+                            presentedReport = nil
+                            startSessionLoop()
+                        }
+                    )
+                    #endif
                 }
             }
             .fullScreenCover(isPresented: $showCalibrationSheet) {
@@ -642,14 +658,22 @@ public struct MainGazeScannerView: View {
                 Label("Reset Observation", systemImage: "arrow.counterclockwise")
             }
 
+            #if ASD_SIMULATION_ENABLED
+            // Debug-only (SIM-3/SIM-6): simulation is entered explicitly, never as a fallback.
             Button(action: {
-                controller.isSimulationMode.toggle()
+                elapsedSeconds = 0.0
+                if controller.isSimulationMode {
+                    controller.startSession()
+                } else {
+                    controller.startSimulatedSession()
+                }
             }) {
                 Label(
                     controller.isSimulationMode ? "Switch to TrueDepth" : "Switch to Simulation",
                     systemImage: controller.isSimulationMode ? "camera.viewfinder" : "cpu"
                 )
             }
+            #endif
 
             Button(action: handleNavigateToCalibration) {
                 Label("Calibrate Gaze", systemImage: "target")
@@ -697,59 +721,80 @@ public struct MainGazeScannerView: View {
 
     private func completeSession() {
         sessionTimer?.invalidate()
+        // `nil` when nothing recorded (live tracking unavailable): no sink receives
+        // the empty summary in that case.
+        let recordedSource = controller.captureSource
         let summary = controller.stopSession()
         let frames = controller.recordedFrames
 
-        // 1. Run ML inference on Apple Neural Engine (ANE)
+        #if ASD_RESEARCH_CLASSIFIER
+        // 1. Research builds only (CLM-3): heuristic classifier.
         let classification = BiomarkerClassificationEngine.shared.classifySync(summary: summary)
+        #endif
 
-        // 1b. Build the de-identified session record and persist it to the
-        // on-device history (dashboard trends, weekly badges, doctor report).
-        let enrollment = ResearchKitStudyStore.shared.fetchEnrollment()
-        let participantCode = enrollment.isConsented
-            ? enrollment.participantId
-            : "child-\(summary.sessionId.prefix(8))"
-        GazeSessionHistoryStore.shared.record(
-            GazeSessionRecord(summary: summary, participantId: participantCode)
-        )
+        if recordedSource != nil {
+            // 1b. Build the de-identified session record and persist it to the
+            // on-device history (dashboard trends, weekly badges, doctor report).
+            // The history store ignores simulated sessions (SIM-5).
+            let participantToken = GazeSessionRecord.participantToken(
+                enrollment: ResearchKitStudyStore.shared.fetchEnrollment(),
+                sessionId: summary.sessionId
+            )
+            GazeSessionHistoryStore.shared.record(
+                GazeSessionRecord(summary: summary, participantToken: participantToken)
+            )
 
-        // 2. Batch encrypt & persist volatile RAM frames to disk atomically off main thread
-        Task.detached(priority: .userInitiated) {
-            let vault = SessionVaultManager()
-            let header = SessionHeader(
-                sessionId: summary.sessionId,
-                participantToken: "child-\(summary.sessionId.prefix(6))",
-                stimulusBattery: "GeoPref_v1",
-                stimulusDurationSec: summary.durationSec
+            // 2. Batch encrypt & persist volatile RAM frames to disk atomically off main thread
+            Task.detached(priority: .userInitiated) {
+                let vault = SessionVaultManager()
+                let header = SessionHeader(
+                    sessionId: summary.sessionId,
+                    participantToken: "child-\(summary.sessionId.prefix(6))",
+                    stimulusBattery: "GeoPref_v1",
+                    stimulusDurationSec: summary.durationSec,
+                    captureSource: summary.captureSource
+                )
+                #if ASD_RESEARCH_CLASSIFIER
+                _ = try? vault.saveSession(
+                    header: header,
+                    frames: frames,
+                    report: summary,
+                    classification: classification
+                )
+                #else
+                _ = try? vault.saveSession(header: header, frames: frames, report: summary)
+                #endif
+            }
+
+            // 3. Mark in CarePlan (which mirrors the outcome into CareKit and compiles
+            // the ResearchKit step result from the full summary). Both ignore
+            // simulated sessions (SIM-5).
+            CarePlanStore.shared.markScreeningCompleted(
+                captureSource: summary.captureSource,
+                socialScore: summary.socialPreferenceScore,
+                validFramePercentage: summary.validRatio * 100.0,
+                summary: summary
             )
-            _ = try? vault.saveSession(
-                header: header,
-                frames: frames,
-                report: summary,
-                classification: classification
+            #if ASD_RESEARCH_CLASSIFIER
+            CareKitClinicalStore.shared.recordScreeningOutcome(
+                captureSource: summary.captureSource,
+                socialScore: summary.socialPreferenceScore,
+                validFramePercentage: summary.validRatio * 100.0,
+                knownTasks: CarePlanStore.shared.tasks,
+                riskScore: classification.riskScore,
+                riskStratification: classification.riskStratification.rawValue
             )
+            #endif
         }
-
-        // 3. Mark in CarePlan and CareKit store (with the full summary so the
-        // ResearchKit track compiles the ORK step result, using the measured
-        // validity instead of the placeholder default).
-        CarePlanStore.shared.markScreeningCompleted(
-            socialScore: summary.socialPreferenceScore,
-            validFramePercentage: summary.validRatio * 100.0,
-            summary: summary
-        )
-        CareKitClinicalStore.shared.recordScreeningOutcome(
-            socialScore: summary.socialPreferenceScore,
-            validFramePercentage: summary.validRatio * 100.0,
-            knownTasks: CarePlanStore.shared.tasks,
-            riskScore: classification.riskScore,
-            riskStratification: classification.riskStratification.rawValue
-        )
 
         if let onComplete {
             onComplete(summary, frames)
         } else {
+            #if ASD_RESEARCH_CLASSIFIER
             presentedReport = (summary, frames, classification)
+            #else
+            presentedReport = (summary, frames)
+            #endif
         }
     }
 
@@ -759,9 +804,11 @@ public struct MainGazeScannerView: View {
         sessionTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { _ in
             MainActor.assumeIsolated {
                 elapsedSeconds += 1.0 / 60.0
+                #if ASD_SIMULATION_ENABLED
                 if controller.isSimulationMode {
                     controller.tickSimulatedFrame(timeSec: elapsedSeconds)
                 }
+                #endif
 
                 // Gentle cartoon bounce and blink animation
                 cartoonBounce = sin(elapsedSeconds * 4.0) * 8.0

@@ -298,6 +298,8 @@ public final class CarePlanStore: ObservableObject {
     private let clinicalStore: CareKitClinicalStore
     /// Injected research-record backend running in parallel to CareKit for study tracking.
     private let researchStore: ResearchKitStudyStore
+    /// Persistence for care-plan state (`.standard` in production; a suite in tests).
+    private let defaults: UserDefaults
 
     @Published public var tasks: [CarePlanTask] = []
     @Published public var diaryEntry: DailyDiaryEntry = DailyDiaryEntry()
@@ -320,12 +322,17 @@ public final class CarePlanStore: ObservableObject {
     private let historyKey = "org.curv.asd.careplan.history"
     private let milestonesKey = "org.curv.asd.careplan.milestones.v2"
 
+    /// Prefix shared by every persisted care-plan key.
+    public static let keyPrefix = "org.curv.asd.careplan."
+
     public init(
         clinicalStore: CareKitClinicalStore = .shared,
-        researchStore: ResearchKitStudyStore = .shared
+        researchStore: ResearchKitStudyStore = .shared,
+        defaults: UserDefaults = .standard
     ) {
         self.clinicalStore = clinicalStore
         self.researchStore = researchStore
+        self.defaults = defaults
         loadState()
         Task { await resyncAlerts() }
     }
@@ -558,11 +565,15 @@ public final class CarePlanStore: ObservableObject {
     }
 
     /// Record completion of a gaze screening session in both CareKit and ResearchKit.
+    /// Simulated sessions are ignored entirely (SIM-5): no task, trend, CareKit or
+    /// ResearchKit state changes.
     public func markScreeningCompleted(
+        captureSource: CaptureSource,
         socialScore: Double,
         validFramePercentage: Double = 94.0,
         summary: GazeSessionReportSummary? = nil
     ) {
+        guard captureSource != .simulated, summary?.captureSource != .simulated else { return }
         if let index = tasks.firstIndex(where: { $0.category == .observation }) {
             tasks[index].isCompleted = true
             tasks[index].completedAt = Date()
@@ -585,6 +596,7 @@ public final class CarePlanStore: ObservableObject {
             pendingCareKitCounts[observation.id, default: 0] += 1
         }
         clinicalStore.recordScreeningOutcome(
+            captureSource: captureSource,
             socialScore: socialScore, validFramePercentage: validFramePercentage, knownTasks: tasks
         ) { [weak self] in
             Task { @MainActor in
@@ -612,6 +624,26 @@ public final class CarePlanStore: ObservableObject {
                 completion?(result)
             }
         }
+    }
+
+    /// Deletes every care-plan record (CNS-6, after its own confirmation): all
+    /// persisted `org.curv.asd.careplan.*` keys, the in-memory state, and the
+    /// CareKit mirror (`CareKitClinicalStore.deleteAllRecords`). Defaults are
+    /// re-seeded on the next launch. `completion` fires on the main actor once the
+    /// CareKit mirror has been reset.
+    public func deleteAllCarePlanData(completion: (@Sendable () -> Void)? = nil) {
+        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(Self.keyPrefix) {
+            defaults.removeObject(forKey: key)
+        }
+        tasks = []
+        diaryEntry = DailyDiaryEntry()
+        diaryHistory = []
+        diaryReminderSlots = []
+        medications = []
+        weeklyHistory = []
+        milestones = []
+        pendingCareKitCounts = [:]
+        clinicalStore.deleteAllRecords { _ in completion?() }
     }
 
     /// Exports clinical CareKit summary adhering to OCKCarePlanActivity structure.
@@ -657,7 +689,7 @@ public final class CarePlanStore: ObservableObject {
 
     private func loadState() {
         // Load tasks or initialize defaults
-        if let data = UserDefaults.standard.data(forKey: tasksKey),
+        if let data = defaults.data(forKey: tasksKey),
            let saved = try? JSONDecoder().decode([CarePlanTask].self, from: data) {
             self.tasks = saved
         } else {
@@ -665,12 +697,12 @@ public final class CarePlanStore: ObservableObject {
         }
 
         // Load diary (legacy single entry + history)
-        if let data = UserDefaults.standard.data(forKey: diaryHistoryKey),
+        if let data = defaults.data(forKey: diaryHistoryKey),
            let saved = try? JSONDecoder().decode([DailyDiaryEntry].self, from: data),
            !saved.isEmpty {
             self.diaryHistory = saved
             self.diaryEntry = diary(for: Date())
-        } else if let data = UserDefaults.standard.data(forKey: diaryKey),
+        } else if let data = defaults.data(forKey: diaryKey),
                   let saved = try? JSONDecoder().decode(DailyDiaryEntry.self, from: data) {
             self.diaryEntry = saved
             self.diaryHistory = [saved]
@@ -679,7 +711,7 @@ public final class CarePlanStore: ObservableObject {
             self.diaryHistory = [self.diaryEntry]
         }
 
-        if let data = UserDefaults.standard.data(forKey: diaryRemindersKey),
+        if let data = defaults.data(forKey: diaryRemindersKey),
            let saved = try? JSONDecoder().decode([CareReminderSlot].self, from: data),
            !saved.isEmpty {
             self.diaryReminderSlots = saved
@@ -690,7 +722,7 @@ public final class CarePlanStore: ObservableObject {
         }
 
         // Load medications (reset per-dose taken state when crossing a new day)
-        if let data = UserDefaults.standard.data(forKey: medicationsKey),
+        if let data = defaults.data(forKey: medicationsKey),
            let saved = try? JSONDecoder().decode([MedicationItem].self, from: data) {
             self.medications = saved.map { item in
                 if let lastTaken = item.lastTakenAt, !Calendar.current.isDateInToday(lastTaken) {
@@ -705,11 +737,11 @@ public final class CarePlanStore: ObservableObject {
         }
 
         // Load streak
-        let savedStreak = UserDefaults.standard.integer(forKey: streakKey)
+        let savedStreak = defaults.integer(forKey: streakKey)
         self.streakDays = savedStreak > 0 ? savedStreak : 5
 
         // Load weekly history or populate standard 7-day observation points
-        if let data = UserDefaults.standard.data(forKey: historyKey),
+        if let data = defaults.data(forKey: historyKey),
            let saved = try? JSONDecoder().decode([LongitudinalAttentionPoint].self, from: data) {
             self.weeklyHistory = saved
         } else {
@@ -718,7 +750,7 @@ public final class CarePlanStore: ObservableObject {
 
         // Milestones
         // Milestones (CDC / AAP catalog)
-        if let data = UserDefaults.standard.data(forKey: milestonesKey),
+        if let data = defaults.data(forKey: milestonesKey),
            let saved = try? JSONDecoder().decode([Milestone].self, from: data),
            saved.count >= 20 {
             self.milestones = saved
@@ -729,40 +761,40 @@ public final class CarePlanStore: ObservableObject {
 
     private func saveTasks() {
         if let data = try? JSONEncoder().encode(tasks) {
-            UserDefaults.standard.set(data, forKey: tasksKey)
+            defaults.set(data, forKey: tasksKey)
         }
     }
 
     private func saveMilestones() {
         if let data = try? JSONEncoder().encode(milestones) {
-            UserDefaults.standard.set(data, forKey: milestonesKey)
+            defaults.set(data, forKey: milestonesKey)
         }
     }
 
     private func persistDiary() {
         if let data = try? JSONEncoder().encode(diaryEntry) {
-            UserDefaults.standard.set(data, forKey: diaryKey)
+            defaults.set(data, forKey: diaryKey)
         }
         if let data = try? JSONEncoder().encode(diaryHistory) {
-            UserDefaults.standard.set(data, forKey: diaryHistoryKey)
+            defaults.set(data, forKey: diaryHistoryKey)
         }
     }
 
     private func saveDiaryReminders() {
         if let data = try? JSONEncoder().encode(diaryReminderSlots) {
-            UserDefaults.standard.set(data, forKey: diaryRemindersKey)
+            defaults.set(data, forKey: diaryRemindersKey)
         }
     }
 
     private func saveMedications() {
         if let data = try? JSONEncoder().encode(medications) {
-            UserDefaults.standard.set(data, forKey: medicationsKey)
+            defaults.set(data, forKey: medicationsKey)
         }
     }
 
     private func saveHistory() {
         if let data = try? JSONEncoder().encode(weeklyHistory) {
-            UserDefaults.standard.set(data, forKey: historyKey)
+            defaults.set(data, forKey: historyKey)
         }
     }
 

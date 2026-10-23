@@ -25,7 +25,7 @@ public struct GazeTelemetryReviewCard: View {
                 metric("Valid time", String(format: "%.0fs", session.totalValidTimeSec))
                 metric("Social target", "\(Int(session.socialTargetRatio * 100))%")
                 metric("Confidence", "\(Int(session.trackingConfidenceIndex * 100))%")
-                metric("Saccade latency", String(format: "%.0f ms", session.saccadicLatencyMs))
+                metric("Saccade latency", session.saccadicLatencyMs.map { String(format: "%.0f ms", $0) } ?? "Not observed")
             }
             Text(session.heatmapSummary)
                 .font(.caption)

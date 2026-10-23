@@ -142,7 +142,8 @@ public struct GazeTelemetrySession: Identifiable, Sendable, Equatable {
     public let sessionDurationSec: Double
     public let socialTargetRatio: Double
     public let trackingConfidenceIndex: Double
-    public let saccadicLatencyMs: Double
+    /// `nil` when not measured (PLC-1); render "Not observed".
+    public let saccadicLatencyMs: Double?
     public let stimulusTag: StimulusContextTag
     public let heatmapSummary: String
 
@@ -154,7 +155,7 @@ public struct GazeTelemetrySession: Identifiable, Sendable, Equatable {
         sessionDurationSec: Double,
         socialTargetRatio: Double,
         trackingConfidenceIndex: Double,
-        saccadicLatencyMs: Double,
+        saccadicLatencyMs: Double?,
         stimulusTag: StimulusContextTag,
         heatmapSummary: String
     ) {
@@ -168,6 +169,12 @@ public struct GazeTelemetrySession: Identifiable, Sendable, Equatable {
         self.saccadicLatencyMs = saccadicLatencyMs
         self.stimulusTag = stimulusTag
         self.heatmapSummary = heatmapSummary
+    }
+
+    /// "42%" for a measured ratio, "Not observed" for an absent one (PLC-2).
+    static func percent(_ ratio: Double?) -> String {
+        guard let ratio else { return "Not observed" }
+        return String(format: "%.0f%%", ratio * 100)
     }
 
     public init(from record: GazeSessionRecord) {
@@ -188,12 +195,7 @@ public struct GazeTelemetrySession: Identifiable, Sendable, Equatable {
             trackingConfidenceIndex: confidence,
             saccadicLatencyMs: record.firstEyeLatencyMs,
             stimulusTag: record.durationSec >= 45 ? .screenStimuli : .faceToFace,
-            heatmapSummary: String(
-                format: "Eye dwell %.0f%% · Mouth dwell %.0f%% · Valid frames %.0f%%",
-                record.eyeDwellRatio * 100,
-                record.mouthDwellRatio * 100,
-                record.validFrameRatio * 100
-            )
+            heatmapSummary: "Eye dwell \(Self.percent(record.eyeDwellRatio)) · Mouth dwell \(Self.percent(record.mouthDwellRatio)) · Valid frames \(Self.percent(record.validFrameRatio))"
         )
     }
 }

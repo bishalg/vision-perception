@@ -66,7 +66,7 @@ public final class DataDeletionService {
                     object: nil
                 )
             },
-            deleteCarePlans: { CarePlanDataEraser.eraseLiveCarePlans() }
+            deleteCarePlans: { CarePlanStore.shared.deleteAllCarePlanData() }
         )
     }
 
@@ -142,30 +142,5 @@ public final class DataDeletionService {
             Self.logger.error("Cannot delete \(url.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
             return false
         }
-    }
-}
-
-/// Erases the persisted care plan state without changing `CarePlanStore`
-/// (owned elsewhere). Removes every `org.curv.asd.careplan.*` key and empties
-/// the in-memory collections of the shared store so nothing is re-saved; the
-/// store re-seeds its defaults on next launch.
-///
-/// Known gap: the CareKit `OCKStore` mirror (`CareKitClinicalStore`) has no
-/// delete-all API yet, so its outcomes are not removed here.
-@MainActor
-enum CarePlanDataEraser {
-    static let keyPrefix = "org.curv.asd.careplan."
-
-    static func eraseLiveCarePlans(defaults: UserDefaults = .standard) {
-        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(keyPrefix) {
-            defaults.removeObject(forKey: key)
-        }
-        let store = CarePlanStore.shared
-        store.tasks = []
-        store.medications = []
-        store.diaryHistory = []
-        store.diaryReminderSlots = []
-        store.milestones = []
-        store.weeklyHistory = []
     }
 }

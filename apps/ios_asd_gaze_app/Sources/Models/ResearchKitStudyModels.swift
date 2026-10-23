@@ -201,10 +201,25 @@ public struct MCHATQuestion: Sendable, Codable, Identifiable {
     }
 }
 
+/// M-CHAT-R/F result category. Raw values are persisted (Codable) and MUST NOT
+/// change; user-facing text uses `displayName` (CLM-4).
 public enum MCHATRiskLevel: String, Sendable, Codable {
-    case low = "Low Risk"
-    case medium = "Medium Risk"
-    case high = "High Risk"
+    case low = "Low Risk" // claims-ok: persisted raw value, never shown (CLM-4)
+    case medium = "Medium Risk" // claims-ok: persisted raw value, never shown (CLM-4)
+    case high = "High Risk" // claims-ok: persisted raw value, never shown (CLM-4)
+
+    /// Parent-facing wording: names the instrument, the category and the next step,
+    /// e.g. "M-CHAT-R/F: medium (follow-up interview needed; discuss with your pediatrician)".
+    public var displayName: String {
+        switch self {
+        case .low:
+            return "M-CHAT-R/F: low (no follow-up needed now; discuss any concerns with your pediatrician)"
+        case .medium:
+            return "M-CHAT-R/F: medium (follow-up interview needed; discuss with your pediatrician)"
+        case .high:
+            return "M-CHAT-R/F: high (follow-up needed; discuss with your pediatrician soon)"
+        }
+    }
 }
 
 public struct MCHATScoreResult: Sendable, Codable, Equatable {
@@ -333,9 +348,12 @@ public struct ORKActiveStepResult: Sendable, Codable, Equatable {
     public let validSampleRatio: Double
     public let qualityVerdict: String
     public let socialPreferenceScore: Double
-    public let eyeDwellRatio: Double
-    public let mouthDwellRatio: Double
-    public let firstEyeLatencyMs: Double
+    /// `nil` when not measured (PLC-2); omitted from the encoded JSON.
+    public let eyeDwellRatio: Double?
+    /// `nil` when not measured (PLC-2); omitted from the encoded JSON.
+    public let mouthDwellRatio: Double?
+    /// `nil` until a first-fixation detector exists (PLC-1); omitted from the encoded JSON.
+    public let firstEyeLatencyMs: Double?
     public let socialSmileIntensity: Double
     public let smileReactivityIndex: Double
     public let flatAffectScore: Double
@@ -352,9 +370,9 @@ public struct ORKActiveStepResult: Sendable, Codable, Equatable {
         validSampleRatio: Double,
         qualityVerdict: String,
         socialPreferenceScore: Double,
-        eyeDwellRatio: Double,
-        mouthDwellRatio: Double,
-        firstEyeLatencyMs: Double,
+        eyeDwellRatio: Double?,
+        mouthDwellRatio: Double?,
+        firstEyeLatencyMs: Double?,
         socialSmileIntensity: Double,
         smileReactivityIndex: Double,
         flatAffectScore: Double,
@@ -513,25 +531,25 @@ public struct ResearchStudyEnrollment: Sendable, Codable, Equatable {
 
 /// Shared gate deciding whether a session contributes to normative reference collection.
 /// Requires research consent, explicit norm-collection opt-in, and live TrueDepth capture
-/// (deterministic simulation frames must never enter a normative distribution).
+/// (simulated frames must never enter a normative distribution, SIM-5).
 public enum NormCollectionGate {
     public static func isActive(
         enrollment: ResearchStudyEnrollment?,
-        isSimulationMode: Bool
+        captureSource: CaptureSource?
     ) -> Bool {
         guard let enrollment = enrollment else { return false }
         return enrollment.isConsented
             && enrollment.normCollectionOptIn == true
-            && !isSimulationMode
+            && captureSource == .trueDepth
     }
 
     /// Builds the export payload for an opted-in session; nil when the gate is closed.
     public static func collectionMetadata(
         enrollment: ResearchStudyEnrollment?,
         childAgeMonths: Int,
-        isSimulationMode: Bool
+        captureSource: CaptureSource?
     ) -> NormCollectionMetadata? {
-        guard isActive(enrollment: enrollment, isSimulationMode: isSimulationMode),
+        guard isActive(enrollment: enrollment, captureSource: captureSource),
               let enrollment = enrollment else { return nil }
         return NormCollectionMetadata(
             consentVersion: enrollment.consentSignature?.consentVersion ?? "unsigned",
@@ -539,7 +557,7 @@ public enum NormCollectionGate {
             participantId: enrollment.participantId,
             childAgeMonths: childAgeMonths,
             deviceModel: deviceModel(),
-            isSimulator: isSimulationMode,
+            isSimulator: false,
             collectedAtUtc: ISO8601DateFormatter().string(from: Date())
         )
     }

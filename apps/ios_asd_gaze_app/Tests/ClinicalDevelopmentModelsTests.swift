@@ -29,7 +29,7 @@ final class ClinicalDevelopmentModelsTests: XCTestCase {
     }
 
     func testGazeTelemetrySessionMapsValidTimeAndSocialRatio() {
-        let record = GazeSessionRecord(
+        let record = GazeSessionRecord.fixture(
             sessionId: "s1",
             participantId: "p",
             startedAt: Date().addingTimeInterval(-30),

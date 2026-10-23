@@ -1,4 +1,5 @@
 import CareKitStore
+import CurvAsdGazeKit
 import XCTest
 @testable import AsdGazeCollector
 
@@ -34,6 +35,16 @@ final class CareKitClinicalStoreTests: XCTestCase {
         )
         XCTAssertEqual(values.count, 3)
     }
+
+    #if ASD_RESEARCH_CLASSIFIER
+    func testScreeningOutcomeValuesCarryRiskFieldsOnlyInResearchBuilds() {
+        let values = CareKitClinicalStore.screeningOutcomeValues(
+            socialScore: 0.65, validFramePercentage: 94.0, completedAt: Date(),
+            riskScore: 0.4, riskStratification: "typical"
+        )
+        XCTAssertEqual(values.count, 5)
+    }
+    #endif
 
     func testTaskCompletionValues() {
         XCTAssertEqual(CareKitClinicalStore.taskCompletionValues(completed: true, completedAt: nil).count, 2)
@@ -366,6 +377,7 @@ final class CareKitClinicalStoreTests: XCTestCase {
         let task = sampleTask()
         let done = expectation(description: "screening outcome recorded")
         recorder.recordScreeningOutcome(
+            captureSource: .trueDepth,
             socialScore: 0.72,
             validFramePercentage: 96.0,
             knownTasks: [task]
@@ -386,6 +398,76 @@ final class CareKitClinicalStoreTests: XCTestCase {
         XCTAssertEqual(valueCount, 3, "screening outcome must persist social score, frame %, and date")
         XCTAssertTrue(doubles.contains(where: { abs($0 - 0.72) < 1e-6 }), "outcome must contain social score 0.72")
         XCTAssertTrue(doubles.contains(where: { abs($0 - 96.0) < 1e-6 }), "outcome must contain valid frame % 96.0")
+    }
+
+    /// SIM-5: a simulated session never becomes a CareKit outcome.
+    func testRecordScreeningOutcomeIgnoresSimulatedSession() throws {
+        let store = OCKStore(name: "TestScreeningSimulated-\(UUID().uuidString)", type: .inMemory)
+        let recorder = CareKitClinicalStore(store: store)
+        let done = expectation(description: "simulated outcome refused")
+        recorder.recordScreeningOutcome(
+            captureSource: .simulated,
+            socialScore: 0.9,
+            validFramePercentage: 99.0,
+            knownTasks: [sampleTask()]
+        ) { done.fulfill() }
+        wait(for: [done], timeout: 10.0)
+
+        XCTAssertTrue(fetchOutcomes(store).isEmpty, "simulated sessions must not be recorded in CareKit")
+        XCTAssertTrue(fetchTasks(store).isEmpty, "a refused write must not seed the store either")
+    }
+
+    /// Delete-all empties every task and outcome so a care-plan deletion leaves no CareKit mirror.
+    func testDeleteAllRecordsRemovesTasksAndOutcomes() throws {
+        let store = OCKStore(name: "TestDeleteAll-\(UUID().uuidString)", type: .inMemory)
+        let recorder = CareKitClinicalStore(store: store)
+        let recorded = expectation(description: "screening recorded")
+        recorder.recordScreeningOutcome(
+            captureSource: .trueDepth, socialScore: 0.5, validFramePercentage: 90.0, knownTasks: [sampleTask()]
+        ) { recorded.fulfill() }
+        wait(for: [recorded], timeout: 10.0)
+        XCTAssertFalse(fetchTasks(store).isEmpty)
+        XCTAssertFalse(fetchOutcomes(store).isEmpty)
+
+        let deleted = expectation(description: "all records deleted")
+        var succeeded = false
+        recorder.deleteAllRecords { ok in
+            succeeded = ok
+            deleted.fulfill()
+        }
+        wait(for: [deleted], timeout: 10.0)
+
+        XCTAssertTrue(succeeded)
+        XCTAssertTrue(fetchTasks(store).isEmpty, "every CareKit task must be gone")
+        XCTAssertTrue(fetchOutcomes(store).isEmpty, "every CareKit outcome must be gone")
+    }
+
+    private func fetchOutcomes(_ store: OCKStore) -> [OCKOutcome] {
+        let exp = expectation(description: "fetch outcomes")
+        var outcomes: [OCKOutcome] = []
+        store.fetchOutcomes(query: OCKOutcomeQuery(dateInterval: DateInterval(
+            start: .distantPast, end: Date().addingTimeInterval(86_400 * 365)
+        )), callbackQueue: .main) { result in
+            outcomes = (try? result.get()) ?? []
+            exp.fulfill()
+        }
+        wait(for: [exp], timeout: 5.0)
+        return outcomes
+    }
+
+    private func fetchTasks(_ store: OCKStore) -> [OCKTask] {
+        let exp = expectation(description: "fetch tasks")
+        var tasks: [OCKTask] = []
+        var query = OCKTaskQuery(dateInterval: DateInterval(
+            start: .distantPast, end: Date().addingTimeInterval(86_400 * 365)
+        ))
+        query.excludesTasksWithNoEvents = false
+        store.fetchTasks(query: query, callbackQueue: .main) { result in
+            tasks = (try? result.get()) ?? []
+            exp.fulfill()
+        }
+        wait(for: [exp], timeout: 5.0)
+        return tasks
     }
 
     /// Concurrent diary, task completion, and medication writes must serialize safely.

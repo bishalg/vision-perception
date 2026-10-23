@@ -61,8 +61,11 @@ targets:
       configs:
         # App Store builds compile with the age-assurance flag; internal/Debug
         # builds bypass the Declared Age Range request entirely.
+        # Simulation (ADR-0001) and the research classifier (ADR-0004) are
+        # Debug-only capabilities; Release never defines them. The kit mirrors
+        # these in Package.swift because OTHER_SWIFT_FLAGS does not reach SwiftPM.
         Debug:
-          OTHER_SWIFT_FLAGS: "$(inherited)"
+          OTHER_SWIFT_FLAGS: "$(inherited) -DASD_SIMULATION_ENABLED -DASD_RESEARCH_CLASSIFIER"
         Release:
           OTHER_SWIFT_FLAGS: "$(inherited) -DASD_APP_STORE_AGE_ASSURANCE"
     dependencies:
