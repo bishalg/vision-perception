@@ -20,7 +20,8 @@ struct PerVideoMatrixModel {
         sessionScore = PerVideoScoringEngine.score(
             metricSets: metricSets,
             baseline: baseline,
-            ageMonths: childAgeMonths
+            ageMonths: childAgeMonths,
+            frames: recordedFrames
         )
         baselineStatus = baseline.status
     }
@@ -31,12 +32,63 @@ struct PerVideoMatrixModel {
     }
 }
 
+extension AttentionFlag {
+    var color: Color {
+        switch self {
+        case .green: return LiquidGlass.emeraldMint
+        case .yellow: return LiquidGlass.warmAmber
+        case .red: return LiquidGlass.signalAtypical
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .green: return "checkmark.circle.fill"
+        case .yellow: return "exclamationmark.circle.fill"
+        case .red: return "flag.fill"
+        }
+    }
+}
+
+struct AttentionFlagBanner: View {
+    let assessment: AttentionFlagAssessment
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: assessment.flag.symbol)
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(assessment.flag.color)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\(assessment.flag.title) — \(assessment.headline)")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundStyle(.primary)
+                Text(assessment.detail)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(assessment.flag.color.opacity(0.12))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(assessment.flag.color.opacity(0.45), lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+    }
+}
+
 extension ExpectationStatus {
     var color: Color {
         switch self {
         case .onTarget: return LiquidGlass.emeraldMint
         case .monitor: return LiquidGlass.warmAmber
-        case .atypical: return Color(red: 0.937, green: 0.267, blue: 0.267) // #EF4444
+        case .atypical: return LiquidGlass.signalAtypical
         }
     }
 

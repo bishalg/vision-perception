@@ -55,6 +55,9 @@ public struct GazeSessionResultView: View {
                                 participantId: ChildProfileStore.shared.profile.childName
                             ))
                         )
+                        if let score = perVideoScore {
+                            AttentionFlagBanner(assessment: AttentionFlagAlgorithm.assess(score))
+                        }
                         socialPreferenceCard
                         perVideoMatrixEntry
                         medicalDisclaimerBanner
@@ -154,9 +157,9 @@ public struct GazeSessionResultView: View {
             ZStack {
                 // Background thumbnail representing the stimulus
                 HStack(spacing: 1) {
-                    Color(red: 0.10, green: 0.16, blue: 0.28)
+                    LiquidGlass.stimulusSocialMedia
                         .overlay(Text("Social Actor").font(.system(size: 11, weight: .bold)).foregroundColor(.white.opacity(0.4)))
-                    Color(red: 0.20, green: 0.08, blue: 0.24)
+                    LiquidGlass.stimulusGeometryMedia
                         .overlay(Text("Geometric").font(.system(size: 11, weight: .bold)).foregroundColor(.white.opacity(0.4)))
                 }
 

@@ -1,0 +1,1110 @@
+{
+  "schemaVersion": "1.0.0",
+  "language": "en",
+  "status": "english-prompts-ready",
+  "note": "English generation queue only. A full pack is 5 age bands x these paradigms x 4 languages, on the order of 200 clips. Hindi, Nepali, and Mandarin stay in the taxonomy doc until those prompts are written. These files are not generated yet.",
+  "shippedClipCount": 9,
+  "promptCount": 35,
+  "scoring": "Each section is scored on its own clock: gaze dwell and first look on gazeTarget, and smile, surprise, or flat affect against emotionTrait.",
+  "prompts": [
+    {
+      "id": "en_12-17_peekaboo",
+      "language": "en",
+      "ageBracketId": "12-17",
+      "ageLabel": "12 to 17 months",
+      "paradigm": "peekaboo",
+      "title": "Peek-a-boo (12 to 17 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Hello. Where did I go?",
+      "pacing": "very slow, few words, long holds on the face",
+      "primaryEmotion": "joy",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 12 to 17 months. Pacing: very slow, few words, long holds on the face. Spoken line: \"Hello. Where did I go?\". Action: At 2 seconds cover the face with both hands. At 4 seconds open the hands, smile, and say ta-da.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 2.0,
+          "gazeTarget": "Eye_Region",
+          "emotionTrait": "engaged",
+          "whatHappens": "Direct look, quiet hello."
+        },
+        {
+          "startSec": 2.0,
+          "endSec": 4.0,
+          "gazeTarget": "Eye_Region",
+          "emotionTrait": "anticipation",
+          "whatHappens": "Hands cover the face."
+        },
+        {
+          "startSec": 4.0,
+          "endSec": 8.0,
+          "gazeTarget": "Eye_Region",
+          "emotionTrait": "joy",
+          "whatHappens": "Reveal and smile."
+        }
+      ]
+    },
+    {
+      "id": "en_12-17_name_response",
+      "language": "en",
+      "ageBracketId": "12-17",
+      "ageLabel": "12 to 17 months",
+      "paradigm": "name_response",
+      "title": "Response to name (12 to 17 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Look here.",
+      "pacing": "very slow, few words, long holds on the face",
+      "primaryEmotion": "engaged",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 12 to 17 months. Pacing: very slow, few words, long holds on the face. Spoken line: \"Look here.\". Action: A neutral dot holds the center. At 3 seconds a voice calls the child's name from one side.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 3.0,
+          "gazeTarget": "Center_Fixation_Target",
+          "emotionTrait": "calm",
+          "whatHappens": "Child looks at the center."
+        },
+        {
+          "startSec": 3.0,
+          "endSec": 8.0,
+          "gazeTarget": "Name_Call_Side",
+          "emotionTrait": "engaged",
+          "whatHappens": "Name is called. Expect a look or head turn."
+        }
+      ]
+    },
+    {
+      "id": "en_12-17_gaze_cue_right",
+      "language": "en",
+      "ageBracketId": "12-17",
+      "ageLabel": "12 to 17 months",
+      "paradigm": "gaze_cue_right",
+      "title": "Gaze cue right (12 to 17 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Look, over there.",
+      "pacing": "very slow, few words, long holds on the face",
+      "primaryEmotion": "engaged",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 12 to 17 months. Pacing: very slow, few words, long holds on the face. Spoken line: \"Look, over there.\". Action: Eyes on camera until 3.5 seconds, then look and point to the upper right.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 3.5,
+          "gazeTarget": "Actor_Face",
+          "emotionTrait": "engaged",
+          "whatHappens": "Face before the cue."
+        },
+        {
+          "startSec": 3.5,
+          "endSec": 8.0,
+          "gazeTarget": "Gaze_Target_Right",
+          "emotionTrait": "engaged",
+          "whatHappens": "Look follows the point to the right."
+        }
+      ]
+    },
+    {
+      "id": "en_12-17_gaze_cue_left",
+      "language": "en",
+      "ageBracketId": "12-17",
+      "ageLabel": "12 to 17 months",
+      "paradigm": "gaze_cue_left",
+      "title": "Gaze cue left (12 to 17 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Look, over there.",
+      "pacing": "very slow, few words, long holds on the face",
+      "primaryEmotion": "engaged",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 12 to 17 months. Pacing: very slow, few words, long holds on the face. Spoken line: \"Look, over there.\". Action: Eyes on camera until 3 seconds, then look and point to the upper left.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 3.0,
+          "gazeTarget": "Actor_Face",
+          "emotionTrait": "engaged",
+          "whatHappens": "Face before the cue."
+        },
+        {
+          "startSec": 3.0,
+          "endSec": 8.0,
+          "gazeTarget": "Gaze_Target_Left",
+          "emotionTrait": "engaged",
+          "whatHappens": "Look follows the point to the left."
+        }
+      ]
+    },
+    {
+      "id": "en_12-17_surprise",
+      "language": "en",
+      "ageBracketId": "12-17",
+      "ageLabel": "12 to 17 months",
+      "paradigm": "surprise",
+      "title": "Surprise box (12 to 17 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "What is in the box?",
+      "pacing": "very slow, few words, long holds on the face",
+      "primaryEmotion": "surprise",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 12 to 17 months. Pacing: very slow, few words, long holds on the face. Spoken line: \"What is in the box?\". Action: Look in the box, then at 4 seconds lift the lid and show surprise, then share a smile.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 4.0,
+          "gazeTarget": "Gift_Box",
+          "emotionTrait": "anticipation",
+          "whatHappens": "Attention on the closed box."
+        },
+        {
+          "startSec": 4.0,
+          "endSec": 8.0,
+          "gazeTarget": "Actor_Eyes",
+          "emotionTrait": "surprise",
+          "whatHappens": "Lid opens. Expect a surprise face, then a smile."
+        }
+      ]
+    },
+    {
+      "id": "en_12-17_turn_taking",
+      "language": "en",
+      "ageBracketId": "12-17",
+      "ageLabel": "12 to 17 months",
+      "paradigm": "turn_taking",
+      "title": "Turn taking (12 to 17 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Your turn.",
+      "pacing": "very slow, few words, long holds on the face",
+      "primaryEmotion": "joy",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 12 to 17 months. Pacing: very slow, few words, long holds on the face. Spoken line: \"Your turn.\". Action: Speak a short line, wait, then smile and clap when it is the child's turn.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 4.0,
+          "gazeTarget": "Teacher_Mouth",
+          "emotionTrait": "engaged",
+          "whatHappens": "Mouth moves with the words."
+        },
+        {
+          "startSec": 4.0,
+          "endSec": 8.0,
+          "gazeTarget": "Teacher_Face",
+          "emotionTrait": "joy",
+          "whatHappens": "Pause and smile. The child may answer."
+        }
+      ]
+    },
+    {
+      "id": "en_18-23_peekaboo",
+      "language": "en",
+      "ageBracketId": "18-23",
+      "ageLabel": "18 to 23 months",
+      "paradigm": "peekaboo",
+      "title": "Peek-a-boo (18 to 23 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Hello. Where did I go?",
+      "pacing": "slow speech, one clear action, name-length pauses",
+      "primaryEmotion": "joy",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 18 to 23 months. Pacing: slow speech, one clear action, name-length pauses. Spoken line: \"Hello. Where did I go?\". Action: At 2 seconds cover the face with both hands. At 4 seconds open the hands, smile, and say ta-da.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 2.0,
+          "gazeTarget": "Eye_Region",
+          "emotionTrait": "engaged",
+          "whatHappens": "Direct look, quiet hello."
+        },
+        {
+          "startSec": 2.0,
+          "endSec": 4.0,
+          "gazeTarget": "Eye_Region",
+          "emotionTrait": "anticipation",
+          "whatHappens": "Hands cover the face."
+        },
+        {
+          "startSec": 4.0,
+          "endSec": 8.0,
+          "gazeTarget": "Eye_Region",
+          "emotionTrait": "joy",
+          "whatHappens": "Reveal and smile."
+        }
+      ]
+    },
+    {
+      "id": "en_18-23_name_response",
+      "language": "en",
+      "ageBracketId": "18-23",
+      "ageLabel": "18 to 23 months",
+      "paradigm": "name_response",
+      "title": "Response to name (18 to 23 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Look here.",
+      "pacing": "slow speech, one clear action, name-length pauses",
+      "primaryEmotion": "engaged",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 18 to 23 months. Pacing: slow speech, one clear action, name-length pauses. Spoken line: \"Look here.\". Action: A neutral dot holds the center. At 3 seconds a voice calls the child's name from one side.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 3.0,
+          "gazeTarget": "Center_Fixation_Target",
+          "emotionTrait": "calm",
+          "whatHappens": "Child looks at the center."
+        },
+        {
+          "startSec": 3.0,
+          "endSec": 8.0,
+          "gazeTarget": "Name_Call_Side",
+          "emotionTrait": "engaged",
+          "whatHappens": "Name is called. Expect a look or head turn."
+        }
+      ]
+    },
+    {
+      "id": "en_18-23_gaze_cue_right",
+      "language": "en",
+      "ageBracketId": "18-23",
+      "ageLabel": "18 to 23 months",
+      "paradigm": "gaze_cue_right",
+      "title": "Gaze cue right (18 to 23 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Look, over there.",
+      "pacing": "slow speech, one clear action, name-length pauses",
+      "primaryEmotion": "engaged",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 18 to 23 months. Pacing: slow speech, one clear action, name-length pauses. Spoken line: \"Look, over there.\". Action: Eyes on camera until 3.5 seconds, then look and point to the upper right.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 3.5,
+          "gazeTarget": "Actor_Face",
+          "emotionTrait": "engaged",
+          "whatHappens": "Face before the cue."
+        },
+        {
+          "startSec": 3.5,
+          "endSec": 8.0,
+          "gazeTarget": "Gaze_Target_Right",
+          "emotionTrait": "engaged",
+          "whatHappens": "Look follows the point to the right."
+        }
+      ]
+    },
+    {
+      "id": "en_18-23_gaze_cue_left",
+      "language": "en",
+      "ageBracketId": "18-23",
+      "ageLabel": "18 to 23 months",
+      "paradigm": "gaze_cue_left",
+      "title": "Gaze cue left (18 to 23 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Look, over there.",
+      "pacing": "slow speech, one clear action, name-length pauses",
+      "primaryEmotion": "engaged",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 18 to 23 months. Pacing: slow speech, one clear action, name-length pauses. Spoken line: \"Look, over there.\". Action: Eyes on camera until 3 seconds, then look and point to the upper left.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 3.0,
+          "gazeTarget": "Actor_Face",
+          "emotionTrait": "engaged",
+          "whatHappens": "Face before the cue."
+        },
+        {
+          "startSec": 3.0,
+          "endSec": 8.0,
+          "gazeTarget": "Gaze_Target_Left",
+          "emotionTrait": "engaged",
+          "whatHappens": "Look follows the point to the left."
+        }
+      ]
+    },
+    {
+      "id": "en_18-23_surprise",
+      "language": "en",
+      "ageBracketId": "18-23",
+      "ageLabel": "18 to 23 months",
+      "paradigm": "surprise",
+      "title": "Surprise box (18 to 23 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "What is in the box?",
+      "pacing": "slow speech, one clear action, name-length pauses",
+      "primaryEmotion": "surprise",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 18 to 23 months. Pacing: slow speech, one clear action, name-length pauses. Spoken line: \"What is in the box?\". Action: Look in the box, then at 4 seconds lift the lid and show surprise, then share a smile.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 4.0,
+          "gazeTarget": "Gift_Box",
+          "emotionTrait": "anticipation",
+          "whatHappens": "Attention on the closed box."
+        },
+        {
+          "startSec": 4.0,
+          "endSec": 8.0,
+          "gazeTarget": "Actor_Eyes",
+          "emotionTrait": "surprise",
+          "whatHappens": "Lid opens. Expect a surprise face, then a smile."
+        }
+      ]
+    },
+    {
+      "id": "en_18-23_turn_taking",
+      "language": "en",
+      "ageBracketId": "18-23",
+      "ageLabel": "18 to 23 months",
+      "paradigm": "turn_taking",
+      "title": "Turn taking (18 to 23 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Your turn.",
+      "pacing": "slow speech, one clear action, name-length pauses",
+      "primaryEmotion": "joy",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 18 to 23 months. Pacing: slow speech, one clear action, name-length pauses. Spoken line: \"Your turn.\". Action: Speak a short line, wait, then smile and clap when it is the child's turn.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 4.0,
+          "gazeTarget": "Teacher_Mouth",
+          "emotionTrait": "engaged",
+          "whatHappens": "Mouth moves with the words."
+        },
+        {
+          "startSec": 4.0,
+          "endSec": 8.0,
+          "gazeTarget": "Teacher_Face",
+          "emotionTrait": "joy",
+          "whatHappens": "Pause and smile. The child may answer."
+        }
+      ]
+    },
+    {
+      "id": "en_24-35_peekaboo",
+      "language": "en",
+      "ageBracketId": "24-35",
+      "ageLabel": "24 to 35 months",
+      "paradigm": "peekaboo",
+      "title": "Peek-a-boo (24 to 35 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Hello. Where did I go?",
+      "pacing": "short sentences, a pause for the child to answer",
+      "primaryEmotion": "joy",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 24 to 35 months. Pacing: short sentences, a pause for the child to answer. Spoken line: \"Hello. Where did I go?\". Action: At 2 seconds cover the face with both hands. At 4 seconds open the hands, smile, and say ta-da.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 2.0,
+          "gazeTarget": "Eye_Region",
+          "emotionTrait": "engaged",
+          "whatHappens": "Direct look, quiet hello."
+        },
+        {
+          "startSec": 2.0,
+          "endSec": 4.0,
+          "gazeTarget": "Eye_Region",
+          "emotionTrait": "anticipation",
+          "whatHappens": "Hands cover the face."
+        },
+        {
+          "startSec": 4.0,
+          "endSec": 8.0,
+          "gazeTarget": "Eye_Region",
+          "emotionTrait": "joy",
+          "whatHappens": "Reveal and smile."
+        }
+      ]
+    },
+    {
+      "id": "en_24-35_name_response",
+      "language": "en",
+      "ageBracketId": "24-35",
+      "ageLabel": "24 to 35 months",
+      "paradigm": "name_response",
+      "title": "Response to name (24 to 35 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Look here.",
+      "pacing": "short sentences, a pause for the child to answer",
+      "primaryEmotion": "engaged",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 24 to 35 months. Pacing: short sentences, a pause for the child to answer. Spoken line: \"Look here.\". Action: A neutral dot holds the center. At 3 seconds a voice calls the child's name from one side.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 3.0,
+          "gazeTarget": "Center_Fixation_Target",
+          "emotionTrait": "calm",
+          "whatHappens": "Child looks at the center."
+        },
+        {
+          "startSec": 3.0,
+          "endSec": 8.0,
+          "gazeTarget": "Name_Call_Side",
+          "emotionTrait": "engaged",
+          "whatHappens": "Name is called. Expect a look or head turn."
+        }
+      ]
+    },
+    {
+      "id": "en_24-35_gaze_cue_right",
+      "language": "en",
+      "ageBracketId": "24-35",
+      "ageLabel": "24 to 35 months",
+      "paradigm": "gaze_cue_right",
+      "title": "Gaze cue right (24 to 35 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Look, over there.",
+      "pacing": "short sentences, a pause for the child to answer",
+      "primaryEmotion": "engaged",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 24 to 35 months. Pacing: short sentences, a pause for the child to answer. Spoken line: \"Look, over there.\". Action: Eyes on camera until 3.5 seconds, then look and point to the upper right.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 3.5,
+          "gazeTarget": "Actor_Face",
+          "emotionTrait": "engaged",
+          "whatHappens": "Face before the cue."
+        },
+        {
+          "startSec": 3.5,
+          "endSec": 8.0,
+          "gazeTarget": "Gaze_Target_Right",
+          "emotionTrait": "engaged",
+          "whatHappens": "Look follows the point to the right."
+        }
+      ]
+    },
+    {
+      "id": "en_24-35_gaze_cue_left",
+      "language": "en",
+      "ageBracketId": "24-35",
+      "ageLabel": "24 to 35 months",
+      "paradigm": "gaze_cue_left",
+      "title": "Gaze cue left (24 to 35 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Look, over there.",
+      "pacing": "short sentences, a pause for the child to answer",
+      "primaryEmotion": "engaged",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 24 to 35 months. Pacing: short sentences, a pause for the child to answer. Spoken line: \"Look, over there.\". Action: Eyes on camera until 3 seconds, then look and point to the upper left.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 3.0,
+          "gazeTarget": "Actor_Face",
+          "emotionTrait": "engaged",
+          "whatHappens": "Face before the cue."
+        },
+        {
+          "startSec": 3.0,
+          "endSec": 8.0,
+          "gazeTarget": "Gaze_Target_Left",
+          "emotionTrait": "engaged",
+          "whatHappens": "Look follows the point to the left."
+        }
+      ]
+    },
+    {
+      "id": "en_24-35_surprise",
+      "language": "en",
+      "ageBracketId": "24-35",
+      "ageLabel": "24 to 35 months",
+      "paradigm": "surprise",
+      "title": "Surprise box (24 to 35 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "What is in the box?",
+      "pacing": "short sentences, a pause for the child to answer",
+      "primaryEmotion": "surprise",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 24 to 35 months. Pacing: short sentences, a pause for the child to answer. Spoken line: \"What is in the box?\". Action: Look in the box, then at 4 seconds lift the lid and show surprise, then share a smile.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 4.0,
+          "gazeTarget": "Gift_Box",
+          "emotionTrait": "anticipation",
+          "whatHappens": "Attention on the closed box."
+        },
+        {
+          "startSec": 4.0,
+          "endSec": 8.0,
+          "gazeTarget": "Actor_Eyes",
+          "emotionTrait": "surprise",
+          "whatHappens": "Lid opens. Expect a surprise face, then a smile."
+        }
+      ]
+    },
+    {
+      "id": "en_24-35_turn_taking",
+      "language": "en",
+      "ageBracketId": "24-35",
+      "ageLabel": "24 to 35 months",
+      "paradigm": "turn_taking",
+      "title": "Turn taking (24 to 35 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Your turn.",
+      "pacing": "short sentences, a pause for the child to answer",
+      "primaryEmotion": "joy",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 24 to 35 months. Pacing: short sentences, a pause for the child to answer. Spoken line: \"Your turn.\". Action: Speak a short line, wait, then smile and clap when it is the child's turn.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 4.0,
+          "gazeTarget": "Teacher_Mouth",
+          "emotionTrait": "engaged",
+          "whatHappens": "Mouth moves with the words."
+        },
+        {
+          "startSec": 4.0,
+          "endSec": 8.0,
+          "gazeTarget": "Teacher_Face",
+          "emotionTrait": "joy",
+          "whatHappens": "Pause and smile. The child may answer."
+        }
+      ]
+    },
+    {
+      "id": "en_36-47_peekaboo",
+      "language": "en",
+      "ageBracketId": "36-47",
+      "ageLabel": "36 to 47 months",
+      "paradigm": "peekaboo",
+      "title": "Peek-a-boo (36 to 47 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Hello. Where did I go?",
+      "pacing": "a simple question and a short wait",
+      "primaryEmotion": "joy",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 36 to 47 months. Pacing: a simple question and a short wait. Spoken line: \"Hello. Where did I go?\". Action: At 2 seconds cover the face with both hands. At 4 seconds open the hands, smile, and say ta-da.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 2.0,
+          "gazeTarget": "Eye_Region",
+          "emotionTrait": "engaged",
+          "whatHappens": "Direct look, quiet hello."
+        },
+        {
+          "startSec": 2.0,
+          "endSec": 4.0,
+          "gazeTarget": "Eye_Region",
+          "emotionTrait": "anticipation",
+          "whatHappens": "Hands cover the face."
+        },
+        {
+          "startSec": 4.0,
+          "endSec": 8.0,
+          "gazeTarget": "Eye_Region",
+          "emotionTrait": "joy",
+          "whatHappens": "Reveal and smile."
+        }
+      ]
+    },
+    {
+      "id": "en_36-47_name_response",
+      "language": "en",
+      "ageBracketId": "36-47",
+      "ageLabel": "36 to 47 months",
+      "paradigm": "name_response",
+      "title": "Response to name (36 to 47 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Look here.",
+      "pacing": "a simple question and a short wait",
+      "primaryEmotion": "engaged",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 36 to 47 months. Pacing: a simple question and a short wait. Spoken line: \"Look here.\". Action: A neutral dot holds the center. At 3 seconds a voice calls the child's name from one side.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 3.0,
+          "gazeTarget": "Center_Fixation_Target",
+          "emotionTrait": "calm",
+          "whatHappens": "Child looks at the center."
+        },
+        {
+          "startSec": 3.0,
+          "endSec": 8.0,
+          "gazeTarget": "Name_Call_Side",
+          "emotionTrait": "engaged",
+          "whatHappens": "Name is called. Expect a look or head turn."
+        }
+      ]
+    },
+    {
+      "id": "en_36-47_gaze_cue_right",
+      "language": "en",
+      "ageBracketId": "36-47",
+      "ageLabel": "36 to 47 months",
+      "paradigm": "gaze_cue_right",
+      "title": "Gaze cue right (36 to 47 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Look, over there.",
+      "pacing": "a simple question and a short wait",
+      "primaryEmotion": "engaged",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 36 to 47 months. Pacing: a simple question and a short wait. Spoken line: \"Look, over there.\". Action: Eyes on camera until 3.5 seconds, then look and point to the upper right.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 3.5,
+          "gazeTarget": "Actor_Face",
+          "emotionTrait": "engaged",
+          "whatHappens": "Face before the cue."
+        },
+        {
+          "startSec": 3.5,
+          "endSec": 8.0,
+          "gazeTarget": "Gaze_Target_Right",
+          "emotionTrait": "engaged",
+          "whatHappens": "Look follows the point to the right."
+        }
+      ]
+    },
+    {
+      "id": "en_36-47_gaze_cue_left",
+      "language": "en",
+      "ageBracketId": "36-47",
+      "ageLabel": "36 to 47 months",
+      "paradigm": "gaze_cue_left",
+      "title": "Gaze cue left (36 to 47 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Look, over there.",
+      "pacing": "a simple question and a short wait",
+      "primaryEmotion": "engaged",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 36 to 47 months. Pacing: a simple question and a short wait. Spoken line: \"Look, over there.\". Action: Eyes on camera until 3 seconds, then look and point to the upper left.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 3.0,
+          "gazeTarget": "Actor_Face",
+          "emotionTrait": "engaged",
+          "whatHappens": "Face before the cue."
+        },
+        {
+          "startSec": 3.0,
+          "endSec": 8.0,
+          "gazeTarget": "Gaze_Target_Left",
+          "emotionTrait": "engaged",
+          "whatHappens": "Look follows the point to the left."
+        }
+      ]
+    },
+    {
+      "id": "en_36-47_surprise",
+      "language": "en",
+      "ageBracketId": "36-47",
+      "ageLabel": "36 to 47 months",
+      "paradigm": "surprise",
+      "title": "Surprise box (36 to 47 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "What is in the box?",
+      "pacing": "a simple question and a short wait",
+      "primaryEmotion": "surprise",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 36 to 47 months. Pacing: a simple question and a short wait. Spoken line: \"What is in the box?\". Action: Look in the box, then at 4 seconds lift the lid and show surprise, then share a smile.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 4.0,
+          "gazeTarget": "Gift_Box",
+          "emotionTrait": "anticipation",
+          "whatHappens": "Attention on the closed box."
+        },
+        {
+          "startSec": 4.0,
+          "endSec": 8.0,
+          "gazeTarget": "Actor_Eyes",
+          "emotionTrait": "surprise",
+          "whatHappens": "Lid opens. Expect a surprise face, then a smile."
+        }
+      ]
+    },
+    {
+      "id": "en_36-47_turn_taking",
+      "language": "en",
+      "ageBracketId": "36-47",
+      "ageLabel": "36 to 47 months",
+      "paradigm": "turn_taking",
+      "title": "Turn taking (36 to 47 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Your turn.",
+      "pacing": "a simple question and a short wait",
+      "primaryEmotion": "joy",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 36 to 47 months. Pacing: a simple question and a short wait. Spoken line: \"Your turn.\". Action: Speak a short line, wait, then smile and clap when it is the child's turn.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 4.0,
+          "gazeTarget": "Teacher_Mouth",
+          "emotionTrait": "engaged",
+          "whatHappens": "Mouth moves with the words."
+        },
+        {
+          "startSec": 4.0,
+          "endSec": 8.0,
+          "gazeTarget": "Teacher_Face",
+          "emotionTrait": "joy",
+          "whatHappens": "Pause and smile. The child may answer."
+        }
+      ]
+    },
+    {
+      "id": "en_48-60_peekaboo",
+      "language": "en",
+      "ageBracketId": "48-60",
+      "ageLabel": "48 to 60 months",
+      "paradigm": "peekaboo",
+      "title": "Peek-a-boo (48 to 60 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Hello. Where did I go?",
+      "pacing": "a two-turn exchange a preschooler can follow",
+      "primaryEmotion": "joy",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 48 to 60 months. Pacing: a two-turn exchange a preschooler can follow. Spoken line: \"Hello. Where did I go?\". Action: At 2 seconds cover the face with both hands. At 4 seconds open the hands, smile, and say ta-da.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 2.0,
+          "gazeTarget": "Eye_Region",
+          "emotionTrait": "engaged",
+          "whatHappens": "Direct look, quiet hello."
+        },
+        {
+          "startSec": 2.0,
+          "endSec": 4.0,
+          "gazeTarget": "Eye_Region",
+          "emotionTrait": "anticipation",
+          "whatHappens": "Hands cover the face."
+        },
+        {
+          "startSec": 4.0,
+          "endSec": 8.0,
+          "gazeTarget": "Eye_Region",
+          "emotionTrait": "joy",
+          "whatHappens": "Reveal and smile."
+        }
+      ]
+    },
+    {
+      "id": "en_48-60_name_response",
+      "language": "en",
+      "ageBracketId": "48-60",
+      "ageLabel": "48 to 60 months",
+      "paradigm": "name_response",
+      "title": "Response to name (48 to 60 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Look here.",
+      "pacing": "a two-turn exchange a preschooler can follow",
+      "primaryEmotion": "engaged",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 48 to 60 months. Pacing: a two-turn exchange a preschooler can follow. Spoken line: \"Look here.\". Action: A neutral dot holds the center. At 3 seconds a voice calls the child's name from one side.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 3.0,
+          "gazeTarget": "Center_Fixation_Target",
+          "emotionTrait": "calm",
+          "whatHappens": "Child looks at the center."
+        },
+        {
+          "startSec": 3.0,
+          "endSec": 8.0,
+          "gazeTarget": "Name_Call_Side",
+          "emotionTrait": "engaged",
+          "whatHappens": "Name is called. Expect a look or head turn."
+        }
+      ]
+    },
+    {
+      "id": "en_48-60_gaze_cue_right",
+      "language": "en",
+      "ageBracketId": "48-60",
+      "ageLabel": "48 to 60 months",
+      "paradigm": "gaze_cue_right",
+      "title": "Gaze cue right (48 to 60 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Look, over there.",
+      "pacing": "a two-turn exchange a preschooler can follow",
+      "primaryEmotion": "engaged",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 48 to 60 months. Pacing: a two-turn exchange a preschooler can follow. Spoken line: \"Look, over there.\". Action: Eyes on camera until 3.5 seconds, then look and point to the upper right.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 3.5,
+          "gazeTarget": "Actor_Face",
+          "emotionTrait": "engaged",
+          "whatHappens": "Face before the cue."
+        },
+        {
+          "startSec": 3.5,
+          "endSec": 8.0,
+          "gazeTarget": "Gaze_Target_Right",
+          "emotionTrait": "engaged",
+          "whatHappens": "Look follows the point to the right."
+        }
+      ]
+    },
+    {
+      "id": "en_48-60_gaze_cue_left",
+      "language": "en",
+      "ageBracketId": "48-60",
+      "ageLabel": "48 to 60 months",
+      "paradigm": "gaze_cue_left",
+      "title": "Gaze cue left (48 to 60 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Look, over there.",
+      "pacing": "a two-turn exchange a preschooler can follow",
+      "primaryEmotion": "engaged",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 48 to 60 months. Pacing: a two-turn exchange a preschooler can follow. Spoken line: \"Look, over there.\". Action: Eyes on camera until 3 seconds, then look and point to the upper left.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 3.0,
+          "gazeTarget": "Actor_Face",
+          "emotionTrait": "engaged",
+          "whatHappens": "Face before the cue."
+        },
+        {
+          "startSec": 3.0,
+          "endSec": 8.0,
+          "gazeTarget": "Gaze_Target_Left",
+          "emotionTrait": "engaged",
+          "whatHappens": "Look follows the point to the left."
+        }
+      ]
+    },
+    {
+      "id": "en_48-60_surprise",
+      "language": "en",
+      "ageBracketId": "48-60",
+      "ageLabel": "48 to 60 months",
+      "paradigm": "surprise",
+      "title": "Surprise box (48 to 60 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "What is in the box?",
+      "pacing": "a two-turn exchange a preschooler can follow",
+      "primaryEmotion": "surprise",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 48 to 60 months. Pacing: a two-turn exchange a preschooler can follow. Spoken line: \"What is in the box?\". Action: Look in the box, then at 4 seconds lift the lid and show surprise, then share a smile.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 4.0,
+          "gazeTarget": "Gift_Box",
+          "emotionTrait": "anticipation",
+          "whatHappens": "Attention on the closed box."
+        },
+        {
+          "startSec": 4.0,
+          "endSec": 8.0,
+          "gazeTarget": "Actor_Eyes",
+          "emotionTrait": "surprise",
+          "whatHappens": "Lid opens. Expect a surprise face, then a smile."
+        }
+      ]
+    },
+    {
+      "id": "en_48-60_turn_taking",
+      "language": "en",
+      "ageBracketId": "48-60",
+      "ageLabel": "48 to 60 months",
+      "paradigm": "turn_taking",
+      "title": "Turn taking (48 to 60 months)",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "Your turn.",
+      "pacing": "a two-turn exchange a preschooler can follow",
+      "primaryEmotion": "joy",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. English only. Actor speaks to a child aged 48 to 60 months. Pacing: a two-turn exchange a preschooler can follow. Spoken line: \"Your turn.\". Action: Speak a short line, wait, then smile and clap when it is the child's turn.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 4.0,
+          "gazeTarget": "Teacher_Mouth",
+          "emotionTrait": "engaged",
+          "whatHappens": "Mouth moves with the words."
+        },
+        {
+          "startSec": 4.0,
+          "endSec": 8.0,
+          "gazeTarget": "Teacher_Face",
+          "emotionTrait": "joy",
+          "whatHappens": "Pause and smile. The child may answer."
+        }
+      ]
+    },
+    {
+      "id": "en_universal_geopref",
+      "language": "en",
+      "ageBracketId": "12-60",
+      "ageLabel": "12-60 months",
+      "paradigm": "geopref",
+      "title": "Geometric versus social",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "",
+      "pacing": "no speech",
+      "primaryEmotion": "engaged",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. No spoken language. Split screen. Left half: a person smiling at the camera. Right half: high-contrast spinning shapes. No speech.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 8.0,
+          "gazeTarget": "Social_Actor",
+          "emotionTrait": "engaged",
+          "whatHappens": "Social half."
+        },
+        {
+          "startSec": 0.0,
+          "endSec": 8.0,
+          "gazeTarget": "Geometric_Pattern",
+          "emotionTrait": "calm",
+          "whatHappens": "Shape half."
+        }
+      ]
+    },
+    {
+      "id": "en_universal_gears",
+      "language": "en",
+      "ageBracketId": "12-60",
+      "ageLabel": "12-60 months",
+      "paradigm": "gears",
+      "title": "Mechanical gears",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "",
+      "pacing": "no speech",
+      "primaryEmotion": "calm",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. No spoken language. Close view of colorful gears and marbles rolling. No people, no speech.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 8.0,
+          "gazeTarget": "Mechanical_Motion",
+          "emotionTrait": "calm",
+          "whatHappens": "Motion stays inside the toy."
+        }
+      ]
+    },
+    {
+      "id": "en_universal_puppy",
+      "language": "en",
+      "ageBracketId": "12-60",
+      "ageLabel": "12-60 months",
+      "paradigm": "puppy",
+      "title": "Puppies playing",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "",
+      "pacing": "no speech",
+      "primaryEmotion": "joy",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. No spoken language. Two puppies playing on a plain rug. No people, no speech.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 8.0,
+          "gazeTarget": "Animal_Puppies",
+          "emotionTrait": "joy",
+          "whatHappens": "Biological motion, not a human face."
+        }
+      ]
+    },
+    {
+      "id": "en_universal_recenter",
+      "language": "en",
+      "ageBracketId": "12-60",
+      "ageLabel": "12-60 months",
+      "paradigm": "recenter",
+      "title": "Center fox",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "",
+      "pacing": "no speech",
+      "primaryEmotion": "calm",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. No spoken language. A small fox in a bubble sits in the exact center and bobs gently. No speech.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 8.0,
+          "gazeTarget": "Center_Fixation_Target",
+          "emotionTrait": "calm",
+          "whatHappens": "Look returns to the center."
+        }
+      ]
+    },
+    {
+      "id": "en_universal_cartoon",
+      "language": "en",
+      "ageBracketId": "36-60",
+      "ageLabel": "36-60 months",
+      "paradigm": "cartoon",
+      "title": "Cartoon penguin",
+      "durationSec": 8.0,
+      "status": "prompt-ready",
+      "fileStatus": "not-generated",
+      "spokenLine": "",
+      "pacing": "no speech",
+      "primaryEmotion": "joy",
+      "generationPrompt": "Static locked-off camera on a tripod, eye-level, zero pan, zero zoom, soft diffused high-key studio light, solid pastel backdrop, 4k 60fps. No spoken language. A simple penguin slips, pauses, then pops up smiling. No spoken words.",
+      "sections": [
+        {
+          "startSec": 0.0,
+          "endSec": 4.0,
+          "gazeTarget": "Cartoon_Character",
+          "emotionTrait": "anticipation",
+          "whatHappens": "Setup of the slip."
+        },
+        {
+          "startSec": 4.0,
+          "endSec": 8.0,
+          "gazeTarget": "Cartoon_Character",
+          "emotionTrait": "joy",
+          "whatHappens": "The joke lands. Expect a smile."
+        }
+      ]
+    }
+  ]
+}

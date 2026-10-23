@@ -167,4 +167,25 @@ final class PerVideoMetricsTests: XCTestCase {
         // Mean over 1s at 0.10 and 1s at 0.70
         XCTAssertEqual(set.metrics[PerVideoMetricKey.socialSmileIntensityMean.key(targetAOI: nil)]!, 0.40, accuracy: 0.02)
     }
+
+    func testSectionWindowMeasuresGazeAndSmileFromThatSliceOnly() {
+        let frames = [
+            frame(stimulusId: "clip", mediaTime: 0.2, x: 0.4, y: 0.4, aoiNames: ["Actor_Face"], smile: 0.1),
+            frame(stimulusId: "clip", mediaTime: 1.0, x: 0.4, y: 0.4, aoiNames: ["Actor_Face"], smile: 0.1),
+            frame(stimulusId: "clip", mediaTime: 4.0, x: 0.8, y: 0.2, aoiNames: ["Gaze_Target_Right"], smile: 0.8),
+            frame(stimulusId: "clip", mediaTime: 5.0, x: 0.8, y: 0.2, aoiNames: ["Gaze_Target_Right"], smile: 0.8)
+        ]
+        let window = PerVideoMetricsExtractor.extractClip(
+            stimulusId: "clip",
+            frames: Array(frames.suffix(2)),
+            timeOriginSec: 3.5
+        )
+        let target = PerVideoMetricKey.aoiDwellRatio.key(targetAOI: "Gaze_Target_Right")
+        let face = PerVideoMetricKey.aoiDwellRatio.key(targetAOI: "Actor_Face")
+        XCTAssertEqual(window.metrics[target]!, 1.0, accuracy: 0.001)
+        XCTAssertNil(window.metrics[face])
+        let latency = PerVideoMetricKey.firstEntryLatencyMs.key(targetAOI: "Gaze_Target_Right")
+        XCTAssertEqual(window.metrics[latency]!, 500, accuracy: 1)
+        XCTAssertEqual(window.metrics[PerVideoMetricKey.socialSmileIntensityMean.key(targetAOI: nil)]!, 0.8, accuracy: 0.001)
+    }
 }

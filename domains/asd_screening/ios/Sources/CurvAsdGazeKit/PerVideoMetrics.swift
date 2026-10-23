@@ -103,7 +103,11 @@ public enum PerVideoMetricsExtractor {
 
     // MARK: Per-clip computation
 
-    static func extractClip(stimulusId: String, frames: [GazeFrame]) -> PerVideoMetricSet {
+    static func extractClip(
+        stimulusId: String,
+        frames: [GazeFrame],
+        timeOriginSec: Double = 0
+    ) -> PerVideoMetricSet {
         let validFrames = frames.filter { $0.gaze.isValid && $0.qualityVerdict != .rejected }
         let validSampleRatio = frames.isEmpty ? 0.0 : Double(validFrames.count) / Double(frames.count)
 
@@ -132,7 +136,8 @@ public enum PerVideoMetricsExtractor {
         }
         let observedDuration = observedDurationSec(of: frames)
         for (name, entry) in aoiFirstEntry {
-            metrics[PerVideoMetricKey.firstEntryLatencyMs.key(targetAOI: name)] = entry * 1000.0
+            let latencySec = max(0, entry - timeOriginSec)
+            metrics[PerVideoMetricKey.firstEntryLatencyMs.key(targetAOI: name)] = latencySec * 1000.0
         }
         // AOIs that were never fixated emit no latency key; the scoring engine treats a
         // missing first-entry latency as the full clip duration (worst case, lower-is-better).
@@ -169,7 +174,8 @@ public enum PerVideoMetricsExtractor {
             // Clip-level smile reactivity: peak smile minus the initial 500 ms baseline
             // (DATA_STORAGE_AND_PIPELINE D3.3 formula, clip onset as the reference event).
             let baselineWindow: [Double] = validFrames.compactMap { frame in
-                mediaTime(of: frame) <= 0.5 ? frame.affect.socialSmileIntensity : nil
+                let local = mediaTime(of: frame) - timeOriginSec
+                return local >= 0 && local <= 0.5 ? frame.affect.socialSmileIntensity : nil
             }
             let baselineMean = baselineWindow.isEmpty ? meanSmile : baselineWindow.reduce(0, +) / Double(baselineWindow.count)
             metrics[PerVideoMetricKey.smileReactivityIndex.key(targetAOI: nil)] =

@@ -133,9 +133,13 @@ public enum PerVideoScoringEngine {
         metricSets: [PerVideoMetricSet],
         baseline: NormativeBaselineSet,
         ageMonths: Int,
+        frames: [GazeFrame] = [],
         scoredAt: Date = Date()
     ) -> PerVideoSessionScore {
         let bracketId = resolvedBracketId(baseline: baseline, ageMonths: ageMonths)
+        let framesByClip = Dictionary(grouping: frames) { frame in
+            frame.stimulusId ?? PerVideoMetricsExtractor.untaggedClipId
+        }
 
         var reports: [PerVideoScoreReport] = []
         var weightedSum = 0.0
@@ -161,7 +165,8 @@ public enum PerVideoScoringEngine {
                 metricSet: metricSet,
                 video: video,
                 baseline: baseline,
-                bracketId: bracketId
+                bracketId: bracketId,
+                clipFrames: framesByClip[metricSet.stimulusId] ?? []
             )
             reports.append(report)
             weightedSum += video.weight * report.subscore
@@ -205,15 +210,17 @@ public enum PerVideoScoringEngine {
         metricSet: PerVideoMetricSet,
         video: NormativeVideo,
         baseline: NormativeBaselineSet,
-        bracketId: String
+        bracketId: String,
+        clipFrames: [GazeFrame] = []
     ) -> PerVideoScoreReport {
         let clipDurationMs = max(metricSet.observedDurationSec, 0.5) * 1000.0
         var rows: [PerVideoScoreRow] = []
 
         for segment in video.segments {
+            let lookup = metrics(for: segment, clipFrames: clipFrames, fallback: metricSet)
             for expectation in segment.expectations {
                 let metricKey = composedKey(biomarker: expectation.biomarker, targetAOI: expectation.targetAOI)
-                var observed = metricSet.metrics[metricKey]
+                var observed = lookup[metricKey]
                 var imputed = false
                 if observed == nil, expectation.biomarker == PerVideoMetricKey.firstEntryLatencyMs.rawValue {
                     // Never fixated the target AOI: worst case for lower-is-better latency.
@@ -266,6 +273,26 @@ public enum PerVideoScoringEngine {
             hasBaseline: true,
             weight: video.weight
         )
+    }
+
+    /// Gaze and emotion numbers for one time section. Falls back to the whole-clip
+    /// metric set when the section has no frames, so older callers stay stable.
+    static func metrics(
+        for segment: NormativeSegment,
+        clipFrames: [GazeFrame],
+        fallback: PerVideoMetricSet
+    ) -> [String: Double] {
+        guard !clipFrames.isEmpty else { return fallback.metrics }
+        let window = clipFrames.filter { frame in
+            let t = frame.gaze.clipMediaTimeSec ?? frame.gaze.videoTimeSec
+            return t >= segment.startSec && t < segment.endSec
+        }
+        guard !window.isEmpty else { return fallback.metrics }
+        return PerVideoMetricsExtractor.extractClip(
+            stimulusId: fallback.stimulusId,
+            frames: window,
+            timeOriginSec: segment.startSec
+        ).metrics
     }
 
     // MARK: Status and continuous score
