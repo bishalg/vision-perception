@@ -34,6 +34,7 @@ public enum ScreeningWizardStep: Equatable {
 ///   Result → `GazeSessionResultView` (Biomarker Report & CareKit Sync)
 public struct GazeScreeningWizardView: View {
     @State private var step: ScreeningWizardStep = .positioning
+    @StateObject private var camera = CameraAccessCoordinator()
 
     public var onOpenHistory: (() -> Void)?
 
@@ -47,10 +48,18 @@ public struct GazeScreeningWizardView: View {
             // explanation and offers no way to start a session.
             if case .blocked(let reason) = CaptureEntryGate.evaluate() {
                 UnsupportedDeviceView(reason: reason)
-            } else {
+            } else if camera.state.showsDeniedView {
+                // CAM-1: denied or restricted camera access shows the explanation and Settings link.
+                CameraDeniedView(state: camera.state)
+            } else if camera.canStartSession {
                 wizardSteps
+            } else {
+                // Undetermined: the system prompt is (or is about to be) on screen.
+                ProgressView()
             }
         }
+        .task { await camera.ensureAccess(consentStore: .shared) }
+        .cameraScenePhase(camera) { _ in }
     }
 
     @ViewBuilder

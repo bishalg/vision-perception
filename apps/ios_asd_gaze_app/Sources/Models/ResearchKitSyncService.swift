@@ -47,11 +47,20 @@ private struct ResearchSyncFileMeta: Codable {
     var nextAttemptAt: TimeInterval
 }
 
-/// Offline-first background synchronization client connecting ResearchKit to
-/// the pediatric research server (`tools/asd_research_server.py` / `/api/v1/research/ingest`).
+/// Offline-first background synchronization client for a configured research
+/// study's ingest endpoint (CNS-9).
+///
+/// The service exists only for a build whose Info.plist carries a valid
+/// `ASDResearchStudy` dictionary: `shared` is `nil` otherwise, and the init
+/// requires a `ResearchStudyConfiguration`, which cannot be created without an
+/// https, non-IP-literal ingest URL. Every request re-checks the scheme before
+/// it is sent, so nothing relies on ATS (trap 10).
 @MainActor
 public final class ResearchKitSyncService: ObservableObject {
-    public static let shared = ResearchKitSyncService()
+    /// `nil` in the default build: there is no research study at launch (H7).
+    public static let shared: ResearchKitSyncService? = ResearchStudyConfiguration.current.map {
+        ResearchKitSyncService(configuration: $0)
+    }
 
     private static let logger = Logger(subsystem: "com.visionperception.asd", category: "ResearchKitSyncService")
 
@@ -61,8 +70,9 @@ public final class ResearchKitSyncService: ObservableObject {
     @Published public private(set) var lastSyncedAt: Date?
     @Published public private(set) var isOnline: Bool = true
 
+    public let configuration: ResearchStudyConfiguration
     private let store: ResearchKitStudyStore
-    private let serverURL: URL
+    private var serverURL: URL { configuration.ingestURL }
     private let fileManager = FileManager.default
     private let queueDirectory: URL
     private let session: URLSession
@@ -96,16 +106,40 @@ public final class ResearchKitSyncService: ObservableObject {
         return base.appendingPathComponent(queueFolder, isDirectory: true)
     }
 
+    /// Deletes every queued, dead-lettered and quarantined upload. Works without
+    /// a service too: a queue left on disk by an earlier build that had a study
+    /// configured is still removed when this build has none (CNS-5, CNS-6).
+    public static func purgeQueuedUploads(
+        service: ResearchKitSyncService? = ResearchKitSyncService.shared,
+        queueDirectory: URL = ResearchKitSyncService.defaultQueueDirectory(),
+        fileManager: FileManager = .default
+    ) {
+        if let service {
+            service.purgeAllQueued()
+            return
+        }
+        guard fileManager.fileExists(atPath: queueDirectory.path) else { return }
+        let contents = (try? fileManager.contentsOfDirectory(at: queueDirectory, includingPropertiesForKeys: nil)) ?? []
+        for item in contents {
+            do {
+                try fileManager.removeItem(at: item)
+            } catch {
+                logger.error("Failed to purge \(item.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            }
+        }
+        logger.info("Purged research upload queue left by an earlier build")
+    }
+
     public init(
+        configuration: ResearchStudyConfiguration,
         store: ResearchKitStudyStore = .shared,
-        serverURL: URL = URL(string: "http://127.0.0.1:8089/api/v1/research/ingest")!,
         queueDirectory: URL? = nil,
         session: URLSession = .shared,
         startMonitoring: Bool = true,
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
+        self.configuration = configuration
         self.store = store
-        self.serverURL = serverURL
         self.session = session
         self.now = now
 
@@ -237,7 +271,7 @@ public final class ResearchKitSyncService: ObservableObject {
         }
 
         syncState = .syncing
-        Self.logger.info("Starting ResearchKit transmission to \(self.serverURL.absoluteString, privacy: .public)...")
+        Self.logger.info("Starting research upload to \(self.serverURL.host ?? "?", privacy: .public)")
 
         let generation = queueGeneration
         syncTask = Task {
@@ -431,6 +465,12 @@ public final class ResearchKitSyncService: ObservableObject {
     // MARK: - HTTP Network Request
 
     private func postPayload(data: Data) async throws -> String {
+        // Fail closed even if a future change bypasses configuration validation.
+        do {
+            try ResearchStudyConfiguration.validateIngestURL(serverURL)
+        } catch {
+            throw NSError(domain: "ResearchSync", code: -2, userInfo: [NSLocalizedDescriptionKey: "Ingest URL rejected: \(error)"])
+        }
         var request = URLRequest(url: serverURL)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

@@ -44,14 +44,14 @@ final class ConsentGatingTests: XCTestCase {
         XCTAssertNotNil(defaults.data(forKey: ChildProfileStore.storageKey))
     }
 
-    func testConsentedSessionStartsWithValidToken() throws {
+    func testConsentedSessionStartsWithValidToken() async throws {
         let store = ChildProfileStore(userDefaults: defaults)
         store.profile.hasConsentedPIA = true
         let token = try XCTUnwrap(ConsentToken.mint(from: store))
 
         let controller = GazeSessionController()
         XCTAssertTrue(controller.startConsentedSession(token: token, store: store))
-        _ = controller.stopSession()
+        _ = await controller.stopSession()
     }
 
     func testConsentedSessionRefusedAfterConsentWithdrawn() throws {

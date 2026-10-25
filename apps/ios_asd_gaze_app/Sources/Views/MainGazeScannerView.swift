@@ -42,6 +42,7 @@ public struct MainGazeScannerView: View {
     #endif
     @State private var showCalibrationSheet: Bool = false
     @State private var entryBlock: DeviceBlockReason?
+    @StateObject private var camera = CameraAccessCoordinator()
     /// SIM-2/SIM-7: why capture cannot run right now, if it cannot.
     private var activeBlock: DeviceBlockReason? { entryBlock ?? controller.blockReason }
 
@@ -82,7 +83,9 @@ public struct MainGazeScannerView: View {
                 .padding(.bottom, 8)
             }
             .overlay {
-                if let reason = activeBlock {
+                if camera.state.showsDeniedView {
+                    CameraDeniedView(state: camera.state, onClose: onClose)
+                } else if let reason = activeBlock {
                     UnsupportedDeviceView(reason: reason, onClose: onClose)
                 }
             }
@@ -146,13 +149,20 @@ public struct MainGazeScannerView: View {
                 )
             }
         }
-        .onAppear {
+        .task {
             controller.reloadCalibrationProfile()
-            startSessionLoop()
+            await runSessionLoop()
         }
         .onDisappear {
-            sessionTimer?.invalidate()
-            _ = controller.stopSession()
+            endCapture()
+        }
+        .cameraScenePhase(camera) { action in
+            // CAM-3: backgrounding stops the session; the observation ends honestly as
+            // "interrupted" and the parent chooses to close or start again.
+            if action == .stopSession {
+                endCapture()
+                entryBlock = .interrupted
+            }
         }
     }
 
@@ -648,7 +658,7 @@ public struct MainGazeScannerView: View {
                 systemImage: "checkmark.circle.fill",
                 isPrimary: true
             ) {
-                completeSession()
+                Task { await completeSession() }
             }
             .frame(maxWidth: .infinity)
 
@@ -661,7 +671,7 @@ public struct MainGazeScannerView: View {
         Menu {
             Button(action: {
                 elapsedSeconds = 0.0
-                beginConsentedCapture()
+                Task { await beginConsentedCapture() }
             }) {
                 Label("Reset Observation", systemImage: "arrow.counterclockwise")
             }
@@ -671,7 +681,7 @@ public struct MainGazeScannerView: View {
             Button(action: {
                 elapsedSeconds = 0.0
                 if controller.isSimulationMode {
-                    beginConsentedCapture()
+                    Task { await beginConsentedCapture() }
                 } else {
                     controller.startSimulatedSession()
                 }
@@ -717,9 +727,17 @@ public struct MainGazeScannerView: View {
         }
     }
 
-    private func handleClose() {
+    /// Stops the timer and, if a capture is running, the controller (idle timer restored).
+    private func endCapture() {
         sessionTimer?.invalidate()
-        _ = controller.stopSession()
+        sessionTimer = nil
+        guard camera.isSessionActive else { return }
+        camera.sessionDidEnd()
+        Task { _ = await controller.stopSession() }
+    }
+
+    private func handleClose() {
+        endCapture()
         if let onClose {
             onClose()
         } else {
@@ -727,12 +745,14 @@ public struct MainGazeScannerView: View {
         }
     }
 
-    private func completeSession() {
+    private func completeSession() async {
         sessionTimer?.invalidate()
+        sessionTimer = nil
+        camera.sessionDidEnd()
         // `nil` when nothing recorded (live tracking unavailable): no sink receives
         // the empty summary in that case.
         let recordedSource = controller.captureSource
-        let summary = controller.stopSession()
+        let summary = await controller.stopSession()
         let frames = controller.recordedFrames
 
         #if ASD_RESEARCH_CLASSIFIER
@@ -807,12 +827,23 @@ public struct MainGazeScannerView: View {
     }
 
     /// CNS-1: live capture only starts with a consent token minted from the profile store.
-    private func beginConsentedCapture() {
+    /// CAM-1: nothing starts until camera access is granted.
+    private func beginConsentedCapture() async {
+        guard await camera.ensureAccess(consentStore: .shared) == .granted, !Task.isCancelled else {
+            if camera.state == .unknown { entryBlock = .consentRequired }
+            return
+        }
         entryBlock = controller.startSessionWithConsent() ? nil : .consentRequired
+        if entryBlock == nil { camera.sessionDidStart() }
     }
 
     private func startSessionLoop() {
-        beginConsentedCapture()
+        Task { await runSessionLoop() }
+    }
+
+    private func runSessionLoop() async {
+        await beginConsentedCapture()
+        guard camera.canStartSession, !Task.isCancelled else { return }
         sessionTimer?.invalidate()
         sessionTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { _ in
             MainActor.assumeIsolated {

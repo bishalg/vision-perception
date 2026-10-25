@@ -23,6 +23,7 @@ public struct GazeStimulusScreeningView: View {
     @State private var cartoonBounce: CGFloat = 0.0
     @State private var showAbortConfirm: Bool = false
     @State private var entryBlock: DeviceBlockReason?
+    @StateObject private var camera = CameraAccessCoordinator()
     /// SIM-2/SIM-7: why capture cannot run right now, if it cannot.
     private var activeBlock: DeviceBlockReason? { entryBlock ?? controller.blockReason }
 
@@ -121,19 +122,29 @@ public struct GazeStimulusScreeningView: View {
         }
         .ignoresSafeArea()
         .overlay {
-            if let reason = activeBlock {
+            if camera.state.showsDeniedView {
+                CameraDeniedView(state: camera.state, onClose: onAbort)
+            } else if let reason = activeBlock {
                 UnsupportedDeviceView(reason: reason, onClose: onAbort)
             }
         }
-        .onAppear(perform: startSession)
-        .onDisappear(perform: stopSession)
+        .task { await startSession() }
+        .onDisappear { endCapture() }
+        .cameraScenePhase(camera) { action in
+            // CAM-3: backgrounding stops the session. An observation cannot be resumed
+            // mid-stimulus, so it ends honestly as "interrupted" instead of continuing.
+            if action == .stopSession {
+                endCapture()
+                entryBlock = .interrupted
+            }
+        }
         .confirmationDialog(
             "Stop Observation?",
             isPresented: $showAbortConfirm,
             titleVisibility: .visible
         ) {
             Button("Abort & Return to Start", role: .destructive) {
-                stopSession()
+                endCapture()
                 onAbort()
             }
             Button("Continue Observation", role: .cancel) {}
@@ -453,7 +464,12 @@ public struct GazeStimulusScreeningView: View {
 
     // MARK: - Session Management
 
-    private func startSession() {
+    private func startSession() async {
+        // CAM-1: no session until camera access is granted.
+        guard await camera.ensureAccess(consentStore: .shared) == .granted, !Task.isCancelled else {
+            if camera.state == .unknown { entryBlock = .consentRequired }
+            return
+        }
         controller.reloadCalibrationProfile()
         currentClipIndex = 0
         currentClipElapsedSec = 0.0
@@ -474,6 +490,7 @@ public struct GazeStimulusScreeningView: View {
         }
         entryBlock = nil
         guard controller.blockReason == nil else { return }
+        camera.sessionDidStart()
 
         sessionTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { _ in
             MainActor.assumeIsolated {
@@ -540,12 +557,25 @@ public struct GazeStimulusScreeningView: View {
         sessionTimer = nil
     }
 
+    /// Stops the timer and, if a capture is still running, the controller (idle timer restored).
+    private func endCapture() {
+        stopSession()
+        guard camera.isSessionActive else { return }
+        camera.sessionDidEnd()
+        Task { _ = await controller.stopSession() }
+    }
+
     private func finishSession() {
         stopSession()
+        camera.sessionDidEnd()
+        Task { await finalizeSession() }
+    }
+
+    private func finalizeSession() async {
         // `nil` when nothing recorded (live tracking unavailable): no sink receives
         // the empty summary in that case.
         let recordedSource = controller.captureSource
-        let summary = controller.stopSession()
+        let summary = await controller.stopSession()
         let frames = controller.recordedFrames
         #if ASD_RESEARCH_CLASSIFIER
         let classification = BiomarkerClassificationEngine.shared.classifySync(summary: summary)

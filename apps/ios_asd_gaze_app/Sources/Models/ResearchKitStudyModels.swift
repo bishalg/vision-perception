@@ -106,7 +106,8 @@ public struct ORKConsentSignature: Sendable, Codable, Equatable {
         guardianFullName: String,
         signedDate: Date = Date(),
         signatureToken: String,
-        consentVersion: String = "v1.3-IRB2026"
+        consentVersion: String = ResearchStudyConfiguration.current?.consentVersion
+            ?? ResearchStudyConfiguration.unconfiguredStudyIdentifier
     ) {
         self.signatureId = signatureId
         self.guardianFullName = guardianFullName
@@ -116,64 +117,61 @@ public struct ORKConsentSignature: Sendable, Codable, Equatable {
     }
 }
 
+/// The consent document of the configured study (CNS-9). It has no defaults:
+/// every study fact comes from `ResearchStudyConfiguration`, so a build without
+/// a study cannot show a consent document at all (ADR-0002 decision 5).
 public struct ORKConsentDocument: Sendable, Codable {
     public let title: String
     public let studyIdentifier: String
     public let irbProtocolId: String
     public let institution: String
     public let principalInvestigator: String
+    public let consentVersion: String
     public let sections: [ORKConsentSection]
     public var signatures: [ORKConsentSignature]
 
-    public init(
-        title: String = "Pediatric Social Visual Attention Clinical Research Study",
-        studyIdentifier: String = "CURV-ASD-GAZE-2026",
-        irbProtocolId: String = "IRB-ASD-2026-088",
-        institution: String = "Center for Pediatric Neurodevelopment & Vision Research",
-        principalInvestigator: String = "Dr. Elena Vasquez, MD, PhD",
-        sections: [ORKConsentSection] = ORKConsentDocument.defaultSections(),
-        signatures: [ORKConsentSignature] = []
-    ) {
-        self.title = title
-        self.studyIdentifier = studyIdentifier
-        self.irbProtocolId = irbProtocolId
-        self.institution = institution
-        self.principalInvestigator = principalInvestigator
-        self.sections = sections
+    public init(configuration: ResearchStudyConfiguration, signatures: [ORKConsentSignature] = []) {
+        self.title = "Optional research participation: \(configuration.institution)"
+        self.studyIdentifier = configuration.studyIdentifier
+        self.irbProtocolId = configuration.irbProtocolId
+        self.institution = configuration.institution
+        self.principalInvestigator = configuration.principalInvestigator
+        self.consentVersion = configuration.consentVersion
+        self.sections = Self.sections(for: configuration)
         self.signatures = signatures
     }
 
-    public static func defaultSections() -> [ORKConsentSection] {
+    public static func sections(for configuration: ResearchStudyConfiguration) -> [ORKConsentSection] {
         [
             ORKConsentSection(
                 type: .overview,
-                title: "Study Purpose",
-                summary: "Observational study evaluating early visual orienting markers in toddlers.",
-                content: "This clinical research study investigates how toddlers engage with naturalistic social and geometric video stimuli. The objective is to validate non-invasive digital phenotyping algorithms for early neurodevelopmental assessment."
+                title: "Purpose",
+                summary: "\(configuration.institution) is collecting de-identified observation data. Taking part is optional.",
+                content: "Study \(configuration.studyIdentifier) is run by \(configuration.institution) (lead investigator: \(configuration.principalInvestigator)) under ethics approval \(configuration.irbProtocolId). It looks at how young children watch short social and non-social video clips. This app is not a diagnostic tool, and taking part does not give you a diagnosis or medical advice."
             ),
             ORKConsentSection(
                 type: .cameraPrivacy,
-                title: "Strict Zero Raw Video Guarantee",
-                summary: "No facial photos, videos, or raw camera buffers are ever stored or uploaded.",
-                content: "Per US COPPA, GDPR-K, and IRB Protocol #2026-088, the front-facing TrueDepth camera processes facial geometry exclusively in volatile device RAM. Once 2D screen gaze coordinates are derived, all video frames are immediately deallocated. Only numerical telemetry is saved."
+                title: "No video is stored",
+                summary: "No photos, videos or camera frames are stored or uploaded.",
+                content: "The front camera is processed on this device while a clip plays. Only numbers, such as where on the screen your child looked and for how long, are kept. Camera frames are discarded as soon as they are processed."
             ),
             ORKConsentSection(
                 type: .dataGathering,
-                title: "Data Collected",
-                summary: "De-identified gaze coordinates, head pose dynamics, and developmental milestones.",
-                content: "The study records timestamps, normalized screen gaze points (x, y), fixation durations, and caregiver-reported developmental questionnaire responses. All records use an anonymous participant token."
+                title: "What is shared",
+                summary: "De-identified gaze summaries, diary observations and questionnaire answers.",
+                content: "If you agree, the app sends timestamps, gaze summaries, diary observations (without your free-text notes) and M-CHAT-R/F answers to \(configuration.institution) over an encrypted connection. Records carry a random participant code, never your child's name."
             ),
             ORKConsentSection(
                 type: .studySurvey,
-                title: "M-CHAT-R/F Survey",
-                summary: "20 standard developmental questions completed by the legal guardian.",
-                content: "Caregivers complete the Modified Checklist for Autism in Toddlers. Responses help correlate behavioral observations with physiological eye-tracking metrics."
+                title: "M-CHAT-R/F questionnaire",
+                summary: "20 standard questions answered by a parent or guardian.",
+                content: "You may answer the Modified Checklist for Autism in Toddlers, Revised with Follow-Up. Your answers are shared with the study only while your consent is active."
             ),
             ORKConsentSection(
                 type: .withdrawing,
-                title: "Voluntary Participation",
-                summary: "You may pause, exit, or withdraw your consent at any time without penalty.",
-                content: "Participation is 100% voluntary. Withdrawing from the research study does NOT affect your access to local CareKit care plan features, medication tracking, or clinical pediatric appointments."
+                title: "Withdrawing",
+                summary: "You can withdraw at any time in Settings.",
+                content: "Taking part is voluntary. Withdrawing stops all uploads and deletes anything still waiting to be sent from this device. It does not affect your care plans, medications or diary in this app. Consent version \(configuration.consentVersion)."
             )
         ]
     }
@@ -467,8 +465,7 @@ public struct ORKTaskResult: Sendable, Codable, Equatable {
         identifier: String = "AsdResearchStudyTask",
         taskRunUUID: UUID = UUID(),
         participantId: String,
-        studyIdentifier: String = "CURV-ASD-GAZE-2026",
-        irbProtocolId: String = "IRB-ASD-2026-088",
+        configuration: ResearchStudyConfiguration? = ResearchStudyConfiguration.current,
         startDate: Date = Date(),
         endDate: Date = Date(),
         stepResults: [ORKStepResult] = [],
@@ -477,8 +474,8 @@ public struct ORKTaskResult: Sendable, Codable, Equatable {
         self.identifier = identifier
         self.taskRunUUID = taskRunUUID
         self.participantId = participantId
-        self.studyIdentifier = studyIdentifier
-        self.irbProtocolId = irbProtocolId
+        self.studyIdentifier = configuration?.studyIdentifier ?? ResearchStudyConfiguration.unconfiguredStudyIdentifier
+        self.irbProtocolId = configuration?.irbProtocolId ?? ResearchStudyConfiguration.unconfiguredStudyIdentifier
         self.startDate = startDate
         self.endDate = endDate
         self.stepResults = stepResults
@@ -547,13 +544,14 @@ public enum NormCollectionGate {
     public static func collectionMetadata(
         enrollment: ResearchStudyEnrollment?,
         childAgeMonths: Int,
-        captureSource: CaptureSource?
+        captureSource: CaptureSource?,
+        configuration: ResearchStudyConfiguration? = ResearchStudyConfiguration.current
     ) -> NormCollectionMetadata? {
         guard isActive(enrollment: enrollment, captureSource: captureSource),
               let enrollment = enrollment else { return nil }
         return NormCollectionMetadata(
             consentVersion: enrollment.consentSignature?.consentVersion ?? "unsigned",
-            studyIdentifier: "CURV-ASD-GAZE-2026",
+            studyIdentifier: configuration?.studyIdentifier ?? ResearchStudyConfiguration.unconfiguredStudyIdentifier,
             participantId: enrollment.participantId,
             childAgeMonths: childAgeMonths,
             deviceModel: deviceModel(),
@@ -655,8 +653,7 @@ public struct ResearchKitStudyPackage: Sendable, Codable, Equatable {
         bundleType: String = "ResearchKitStudyPackage",
         schemaVersion: String = "v1.5",
         compiledAt: String = ISO8601DateFormatter().string(from: Date()),
-        studyIdentifier: String = "CURV-ASD-GAZE-2026",
-        irbProtocolId: String = "IRB-ASD-2026-088",
+        configuration: ResearchStudyConfiguration? = ResearchStudyConfiguration.current,
         participant: StudyParticipantMetadata,
         taskResults: [ORKTaskResult] = [],
         surveys: [MCHATScoreResult] = [],
@@ -666,8 +663,8 @@ public struct ResearchKitStudyPackage: Sendable, Codable, Equatable {
         self.bundleType = bundleType
         self.schemaVersion = schemaVersion
         self.compiledAt = compiledAt
-        self.studyIdentifier = studyIdentifier
-        self.irbProtocolId = irbProtocolId
+        self.studyIdentifier = configuration?.studyIdentifier ?? ResearchStudyConfiguration.unconfiguredStudyIdentifier
+        self.irbProtocolId = configuration?.irbProtocolId ?? ResearchStudyConfiguration.unconfiguredStudyIdentifier
         self.participant = participant
         self.taskResults = taskResults
         self.surveys = surveys

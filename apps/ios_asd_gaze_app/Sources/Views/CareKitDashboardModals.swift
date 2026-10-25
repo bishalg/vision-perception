@@ -420,17 +420,21 @@ struct SyncStatusView: View {
     }
 }
 
-// MARK: - ResearchKit Clinical Study Dashboard Card
+// MARK: - Research study dashboard card
 
+/// Shown only when this build has a configured study (CNS-9): callers obtain
+/// the service from `ResearchKitSyncService.shared`, which is `nil` otherwise.
 public struct ResearchStudyDashboardCard: View {
-    @ObservedObject private var syncService = ResearchKitSyncService.shared
+    @ObservedObject private var syncService: ResearchKitSyncService
     @State private var enrollment: ResearchStudyEnrollment = ResearchKitStudyStore.shared.fetchEnrollment()
     @State private var showConsentSheet: Bool = false
     @State private var showSurveySheet: Bool = false
     @State private var showHistorySheet: Bool = false
     @State private var showExportSheet: Bool = false
 
-    public init() {}
+    public init(syncService: ResearchKitSyncService) {
+        self.syncService = syncService
+    }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -486,7 +490,7 @@ public struct ResearchStudyDashboardCard: View {
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "signature")
-                            Text("e-Consent")
+                            Text("Review consent")
                                 .fontWeight(.bold)
                         }
                         .font(.system(size: 12))
@@ -496,6 +500,7 @@ public struct ResearchStudyDashboardCard: View {
                         .foregroundColor(.black) // theme:fixed-media
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("research_card_consent")
                 } else {
                     Button {
                         showSurveySheet = true
@@ -577,8 +582,10 @@ public struct ResearchStudyDashboardCard: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(LiquidGlass.celestialTeal.opacity(0.25), lineWidth: 1)
         )
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("dashboard_research_card")
         .sheet(isPresented: $showConsentSheet) {
-            ResearchStudyConsentView { updated in
+            ResearchStudyConsentView(configuration: syncService.configuration) { updated in
                 enrollment = updated
             }
         }
@@ -589,7 +596,7 @@ public struct ResearchStudyDashboardCard: View {
             MCHATHistoryView()
         }
         .sheet(isPresented: $showExportSheet) {
-            ResearchKitDoctorExportModal()
+            ResearchKitDoctorExportModal(syncService: syncService)
         }
         .onAppear {
             enrollment = ResearchKitStudyStore.shared.fetchEnrollment()
@@ -601,12 +608,14 @@ public struct ResearchStudyDashboardCard: View {
 
 public struct ResearchKitDoctorExportModal: View {
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject private var syncService = ResearchKitSyncService.shared
+    @ObservedObject private var syncService: ResearchKitSyncService
     @State private var jsonString: String = ""
     @State private var shareURL: URL?
     @State private var pdfShareURL: URL?
 
-    public init() {}
+    public init(syncService: ResearchKitSyncService) {
+        self.syncService = syncService
+    }
 
     public var body: some View {
         NavigationStack {
@@ -693,7 +702,7 @@ public struct ResearchKitDoctorExportModal: View {
                     } else {
                         Image(systemName: "icloud.and.arrow.up.fill")
                     }
-                    Text("Transmit to Research Institute Server")
+                    Text("Send to \(syncService.configuration.institution)")
                         .fontWeight(.bold)
                 }
                 .frame(maxWidth: .infinity)

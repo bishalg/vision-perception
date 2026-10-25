@@ -49,7 +49,7 @@ def print_diagram():
     print(f"                             (Idempotency Gate)\n")
 
 
-def run_demo(strict=False, json_output=False):
+def run_demo(strict=False, json_output=False, scenario="critical"):
     if not json_output:
         print_banner()
         print_diagram()
@@ -71,6 +71,15 @@ def run_demo(strict=False, json_output=False):
     spatial_control = delta.get("spatial_control", {})
     spatial_ratio = spatial_control.get("slope_over_20deg_ratio", 0.1511)
     spatial_pass = spatial_control.get("passes_acceptance", True)
+
+    if scenario == "marginal":
+        # Counterfactual probe: identical pipeline, pre-disaster magnitude
+        # signals. Proves the OpenCV 5 evidence itself gates the action —
+        # below-threshold perception must NOT trigger a dispatch.
+        width_ratio = 1.320
+        surge_ratio = 1.180
+        spatial_pass = True
+        event_id = f"{event_id}-marginal-probe"
 
     # 2. Stage 1: S3 Ingestion Event
     if not json_output:
@@ -97,9 +106,9 @@ def run_demo(strict=False, json_output=False):
         time.sleep(0.4)
 
     # 4. Stage 3: Autonomous Reasoning
-    # Evaluate policy thresholds
+    # Evaluate policy thresholds — the vision evidence itself gates the action
+    alert_required = width_ratio >= 1.5 and surge_ratio >= 1.3 and spatial_pass
     reasons = []
-    alert_required = True
     if width_ratio >= 1.5:
         reasons.append(f"Channel width expansion {width_ratio:.2f}x exceeds disaster threshold (>= 1.50x)")
     if surge_ratio >= 1.3:
@@ -113,26 +122,43 @@ def run_demo(strict=False, json_output=False):
         print(f"\n{BOLD}[STAGE 3] Bedrock Agent Node 2: Autonomous Reasoning Engine{RESET}")
         print(f"  • Model:          {BOLD}Anthropic Claude 3.5 Sonnet v2{RESET} on Amazon Bedrock")
         print(f"  • Decision Rule:  channelWidthRatio > 1.5 AND spatialControlPasses == true")
-        print(f"  • Assessment:     {RED}{BOLD}CRITICAL HAZARD DETECTED{RESET}")
-        print(f"  • Policy Proof:   {decision_reason}")
+        if alert_required:
+            print(f"  • Assessment:     {RED}{BOLD}CRITICAL HAZARD DETECTED{RESET}")
+            print(f"  • Policy Proof:   {decision_reason}")
+        else:
+            print(f"  • Assessment:     {YELLOW}{BOLD}BELOW POLICY THRESHOLDS — STANDBY{RESET}")
+            print(f"  • Policy Proof:   {DIM}Perception magnitudes below disaster policy thresholds; no alert warranted{RESET}")
         time.sleep(0.4)
 
     # 5. Stage 4: Action Tool (dispatchFloodAlert)
-    sns_message_id = f"sns-{uuid.uuid4().hex[:12]}"
-    receipt_key = f"receipts/{event_id}_{int(time.time())}.json"
-    audit_receipt_uri = f"s3://vision-perception-audit/{receipt_key}"
+    if alert_required:
+        sns_message_id = f"sns-{uuid.uuid4().hex[:12]}"
+        receipt_key = f"receipts/{event_id}_{int(time.time())}.json"
+        audit_receipt_uri = f"s3://vision-perception-audit/{receipt_key}"
 
-    if not json_output:
-        print(f"\n{BOLD}[STAGE 4] Bedrock Agent Node 3: Action Tool Execution{RESET}")
-        print(f"  • Action Tool:    {RED}/dispatchFloodAlert{RESET}")
-        print(f"  • Handshake:      Validating evidenceToken: {evidence_token} against DynamoDB...")
-        print(f"  • Idempotency:    {GREEN}VERIFIED (Event status: PENDING -> DISPATCHED){RESET}")
-        print(f"  • Broadcast SNS:  Emergency alert dispatched! (Message ID: {sns_message_id})")
-        print(f"  • Audit Log:      Immutable receipt written to {CYAN}{audit_receipt_uri}{RESET}")
-        time.sleep(0.3)
+        if not json_output:
+            print(f"\n{BOLD}[STAGE 4] Bedrock Agent Node 3: Action Tool Execution{RESET}")
+            print(f"  • Action Tool:    {RED}/dispatchFloodAlert{RESET}")
+            print(f"  • Handshake:      Validating evidenceToken: {evidence_token} against DynamoDB...")
+            print(f"  • Idempotency:    {GREEN}VERIFIED (Event status: PENDING -> DISPATCHED){RESET}")
+            print(f"  • Broadcast SNS:  Emergency alert dispatched! (Message ID: {sns_message_id})")
+            print(f"  • Audit Log:      Immutable receipt written to {CYAN}{audit_receipt_uri}{RESET}")
+            time.sleep(0.3)
+    else:
+        sns_message_id = ""
+        receipt_key = f"decisions/{event_id}_{int(time.time())}.json"
+        audit_receipt_uri = f"s3://vision-perception-audit/{receipt_key}"
 
-    # 6. Stage 5: Idempotency Verification Test
-    if not json_output:
+        if not json_output:
+            print(f"\n{BOLD}[STAGE 4] Bedrock Agent Node 3: Action Tool Execution{RESET}")
+            print(f"  • Action Tool:    {YELLOW}/dispatchFloodAlert — NOT CALLED{RESET}")
+            print(f"  • Decision:       {GREEN}Vision evidence below disaster thresholds; agent records STANDBY{RESET}")
+            print(f"  • Event State:    {DIM}PENDING -> MONITORED (no emergency broadcast){RESET}")
+            print(f"  • Audit Log:      Decision receipt written to {CYAN}{audit_receipt_uri}{RESET}")
+            time.sleep(0.3)
+
+    # 6. Stage 5: Idempotency Verification Test (dispatched events only)
+    if alert_required and not json_output:
         print(f"\n{BOLD}[STAGE 5] Idempotency Gate Verification (Re-Submission Test){RESET}")
         print(f"  • Simulating duplicate S3 event retry for {event_id}...")
         print(f"  • Result:         {YELLOW}BLOCKED BY DYNAMODB IDEMPOTENCY GATE{RESET}")
@@ -142,9 +168,12 @@ def run_demo(strict=False, json_output=False):
     receipt = {
         "ok": True,
         "eventId": event_id,
+        "scenario": scenario,
         "evidenceToken": evidence_token,
-        "alertStatus": "DISPATCHED",
-        "severity": "CRITICAL",
+        "alertStatus": "DISPATCHED" if alert_required else "NOT_DISPATCHED",
+        "severity": "CRITICAL" if alert_required else "NONE",
+        "decisionReason": decision_reason
+        or "Perception magnitudes below disaster policy thresholds (width < 1.50x or surge < 1.30x)",
         "channelWidthRatio": f"{width_ratio:.3f}x",
         "floodSurgeRatio": f"{surge_ratio:.3f}x",
         "spatialControlPass": spatial_pass,
@@ -156,9 +185,14 @@ def run_demo(strict=False, json_output=False):
     if json_output:
         print(json.dumps(receipt, indent=2))
     else:
+        verdict = (
+            "Perception -> Decision -> Action"
+            if alert_required
+            else "Perception -> Decision -> No-Action (policy gated)"
+        )
         print(f"\n{BOLD}{GREEN}========================================================================{RESET}")
-        print(f"{BOLD}{GREEN} [SUCCESS] Agentic Vision Trace Verified: Perception -> Decision -> Action{RESET}")
-        print(f"{BOLD}{GREEN}========================================================================{RESET}\n")
+        print(f"{BOLD}{GREEN} [SUCCESS] Agentic Vision Trace Verified: {verdict}{RESET}")
+        print(f"{BOLD}{GREEN}========================================================================\n{RESET}")
 
     return receipt
 
@@ -167,6 +201,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run interactive Agentic Vision Demo")
     parser.add_argument("--strict", action="store_true", help="Enforce strict production checks")
     parser.add_argument("--json", action="store_true", help="Output raw JSON receipt")
+    parser.add_argument(
+        "--scenario",
+        choices=["critical", "marginal"],
+        default="critical",
+        help="critical: full disaster evidence dispatches an alert; "
+        "marginal: identical pipeline, pre-disaster magnitudes -> agent stands by (no dispatch)",
+    )
     args = parser.parse_args()
 
-    run_demo(strict=args.strict, json_output=args.json)
+    run_demo(strict=args.strict, json_output=args.json, scenario=args.scenario)

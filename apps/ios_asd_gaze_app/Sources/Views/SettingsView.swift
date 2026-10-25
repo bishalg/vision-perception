@@ -543,9 +543,13 @@ public struct SettingsView: View {
                     }
                 }
 
-                GlassDivider()
+                // CNS-9: research rows exist only when a study is configured.
+                if ResearchStudyConfiguration.isResearchEnabled {
+                    GlassDivider()
 
-                NormCollectionToggleRow()
+                    NormCollectionToggleRow()
+                        .accessibilityIdentifier("settings_norm_collection_row")
+                }
 
                 GlassDivider()
 
@@ -559,18 +563,21 @@ public struct SettingsView: View {
             titleVisibility: .visible
         ) {
             Button("Delete observation data", role: .destructive, action: deleteAllObservationData)
+                .accessibilityIdentifier("settings_delete_all_confirm")
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This permanently removes saved sessions, session history, queued research uploads, calibration, M-CHAT-R/F answers and study enrollment from this device. It cannot be undone.")
+            Text(Self.deleteAllConfirmationMessage)
         }
         .alert("Also delete care plans?", isPresented: $showDeleteCarePlansPrompt) {
             Button("Keep care plans", role: .cancel) {
                 deletionResultMessage = "Observation data deleted. Your care plans were kept."
             }
+            .accessibilityIdentifier("settings_keep_care_plans")
             Button("Delete care plans", role: .destructive) {
                 DataDeletionService.live().deleteCarePlans()
                 deletionResultMessage = "Observation data and care plans deleted."
             }
+            .accessibilityIdentifier("settings_delete_care_plans")
         } message: {
             Text("Care plans, medications and milestones are your own notes. They are kept unless you delete them here.")
         }
@@ -587,6 +594,19 @@ public struct SettingsView: View {
         }
     }
 
+    /// Delete-all copy names research data only in a build that has a study (CNS-9).
+    static var deleteAllConfirmationMessage: String {
+        ResearchStudyConfiguration.isResearchEnabled
+            ? "This permanently removes saved sessions, session history, queued research uploads, calibration, M-CHAT-R/F answers and study enrollment from this device. It cannot be undone."
+            : "This permanently removes saved sessions, session history, calibration and M-CHAT-R/F answers from this device. It cannot be undone."
+    }
+
+    static var deleteAllRowDetail: String {
+        ResearchStudyConfiguration.isResearchEnabled
+            ? "Sessions, history, uploads queue, calibration, M-CHAT-R/F answers and enrollment."
+            : "Sessions, history, calibration and M-CHAT-R/F answers."
+    }
+
     /// CNS-6: reachable in one tap from Settings, behind a confirmation dialog;
     /// care plans are offered on a second, separate prompt.
     private var deleteAllDataRow: some View {
@@ -599,7 +619,7 @@ public struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Delete all observation data")
                         .font(.system(size: 15, weight: .semibold))
-                    Text("Sessions, history, uploads queue, calibration, M-CHAT-R/F answers and enrollment.")
+                    Text(Self.deleteAllRowDetail)
                         .glassStyle(.subheadline)
                         .multilineTextAlignment(.leading)
                 }

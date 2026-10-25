@@ -145,8 +145,11 @@ public struct OnboardingFlowView: View {
                 )
             }
 
-            // Consent Agreement Toggle
-            Toggle(isOn: $consentAgreed) {
+            // Consent Agreement Toggle. The switch is kept as a standalone,
+            // explicitly labelled control (identifier `onboarding_consent_switch`)
+            // so assistive tech reads it as a single switch and test automation
+            // can tap the control itself, not its text block.
+            HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Parent Consent")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
@@ -158,9 +161,13 @@ public struct OnboardingFlowView: View {
                         .lineLimit(nil)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                Spacer(minLength: 12)
+                Toggle("Parent Consent", isOn: $consentAgreed)
+                    .labelsHidden()
+                    .accessibilityIdentifier("onboarding_consent_switch")
+                    .accessibilityLabel("Parent Consent")
+                    .tint(LiquidGlass.emeraldMint)
             }
-            .accessibilityIdentifier("onboarding_consent_switch")
-            .tint(LiquidGlass.emeraldMint)
             .frame(maxWidth: .infinity, alignment: .leading)
             .glassCard(cornerRadius: 16, padding: 14)
         }

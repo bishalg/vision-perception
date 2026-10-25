@@ -51,6 +51,7 @@ maestro test \
   flows/01-mode-selection.yaml \
   flows/02-onboarding.yaml \
   flows/03-dashboard-and-guardians.yaml \
+  flows/04-care-and-data.yaml \
   --flatten-debug-output \
   --test-output-dir "$OUT" \
   --no-ansi

@@ -150,9 +150,10 @@ async function main() {
     }
     const props = {};
     const bag = picked.id.properties;
-    bag.propertyNames.forEach((name) => {
-      props[name] = bag[name]?.getValue?.() ?? bag[name];
-    });
+    // getValue() unwraps every property to raw values in one call; indexing
+    // bag[name] leaks ConstantProperty wrappers (truthy even for null values,
+    // which made the panel render a broken <img> for still-less cameras).
+    Object.assign(props, bag.getValue(Cesium.JulianDate.now()) ?? {});
     showPanel(props);
   }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 }

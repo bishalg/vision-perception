@@ -2,6 +2,10 @@ import SwiftUI
 
 /// Liquid Glass implementation of the Apple ResearchKit Informed e-Consent flow
 /// (`ORKVisualConsentStep` & `ORKConsentReviewStep`).
+///
+/// Requires the build's `ResearchStudyConfiguration` (CNS-9): the document,
+/// institution, investigator, ethics reference and consent version all come
+/// from it, so the view cannot be shown in a build without a study.
 public struct ResearchStudyConsentView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var guardianName: String = ""
@@ -12,10 +16,14 @@ public struct ResearchStudyConsentView: View {
     @State private var currentPath: Path = Path()
     @State private var isCompleted: Bool = false
 
-    private let document = ORKConsentDocument()
+    private let document: ORKConsentDocument
     private let onConsentCompleted: ((ResearchStudyEnrollment) -> Void)?
 
-    public init(onConsentCompleted: ((ResearchStudyEnrollment) -> Void)? = nil) {
+    public init(
+        configuration: ResearchStudyConfiguration,
+        onConsentCompleted: ((ResearchStudyEnrollment) -> Void)? = nil
+    ) {
+        self.document = ORKConsentDocument(configuration: configuration)
         self.onConsentCompleted = onConsentCompleted
     }
 
@@ -37,7 +45,7 @@ public struct ResearchStudyConsentView: View {
                     .padding(20)
                 }
             }
-            .navigationTitle("Research Study e-Consent")
+            .navigationTitle("Consent")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -56,7 +64,7 @@ public struct ResearchStudyConsentView: View {
                 .font(.system(size: 20, weight: .bold, design: .rounded))
                 .foregroundColor(.primary)
 
-            Text("Administered under Apple ResearchKit guidelines for pediatric observational studies.")
+            Text("Run by \(document.institution). Lead investigator: \(document.principalInvestigator).")
                 .font(.system(size: 13))
                 .foregroundColor(.secondary)
         }
@@ -64,14 +72,14 @@ public struct ResearchStudyConsentView: View {
 
     private var protocolBadgeSection: some View {
         HStack(spacing: 12) {
-            Label(document.irbProtocolId, systemImage: "checkmark.shield.fill")
+            Label("Ethics approval \(document.irbProtocolId)", systemImage: "checkmark.shield.fill")
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(LiquidGlass.celestialTeal)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
                 .background(Capsule().fill(LiquidGlass.celestialTeal.opacity(0.12)))
 
-            Label("Zero Raw Video", systemImage: "eye.slash.fill")
+            Label("No video stored", systemImage: "eye.slash.fill")
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(LiquidGlass.emeraldMint)
                 .padding(.horizontal, 10)
@@ -235,8 +243,9 @@ public struct ResearchStudyConsentView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 14))
             }
             .disabled(!canSubmit)
+            .accessibilityIdentifier("research_consent_submit")
 
-            Text("By tapping provide digital consent, you agree to study participation. Consent can be revoked anytime in settings.")
+            Text("By tapping provide digital consent, you agree to take part (consent version \(document.consentVersion)). You can withdraw at any time in Settings.")
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -251,7 +260,8 @@ public struct ResearchStudyConsentView: View {
         let signatureToken = "SIG-" + UUID().uuidString.prefix(12).uppercased()
         let sig = ORKConsentSignature(
             guardianFullName: guardianName.trimmingCharacters(in: .whitespaces),
-            signatureToken: signatureToken
+            signatureToken: signatureToken,
+            consentVersion: document.consentVersion
         )
 
         ResearchKitStudyStore.shared.saveConsent(

@@ -15,12 +15,8 @@ name: bdd-02-onboarding-consent-and-profile
 - waitForAnimationToEnd:
     timeout: 8000
 
-# The consent switch is a nested UISwitch whose a11y element merges with its
-# label; tapping the merged container does not flip it. On a settled iPhone 18
-# Pro layout the switch knob sits at 334, 563 (logical points), verified by
-# `maestro hierarchy`. Element ids are kept in the app for future selectors.
 - tapOn:
-    point: "334, 563"
+    id: "onboarding_consent_switch"
 - takeScreenshot: onboarding-consent
 
 - tapOn: Continue

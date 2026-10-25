@@ -15,6 +15,7 @@ struct SubjectAgeQuickCheckCard: View {
     @StateObject private var checkController = SubjectAgeCheckController()
     @StateObject private var gazeController = GazeSessionController()
     @State private var isChecking = false
+    @StateObject private var camera = CameraAccessCoordinator()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -41,6 +42,10 @@ struct SubjectAgeQuickCheckCard: View {
 
             checkBody
 
+            if camera.state.showsDeniedView {
+                CameraDeniedInlineNotice(state: camera.state)
+            }
+
             // Privacy reassurance line
             HStack(spacing: 5) {
                 Image(systemName: "lock.shield.fill")
@@ -58,6 +63,9 @@ struct SubjectAgeQuickCheckCard: View {
             checkController.observe(signal)
         }
         .onDisappear(perform: stopCheck)
+        .cameraScenePhase(camera) { action in
+            if action == .stopSession { stopCheck() }
+        }
     }
 
     // MARK: - Body States
@@ -83,7 +91,7 @@ struct SubjectAgeQuickCheckCard: View {
 
     private var startButton: some View {
         Button {
-            startCheck()
+            Task { await startCheck() }
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "camera.viewfinder")
@@ -182,11 +190,18 @@ struct SubjectAgeQuickCheckCard: View {
 
     // MARK: - Actions
 
-    private func startCheck() {
+    private func startCheck() async {
         isChecking = true
         checkController.reset()
+        // CAM-1: no session until camera access is granted; denied ends the check.
+        guard await camera.ensureAccess(consentStore: .shared) == .granted else {
+            isChecking = false
+            return
+        }
         // CNS-1: consent-gated start; if consent is missing nothing starts and the check ends.
-        if !gazeController.startSessionWithConsent() {
+        if gazeController.startSessionWithConsent() {
+            camera.sessionDidStart()
+        } else {
             isChecking = false
         }
     }
@@ -194,6 +209,7 @@ struct SubjectAgeQuickCheckCard: View {
     private func stopCheck() {
         guard isChecking else { return }
         isChecking = false
-        _ = gazeController.stopSession()
+        camera.sessionDidEnd()
+        Task { _ = await gazeController.stopSession() }
     }
 }

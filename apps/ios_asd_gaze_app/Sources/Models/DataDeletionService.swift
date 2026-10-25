@@ -58,7 +58,7 @@ public final class DataDeletionService {
             blendShapeDirectory: defaultBlendShapeDirectory(),
             historyStore: .shared,
             researchStore: .shared,
-            purgeQueues: { ResearchKitSyncService.shared.purgeAllQueued() },
+            purgeQueues: { ResearchKitSyncService.purgeQueuedUploads() },
             resetCalibration: {
                 GazeCalibrationStore.reset()
                 NotificationCenter.default.post(

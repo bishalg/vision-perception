@@ -91,6 +91,7 @@ public struct BubbleCalibrationView: View {
     @State private var showGazeReticle: Bool = true
     @State private var simulationElapsedSec: Double = 0.0
     @State private var entryBlock: DeviceBlockReason?
+    @StateObject private var camera = CameraAccessCoordinator()
     /// SIM-2/SIM-7: why capture cannot run right now, if it cannot.
     private var activeBlock: DeviceBlockReason? { entryBlock ?? controller.blockReason }
 
@@ -227,15 +228,28 @@ public struct BubbleCalibrationView: View {
                 }
             }
             .overlay {
-                if let reason = activeBlock {
+                if camera.state.showsDeniedView {
+                    CameraDeniedView(state: camera.state, onClose: onClose)
+                } else if let reason = activeBlock {
                     UnsupportedDeviceView(reason: reason, onClose: onClose)
                 }
             }
-            .onAppear {
-                startCalibrationSession()
+            .task {
+                await startCalibrationSession()
             }
             .onDisappear {
                 stopCalibrationSession()
+            }
+            .cameraScenePhase(camera) { action in
+                switch action {
+                case .stopSession:
+                    stopCalibrationSession()
+                case .backgroundInterruptionEnded:
+                    // Calibration restarts from the first target; nothing partial is kept.
+                    Task { await startCalibrationSession() }
+                case .none:
+                    break
+                }
             }
         }
     }
@@ -504,12 +518,18 @@ public struct BubbleCalibrationView: View {
 
     // MARK: - Game Loop & Fixation Physics
 
-    private func startCalibrationSession() {
+    private func startCalibrationSession() async {
+        // CAM-1: no session until camera access is granted.
+        guard await camera.ensureAccess(consentStore: .shared) == .granted, !Task.isCancelled else {
+            if camera.state == .unknown { entryBlock = .consentRequired }
+            return
+        }
         currentTargetIndex = 0
         controller.calibrationTarget = targetPoints[0]
         smoothedGaze = targetPoints[0]
         simulationElapsedSec = 0.0
         entryBlock = controller.startSessionWithConsent() ? nil : .consentRequired
+        if entryBlock == nil { camera.sessionDidStart() }
         loopTimer?.invalidate()
         dwellProgress = 0.0
         windowElapsedSec = 0.0
@@ -527,11 +547,13 @@ public struct BubbleCalibrationView: View {
         }
     }
 
-    private func stopCalibrationSession() {
+    @discardableResult
+    private func stopCalibrationSession() -> Task<Void, Never> {
         controller.calibrationTarget = nil
         loopTimer?.invalidate()
         loopTimer = nil
-        _ = controller.stopSession()
+        camera.sessionDidEnd()
+        return Task { _ = await controller.stopSession() }
     }
 
     private func updateFramePhysics() {
@@ -669,8 +691,13 @@ public struct BubbleCalibrationView: View {
                 if let profile = GazeCalibrationProfile.fit(rawPoints: fittedRawPoints, targetPoints: targetPoints) {
                     controller.applyAndPersist(calibrationProfile: profile)
                 }
-                stopCalibrationSession()
-                onCalibrationComplete()
+                // Hand over only after the session has fully stopped, so the next step
+                // never starts while this one is still shutting down.
+                let stopped = stopCalibrationSession()
+                Task {
+                    await stopped.value
+                    onCalibrationComplete()
+                }
             }
         }
     }

@@ -773,7 +773,6 @@ public struct ActivityViewController: UIViewControllerRepresentable {
 public struct ResearchKitExportSheet: View {
     public let exportJsonText: String
     @Environment(\.dismiss) private var dismiss
-    @ObservedObject private var syncService = ResearchKitSyncService.shared
 
     public var body: some View {
         NavigationStack {
@@ -791,30 +790,9 @@ public struct ResearchKitExportSheet: View {
                     .background(Color.black.opacity(0.85))
                     .cornerRadius(12)
 
-                    VStack(spacing: 8) {
-                        Button {
-                            syncService.syncNow()
-                        } label: {
-                            HStack {
-                                if syncService.syncState.isSyncing {
-                                    ProgressView().tint(.black)
-                                } else {
-                                    Image(systemName: "icloud.and.arrow.up.fill")
-                                }
-                                Text("Send Data File (Debug)")
-                                    .fontWeight(.bold)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(LiquidGlass.celestialTeal)
-                            .foregroundColor(.black)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-                        .disabled(syncService.syncState.isSyncing)
-
-                        Text(syncService.syncState.description)
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
+                    // CNS-9: no study configured means nothing to send.
+                    if let syncService = ResearchKitSyncService.shared {
+                        ResearchKitDebugSyncControls(syncService: syncService)
                     }
                 }
                 .padding(16)
@@ -827,6 +805,39 @@ public struct ResearchKitExportSheet: View {
                         .foregroundColor(LiquidGlass.celestialTeal)
                 }
             }
+        }
+    }
+}
+
+/// Debug-only send controls, present only when a study is configured.
+private struct ResearchKitDebugSyncControls: View {
+    @ObservedObject var syncService: ResearchKitSyncService
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Button {
+                syncService.syncNow()
+            } label: {
+                HStack {
+                    if syncService.syncState.isSyncing {
+                        ProgressView().tint(.black)
+                    } else {
+                        Image(systemName: "icloud.and.arrow.up.fill")
+                    }
+                    Text("Send Data File (Debug)")
+                        .fontWeight(.bold)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(LiquidGlass.celestialTeal)
+                .foregroundColor(.black)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .disabled(syncService.syncState.isSyncing)
+
+            Text(syncService.syncState.description)
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
         }
     }
 }

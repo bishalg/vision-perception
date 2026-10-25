@@ -34,6 +34,18 @@ final class MockURLProtocol: URLProtocol, @unchecked Sendable {
 }
 
 final class ResearchKitSyncServiceTests: XCTestCase {
+    /// Injected study configuration (CNS-9). The host is reserved (RFC 2606) and
+    /// every request is answered by `MockURLProtocol`, so no test touches the network.
+    static let studyConfig = try! ResearchStudyConfiguration(
+        ingestURL: URL(string: "https://ingest.example.org/api/v1/research/ingest")!,
+        studyIdentifier: "EXAMPLE-STUDY-1",
+        irbProtocolId: "ETHICS-REF-42",
+        institution: "Example University",
+        principalInvestigator: "Example Investigator",
+        consentVersion: "2027.1"
+    )
+
+    private var suiteName: String!
     private var testUserDefaults: UserDefaults!
     private var researchStore: ResearchKitStudyStore!
     private var tempQueueDir: URL!
@@ -41,7 +53,8 @@ final class ResearchKitSyncServiceTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        testUserDefaults = UserDefaults(suiteName: "ResearchKitSyncServiceTests_\(UUID().uuidString)")!
+        suiteName = "ResearchKitSyncServiceTests_\(UUID().uuidString)"
+        testUserDefaults = UserDefaults(suiteName: suiteName)!
         researchStore = ResearchKitStudyStore(userDefaults: testUserDefaults)
 
         tempQueueDir = URL(fileURLWithPath: NSTemporaryDirectory())
@@ -56,7 +69,7 @@ final class ResearchKitSyncServiceTests: XCTestCase {
     override func tearDown() {
         MockURLProtocol.requestHandler = nil
         try? FileManager.default.removeItem(at: tempQueueDir)
-        testUserDefaults.removePersistentDomain(forName: testUserDefaults.description)
+        testUserDefaults.removePersistentDomain(forName: suiteName)
         testUserDefaults = nil
         researchStore = nil
         mockSession = nil
@@ -66,6 +79,7 @@ final class ResearchKitSyncServiceTests: XCTestCase {
     @MainActor
     func testEnqueuePayloadIncrementsPendingCount() {
         let service = ResearchKitSyncService(
+            configuration: Self.studyConfig,
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession
@@ -88,6 +102,7 @@ final class ResearchKitSyncServiceTests: XCTestCase {
         researchStore.saveConsent(signature: sig, participantId: "STUDY-DOC-TEST")
 
         let service = ResearchKitSyncService(
+            configuration: Self.studyConfig,
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession
@@ -114,6 +129,7 @@ final class ResearchKitSyncServiceTests: XCTestCase {
         researchStore.saveConsent(signature: sig, participantId: "STUDY-PDF-TEST")
 
         let service = ResearchKitSyncService(
+            configuration: Self.studyConfig,
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession
@@ -139,6 +155,7 @@ final class ResearchKitSyncServiceTests: XCTestCase {
     @MainActor
     func testSyncNowRequiresParentalConsent() {
         let service = ResearchKitSyncService(
+            configuration: Self.studyConfig,
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession
@@ -165,6 +182,7 @@ final class ResearchKitSyncServiceTests: XCTestCase {
         researchStore.saveConsent(signature: sig, participantId: "STUDY-SYNC-OK")
 
         let service = ResearchKitSyncService(
+            configuration: Self.studyConfig,
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession
@@ -211,6 +229,7 @@ final class ResearchKitSyncServiceTests: XCTestCase {
         researchStore.saveConsent(signature: sig, participantId: "STUDY-SYNC-400")
 
         let service = ResearchKitSyncService(
+            configuration: Self.studyConfig,
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession
@@ -252,6 +271,7 @@ final class ResearchKitSyncServiceTests: XCTestCase {
         researchStore.saveConsent(signature: sig, participantId: "STUDY-SYNC-NET")
 
         let service = ResearchKitSyncService(
+            configuration: Self.studyConfig,
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession
@@ -286,6 +306,7 @@ final class ResearchKitSyncServiceTests: XCTestCase {
         researchStore.saveConsent(signature: sig, participantId: "STUDY-RECONNECT")
 
         let service = ResearchKitSyncService(
+            configuration: Self.studyConfig,
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession,
@@ -348,6 +369,7 @@ final class ResearchKitSyncServiceTests: XCTestCase {
         let sig = ORKConsentSignature(guardianFullName: "Backoff Parent", signatureToken: "SIG-BACKOFF")
         researchStore.saveConsent(signature: sig, participantId: "STUDY-BACKOFF")
         let service = ResearchKitSyncService(
+            configuration: Self.studyConfig,
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession,
@@ -389,6 +411,7 @@ final class ResearchKitSyncServiceTests: XCTestCase {
         let sig = ORKConsentSignature(guardianFullName: "Dead Letter Parent", signatureToken: "SIG-DEAD")
         researchStore.saveConsent(signature: sig, participantId: "STUDY-DEAD")
         let service = ResearchKitSyncService(
+            configuration: Self.studyConfig,
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession,
@@ -421,6 +444,7 @@ final class ResearchKitSyncServiceTests: XCTestCase {
         let sig = ORKConsentSignature(guardianFullName: "Retry Parent", signatureToken: "SIG-RETRY")
         researchStore.saveConsent(signature: sig, participantId: "STUDY-RETRY")
         let service = ResearchKitSyncService(
+            configuration: Self.studyConfig,
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession,
@@ -481,6 +505,7 @@ final class ResearchKitSyncServiceTests: XCTestCase {
     @MainActor
     func testQueueDirectoryIsExcludedFromBackup() throws {
         _ = ResearchKitSyncService(
+            configuration: Self.studyConfig,
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession,
@@ -493,6 +518,7 @@ final class ResearchKitSyncServiceTests: XCTestCase {
     @MainActor
     func testEnqueuedPayloadIsWrittenWithFileProtection() throws {
         let service = ResearchKitSyncService(
+            configuration: Self.studyConfig,
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession,
@@ -520,6 +546,7 @@ final class ResearchKitSyncServiceTests: XCTestCase {
         let sig = ORKConsentSignature(guardianFullName: "Folder Parent", signatureToken: "SIG-FOLDERS")
         researchStore.saveConsent(signature: sig, participantId: "STUDY-FOLDERS")
         let service = ResearchKitSyncService(
+            configuration: Self.studyConfig,
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession,
@@ -542,6 +569,7 @@ final class ResearchKitSyncServiceTests: XCTestCase {
     @MainActor
     func testPurgeAllQueuedEmptiesQueueDeadLetterAndQuarantine() {
         let service = ResearchKitSyncService(
+            configuration: Self.studyConfig,
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession,
@@ -576,6 +604,7 @@ final class ResearchKitSyncServiceTests: XCTestCase {
         store.saveConsent(signature: sig, participantId: "STUDY-REVOKE")
 
         let service = ResearchKitSyncService(
+            configuration: Self.studyConfig,
             store: store,
             queueDirectory: tempQueueDir,
             session: mockSession,
@@ -611,6 +640,7 @@ final class ResearchKitSyncServiceTests: XCTestCase {
         let sig = ORKConsentSignature(guardianFullName: "Inflight Parent", signatureToken: "SIG-INFLIGHT")
         researchStore.saveConsent(signature: sig, participantId: "STUDY-INFLIGHT")
         let service = ResearchKitSyncService(
+            configuration: Self.studyConfig,
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession,
@@ -666,6 +696,96 @@ final class ResearchKitSyncServiceTests: XCTestCase {
         let live = try Self.summary(captureSource: "truedepth")
         XCTAssertNotNil(researchStore.recordActiveStepResult(summary: live))
         XCTAssertEqual(researchStore.fetchCompletedTaskResults().count, 1)
+    }
+
+    // MARK: - CNS-9 configuration-driven, https only
+
+    /// The default build carries no `ASDResearchStudy` key, so there is no
+    /// shared service and nothing in the app can upload.
+    @MainActor
+    func testSharedServiceIsNilWithoutStudyConfiguration() {
+        XCTAssertNil(ResearchStudyConfiguration.current)
+        XCTAssertNil(ResearchKitSyncService.shared)
+    }
+
+    @MainActor
+    func testServiceExposesItsConfiguration() {
+        let service = ResearchKitSyncService(
+            configuration: Self.studyConfig,
+            store: researchStore,
+            queueDirectory: tempQueueDir,
+            session: mockSession,
+            startMonitoring: false
+        )
+        XCTAssertEqual(service.configuration, Self.studyConfig)
+        XCTAssertEqual(service.configuration.ingestURL.scheme, "https")
+    }
+
+    @MainActor
+    func testUploadsGoOnlyToTheConfiguredHttpsEndpoint() {
+        let sig = ORKConsentSignature(guardianFullName: "Endpoint Parent", signatureToken: "SIG-ENDPOINT")
+        researchStore.saveConsent(signature: sig, participantId: "STUDY-ENDPOINT")
+        let service = ResearchKitSyncService(
+            configuration: Self.studyConfig,
+            store: researchStore,
+            queueDirectory: tempQueueDir,
+            session: mockSession,
+            startMonitoring: false
+        )
+        service.enqueueStudyPayload(bundle: ["endpoint": true])
+
+        let seen = URLRecorder()
+        MockURLProtocol.requestHandler = { request in
+            seen.urls.append(request.url)
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data())
+        }
+        waitForSync(service, forceBundleCompile: false)
+
+        XCTAssertEqual(seen.urls, [Self.studyConfig.ingestURL])
+        XCTAssertEqual(seen.urls.first??.scheme, "https")
+        XCTAssertNotEqual(seen.urls.first??.host, "127.0.0.1")
+        XCTAssertEqual(service.pendingQueueCount, 0)
+    }
+
+    /// Delete-all and revoke must still clear a queue left on disk by an earlier
+    /// build that had a study configured, even when this build has none (CNS-6).
+    @MainActor
+    func testPurgeQueuedUploadsWithoutServiceEmptiesQueueDirectory() {
+        for name in ["a.json", "a.syncmeta"] {
+            try? Data("{}".utf8).write(to: tempQueueDir.appendingPathComponent(name))
+        }
+        seedFile(in: "DeadLetter", name: "stuck.json")
+        seedFile(in: "Quarantine", name: "poison.json")
+        XCTAssertEqual(allFiles(under: tempQueueDir).count, 4)
+
+        ResearchKitSyncService.purgeQueuedUploads(service: nil, queueDirectory: tempQueueDir)
+
+        XCTAssertEqual(allFiles(under: tempQueueDir), [])
+    }
+
+    @MainActor
+    func testPurgeQueuedUploadsDelegatesToService() {
+        let service = ResearchKitSyncService(
+            configuration: Self.studyConfig,
+            store: researchStore,
+            queueDirectory: tempQueueDir,
+            session: mockSession,
+            startMonitoring: false
+        )
+        service.enqueueStudyPayload(bundle: ["purge": true])
+        XCTAssertEqual(service.pendingQueueCount, 1)
+
+        ResearchKitSyncService.purgeQueuedUploads(service: service, queueDirectory: tempQueueDir)
+
+        XCTAssertEqual(service.pendingQueueCount, 0)
+        XCTAssertEqual(allFiles(under: tempQueueDir), [])
+    }
+
+    @MainActor
+    func testPurgeQueuedUploadsToleratesMissingDirectory() {
+        let missing = tempQueueDir.appendingPathComponent("does-not-exist", isDirectory: true)
+        ResearchKitSyncService.purgeQueuedUploads(service: nil, queueDirectory: missing)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: missing.path))
     }
 
     // MARK: - Helpers
@@ -756,6 +876,10 @@ private final class SyncTestClock: @unchecked Sendable {
 
 private final class HitCounter: @unchecked Sendable {
     var count = 0
+}
+
+private final class URLRecorder: @unchecked Sendable {
+    var urls: [URL?] = []
 }
 
 private final class ResultBox: @unchecked Sendable {

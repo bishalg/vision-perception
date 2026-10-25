@@ -15,7 +15,7 @@ public final class ResearchKitStudyStore: @unchecked Sendable {
     /// Production store, wired to purge the shared upload queue on revoke (CNS-5).
     public static let shared = ResearchKitStudyStore(
         queuePurger: ResearchKitStudyStore.mainActorPurger {
-            ResearchKitSyncService.shared.purgeAllQueued()
+            ResearchKitSyncService.purgeQueuedUploads()
         }
     )
 

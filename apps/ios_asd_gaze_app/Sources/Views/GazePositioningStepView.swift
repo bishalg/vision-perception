@@ -53,6 +53,7 @@ public struct GazePositioningStepView: View {
     @State private var ovalPulseScale: CGFloat = 1.0
     @State private var showAdultHoldingHint: Bool = false
     @State private var entryBlock: DeviceBlockReason?
+    @StateObject private var camera = CameraAccessCoordinator()
     /// SIM-2/SIM-7: why capture cannot run right now, if it cannot.
     private var activeBlock: DeviceBlockReason? { entryBlock ?? controller.blockReason }
 
@@ -97,12 +98,25 @@ public struct GazePositioningStepView: View {
             }
         }
         .overlay {
-            if let reason = activeBlock {
+            if camera.state.showsDeniedView {
+                CameraDeniedView(state: camera.state)
+            } else if let reason = activeBlock {
                 UnsupportedDeviceView(reason: reason)
             }
         }
-        .onAppear(perform: startTracking)
-        .onDisappear(perform: stopTracking)
+        .task { await startTracking() }
+        .onDisappear { stopTracking() }
+        .cameraScenePhase(camera) { action in
+            switch action {
+            case .stopSession:
+                stopTracking()
+            case .backgroundInterruptionEnded:
+                // Preview step: nothing was recorded, so restart the preview.
+                Task { await startTracking() }
+            case .none:
+                break
+            }
+        }
         .onChange(of: controller.subjectAgeSignal) { _, signal in
             withAnimation(.easeInOut(duration: 0.3)) {
                 showAdultHoldingHint = SubjectAgeCheckController.shouldShowAdultHoldingHint(signal: signal)
@@ -318,8 +332,15 @@ public struct GazePositioningStepView: View {
 
     // MARK: - Actions
 
-    private func startTracking() {
+    private func startTracking() async {
+        // CAM-1: no session until camera access is granted.
+        guard await camera.ensureAccess(consentStore: .shared) == .granted, !Task.isCancelled else {
+            if camera.state == .unknown { entryBlock = .consentRequired }
+            return
+        }
         entryBlock = controller.startSessionWithConsent() ? nil : .consentRequired
+        if entryBlock == nil { camera.sessionDidStart() }
+        loopTimer?.invalidate()
         elapsedPreviewSec = 0.0
         continuousDetectionSec = 0.0
         isVerified = false
@@ -355,15 +376,20 @@ public struct GazePositioningStepView: View {
         }
     }
 
-    private func stopTracking() {
+    @discardableResult
+    private func stopTracking() -> Task<Void, Never> {
         loopTimer?.invalidate()
         loopTimer = nil
-        _ = controller.stopSession()
+        camera.sessionDidEnd()
+        return Task { _ = await controller.stopSession() }
     }
 
     private func advance() {
         guard isVerified else { return }
-        stopTracking()
-        onReady()
+        let stopped = stopTracking()
+        Task {
+            await stopped.value
+            onReady()
+        }
     }
 }

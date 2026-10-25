@@ -4,17 +4,19 @@ import CurvAsdGazeKit
 import XCTest
 
 final class ResearchKitStudyTests: XCTestCase {
+    private var suiteName: String!
     private var testUserDefaults: UserDefaults!
     private var researchStore: ResearchKitStudyStore!
 
     override func setUp() {
         super.setUp()
-        testUserDefaults = UserDefaults(suiteName: "ResearchKitStudyTests_\(UUID().uuidString)")!
+        suiteName = "ResearchKitStudyTests_\(UUID().uuidString)"
+        testUserDefaults = UserDefaults(suiteName: suiteName)!
         researchStore = ResearchKitStudyStore(userDefaults: testUserDefaults)
     }
 
     override func tearDown() {
-        testUserDefaults.removePersistentDomain(forName: testUserDefaults.description)
+        testUserDefaults.removePersistentDomain(forName: suiteName)
         testUserDefaults = nil
         researchStore = nil
         super.tearDown()
@@ -22,12 +24,65 @@ final class ResearchKitStudyTests: XCTestCase {
 
     // MARK: - Consent Tests
 
-    func testConsentDocumentDefaults() {
-        let doc = ORKConsentDocument()
-        XCTAssertEqual(doc.studyIdentifier, "CURV-ASD-GAZE-2026")
-        XCTAssertEqual(doc.irbProtocolId, "IRB-ASD-2026-088")
+    /// ADR-0002 decision 5: the consent document has no defaults; every study
+    /// fact comes from `ResearchStudyConfiguration`.
+    func testConsentDocumentComesFromConfiguration() {
+        let doc = ORKConsentDocument(configuration: ResearchKitSyncServiceTests.studyConfig)
+        XCTAssertEqual(doc.studyIdentifier, "EXAMPLE-STUDY-1")
+        XCTAssertEqual(doc.irbProtocolId, "ETHICS-REF-42")
+        XCTAssertEqual(doc.institution, "Example University")
+        XCTAssertEqual(doc.principalInvestigator, "Example Investigator")
         XCTAssertFalse(doc.sections.isEmpty)
         XCTAssertTrue(doc.sections.contains(where: { $0.type == .cameraPrivacy }))
+        XCTAssertTrue(doc.sections.contains(where: { $0.type == .withdrawing }))
+    }
+
+    /// Without a configured study nothing study-shaped carries the old fictional ids.
+    func testUnconfiguredDefaultsCarryNoFictionalStudy() {
+        XCTAssertNil(ResearchStudyConfiguration.current)
+        let task = ORKTaskResult(participantId: "STUDY-ASD-NONE")
+        XCTAssertEqual(task.studyIdentifier, ResearchStudyConfiguration.unconfiguredStudyIdentifier)
+        XCTAssertEqual(task.irbProtocolId, ResearchStudyConfiguration.unconfiguredStudyIdentifier)
+        let sig = ORKConsentSignature(guardianFullName: "Nobody", signatureToken: "SIG-NONE")
+        XCTAssertNotEqual(sig.consentVersion, "v1.3-IRB2026")
+        let package = ResearchKitStudyPackage(
+            participant: StudyParticipantMetadata(
+                participantId: "STUDY-ASD-NONE", isConsented: false, childAgeMonths: 24, consentVersion: "unconsented"
+            )
+        )
+        XCTAssertEqual(package.studyIdentifier, ResearchStudyConfiguration.unconfiguredStudyIdentifier)
+        XCTAssertEqual(package.irbProtocolId, ResearchStudyConfiguration.unconfiguredStudyIdentifier)
+    }
+
+    func testTaskResultUsesInjectedConfiguration() {
+        let task = ORKTaskResult(participantId: "STUDY-ASD-CFG", configuration: ResearchKitSyncServiceTests.studyConfig)
+        XCTAssertEqual(task.studyIdentifier, "EXAMPLE-STUDY-1")
+        XCTAssertEqual(task.irbProtocolId, "ETHICS-REF-42")
+    }
+
+    /// Source-level guard: the fictional study and the loopback endpoint are deleted,
+    /// not hidden (ADR-0002 decision 5, trap 10). Reads the app sources from the
+    /// host file system, which the simulator shares.
+    func testAppSourcesContainNoFictionalStudyOrLoopbackEndpoint() throws {
+        let sources = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Sources", isDirectory: true)
+        guard FileManager.default.fileExists(atPath: sources.path) else {
+            throw XCTSkip("App sources are not reachable from this test run")
+        }
+        let enumerator = try XCTUnwrap(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
+        let forbidden = ["IRB-ASD-2026-088", "2026-088", "Elena Vasquez", "CURV-ASD-GAZE-2026",
+                         "Center for Pediatric Neurodevelopment", "127.0.0.1", "v1.3-IRB2026"]
+        var scanned = 0
+        for case let url as URL in enumerator where url.pathExtension == "swift" {
+            let text = try String(contentsOf: url, encoding: .utf8)
+            scanned += 1
+            for term in forbidden {
+                XCTAssertFalse(text.contains(term), "\(url.lastPathComponent) still contains \(term)")
+            }
+        }
+        XCTAssertGreaterThan(scanned, 20)
     }
 
     func testConsentSaveAndRevocationRoundTrip() {
@@ -341,8 +396,8 @@ final class ResearchKitStudyTests: XCTestCase {
 
         let bundle = self.researchStore.compileStudyBundle()
         XCTAssertEqual(bundle["bundleType"] as? String, "ResearchKitStudyPackage")
-        XCTAssertEqual(bundle["studyIdentifier"] as? String, "CURV-ASD-GAZE-2026")
-        XCTAssertEqual(bundle["irbProtocolId"] as? String, "IRB-ASD-2026-088")
+        XCTAssertEqual(bundle["studyIdentifier"] as? String, ResearchStudyConfiguration.unconfiguredStudyIdentifier)
+        XCTAssertEqual(bundle["irbProtocolId"] as? String, ResearchStudyConfiguration.unconfiguredStudyIdentifier)
 
         let sha = bundle["payloadSha256"] as? String
         XCTAssertNotNil(sha)

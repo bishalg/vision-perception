@@ -42,6 +42,7 @@ final class DataDeletionServiceTests: XCTestCase {
             queuePurger: ResearchKitStudyStore.mainActorPurger { box.service?.purgeAllQueued() }
         )
         syncService = ResearchKitSyncService(
+            configuration: ResearchKitSyncServiceTests.studyConfig,
             store: researchStore,
             queueDirectory: queueDir,
             startMonitoring: false

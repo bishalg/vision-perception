@@ -116,7 +116,10 @@ public struct CaregiverDashboardView: View {
 
                 Section {
                     careKitActivityCard
-                    ResearchStudyDashboardCard()
+                    // CNS-9: no study configured (the default build) means no card.
+                    if let researchSync = ResearchKitSyncService.shared {
+                        ResearchStudyDashboardCard(syncService: researchSync)
+                    }
                     screeningActionCard
                 } header: {
                     Text("Care routine")
@@ -140,9 +143,11 @@ public struct CaregiverDashboardView: View {
             .scrollContentBackground(.visible)
             .background(Color(.systemGroupedBackground))
             .refreshable {
-                await withCheckedContinuation { continuation in
-                    ResearchKitSyncService.shared.syncNow(forceBundleCompile: false) { _ in
-                        continuation.resume()
+                if let researchSync = ResearchKitSyncService.shared {
+                    await withCheckedContinuation { continuation in
+                        researchSync.syncNow(forceBundleCompile: false) { _ in
+                            continuation.resume()
+                        }
                     }
                 }
                 refreshLiveData()
