@@ -159,6 +159,7 @@ public struct OnboardingFlowView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+            .accessibilityIdentifier("onboarding_consent_switch")
             .tint(LiquidGlass.emeraldMint)
             .frame(maxWidth: .infinity, alignment: .leading)
             .glassCard(cornerRadius: 16, padding: 14)
@@ -194,6 +195,7 @@ public struct OnboardingFlowView: View {
                     TextField("e.g. Aarav, Maya, Leo", text: $childNameInput)
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.primary)
+                        .accessibilityIdentifier("child_name_field")
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .glassCard(cornerRadius: 14, padding: 12)

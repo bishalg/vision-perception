@@ -1,0 +1,20 @@
+appId: org.curv.asd.gazecollector
+name: bdd-01-app-mode-selection
+---
+# Feature: first-launch app mode selection
+#   As a caregiver opening the app for the first time,
+#   I choose where the device will be used before anything else.
+- launchApp:
+    clearState: true
+- waitForAnimationToEnd:
+    timeout: 20000
+
+- assertVisible: How will you use Curv?
+- takeScreenshot: mode-selection
+
+- tapOn: Parent & Caregiver
+- takeScreenshot: mode-selection-parent
+
+- tapOn: "Continue"
+- assertVisible: Privacy & Security
+- takeScreenshot: onboarding-privacy

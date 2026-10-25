@@ -1,0 +1,50 @@
+appId: org.curv.asd.gazecollector
+name: bdd-02-onboarding-consent-and-profile
+---
+# Feature: caregiver onboarding
+#   Consent must be explicit before any camera use can be configured,
+#   and the child profile chooses the age-appropriate stimulus battery.
+#
+# NOTE: continues the app state created by 01-mode-selection (do not clear it).
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 20000
+
+- assertVisible: Privacy & Security
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# The consent switch is a nested UISwitch whose a11y element merges with its
+# label; tapping the merged container does not flip it. On a settled iPhone 18
+# Pro layout the switch knob sits at 334, 563 (logical points), verified by
+# `maestro hierarchy`. Element ids are kept in the app for future selectors.
+- tapOn:
+    point: "334, 563"
+- takeScreenshot: onboarding-consent
+
+- tapOn: Continue
+- assertVisible: Child Profile Setup
+- waitForAnimationToEnd:
+    timeout: 8000
+
+- takeScreenshot: child-profile
+
+- tapOn:
+    id: "child_name_field"
+# The field pre-fills "Child"; clear it before typing the showcase name.
+- eraseText
+- inputText: Aarya
+
+- tapOn: Continue
+- takeScreenshot: activities-download
+
+- tapOn: Continue
+- assertVisible: Getting Ready
+- takeScreenshot: getting-ready
+
+- tapOn: Complete Setup & Enter App
+- waitForAnimationToEnd:
+    timeout: 15000
+- assertVisible: Social attention trend
+- takeScreenshot: dashboard

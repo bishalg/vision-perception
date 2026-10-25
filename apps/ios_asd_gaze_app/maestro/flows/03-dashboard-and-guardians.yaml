@@ -1,0 +1,47 @@
+appId: org.curv.asd.gazecollector
+name: bdd-03-dashboard-and-guardians
+---
+# Feature: longitudinal care dashboard and caregiver guardrails
+#   The dashboard lists the M-CHAT-R/F questionnaire, the pediatrician report and
+#   the gaze tab; on simulators the gaze capture is honestly gated by hardware.
+#
+# NOTE: continues the app state created by 01 + 02 (do not clear it).
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 20000
+
+- assertVisible: Social attention trend
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: dashboard
+
+# M-CHAT-R/F caregiver questionnaire (button sits below the fold)
+- scrollUntilVisible:
+    element: Open M-CHAT-R/F
+    direction: DOWN
+- tapOn: Open M-CHAT-R/F
+- waitForAnimationToEnd:
+    timeout: 15000
+- takeScreenshot: mchat-survey
+- tapOn: Cancel
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# Pediatrician report (toolbar action, a11y label)
+- tapOn: Report for your pediatrician
+- waitForAnimationToEnd:
+    timeout: 15000
+- takeScreenshot: pediatrician-report
+- tapOn: Done
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# Gaze tab — on a simulator the entry gate blocks live capture on purpose
+- tapOn: Gaze
+- assertVisible: This device cannot run gaze observations
+- takeScreenshot: gaze-gate-simulator
+
+# Settings
+- tapOn: Settings
+- takeScreenshot: settings

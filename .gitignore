@@ -298,3 +298,7 @@ apps/ios_asd_gaze_app/fastlane/*.p8
 apps/ios_asd_gaze_app/fastlane/*.mobileprovision
 apps/ios_asd_gaze_app/fastlane/*.cer
 
+
+# Gaze app BDD/Maestro output
+apps/ios_asd_gaze_app/maestro/screenshots/
+apps/ios_asd_gaze_app/build-sim/
