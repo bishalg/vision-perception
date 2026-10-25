@@ -25,20 +25,10 @@
 			</array>
 		</dict>
 	</array>
+	<!-- PRV-1: the kit is a library with no network path and collects nothing.
+	     PRV-2: categories audited by scripts/check_privacy_api_use.sh (SystemBootTime:
+	     ProcessInfo.systemUptime timestamps for interruption and clip-clock durations). -->
 	<key>NSPrivacyCollectedDataTypes</key>
-	<array>
-		<dict>
-			<key>NSPrivacyCollectedDataType</key>
-			<string>NSPrivacyCollectedDataTypeOtherDataTypes</string>
-			<key>NSPrivacyCollectedDataTypeLinked</key>
-			<false/>
-			<key>NSPrivacyCollectedDataTypeTracking</key>
-			<false/>
-			<key>NSPrivacyCollectedDataTypePurposes</key>
-			<array>
-				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
-			</array>
-		</dict>
-	</array>
+	<array/>
 </dict>
 </plist>

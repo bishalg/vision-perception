@@ -331,6 +331,7 @@ final class SubjectAgeEstimatorTests: XCTestCase {
 
 // MARK: - CNS-8: estimator off by default
 
+@MainActor
 final class SubjectAgeEstimationGatingTests: XCTestCase {
     private func feed(_ controller: GazeSessionController, frames: Int) {
         let buffer = makeBuffer()
@@ -394,10 +395,11 @@ final class SubjectAgeEstimationGatingTests: XCTestCase {
         XCTAssertEqual(engine.callCount, 0)
     }
 
-    func testSummaryOmitsAgeSignalWhenDisabled() {
+    func testSummaryOmitsAgeSignalWhenDisabled() async {
         let engine = StubAgeBandEngine(estimates: [makeEstimation(.toddler)])
         let controller = GazeSessionController(subjectAgeEstimator: SubjectAgeEstimator(engine: engine))
         feed(controller, frames: 15)
-        XCTAssertNil(controller.stopSession().subjectAgeSignal)
+        let summary = await controller.stopSession()
+        XCTAssertNil(summary.subjectAgeSignal)
     }
 }

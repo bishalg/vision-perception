@@ -29,13 +29,15 @@ final class TrackingPipelineTests: XCTestCase {
         XCTAssertEqual(gaze.label, "Gaze active ✓")
     }
 
+    @MainActor
     func testControllerInitialStateIsInvalidAndSearching() {
         let controller = GazeSessionController()
         XCTAssertFalse(controller.currentQuality.isValid, "Controller should start with invalid quality until real frames arrive")
         XCTAssertEqual(controller.trackingStage, .searchingFace, "Controller should start in .searchingFace stage")
     }
 
-    func testCrossControllerCalibrationSynchronization() {
+    @MainActor
+    func testCrossControllerCalibrationSynchronization() async {
         let controllerA = GazeSessionController()
         let controllerB = GazeSessionController()
 
@@ -64,7 +66,7 @@ final class TrackingPipelineTests: XCTestCase {
 
         controllerA.applyAndPersist(calibrationProfile: customProfile)
 
-        wait(for: [expectation], timeout: 2.0)
+        await fulfillment(of: [expectation], timeout: 2.0)
         NotificationCenter.default.removeObserver(observer)
 
         XCTAssertTrue(controllerA.calibrationProfile.isCalibrated)
@@ -93,18 +95,21 @@ final class TrackingPipelineTests: XCTestCase {
         )
     }
 
-    func testTickWithoutSimulatedSessionLeavesStageUntouched() {
+    @MainActor
+    func testTickWithoutSimulatedSessionLeavesStageUntouched() async {
         let controller = GazeSessionController()
         controller.calibrationTarget = CGPoint(x: 0.5, y: 0.5)
         for i in 0..<5 {
             controller.tickSimulatedFrame(timeSec: Double(i) * 0.016)
         }
+        await controller.flushPipeline()
         XCTAssertEqual(controller.trackingStage, .searchingFace)
         XCTAssertFalse(controller.currentQuality.isValid)
     }
 
     #if ASD_SIMULATION_ENABLED
-    func testSimulationModeProducesSmoothedGazeAndActiveStage() {
+    @MainActor
+    func testSimulationModeProducesSmoothedGazeAndActiveStage() async {
         let controller = GazeSessionController()
         controller.startSimulatedSession()
         controller.calibrationTarget = CGPoint(x: 0.5, y: 0.5)
@@ -113,6 +118,7 @@ final class TrackingPipelineTests: XCTestCase {
         for i in 0..<5 {
             controller.tickSimulatedFrame(timeSec: Double(i) * 0.016)
         }
+        await controller.flushPipeline()
 
         XCTAssertEqual(controller.trackingStage, .gazeActive)
         XCTAssertTrue(controller.currentQuality.isValid)

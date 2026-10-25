@@ -135,13 +135,15 @@ final class ScreenRaycasterTests: XCTestCase {
     }
 
     #if ASD_SIMULATION_ENABLED
-    func testCalibrationTargetSimulation() {
+    @MainActor
+    func testCalibrationTargetSimulation() async {
         let controller = GazeSessionController()
         let target = CGPoint(x: 0.22, y: 0.24)
         controller.calibrationTarget = target
         controller.startSimulatedSession()
 
         controller.tickSimulatedFrame(timeSec: 1.0)
+        await controller.flushPipeline()
         let gaze = controller.currentGazePoint
 
         // Gaze should be within 0.05 of the calibration target

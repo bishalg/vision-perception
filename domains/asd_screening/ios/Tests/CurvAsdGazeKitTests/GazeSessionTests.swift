@@ -5,7 +5,8 @@ final class GazeSessionTests: XCTestCase {
     // MARK: - SIM-2: live capture never falls back to simulation
 
     #if os(macOS)
-    func testStartSessionWithoutFaceTrackingIsUnavailable() {
+    @MainActor
+    func testStartSessionWithoutFaceTrackingIsUnavailable() async {
         // macOS has no ARFaceTrackingConfiguration; the live path must refuse to
         // record instead of silently simulating.
         let controller = GazeSessionController()
@@ -17,23 +18,27 @@ final class GazeSessionTests: XCTestCase {
 
         // Simulated ticks after a refused live start record nothing.
         controller.tickSimulatedFrame(timeSec: 0.1)
-        let summary = controller.stopSession()
+        let summary = await controller.stopSession()
         XCTAssertEqual(summary.totalFrames, 0)
         XCTAssertEqual(summary.qualityVerdict, .rejected)
+        XCTAssertNotEqual(summary.captureSource, .trueDepth, "A refused live start must not claim TrueDepth data")
     }
     #endif
 
     // MARK: - SIM-3: simulation only through the explicit, Debug-only entry point
 
-    func testSimulatedSessionRequiresExplicitStart() {
+    @MainActor
+    func testSimulatedSessionRequiresExplicitStart() async {
         let controller = GazeSessionController()
         controller.calibrationTarget = CGPoint(x: 0.5, y: 0.5)
         for i in 0..<10 {
             controller.tickSimulatedFrame(timeSec: Double(i) / 60.0)
         }
+        await controller.flushPipeline()
         XCTAssertNil(controller.captureSource)
         XCTAssertEqual(controller.trackingStage, .searchingFace, "Ticks without a simulated session must not touch UI state")
-        XCTAssertEqual(controller.stopSession().totalFrames, 0)
+        let emptySummary = await controller.stopSession()
+        XCTAssertEqual(emptySummary.totalFrames, 0)
 
         #if ASD_SIMULATION_ENABLED
         controller.startSimulatedSession()
@@ -43,14 +48,15 @@ final class GazeSessionTests: XCTestCase {
         for i in 0..<10 {
             controller.tickSimulatedFrame(timeSec: Double(i) / 60.0)
         }
-        let summary = controller.stopSession()
+        let summary = await controller.stopSession()
         XCTAssertEqual(summary.totalFrames, 10)
         XCTAssertEqual(summary.captureSource, .simulated)
         #endif
     }
 
     #if ASD_SIMULATION_ENABLED
-    func testSessionControllerSimulationRun() {
+    @MainActor
+    func testSessionControllerSimulationRun() async {
         let controller = GazeSessionController()
         controller.startSimulatedSession()
         XCTAssertTrue(controller.isRecording)
@@ -61,7 +67,7 @@ final class GazeSessionTests: XCTestCase {
             controller.tickSimulatedFrame(timeSec: t)
         }
 
-        let summary = controller.stopSession()
+        let summary = await controller.stopSession()
         XCTAssertFalse(controller.isRecording)
         XCTAssertEqual(summary.totalFrames, 30)
         XCTAssertEqual(summary.captureSource, .simulated)
@@ -74,14 +80,15 @@ final class GazeSessionTests: XCTestCase {
 
     // MARK: - PLC-1, PLC-2: no placeholder measurements
 
-    func testNoFaceHitsGiveNilDwellRatios() throws {
+    @MainActor
+    func testNoFaceHitsGiveNilDwellRatios() async throws {
         // GeoPref battery has no Eye_Region / Mouth_Region AOIs, so no face hit can occur.
         let controller = GazeSessionController()
         controller.startSimulatedSession(battery: .makeGeoPrefBattery())
         for i in 0..<60 {
             controller.tickSimulatedFrame(timeSec: Double(i) / 60.0)
         }
-        let summary = controller.stopSession()
+        let summary = await controller.stopSession()
         XCTAssertEqual(summary.totalFrames, 60)
         XCTAssertNil(summary.eyeDwellRatio, "No eye/mouth hit must yield nil, never 0.28")
         XCTAssertNil(summary.mouthDwellRatio, "No eye/mouth hit must yield nil, never 0.14")
@@ -91,7 +98,8 @@ final class GazeSessionTests: XCTestCase {
         XCTAssertNotEqual(latency, 480.0)
     }
 
-    func testFaceHitsGiveMeasuredDwellRatiosAndLatency() throws {
+    @MainActor
+    func testFaceHitsGiveMeasuredDwellRatiosAndLatency() async throws {
         let controller = GazeSessionController()
         // Calibration target sits inside the face battery's Eye_Region.
         controller.calibrationTarget = CGPoint(x: 0.5, y: 0.38)
@@ -99,12 +107,13 @@ final class GazeSessionTests: XCTestCase {
         for i in 0..<60 {
             controller.tickSimulatedFrame(timeSec: Double(i) / 60.0)
         }
-        let summary = controller.stopSession()
+        let summary = await controller.stopSession()
         XCTAssertEqual(summary.eyeDwellRatio, 1.0)
         XCTAssertEqual(summary.mouthDwellRatio, 0.0)
         XCTAssertEqual(try XCTUnwrap(summary.firstEyeLatencyMs), 0.0, accuracy: 1e-6)
     }
 
+    @MainActor
     func testStopAndPersistCarriesCaptureSourceIntoHeader() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: tempDir) }

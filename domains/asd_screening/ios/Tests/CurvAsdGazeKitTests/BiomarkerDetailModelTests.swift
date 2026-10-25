@@ -140,10 +140,11 @@ final class BiomarkerDetailModelTests: XCTestCase {
 
     // MARK: - 3. Session Controller Biomarker Output Integrity
 
-    func testSessionControllerEmptySessionProducesSafeReport() {
+    @MainActor
+    func testSessionControllerEmptySessionProducesSafeReport() async {
         let controller = GazeSessionController()
         // Stop without recording any frames
-        let summary = controller.stopSession()
+        let summary = await controller.stopSession()
 
         XCTAssertEqual(summary.totalFrames, 0)
         XCTAssertEqual(summary.validFrames, 0)
@@ -153,10 +154,13 @@ final class BiomarkerDetailModelTests: XCTestCase {
         XCTAssertEqual(summary.geometricDwellSec, 0.0)
         XCTAssertEqual(summary.qualityVerdict, GazeQualityGate.Verdict.rejected)
         XCTAssertFalse(summary.sessionId.isEmpty)
+        // Never started: nothing may be labelled as live TrueDepth data.
+        XCTAssertNotEqual(summary.captureSource, .trueDepth)
     }
 
     #if ASD_SIMULATION_ENABLED
-    func testSessionControllerDwellTimeConservation() {
+    @MainActor
+    func testSessionControllerDwellTimeConservation() async {
         let controller = GazeSessionController()
         controller.startSimulatedSession()
 
@@ -165,13 +169,16 @@ final class BiomarkerDetailModelTests: XCTestCase {
             controller.tickSimulatedFrame(timeSec: Double(i) / 60.0)
         }
 
-        let summary = controller.stopSession()
+        let summary = await controller.stopSession()
         XCTAssertEqual(summary.totalFrames, 60)
-        XCTAssertEqual(summary.durationSec, 1.0, accuracy: 0.001)
+        // PLC-5: duration is last minus first sample time (59 intervals of 1/60 s),
+        // not frame count times an assumed 60 fps interval.
+        XCTAssertEqual(summary.durationSec, 59.0 / 60.0, accuracy: 0.001)
         XCTAssertGreaterThan(summary.validFrames, 0)
         XCTAssertGreaterThanOrEqual(summary.socialDwellSec, 0.0)
         XCTAssertGreaterThanOrEqual(summary.geometricDwellSec, 0.0)
         XCTAssertLessThanOrEqual(summary.socialDwellSec + summary.geometricDwellSec, 1.05)
+        XCTAssertLessThanOrEqual(summary.socialDwellSec + summary.geometricDwellSec, summary.durationSec + 1e-9)
     }
     #endif
 

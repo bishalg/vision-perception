@@ -63,6 +63,9 @@ public struct GazeUIState: Sendable, Equatable {
     public let headYawDeg: Double
     public let headPitchDeg: Double
     public let headRollDeg: Double
+    /// Raw ARKit blend-shape coefficients of this frame (empty for simulated frames).
+    /// Numbers only; forwarded to the throttled blend-shape broadcast on the main actor.
+    public let blendShapes: [String: Double]
 
     public init(
         currentGazePoint: CGPoint,
@@ -74,7 +77,8 @@ public struct GazeUIState: Sendable, Equatable {
         trackingStage: TrackingStage,
         headYawDeg: Double,
         headPitchDeg: Double,
-        headRollDeg: Double
+        headRollDeg: Double,
+        blendShapes: [String: Double] = [:]
     ) {
         self.currentGazePoint = currentGazePoint
         self.currentRawGazePoint = currentRawGazePoint
@@ -86,6 +90,28 @@ public struct GazeUIState: Sendable, Equatable {
         self.headYawDeg = headYawDeg
         self.headPitchDeg = headPitchDeg
         self.headRollDeg = headRollDeg
+        self.blendShapes = blendShapes
+    }
+
+    /// UI state while live tracking cannot run (CAM-2): no gaze, explicit reason.
+    public static func unavailable(_ reason: TrackingUnavailableReason) -> GazeUIState {
+        let stage = TrackingStage.unavailable(reason: reason)
+        return GazeUIState(
+            currentGazePoint: CGPoint(x: 0.5, y: 0.5),
+            currentRawGazePoint: CGPoint(x: 0.5, y: 0.5),
+            distanceCm: 48.0,
+            currentQuality: GazeQualityGate.Evaluation(
+                isValid: false,
+                verdict: .rejected,
+                failureReasons: [stage.label]
+            ),
+            currentAffect: .neutral,
+            activeAOIs: [],
+            trackingStage: stage,
+            headYawDeg: 0.0,
+            headPitchDeg: 0.0,
+            headRollDeg: 0.0
+        )
     }
 
     public static let initial = GazeUIState(
@@ -113,8 +139,16 @@ public struct GazeUIState: Sendable, Equatable {
 /// - 52-FACS Facial Affect and Emotion Synthesis
 /// - Volatile RAM buffering of telemetry frames (7,200+ samples)
 ///
-/// Running this work within an actor guarantees that the Main Thread remains free
-/// for AVPlayer video playback and SwiftUI rendering, preventing dropped video frames.
+/// It is the single owner of every piece of per-frame state (CONC-1): AOI battery,
+/// calibration copy, recording flag, session and clip clocks, blink debounce,
+/// 1-Euro filters, last valid points, interruption bookkeeping and the frame
+/// buffer. It is also the only place a session summary is aggregated (trap 11).
+/// Live frames reach it in arrival order through `ARSessionBridge`.
+///
+/// Time: every timestamp handed to the actor is in seconds on one monotonic clock
+/// (ARKit's `ARFrame.timestamp`, i.e. system uptime). `startSession` fixes the
+/// session origin; sample times, clip times, dwell and interruptions are derived
+/// from timestamps, never from an assumed frame rate (PLC-5).
 public actor GazeProcessingActor {
     public private(set) var raycaster: ScreenRaycaster
     public private(set) var qualityGate: GazeQualityGate
@@ -135,14 +169,32 @@ public actor GazeProcessingActor {
     /// Under 2 MB footprint for 7,200 samples (2-minute session at 60 Hz).
     private var volatileFrameBuffer: [GazeFrame] = []
     public private(set) var isRecording: Bool = false
-    /// Provenance of the current session; `nil` before the first start.
+    /// Provenance of the current session; `nil` before the first start and after a finalize.
     public private(set) var captureSource: CaptureSource?
-    private var sessionStartTime: Date?
-    private var clipStartTime: Date?
+    /// Monotonic timestamp (seconds) that maps to session time 0.
+    private var originTimestamp: TimeInterval = 0
+    /// Session time (seconds) at which the active clip started; `nil` means "at the next frame".
+    private var clipOriginSec: Double? = 0
+    /// Session time of the last buffered frame, for the measured `aoiDwellMs` interval.
+    private var lastBufferedSampleSec: Double?
     /// Stimulus clip currently playing (playlist video name). Nil when no playlist context.
     public private(set) var currentStimulusId: String?
     /// AVPlayer media clock seconds within the active clip (wraps on loop). Nil until reported.
     public private(set) var clipMediaTimeSec: Double?
+
+    /// Camera-session interruptions during the current recording (CAM-2).
+    public private(set) var interruptionCount: Int = 0
+    /// Closed interruption time so far (seconds).
+    private var interruptedSecAccumulated: Double = 0
+    /// Monotonic timestamp of the open interruption, if any.
+    private var openInterruptionTimestamp: TimeInterval?
+    /// Set when the camera session failed; nothing is appended until the next start.
+    private var hasFailed: Bool = false
+    private var unavailableReason: TrackingUnavailableReason? {
+        if hasFailed { return .sessionFailed }
+        if openInterruptionTimestamp != nil { return .interrupted }
+        return nil
+    }
 
     public init(
         raycaster: ScreenRaycaster = ScreenRaycaster(),
@@ -160,10 +212,15 @@ public actor GazeProcessingActor {
 
     /// Prepares actor for a fresh recording session. Live (`.trueDepth`) unless the
     /// caller is the Debug-only simulated path.
+    ///
+    /// - Parameter originTimestamp: monotonic timestamp of session time 0 (the
+    ///   bridge passes system uptime at start; tests using `elapsedSec` keep 0).
     public func startSession(
         battery: StimulusAOITracker? = nil,
         profile: GazeCalibrationProfile? = nil,
-        captureSource: CaptureSource = .trueDepth
+        captureSource: CaptureSource = .trueDepth,
+        stimulusId: String? = nil,
+        originTimestamp: TimeInterval = 0
     ) {
         self.captureSource = captureSource
         if let battery = battery {
@@ -173,10 +230,15 @@ public actor GazeProcessingActor {
             self.calibrationProfile = profile
         }
         self.volatileFrameBuffer.removeAll(keepingCapacity: true)
-        self.sessionStartTime = Date()
-        self.clipStartTime = Date()
-        self.currentStimulusId = nil
+        self.originTimestamp = originTimestamp
+        self.clipOriginSec = 0
+        self.lastBufferedSampleSec = nil
+        self.currentStimulusId = stimulusId
         self.clipMediaTimeSec = nil
+        self.interruptionCount = 0
+        self.interruptedSecAccumulated = 0
+        self.openInterruptionTimestamp = nil
+        self.hasFailed = false
         self.isRecording = true
         self.lastValidCalibratedPoint = CGPoint(x: 0.5, y: 0.5)
         self.lastValidRawPoint = CGPoint(x: 0.5, y: 0.5)
@@ -189,16 +251,24 @@ public actor GazeProcessingActor {
     /// Prepares a simulated session (Debug builds only, SIM-3).
     public func startSimulatedSession(
         battery: StimulusAOITracker? = nil,
-        profile: GazeCalibrationProfile? = nil
+        profile: GazeCalibrationProfile? = nil,
+        stimulusId: String? = nil
     ) {
-        startSession(battery: battery, profile: profile, captureSource: .simulated)
+        startSession(battery: battery, profile: profile, captureSource: .simulated, stimulusId: stimulusId)
     }
     #endif
 
     /// Dynamically switches the active stimulus clip and AOI battery mid-session.
-    public func switchStimulusClip(battery: StimulusAOITracker, stimulusId: String? = nil) {
+    ///
+    /// - Parameter timestamp: monotonic time of the switch; `nil` starts the clip
+    ///   clock at the next frame.
+    public func switchStimulusClip(
+        battery: StimulusAOITracker,
+        stimulusId: String? = nil,
+        at timestamp: TimeInterval? = nil
+    ) {
         self.aoiTracker = battery
-        self.clipStartTime = Date()
+        self.clipOriginSec = timestamp.map { $0 - originTimestamp }
         self.currentStimulusId = stimulusId
         self.clipMediaTimeSec = nil
     }
@@ -220,18 +290,61 @@ public actor GazeProcessingActor {
 
     /// Resets calibration profile to identity.
     public func resetCalibration() {
-        self.calibrationProfile = .identity
-        self.lastValidCalibratedPoint = CGPoint(x: 0.5, y: 0.5)
-        self.lastValidRawPoint = CGPoint(x: 0.5, y: 0.5)
-        self.blinkRecoveryFramesRemaining = 0
-        self.gazeFilter.reset()
-        self.rawGazeFilter.reset()
+        updateCalibrationProfile(.identity)
+    }
+
+    // MARK: - Camera session lifecycle (CAM-2)
+
+    /// The camera session was interrupted (phone call, another app took the camera).
+    /// Frames are not appended until `interruptionEnded`. Counted only while recording.
+    public func interruptionBegan(at timestamp: TimeInterval) -> GazeUIState {
+        if isRecording, openInterruptionTimestamp == nil, !hasFailed {
+            interruptionCount += 1
+            openInterruptionTimestamp = timestamp
+        }
+        return .unavailable(unavailableReason ?? .interrupted)
+    }
+
+    /// The interruption ended; frames are appended again.
+    public func interruptionEnded(at timestamp: TimeInterval) -> GazeUIState? {
+        guard !hasFailed else { return .unavailable(.sessionFailed) }
+        if let began = openInterruptionTimestamp {
+            interruptedSecAccumulated += max(0, timestamp - began)
+            openInterruptionTimestamp = nil
+        }
+        return nil
+    }
+
+    /// The camera session failed. Nothing more is appended to this recording; the
+    /// time from the failure to the stop counts as interrupted.
+    public func sessionFailed(at timestamp: TimeInterval) -> GazeUIState {
+        if isRecording, !hasFailed {
+            if openInterruptionTimestamp == nil {
+                interruptionCount += 1
+                openInterruptionTimestamp = timestamp
+            }
+            hasFailed = true
+        }
+        return .unavailable(.sessionFailed)
+    }
+
+    // MARK: - Frames
+
+    /// Ingests a face anchor snapshot captured at a monotonic `timestamp` (seconds,
+    /// same clock as `originTimestamp`). This is the path the AR bridge uses.
+    public func processFaceAnchor(snapshot: FaceAnchorSnapshot, timestamp: TimeInterval) -> GazeUIState {
+        processFaceAnchor(snapshot: snapshot, elapsedSec: timestamp - originTimestamp)
     }
 
     /// Ingests a face anchor snapshot from ARKit, executes 3D raycasting,
     /// applies 1-Euro smoothing and affine calibration, performs AOI hit testing,
     /// buffers the frame in volatile RAM if recording, and returns a lightweight UI state.
+    ///
+    /// - Parameter elapsedSec: session time of the sample (seconds since start).
     public func processFaceAnchor(snapshot: FaceAnchorSnapshot, elapsedSec: Double) -> GazeUIState {
+        if let reason = unavailableReason {
+            return .unavailable(reason)
+        }
         guard snapshot.isTracked else {
             return GazeUIState(
                 currentGazePoint: CGPoint(x: 0.5, y: 0.5),
@@ -306,21 +419,24 @@ public actor GazeProcessingActor {
 
         // 5. 1-Euro adaptive low-pass BEFORE hit testing. AOI reaction and the stored
         // sample follow the same point the reticle draws. Blink samples never enter the filter.
-        let nowSec = Date().timeIntervalSince1970
+        // The filter runs on sample time, so smoothing does not depend on delivery jitter.
         let smoothedCalibrated: CGPoint
         let smoothedRaw: CGPoint
         if isOcularArtifact {
             smoothedCalibrated = lastValidCalibratedPoint
             smoothedRaw = lastValidRawPoint
         } else {
-            smoothedCalibrated = gazeFilter.filter(point: calibratedPoint, timestamp: nowSec)
-            smoothedRaw = rawGazeFilter.filter(point: raycast.normalizedPoint, timestamp: nowSec)
+            smoothedCalibrated = gazeFilter.filter(point: calibratedPoint, timestamp: elapsedSec)
+            smoothedRaw = rawGazeFilter.filter(point: raycast.normalizedPoint, timestamp: elapsedSec)
             lastValidCalibratedPoint = smoothedCalibrated
             lastValidRawPoint = smoothedRaw
         }
 
-        // 6. AOI windows align to the AVPlayer media clock when the periodic observer is live.
-        let clipElapsedSec = clipStartTime.map { Date().timeIntervalSince($0) } ?? elapsedSec
+        // 6. AOI windows align to the AVPlayer media clock when the periodic observer is live;
+        // otherwise to sample time since the clip started.
+        let clipOrigin = clipOriginSec ?? elapsedSec
+        clipOriginSec = clipOrigin
+        let clipElapsedSec = max(0, elapsedSec - clipOrigin)
         let aoiTimeSec = clipMediaTimeSec ?? clipElapsedSec
         let activeHits: [String] = isOcularArtifact
             ? []
@@ -363,17 +479,17 @@ public actor GazeProcessingActor {
         }
 
         // 8. Volatile RAM buffering (no disk writes during 60 Hz stream)
-        let frame = GazeFrame(
-            gaze: sample,
-            affect: affect,
-            activeAOINames: activeHits,
-            aoiDwellMs: 16.67,
-            stimulusEventTag: nil,
-            qualityVerdict: eval.verdict,
-            stimulusId: currentStimulusId,
-            clipMediaTimeSec: clipMediaTimeSec
-        )
         if isRecording {
+            let frame = GazeFrame(
+                gaze: sample,
+                affect: affect,
+                activeAOINames: activeHits,
+                aoiDwellMs: measuredIntervalMs(at: elapsedSec),
+                stimulusEventTag: nil,
+                qualityVerdict: eval.verdict,
+                stimulusId: currentStimulusId,
+                clipMediaTimeSec: clipMediaTimeSec
+            )
             volatileFrameBuffer.append(frame)
         }
 
@@ -387,8 +503,18 @@ public actor GazeProcessingActor {
             trackingStage: stage,
             headYawDeg: yaw * 180.0 / .pi,
             headPitchDeg: pitch * 180.0 / .pi,
-            headRollDeg: roll * 180.0 / .pi
+            headRollDeg: roll * 180.0 / .pi,
+            blendShapes: shapes
         )
+    }
+
+    /// Interval since the previously buffered frame (PLC-5: `aoiDwellMs` holds the
+    /// measured interval, uncapped; the 100 ms cap applies when dwell is summed).
+    /// 0 for the first frame of a session.
+    private func measuredIntervalMs(at sampleSec: Double) -> Double {
+        defer { lastBufferedSampleSec = sampleSec }
+        guard let previous = lastBufferedSampleSec else { return 0 }
+        return max(0, sampleSec - previous) * 1000.0
     }
 
     /// Ingests a simulated frame (Debug simulation and mathematical testing).
@@ -396,9 +522,14 @@ public actor GazeProcessingActor {
     /// Returns `nil` and buffers nothing unless the session was started with
     /// `startSimulatedSession` (SIM-3); synthetic frames never enter a live session.
     /// Compiled to a stub without `ASD_SIMULATION_ENABLED`.
+    ///
+    /// - Parameters:
+    ///   - timeSec: session time of the synthetic sample.
+    ///   - clipTimeSec: AOI time override (playlist clip clock), if the caller has one.
     public func processSimulatedFrame(
         timeSec: Double,
         target: CGPoint?,
+        clipTimeSec: Double? = nil,
         stimulusId: String? = nil,
         clipMediaTimeSec: Double? = nil
     ) -> GazeUIState? {
@@ -419,7 +550,7 @@ public actor GazeProcessingActor {
             gazePoint = CGPoint(x: max(0.05, min(0.95, x)), y: max(0.05, min(0.95, y)))
         }
 
-        let aoiTimeSec = clipMediaTimeSec ?? self.clipMediaTimeSec ?? timeSec
+        let aoiTimeSec = clipTimeSec ?? clipMediaTimeSec ?? self.clipMediaTimeSec ?? timeSec
         let smoothedGaze = gazeFilter.filter(point: gazePoint, timestamp: timeSec)
         let smoothedRaw = rawGazeFilter.filter(point: gazePoint, timestamp: timeSec)
         let activeHits = aoiTracker.activeAOIs(
@@ -469,18 +600,17 @@ public actor GazeProcessingActor {
         )
 
         let eval = qualityGate.evaluateSample(sample)
-        let frame = GazeFrame(
-            gaze: sample,
-            affect: affect,
-            activeAOINames: activeHits,
-            aoiDwellMs: 16.67,
-            stimulusEventTag: isSmiling ? "character_laugh_onset" : nil,
-            qualityVerdict: eval.verdict,
-            stimulusId: stimulusId ?? currentStimulusId,
-            clipMediaTimeSec: clipMediaTimeSec ?? self.clipMediaTimeSec
-        )
-
         if isRecording {
+            let frame = GazeFrame(
+                gaze: sample,
+                affect: affect,
+                activeAOINames: activeHits,
+                aoiDwellMs: measuredIntervalMs(at: timeSec),
+                stimulusEventTag: isSmiling ? "character_laugh_onset" : nil,
+                qualityVerdict: eval.verdict,
+                stimulusId: stimulusId ?? currentStimulusId,
+                clipMediaTimeSec: clipMediaTimeSec ?? self.clipMediaTimeSec
+            )
             volatileFrameBuffer.append(frame)
         }
 
@@ -501,17 +631,45 @@ public actor GazeProcessingActor {
         #endif
     }
 
+    // MARK: - Finalize (the only aggregation point)
+
     /// Concludes the session, stops recording, computes clinical aggregates,
     /// and returns the session summary alongside the raw volatile frames.
-    public func finalizeSession() -> (summary: GazeSessionReportSummary, frames: [GazeFrame]) {
-        self.isRecording = false
+    ///
+    /// The buffer is handed over and cleared, so a second finalize cannot replay a
+    /// previous session. Without a started session nothing was captured: the empty
+    /// `.rejected` summary is labelled `.simulated` (quarantined, never claimed as
+    /// TrueDepth), the same rule the app applies to records of unknown provenance.
+    ///
+    /// - Parameters:
+    ///   - timestamp: monotonic stop time; closes an open interruption. When `nil`
+    ///     an open interruption contributes no further time.
+    ///   - subjectAgeSignal: assistive age-band signal to attach (CNS-8: `nil` unless enabled).
+    public func finalizeSession(
+        at timestamp: TimeInterval? = nil,
+        subjectAgeSignal: SubjectAgeSignal? = nil
+    ) -> (summary: GazeSessionReportSummary, frames: [GazeFrame]) {
+        if let began = openInterruptionTimestamp, let timestamp {
+            interruptedSecAccumulated += max(0, timestamp - began)
+        }
+        openInterruptionTimestamp = nil
         let framesSnapshot = volatileFrameBuffer
         let summary = GazeSessionReportSummary.aggregate(
             frames: framesSnapshot,
             sessionId: GazeSessionReportSummary.makeSessionId(),
-            captureSource: captureSource ?? .trueDepth,
-            subjectAgeSignal: nil
+            captureSource: captureSource ?? .simulated,
+            subjectAgeSignal: subjectAgeSignal,
+            interruptionCount: interruptionCount,
+            interruptedSec: interruptedSecAccumulated
         )
+
+        isRecording = false
+        captureSource = nil
+        volatileFrameBuffer.removeAll(keepingCapacity: false)
+        lastBufferedSampleSec = nil
+        interruptionCount = 0
+        interruptedSecAccumulated = 0
+        hasFailed = false
         return (summary, framesSnapshot)
     }
 
@@ -523,5 +681,123 @@ public actor GazeProcessingActor {
     /// Accessor for frames in volatile memory.
     public func getVolatileFrames() -> [GazeFrame] {
         return volatileFrameBuffer
+    }
+}
+
+// MARK: - Aggregation
+
+extension GazeSessionReportSummary {
+    /// Longest interval a single frame may contribute to dwell (PLC-5). Gaps longer
+    /// than this (dropped frames, lost face, interruption) are not counted as looking.
+    static let maxFrameDwellSec: Double = 0.1
+
+    /// Aggregates buffered frames into a summary. Called only by
+    /// `GazeProcessingActor.finalizeSession` (trap 11).
+    ///
+    /// PLC-5: `durationSec` is the last sample time minus the first. Each frame
+    /// contributes `min(interval to the next frame, 100 ms)` of dwell; the last
+    /// frame has no next frame and contributes nothing, so total dwell never exceeds
+    /// the duration. CAM-2: an interrupted session is at best `.degraded`.
+    static func aggregate(
+        frames: [GazeFrame],
+        sessionId: String,
+        captureSource: CaptureSource,
+        subjectAgeSignal: SubjectAgeSignal?,
+        interruptionCount: Int = 0,
+        interruptedSec: Double = 0
+    ) -> GazeSessionReportSummary {
+        let totalFrames = frames.count
+        guard totalFrames > 0 else {
+            return GazeSessionReportSummary(
+                sessionId: sessionId,
+                captureSource: captureSource,
+                durationSec: 0,
+                totalFrames: 0,
+                validFrames: 0,
+                validRatio: 0,
+                socialPreferenceScore: 0,
+                socialDwellSec: 0,
+                geometricDwellSec: 0,
+                eyeDwellRatio: nil,
+                mouthDwellRatio: nil,
+                firstEyeLatencyMs: nil,
+                socialSmileIntensityMean: 0,
+                smileReactivityIndex: 0,
+                flatAffectScore: 0,
+                surpriseScoreMean: 0,
+                qualityVerdict: .rejected,
+                subjectAgeSignal: subjectAgeSignal,
+                interruptionCount: interruptionCount,
+                interruptedSec: interruptedSec
+            )
+        }
+
+        let sampleSec = frames.map { $0.gaze.timestampMs / 1000.0 }
+        let durationSec = max(0, sampleSec[totalFrames - 1] - sampleSec[0])
+
+        var validFrames: [GazeFrame] = []
+        validFrames.reserveCapacity(totalFrames)
+        var socialDwell = 0.0
+        var geometricDwell = 0.0
+        for index in 0..<totalFrames {
+            let frame = frames[index]
+            guard frame.gaze.isValid && frame.qualityVerdict != .rejected else { continue }
+            validFrames.append(frame)
+            let dwell = index + 1 < totalFrames
+                ? min(max(0, sampleSec[index + 1] - sampleSec[index]), maxFrameDwellSec)
+                : 0
+            if AOIRole.intersects(frame.activeAOINames, kind: .social) {
+                socialDwell += dwell
+            }
+            if AOIRole.intersects(frame.activeAOINames, kind: .geometric) {
+                geometricDwell += dwell
+            }
+        }
+        let validRatio = Double(validFrames.count) / Double(totalFrames)
+
+        // Ratios, latency and affect come from the shared reducer; dwell seconds and
+        // preference are recomputed above from timestamps (its dwell assumes 60 fps).
+        let biomarkers = SessionBiomarkerAggregator.aggregate(
+            validFrames: validFrames,
+            durationSec: durationSec
+        )
+        let totalPreferenceDwell = socialDwell + geometricDwell
+        let preference = totalPreferenceDwell > 0
+            ? (socialDwell - geometricDwell) / totalPreferenceDwell
+            : 0
+
+        var verdict: GazeQualityGate.Verdict = validRatio >= 0.75 ? .optimal : (validRatio >= 0.50 ? .acceptable : .degraded)
+        if interruptionCount > 0 || interruptedSec > 0, verdict == .optimal || verdict == .acceptable {
+            verdict = .degraded
+        }
+
+        return GazeSessionReportSummary(
+            sessionId: sessionId,
+            captureSource: captureSource,
+            durationSec: durationSec,
+            totalFrames: totalFrames,
+            validFrames: validFrames.count,
+            validRatio: validRatio,
+            socialPreferenceScore: preference,
+            socialDwellSec: socialDwell,
+            geometricDwellSec: geometricDwell,
+            // PLC-1/PLC-2: measured from smoothed fixations and catalog AOI roles; nil when unobserved.
+            eyeDwellRatio: biomarkers.eyeDwellRatio,
+            mouthDwellRatio: biomarkers.mouthDwellRatio,
+            firstEyeLatencyMs: biomarkers.firstOrientLatencyMs,
+            socialSmileIntensityMean: biomarkers.socialSmileIntensityMean,
+            smileReactivityIndex: biomarkers.smileReactivityIndex,
+            flatAffectScore: biomarkers.flatAffectScore,
+            surpriseScoreMean: biomarkers.surpriseScoreMean,
+            qualityVerdict: verdict,
+            subjectAgeSignal: subjectAgeSignal,
+            interruptionCount: interruptionCount,
+            interruptedSec: interruptedSec
+        )
+    }
+
+    /// Short uppercase session identifier used when none is supplied by the caller.
+    static func makeSessionId() -> String {
+        String(UUID().uuidString.prefix(8)).uppercased()
     }
 }
