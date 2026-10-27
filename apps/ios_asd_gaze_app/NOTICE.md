@@ -5,18 +5,18 @@
 Ten short clips ship in the app bundle. Their catalog entries (titles, age ranges, areas of interest) are in
 `domains/asd_screening/ios/Sources/CurvAsdGazeKit/Resources/stimulus_catalog.json`.
 
-| File | Measured duration (s) | Catalog `durationSec` |
-| --- | --- | --- |
-| `stim_01_social_peekaboo_8s.mp4` | 8.0 | 8.0 |
-| `stim_02_gaze_cue_right_8s.mp4` | 8.0 | 7.0 |
-| `stim_03_gaze_cue_left_8s.mp4` | 8.0 | 7.0 |
-| `stim_04_surprise_giftbox_10s.mp4` | 8.0 | 8.0 |
-| `stim_05_geopref_split_10s.mp4` | 8.0 | 8.0 |
-| `stim_06_dynamic_gears_marbles_8s.mp4` | 8.0 | 8.0 |
-| `stim_07_cartoon_slapstick_penguin_8s.mp4` | 8.0 | 7.0 |
-| `stim_08_recenter_bubble_fox_3s.mp4` | 8.0 | 4.0 |
-| `stim_09_social_turn_taking_10s.mp4` | 8.0 | 9.0 |
-| `stim_10_animal_puppy_play_8s.mp4` | 8.0 | 9.0 |
+| File | Measured duration (s) | Catalog `durationSec` | Status / Licence |
+| --- | --- | --- | --- |
+| `stim_01_social_peekaboo_8s.mp4` | 8.0 | 8.0 | Internal Research / Rights Unverified (H-8) |
+| `stim_02_gaze_cue_right_8s.mp4` | 8.0 | 8.0 | Internal Research / Rights Unverified (H-8) |
+| `stim_03_gaze_cue_left_8s.mp4` | 8.0 | 8.0 | Internal Research / Rights Unverified (H-8) |
+| `stim_04_surprise_giftbox_10s.mp4` | 8.0 | 8.0 | Internal Research / Rights Unverified (H-8) |
+| `stim_05_geopref_split_10s.mp4` | 8.0 | 8.0 | Internal Research / Rights Unverified (H-8) |
+| `stim_06_dynamic_gears_marbles_8s.mp4` | 8.0 | 8.0 | Internal Research / Rights Unverified (H-8) |
+| `stim_07_cartoon_slapstick_penguin_8s.mp4` | 8.0 | 8.0 | Internal Research / Rights Unverified (H-8) |
+| `stim_08_recenter_bubble_fox_3s.mp4` | 8.0 | 8.0 | Internal Research / Rights Unverified (H-8) |
+| `stim_09_social_turn_taking_10s.mp4` | 8.0 | 8.0 | Internal Research / Rights Unverified (H-8) |
+| `stim_10_animal_puppy_play_8s.mp4` | 8.0 | 8.0 | Internal Research / Rights Unverified (H-8) |
 
 Provenance: **unverified**. What the repository does show:
 
@@ -32,8 +32,7 @@ release, the publisher must record for each clip: the generating tool and its te
 generation date, whether commercial use and distribution inside an app are permitted, and whether the clip
 depicts real or synthetic people. Until then, treat the clips as internal-use material.
 
-Note: every shipped file measures 8.0 s, while some file names and catalog entries say otherwise. That mismatch is
-recorded here and not resolved.
+Note: every shipped file measures 8.0 s, and all catalog entries have been aligned to 8.0 s (WP-D.1). File names retain legacy tags for asset tracking continuity.
 
 ## Third-party software
 

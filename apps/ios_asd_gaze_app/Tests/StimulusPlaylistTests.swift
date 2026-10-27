@@ -23,7 +23,7 @@ final class StimulusPlaylistTests: XCTestCase {
         XCTAssertEqual(battery.count, 8, "60s full battery should contain exactly 8 clinical stimuli")
 
         let totalDuration = battery.reduce(0.0) { $0 + $1.targetDurationSec }
-        XCTAssertEqual(totalDuration, 56.0, accuracy: 5.0, "Total duration should span ~55-60 seconds")
+        XCTAssertEqual(totalDuration, 64.0, accuracy: 5.0, "Total duration should span ~60-65 seconds")
 
         // Validate each stimulus has an associated AOI tracker
         for item in battery {

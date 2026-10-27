@@ -29,7 +29,7 @@
       "id": "stim_02_gaze_cue_right_8s",
       "title": "Joint Attention & Gaze Following",
       "category": "Joint Attention",
-      "durationSec": 7.0,
+      "durationSec": 8.0,
       "minMonths": 12,
       "maxMonths": 60,
       "protocols": [
@@ -45,7 +45,7 @@
       "id": "stim_03_gaze_cue_left_8s",
       "title": "Joint Attention: Leftward Cue",
       "category": "Joint Attention",
-      "durationSec": 7.0,
+      "durationSec": 8.0,
       "minMonths": 12,
       "maxMonths": 60,
       "protocols": [
@@ -103,7 +103,7 @@
       "id": "stim_07_cartoon_slapstick_penguin_8s",
       "title": "Animated Affect & Anticipation",
       "category": "Dynamic Affect",
-      "durationSec": 7.0,
+      "durationSec": 8.0,
       "minMonths": 12,
       "maxMonths": 60,
       "protocols": [
@@ -117,7 +117,7 @@
       "id": "stim_08_recenter_bubble_fox_3s",
       "title": "Center Fixation Recenter",
       "category": "Fixation Recenter",
-      "durationSec": 4.0,
+      "durationSec": 8.0,
       "minMonths": 12,
       "maxMonths": 60,
       "protocols": [
@@ -131,7 +131,7 @@
       "id": "stim_09_social_turn_taking_10s",
       "title": "Turn-Taking & Conversational Gaze",
       "category": "Social Communication",
-      "durationSec": 9.0,
+      "durationSec": 8.0,
       "minMonths": 12,
       "maxMonths": 60,
       "protocols": [
@@ -146,7 +146,7 @@
       "id": "stim_10_animal_puppy_play_8s",
       "title": "Biological Non-Human Motion",
       "category": "Biological Control",
-      "durationSec": 9.0,
+      "durationSec": 8.0,
       "minMonths": 12,
       "maxMonths": 60,
       "protocols": [

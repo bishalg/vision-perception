@@ -8,6 +8,10 @@ final class StimulusCatalogTests: XCTestCase {
         XCTAssertEqual(catalog.clips.count, 10)
         XCTAssertEqual(StimulusAOITracker.makeStandard10ClipBattery().count, 10)
 
+        for clip in catalog.clips {
+            XCTAssertEqual(clip.durationSec, 8.0, "Every shipped clip has a measured duration of exactly 8.0s")
+        }
+
         let express = catalog.playlist(forTargetDuration: 30)
         XCTAssertEqual(express.map(\.id), [
             "stim_05_geopref_split_10s",
@@ -15,10 +19,11 @@ final class StimulusCatalogTests: XCTestCase {
             "stim_02_gaze_cue_right_8s",
             "stim_07_cartoon_slapstick_penguin_8s"
         ])
-        XCTAssertEqual(express.reduce(0) { $0 + $1.durationSec }, 30, accuracy: 0.01)
+        XCTAssertEqual(express.reduce(0) { $0 + $1.durationSec }, 32.0, accuracy: 0.01)
 
         let full = catalog.playlist(forTargetDuration: 60)
         XCTAssertEqual(full.count, 8)
+        XCTAssertEqual(full.reduce(0) { $0 + $1.durationSec }, 64.0, accuracy: 0.01)
         XCTAssertEqual(full.first?.id, "stim_05_geopref_split_10s")
         XCTAssertFalse(full.contains { $0.id == "stim_06_dynamic_gears_marbles_8s" })
     }
