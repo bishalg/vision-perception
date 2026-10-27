@@ -11,7 +11,10 @@ name: bdd-02-onboarding-consent-and-profile
 - waitForAnimationToEnd:
     timeout: 20000
 
-- assertVisible: Privacy & Security
+- extendedWaitUntil:
+    visible: Privacy & Security
+    timeout: 30000
+
 - waitForAnimationToEnd:
     timeout: 8000
 

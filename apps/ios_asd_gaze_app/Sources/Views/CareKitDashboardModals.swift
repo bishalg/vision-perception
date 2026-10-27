@@ -425,6 +425,9 @@ struct SyncStatusView: View {
 /// Shown only when this build has a configured study (CNS-9): callers obtain
 /// the service from `ResearchKitSyncService.shared`, which is `nil` otherwise.
 public struct ResearchStudyDashboardCard: View {
+    /// H3 gate: false unless the build is licensed for M-CHAT-R/F.
+    static var offersMCHATEntry: Bool { MCHATAvailability.canStartQuestionnaire }
+
     @ObservedObject private var syncService: ResearchKitSyncService
     @State private var enrollment: ResearchStudyEnrollment = ResearchKitStudyStore.shared.fetchEnrollment()
     @State private var showConsentSheet: Bool = false
@@ -502,6 +505,7 @@ public struct ResearchStudyDashboardCard: View {
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("research_card_consent")
                 } else {
+                    if Self.offersMCHATEntry {
                     Button {
                         showSurveySheet = true
                     } label: {
@@ -517,6 +521,7 @@ public struct ResearchStudyDashboardCard: View {
                         .foregroundColor(LiquidGlass.celestialTeal)
                     }
                     .buttonStyle(.plain)
+                    }
 
                     Button {
                         syncService.syncNow()
@@ -590,7 +595,11 @@ public struct ResearchStudyDashboardCard: View {
             }
         }
         .sheet(isPresented: $showSurveySheet) {
+            #if ASD_MCHAT_LICENSED
             MCHATSurveyModalView()
+            #else
+            EmptyView()
+            #endif
         }
         .sheet(isPresented: $showHistorySheet) {
             MCHATHistoryView()

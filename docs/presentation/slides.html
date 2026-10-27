@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>vision-perception — OpenCV AI Competition 2026</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0B0F17;
+      color: #E2E8F0;
+      overflow: hidden;
+    }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    .slide {
+      display: none;
+      height: 100vh;
+      width: 100vw;
+      padding: 3rem 4rem;
+      box-sizing: border-box;
+    }
+    .slide.active {
+      display: flex;
+      flex-direction: column;
+    }
+    .glass-card {
+      background: rgba(22, 30, 46, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+    .glow-cyan {
+      box-shadow: 0 0 25px rgba(6, 182, 212, 0.25);
+    }
+  </style>
+</head>
+<body class="select-none">
+
+  <!-- TOP HEADER (Persistent) -->
+  <header class="fixed top-0 left-0 right-0 h-14 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur z-50 flex items-center justify-between px-8">
+    <div class="flex items-center space-x-3">
+      <span class="px-2.5 py-0.5 rounded text-xs font-mono font-semibold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">OPENCV AI COMPETITION 2026</span>
+      <span class="text-sm font-semibold text-slate-300">vision-perception</span>
+      <span class="text-xs text-slate-500">| Real-World Impact Track</span>
+    </div>
+    <div class="flex items-center space-x-3">
+      <span id="slideCounter" class="text-xs font-mono text-slate-400">1 / 8</span>
+      <button onclick="openPrompterWindow()" class="px-3 py-1 text-xs bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded border border-amber-500/40 font-semibold transition flex items-center gap-1.5 shadow-sm active:scale-95">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+        Pop Out Script Window (P)
+      </button>
+      <button onclick="toggleNotes()" class="px-3 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 transition">
+        In-Slide Script (S)
+      </button>
+      <button onclick="toggleFullscreen()" class="px-3 py-1 text-xs bg-cyan-900/40 hover:bg-cyan-800/40 text-cyan-300 rounded border border-cyan-700/50 transition">
+        Fullscreen (F)
+      </button>
+    </div>
+  </header>
+
+  <!-- SLIDES CONTAINER -->
+  <main class="pt-14 h-screen">
+
+    <!-- SLIDE 1: Title & Team -->
+    <section class="slide active justify-center items-center text-center">
+      <div class="max-w-4xl mx-auto space-y-6">
+        <div class="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 text-sm font-mono">
+          <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+          <span>Agentic Vision &amp; Cloud-Optimized Computer Vision</span>
+        </div>
+        <h1 class="text-5xl md:text-6xl font-extrabold tracking-tight text-white leading-tight">
+          vision-perception
+        </h1>
+        <p class="text-2xl text-slate-300 font-light max-w-3xl mx-auto">
+          Sub-Pixel Curvilinear Feature Extraction &amp; Autonomous Cloud Disaster Response
+        </p>
+        <p class="text-base text-cyan-400 font-mono">
+          Powered by OpenCV 5 · AWS Bedrock Agents · COOL on Graviton3
+        </p>
+        
+        <div class="pt-8 flex justify-center gap-6">
+          <div class="glass-card px-6 py-4 rounded-xl text-left border-l-4 border-l-cyan-500">
+            <p class="text-xs text-slate-400 uppercase tracking-wider font-mono">Target Categories</p>
+            <p class="text-sm font-semibold text-white mt-1">1. Agentic Vision</p>
+            <p class="text-sm font-semibold text-white">2. Best Use of COOL</p>
+          </div>
+          <div class="glass-card px-6 py-4 rounded-xl text-left border-l-4 border-l-indigo-500">
+            <p class="text-xs text-slate-400 uppercase tracking-wider font-mono">Validation Case</p>
+            <p class="text-sm font-semibold text-white mt-1">August 2026 Nepal Debris Flood</p>
+            <p class="text-xs text-slate-400">Bhote Koshi River Corridor</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 2: The Disaster & The Problem -->
+    <section class="slide justify-between">
+      <div>
+        <p class="text-xs font-mono uppercase tracking-wider text-cyan-400">The Problem Statement</p>
+        <h2 class="text-3xl font-bold text-white mt-1">The Crisis: August 2026 Nepal Glacial Flood</h2>
+        <p class="text-slate-400 text-sm mt-1">Catastrophic mountain debris flood in the steep Langtang Himal &amp; Bhote Koshi corridor.</p>
+      </div>
+
+      <div class="grid grid-cols-12 gap-8 items-center my-auto">
+        <div class="col-span-7">
+          <div class="glass-card p-3 rounded-2xl glow-cyan">
+            <img src="../../data/flood_nepal_2026/out/comparison.png" alt="Before and After Satellite Comparison" class="rounded-xl w-full max-h-[55vh] object-contain bg-black">
+            <p class="text-xs text-center text-slate-400 mt-2 font-mono">Sentinel-2 L2A 10m Ground Imagery — Pre vs Post Event Co-registered</p>
+          </div>
+        </div>
+
+        <div class="col-span-5 space-y-4">
+          <div class="glass-card p-5 rounded-xl border border-red-500/30">
+            <h3 class="text-red-400 font-semibold text-base flex items-center gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+              Why Standard Pixel Difference Fails
+            </h3>
+            <ul class="text-xs text-slate-300 space-y-2 mt-2 list-disc list-inside">
+              <li>Monsoon cloud cover &amp; severe mountain shadow casting create false positives.</li>
+              <li>High-velocity glacial flour and turbid debris radically alter spectral surface texture.</li>
+              <li>Human verification creates critical multi-hour delays in active flash flood zones.</li>
+            </ul>
+          </div>
+
+          <div class="glass-card p-5 rounded-xl border border-cyan-500/30">
+            <h3 class="text-cyan-400 font-semibold text-base flex items-center gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              The vision-perception Solution
+            </h3>
+            <ul class="text-xs text-slate-300 space-y-2 mt-2 list-disc list-inside">
+              <li>Sub-pixel curvilinear ridge extraction via Hessian scale-space tensors.</li>
+              <li>Dual scientific controls (Spatial 0.151x + Temporal 0.905x) to eliminate hallucinations.</li>
+              <li>Autonomous Perception-to-Action Bedrock loop triggering disaster response.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-500 font-mono">Dataset: Sentinel-2 L2A (10m) · Event Date: 26 August 2026</div>
+    </section>
+
+    <!-- SLIDE 3: C++20 and OpenCV 5 Sub-Pixel Engine -->
+    <section class="slide justify-between">
+      <div>
+        <p class="text-xs font-mono uppercase tracking-wider text-cyan-400">Core Computer Vision</p>
+        <h2 class="text-3xl font-bold text-white mt-1">C++20 &amp; OpenCV 5 Curvilinear Tensor Engine</h2>
+        <p class="text-slate-400 text-sm mt-1">Mathematical rigor: Sub-pixel Steger ridge extraction passing strict analytical ground-truth gates.</p>
+      </div>
+
+      <div class="grid grid-cols-3 gap-6 my-auto">
+        <div class="glass-card p-6 rounded-xl flex flex-col justify-between">
+          <div>
+            <span class="text-2xl font-mono text-cyan-400 font-bold">01</span>
+            <h3 class="text-lg font-bold text-white mt-2">Scale-Space Hessian</h3>
+            <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+              Gaussian scale-space 2nd derivatives ($L_{xx}, L_{xy}, L_{yy}$) computed across multiple continuous scales $\sigma$ to track active mountain water channels through high noise.
+            </p>
+          </div>
+          <div class="mt-4 p-3 bg-slate-900/80 rounded font-mono text-[11px] text-cyan-300">
+            H = [ L_xx  L_xy ; L_xy  L_yy ]
+          </div>
+        </div>
+
+        <div class="glass-card p-6 rounded-xl flex flex-col justify-between border-t-2 border-cyan-400">
+          <div>
+            <span class="text-2xl font-mono text-cyan-400 font-bold">02</span>
+            <h3 class="text-lg font-bold text-white mt-2">Taylor Zero-Crossing</h3>
+            <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+              Sub-pixel line points extracted along dominant Hessian eigenvector $n_x, n_y$. Taylor expansion locates the true physical ridge at continuous sub-pixel coordinates.
+            </p>
+          </div>
+          <div class="mt-4 p-3 bg-slate-900/80 rounded font-mono text-[11px] text-emerald-400">
+            RMSE &lt; 0.0301 px (Gate: &lt; 0.1 px)
+          </div>
+        </div>
+
+        <div class="glass-card p-6 rounded-xl flex flex-col justify-between">
+          <div>
+            <span class="text-2xl font-mono text-cyan-400 font-bold">03</span>
+            <h3 class="text-lg font-bold text-white mt-2">41/41 Green Suites</h3>
+            <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+              Modern C++20 standard, Clang-Format 18, Clang-Tidy, and GoogleTest. Strict determinism: identical results on Apple Silicon and AWS Graviton3.
+            </p>
+          </div>
+          <div class="mt-4 p-3 bg-slate-900/80 rounded font-mono text-[11px] text-slate-300">
+            100% CTest Passed (41 Test Suites)
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card p-3 rounded-lg flex items-center justify-between text-xs font-mono text-slate-400">
+        <span>Terminal Demo: <code class="text-cyan-300">./scripts/run_flood_pipeline.sh</code></span>
+        <span class="text-emerald-400">STAGE 1 → STAGE 6 COMPLETE</span>
+      </div>
+    </section>
+
+    <!-- SLIDE 4: Quantitative Flood Delta Results -->
+    <section class="slide justify-between">
+      <div>
+        <p class="text-xs font-mono uppercase tracking-wider text-cyan-400">Physical Evidence</p>
+        <h2 class="text-3xl font-bold text-white mt-1">Quantitative Disaster Delta &amp; Scientific Controls</h2>
+        <p class="text-slate-400 text-sm mt-1">Physical proof of catastrophic channel widening localized strictly to the floodway.</p>
+      </div>
+
+      <div class="grid grid-cols-12 gap-8 items-center my-auto">
+        <div class="col-span-6 grid grid-cols-2 gap-4">
+          <div class="glass-card p-2 rounded-xl text-center">
+            <img src="../../data/flood_nepal_2026/out/pre_overlay.png" alt="Pre Overlay" class="rounded-lg h-48 w-full object-cover bg-black">
+            <span class="text-xs font-mono text-slate-400 mt-1 block">PRE-DISASTER OVERLAY</span>
+          </div>
+          <div class="glass-card p-2 rounded-xl text-center border border-cyan-500/40">
+            <img src="../../data/flood_nepal_2026/out/post_overlay.png" alt="Post Overlay" class="rounded-lg h-48 w-full object-cover bg-black">
+            <span class="text-xs font-mono text-cyan-400 mt-1 block">POST-DISASTER OVERLAY</span>
+          </div>
+        </div>
+
+        <div class="col-span-6 space-y-4">
+          <div class="grid grid-cols-2 gap-3">
+            <div class="glass-card p-4 rounded-xl">
+              <p class="text-xs text-slate-400 font-mono">CHANNEL WIDENING</p>
+              <p class="text-3xl font-extrabold text-cyan-400 mt-1">+121.1%</p>
+              <p class="text-[11px] text-slate-400">19.0 px → 42.0 px median (2.21x)</p>
+            </div>
+            <div class="glass-card p-4 rounded-xl">
+              <p class="text-xs text-slate-400 font-mono">WATER SIGNATURE SURGE</p>
+              <p class="text-3xl font-extrabold text-indigo-400 mt-1">+88.4%</p>
+              <p class="text-[11px] text-slate-400">Corridor flood signature (1.884x)</p>
+            </div>
+          </div>
+
+          <div class="glass-card p-4 rounded-xl border-l-4 border-l-emerald-500">
+            <h4 class="text-xs font-mono text-emerald-400 uppercase font-semibold">Dual Scientific Controls (No Hallucinations)</h4>
+            <div class="grid grid-cols-2 gap-4 mt-2 text-xs">
+              <div>
+                <span class="text-slate-400">Spatial Control (Off-river slope):</span>
+                <span class="font-mono font-bold text-white block">0.151x</span>
+                <span class="text-[10px] text-slate-500">Eliminates regional rainfall bias</span>
+              </div>
+              <div>
+                <span class="text-slate-400">Temporal Baseline:</span>
+                <span class="font-mono font-bold text-white block">0.905x</span>
+                <span class="text-[10px] text-slate-500">Verifies dry baseline stability</span>
+              </div>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-slate-400 italic">
+            Geomorphological finding: -9.0% ridge count reduction proves physical terrain smoothing from glacial debris aprons filling bedrock fractures.
+          </p>
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-500 font-mono">Evidence File: <code class="text-cyan-300">data/flood_nepal_2026/out/flood_delta.json</code></div>
+    </section>
+
+    <!-- SLIDE 5: Agentic Vision (AWS Bedrock) -->
+    <section class="slide justify-between">
+      <div>
+        <p class="text-xs font-mono uppercase tracking-wider text-cyan-400">Agentic Vision Award</p>
+        <h2 class="text-3xl font-bold text-white mt-1">Autonomous Perception-to-Action Bedrock Loop</h2>
+        <p class="text-slate-400 text-sm mt-1">A strict 3-node loop where computer vision output deterministically dictates the real-world action.</p>
+      </div>
+
+      <div class="grid grid-cols-3 gap-6 my-auto">
+        <!-- Node 1 -->
+        <div class="glass-card p-6 rounded-2xl border-t-4 border-cyan-400 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-700">NODE 1</span>
+              <span class="text-xs text-slate-500 font-mono">PERCEPTION</span>
+            </div>
+            <h3 class="text-lg font-bold text-white mt-3 font-mono">getFloodEvidence</h3>
+            <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+              Bedrock Agent receives an event ID, autonomously fetches S3 metrics, verifies spatial ratios, and acquires a cryptographic <code class="text-cyan-300">evidenceToken</code>.
+            </p>
+          </div>
+          <div class="mt-4 p-2.5 bg-slate-900 rounded text-[11px] font-mono text-cyan-300">
+            Token: SHA256(metric + salt)
+          </div>
+        </div>
+
+        <!-- Node 2 -->
+        <div class="glass-card p-6 rounded-2xl border-t-4 border-indigo-400 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-mono px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-700">NODE 2</span>
+              <span class="text-xs text-slate-500 font-mono">POLICY REASONING</span>
+            </div>
+            <h3 class="text-lg font-bold text-white mt-3 font-mono">Claude 3.5 Sonnet</h3>
+            <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+              Acts as a policy enforcement engine. Checks channel widening (&gt;1.5x) and spatial control (&lt;0.5x). Rejects hallucinations or unverified inputs.
+            </p>
+          </div>
+          <div class="mt-4 p-2.5 bg-slate-900 rounded text-[11px] font-mono text-indigo-300">
+            Threshold: Dual-control pass
+          </div>
+        </div>
+
+        <!-- Node 3 -->
+        <div class="glass-card p-6 rounded-2xl border-t-4 border-emerald-400 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700">NODE 3</span>
+              <span class="text-xs text-slate-500 font-mono">ACTION</span>
+            </div>
+            <h3 class="text-lg font-bold text-white mt-3 font-mono">dispatchFloodAlert</h3>
+            <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+              Validates token in DynamoDB to guarantee idempotency. Broadcasts emergency SNS alerts to pre-registered responders, and writes immutable S3 audit receipts.
+            </p>
+          </div>
+          <div class="mt-4 p-2.5 bg-emerald-950/60 rounded text-[11px] font-mono text-emerald-300">
+            Status: DISPATCHED
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card p-3 rounded-lg flex items-center justify-between text-xs font-mono">
+        <span class="text-slate-400">Vision Output Changes Action Both Ways:</span>
+        <span class="text-amber-400"><code class="text-cyan-300">--scenario marginal</code> → BELOW THRESHOLDS → NOT_DISPATCHED (STANDBY)</span>
+      </div>
+    </section>
+
+    <!-- SLIDE 6: Use of COOL on Graviton3 -->
+    <section class="slide justify-between">
+      <div>
+        <p class="text-xs font-mono uppercase tracking-wider text-cyan-400">Best Use of COOL Award</p>
+        <h2 class="text-3xl font-bold text-white mt-1">Accelerated on AWS Graviton3 with COOL</h2>
+        <p class="text-slate-400 text-sm mt-1">Cloud-Optimized OpenCV Library with Neoverse V1 SIMD vectorization — zero core engine code changes.</p>
+      </div>
+
+      <div class="grid grid-cols-12 gap-8 items-center my-auto">
+        <div class="col-span-7 space-y-4">
+          <div class="glass-card p-5 rounded-xl">
+            <h3 class="text-sm font-mono text-cyan-400 uppercase tracking-wider">100-Iteration Benchmark Performance</h3>
+            <table class="w-full mt-3 text-left text-xs font-mono">
+              <tr class="border-b border-slate-800 text-slate-500">
+                <th class="pb-2">METRIC</th>
+                <th class="pb-2 text-right">MEASURED VALUE</th>
+              </tr>
+              <tr class="border-b border-slate-800/60">
+                <td class="py-2.5 text-slate-300">P50 Latency</td>
+                <td class="py-2.5 text-right font-bold text-cyan-400 text-sm">213.6 ms</td>
+              </tr>
+              <tr class="border-b border-slate-800/60">
+                <td class="py-2.5 text-slate-300">Mean / P95 Latency</td>
+                <td class="py-2.5 text-right text-slate-300">217.4 ms / 255.8 ms</td>
+              </tr>
+              <tr class="border-b border-slate-800/60">
+                <td class="py-2.5 text-slate-300">Cost Per Disaster Scene</td>
+                <td class="py-2.5 text-right text-emerald-400 font-bold">$0.0000197</td>
+              </tr>
+              <tr>
+                <td class="py-2.5 text-slate-300">Throughput Per $1.00</td>
+                <td class="py-2.5 text-right text-emerald-400 font-bold">50,744 scenes</td>
+              </tr>
+            </table>
+          </div>
+
+          <div class="p-3 bg-slate-900/80 rounded-lg border border-slate-800 text-[11px] font-mono text-slate-400 flex items-center justify-between">
+            <span>Active SIMD Path: <span class="text-cyan-300">NEON_DOTPROD · NEON_FP16 · NEON_BF16</span></span>
+            <span class="text-emerald-400">ARM Neoverse V1</span>
+          </div>
+        </div>
+
+        <div class="col-span-5 space-y-3">
+          <div class="glass-card p-4 rounded-xl border border-indigo-500/30">
+            <h4 class="text-sm font-semibold text-white">Why Graviton3 + COOL?</h4>
+            <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+              Gaussian scale-space filtering requires heavy 2D convolutions across tensor fields. COOL unlocks high-throughput server-side vectorization on AWS ARM instances without licensing overhead.
+            </p>
+          </div>
+          <div class="glass-card p-4 rounded-xl">
+            <h4 class="text-sm font-semibold text-white">Judges' One-Command EC2 Reproduction</h4>
+            <p class="text-xs text-slate-300 mt-2 font-mono text-[11px] text-cyan-300">
+              ./scripts/benchmark_cool_vs_x86.sh --skip-build
+            </p>
+            <p class="text-[11px] text-slate-400 mt-1">Full walk-through documented in docs/aws_benchmark_guide.md</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-500 font-mono">Tested on: AWS c7g.2xlarge (Graviton3) &amp; Apple Silicon M-series</div>
+    </section>
+
+    <!-- SLIDE 7: Cesium 3D Digital Twin -->
+    <section class="slide justify-between">
+      <div>
+        <p class="text-xs font-mono uppercase tracking-wider text-cyan-400">Interactive Situational Awareness</p>
+        <h2 class="text-3xl font-bold text-white mt-1">Cesium 3D Digital Twin Viewer</h2>
+        <p class="text-slate-400 text-sm mt-1">Geospatial corridor visualization with calibrated multi-camera pose estimation and ground sensor stills.</p>
+      </div>
+
+      <div class="grid grid-cols-12 gap-8 items-center my-auto">
+        <div class="col-span-7">
+          <div class="glass-card p-3 rounded-2xl glow-cyan text-center">
+            <div class="h-64 rounded-xl bg-slate-950 flex flex-col items-center justify-center border border-slate-800 relative overflow-hidden">
+              <div class="absolute inset-0 bg-gradient-to-tr from-cyan-950/40 via-transparent to-blue-900/20"></div>
+              <svg class="w-12 h-12 text-cyan-400 mb-2 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <span class="text-sm font-mono text-cyan-300 font-bold relative z-10">Running live at http://localhost:3000</span>
+              <span class="text-xs text-slate-400 mt-1 relative z-10">6 Calibrated Cameras · OSM 3D Terrain Tiles · Zero Errors</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-2 font-mono">Nepal Bhote Koshi Flood Corridor 3D Reconstruction</p>
+          </div>
+        </div>
+
+        <div class="col-span-5 space-y-4">
+          <div class="glass-card p-5 rounded-xl">
+            <h3 class="text-sm font-semibold text-white">Viewer Features</h3>
+            <ul class="text-xs text-slate-300 space-y-2.5 mt-3 list-disc list-inside">
+              <li><strong class="text-cyan-300">Camera Frustums</strong>: Interactive orientation, heading, pitch, and FOV cones.</li>
+              <li><strong class="text-cyan-300">Ground Stills</strong>: Real-time inspection of river pier conditions under flood stress.</li>
+              <li><strong class="text-cyan-300">Zero Page Errors</strong>: Verified end-to-end in automated headless browser tests.</li>
+            </ul>
+          </div>
+          <div class="p-3 bg-cyan-950/40 rounded-lg border border-cyan-500/30 text-xs text-cyan-200">
+            💡 Switch to the <code class="font-bold">localhost:3000</code> browser tab during your demo to click the Bhote Koshi pier marker!
+          </div>
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-500 font-mono">Dev Server: <code class="text-cyan-300">npm run dev</code> (port 3000)</div>
+    </section>
+
+    <!-- SLIDE 8: Architecture & Submission Summary -->
+    <section class="slide justify-between">
+      <div>
+        <p class="text-xs font-mono uppercase tracking-wider text-cyan-400">System Architecture</p>
+        <h2 class="text-3xl font-bold text-white mt-1">End-to-End Production Pipeline</h2>
+        <p class="text-slate-400 text-sm mt-1">Decoupled AWS CDK v2 stacks: from satellite ingestion to automated emergency broadcast.</p>
+      </div>
+
+      <div class="my-auto">
+        <div class="glass-card p-3 rounded-2xl max-w-4xl mx-auto glow-cyan">
+          <img src="../assets/hackathon_architecture.png" alt="System Architecture Diagram" class="rounded-xl w-full max-h-[50vh] object-contain bg-slate-950">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-4 gap-4 text-center">
+        <div class="glass-card p-3 rounded-lg">
+          <span class="text-xs text-slate-400 font-mono">CORE ACCURACY</span>
+          <p class="text-base font-bold text-cyan-400">&lt; 0.0301 px</p>
+        </div>
+        <div class="glass-card p-3 rounded-lg">
+          <span class="text-xs text-slate-400 font-mono">TEST SUITES</span>
+          <p class="text-base font-bold text-emerald-400">41 / 41 PASS</p>
+        </div>
+        <div class="glass-card p-3 rounded-lg">
+          <span class="text-xs text-slate-400 font-mono">COOL LATENCY (P50)</span>
+          <p class="text-base font-bold text-indigo-400">213.6 ms</p>
+        </div>
+        <div class="glass-card p-3 rounded-lg">
+          <span class="text-xs text-slate-400 font-mono">AGENT IDEMPOTENCY</span>
+          <p class="text-base font-bold text-amber-400">DynamoDB Sealed</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FLOATING PRESENTER SCRIPT OVERLAY (Toggle with 'S') -->
+  <aside id="speakerNotes" class="hidden fixed bottom-6 right-6 w-96 max-h-[40vh] glass-card p-4 rounded-xl shadow-2xl border border-cyan-500/40 z-50 overflow-y-auto">
+    <div class="flex items-center justify-between pb-2 border-b border-slate-700/60 mb-2">
+      <span class="text-xs font-mono font-bold text-cyan-300">TELEPROMPTER / SPOKEN SCRIPT</span>
+      <button onclick="toggleNotes()" class="text-slate-400 hover:text-white text-xs">✕</button>
+    </div>
+    <p id="scriptText" class="text-xs text-slate-200 leading-relaxed font-sans"></p>
+  </aside>
+
+  <script>
+    const scripts = [
+      /* Slide 1 */ "Hi everyone, I'm [Your Name]. For the OpenCV AI Competition, we built vision-perception: sub-pixel curvilinear perception and autonomous disaster response powered by OpenCV 5, AWS Bedrock Agents, and COOL on AWS Graviton3.",
+      /* Slide 2 */ "In August 2026, a catastrophic glacier collapse triggered an extreme debris flood down Nepal's Bhote Koshi river corridor. Conventional disaster mapping relies on simple pixel-difference thresholds that fail in mountain terrain due to monsoon cloud cover and heavy glacial flour. We built vision-perception to eliminate human delay with mathematically rigorous computer vision and an autonomous cloud action loop.",
+      /* Slide 3 */ "Under the hood is a modern C++20 and OpenCV 5 monorepo. We implement Steger line extraction with Gaussian scale-space Hessian tensors and Taylor series zero-crossing. It achieves less than 0.03 pixels RMSE against analytical ground truth — surpassing our strict 0.1 pixel scientific gate across 41 green test suites.",
+      /* Slide 4 */ "On Sentinel-2 imagery of the Nepal disaster, our pipeline detected a 121% channel widening and an 88% surge in flood signature. Crucially, our spatial control on adjacent mountain slopes was only 0.15x, and our temporal baseline was 0.90x — proving the detected anomaly is mathematically isolated to the disaster floodway.",
+      /* Slide 5 */ "For the Agentic Vision category, we built a true Perception-to-Action loop. When flood_delta.json lands in S3, it wakes our Claude 3.5 Sonnet Bedrock Agent. The agent calls getFloodEvidence to inspect the metrics and acquire a cryptographic token, checks policies, and executes dispatchFloodAlert with DynamoDB idempotency. When fed marginal data, it automatically stays on standby without dispatching.",
+      /* Slide 6 */ "For the Best Use of COOL category, scale-space convolutions are computationally heavy. Running our benchmark harness with the Cloud-Optimized OpenCV Library on AWS Graviton3 Neoverse V1, we achieve a measured 213.6 millisecond P50 latency with ARM NEON SIMD active — processing over 50,000 disaster scenes per compute dollar.",
+      /* Slide 7 */ "To provide ground truth and situational awareness for field rescue teams, we project this into a real-time Cesium 3D digital twin at localhost:3000. Rescue coordinators can inspect calibrated camera frustums and georeferenced sensor stills directly across the river gorge.",
+      /* Slide 8 */ "From sub-pixel C++ tensor extraction to autonomous, evidence-gated AWS Bedrock agents, vision-perception demonstrates that rigorous computer vision and modern agentic AI can save lives during real-world disasters. The entire repository is open source and reproducible with our one-command judges' quickstart. Thank you."
+    ];
+
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const counter = document.getElementById('slideCounter');
+    const scriptText = document.getElementById('scriptText');
+    const notesBox = document.getElementById('speakerNotes');
+
+    const channel = new BroadcastChannel('vision_slides_sync');
+    channel.onmessage = (e) => {
+      if (e.data && typeof e.data.slideIndex === 'number') {
+        updateSlide(e.data.slideIndex, false);
+      }
+    };
+
+    function openPrompterWindow() {
+      const w = 520;
+      const h = 760;
+      const left = window.screen.width - w - 40;
+      const top = 60;
+      window.open('teleprompter.html', 'VisionTeleprompter', `width=${w},height=${h},left=${left},top=${top},menubar=no,status=no,toolbar=no`);
+    }
+
+    function updateSlide(index, broadcast = true) {
+      if (index < 0 || index >= slides.length) return;
+      slides[currentSlide].classList.remove('active');
+      currentSlide = index;
+      slides[currentSlide].classList.add('active');
+      counter.innerText = `${currentSlide + 1} / ${slides.length}`;
+      scriptText.innerText = scripts[currentSlide];
+
+      if (broadcast) {
+        channel.postMessage({ slideIndex: currentSlide });
+      }
+    }
+
+    function toggleNotes() {
+      notesBox.classList.toggle('hidden');
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        updateSlide(currentSlide + 1);
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        updateSlide(currentSlide - 1);
+      } else if (e.key === 's' || e.key === 'S') {
+        toggleNotes();
+      } else if (e.key === 'p' || e.key === 'P') {
+        openPrompterWindow();
+      } else if (e.key === 'f' || e.key === 'F') {
+        toggleFullscreen();
+      }
+    });
+
+    updateSlide(0, false);
+  </script>
+</body>
+</html>

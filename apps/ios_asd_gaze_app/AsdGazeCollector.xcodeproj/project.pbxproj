@@ -16,6 +16,7 @@
 		09A7A90C813B2DF490323482 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A964440896F4E6DA13B314B1 /* WidgetKit.framework */; };
 		0AE7937F3820C8171F98AAEC /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6F3583A2BB261CA58D5C12A4 /* SwiftUI.framework */; };
 		0F24C787FBE677801002134F /* AttentionTrendChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42B86B5FECB656A3C08D6995 /* AttentionTrendChartView.swift */; };
+		0F82A0ED34D9FCF844D1190C /* FHIRBundleBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0781428976F4BBF2CC1D5AA /* FHIRBundleBuilderTests.swift */; };
 		102B0035594F3435E1680D60 /* SimulatedDataBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55D9A35BAFCFDFC7EE725AF8 /* SimulatedDataBadge.swift */; };
 		10452C9E39B5A631BA8E2114 /* GazeScreeningWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75053E80AAB8A4C1494A61D5 /* GazeScreeningWizardView.swift */; };
 		172F76895B2ADF8D0D67596C /* CareKitClinicalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFF20B6639768C9A0E7E78FB /* CareKitClinicalStore.swift */; };
@@ -33,6 +34,7 @@
 		288B7BB22B64FBC0DD5373D1 /* AppModeSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD544B6AE104530F9E0A878 /* AppModeSelectionView.swift */; };
 		2B9E42664B3E3B1FA4F8E242 /* SubjectAgeCheckTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11DF71AD0D8FEC7918EC89F3 /* SubjectAgeCheckTests.swift */; };
 		2C16EF91E993F15C10F182AD /* BiomarkerRiskStratificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20F54BD401B98FED6FAD3055 /* BiomarkerRiskStratificationView.swift */; };
+		2FC7E79B5AB9543A92E59D86 /* MCHATHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E5AE14EBA68525EA5DF2C41 /* MCHATHistoryView.swift */; };
 		300541B0F4D8FEA1344A8BE8 /* BlendShapeLoggerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DCE094A0CD26066CA5F60F2 /* BlendShapeLoggerTests.swift */; };
 		34A2661BEECE0AE1A177B7D9 /* care_data_and_privacy.feature in Resources */ = {isa = PBXBuildFile; fileRef = D6DCDD823D9C377F697E504E /* care_data_and_privacy.feature */; };
 		35719B322FBE06434A10E9A0 /* PDFKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D055165C8B89ACF21CA75796 /* PDFKit.framework */; };
@@ -43,9 +45,11 @@
 		3CFDE5C6155977F6F950CA68 /* ARKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 22E6F2A8134BE4D7D3C40207 /* ARKit.framework */; };
 		4152FFABF4BD1BDE21CF9544 /* SmartOnFhirAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBED732DAB0236044946C9E7 /* SmartOnFhirAuthService.swift */; };
 		458349D2129CA3F911E8F0E0 /* AsdGazeCareWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6C0062C6D7EEBF81C6AE25E1 /* AsdGazeCareWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		45A572D620F22243DA4FCCD0 /* FHIRBundleBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22B05152D44EB5561CA62634 /* FHIRBundleBuilder.swift */; };
 		45E033BA69F348A4CCEADABD /* ResearchStudyConsentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A63371C06337F00E97F6D0C9 /* ResearchStudyConsentView.swift */; };
 		488DFFE6E0CC6D0C55DF83DF /* CurvAsdGazeKit in Frameworks */ = {isa = PBXBuildFile; productRef = BA36CB4B4BB59E6796DC72BA /* CurvAsdGazeKit */; };
 		4B8E9F7334C2AC49BB3CBF42 /* ClinicalInteroperabilityStandards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7587971C40BCA5A14C0F2135 /* ClinicalInteroperabilityStandards.swift */; };
+		4CEA1A9FB0F24693CEE9A1A3 /* FHIRCareMapperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78A9E3C2DFC154F3B09F38E8 /* FHIRCareMapperTests.swift */; };
 		4D97318B3F0C19A9B0165FD8 /* stim_04_surprise_giftbox_10s.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 47464ADA3137E9AF46BD2852 /* stim_04_surprise_giftbox_10s.mp4 */; };
 		4DA29EF21AEC96DC2A8C281D /* CareActivityKit in Frameworks */ = {isa = PBXBuildFile; productRef = 2CDBB58E77583920639C584C /* CareActivityKit */; };
 		504360D82D32C05521F178D9 /* stim_05_geopref_split_10s.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 398D47A0037DA9F90E75721C /* stim_05_geopref_split_10s.mp4 */; };
@@ -56,6 +60,7 @@
 		624925F0D505680B230C9B31 /* stim_08_recenter_bubble_fox_3s.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 3D0CAADFB6B3C9205622483D /* stim_08_recenter_bubble_fox_3s.mp4 */; };
 		62E418A8D28D88A070E96C45 /* MedicationEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F74642FAE5CE051648BFDB4E /* MedicationEditorView.swift */; };
 		630B5055C5D20A576696C319 /* CameraAccessCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F4747195609401C10812B67 /* CameraAccessCoordinator.swift */; };
+		635BAB4FCD600AC3462E894F /* MCHATAvailability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6B1A3AE747DED42D544ECE8 /* MCHATAvailability.swift */; };
 		63C4B43027C7703A0DEC3187 /* AgeAssuranceGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C9D0928DBD5776164DBE31 /* AgeAssuranceGate.swift */; };
 		64ACC82F11CD4887615A3740 /* PDFKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D055165C8B89ACF21CA75796 /* PDFKit.framework */; };
 		65AA1472E19CA9A4138E2B8F /* ClinicalDashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 526122C5EA7A82F90C044C72 /* ClinicalDashboardViewModel.swift */; };
@@ -65,12 +70,14 @@
 		68AB55F606DF1BD5B6B22407 /* AppModeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57B7589323D11CE24F631B64 /* AppModeStore.swift */; };
 		6CED98840A9C31074CAF9360 /* StimulusScreeningView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F880C59E682E0DE781F22B2F /* StimulusScreeningView.swift */; };
 		6EF3C2E422234A9DD014A346 /* ResearchKitSyncServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5E5E1EBF0E152FE5F8C0375 /* ResearchKitSyncServiceTests.swift */; };
+		6F09A6435C31F97BDFE3862E /* FHIRCareMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBED5E91AC09561440658012 /* FHIRCareMapper.swift */; };
 		70B51123E6A7E6F30C211BFE /* CameraAccessCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CCEA926704096B0B542EE19 /* CameraAccessCoordinatorTests.swift */; };
 		715E5A2FCF4854B932115C58 /* StimulusVideoPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C4E1DA6CDFFFC55B1FDE950 /* StimulusVideoPlayerView.swift */; };
 		7164EC699E5AABD46E0B4CAD /* ResearchStudyConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CF7534828C2CD72AB73D782 /* ResearchStudyConfiguration.swift */; };
 		72D3BC5817C096564F0F7ED7 /* MoodDiaryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3E9070E87CB086B06E8B635 /* MoodDiaryModels.swift */; };
 		7464913B7891C6A7CE7BAA77 /* CryptoKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CA4E9FE1E111B4651734C739 /* CryptoKit.framework */; };
 		758CF18483E339F894419951 /* CareKitStore in Frameworks */ = {isa = PBXBuildFile; productRef = EE64E1AB5E49B4DA55A508EA /* CareKitStore */; };
+		77C290F6926CDBB3D76C62DE /* FHIRCareCodings.swift in Sources */ = {isa = PBXBuildFile; fileRef = C94094F5B9B980D1A21C3B42 /* FHIRCareCodings.swift */; };
 		77E5703A5BBD96E84387D54D /* ConsentGatingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 835517977453B7D4A0622FD1 /* ConsentGatingTests.swift */; };
 		78FF60A100FC461B9F3F7320 /* ClinicalTermTooltip.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC27795827636A12B3D2635F /* ClinicalTermTooltip.swift */; };
 		79114477D9926FFB2D6A794E /* ResearchStudyConfigurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17A6E7E59ABD0DAB4679FF62 /* ResearchStudyConfigurationTests.swift */; };
@@ -96,6 +103,7 @@
 		998E8B674CEAB8C011E22C38 /* CareKitClinicalStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 865E4D9CC5A1506E8F3EF59F /* CareKitClinicalStoreTests.swift */; };
 		A06D5A9538FF165A53E4E946 /* ClinicalInteroperabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89D3CA3B939BBF06DFC923BD /* ClinicalInteroperabilityTests.swift */; };
 		A0B7B2E784370351F6D2E4E1 /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83F6B3B68EF088EBD5929E3D /* Network.framework */; };
+		A0C2BCA7E77418725071B5BD /* MCHATGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED89FFCA52556C3A2591522 /* MCHATGateTests.swift */; };
 		A1DCCB67482814815A3A7873 /* NotDiagnosticFooter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 702EDF7619808FBFEE7A7211 /* NotDiagnosticFooter.swift */; };
 		A281AF3A8FA0536ACB31B38A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5AA127E5B31E63B996A6A629 /* Assets.xcassets */; };
 		A8C78DE736D865A0B11F9928 /* CarePlanStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F0FFAA4FBEA2BBC44701EC /* CarePlanStoreTests.swift */; };
@@ -112,6 +120,7 @@
 		B65F6BE7EF29EC6F27A67120 /* CaptureEntryGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1714A4723566AA06FE47B172 /* CaptureEntryGate.swift */; };
 		B6B9DF0064AFF850D3948FD5 /* BubbleCalibrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38A98C675F624BB679668AA2 /* BubbleCalibrationView.swift */; };
 		B91A3229B01879F4F75FA00F /* CaregiverDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A64D36BA92966A704E085F52 /* CaregiverDashboardView.swift */; };
+		B925415B1FEAA14A97DAB723 /* FHIRNamespaces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FD481B904A060525B006291 /* FHIRNamespaces.swift */; };
 		BA6D6434337C2D6260552C6D /* Speech.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5BCA612032241BBB37AE08CC /* Speech.framework */; };
 		BAA4122DA672A103917B20C7 /* GazeSessionResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 448AD29ECC98B480318ECCA5 /* GazeSessionResultView.swift */; };
 		BD5995CB4E23BFBA297682FF /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C68D4D53FB572F94028D35E0 /* SettingsView.swift */; };
@@ -127,6 +136,7 @@
 		D11EC332015D418B2458E64B /* onboarding.feature in Resources */ = {isa = PBXBuildFile; fileRef = C3E3BB45987178EE02CE3BF0 /* onboarding.feature */; };
 		D52C4373A66D6DBDAD5D8159 /* MilestoneDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5C0EEC1D6F532BF41105B4 /* MilestoneDetailView.swift */; };
 		D77FB22C64EBAF6EF23F875F /* ClinicalDevelopmentModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D063D17414F7406EB0B9E9 /* ClinicalDevelopmentModelsTests.swift */; };
+		D82425DDC100FD9DCA6AC6D0 /* expected-bundle.json in Resources */ = {isa = PBXBuildFile; fileRef = 21DA1A68B03A496ABAFEF2CB /* expected-bundle.json */; };
 		DC4351CFF8331089EF4C22B0 /* CareKitStore in Frameworks */ = {isa = PBXBuildFile; productRef = D70B6E3928D5B5C50D4C16AE /* CareKitStore */; };
 		DE3A65E17734FDF035297800 /* SubjectAgeQuickCheckCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 760938E707B2DC30599A6886 /* SubjectAgeQuickCheckCard.swift */; };
 		DF51B7CF0492F80200F9BBFA /* stim_07_cartoon_slapstick_penguin_8s.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 1D2872BCDCFE9D5F5FF11CAA /* stim_07_cartoon_slapstick_penguin_8s.mp4 */; };
@@ -196,9 +206,12 @@
 		1DCE094A0CD26066CA5F60F2 /* BlendShapeLoggerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlendShapeLoggerTests.swift; sourceTree = "<group>"; };
 		1E01DC03541654B1592941EC /* AppLocalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLocalizer.swift; sourceTree = "<group>"; };
 		1E5C0EEC1D6F532BF41105B4 /* MilestoneDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MilestoneDetailView.swift; sourceTree = "<group>"; };
+		1ED89FFCA52556C3A2591522 /* MCHATGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCHATGateTests.swift; sourceTree = "<group>"; };
 		1F4747195609401C10812B67 /* CameraAccessCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraAccessCoordinator.swift; sourceTree = "<group>"; };
 		20F54BD401B98FED6FAD3055 /* BiomarkerRiskStratificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiomarkerRiskStratificationView.swift; sourceTree = "<group>"; };
+		21DA1A68B03A496ABAFEF2CB /* expected-bundle.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "expected-bundle.json"; sourceTree = "<group>"; };
 		220C4058D7B72B1A80C2AF2C /* CarePlanModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarePlanModels.swift; sourceTree = "<group>"; };
+		22B05152D44EB5561CA62634 /* FHIRBundleBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FHIRBundleBuilder.swift; sourceTree = "<group>"; };
 		22E6F2A8134BE4D7D3C40207 /* ARKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ARKit.framework; path = System/Library/Frameworks/ARKit.framework; sourceTree = SDKROOT; };
 		23524784DEDC9F72D5C0770E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		287DFAB8F4DC87C3B73081D0 /* GazeSessionController+Consent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GazeSessionController+Consent.swift"; sourceTree = "<group>"; };
@@ -223,6 +236,8 @@
 		48B1E6902FFE822878A6BA04 /* SceneKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SceneKit.framework; path = System/Library/Frameworks/SceneKit.framework; sourceTree = SDKROOT; };
 		4B37E4FE99D79271873B231C /* MoodDiaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoodDiaryView.swift; sourceTree = "<group>"; };
 		4C4E1DA6CDFFFC55B1FDE950 /* StimulusVideoPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StimulusVideoPlayerView.swift; sourceTree = "<group>"; };
+		4E5AE14EBA68525EA5DF2C41 /* MCHATHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCHATHistoryView.swift; sourceTree = "<group>"; };
+		4FD481B904A060525B006291 /* FHIRNamespaces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FHIRNamespaces.swift; sourceTree = "<group>"; };
 		526122C5EA7A82F90C044C72 /* ClinicalDashboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClinicalDashboardViewModel.swift; sourceTree = "<group>"; };
 		54DB045F57C2092D7DA4D1DA /* MoodDiaryModuleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoodDiaryModuleTests.swift; sourceTree = "<group>"; };
 		55BEF992E92622FDFF45F7D7 /* LiquidGlassTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlassTheme.swift; sourceTree = "<group>"; };
@@ -251,6 +266,7 @@
 		75A2150C5701F544F4545D7A /* CareKitDashboardModals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareKitDashboardModals.swift; sourceTree = "<group>"; };
 		760938E707B2DC30599A6886 /* SubjectAgeQuickCheckCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubjectAgeQuickCheckCard.swift; sourceTree = "<group>"; };
 		763263288E4294815CD0FD89 /* DoctorReportGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoctorReportGenerator.swift; sourceTree = "<group>"; };
+		78A9E3C2DFC154F3B09F38E8 /* FHIRCareMapperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FHIRCareMapperTests.swift; sourceTree = "<group>"; };
 		7AB99C7116FFBE3F3BA0684F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		7B3C64050069DF6F5046613F /* PerVideoResultViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerVideoResultViews.swift; sourceTree = "<group>"; };
 		7BC871417B12A12C3BBA06BF /* ResearchKitSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResearchKitSyncService.swift; sourceTree = "<group>"; };
@@ -271,6 +287,7 @@
 		9B8571A70F409315436A3E01 /* GazeReplayHeatmapFullScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeReplayHeatmapFullScreenView.swift; sourceTree = "<group>"; };
 		9BA364F2B8D921966F273502 /* dashboard_and_guardians.feature */ = {isa = PBXFileReference; path = dashboard_and_guardians.feature; sourceTree = "<group>"; };
 		9C2AE415C19877471ACD26E8 /* CoreMotion.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMotion.framework; path = System/Library/Frameworks/CoreMotion.framework; sourceTree = SDKROOT; };
+		A0781428976F4BBF2CC1D5AA /* FHIRBundleBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FHIRBundleBuilderTests.swift; sourceTree = "<group>"; };
 		A0D50DB436426D4B609643B4 /* StimulusPlaylistTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StimulusPlaylistTests.swift; sourceTree = "<group>"; };
 		A551B394852735DA063ECC9E /* CareReminderModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareReminderModels.swift; sourceTree = "<group>"; };
 		A63371C06337F00E97F6D0C9 /* ResearchStudyConsentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResearchStudyConsentView.swift; sourceTree = "<group>"; };
@@ -288,7 +305,9 @@
 		C3E3BB45987178EE02CE3BF0 /* onboarding.feature */ = {isa = PBXFileReference; path = onboarding.feature; sourceTree = "<group>"; };
 		C501AA39D3A362EC4E804D46 /* AsdGazeCollector.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AsdGazeCollector.entitlements; sourceTree = "<group>"; };
 		C68D4D53FB572F94028D35E0 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		C6B1A3AE747DED42D544ECE8 /* MCHATAvailability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCHATAvailability.swift; sourceTree = "<group>"; };
 		C8D063D17414F7406EB0B9E9 /* ClinicalDevelopmentModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClinicalDevelopmentModelsTests.swift; sourceTree = "<group>"; };
+		C94094F5B9B980D1A21C3B42 /* FHIRCareCodings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FHIRCareCodings.swift; sourceTree = "<group>"; };
 		C9F9A5EBCB3EB0469FAF60A7 /* ActivityKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ActivityKit.framework; path = System/Library/Frameworks/ActivityKit.framework; sourceTree = SDKROOT; };
 		CA4E9FE1E111B4651734C739 /* CryptoKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CryptoKit.framework; path = System/Library/Frameworks/CryptoKit.framework; sourceTree = SDKROOT; };
 		D055165C8B89ACF21CA75796 /* PDFKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = PDFKit.framework; path = System/Library/Frameworks/PDFKit.framework; sourceTree = SDKROOT; };
@@ -296,6 +315,7 @@
 		D4C9D0928DBD5776164DBE31 /* AgeAssuranceGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgeAssuranceGate.swift; sourceTree = "<group>"; };
 		D6DCDD823D9C377F697E504E /* care_data_and_privacy.feature */ = {isa = PBXFileReference; path = care_data_and_privacy.feature; sourceTree = "<group>"; };
 		DAFD4387A17CEC332C4C3C71 /* AsdGazeCollectorTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AsdGazeCollectorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		DBED5E91AC09561440658012 /* FHIRCareMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FHIRCareMapper.swift; sourceTree = "<group>"; };
 		DD1DB7F2655A5B1BBC5C5FC7 /* BlendShapeCSVLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlendShapeCSVLogger.swift; sourceTree = "<group>"; };
 		DD4FFF01E8DEA4584A9AC139 /* UnsupportedDeviceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnsupportedDeviceView.swift; sourceTree = "<group>"; };
 		DE48FCCCDB5EBCB7A99A2EA7 /* AsdGazeCollector.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AsdGazeCollector.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -386,6 +406,8 @@
 				FA087B3C47AC8A0B4B540148 /* GazeStimulusScreeningView.swift */,
 				E5B67CCC538018766DBC2B17 /* GazeTelemetryReviewCard.swift */,
 				3111366AAA094728086AD5E8 /* MainGazeScannerView.swift */,
+				C6B1A3AE747DED42D544ECE8 /* MCHATAvailability.swift */,
+				4E5AE14EBA68525EA5DF2C41 /* MCHATHistoryView.swift */,
 				EF98BBCFAACCAC600C07B3B9 /* MCHATSurveyModalView.swift */,
 				F74642FAE5CE051648BFDB4E /* MedicationEditorView.swift */,
 				1E5C0EEC1D6F532BF41105B4 /* MilestoneDetailView.swift */,
@@ -464,6 +486,14 @@
 			path = UI;
 			sourceTree = "<group>";
 		};
+		4BEB167814E969E07C5B4A0F /* Fixtures */ = {
+			isa = PBXGroup;
+			children = (
+				21DA1A68B03A496ABAFEF2CB /* expected-bundle.json */,
+			);
+			path = Fixtures;
+			sourceTree = "<group>";
+		};
 		62DCB34EF071B9A9D8CED147 /* Videos */ = {
 			isa = PBXGroup;
 			children = (
@@ -513,7 +543,11 @@
 				A92A23C9794F84E6DA044427 /* ClinicalMilestoneCatalog.swift */,
 				E2ED4DF9E6F04C2F2E618A22 /* DataDeletionService.swift */,
 				763263288E4294815CD0FD89 /* DoctorReportGenerator.swift */,
+				22B05152D44EB5561CA62634 /* FHIRBundleBuilder.swift */,
+				C94094F5B9B980D1A21C3B42 /* FHIRCareCodings.swift */,
+				DBED5E91AC09561440658012 /* FHIRCareMapper.swift */,
 				69BC081BE97D2D513587F078 /* FHIRInteroperabilityMapper.swift */,
+				4FD481B904A060525B006291 /* FHIRNamespaces.swift */,
 				287DFAB8F4DC87C3B73081D0 /* GazeSessionController+Consent.swift */,
 				0A1630E44038B9F64982C80C /* GazeSessionRecord.swift */,
 				1A12D94D7B76B41E158A1C2F /* HealthKitMoodStore.swift */,
@@ -608,7 +642,10 @@
 				835517977453B7D4A0622FD1 /* ConsentGatingTests.swift */,
 				F6A9F391F095067A819ADEE3 /* DataDeletionServiceTests.swift */,
 				439D9846928A6D348C3DA218 /* DoctorReportGeneratorTests.swift */,
+				A0781428976F4BBF2CC1D5AA /* FHIRBundleBuilderTests.swift */,
+				78A9E3C2DFC154F3B09F38E8 /* FHIRCareMapperTests.swift */,
 				37CCAC020A34C51C4280F971 /* GazeSessionRecordVersioningTests.swift */,
+				1ED89FFCA52556C3A2591522 /* MCHATGateTests.swift */,
 				54DB045F57C2092D7DA4D1DA /* MoodDiaryModuleTests.swift */,
 				581CB2A8A2DD547E98C49E96 /* ResearchKitStudyTests.swift */,
 				F5E5E1EBF0E152FE5F8C0375 /* ResearchKitSyncServiceTests.swift */,
@@ -616,6 +653,7 @@
 				A0D50DB436426D4B609643B4 /* StimulusPlaylistTests.swift */,
 				11DF71AD0D8FEC7918EC89F3 /* SubjectAgeCheckTests.swift */,
 				37A779A57661915A04ACF913 /* bdd */,
+				4BEB167814E969E07C5B4A0F /* Fixtures */,
 				203DA60AB3B190D1EB11E852 /* Support */,
 			);
 			path = Tests;
@@ -742,6 +780,7 @@
 			files = (
 				34A2661BEECE0AE1A177B7D9 /* care_data_and_privacy.feature in Resources */,
 				176612B6AD625E2C9C06ADDF /* dashboard_and_guardians.feature in Resources */,
+				D82425DDC100FD9DCA6AC6D0 /* expected-bundle.json in Resources */,
 				660CB33E5B39A0D83619A74B /* mode_selection.feature in Resources */,
 				D11EC332015D418B2458E64B /* onboarding.feature in Resources */,
 			);
@@ -807,7 +846,11 @@
 				E77FFBA830198F7F58442B13 /* DataDeletionService.swift in Sources */,
 				FD9B81D911EB756AD94D3A21 /* DiaryHistoryEditorView.swift in Sources */,
 				8C111BD51FBFD274F67C5434 /* DoctorReportGenerator.swift in Sources */,
+				45A572D620F22243DA4FCCD0 /* FHIRBundleBuilder.swift in Sources */,
+				77C290F6926CDBB3D76C62DE /* FHIRCareCodings.swift in Sources */,
+				6F09A6435C31F97BDFE3862E /* FHIRCareMapper.swift in Sources */,
 				67BA94A9342B67674976DAAB /* FHIRInteroperabilityMapper.swift in Sources */,
+				B925415B1FEAA14A97DAB723 /* FHIRNamespaces.swift in Sources */,
 				3A5CFB73461D25AD01EC1E2F /* GazePositioningStepView.swift in Sources */,
 				83410C4E0DB228A21F5D7254 /* GazeReplayHeatmapFullScreenView.swift in Sources */,
 				10452C9E39B5A631BA8E2114 /* GazeScreeningWizardView.swift in Sources */,
@@ -818,6 +861,8 @@
 				251D4BF0223CB2527AA44A52 /* GazeTelemetryReviewCard.swift in Sources */,
 				09433672909C24EC1937E52A /* HealthKitMoodStore.swift in Sources */,
 				097C3A01FD450EFF0EFD87D1 /* LiquidGlassTheme.swift in Sources */,
+				635BAB4FCD600AC3462E894F /* MCHATAvailability.swift in Sources */,
+				2FC7E79B5AB9543A92E59D86 /* MCHATHistoryView.swift in Sources */,
 				A9BFB17FF83C49850FCBA258 /* MCHATSurveyModalView.swift in Sources */,
 				E06EBE7828B8F7C724BCA478 /* MainGazeScannerView.swift in Sources */,
 				62E418A8D28D88A070E96C45 /* MedicationEditorView.swift in Sources */,
@@ -875,7 +920,10 @@
 				77E5703A5BBD96E84387D54D /* ConsentGatingTests.swift in Sources */,
 				8F35A8451AADC0AC070746C0 /* DataDeletionServiceTests.swift in Sources */,
 				27355FA13ED6B22D40A3ACD5 /* DoctorReportGeneratorTests.swift in Sources */,
+				0F82A0ED34D9FCF844D1190C /* FHIRBundleBuilderTests.swift in Sources */,
+				4CEA1A9FB0F24693CEE9A1A3 /* FHIRCareMapperTests.swift in Sources */,
 				C4CA02A95984D4F6E02C6386 /* GazeSessionRecordVersioningTests.swift in Sources */,
+				A0C2BCA7E77418725071B5BD /* MCHATGateTests.swift in Sources */,
 				CCB2037DF34648F8002677F9 /* MoodDiaryModuleTests.swift in Sources */,
 				BF5C6D46E6600321345DBBD1 /* RecordFixtures.swift in Sources */,
 				009DC93A3CCBEE25B3B75A6F /* ResearchKitStudyTests.swift in Sources */,
@@ -931,8 +979,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				OTHER_SWIFT_FLAGS = "$(inherited) -DASD_SIMULATION_ENABLED -DASD_RESEARCH_CLASSIFIER";
-				PRODUCT_BUNDLE_IDENTIFIER = org.curv.asd.gazecollector;
+				OTHER_SWIFT_FLAGS = "$(inherited) -DASD_SIMULATION_ENABLED -DASD_RESEARCH_CLASSIFIER $(ASD_MCHAT_FLAG)";
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_IDENTIFIER:default=org.curv.asd.gazecollector)";
 				PRODUCT_NAME = AsdGazeCollector;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -954,7 +1002,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = org.curv.asd.gazecollector.carewidget;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(WIDGET_IDENTIFIER:default=$(APP_IDENTIFIER:default=org.curv.asd.gazecollector).carewidget)";
 				PRODUCT_NAME = AsdGazeCareWidget;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
@@ -977,7 +1025,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = org.curv.asd.gazecollector.carewidget;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(WIDGET_IDENTIFIER:default=$(APP_IDENTIFIER:default=org.curv.asd.gazecollector).carewidget)";
 				PRODUCT_NAME = AsdGazeCareWidget;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
@@ -1114,8 +1162,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				OTHER_SWIFT_FLAGS = "$(inherited) -DASD_APP_STORE_AGE_ASSURANCE";
-				PRODUCT_BUNDLE_IDENTIFIER = org.curv.asd.gazecollector;
+				OTHER_SWIFT_FLAGS = "$(inherited) -DASD_APP_STORE_AGE_ASSURANCE $(ASD_MCHAT_FLAG)";
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_IDENTIFIER:default=org.curv.asd.gazecollector)";
 				PRODUCT_NAME = AsdGazeCollector;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";

@@ -225,3 +225,40 @@ To secure the **Best Use of COOL Special Award ($1,000)**:
 - [x] Unit test suite covering S3 event routing, token validation, and duplicate alert prevention (8/8 green).
 - [x] Graviton3 COOL benchmark script with SIMD build-information verification and EC2 operational guide.
 
+---
+
+## 9. Target Users & Beneficiaries
+
+| User group | Role in the system | Benefit |
+|---|---|---|
+| **National Emergency Operation Centre (NEOC) Nepal & Department of Hydrology and Meteorology (DHM)** | SNS email subscribers; owners of all response decisions | Objective, quantified early intelligence (corridor widening, surge ratios, dual controls) within hours of the first post-event satellite pass, instead of waiting for manual photo-interpretation. |
+| **Corridor infrastructure operators** (hydropower intake dispatchers, Rasuwagadhi border highway maintenance) | Alert recipients for the assets they operate | Asset-specific warning that the gorge geometry changed (median channel width +121%), supporting intake shutdown and road closure decisions. |
+| **Downstream & transboundary communities** (Bhote Koshi → Sun Koshi basin) | Indirect beneficiaries via the responders above | Earlier evacuation routing and relief corridor planning; the same corridor drains toward the India border, so early quantification supports transboundary warning protocols. |
+| **Humanitarian responders / relief logistics (NGOs, Red Cross)** | Alert recipients | Evidence-backed inundation extent and sediment-deposition signals for routing assessments before crews enter the gorge. |
+| **Glaciology / GLOF research teams** | Secondary users | Reproducible, control-gated measurement pipeline (open methodology + pinned dependencies) reusable on other Himalayan corridors. |
+
+---
+
+## 10. Limitations & Failure Cases
+
+We state these explicitly as part of our evaluation evidence.
+
+1. **Optical sensing & revisit latency.** Sentinel-2 L2A is optical; monsoon cloud cover can delay a usable pass by days, and the constellation revisit bounds alert latency to hours — not minutes. The real-time CCTV track (Phases 1–3) is our roadmap answer to the latency gap and is not yet part of the AWS loop.
+2. **Weakly-supervised F1 is modest** (PRE bright $F_1 = 0.1426$, POST dark $F_1 = 0.2008$). The pseudo-ground-truth color masks are noisy under monsoon lighting, so absolute flood fractions are conservative signals, not survey-grade inundation maps. This is precisely why dispatch is gated on *ratios + independent controls* rather than absolute areas.
+3. **Geometry assumptions.** The horizontal-run-length width proxy assumes a roughly river-perpendicular flow direction; strongly braided or anastomosing reaches can bias widths. Sub-pixel ridge precision (RMSE 0.0301 px) is measured on synthetic ground truth and does not translate to centimeter ground accuracy at 10 m GSD.
+4. **Single-event validation.** Dual controls (spatial 0.151x, temporal 0.905x) pass on this disaster; generalization across seasons and corridors is unproven. The core is deliberately parameterized (`configs/geospatial_wide_ridge.json`) to make recalibration cheap.
+5. **LLM non-determinism.** Claude 3.5 Sonnet reasoning is non-deterministic; we contain it with an evidence-first tool contract: the agent may only act on a cryptographically tokenized snapshot of measured evidence, and the Lambda re-validates thresholds server-side regardless of the model's opinion.
+6. **Failure handling (demonstrated).** Duplicate S3 retries are blocked by the DynamoDB idempotency gate (`ALREADY_DISPATCHED`, zero duplicate broadcasts). Below-threshold perception produces an explicit `NOT_DISPATCHED` standby decision with an audit receipt (`run_agentic_vision_demo.py --scenario marginal`) — visual evidence demonstrably gates the action in *both* directions. Missing `flood_delta.json` logs to CloudWatch and dispatches nothing (fail-silent, observable).
+7. **Local-first verification.** The complete loop is verified judge-side with zero cloud credentials; the live Bedrock deployment procedure is documented but operators must enable Anthropic model access in their account before the cloud path runs.
+
+---
+
+## 11. Responsible-Use Considerations
+
+1. **Humans own every response decision.** The system's only outward action is an SNS notification to pre-registered, accredited responders (NEOC/operator emails). It never contacts the public, never actuates physical infrastructure, and cannot escalate itself.
+2. **Advisory-only early warning.** Output is a decision-support signal for professional responders, not a life-safety guarantee. Dispatch thresholds are deliberately conservative (precision over recall) to avoid alert fatigue — a known failure mode of early-warning systems.
+3. **Anti-hallucination by construction.** The agent cannot freestyle: `getFloodEvidence` issues a single-use cryptographic `evidenceToken` bound to measured pipeline output, `dispatchFloodAlert` is rejected server-side without it, and DynamoDB conditional writes make duplicate emergency broadcasts impossible even under event retries or agent re-invocations.
+4. **Observability & auditability.** Every agent decision — dispatch *and* standby — writes an immutable receipt to a dedicated audit bucket with SHA256-sealed evidence; IAM roles are least-privilege and separated between the trigger Lambda and the Bedrock agent.
+5. **Data ethics.** Only Copernicus Sentinel-2 open data (free/unrestricted license) is processed; no personal data, no biometrics, and alert payloads carry regional (km-scale) geography rather than precise coordinates of private property.
+6. **Scope honesty.** The system detects and quantifies; it does not predict future slope failures, and model limitations in §10 are part of the deliverable so that operators can weigh the signal accordingly.
+

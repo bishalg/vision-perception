@@ -299,6 +299,10 @@ apps/ios_asd_gaze_app/fastlane/*.mobileprovision
 apps/ios_asd_gaze_app/fastlane/*.cer
 
 
+# AWS CDK synth output
+cdk.out/
+.venv-cdk/
+
 # Gaze app BDD/Maestro output
 apps/ios_asd_gaze_app/maestro/screenshots/
 apps/ios_asd_gaze_app/build-sim/

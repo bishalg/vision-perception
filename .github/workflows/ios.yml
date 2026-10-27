@@ -1,0 +1,60 @@
+name: iOS
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - "apps/ios_asd_gaze_app/**"
+      - "domains/asd_screening/ios/**"
+      - "scripts/ios_test.sh"
+      - "scripts/check_asd_claims.py"
+      - "scripts/check_privacy_api_use.sh"
+      - "scripts/check_release_symbols.sh"
+      - ".github/workflows/ios.yml"
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - "apps/ios_asd_gaze_app/**"
+      - "domains/asd_screening/ios/**"
+      - "scripts/ios_test.sh"
+      - "scripts/check_asd_claims.py"
+      - "scripts/check_privacy_api_use.sh"
+      - "scripts/check_release_symbols.sh"
+      - ".github/workflows/ios.yml"
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    name: Kit, app and static gates
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      # Never inside the repo (CI-2). Kit scratch paths are derived from this.
+      DERIVED_DATA: ${{ runner.temp }}/asd-app-dd
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache derived data and SwiftPM scratch
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}/asd-app-dd-kit
+            ${{ runner.temp }}/asd-app-dd-rel/SourcePackages
+            ${{ runner.temp }}/asd-app-dd/SourcePackages
+          key: ios-${{ runner.os }}-${{ hashFiles('domains/asd_screening/ios/Package.swift', 'domains/asd_screening/ios/Package.resolved', 'apps/ios_asd_gaze_app/project.yml') }}
+          restore-keys: |
+            ios-${{ runner.os }}-
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Pick an available iPhone simulator
+        run: |
+          name="$(xcrun simctl list devices available | grep -oE 'iPhone [0-9A-Za-z ]+ \(' | head -1 | sed 's/ ($//')"
+          echo "SIM_NAME=${name:-iPhone 16}" >> "$GITHUB_ENV"
+
+      - name: Run iOS gates
+        run: scripts/ios_test.sh

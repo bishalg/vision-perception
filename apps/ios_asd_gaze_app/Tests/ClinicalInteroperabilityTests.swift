@@ -113,7 +113,7 @@ final class ClinicalInteroperabilityTests: XCTestCase {
 
         XCTAssertEqual(fhirQR["resourceType"], .string("QuestionnaireResponse"))
         XCTAssertEqual(fhirQR["status"], .string("completed"))
-        XCTAssertEqual(fhirQR["questionnaire"], .string("http://loinc.org/80628-1"))
+        XCTAssertEqual(fhirQR["questionnaire"], .string("http://loinc.org/q/80628-1"), "FHIR-4: canonical questionnaire")
 
         if case let .array(items)? = fhirQR["item"] {
             XCTAssertEqual(items.count, 20, "QuestionnaireResponse must contain 20 item nodes")
@@ -152,9 +152,13 @@ final class ClinicalInteroperabilityTests: XCTestCase {
         let latencyRow = measurements.first(where: { $0.standardName == "First Eye Fixation Latency" })
         XCTAssertNotNil(latencyRow)
         XCTAssertEqual(latencyRow?.valueAsNumber, 310.0)
-        XCTAssertEqual(latencyRow?.unitConceptId, 8555) // ms
-        XCTAssertEqual(latencyRow?.rangeLow, 150.0)
-        XCTAssertEqual(latencyRow?.rangeHigh, 450.0)
+        // FHIR-6: unverified unit and concept ids are zeroed and carried as source values.
+        XCTAssertEqual(latencyRow?.unitConceptId, 0)
+        XCTAssertEqual(latencyRow?.unitSourceValue, "ms")
+        XCTAssertEqual(latencyRow?.measurementConceptId, 0)
+        XCTAssertEqual(latencyRow?.measurementSourceValue, "first-eye-fixation-latency-ms")
+        XCTAssertNil(latencyRow?.rangeLow, "FHIR-6: no reference ranges without validated norms")
+        XCTAssertNil(latencyRow?.rangeHigh)
 
         let socialRow = measurements.first(where: { $0.standardName == "Social Visual Preference Score" })
         XCTAssertNotNil(socialRow)
@@ -171,8 +175,66 @@ final class ClinicalInteroperabilityTests: XCTestCase {
             mouthDwellRatio: 0.2
         )
         XCTAssertNil(FHIRInteroperabilityMapper.makeFHIRObservation(from: simulated, participantId: "child-SIM"))
-        XCTAssertNil(simulated.toFHIRObservation())
-        XCTAssertNil(simulated.toFHIRObservation(basedOn: "SR-1"))
+        XCTAssertNotNil(FHIRBundleBuilder.exportRefusalReason(for: simulated))
+    }
+
+    // MARK: - FHIR-2: status from capture source and quality
+
+    func testFHIRObservationStatusFollowsQuality() throws {
+        func observation(_ verdict: String) -> [String: AnyCodableValue]? {
+            FHIRInteroperabilityMapper.makeFHIRObservation(
+                from: GazeSessionRecord.fixture(qualityVerdict: verdict), participantId: "child-1"
+            )
+        }
+        XCTAssertEqual(try XCTUnwrap(observation("optimal"))["status"], .string("final"))
+        XCTAssertEqual(try XCTUnwrap(observation("acceptable"))["status"], .string("final"))
+        XCTAssertEqual(try XCTUnwrap(observation("degraded"))["status"], .string("preliminary"))
+        XCTAssertNil(observation("rejected"), "no Observation for a rejected session")
+    }
+
+    // MARK: - FHIR-3: no SNOMED finding as a measurement code
+
+    func testFHIRObservationNeverUsesSNOMEDFindingAsComponentCode() throws {
+        let record = GazeSessionRecord.fixture(eyeDwellRatio: 0.6, mouthDwellRatio: 0.4, firstEyeLatencyMs: 300)
+        let obs = try XCTUnwrap(FHIRInteroperabilityMapper.makeFHIRObservation(from: record, participantId: "child-1"))
+        let codes = componentCodes(obs)
+        XCTAssertFalse(codes.contains(StandardCodingSystems.SNOMED.abnormalEyeContact.code))
+        XCTAssertFalse(codes.contains("8692-2"), "first-look latency is not exported to FHIR (PLC-1, FHIR-3)")
+        XCTAssertTrue(codes.contains("eye-region-dwell-ratio"))
+        XCTAssertTrue(codes.contains("mouth-region-dwell-ratio"))
+    }
+
+    // MARK: - FHIR-6: OMOP concept ids verified or zeroed
+
+    func testOMOPConceptIdsAreVerifiedOrZeroed() {
+        let record = GazeSessionRecord.fixture(eyeDwellRatio: 0.5, mouthDwellRatio: 0.2, firstEyeLatencyMs: 300)
+        let rows = FHIRInteroperabilityMapper.makeOMOPMeasurements(from: record, personId: "10001")
+        XCTAssertEqual(rows.count, 4)
+        let unverified: Set<Int> = [40769032, 40769033, 40769034, 37048700]
+        for row in rows {
+            XCTAssertFalse(unverified.contains(row.measurementConceptId), "\(row.standardName) uses an unverified concept")
+            if row.measurementConceptId == 0 {
+                XCTAssertFalse((row.measurementSourceValue ?? "").isEmpty, "\(row.standardName) needs a source value")
+            }
+            XCTAssertNil(row.rangeLow)
+            XCTAssertNil(row.rangeHigh)
+        }
+        XCTAssertEqual(
+            Set(rows.compactMap(\.measurementSourceValue)),
+            ["social-preference-score", "first-eye-fixation-latency-ms", "eye-region-dwell-ratio", "mouth-region-dwell-ratio"]
+        )
+    }
+
+    func testOMOPMeasurementRecordDecodesLegacyRowsWithoutSourceValues() throws {
+        let legacy = """
+        {"personId":"1","measurementConceptId":40769032,"measurementDate":"2026-01-01",
+         "measurementDatetime":"2026-01-01T00:00:00Z","measurementTypeConceptId":32817,
+         "valueAsNumber":0.5,"unitConceptId":8523,"rangeLow":0.35,"rangeHigh":0.75,"standardName":"Eye"}
+        """
+        let row = try JSONDecoder().decode(OMOPMeasurementRecord.self, from: Data(legacy.utf8))
+        XCTAssertNil(row.measurementSourceValue)
+        XCTAssertNil(row.unitSourceValue)
+        XCTAssertEqual(row.rangeLow, 0.35)
     }
 
     func testOMOPMeasurementsRefuseSimulatedRecord() {

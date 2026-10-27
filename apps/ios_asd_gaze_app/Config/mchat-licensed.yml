@@ -1,0 +1,6 @@
+# Included by project.yml only when MCHAT_LICENSED=1 is exported at xcodegen time (H3).
+targets:
+  AsdGazeCollector:
+    settings:
+      base:
+        ASD_MCHAT_FLAG: -DASD_MCHAT_LICENSED

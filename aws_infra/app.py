@@ -37,6 +37,9 @@ alert_stack = AlertStack(
 )
 
 # 3. IAM Stack (Least-privilege roles with DynamoDB, S3, SQS, Bedrock permissions)
+# NOTE: no explicit add_dependency calls — passing bucket/table/topic constructs
+# as props already orders the stacks (IAM after Storage/Alert, Agent after IAM).
+# The previous explicit chain closed a cycle with the S3 trigger wiring.
 iam_stack = IAMStack(
     app,
     "NepalFloodIAMStack",

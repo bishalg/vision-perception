@@ -1,4 +1,7 @@
 name: AsdGazeCollector
+include:
+  - path: Config/mchat-licensed.yml
+    enable: ${MCHAT_LICENSED}
 options:
   bundleIdPrefix: org.curv
   deploymentTarget:
@@ -36,7 +39,7 @@ targets:
         type: group
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: org.curv.asd.gazecollector
+        PRODUCT_BUNDLE_IDENTIFIER: $(APP_IDENTIFIER:default=org.curv.asd.gazecollector)
         PRODUCT_NAME: AsdGazeCollector
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         DEVELOPMENT_TEAM: 6J3WY94J6T
@@ -69,9 +72,9 @@ targets:
         # Debug-only capabilities; Release never defines them. The kit mirrors
         # these in Package.swift because OTHER_SWIFT_FLAGS does not reach SwiftPM.
         Debug:
-          OTHER_SWIFT_FLAGS: "$(inherited) -DASD_SIMULATION_ENABLED -DASD_RESEARCH_CLASSIFIER"
+          OTHER_SWIFT_FLAGS: "$(inherited) -DASD_SIMULATION_ENABLED -DASD_RESEARCH_CLASSIFIER $(ASD_MCHAT_FLAG)"
         Release:
-          OTHER_SWIFT_FLAGS: "$(inherited) -DASD_APP_STORE_AGE_ASSURANCE"
+          OTHER_SWIFT_FLAGS: "$(inherited) -DASD_APP_STORE_AGE_ASSURANCE $(ASD_MCHAT_FLAG)"
     dependencies:
       - package: CurvAsdGazeKit
       - package: CareActivityKit
@@ -107,7 +110,7 @@ targets:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: org.curv.asd.gazecollector.carewidget
+        PRODUCT_BUNDLE_IDENTIFIER: $(WIDGET_IDENTIFIER:default=$(APP_IDENTIFIER:default=org.curv.asd.gazecollector).carewidget)
         PRODUCT_NAME: AsdGazeCareWidget
         GENERATE_INFOPLIST_FILE: true
         CURRENT_PROJECT_VERSION: 1

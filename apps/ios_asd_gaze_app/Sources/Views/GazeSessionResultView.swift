@@ -62,6 +62,12 @@ public struct GazeSessionResultView: View {
     /// Pseudonymous participant token (CNS-7). The child's name never enters a record.
     private var participantToken: String { "child-\(summary.sessionId.prefix(8))" }
 
+    /// Why this session cannot be exported as a FHIR health record (simulated or rejected,
+    /// SIM-5/FHIR-2); `nil` when it can. Shown under the disabled export button (acceptance 2).
+    private var fhirRefusalReason: String? {
+        FHIRBundleBuilder.exportRefusalReason(for: GazeSessionRecord(summary: summary, participantToken: participantToken))
+    }
+
     public var body: some View {
         NavigationStack {
             ZStack {
@@ -553,6 +559,27 @@ public struct GazeSessionResultView: View {
                 triggerShareReport()
             }
 
+            // FHIR R4 Bundle export (FHIR-1); disabled with the reason for refused sessions.
+            VStack(spacing: 6) {
+                GlassButton(
+                    title: "Export Health Record (FHIR)",
+                    systemImage: "heart.text.square",
+                    isPrimary: false
+                ) {
+                    exportFHIRBundle()
+                }
+                .disabled(fhirRefusalReason != nil)
+                .opacity(fhirRefusalReason == nil ? 1 : 0.5)
+                .accessibilityHint(fhirRefusalReason ?? "")
+
+                if let reason = fhirRefusalReason {
+                    Text(reason)
+                        .font(.system(size: 12))
+                        .foregroundColor(LiquidGlass.textSecondary)
+                        .multilineTextAlignment(.center)
+                }
+            }
+
             #if DEBUG
             // Developer-only raw data viewer; the released app has no research export surface.
             GlassButton(
@@ -638,6 +665,25 @@ public struct GazeSessionResultView: View {
         }
     }
     #endif
+
+    /// Shares the session as a FHIR R4 Bundle file (ADR-0003). The subject is the pseudonymous
+    /// token only (CNS-7); the last M-CHAT-R/F result is included with its stored answers.
+    private func exportFHIRBundle() {
+        let record = GazeSessionRecord(summary: summary, participantToken: participantToken)
+        guard FHIRBundleBuilder.exportRefusalReason(for: record) == nil else { return }
+        let studyStore = ResearchKitStudyStore.shared
+        let mchat = studyStore.fetchCompletedSurveys().last.map { result in
+            (result, FHIRBundleBuilder.mchatAnswers(for: result, in: studyStore.fetchCompletedTaskResults()))
+        }
+        let subject = FHIRSubject(record: record, ageMonths: ChildProfileStore.shared.profile.ageBracket.midpointMonths)
+        let bundle = FHIRBundleBuilder.bundle(for: record, mchat: mchat, extraResources: [], subject: subject)
+        guard let data = try? FHIRBundleBuilder.jsonData(bundle) else { return }
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("EarlyGaze_FHIR_\(summary.sessionId.prefix(8)).json")
+        guard (try? data.write(to: url, options: [.atomic, .completeFileProtection])) != nil else { return }
+        shareItems = [url]
+        showShareSheet = true
+    }
 
     private func triggerShareReport() {
         let profile = ChildProfileStore.shared.profile

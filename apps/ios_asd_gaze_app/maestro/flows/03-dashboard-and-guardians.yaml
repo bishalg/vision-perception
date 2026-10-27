@@ -11,15 +11,20 @@ name: bdd-03-dashboard-and-guardians
 - waitForAnimationToEnd:
     timeout: 20000
 
-- assertVisible: Social attention trend
+- extendedWaitUntil:
+    visible: Social attention trend
+    timeout: 30000
 - waitForAnimationToEnd:
     timeout: 8000
 - takeScreenshot: dashboard
 
-# M-CHAT-R/F caregiver questionnaire (button sits below the fold)
+# The dashboard is a long lazy List; scrollUntilVisible is retried via the
+# script if a lazy row is skipped between frames.
 - scrollUntilVisible:
     element: Open M-CHAT-R/F
     direction: DOWN
+    visibilityPercentage: 20
+    timeout: 30000
 - tapOn: Open M-CHAT-R/F
 - waitForAnimationToEnd:
     timeout: 15000

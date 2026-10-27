@@ -236,12 +236,23 @@ public struct GazeSessionRecord: Identifiable, Codable, Sendable, Equatable {
     }
 }
 
-// MARK: - FHIR R4 Serialization (STAGE 2)
+// MARK: - FHIR R4 Serialization (FHIR-1, ADR-0003)
 
 extension GazeSessionRecord {
-    /// Converts this gaze session record into an HL7 FHIR Release 4 `Observation` resource dictionary.
-    /// Includes USCDI v5 `basedOn` linkage for ServiceRequest traceability.
-    /// Returns `nil` for simulated records (SIM-5).
+    /// The FHIR R4 export unit for this session: a `Bundle` of `type: collection` built by
+    /// `FHIRBundleBuilder`. A refused record (simulated or rejected, SIM-5/FHIR-2) yields a bundle
+    /// without a gaze Observation; check `FHIRBundleBuilder.exportRefusalReason(for:)` first.
+    public func toFHIRBundle(
+        mchat: (MCHATScoreResult, [Int: Bool])? = nil,
+        extraResources: [[String: AnyCodableValue]] = [],
+        subject: FHIRSubject
+    ) -> [String: AnyCodableValue] {
+        FHIRBundleBuilder.bundle(for: self, mchat: mchat, extraResources: extraResources, subject: subject)
+    }
+
+    /// A single standalone `Observation` with a bare `Patient/<participantId>` subject.
+    /// Returns `nil` for refused records (SIM-5, FHIR-2).
+    @available(*, deprecated, message: "Export FHIRBundleBuilder.bundle(for:mchat:extraResources:subject:) (ADR-0003)")
     public func toFHIRObservation(basedOn serviceRequestId: String? = nil) -> [String: AnyCodableValue]? {
         guard var obs = FHIRInteroperabilityMapper.makeFHIRObservation(from: self, participantId: participantId) else {
             return nil

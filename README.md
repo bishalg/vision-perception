@@ -1,3 +1,24 @@
+# CurvFlood: Sub-Pixel Vision & Agentic Flood AI
+> **OpenCV AI Competition 2026 (Powered by AWS) — Real-World Impact Track**  
+> *Targeting: **Agentic Vision Award** & **Best Use of COOL Award***
+
+[![Devpost Submission](https://img.shields.io/badge/Devpost-Submission_Page-003E54?style=for-the-badge&logo=devpost&logoColor=white)](https://devpost.com/software/curvflood-sub-pixel-vision-agentic-flood-ai)
+[![Demo Video](https://img.shields.io/badge/YouTube-5_Min_Demo_Video-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/XIoCuDY5gIw)
+[![Google Slides](https://img.shields.io/badge/Google_Slides-Presentation_Deck-F4B400?style=for-the-badge&logo=google-slides&logoColor=white)](https://docs.google.com/presentation/d/1xkBtj0Dcbu0qqpKt-i9HooKt_OlyqlSv_nXqCn1As0c/edit)
+[![Live Web Portal](https://img.shields.io/badge/Live_Portal-GitHub_Pages-22c55e?style=for-the-badge&logo=githubpages&logoColor=white)](https://bishalg.github.io/vision-perception/)
+[![Architecture: Modular C++20](https://img.shields.io/badge/Architecture-Modular%20C%2B%2B20-orange.svg)](docs/architecture.md)
+[![Tests: 41/41 Green](https://img.shields.io/badge/CTest-41%2F41%20PASS-brightgreen.svg)](scripts/validate_hackathon_readiness.sh)
+
+| Quick Link | Destination |
+|---|---|
+| 🎬 **Official 5-Minute Video** | [Watch on YouTube (5:00)](https://youtu.be/XIoCuDY5gIw) |
+| 📑 **Devpost Public Project** | [CurvFlood on Devpost](https://devpost.com/software/curvflood-sub-pixel-vision-agentic-flood-ai) |
+| 📊 **Slides Presentation** | [Google Slides Deck](https://docs.google.com/presentation/d/1xkBtj0Dcbu0qqpKt-i9HooKt_OlyqlSv_nXqCn1As0c/edit) · [Interactive HTML Deck](docs/presentation/slides.html) |
+| ⚡ **Judges' 60-Second Audit** | Run `./scripts/validate_hackathon_readiness.sh` (Zero cloud credentials required) |
+| 🌐 **Interactive 3D Digital Twin** | Run `npm run dev` → Open [http://localhost:3000](http://localhost:3000) |
+
+---
+
 # vision-perception
 
 > **A Reusable, Domain-Agnostic Computer Vision Perception Core**
@@ -85,6 +106,25 @@ cmake --preset tsan && cmake --build --preset tsan -j && ctest --test-dir build-
 ```
 
 GitHub Actions (`.github/workflows/ci.yml`) gates every push to `main`/`dev`: clang-format check, Ubuntu + macOS builds with `-Werror`, full ctest, clang-tidy, and an ASan/UBSan job.
+
+### 4.1 Pinned Dependencies (tested versions)
+
+| Dependency | Pinned / tested version |
+| :--- | :--- |
+| OpenCV | **5.0.0** (verified `cv2.__version__`; Homebrew `/opt/homebrew/opt/opencv`, or build from source with `-DOPENCV_ENABLE_NONFREE=ON`) |
+| CMake / Ninja | ≥ 3.25 (tested 4.4.3) / 1.13.2 |
+| C++ compiler | C++20 — Apple Clang 21, Clang ≥ 18, or GCC ≥ 13 |
+| Python (scripts + CDK) | ≥ 3.9 (tested 3.9.6) |
+| `aws-cdk-lib` / `constructs` | **== 2.255.0 / == 10.6.0** — pinned in [`aws_infra/requirements-cdk.txt`](aws_infra/requirements-cdk.txt); offline `cdk synth` verified (all 4 stack templates generate) |
+| `boto3` / `pytest` | == 1.42.97 / == 8.4.2 |
+| Node.js (annotation studio / Cesium twin) | ≥ 20 (tested 22.22.0) |
+
+AWS CDK offline verification (no AWS account required):
+
+```bash
+python3 -m venv .venv-cdk && .venv-cdk/bin/pip install -r aws_infra/requirements-cdk.txt
+cd aws_infra && PATH="$PWD/../.venv-cdk/bin:$PATH" npx aws-cdk@2 synth   # expect cdk.out/*.template.json
+```
 
 ---
 

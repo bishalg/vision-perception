@@ -16,10 +16,11 @@ from aws_cdk import (
     Stack,
     aws_bedrock as bedrock,
     aws_dynamodb as dynamodb,
+    aws_events as events,
+    aws_events_targets as targets,
     aws_iam as iam,
     aws_lambda as _lambda,
     aws_s3 as s3,
-    aws_s3_notifications as s3n,
     aws_sns as sns,
     aws_sqs as sqs,
 )
@@ -72,12 +73,25 @@ class AgentStack(Stack):
             },
         )
 
-        # 3. S3 Event Notification: Trigger on events/ prefix matching flood_delta.json
-        storage_bucket.add_event_notification(
-            s3.EventType.OBJECT_CREATED,
-            s3n.LambdaDestination(self.trigger_lambda),
-            s3.NotificationKeyFilter(prefix="events/", suffix="flood_delta.json"),
+        # 3. S3 Event Trigger via EventBridge (avoids a Storage->Agent stack
+        # cycle: the bucket only enables EventBridge delivery, and this rule
+        # — living in the same stack as the Lambda — filters ObjectCreated
+        # on the events/ prefix and flood_delta.json suffix).
+        storage_bucket.enable_event_bridge_notification()
+        self.flood_delta_rule = events.Rule(
+            self,
+            "FloodDeltaObjectCreatedRule",
+            description="Route flood_delta.json uploads to the Bedrock agent trigger",
+            event_pattern=events.EventPattern(
+                source=["aws.s3"],
+                detail_type=["Object Created"],
+                detail={
+                    "bucket": {"name": [storage_bucket.bucket_name]},
+                    "object": {"key": [{"prefix": "events/", "suffix": "flood_delta.json"}]},
+                },
+            ),
         )
+        self.flood_delta_rule.add_target(targets.LambdaFunction(self.trigger_lambda))
 
         # 4. Action Group OpenAPI Schema: Two-Tool Specification
         action_group_openapi = {

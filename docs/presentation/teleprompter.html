@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>vision-perception — Teleprompter & Script</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #080B11;
+      color: #F1F5F9;
+    }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    .stage-direction {
+      background: rgba(245, 158, 11, 0.15);
+      border-left: 3px solid #F59E0B;
+      color: #FDE68A;
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.375rem;
+      font-size: 0.85em;
+      margin: 0.75rem 0;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .emphasis {
+      color: #38BDF8;
+      font-weight: 700;
+    }
+    .metric {
+      color: #34D399;
+      font-weight: 800;
+    }
+    .alert-word {
+      color: #F87171;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body class="p-5 flex flex-col h-screen select-none overflow-hidden">
+
+  <!-- PROMPTER HEADER WITH CONTROLS -->
+  <header class="flex items-center justify-between pb-3 border-b border-slate-800 bg-slate-950/80 -mx-5 -mt-5 p-4 px-5 z-20">
+    <div class="flex items-center space-x-2">
+      <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+      <span class="text-xs font-mono font-bold tracking-wider text-slate-300">LIVE PROMPTER</span>
+      <span id="slideIndicator" class="px-2 py-0.5 rounded text-xs font-mono bg-cyan-950 text-cyan-300 border border-cyan-700/50">Slide 1 / 8</span>
+    </div>
+
+    <!-- ZOOM & SIZING CONTROLS -->
+    <div class="flex items-center space-x-2">
+      <span class="text-[11px] font-mono text-slate-400">Zoom:</span>
+      <button onclick="changeFontSize(-2)" class="w-7 h-7 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-mono font-bold text-sm border border-slate-700 active:scale-95 transition" title="Decrease Font (Key: -)">A-</button>
+      <span id="fontSizeDisplay" class="text-xs font-mono text-cyan-400 w-9 text-center">20px</span>
+      <button onclick="changeFontSize(2)" class="w-7 h-7 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-mono font-bold text-sm border border-slate-700 active:scale-95 transition" title="Increase Font (Key: +)">A+</button>
+      <button onclick="resetFontSize()" class="px-2 h-7 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 rounded font-mono text-[11px] border border-slate-700 active:scale-95 transition">Reset</button>
+    </div>
+  </header>
+
+  <!-- TIMING & NAVIGATION BANNER -->
+  <div class="py-2.5 px-3 bg-slate-900/90 border border-slate-800 rounded-lg my-3 flex items-center justify-between">
+    <div class="flex items-center space-x-2">
+      <span class="text-[11px] font-mono text-amber-400 font-semibold uppercase">Target Pace:</span>
+      <span id="targetTime" class="text-xs font-mono text-slate-200 font-bold">0:00 – 0:20 (20s)</span>
+    </div>
+    <div class="flex items-center space-x-1.5">
+      <button onclick="prevSlide()" class="px-2.5 py-1 text-xs font-mono bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700">◀ Prev</button>
+      <button onclick="nextSlide()" class="px-2.5 py-1 text-xs font-mono bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded">Next ▶</button>
+    </div>
+  </div>
+
+  <!-- SCRIPT CONTENT AREA -->
+  <main id="scriptContainer" class="flex-1 overflow-y-auto pr-2 py-2 space-y-4">
+    <h2 id="slideTitle" class="text-lg font-bold text-cyan-400 border-b border-slate-800 pb-1"></h2>
+    
+    <div id="stageDirectionBox" class="stage-direction"></div>
+
+    <div id="scriptBody" class="leading-relaxed transition-all duration-150"></div>
+  </main>
+
+  <!-- FOOTER TIPS -->
+  <footer class="pt-3 border-t border-slate-800/80 -mx-5 -mb-5 p-3 px-5 bg-slate-950 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+    <span>💡 Keys: <kbd class="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">Space</kbd>/<kbd class="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">→</kbd> Next · <kbd class="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">+</kbd>/<kbd class="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">-</kbd> Zoom</span>
+    <span class="text-emerald-400">Synced with Slides Window</span>
+  </footer>
+
+  <script>
+    const slideData = [
+      {
+        title: "Slide 1: Team & Project Introduction",
+        targetTime: "0:00 – 0:20 (~20s)",
+        stage: "🎥 [CAMERA ON YOU] · Speak with confidence · Smile · State track clearly",
+        html: `Hi everyone, we're <span class="emphasis">[Your Name / Team Name]</span>.<br><br>
+               For the <strong>OpenCV AI Competition 2026</strong>, we built <span class="emphasis">vision-perception</span>: 
+               <strong>sub-pixel curvilinear perception and autonomous cloud disaster response</strong>, 
+               powered by <span class="emphasis">OpenCV 5</span>, <span class="emphasis">AWS Bedrock Agents</span>, and 
+               <span class="emphasis">COOL on AWS Graviton3</span>.<br><br>
+               We are submitting in the <strong>Real-World Impact Track</strong>, targeting both the 
+               <span class="metric">Agentic Vision</span> and <span class="metric">Best Use of COOL</span> awards.`
+      },
+      {
+        title: "Slide 2: The Disaster & The Problem",
+        targetTime: "0:20 – 0:50 (~30s)",
+        stage: "🖥️ [ON SCREEN: comparison.png] · Point out the steep mountain corridor and cloud cover",
+        html: `In August 2026, a catastrophic glacier collapse triggered an extreme debris flood down Nepal's 
+               <span class="emphasis">Bhote Koshi river corridor</span>.<br><br>
+               Early detection saves lives. But conventional disaster mapping relies on simple 
+               <span class="alert-word">pixel-difference thresholds</span> that fail in mountain terrain due to 
+               <em>monsoon cloud cover</em>, <em>severe mountain shadows</em>, and <em>turbid glacial flour</em> changing surface textures.<br><br>
+               We engineered <strong>vision-perception</strong> to solve this by pairing <strong>sub-pixel mathematical rigor</strong> with an 
+               <strong>autonomous, evidence-gated cloud decision loop</strong>.`
+      },
+      {
+        title: "Slide 3: C++20 & OpenCV 5 Core Engine",
+        targetTime: "0:50 – 1:40 (~50s)",
+        stage: "💻 [ACTION: SWITCH TO TERMINAL] · Run: ./scripts/run_flood_pipeline.sh · Show ctest 41/41 pass",
+        html: `Under the hood is a modern <span class="emphasis">C++20</span> and <span class="emphasis">OpenCV 5</span> monorepo.<br><br>
+               We implement <strong>Steger curvilinear ridge extraction</strong> using 
+               <em>Gaussian scale-space Hessian tensors</em> and <em>Taylor series zero-crossings</em>.<br><br>
+               It achieves sub-pixel accuracy of <span class="metric">&lt; 0.0301 pixels RMSE</span> against analytical ground truth—passing our 
+               strict scientific quality gate of <em>0.1 pixels</em> across <span class="metric">41 green test suites</span>.<br><br>
+               <strong>Zero modifications</strong> were needed to the core math engine to run seamlessly in the cloud.`
+      },
+      {
+        title: "Slide 4: Quantitative Results & Dual Controls",
+        targetTime: "1:40 – 2:10 (~30s)",
+        stage: "📊 [ON SCREEN: pre_overlay.png vs post_overlay.png] · Emphasize scientific controls (NO hallucinations)",
+        html: `On Sentinel-2 satellite imagery of the Nepal disaster, our pipeline detected:<br>
+               • Active water channel widened by <span class="metric">+121.1%</span> (expanding from 19 pixels to 42 pixels median).<br>
+               • Flood signature surged by <span class="metric">+88.4%</span> (1.884x ratio).<br><br>
+               Crucially, we proved this with <strong>strict scientific controls</strong>:<br>
+               • Our <em>Spatial Control</em> on adjacent off-river slopes was only <span class="metric">0.151x</span>.<br>
+               • Our <em>Temporal Baseline</em> was <span class="metric">0.905x</span>.<br><br>
+               This mathematically proves the anomaly was <strong>strictly localized to the disaster floodway</strong>—eliminating AI hallucinations.`
+      },
+      {
+        title: "Slide 5: Agentic Vision (3-Node Perception-to-Action)",
+        targetTime: "2:10 – 3:30 (~80s)",
+        stage: "🤖 [ACTION: SWITCH TO TERMINAL] · Run: python3 scripts/run_agentic_vision_demo.py · Mention DynamoDB idempotency",
+        html: `For the <strong>Agentic Vision</strong> category, we built a true <span class="emphasis">Perception-to-Action loop</span>.<br><br>
+               When <code>flood_delta.json</code> reaches S3, EventBridge triggers our <span class="emphasis">Claude 3.5 Sonnet Bedrock Agent</span>:<br><br>
+               <strong>1. Node 1 (Perception):</strong> The agent autonomously invokes <code>getFloodEvidence</code> to inspect metrics and issue a 
+               <em>cryptographic evidence token</em>.<br>
+               <strong>2. Node 2 (Reasoning):</strong> It strictly evaluates the policy thresholds (channel widening &gt; 1.5x and spatial control &lt; 0.5x).<br>
+               <strong>3. Node 3 (Action):</strong> It calls <code>dispatchFloodAlert</code>. DynamoDB validates the token, guarantees 
+               <strong>server-side idempotency</strong> to prevent duplicate alerts, broadcasts an emergency SNS alert, and seals an immutable audit receipt to S3.<br><br>
+               <em>And vision output changes the action in both directions:</em> When we feed pre-disaster data using <code>--scenario marginal</code>, the agent 
+               records a verified <span class="alert-word">STANDBY (NOT_DISPATCHED)</span> decision.`
+      },
+      {
+        title: "Slide 6: Best Use of COOL on Graviton3",
+        targetTime: "3:30 – 4:15 (~45s)",
+        stage: "⚡ [ACTION: SWITCH TO TERMINAL] · Run: ./scripts/benchmark_cool_vs_x86.sh --skip-build · Point out 213.6 ms P50",
+        html: `For the <strong>Best Use of COOL</strong> award:<br><br>
+               Gaussian scale-space convolutions are computationally intensive. We deployed our engine to 
+               <span class="emphasis">AWS Graviton3 (c7g.2xlarge)</span> using the <strong>Cloud-Optimized OpenCV Library (COOL)</strong>.<br><br>
+               In a continuous 100-iteration measured benchmark on full disaster scenes:<br>
+               • Sustained a <span class="metric">213.6 millisecond P50 latency</span>.<br>
+               • Active SIMD path verified: <span class="emphasis">NEON_DOTPROD, NEON_FP16, and NEON_BF16</span>.<br>
+               • Cost: <span class="metric">$0.0000197 per scene</span>—over <span class="metric">50,700 disaster scenes per single dollar</span>.<br><br>
+               Judges can replicate this in minutes using our one-command EC2 guide.`
+      },
+      {
+        title: "Slide 7: Cesium 3D Digital Twin",
+        targetTime: "4:15 – 4:35 (~20s)",
+        stage: "🌐 [ACTION: SWITCH TO BROWSER at localhost:3000] · Click the Bhote Koshi camera pier pin",
+        html: `For field rescue teams, we project this data into an interactive <span class="emphasis">Cesium 3D digital twin</span>.<br><br>
+               Rescue coordinators can view 3D terrain frustums, calibrated camera poses, and inspect ground-level camera stills 
+               at critical bridge piers in real time.<br><br>
+               Automated browser tests confirmed zero page errors and instant HTTP 200 image serving.`
+      },
+      {
+        title: "Slide 8: Architecture & Closing",
+        targetTime: "4:35 – 5:00 (~25s)",
+        stage: "🏁 [ON SCREEN: hackathon_architecture.png] · Confident wrap-up · Thank the judges",
+        html: `From <strong>sub-pixel C++ tensor extraction</strong> to <strong>autonomous AWS Bedrock agents</strong> and 
+               <strong>Graviton3 vector acceleration</strong>, vision-perception proves that rigorous computer vision and modern agentic AI can save lives.<br><br>
+               The entire codebase, test suites, and judges' quickstart are available in the repository.<br><br>
+               <strong>Thank you!</strong>`
+      }
+    ];
+
+    let currentSlide = 0;
+    let fontSize = 20;
+
+    const channel = new BroadcastChannel('vision_slides_sync');
+    channel.onmessage = (e) => {
+      if (e.data && typeof e.data.slideIndex === 'number') {
+        renderSlide(e.data.slideIndex, false);
+      }
+    };
+
+    function renderSlide(index, broadcast = true) {
+      if (index < 0 || index >= slideData.length) return;
+      currentSlide = index;
+      const data = slideData[currentSlide];
+
+      document.getElementById('slideIndicator').innerText = `Slide ${currentSlide + 1} / ${slideData.length}`;
+      document.getElementById('slideTitle').innerText = data.title;
+      document.getElementById('targetTime').innerText = data.targetTime;
+      document.getElementById('stageDirectionBox').innerHTML = data.stage;
+      document.getElementById('scriptBody').innerHTML = data.html;
+      document.getElementById('scriptContainer').scrollTop = 0;
+
+      if (broadcast) {
+        channel.postMessage({ slideIndex: currentSlide });
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < slideData.length - 1) renderSlide(currentSlide + 1);
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) renderSlide(currentSlide - 1);
+    }
+
+    function changeFontSize(delta) {
+      fontSize = Math.min(36, Math.max(14, fontSize + delta));
+      document.getElementById('scriptBody').style.fontSize = `${fontSize}px`;
+      document.getElementById('fontSizeDisplay').innerText = `${fontSize}px`;
+      localStorage.setItem('prompter_font_size', fontSize);
+    }
+
+    function resetFontSize() {
+      fontSize = 20;
+      document.getElementById('scriptBody').style.fontSize = `${fontSize}px`;
+      document.getElementById('fontSizeDisplay').innerText = `${fontSize}px`;
+      localStorage.setItem('prompter_font_size', fontSize);
+    }
+
+    // Keyboard controls
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        prevSlide();
+      } else if (e.key === '+' || e.key === '=') {
+        changeFontSize(2);
+      } else if (e.key === '-' || e.key === '_') {
+        changeFontSize(-2);
+      }
+    });
+
+    // Load saved font size
+    const savedSize = localStorage.getItem('prompter_font_size');
+    if (savedSize) {
+      fontSize = parseInt(savedSize, 10);
+      document.getElementById('scriptBody').style.fontSize = `${fontSize}px`;
+      document.getElementById('fontSizeDisplay').innerText = `${fontSize}px`;
+    } else {
+      resetFontSize();
+    }
+
+    renderSlide(0, false);
+  </script>
+</body>
+</html>

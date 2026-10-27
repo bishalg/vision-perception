@@ -46,7 +46,7 @@
 | 9 | **Phase 3 — Live snapshot** | `live_snapshot_demo --url mock://…` then optional `--direct` | Cache/proxy so demos never die on rate limits |
 | 10 | **Phase 4 — 3D twin** | Cesium at `localhost:3000` · click I-80 + Bhote Koshi | Pose + still panels on globe |
 | 11 | **Agentic Vision** | Bedrock 3-node trace diagram | `getFloodEvidence` → token → `dispatchFloodAlert` |
-| 12 | **Use of COOL** | Graviton3 vs x86 table (−25% P50 · −32% $/scene) | Arm SIMD / Neoverse V1 |
+| 12 | **Use of COOL** | Benchmark table (measured 100-iter Arm64 run: P50 213.6 ms · 50,744 scenes/$1) + EC2 reproduction guide | Arm SIMD / Neoverse V1 |
 
 ### Act D — Close (slides 13–15)
 
@@ -70,7 +70,7 @@ git describe --tags --always
 
 # C++ demos
 cmake --preset release && cmake --build --preset release -j
-ctest --test-dir build --output-on-failure   # expect 24/24
+ctest --test-dir build --output-on-failure   # expect 41/41
 
 # Phase 2 artifact (pre-render so talk isn’t waiting on encode)
 mkdir -p output
@@ -126,9 +126,9 @@ Use the timing table in [`docs/devpost_submission.md`](devpost_submission.md) §
 | Channel width | **+121.1%** (19→42 px) | same |
 | Spatial control | **0.151×** (&lt; 1.10 gate) | west slope window |
 | Temporal control | **0.905×** | pre/post baseline |
-| COOL P50 | **−25.4%** vs x86 | Graviton3 bench |
-| Cost/scene | **−32.3%** | same |
-| Test suite | **24/24** ctest | `dev` HEAD |
+| COOL bench P50 | **213.6 ms** (100-iter measured Arm64 run) | `data/benchmark_results.json` |
+| Cost/scene | **$0.0000197** · 50,744 scenes / $1.00 | same |
+| Test suite | **41/41** ctest (+11 AWS, +44 tools pytest) | `dev` HEAD |
 | Demo tags | `demo/phase-1`…`4` | GitHub |
 
 ---
@@ -146,6 +146,8 @@ Use the timing table in [`docs/devpost_submission.md`](devpost_submission.md) §
 ---
 
 ## 6. Suggested visual assets to capture (tonight)
+
+**For the Devpost 5-minute video, follow the turnkey shot list in [`docs/VIDEO_RECORDING_RUNBOOK.md`](VIDEO_RECORDING_RUNBOOK.md)** — it maps every storyboard timestamp to an exact command and script line.
 
 Record short clips (10–20s each) for slides / backup video:
 

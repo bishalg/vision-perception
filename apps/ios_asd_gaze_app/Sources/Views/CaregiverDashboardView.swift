@@ -186,9 +186,7 @@ public struct CaregiverDashboardView: View {
                 )
             }
             .sheet(isPresented: $showingMCHAT) {
-                MCHATSurveyModalView { result in
-                    lastMchat = result
-                }
+                mchatSheet
             }
             .sheet(item: $selectedMilestone) { milestone in
                 MilestoneDetailView(milestoneId: milestone.id, store: carePlanStore)
@@ -241,12 +239,33 @@ public struct CaregiverDashboardView: View {
                 Text(score.clinicalRecommendation)
                     .font(.subheadline)
             } else {
-                Text("No M-CHAT-R/F on file. Complete the 20-item caregiver questionnaire.")
+                Text(Self.offersMCHATEntry ? "No M-CHAT-R/F on file. Complete the 20-item caregiver questionnaire." : "No M-CHAT-R/F result on file.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-            Button("Open M-CHAT-R/F") { showingMCHAT = true }
+            if Self.offersMCHATEntry {
+                Button("Open M-CHAT-R/F") { showingMCHAT = true }
+            } else if let message = MCHATAvailability.unavailableMessage {
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("mchat_unavailable")
+            }
         }
+    }
+
+    /// H3 gate: false unless the build is licensed for M-CHAT-R/F.
+    static var offersMCHATEntry: Bool { MCHATAvailability.canStartQuestionnaire }
+
+    @ViewBuilder
+    private var mchatSheet: some View {
+        #if ASD_MCHAT_LICENSED
+        MCHATSurveyModalView { result in
+            lastMchat = result
+        }
+        #else
+        EmptyView()
+        #endif
     }
 
     // MARK: - Header & Notice

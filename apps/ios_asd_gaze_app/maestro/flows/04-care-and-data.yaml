@@ -1,0 +1,79 @@
+appId: org.curv.asd.gazecollector
+name: bdd-04-care-and-data-control
+---
+# Feature: longitudinal care and data control
+#   App mode can be switched from Settings, milestones open as detail sheets,
+#   the mood diary logs emotions, and data deletion is always guarded by an
+#   explicit confirmation dialog.
+#
+# NOTE: continues the app state created by flows 01-03 (do not clear it).
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 20000
+
+# ── App mode switching (relaunch resets to the Dashboard tab) ──
+
+- extendedWaitUntil:
+    visible: Social attention trend
+    timeout: 30000
+- tapOn: Settings
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: App Mode
+- tapOn: Clinic / Professional
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: settings-clinic-mode
+- tapOn: Parent & Caregiver
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# ── Mood diary (diary card sits above the milestones section) ──
+
+- tapOn: Dashboard
+- waitForAnimationToEnd:
+    timeout: 8000
+- scrollUntilVisible:
+    element: Log emotion
+    direction: DOWN
+    visibilityPercentage: 20
+    timeout: 30000
+- tapOn: Log emotion
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: mood-diary
+- tapOn: Close
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# ── Milestone detail ──
+
+- scrollUntilVisible:
+    element: 18-month CDC / AAP
+    direction: DOWN
+    visibilityPercentage: 20
+    timeout: 30000
+- takeScreenshot: milestones-section
+- tapOn: Cognitive
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: milestone-detail
+- tapOn: Done
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# ── Data deletion is guarded (dialog shown, then cancelled) ──
+
+- tapOn: Settings
+- scrollUntilVisible:
+    element: Delete all observation data
+    direction: DOWN
+    visibilityPercentage: 20
+    timeout: 30000
+- tapOn: Delete all observation data
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: Delete observation data
+- takeScreenshot: delete-data-confirm
+- tapOn: Cancel

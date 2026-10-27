@@ -44,6 +44,20 @@ Boots the first available iPhone simulator, builds, installs, and launches autom
 
 ---
 
+### Running the tests
+
+One command runs every gate (kit tests, kit ThreadSanitizer, strict-concurrency build, XcodeGen,
+app tests on a simulator, unsigned Release build, claims/secrets, privacy-API and Release-symbol checks):
+
+```bash
+scripts/ios_test.sh --dry-run          # print the commands only
+DERIVED_DATA=/private/tmp/asd-app-dd scripts/ios_test.sh
+SIM_NAME="iPhone 16" scripts/ios_test.sh   # if the default simulator is not installed
+```
+
+Build output always lives outside the repository (`DERIVED_DATA`, default `/private/tmp/asd-app-dd`).
+CI runs the same script from `.github/workflows/ios.yml`.
+
 ## 3. Screening Flow & Stimulus Batteries
 
 1. **Onboarding** (`OnboardingFlowView`): caregiver intro → `ChildProfile`

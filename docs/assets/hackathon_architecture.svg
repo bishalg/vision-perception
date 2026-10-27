@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/>
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#16a34a"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="980" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="800" y="46" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#0f172a">vision-perception — System Architecture</text>
+  <text x="800" y="74" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" fill="#64748b">Sub-pixel curvilinear perception (OpenCV 5) → autonomous evidence-gated disaster response (AWS Bedrock)</text>
+
+  <!-- Lane headers -->
+  <text x="260" y="112" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" letter-spacing="2" fill="#2563eb">PERCEPTION — OPENCV 5 (C++20)</text>
+  <text x="740" y="112" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" letter-spacing="2" fill="#ea580c">AWS EVENTING &amp; STATE</text>
+  <text x="1280" y="112" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" letter-spacing="2" fill="#16a34a">AGENTIC VISION LOOP — BEDROCK</text>
+
+  <!-- ===================== Lane 1: Perception ===================== -->
+  <rect x="40" y="130" width="440" height="76" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="260" y="158" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="19" font-weight="bold" fill="#0f172a">Sentinel-2 L2A 10 m Imagery</text>
+  <text x="260" y="180" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">PRE 2026-08-24 · POST 2026-08-27 · CTRL 2026-08-12</text>
+  <text x="260" y="198" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">Lende Khola / Bhote Koshi corridor, Nepal</text>
+
+  <line x1="260" y1="206" x2="260" y2="230" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="40" y="232" width="440" height="170" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="260" y="262" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="19" font-weight="bold" fill="#0f172a">C++20 Core Engine · OpenCV 5</text>
+  <text x="64" y="290" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">• Steger sub-pixel ridge extraction (Hessian tensors)</text>
+  <text x="64" y="312" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">• Gaussian scale-space second derivatives</text>
+  <text x="64" y="334" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">• Sub-pixel ECC co-registration (0.154 px shift)</text>
+  <text x="64" y="356" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">• Accuracy RMSE 0.0301 px — gate &lt; 0.1 px ✓</text>
+  <text x="64" y="378" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">• Zero core modifications for cloud deployment</text>
+
+  <line x1="260" y1="402" x2="260" y2="426" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="40" y="432" width="440" height="110" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="260" y="460" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="19" font-weight="bold" fill="#0f172a">Geospatial Flood Domain Pack</text>
+  <text x="64" y="486" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">• Cloud mask · channel-width proxy · river classification</text>
+  <text x="64" y="508" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">• Flood signature +88.4% · width +121.1%</text>
+  <text x="64" y="530" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">• Dual controls: spatial 0.151× · temporal 0.905× (gate &lt; 1.10×)</text>
+
+  <line x1="260" y1="542" x2="260" y2="566" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="40" y="572" width="440" height="64" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="260" y="598" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17" font-weight="bold" fill="#0f172a">flood_delta.json</text>
+  <text x="260" y="620" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">quantitative perception evidence artifact</text>
+
+  <!-- ===================== Lane 2: AWS eventing ===================== -->
+  <rect x="560" y="572" width="360" height="64" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+  <text x="740" y="598" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17" font-weight="bold" fill="#0f172a">Amazon S3 — Data Bucket</text>
+  <text x="740" y="620" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">vision-perception-flood-data</text>
+
+  <line x1="480" y1="604" x2="556" y2="604" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="518" y="594" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#64748b">upload</text>
+
+  <line x1="740" y1="572" x2="740" y2="530" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="560" y="460" width="360" height="64" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+  <text x="740" y="486" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17" font-weight="bold" fill="#0f172a">S3 Event Notification</text>
+  <text x="740" y="508" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">PUT flood_delta.json → trigger</text>
+
+  <line x1="740" y1="460" x2="740" y2="418" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="560" y="340" width="360" height="72" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+  <text x="740" y="368" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17" font-weight="bold" fill="#0f172a">AWS Lambda — agent_trigger.py</text>
+  <text x="740" y="390" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">event router · invokes Bedrock agent</text>
+
+  <line x1="960" y1="376" x2="960" y2="162" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="920" y1="376" x2="960" y2="376" stroke="#475569" stroke-width="2"/>
+  <line x1="960" y1="162" x2="996" y2="162" stroke="#475569" stroke-width="2"/>
+  <text x="958" y="280" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#64748b" transform="rotate(-90 958 280)">invokes agent</text>
+
+  <rect x="560" y="200" width="360" height="92" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+  <text x="740" y="228" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17" font-weight="bold" fill="#0f172a">Amazon DynamoDB — Event Table</text>
+  <text x="740" y="250" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">vision-perception-events-dev</text>
+  <text x="740" y="272" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">idempotency · evidenceToken · alert state</text>
+
+  <line x1="740" y1="340" x2="740" y2="296" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- token/state dashed link between DynamoDB and agent loop -->
+  <line x1="920" y1="262" x2="996" y2="262" stroke="#16a34a" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrowGreen)" marker-start="url(#arrowGreen)"/>
+  <text x="958" y="248" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="13" fill="#16a34a">token · state</text>
+
+  <!-- ===================== Lane 3: Agentic loop ===================== -->
+  <rect x="1000" y="130" width="560" height="64" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <text x="1280" y="156" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="18" font-weight="bold" fill="#0f172a">Amazon Bedrock Agent — Claude 3.5 Sonnet v2</text>
+  <text x="1280" y="178" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">evidence-first system prompt · two-tool action group</text>
+
+  <line x1="1280" y1="194" x2="1280" y2="218" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="1000" y="224" width="560" height="84" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <text x="1280" y="252" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="18" font-weight="bold" fill="#0f172a">① getFloodEvidence — Perception</text>
+  <text x="1280" y="274" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">agent autonomously fetches evidence · issues cryptographic</text>
+  <text x="1280" y="294" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">evidenceToken · registers PENDING event</text>
+
+  <line x1="1280" y1="308" x2="1280" y2="332" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="1000" y="338" width="560" height="84" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <text x="1280" y="366" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="18" font-weight="bold" fill="#0f172a">② Reasoning — Policy Enforcement</text>
+  <text x="1280" y="388" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">strict scientific thresholds: flood_signal_detected ·</text>
+  <text x="1280" y="408" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">width_ratio ≥ 2.0× · controls &lt; 1.10×</text>
+
+  <line x1="1280" y1="422" x2="1280" y2="446" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="1000" y="452" width="560" height="84" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <text x="1280" y="480" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="18" font-weight="bold" fill="#0f172a">③ dispatchFloodAlert — Action</text>
+  <text x="1280" y="502" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">validates evidenceToken · enforces DynamoDB idempotency</text>
+  <text x="1280" y="522" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">(eliminates duplicate alerts on retries)</text>
+
+  <!-- three outputs -->
+  <line x1="1280" y1="536" x2="1084" y2="568" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="1280" y1="536" x2="1280" y2="568" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="1280" y1="536" x2="1476" y2="568" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="1000" y="572" width="168" height="64" rx="10" fill="#f8fafc" stroke="#475569" stroke-width="2"/>
+  <text x="1084" y="598" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#0f172a">Amazon SNS</text>
+  <text x="1084" y="620" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">emergency alert</text>
+
+  <rect x="1196" y="572" width="168" height="64" rx="10" fill="#f8fafc" stroke="#475569" stroke-width="2"/>
+  <text x="1280" y="598" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#0f172a">Amazon SQS</text>
+  <text x="1280" y="620" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">fallback queue</text>
+
+  <rect x="1392" y="572" width="168" height="64" rx="10" fill="#f8fafc" stroke="#475569" stroke-width="2"/>
+  <text x="1476" y="598" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#0f172a">S3 Audit Bucket</text>
+  <text x="1476" y="620" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">immutable receipt</text>
+
+  <!-- ===================== COOL band ===================== -->
+  <rect x="40" y="680" width="1520" height="180" rx="12" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/>
+  <text x="64" y="712" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="19" font-weight="bold" fill="#0f172a">Best Use of COOL — Cloud-Optimized OpenCV on AWS Graviton (same zero-modification C++ core)</text>
+
+  <rect x="64" y="730" width="440" height="100" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="284" y="758" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17" font-weight="bold" fill="#0f172a">EC2 Graviton3 · c7g.2xlarge (Arm64)</text>
+  <text x="284" y="782" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">COOL — Cloud-Optimized OpenCV Library</text>
+  <text x="284" y="804" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">Neoverse V1 · NEON / SVE · -mcpu=neoverse-v1</text>
+
+  <rect x="540" y="730" width="440" height="100" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+  <text x="760" y="758" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17" font-weight="bold" fill="#0f172a">EC2 Intel · c7i.2xlarge (x86_64)</text>
+  <text x="760" y="782" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">Standard OpenCV distribution baseline</text>
+  <text x="760" y="804" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">AVX-512 / AVX2 · -march=native</text>
+
+  <rect x="1016" y="730" width="520" height="100" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <text x="1276" y="758" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="17" font-weight="bold" fill="#0f172a">scripts/benchmark_cool_vs_x86.sh</text>
+  <text x="1276" y="782" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">100-run latency (P50 / P90 / P95) · cost per scene</text>
+  <text x="1276" y="804" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">SIMD verification via cv2.getBuildInformation()</text>
+
+  <text x="64" y="850" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">Measured reference run (100 iterations, Arm64 NEON_DOTPROD/FP16 active): P50 213.6 ms · mean 217.4 ms · P95 255.8 ms · 50,744 scenes / $1.00 — data/benchmark_results.json</text>
+
+  <!-- Legend -->
+  <rect x="40" y="912" width="16" height="16" rx="3" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="64" y="925" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">OpenCV 5 / C++ perception</text>
+  <rect x="260" y="912" width="16" height="16" rx="3" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+  <text x="284" y="925" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">AWS services</text>
+  <rect x="410" y="912" width="16" height="16" rx="3" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <text x="434" y="925" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">Agentic loop</text>
+  <rect x="550" y="912" width="16" height="16" rx="3" fill="#f8fafc" stroke="#475569" stroke-width="2"/>
+  <text x="574" y="925" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#475569">Storage / state / alerting</text>
+  <text x="1560" y="925" text-anchor="end" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14" fill="#94a3b8">OpenCV AI Competition 2026 · vision-perception</text>
+</svg>

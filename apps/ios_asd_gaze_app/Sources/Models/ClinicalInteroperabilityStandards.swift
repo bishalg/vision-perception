@@ -108,8 +108,55 @@ public enum StandardCodingSystems {
             20: "80648-9"
         ]
 
-        public static func loincCode(forMCHATQuestionId id: Int) -> String? {
-            mchatQuestionCodes[id]
+        /// The LOINC item code for an M-CHAT-R/F question (FHIR-4). All 20 items have a code;
+        /// any other id is a programming error, so there is no invented fallback.
+        public static func loincCode(forMCHATQuestionId id: Int) -> String {
+            precondition((1...20).contains(id), "M-CHAT-R/F question ids are 1...20, got \(id)")
+            guard let code = mchatQuestionCodes[id] else {
+                preconditionFailure("missing LOINC item code for M-CHAT-R/F question \(id)")
+            }
+            return code
+        }
+    }
+
+    // MARK: - Local gaze engagement CodeSystem (FHIR-3, ADR-0003 decision 3)
+
+    /// Component codes for the gaze Observation. No standard LOINC/SNOMED code describes these
+    /// phone-app metrics, so they live in a local CodeSystem rather than a "closest" standard concept.
+    public enum GazeEngagement {
+        public static let system = FHIRNamespaces.gazeEngagementCodeSystem
+
+        public static let socialPreferenceScore = ClinicalCoding(
+            system: system, code: "social-preference-score", display: "Social visual preference score"
+        )
+        public static let eyeRegionDwellRatio = ClinicalCoding(
+            system: system, code: "eye-region-dwell-ratio", display: "Eye region dwell ratio"
+        )
+        public static let mouthRegionDwellRatio = ClinicalCoding(
+            system: system, code: "mouth-region-dwell-ratio", display: "Mouth region dwell ratio"
+        )
+        public static let validFrameRatio = ClinicalCoding(
+            system: system, code: "valid-frame-ratio", display: "Valid frame ratio"
+        )
+        public static let socialSmileIntensityMean = ClinicalCoding(
+            system: system, code: "social-smile-intensity-mean", display: "Social smile intensity mean"
+        )
+        public static let smileReactivityIndex = ClinicalCoding(
+            system: system, code: "smile-reactivity-index", display: "Smile reactivity index"
+        )
+        public static let flatAffectScore = ClinicalCoding(
+            system: system, code: "flat-affect-score", display: "Neutral expression score"
+        )
+        public static let surpriseScoreMean = ClinicalCoding(
+            system: system, code: "surprise-score-mean", display: "Surprise score mean"
+        )
+        public static let compositeEngagement = ClinicalCoding(
+            system: system, code: "composite-engagement", display: "Per-stimulus composite engagement score"
+        )
+
+        /// `clip-score-<stimulusId>`, displayed with the clip title.
+        public static func clipScore(stimulusId: String, title: String) -> ClinicalCoding {
+            ClinicalCoding(system: system, code: "clip-score-\(stimulusId)", display: title)
         }
     }
 
@@ -264,9 +311,15 @@ public struct OMOPMeasurementRecord: Sendable, Codable, Equatable {
     public let measurementTypeConceptId: Int
     public let valueAsNumber: Double
     public let unitConceptId: Int
+    /// Kept for decoding older rows; new rows never set a range (FHIR-6, no validated norms).
     public let rangeLow: Double?
     public let rangeHigh: Double?
     public let standardName: String
+    /// `measurement_source_value`: the local metric code, required when `measurementConceptId == 0`
+    /// (no verified standard concept, FHIR-6). `nil` on rows decoded from older exports.
+    public let measurementSourceValue: String?
+    /// `unit_source_value`, required when `unitConceptId == 0`.
+    public let unitSourceValue: String?
 
     public init(
         personId: String,
@@ -278,7 +331,9 @@ public struct OMOPMeasurementRecord: Sendable, Codable, Equatable {
         unitConceptId: Int,
         rangeLow: Double? = nil,
         rangeHigh: Double? = nil,
-        standardName: String
+        standardName: String,
+        measurementSourceValue: String? = nil,
+        unitSourceValue: String? = nil
     ) {
         self.personId = personId
         self.measurementConceptId = measurementConceptId
@@ -290,6 +345,8 @@ public struct OMOPMeasurementRecord: Sendable, Codable, Equatable {
         self.rangeLow = rangeLow
         self.rangeHigh = rangeHigh
         self.standardName = standardName
+        self.measurementSourceValue = measurementSourceValue
+        self.unitSourceValue = unitSourceValue
     }
 }
 
