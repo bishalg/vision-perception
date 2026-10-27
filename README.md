@@ -38,7 +38,7 @@
 
 Its primary capability is an unbiased, sub-pixel curvilinear ridge extraction engine grounded in differential geometry, scale-space Hessian tensor decomposition, and sub-pixel centerline tracking.
 
-Detection is the means, not the product: lines exist to produce **predictions** (palm readings, flood alerts). Humans stay in the loop — the app proposes, the human corrects fast, confirmations become training data. See [`docs/product_vision.md`](docs/product_vision.md).
+Detection is the means, not the product: lines exist to produce **actionable evidence** (such as automated glacier-collapse flood quantification and emergency alerts). Humans stay in the loop with automated verification gates.
 
 **Labeling desk:** CurvStudio — `pnpm studio` → http://localhost:8080/apps/annotation_studio/. Operator steps (draw → save → compare → retune): [`docs/STUDIO_GUIDE.md`](docs/STUDIO_GUIDE.md).
 
@@ -51,19 +51,15 @@ A foundational architectural invariant of this repository is that **the core mus
 1. **Agnostic Core (`core/`)**:
    - Operates purely on geometric, spatial, radiometric, and structural primitives: sub-pixel coordinates, curvilinear segments, topological junctions, Hessian eigenvalues, and image quality metrics.
    - Contains zero domain-specific heuristics, rules, or domain terminology.
-2. **Domain Packs Added Later (`domains/`)**:
-   - All application-specific logic is isolated in domain extension packs.
+2. **Domain Packs (`domains/`)**:
+   - All application-specific logic is isolated in modular domain extension packs.
    - Active and roadmap domain packs include:
-     - `domains/palm/`: Biometric hand landmark alignment and crease extraction.
-     - `domains/retina/`: Ophthalmology fundus micro-vessel segmentation, tortuosity index, and bifurcation tracking.
-     - `domains/asd_screening/`: Pediatric social visual attention screening (GeoPref, Face Scanning, ResearchKit/CareKit).
-     - `domains/driver_monitoring/`: Automotive in-cabin driver gaze, off-road distraction, and visual alertness.
-     - `domains/geospatial/`: Satellite SAR / optical river corridor morphology and flood boundary quantification.
+     - `domains/geospatial/`: Satellite optical & SAR river corridor morphology and flood boundary quantification (featured in OpenCV AI 2026).
      - `domains/surface_inspection/`: Micro-crack, scratch, and surface defect quality control.
      - `domains/floor_plan/`: Wall polygon and architectural junction extraction.
      - `domains/document_scanning/`: Quadrilateral edge rectification and text line analysis.
 3. **No Domain Pollution**:
-   - Palmistry, astrology, medical diagnostics, poultry feeding, driver alertness thresholds, etc., are **strictly forbidden** inside `core/`.
+   - Domain-specific heuristics and thresholds are **strictly forbidden** inside `core/`.
 
 ---
 
@@ -75,13 +71,13 @@ vision-perception/
 ├── core/            # Domain-agnostic C++ perception core (geometry, ridge engine, quality, evidence)
 │   ├── include/     # Public headers (curv/GeometryTypes.hpp, curv/pipeline/, curv/ridge/, ...)
 │   └── src/         # Core implementation units
-├── adapters/        # Technology & hardware adapters (OpenCV, OpenCV-DNN, C-ABI, JNI, Swift)
-├── domains/         # Domain extension packs (palm, geospatial, floor_plan, surface_inspection, retina, driver_monitoring, asd_screening; poultry, document_scanning planned)
-├── apps/            # Application executables (desktop_pipeline_demo)
-├── tools/           # Developer tools (curv_cli, hand_inspector_cli, synth_generator, evaluate, benchmark)
+├── adapters/        # Technology & hardware adapters (OpenCV, OpenCV-DNN, C-ABI, CCTV stream)
+├── domains/         # Domain extension packs (geospatial flood monitoring, surface inspection, etc.)
+├── apps/            # Application executables (cesium_viewer, desktop_pipeline_demo)
+├── tools/           # Developer tools (curv_cli, synth_generator, evaluate, benchmark)
 ├── tests/           # GoogleTest unit + regression suites (ctest)
 ├── models/          # Neural network manifests, schemas, and download orchestrators
-├── data/            # Sample fixtures, synthetic curves, and annotations
+├── data/            # Sample fixtures, Sentinel-2 disaster imagery, and ground truth annotations
 ├── third_party/     # Permissive third-party libraries and provenance records
 ├── docs/            # Architecture specifications, evidence schemas, and research
 │   └── research/    # Literature reviews, GitHub reuse matrices, benchmarks
@@ -144,8 +140,6 @@ Stage 1: Static Images ✅          ──►  Stage 2: Recorded Video ✅  ─�
 | :--- | :--- | :--- |
 | **Real-Time Flood (Nepal / Alpine)** | Sentinel-1 SAR + Sentinel-2 L2A + River CCTV | [`docs/flood_realtime_architecture.md`](docs/flood_realtime_architecture.md) |
 | **Highway & Urban CCTV** | Caltrans, Austin, TfL (HLS / JPEG snapshots) | [`docs/research/gods_eye_view_and_cctv_integration.md`](docs/research/gods_eye_view_and_cctv_integration.md) |
-| **Pediatric Social Attention & ASD Screening** | TrueDepth ARKit Gaze + Multi-Task Stimuli | [`domains/asd_screening/README.md`](domains/asd_screening/README.md) |
-| **Retinal Micro-Vascular Biometrics** | Fundus Photography (Green Channel CLAHE) | [`domains/retina/README.md`](domains/retina/README.md) |
 | **System Spatial Architecture** | Multi-tier pipeline & 2D-to-3D viewshed projection | [`docs/research/realtime_spatial_perception_architecture.md`](docs/research/realtime_spatial_perception_architecture.md) |
 | **Test Fixtures & Local POC** | Curated reference datasets for rapid offline dev | [`data/fixtures/README.md`](data/fixtures/README.md) |
 | **Research Index** | High-density discovery index for humans & AI | [`docs/research/README.md`](docs/research/README.md) |
@@ -159,8 +153,8 @@ Stage 1: Static Images ✅          ──►  Stage 2: Recorded Video ✅  ─�
 - [x] Milestone 2: CMake C++20/OpenCV skeleton with strict warnings and GoogleTest
 - [x] Milestone 3: Core interfaces, geometry, and immutable evidence model
 - [x] Milestone 4: Minimal image pipeline (Steger sub-pixel ridges + Laplacian quality gate)
-- [x] Milestone 5: Overlay rendering, JSON evidence reports, CLI tools (`curv_cli`, `hand_inspector_cli`)
-- [x] Stable C-ABI (`libcurv_capi`) with JNI (Android) and Swift (iOS) bindings source
+- [x] Milestone 5: Overlay rendering, JSON evidence reports, CLI tools (`curv_cli`)
+- [x] Stable C-ABI (`libcurv_capi`)
 - [x] **Milestone 6: Tests & evaluation tooling** — GitHub Actions CI (format, Ubuntu/macOS `-Werror` builds, ASan/UBSan, 100% line+branch coverage gate), clang-format/clang-tidy gates, `synth_generator` + `evaluate` RMSE < 0.1 px accuracy gate, `benchmark` latency profiles at 720p/1080p/4K (`docs/benchmarks.md`)
 - [x] **Milestone 7: Geospatial Flood Perception Pack (OpenCV AI Competition 2026)** — Rapid glacier-collapse flood quantification in Nepal (Lende Khola / Bhote Koshi) using Sentinel-2 L2A 10m imagery (+88.4% flood signature surge, +121.1% channel widening, dual controls passing; see [`docs/flood_nepal_2026.md`](docs/flood_nepal_2026.md))
 - [x] **Milestone 8: AWS Cloud Architecture & Special Award Targets** — AWS CDK v2 IaC (`aws_infra/`), two-tool Bedrock Agentic Vision loop (`getFloodEvidence` $\to$ `dispatchFloodAlert`), DynamoDB idempotency gate, dedicated S3 audit bucket, SQS fallback queue, and COOL on AWS Graviton3 benchmark suite (see [`docs/devpost_submission.md`](docs/devpost_submission.md) and [`docs/aws_benchmark_guide.md`](docs/aws_benchmark_guide.md))
@@ -168,27 +162,6 @@ Stage 1: Static Images ✅          ──►  Stage 2: Recorded Video ✅  ─�
 - [x] **Milestone 10: Phase 2 Recorded Video Pipeline** — `CctvVideoSource` + `video_pipeline_demo` (quality + Steger annotated AVI/MP4), ring-buffer stream adapter foundation, offline `data/fixtures/cctv_video/` clip
 - [x] **Milestone 11: Phase 3 Live HTTP Snapshot Stream** — `CctvHttpSnapshot` + `live_snapshot_demo` with local cache/proxy fallback for presentation-safe demos
 - [x] **Milestone 12: Phase 4 CesiumJS 3D Digital Twin** — `apps/cesium_viewer` (Vite + Cesium, OSM tiles) + `tools/geojson_exporter.py` frustum markers and still panels
-- [x] **Milestone 13: Retinal & Pediatric ASD Screening Perception Packs** — Steger fundus micro-vessel segmentation (`domains/retina/`), core temporal oculomotor dynamics (`core/temporal/`: I-VT, I-DT, DTW), and pediatric social visual attention pack (`domains/asd_screening/`) with ResearchKit and CareKit data schemas. Specifications:
-  - Architecture: [`domains/asd_screening/docs/ARCHITECTURE.md`](domains/asd_screening/docs/ARCHITECTURE.md)
-  - Stimuli & Dynamic AOIs: [`domains/asd_screening/docs/STIMULI_SPEC.md`](domains/asd_screening/docs/STIMULI_SPEC.md)
-  - Data Collection & Ethics: [`domains/asd_screening/docs/ETHICS_PROTOCOL.md`](domains/asd_screening/docs/ETHICS_PROTOCOL.md)
-  - ML & Validation Roadmap: [`domains/asd_screening/docs/ML_ROADMAP.md`](domains/asd_screening/docs/ML_ROADMAP.md)
-  - Literature Survey & 12-Phase Plan: [`domains/asd_screening/docs/LITERATURE.md`](domains/asd_screening/docs/LITERATURE.md)
-- [ ] **Milestone 14: Phase 5 Flood Alert Production Demo** — scheduled ingest → flood heuristics → alert banner on twin
-- [ ] Next phase: mobile packaging remains parallel track
-
----
-
-## 7. Mobile Apps (parallel track)
-
-| App | What it does today |
-| :--- | :--- |
-| **Palm reader** (`apps/ios_palm_app`) | Still / **3D Orbit** / Close-Up / Fingertips capture modes. The guided 6-angle orbit scan builds a mount-topography map with automatic depth sourcing — hardware LiDAR (`orbit_depth_v1`) → metric parallax in mm (`orbit_metric_v1`) → tilt fallback — analysed on-device via `curv_analyze_orbit_session_json`, with human-in-the-loop crease correction feeding the Samudrika reading. |
-| **Pediatric gaze collector** (`apps/ios_asd_gaze_app`) | TrueDepth `ARFaceAnchor` 3D face-mesh eye tracking at 60 Hz (screen-raycast gaze + 52 FACS affect metrics, zero raw video stored). Onboarding + `ChildProfile`, Standard-30 s / Comprehensive-60 s stimulus batteries, offline-first stimulus manager with download gate, procedural oculomotor stimuli, 5-point bubble calibration, biomarker detail + risk-stratification views, replay heatmaps, doctor PDF reports, CareKit/ResearchKit loop. |
-| Shared camera chrome | `apps/mobile_overlay` — domain-agnostic Liquid Glass HUD, orbit guidance state machine, palm/vastu plugins (iOS SwiftPM + Android library). |
-
-Details: [`apps/ios_palm_app/README.md`](apps/ios_palm_app/README.md),
-[`apps/ios_asd_gaze_app/README.md`](apps/ios_asd_gaze_app/README.md),
-[`apps/mobile_overlay/README.md`](apps/mobile_overlay/README.md).
+- [x] **Milestone 13: Phase 5 Flood Alert Production Demo** — scheduled ingest → flood heuristics → alert banner on twin with zero-credential reproduction gate (`scripts/validate_hackathon_readiness.sh`)
 
 
