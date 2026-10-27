@@ -15,6 +15,6 @@ Thank you for reviewing PalmReader. Below is a guide on how to test the applicat
 - Tap "Samudrika Insights" to view the authentic Vedic hand analysis, finger ratios, and planetary mount interpretations.
 
 3. CONTACT:
-If you experience any issues during review, please contact Bishal Ghimire at bishal.ghimire@gmail.com or +977-9802030896.
+If you experience any issues during review, please contact the development team at review@curv.engineering.
 
 Thank you!

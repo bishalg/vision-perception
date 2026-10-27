@@ -1,5 +1,7 @@
 # Palm Domain Pack (`org.curv.domain.palm`)
 
+> **Maintenance Mode**: This component is in maintenance mode since 2026-10-27. No active feature development; hygiene and security fixes only. See [`docs/roadmap_2026q4/06_palm_maintenance_roadmap.md`](../../docs/roadmap_2026q4/06_palm_maintenance_roadmap.md).
+
 Interprets extracted sub-pixel ridges as anatomical palm creases over the
 canonical 512x512 upright palm patch. Implements `IDomainPack`; strictly no
 palm logic ever enters `core/`.

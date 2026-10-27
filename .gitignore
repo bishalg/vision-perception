@@ -32,9 +32,11 @@
 /eval_gate_tmp/
 /output/
 data/fixtures/cctv/http_cache/
-data/samples/*_Bishal*
-data/samples/*_bishal*
-data/samples/*_full_overlay.png
+data/samples/**/*_Bishal*
+data/samples/**/*_bishal*
+data/samples/**/01_left_bishal*
+data/samples/**/02_right_bishal*
+data/samples/**/*_full_overlay.png
 
 # ------------------------------------------------------------------------------
 # CMake & Build Directories
@@ -279,6 +281,10 @@ pnpm-lock.yaml
 # Fastlane
 apps/ios_palm_app/fastlane/.env
 apps/ios_palm_app/fastlane/README.md
+apps/ios_palm_app/fastlane/metadata/review_information/*
+!apps/ios_palm_app/fastlane/metadata/review_information/.gitkeep
+!apps/ios_palm_app/fastlane/metadata/review_information/notes.txt
+!apps/ios_palm_app/fastlane/.env.example
 apps/ios_palm_app/fastlane/report.xml
 apps/ios_palm_app/fastlane/Preview.html
 apps/ios_palm_app/fastlane/screenshots/**/*.png

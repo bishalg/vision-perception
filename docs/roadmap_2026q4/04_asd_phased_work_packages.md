@@ -40,7 +40,7 @@
 | WP-D.4 | Synthetic session generator shared by seed script and tests | 1 | I | todo | |
 | WP-D.5 | ML roadmap refresh: what an attention classifier would need (n, labels, validation plan) — doc only | 3 | A | backlog | |
 | WP-D.6 | Decide/Link C++ `AsdBiomarkerPack` into kit via xcframework, or retire the claim | 4 | A | backlog | low value |
-| WP-E.1 | Pitch/deck re-base to non-diagnostic reality; aspirational section | 1 | I | todo | |
+| WP-E.1 | Pitch/deck re-base to non-diagnostic reality; aspirational section | 1 | I | done | Re-based to observation diary, 6 metrics, 2027 aspirational roadmap |
 | WP-E.2 | Org Apple account, bundle id, publisher domain, privacy policy + support pages live | 2 | owner + I | todo | H-6 |
 | WP-E.3 | Docs drift sweep (iOS 18, Keychain not SE, names, screenshots) | 1 | I | todo | |
 | WP-E.4 | M-CHAT licence outcome → keep gate or enable | 3 | owner | todo | H-7 |

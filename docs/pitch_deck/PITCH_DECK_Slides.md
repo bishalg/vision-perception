@@ -16,9 +16,9 @@ footer: "Confidential — Pre-Seed"
 ---
 
 ## Slide 1: Title
-# Curv ASD Gaze Screening
-### First FDA-grade autism screening on a parent's iPhone
-**30 seconds · At home · Zero video recorded · FHIR-ready**
+# Curv ASD Gaze Observation Diary
+### Mobile autism observation diary on a parent's iPhone
+**30 seconds · At home · Zero video recorded · Clinician & FHIR export**
 
 **Bishal Ghimire, Founder & CTO**  
 bishal@curv.engineering | `github.com/bishalg/vision-perception`  
@@ -46,7 +46,7 @@ bishal@curv.engineering | `github.com/bishalg/vision-perception`
 | **Paper M-CHAT** | Portal/paper | 5 min | Binary caregiver report | ~$50 | Manual |
 | **EarliPoint (FDA)** | Clinic tablet | 12 min | 12 biomarkers | ~$300 | Proprietary |
 | **ADOS-2 (Gold Std)** | Specialist clinic | 45–60 min | Clinician judgment | ~$2,000 | Manual |
-| **Curv (This)** | **Home iPhone** | **30–60 sec** | **16 continuous biomarkers** | **~$0 marginal** | **FHIR R4 + SMART** |
+| **Curv (This)** | **Home iPhone** | **30–60 sec** | **6 engagement indices** | **~$0 marginal** | **FHIR R4 + SMART** |
 
 ---
 
@@ -81,27 +81,27 @@ bishal@curv.engineering | `github.com/bishalg/vision-perception`
 | **EarliPoint** (FDA De Novo) | 1,089 | 81.9% | 89.9% | 0.92 |
 | **GeoPref Meta-Analysis** (eLife 2019) | 1,200+ | — | — | 0.85–0.94 |
 
-> Our 16 biomarkers map 1:1 to these validated constructs. **IRB multi-site pilot (n=500) launching Q4 2026.**
+> Grounded in published engagement literature (GeoPref, social dwell). **Clinical pilot readiness for research partners.**
 
 ---
 
 ## Slide 7: Privacy — Built In, Not Bolted On
 | Principle | Implementation |
 |-----------|----------------|
-| **Zero Raw Video** | Frames → volatile RAM only; 60 Hz numerical telemetry encrypted (AES-GCM-256, Secure Enclave) |
+| **Zero Raw Video** | Frames → volatile RAM only; 60 Hz numerical telemetry encrypted (AES-GCM-256, Keychain) |
 | **De-Identified by Default** | Study token `child-<uuid>`; no name/DOB/PHI in research vault |
 | **Caregiver Control** | One-tap consent withdrawal; local delete; no forced cloud sync |
-| **IRB-Ready** | Protocol #2026-088; COPPA/HIPAA aligned; ResearchKit consent flow |
+| **Consent Architecture** | COPPA-aligned consent flow; ResearchKit architecture ready for institutional IRB |
 | **Audit Trail** | Cryptographic session hash (`payloadSha256`) + immutable local log |
 
-**HIPAA / COPPA / 21 CFR Part 11 aligned from day one.**
+**Privacy & consent aligned architecture.**
 
 ---
 
 ## Slide 8: Interoperability — Speaks Your EHR's Language
 ```
 FHIR R4 Resources Generated Per Session:
-├── Observation (16 biomarkers, LOINC/SNOMED coded)
+├── Observation (6 engagement metrics, LOINC/SNOMED coded)
 ├── QuestionnaireResponse (M-CHAT-R/F, LOINC 80628-1 panel)
 └── DocumentReference (PDF report, base64, LOINC 34108-1)
 ```
@@ -156,17 +156,20 @@ FHIR R4 Resources Generated Per Session:
 
 | Use of Funds | % |
 |--------------|---|
-| IRB multi-site validation (n=500) | 35% |
-| FDA pre-sub / De Novo preparation | 25% |
-| Epic/Cerner sandbox + integration engineering | 20% |
-| 2 senior hires (iOS, Clinical Ops) | 15% |
-| Operations / legal / compliance | 5% |
+| EHR sandbox + integration engineering | 35% |
+| Research partner pilot studies | 30% |
+| 2 senior engineering hires (iOS, Full-Stack) | 25% |
+| Operations / legal / compliance | 10% |
 
-### 18-Month Series A Milestones
-- ✅ FDA submission package ready
-- ✅ 3 health system contracts signed
-- ✅ 5,000 screened families, 2 peer-reviewed publications
+### 18-Month Target Milestones
+- ✅ 3 health system sandbox pilots signed
+- ✅ 5,000 screened families across pilot sites
 - ✅ $500K ARR
+
+### Aspirational Roadmap (2027+, Subject to Partner Validation)
+- Formal clinical accuracy trial with research institutions
+- FDA Pre-Sub / De Novo submission package
+- SOC 2 Type II audit
 
 ---
 
@@ -175,9 +178,9 @@ FHIR R4 Resources Generated Per Session:
 |------|----------|
 | **TrueDepth 3D gaze on consumer hardware** | Only team with ARKit 60 Hz + validated stimuli pipeline |
 | **FHIR R4 + SMART on FHIR native** | Zero middleware; direct Epic/Cerner ingestion |
-| **Zero-video privacy architecture** | AES-GCM-256 + Secure Enclave; no video ever touches disk |
-| **Clinical-grade stimuli library** | GeoPref, Face Scanning, Oculomotor — dynamic AOIs, 18 languages |
-| **Full-stack ownership** | C++ core → iOS → FHIR → EHR — no vendor dependencies |
+| **Zero-video privacy architecture** | AES-GCM-256 + Keychain; no video ever touches disk |
+| **Stimuli library** | GeoPref, Face Scanning, Oculomotor — dynamic AOIs, multi-lingual design |
+| **Full-stack ownership** | Perception core → iOS → FHIR → EHR — no vendor dependencies |
 
 ---
 
@@ -185,19 +188,18 @@ FHIR R4 Resources Generated Per Session:
 | Role | Name | Signal |
 |------|------|--------|
 | **Founder / CTO** | **Bishal Ghimire** | 10+ yrs C++ perception, OpenCV, ARKit, FHIR — built entire stack solo |
-| **Clinical Advisor** | **Dr. [Name]** | Duke ASD Center, SenseToKnow co-investigator |
-| **Regulatory Advisor** | **[Name]** | Former FDA CDRH, 21 CFR Part 11, DHT framework author |
-| **Commercial Advisor** | **[Name]** | Epic/Cerner integration lead, digital health reimbursement |
+| **Clinical Advisor** | **TBD** | Pediatric neurodevelopment |
+| **Health Systems Advisor** | **TBD** | EHR integration & health system pilots |
 
 ---
 
 ## Slide 15: Vision — Every Toddler Screened, Every Clinician Informed
-> **By 2030: Universal, objective, at-home developmental screening — as routine as a hearing test.**
+> **By 2030: Universal, objective, at-home developmental observation — as routine as a hearing check.**
 
 | Year | Goal |
 |------|------|
-| 2026 | IRB pilots, FDA pre-sub |
-| 2027 | FDA clearance, 3 health systems, CPT reimbursement |
+| 2026 | Health system sandbox pilots, observation diary launch |
+| 2027 | Clinical validation studies, FDA pre-sub path (aspirational) |
 | 2028 | 50 health systems, 100k screenings/yr |
 | 2030 | **Universal screening standard of care** |
 
@@ -237,18 +239,18 @@ graph TD
 | Express 30s | 4 | 7–8s each | GeoPref split, peekaboo, name call, rhyme |
 | Comprehensive 60s | 8 | 7–9s each | + joint attention, slapstick, gaze follow, reciprocal play |
 
-### A3: Regulatory Roadmap
+### A3: Aspirational Regulatory Path (Targeting 2027+)
 | Quarter | Milestone |
 |---------|-----------|
-| Q4 2026 | FDA Q-Sub / Pre-Sub meeting |
-| Q1 2027 | De Novo / 510(k) submission |
-| Q3 2027 | FDA clearance decision |
-| 2028 | Post-market surveillance + real-world evidence |
+| 2027 | Formal clinical accuracy validation with partner sites |
+| 2027 | FDA Q-Sub / Pre-Sub meeting |
+| 2028 | De Novo / 510(k) submission package |
+| 2028+ | Real-world evidence & post-market surveillance |
 
 ### A4: Competitive Landscape Deep Dive
-| Company | Modality | FDA Status | EHR Integration | Price |
-|---------|----------|------------|-----------------|-------|
-| **Curv** | iPhone TrueDepth | Pre-sub | **FHIR R4 + SMART** | ~$0 marginal |
+| Company | Modality | Status | EHR Integration | Price |
+|---------|----------|--------|-----------------|-------|
+| **Curv** | iPhone TrueDepth | Observation diary / Research export | **FHIR R4 + SMART** | ~$0 marginal |
 | EarliPoint | Custom tablet | **De Novo cleared** | Proprietary API | ~$300/session |
 | LinusBio | Hair strand epigenetics | Research | None | ~$500/test |
 | Cognoa | Parent video + questionnaire | **De Novo cleared** | Limited | ~$200/session |

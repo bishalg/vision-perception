@@ -40,15 +40,15 @@ Build: CMake presets (`release`, `debug`, `asan`, `tsan`, `coverage`), GoogleTes
 | # | Action | Owner / agent | Effort | Status |
 |---|---|---|---|---|
 | U1 | Decide Nebius (H-1). If skipping, mark `hackathons/NEBIUS_NVIDIA_2026.md` as *not pursued* so agents stop planning for it. | Owner | 10 min | **Done (Skipped)** |
-| U2 | Remove `review_information/` demo credentials + phone/email from tree; rotate the demo password; replace with `.gitkeep` + `.env.example` pattern. Decide H-2 whether to rewrite history (`git filter-repo`) — recommended **yes** for the password file only, after judging ends 2026-11-09 to avoid breaking judge links. | `implementer` | 1 h | todo |
-| U3 | Untrack `data/samples/mobile_captures/*bishal*` (keep local), fix `.gitignore` to `data/samples/**/*_bishal*`, add a 1 MB `data/samples/README.md` policy. Replace with a synthetic or consented sample if a fixture is needed for tests. | `implementer` | 1 h | todo |
-| U4 | Replace fictional IRB/PI strings in `tools/asd_research_server.py` with env-driven config (empty by default). Remove unsubstantiated regulatory claims from `docs/pitch_deck/*` or move them to an explicit "aspirational roadmap" section with "not yet true" labels. | `implementer` | 2 h | todo |
-| U5 | Add `.gitignore` entries for `apps/ios_asd_gaze_app/build-sim/`, `fastlane/report.xml`, `*.profraw` already covered; confirm `git status` clean. | `implementer` | 15 min | todo |
+| U2 | Remove `review_information/` demo credentials + phone/email from tree; rotate the demo password; replace with `.gitkeep` + `.env.example` pattern. Decide H-2 whether to rewrite history (`git filter-repo`) — recommended **yes** for the password file only, after judging ends 2026-11-09 to avoid breaking judge links. | `implementer` | 1 h | **Done** |
+| U3 | Untrack `data/samples/mobile_captures/*bishal*` (keep local), fix `.gitignore` to `data/samples/**/*_bishal*`, add a 1 MB `data/samples/README.md` policy. Replace with a synthetic or consented sample if a fixture is needed for tests. | `implementer` | 1 h | **Done** |
+| U4 | Replace fictional IRB/PI strings in `tools/asd_research_server.py` with env-driven config (empty by default). Remove unsubstantiated regulatory claims from `docs/pitch_deck/*` or move them to an explicit "aspirational roadmap" section with "not yet true" labels. | `implementer` | 2 h | **Done** |
+| U5 | Add `.gitignore` entries for `apps/ios_asd_gaze_app/build-sim/`, `fastlane/report.xml`, `*.profraw` already covered; confirm `git status` clean. | `implementer` | 15 min | **Done** |
 | U6 | Pick the demo build configuration (H-3): **Release-equivalent with the traffic-light flag only** (recommended) vs Debug with research classifier. Record in `01 §3`. | Owner | 15 min | **Done (Release-equivalent flag only)** |
 | U7 | Run the manual device checklist on a real TrueDepth iPhone (acceptance scenarios 1, 10–16, 19 in `docs/spec/modules/asd-gaze-app-store-readiness/acceptance.md`). Log results in `01 §6`. | Owner + `implementer` for fixes | 3 h | todo |
-| U8 | Stand up backend v0 skeleton (WP-B.1) so the demo can show data landing in a dashboard. | `senior-implementer` | 2 days | todo |
+| U8 | Stand up backend v0 skeleton (WP-B.1) so the demo can show data landing in a dashboard. | `senior-implementer` | 2 days | in-progress |
 | U9 | Make `ci.yml` green or explicitly waive failing jobs with a dated comment, so new ASD work has a trustworthy signal. | `implementer` | 0.5 day | todo |
-| U10 | Freeze palm: add a banner to `apps/ios_palm_app/README.md` and `domains/palm/README.md` ("maintenance mode since 2026-10-27; see docs/roadmap_2026q4/06"). | `implementer` | 10 min | todo |
+| U10 | Freeze palm: add a banner to `apps/ios_palm_app/README.md` and `domains/palm/README.md` ("maintenance mode since 2026-10-27; see docs/roadmap_2026q4/06"). | `implementer` | 10 min | **Done** |
 
 ## 4. Human decisions register (H-n)
 

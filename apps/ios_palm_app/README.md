@@ -1,5 +1,7 @@
 # iOS Palm Scanner (`apps/ios_palm_app`)
 
+> **Maintenance Mode**: This component is in maintenance mode since 2026-10-27. No active feature development; hygiene and security fixes only. See [`docs/roadmap_2026q4/06_palm_maintenance_roadmap.md`](../../docs/roadmap_2026q4/06_palm_maintenance_roadmap.md).
+>
 > Helper, not oracle: the app proposes lines, you correct them fast
 > (**Edit** → drag/add/remove/relabel), then **Use these lines for reading**.
 > Only confirmed geometry feeds the prediction. Corrections become training

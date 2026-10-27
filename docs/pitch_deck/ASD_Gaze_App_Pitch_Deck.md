@@ -42,15 +42,15 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  TRUE DEPTH HARDWARE       │  REGULATORY TAILWIND               │
-│  • 60 Hz 3D face mesh      │  • FDA Digital Health Tech (DHT)   │
-│  • Sub-mm gaze accuracy    │    framework (Dec 2023)            │
-│  • On-device, no cloud     │  • 21 CFR Part 11 audit ready      │
+│  TRUE DEPTH HARDWARE       │  INTEROPERABILITY FOCUS            │
+│  • 60 Hz 3D face mesh      │  • FHIR R4 & SMART on FHIR         │
+│  • Sub-mm gaze tracking    │    paediatric clinic workflows     │
+│  • On-device, no cloud     │  • Zero-raw-video local encryption │
 ├────────────────────────────┼────────────────────────────────────┤
-│  CLINICAL VALIDATION       │  MARKET PULL                       │
-│  • Duke SenseToKnow        │  • 4M births/year in US            │
-│  • FDA-cleared EarliPoint  │  • Telehealth reimbursement (CPT)  │
-│  • 16 biomarkers, peer-reviewed           │  • Employer/payer ASD mandates    │
+│  LITERATURE-BACKED         │  MARKET PULL                       │
+│  • GeoPref & Social Dwell  │  • 4M births/year in US            │
+│  • Fixation dynamics       │  • Telehealth reimbursement (CPT)  │
+│  • 6 engagement indices    │  • Employer/payer ASD mandates     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -94,11 +94,11 @@ Clips: GeoPref split-screen, peekaboo, name calling, rhyme play, slapstick humor
 |---------|---------------|------------------|--------------|-------------------|
 | **Setting** | Home (iPhone) | Clinic (tablet) | Paper/portal | Specialist clinic |
 | **Time** | 30–60 sec | 12 min | 5–10 min | 45–60 min |
-| **Objectivity** | 16 continuous biomarkers | 12 biomarkers | Binary caregiver report | Clinician judgment |
+| **Objectivity** | 6 engagement indices | 12 biomarkers | Binary caregiver report | Clinician judgment |
 | **Age Range** | 12–60 months | 16–30 months | 16–30 months | 12+ months |
 | **Cost/Session** | ~$0 (marginal) | ~$300 | ~$50 | ~$2,000 |
 | **EHR Integration** | FHIR R4 + SMART | Proprietary | Manual entry | Manual entry |
-| **Regulatory Path** | FDA DHT / SaMD | De Novo cleared | N/A | N/A |
+| **Intended Use** | Observation diary / Research export | De Novo cleared | N/A | N/A |
 
 **Unique moat**: Only solution combining **TrueDepth 3D gaze + validated stimuli + FHIR interoperability + zero-video privacy** on consumer hardware.
 
@@ -108,10 +108,10 @@ Clips: GeoPref split-screen, peekaboo, name calling, rhyme play, slapstick humor
 
 | Principle | Implementation |
 |-----------|----------------|
-| **Zero Raw Video** | Frames processed in volatile RAM; only 60 Hz numerical telemetry encrypted (AES-GCM-256, Secure Enclave) |
+| **Zero Raw Video** | Frames processed in volatile RAM; only 60 Hz numerical telemetry encrypted (AES-GCM-256, Keychain) |
 | **De-Identified by Default** | Study token (`child-<uuid>`); no name/DOB/PHI in research vault |
 | **Caregiver Control** | One-tap consent withdrawal; local delete; no forced cloud sync |
-| **IRB-Ready** | Protocol #2026-088; COPPA/HIPAA aligned; ResearchKit consent flow |
+| **Consent Architecture** | COPPA-aligned consent design; ResearchKit flow ready for institutional IRB |
 | **Audit Trail** | Cryptographic session hash (`payloadSha256`) + immutable local log |
 
 ---
@@ -141,7 +141,7 @@ Clips: GeoPref split-screen, peekaboo, name calling, rhyme play, slapstick humor
 | Core perception engine (C++20, OpenCV) | ✅ Shipped | `core/`, 100% test coverage |
 | iOS TrueDepth gaze pipeline (ARKit, 60 Hz) | ✅ Shipped | `domains/asd_screening/ios/` |
 | Stimulus library (GeoPref, Face Scanning, Oculomotor) | ✅ Shipped | 8 clinical clips, dynamic AOIs |
-| Onboarding + progressive CDN download | ✅ Shipped | 4-step flow, 18 languages |
+| Onboarding + progressive CDN download | ✅ Shipped | 4-step flow, English with Hindi & Nepali localization in progress |
 | M-CHAT-R/F engine + Follow-Up flag | ✅ Shipped | 20 items, official polarity |
 | CareKit + ResearchKit longitudinal tracking | ✅ Shipped | Tasks, diary, milestones, sync |
 | **FHIR R4 + SMART on FHIR (PKCE)** | ✅ **Just completed** | Observation, QuestionnaireResponse, DocumentReference |
@@ -155,9 +155,8 @@ Clips: GeoPref split-screen, peekaboo, name calling, rhyme play, slapstick humor
 | Role | Name | Background |
 |------|------|------------|
 | Founder / CTO | **Bishal Ghimire** | C++ perception systems, OpenCV, ARKit, FHIR |
-| Clinical Lead (Advisor) | **Dr. [Name]** | Pediatric neurodevelopment, Duke ASD Center |
-| Regulatory Advisor | **[Name]** | FDA SaMD, 21 CFR Part 11, DHT framework |
-| Commercial Advisor | **[Name]** | Epic/Cerner integration, digital health reimbursement |
+| Clinical Advisor | **TBD** | Pediatric neurodevelopment |
+| Health Systems Advisor | **TBD** | EHR integration & health system pilots |
 
 ---
 
@@ -165,13 +164,17 @@ Clips: GeoPref split-screen, peekaboo, name calling, rhyme play, slapstick humor
 
 | Round | Amount | Use of Funds | Valuation Cap |
 |-------|--------|--------------|---------------|
-| **Pre-Seed** | **$750K** | IRB multi-site validation (n=500), FDA pre-sub, Epic/Cerner sandbox, 2 senior hires (iOS, Clinical Ops) | **$8M SAFE** |
+| **Pre-Seed** | **$750K** | EHR integration pilots, clinical research partnerships, 2 senior hires (iOS, Full-Stack) | **$8M SAFE** |
 
 **Runway**: 18 months to Series A milestones:
-- FDA De Novo / 510(k) submission package ready
-- 3 health system contracts signed
-- 5,000 screened families, 2 peer-reviewed publications
+- 3 health system sandbox pilots signed
+- 5,000 screened families across pilot sites
 - $500K ARR
+
+### Aspirational Milestones (2027+, Subject to Partner Validation)
+- Multi-site clinical accuracy study with academic partner
+- FDA Pre-Sub / De Novo submission package
+- SOC 2 Type II audit
 
 ---
 
@@ -205,15 +208,15 @@ Clips: GeoPref split-screen, peekaboo, name calling, rhyme play, slapstick humor
 - **Mobile Overlay Kit** (shared iOS/Android): `apps/mobile_overlay/`
 - **Palm Domain** (separate product line): `domains/palm/`
 
-### Compliance Checklist
+### Compliance & Privacy Checklist
 - [x] Zero raw video storage
-- [x] AES-GCM-256 + Secure Enclave
-- [x] 21 CFR Part 11 audit trail (`payloadSha256`)
+- [x] AES-GCM-256 + Keychain encryption
+- [x] Cryptographic session audit trail (`payloadSha256`)
 - [x] FHIR R4 + USCDI v3/v4/v5 alignment
 - [x] SMART on FHIR PKCE (no client secret)
-- [x] COPPA/HIPAA aligned consent flow
-- [ ] FDA Q-Sub / pre-submission meeting (Q4 2026)
-- [ ] SOC 2 Type II (Year 2)
+- [x] COPPA-aligned consent flow architecture
+- [ ] FDA Q-Sub / pre-submission meeting (Aspirational 2027)
+- [ ] SOC 2 Type II (Aspirational 2027)
 
 ---
 

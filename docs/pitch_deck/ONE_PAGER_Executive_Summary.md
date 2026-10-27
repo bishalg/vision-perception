@@ -1,7 +1,7 @@
 # Curv ASD Gaze Screening — One-Page Executive Summary
 
 ## The Hook
-**First FDA-grade autism screening that runs on a parent's iPhone — 30 seconds, at home, zero video recorded, results speak your EHR's language.**
+**Mobile autism observation diary and structured gaze engagement analysis on a parent's iPhone — 30 seconds, at home, zero video recorded, structured clinician export.**
 
 ---
 
@@ -14,14 +14,14 @@
 ---
 
 ## Solution
-**Curv ASD Gaze Screening App** — uses the iPhone's TrueDepth camera (already in 500M+ devices) as a clinical-grade eye tracker.
+**Curv ASD Gaze Observation App** — uses the iPhone's TrueDepth camera (already in 500M+ devices) for structured gaze engagement capture.
 
 | What It Does | How |
 |--------------|-----|
-| **Measures 16 digital biomarkers** in 30–60 sec | Social preference, eye dwell, saccadic latency, smile contagion, flat affect, joint attention |
-| **Runs M-CHAT-R/F** (20-item caregiver survey) | Instant scoring + Follow-Up flag per protocol |
+| **Measures 6 engagement indices** in 30–60 sec | Social preference, eye dwell, saccadic latency, smile contagion, flat affect, joint attention |
+| **Runs M-CHAT-R/F** (20-item caregiver survey) | Caregiver observation capture + Follow-Up scoring per protocol |
 | **Generates clinician PDF + FHIR data** | 1-page report + Observation/QuestionnaireResponse/DocumentReference for Epic/Cerner |
-| **Privacy-first** | Zero raw video — only encrypted numerical telemetry (AES-GCM-256, Secure Enclave) |
+| **Privacy-first** | Zero raw video — only encrypted numerical telemetry (AES-GCM-256, Keychain) |
 | **At home, on consumer hardware** | No clinic visit, no $20K device, no specialist needed to administer |
 
 ---
@@ -31,7 +31,7 @@
 |---|------|------------------|--------------|--------|
 | **Setting** | Home (iPhone) | Clinic tablet | Paper/portal | Specialist |
 | **Time** | 30–60 sec | 12 min | 5–10 min | 45–60 min |
-| **Objectivity** | 16 continuous biomarkers | 12 biomarkers | Binary report | Clinician judgment |
+| **Objectivity** | 6 continuous engagement indices | 12 biomarkers | Binary report | Clinician judgment |
 | **Cost/Session** | ~$0 marginal | ~$300 | ~$50 | ~$2,000 |
 | **EHR Integration** | **FHIR R4 + SMART** | Proprietary | Manual | Manual |
 
@@ -60,19 +60,23 @@
 
 ---
 
-## The Ask
+## The Ask & Roadmap
 **$750K Pre-Seed (SAFE, $8M cap)** → 18 months to Series A milestones:
-- FDA pre-sub / De Novo package ready
-- 3 health system contracts (Epic/Cerner live)
-- 5,000 screened families, 2 peer-reviewed publications
+- 3 health system contracts (Epic/Cerner sandbox pilots)
+- 5,000 screened families across pilot sites
 - $500K ARR
+
+### Aspirational Milestones (2027+, Subject to Partner Validation)
+- Formal clinical validation study with research partners
+- FDA pre-sub / De Novo submission preparation
+- Peer-reviewed multi-site diagnostic accuracy publication
 
 ---
 
-## Why Us
+## Team
 - **Bishal Ghimire** (Founder/CTO): 10+ years C++ perception, OpenCV, ARKit, FHIR — built the entire stack
-- **Clinical Advisors**: Duke ASD Center, FDA SaMD expertise
-- **Technical Moat**: Only team with TrueDepth 3D gaze + validated stimuli + FHIR + zero-video privacy on consumer hardware
+- **Advisory Focus**: Pediatric neurodevelopment and digital health interoperability
+- **Technical Moat**: TrueDepth 3D gaze + validated stimuli + FHIR + zero-video privacy on consumer hardware
 
 ---
 

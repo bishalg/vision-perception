@@ -488,13 +488,13 @@ class ResearchServerHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/api/v1/research/study-info":
             self._send_json(200, {
-                "status": "active",
-                "study_identifier": "CURV-ASD-GAZE-2026",
-                "irb_protocol_id": "IRB-ASD-2026-088",
-                "institution": "Center for Pediatric Neurodevelopment & Vision Research",
-                "principal_investigator": "Dr. Elena Vasquez, MD, PhD",
-                "consent_version": "v1.3-IRB2026",
-                "required_instruments": ["ORKConsentReviewStep", "M-CHAT-R/F", "ORKActiveStepResult"],
+                "status": os.environ.get("ASD_STUDY_STATUS", "active"),
+                "study_identifier": os.environ.get("ASD_STUDY_IDENTIFIER", ""),
+                "irb_protocol_id": os.environ.get("ASD_IRB_PROTOCOL_ID", ""),
+                "institution": os.environ.get("ASD_STUDY_INSTITUTION", ""),
+                "principal_investigator": os.environ.get("ASD_STUDY_PI", ""),
+                "consent_version": os.environ.get("ASD_CONSENT_VERSION", ""),
+                "required_instruments": ["ORKConsentReviewStep", "ORKActiveStepResult"],
                 "zero_raw_video_guarantee": True
             })
         elif self.path == "/api/v1/research/records":
