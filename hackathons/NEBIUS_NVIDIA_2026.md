@@ -1,5 +1,7 @@
 # Nebius x NVIDIA Global AI Hackathon — Reference & Checklist
 
+> **STATUS: NOT PURSUED (Decision H-1, 2026-10-27)** — Team focus dedicated to Phase 1 ASD deliverables, backend, and core platform hygiene. See `docs/roadmap_2026q4/00_repo_state_and_urgent_actions.md`.
+>
 > **Devpost Link**: [Nebius x NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/)  
 > **Deadline**: **October 30, 2026 @ 10:30 PM GMT+5:30**  
 > **Total Prizes**: **$50,000+ in cash + NVIDIA Hardware**  
