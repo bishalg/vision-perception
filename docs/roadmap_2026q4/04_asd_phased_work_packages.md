@@ -7,8 +7,8 @@
 
 | WP | Title | Phase | Tier | Status | Notes |
 |---|---|---|---|---|---|
-| WP-A.1 | Device checklist + demo-tools screen | 1 | I | todo | |
-| WP-A.2 | Fix known bugs (double CareKit write, delete-all semantics, classifier double-run, elevatedRisk string) | 1 | S | todo | |
+| WP-A.1 | Device checklist + demo-tools screen | 1 | I | done | DemoToolsView, DemoRelease config, build tests, symbols gate |
+| WP-A.2 | Fix known bugs (double CareKit write, delete-all semantics, classifier double-run, elevatedRisk string) | 1 | S | done | RiskStratification scoped to ASD_RESEARCH_CLASSIFIER, duplicate writes eliminated, classifier passed to summary |
 | WP-A.3 | Protected file-backed history store (old WP-4.3) | 1 | S | todo | |
 | WP-A.4 | Sync client: device registration, bearer token, idempotency + schema headers, new `/v1/sessions` payload, pre-signed uploads | 1 | S | todo | |
 | WP-A.5 | `ScoringProfile` + remote config bundle consumption with Ed25519 verify and bundled fallback | 2 | S | todo | |
