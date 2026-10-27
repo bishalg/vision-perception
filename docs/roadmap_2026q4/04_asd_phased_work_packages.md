@@ -34,7 +34,7 @@
 | WP-C.5 | Baselines editor + scoring profile editor + sandbox re-score + bundle publish with approval | 2 | S | todo | |
 | WP-C.6 | Cohorts, norm-runs, exports, model registry | 3 | I | todo | |
 | WP-C.7 | Replay heatmaps, hi/ne strings, superadmin | 4 | I | backlog | |
-| WP-D.1 | Stimulus clips: rights or replacement; durations measured; catalog corrected | 1 | I + owner | todo | H-8 |
+| WP-D.1 | Stimulus clips: rights or replacement; durations measured; catalog corrected | 1 | I + owner | done | All 10 clips measured at 8.0s via ffprobe, catalog aligned, NOTICE.md updated |
 | WP-D.2 | Session JSON Schema export + Swift/Python parity gate in CI | 1 | I | todo | |
 | WP-D.3 | Age-band model: cleared dataset, train, validate (≥0.90 recall), CoreML, manifest + licence in `models/asd_age` | 2 | S | todo | |
 | WP-D.4 | Synthetic session generator shared by seed script and tests | 1 | I | todo | |
