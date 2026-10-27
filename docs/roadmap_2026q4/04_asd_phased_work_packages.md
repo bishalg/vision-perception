@@ -9,7 +9,7 @@
 |---|---|---|---|---|---|
 | WP-A.1 | Device checklist + demo-tools screen | 1 | I | done | DemoToolsView, DemoRelease config, build tests, symbols gate |
 | WP-A.2 | Fix known bugs (double CareKit write, delete-all semantics, classifier double-run, elevatedRisk string) | 1 | S | done | RiskStratification scoped to ASD_RESEARCH_CLASSIFIER, duplicate writes eliminated, classifier passed to summary |
-| WP-A.3 | Protected file-backed history store (old WP-4.3) | 1 | S | todo | |
+| WP-A.3 | Protected file-backed history store (old WP-4.3) | 1 | S | done | Protected file store (.completeFileProtectionUntilFirstUserAuthentication), defaults migration, dedupe preserved |
 | WP-A.4 | Sync client: device registration, bearer token, idempotency + schema headers, new `/v1/sessions` payload, pre-signed uploads | 1 | S | todo | |
 | WP-A.5 | `ScoringProfile` + remote config bundle consumption with Ed25519 verify and bundled fallback | 2 | S | todo | |
 | WP-A.6 | Swift 6 language mode (old WP-4.2) | 2 | S | todo | |
@@ -35,7 +35,7 @@
 | WP-C.6 | Cohorts, norm-runs, exports, model registry | 3 | I | todo | |
 | WP-C.7 | Replay heatmaps, hi/ne strings, superadmin | 4 | I | backlog | |
 | WP-D.1 | Stimulus clips: rights or replacement; durations measured; catalog corrected | 1 | I + owner | done | All 10 clips measured at 8.0s via ffprobe, catalog aligned, NOTICE.md updated |
-| WP-D.2 | Session JSON Schema export + Swift/Python parity gate in CI | 1 | I | todo | |
+| WP-D.2 | Session JSON Schema export + Swift/Python parity gate in CI | 1 | I | done | session-v1.6.json exported from Pydantic, parity test in scripts/check_session_schema_parity.py, gated in CI |
 | WP-D.3 | Age-band model: cleared dataset, train, validate (≥0.90 recall), CoreML, manifest + licence in `models/asd_age` | 2 | S | todo | |
 | WP-D.4 | Synthetic session generator shared by seed script and tests | 1 | I | todo | |
 | WP-D.5 | ML roadmap refresh: what an attention classifier would need (n, labels, validation plan) — doc only | 3 | A | backlog | |

@@ -277,6 +277,36 @@ final class GazeSessionRecordVersioningTests: XCTestCase {
         XCTAssertEqual(store.records.map(\.sessionId), ["LIVE-A"])
     }
 
+    @MainActor
+    func testHistoryStoreMigratesFromUserDefaultsToFile() throws {
+        let suite = "GazeHistoryMigrationTests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let persisted = [
+            GazeSessionRecord.fixture(sessionId: "LIVE-MIGRATE-1"),
+            GazeSessionRecord.fixture(sessionId: "LIVE-MIGRATE-2")
+        ]
+        defaults.set(try JSONEncoder().encode(persisted), forKey: "org.curv.asd.gaze_session_history")
+
+        let store = GazeSessionHistoryStore(defaults: defaults)
+        XCTAssertEqual(store.records.count, 2)
+        XCTAssertEqual(store.records.map(\.sessionId), ["LIVE-MIGRATE-1", "LIVE-MIGRATE-2"])
+
+        // File must exist on disk after migration
+        XCTAssertTrue(FileManager.default.fileExists(atPath: store.fileURL.path))
+
+        // Re-open from disk
+        let reopened = GazeSessionHistoryStore(defaults: defaults)
+        XCTAssertEqual(reopened.records.count, 2)
+        XCTAssertEqual(reopened.records.map(\.sessionId), ["LIVE-MIGRATE-1", "LIVE-MIGRATE-2"])
+
+        // Clearing removes the file and cleans up legacy defaults key
+        store.clear()
+        XCTAssertFalse(FileManager.default.fileExists(atPath: store.fileURL.path))
+        XCTAssertNil(defaults.data(forKey: "org.curv.asd.gaze_session_history"))
+    }
+
     // MARK: - CNS-7: pseudonymous participant token
 
     func testParticipantTokenUsesEnrollmentIdOnlyWhenConsented() {

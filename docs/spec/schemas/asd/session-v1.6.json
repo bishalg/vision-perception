@@ -1,0 +1,295 @@
+{
+  "$defs": {
+    "SessionPerVideoScore": {
+      "properties": {
+        "clip_id": {
+          "title": "Clip Id",
+          "type": "string"
+        },
+        "order": {
+          "default": 0,
+          "title": "Order",
+          "type": "integer"
+        },
+        "dwell_social": {
+          "default": 0.0,
+          "title": "Dwell Social",
+          "type": "number"
+        },
+        "dwell_geometric": {
+          "default": 0.0,
+          "title": "Dwell Geometric",
+          "type": "number"
+        },
+        "dwell_eye": {
+          "default": 0.0,
+          "title": "Dwell Eye",
+          "type": "number"
+        },
+        "dwell_mouth": {
+          "default": 0.0,
+          "title": "Dwell Mouth",
+          "type": "number"
+        },
+        "orienting_latency_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Orienting Latency Ms"
+        },
+        "gaze_cue_accuracy": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gaze Cue Accuracy"
+        },
+        "fixation_count": {
+          "default": 0,
+          "title": "Fixation Count",
+          "type": "integer"
+        },
+        "mean_fixation_ms": {
+          "default": 0.0,
+          "title": "Mean Fixation Ms",
+          "type": "number"
+        },
+        "status": {
+          "default": "onTarget",
+          "title": "Status",
+          "type": "string"
+        },
+        "score": {
+          "default": 0.0,
+          "title": "Score",
+          "type": "number"
+        },
+        "weight": {
+          "default": 1.0,
+          "title": "Weight",
+          "type": "number"
+        },
+        "baseline_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Baseline Ref"
+        },
+        "details": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Details"
+        }
+      },
+      "required": [
+        "clip_id"
+      ],
+      "title": "SessionPerVideoScore",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "sessionId": {
+      "title": "Sessionid",
+      "type": "string"
+    },
+    "participantToken": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Participanttoken"
+    },
+    "captureSource": {
+      "default": "truedepth",
+      "title": "Capturesource",
+      "type": "string"
+    },
+    "durationSec": {
+      "default": 30.0,
+      "title": "Durationsec",
+      "type": "number"
+    },
+    "validRatio": {
+      "default": 0.95,
+      "title": "Validratio",
+      "type": "number"
+    },
+    "socialPreferenceScore": {
+      "default": 0.5,
+      "title": "Socialpreferencescore",
+      "type": "number"
+    },
+    "socialDwellSec": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Socialdwellsec"
+    },
+    "geometricDwellSec": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Geometricdwellsec"
+    },
+    "eyeDwellRatio": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Eyedwellratio"
+    },
+    "mouthDwellRatio": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Mouthdwellratio"
+    },
+    "firstEyeLatencyMs": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Firsteyelatencyms"
+    },
+    "qualityVerdict": {
+      "default": "optimal",
+      "title": "Qualityverdict",
+      "type": "string"
+    },
+    "calibratedDistanceCm": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Calibrateddistancecm"
+    },
+    "attentionFlag": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "green",
+      "title": "Attentionflag"
+    },
+    "battery": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "express_30s",
+      "title": "Battery"
+    },
+    "schemaVersion": {
+      "default": "1.6",
+      "title": "Schemaversion",
+      "type": "string"
+    },
+    "perVideo": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/SessionPerVideoScore"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Pervideo"
+    },
+    "rawPayload": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rawpayload"
+    }
+  },
+  "required": [
+    "sessionId"
+  ],
+  "title": "SessionIngestRequest",
+  "type": "object",
+  "$id": "https://schemas.curv.org/asd/session-v1.6.json",
+  "description": "Curv Pediatric ASD Gaze Session Ingestion Schema (v1.6)"
+}

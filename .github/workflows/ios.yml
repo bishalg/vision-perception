@@ -10,6 +10,8 @@ on:
       - "scripts/check_asd_claims.py"
       - "scripts/check_privacy_api_use.sh"
       - "scripts/check_release_symbols.sh"
+      - "scripts/check_session_schema_parity.py"
+      - "docs/spec/schemas/asd/**"
       - ".github/workflows/ios.yml"
   pull_request:
     branches: [main, dev]
@@ -20,6 +22,8 @@ on:
       - "scripts/check_asd_claims.py"
       - "scripts/check_privacy_api_use.sh"
       - "scripts/check_release_symbols.sh"
+      - "scripts/check_session_schema_parity.py"
+      - "docs/spec/schemas/asd/**"
       - ".github/workflows/ios.yml"
 
 concurrency:

@@ -83,6 +83,9 @@ run xcodebuild build \
 step "Static gate: claims and secrets"
 run python3 scripts/check_asd_claims.py --swift --secrets
 
+step "Static gate: JSON schema parity contract"
+run python3 scripts/check_session_schema_parity.py
+
 step "Static gate: privacy API use"
 run bash scripts/check_privacy_api_use.sh
 

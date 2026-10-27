@@ -41,3 +41,7 @@ jobs:
       - name: Run Pytest suite
         run: |
           pytest tests/ -v
+
+      - name: Run Schema Parity Gate
+        run: |
+          python ../../scripts/check_session_schema_parity.py

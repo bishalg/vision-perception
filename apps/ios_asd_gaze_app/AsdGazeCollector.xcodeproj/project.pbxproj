@@ -53,6 +53,7 @@
 		4D97318B3F0C19A9B0165FD8 /* stim_04_surprise_giftbox_10s.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 47464ADA3137E9AF46BD2852 /* stim_04_surprise_giftbox_10s.mp4 */; };
 		4DA29EF21AEC96DC2A8C281D /* CareActivityKit in Frameworks */ = {isa = PBXBuildFile; productRef = 2CDBB58E77583920639C584C /* CareActivityKit */; };
 		504360D82D32C05521F178D9 /* stim_05_geopref_split_10s.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 398D47A0037DA9F90E75721C /* stim_05_geopref_split_10s.mp4 */; };
+		50EF16BFDD4DAB616A9B24CB /* GazeSessionHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 680B362C494B77DBEC7EDC7C /* GazeSessionHistoryStore.swift */; };
 		565E2DC2D5A358510020D90E /* CareActivityKit in Frameworks */ = {isa = PBXBuildFile; productRef = 2A44B01B48D3979B323912BF /* CareActivityKit */; };
 		5A61BCD83A8B643E6B5D450C /* CarePlanModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 220C4058D7B72B1A80C2AF2C /* CarePlanModels.swift */; };
 		5E2BA197E451540DEDE7BC5C /* BiomarkerDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D46DDA36376F5DF620259376 /* BiomarkerDetailViews.swift */; };
@@ -257,6 +258,7 @@
 		6131F4DD41BFC27E93725D50 /* StimulusPlaylist.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StimulusPlaylist.swift; sourceTree = "<group>"; };
 		6465958CA4E2F60B4DA0E0EB /* ARFaceCameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARFaceCameraView.swift; sourceTree = "<group>"; };
 		67C87761633083196B3CE214 /* PhotosUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = PhotosUI.framework; path = System/Library/Frameworks/PhotosUI.framework; sourceTree = SDKROOT; };
+		680B362C494B77DBEC7EDC7C /* GazeSessionHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeSessionHistoryStore.swift; sourceTree = "<group>"; };
 		69BC081BE97D2D513587F078 /* FHIRInteroperabilityMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FHIRInteroperabilityMapper.swift; sourceTree = "<group>"; };
 		6C0062C6D7EEBF81C6AE25E1 /* AsdGazeCareWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = AsdGazeCareWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		6DD544B6AE104530F9E0A878 /* AppModeSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModeSelectionView.swift; sourceTree = "<group>"; };
@@ -555,6 +557,7 @@
 				69BC081BE97D2D513587F078 /* FHIRInteroperabilityMapper.swift */,
 				4FD481B904A060525B006291 /* FHIRNamespaces.swift */,
 				287DFAB8F4DC87C3B73081D0 /* GazeSessionController+Consent.swift */,
+				680B362C494B77DBEC7EDC7C /* GazeSessionHistoryStore.swift */,
 				0A1630E44038B9F64982C80C /* GazeSessionRecord.swift */,
 				1A12D94D7B76B41E158A1C2F /* HealthKitMoodStore.swift */,
 				B3E9070E87CB086B06E8B635 /* MoodDiaryModels.swift */,
@@ -863,6 +866,7 @@
 				83410C4E0DB228A21F5D7254 /* GazeReplayHeatmapFullScreenView.swift in Sources */,
 				10452C9E39B5A631BA8E2114 /* GazeScreeningWizardView.swift in Sources */,
 				B4E98F17486A3A8583E9D641 /* GazeSessionController+Consent.swift in Sources */,
+				50EF16BFDD4DAB616A9B24CB /* GazeSessionHistoryStore.swift in Sources */,
 				B14E9B1D6BD842D04EF1FF39 /* GazeSessionRecord.swift in Sources */,
 				BAA4122DA672A103917B20C7 /* GazeSessionResultView.swift in Sources */,
 				EFF88103F82CFD161D7D39CB /* GazeStimulusScreeningView.swift in Sources */,
