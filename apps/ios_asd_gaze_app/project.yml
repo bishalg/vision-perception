@@ -10,6 +10,11 @@ options:
   xcodeVersion: "15.0"
   createIntermediateGroups: true
 
+configs:
+  Debug: debug
+  DemoRelease: release
+  Release: release
+
 settings:
   base:
     SWIFT_VERSION: "5.9"
@@ -72,7 +77,9 @@ targets:
         # Debug-only capabilities; Release never defines them. The kit mirrors
         # these in Package.swift because OTHER_SWIFT_FLAGS does not reach SwiftPM.
         Debug:
-          OTHER_SWIFT_FLAGS: "$(inherited) -DASD_SIMULATION_ENABLED -DASD_RESEARCH_CLASSIFIER $(ASD_MCHAT_FLAG)"
+          OTHER_SWIFT_FLAGS: "$(inherited) -DASD_SIMULATION_ENABLED -DASD_RESEARCH_CLASSIFIER -DASD_DEMO_TOOLS $(ASD_MCHAT_FLAG)"
+        DemoRelease:
+          OTHER_SWIFT_FLAGS: "$(inherited) -DASD_APP_STORE_AGE_ASSURANCE -DASD_DEMO_TOOLS $(ASD_MCHAT_FLAG)"
         Release:
           OTHER_SWIFT_FLAGS: "$(inherited) -DASD_APP_STORE_AGE_ASSURANCE $(ASD_MCHAT_FLAG)"
     dependencies:

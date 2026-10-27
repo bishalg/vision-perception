@@ -797,20 +797,21 @@ public struct MainGazeScannerView: View {
             // 3. Mark in CarePlan (which mirrors the outcome into CareKit and compiles
             // the ResearchKit step result from the full summary). Both ignore
             // simulated sessions (SIM-5).
+            #if ASD_RESEARCH_CLASSIFIER
+            CarePlanStore.shared.markScreeningCompleted(
+                captureSource: summary.captureSource,
+                socialScore: summary.socialPreferenceScore,
+                validFramePercentage: summary.validRatio * 100.0,
+                summary: summary,
+                riskScore: classification.riskScore,
+                riskStratification: classification.riskStratification.rawValue
+            )
+            #else
             CarePlanStore.shared.markScreeningCompleted(
                 captureSource: summary.captureSource,
                 socialScore: summary.socialPreferenceScore,
                 validFramePercentage: summary.validRatio * 100.0,
                 summary: summary
-            )
-            #if ASD_RESEARCH_CLASSIFIER
-            CareKitClinicalStore.shared.recordScreeningOutcome(
-                captureSource: summary.captureSource,
-                socialScore: summary.socialPreferenceScore,
-                validFramePercentage: summary.validRatio * 100.0,
-                knownTasks: CarePlanStore.shared.tasks,
-                riskScore: classification.riskScore,
-                riskStratification: classification.riskStratification.rawValue
             )
             #endif
         }

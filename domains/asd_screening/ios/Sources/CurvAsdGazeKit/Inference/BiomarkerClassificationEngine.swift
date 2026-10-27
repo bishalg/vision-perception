@@ -4,10 +4,18 @@ import CoreML
 #endif
 
 // ADR-0004 / CLM-3: the risk classifier is a research-only (Debug) capability. Only
-// `RiskStratification` (persisted by the app) and `ExecutionDevice` (shared with the
-// age-band engine) compile in every configuration; everything else in this file is
-// under `ASD_RESEARCH_CLASSIFIER`.
+// `ExecutionDevice` (shared with the age-band engine) compiles in every configuration;
+// `RiskStratification` and the classifier compile strictly under `ASD_RESEARCH_CLASSIFIER`.
 
+/// Compute device utilized for CoreML inference.
+public enum ExecutionDevice: String, Codable, Sendable, Equatable {
+    case appleNeuralEngine = "Apple Neural Engine (ANE)"
+    case gpu = "Apple Metal GPU"
+    case cpu = "CPU"
+    case fallbackHeuristic = "Rule-Based Clinical Baseline"
+}
+
+#if ASD_RESEARCH_CLASSIFIER
 /// Risk stratification category produced by the ML biomarker inference engine.
 public enum RiskStratification: String, Codable, Sendable, Equatable {
     case typical = "Typical Social Attention"
@@ -23,15 +31,6 @@ public enum RiskStratification: String, Codable, Sendable, Equatable {
     }
 }
 
-/// Compute device utilized for CoreML inference.
-public enum ExecutionDevice: String, Codable, Sendable, Equatable {
-    case appleNeuralEngine = "Apple Neural Engine (ANE)"
-    case gpu = "Apple Metal GPU"
-    case cpu = "CPU"
-    case fallbackHeuristic = "Rule-Based Clinical Baseline"
-}
-
-#if ASD_RESEARCH_CLASSIFIER
 /// Comprehensive inference outcome from the ASD Biomarker Classifier.
 public struct BiomarkerClassificationResult: Codable, Sendable, Equatable {
     public let riskScore: Double

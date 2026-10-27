@@ -8,7 +8,11 @@ public enum ScreeningWizardStep: Equatable {
     case calibrating
     case gate
     case stimulus
+    #if ASD_RESEARCH_CLASSIFIER
+    case summary(GazeSessionReportSummary, [GazeFrame], BiomarkerClassificationResult?)
+    #else
     case summary(GazeSessionReportSummary, [GazeFrame])
+    #endif
 
     public static func == (lhs: ScreeningWizardStep, rhs: ScreeningWizardStep) -> Bool {
         switch (lhs, rhs) {
@@ -113,24 +117,57 @@ public struct GazeScreeningWizardView: View {
                     forTargetDuration: durationSec,
                     ageMonths: profile.ageBracket.midpointMonths
                 )
-                GazeStimulusScreeningView(
-                    playlist: activePlaylist,
-                    onComplete: { summary, frames in
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            step = .summary(summary, frames)
+                Group {
+                    #if ASD_RESEARCH_CLASSIFIER
+                    GazeStimulusScreeningView(
+                        playlist: activePlaylist,
+                        onComplete: { summary, frames, classification in
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                step = .summary(summary, frames, classification)
+                            }
+                        },
+                        onAbort: {
+                            withAnimation(.easeInOut(duration: 0.3)) { step = .positioning }
                         }
-                    },
-                    onAbort: {
-                        withAnimation(.easeInOut(duration: 0.3)) { step = .positioning }
-                    }
-                )
+                    )
+                    #else
+                    GazeStimulusScreeningView(
+                        playlist: activePlaylist,
+                        onComplete: { summary, frames in
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                step = .summary(summary, frames)
+                            }
+                        },
+                        onAbort: {
+                            withAnimation(.easeInOut(duration: 0.3)) { step = .positioning }
+                        }
+                    )
+                    #endif
+                }
                 .transition(.asymmetric(
                     insertion: .move(edge: .trailing).combined(with: .opacity),
                     removal: .move(edge: .leading).combined(with: .opacity)
                 ))
 
+            #if ASD_RESEARCH_CLASSIFIER
+            case .summary(let summary, let frames, let classification):
+                GazeSessionResultView(
+                    summary: summary,
+                    recordedFrames: frames,
+                    classification: classification,
+                    onDismiss: {
+                        withAnimation(.easeInOut(duration: 0.3)) { step = .positioning }
+                    },
+                    onRetake: {
+                        withAnimation(.easeInOut(duration: 0.3)) { step = .positioning }
+                    }
+                )
+                .transition(.asymmetric(
+                    insertion: .opacity,
+                    removal: .opacity
+                ))
+            #else
             case .summary(let summary, let frames):
-                // The result view runs the Debug-only classifier itself when compiled (CLM-3).
                 GazeSessionResultView(
                     summary: summary,
                     recordedFrames: frames,
@@ -145,6 +182,7 @@ public struct GazeScreeningWizardView: View {
                     insertion: .opacity,
                     removal: .opacity
                 ))
+            #endif
             }
         }
         .animation(.easeInOut(duration: 0.3), value: step)

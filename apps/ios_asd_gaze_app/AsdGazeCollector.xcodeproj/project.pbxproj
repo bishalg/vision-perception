@@ -135,6 +135,8 @@
 		CEE06D581C2B47EC954BC2B5 /* CareReminderSlotsEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C493F4E1B47C5201FFFB71C /* CareReminderSlotsEditor.swift */; };
 		D11EC332015D418B2458E64B /* onboarding.feature in Resources */ = {isa = PBXBuildFile; fileRef = C3E3BB45987178EE02CE3BF0 /* onboarding.feature */; };
 		D52C4373A66D6DBDAD5D8159 /* MilestoneDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5C0EEC1D6F532BF41105B4 /* MilestoneDetailView.swift */; };
+		D55A1A12515A39460E7FC03A /* DemoToolsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB5DEE76A9B148318FBAAF35 /* DemoToolsView.swift */; };
+		D64C4861FF928213800E16F0 /* CarePlanDomainModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB546E5A3B84C0A7B004DA57 /* CarePlanDomainModels.swift */; };
 		D77FB22C64EBAF6EF23F875F /* ClinicalDevelopmentModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D063D17414F7406EB0B9E9 /* ClinicalDevelopmentModelsTests.swift */; };
 		D82425DDC100FD9DCA6AC6D0 /* expected-bundle.json in Resources */ = {isa = PBXBuildFile; fileRef = 21DA1A68B03A496ABAFEF2CB /* expected-bundle.json */; };
 		DC4351CFF8331089EF4C22B0 /* CareKitStore in Frameworks */ = {isa = PBXBuildFile; productRef = D70B6E3928D5B5C50D4C16AE /* CareKitStore */; };
@@ -310,11 +312,13 @@
 		C94094F5B9B980D1A21C3B42 /* FHIRCareCodings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FHIRCareCodings.swift; sourceTree = "<group>"; };
 		C9F9A5EBCB3EB0469FAF60A7 /* ActivityKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ActivityKit.framework; path = System/Library/Frameworks/ActivityKit.framework; sourceTree = SDKROOT; };
 		CA4E9FE1E111B4651734C739 /* CryptoKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CryptoKit.framework; path = System/Library/Frameworks/CryptoKit.framework; sourceTree = SDKROOT; };
+		CB546E5A3B84C0A7B004DA57 /* CarePlanDomainModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarePlanDomainModels.swift; sourceTree = "<group>"; };
 		D055165C8B89ACF21CA75796 /* PDFKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = PDFKit.framework; path = System/Library/Frameworks/PDFKit.framework; sourceTree = SDKROOT; };
 		D46DDA36376F5DF620259376 /* BiomarkerDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiomarkerDetailViews.swift; sourceTree = "<group>"; };
 		D4C9D0928DBD5776164DBE31 /* AgeAssuranceGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgeAssuranceGate.swift; sourceTree = "<group>"; };
 		D6DCDD823D9C377F697E504E /* care_data_and_privacy.feature */ = {isa = PBXFileReference; path = care_data_and_privacy.feature; sourceTree = "<group>"; };
 		DAFD4387A17CEC332C4C3C71 /* AsdGazeCollectorTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AsdGazeCollectorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		DB5DEE76A9B148318FBAAF35 /* DemoToolsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoToolsView.swift; sourceTree = "<group>"; };
 		DBED5E91AC09561440658012 /* FHIRCareMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FHIRCareMapper.swift; sourceTree = "<group>"; };
 		DD1DB7F2655A5B1BBC5C5FC7 /* BlendShapeCSVLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlendShapeCSVLogger.swift; sourceTree = "<group>"; };
 		DD4FFF01E8DEA4584A9AC139 /* UnsupportedDeviceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnsupportedDeviceView.swift; sourceTree = "<group>"; };
@@ -398,6 +402,7 @@
 				75A2150C5701F544F4545D7A /* CareKitDashboardModals.swift */,
 				7C493F4E1B47C5201FFFB71C /* CareReminderSlotsEditor.swift */,
 				FC27795827636A12B3D2635F /* ClinicalTermTooltip.swift */,
+				DB5DEE76A9B148318FBAAF35 /* DemoToolsView.swift */,
 				0FCF1E0E52117640E2BA8BFD /* DiaryHistoryEditorView.swift */,
 				869BC9A2A7BE8A3C527D271E /* GazePositioningStepView.swift */,
 				9B8571A70F409315436A3E01 /* GazeReplayHeatmapFullScreenView.swift */,
@@ -534,6 +539,7 @@
 				98EE536B2A1BB98FBDC5B10D /* CareAlertPreferences.swift */,
 				00C9B43FF9E89F1CFD20770C /* CareAlertScheduler.swift */,
 				BFF20B6639768C9A0E7E78FB /* CareKitClinicalStore.swift */,
+				CB546E5A3B84C0A7B004DA57 /* CarePlanDomainModels.swift */,
 				220C4058D7B72B1A80C2AF2C /* CarePlanModels.swift */,
 				A551B394852735DA063ECC9E /* CareReminderModels.swift */,
 				388C0EDE3C0D58F10B124580 /* ChildProfile.swift */,
@@ -833,6 +839,7 @@
 				3AC35CA9B34AB4A91405ADEE /* CareAlertScheduler.swift in Sources */,
 				172F76895B2ADF8D0D67596C /* CareKitClinicalStore.swift in Sources */,
 				FB3DA6633752366F6F863F26 /* CareKitDashboardModals.swift in Sources */,
+				D64C4861FF928213800E16F0 /* CarePlanDomainModels.swift in Sources */,
 				5A61BCD83A8B643E6B5D450C /* CarePlanModels.swift in Sources */,
 				82DAFE82DC6E108C33D390F0 /* CareReminderModels.swift in Sources */,
 				CEE06D581C2B47EC954BC2B5 /* CareReminderSlotsEditor.swift in Sources */,
@@ -844,6 +851,7 @@
 				84B1522C1E3F020B4B5A3A54 /* ClinicalMilestoneCatalog.swift in Sources */,
 				78FF60A100FC461B9F3F7320 /* ClinicalTermTooltip.swift in Sources */,
 				E77FFBA830198F7F58442B13 /* DataDeletionService.swift in Sources */,
+				D55A1A12515A39460E7FC03A /* DemoToolsView.swift in Sources */,
 				FD9B81D911EB756AD94D3A21 /* DiaryHistoryEditorView.swift in Sources */,
 				8C111BD51FBFD274F67C5434 /* DoctorReportGenerator.swift in Sources */,
 				45A572D620F22243DA4FCCD0 /* FHIRBundleBuilder.swift in Sources */,
@@ -979,7 +987,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				OTHER_SWIFT_FLAGS = "$(inherited) -DASD_SIMULATION_ENABLED -DASD_RESEARCH_CLASSIFIER $(ASD_MCHAT_FLAG)";
+				OTHER_SWIFT_FLAGS = "$(inherited) -DASD_SIMULATION_ENABLED -DASD_RESEARCH_CLASSIFIER -DASD_DEMO_TOOLS $(ASD_MCHAT_FLAG)";
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_IDENTIFIER:default=org.curv.asd.gazecollector)";
 				PRODUCT_NAME = AsdGazeCollector;
 				SDKROOT = iphoneos;
@@ -1032,6 +1040,105 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
+		};
+		4657B835350B01AFC460722E /* DemoRelease */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = org.curv.AsdGazeCollectorTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AsdGazeCollector.app/AsdGazeCollector";
+			};
+			name = DemoRelease;
+		};
+		54713B280368B649CC193859 /* DemoRelease */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_BITCODE = NO;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = DemoRelease;
+		};
+		6D6ED89E2FCA97B45D63BFD9 /* DemoRelease */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6J3WY94J6T;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Widget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(WIDGET_IDENTIFIER:default=$(APP_IDENTIFIER:default=org.curv.asd.gazecollector).carewidget)";
+				PRODUCT_NAME = AsdGazeCareWidget;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = DemoRelease;
 		};
 		85C09299A194079C4439E26C /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -1170,6 +1277,43 @@
 			};
 			name = Release;
 		};
+		E45F898DDC47BFE8387EE0A8 /* DemoRelease */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Resources/AsdGazeCollector.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6J3WY94J6T;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/Info-Additions.plist";
+				INFOPLIST_KEY_NSCameraUsageDescription = "The front camera measures where your child looks and their facial expressions while short clips play. Processing happens on this device, and photos and video are never saved. If you choose the optional age-range check, it also runs on this device.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Mood diary entries can be read from State of Mind in the Health app, so you see one history across apps.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "When you log a mood in this app, it can save a State of Mind entry to the Health app.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "The microphone is used only while you hold the dictate button for diary notes.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "Motion data separates movement of the phone from your child's head movement during an observation.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "You can attach a photo to a diary entry. Attached photos stay on this device.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Speech recognition lets you dictate diary notes. Audio is processed on this device when possible and is not saved as a recording.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "Medication and sensory diary reminders use local notifications so caregivers can be alerted at scheduled times.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				OTHER_SWIFT_FLAGS = "$(inherited) -DASD_APP_STORE_AGE_ASSURANCE -DASD_DEMO_TOOLS $(ASD_MCHAT_FLAG)";
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_IDENTIFIER:default=org.curv.asd.gazecollector)";
+				PRODUCT_NAME = AsdGazeCollector;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = DemoRelease;
+		};
 		F6268C19C4FD3F237B02B8E3 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1236,6 +1380,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				85C09299A194079C4439E26C /* Debug */,
+				4657B835350B01AFC460722E /* DemoRelease */,
 				932E0DE15266388CCB42DC90 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -1245,6 +1390,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				897697468EC7E2E1AC71281C /* Debug */,
+				54713B280368B649CC193859 /* DemoRelease */,
 				F6268C19C4FD3F237B02B8E3 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -1254,6 +1400,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				00829F9411005FCEEF3742C0 /* Debug */,
+				E45F898DDC47BFE8387EE0A8 /* DemoRelease */,
 				DEC68B17823FC7814E6A3789 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -1263,6 +1410,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				20A6E841FCAE6BB47CC5BC6B /* Debug */,
+				6D6ED89E2FCA97B45D63BFD9 /* DemoRelease */,
 				23A548CBE08CF3CE78449559 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;

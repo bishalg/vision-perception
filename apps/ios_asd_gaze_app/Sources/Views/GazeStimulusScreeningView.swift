@@ -31,7 +31,11 @@ public struct GazeStimulusScreeningView: View {
     public let proceduralMode: ProceduralStimulusMode?
 
     // Callbacks
+    #if ASD_RESEARCH_CLASSIFIER
+    public let onComplete: (GazeSessionReportSummary, [GazeFrame], BiomarkerClassificationResult?) -> Void
+    #else
     public let onComplete: (GazeSessionReportSummary, [GazeFrame]) -> Void
+    #endif
     public let onAbort: () -> Void
 
     public var sessionDurationSec: Double {
@@ -44,6 +48,38 @@ public struct GazeStimulusScreeningView: View {
         return playlist[currentClipIndex]
     }
 
+    #if ASD_RESEARCH_CLASSIFIER
+    public init(
+        playlist: [StimulusPlaylistItem] = StimulusPlaylistBattery.standard30s,
+        proceduralMode: ProceduralStimulusMode? = nil,
+        onComplete: @escaping (GazeSessionReportSummary, [GazeFrame], BiomarkerClassificationResult?) -> Void,
+        onAbort: @escaping () -> Void
+    ) {
+        self.playlist = playlist.isEmpty ? StimulusPlaylistBattery.standard30s : playlist
+        self.proceduralMode = proceduralMode
+        self.onComplete = onComplete
+        self.onAbort = onAbort
+    }
+
+    public init(
+        videoName: String = "stim_05_geopref_split_10s",
+        proceduralMode: ProceduralStimulusMode? = nil,
+        onComplete: @escaping (GazeSessionReportSummary, [GazeFrame], BiomarkerClassificationResult?) -> Void,
+        onAbort: @escaping () -> Void
+    ) {
+        self.playlist = [
+            StimulusPlaylistItem(
+                videoName: videoName,
+                title: videoName.replacingOccurrences(of: "_", with: " ").capitalized,
+                category: "Clinical Stimulus",
+                targetDurationSec: 30.0
+            )
+        ]
+        self.proceduralMode = proceduralMode
+        self.onComplete = onComplete
+        self.onAbort = onAbort
+    }
+    #else
     public init(
         playlist: [StimulusPlaylistItem] = StimulusPlaylistBattery.standard30s,
         proceduralMode: ProceduralStimulusMode? = nil,
@@ -74,6 +110,7 @@ public struct GazeStimulusScreeningView: View {
         self.onComplete = onComplete
         self.onAbort = onAbort
     }
+    #endif
 
     public var body: some View {
         ZStack {
@@ -650,30 +687,30 @@ public struct GazeStimulusScreeningView: View {
                 )
             )
 
-            // CareKit sync (both ignore simulated sessions, SIM-5)
-            CarePlanStore.shared.markScreeningCompleted(
-                captureSource: summary.captureSource,
-                socialScore: summary.socialPreferenceScore
-            )
+            // CareKit sync (both ignore simulated sessions, SIM-5; CarePlanStore mirrors outcome to CareKitClinicalStore)
             #if ASD_RESEARCH_CLASSIFIER
-            CareKitClinicalStore.shared.recordScreeningOutcome(
+            CarePlanStore.shared.markScreeningCompleted(
                 captureSource: summary.captureSource,
                 socialScore: summary.socialPreferenceScore,
                 validFramePercentage: summary.validRatio * 100.0,
-                knownTasks: CarePlanStore.shared.tasks,
+                summary: summary,
                 riskScore: classification.riskScore,
                 riskStratification: classification.riskStratification.rawValue
             )
             #else
-            CareKitClinicalStore.shared.recordScreeningOutcome(
+            CarePlanStore.shared.markScreeningCompleted(
                 captureSource: summary.captureSource,
                 socialScore: summary.socialPreferenceScore,
                 validFramePercentage: summary.validRatio * 100.0,
-                knownTasks: CarePlanStore.shared.tasks
+                summary: summary
             )
             #endif
         }
 
+        #if ASD_RESEARCH_CLASSIFIER
+        onComplete(summary, frames, classification)
+        #else
         onComplete(summary, frames)
+        #endif
     }
 }

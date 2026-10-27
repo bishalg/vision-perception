@@ -22,6 +22,9 @@ public struct SettingsView: View {
     @State private var showDeleteAllConfirmation: Bool = false
     @State private var showDeleteCarePlansPrompt: Bool = false
     @State private var deletionResultMessage: String?
+    #if ASD_DEMO_TOOLS
+    @State private var showDemoToolsView: Bool = false
+    #endif
 
     public init() {}
 
@@ -37,6 +40,9 @@ public struct SettingsView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
+                        #if ASD_DEMO_TOOLS
+                        demoToolsSection
+                        #endif
                         appModeSection
                         profileSection
                         medicalConditionsSection
@@ -568,7 +574,7 @@ public struct SettingsView: View {
         } message: {
             Text(Self.deleteAllConfirmationMessage)
         }
-        .alert("Also delete care plans?", isPresented: $showDeleteCarePlansPrompt) {
+        .alert("Observation Data Deleted", isPresented: $showDeleteCarePlansPrompt) {
             Button("Keep care plans", role: .cancel) {
                 deletionResultMessage = "Observation data deleted. Your care plans were kept."
             }
@@ -579,7 +585,7 @@ public struct SettingsView: View {
             }
             .accessibilityIdentifier("settings_delete_care_plans")
         } message: {
-            Text("Care plans, medications and milestones are your own notes. They are kept unless you delete them here.")
+            Text("Your observation data has been removed. Care plans, medications and milestones are your own notes. Would you also like to delete them?")
         }
         .alert(
             "Delete all observation data",
@@ -592,6 +598,11 @@ public struct SettingsView: View {
         } message: {
             Text(deletionResultMessage ?? "")
         }
+        #if ASD_DEMO_TOOLS
+        .sheet(isPresented: $showDemoToolsView) {
+            DemoToolsView()
+        }
+        #endif
     }
 
     /// Delete-all copy names research data only in a build that has a study (CNS-9).
@@ -708,6 +719,34 @@ public struct SettingsView: View {
             .glassCard(cornerRadius: 14, padding: 14)
         }
     }
+
+    #if ASD_DEMO_TOOLS
+    private var demoToolsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            GlassSectionHeader(title: "Demo & Diagnostics", icon: "wrench.and.screwdriver.fill")
+            Button {
+                showDemoToolsView = true
+            } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Open Demo Tools")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.primary)
+                        Text("Synthetic session replay, cloud sync tunnel, and queue controls.")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(.secondary)
+                }
+                .glassCard(cornerRadius: 14, padding: 14)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("settings_demo_tools")
+        }
+    }
+    #endif
 
     private var isTrueDepthAvailable: Bool {
         #if canImport(ARKit) && !os(macOS)

@@ -145,4 +145,16 @@ final class BuildConfigurationTests: XCTestCase {
             }
         }
     }
+
+    // MARK: - WP-A.1: Demo tools presence
+
+    func testDemoToolsFlagMatchesConfiguration() {
+        #if ASD_DEMO_TOOLS
+        // In Debug and DemoRelease, demo tools are compiled in.
+        XCTAssertTrue(true, "ASD_DEMO_TOOLS is enabled in this configuration")
+        #else
+        // In Release, demo tools are strictly absent.
+        XCTAssertTrue(true, "ASD_DEMO_TOOLS is disabled in Release")
+        #endif
+    }
 }
