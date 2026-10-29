@@ -1,4 +1,4 @@
-appId: org.curv.asd.gazecollector
+appId: com.open-spectrum.eye-gaze
 name: bdd-01-app-mode-selection
 ---
 # Feature: first-launch app mode selection

@@ -21,5 +21,5 @@ xcodebuild -project apps/ios_asd_gaze_app/AsdGazeCollector.xcodeproj \
 APP=/tmp/AsdGazeSim/Build/Products/Debug-iphonesimulator/AsdGazeCollector.app
 codesign --force --sign - --timestamp=none "${APP}" 2>/dev/null || true
 xcrun simctl install "${UDID}" "${APP}"
-xcrun simctl launch "${UDID}" org.curv.asd.gazecollector
+xcrun simctl launch "${UDID}" com.open-spectrum.eye-gaze
 echo "==> Done! App launched in Simulator."

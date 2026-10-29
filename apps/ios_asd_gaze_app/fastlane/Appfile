@@ -5,7 +5,7 @@
 #   APPLE_TEAM_ID   Developer Portal team id
 #   ITC_TEAM_ID     App Store Connect team id (optional)
 
-app_identifier(ENV["APP_IDENTIFIER"] || "org.curv.asd.gazecollector")
+app_identifier(ENV["APP_IDENTIFIER"] || "com.open-spectrum.eye-gaze")
 apple_id(ENV["APPLE_ID"]) if ENV["APPLE_ID"] && !ENV["APPLE_ID"].empty?
 team_id(ENV["APPLE_TEAM_ID"]) if ENV["APPLE_TEAM_ID"] && !ENV["APPLE_TEAM_ID"].empty?
 itc_team_id(ENV["ITC_TEAM_ID"]) if ENV["ITC_TEAM_ID"] && !ENV["ITC_TEAM_ID"].empty?

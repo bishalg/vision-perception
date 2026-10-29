@@ -8,5 +8,7 @@
 		<string>arkit</string>
 		<string>front-facing-camera</string>
 	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>

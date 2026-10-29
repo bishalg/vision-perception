@@ -1,6 +1,6 @@
 # ADR-0005: Publishing organisation, bundle identifier and review contact
 
-Status: Proposed, needs human decision (H1, H4, H5), 2026-10-22
+Status: Accepted (H4 resolved 2026-10-29: bundle id `com.open-spectrum.eye-gaze`, widget `com.open-spectrum.eye-gaze.carewidget`, team `6J3WY94J6T`, Apple ID `6828468388`, App Name "Eye Gaze")
 Spec ids: CI-4, CI-5, CLM-6
 
 ## Context

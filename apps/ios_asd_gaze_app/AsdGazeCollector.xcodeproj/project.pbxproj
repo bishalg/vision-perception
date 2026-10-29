@@ -128,7 +128,6 @@
 		BE9A1D34A6108C6B0EE1469E /* stim_02_gaze_cue_right_8s.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 2AF78C23D83CEC35FF7CF9CA /* stim_02_gaze_cue_right_8s.mp4 */; };
 		BF5C6D46E6600321345DBBD1 /* RecordFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E16F3699FDFF30D2E93F75C /* RecordFixtures.swift */; };
 		C4CA02A95984D4F6E02C6386 /* GazeSessionRecordVersioningTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37CCAC020A34C51C4280F971 /* GazeSessionRecordVersioningTests.swift */; };
-		C5071F8B9E013A74743198E3 /* AsdGazeCollector.entitlements in Resources */ = {isa = PBXBuildFile; fileRef = C501AA39D3A362EC4E804D46 /* AsdGazeCollector.entitlements */; };
 		C53D794CE42976692A294C09 /* ActivityKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C9F9A5EBCB3EB0469FAF60A7 /* ActivityKit.framework */; };
 		CB92649B8BAE2FBF807574B7 /* OnDemandStimulusManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF7864C8743228D8CDF0C364 /* OnDemandStimulusManager.swift */; };
 		CCB2037DF34648F8002677F9 /* MoodDiaryModuleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54DB045F57C2092D7DA4D1DA /* MoodDiaryModuleTests.swift */; };
@@ -307,7 +306,6 @@
 		BBED732DAB0236044946C9E7 /* SmartOnFhirAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartOnFhirAuthService.swift; sourceTree = "<group>"; };
 		BFF20B6639768C9A0E7E78FB /* CareKitClinicalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareKitClinicalStore.swift; sourceTree = "<group>"; };
 		C3E3BB45987178EE02CE3BF0 /* onboarding.feature */ = {isa = PBXFileReference; path = onboarding.feature; sourceTree = "<group>"; };
-		C501AA39D3A362EC4E804D46 /* AsdGazeCollector.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AsdGazeCollector.entitlements; sourceTree = "<group>"; };
 		C68D4D53FB572F94028D35E0 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		C6B1A3AE747DED42D544ECE8 /* MCHATAvailability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCHATAvailability.swift; sourceTree = "<group>"; };
 		C8D063D17414F7406EB0B9E9 /* ClinicalDevelopmentModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClinicalDevelopmentModelsTests.swift; sourceTree = "<group>"; };
@@ -619,7 +617,6 @@
 		A211CF7390761D82753C2C71 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				C501AA39D3A362EC4E804D46 /* AsdGazeCollector.entitlements */,
 				5AA127E5B31E63B996A6A629 /* Assets.xcassets */,
 				23524784DEDC9F72D5C0770E /* PrivacyInfo.xcprivacy */,
 				62DCB34EF071B9A9D8CED147 /* Videos */,
@@ -748,11 +745,9 @@
 				TargetAttributes = {
 					5A339C8E397001A08FBAA7AE = {
 						DevelopmentTeam = 6J3WY94J6T;
-						ProvisioningStyle = Automatic;
 					};
 					A52C4057F06565202E072FAF = {
 						DevelopmentTeam = 6J3WY94J6T;
-						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -799,7 +794,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C5071F8B9E013A74743198E3 /* AsdGazeCollector.entitlements in Resources */,
 				A281AF3A8FA0536ACB31B38A /* Assets.xcassets in Resources */,
 				84BCAE5D56BB6112D9C75B2E /* PrivacyInfo.xcprivacy in Resources */,
 				038289E384FEE25602847803 /* stim_01_social_peekaboo_8s.mp4 in Resources */,
@@ -969,10 +963,12 @@
 				CODE_SIGN_ENTITLEMENTS = Resources/AsdGazeCollector.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 6J3WY94J6T;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/Info-Additions.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Eye Gaze";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "The front camera measures where your child looks and their facial expressions while short clips play. Processing happens on this device, and photos and video are never saved. If you choose the optional age-range check, it also runs on this device.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Mood diary entries can be read from State of Mind in the Health app, so you see one history across apps.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "When you log a mood in this app, it can save a State of Mind entry to the Health app.";
@@ -992,7 +988,7 @@
 				);
 				MARKETING_VERSION = 1.0.0;
 				OTHER_SWIFT_FLAGS = "$(inherited) -DASD_SIMULATION_ENABLED -DASD_RESEARCH_CLASSIFIER -DASD_DEMO_TOOLS $(ASD_MCHAT_FLAG)";
-				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_IDENTIFIER:default=org.curv.asd.gazecollector)";
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_IDENTIFIER:default=com.open-spectrum.eye-gaze)";
 				PRODUCT_NAME = AsdGazeCollector;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1003,7 +999,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 6J3WY94J6T;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Widget/Info.plist;
@@ -1014,7 +1010,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "$(WIDGET_IDENTIFIER:default=$(APP_IDENTIFIER:default=org.curv.asd.gazecollector).carewidget)";
+				PRODUCT_BUNDLE_IDENTIFIER = "$(WIDGET_IDENTIFIER:default=$(APP_IDENTIFIER:default=com.open-spectrum.eye-gaze).carewidget)";
 				PRODUCT_NAME = AsdGazeCareWidget;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
@@ -1025,8 +1021,9 @@
 		23A548CBE08CF3CE78449559 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CODE_SIGN_IDENTITY = "Apple Distribution";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 6J3WY94J6T;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Widget/Info.plist;
@@ -1037,8 +1034,9 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "$(WIDGET_IDENTIFIER:default=$(APP_IDENTIFIER:default=org.curv.asd.gazecollector).carewidget)";
+				PRODUCT_BUNDLE_IDENTIFIER = "$(WIDGET_IDENTIFIER:default=$(APP_IDENTIFIER:default=com.open-spectrum.eye-gaze).carewidget)";
 				PRODUCT_NAME = AsdGazeCareWidget;
+				PROVISIONING_PROFILE_SPECIFIER = "Eye Gaze Widget AppStore";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1055,7 +1053,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.curv.AsdGazeCollectorTests;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.open-spectrum.AsdGazeCollectorTests";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AsdGazeCollector.app/AsdGazeCollector";
@@ -1125,7 +1123,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 6J3WY94J6T;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Widget/Info.plist;
@@ -1136,7 +1134,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "$(WIDGET_IDENTIFIER:default=$(APP_IDENTIFIER:default=org.curv.asd.gazecollector).carewidget)";
+				PRODUCT_BUNDLE_IDENTIFIER = "$(WIDGET_IDENTIFIER:default=$(APP_IDENTIFIER:default=com.open-spectrum.eye-gaze).carewidget)";
 				PRODUCT_NAME = AsdGazeCareWidget;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.9;
@@ -1154,7 +1152,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.curv.AsdGazeCollectorTests;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.open-spectrum.AsdGazeCollectorTests";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AsdGazeCollector.app/AsdGazeCollector";
@@ -1237,7 +1235,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.curv.AsdGazeCollectorTests;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.open-spectrum.AsdGazeCollectorTests";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AsdGazeCollector.app/AsdGazeCollector";
@@ -1249,12 +1247,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Resources/AsdGazeCollector.entitlements;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CODE_SIGN_IDENTITY = "Apple Distribution";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 6J3WY94J6T;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/Info-Additions.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Eye Gaze";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "The front camera measures where your child looks and their facial expressions while short clips play. Processing happens on this device, and photos and video are never saved. If you choose the optional age-range check, it also runs on this device.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Mood diary entries can be read from State of Mind in the Health app, so you see one history across apps.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "When you log a mood in this app, it can save a State of Mind entry to the Health app.";
@@ -1274,8 +1274,9 @@
 				);
 				MARKETING_VERSION = 1.0.0;
 				OTHER_SWIFT_FLAGS = "$(inherited) -DASD_APP_STORE_AGE_ASSURANCE $(ASD_MCHAT_FLAG)";
-				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_IDENTIFIER:default=org.curv.asd.gazecollector)";
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_IDENTIFIER:default=com.open-spectrum.eye-gaze)";
 				PRODUCT_NAME = AsdGazeCollector;
+				PROVISIONING_PROFILE_SPECIFIER = "Eye Gaze AppStore";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -1288,10 +1289,12 @@
 				CODE_SIGN_ENTITLEMENTS = Resources/AsdGazeCollector.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 6J3WY94J6T;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/Info-Additions.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Eye Gaze";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "The front camera measures where your child looks and their facial expressions while short clips play. Processing happens on this device, and photos and video are never saved. If you choose the optional age-range check, it also runs on this device.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Mood diary entries can be read from State of Mind in the Health app, so you see one history across apps.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "When you log a mood in this app, it can save a State of Mind entry to the Health app.";
@@ -1311,7 +1314,7 @@
 				);
 				MARKETING_VERSION = 1.0.0;
 				OTHER_SWIFT_FLAGS = "$(inherited) -DASD_APP_STORE_AGE_ASSURANCE -DASD_DEMO_TOOLS $(ASD_MCHAT_FLAG)";
-				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_IDENTIFIER:default=org.curv.asd.gazecollector)";
+				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_IDENTIFIER:default=com.open-spectrum.eye-gaze)";
 				PRODUCT_NAME = AsdGazeCollector;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";

@@ -7,7 +7,7 @@ storage_mode(ENV["MATCH_STORAGE_MODE"] || "git") # 'git', 'google_cloud', or 's3
 
 type("appstore") # The default type, can be: appstore, adhoc, enterprise, development
 
-base_app_id = ENV.fetch("APP_IDENTIFIER", "org.curv.asd.gazecollector")
+base_app_id = ENV.fetch("APP_IDENTIFIER", "com.open-spectrum.eye-gaze")
 app_identifier([
   base_app_id,
   "#{base_app_id}.carewidget"

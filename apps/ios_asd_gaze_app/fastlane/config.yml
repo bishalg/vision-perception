@@ -4,8 +4,8 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # App Identity
 # ─────────────────────────────────────────────────────────────────────────────
-app_identifier: "org.curv.asd.gazecollector"
-widget_identifier: "org.curv.asd.gazecollector.carewidget"
+app_identifier: "com.open-spectrum.eye-gaze"
+widget_identifier: "com.open-spectrum.eye-gaze.carewidget"
 # apple_id, team_id and team_name are read from APPLE_ID / APPLE_TEAM_ID (never committed).
 
 # ─────────────────────────────────────────────────────────────────────────────

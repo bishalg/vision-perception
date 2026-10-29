@@ -26,7 +26,7 @@ APP=/tmp/AsdGazeDerivedDevice/Build/Products/Debug-iphoneos/AsdGazeCollector.app
 echo "==> Installing app on device..."
 xcrun devicectl device install app --device "${DEV}" "${APP}"
 
-echo "==> Launching AsdGazeCollector..."
-xcrun devicectl device process launch --device "${DEV}" org.curv.asd.gazecollector
+echo "==> Launching Eye Gaze..."
+xcrun devicectl device process launch --device "${DEV}" com.open-spectrum.eye-gaze
 
 echo "==> Done! App launched on device."

@@ -64,8 +64,8 @@ platform :ios do
       end
 
       # 3. Check App Identifier
-      app_id = ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
-      if app_id.match?(/^([a-zA-Z0-9_]+\.)*[a-zA-Z0-9_]+$/)
+      app_id = ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "com.open-spectrum.eye-gaze"
+      if app_id.match?(/^([a-zA-Z0-9_-]+\.)*[a-zA-Z0-9_-]+$/)
         UI.success("✅ App Identifier is valid: #{app_id}")
       else
         UI.user_error!("❌ Invalid App Identifier: #{app_id}")
@@ -155,7 +155,7 @@ platform :ios do
   desc "Run App Store precheck rules on metadata"
   lane :appstore_precheck do
     precheck(
-      app_identifier: ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "org.curv.asd.gazecollector",
+      app_identifier: ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "com.open-spectrum.eye-gaze",
       include_in_app_purchases: false
     )
   end
@@ -167,7 +167,7 @@ platform :ios do
   desc "Sync App Store distribution certificates and provisioning profiles for App & Extensions"
   lane :sync_certs do |options|
     readonly = options.fetch(:readonly, is_ci)
-    app_id = ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
+    app_id = ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "com.open-spectrum.eye-gaze"
     widget_id = ENV["WIDGET_IDENTIFIER"] || CONFIG["widget_identifier"] || "#{app_id}.carewidget"
     team_id = ENV["APPLE_TEAM_ID"]
     all_ids = [app_id, widget_id].compact.uniq
@@ -208,7 +208,7 @@ platform :ios do
 
   desc "Build and archive production .ipa"
   lane :build_app_store do |options|
-    app_id = ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
+    app_id = ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "com.open-spectrum.eye-gaze"
     widget_id = ENV["WIDGET_IDENTIFIER"] || CONFIG["widget_identifier"] || "#{app_id}.carewidget"
     team_id = ENV["APPLE_TEAM_ID"]
     output_dir = options[:output_directory] || "./build"
@@ -275,7 +275,7 @@ platform :ios do
     ipa = build_app_store
 
     upload_to_testflight(
-      app_identifier: ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "org.curv.asd.gazecollector",
+      app_identifier: ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "com.open-spectrum.eye-gaze",
       ipa: ipa,
       skip_waiting_for_build_processing: true,
       distribute_external: options.fetch(:distribute_external, false),
@@ -291,7 +291,7 @@ platform :ios do
   desc "Upload metadata only to App Store Connect"
   lane :update_metadata do |options|
     validate_metadata
-    app_id = ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
+    app_id = ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "com.open-spectrum.eye-gaze"
 
     meta_path = File.expand_path("metadata", __dir__)
 
@@ -330,7 +330,7 @@ platform :ios do
 
   desc "Upload screenshots only to App Store Connect"
   lane :upload_screenshots do |options|
-    app_id = ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
+    app_id = ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "com.open-spectrum.eye-gaze"
     sc_path = File.expand_path("screenshots", __dir__)
 
     deliver(
@@ -355,7 +355,7 @@ platform :ios do
 
   desc "Submit app for App Store review"
   lane :submit_app_store do |options|
-    app_id = ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "org.curv.asd.gazecollector"
+    app_id = ENV["APP_IDENTIFIER"] || CONFIG["app_identifier"] || "com.open-spectrum.eye-gaze"
 
     deliver(
       app_identifier: app_id,

@@ -1,4 +1,4 @@
-appId: org.curv.asd.gazecollector
+appId: com.open-spectrum.eye-gaze
 name: bdd-03-dashboard-and-guardians
 ---
 # Feature: longitudinal care dashboard and caregiver guardrails

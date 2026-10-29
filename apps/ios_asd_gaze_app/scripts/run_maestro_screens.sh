@@ -14,7 +14,7 @@ set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SCHEME="AsdGazeCollector"
-BUNDLE="org.curv.asd.gazecollector"
+BUNDLE="com.open-spectrum.eye-gaze"
 DEVICE="${DEVICE:-iPhone 18 Pro}"
 OUT="${OUT:-$APP_DIR/maestro/screenshots}"
 APP_PATH="$APP_DIR/build-sim/Build/Products/Debug-iphonesimulator/AsdGazeCollector.app"
