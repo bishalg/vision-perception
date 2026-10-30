@@ -19,7 +19,9 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   try {
     const pair = await getApi().login(email, password);
     await writeSession(pair);
-    target = next ?? `/${encodeURIComponent(pair.user.org_id)}/overview`;
+    const org = pair.user.org_id;
+    // The superadmin has no home org: without `next` it lands on `/`, which routes by the org cookie.
+    target = next ?? (org === null ? "/" : `/${encodeURIComponent(org)}/overview`);
   } catch (err) {
     if (err instanceof ApiError && (err.status === 400 || err.status === 401 || err.status === 403 || err.status === 422)) {
       return { error: "failed" };

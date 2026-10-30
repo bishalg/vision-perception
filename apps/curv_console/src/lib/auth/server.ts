@@ -7,7 +7,10 @@ import type { TokenPair } from "@/lib/api";
 
 export async function writeSession(pair: TokenPair): Promise<void> {
   const jar = await cookies();
-  for (const c of sessionCookies(pair, cookieSecure())) jar.set(c.name, c.value, c.options);
+  const specs = sessionCookies(pair, cookieSecure());
+  for (const c of specs) jar.set(c.name, c.value, c.options);
+  // A superadmin (no org) must not inherit an earlier user's org cookie.
+  if (!specs.some((c) => c.name === ORG_COOKIE)) jar.delete(ORG_COOKIE);
 }
 
 export async function clearSession(): Promise<void> {

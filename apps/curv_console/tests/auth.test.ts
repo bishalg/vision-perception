@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { decideGuard, safeNextPath } from "@/lib/auth/guard";
-import { ACCESS_COOKIE, REFRESH_COOKIE, sessionCookies } from "@/lib/auth/cookies";
+import { ACCESS_COOKIE, ORG_COOKIE, REFRESH_COOKIE, sessionCookies } from "@/lib/auth/cookies";
 
 describe("guard", () => {
   it("lets unauthenticated users reach /login only", () => {
@@ -38,5 +38,11 @@ describe("session cookies", () => {
     }
     expect(cookies.find((c) => c.name === ACCESS_COOKIE)!.options.maxAge).toBe(900);
     expect(cookies.find((c) => c.name === REFRESH_COOKIE)!.options.maxAge).toBeGreaterThan(900);
+    expect(cookies.find((c) => c.name === ORG_COOKIE)!.value).toBe("o");
+  });
+  it("set no org cookie for the superadmin, whose org_id is null", () => {
+    const root = { ...pair, user: { ...pair.user, role: "superadmin" as const, org_id: null } };
+    const names = sessionCookies(root, true).map((c) => c.name);
+    expect(names).toEqual([ACCESS_COOKIE, REFRESH_COOKIE]);
   });
 });

@@ -30,7 +30,10 @@ export function sessionCookies(pair: TokenPair, secure: boolean): CookieSpec[] {
     // The access cookie expires with the access token, which is what triggers a refresh in proxy.ts.
     { name: ACCESS_COOKIE, value: pair.access_token, options: { ...base, maxAge: pair.expires_in } },
     { name: REFRESH_COOKIE, value: pair.refresh_token, options: { ...base, maxAge: REFRESH_MAX_AGE_SEC } },
-    { name: ORG_COOKIE, value: pair.user.org_id, options: { ...base, maxAge: REFRESH_MAX_AGE_SEC } },
+    // The superadmin has no home org (org_id null), so no org cookie.
+    ...(pair.user.org_id === null
+      ? []
+      : [{ name: ORG_COOKIE, value: pair.user.org_id, options: { ...base, maxAge: REFRESH_MAX_AGE_SEC } }]),
   ];
 }
 

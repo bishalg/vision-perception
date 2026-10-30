@@ -31,6 +31,11 @@ export const ROLES = ["owner", "admin", "clinician", "researcher", "reviewer", "
 export const roleSchema = z.enum(ROLES);
 export type Role = z.infer<typeof roleSchema>;
 
+/** `UserStatus`: `invited` accounts exist but cannot sign in yet. */
+export const USER_STATUSES = ["active", "disabled", "invited"] as const;
+export const userStatusSchema = z.enum(USER_STATUSES);
+export type UserStatus = z.infer<typeof userStatusSchema>;
+
 const num = z.number().nullable().optional();
 const str = z.string().nullable().optional();
 
@@ -40,7 +45,8 @@ export const userSchema = z.object({
   id: z.string(),
   email: z.string(),
   role: roleSchema,
-  org_id: z.string(),
+  /** null only for the global superadmin, who belongs to no org. */
+  org_id: z.string().nullable(),
 });
 export type User = z.infer<typeof userSchema>;
 
@@ -214,6 +220,23 @@ export const problemSchema = z.object({
 export type Problem = z.infer<typeof problemSchema>;
 
 export const PROBLEM_BASE = "https://schemas.curv.org/asd/problems/";
+
+/** `ProblemSlug`: the slugs the contract defines (routes may add their own, e.g. `email-taken`). */
+export const PROBLEM_SLUGS = [
+  "validation-failed",
+  "unsupported-schema-version",
+  "idempotency-key-reused",
+  "enrol-code-exhausted",
+  "capture-source-rejected",
+  "unauthorized",
+  "forbidden",
+  "not-found",
+  "rate-limited",
+  "conflict",
+  "participant-withdrawn",
+  "internal",
+] as const;
+export type ProblemSlug = (typeof PROBLEM_SLUGS)[number];
 
 export class ApiError extends Error {
   readonly status: number;

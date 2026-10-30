@@ -15,8 +15,10 @@ import {
   CLIP_STATUSES,
   DIRECTIONS,
   ORG_KINDS,
+  PROBLEM_SLUGS,
   QUALITY_VERDICTS,
   ROLES,
+  USER_STATUSES,
   clipListSchema,
   clipScoreSchema,
   metricRowSchema,
@@ -93,6 +95,15 @@ describe("api-v1.json contract", () => {
     expect([...ORG_KINDS]).toEqual(defs.OrgKind!.enum);
     expect([...ROLES]).toEqual(defs.Role!.enum);
     expect([...QUALITY_VERDICTS]).toEqual(defs.GazeQualityVerdict!.enum);
+    expect([...USER_STATUSES]).toEqual(defs.UserStatus!.enum);
+    expect([...PROBLEM_SLUGS]).toEqual(defs.ProblemSlug!.enum);
+  });
+
+  it("User.org_id is null for the superadmin (no org) and a string otherwise", () => {
+    const ex = defs.User!.examples![0] as Record<string, unknown>;
+    expect(userSchema.parse({ ...ex, role: "superadmin", org_id: null }).org_id).toBeNull();
+    expect(userSchema.parse(ex).org_id).toBe(ex.org_id);
+    expect(userSchema.safeParse({ ...ex, org_id: 7 }).success).toBe(false);
   });
 
   it("rejects values outside the contract", () => {
