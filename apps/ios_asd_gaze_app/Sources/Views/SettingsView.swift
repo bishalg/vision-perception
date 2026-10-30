@@ -89,6 +89,8 @@ public struct SettingsView: View {
                             .foregroundColor(Color.white.opacity(0.8))
                             .padding(16)
                     }
+                    .accessibilityLabel("Close")
+                    .accessibilityIdentifier("settings_camera_check_close")
                 }
             }
             .fullScreenCover(isPresented: $showOnboardingFlow) {

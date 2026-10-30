@@ -502,6 +502,12 @@ public struct GazeStimulusScreeningView: View {
     // MARK: - Session Management
 
     private func startSession() async {
+        // SIM-7: hardware first, so a device without TrueDepth (or Apple Vision Pro)
+        // never sees a camera prompt for capture it cannot run.
+        guard CaptureEntryGate.deviceSupportsFaceTracking else {
+            entryBlock = .faceTrackingUnsupported
+            return
+        }
         // CAM-1: no session until camera access is granted.
         guard await camera.ensureAccess(consentStore: .shared) == .granted, !Task.isCancelled else {
             if camera.state == .unknown { entryBlock = .consentRequired }

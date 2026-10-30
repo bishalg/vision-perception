@@ -25,8 +25,16 @@ Feature: Longitudinal dashboard and caregiver guardrails
   Scenario: Gaze capture is gated on unsupported devices
     When the caregiver opens the Gaze tab
     Then the app shows "This device cannot run gaze observations"
+    And no camera permission prompt appears
     And a screenshot named gaze-gate-simulator captures the honest gate
     And the app still offers the diary, reminders and notes
+
+  Scenario: Settings capture tools are gated the same way
+    Given the device has no TrueDepth camera
+    When the caregiver opens Quick Calibrate or Camera & Distance Check from Settings
+    Then the app shows "This device cannot run gaze observations"
+    And no camera permission prompt appears
+    And the caregiver can close it and return to Settings
 
   Scenario: Switch modes and review settings
     When the Settings tab is open

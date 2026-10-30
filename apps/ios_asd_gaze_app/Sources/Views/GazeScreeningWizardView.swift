@@ -62,7 +62,11 @@ public struct GazeScreeningWizardView: View {
                 ProgressView()
             }
         }
-        .task { await camera.ensureAccess(consentStore: .shared) }
+        .task {
+            // SIM-7: no camera prompt on hardware the gate above already blocks.
+            guard CaptureEntryGate.deviceSupportsFaceTracking else { return }
+            await camera.ensureAccess(consentStore: .shared)
+        }
         .cameraScenePhase(camera) { _ in }
     }
 

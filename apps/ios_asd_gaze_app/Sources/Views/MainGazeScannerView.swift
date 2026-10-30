@@ -683,6 +683,7 @@ public struct MainGazeScannerView: View {
                 if controller.isSimulationMode {
                     Task { await beginConsentedCapture() }
                 } else {
+                    entryBlock = nil
                     controller.startSimulatedSession()
                 }
             }) {
@@ -834,6 +835,12 @@ public struct MainGazeScannerView: View {
     /// CNS-1: live capture only starts with a consent token minted from the profile store.
     /// CAM-1: nothing starts until camera access is granted.
     private func beginConsentedCapture() async {
+        // SIM-7: hardware first, so a device without TrueDepth (or Apple Vision Pro)
+        // never sees a camera prompt for capture it cannot run.
+        guard CaptureEntryGate.deviceSupportsFaceTracking else {
+            entryBlock = .faceTrackingUnsupported
+            return
+        }
         guard await camera.ensureAccess(consentStore: .shared) == .granted, !Task.isCancelled else {
             if camera.state == .unknown { entryBlock = .consentRequired }
             return

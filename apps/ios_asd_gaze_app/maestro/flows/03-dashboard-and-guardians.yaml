@@ -45,8 +45,40 @@ name: bdd-03-dashboard-and-guardians
 # Gaze tab — on a simulator the entry gate blocks live capture on purpose
 - tapOn: Gaze
 - assertVisible: This device cannot run gaze observations
+# SIM-7: the hardware gate comes before any camera prompt
+- assertNotVisible: ".*Would Like to Access the Camera.*"
 - takeScreenshot: gaze-gate-simulator
 
 # Settings
 - tapOn: Settings
 - takeScreenshot: settings
+
+# SIM-7: calibration and camera check from Settings hit the same gate, with no
+# camera prompt (these entries bypass the Gaze tab gate).
+- scrollUntilVisible:
+    element: Quick Calibrate
+    direction: DOWN
+    timeout: 20000
+- tapOn: Quick Calibrate
+- extendedWaitUntil:
+    visible: This device cannot run gaze observations
+    timeout: 10000
+- assertNotVisible: ".*Would Like to Access the Camera.*"
+- tapOn:
+    id: unsupported-device-close
+- waitForAnimationToEnd:
+    timeout: 5000
+- scrollUntilVisible:
+    element: Camera & Distance Check
+    direction: DOWN
+    timeout: 20000
+- tapOn: Camera & Distance Check
+- extendedWaitUntil:
+    visible: This device cannot run gaze observations
+    timeout: 10000
+- assertNotVisible: ".*Would Like to Access the Camera.*"
+- tapOn:
+    id: settings_camera_check_close
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: Quick Calibrate

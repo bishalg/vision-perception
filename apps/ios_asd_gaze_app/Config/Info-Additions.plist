@@ -2,13 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- SIM-7: merged with the generated Info.plist. Cannot be tightened after the first App Store release.
-	     No `arkit`: visionOS does not offer it, so requiring it blocks Apple Vision Pro. Face tracking is
-	     gated at runtime instead (CaptureEntryGate, GazeSessionController.startSession). -->
-	<key>UIRequiredDeviceCapabilities</key>
-	<array>
-		<string>front-facing-camera</string>
-	</array>
+	<!-- SIM-7: no UIRequiredDeviceCapabilities on purpose. `arkit` blocks Apple Vision Pro (visionOS does
+	     not offer it) and `front-facing-camera` filters no iOS 18 device but is not honoured on visionOS
+	     builds. Face tracking is gated at runtime instead (CaptureEntryGate, GazeSessionController.startSession).
+	     Capabilities cannot be added back after release: that would tighten the requirement. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>
