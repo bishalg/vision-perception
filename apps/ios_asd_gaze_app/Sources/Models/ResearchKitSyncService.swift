@@ -1,5 +1,6 @@
 import Combine
 import CryptoKit
+import CurvAsdGazeKit
 import Foundation
 import Network
 import os
@@ -47,6 +48,99 @@ private struct ResearchSyncFileMeta: Codable {
     var nextAttemptAt: TimeInterval
 }
 
+/// Where this device stands with the `/v1` API (WP-A.4).
+public enum DeviceRegistrationStatus: Sendable, Equatable {
+    /// The configuration has no `apiBaseURL`: sessions are not uploaded.
+    case unavailable
+    /// No device token yet; enter the clinic's enrolment code.
+    case unregistered
+    case registered(orgId: String)
+    /// The token was refused and re-registration failed; a new code is needed.
+    case needsEnrolment
+}
+
+/// One queued `/v1/sessions` upload (WP-A.4), stored as `session_<id>.json` in the
+/// same protected queue as study bundles so backoff, dead letter, quarantine and
+/// purge (CNS-4/5/6) apply unchanged. Re-enqueueing a session id replaces its file.
+struct QueuedSessionUpload: Codable, Equatable {
+    enum Stage: String, Codable {
+        /// `POST /v1/sessions` not yet accepted.
+        case post
+        /// Session accepted; blob PUTs still pending.
+        case uploadBlobs
+    }
+
+    enum BlobKind: String, Codable {
+        case frames
+        case report
+
+        var contentType: String {
+            switch self {
+            case .frames: return "application/octet-stream"
+            case .report: return "application/pdf"
+            }
+        }
+    }
+
+    struct Blob: Codable, Equatable {
+        let kind: BlobKind
+        /// Relative to the blob root (the app container moves between installs) or absolute.
+        let path: String
+        let isRelative: Bool
+        var uploadURL: String?
+        var done: Bool
+    }
+
+    static let filePrefix = "session_"
+    var format = 1
+    let sessionId: String
+    let payload: SessionIngestPayload
+    var stage: Stage
+    var blobs: [Blob]
+
+    var hasPendingUploads: Bool {
+        blobs.contains { !$0.done && $0.uploadURL != nil }
+    }
+
+    static func isSessionFile(_ url: URL) -> Bool {
+        url.lastPathComponent.hasPrefix(filePrefix)
+    }
+
+    /// Readable, collision-free file name: sanitised id plus a hash of the raw id.
+    static func fileName(for sessionId: String) -> String {
+        let allowed = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_")
+        let safe = String(sessionId.prefix(64).map { allowed.contains($0) ? $0 : "_" })
+        let digest = SHA256.hash(data: Data(sessionId.utf8)).prefix(4).map { String(format: "%02x", $0) }.joined()
+        return "\(filePrefix)\(safe)_\(digest).json"
+    }
+
+    mutating func applyUploadURLs(frames: String?, report: String?) {
+        for index in blobs.indices {
+            switch blobs[index].kind {
+            case .frames: blobs[index].uploadURL = frames
+            case .report: blobs[index].uploadURL = report
+            }
+            if blobs[index].uploadURL == nil { blobs[index].done = true }
+        }
+    }
+
+    /// An upload URL expired or was refused: ask the server for fresh ones.
+    mutating func resetForFreshUploadURLs() {
+        stage = .post
+        for index in blobs.indices where blobs[index].uploadURL != nil && !blobs[index].done {
+            blobs[index].uploadURL = nil
+        }
+    }
+}
+
+private enum QueueItemOutcome {
+    case delivered(receipt: String)
+    case quarantine(code: Int)
+    case transient(retryAfter: TimeInterval?)
+    /// Not attempted or refused for auth: stays queued, no retry budget spent.
+    case held
+}
+
 /// Offline-first background synchronization client for a configured research
 /// study's ingest endpoint (CNS-9).
 ///
@@ -69,6 +163,8 @@ public final class ResearchKitSyncService: ObservableObject {
     @Published public private(set) var deadLetterCount: Int = 0
     @Published public private(set) var lastSyncedAt: Date?
     @Published public private(set) var isOnline: Bool = true
+    /// Device-plane registration for `/v1/sessions` (WP-A.4).
+    @Published public private(set) var deviceRegistration: DeviceRegistrationStatus = .unavailable
 
     public let configuration: ResearchStudyConfiguration
     private let store: ResearchKitStudyStore
@@ -79,6 +175,10 @@ public final class ResearchKitSyncService: ObservableObject {
     private let pathMonitor: NWPathMonitor?
     private let monitorQueue = DispatchQueue(label: "org.curv.researchkit.network", qos: .utility)
     private let now: @Sendable () -> Date
+    /// `nil` when the configuration has no `apiBaseURL` (WP-A.4).
+    private let sessionClient: SessionSyncClient?
+    /// Base for queued blob paths (the app container path changes between installs).
+    private let blobRoot: URL
 
     private static let deadLetterFolder = "DeadLetter"
     private static let quarantineFolder = "Quarantine"
@@ -136,12 +236,36 @@ public final class ResearchKitSyncService: ObservableObject {
         queueDirectory: URL? = nil,
         session: URLSession = .shared,
         startMonitoring: Bool = true,
-        now: @escaping @Sendable () -> Date = { Date() }
+        now: @escaping @Sendable () -> Date = { Date() },
+        credentialStore: DeviceCredentialStore = KeychainDeviceCredentialStore(),
+        clientInfo: SyncClientInfo? = nil,
+        blobRoot: URL? = nil,
+        transport: SyncTransport? = nil
     ) {
         self.configuration = configuration
         self.store = store
         self.session = session
         self.now = now
+        self.blobRoot = (blobRoot ?? URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)).resolvingSymlinksInPath()
+        if let apiBaseURL = configuration.apiBaseURL {
+            let info = clientInfo ?? .current
+            let transport = transport ?? URLSessionSyncTransport(session: session)
+            let registration = DeviceRegistrationService(
+                apiBaseURL: apiBaseURL,
+                transport: transport,
+                store: credentialStore,
+                clientInfo: info,
+                now: now
+            )
+            self.sessionClient = SessionSyncClient(
+                apiBaseURL: apiBaseURL,
+                transport: transport,
+                registration: registration,
+                clientInfo: info
+            )
+        } else {
+            self.sessionClient = nil
+        }
 
         self.queueDirectory = queueDirectory ?? Self.defaultQueueDirectory()
         if startMonitoring {
@@ -151,6 +275,7 @@ public final class ResearchKitSyncService: ObservableObject {
         }
         prepareProtectedDirectory(self.queueDirectory)
         updatePendingCount()
+        refreshRegistrationStatus(authFailed: false)
 
         if let monitor = self.pathMonitor {
             monitor.pathUpdateHandler = { [weak self] path in
@@ -198,6 +323,96 @@ public final class ResearchKitSyncService: ObservableObject {
         } catch {
             Self.logger.error("Failed to write research study payload: \(error.localizedDescription, privacy: .public)")
         }
+    }
+
+    /// Whether this build uploads sessions to `/v1/sessions` (an `apiBaseURL` is configured).
+    public var isSessionSyncEnabled: Bool { sessionClient != nil }
+
+    /// Queues a finished session for `POST /v1/sessions` and, when the server
+    /// returns pre-signed URLs, PUTs of the encrypted frames file and report.
+    ///
+    /// Refused (returns `false`) when session sync is off, research consent is not
+    /// active, or the record is simulated or of legacy provenance (SIM-4/5). The
+    /// queue file is keyed by session id, so re-enqueueing replaces it (dedupe).
+    @discardableResult
+    public func enqueueSession(
+        _ record: GazeSessionRecord,
+        framesFile: URL? = nil,
+        reportFile: URL? = nil,
+        attentionFlag: AttentionFlag? = nil,
+        battery: String? = nil
+    ) -> Bool {
+        guard isSessionSyncEnabled else { return false }
+        guard store.fetchEnrollment().isConsented else {
+            Self.logger.info("Session \(record.sessionId, privacy: .public) not queued: research consent is not active")
+            return false
+        }
+        let payload: SessionIngestPayload
+        do {
+            payload = try SessionIngestPayload(record: record, attentionFlag: attentionFlag, battery: battery)
+        } catch {
+            Self.logger.info("Session \(record.sessionId, privacy: .public) not queued: \(String(describing: error), privacy: .public)")
+            return false
+        }
+        var blobs: [QueuedSessionUpload.Blob] = []
+        if let framesFile { blobs.append(queuedBlob(.frames, framesFile)) }
+        if let reportFile { blobs.append(queuedBlob(.report, reportFile)) }
+        let item = QueuedSessionUpload(sessionId: record.sessionId, payload: payload, stage: .post, blobs: blobs)
+        let fileURL = queueDirectory.appendingPathComponent(QueuedSessionUpload.fileName(for: record.sessionId))
+        do {
+            prepareProtectedDirectory(queueDirectory)
+            try SessionPayloadCoding.encoder().encode(item).write(to: fileURL, options: Self.writeOptions)
+            // A fresh enqueue starts a fresh retry budget.
+            try? fileManager.removeItem(at: metaURL(for: fileURL))
+            updatePendingCount()
+            return true
+        } catch {
+            Self.logger.error("Failed to queue session: \(error.localizedDescription, privacy: .public)")
+            return false
+        }
+    }
+
+    /// Registers this device with the clinic's one-time enrolment code
+    /// (`POST /v1/devices/register`) and stores the token in the Keychain.
+    public func registerDevice(enrolCode: String) async throws {
+        guard let sessionClient else { throw DeviceRegistrationError.notRegistered }
+        do {
+            try await sessionClient.registration.register(.enrolCode(enrolCode))
+            refreshRegistrationStatus(authFailed: false)
+        } catch {
+            refreshRegistrationStatus(authFailed: false)
+            throw error
+        }
+        if pendingQueueCount > 0 && !syncState.isSyncing {
+            syncNow(forceBundleCompile: false)
+        }
+    }
+
+    private func refreshRegistrationStatus(authFailed: Bool) {
+        guard let sessionClient else {
+            deviceRegistration = .unavailable
+            return
+        }
+        if let credential = sessionClient.registration.currentCredential() {
+            deviceRegistration = .registered(orgId: credential.orgId)
+        } else if authFailed || deviceRegistration == .needsEnrolment {
+            deviceRegistration = .needsEnrolment
+        } else {
+            deviceRegistration = .unregistered
+        }
+    }
+
+    private func queuedBlob(_ kind: QueuedSessionUpload.BlobKind, _ url: URL) -> QueuedSessionUpload.Blob {
+        let path = url.resolvingSymlinksInPath().path
+        let root = blobRoot.path.hasSuffix("/") ? blobRoot.path : blobRoot.path + "/"
+        if path.hasPrefix(root) {
+            return .init(kind: kind, path: String(path.dropFirst(root.count)), isRelative: true, uploadURL: nil, done: false)
+        }
+        return .init(kind: kind, path: path, isRelative: false, uploadURL: nil, done: false)
+    }
+
+    private func blobFileURL(_ blob: QueuedSessionUpload.Blob) -> URL {
+        blob.isRelative ? blobRoot.appendingPathComponent(blob.path) : URL(fileURLWithPath: blob.path)
     }
 
     /// Update the count of pending transmissions in the sandbox queue.
@@ -284,6 +499,9 @@ public final class ResearchKitSyncService: ObservableObject {
             var deferredCount = 0
             var deadLettered = 0
             var lastReceipt = "RCPT-\(UUID().uuidString.prefix(6))"
+            var authHeld = false
+            // One re-registration per flush, not per item (WP-A.4).
+            var mayReRegister = true
 
             for file in jsonFiles {
                 guard generation == queueGeneration, !Task.isCancelled else { break }
@@ -293,39 +511,51 @@ public final class ResearchKitSyncService: ObservableObject {
                     continue
                 }
                 guard let data = try? Data(contentsOf: file) else { continue }
-                do {
-                    let receipt = try await postPayload(data: data)
-                    guard generation == queueGeneration else { break }
+
+                let outcome: QueueItemOutcome
+                if QueuedSessionUpload.isSessionFile(file) {
+                    if authHeld {
+                        deferredCount += 1
+                        continue
+                    }
+                    outcome = await processSession(file: file, data: data, generation: generation, mayReRegister: &mayReRegister)
+                } else {
+                    outcome = await processStudyBundle(data: data)
+                }
+                // Purged while this upload was in flight: the file is gone,
+                // so record nothing about it.
+                guard generation == queueGeneration, !Task.isCancelled else { break }
+
+                switch outcome {
+                case .delivered(let receipt):
                     lastReceipt = receipt
                     try? fileManager.removeItem(at: file)
                     try? fileManager.removeItem(at: metaURL(for: file))
                     successCount += 1
-                } catch let err as NSError {
-                    // Purged while this upload was in flight: the file is gone,
-                    // so record nothing about it.
-                    guard generation == queueGeneration, !Task.isCancelled else { break }
-                    Self.logger.error("Transmission failed for \(file.lastPathComponent, privacy: .public): \(err.localizedDescription, privacy: .public)")
+                case .quarantine(let code):
                     // 4xx status codes indicate permanent payload/client errors.
                     // Quarantine so this file does not block future sync runs.
-                    if (400...499).contains(err.code) {
-                        moveAside(file, folderName: Self.quarantineFolder)
-                        Self.logger.warning("Quarantined invalid payload \(file.lastPathComponent, privacy: .public) (HTTP \(err.code))")
+                    moveAside(file, folderName: Self.quarantineFolder)
+                    Self.logger.warning("Quarantined invalid payload \(file.lastPathComponent, privacy: .public) (HTTP \(code))")
+                case .held:
+                    authHeld = true
+                    Self.logger.info("Held \(file.lastPathComponent, privacy: .public): device enrolment needed")
+                case .transient(let retryAfter):
+                    Self.logger.error("Transmission failed for \(file.lastPathComponent, privacy: .public)")
+                    let nextCount = meta.attemptCount + 1
+                    if nextCount >= ResearchSyncRetryPolicy.maxAttempts {
+                        moveAside(file, folderName: Self.deadLetterFolder)
+                        deadLettered += 1
+                        Self.logger.warning("Dead-lettered \(file.lastPathComponent, privacy: .public) after \(nextCount) attempts")
                     } else {
-                        let nextCount = meta.attemptCount + 1
-                        if nextCount >= ResearchSyncRetryPolicy.maxAttempts {
-                            moveAside(file, folderName: Self.deadLetterFolder)
-                            deadLettered += 1
-                            Self.logger.warning("Dead-lettered \(file.lastPathComponent, privacy: .public) after \(nextCount) attempts")
-                        } else {
-                            let delay = ResearchSyncRetryPolicy.delay(afterAttempt: nextCount)
-                            let updated = ResearchSyncFileMeta(
-                                attemptCount: nextCount,
-                                nextAttemptAt: now().timeIntervalSince1970 + delay
-                            )
-                            saveMeta(updated, for: file)
-                            transientFailures += 1
-                            Self.logger.info("Scheduled retry \(nextCount) for \(file.lastPathComponent, privacy: .public) in \(delay, privacy: .public)s")
-                        }
+                        let delay = max(ResearchSyncRetryPolicy.delay(afterAttempt: nextCount), retryAfter ?? 0)
+                        let updated = ResearchSyncFileMeta(
+                            attemptCount: nextCount,
+                            nextAttemptAt: now().timeIntervalSince1970 + delay
+                        )
+                        saveMeta(updated, for: file)
+                        transientFailures += 1
+                        Self.logger.info("Scheduled retry \(nextCount) for \(file.lastPathComponent, privacy: .public) in \(delay, privacy: .public)s")
                     }
                 }
             }
@@ -344,6 +574,9 @@ public final class ResearchKitSyncService: ObservableObject {
                 syncState = .synced(timestamp: syncedAt, receiptId: lastReceipt)
                 Self.logger.info("Successfully synced \(successCount) ResearchKit bundle(s). Receipt: \(lastReceipt, privacy: .public)")
                 completion?(true)
+            } else if authHeld {
+                syncState = .failed(reason: "Device enrolment needed. Data safely queued.")
+                completion?(false)
             } else if deadLettered > 0 && pendingQueueCount == 0 {
                 syncState = .failed(reason: "Stuck items need a manual retry. Data safely queued.")
                 completion?(false)
@@ -460,6 +693,101 @@ public final class ResearchKitSyncService: ObservableObject {
             Self.logger.error("Failed to write doctor report PDF: \(error.localizedDescription, privacy: .public)")
             return nil
         }
+    }
+
+    // MARK: - Queue item processing
+
+    /// Legacy study bundle to `ingestURL` (unchanged behaviour).
+    private func processStudyBundle(data: Data) async -> QueueItemOutcome {
+        do {
+            return .delivered(receipt: try await postPayload(data: data))
+        } catch let err as NSError {
+            return (400...499).contains(err.code) ? .quarantine(code: err.code) : .transient(retryAfter: nil)
+        }
+    }
+
+    /// `/v1/sessions` item: POST (once accepted, never again unless an upload URL
+    /// expires), then the pre-signed blob PUTs. Progress is written back to the
+    /// queue file so a retry resumes where it stopped.
+    private func processSession(
+        file: URL,
+        data: Data,
+        generation: Int,
+        mayReRegister: inout Bool
+    ) async -> QueueItemOutcome {
+        guard var item = try? SessionPayloadCoding.decoder().decode(QueuedSessionUpload.self, from: data) else {
+            return .quarantine(code: -3)
+        }
+        guard let client = sessionClient else { return .held }
+
+        do {
+            if item.stage == .post {
+                let response = try await client.postSession(item.payload, mayReRegister: &mayReRegister)
+                refreshRegistrationStatus(authFailed: false)
+                guard generation == queueGeneration else { return .held }
+                item.applyUploadURLs(frames: response.framesUploadURL, report: response.reportUploadURL)
+                guard item.hasPendingUploads else { return .delivered(receipt: item.sessionId) }
+                item.stage = .uploadBlobs
+                persist(item, to: file, generation: generation)
+            }
+
+            for index in item.blobs.indices where !item.blobs[index].done {
+                guard let raw = item.blobs[index].uploadURL else {
+                    item.blobs[index].done = true
+                    continue
+                }
+                let target = try client.resolveUploadURL(raw)
+                let source = blobFileURL(item.blobs[index])
+                guard fileManager.fileExists(atPath: source.path) else {
+                    // Deleted locally (for example by delete-all): nothing to send.
+                    Self.logger.info("Skipping missing \(item.blobs[index].kind.rawValue, privacy: .public) blob for \(item.sessionId, privacy: .public)")
+                    item.blobs[index].done = true
+                    persist(item, to: file, generation: generation)
+                    continue
+                }
+                // Throws while the device is locked (complete protection): transient.
+                let bytes = try Data(contentsOf: source)
+                do {
+                    try await client.upload(bytes, to: target, contentType: item.blobs[index].kind.contentType)
+                } catch SessionSyncError.http(let status, _) where [401, 403, 404, 410].contains(status) {
+                    // Expired or refused signature: re-post for fresh URLs next time.
+                    guard generation == queueGeneration else { return .held }
+                    item.resetForFreshUploadURLs()
+                    persist(item, to: file, generation: generation)
+                    return .transient(retryAfter: nil)
+                }
+                guard generation == queueGeneration else { return .held }
+                item.blobs[index].done = true
+                persist(item, to: file, generation: generation)
+            }
+            return .delivered(receipt: item.sessionId)
+        } catch let error as SessionSyncError {
+            switch error {
+            case .notRegistered:
+                refreshRegistrationStatus(authFailed: false)
+                return .held
+            case .unauthorized:
+                refreshRegistrationStatus(authFailed: true)
+                return .held
+            case .insecureURL:
+                return .quarantine(code: -4)
+            case .http(let status, let retryAfter):
+                if status == 408 || status == 429 || status >= 500 {
+                    return .transient(retryAfter: retryAfter)
+                }
+                return .quarantine(code: status)
+            }
+        } catch {
+            return .transient(retryAfter: nil)
+        }
+    }
+
+    /// Writes upload progress back to the queue file, unless a purge happened.
+    private func persist(_ item: QueuedSessionUpload, to file: URL, generation: Int) {
+        guard generation == queueGeneration,
+              fileManager.fileExists(atPath: file.path),
+              let data = try? SessionPayloadCoding.encoder().encode(item) else { return }
+        try? data.write(to: file, options: Self.writeOptions)
     }
 
     // MARK: - HTTP Network Request

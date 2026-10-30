@@ -182,6 +182,51 @@ final class ResearchStudyConfigurationTests: XCTestCase {
         }
     }
 
+    // MARK: - WP-A.4 API base URL (optional, same https/DNS rule)
+
+    func testAPIBaseURLIsOptional() throws {
+        let config = try ResearchStudyConfiguration(dictionary: Self.validDictionary)
+        XCTAssertNil(config.apiBaseURL, "no apiBaseURL key: the /v1 session client stays off")
+    }
+
+    func testAPIBaseURLIsParsed() throws {
+        let dict = Self.study(replacing: ResearchStudyConfiguration.apiBaseURLKey, with: " https://api.example.org/asd ")
+        let config = try ResearchStudyConfiguration(dictionary: dict)
+        XCTAssertEqual(config.apiBaseURL, URL(string: "https://api.example.org/asd"))
+        XCTAssertEqual(ResearchStudyConfiguration.apiBaseURLKey, "apiBaseURL")
+    }
+
+    func testAPIBaseURLMustBeHttpsWithADNSHost() {
+        for bad in [
+            "http://api.example.org",
+            "https://127.0.0.1",
+            "https://[::1]",
+            "https://localhost",
+            "https://user:pw@api.example.org",
+            "ftp://api.example.org",
+            "not a url",
+            "   "
+        ] {
+            let dict = Self.study(replacing: ResearchStudyConfiguration.apiBaseURLKey, with: bad)
+            XCTAssertThrowsError(try ResearchStudyConfiguration(dictionary: dict), bad)
+            XCTAssertNil(ResearchStudyConfiguration.load(from: Self.info(dict)), "invalid apiBaseURL fails closed: \(bad)")
+        }
+        XCTAssertThrowsError(try ResearchStudyConfiguration(
+            ingestURL: URL(string: "https://ingest.example.org/x")!,
+            studyIdentifier: "S",
+            irbProtocolId: "I",
+            institution: "U",
+            principalInvestigator: "P",
+            consentVersion: "1",
+            apiBaseURL: URL(string: "http://api.example.org")!
+        ))
+    }
+
+    func testAPIBaseURLThatIsNotAStringFailsClosed() {
+        let dict = Self.study(replacing: ResearchStudyConfiguration.apiBaseURLKey, with: 42)
+        XCTAssertNil(ResearchStudyConfiguration.load(from: Self.info(dict)))
+    }
+
     // MARK: - Consent document
 
     func testConsentDocumentIsBuiltFromConfiguration() throws {

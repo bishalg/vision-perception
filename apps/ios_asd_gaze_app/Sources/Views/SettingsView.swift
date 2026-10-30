@@ -555,6 +555,14 @@ public struct SettingsView: View {
 
                     NormCollectionToggleRow()
                         .accessibilityIdentifier("settings_norm_collection_row")
+
+                    // WP-A.4: only when the study configures the /v1 API.
+                    if let syncService = ResearchKitSyncService.shared, syncService.isSessionSyncEnabled {
+                        GlassDivider()
+
+                        DeviceEnrolmentRow(syncService: syncService)
+                            .accessibilityIdentifier("settings_device_enrolment_row")
+                    }
                 }
 
                 GlassDivider()

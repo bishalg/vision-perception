@@ -22,14 +22,24 @@ import os
 ///     <key>institution</key>           <string>...</string>
 ///     <key>principalInvestigator</key> <string>...</string>
 ///     <key>consentVersion</key>        <string>...</string>
+///     <!-- optional, WP-A.4: base of the /v1 device-plane API -->
+///     <key>apiBaseURL</key>            <string>https://...</string>
 /// </dict>
 /// ```
+///
+/// `apiBaseURL` is optional. When present it obeys the same https/DNS rule as
+/// `ingestURL`, and an invalid value turns the whole configuration off (fail
+/// closed). When absent the `/v1/sessions` client stays off.
 public struct ResearchStudyConfiguration: Sendable, Equatable {
     public static let infoPlistKey = "ASDResearchStudy"
 
     /// Placed in study-shaped records (task results, export packages) created
     /// while no study is configured. Never a real study id.
     public static let unconfiguredStudyIdentifier = "none"
+
+    /// Optional Info.plist key for the `/v1` API base (WP-A.4). Not a `Field`:
+    /// every `Field` is required.
+    public static let apiBaseURLKey = "apiBaseURL"
 
     public enum Field: String, CaseIterable, Sendable {
         case ingestURL
@@ -56,6 +66,9 @@ public struct ResearchStudyConfiguration: Sendable, Equatable {
     public let institution: String
     public let principalInvestigator: String
     public let consentVersion: String
+    /// Base of the device-plane API (`/v1/devices/register`, `/v1/sessions`), or
+    /// `nil` when this build does not upload sessions (WP-A.4).
+    public let apiBaseURL: URL?
 
     private static let logger = Logger(subsystem: "com.visionperception.asd", category: "ResearchStudyConfiguration")
 
@@ -65,10 +78,15 @@ public struct ResearchStudyConfiguration: Sendable, Equatable {
         irbProtocolId: String,
         institution: String,
         principalInvestigator: String,
-        consentVersion: String
+        consentVersion: String,
+        apiBaseURL: URL? = nil
     ) throws {
         try Self.validateIngestURL(ingestURL)
+        if let apiBaseURL {
+            try Self.validateIngestURL(apiBaseURL)
+        }
         self.ingestURL = ingestURL
+        self.apiBaseURL = apiBaseURL
         self.studyIdentifier = try Self.required(studyIdentifier, .studyIdentifier)
         self.irbProtocolId = try Self.required(irbProtocolId, .irbProtocolId)
         self.institution = try Self.required(institution, .institution)
@@ -88,13 +106,25 @@ public struct ResearchStudyConfiguration: Sendable, Equatable {
         guard let url = URL(string: rawURL) else {
             throw ValidationError.invalidURL(rawURL)
         }
+        var apiBaseURL: URL?
+        if let rawAPI = dictionary[Self.apiBaseURLKey] {
+            guard let string = rawAPI as? String else {
+                throw ValidationError.invalidURL(String(describing: rawAPI))
+            }
+            let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, let parsed = URL(string: trimmed) else {
+                throw ValidationError.invalidURL(string)
+            }
+            apiBaseURL = parsed
+        }
         try self.init(
             ingestURL: url,
             studyIdentifier: try string(.studyIdentifier),
             irbProtocolId: try string(.irbProtocolId),
             institution: try string(.institution),
             principalInvestigator: try string(.principalInvestigator),
-            consentVersion: try string(.consentVersion)
+            consentVersion: try string(.consentVersion),
+            apiBaseURL: apiBaseURL
         )
     }
 

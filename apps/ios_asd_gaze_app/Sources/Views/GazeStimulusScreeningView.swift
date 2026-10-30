@@ -642,6 +642,17 @@ public struct GazeStimulusScreeningView: View {
                 captureSource: summary.captureSource
             )
 
+            // History record (schema v1.6 carries the per-video matrix for trend + export).
+            // Pseudonymous token, never the child's name (CNS-7); simulated sessions are
+            // ignored by the store (SIM-5).
+            let sessionRecord = GazeSessionRecord(
+                summary: summary,
+                participantToken: participantToken,
+                perVideoComposite: perVideoScore?.compositeScore,
+                perVideo: perVideoScore?.videos
+            )
+            let attentionFlag = perVideoScore.map { AttentionFlagAlgorithm.assess($0).flag }
+
             // Persist encrypted vault off main thread (frames now carry per-clip stimulus attribution)
             Task.detached(priority: .userInitiated) {
                 let vault = SessionVaultManager()
@@ -653,7 +664,7 @@ public struct GazeStimulusScreeningView: View {
                     captureSource: summary.captureSource
                 )
                 #if ASD_RESEARCH_CLASSIFIER
-                _ = try? vault.saveSession(
+                let framesFile = try? vault.saveSession(
                     header: header,
                     frames: frames,
                     report: summary,
@@ -662,7 +673,7 @@ public struct GazeStimulusScreeningView: View {
                     collectionMetadata: collectionMetadata
                 )
                 #else
-                _ = try? vault.saveSession(
+                let framesFile = try? vault.saveSession(
                     header: header,
                     frames: frames,
                     report: summary,
@@ -670,22 +681,19 @@ public struct GazeStimulusScreeningView: View {
                     collectionMetadata: collectionMetadata
                 )
                 #endif
+                // WP-A.4: queue for /v1/sessions (consented, configured, live only;
+                // the service refuses everything else). The frames blob stays
+                // encrypted with the device key.
+                await MainActor.run {
+                    _ = ResearchKitSyncService.shared?.enqueueSession(
+                        sessionRecord,
+                        framesFile: framesFile,
+                        attentionFlag: attentionFlag
+                    )
+                }
             }
 
-            // History record (schema v1.6 carries the per-video matrix for trend + export).
-            // Pseudonymous token, never the child's name (CNS-7); simulated sessions are
-            // ignored by the store (SIM-5).
-            GazeSessionHistoryStore.shared.record(
-                GazeSessionRecord(
-                    summary: summary,
-                    participantToken: GazeSessionRecord.participantToken(
-                        enrollment: ResearchKitStudyStore.shared.fetchEnrollment(),
-                        sessionId: summary.sessionId
-                    ),
-                    perVideoComposite: perVideoScore?.compositeScore,
-                    perVideo: perVideoScore?.videos
-                )
-            )
+            GazeSessionHistoryStore.shared.record(sessionRecord)
 
             // CareKit sync (both ignore simulated sessions, SIM-5; CarePlanStore mirrors outcome to CareKitClinicalStore)
             #if ASD_RESEARCH_CLASSIFIER

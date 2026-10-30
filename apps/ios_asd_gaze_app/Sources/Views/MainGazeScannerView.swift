@@ -768,9 +768,8 @@ public struct MainGazeScannerView: View {
                 enrollment: ResearchKitStudyStore.shared.fetchEnrollment(),
                 sessionId: summary.sessionId
             )
-            GazeSessionHistoryStore.shared.record(
-                GazeSessionRecord(summary: summary, participantToken: participantToken)
-            )
+            let sessionRecord = GazeSessionRecord(summary: summary, participantToken: participantToken)
+            GazeSessionHistoryStore.shared.record(sessionRecord)
 
             // 2. Batch encrypt & persist volatile RAM frames to disk atomically off main thread
             Task.detached(priority: .userInitiated) {
@@ -783,15 +782,20 @@ public struct MainGazeScannerView: View {
                     captureSource: summary.captureSource
                 )
                 #if ASD_RESEARCH_CLASSIFIER
-                _ = try? vault.saveSession(
+                let framesFile = try? vault.saveSession(
                     header: header,
                     frames: frames,
                     report: summary,
                     classification: classification
                 )
                 #else
-                _ = try? vault.saveSession(header: header, frames: frames, report: summary)
+                let framesFile = try? vault.saveSession(header: header, frames: frames, report: summary)
                 #endif
+                // WP-A.4: queue for /v1/sessions (consented, configured, live only).
+                // No per-video matrix here, so no attention flag is claimed.
+                await MainActor.run {
+                    _ = ResearchKitSyncService.shared?.enqueueSession(sessionRecord, framesFile: framesFile)
+                }
             }
 
             // 3. Mark in CarePlan (which mirrors the outcome into CareKit and compiles
