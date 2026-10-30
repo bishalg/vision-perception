@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE refresh_tokens SET rotated_at = now() WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cbaa56d4ade87db2cfc358ffbd2d243e5ad3d20c52760c637ab8ae9ccff0a612"
+}

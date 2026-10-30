@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO devices (org_id, platform, app_version, token_hash, label, enrolled_by, enrol_code_id)\n         VALUES ($1, $2, $3, $4, $5, $6, $7)\n         RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Bytea",
+        "Text",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "eedf2a0ad42479835311999859e15e02003a5dc537023c22a552eea06d841138"
+}

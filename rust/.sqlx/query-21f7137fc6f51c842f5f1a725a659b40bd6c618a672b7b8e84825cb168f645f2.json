@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*) FILTER (WHERE started_at >= now() - interval '7 days') AS \"d7!\",\n                  count(*) FILTER (WHERE started_at >= now() - interval '30 days') AS \"d30!\"\n           FROM sessions WHERE org_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "d7!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "d30!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "21f7137fc6f51c842f5f1a725a659b40bd6c618a672b7b8e84825cb168f645f2"
+}

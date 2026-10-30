@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO review_items (org_id, session_id, reason) VALUES ($1, $2, $3)\n             ON CONFLICT (session_id, reason) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b775eef37347fec06593eb1f422235628c797816c97b0347db94af02287c514a"
+}

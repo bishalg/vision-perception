@@ -107,10 +107,14 @@ async fn serve(config: Config) -> Result<(), String> {
         .map_err(|e| format!("bind {}: {e}", config.bind_addr))?;
     let router = app::router(app::AppState::new(pool, blobs, config));
     tracing::info!("api listening");
-    axum::serve(listener, router)
-        .with_graceful_shutdown(shutdown_signal())
-        .await
-        .map_err(|e| format!("server: {e}"))?;
+    // Peer addresses feed the per-IP auth rate limits and audit rows (WP-B.2, AUTH-1).
+    axum::serve(
+        listener,
+        router.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_signal())
+    .await
+    .map_err(|e| format!("server: {e}"))?;
     tracing::info!("api stopped");
     Ok(())
 }

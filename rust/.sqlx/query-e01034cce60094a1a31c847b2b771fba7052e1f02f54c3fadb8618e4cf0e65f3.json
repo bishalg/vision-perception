@@ -1,0 +1,117 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT p.id, p.org_id, p.token, p.age_bracket_at_enrol, p.language, p.withdrawn_at,\n                  p.created_at,\n                  (SELECT count(*) FROM sessions s WHERE s.participant_id = p.id) AS \"session_count!\",\n                  (SELECT max(s.started_at) FROM sessions s WHERE s.participant_id = p.id)\n                      AS last_session_at\n           FROM participants p\n           WHERE p.org_id = $1\n             AND ($2::timestamptz IS NULL OR (p.created_at, p.id::text) < ($2, $3::text))\n           ORDER BY p.created_at DESC, p.id::text DESC\n           LIMIT $4",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "participants",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "org_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "participants",
+            "name": "org_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "token",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "participants",
+            "name": "token"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "age_bracket_at_enrol",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "participants",
+            "name": "age_bracket_at_enrol"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "language",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "participants",
+            "name": "language"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "withdrawn_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "participants",
+            "name": "withdrawn_at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "participants",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "session_count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
+        "name": "last_session_at",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "e01034cce60094a1a31c847b2b771fba7052e1f02f54c3fadb8618e4cf0e65f3"
+}

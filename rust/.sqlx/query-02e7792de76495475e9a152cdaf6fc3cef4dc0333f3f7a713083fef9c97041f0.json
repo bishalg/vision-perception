@@ -1,0 +1,114 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT d.id, d.org_id, d.platform, d.app_version, d.label, d.enrolled_at, d.revoked_at,\n                  GREATEST(\n                    (SELECT max(s.received_at) FROM sessions s WHERE s.device_id = d.id),\n                    (SELECT max(a.at) FROM bundle_adoption a WHERE a.device_id = d.id)\n                  ) AS \"last_seen_at?\",\n                  (SELECT a.bundle_version FROM bundle_adoption a WHERE a.device_id = d.id\n                   ORDER BY a.at DESC LIMIT 1) AS \"config_bundle_version?\"\n           FROM devices d WHERE d.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "org_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "org_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "platform",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "platform"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "app_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "app_version"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "label",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "label"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "enrolled_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "enrolled_at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "revoked_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "devices",
+            "name": "revoked_at"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "last_seen_at?",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
+        "name": "config_bundle_version?",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      null,
+      null
+    ]
+  },
+  "hash": "02e7792de76495475e9a152cdaf6fc3cef4dc0333f3f7a713083fef9c97041f0"
+}

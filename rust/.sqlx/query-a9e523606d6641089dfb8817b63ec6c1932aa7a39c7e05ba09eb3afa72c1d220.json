@@ -1,0 +1,140 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE review_items SET\n               status      = COALESCE($2, status),\n               assigned_to = COALESCE($3, assigned_to),\n               decision    = COALESCE($4, decision),\n               decided_by  = CASE WHEN $2 IN ('done', 'dismissed') THEN $5\n                                  WHEN $2 IN ('open', 'in_review') THEN NULL\n                                  ELSE decided_by END,\n               decided_at  = CASE WHEN $2 IN ('done', 'dismissed') THEN now()\n                                  WHEN $2 IN ('open', 'in_review') THEN NULL\n                                  ELSE decided_at END\n           WHERE id = $1\n           RETURNING id, org_id, session_id, reason, status, assigned_to, decision,\n                     decided_by, decided_at, created_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "review_items",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "org_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "review_items",
+            "name": "org_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "session_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "review_items",
+            "name": "session_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "review_items",
+            "name": "reason"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "review_items",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "assigned_to",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "review_items",
+            "name": "assigned_to"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "decision",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "review_items",
+            "name": "decision"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "decided_by",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "review_items",
+            "name": "decided_by"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "decided_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "review_items",
+            "name": "decided_at"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "review_items",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Jsonb",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "a9e523606d6641089dfb8817b63ec6c1932aa7a39c7e05ba09eb3afa72c1d220"
+}

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT settings FROM organizations WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "settings",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "organizations",
+            "name": "settings"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "791bea70ba4b2385cb9cb436c53b28855bed274e17e9a39cb7e5d9f453d55184"
+}

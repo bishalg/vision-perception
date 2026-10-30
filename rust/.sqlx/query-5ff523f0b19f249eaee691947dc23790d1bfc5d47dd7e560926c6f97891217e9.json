@@ -1,0 +1,37 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO audit_log\n               (actor_type, actor_id, org_id, action, target_type, target_id,\n                before, after, ip, user_agent)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CAST($9::text AS inet), $10)\n             RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "audit_log",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Jsonb",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "5ff523f0b19f249eaee691947dc23790d1bfc5d47dd7e560926c6f97891217e9"
+}

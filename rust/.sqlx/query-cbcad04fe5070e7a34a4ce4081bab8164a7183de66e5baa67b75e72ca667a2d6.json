@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO session_clip_scores (\n                 session_id, clip_id, clip_order, dwell_social, dwell_geometric, dwell_eye,\n                 dwell_mouth, orienting_latency_ms, fixation_count, mean_fixation_ms, status,\n                 score, weight, baseline_ref, details)\n             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int4",
+        "Float8",
+        "Float8",
+        "Float8",
+        "Float8",
+        "Float8",
+        "Int4",
+        "Float8",
+        "Text",
+        "Float8",
+        "Float8",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cbcad04fe5070e7a34a4ce4081bab8164a7183de66e5baa67b75e72ca667a2d6"
+}

@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO participants (org_id, token) VALUES ($1, $2)\n         ON CONFLICT (org_id, token) DO UPDATE SET token = EXCLUDED.token\n         RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "participants",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "edb878f29e371b63b50535bf4e9d4c1466664a202efde9bb11b4ebe8fe95171d"
+}

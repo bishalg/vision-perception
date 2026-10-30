@@ -53,6 +53,8 @@ pub struct Config {
     pub log_filter: String,
     /// Whole-request timeout.
     pub request_timeout: Duration,
+    /// JWT signing key and client-IP policy (WP-B.2, [`crate::auth::AuthConfig`]).
+    pub auth: crate::auth::AuthConfig,
 }
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -165,6 +167,7 @@ impl Config {
             console_origin,
             log_filter: get("RUST_LOG").unwrap_or_else(|| "info".into()),
             request_timeout,
+            auth: crate::auth::AuthConfig::from_lookup(&get)?,
         })
     }
 }
@@ -197,6 +200,7 @@ impl fmt::Debug for Config {
             .field("console_origin", &self.console_origin)
             .field("log_filter", &self.log_filter)
             .field("request_timeout", &self.request_timeout)
+            .field("auth", &self.auth)
             .finish()
     }
 }

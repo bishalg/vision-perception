@@ -1,0 +1,196 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT clip_id, clip_order, status, score, weight, dwell_social, dwell_geometric,\n                  dwell_eye, dwell_mouth, orienting_latency_ms, gaze_cue_accuracy,\n                  fixation_count, mean_fixation_ms, baseline_ref, details\n           FROM session_clip_scores WHERE session_id = $1\n           ORDER BY clip_order, clip_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "clip_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "clip_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "clip_order",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "clip_order"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "score",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "score"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "weight",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "weight"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "dwell_social",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "dwell_social"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "dwell_geometric",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "dwell_geometric"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "dwell_eye",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "dwell_eye"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "dwell_mouth",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "dwell_mouth"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "orienting_latency_ms",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "orienting_latency_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "gaze_cue_accuracy",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "gaze_cue_accuracy"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "fixation_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "fixation_count"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "mean_fixation_ms",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "mean_fixation_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "baseline_ref",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "baseline_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "details",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "details"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "5eb3c09eb4d715f92d80361988d7a849adbe6a093062640e7cd75165702658ce"
+}

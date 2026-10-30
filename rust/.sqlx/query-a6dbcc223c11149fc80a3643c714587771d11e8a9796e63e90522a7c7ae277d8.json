@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT withdrawn_at IS NOT NULL AS \"withdrawn!\" FROM participants\n           WHERE org_id = $1 AND token = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "withdrawn!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "a6dbcc223c11149fc80a3643c714587771d11e8a9796e63e90522a7c7ae277d8"
+}

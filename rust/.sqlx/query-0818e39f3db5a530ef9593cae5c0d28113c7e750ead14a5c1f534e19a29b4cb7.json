@@ -1,0 +1,138 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, ts, actor_type, actor_id, org_id, action, target_type, target_id, before, after\n         FROM audit_log\n         WHERE org_id = $1 AND ($2::bigint IS NULL OR id < $2)\n         ORDER BY id DESC\n         LIMIT $3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "audit_log",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "ts",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "audit_log",
+            "name": "ts"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "actor_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "audit_log",
+            "name": "actor_type"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "actor_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "audit_log",
+            "name": "actor_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "org_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "audit_log",
+            "name": "org_id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "action",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "audit_log",
+            "name": "action"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "target_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "audit_log",
+            "name": "target_type"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "target_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "audit_log",
+            "name": "target_id"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "before",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "audit_log",
+            "name": "before"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "after",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "audit_log",
+            "name": "after"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "0818e39f3db5a530ef9593cae5c0d28113c7e750ead14a5c1f534e19a29b4cb7"
+}

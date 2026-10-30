@@ -25,15 +25,31 @@ use tower::ServiceExt;
 /// A database URL that refuses connections quickly (port 1 on loopback).
 pub const UNREACHABLE_DB_URL: &str = "postgres://asd:asd@127.0.0.1:1/asd_unreachable";
 
-/// Config for tests: memory blob store, everything else at defaults.
+pub mod auth; // WP-B.2 helpers: seed users/devices, mint tokens, JSON requests
+
+/// Config for tests: memory blob store, a JWT signing key generated for this test process
+/// (never a committed secret), everything else at defaults.
 pub fn test_config(database_url: &str) -> Config {
     Config::from_lookup(|key| match key {
         "DATABASE_URL" => Some(database_url.to_owned()),
         "ASD_BLOB_BACKEND" => Some("memory".to_owned()),
         "ASD_DB_ACQUIRE_TIMEOUT_MS" => Some("500".to_owned()),
+        "ASD_JWT_SIGNING_KEY" => Some(test_jwt_key().to_owned()),
         _ => None,
     })
     .expect("test config is valid")
+}
+
+/// A fresh Ed25519 PKCS#8 PEM per test process (WP-B.2, AUTH-2).
+pub fn test_jwt_key() -> &'static str {
+    static KEY: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    KEY.get_or_init(|| {
+        let mut seed = [0u8; 32];
+        seed[..16].copy_from_slice(uuid::Uuid::new_v4().as_bytes());
+        seed[16..].copy_from_slice(uuid::Uuid::new_v4().as_bytes());
+        let key = asd_contract::signing::signing_key_from_seed(seed);
+        asd_contract::signing::signing_key_to_pkcs8_pem(&key).expect("pem")
+    })
 }
 
 /// App state whose pool points at an unreachable server (no Postgres needed).

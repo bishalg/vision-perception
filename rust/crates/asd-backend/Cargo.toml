@@ -19,11 +19,16 @@ path = "src/main.rs"
 
 [dependencies]
 asd-core.workspace = true
-asd-contract.workspace = true
+# `validate`: POST /v1/sessions checks the body against the exported session schema (ING-1).
+asd-contract = { workspace = true, features = ["validate"] }
 asd-sync.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+# Idempotency request hashes and the deterministic random-audit draw (ING-1, ING-3).
+sha2.workspace = true
+# Opaque list cursors (base64url, API conventions).
+base64 = "0.22"
 
 async-trait = "0.1"
 aws-config = { version = "1", features = ["behavior-version-latest"] }
@@ -57,6 +62,15 @@ tower-http = { version = "0.6", features = ["cors", "request-id", "timeout", "tr
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt", "registry", "std"] }
 uuid = { version = "1", features = ["serde", "v4"] }
+# ---- auth (WP-B.2). Also uses sha2 (token hashes) and base64 (token encoding) above.
+# AUTH-1: Argon2id; salts come from getrandom, so no `rand` feature.
+argon2 = { version = "0.5", default-features = false, features = ["alloc", "password-hash"] }
+# AUTH-2: the JWT key is Ed25519 PKCS#8 (same format as `asd-cli bundle keygen`, trap 11).
+ed25519-dalek = { version = "2", default-features = false, features = ["std", "pkcs8"] }
+getrandom = "0.4"
+# EdDSA access tokens. aws-lc-rs is already in the graph (aws-sdk-s3); `rust_crypto` would
+# pull `rsa` (RUSTSEC-2023-0071) and `use_pem` is not needed (keys are parsed above).
+jsonwebtoken = { version = "11", default-features = false, features = ["aws_lc_rs"] }
 
 [dev-dependencies]
 http-body-util = "0.1"

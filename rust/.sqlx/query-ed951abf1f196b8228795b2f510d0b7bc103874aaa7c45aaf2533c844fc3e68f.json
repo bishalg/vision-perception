@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO idempotency_keys (scope, key, request_hash)\n           VALUES ($1, $2, $3)\n           ON CONFLICT (scope, key) DO NOTHING\n           RETURNING 1 AS \"one!: i32\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "one!: i32",
+        "type_info": "Int4",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Bytea"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "ed951abf1f196b8228795b2f510d0b7bc103874aaa7c45aaf2533c844fc3e68f"
+}

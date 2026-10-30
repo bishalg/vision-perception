@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*) AS \"n!\" FROM review_items\n           WHERE org_id = $1 AND ($2::text IS NULL OR status = $2)\n             AND ($3::text IS NULL OR reason = $3)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "n!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "43ba820ddd99cbee0a53f8d3407a501c59807bf4883f9bb68ed9309901cbc574"
+}

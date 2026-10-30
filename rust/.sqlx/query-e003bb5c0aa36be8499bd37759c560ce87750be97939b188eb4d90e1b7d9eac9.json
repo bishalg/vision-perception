@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE enrol_codes SET uses = uses + 1 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e003bb5c0aa36be8499bd37759c560ce87750be97939b188eb4d90e1b7d9eac9"
+}

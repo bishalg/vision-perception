@@ -25,5 +25,17 @@ pub mod users;
 /// `Router::new().nest("/v1", Router::new().merge(auth::router()).merge(sessions::router()))`.
 /// Use full route templates (`/sessions/{id}`) so request logs show the template (OBS-1).
 pub fn v1() -> Router<AppState> {
-    Router::new()
+    let api = Router::new()
+        // WP-B.3: session ingest, blob uploads, console reads, review queue.
+        .merge(sessions::router())
+        .merge(blobs::router())
+        .merge(review::router())
+        .merge(metrics::router())
+        .merge(participants::router())
+        // WP-B.2: auth, orgs, users, devices (org-scoped routes use `/orgs/{id}/...`).
+        .merge(auth::router())
+        .merge(orgs::router())
+        .merge(users::router())
+        .merge(devices::router());
+    Router::new().nest("/v1", api)
 }

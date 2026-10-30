@@ -1,0 +1,36 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT s.participant_token, p.withdrawn_at IS NOT NULL AS \"withdrawn!\"\n           FROM sessions s JOIN participants p ON p.id = s.participant_id\n           WHERE s.id = $1 AND s.org_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "participant_token",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "participant_token"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "withdrawn!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "eeffef00de97f59ed765432b3e1137008cb2d3775d64749a5708498fb6468525"
+}

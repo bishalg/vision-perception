@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT quality_verdict, count(*) AS \"n!\" FROM sessions WHERE org_id = $1\n           GROUP BY quality_verdict",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "quality_verdict",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "quality_verdict"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "n!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "74bfe43d5e64b86184ff948e218a721927efa02a1aaca4d658effc780e411634"
+}

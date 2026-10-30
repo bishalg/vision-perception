@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT bundle_version FROM config_bundles\n         WHERE org_id = $1 OR org_id IS NULL\n         ORDER BY (org_id IS NULL), published_at DESC\n         LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "bundle_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "config_bundles",
+            "name": "bundle_version"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e39f03a1183dcf4ea760f549f5d1bef904df268c35e500c7a9904bc0ea8fe1b2"
+}

@@ -28,8 +28,8 @@
 | WP-R.5 | `asd-ffi` UniFFI crate + `scripts/build_asd_xcframework.sh` (ios, ios-sim, macOS slices) | 1–2 | S | todo | FFI-1/2; depends on R.1–R.3 |
 | WP-R.6 | `asd-wasm` for console sandbox re-score (feeds WP-C.5) | 2 | S | backlog | depends on R.1, R.3 |
 | WP-B.1 | Rust service scaffold: Axum, sqlx migrations for `02 §3` (+ enrol_codes, refresh_tokens, bundle_adoption), blob store trait (S3/memory), tracing redaction, Dockerfile, docker-compose, health | 1 | S | done | replaces the removed FastAPI scaffold; DEP-1/2, OBS-1 |
-| WP-B.2 | Auth: Argon2id login, EdDSA JWT + rotating refresh families, device tokens, enrol codes (`max_uses`, `expires_at`, `device_id` rotation), RBAC matrix, audit rows + grants | 1 | S | todo | AUTH-1..5, CON-10/11; depends on B.1, R.3 |
-| WP-B.3 | `POST /v1/sessions` idempotent ingest (ON CONFLICT, body hash), derived flag via `asd-core`, clip rows, blob URLs (presigned/proxy), org-scoped list/detail/clips/metrics/review, `report.pdf` passthrough | 1 | S | todo | ING-1..3, CON-13..21; depends on B.1, R.1, R.3 |
+| WP-B.2 | Auth: Argon2id login, EdDSA JWT + rotating refresh families, device tokens, enrol codes (`max_uses`, `expires_at`, `device_id` rotation), RBAC matrix, audit rows + grants | 1 | S | done | AUTH-1..5, CON-10/11; depends on B.1, R.3 |
+| WP-B.3 | `POST /v1/sessions` idempotent ingest (ON CONFLICT, body hash), derived flag via `asd-core`, clip rows, blob URLs (presigned/proxy), org-scoped list/detail/clips/metrics/review, `report.pdf` passthrough | 1 | S | done | ING-1..3, CON-13..21; depends on B.1, R.1, R.3 |
 | WP-B.4 | Config documents lifecycle + bundles + signing + `GET /config/bundle` (ETag, adoption) + seed drafts from kit JSON | 2 | S | todo | CFG-1/2; depends on B.2 |
 | WP-B.5 | Norm aggregation job (worker loop, `asd-core::norms`) + promote to draft baselines | 2 | I | todo | depends on B.3, B.4, R.4 |
 | WP-B.6 | Care events (`/v1/care/events`), participant summary, erasure request (port of deleted `shims.py` semantics) | 2 | I | todo | H-15 may defer |
@@ -44,12 +44,12 @@
 | WP-C.5 | Baselines editor + scoring profile editor + sandbox re-score + bundle publish with approval | 2 | S | todo | |
 | WP-C.6 | Cohorts, norm-runs, exports, model registry | 3 | I | todo | |
 | WP-C.7 | Replay heatmaps, hi/ne strings, superadmin | 4 | I | backlog | |
-| WP-C.8 | Console contract alignment to `api-v1.json`: `battery` string, `capture_source` + `synthetic`, clip `rows[]`, `participant_token`; zod-vs-schema test | 1 | I | todo | API-3, CON-16/19/20; depends on R.3 |
+| WP-C.8 | Console contract alignment to `api-v1.json`: `battery` string, `capture_source` + `synthetic`, clip `rows[]`, `participant_token`; zod-vs-schema test | 1 | I | done | API-3, CON-16/19/20; depends on R.3 |
 | WP-D.1 | Stimulus clips: rights or replacement; durations measured; catalog corrected | 1 | I + owner | done | All 10 clips measured at 8.0s via ffprobe, catalog aligned, NOTICE.md updated |
 | WP-D.2 | Session JSON Schema export + Swift/Python parity gate in CI | 1 | I | done (to be replaced) | Pydantic export + `scripts/check_session_schema_parity.py`; superseded by WP-R.3 + WP-D.7 (Rust export, `asd-cli schema check`) |
 | WP-D.3 | Age-band model: cleared dataset, train, validate (≥0.90 recall), CoreML, manifest + licence in `models/asd_age` | 2 | S | todo | |
 | WP-D.4 | Synthetic session generator shared by seed script and tests | 1 | I | done (to be replaced) | `tools/asd_synth` v1.0 emits seconds/`offTarget`/`synthetic` which iOS and console reject (CON-13); superseded by WP-R.4 (v2.0) + WP-D.7 |
-| WP-D.7 | Replace Python CI gates with Rust: `ios.yml`/`ios_test.sh` use `asd-cli schema check`; delete `check_session_schema_parity.py`, `asd_norm_aggregator.py`, `asd_synth/`, `asd_research_server.py` and their tests; README updates | 1 | I | todo | GATE-1..4; depends on R.3, R.4 |
+| WP-D.7 | Replace Python CI gates with Rust: `ios.yml`/`ios_test.sh` use `asd-cli schema check`; delete `check_session_schema_parity.py`, `asd_norm_aggregator.py`, `asd_synth/`, `asd_research_server.py` and their tests; README updates | 1 | I | done | GATE-1..4; depends on R.3, R.4 |
 | WP-D.5 | ML roadmap refresh: what an attention classifier would need (n, labels, validation plan) — doc only | 3 | A | backlog | |
 | WP-D.6 | Decide/Link C++ `AsdBiomarkerPack` into kit via xcframework, or retire the claim | 4 | A | backlog | low value |
 | WP-E.1 | Pitch/deck re-base to non-diagnostic reality; aspirational section | 1 | I | done | Re-based to observation diary, 6 metrics, 2027 aspirational roadmap |

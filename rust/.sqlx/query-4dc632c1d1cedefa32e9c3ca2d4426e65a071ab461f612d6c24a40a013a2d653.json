@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT name, kind, retention_months, settings FROM organizations WHERE id = $1 FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "organizations",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "organizations",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "retention_months",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "organizations",
+            "name": "retention_months"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "settings",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "organizations",
+            "name": "settings"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "4dc632c1d1cedefa32e9c3ca2d4426e65a071ab461f612d6c24a40a013a2d653"
+}

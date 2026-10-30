@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*) AS \"n!\" FROM devices d\n           WHERE d.org_id = $1 AND d.revoked_at IS NULL\n             AND EXISTS (SELECT 1 FROM sessions s\n                         WHERE s.device_id = d.id AND s.received_at >= now() - interval '30 days')",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "n!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "68f6478b7f20a39ecac51f4c2d8a93a99f33cfef4cd1dca1127204c1283150be"
+}

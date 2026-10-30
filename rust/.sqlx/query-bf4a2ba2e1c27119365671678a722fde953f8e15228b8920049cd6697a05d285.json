@@ -1,0 +1,323 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT s.id, s.org_id, s.participant_id, s.participant_token, s.started_at,\n                  s.duration_sec, s.battery, s.capture_source, s.quality_verdict,\n                  s.attention_flag, s.composite_score, s.composite_confidence,\n                  s.bundle_version, s.device_id, s.age_pack, s.lang, s.schema_version,\n                  s.valid_frame_ratio, s.calibrated_distance_cm, s.social_preference,\n                  s.eye_dwell, s.mouth_dwell, s.first_eye_latency_ms, s.affect,\n                  s.report_pdf_key,\n                  EXISTS (SELECT 1 FROM review_items r\n                          WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed'))\n                      AS \"reviewed!\"\n           FROM sessions s WHERE s.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "org_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "org_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "participant_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "participant_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "participant_token",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "participant_token"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "started_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "started_at"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "duration_sec",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "duration_sec"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "battery",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "battery"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "capture_source",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "capture_source"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "quality_verdict",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "quality_verdict"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "attention_flag",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "attention_flag"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "composite_score",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "composite_score"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "composite_confidence",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "composite_confidence"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "bundle_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "bundle_version"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "device_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "device_id"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "age_pack",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "age_pack"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "lang",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "lang"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "schema_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "schema_version"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "valid_frame_ratio",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "valid_frame_ratio"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "calibrated_distance_cm",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "calibrated_distance_cm"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "social_preference",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "social_preference"
+          }
+        }
+      },
+      {
+        "ordinal": 20,
+        "name": "eye_dwell",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "eye_dwell"
+          }
+        }
+      },
+      {
+        "ordinal": 21,
+        "name": "mouth_dwell",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "mouth_dwell"
+          }
+        }
+      },
+      {
+        "ordinal": 22,
+        "name": "first_eye_latency_ms",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "first_eye_latency_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 23,
+        "name": "affect",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "affect"
+          }
+        }
+      },
+      {
+        "ordinal": 24,
+        "name": "report_pdf_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "report_pdf_key"
+          }
+        }
+      },
+      {
+        "ordinal": 25,
+        "name": "reviewed!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "bf4a2ba2e1c27119365671678a722fde953f8e15228b8920049cd6697a05d285"
+}

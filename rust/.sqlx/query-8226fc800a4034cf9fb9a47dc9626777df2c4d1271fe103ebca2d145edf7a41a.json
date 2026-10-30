@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE devices SET token_hash = $2, platform = $3, app_version = $4 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bytea",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8226fc800a4034cf9fb9a47dc9626777df2c4d1271fe103ebca2d145edf7a41a"
+}
