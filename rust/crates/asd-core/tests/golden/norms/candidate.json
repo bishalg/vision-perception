@@ -1,0 +1,118 @@
+{
+  "schemaVersion": "1.0.0-candidate",
+  "status": "candidate-collected",
+  "provenance": "Aggregated by asd-cli norms aggregate from consented norm-collection sessions. NOT approved for on-device scoring until reviewed and promoted.",
+  "ageBrackets": [
+    {
+      "id": "12-17",
+      "minMonths": 12,
+      "maxMonths": 17
+    },
+    {
+      "id": "18-23",
+      "minMonths": 18,
+      "maxMonths": 23
+    },
+    {
+      "id": "24-35",
+      "minMonths": 24,
+      "maxMonths": 35
+    },
+    {
+      "id": "36-47",
+      "minMonths": 36,
+      "maxMonths": 47
+    },
+    {
+      "id": "48-60",
+      "minMonths": 48,
+      "maxMonths": 60
+    }
+  ],
+  "videos": {
+    "stim_01_social_peekaboo_8s": {
+      "title": "stim_01_social_peekaboo_8s",
+      "category": "Candidate Norm",
+      "weight": 0.0,
+      "segments": [
+        {
+          "id": "candidate",
+          "description": "Aggregated from collected sessions; segment boundaries pending review.",
+          "startSec": 0.0,
+          "endSec": 0.0,
+          "expectations": [
+            {
+              "biomarker": "eye_dwell_ratio",
+              "direction": "higherBetter",
+              "targetAOI": null,
+              "byAge": {
+                "12-17": null,
+                "18-23": null,
+                "24-35": {
+                  "expected": 0.25,
+                  "n": 13,
+                  "acceptableLow": 0.2
+                },
+                "36-47": null,
+                "48-60": null
+              },
+              "citation": "Candidate norm from collected sessions (min n=12 per cell); requires clinical review before promotion.",
+              "source": "collected-candidate"
+            },
+            {
+              "biomarker": "first_entry_latency_ms",
+              "direction": "lowerBetter",
+              "targetAOI": null,
+              "byAge": {
+                "12-17": null,
+                "18-23": null,
+                "24-35": {
+                  "expected": 402.0,
+                  "n": 13,
+                  "acceptableHigh": 483.6
+                },
+                "36-47": null,
+                "48-60": null
+              },
+              "citation": "Candidate norm from collected sessions (min n=12 per cell); requires clinical review before promotion.",
+              "source": "collected-candidate"
+            }
+          ]
+        }
+      ]
+    },
+    "stim_05_geopref_split_10s": {
+      "title": "stim_05_geopref_split_10s",
+      "category": "Candidate Norm",
+      "weight": 0.0,
+      "segments": [
+        {
+          "id": "candidate",
+          "description": "Aggregated from collected sessions; segment boundaries pending review.",
+          "startSec": 0.0,
+          "endSec": 0.0,
+          "expectations": [
+            {
+              "biomarker": "social_dwell_ratio",
+              "direction": "higherBetter",
+              "targetAOI": null,
+              "byAge": {
+                "12-17": null,
+                "18-23": null,
+                "24-35": {
+                  "expected": 0.64,
+                  "n": 14,
+                  "acceptableLow": 0.6
+                },
+                "36-47": null,
+                "48-60": null
+              },
+              "citation": "Candidate norm from collected sessions (min n=12 per cell); requires clinical review before promotion.",
+              "source": "collected-candidate"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -7,9 +7,9 @@
 
 use asd_core::types::{
     AttentionFlag, AttentionFlagAssessment, CaptureSource, ExpectationStatus, GazeFrame,
-    GazeQualityVerdict, GazeTelemetrySample, NormativeBaselineSet, NormativeDirection,
-    PerVideoMetricSet, PerVideoScoreReport, PerVideoScoreRow, PerVideoSessionScore,
-    StimulusCatalog,
+    GazeFrameSample, GazeQualityVerdict, GazeTelemetrySample, NormativeBaselineSet,
+    NormativeDirection, PerVideoMetricSet, PerVideoScoreReport, PerVideoScoreRow,
+    PerVideoSessionScore, StimulusCatalog,
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -208,11 +208,12 @@ mod erased {
 #[test]
 fn gaze_frame_reads_only_extractor_fields_and_tolerates_the_rest() {
     // A frame as Swift encodes it carries many more keys (blend shapes, aoiDwellMs, ...).
+    // The gaze sample uses `GazeTelemetrySample.CodingKeys`: snake_case and `valid`.
     let frame = json!({
         "gaze": {
-            "timestampMs": 1000.0, "videoTimeSec": 1.5, "xNorm": 0.4, "yNorm": 0.6,
-            "confidence": 0.9, "leftEyeOpenness": 1.0, "isValid": true,
-            "stimulusId": "stim_05_geopref_split_10s", "clipMediaTimeSec": 1.25
+            "timestamp_ms": 1000.0, "video_time_sec": 1.5, "x_norm": 0.4, "y_norm": 0.6,
+            "confidence": 0.9, "left_eye_openness": 1.0, "valid": true,
+            "stimulus_id": "stim_05_geopref_split_10s", "clip_media_time_sec": 1.25
         },
         "affect": {
             "mouthSmileLeft": 0.1, "socialSmileIntensity": 0.4, "expressivityIndex": 0.01,
@@ -233,7 +234,7 @@ fn gaze_frame_reads_only_extractor_fields_and_tolerates_the_rest() {
 
     // Untagged frame: no stimulusId, no clip clock, no affect values.
     let bare = json!({
-        "gaze": {"isValid": false, "xNorm": 0.0, "yNorm": 0.0, "videoTimeSec": 0.0},
+        "gaze": {"valid": false, "x_norm": 0.0, "y_norm": 0.0, "video_time_sec": 0.0},
         "activeAOINames": [],
         "qualityVerdict": "rejected"
     });
@@ -245,13 +246,50 @@ fn gaze_frame_reads_only_extractor_fields_and_tolerates_the_rest() {
 #[test]
 fn telemetry_sample_roundtrip_omits_nil_optionals() {
     let sample = json!({
-        "timestampMs": 1000.0, "videoTimeSec": 1.0, "xNorm": 0.5, "yNorm": 0.5,
-        "confidence": 0.8, "leftEyeOpenness": 1.0, "rightEyeOpenness": 1.0,
-        "headPitchRad": 0.0, "headYawRad": 0.1, "headRollRad": 0.0,
-        "distanceToScreenCm": 45.0, "isValid": true
+        "timestamp_ms": 1000.0, "video_time_sec": 1.0, "x_norm": 0.5, "y_norm": 0.5,
+        "confidence": 0.8, "left_eye_openness": 1.0, "right_eye_openness": 1.0,
+        "head_pitch_rad": 0.0, "head_yaw_rad": 0.1, "head_roll_rad": 0.0,
+        "distance_to_screen_cm": 45.0, "valid": true
     });
     let typed: GazeTelemetrySample = roundtrip(&sample);
     assert!(typed.stimulus_id.is_none() && typed.clip_media_time_sec.is_none());
+}
+
+/// CON-1: the camelCase property names decode to the same sample as the Swift wire keys,
+/// and encoding always writes the wire keys.
+#[test]
+fn gaze_samples_accept_both_spellings_and_encode_swift_keys() {
+    let wire = json!({
+        "timestamp_ms": 1000.0, "video_time_sec": 1.0, "x_norm": 0.5, "y_norm": 0.25,
+        "confidence": 0.8, "left_eye_openness": 1.0, "right_eye_openness": 0.9,
+        "head_pitch_rad": 0.0, "head_yaw_rad": 0.1, "head_roll_rad": 0.2,
+        "distance_to_screen_cm": 45.0, "valid": true,
+        "stimulus_id": "stim_05_geopref_split_10s", "clip_media_time_sec": 0.5
+    });
+    let camel = json!({
+        "timestampMs": 1000.0, "videoTimeSec": 1.0, "xNorm": 0.5, "yNorm": 0.25,
+        "confidence": 0.8, "leftEyeOpenness": 1.0, "rightEyeOpenness": 0.9,
+        "headPitchRad": 0.0, "headYawRad": 0.1, "headRollRad": 0.2,
+        "distanceToScreenCm": 45.0, "isValid": true,
+        "stimulusId": "stim_05_geopref_split_10s", "clipMediaTimeSec": 0.5
+    });
+    let a: GazeTelemetrySample = serde_json::from_value(wire.clone()).unwrap();
+    let b: GazeTelemetrySample = serde_json::from_value(camel).unwrap();
+    assert_eq!(a, b);
+    assert_eq!(serde_json::to_value(&b).unwrap(), wire);
+
+    let frame_wire = json!({
+        "valid": false, "x_norm": 0.1, "y_norm": 0.2, "video_time_sec": 3.0,
+        "clip_media_time_sec": 1.0
+    });
+    let frame_camel = json!({
+        "isValid": false, "xNorm": 0.1, "yNorm": 0.2, "videoTimeSec": 3.0,
+        "clipMediaTimeSec": 1.0
+    });
+    let a: GazeFrameSample = serde_json::from_value(frame_wire.clone()).unwrap();
+    let b: GazeFrameSample = serde_json::from_value(frame_camel).unwrap();
+    assert_eq!(a, b);
+    assert_eq!(serde_json::to_value(&b).unwrap(), frame_wire);
 }
 
 #[test]
