@@ -38,7 +38,7 @@ public struct CameraDeniedView: View {
     public var body: some View {
         let content = CameraDeniedContent.make(for: state)
         ZStack {
-            Color.black.opacity(0.92).ignoresSafeArea()
+            LiquidGlass.deepCanvas.ignoresSafeArea()
             VStack(spacing: 16) {
                 Image(systemName: "camera.fill")
                     .font(.system(size: 44, weight: .semibold))
@@ -46,11 +46,11 @@ public struct CameraDeniedView: View {
                 Text(content.title)
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .multilineTextAlignment(.center)
-                    .foregroundColor(.white)
+                    .foregroundColor(LiquidGlass.textPrimary)
                 Text(content.message)
                     .font(.system(size: 14))
                     .multilineTextAlignment(.center)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(LiquidGlass.textSecondary)
                 if content.offersOpenSettings {
                     Button("Open Settings") {
                         if let url = CameraAccessCoordinator.settingsURL {
@@ -58,12 +58,14 @@ public struct CameraDeniedView: View {
                         }
                     }
                     .buttonStyle(.borderedProminent)
+                    .tint(LiquidGlass.accentFill)
+                    .foregroundStyle(LiquidGlass.onAccent)
                     .accessibilityIdentifier(CameraDeniedAccessibility.openSettings)
                 }
                 if let onClose {
                     Button("Close", action: onClose)
                         .buttonStyle(.bordered)
-                        .tint(.white)
+                        .tint(LiquidGlass.celestialTeal)
                 }
             }
             .padding(28)

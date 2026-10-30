@@ -39,7 +39,7 @@ struct DiaryHistoryEditorView: View {
                                 .padding(10)
                                 .background(
                                     draft.mood == mood
-                                        ? LiquidGlass.celestialTeal.opacity(0.22)
+                                        ? LiquidGlass.celestialTeal.opacity(LiquidGlass.tintOpacity)
                                         : LiquidGlass.cardBackground
                                 )
                                 .cornerRadius(10)
@@ -114,7 +114,7 @@ struct DiaryHistoryEditorView: View {
                         .padding(.vertical, 8)
                         .background(
                             Calendar.current.isDate(entry.date, inSameDayAs: selectedDate)
-                                ? LiquidGlass.celestialTeal.opacity(0.25)
+                                ? LiquidGlass.celestialTeal.opacity(LiquidGlass.tintOpacity)
                                 : LiquidGlass.cardBackground
                         )
                         .cornerRadius(10)

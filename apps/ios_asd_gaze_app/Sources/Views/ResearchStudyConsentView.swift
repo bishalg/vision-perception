@@ -77,14 +77,14 @@ public struct ResearchStudyConsentView: View {
                 .foregroundColor(LiquidGlass.celestialTeal)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
-                .background(Capsule().fill(LiquidGlass.celestialTeal.opacity(0.12)))
+                .background(Capsule().fill(LiquidGlass.celestialTeal.opacity(LiquidGlass.tintOpacity)))
 
             Label("No video stored", systemImage: "eye.slash.fill")
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(LiquidGlass.emeraldMint)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
-                .background(Capsule().fill(LiquidGlass.emeraldMint.opacity(0.12)))
+                .background(Capsule().fill(LiquidGlass.emeraldMint.opacity(LiquidGlass.tintOpacity)))
         }
     }
 
@@ -105,7 +105,7 @@ public struct ResearchStudyConsentView: View {
                             .background(
                                 Capsule().fill(
                                     activeSectionIndex == idx
-                                        ? LiquidGlass.celestialTeal.opacity(0.20)
+                                        ? LiquidGlass.celestialTeal.opacity(LiquidGlass.tintOpacity)
                                         : LiquidGlass.cardBackground
                                 )
                             )
@@ -197,7 +197,7 @@ public struct ResearchStudyConsentView: View {
                     if drawnPaths.isEmpty && currentPath.isEmpty {
                         Text("Sign your name here with your finger")
                             .font(.system(size: 12))
-                            .foregroundColor(.secondary.opacity(0.6))
+                            .foregroundColor(LiquidGlass.textTertiary)
                     }
 
                     ForEach(drawnPaths.indices, id: \.self) { i in
@@ -238,8 +238,8 @@ public struct ResearchStudyConsentView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
-                .background(canSubmit ? LiquidGlass.celestialTeal : Color.gray.opacity(0.3))
-                .foregroundColor(canSubmit ? Color.black : Color.white.opacity(0.5)) // theme:fixed-media
+                .background(canSubmit ? LiquidGlass.accentFill : LiquidGlass.accentFillDisabled)
+                .foregroundColor(canSubmit ? LiquidGlass.onAccent : LiquidGlass.textTertiary)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
             }
             .disabled(!canSubmit)

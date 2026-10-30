@@ -70,7 +70,7 @@ public struct MCHATHistoryView: View {
                             .foregroundColor(LiquidGlass.warmAmber)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 2)
-                            .background(Capsule().fill(LiquidGlass.warmAmber.opacity(0.15)))
+                            .background(Capsule().fill(LiquidGlass.warmAmber.opacity(LiquidGlass.tintOpacity)))
                     }
                 }
                 Text("\(survey.totalFailed) of 20 flagged • \(survey.completionDate.formatted(date: .abbreviated, time: .shortened))")
@@ -87,7 +87,7 @@ public struct MCHATHistoryView: View {
         switch risk {
         case .low: return LiquidGlass.emeraldMint
         case .medium: return LiquidGlass.warmAmber
-        case .high: return Color.red
+        case .high: return LiquidGlass.signalAtypical
         }
     }
 }

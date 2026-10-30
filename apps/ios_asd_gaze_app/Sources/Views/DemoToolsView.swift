@@ -186,7 +186,7 @@ public struct DemoToolsView: View {
             } label: {
                 Text("Purge Outgoing Upload Queue")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.red)
+                    .foregroundColor(LiquidGlass.signalAtypical)
             }
             .padding(.top, 4)
         }

@@ -21,7 +21,7 @@ public struct UnsupportedDeviceView: View {
     public var body: some View {
         let content = UnsupportedDeviceContent.make(for: reason)
         ZStack {
-            Color.black.opacity(0.92).ignoresSafeArea()
+            LiquidGlass.deepCanvas.ignoresSafeArea()
             VStack(spacing: 16) {
                 Image(systemName: content.systemImage)
                     .font(.system(size: 44, weight: .semibold))
@@ -29,11 +29,11 @@ public struct UnsupportedDeviceView: View {
                 Text(content.title)
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .multilineTextAlignment(.center)
-                    .foregroundColor(.white)
+                    .foregroundColor(LiquidGlass.textPrimary)
                 Text(content.message)
                     .font(.system(size: 14))
                     .multilineTextAlignment(.center)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(LiquidGlass.textSecondary)
                 if reason == .cameraPermissionDenied {
                     Button("Open Settings") {
                         if let url = URL(string: UIApplication.openSettingsURLString) {
@@ -41,12 +41,14 @@ public struct UnsupportedDeviceView: View {
                         }
                     }
                     .buttonStyle(.borderedProminent)
+                    .tint(LiquidGlass.accentFill)
+                    .foregroundStyle(LiquidGlass.onAccent)
                     .accessibilityIdentifier(UnsupportedDeviceAccessibility.openSettings)
                 }
                 if let onClose {
                     Button("Close", action: onClose)
                         .buttonStyle(.bordered)
-                        .tint(.white)
+                        .tint(LiquidGlass.celestialTeal)
                         .accessibilityIdentifier(UnsupportedDeviceAccessibility.close)
                 }
             }

@@ -95,7 +95,7 @@ public struct OnboardingFlowView: View {
                     .fill(
                         step <= currentStep
                             ? LiquidGlass.celestialTeal
-                            : Color.white.opacity(0.15)
+                            : LiquidGlass.cardBorder
                     )
                     .frame(height: 5)
                     .animation(.easeInOut(duration: 0.25), value: currentStep)
@@ -302,7 +302,7 @@ public struct OnboardingFlowView: View {
                     HStack(spacing: 12) {
                         ZStack {
                             Circle()
-                                .fill(LiquidGlass.celestialTeal.opacity(0.15))
+                                .fill(LiquidGlass.celestialTeal.opacity(LiquidGlass.tintOpacity))
                                 .frame(width: 36, height: 36)
                             Image(systemName: "globe")
                                 .font(.system(size: 16, weight: .semibold))
@@ -578,7 +578,7 @@ public struct OnboardingFlowView: View {
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
-                .background(Capsule().fill(LiquidGlass.emeraldMint.opacity(0.15)))
+                .background(Capsule().fill(LiquidGlass.emeraldMint.opacity(LiquidGlass.tintOpacity)))
             }
 
             // Child Profile Hero Row
@@ -611,7 +611,7 @@ public struct OnboardingFlowView: View {
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 2)
-                            .background(Capsule().fill(LiquidGlass.celestialTeal.opacity(0.2)))
+                            .background(Capsule().fill(LiquidGlass.celestialTeal.opacity(LiquidGlass.tintOpacity)))
                             .foregroundColor(LiquidGlass.celestialTeal)
                     }
 
@@ -639,7 +639,7 @@ public struct OnboardingFlowView: View {
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .background(RoundedRectangle(cornerRadius: 8).fill(Color.white.opacity(0.06)))
+                .background(RoundedRectangle(cornerRadius: 8).fill(LiquidGlass.cardInset))
                 .foregroundColor(LiquidGlass.textPrimary)
 
                 HStack(spacing: 5) {
@@ -651,7 +651,7 @@ public struct OnboardingFlowView: View {
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .background(RoundedRectangle(cornerRadius: 8).fill(Color.white.opacity(0.06)))
+                .background(RoundedRectangle(cornerRadius: 8).fill(LiquidGlass.cardInset))
                 .foregroundColor(LiquidGlass.textSecondary)
 
                 HStack(spacing: 5) {
@@ -663,7 +663,7 @@ public struct OnboardingFlowView: View {
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .background(RoundedRectangle(cornerRadius: 8).fill(Color.white.opacity(0.06)))
+                .background(RoundedRectangle(cornerRadius: 8).fill(LiquidGlass.cardInset))
                 .foregroundColor(LiquidGlass.textSecondary)
 
                 Spacer(minLength: 0)
@@ -712,22 +712,10 @@ public struct OnboardingFlowView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 15)
-                .background(
-                    isStepValid
-                        ? LinearGradient(
-                            colors: [LiquidGlass.celestialTeal, LiquidGlass.emeraldMint],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                        : LinearGradient(
-                            colors: [Color.gray.opacity(0.3), Color.gray.opacity(0.2)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                )
-                .foregroundColor(isStepValid ? .black : Color.white.opacity(0.4))
+                .background(isStepValid ? LiquidGlass.accentFill : LiquidGlass.accentFillDisabled)
+                .foregroundColor(isStepValid ? LiquidGlass.onAccent : LiquidGlass.textTertiary)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .shadow(color: isStepValid ? LiquidGlass.emeraldMint.opacity(0.3) : Color.clear, radius: 8, y: 3)
+                .shadow(color: isStepValid ? LiquidGlass.accentFill.opacity(0.25) : Color.clear, radius: 8, y: 3)
             }
             .disabled(!isStepValid)
         }
@@ -760,7 +748,7 @@ public struct OnboardingFlowView: View {
         HStack(alignment: .top, spacing: 14) {
             ZStack {
                 Circle()
-                    .fill(color.opacity(0.15))
+                    .fill(color.opacity(LiquidGlass.tintOpacity))
                     .frame(width: 40, height: 40)
                 Image(systemName: icon)
                     .font(.system(size: 18, weight: .semibold))
@@ -795,8 +783,8 @@ public struct OnboardingFlowView: View {
                 .padding(.vertical, 9)
                 .background(
                     selectedLanguage == code
-                        ? LiquidGlass.celestialTeal.opacity(0.25)
-                        : Color.white.opacity(0.06)
+                        ? LiquidGlass.celestialTeal.opacity(LiquidGlass.tintOpacity)
+                        : LiquidGlass.cardInset
                 )
                 .foregroundColor(selectedLanguage == code ? LiquidGlass.celestialTeal : LiquidGlass.textSecondary)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))

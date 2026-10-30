@@ -97,6 +97,10 @@ public struct GazePositioningStepView: View {
                 bottomStatusBar
             }
         }
+        // THM-6: fixed-dark camera field. Pins tokens, materials and `.primary` to
+        // dark so accents stay bright over the camera feed in light mode. Applied
+        // before the blocking overlay: Camera-denied / Unsupported are app surfaces.
+        .mediaDark()
         .overlay {
             if camera.state.showsDeniedView {
                 CameraDeniedView(state: camera.state)
@@ -284,7 +288,7 @@ public struct GazePositioningStepView: View {
                             .font(.system(size: 14, weight: .bold))
                     }
                 }
-                .foregroundColor(isVerified ? .black : Color.white.opacity(0.75))
+                .foregroundColor(isVerified ? LiquidGlass.onAccent : Color.white.opacity(0.75))
                 .padding(.vertical, 14)
                 .frame(maxWidth: .infinity)
                 .background(

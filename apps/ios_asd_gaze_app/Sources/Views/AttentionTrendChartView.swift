@@ -28,7 +28,7 @@ public struct AttentionTrendChartView: View {
                     yStart: .value("Low", 0.45),
                     yEnd: .value("High", 0.70)
                 )
-                .foregroundStyle(.green.opacity(0.12))
+                .foregroundStyle(LiquidGlass.emeraldMint.opacity(LiquidGlass.tintOpacity))
 
                 BarMark(
                     x: .value("Day", point.dayLabel),
@@ -39,11 +39,11 @@ public struct AttentionTrendChartView: View {
 
                 RuleMark(y: .value("Target", 0.50))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                    .foregroundStyle(.green)
+                    .foregroundStyle(LiquidGlass.emeraldMint)
                     .annotation(position: .trailing, alignment: .leading) {
                         Text("50%")
                             .font(.caption2)
-                            .foregroundStyle(.green)
+                            .foregroundStyle(LiquidGlass.emeraldMint)
                     }
             }
             .chartYScale(domain: 0...1)

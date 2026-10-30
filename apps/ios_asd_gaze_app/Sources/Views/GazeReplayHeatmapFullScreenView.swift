@@ -121,6 +121,10 @@ public struct GazeReplayHeatmapFullScreenView: View {
                     .padding(.bottom, 24)
             }
         }
+        // THM-6 / S3: fixed-dark replay field (fixed media panes + all-white chrome).
+        // Pins tokens, materials, segmented pickers and the speed menu to dark so the
+        // chrome and accents stay legible in light mode.
+        .mediaDark()
         .onAppear(perform: startPlayback)
         .onDisappear(perform: stopPlayback)
     }
@@ -208,7 +212,7 @@ public struct GazeReplayHeatmapFullScreenView: View {
             Text(title)
                 .font(.system(size: 10, weight: .bold, design: .rounded))
                 .lineLimit(1)
-                .foregroundColor(isSelected ? .black : .white.opacity(0.8))
+                .foregroundColor(isSelected ? LiquidGlass.onAccent : .white.opacity(0.8))
                 .padding(.horizontal, 9)
                 .padding(.vertical, 5)
                 .background(Capsule().fill(isSelected ? AnyShapeStyle(LiquidGlass.emeraldMint) : AnyShapeStyle(.ultraThinMaterial.opacity(0.75))))
@@ -223,10 +227,8 @@ public struct GazeReplayHeatmapFullScreenView: View {
         HStack(spacing: 0) {
             // Left: Social Actor Canvas
             ZStack {
-                LinearGradient(
-                    colors: [LiquidGlass.stimulusSocialTop, LiquidGlass.stimulusSocialBottom],
-                    startPoint: .top, endPoint: .bottom
-                )
+                // S3: fixed media pane (white labels sit on it), not the adaptive stimulus pane.
+                LiquidGlass.stimulusSocialMedia
 
                 VStack(spacing: 12) {
                     ZStack {
@@ -254,10 +256,8 @@ public struct GazeReplayHeatmapFullScreenView: View {
 
             // Right: Geometric Patterns Canvas
             ZStack {
-                LinearGradient(
-                    colors: [LiquidGlass.stimulusGeometryTop, LiquidGlass.stimulusGeometryBottom],
-                    startPoint: .top, endPoint: .bottom
-                )
+                // S3: fixed media pane (white labels sit on it), not the adaptive stimulus pane.
+                LiquidGlass.stimulusGeometryMedia
 
                 VStack(spacing: 12) {
                     Image(systemName: "hexagon.fill")
@@ -476,7 +476,7 @@ public struct GazeReplayHeatmapFullScreenView: View {
                 } label: {
                     Image(systemName: isPlaying ? "pause.fill" : "play.fill")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.black)
+                        .foregroundColor(LiquidGlass.onAccent)
                         .frame(width: 42, height: 42)
                         .background(Circle().fill(LiquidGlass.emeraldMint))
                         .shadow(color: LiquidGlass.emeraldMint.opacity(0.4), radius: 6)

@@ -86,6 +86,7 @@ public struct SettingsView: View {
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 24))
+                            // theme:fixed-media — close glyph over the positioning camera sheet.
                             .foregroundColor(Color.white.opacity(0.8))
                             .padding(16)
                     }
@@ -121,7 +122,7 @@ public struct SettingsView: View {
                     HStack(spacing: 12) {
                         ZStack {
                             Circle()
-                                .fill(LiquidGlass.celestialTeal.opacity(0.15))
+                                .fill(LiquidGlass.celestialTeal.opacity(LiquidGlass.tintOpacity))
                                 .frame(width: 36, height: 36)
                             Image(systemName: "target")
                                 .font(.system(size: 16, weight: .semibold))
@@ -151,7 +152,7 @@ public struct SettingsView: View {
                     HStack(spacing: 12) {
                         ZStack {
                             Circle()
-                                .fill(LiquidGlass.warmAmber.opacity(0.15))
+                                .fill(LiquidGlass.warmAmber.opacity(LiquidGlass.tintOpacity))
                                 .frame(width: 36, height: 36)
                             Image(systemName: "camera.viewfinder")
                                 .font(.system(size: 16, weight: .semibold))
@@ -190,7 +191,7 @@ public struct SettingsView: View {
                 HStack(spacing: 14) {
                     ZStack {
                         Circle()
-                            .fill(LiquidGlass.celestialTeal.opacity(0.18))
+                            .fill(LiquidGlass.celestialTeal.opacity(LiquidGlass.tintOpacity))
                             .frame(width: 52, height: 52)
                         Circle()
                             .stroke(LiquidGlass.celestialTeal.opacity(0.4), lineWidth: 1.2)
@@ -209,7 +210,7 @@ public struct SettingsView: View {
                                 .font(.system(size: 11, weight: .bold, design: .rounded))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
-                                .background(Capsule().fill(LiquidGlass.celestialTeal.opacity(0.18)))
+                                .background(Capsule().fill(LiquidGlass.celestialTeal.opacity(LiquidGlass.tintOpacity)))
                                 .foregroundColor(LiquidGlass.celestialTeal)
                         }
 
@@ -283,7 +284,7 @@ public struct SettingsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Caregiver-entered conditions and allergies for medication context. Not a diagnosis; gaze observations are not a medical assessment.")
                     .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(LiquidGlass.textSecondary)
 
                 TextField("Allergies", text: Binding(
                     get: { childProfileStore.profile.allergies },
@@ -364,7 +365,7 @@ public struct SettingsView: View {
 
                 Text("Medication doses and diary check-ins share the same reminder, alarm, and countdown architecture. You can still turn each time on or off in the dashboard editors.")
                     .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(LiquidGlass.textSecondary)
             }
             .glassCard(cornerRadius: 14, padding: 14)
         }
@@ -415,11 +416,10 @@ public struct SettingsView: View {
                             .font(.system(size: 12))
                     }
                     .font(.system(size: 14))
-                    // theme:fixed-media — dark text on the fixed teal button fill.
-                    .foregroundColor(.black)
+                    .foregroundColor(LiquidGlass.onAccent)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
-                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(LiquidGlass.celestialTeal))
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(LiquidGlass.accentFill))
                 }
             }
             .glassCard(cornerRadius: 14, padding: 14)
@@ -648,7 +648,7 @@ public struct SettingsView: View {
             }
         }
         .buttonStyle(.plain)
-        .foregroundColor(.red)
+        .foregroundColor(LiquidGlass.signalAtypical)
         .accessibilityIdentifier("settings_delete_all_data")
     }
 
@@ -789,7 +789,7 @@ public struct SettingsView: View {
             }
             Text("Manual emotion logs can write State of Mind samples to the Health app.")
                 .font(.system(size: 11))
-                .foregroundColor(.secondary)
+                .foregroundColor(LiquidGlass.textSecondary)
             Button("Authorize HealthKit") {
                 Task { await healthKitMood.requestAuthorization() }
             }
@@ -799,7 +799,7 @@ public struct SettingsView: View {
             if let err = healthKitMood.lastErrorMessage {
                 Text(err)
                     .font(.caption2)
-                    .foregroundColor(.red)
+                    .foregroundColor(LiquidGlass.signalAtypical)
             }
         }
     }
@@ -844,7 +844,7 @@ struct NormCollectionToggleRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "chart.bar.xaxis")
-                .foregroundColor(hasConsent ? LiquidGlass.emeraldMint : .secondary)
+                .foregroundColor(hasConsent ? LiquidGlass.emeraldMint : LiquidGlass.textSecondary)
                 .font(.system(size: 18))
             VStack(alignment: .leading, spacing: 4) {
                 Text("Normative Data Collection")

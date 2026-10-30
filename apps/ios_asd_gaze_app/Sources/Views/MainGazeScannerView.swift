@@ -195,7 +195,7 @@ public struct MainGazeScannerView: View {
                     .padding(.vertical, 6)
                     .background(
                         Capsule()
-                            .fill(displayMode == mode ? LiquidGlass.celestialTeal.opacity(0.28) : Color.clear)
+                            .fill(displayMode == mode ? LiquidGlass.celestialTeal.opacity(LiquidGlass.tintOpacity) : Color.clear)
                     )
                     .overlay(
                         Capsule()
@@ -233,7 +233,7 @@ public struct MainGazeScannerView: View {
                 .frame(width: 28, height: 28)
             Image(systemName: iconName)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(eyeColor.opacity(0.9))
+                .foregroundColor(eyeColor)
         }
         .shadow(color: Color.black.opacity(0.12), radius: 4, x: 0, y: 2)
         .accessibilityLabel(isActive ? "Tracking Active" : "Tracking Inactive")
@@ -255,7 +255,7 @@ public struct MainGazeScannerView: View {
                     .frame(width: 28, height: 28)
                 Image(systemName: "target")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(targetColor.opacity(0.9))
+                    .foregroundColor(targetColor)
             }
             .shadow(color: Color.black.opacity(0.12), radius: 4, x: 0, y: 2)
         }
@@ -267,11 +267,11 @@ public struct MainGazeScannerView: View {
         HStack(spacing: 4) {
             Image(systemName: "stopwatch.fill")
                 .font(.system(size: 9))
-                .foregroundColor(LiquidGlass.textSecondary.opacity(0.85))
+                .foregroundColor(LiquidGlass.textSecondary)
             Text(String(format: "%02d:%02d", Int(elapsedSeconds) / 60, Int(elapsedSeconds) % 60))
                 .font(.system(size: 11, weight: .semibold, design: .monospaced))
                 .monospacedDigit()
-                .foregroundColor(LiquidGlass.textPrimary.opacity(0.9))
+                .foregroundColor(LiquidGlass.textPrimary)
         }
         .padding(.horizontal, 7)
         .padding(.vertical, 4)
@@ -402,7 +402,7 @@ public struct MainGazeScannerView: View {
                     VStack(spacing: 10) {
                         Image(systemName: "sparkles")
                             .font(.system(size: 40))
-                            .foregroundColor(LiquidGlass.celestialTeal.opacity(0.85))
+                            .foregroundColor(LiquidGlass.celestialTeal)
                             .rotationEffect(.degrees(elapsedSeconds * 45))
 
                         Text("Dynamic Patterns")
@@ -510,6 +510,9 @@ public struct MainGazeScannerView: View {
             }
             .frame(maxHeight: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            // THM-6: the emotion badge and calibration indicator sit on the live camera,
+            // so this camera sub-area resolves dark (bright accents over the feed).
+            .mediaDark()
 
             // Distance, Head Pose, & Emotion Telemetry
             VStack(alignment: .leading, spacing: 5) {
@@ -617,6 +620,8 @@ public struct MainGazeScannerView: View {
             .padding(.bottom, 6)
         }
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        // THM-6: telemetry badge and calibration indicator sit on the live camera.
+        .mediaDark()
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(LiquidGlass.celestialTeal.opacity(0.65), lineWidth: 1.2)
@@ -641,7 +646,7 @@ public struct MainGazeScannerView: View {
         .padding(.vertical, 3)
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(isActive ? activeColor.opacity(0.18) : LiquidGlass.cardBackground)
+                .fill(isActive ? activeColor.opacity(LiquidGlass.tintOpacity) : LiquidGlass.cardBackground)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 6)

@@ -31,7 +31,7 @@ public struct BiomarkerRiskStratificationDetailSection: View {
                 switch strat {
                 case .typical: return LiquidGlass.emeraldMint
                 case .monitor: return LiquidGlass.warmAmber
-                case .elevatedRisk: return Color.red
+                case .elevatedRisk: return LiquidGlass.signalAtypical
                 }
             }()
 
@@ -72,7 +72,7 @@ public struct BiomarkerRiskStratificationDetailSection: View {
             }
         }
         .padding(12)
-        .background(LiquidGlass.warmAmber.opacity(0.12))
+        .background(LiquidGlass.warmAmber.opacity(LiquidGlass.tintOpacity))
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay(
             RoundedRectangle(cornerRadius: 14)
@@ -145,7 +145,7 @@ public struct BiomarkerRiskStratificationDetailSection: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.white.opacity(0.04))
+            .background(LiquidGlass.cardInset)
             .cornerRadius(8)
         }
         .glassCard(cornerRadius: 16, padding: 14)
@@ -160,7 +160,7 @@ public struct BiomarkerRiskStratificationDetailSection: View {
             let isSocialNormal = socialPrefPct >= 60
             let isSocialMonitor = socialPrefPct >= 50 && socialPrefPct < 60
             let socialStatus = isSocialNormal ? "Typical" : (isSocialMonitor ? "Monitor" : "Outside range")
-            let socialColor = isSocialNormal ? LiquidGlass.emeraldMint : (isSocialMonitor ? LiquidGlass.warmAmber : Color.red)
+            let socialColor = isSocialNormal ? LiquidGlass.emeraldMint : (isSocialMonitor ? LiquidGlass.warmAmber : LiquidGlass.signalAtypical)
 
             riskMatrixCellRow(
                 icon: "person.2.fill",
@@ -179,7 +179,7 @@ public struct BiomarkerRiskStratificationDetailSection: View {
             let isEyeNormal = hasEye && eyeDwellPct >= 25.0
             let isEyeMonitor = hasEye && eyeDwellPct >= 18.0 && eyeDwellPct < 25.0
             let eyeStatus = !hasEye ? "Not observed" : (isEyeNormal ? "Typical Fixation" : (isEyeMonitor ? "Borderline Dwell" : "Reduced Gaze"))
-            let eyeColor = isEyeNormal ? LiquidGlass.emeraldMint : (isEyeMonitor ? LiquidGlass.warmAmber : Color.red)
+            let eyeColor = isEyeNormal ? LiquidGlass.emeraldMint : (isEyeMonitor ? LiquidGlass.warmAmber : LiquidGlass.signalAtypical)
 
             riskMatrixCellRow(
                 icon: "eyes.inverse",
@@ -198,7 +198,7 @@ public struct BiomarkerRiskStratificationDetailSection: View {
             let isLatencyNormal = hasLatency && latency < 550.0
             let isLatencyMonitor = hasLatency && latency >= 550.0 && latency < 750.0
             let latencyStatus = !hasLatency ? "Not observed" : (isLatencyNormal ? "Rapid Orienting" : (isLatencyMonitor ? "Moderate Latency" : "Delayed Orienting"))
-            let latencyColor = isLatencyNormal ? LiquidGlass.emeraldMint : (isLatencyMonitor ? LiquidGlass.warmAmber : Color.red)
+            let latencyColor = isLatencyNormal ? LiquidGlass.emeraldMint : (isLatencyMonitor ? LiquidGlass.warmAmber : LiquidGlass.signalAtypical)
 
             riskMatrixCellRow(
                 icon: "bolt.stop.fill",
@@ -215,7 +215,7 @@ public struct BiomarkerRiskStratificationDetailSection: View {
             let smilePct = Int(summary.socialSmileIntensityMean * 100)
             let isSmileNormal = smilePct >= 20
             let smileStatus = isSmileNormal ? "Synchronous" : (smilePct >= 10 ? "Attenuated" : "Blunted")
-            let smileColor = isSmileNormal ? LiquidGlass.emeraldMint : (smilePct >= 10 ? LiquidGlass.warmAmber : Color.red)
+            let smileColor = isSmileNormal ? LiquidGlass.emeraldMint : (smilePct >= 10 ? LiquidGlass.warmAmber : LiquidGlass.signalAtypical)
 
             riskMatrixCellRow(
                 icon: "face.smiling.fill",
@@ -294,7 +294,7 @@ public struct BiomarkerRiskStratificationDetailSection: View {
                     .foregroundColor(statusColor)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 3)
-                    .background(Capsule().fill(statusColor.opacity(0.16)))
+                    .background(Capsule().fill(statusColor.opacity(LiquidGlass.tintOpacity)))
             }
 
             HStack(spacing: 12) {
@@ -326,11 +326,11 @@ public struct BiomarkerRiskStratificationDetailSection: View {
                 .lineSpacing(2.5)
         }
         .padding(12)
-        .background(Color.white.opacity(0.04))
+        .background(LiquidGlass.cardInset)
         .cornerRadius(12)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                .stroke(LiquidGlass.dividerColor, lineWidth: 1)
         )
     }
 
@@ -348,7 +348,7 @@ public struct BiomarkerRiskStratificationDetailSection: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(8)
-        .background(Color.white.opacity(0.04))
+        .background(LiquidGlass.cardInset)
         .cornerRadius(8)
     }
 
@@ -364,11 +364,11 @@ public struct BiomarkerRiskStratificationDetailSection: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
-        .background(Color.white.opacity(0.04))
+        .background(LiquidGlass.cardInset)
         .cornerRadius(12)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                .stroke(LiquidGlass.dividerColor, lineWidth: 1)
         )
     }
 }

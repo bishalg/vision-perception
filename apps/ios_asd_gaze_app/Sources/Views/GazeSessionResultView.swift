@@ -204,9 +204,9 @@ public struct GazeSessionResultView: View {
                 // Background thumbnail representing the stimulus
                 HStack(spacing: 1) {
                     LiquidGlass.stimulusSocialMedia
-                        .overlay(Text("People").font(.system(size: 11, weight: .bold)).foregroundColor(.white.opacity(0.4)))
+                        .overlay(Text("People").font(.system(size: 11, weight: .bold)).foregroundColor(.white.opacity(0.4))) // theme:fixed-media
                     LiquidGlass.stimulusGeometryMedia
-                        .overlay(Text("Shapes").font(.system(size: 11, weight: .bold)).foregroundColor(.white.opacity(0.4)))
+                        .overlay(Text("Shapes").font(.system(size: 11, weight: .bold)).foregroundColor(.white.opacity(0.4))) // theme:fixed-media
                 }
 
                 // Gaze Trajectory Lines (Scanpath with Blink Discontinuity Handling)
@@ -259,7 +259,7 @@ public struct GazeSessionResultView: View {
 
                 Text(String(format: "%.1fs / %.1fs (%d frames)", Double(replayFrameIndex) * (1.0 / 60.0), summary.durationSec, recordedFrames.count))
                     .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                    .foregroundColor(.primary.opacity(0.85))
+                    .foregroundColor(LiquidGlass.textPrimary)
 
                 Spacer()
             }
@@ -276,11 +276,11 @@ public struct GazeSessionResultView: View {
                     Spacer()
                     Text("5s Tail / Flow")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(Color.white.opacity(0.8))
+                        .foregroundColor(LiquidGlass.onAccent)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 11, weight: .semibold))
                 }
-                .foregroundColor(.white)
+                .foregroundColor(LiquidGlass.onAccent)
                 .padding(.vertical, 10)
                 .padding(.horizontal, 14)
                 .background(
@@ -341,7 +341,7 @@ public struct GazeSessionResultView: View {
                                 .frame(height: 12)
 
                             Circle()
-                                .fill(Color.white)
+                                .fill(Color.white) // theme:fixed-media
                                 .frame(width: 18, height: 18)
                                 .shadow(radius: 4)
                                 .offset(x: max(0, min(geo.size.width - 18, normX - 9)))
@@ -388,7 +388,7 @@ public struct GazeSessionResultView: View {
             switch result.riskStratification {
             case .typical: return LiquidGlass.emeraldMint
             case .monitor: return LiquidGlass.warmAmber
-            case .elevatedRisk: return Color.red
+            case .elevatedRisk: return LiquidGlass.signalAtypical
             }
         }()
 
@@ -469,7 +469,7 @@ public struct GazeSessionResultView: View {
             }
         }
         .padding(12)
-        .background(LiquidGlass.warmAmber.opacity(0.12))
+        .background(LiquidGlass.warmAmber.opacity(LiquidGlass.tintOpacity))
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
@@ -829,11 +829,11 @@ public struct ResearchKitExportSheet: View {
                     ScrollView {
                         Text(exportJsonText)
                             .font(.system(size: 11, design: .monospaced))
-                            .foregroundColor(.green)
+                            .foregroundColor(.green) // theme:fixed-media
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(16)
                     }
-                    .background(Color.black.opacity(0.85))
+                    .background(Color.black.opacity(0.85)) // theme:fixed-media
                     .cornerRadius(12)
 
                     // CNS-9: no study configured means nothing to send.
@@ -866,7 +866,7 @@ private struct ResearchKitDebugSyncControls: View {
             } label: {
                 HStack {
                     if syncService.syncState.isSyncing {
-                        ProgressView().tint(.black)
+                        ProgressView().tint(LiquidGlass.onAccent)
                     } else {
                         Image(systemName: "icloud.and.arrow.up.fill")
                     }
@@ -876,7 +876,7 @@ private struct ResearchKitDebugSyncControls: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
                 .background(LiquidGlass.celestialTeal)
-                .foregroundColor(.black)
+                .foregroundColor(LiquidGlass.onAccent)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             .disabled(syncService.syncState.isSyncing)

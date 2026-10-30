@@ -49,7 +49,7 @@ public struct CaregiverDashboardView: View {
         switch risk {
         case .low: return LiquidGlass.emeraldMint
         case .medium: return LiquidGlass.warmAmber
-        case .high: return Color.red
+        case .high: return LiquidGlass.signalAtypical
         }
     }
 
@@ -60,6 +60,7 @@ public struct CaregiverDashboardView: View {
     public var body: some View {
         NavigationStack {
             List {
+                Group {
                 if !isAdvisoryDismissed {
                     Section {
                         clinicalAdvisoryBanner
@@ -138,10 +139,13 @@ public struct CaregiverDashboardView: View {
                 }
 
                 DevelopmentalMilestonesSectionView(milestones: carePlanStore.milestones) { selectedMilestone = $0 }
+                }
+                .listRowBackground(LiquidGlass.cardBackground)
             }
             .listStyle(.insetGrouped)
-            .scrollContentBackground(.visible)
-            .background(Color(.systemGroupedBackground))
+            // Same canvas and card tokens as every other screen, in both appearances.
+            .scrollContentBackground(.hidden)
+            .background(LiquidGlass.deepCanvas)
             .refreshable {
                 if let researchSync = ResearchKitSyncService.shared {
                     await withCheckedContinuation { continuation in
@@ -316,7 +320,7 @@ public struct CaregiverDashboardView: View {
                         .foregroundColor(.secondary)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.secondary.opacity(0.6))
+                        .foregroundColor(LiquidGlass.textTertiary)
                 }
             }
 
@@ -340,7 +344,7 @@ public struct CaregiverDashboardView: View {
 
                 Divider()
                     .frame(height: 32)
-                    .background(Color.primary.opacity(0.12))
+                    .background(LiquidGlass.dividerColor)
 
                 // Column 2: Streak
                 VStack(alignment: .leading, spacing: 2) {
@@ -361,7 +365,7 @@ public struct CaregiverDashboardView: View {
 
                 Divider()
                     .frame(height: 32)
-                    .background(Color.primary.opacity(0.12))
+                    .background(LiquidGlass.dividerColor)
 
                 // Column 3: Social Focus
                 VStack(alignment: .leading, spacing: 2) {
@@ -431,12 +435,12 @@ public struct CaregiverDashboardView: View {
                     .foregroundColor(LiquidGlass.emeraldMint)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 3)
-                    .background(LiquidGlass.emeraldMint.opacity(0.18))
+                    .background(LiquidGlass.emeraldMint.opacity(LiquidGlass.tintOpacity))
                     .clipShape(Capsule())
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.secondary.opacity(0.6))
+                    .foregroundColor(LiquidGlass.textTertiary)
             }
 
             Text("A short calibration, then clips that show how your child looks at people and shapes.")
@@ -553,7 +557,7 @@ public struct CaregiverDashboardView: View {
                         .foregroundColor(LiquidGlass.celestialTeal)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(LiquidGlass.celestialTeal.opacity(0.12))
+                        .background(LiquidGlass.celestialTeal.opacity(LiquidGlass.tintOpacity))
                         .clipShape(Capsule())
                 }
 
@@ -672,7 +676,7 @@ public struct CaregiverDashboardView: View {
                         .padding(.horizontal, 11)
                         .padding(.vertical, 7)
                         .background(
-                            isTaken ? LiquidGlass.emeraldMint.opacity(0.16) : LiquidGlass.cardBackground
+                            isTaken ? LiquidGlass.emeraldMint.opacity(LiquidGlass.tintOpacity) : LiquidGlass.cardBackground
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 9, style: .continuous)
@@ -792,7 +796,7 @@ public struct CaregiverDashboardView: View {
                             .frame(maxWidth: .infinity, minHeight: 44)
                             .background(
                                 carePlanStore.diaryEntry.mood == mood
-                                    ? LiquidGlass.celestialTeal.opacity(0.22)
+                                    ? LiquidGlass.celestialTeal.opacity(LiquidGlass.tintOpacity)
                                     : LiquidGlass.cardBackground
                             )
                             .foregroundColor(
@@ -816,13 +820,13 @@ public struct CaregiverDashboardView: View {
                 }
 
                 Divider()
-                    .background(Color.primary.opacity(0.08))
+                    .background(LiquidGlass.dividerColor)
 
                 // Spontaneous eye contact rating (1 to 5 scale)
                 HStack {
                     Text(Localizer.tr("dashboard_eye_contact"))
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.primary.opacity(0.85))
+                        .foregroundColor(LiquidGlass.textPrimary)
 
                     Spacer()
 
@@ -921,7 +925,7 @@ public struct CaregiverDashboardView: View {
                             .foregroundColor(.secondary)
                         Image(systemName: "chevron.right")
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.secondary.opacity(0.6))
+                            .foregroundColor(LiquidGlass.textTertiary)
                     }
                 }
 
@@ -943,7 +947,7 @@ public struct CaregiverDashboardView: View {
                         .foregroundColor(LiquidGlass.emeraldMint)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Capsule().fill(LiquidGlass.emeraldMint.opacity(0.18)))
+                        .background(Capsule().fill(LiquidGlass.emeraldMint.opacity(LiquidGlass.tintOpacity)))
                 }
 
                 // Apple Health Bar Chart with 50% Target Reference Line
@@ -958,7 +962,7 @@ public struct CaregiverDashboardView: View {
                                 .frame(height: 1)
                             Text("50%")
                                 .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                .foregroundColor(LiquidGlass.emeraldMint.opacity(0.7))
+                                .foregroundColor(LiquidGlass.emeraldMint)
                         }
                         .padding(.bottom, 50)
                     }
@@ -1004,7 +1008,7 @@ public struct CaregiverDashboardView: View {
                 .padding(.top, 4)
 
                 Divider()
-                    .background(Color.primary.opacity(0.08))
+                    .background(LiquidGlass.dividerColor)
 
                 // Apple Health Style "Highlights" Callout Card
                 HStack(alignment: .top, spacing: 10) {

@@ -18,7 +18,7 @@ public struct ClinicalDetailsModalView: View {
                         HStack(spacing: 12) {
                             ZStack {
                                 Circle()
-                                    .fill(LiquidGlass.warmAmber.opacity(0.2))
+                                    .fill(LiquidGlass.warmAmber.opacity(LiquidGlass.tintOpacity))
                                     .frame(width: 48, height: 48)
                                 Image(systemName: "heart.text.square.fill")
                                     .font(.system(size: 24))
@@ -121,7 +121,7 @@ public struct CareKitExportModalView: View {
         HStack(spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(LiquidGlass.celestialTeal.opacity(0.18))
+                    .fill(LiquidGlass.celestialTeal.opacity(LiquidGlass.tintOpacity))
                     .frame(width: 44, height: 44)
                 Image(systemName: "lock.shield.fill")
                     .font(.system(size: 22))
@@ -199,8 +199,8 @@ public struct CareKitExportModalView: View {
                         Spacer()
                     }
                     .padding(.vertical, 12)
-                    .background(LiquidGlass.celestialTeal)
-                    .foregroundColor(.black)
+                    .background(LiquidGlass.accentFill)
+                    .foregroundColor(LiquidGlass.onAccent)
                     .cornerRadius(10)
                 }
 
@@ -236,9 +236,10 @@ public struct CareKitExportModalView: View {
                     ScrollView(.horizontal) {
                         Text(store.exportClinicalCareKitJSON())
                             .font(.system(size: 10, design: .monospaced))
-                            .foregroundColor(LiquidGlass.emeraldMint)
+                            // theme:fixed-media — JSON terminal pane stays dark in both modes.
+                            .foregroundColor(.green)
                             .padding(10)
-                            .background(Color.black.opacity(0.65))
+                            .background(Color.black.opacity(0.65)) // theme:fixed-media
                             .cornerRadius(8)
                     }
                 }
@@ -307,7 +308,7 @@ public struct ClinicalAdvisoryBannerView: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 16))
-                        .foregroundColor(.secondary.opacity(0.8))
+                        .foregroundColor(LiquidGlass.textSecondary)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Dismiss Alert")
@@ -317,7 +318,7 @@ public struct ClinicalAdvisoryBannerView: View {
             HStack(alignment: .top, spacing: 12) {
                 ZStack {
                     Circle()
-                        .fill(LiquidGlass.warmAmber.opacity(0.2))
+                        .fill(LiquidGlass.warmAmber.opacity(LiquidGlass.tintOpacity))
                         .frame(width: 40, height: 40)
                     Image(systemName: "heart.text.square.fill")
                         .font(.system(size: 20))
@@ -343,7 +344,7 @@ public struct ClinicalAdvisoryBannerView: View {
                 } label: {
                     Text(Localizer.tr("dashboard_more_details"))
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.black) // theme:fixed-media
+                        .foregroundColor(LiquidGlass.onAccent)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 7)
                         .background(Capsule().fill(LiquidGlass.warmAmber))
@@ -357,7 +358,7 @@ public struct ClinicalAdvisoryBannerView: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(LiquidGlass.warmAmber.opacity(0.12))
+                .fill(LiquidGlass.warmAmber.opacity(LiquidGlass.tintOpacity))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -458,14 +459,14 @@ public struct ResearchStudyDashboardCard: View {
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(Capsule().fill(LiquidGlass.emeraldMint.opacity(0.12)))
+                    .background(Capsule().fill(LiquidGlass.emeraldMint.opacity(LiquidGlass.tintOpacity)))
                 } else {
                     Text("Consent Required")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundColor(LiquidGlass.warmAmber)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Capsule().fill(LiquidGlass.warmAmber.opacity(0.15)))
+                        .background(Capsule().fill(LiquidGlass.warmAmber.opacity(LiquidGlass.tintOpacity)))
                 }
             }
 
@@ -499,8 +500,8 @@ public struct ResearchStudyDashboardCard: View {
                         .font(.system(size: 12))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
-                        .background(Capsule().fill(LiquidGlass.celestialTeal))
-                        .foregroundColor(.black) // theme:fixed-media
+                        .background(Capsule().fill(LiquidGlass.accentFill))
+                        .foregroundColor(LiquidGlass.onAccent)
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("research_card_consent")
@@ -528,7 +529,7 @@ public struct ResearchStudyDashboardCard: View {
                     } label: {
                         HStack(spacing: 4) {
                             if syncService.syncState.isSyncing {
-                                ProgressView().scaleEffect(0.6).tint(.black)
+                                ProgressView().scaleEffect(0.6).tint(LiquidGlass.onAccent)
                             } else {
                                 Image(systemName: "arrow.up.circle.fill")
                             }
@@ -539,7 +540,7 @@ public struct ResearchStudyDashboardCard: View {
                         .padding(.horizontal, 10)
                         .padding(.vertical, 7)
                         .background(Capsule().fill(LiquidGlass.emeraldMint))
-                        .foregroundColor(.black) // theme:fixed-media
+                        .foregroundColor(LiquidGlass.onAccent)
                     }
                     .buttonStyle(.plain)
                     .disabled(syncService.syncState.isSyncing)
@@ -581,7 +582,7 @@ public struct ResearchStudyDashboardCard: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(LiquidGlass.celestialTeal.opacity(0.08))
+                .fill(LiquidGlass.celestialTeal.opacity(LiquidGlass.tintOpacity))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -690,7 +691,7 @@ public struct ResearchKitDoctorExportModal: View {
             ScrollView {
                 Text(jsonString)
                     .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.green)
+                    .foregroundColor(.green) // theme:fixed-media
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
             }
@@ -707,7 +708,7 @@ public struct ResearchKitDoctorExportModal: View {
             } label: {
                 HStack {
                     if syncService.syncState.isSyncing {
-                        ProgressView().tint(.black)
+                        ProgressView().tint(LiquidGlass.onAccent)
                     } else {
                         Image(systemName: "icloud.and.arrow.up.fill")
                     }
@@ -716,8 +717,8 @@ public struct ResearchKitDoctorExportModal: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
-                .background(LiquidGlass.celestialTeal)
-                .foregroundColor(.black) // theme:fixed-media
+                .background(LiquidGlass.accentFill)
+                .foregroundColor(LiquidGlass.onAccent)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             .disabled(syncService.syncState.isSyncing)

@@ -30,7 +30,7 @@ public struct ObservationQuickLogBar: View {
                     Task { await toggleDictation() }
                 } label: {
                     Image(systemName: isRecording ? "mic.fill" : "mic")
-                        .foregroundStyle(isRecording ? Color.red : Color.accentColor)
+                        .foregroundStyle(isRecording ? LiquidGlass.signalAtypical : LiquidGlass.celestialTeal)
                 }
                 .accessibilityLabel("Speech to text")
             }

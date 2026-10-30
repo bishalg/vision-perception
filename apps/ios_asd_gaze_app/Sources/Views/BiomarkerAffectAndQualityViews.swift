@@ -78,7 +78,7 @@ public struct BiomarkerFacialAffectDetailSection: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 7)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.white.opacity(0.04))
+                .background(LiquidGlass.cardInset)
                 .cornerRadius(8)
             }
             .glassCard(cornerRadius: 16, padding: 14)
@@ -230,7 +230,7 @@ public struct BiomarkerDataQualityDetailSection: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 7)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.white.opacity(0.04))
+                .background(LiquidGlass.cardInset)
                 .cornerRadius(8)
             }
             .glassCard(cornerRadius: 16, padding: 14)
@@ -306,7 +306,7 @@ private func biomarkerDetailMatrixRow(
                 .foregroundColor(statusColor)
                 .padding(.horizontal, 7)
                 .padding(.vertical, 3)
-                .background(Capsule().fill(statusColor.opacity(0.16)))
+                .background(Capsule().fill(statusColor.opacity(LiquidGlass.tintOpacity)))
         }
 
         HStack(spacing: 12) {
@@ -338,11 +338,11 @@ private func biomarkerDetailMatrixRow(
             .lineSpacing(2.5)
     }
     .padding(12)
-    .background(Color.white.opacity(0.04))
+    .background(LiquidGlass.cardInset)
     .cornerRadius(12)
     .overlay(
         RoundedRectangle(cornerRadius: 12)
-            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+            .stroke(LiquidGlass.dividerColor, lineWidth: 1)
     )
 }
 
@@ -360,7 +360,7 @@ private func summaryMetricTile(title: String, value: String, subtitle: String, c
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(8)
-    .background(Color.white.opacity(0.04))
+    .background(LiquidGlass.cardInset)
     .cornerRadius(8)
 }
 
@@ -376,10 +376,10 @@ private func biomarkerExplanationCard(title: String, content: String) -> some Vi
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(12)
-    .background(Color.white.opacity(0.04))
+    .background(LiquidGlass.cardInset)
     .cornerRadius(12)
     .overlay(
         RoundedRectangle(cornerRadius: 12)
-            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+            .stroke(LiquidGlass.dividerColor, lineWidth: 1)
     )
 }

@@ -35,6 +35,9 @@ MEDIA_ALLOWLIST = {
     "StimulusScreeningView.swift",
     "ARFaceCameraView.swift",
     "BubbleCalibrationView.swift",
+    "GazeStimulusScreeningView.swift",
+    "GazePositioningStepView.swift",
+    "GazeReplayHeatmapFullScreenView.swift",
     "MainScannerView.swift",
     "CaptureResultView.swift",
     "CreaseLineEditorView.swift",
@@ -48,6 +51,8 @@ MEDIA_ALLOWLIST = {
     "LiquidGlassTheme.swift",
 }
 ESCAPE_MARKER = "theme:fixed-media"
+# Build products and SwiftPM checkouts (e.g. CareKit) are not app sources.
+BUILD_DIRS = {"build", "build-sim", "DerivedData", ".build"}
 # Shadow colors stay dark in both modes (correct) — never flag these.
 SHADOW_RE = re.compile(r"\.shadow\s*\(")
 
@@ -84,7 +89,7 @@ def iter_sources(dirs, suffixes):
             fail(f"missing source dir {base.relative_to(ROOT)}")
             continue
         for path in sorted(base.rglob("*")):
-            if path.suffix in suffixes and ".build" not in path.parts:
+            if path.suffix in suffixes and not BUILD_DIRS.intersection(path.parts):
                 # Theme definition files ARE the adaptive mechanism.
                 if "ui/theme/" in path.as_posix():
                     continue
@@ -138,10 +143,13 @@ for path in iter_sources(ANDROID_DIRS, {".kt"}):
 
 
 for plist in ROOT.glob("apps/ios_*/**/*.plist"):
+    # Build products hold compiled (binary) plists; only sources pin a style.
+    if BUILD_DIRS.intersection(plist.relative_to(ROOT).parts):
+        continue
     try:
         if "UIUserInterfaceStyle" in plist.read_text(encoding="utf-8"):
             fail(f"{plist.relative_to(ROOT)} pins UIUserInterfaceStyle")
-    except OSError:
+    except (OSError, UnicodeDecodeError):
         pass
 
 print(f"theme check complete ({errors} error(s), {warnings} warning(s))")

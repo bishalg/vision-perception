@@ -86,7 +86,7 @@ public struct MCHATSurveyModalView: View {
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Color.gray.opacity(0.2))
+                    Capsule().fill(LiquidGlass.cardBorder)
                     Capsule()
                         .fill(LiquidGlass.celestialTeal)
                         .frame(width: geo.size.width * CGFloat(answers.count) / CGFloat(questions.count))
@@ -110,7 +110,7 @@ public struct MCHATSurveyModalView: View {
                     .foregroundColor(LiquidGlass.warmAmber)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(Capsule().fill(LiquidGlass.warmAmber.opacity(0.15)))
+                    .background(Capsule().fill(LiquidGlass.warmAmber.opacity(LiquidGlass.tintOpacity)))
 
                 Spacer()
 
@@ -120,7 +120,7 @@ public struct MCHATSurveyModalView: View {
                         .foregroundColor(LiquidGlass.celestialTeal)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Capsule().fill(LiquidGlass.celestialTeal.opacity(0.12)))
+                        .background(Capsule().fill(LiquidGlass.celestialTeal.opacity(LiquidGlass.tintOpacity)))
                 }
             }
 
@@ -142,7 +142,7 @@ public struct MCHATSurveyModalView: View {
                     .padding(.vertical, 14)
                     .background(
                         currentAnswer == true
-                            ? LiquidGlass.celestialTeal.opacity(0.25)
+                            ? LiquidGlass.celestialTeal.opacity(LiquidGlass.tintOpacity)
                             : LiquidGlass.cardBackground
                     )
                     .foregroundColor(currentAnswer == true ? LiquidGlass.celestialTeal : .primary)
@@ -168,7 +168,7 @@ public struct MCHATSurveyModalView: View {
                     .padding(.vertical, 14)
                     .background(
                         currentAnswer == false
-                            ? LiquidGlass.warmAmber.opacity(0.25)
+                            ? LiquidGlass.warmAmber.opacity(LiquidGlass.tintOpacity)
                             : LiquidGlass.cardBackground
                     )
                     .foregroundColor(currentAnswer == false ? LiquidGlass.warmAmber : .primary)
@@ -196,7 +196,7 @@ public struct MCHATSurveyModalView: View {
                 }
             }
             .disabled(currentQuestionIndex == 0)
-            .foregroundColor(currentQuestionIndex == 0 ? .gray.opacity(0.5) : .primary)
+            .foregroundColor(currentQuestionIndex == 0 ? LiquidGlass.textTertiary : .primary)
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .background(Capsule().fill(LiquidGlass.cardBackground))
@@ -213,7 +213,7 @@ public struct MCHATSurveyModalView: View {
                     .padding(.horizontal, 20)
                     .padding(.vertical, 12)
                     .background(LiquidGlass.emeraldMint)
-                    .foregroundColor(.black) // theme:fixed-media
+                    .foregroundColor(LiquidGlass.onAccent)
                     .clipShape(Capsule())
                 }
             } else {
@@ -223,7 +223,7 @@ public struct MCHATSurveyModalView: View {
                     }
                 }
                 .disabled(answers[questions[currentQuestionIndex].id] == nil)
-                .foregroundColor(answers[questions[currentQuestionIndex].id] == nil ? .gray.opacity(0.5) : LiquidGlass.celestialTeal)
+                .foregroundColor(answers[questions[currentQuestionIndex].id] == nil ? LiquidGlass.textTertiary : LiquidGlass.celestialTeal)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
                 .background(Capsule().fill(LiquidGlass.cardBackground))
@@ -278,7 +278,7 @@ public struct MCHATSurveyModalView: View {
                 .padding(12)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(LiquidGlass.warmAmber.opacity(0.12))
+                        .fill(LiquidGlass.warmAmber.opacity(LiquidGlass.tintOpacity))
                 )
             }
 
@@ -307,8 +307,8 @@ public struct MCHATSurveyModalView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
-                .background(LiquidGlass.celestialTeal)
-                .foregroundColor(.black) // theme:fixed-media
+                .background(LiquidGlass.accentFill)
+                .foregroundColor(LiquidGlass.onAccent)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
             }
         }
@@ -334,7 +334,7 @@ public struct MCHATSurveyModalView: View {
         switch risk {
         case .low: return LiquidGlass.emeraldMint
         case .medium: return LiquidGlass.warmAmber
-        case .high: return Color.red
+        case .high: return LiquidGlass.signalAtypical
         }
     }
 }

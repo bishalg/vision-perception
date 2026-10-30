@@ -94,15 +94,19 @@ public struct DevelopmentalMilestonesSectionView: View {
                         } label: {
                             HStack {
                                 Image(systemName: milestone.domain.systemImage)
+                                    .foregroundStyle(LiquidGlass.celestialTeal)
                                 VStack(alignment: .leading) {
+                                    // Explicit tokens: the button tint would otherwise wash the
+                                    // caption to a faded teal that fails AA in light mode.
                                     Text(milestone.domain.shortLabel)
+                                        .foregroundStyle(LiquidGlass.textPrimary)
                                     Text("\(Int(milestone.completionRatio * 100))% of checks")
                                         .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(LiquidGlass.textSecondary)
                                 }
                                 Spacer()
                                 Image(systemName: milestone.isCompleted ? "checkmark.circle.fill" : "chevron.right")
-                                    .foregroundStyle(milestone.isCompleted ? .green : .secondary)
+                                    .foregroundStyle(milestone.isCompleted ? LiquidGlass.emeraldMint : LiquidGlass.textSecondary)
                             }
                         }
                         // Stable automation hook: the domain label repeats in every age section.

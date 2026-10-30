@@ -58,7 +58,7 @@ public struct StimulusScreeningView: View {
                         VStack(spacing: 8) {
                             Image(systemName: "circle.hexagongrid.fill")
                                 .font(.system(size: 48))
-                                .foregroundColor(LiquidGlass.celestialTeal.opacity(0.8))
+                                .foregroundColor(LiquidGlass.celestialTeal)
                             Text("Dynamic Geometric Pattern")
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                                 .foregroundColor(LiquidGlass.textPrimary)

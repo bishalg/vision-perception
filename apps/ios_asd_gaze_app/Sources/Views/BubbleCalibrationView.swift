@@ -469,7 +469,7 @@ public struct BubbleCalibrationView: View {
         .foregroundColor(color)
         .padding(.horizontal, 7)
         .padding(.vertical, 4)
-        .background(Capsule().fill(color.opacity(0.18)))
+        .background(Capsule().fill(color.opacity(LiquidGlass.tintOpacity)))
     }
 
     private var distanceBadge: some View {
@@ -487,7 +487,7 @@ public struct BubbleCalibrationView: View {
         .foregroundColor(statusColor)
         .padding(.horizontal, 7)
         .padding(.vertical, 4)
-        .background(Capsule().fill(statusColor.opacity(0.18)))
+        .background(Capsule().fill(statusColor.opacity(LiquidGlass.tintOpacity)))
     }
 
     private var trackingLockBadge: some View {
@@ -498,7 +498,7 @@ public struct BubbleCalibrationView: View {
             .font(.system(size: 14, weight: .bold))
             .foregroundColor(color)
             .padding(6)
-            .background(Circle().fill(color.opacity(0.18)))
+            .background(Circle().fill(color.opacity(LiquidGlass.tintOpacity)))
     }
 
     private var bottomHintPill: some View {

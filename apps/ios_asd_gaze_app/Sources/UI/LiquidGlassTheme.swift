@@ -3,19 +3,29 @@ import UIKit
 
 /// Semantic palette and design tokens for the Liquid Glass aesthetic.
 ///
-/// The canvas + card tokens are *adaptive*: deep twilight surfaces in dark
-/// mode, airy light surfaces in light mode, so every screen follows the
-/// system theme on launch. Accent hues stay identical in both modes.
-/// Text must use `.primary` / `.secondary` (never fixed white) on any
-/// surface painted from these tokens. Fixed white is reserved for media
-/// contrast treatments directly over video, photo, or stimulus fields.
+/// Every surface, text and accent token is *adaptive* and resolves to an
+/// opaque sRGB colour: airy light surfaces with deep accents in light mode,
+/// twilight surfaces with the bright brand accents in dark mode. Each
+/// text/background pair meets WCAG AA (4.5:1), pinned by
+/// `LiquidGlassContrastTests`; Increase Contrast swaps in ≥ 7:1 light accents.
+/// Apply `.opacity` only at call sites, never inside a token, and only
+/// `tintOpacity` under accent-coloured text. Fixed white is reserved for media
+/// treatments directly over video, photo, or stimulus fields (`mediaDark()`).
 public enum LiquidGlass {
-    public static let celestialTeal = Color(red: 0.0, green: 0.824, blue: 0.769)
-    public static let warmAmber = Color(red: 1.0, green: 0.718, blue: 0.302)
-    public static let emeraldMint = Color(red: 0.0, green: 0.902, blue: 0.463)
-    public static let deactivatedBrown = Color(red: 0.62, green: 0.42, blue: 0.28)
-    /// Atypical / stuck-item signal. Fixed hue in both modes.
-    public static let signalAtypical = Color(red: 0.937, green: 0.267, blue: 0.267)
+    public static let celestialTeal = adaptive(light: 0x00655E, dark: 0x00D2C4, lightHighContrast: 0x004742)
+    public static let warmAmber = adaptive(light: 0x7F4D00, dark: 0xFFB74D, lightHighContrast: 0x5B3700)
+    public static let emeraldMint = adaptive(light: 0x006834, dark: 0x00E676, lightHighContrast: 0x004924)
+    public static let deactivatedBrown = adaptive(light: 0x765034, dark: 0xD4A074, lightHighContrast: 0x543925)
+    /// Atypical / stuck-item signal.
+    public static let signalAtypical = adaptive(light: 0xA91414, dark: 0xFF8080, lightHighContrast: 0x7C0F0F)
+    /// Text and icons on any solid accent fill.
+    public static let onAccent = adaptive(light: 0xFFFFFF, dark: 0x0A0F1A)
+    /// Flat fill for primary buttons (semantic alias of the brand teal).
+    public static let accentFill = celestialTeal
+    /// Disabled primary fill; its label uses `textTertiary`.
+    public static let accentFillDisabled = adaptive(light: 0xC9D1DC, dark: 0x2F394B)
+    /// The one opacity for a tinted fill that carries accent-coloured text.
+    public static let tintOpacity: CGFloat = 0.14
     /// SceneKit wireframe. Matches celestial teal at 65% opacity.
     public static let celestialTealMesh = UIColor(red: 0.0, green: 0.824, blue: 0.769, alpha: 0.65)
 
@@ -34,44 +44,21 @@ public enum LiquidGlass {
     /// Fixed media panes for the scanpath hero. White labels sit on these.
     public static let stimulusSocialMedia = Color(red: 0.10, green: 0.16, blue: 0.28)
     public static let stimulusGeometryMedia = Color(red: 0.20, green: 0.08, blue: 0.24)
-    public static let deepCanvas = adaptive(
-        dark: Color(red: 0.04, green: 0.06, blue: 0.10),
-        light: Color(red: 0.95, green: 0.96, blue: 0.98)
-    )
-    public static let deepCanvasSecondary = adaptive(
-        dark: Color(red: 0.08, green: 0.11, blue: 0.18),
-        light: Color(red: 0.88, green: 0.91, blue: 0.95)
-    )
-    public static let cardBackground = adaptive(
-        dark: Color.white.opacity(0.08),
-        light: Color.black.opacity(0.05)
-    )
-    public static let cardBorder = adaptive(
-        dark: Color.white.opacity(0.18),
-        light: Color.black.opacity(0.12)
-    )
+    public static let deepCanvas = adaptive(light: 0xF2F5FA, dark: 0x0A0F1A)
+    public static let deepCanvasSecondary = adaptive(light: 0xE6ECF4, dark: 0x141C2E)
+    /// Solid card fill.
+    public static let cardBackground = adaptive(light: 0xFFFFFF, dark: 0x161D2B)
+    /// Inner panel inside a card.
+    public static let cardInset = adaptive(light: 0xEDF1F6, dark: 0x1F2838)
+    public static let cardBorder = adaptive(light: 0xD5DCE5, dark: 0x2F394B)
 
     // MARK: - Central Typography & Text Colors (Single Source of Truth)
-    public static let textPrimary = adaptive(
-        dark: Color.white.opacity(0.96),
-        light: Color(red: 0.08, green: 0.10, blue: 0.14)
-    )
-    public static let textSecondary = adaptive(
-        dark: Color.white.opacity(0.65),
-        light: Color(red: 0.38, green: 0.42, blue: 0.48)
-    )
-    public static let textTertiary = adaptive(
-        dark: Color.white.opacity(0.40),
-        light: Color(red: 0.55, green: 0.58, blue: 0.63)
-    )
-    public static let textHeadline = adaptive(
-        dark: Color.white.opacity(0.92),
-        light: Color(red: 0.06, green: 0.08, blue: 0.12)
-    )
-    public static let dividerColor = adaptive(
-        dark: Color.white.opacity(0.12),
-        light: Color.black.opacity(0.08)
-    )
+    public static let textPrimary = adaptive(light: 0x141A24, dark: 0xF4F6F8)
+    public static let textSecondary = adaptive(light: 0x525B69, dark: 0xB4BAC4)
+    /// Hints. Deliberately close to `textSecondary` in light mode: lighter fails AA.
+    public static let textTertiary = adaptive(light: 0x5F6873, dark: 0x8E96A3)
+    public static let textHeadline = adaptive(light: 0x0F141F, dark: 0xEDF0F4)
+    public static let dividerColor = adaptive(light: 0xE3E8EE, dark: 0x26303F)
 
     // MARK: - Adaptive Stimulus Panes (Clinical Observation)
     public static let stimulusSocialTop = adaptive(
@@ -101,6 +88,48 @@ private func adaptive(dark: Color, light: Color) -> Color {
     })
 }
 
+/// Opaque sRGB token from 0xRRGGBB values; Increase Contrast picks
+/// `lightHighContrast` in light mode when one is given.
+private func adaptive(light: UInt32, dark: UInt32, lightHighContrast: UInt32? = nil) -> Color {
+    Color(UIColor { trait in
+        if trait.userInterfaceStyle == .dark { return UIColor(hex: dark) }
+        if trait.accessibilityContrast == .high, let lightHighContrast { return UIColor(hex: lightHighContrast) }
+        return UIColor(hex: light)
+    })
+}
+
+private extension UIColor {
+    convenience init(hex: UInt32) {
+        self.init(
+            red: CGFloat((hex >> 16) & 0xFF) / 255,
+            green: CGFloat((hex >> 8) & 0xFF) / 255,
+            blue: CGFloat(hex & 0xFF) / 255,
+            alpha: 1
+        )
+    }
+}
+
+public extension View {
+    /// Pins a media-immersive root (camera, stimulus, replay) to dark so tokens,
+    /// `.primary` and materials resolve light-on-dark over the media field.
+    /// Never use `.preferredColorScheme` for this: it changes the whole window.
+    func mediaDark() -> some View {
+        environment(\.colorScheme, .dark)
+    }
+
+    /// Inner panel inside a card: `cardInset` fill with a `dividerColor` hairline.
+    func glassInset(cornerRadius: CGFloat = 12) -> some View {
+        background(
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(LiquidGlass.cardInset)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .stroke(LiquidGlass.dividerColor, lineWidth: 1)
+        )
+    }
+}
+
 /// ViewModifier implementing the Liquid Glass card styling.
 public struct GlassCardModifier: ViewModifier {
     public var cornerRadius: CGFloat
@@ -111,26 +140,25 @@ public struct GlassCardModifier: ViewModifier {
         self.padding = padding
     }
 
+    @Environment(\.colorScheme) private var colorScheme
+
     public func body(content: Content) -> some View {
+        let isDark = colorScheme == .dark
         content
             .padding(padding)
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(.ultraThinMaterial)
+                    .fill(LiquidGlass.cardBackground)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: [LiquidGlass.cardBorder, Color.white.opacity(0.04)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1.0
-                    )
+                    .stroke(LiquidGlass.cardBorder, lineWidth: 1.0)
             )
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .shadow(color: Color.black.opacity(0.25), radius: 10, x: 0, y: 5)
+            .shadow(
+                color: Color.black.opacity(isDark ? 0.25 : 0.08),
+                radius: isDark ? 10 : 8, x: 0, y: isDark ? 5 : 3
+            )
     }
 }
 
@@ -169,19 +197,19 @@ public struct GlassButton: View {
                 Text(title)
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
             }
-            .foregroundColor(isPrimary ? .black : .primary)
+            .foregroundColor(isPrimary ? LiquidGlass.onAccent : LiquidGlass.textPrimary)
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
             .frame(maxWidth: .infinity)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(isPrimary ? LiquidGlass.celestialTeal : LiquidGlass.cardBackground)
+                    .fill(isPrimary ? LiquidGlass.accentFill : LiquidGlass.cardBackground)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .stroke(isPrimary ? Color.clear : LiquidGlass.cardBorder, lineWidth: 1)
             )
-            .shadow(color: isPrimary ? LiquidGlass.celestialTeal.opacity(0.3) : .clear, radius: 8, y: 4)
+            .shadow(color: isPrimary ? LiquidGlass.accentFill.opacity(0.25) : .clear, radius: 8, y: 4)
         }
         .buttonStyle(.plain)
     }
@@ -313,7 +341,7 @@ public struct GlassDiagnosticRow: View {
                 .font(.system(size: 11, weight: .bold, design: .monospaced))
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                .background(Capsule().fill(isGood ? LiquidGlass.emeraldMint.opacity(0.18) : LiquidGlass.warmAmber.opacity(0.18)))
+                .background(Capsule().fill((isGood ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber).opacity(LiquidGlass.tintOpacity)))
                 .foregroundColor(isGood ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber)
         }
     }

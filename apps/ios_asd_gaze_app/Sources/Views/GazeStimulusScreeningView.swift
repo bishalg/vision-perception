@@ -158,6 +158,10 @@ public struct GazeStimulusScreeningView: View {
             }
         }
         .ignoresSafeArea()
+        // THM-6: fixed-dark stimulus field. Pins tokens, materials and `.primary`
+        // to dark so accents stay bright over the black field in light mode. Applied
+        // before the blocking overlay: Camera-denied / Unsupported are app surfaces.
+        .mediaDark()
         .overlay {
             if camera.state.showsDeniedView {
                 CameraDeniedView(state: camera.state, onClose: onAbort)

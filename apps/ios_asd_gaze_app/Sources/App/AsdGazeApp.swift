@@ -44,6 +44,8 @@ struct AsdGazeApp: App {
                     .zIndex(999)
                 }
             }
+            // System controls (toggles, links, nav buttons) use the AA brand teal, not iOS blue.
+            .tint(LiquidGlass.celestialTeal)
             .task {
                 CareKitClinicalStore.shared.seedTasks(
                     CarePlanStore.shared.tasks,

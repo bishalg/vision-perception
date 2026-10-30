@@ -42,7 +42,7 @@ public struct StimulusDownloadGateView: View {
                     // Animated Activity Hologram Icon
                     ZStack {
                         Circle()
-                            .fill(LiquidGlass.celestialTeal.opacity(0.12))
+                            .fill(LiquidGlass.celestialTeal.opacity(LiquidGlass.tintOpacity))
                             .frame(width: 100, height: 100)
                         Circle()
                             .stroke(LiquidGlass.celestialTeal.opacity(0.35), lineWidth: 1.5)
@@ -95,13 +95,13 @@ public struct StimulusDownloadGateView: View {
                                 .padding(.vertical, 8)
                                 .background(
                                     profileStore.profile.sessionDurationSec == 30
-                                        ? LiquidGlass.celestialTeal.opacity(0.25)
-                                        : Color.white.opacity(0.06)
+                                        ? LiquidGlass.celestialTeal.opacity(LiquidGlass.tintOpacity)
+                                        : LiquidGlass.cardInset
                                 )
                                 .foregroundColor(
                                     profileStore.profile.sessionDurationSec == 30
                                         ? LiquidGlass.celestialTeal
-                                        : Color.white.opacity(0.7)
+                                        : LiquidGlass.textSecondary
                                 )
                                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                                 .overlay(
@@ -109,7 +109,7 @@ public struct StimulusDownloadGateView: View {
                                         .stroke(
                                             profileStore.profile.sessionDurationSec == 30
                                                 ? LiquidGlass.celestialTeal
-                                                : Color.white.opacity(0.12),
+                                                : LiquidGlass.dividerColor,
                                             lineWidth: 1
                                         )
                                 )
@@ -129,13 +129,13 @@ public struct StimulusDownloadGateView: View {
                                 .padding(.vertical, 8)
                                 .background(
                                     profileStore.profile.sessionDurationSec == 60
-                                        ? LiquidGlass.celestialTeal.opacity(0.25)
-                                        : Color.white.opacity(0.06)
+                                        ? LiquidGlass.celestialTeal.opacity(LiquidGlass.tintOpacity)
+                                        : LiquidGlass.cardInset
                                 )
                                 .foregroundColor(
                                     profileStore.profile.sessionDurationSec == 60
                                         ? LiquidGlass.celestialTeal
-                                        : Color.white.opacity(0.7)
+                                        : LiquidGlass.textSecondary
                                 )
                                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                                 .overlay(
@@ -143,7 +143,7 @@ public struct StimulusDownloadGateView: View {
                                         .stroke(
                                             profileStore.profile.sessionDurationSec == 60
                                                 ? LiquidGlass.celestialTeal
-                                                : Color.white.opacity(0.12),
+                                                : LiquidGlass.dividerColor,
                                             lineWidth: 1
                                         )
                                 )
@@ -173,16 +173,10 @@ public struct StimulusDownloadGateView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 15)
-                    .background(
-                        LinearGradient(
-                            colors: [LiquidGlass.celestialTeal, LiquidGlass.emeraldMint],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .foregroundColor(.black)
+                    .background(LiquidGlass.accentFill)
+                    .foregroundColor(LiquidGlass.onAccent)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .shadow(color: LiquidGlass.emeraldMint.opacity(0.35), radius: 10, y: 4)
+                    .shadow(color: LiquidGlass.accentFill.opacity(0.25), radius: 10, y: 4)
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 28)

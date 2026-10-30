@@ -126,7 +126,7 @@ public struct BiomarkerDetailView: View {
         HStack(spacing: 14) {
             ZStack {
                 Circle()
-                    .fill(type.color.opacity(0.18))
+                    .fill(type.color.opacity(LiquidGlass.tintOpacity))
                     .frame(width: 52, height: 52)
                 Image(systemName: type.icon)
                     .font(.system(size: 24, weight: .bold))
@@ -165,7 +165,7 @@ public struct BiomarkerDetailView: View {
                     .foregroundColor(type.color)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(Capsule().fill(type.color.opacity(0.15)))
+                    .background(Capsule().fill(type.color.opacity(LiquidGlass.tintOpacity)))
             }
 
             GeometryReader { geo in
@@ -176,7 +176,7 @@ public struct BiomarkerDetailView: View {
                     // Grid reference lines
                     VStack(spacing: 0) {
                         ForEach(0..<4) { i in
-                            Divider().background(Color.white.opacity(0.08))
+                            Divider().background(LiquidGlass.dividerColor)
                             if i < 3 { Spacer() }
                         }
                     }
@@ -192,10 +192,10 @@ public struct BiomarkerDetailView: View {
 
                         Text("Reference (≥60%)")
                             .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                            .foregroundColor(LiquidGlass.emeraldMint.opacity(0.85))
+                            .foregroundColor(LiquidGlass.emeraldMint)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Capsule().fill(Color.black.opacity(0.65)))
+                            .background(Capsule().fill(LiquidGlass.cardBackground))
                             .position(x: w - 85, y: max(10, thresholdY - 10))
                     } else if type == .facialAffect {
                         let thresholdY = h * (1.0 - 0.20)
@@ -207,10 +207,10 @@ public struct BiomarkerDetailView: View {
 
                         Text("Reference (≥20%)")
                             .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                            .foregroundColor(LiquidGlass.emeraldMint.opacity(0.85))
+                            .foregroundColor(LiquidGlass.emeraldMint)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Capsule().fill(Color.black.opacity(0.65)))
+                            .background(Capsule().fill(LiquidGlass.cardBackground))
                             .position(x: w - 90, y: max(10, thresholdY - 10))
                     } else if type == .dataQuality {
                         let thresholdY = h * (1.0 - 0.75)
@@ -222,10 +222,10 @@ public struct BiomarkerDetailView: View {
 
                         Text("Good recording (≥75%)")
                             .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                            .foregroundColor(LiquidGlass.emeraldMint.opacity(0.85))
+                            .foregroundColor(LiquidGlass.emeraldMint)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Capsule().fill(Color.black.opacity(0.65)))
+                            .background(Capsule().fill(LiquidGlass.cardBackground))
                             .position(x: w - 85, y: max(10, thresholdY - 10))
                     }
 
@@ -391,7 +391,7 @@ public struct BiomarkerDetailView: View {
             let isSocialNormal = socialPrefPct >= 60
             let isSocialMonitor = socialPrefPct >= 50 && socialPrefPct < 60
             let socialStatus = isSocialNormal ? "Looked mostly at people" : (isSocialMonitor ? "Looked at both" : "Looked mostly at shapes")
-            let socialColor = isSocialNormal ? LiquidGlass.emeraldMint : (isSocialMonitor ? LiquidGlass.warmAmber : Color.red)
+            let socialColor = isSocialNormal ? LiquidGlass.emeraldMint : (isSocialMonitor ? LiquidGlass.warmAmber : LiquidGlass.signalAtypical)
 
             // Primary Summary Card
             VStack(alignment: .leading, spacing: 12) {
@@ -452,7 +452,7 @@ public struct BiomarkerDetailView: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 7)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.white.opacity(0.04))
+                .background(LiquidGlass.cardInset)
                 .cornerRadius(8)
             }
             .glassCard(cornerRadius: 16, padding: 14)
@@ -601,7 +601,7 @@ public struct BiomarkerDetailView: View {
                     .foregroundColor(statusColor)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 3)
-                    .background(Capsule().fill(statusColor.opacity(0.16)))
+                    .background(Capsule().fill(statusColor.opacity(LiquidGlass.tintOpacity)))
             }
 
             HStack(spacing: 12) {
@@ -633,11 +633,11 @@ public struct BiomarkerDetailView: View {
                 .lineSpacing(2.5)
         }
         .padding(12)
-        .background(Color.white.opacity(0.04))
+        .background(LiquidGlass.cardInset)
         .cornerRadius(12)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                .stroke(LiquidGlass.dividerColor, lineWidth: 1)
         )
     }
 
@@ -655,7 +655,7 @@ public struct BiomarkerDetailView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(8)
-        .background(Color.white.opacity(0.04))
+        .background(LiquidGlass.cardInset)
         .cornerRadius(8)
     }
 
@@ -671,11 +671,11 @@ public struct BiomarkerDetailView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
-        .background(Color.white.opacity(0.04))
+        .background(LiquidGlass.cardInset)
         .cornerRadius(12)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                .stroke(LiquidGlass.dividerColor, lineWidth: 1)
         )
     }
 }

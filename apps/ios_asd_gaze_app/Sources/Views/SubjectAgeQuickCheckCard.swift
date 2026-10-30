@@ -23,7 +23,7 @@ struct SubjectAgeQuickCheckCard: View {
             HStack(spacing: 10) {
                 ZStack {
                     Circle()
-                        .fill(LiquidGlass.celestialTeal.opacity(0.15))
+                        .fill(LiquidGlass.celestialTeal.opacity(LiquidGlass.tintOpacity))
                         .frame(width: 36, height: 36)
                     Image(systemName: "person.crop.square.badge.camera")
                         .font(.system(size: 16, weight: .semibold))
@@ -103,7 +103,7 @@ struct SubjectAgeQuickCheckCard: View {
             .padding(.vertical, 11)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(LiquidGlass.celestialTeal.opacity(0.18))
+                    .fill(LiquidGlass.celestialTeal.opacity(LiquidGlass.tintOpacity))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -147,7 +147,7 @@ struct SubjectAgeQuickCheckCard: View {
                     .padding(.vertical, 9)
                     .background(
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(Color.white.opacity(0.08))
+                            .fill(LiquidGlass.cardInset)
                     )
                     .foregroundColor(LiquidGlass.textSecondary)
             }
@@ -179,7 +179,7 @@ struct SubjectAgeQuickCheckCard: View {
                             .font(.system(size: 12, weight: .semibold, design: .rounded))
                             .padding(.horizontal, 14)
                             .padding(.vertical, 7)
-                            .background(Capsule().fill(LiquidGlass.warmAmber.opacity(0.18)))
+                            .background(Capsule().fill(LiquidGlass.warmAmber.opacity(LiquidGlass.tintOpacity)))
                             .foregroundColor(LiquidGlass.warmAmber)
                     }
                     .buttonStyle(.plain)

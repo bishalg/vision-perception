@@ -35,7 +35,7 @@ public struct AppModeSelectionView: View {
             continueButton
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
-                .background(.ultraThinMaterial)
+                .background(LiquidGlass.cardBackground)
         }
         .background(
             LinearGradient(
@@ -45,7 +45,6 @@ public struct AppModeSelectionView: View {
             )
             .ignoresSafeArea()
         )
-        .preferredColorScheme(.dark)
     }
 
     // MARK: Header
@@ -84,7 +83,7 @@ public struct AppModeSelectionView: View {
                     .foregroundColor(isSelected ? LiquidGlass.emeraldMint : LiquidGlass.celestialTeal)
                     .frame(width: 52, height: 52)
                     .background(
-                        Circle().fill((isSelected ? LiquidGlass.emeraldMint : LiquidGlass.celestialTeal).opacity(0.12))
+                        Circle().fill((isSelected ? LiquidGlass.emeraldMint : LiquidGlass.celestialTeal).opacity(LiquidGlass.tintOpacity))
                     )
 
                 VStack(alignment: .leading, spacing: 5) {
@@ -160,16 +159,11 @@ public struct AppModeSelectionView: View {
         } label: {
             Text(selected == nil ? "Select a mode to continue" : "Continue as \(selected!.shortName)")
                 .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundColor(selected == nil ? .secondary : .black)
+                .foregroundColor(selected == nil ? LiquidGlass.textTertiary : LiquidGlass.onAccent)
                 .frame(maxWidth: .infinity, minHeight: 52)
                 .background(
                     Capsule().fill(
-                        selected == nil
-                            ? AnyShapeStyle(Color.secondary.opacity(0.18))
-                            : AnyShapeStyle(LinearGradient(
-                                colors: [LiquidGlass.emeraldMint, LiquidGlass.celestialTeal],
-                                startPoint: .leading, endPoint: .trailing
-                            ))
+                        selected == nil ? LiquidGlass.accentFillDisabled : LiquidGlass.accentFill
                     )
                 )
         }

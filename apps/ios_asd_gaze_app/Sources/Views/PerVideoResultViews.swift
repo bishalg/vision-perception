@@ -73,7 +73,7 @@ struct AttentionFlagBanner: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(assessment.flag.color.opacity(0.12))
+                .fill(assessment.flag.color.opacity(LiquidGlass.tintOpacity))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -172,10 +172,10 @@ struct PerVideoMatrixCardView: View {
     private var provisionalBadge: some View {
         Text(baselineStatus == "provisional-literature-seeded" ? "Provisional" : (baselineStatus ?? ""))
             .font(.system(size: 9, weight: .bold, design: .rounded))
-            .foregroundColor(.secondary)
+            .foregroundColor(LiquidGlass.textSecondary)
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
-            .background(Capsule().fill(Color.secondary.opacity(0.12)))
+            .background(Capsule().fill(LiquidGlass.cardInset))
     }
 
     private func statusTally(_ score: PerVideoSessionScore) -> [(ExpectationStatus, Int)] {
@@ -252,7 +252,7 @@ struct PerVideoSummaryListView: View {
                 .foregroundColor(.secondary)
         }
         .padding(12)
-        .background(RoundedRectangle(cornerRadius: 12).fill(LiquidGlass.warmAmber.opacity(0.08)))
+        .background(RoundedRectangle(cornerRadius: 12).fill(LiquidGlass.warmAmber.opacity(LiquidGlass.tintOpacity)))
     }
 
     private var provisionalFooter: some View {
@@ -516,7 +516,7 @@ struct ExpectationRowView: View {
                     .foregroundColor(row.status.color)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(Capsule().fill(row.status.color.opacity(0.12)))
+                    .background(Capsule().fill(row.status.color.opacity(LiquidGlass.tintOpacity)))
             }
             .padding(.top, 4)
 

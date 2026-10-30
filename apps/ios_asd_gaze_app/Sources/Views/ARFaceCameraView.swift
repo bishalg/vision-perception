@@ -131,6 +131,10 @@ public struct ARFaceCameraView: View {
                 .padding(4)
         }
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        // THM-6: every branch (live camera, black fallback, dark studio mesh) is a
+        // fixed-dark media field, so this view is its own media root even when hosted
+        // inside an adaptive canvas (MainGazeScannerView, BubbleCalibrationView).
+        .mediaDark()
     }
 
     /// Debug simulation shows the synthetic wireframe; Release never draws a fake face

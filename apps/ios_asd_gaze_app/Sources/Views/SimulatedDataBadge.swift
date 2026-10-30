@@ -19,9 +19,8 @@ public struct SimulatedDataBadge: View {
                     .font(.system(size: 12, weight: .bold, design: .rounded))
                 Text("Not a real observation")
                     .font(.system(size: 10, weight: .medium))
-                    .opacity(0.85)
             }
-            .foregroundColor(.black)
+            .foregroundColor(LiquidGlass.onAccent)
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
             .background(Capsule().fill(LiquidGlass.warmAmber))
