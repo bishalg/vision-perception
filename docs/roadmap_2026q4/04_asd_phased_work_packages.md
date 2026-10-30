@@ -21,13 +21,13 @@
 | WP-A.11 | iOS consumes the Rust core: xcframework `binaryTarget`, engines become wrappers, golden parity tests, `asd-sync` in the sync client, `device_id` on re-register | 1–2 | S | todo | FFI-3/4, CON-7/11; depends on WP-R.5, WP-B.2, WP-D.7 |
 | WP-A.12 | Android Kotlin bindings from the same UniFFI definitions (`cargo-ndk`) | 4 | S | backlog | depends on WP-R.5 |
 | WP-R.0 | Cargo workspace skeleton at `rust/`, six crates, domain types ported 1:1 from Swift, `deny.toml`, `scripts/rust_test.sh`, `rust.yml` | 1 | I | done | 10 round-trip tests, fmt+clippy+deny clean; serial, run first |
-| WP-R.1 | `asd-core` scoring engine, baselines validate, attention flag, quality gate + golden vectors | 1 | S | todo | CORE-1..4, CORE-7 |
-| WP-R.2 | `asd-core` metrics extraction (I-VT, AOI dwell, affect) + session aggregator + golden vectors | 1 | S | todo | CORE-5..6 |
-| WP-R.3 | `asd-contract` (session v1.6, config bundle, API DTOs, schemars export, Ed25519 + JCS signing), `asd-sync` protocol logic, `asd-cli schema|bundle`; regenerate `docs/spec/schemas/asd/*.json` | 1 | S | todo | CON-2..7, CON-12; GATE-1 tool |
-| WP-R.4 | `asd-core::norms` (port of `tools/asd_norm_aggregator.py`, 11 tests) + `asd-core::synth` (v2.0, ratios) + `asd-cli norms|synth` | 1 | I | todo | CORE-8..9; GATE-2/3 tool |
+| WP-R.1 | `asd-core` scoring engine, baselines validate, attention flag, quality gate + golden vectors | 1 | S | done | CORE-1..4, CORE-7 |
+| WP-R.2 | `asd-core` metrics extraction (I-VT, AOI dwell, affect) + session aggregator + golden vectors | 1 | S | done | CORE-5..6 |
+| WP-R.3 | `asd-contract` (session v1.6, config bundle, API DTOs, schemars export, Ed25519 + JCS signing), `asd-sync` protocol logic, `asd-cli schema|bundle`; regenerate `docs/spec/schemas/asd/*.json` | 1 | S | done | CON-2..7, CON-12; GATE-1 tool |
+| WP-R.4 | `asd-core::norms` (port of `tools/asd_norm_aggregator.py`, 11 tests) + `asd-core::synth` (v2.0, ratios) + `asd-cli norms|synth` | 1 | I | done | CORE-8..9; GATE-2/3 tool |
 | WP-R.5 | `asd-ffi` UniFFI crate + `scripts/build_asd_xcframework.sh` (ios, ios-sim, macOS slices) | 1–2 | S | todo | FFI-1/2; depends on R.1–R.3 |
 | WP-R.6 | `asd-wasm` for console sandbox re-score (feeds WP-C.5) | 2 | S | backlog | depends on R.1, R.3 |
-| WP-B.1 | Rust service scaffold: Axum, sqlx migrations for `02 §3` (+ enrol_codes, refresh_tokens, bundle_adoption), blob store trait (S3/memory), tracing redaction, Dockerfile, docker-compose, health | 1 | S | todo | replaces the removed FastAPI scaffold; DEP-1/2, OBS-1 |
+| WP-B.1 | Rust service scaffold: Axum, sqlx migrations for `02 §3` (+ enrol_codes, refresh_tokens, bundle_adoption), blob store trait (S3/memory), tracing redaction, Dockerfile, docker-compose, health | 1 | S | done | replaces the removed FastAPI scaffold; DEP-1/2, OBS-1 |
 | WP-B.2 | Auth: Argon2id login, EdDSA JWT + rotating refresh families, device tokens, enrol codes (`max_uses`, `expires_at`, `device_id` rotation), RBAC matrix, audit rows + grants | 1 | S | todo | AUTH-1..5, CON-10/11; depends on B.1, R.3 |
 | WP-B.3 | `POST /v1/sessions` idempotent ingest (ON CONFLICT, body hash), derived flag via `asd-core`, clip rows, blob URLs (presigned/proxy), org-scoped list/detail/clips/metrics/review, `report.pdf` passthrough | 1 | S | todo | ING-1..3, CON-13..21; depends on B.1, R.1, R.3 |
 | WP-B.4 | Config documents lifecycle + bundles + signing + `GET /config/bundle` (ETag, adoption) + seed drafts from kit JSON | 2 | S | todo | CFG-1/2; depends on B.2 |
