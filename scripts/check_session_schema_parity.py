@@ -2,7 +2,7 @@
 """Contract parity check for ASD Gaze Session JSON Schema (WP-D.2).
 
 Validates that:
-1. docs/spec/schemas/asd/session-v1.6.json exists and is in sync with Pydantic SessionIngestRequest.
+1. docs/spec/schemas/asd/session-v1.6.json exists (the stored contract; Rust backend types must match it).
 2. Canonical fixture payloads conform to the schema.
 3. Malformed payloads (e.g. missing sessionId) fail validation.
 """
@@ -12,15 +12,6 @@ import sys
 from pathlib import Path
 
 repo_root = Path(__file__).resolve().parent.parent
-backend_app = repo_root / "services" / "asd_backend"
-sys.path.insert(0, str(backend_app))
-
-try:
-    from app.schemas.session import SessionIngestRequest
-except ImportError as err:
-    print(f"Error importing SessionIngestRequest: {err}", file=sys.stderr)
-    sys.exit(1)
-
 
 def validate_payload(schema: dict, payload: dict) -> list[str]:
     """Lightweight pure-python JSON schema validation for key required properties."""
@@ -60,18 +51,7 @@ def main():
     with open(schema_path, "r", encoding="utf-8") as f:
         stored_schema = json.load(f)
 
-    # 1. Check schema drift with live Pydantic model
-    current_schema = SessionIngestRequest.model_json_schema()
-    current_props = set(current_schema.get("properties", {}).keys())
-    stored_props = set(stored_schema.get("properties", {}).keys())
-
-    if current_props != stored_props:
-        print(f"FAILED: Schema property drift detected!", file=sys.stderr)
-        print(f"Stored: {stored_props}", file=sys.stderr)
-        print(f"Current: {current_props}", file=sys.stderr)
-        sys.exit(1)
-
-    # 2. Validate canonical valid fixture
+    # 1. Validate canonical valid fixture
     valid_payload = {
         "sessionId": "sess_parity_test_001",
         "participantToken": "child-test001",
@@ -104,7 +84,7 @@ def main():
         print(f"FAILED: Valid payload failed schema check: {errs}", file=sys.stderr)
         sys.exit(1)
 
-    # 3. Validate rejection on missing required sessionId
+    # 2. Validate rejection on missing required sessionId
     invalid_payload = {
         "participantToken": "child-missing-session",
         "socialPreferenceScore": 0.5,

@@ -17,8 +17,8 @@
 | WP-A.8 | Stimulus CDN support with signed URLs; ODR fallback | 3 | S | todo | |
 | WP-A.9 | Replay down-sample upload (for console heatmaps) | 3 | S | todo | |
 | WP-A.10 | TestFlight beta pipeline (fastlane `beta`), crash reporting decision | 3 | I | todo | |
-| WP-B.1 | Service scaffold: FastAPI, Postgres, Alembic, docker-compose, shim routes, health, CI | 1 | S | done | FastAPI + SQLAlchemy 2 + Alembic scaffold, models, shims, tests, CI |
-| WP-B.2 | Care events port + tests migrated from `tools/asd_research_server.py` | 1 | I | done | Care events port with idempotency, summary metrics, 12 backend tests pass |
+| WP-B.1 | Service scaffold: FastAPI, Postgres, Alembic, docker-compose, shim routes, health, CI | 1 | S | superseded | Python backend removed 2026-10-30; redo in Rust (see CLAUDE.md) |
+| WP-B.2 | Care events port + tests migrated from `tools/asd_research_server.py` | 1 | I | superseded | Python backend removed 2026-10-30; redo in Rust |
 | WP-B.3 | Auth: device tokens + enrol codes; user login/JWT/refresh; RBAC dependency; audit log | 1 | S | todo | |
 | WP-B.4 | `POST /v1/sessions` idempotent ingest, clip rows, pre-signed blob URLs, list/detail endpoints, review auto-rules | 1 | S | todo | |
 | WP-B.5 | Config documents + bundles + Ed25519 signing + `GET /config/bundle` | 2 | S | todo | |
