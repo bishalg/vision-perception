@@ -1,0 +1,38 @@
+name: Curv Console CI
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'apps/curv_console/**'
+      - '.github/workflows/console.yml'
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - 'apps/curv_console/**'
+      - '.github/workflows/console.yml'
+
+jobs:
+  check:
+    name: Lint, typecheck, test, build Curv Console
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/curv_console
+    env:
+      CURV_API_MODE: mock
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/curv_console/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
