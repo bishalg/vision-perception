@@ -64,7 +64,7 @@ uses the image's default iPhone.
 | SIM-5 | mapper returns `nil` for simulated record; history store ignores; CareKit outcome ignored; `NormCollectionGate` closed | app `ClinicalInteroperabilityTests.swift`, `GazeSessionRecordVersioningTests.swift`, `CareKitClinicalStoreTests.swift`, `ResearchKitStudyTests.swift` |
 | SIM-5 (vault) | filename suffix `.sim.jsonl.enc` | kit `GazeSessionTests.swift` |
 | SIM-6, CLM-3, CNS-2 | Release build compiles and `nm`/`strings` of the Release binary contains no "Switch to Simulation", "Elevated Risk", "BlendShapeML" | `scripts/check_release_symbols.sh` (new, runs after the unsigned Release build) |
-| SIM-7 | `project.yml` contains `UIRequiredDeviceCapabilities` with `arkit`; parsed in test via generated Info.plist | app `BuildConfigurationTests.swift` (new, reads `Bundle.main.infoDictionary`) |
+| SIM-7 | generated Info.plist has `UIRequiredDeviceCapabilities` with `front-facing-camera` and without `arkit` | app `BuildConfigurationTests.swift` (new, reads `Bundle.main.infoDictionary`) |
 | PLC-1, PLC-2 | summary from a session with zero face hits has `nil` dwell ratios and `nil` latency | kit `GazeSessionTests.swift` |
 | PLC-3 | FHIR Observation and OMOP rows omit absent metrics | app `ClinicalInteroperabilityTests.swift` |
 | PLC-4 | baseline inference with `nil` latency re-normalises weights; `primaryContributingFeature` lacks "CoreML" when heuristic | kit `BiomarkerClassificationEngineTests.swift` |

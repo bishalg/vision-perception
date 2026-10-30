@@ -8,4 +8,4 @@ Welcome to EarlyGaze Observation Diary.
 
 This is not a diagnostic tool. Part of Open Spectrum Tracking.
 
-Requires an iPhone with a TrueDepth camera and iOS 18.0 or later.
+Requires iOS 18.0 or later. Observation sessions need an iPhone or iPad with Face ID (TrueDepth camera).

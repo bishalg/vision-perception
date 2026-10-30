@@ -3,12 +3,13 @@ import XCTest
 
 /// SIM-7: Release builds declare the hardware the app cannot work without.
 /// Apple does not allow tightening `UIRequiredDeviceCapabilities` after the first
-/// release, so the set is pinned here.
+/// release, so the set is pinned here. `arkit` is deliberately absent: visionOS
+/// does not offer it, and face tracking is gated at runtime (`CaptureEntryGate`).
 final class BuildConfigurationTests: XCTestCase {
-    func testRequiredDeviceCapabilitiesDeclareArkitAndFrontCamera() throws {
+    func testRequiredDeviceCapabilitiesDeclareFrontCameraButNotArkit() throws {
         let info = try XCTUnwrap(Bundle.main.infoDictionary)
         let caps = try XCTUnwrap(info["UIRequiredDeviceCapabilities"] as? [String])
-        XCTAssertTrue(caps.contains("arkit"))
+        XCTAssertFalse(caps.contains("arkit"), "arkit blocks the app on Apple Vision Pro")
         XCTAssertTrue(caps.contains("front-facing-camera"))
     }
 

@@ -37,7 +37,7 @@ public struct UnsupportedDeviceContent: Equatable {
         case .faceTrackingUnsupported:
             return .init(
                 title: "This device cannot run gaze observations",
-                message: "Gaze observations need the TrueDepth front camera used by Face ID. Supported devices: iPhone X and later, and iPads with Face ID. You can still use the diary, reminders and notes on this device. Nothing here is a medical assessment.",
+                message: "Gaze observations need the TrueDepth front camera used by Face ID. Supported devices: iPhones and iPads with Face ID. You can still use the diary, reminders and notes on this device. Nothing here is a medical assessment.",
                 systemImage: "eye.slash")
         case .cameraPermissionDenied:
             return .init(
