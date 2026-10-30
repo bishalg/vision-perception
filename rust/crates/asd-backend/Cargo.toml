@@ -10,6 +10,9 @@ publish.workspace = true
 [lints]
 workspace = true
 
+[lib]
+path = "src/lib.rs"
+
 [[bin]]
 name = "asd-backend"
 path = "src/main.rs"
@@ -18,3 +21,44 @@ path = "src/main.rs"
 asd-core.workspace = true
 asd-contract.workspace = true
 asd-sync.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+async-trait = "0.1"
+aws-config = { version = "1", features = ["behavior-version-latest"] }
+# No default features: the default `rustls` feature is the legacy hyper 0.14 / rustls 0.21
+# client (RUSTSEC-2026-0258, RUSTSEC-2026-0346). `default-https-client` is hyper 1 + rustls 0.23.
+aws-sdk-s3 = { version = "1", default-features = false, features = [
+    "behavior-version-latest",
+    "default-https-client",
+    "http-1x",
+    "rt-tokio",
+] }
+axum = "0.8"
+bytes = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
+http = "1"
+regex = "1"
+# No TLS feature yet: compose talks to Postgres on a private network. WP-B.7 (RDS) adds
+# `tls-rustls-ring-native-roots` (webpki-roots is CDLA-Permissive-2.0, not on the allow-list).
+sqlx = { version = "0.9", default-features = false, features = [
+    "chrono",
+    "json",
+    "macros",
+    "migrate",
+    "postgres",
+    "runtime-tokio",
+    "uuid",
+] }
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "request-id", "timeout", "trace", "util"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt", "registry", "std"] }
+uuid = { version = "1", features = ["serde", "v4"] }
+
+[dev-dependencies]
+http-body-util = "0.1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tower = { version = "0.5", features = ["util"] }

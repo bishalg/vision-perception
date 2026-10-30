@@ -1,0 +1,8 @@
+# owner: WP-B.1 - build context for rust/Dockerfile
+target/
+**/target/
+.env
+.env.*
+!.env.example
+docker-compose.yml
+Dockerfile

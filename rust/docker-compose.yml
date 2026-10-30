@@ -1,0 +1,146 @@
+# owner: WP-B.1 (DEP-2)
+#
+# Local stack and demo host for the ASD backend.
+#
+#   docker compose -f rust/docker-compose.yml up -d --build
+#   curl -fsS localhost:8000/health/ready
+#
+# Order: postgres + minio healthy -> `migrate` (asd-backend migrate, runs once and exits)
+# + `minio-init` (creates the bucket) -> `api` + `worker`. Migrations never run on API boot.
+# Optional profiles:
+#   --profile seed    deterministic synthetic sessions via `asd-cli synth` (needs
+#                     ASD_ALLOW_SYNTHETIC=true to be accepted once ingest exists)
+#   --profile tunnel  Cloudflare quick tunnel to `api` (iOS needs https + DNS, F7)
+# Configuration: defaults below, overridden by rust/.env (copy rust/.env.example).
+
+name: asd
+
+x-backend: &backend
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: asd-backend:local
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    DATABASE_URL: postgres://asd:${POSTGRES_PASSWORD:-asd}@postgres:5432/asd
+    RUST_LOG: ${RUST_LOG:-info,sqlx=warn,tower_http=info}
+    BLOB_MODE: ${BLOB_MODE:-proxy}
+    ASD_BLOB_BACKEND: s3
+    S3_BUCKET: ${S3_BUCKET:-curv-asd-sessions}
+    S3_REGION: ${S3_REGION:-us-east-1}
+    S3_ENDPOINT_URL: http://minio:9000
+    S3_FORCE_PATH_STYLE: "true"
+    AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-minioadmin}
+    AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-minioadmin-change-me}
+    ASD_ALLOW_SYNTHETIC: ${ASD_ALLOW_SYNTHETIC:-false}
+    ASD_CONSOLE_ORIGIN: ${ASD_CONSOLE_ORIGIN:-}
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: asd
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-asd}
+      POSTGRES_DB: asd
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U asd -d asd"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY:-minioadmin-change-me}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY:-minioadmin-change-me}
+      S3_BUCKET: ${S3_BUCKET:-curv-asd-sessions}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" &&
+        mc mb --ignore-existing "local/$$S3_BUCKET" &&
+        mc anonymous set none "local/$$S3_BUCKET"
+    restart: "no"
+
+  migrate:
+    <<: *backend
+    command: ["migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *backend
+    command: ["serve"]
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      minio-init:
+        condition: service_completed_successfully
+    ports:
+      - "8000:8000"
+
+  worker:
+    <<: *backend
+    command: ["worker"]
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # GATE-2: deterministic synthetic sessions. Today it writes them to the `seed` volume;
+  # posting them through the API with a seeded enrol code arrives with WP-B.2/B.3.
+  seed:
+    <<: *backend
+    profiles: ["seed"]
+    entrypoint: ["/usr/local/bin/asd-cli"]
+    command: ["synth", "--seed", "7", "--count", "10", "--out", "/seed"]
+    # A fresh named volume is root-owned and distroless has no /seed to inherit from.
+    user: "0:0"
+    volumes:
+      - seed:/seed
+    restart: "no"
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    profiles: ["tunnel"]
+    command: ["tunnel", "--no-autoupdate", "--url", "http://api:8000"]
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  miniodata:
+  seed:

@@ -1,0 +1,21 @@
+//! owner: WP-B.1
+//!
+//! `asd-backend` library: the Axum application, configuration, database, blob store and
+//! telemetry. `main.rs` is a thin CLI (`serve`, `worker`, `migrate`) over this crate so
+//! integration tests can build the same router.
+
+pub mod app;
+pub mod audit;
+pub mod auth;
+pub mod blob;
+pub mod care;
+pub mod config;
+pub mod config_docs;
+pub mod db;
+pub mod error;
+pub mod ingest;
+pub mod jobs;
+pub mod problem;
+pub mod read;
+pub mod routes;
+pub mod telemetry;

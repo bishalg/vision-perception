@@ -55,8 +55,44 @@ jobs:
         with:
           workspaces: rust
 
+      # Separate installs: --no-default-features/--features apply to every listed crate.
       - name: Install cargo-deny and sqlx-cli
-        run: cargo install cargo-deny sqlx-cli --locked --no-default-features --features rustls,postgres
+        run: |
+          cargo install cargo-deny --locked
+          cargo install sqlx-cli --locked --no-default-features --features rustls,postgres
+
+      # `cargo sqlx prepare --check` describes queries against DATABASE_URL, so the schema
+      # must exist there. Backend tests create their own per-test databases.
+      - name: Migrate the gate database
+        run: sqlx migrate run --source rust/crates/asd-backend/migrations
 
       - name: Rust gates
         run: scripts/rust_test.sh
+
+  # DEP-1/DEP-2: the image builds, compose comes up, migrations run as the init step and
+  # the API reports ready (database, migrations, blob store).
+  compose-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and start the stack
+        run: docker compose -f rust/docker-compose.yml up -d --build --wait --wait-timeout 300 api worker
+
+      - name: Health checks
+        # The distroless image has no shell or curl, so `api` has no compose healthcheck;
+        # poll from the runner instead.
+        run: |
+          for _ in $(seq 1 30); do curl -fsS localhost:8000/health/ready && break; sleep 2; done
+          curl -fsS localhost:8000/health
+          curl -fsS localhost:8000/health/ready
+          test "$(docker compose -f rust/docker-compose.yml ps -a --format '{{.ExitCode}}' migrate)" = "0"
+
+      - name: Logs
+        if: always()
+        run: docker compose -f rust/docker-compose.yml logs --no-color
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f rust/docker-compose.yml down -v
