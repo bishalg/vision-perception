@@ -700,9 +700,10 @@ public struct SettingsView: View {
                     Text(Localizer.tr("settings_app_version"))
                         .glassStyle(.body)
                     Spacer()
-                    Text("1.0.0 (Build 1)")
+                    Text(Self.appVersionLabel)
                         .font(.system(size: 13, weight: .bold, design: .monospaced))
                         .foregroundColor(LiquidGlass.textPrimary)
+                        .accessibilityIdentifier("settings_app_version")
                 }
 
                 GlassDivider()
@@ -757,6 +758,14 @@ public struct SettingsView: View {
         }
     }
     #endif
+
+    /// "1.0.0 (Build 3)" from the bundle, so About always matches the uploaded build.
+    static var appVersionLabel: String {
+        let info = Bundle.main.infoDictionary ?? [:]
+        let version = info["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info["CFBundleVersion"] as? String ?? "?"
+        return "\(version) (Build \(build))"
+    }
 
     private var isTrueDepthAvailable: Bool {
         #if canImport(ARKit) && !os(macOS)

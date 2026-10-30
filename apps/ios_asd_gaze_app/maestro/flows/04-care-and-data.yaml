@@ -22,12 +22,24 @@ name: bdd-04-care-and-data-control
     timeout: 5000
 - assertVisible: App Mode
 - tapOn: Clinic / Professional
+# The mode switch re-renders the tab bar; wait for it so the next tap is not lost.
+- extendedWaitUntil:
+    visible: Clinic Dashboard
+    timeout: 10000
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: settings-clinic-mode
 - tapOn: Parent & Caregiver
 - waitForAnimationToEnd:
     timeout: 5000
+- runFlow:
+    when:
+      visible: Clinic Dashboard
+    commands:
+      - tapOn: Parent & Caregiver
+- extendedWaitUntil:
+    notVisible: Clinic Dashboard
+    timeout: 10000
 
 # ── Mood diary (diary card sits above the milestones section) ──
 
@@ -50,16 +62,27 @@ name: bdd-04-care-and-data-control
 # ── Milestone detail ──
 
 - scrollUntilVisible:
-    element: 18-month CDC / AAP
+    element:
+      id: milestone_row_18_cognitive
     direction: DOWN
-    visibilityPercentage: 20
-    timeout: 30000
+    timeout: 60000
 - takeScreenshot: milestones-section
-- tapOn: Cognitive
+# Rows and the sheet carry ids because "Cognitive" repeats in every age
+# section. Let the list stop coasting first: a tap mid-scroll only stops it.
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    id: milestone_row_18_cognitive
+# The sheet can take a few seconds on a busy simulator; wait for its content.
+- extendedWaitUntil:
+    visible:
+      id: milestone_detail
+    timeout: 20000
 - waitForAnimationToEnd:
     timeout: 8000
 - takeScreenshot: milestone-detail
-- tapOn: Done
+- tapOn:
+    id: milestone_detail_done
 - waitForAnimationToEnd:
     timeout: 8000
 
@@ -76,4 +99,10 @@ name: bdd-04-care-and-data-control
     timeout: 5000
 - assertVisible: Delete observation data
 - takeScreenshot: delete-data-confirm
-- tapOn: Cancel
+# iOS 26+ shows this dialog as a popover with no Cancel button: tapping outside
+# cancels. Use the system dismiss region, never the destructive action.
+- tapOn:
+    id: PopoverDismissRegion
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertNotVisible: Delete observation data

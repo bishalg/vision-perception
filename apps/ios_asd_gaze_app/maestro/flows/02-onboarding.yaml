@@ -34,12 +34,37 @@ name: bdd-02-onboarding-consent-and-profile
 # The field pre-fills "Child"; clear it before typing the showcase name.
 - eraseText
 - inputText: Aarya
+# The keyboard can swallow the next tap while it animates away; dismiss it with
+# Return (hideKeyboard cannot dismiss this SwiftUI field), retry once if the tap
+# was still swallowed, and wait for each step's title so a slow simulator never
+# runs a step behind.
+- pressKey: Enter
+- waitForAnimationToEnd:
+    timeout: 5000
 
 - tapOn: Continue
+- waitForAnimationToEnd:
+    timeout: 5000
+- runFlow:
+    when:
+      visible: Child Profile Setup
+    commands:
+      - tapOn: Continue
+- extendedWaitUntil:
+    visible: Downloading Activities
+    timeout: 15000
 - takeScreenshot: activities-download
 
+# Continue stays disabled until the activity pack resolves (network-dependent).
+- extendedWaitUntil:
+    visible:
+      text: Continue
+      enabled: true
+    timeout: 60000
 - tapOn: Continue
-- assertVisible: Getting Ready
+- extendedWaitUntil:
+    visible: Getting Ready
+    timeout: 30000
 - takeScreenshot: getting-ready
 
 - tapOn: Complete Setup & Enter App

@@ -13,6 +13,14 @@ final class BuildConfigurationTests: XCTestCase {
         XCTAssertFalse(caps.contains("front-facing-camera"), "not honoured on visionOS")
     }
 
+    /// About shows the real bundle version, never a hard-coded build number.
+    func testSettingsVersionLabelMatchesBundle() throws {
+        let info = try XCTUnwrap(Bundle.main.infoDictionary)
+        let version = try XCTUnwrap(info["CFBundleShortVersionString"] as? String)
+        let build = try XCTUnwrap(info["CFBundleVersion"] as? String)
+        XCTAssertEqual(SettingsView.appVersionLabel, "\(version) (Build \(build))")
+    }
+
     // MARK: - CNS-9: no research study in the default build
 
     func testDefaultBuildDeclaresNoResearchStudy() {

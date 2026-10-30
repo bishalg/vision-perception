@@ -12,6 +12,7 @@ Feature: Longitudinal dashboard and caregiver guardrails
     And a screenshot named dashboard captures the dashboard
 
   Scenario: Open the M-CHAT-R/F questionnaire
+    Given the build is generated with MCHAT_LICENSED=1
     When the caregiver taps "Open M-CHAT-R/F"
     Then the questionnaire modal opens
     And a screenshot named mchat-survey captures the questionnaire

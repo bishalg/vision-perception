@@ -20,21 +20,30 @@ name: bdd-03-dashboard-and-guardians
 
 # The dashboard is a long lazy List; scrollUntilVisible is retried via the
 # script if a lazy row is skipped between frames.
+# The M-CHAT-R/F card is always present; its "Open" entry exists only in builds
+# generated with MCHAT_LICENSED=1 (H3), so the survey steps are conditional.
 - scrollUntilVisible:
-    element: Open M-CHAT-R/F
+    element: ".*M-CHAT-R/F.*"
     direction: DOWN
     visibilityPercentage: 20
     timeout: 30000
-- tapOn: Open M-CHAT-R/F
-- waitForAnimationToEnd:
-    timeout: 15000
-- takeScreenshot: mchat-survey
-- tapOn: Cancel
-- waitForAnimationToEnd:
-    timeout: 10000
+- runFlow:
+    when:
+      visible: Open M-CHAT-R/F
+    commands:
+      - tapOn: Open M-CHAT-R/F
+      - waitForAnimationToEnd:
+          timeout: 15000
+      - takeScreenshot: mchat-survey
+      - tapOn: Cancel
+      - waitForAnimationToEnd:
+          timeout: 10000
 
 # Pediatrician report (toolbar action, a11y label)
 - tapOn: Report for your pediatrician
+- extendedWaitUntil:
+    visible: Done
+    timeout: 15000
 - waitForAnimationToEnd:
     timeout: 15000
 - takeScreenshot: pediatrician-report

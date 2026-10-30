@@ -53,11 +53,13 @@ public struct MilestoneDetailView: View {
                     }
                 }
                 .listStyle(.insetGrouped)
+                .accessibilityIdentifier("milestone_detail")
                 .navigationTitle(milestone.title)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Done") { dismiss() }
+                            .accessibilityIdentifier("milestone_detail_done")
                     }
                 }
             }
@@ -103,6 +105,8 @@ public struct DevelopmentalMilestonesSectionView: View {
                                     .foregroundStyle(milestone.isCompleted ? .green : .secondary)
                             }
                         }
+                        // Stable automation hook: the domain label repeats in every age section.
+                        .accessibilityIdentifier("milestone_row_\(age.rawValue)_\(milestone.domain.shortLabel.lowercased())")
                     }
                 }
             }
