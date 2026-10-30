@@ -2,6 +2,7 @@
 
 > Status table is the live tracker. Update it when a WP changes state. Phases overlap on purpose: app, backend and console streams run in parallel when they share no files.
 > Agent tiers: **A** = `architect` (Fable, design only), **S** = `senior-implementer` (Opus), **I** = `implementer` (Sonnet). Main session integrates, runs gates, commits.
+> **2026-10-30:** backend and shared maths are Rust (`CLAUDE.md`, ADR-0006). New prefix **WP-R.n** = Rust core crates (`rust/`). WP-B.* were renumbered to the Rust plan; detail per package (files, tests, traps) is in `docs/spec/modules/asd-rust-core-and-backend/work-packages.md`, this table stays the status tracker.
 
 ## 0. Status table
 
@@ -17,13 +18,22 @@
 | WP-A.8 | Stimulus CDN support with signed URLs; ODR fallback | 3 | S | todo | |
 | WP-A.9 | Replay down-sample upload (for console heatmaps) | 3 | S | todo | |
 | WP-A.10 | TestFlight beta pipeline (fastlane `beta`), crash reporting decision | 3 | I | todo | |
-| WP-B.1 | Service scaffold: FastAPI, Postgres, Alembic, docker-compose, shim routes, health, CI | 1 | S | superseded | Python backend removed 2026-10-30; redo in Rust (see CLAUDE.md) |
-| WP-B.2 | Care events port + tests migrated from `tools/asd_research_server.py` | 1 | I | superseded | Python backend removed 2026-10-30; redo in Rust |
-| WP-B.3 | Auth: device tokens + enrol codes; user login/JWT/refresh; RBAC dependency; audit log | 1 | S | todo | |
-| WP-B.4 | `POST /v1/sessions` idempotent ingest, clip rows, pre-signed blob URLs, list/detail endpoints, review auto-rules | 1 | S | todo | |
-| WP-B.5 | Config documents + bundles + Ed25519 signing + `GET /config/bundle` | 2 | S | todo | |
-| WP-B.6 | Norm aggregation job (port of `tools/asd_norm_aggregator.py`) + promote to draft baselines | 2 | I | todo | |
-| WP-B.7 | AWS deployment via CDK (App Runner/ECS, RDS, S3, Secrets, WAF, logs) | 3 | S | todo | H-4 |
+| WP-A.11 | iOS consumes the Rust core: xcframework `binaryTarget`, engines become wrappers, golden parity tests, `asd-sync` in the sync client, `device_id` on re-register | 1–2 | S | todo | FFI-3/4, CON-7/11; depends on WP-R.5, WP-B.2, WP-D.7 |
+| WP-A.12 | Android Kotlin bindings from the same UniFFI definitions (`cargo-ndk`) | 4 | S | backlog | depends on WP-R.5 |
+| WP-R.0 | Cargo workspace skeleton at `rust/`, six crates, domain types ported 1:1 from Swift, `deny.toml`, `scripts/rust_test.sh`, `rust.yml` | 1 | I | todo | WS-1..5, CON-1; serial, run first |
+| WP-R.1 | `asd-core` scoring engine, baselines validate, attention flag, quality gate + golden vectors | 1 | S | todo | CORE-1..4, CORE-7 |
+| WP-R.2 | `asd-core` metrics extraction (I-VT, AOI dwell, affect) + session aggregator + golden vectors | 1 | S | todo | CORE-5..6 |
+| WP-R.3 | `asd-contract` (session v1.6, config bundle, API DTOs, schemars export, Ed25519 + JCS signing), `asd-sync` protocol logic, `asd-cli schema|bundle`; regenerate `docs/spec/schemas/asd/*.json` | 1 | S | todo | CON-2..7, CON-12; GATE-1 tool |
+| WP-R.4 | `asd-core::norms` (port of `tools/asd_norm_aggregator.py`, 11 tests) + `asd-core::synth` (v2.0, ratios) + `asd-cli norms|synth` | 1 | I | todo | CORE-8..9; GATE-2/3 tool |
+| WP-R.5 | `asd-ffi` UniFFI crate + `scripts/build_asd_xcframework.sh` (ios, ios-sim, macOS slices) | 1–2 | S | todo | FFI-1/2; depends on R.1–R.3 |
+| WP-R.6 | `asd-wasm` for console sandbox re-score (feeds WP-C.5) | 2 | S | backlog | depends on R.1, R.3 |
+| WP-B.1 | Rust service scaffold: Axum, sqlx migrations for `02 §3` (+ enrol_codes, refresh_tokens, bundle_adoption), blob store trait (S3/memory), tracing redaction, Dockerfile, docker-compose, health | 1 | S | todo | replaces the removed FastAPI scaffold; DEP-1/2, OBS-1 |
+| WP-B.2 | Auth: Argon2id login, EdDSA JWT + rotating refresh families, device tokens, enrol codes (`max_uses`, `expires_at`, `device_id` rotation), RBAC matrix, audit rows + grants | 1 | S | todo | AUTH-1..5, CON-10/11; depends on B.1, R.3 |
+| WP-B.3 | `POST /v1/sessions` idempotent ingest (ON CONFLICT, body hash), derived flag via `asd-core`, clip rows, blob URLs (presigned/proxy), org-scoped list/detail/clips/metrics/review, `report.pdf` passthrough | 1 | S | todo | ING-1..3, CON-13..21; depends on B.1, R.1, R.3 |
+| WP-B.4 | Config documents lifecycle + bundles + signing + `GET /config/bundle` (ETag, adoption) + seed drafts from kit JSON | 2 | S | todo | CFG-1/2; depends on B.2 |
+| WP-B.5 | Norm aggregation job (worker loop, `asd-core::norms`) + promote to draft baselines | 2 | I | todo | depends on B.3, B.4, R.4 |
+| WP-B.6 | Care events (`/v1/care/events`), participant summary, erasure request (port of deleted `shims.py` semantics) | 2 | I | todo | H-15 may defer |
+| WP-B.7 | AWS deployment (ECS Fargate, RDS, S3, Secrets, ALB/ACM, WAF, logs) under `aws_infra/asd/` | 3 | S | todo | H-4, H-11 (IaC language) |
 | WP-B.8 | Server-side PDF regeneration + FHIR bundle endpoint (parity with iOS output, golden tests) | 3 | I | todo | |
 | WP-B.9 | Dataset export job (parquet/jsonl + labels), retention sweep, erasure execution | 3 | S | todo | |
 | WP-B.10 | FHIR façade + SMART-on-FHIR server validation (only if a clinic partner needs it) | 4 | S | backlog | |
@@ -34,10 +44,12 @@
 | WP-C.5 | Baselines editor + scoring profile editor + sandbox re-score + bundle publish with approval | 2 | S | todo | |
 | WP-C.6 | Cohorts, norm-runs, exports, model registry | 3 | I | todo | |
 | WP-C.7 | Replay heatmaps, hi/ne strings, superadmin | 4 | I | backlog | |
+| WP-C.8 | Console contract alignment to `api-v1.json`: `battery` string, `capture_source` + `synthetic`, clip `rows[]`, `participant_token`; zod-vs-schema test | 1 | I | todo | API-3, CON-16/19/20; depends on R.3 |
 | WP-D.1 | Stimulus clips: rights or replacement; durations measured; catalog corrected | 1 | I + owner | done | All 10 clips measured at 8.0s via ffprobe, catalog aligned, NOTICE.md updated |
-| WP-D.2 | Session JSON Schema export + Swift/Python parity gate in CI | 1 | I | done | session-v1.6.json exported from Pydantic, parity test in scripts/check_session_schema_parity.py, gated in CI |
+| WP-D.2 | Session JSON Schema export + Swift/Python parity gate in CI | 1 | I | done (to be replaced) | Pydantic export + `scripts/check_session_schema_parity.py`; superseded by WP-R.3 + WP-D.7 (Rust export, `asd-cli schema check`) |
 | WP-D.3 | Age-band model: cleared dataset, train, validate (≥0.90 recall), CoreML, manifest + licence in `models/asd_age` | 2 | S | todo | |
-| WP-D.4 | Synthetic session generator shared by seed script and tests | 1 | I | done | tools/asd_synth, seeded, schema-validated, 7 tests |
+| WP-D.4 | Synthetic session generator shared by seed script and tests | 1 | I | done (to be replaced) | `tools/asd_synth` v1.0 emits seconds/`offTarget`/`synthetic` which iOS and console reject (CON-13); superseded by WP-R.4 (v2.0) + WP-D.7 |
+| WP-D.7 | Replace Python CI gates with Rust: `ios.yml`/`ios_test.sh` use `asd-cli schema check`; delete `check_session_schema_parity.py`, `asd_norm_aggregator.py`, `asd_synth/`, `asd_research_server.py` and their tests; README updates | 1 | I | todo | GATE-1..4; depends on R.3, R.4 |
 | WP-D.5 | ML roadmap refresh: what an attention classifier would need (n, labels, validation plan) — doc only | 3 | A | backlog | |
 | WP-D.6 | Decide/Link C++ `AsdBiomarkerPack` into kit via xcframework, or retire the claim | 4 | A | backlog | low value |
 | WP-E.1 | Pitch/deck re-base to non-diagnostic reality; aspirational section | 1 | I | done | Re-based to observation diary, 6 metrics, 2027 aspirational roadmap |
@@ -70,26 +82,23 @@ Goal: a real session captured on an iPhone lands in a cloud backend and is visib
 - Headers: `Authorization`, `X-Idempotency-Key`, `X-Schema-Version`, `User-Agent`. Payload: `GazeSessionRecord` + `perVideo` rows (already in record). Pre-signed PUT for `frames.jsonl.enc` and `report.pdf` when server returns URLs.
 - Accept: existing queue/backoff/dead-letter tests still pass; new tests for headers, 401 → re-register once, 409 idempotent replay treated as success; contract test against JSON Schema from WP-D.2.
 
-### WP-B.1 Service scaffold (S)
-- Create `services/asd_backend/` per `02 §2 ADR-B1`; `docker-compose.yml`, `Makefile`, Alembic initial migration (tables in `02 §3`), `/health`, structlog + redaction, pytest + testcontainers, GitHub workflow `backend.yml` (lint ruff, mypy, pytest, pip-audit).
-- Shim routes: `/api/v1/research/ingest|records|study-info`, `/api/v1/carekit/sync`, `/api/v1/batch/sync`, `/api/v1/carekit/summary/{id}` → mapped to new tables. `study-info` returns values from env, empty by default.
-- Accept: `make up && make test` green locally and in CI; current app build can POST through the shim via a Cloudflare tunnel.
+### Rust core and backend (WP-R.*, WP-B.*, WP-D.7, WP-C.8, WP-A.11) — detail in `docs/spec/modules/asd-rust-core-and-backend/work-packages.md`
+- **Wave 0 (serial, first):** WP-R.0 workspace + domain types (I, half a day).
+- **Wave 1 (parallel, no shared files):** WP-R.1 scoring/flag/quality (S), WP-R.2 metrics/aggregate (S), WP-R.3 contract/schema/signing/sync/CLI (S), WP-R.4 norms/synth (I), WP-B.1 service scaffold (S).
+- **Wave 2:** WP-B.2 auth (S), WP-B.3 ingest + console reads (S), WP-R.5 FFI + xcframework (S), WP-D.7 Python gate replacement (I), WP-C.8 console alignment (I).
+- **Wave 3:** WP-A.11 iOS consumes Rust (S), WP-B.4 config bundles (S), WP-B.5 norm job (I), WP-B.6 care events (I, H-15).
+- Accept (Phase 1 exit for this stream): acceptance scenarios 1–9 and 13–16 in the module's `acceptance.md`; D5 in `01 §5` is met by WP-B.1–B.3 behind a Cloudflare Tunnel with `BLOB_MODE=proxy`.
+- Key decisions already made (do not re-litigate in packages): JSON at the FFI boundary; no server defaults for measurements; `200 duplicate:true` vs `409` on body mismatch; enrol codes with `max_uses` and `device_id` rotation; no legacy shims; Python tooling deleted, not wrapped.
 
-### WP-B.2 Care events port (I) — port `CareKitDatabase` semantics and all 10 server tests + 11 aggregator tests (aggregator moves in WP-B.6; for now keep CLI). Delete `tools/asd_research_server.py` at the end of Phase 1 once WP-A.4 and WP-B.4 are merged.
-
-### WP-B.3 Auth + RBAC + audit (S) — per `02 §2 ADR-B4`. Accept: tests for role matrix (6 roles × key endpoints), token revocation, audit rows on every mutation, rate limiting 429.
-
-### WP-B.4 Sessions ingest + read (S) — per `02 §4`. Review auto-rules (`quality_low`, `flag_red`, `random_audit`, `norm_candidate`). Accept: idempotent replay returns identical body; concurrent duplicate inserts produce one row (test with 20 threads); list filters; detail returns clip rows.
-
-### WP-C.1 Console scaffold (S) — `apps/curv_console/`; login, org switcher, overview, sessions table/detail (Clips, Quality, Report tabs), reads from WP-B.4. Playwright smoke. Accept: demo storyline step 4 can be performed.
+### WP-C.1 Console scaffold (S) — `apps/curv_console/`; login, org switcher, overview, sessions table/detail (Clips, Quality, Report tabs), reads from WP-B.3 (contract fixes in WP-C.8). Playwright smoke. Accept: demo storyline step 4 can be performed.
 
 ### WP-C.2 Review queue + devices (I).
 
 ### WP-D.1 Stimulus clips (I + owner) — measure real durations (`ffprobe`), fix `stimulus_catalog.json`, document licence per clip in `NOTICE.md`; if H-8 = replace, generate/commission clips and update AOIs. Accept: catalog durations == file durations (test), NOTICE has a licence line per clip.
 
-### WP-D.2 Schema + parity gate (I) — Pydantic → JSON Schema in `docs/spec/schemas/asd/session-v1.6.json`; Swift test encodes a fixture and validates against it (via a tiny JSON-schema validator or by running `python -m jsonschema` in `scripts/ios_test.sh`). Accept: gate in `ios.yml` and `backend.yml`.
+### WP-D.2 Schema + parity gate (I) — done with Pydantic; the generator no longer exists. Replaced by WP-R.3 (schemars export) and WP-D.7 (`asd-cli schema check` in `ios.yml` and `rust.yml`).
 
-### WP-D.4 Synthetic generator (I) — one Python module used by backend seed + a Swift port already exists (`SummaryFixture`); keep parameters identical and documented.
+### WP-D.4 Synthetic generator (I) — done in Python (v1.0); replaced by WP-R.4 (`asd-core::synth` v2.0, ratios and the three statuses per CON-13) and deleted in WP-D.7. The Swift `SummaryFixture` stays as a kit test helper only.
 
 ### WP-E.1 Pitch re-base (I); WP-E.3 docs drift sweep (I).
 
@@ -97,10 +106,10 @@ Goal: a real session captured on an iPhone lands in a cloud backend and is visib
 
 Goal: an admin can change what the app shows and how it scores, safely, without an app release.
 
-- **WP-B.5** config documents, bundles, signing, `GET /config/bundle`, ETag; adoption telemetry (which device pulled which version).
-- **WP-A.5** kit refactor: `StimulusCatalog`, `NormativeBaselineLibrary`, `PerVideoScoringEngine`, `AttentionFlag`, `GazeQualityGate` take parameters from a decoded `ConfigBundle`; Ed25519 verify (CryptoKit `Curve25519.Signing`); cache in Application Support; fallback to bundled JSON; session records `bundleVersion`. Accept: all kit tests pass with both bundled and fetched config; tampered signature → fallback + log.
+- **WP-B.4** config documents, bundles, signing, `GET /config/bundle`, ETag; adoption telemetry (which device pulled which version).
+- **WP-A.5** kit refactor: `StimulusCatalog`, `NormativeBaselineLibrary`, `PerVideoScoringEngine`, `AttentionFlag`, `GazeQualityGate` take parameters from a decoded `ConfigBundle` (the `ScoringProfile` type is `asd-contract`'s, CON-5); signature verified through `asd-ffi verify_bundle` (CON-6), not a second CryptoKit implementation; cache in Application Support; fallback to bundled JSON; session records `bundleVersion`. Depends on WP-A.11. Accept: all kit tests pass with both bundled and fetched config; tampered signature → fallback + log.
 - **WP-C.4** catalog editor, **WP-C.5** baselines/scoring editors + sandbox + publish-with-approval, **WP-C.3** participants/users/audit.
-- **WP-B.6** norm aggregation job + promote.
+- **WP-B.5** norm aggregation job + promote; **WP-B.6** care events (if H-15 says Phase 2); **WP-R.6** WASM for the sandbox re-score in WP-C.5.
 - **WP-A.6** Swift 6, **WP-A.7** renames + scanner fix.
 - **WP-D.3** age-band model on a cleared dataset (H: pick dataset with a licence that allows shipping; UTKFace is research-only). Register in model registry (WP-C.6 later; for now the `models/asd_age/README.md` manifest).
 - **WP-E.2** org account, domains, privacy policy page.
@@ -125,9 +134,9 @@ Exit: a clinic (or friendly pilot site) can be onboarded end to end: org created
 ## 5. Gates every WP must pass
 
 - iOS: `scripts/ios_test.sh` (kit tests, TSan, strict concurrency, app tests, Release build, claims, privacy API, release symbols).
-- Backend: `make test` (ruff, mypy, pytest with coverage ≥85 %, pip-audit).
+- Rust (core + backend + CLI): `scripts/rust_test.sh` (fmt, clippy `-D warnings`, `cargo test --workspace` with the Postgres service, `cargo deny check`, `sqlx prepare --check`, `asd-cli schema check`); coverage ≥85 % on `asd-core` and `asd-backend`.
 - Console: `pnpm -C apps/curv_console lint test e2e`.
-- Cross: schema parity gate (WP-D.2).
+- Cross: `asd-cli schema check` + `schema validate` on the iOS fixtures (GATE-1, replaces WP-D.2's Python script); golden parity vectors pass in both `cargo test -p asd-core` and the kit's `GoldenParityTests` (FFI-4).
 - No new tracked binaries > 1 MB; no model weights without manifest + licence; no personal data.
 
 ## 6. Suggested parallelisation for the first two weeks
@@ -139,3 +148,12 @@ Exit: a clinic (or friendly pilot site) can be onboarded end to end: org created
 | 2026-11-10 | demo hardening | tunnel/deploy, seed | WP-C.2 | rehearsal |
 
 Each stream is one agent; streams share no files except `project.yml` (A only) and root `package.json` (C only).
+
+### Rust stream from 2026-10-31 (replaces the Stream B column above)
+
+| Step | Packages in parallel | Tier | Shared files |
+|---|---|---|---|
+| 0 (serial) | WP-R.0 | I | creates everything under `rust/`, `.gitignore`, `scripts/rust_test.sh`, `.github/workflows/rust.yml` |
+| 1 | WP-R.1, WP-R.2, WP-R.3, WP-R.4, WP-B.1 | S, S, S, I, S | only `rust/Cargo.lock` (main session regenerates) |
+| 2 | WP-B.2, WP-B.3, WP-R.5, WP-D.7, WP-C.8 | S, S, S, I, I | none (B.3 stubs the device-token extractor until B.2 merges) |
+| 3 | WP-A.11, WP-B.4, WP-B.5, WP-B.6 | S, S, I, I | none |

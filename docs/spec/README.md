@@ -15,6 +15,7 @@ referenced from the module specs rather than duplicated.
 | Module | Technical | Acceptance | QA Validation | Non-Technical | Work packages |
 | --- | --- | --- | --- | --- | --- |
 | ASD gaze app, App Store readiness | [technical.md](modules/asd-gaze-app-store-readiness/technical.md) | [acceptance.md](modules/asd-gaze-app-store-readiness/acceptance.md) | [qa-validation.md](modules/asd-gaze-app-store-readiness/qa-validation.md) | [non-technical.md](modules/asd-gaze-app-store-readiness/non-technical.md) | [work-packages.md](modules/asd-gaze-app-store-readiness/work-packages.md) |
+| ASD Rust core and backend | [technical.md](modules/asd-rust-core-and-backend/technical.md) | [acceptance.md](modules/asd-rust-core-and-backend/acceptance.md) | [qa-validation.md](modules/asd-rust-core-and-backend/qa-validation.md) | [non-technical.md](modules/asd-rust-core-and-backend/non-technical.md) | [work-packages.md](modules/asd-rust-core-and-backend/work-packages.md) |
 
 ## Architecture decision records
 
@@ -25,6 +26,7 @@ referenced from the module specs rather than duplicated.
 | [ADR-0003](adr/ADR-0003-fhir-profile-and-coding.md) | FHIR R4 Bundle profile and coding strategy for parent observations | Proposed |
 | [ADR-0004](adr/ADR-0004-claims-and-naming-policy.md) | Non-diagnostic claims and naming policy (App Store 1.4.1) | Proposed |
 | [ADR-0005](adr/ADR-0005-org-account-and-bundle-id.md) | Publishing organisation, bundle identifier and review contact | Accepted (H4 resolved 2026-10-29: `com.open-spectrum.eye-gaze`, App Name "Eye Gaze") |
+| [ADR-0006](adr/ADR-0006-rust-core-and-backend.md) | Rust is the single implementation of ASD core logic, contracts and backend | Proposed (owner decision in `CLAUDE.md`, 2026-10-30) |
 
 ## Rules
 
