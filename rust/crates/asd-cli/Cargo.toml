@@ -1,0 +1,20 @@
+[package]
+name = "asd-cli"
+description = "ASD command line: schema, bundle, synth, norms"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "asd-cli"
+path = "src/main.rs"
+
+[dependencies]
+asd-core.workspace = true
+asd-contract.workspace = true
+asd-sync.workspace = true

@@ -20,7 +20,7 @@
 | WP-A.10 | TestFlight beta pipeline (fastlane `beta`), crash reporting decision | 3 | I | todo | |
 | WP-A.11 | iOS consumes the Rust core: xcframework `binaryTarget`, engines become wrappers, golden parity tests, `asd-sync` in the sync client, `device_id` on re-register | 1–2 | S | todo | FFI-3/4, CON-7/11; depends on WP-R.5, WP-B.2, WP-D.7 |
 | WP-A.12 | Android Kotlin bindings from the same UniFFI definitions (`cargo-ndk`) | 4 | S | backlog | depends on WP-R.5 |
-| WP-R.0 | Cargo workspace skeleton at `rust/`, six crates, domain types ported 1:1 from Swift, `deny.toml`, `scripts/rust_test.sh`, `rust.yml` | 1 | I | todo | WS-1..5, CON-1; serial, run first |
+| WP-R.0 | Cargo workspace skeleton at `rust/`, six crates, domain types ported 1:1 from Swift, `deny.toml`, `scripts/rust_test.sh`, `rust.yml` | 1 | I | done | 10 round-trip tests, fmt+clippy+deny clean; serial, run first |
 | WP-R.1 | `asd-core` scoring engine, baselines validate, attention flag, quality gate + golden vectors | 1 | S | todo | CORE-1..4, CORE-7 |
 | WP-R.2 | `asd-core` metrics extraction (I-VT, AOI dwell, affect) + session aggregator + golden vectors | 1 | S | todo | CORE-5..6 |
 | WP-R.3 | `asd-contract` (session v1.6, config bundle, API DTOs, schemars export, Ed25519 + JCS signing), `asd-sync` protocol logic, `asd-cli schema|bundle`; regenerate `docs/spec/schemas/asd/*.json` | 1 | S | todo | CON-2..7, CON-12; GATE-1 tool |

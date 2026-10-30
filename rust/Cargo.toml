@@ -1,0 +1,37 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/asd-core",
+    "crates/asd-contract",
+    "crates/asd-sync",
+    "crates/asd-ffi",
+    "crates/asd-backend",
+    "crates/asd-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+rust-version = "1.80"
+publish = false
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+# No `preserve_order`: object keys stay sorted (contract bytes depend on it).
+serde_json = "1"
+serde_jcs = "0.1"
+thiserror = "2"
+rand_chacha = "0.3"
+sha2 = "0.10"
+
+asd-core = { path = "crates/asd-core" }
+asd-contract = { path = "crates/asd-contract" }
+asd-sync = { path = "crates/asd-sync" }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

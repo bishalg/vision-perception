@@ -1,0 +1,52 @@
+# cargo-deny policy (spec WS-3, GATE-5). Allow-list mirrors docs/license_policy.md.
+[graph]
+all-features = true
+
+[licenses]
+version = 2
+confidence-threshold = 0.9
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "MIT",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "CC0-1.0",
+    "BSL-1.0",
+    "Unicode-3.0",
+]
+exceptions = [
+    # OpenSSL licence only for the crypto crates that carry it.
+    { allow = ["OpenSSL"], crate = "aws-lc-sys" },
+    { allow = ["OpenSSL"], crate = "ring" },
+    # MPL-2.0 (file-level copyleft, yellow list) only for UniFFI.
+    { allow = ["MPL-2.0"], crate = "uniffi" },
+    { allow = ["MPL-2.0"], crate = "uniffi_bindgen" },
+    { allow = ["MPL-2.0"], crate = "uniffi_build" },
+    { allow = ["MPL-2.0"], crate = "uniffi_core" },
+    { allow = ["MPL-2.0"], crate = "uniffi_macros" },
+    { allow = ["MPL-2.0"], crate = "uniffi_meta" },
+    { allow = ["MPL-2.0"], crate = "uniffi_checksum_derive" },
+    { allow = ["MPL-2.0"], crate = "uniffi_udl" },
+    { allow = ["MPL-2.0"], crate = "uniffi_internal_macros" },
+    { allow = ["MPL-2.0"], crate = "uniffi_testing" },
+]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+deny = [
+    # asd-core must stay I/O free (WS-2); also checked by review.
+]
+
+[advisories]
+version = 2
+yanked = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

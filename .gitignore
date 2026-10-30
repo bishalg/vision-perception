@@ -313,3 +313,14 @@ cdk.out/
 # Gaze app BDD/Maestro output
 apps/ios_asd_gaze_app/maestro/screenshots/
 apps/ios_asd_gaze_app/build-sim/
+
+# ------------------------------------------------------------------------------
+# Rust workspace (rust/): build output ignored; offline sqlx data and lockfile committed
+# ------------------------------------------------------------------------------
+rust/target
+**/*.xcframework
+build/asd/
+!rust/.sqlx/
+!rust/.sqlx/**
+!rust/.env.example
+!rust/Cargo.lock

@@ -1,0 +1,18 @@
+[package]
+name = "asd-sync"
+description = "ASD device-sync protocol logic (no I/O)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+asd-core.workspace = true
+asd-contract.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

@@ -1,0 +1,685 @@
+{
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:a5ace1c8-3fcd-5498-a817-fe0765919ea7",
+      "resource": {
+        "extension": [
+          {
+            "url": "http://curv.org/fhir/StructureDefinition/age-in-months",
+            "valueQuantity": {
+              "code": "mo",
+              "system": "http://unitsofmeasure.org",
+              "unit": "mo",
+              "value": 24
+            }
+          }
+        ],
+        "id": "child-GOLDEN01",
+        "identifier": [
+          {
+            "system": "http://curv.org/fhir/NamingSystem/participant-token",
+            "value": "child-GOLDEN01"
+          }
+        ],
+        "resourceType": "Patient"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:f804b64c-5c07-545a-b1e1-a39a64e6be88",
+      "resource": {
+        "id": "f804b64c-5c07-545a-b1e1-a39a64e6be88",
+        "patient": {
+          "reference": "urn:uuid:a5ace1c8-3fcd-5498-a817-fe0765919ea7"
+        },
+        "relationship": [
+          {
+            "coding": [
+              {
+                "code": "PRN",
+                "display": "parent",
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode"
+              }
+            ]
+          }
+        ],
+        "resourceType": "RelatedPerson"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:191756ba-f912-50d3-8519-b5801975e7d9",
+      "resource": {
+        "deviceName": [
+          {
+            "name": "EarlyGaze Observation Diary",
+            "type": "user-friendly-name"
+          }
+        ],
+        "id": "191756ba-f912-50d3-8519-b5801975e7d9",
+        "resourceType": "Device",
+        "type": {
+          "text": "Mobile gaze engagement observation app"
+        },
+        "version": [
+          {
+            "value": "1.0.0"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:ee2b83bd-ed9c-5102-ab14-d295dcb610e5",
+      "resource": {
+        "category": [
+          {
+            "coding": [
+              {
+                "code": "exam",
+                "display": "Exam",
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "code": "93044-6",
+              "display": "Gaze tracking assessment panel",
+              "system": "http://loinc.org"
+            },
+            {
+              "code": "713444003",
+              "display": "Eye tracking examination (procedure)",
+              "system": "http://snomed.info/sct"
+            }
+          ],
+          "text": "Gaze engagement observation (parent-run phone app)"
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "social-preference-score",
+                  "display": "Social visual preference score",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Social Visual Preference Score"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "score",
+              "value": 0.42
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "eye-region-dwell-ratio",
+                  "display": "Eye region dwell ratio",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Eye Region Dwell Ratio"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "ratio",
+              "value": 0.55
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "valid-frame-ratio",
+                  "display": "Valid frame ratio",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Valid Frame Quality Ratio"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "ratio",
+              "value": 0.9
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "social-smile-intensity-mean",
+                  "display": "Social smile intensity mean",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Social Smile Intensity Mean"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "score",
+              "value": 0.3
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "smile-reactivity-index",
+                  "display": "Smile reactivity index",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Smile Reactivity Index"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "score",
+              "value": 0.25
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "flat-affect-score",
+                  "display": "Neutral expression score",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Neutral Expression Score"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "score",
+              "value": 0.2
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "surprise-score-mean",
+                  "display": "Surprise score mean",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Surprise Score Mean"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "score",
+              "value": 0.1
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "composite-engagement",
+                  "display": "Per-stimulus composite engagement score",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Per-Stimulus Composite Engagement Score"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "score",
+              "value": 0.6
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "clip-score-clip-a",
+                  "display": "Bubbles",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Stimulus subscore: Bubbles"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "score",
+              "value": 0.7
+            }
+          }
+        ],
+        "device": {
+          "reference": "urn:uuid:191756ba-f912-50d3-8519-b5801975e7d9"
+        },
+        "effectiveDateTime": "2026-10-01T10:00:00Z",
+        "id": "ee2b83bd-ed9c-5102-ab14-d295dcb610e5",
+        "identifier": [
+          {
+            "system": "http://curv.org/fhir/NamingSystem/gaze-session",
+            "value": "GOLDEN01-SESSION"
+          }
+        ],
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "urn:uuid:a5ace1c8-3fcd-5498-a817-fe0765919ea7"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:c2e629fb-4c36-5a8d-86ef-b8782db130c5",
+      "resource": {
+        "activity": {
+          "coding": [
+            {
+              "code": "CREATE",
+              "display": "create",
+              "system": "http://terminology.hl7.org/CodeSystem/v3-DataOperation"
+            }
+          ]
+        },
+        "agent": [
+          {
+            "onBehalfOf": {
+              "reference": "urn:uuid:f804b64c-5c07-545a-b1e1-a39a64e6be88"
+            },
+            "type": {
+              "coding": [
+                {
+                  "code": "device",
+                  "display": "Device",
+                  "system": "http://terminology.hl7.org/CodeSystem/provenance-participant-type"
+                }
+              ]
+            },
+            "who": {
+              "reference": "urn:uuid:191756ba-f912-50d3-8519-b5801975e7d9"
+            }
+          }
+        ],
+        "entity": [
+          {
+            "role": "source",
+            "what": {
+              "display": "On-device encrypted session vault file",
+              "identifier": {
+                "system": "http://curv.org/fhir/NamingSystem/session-vault",
+                "value": "session_GOLDEN01-SESSION"
+              }
+            }
+          }
+        ],
+        "extension": [
+          {
+            "url": "http://curv.org/fhir/StructureDefinition/capture-source",
+            "valueCoding": {
+              "code": "truedepth",
+              "display": "Apple TrueDepth front camera (live capture)",
+              "system": "http://curv.org/fhir/CodeSystem/capture-source"
+            }
+          }
+        ],
+        "id": "c2e629fb-4c36-5a8d-86ef-b8782db130c5",
+        "recorded": "2026-10-01T10:00:30Z",
+        "resourceType": "Provenance",
+        "target": [
+          {
+            "reference": "urn:uuid:ee2b83bd-ed9c-5102-ab14-d295dcb610e5"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:2397d634-ee42-5677-bce2-1f6eb9561472",
+      "resource": {
+        "author": {
+          "reference": "urn:uuid:f804b64c-5c07-545a-b1e1-a39a64e6be88"
+        },
+        "authored": "2026-10-01T09:00:00Z",
+        "id": "2397d634-ee42-5677-bce2-1f6eb9561472",
+        "item": [
+          {
+            "answer": [
+              {
+                "valueBoolean": true
+              }
+            ],
+            "linkId": "80629-9",
+            "text": "M-CHAT-R/F item 1"
+          },
+          {
+            "answer": [
+              {
+                "valueBoolean": true
+              }
+            ],
+            "linkId": "80630-7",
+            "text": "M-CHAT-R/F item 2"
+          },
+          {
+            "answer": [
+              {
+                "valueBoolean": true
+              }
+            ],
+            "linkId": "80631-5",
+            "text": "M-CHAT-R/F item 3"
+          },
+          {
+            "answer": [
+              {
+                "valueBoolean": true
+              }
+            ],
+            "linkId": "80632-3",
+            "text": "M-CHAT-R/F item 4"
+          },
+          {
+            "answer": [
+              {
+                "valueBoolean": true
+              }
+            ],
+            "linkId": "80633-1",
+            "text": "M-CHAT-R/F item 5"
+          },
+          {
+            "answer": [
+              {
+                "valueBoolean": true
+              }
+            ],
+            "linkId": "80634-9",
+            "text": "M-CHAT-R/F item 6"
+          },
+          {
+            "answer": [
+              {
+                "valueBoolean": true
+              }
+            ],
+            "linkId": "80635-6",
+            "text": "M-CHAT-R/F item 7"
+          },
+          {
+            "answer": [
+              {
+                "valueBoolean": true
+              }
+            ],
+            "linkId": "80636-4",
+            "text": "M-CHAT-R/F item 8"
+          },
+          {
+            "answer": [
+              {
+                "valueBoolean": true
+              }
+            ],
+            "linkId": "80637-2",
+            "text": "M-CHAT-R/F item 9"
+          },
+          {
+            "answer": [
+              {
+                "valueBoolean": true
+              }
+            ],
+            "linkId": "80638-0",
+            "text": "M-CHAT-R/F item 10"
+          },
+          {
+            "answer": [
+              {
+                "valueBoolean": true
+              }
+            ],
+            "linkId": "80639-8",
+            "text": "M-CHAT-R/F item 11"
+          },
+          {
+            "answer": [
+              {
+                "valueBoolean": false
+              }
+            ],
+            "linkId": "80640-6",
+            "text": "M-CHAT-R/F item 12"
+          },
+          {
+            "answer": [
+              {
+                "valueBoolean": true
+              }
+            ],
+            "linkId": "80641-4",
+            "text": "M-CHAT-R/F item 13"
+          },
+          {
+            "answer": [
+              {
+                "valueBoolean": true
+              }
+            ],
+            "linkId": "80642-2",
+            "text": "M-CHAT-R/F item 14"
+          },
+          {
+            "answer": [
+              {
+                "valueBoolean": true
+              }
+            ],
+            "linkId": "80643-0",
+            "text": "M-CHAT-R/F item 15"
+          },
+          {
+            "answer": [
+              {
+                "valueBoolean": true
+              }
+            ],
+            "linkId": "80644-8",
+            "text": "M-CHAT-R/F item 16"
+          },
+          {
+            "answer": [
+              {
+                "valueBoolean": true
+              }
+            ],
+            "linkId": "80645-5",
+            "text": "M-CHAT-R/F item 17"
+          },
+          {
+            "answer": [
+              {
+                "valueBoolean": true
+              }
+            ],
+            "linkId": "80646-3",
+            "text": "M-CHAT-R/F item 18"
+          },
+          {
+            "answer": [
+              {
+                "valueBoolean": true
+              }
+            ],
+            "linkId": "80647-1",
+            "text": "M-CHAT-R/F item 19"
+          },
+          {
+            "answer": [
+              {
+                "valueBoolean": true
+              }
+            ],
+            "linkId": "80648-9",
+            "text": "M-CHAT-R/F item 20"
+          }
+        ],
+        "questionnaire": "http://loinc.org/q/80628-1",
+        "resourceType": "QuestionnaireResponse",
+        "source": {
+          "reference": "urn:uuid:f804b64c-5c07-545a-b1e1-a39a64e6be88"
+        },
+        "status": "completed",
+        "subject": {
+          "reference": "urn:uuid:a5ace1c8-3fcd-5498-a817-fe0765919ea7"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:9cbab450-b0c5-592c-9934-48c88b6f5b84",
+      "resource": {
+        "activity": {
+          "coding": [
+            {
+              "code": "CREATE",
+              "display": "create",
+              "system": "http://terminology.hl7.org/CodeSystem/v3-DataOperation"
+            }
+          ]
+        },
+        "agent": [
+          {
+            "onBehalfOf": {
+              "reference": "urn:uuid:f804b64c-5c07-545a-b1e1-a39a64e6be88"
+            },
+            "type": {
+              "coding": [
+                {
+                  "code": "device",
+                  "display": "Device",
+                  "system": "http://terminology.hl7.org/CodeSystem/provenance-participant-type"
+                }
+              ]
+            },
+            "who": {
+              "reference": "urn:uuid:191756ba-f912-50d3-8519-b5801975e7d9"
+            }
+          }
+        ],
+        "id": "9cbab450-b0c5-592c-9934-48c88b6f5b84",
+        "recorded": "2026-10-01T09:00:00Z",
+        "resourceType": "Provenance",
+        "target": [
+          {
+            "reference": "urn:uuid:2397d634-ee42-5677-bce2-1f6eb9561472"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:caa44242-693d-57bd-a993-677b554197e3",
+      "resource": {
+        "category": [
+          {
+            "coding": [
+              {
+                "code": "survey",
+                "display": "Survey",
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "code": "80649-7",
+              "display": "M-CHAT-R total score [Score]",
+              "system": "http://loinc.org"
+            }
+          ],
+          "text": "M-CHAT-R/F total score"
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "80650-5",
+                  "display": "M-CHAT-R risk level [Interpretation]",
+                  "system": "http://loinc.org"
+                }
+              ]
+            },
+            "valueCodeableConcept": {
+              "text": "Low-Risk (total score 0-2)"
+            }
+          }
+        ],
+        "derivedFrom": [
+          {
+            "reference": "urn:uuid:2397d634-ee42-5677-bce2-1f6eb9561472"
+          }
+        ],
+        "effectiveDateTime": "2026-10-01T09:00:00Z",
+        "id": "caa44242-693d-57bd-a993-677b554197e3",
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "urn:uuid:a5ace1c8-3fcd-5498-a817-fe0765919ea7"
+        },
+        "valueInteger": 2
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:c2792ebe-29ea-5c00-bfeb-2c1f478cd12e",
+      "resource": {
+        "activity": {
+          "coding": [
+            {
+              "code": "CREATE",
+              "display": "create",
+              "system": "http://terminology.hl7.org/CodeSystem/v3-DataOperation"
+            }
+          ]
+        },
+        "agent": [
+          {
+            "onBehalfOf": {
+              "reference": "urn:uuid:f804b64c-5c07-545a-b1e1-a39a64e6be88"
+            },
+            "type": {
+              "coding": [
+                {
+                  "code": "device",
+                  "display": "Device",
+                  "system": "http://terminology.hl7.org/CodeSystem/provenance-participant-type"
+                }
+              ]
+            },
+            "who": {
+              "reference": "urn:uuid:191756ba-f912-50d3-8519-b5801975e7d9"
+            }
+          }
+        ],
+        "id": "c2792ebe-29ea-5c00-bfeb-2c1f478cd12e",
+        "recorded": "2026-10-01T09:00:00Z",
+        "resourceType": "Provenance",
+        "target": [
+          {
+            "reference": "urn:uuid:caa44242-693d-57bd-a993-677b554197e3"
+          }
+        ]
+      }
+    }
+  ],
+  "id": "c0b47c30-6513-54ea-8ac0-1daaf20b7117",
+  "resourceType": "Bundle",
+  "type": "collection"
+}

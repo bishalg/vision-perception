@@ -1,0 +1,20 @@
+[package]
+name = "asd-backend"
+description = "ASD backend service (Axum, sqlx, Postgres)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "asd-backend"
+path = "src/main.rs"
+
+[dependencies]
+asd-core.workspace = true
+asd-contract.workspace = true
+asd-sync.workspace = true

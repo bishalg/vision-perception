@@ -1,0 +1,16 @@
+[package]
+name = "asd-ffi"
+description = "UniFFI bindings over the ASD core for Swift and Kotlin"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+asd-core.workspace = true
+asd-contract.workspace = true
+asd-sync.workspace = true

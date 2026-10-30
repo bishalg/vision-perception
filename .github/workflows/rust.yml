@@ -1,0 +1,62 @@
+name: rust
+
+on:
+  push:
+    branches: [dev, main]
+    paths:
+      - "rust/**"
+      - "scripts/rust_test.sh"
+      - "docs/spec/schemas/asd/**"
+      - ".github/workflows/rust.yml"
+  pull_request:
+    paths:
+      - "rust/**"
+      - "scripts/rust_test.sh"
+      - "docs/spec/schemas/asd/**"
+      - ".github/workflows/rust.yml"
+
+concurrency:
+  group: rust-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  ASD_REQUIRE_ALL: "1"
+  SQLX_OFFLINE: "true"
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: asd
+          POSTGRES_PASSWORD: asd
+          POSTGRES_DB: asd_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U asd"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://asd:asd@localhost:5432/asd_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain (rust/rust-toolchain.toml)
+        run: |
+          rustup show active-toolchain || rustup toolchain install stable --profile minimal -c rustfmt -c clippy
+          cargo --version
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+
+      - name: Install cargo-deny and sqlx-cli
+        run: cargo install cargo-deny sqlx-cli --locked --no-default-features --features rustls,postgres
+
+      - name: Rust gates
+        run: scripts/rust_test.sh
