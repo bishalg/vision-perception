@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { en } from "@/messages/en";
-import { ATTENTION_FLAGS, type SessionListQuery } from "@/lib/api";
+import { ATTENTION_FLAGS, QUALITY_VERDICTS, type SessionListQuery } from "@/lib/api";
 
 const f = en.sessions.filters;
 
@@ -22,7 +22,7 @@ export function SessionFilters({ orgId, query }: { orgId: string; query: Session
         {f.quality}
         <select name="quality" defaultValue={query.quality ?? ""}>
           <option value="">{f.any}</option>
-          {["good", "acceptable", "poor"].map((x) => (
+          {QUALITY_VERDICTS.map((x) => (
             <option key={x} value={x}>{x}</option>
           ))}
         </select>

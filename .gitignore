@@ -324,3 +324,6 @@ build/asd/
 !rust/.sqlx/**
 !rust/.env.example
 !rust/Cargo.lock
+
+# console source dir named lib/ is real source, not build output
+!apps/curv_console/src/lib/

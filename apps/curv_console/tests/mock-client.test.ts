@@ -27,6 +27,12 @@ describe("mock client", () => {
     expect(pages).toBe(3);
   });
 
+  it("uses opaque base64url keyset cursors and rejects a tampered one with problem+json 400", async () => {
+    const page = await api.listSessions(MOCK_ORG_ID, { limit: 5 });
+    expect(page.next_cursor).toMatch(/^[A-Za-z0-9_-]+$/);
+    await expect(api.listSessions(MOCK_ORG_ID, { cursor: "bogus" })).rejects.toMatchObject({ status: 400, slug: "validation-failed" });
+  });
+
   it("filters by flag and date range", async () => {
     const red = await api.listSessions(MOCK_ORG_ID, { flag: "red", limit: 100 });
     expect(red.items.length).toBeGreaterThan(0);

@@ -42,16 +42,21 @@ CI: `.github/workflows/console.yml`.
   Tokens never reach client JS. The report PDF is streamed through `/api/report/[id]`.
 - URLs carry only opaque ids; filter state lives in the query string (the filter form is a plain GET form).
 
-## API contract assumptions (must match the backend)
+## API contract (WP-C.8)
 
-See the report for WP-C.1; summarised in `src/lib/api/types.ts`:
+The contract is the Rust `asd-contract::api_v1` types, exported as `docs/spec/schemas/asd/api-v1.json`. The zod schemas
+in `src/lib/api/types.ts` mirror it and `src/lib/api/contract.test.ts` fails CI when they drift (published `examples`,
+enums, required properties; the mock client's data is validated too).
 
 - `POST /v1/auth/login {email,password}` and `POST /v1/auth/refresh {refresh_token}` return
   `{access_token, refresh_token, expires_in, user:{id,email,role,org_id}}`; `POST /v1/auth/logout {refresh_token}`.
-- `GET /v1/orgs/{id}`, `GET /v1/orgs/{id}/metrics`, `GET /v1/orgs/{id}/sessions?flag&quality&from&to&bundle_version&reviewed&cursor&limit`
-  returning `{items, next_cursor, total?}`, `GET /v1/sessions/{id}`, `GET /v1/sessions/{id}/clips` returning `{items}`,
-  `GET /v1/sessions/{id}/report.pdf`.
-- Errors are RFC 7807 problem+json.
+- Org-scoped: `GET /v1/orgs/{id}`, `/metrics`, `/sessions?flag&quality&from&to&bundle_version&reviewed&cursor&limit`
+  returning `{items, next_cursor, total?}` (opaque cursor, limit <= 100). Session-scoped: `GET /v1/sessions/{id}`,
+  `/clips` returning `{items}` where each clip carries `rows[]` (metric rows), `status` may be null, and
+  `/report.pdf` (404 until a device-uploaded report exists).
+- Flag is `green|yellow|red|unreliable`; `battery` is a catalog protocol id string; `capture_source` is
+  `truedepth|simulated|synthetic`; participants are shown by `participant_token`.
+- Errors are RFC 7807 problem+json (`type` = `https://schemas.curv.org/asd/problems/<slug>`, optional `invalid_params`).
 
 ## Licences
 

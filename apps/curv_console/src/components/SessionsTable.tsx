@@ -32,7 +32,7 @@ export function SessionsTable({ orgId, sessions }: { orgId: string; sessions: Se
                   {formatDateTime(s.started_at)}
                 </Link>
               </td>
-              <td data-label={c.participant}>{s.participant_id}</td>
+              <td data-label={c.participant}>{s.participant_token}</td>
               <td data-label={c.flag}><FlagBadge flag={s.attention_flag} /></td>
               <td data-label={c.composite} className="num">{formatNumber(s.composite_score)}</td>
               <td data-label={c.confidence} className="num">{formatPercent(s.composite_confidence)}</td>

@@ -7,8 +7,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   if (!token) return new NextResponse("Unauthorized", { status: 401 });
   const { id } = await ctx.params;
   const upstream = await fetchReportPdf(id, token);
+  // 404 = no device-uploaded report yet (WP-B.8); 401/403 pass through so the browser can re-authenticate.
   if (!upstream.ok || !upstream.body) {
-    return new NextResponse("Report unavailable", { status: upstream.status === 404 ? 404 : 502 });
+    const status = [401, 403, 404].includes(upstream.status) ? upstream.status : 502;
+    return new NextResponse("Report unavailable", { status });
   }
   return new NextResponse(upstream.body, {
     headers: {

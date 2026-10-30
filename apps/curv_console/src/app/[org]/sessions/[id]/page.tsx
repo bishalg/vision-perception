@@ -33,7 +33,7 @@ export default async function SessionDetailPage({
         <Link href={`/${encodeURIComponent(org)}/sessions`}>{t.back}</Link>
       </p>
       <h1>
-        {session.participant_id} <span className="muted">{formatDateTime(session.started_at)}</span>
+        {session.participant_token} <span className="muted">{formatDateTime(session.started_at)}</span>
       </h1>
       <div className="kpi-grid">
         <KpiCard label={t.composite} value={formatNumber(session.composite_score)} />

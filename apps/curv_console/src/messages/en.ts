@@ -64,7 +64,10 @@ export const en = {
     bundle: "Bundle",
     clips: {
       clip: "Clip",
+      segment: "Segment",
       metric: "Metric",
+      imputed: "imputed",
+      notScored: "Not scored",
       expected: "Expected",
       recorded: "Recorded",
       deviation: "Deviation",

@@ -5,11 +5,13 @@ on:
     branches: [main, dev]
     paths:
       - 'apps/curv_console/**'
+      - 'docs/spec/schemas/asd/api-v1.json'
       - '.github/workflows/console.yml'
   pull_request:
     branches: [main, dev]
     paths:
       - 'apps/curv_console/**'
+      - 'docs/spec/schemas/asd/api-v1.json'
       - '.github/workflows/console.yml'
 
 jobs:

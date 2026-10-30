@@ -10,6 +10,7 @@ import { SessionsTable } from "@/components/SessionsTable";
 import { ReportPanel } from "@/components/ReportPanel";
 import { LoginForm } from "@/app/login/LoginForm";
 import { MOCK_ORG_ID, createMockClient } from "@/lib/api/mock";
+import type { ClipScore, MetricRow } from "@/lib/api";
 
 describe("components", () => {
   it("KpiCard exposes label and value", () => {
@@ -51,18 +52,54 @@ describe("components", () => {
     expect(screen.queryByRole("link", { name: "Next page" })).toBeNull();
   });
 
-  it("ClipsTable orders rows by play order and shows status text", async () => {
-    const clips = await createMockClient().getSessionClips("sess-0001");
-    render(<ClipsTable clips={[...clips].reverse()} />);
+  const row = (over: Partial<MetricRow> = {}): MetricRow => ({
+    segment_id: "faces", metric: "eye_dwell_ratio", target_aoi: null, direction: "higherBetter",
+    expected: 0.4, acceptable_low: 0.3, acceptable_high: null, recorded: 0.33, deviation: -0.07,
+    status: "monitor", score: 0.7, imputed: false, source: "literature", ...over,
+  });
+  const clip = (over: Partial<ClipScore>): ClipScore => ({ clip_id: "c", order: 0, rows: [], ...over });
+
+  it("ClipsTable renders one line per metric row, ordered by play order, with expected/recorded/deviation", () => {
+    const clips = [
+      clip({ clip_id: "second", order: 1, status: "monitor", rows: [row()] }),
+      clip({
+        clip_id: "first", order: 0, status: "atypical",
+        rows: [row({ metric: "social_dwell_ratio", status: "onTarget" }), row({ metric: "eye_dwell_ratio", status: "atypical", recorded: 0.1, deviation: -0.3 })],
+      }),
+    ];
+    render(<ClipsTable clips={clips} />);
     const rows = screen.getAllByRole("row").slice(1);
-    expect(within(rows[0]!).getByText(clips[0]!.clip_id)).toBeInTheDocument();
-    expect(rows).toHaveLength(clips.length);
+    expect(rows).toHaveLength(3);
+    expect(within(rows[0]!).getByText("first")).toBeInTheDocument();
+    expect(within(rows[0]!).getByText("social_dwell_ratio")).toBeInTheDocument();
+    expect(within(rows[1]!).getByText("-0.30")).toBeInTheDocument();
+    expect(within(rows[1]!).getByText("Atypical")).toHaveClass("badge-clip-atypical");
+    expect(within(rows[2]!).getByText("second")).toBeInTheDocument();
+    expect(within(rows[2]!).getByText("0.40")).toBeInTheDocument();
+    expect(within(rows[2]!).getByText("0.33")).toBeInTheDocument();
+  });
+
+  it("ClipsTable marks imputed rows and shows a 'Not scored' line for a clip with null status and no rows", () => {
+    render(
+      <ClipsTable clips={[clip({ clip_id: "a", rows: [row({ imputed: true })], status: "monitor" }), clip({ clip_id: "b", order: 1, status: null })]} />,
+    );
+    expect(screen.getByText("(imputed)")).toBeInTheDocument();
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(within(rows[1]!).getByText("Not scored")).toBeInTheDocument();
+  });
+
+  it("ClipsTable renders every mock clip, including null-status clips", async () => {
+    const clips = await createMockClient().getSessionClips("SESS-MOCK-0001");
+    render(<ClipsTable clips={[...clips].reverse()} />);
+    const body = screen.getAllByRole("row").slice(1);
+    expect(body).toHaveLength(clips.reduce((n, c) => n + Math.max(1, c.rows.length), 0));
+    expect(within(body[0]!).getByText(clips[0]!.clip_id)).toBeInTheDocument();
   });
 
   it("ReportPanel offers a download only when a report exists", async () => {
-    const s = await createMockClient().getSession("sess-0001");
+    const s = await createMockClient().getSession("SESS-MOCK-0001");
     const { rerender } = render(<ReportPanel session={{ ...s, report_pdf_available: true }} />);
-    expect(screen.getByRole("link", { name: "Download PDF report" })).toHaveAttribute("href", "/api/report/sess-0001");
+    expect(screen.getByRole("link", { name: "Download PDF report" })).toHaveAttribute("href", "/api/report/SESS-MOCK-0001");
     rerender(<ReportPanel session={{ ...s, report_pdf_available: false }} />);
     expect(screen.queryByRole("link")).toBeNull();
   });
