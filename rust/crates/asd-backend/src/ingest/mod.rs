@@ -11,7 +11,7 @@
 //! AUTH-3); its org scopes everything written. The ingest audit row is an
 //! [`AuditEvent::device`] in the same transaction (AUTH-5). A participant whose consent was
 //! withdrawn (`participants.withdrawn_at` set, ADR-B8 erasure flow) gets no new data: the
-//! post, replays included, is refused with `409 conflict` and nothing is stored.
+//! post, replays included, is refused with `409 participant-withdrawn` and nothing is stored.
 
 pub mod auto_review;
 pub mod derive;
@@ -218,7 +218,7 @@ pub async fn ingest(
     })
 }
 
-/// `409 conflict` when the org's participant with this token has withdrawn consent
+/// `409 participant-withdrawn` when the org's participant with this token has withdrawn consent
 /// (`participants.withdrawn_at`). An unknown token is fine: ingest creates it.
 pub(crate) async fn ensure_not_withdrawn(
     conn: &mut PgConnection,
@@ -242,7 +242,7 @@ pub(crate) async fn ensure_not_withdrawn(
 /// The refusal for data about a participant who withdrew consent.
 pub(crate) fn participant_withdrawn() -> AppError {
     AppError::Conflict {
-        slug: slugs::CONFLICT,
+        slug: slugs::PARTICIPANT_WITHDRAWN,
         detail: "this participant has withdrawn consent; no new data is accepted".into(),
     }
 }

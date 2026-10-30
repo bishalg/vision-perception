@@ -922,7 +922,7 @@ async fn ingest_for_a_withdrawn_participant_is_refused_and_stores_nothing() {
             send(router.clone(), post_session(Some(&f.dev()), &body)).await;
         assert_eq!(status, StatusCode::CONFLICT, "{resp}");
         assert_eq!(common::content_type(&headers), "application/problem+json");
-        assert_eq!(problem_slug(&resp), "conflict");
+        assert_eq!(problem_slug(&resp), "participant-withdrawn");
         assert!(
             resp["detail"].as_str().unwrap().contains("withdrawn"),
             "{resp}"
@@ -947,7 +947,7 @@ async fn ingest_for_a_withdrawn_participant_is_refused_and_stores_nothing() {
         .unwrap();
     let (status, _, resp) = send(router.clone(), put).await;
     assert_eq!(status, StatusCode::CONFLICT, "{resp}");
-    assert_eq!(problem_slug(&resp), "conflict");
+    assert_eq!(problem_slug(&resp), "participant-withdrawn");
 
     // Other participants of the org are unaffected.
     let mut other = golden_with_id("S-OTHER");

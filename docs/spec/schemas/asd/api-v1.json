@@ -2139,6 +2139,24 @@
       ],
       "type": "object"
     },
+    "ProblemSlug": {
+      "description": "Problem slugs defined by the contract: `Problem.type` is `https://schemas.curv.org/asd/problems/<slug>`. Routes may add their own (e.g. `email-taken`, `last-owner`).",
+      "enum": [
+        "validation-failed",
+        "unsupported-schema-version",
+        "idempotency-key-reused",
+        "enrol-code-exhausted",
+        "capture-source-rejected",
+        "unauthorized",
+        "forbidden",
+        "not-found",
+        "rate-limited",
+        "conflict",
+        "participant-withdrawn",
+        "internal"
+      ],
+      "type": "string"
+    },
     "QualityGateParams": {
       "description": "Per-sample quality gate parameters (`GazeQualityGate.init` defaults).",
       "properties": {
@@ -3420,7 +3438,15 @@
           "type": "string"
         },
         "org_id": {
-          "type": "string"
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`null` only for the global `superadmin`, who belongs to no org (AUTH-4)."
         },
         "role": {
           "$ref": "#/$defs/Role"
@@ -3429,16 +3455,16 @@
       "required": [
         "id",
         "email",
-        "role",
-        "org_id"
+        "role"
       ],
       "type": "object"
     },
     "UserStatus": {
-      "description": "User account status.",
+      "description": "User account status. `invited` accounts exist but cannot sign in yet; only `active`\nusers can.",
       "enum": [
         "active",
-        "disabled"
+        "disabled",
+        "invited"
       ],
       "type": "string"
     }

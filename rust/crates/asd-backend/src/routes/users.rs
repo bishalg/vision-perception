@@ -10,7 +10,8 @@
 //! only up to its own rank (admins never create or touch owners); `superadmin` is not an
 //! org role; nobody changes their own role or status; the last active owner of an org
 //! cannot be demoted or disabled (`409 last-owner`); disabling a user revokes their
-//! refresh tokens (and the access-token extractor refuses them at once).
+//! refresh tokens (and the access-token extractor refuses them at once). `invited` users
+//! are listed as such and cannot sign in; `PATCH` sets only `active` or `disabled`.
 
 use asd_contract::api_v1::{
     CreateUserRequest, OrgUser, OrgUserPage, Role, UpdateUserRequest, UserStatus,
@@ -45,15 +46,17 @@ fn status_str(s: UserStatus) -> &'static str {
     match s {
         UserStatus::Active => "active",
         UserStatus::Disabled => "disabled",
+        UserStatus::Invited => "invited",
     }
 }
 
-/// `invited` (no API creates it yet) cannot sign in, so it reads as `disabled`.
+/// `users.status` (CHECK: invited, active, disabled). An unknown value cannot sign in,
+/// so it reads as `disabled`.
 fn status_from_db(s: &str) -> UserStatus {
-    if s == "active" {
-        UserStatus::Active
-    } else {
-        UserStatus::Disabled
+    match s {
+        "active" => UserStatus::Active,
+        "invited" => UserStatus::Invited,
+        _ => UserStatus::Disabled,
     }
 }
 
@@ -214,6 +217,13 @@ async fn update(
     let user_id = Uuid::parse_str(&user_id).map_err(|_| AppError::NotFound)?;
     if req.role == Some(Role::Superadmin) {
         return Err(not_an_org_role());
+    }
+    // `invited` is set by an invitation flow, not by an edit.
+    if req.status == Some(UserStatus::Invited) {
+        return Err(AppError::Validation(vec![InvalidParam {
+            name: "status".into(),
+            reason: "must be active or disabled".into(),
+        }]));
     }
 
     let mut tx = state.db.begin().await?;

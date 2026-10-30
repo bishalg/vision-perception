@@ -32,6 +32,10 @@ pub fn v1() -> Router<AppState> {
         .merge(review::router())
         .merge(metrics::router())
         .merge(participants::router())
+        // WP-B.5: norm aggregation jobs and runs.
+        .merge(jobs::router())
+        // WP-B.4: config documents, bundles, device bundle delivery.
+        .merge(config::router())
         // WP-B.2: auth, orgs, users, devices (org-scoped routes use `/orgs/{id}/...`).
         .merge(auth::router())
         .merge(orgs::router())

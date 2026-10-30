@@ -32,8 +32,28 @@ pub const NOT_FOUND: &str = "not-found";
 pub const RATE_LIMITED: &str = "rate-limited";
 /// State conflict other than idempotency (for example a lifecycle transition).
 pub const CONFLICT: &str = "conflict";
+/// 409: the participant withdrew consent; ingest and blob uploads for them are refused.
+pub const PARTICIPANT_WITHDRAWN: &str = "participant-withdrawn";
 /// Unexpected server error (no details leaked).
 pub const INTERNAL: &str = "internal";
+
+/// Every slug above, published as `$defs/ProblemSlug` in `api-v1.json` so clients can
+/// check their spelling. Route-specific slugs (e.g. `email-taken`, `last-owner`) are
+/// documented with their route and are not listed here.
+pub const SLUGS: &[&str] = &[
+    VALIDATION_FAILED,
+    UNSUPPORTED_SCHEMA_VERSION,
+    IDEMPOTENCY_KEY_REUSED,
+    ENROL_CODE_EXHAUSTED,
+    CAPTURE_SOURCE_REJECTED,
+    UNAUTHORIZED,
+    FORBIDDEN,
+    NOT_FOUND,
+    RATE_LIMITED,
+    CONFLICT,
+    PARTICIPANT_WITHDRAWN,
+    INTERNAL,
+];
 
 /// Full `type` URI for a slug.
 pub fn type_uri(slug: &str) -> String {

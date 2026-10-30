@@ -4,6 +4,7 @@
 //! telemetry. `main.rs` is a thin CLI (`serve`, `worker`, `migrate`) over this crate so
 //! integration tests can build the same router.
 
+pub mod admin;
 pub mod app;
 pub mod audit;
 pub mod auth;

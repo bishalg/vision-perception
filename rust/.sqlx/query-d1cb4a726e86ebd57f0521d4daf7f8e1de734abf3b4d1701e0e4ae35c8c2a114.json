@@ -1,0 +1,48 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT s.id,\n                      s.summary -> 'perVideo' AS per_video,\n                      s.summary -> 'ageMonths' AS age_months\n               FROM sessions s\n               JOIN participants p ON p.id = s.participant_id\n               WHERE s.id > $1\n                 AND ($2::uuid IS NULL OR s.org_id = $2)\n                 AND ($3::timestamptz IS NULL OR s.started_at >= $3)\n                 AND ($4::timestamptz IS NULL OR s.started_at < $4)\n                 AND p.withdrawn_at IS NULL\n                 AND s.quality_verdict IN ('optimal', 'acceptable')\n                 AND s.valid_frame_ratio >= $5\n                 AND (s.capture_source = 'truedepth'\n                      OR ($6 AND s.capture_source = 'synthetic'))\n                 AND NOT EXISTS (\n                       SELECT 1 FROM review_items r\n                       WHERE r.session_id = s.id\n                         AND (r.status IN ('open', 'in_review')\n                              OR (r.status = 'done'\n                                  AND r.decision -> 'exclude_from_norms' = 'true'::jsonb)))\n                 AND NOT EXISTS (\n                       SELECT 1 FROM labels l\n                       WHERE l.session_id = s.id AND l.key = 'exclude_from_norms'\n                         AND l.value = 'true'::jsonb)\n                 AND (s.capture_source = 'synthetic'\n                      OR (s.summary -> 'normCollection' -> 'consented' = 'true'::jsonb\n                          AND EXISTS (\n                                SELECT 1 FROM review_items r\n                                WHERE r.session_id = s.id AND r.reason = 'norm_candidate'\n                                  AND r.status = 'done')))\n               ORDER BY s.id\n               LIMIT $7",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "per_video",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "age_months",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Timestamptz",
+        "Timestamptz",
+        "Float8",
+        "Bool",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "d1cb4a726e86ebd57f0521d4daf7f8e1de734abf3b4d1701e0e4ae35c8c2a114"
+}

@@ -8,7 +8,7 @@
 //! `reports/{org}/{participant_token}/{session}/report.pdf`.
 //!
 //! The upload takes the WP-B.2 device bearer ([`DevicePrincipal`]); another org's session
-//! is 404, a session of a participant who withdrew consent is `409 conflict` (as ingest).
+//! is 404, a session of a participant who withdrew consent is `409 participant-withdrawn` (as ingest).
 
 use axum::body::Bytes;
 use axum::extract::rejection::BytesRejection;

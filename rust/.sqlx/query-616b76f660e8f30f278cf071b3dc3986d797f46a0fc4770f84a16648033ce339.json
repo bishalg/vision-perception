@@ -1,0 +1,104 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT b.id, b.bundle_version, b.key_id, b.published_at,\n                c.version AS catalog_version, n.version AS baselines_version,\n                s.version AS scoring_profile_version\n         FROM config_bundles b\n         JOIN config_documents c ON c.id = b.catalog_id\n         JOIN config_documents n ON n.id = b.baselines_id\n         JOIN config_documents s ON s.id = b.scoring_id\n         WHERE ($1 OR b.org_id IS NULL OR b.org_id = $2)\n           AND ($3::timestamptz IS NULL OR (b.published_at, b.id) < ($3, $4))\n         ORDER BY b.published_at DESC, b.id DESC\n         LIMIT $5",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "config_bundles",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "bundle_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "config_bundles",
+            "name": "bundle_version"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "key_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "config_bundles",
+            "name": "key_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "published_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "config_bundles",
+            "name": "published_at"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "catalog_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "config_documents",
+            "name": "version"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "baselines_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "config_documents",
+            "name": "version"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "scoring_profile_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "config_documents",
+            "name": "version"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Uuid",
+        "Timestamptz",
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "616b76f660e8f30f278cf071b3dc3986d797f46a0fc4770f84a16648033ce339"
+}

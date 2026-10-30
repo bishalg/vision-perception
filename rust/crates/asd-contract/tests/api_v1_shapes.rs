@@ -99,7 +99,7 @@ fn token_pair_matches_the_console() {
             id: "u1".into(),
             email: "a@example.org".into(),
             role: Role::Clinician,
-            org_id: "o1".into(),
+            org_id: Some("o1".into()),
         },
     };
     let v = serde_json::to_value(&t).unwrap();
@@ -295,4 +295,79 @@ fn every_published_example_validates_against_its_definition() {
         }
     }
     assert!(checked >= 10, "only {checked} examples published");
+}
+
+// ---- bootstrap/contract fixes (post WP-B.2/B.3) ----------------------------------------
+
+#[test]
+fn superadmin_user_has_a_null_org_id() {
+    let u = User {
+        id: "u1".into(),
+        email: "root@example.org".into(),
+        role: Role::Superadmin,
+        org_id: None,
+    };
+    let v = serde_json::to_value(&u).unwrap();
+    assert_eq!(keys(&v), ["email", "id", "org_id", "role"]);
+    assert!(v["org_id"].is_null(), "written as null, not omitted: {v}");
+    let back: User = serde_json::from_value(v).unwrap();
+    assert_eq!(back.org_id, None);
+
+    let api = schema::api_v1();
+    let org_id = &api["$defs"]["User"]["properties"]["org_id"];
+    assert_eq!(
+        org_id["anyOf"],
+        json!([{"type": "string"}, {"type": "null"}]),
+        "{org_id}"
+    );
+}
+
+#[test]
+fn user_status_includes_invited() {
+    use asd_contract::api_v1::UserStatus;
+    for (status, wire) in [
+        (UserStatus::Active, "active"),
+        (UserStatus::Disabled, "disabled"),
+        (UserStatus::Invited, "invited"),
+    ] {
+        assert_eq!(serde_json::to_value(status).unwrap(), wire);
+    }
+    assert_eq!(
+        schema::api_v1()["$defs"]["UserStatus"]["enum"],
+        json!(["active", "disabled", "invited"])
+    );
+}
+
+#[test]
+fn participant_withdrawn_is_its_own_problem_slug() {
+    assert_eq!(problem::PARTICIPANT_WITHDRAWN, "participant-withdrawn");
+    assert_ne!(problem::PARTICIPANT_WITHDRAWN, problem::CONFLICT);
+    assert!(problem::SLUGS.contains(&problem::PARTICIPANT_WITHDRAWN));
+}
+
+#[test]
+fn api_schema_publishes_the_contract_problem_slugs() {
+    let api = schema::api_v1();
+    let published = &api["$defs"]["ProblemSlug"]["enum"];
+    assert_eq!(published, &json!(problem::SLUGS));
+    for slug in [
+        problem::VALIDATION_FAILED,
+        problem::UNSUPPORTED_SCHEMA_VERSION,
+        problem::IDEMPOTENCY_KEY_REUSED,
+        problem::ENROL_CODE_EXHAUSTED,
+        problem::CAPTURE_SOURCE_REJECTED,
+        problem::UNAUTHORIZED,
+        problem::FORBIDDEN,
+        problem::NOT_FOUND,
+        problem::RATE_LIMITED,
+        problem::CONFLICT,
+        problem::PARTICIPANT_WITHDRAWN,
+        problem::INTERNAL,
+    ] {
+        assert!(problem::SLUGS.contains(&slug), "{slug} missing from SLUGS");
+    }
+    let mut unique = problem::SLUGS.to_vec();
+    unique.sort_unstable();
+    unique.dedup();
+    assert_eq!(unique.len(), problem::SLUGS.len(), "no duplicates");
 }

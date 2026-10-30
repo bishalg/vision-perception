@@ -186,7 +186,17 @@ pub fn api_v1() -> Value {
         api_v1::Health,
         api_v1::Ready,
     );
-    let defs = gen.take_definitions(true);
+    let mut defs = gen.take_definitions(true);
+    defs.insert(
+        "ProblemSlug".into(),
+        json!({
+            "description": "Problem slugs defined by the contract: `Problem.type` is \
+                            `https://schemas.curv.org/asd/problems/<slug>`. Routes may add \
+                            their own (e.g. `email-taken`, `last-owner`).",
+            "type": "string",
+            "enum": crate::problem::SLUGS,
+        }),
+    );
     let mut value = json!({
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$id": API_SCHEMA_ID,

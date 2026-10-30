@@ -40,7 +40,8 @@ pub struct User {
     pub id: String,
     pub email: String,
     pub role: Role,
-    pub org_id: String,
+    /// `null` only for the global `superadmin`, who belongs to no org (AUTH-4).
+    pub org_id: Option<String>,
 }
 
 /// `POST /v1/auth/login`.
@@ -180,12 +181,14 @@ pub struct OrgPatch {
     pub settings: Option<BTreeMap<String, Value>>,
 }
 
-/// User account status.
+/// User account status. `invited` accounts exist but cannot sign in yet; only `active`
+/// users can.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum UserStatus {
     Active,
     Disabled,
+    Invited,
 }
 
 /// `GET /v1/orgs/{id}/users` item.
@@ -633,7 +636,7 @@ fn example_user() -> User {
         id: "0b7c9e2a-5d1f-4c3e-9a8b-1f2e3d4c5b6a".into(),
         email: "clinician@example.org".into(),
         role: Role::Clinician,
-        org_id: "5f0e1d2c-3b4a-4968-8776-655443322110".into(),
+        org_id: Some("5f0e1d2c-3b4a-4968-8776-655443322110".into()),
     }
 }
 

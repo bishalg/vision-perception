@@ -77,8 +77,8 @@ fn token_pair(
             id: user_id.to_string(),
             email,
             role,
-            // `User.org_id` is a string in the contract; the global superadmin has none.
-            org_id: org_id.map(|o| o.to_string()).unwrap_or_default(),
+            // `null` for the global superadmin, who has no org.
+            org_id: org_id.map(|o| o.to_string()),
         },
     })
 }

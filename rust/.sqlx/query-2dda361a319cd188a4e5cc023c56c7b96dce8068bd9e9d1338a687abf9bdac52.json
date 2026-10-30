@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id FROM config_documents\n         WHERE kind = 'normative_baselines' AND status = 'published'\n         ORDER BY published_at DESC NULLS LAST, created_at DESC LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "config_documents",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "2dda361a319cd188a4e5cc023c56c7b96dce8068bd9e9d1338a687abf9bdac52"
+}

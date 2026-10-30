@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO bundle_adoption (device_id, bundle_version) VALUES ($1, $2)\n         ON CONFLICT (device_id, bundle_version) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d71bb4d93404cc7997cbfe77f77825fde95f3bccf165a9d6e21a23d3a92116dc"
+}

@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO config_documents (kind, version, status, body, notes)\n             VALUES ($1, $2, 'draft', $3, 'Seeded on first boot from the app''s bundled defaults (CFG-2)')\n             ON CONFLICT (kind, version) DO NOTHING\n             RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "config_documents",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "785f3ec95e5010ea8049b0306c099e58cf80f6d4f4f60021ab2b684222faa244"
+}

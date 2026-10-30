@@ -55,6 +55,8 @@ pub struct Config {
     pub request_timeout: Duration,
     /// JWT signing key and client-IP policy (WP-B.2, [`crate::auth::AuthConfig`]).
     pub auth: crate::auth::AuthConfig,
+    /// `ASD_BUNDLE_SIGNING_KEY` (WP-B.4, CFG-1); `None` = bundles cannot be composed.
+    pub bundle_signing: Option<crate::config_docs::bundle::BundleSigner>,
 }
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -155,6 +157,8 @@ impl Config {
             }
         }
 
+        let auth = crate::auth::AuthConfig::from_lookup(&get)?;
+        let bundle_signing = crate::config_docs::bundle::BundleSigner::from_lookup(&get, &auth)?;
         Ok(Self {
             bind_addr,
             database_url,
@@ -167,7 +171,8 @@ impl Config {
             console_origin,
             log_filter: get("RUST_LOG").unwrap_or_else(|| "info".into()),
             request_timeout,
-            auth: crate::auth::AuthConfig::from_lookup(&get)?,
+            auth,
+            bundle_signing,
         })
     }
 }
@@ -201,6 +206,7 @@ impl fmt::Debug for Config {
             .field("log_filter", &self.log_filter)
             .field("request_timeout", &self.request_timeout)
             .field("auth", &self.auth)
+            .field("bundle_signing", &self.bundle_signing)
             .finish()
     }
 }
