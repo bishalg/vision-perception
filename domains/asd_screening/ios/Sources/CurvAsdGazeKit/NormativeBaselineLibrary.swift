@@ -90,7 +90,7 @@ public struct NormativeBaselineSet: Codable, Sendable {
 ///
 /// The bundled set is `provisional-literature-seeded`: literature-anchored values with explicit
 /// citations, plus clearly-marked developmental interpolations. A candidate set produced by the
-/// norm-aggregation pipeline (`tools/asd_norm_aggregator.py`) can be loaded over it after review.
+/// norm-aggregation pipeline (`asd-cli norms aggregate`) can be loaded over it after review.
 public enum NormativeBaselineLibrary {
 
     public static let bundledResourceName = "normative_baselines"

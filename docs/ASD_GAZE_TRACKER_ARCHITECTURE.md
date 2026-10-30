@@ -298,7 +298,7 @@ Sources/
   - `normative_baselines.json` (bundled, versioned, `provisional-literature-seeded`) maps each video → time-coded content segments → age-bracketed expected ranges with citations. See `domains/asd_screening/docs/NORMATIVE_BASELINES.md`.
   - `PerVideoScoringEngine` emits the expected-vs-recorded matrix rows (onTarget/monitor/atypical + continuous score) and a weighted composite. The classification engine above is unchanged — the matrix displays alongside it until empirically validated.
   - Persisted additively: `GazeSessionRecord` v1.5, vault `per_video_score` lines, ResearchKit `per_video` block, FHIR local-code components, doctor PDF §2.
-  - Normative collection mode (consent + opt-in gated, simulation excluded) feeds `tools/asd_norm_aggregator.py` to build candidate age-bracketed norms from collected sessions (min n = 12 per cell, human review before promotion).
+  - Normative collection mode (consent + opt-in gated, simulation excluded) feeds `asd-cli norms aggregate` (Rust) to build candidate age-bracketed norms from collected sessions (min n = 12 per cell, human review before promotion).
 
 ---
 

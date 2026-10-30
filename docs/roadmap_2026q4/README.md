@@ -33,7 +33,7 @@ This folder is the single entry point for any human or AI agent picking up this 
 1. Read `00` fully. Read the domain doc for your task. Read the WP entry in `04` you were assigned.
 2. Each WP lists: goal, files it may touch, files it must not touch, acceptance criteria, tests to add, and the model tier suggested (`architect` = Fable for design only; `senior-implementer` = Opus; `implementer` = Sonnet). Follow the repo-owner's routing rule in `~/.claude/CLAUDE.md`: design with Fable, build with Opus/Sonnet.
 3. Never commit: child telemetry, model weights without a manifest + licence file in `models/`, personal photos, credentials, or placeholder institution/IRB names.
-4. Run the relevant gate before reporting done: `scripts/ios_test.sh` (ASD iOS), `pytest tests/ aws_infra/tests tools/` (Python), `cmake --preset release && ctest --preset release` (C++), `python3 scripts/check_asd_claims.py --swift --secrets` (claims).
+4. Run the relevant gate before reporting done: `scripts/ios_test.sh` (ASD iOS), `pytest tests/ aws_infra/tests tools/` (Python), `cargo test --manifest-path rust/Cargo.toml` and `cargo run -p asd-cli -- schema check` (Rust ASD core and contract), `cmake --preset release && ctest --preset release` (C++), `python3 scripts/check_asd_claims.py --swift --secrets` (claims).
 5. Update the **status table at the top of `04`** when a WP changes state. Do not create a new tracker file.
 6. Report back with: what changed, test output, what was skipped and why.
 

@@ -10,7 +10,9 @@ on:
       - "scripts/check_asd_claims.py"
       - "scripts/check_privacy_api_use.sh"
       - "scripts/check_release_symbols.sh"
-      - "scripts/check_session_schema_parity.py"
+      - "rust/crates/asd-cli/**"
+      - "rust/crates/asd-contract/**"
+      - "rust/crates/asd-core/**"
       - "docs/spec/schemas/asd/**"
       - ".github/workflows/ios.yml"
   pull_request:
@@ -22,7 +24,9 @@ on:
       - "scripts/check_asd_claims.py"
       - "scripts/check_privacy_api_use.sh"
       - "scripts/check_release_symbols.sh"
-      - "scripts/check_session_schema_parity.py"
+      - "rust/crates/asd-cli/**"
+      - "rust/crates/asd-contract/**"
+      - "rust/crates/asd-core/**"
       - "docs/spec/schemas/asd/**"
       - ".github/workflows/ios.yml"
 
@@ -51,6 +55,22 @@ jobs:
           key: ios-${{ runner.os }}-${{ hashFiles('domains/asd_screening/ios/Package.swift', 'domains/asd_screening/ios/Package.resolved', 'apps/ios_asd_gaze_app/project.yml') }}
           restore-keys: |
             ios-${{ runner.os }}-
+
+      - name: Install Rust toolchain
+        run: |
+          rustup show active-toolchain || rustup toolchain install stable --profile minimal
+          cargo --version
+
+      - name: Cache cargo (asd-cli)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: ios-cargo-${{ runner.os }}-${{ hashFiles('rust/Cargo.lock') }}
+          restore-keys: |
+            ios-cargo-${{ runner.os }}-
 
       - name: Install XcodeGen
         run: brew install xcodegen

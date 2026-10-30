@@ -150,7 +150,7 @@ The implementation is structured into **7 distinct, measurable phases**. Use thi
 *Focus: HIPAA/COPPA compliance, AirDrop / cloud export, and offline resilience.*
 - [ ] **7.1 Apple CryptoKit Local Vault**: Store session telemetry in an encrypted local sandbox using `AES-GCM-256`.
 - [ ] **7.2 AirDrop & Files Exporter**: Caregiver/Clinician manual export to secure research drive via iOS Share Sheet (`UIActivityViewController`).
-- [ ] **7.3 Opt-In Research API Sync**: Background upload of de-identified JSONL payloads to `tools/asd_research_server.py` using `URLSessionBackgroundConfiguration` (offline-first queue).
+- [ ] **7.3 Opt-In Research API Sync**: Background upload of de-identified JSONL payloads to the Rust ASD backend (`rust/crates/asd-backend`; the Python research server was removed) using `URLSessionBackgroundConfiguration` (offline-first queue).
 - [ ] **7.4 Comprehensive End-to-End Test**: Simulate complete workflow from consent $\to$ calibration $\to$ stimuli $\to$ report $\to$ export.
 
 ---

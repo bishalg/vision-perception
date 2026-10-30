@@ -31,3 +31,9 @@ ctest --test-dir build -R steger -V    # run one suite verbosely
 Tests build synthetic `cv::Mat` fixtures inline; static sample data lives in `data/samples/`.
 Exemptions to the coverage gate are whitelist-only with written justifications
 (`scripts/coverage_exemptions.txt`) and are reserved for provably unreachable defensive code.
+
+## ASD Rust gates
+
+The ASD session-schema, synthetic-generator and norm-aggregator checks are Rust tests and
+`asd-cli` commands, not Python: `cargo test --manifest-path rust/Cargo.toml` and
+`cargo run --manifest-path rust/Cargo.toml -p asd-cli -- schema check`.

@@ -14,6 +14,7 @@
 #   SIM_NAME      simulator name (default "iPhone 18 Pro"; must exist, see
 #                 `xcrun simctl list devices available`)
 #   SIM_DESTINATION  full xcodebuild destination, overrides SIM_NAME
+#   ASD_CARGO_TARGET_DIR  cargo target dir for asd-cli (default $CARGO_TARGET_DIR, else rust/target)
 #
 # --dry-run prints each command without running it.
 set -euo pipefail
@@ -22,7 +23,7 @@ DRY_RUN=0
 for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY_RUN=1 ;;
-    -h|--help) sed -n '2,19p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "unknown argument: $arg (try --help)" >&2; exit 2 ;;
   esac
 done
@@ -83,8 +84,13 @@ run xcodebuild build \
 step "Static gate: claims and secrets"
 run python3 scripts/check_asd_claims.py --swift --secrets
 
-step "Static gate: JSON schema parity contract"
-run python3 scripts/check_session_schema_parity.py
+step "Static gate: JSON schema contract (Rust asd-cli, GATE-1)"
+ASD_TARGET="${ASD_CARGO_TARGET_DIR:-${CARGO_TARGET_DIR:-$ROOT/rust/target}}"
+run cargo build --quiet --manifest-path "$ROOT/rust/Cargo.toml" -p asd-cli --target-dir "$ASD_TARGET"
+run "$ASD_TARGET/debug/asd-cli" schema check
+run "$ASD_TARGET/debug/asd-cli" schema validate \
+  "$ROOT/docs/spec/schemas/asd/session-v1.6.json" \
+  "$ROOT/$APP_DIR/Tests/Fixtures/expected-session-v1.6.json"
 
 step "Static gate: privacy API use"
 run bash scripts/check_privacy_api_use.sh

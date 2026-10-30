@@ -130,7 +130,7 @@ All other cells are `source: "interpolated"` with the basis stated in their cita
    device model — de-identified) alongside the `per_video_score` line.
 3. Exports flow through the existing ResearchKit sync queue to the research server
    (`POST /api/v1/batch/sync`, stored as-is — schema-on-read).
-4. `python3 tools/asd_norm_aggregator.py --input <export-dir>` aggregates to a
+4. `cargo run -p asd-cli -- norms aggregate --input <export-dir> --output <file>` aggregates to a
    **candidate** baseline: per cell n / median / p10-or-p90, with a **min n = 12 guard** and
    imputed rows excluded. Cells below the guard are withheld (null).
 5. A clinician/researcher reviews `candidate_normative_baselines.json`, then promotes it by

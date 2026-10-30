@@ -56,6 +56,7 @@ SIM_NAME="iPhone 16" scripts/ios_test.sh   # if the default simulator is not ins
 ```
 
 Build output always lives outside the repository (`DERIVED_DATA`, default `/private/tmp/asd-app-dd`).
+The JSON-schema contract gate is Rust: the script builds `asd-cli` (`cargo build -p asd-cli`, so a Rust toolchain is required) and runs `asd-cli schema check` plus `asd-cli schema validate` against `Tests/Fixtures/expected-session-v1.6.json`. Set `ASD_CARGO_TARGET_DIR` to keep cargo output outside the repo.
 CI runs the same script from `.github/workflows/ios.yml`.
 
 ## 3. Screening Flow & Stimulus Batteries

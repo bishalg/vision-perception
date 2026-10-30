@@ -169,7 +169,7 @@ stateDiagram-v2
   - Smile Reactivity and Flat Affect interpretation.
   - Regulatory disclaimer footer ("Screening support tool only — not a diagnosis").
 - [ ] **D4.4 AirDrop / Share Sheet**: Present `.pdf` and optionally `.report.enc` via `UIActivityViewController`.
-- [ ] **D4.5 Opt-In Research Sync**: Background `URLSessionBackgroundConfiguration` upload of pseudonymized `.jsonl.enc` to `tools/asd_research_server.py`. Requires explicit per-session re-consent, not a global toggle.
+- [ ] **D4.5 Opt-In Research Sync**: Background `URLSessionBackgroundConfiguration` upload of pseudonymized `.jsonl.enc` to the Rust ASD backend (`rust/crates/asd-backend`; the Python research server was removed). Requires explicit per-session re-consent, not a global toggle.
 
 ---
 

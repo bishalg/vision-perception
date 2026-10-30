@@ -155,3 +155,17 @@ raw video is ever stored.
 ResearchKit sync, report generation) live in `apps/ios_asd_gaze_app/Tests/`
 (55 tests). App features and screening flow:
 [`apps/ios_asd_gaze_app/README.md`](../../apps/ios_asd_gaze_app/README.md).
+
+## Contract, synthetic data and norms tooling (Rust)
+
+The session JSON Schema, the synthetic session generator and the normative-baseline aggregator
+are `asd-cli` commands (the former Python scripts were removed):
+
+```bash
+cargo run -p asd-cli -- schema check                      # stored schemas match the Rust contract
+cargo run -p asd-cli -- schema validate docs/spec/schemas/asd/session-v1.6.json <file>...
+cargo run -p asd-cli -- synth --seed 7 --count 50 --out ./synthetic_sessions
+cargo run -p asd-cli -- norms aggregate --input <dir> --output <file> [--min-n 12]
+```
+
+Run from `rust/`. Tests live in `rust/crates/asd-core/tests/` (`synth.rs`, `norms.rs`).
