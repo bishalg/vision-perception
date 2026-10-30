@@ -1,0 +1,531 @@
+{
+  "$defs": {
+    "AgeBracket": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "maxMonths": {
+          "type": "integer"
+        },
+        "minMonths": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "minMonths",
+        "maxMonths"
+      ],
+      "type": "object"
+    },
+    "AgePack": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "maxMonths": {
+          "type": "integer"
+        },
+        "minMonths": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "minMonths",
+        "maxMonths"
+      ],
+      "type": "object"
+    },
+    "Area": {
+      "properties": {
+        "endSec": {
+          "type": "number"
+        },
+        "name": {
+          "type": "string"
+        },
+        "roles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "startSec": {
+          "type": "number"
+        },
+        "xMax": {
+          "type": "number"
+        },
+        "xMin": {
+          "type": "number"
+        },
+        "yMax": {
+          "type": "number"
+        },
+        "yMin": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "startSec",
+        "endSec",
+        "xMin",
+        "yMin",
+        "xMax",
+        "yMax",
+        "roles"
+      ],
+      "type": "object"
+    },
+    "Clip": {
+      "properties": {
+        "areas": {
+          "items": {
+            "$ref": "#/$defs/Area"
+          },
+          "type": "array"
+        },
+        "category": {
+          "type": "string"
+        },
+        "durationSec": {
+          "type": "number"
+        },
+        "id": {
+          "type": "string"
+        },
+        "maxMonths": {
+          "type": "integer"
+        },
+        "minMonths": {
+          "type": "integer"
+        },
+        "protocols": {
+          "items": {
+            "$ref": "#/$defs/Membership"
+          },
+          "type": "array"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "category",
+        "durationSec",
+        "minMonths",
+        "maxMonths",
+        "protocols",
+        "areas"
+      ],
+      "type": "object"
+    },
+    "FlagThresholds": {
+      "description": "Traffic-light thresholds (`AttentionFlagAlgorithm`).",
+      "properties": {
+        "atypicalShareForRed": {
+          "description": "Share of atypical rows that forces red even with a high composite.",
+          "type": "number"
+        },
+        "greenFloor": {
+          "description": "Composite at or above which the flag can be green.",
+          "type": "number"
+        },
+        "lowConfidenceShare": {
+          "description": "Share of scored clips below the quality gate that forces yellow.",
+          "type": "number"
+        },
+        "yellowFloor": {
+          "description": "Composite below which the flag is red.",
+          "type": "number"
+        }
+      },
+      "required": [
+        "greenFloor",
+        "yellowFloor",
+        "lowConfidenceShare",
+        "atypicalShareForRed"
+      ],
+      "type": "object"
+    },
+    "Membership": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "order": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "order"
+      ],
+      "type": "object"
+    },
+    "NormativeBaselineSet": {
+      "properties": {
+        "ageBrackets": {
+          "items": {
+            "$ref": "#/$defs/AgeBracket"
+          },
+          "type": "array"
+        },
+        "provenance": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "videos": {
+          "additionalProperties": {
+            "$ref": "#/$defs/NormativeVideo"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "status",
+        "ageBrackets",
+        "videos"
+      ],
+      "type": "object"
+    },
+    "NormativeDirection": {
+      "enum": [
+        "higherBetter",
+        "lowerBetter",
+        "band"
+      ],
+      "type": "string"
+    },
+    "NormativeExpectation": {
+      "properties": {
+        "biomarker": {
+          "type": "string"
+        },
+        "byAge": {
+          "additionalProperties": {
+            "$ref": "#/$defs/NormativeRange"
+          },
+          "description": "Keyed by age-bracket id (`\"18-23\"`) or `\"default\"`.",
+          "type": "object"
+        },
+        "citation": {
+          "type": "string"
+        },
+        "direction": {
+          "$ref": "#/$defs/NormativeDirection"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source": {
+          "description": "`\"literature\"` or `\"interpolated\"`.",
+          "type": "string"
+        },
+        "targetAOI": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "biomarker",
+        "direction",
+        "byAge",
+        "citation",
+        "source"
+      ],
+      "type": "object"
+    },
+    "NormativeRange": {
+      "properties": {
+        "acceptableHigh": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "acceptableLow": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "NormativeSegment": {
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "endSec": {
+          "type": "number"
+        },
+        "expectations": {
+          "items": {
+            "$ref": "#/$defs/NormativeExpectation"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "startSec": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "description",
+        "startSec",
+        "endSec",
+        "expectations"
+      ],
+      "type": "object"
+    },
+    "NormativeVideo": {
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "segments": {
+          "items": {
+            "$ref": "#/$defs/NormativeSegment"
+          },
+          "type": "array"
+        },
+        "title": {
+          "type": "string"
+        },
+        "weight": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "title",
+        "category",
+        "weight",
+        "segments"
+      ],
+      "type": "object"
+    },
+    "QualityGateParams": {
+      "description": "Per-sample quality gate parameters (`GazeQualityGate.init` defaults).",
+      "properties": {
+        "blinkThreshold": {
+          "type": "number"
+        },
+        "maxDistanceCm": {
+          "type": "number"
+        },
+        "maxPitchRad": {
+          "type": "number"
+        },
+        "maxYawRad": {
+          "type": "number"
+        },
+        "minConfidence": {
+          "type": "number"
+        },
+        "minDistanceCm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "minDistanceCm",
+        "maxDistanceCm",
+        "maxYawRad",
+        "maxPitchRad",
+        "minConfidence",
+        "blinkThreshold"
+      ],
+      "type": "object"
+    },
+    "ScoringProfile": {
+      "description": "Scoring parameters delivered in the bundle (`scoring_profile` config document).",
+      "examples": [
+        {
+          "flag": {
+            "atypicalShareForRed": 0.4,
+            "greenFloor": 0.65,
+            "lowConfidenceShare": 0.5,
+            "yellowFloor": 0.35
+          },
+          "lowConfidenceValidRatio": 0.6,
+          "qualityGate": {
+            "blinkThreshold": 0.45,
+            "maxDistanceCm": 65.0,
+            "maxPitchRad": 0.52,
+            "maxYawRad": 0.61,
+            "minConfidence": 0.5,
+            "minDistanceCm": 35.0
+          },
+          "schemaVersion": "1.0.0"
+        }
+      ],
+      "properties": {
+        "flag": {
+          "$ref": "#/$defs/FlagThresholds"
+        },
+        "lowConfidenceValidRatio": {
+          "description": "Clips below this valid-sample ratio are low-confidence.",
+          "type": "number"
+        },
+        "qualityGate": {
+          "$ref": "#/$defs/QualityGateParams"
+        },
+        "schemaVersion": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "flag",
+        "lowConfidenceValidRatio",
+        "qualityGate"
+      ],
+      "type": "object"
+    },
+    "StimulusCatalog": {
+      "properties": {
+        "agePacks": {
+          "items": {
+            "$ref": "#/$defs/AgePack"
+          },
+          "type": "array"
+        },
+        "clips": {
+          "items": {
+            "$ref": "#/$defs/Clip"
+          },
+          "type": "array"
+        },
+        "comment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fallbackLanguage": {
+          "type": "string"
+        },
+        "languages": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "schemaVersion": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "languages",
+        "fallbackLanguage",
+        "agePacks",
+        "clips"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.curv.org/asd/config-bundle-v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Signed ASD config bundle (catalog, baselines, scoring profile). Signature: Ed25519 over the RFC 8785 form of the bundle without `signature`, `ed25519:` + base64url.",
+  "properties": {
+    "baselines": {
+      "$ref": "#/$defs/NormativeBaselineSet"
+    },
+    "bundle_version": {
+      "type": "string"
+    },
+    "catalog": {
+      "$ref": "#/$defs/StimulusCatalog"
+    },
+    "feature_flags": {
+      "additionalProperties": {
+        "type": "boolean"
+      },
+      "type": "object"
+    },
+    "key_id": {
+      "type": "string"
+    },
+    "scoring_profile": {
+      "$ref": "#/$defs/ScoringProfile"
+    },
+    "signature": {
+      "pattern": "^ed25519:[A-Za-z0-9_-]+$",
+      "type": "string"
+    },
+    "signed_at": {
+      "format": "date-time",
+      "type": "string"
+    }
+  },
+  "required": [
+    "bundle_version",
+    "key_id",
+    "catalog",
+    "baselines",
+    "scoring_profile",
+    "feature_flags",
+    "signed_at",
+    "signature"
+  ],
+  "title": "ConfigBundle",
+  "type": "object"
+}

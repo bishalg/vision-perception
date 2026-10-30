@@ -1,0 +1,3450 @@
+{
+  "$defs": {
+    "ActorType": {
+      "description": "Who performed an audited action.",
+      "enum": [
+        "user",
+        "device",
+        "system"
+      ],
+      "type": "string"
+    },
+    "AgeBracket": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "maxMonths": {
+          "type": "integer"
+        },
+        "minMonths": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "minMonths",
+        "maxMonths"
+      ],
+      "type": "object"
+    },
+    "AgePack": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "maxMonths": {
+          "type": "integer"
+        },
+        "minMonths": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "minMonths",
+        "maxMonths"
+      ],
+      "type": "object"
+    },
+    "Area": {
+      "properties": {
+        "endSec": {
+          "type": "number"
+        },
+        "name": {
+          "type": "string"
+        },
+        "roles": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "startSec": {
+          "type": "number"
+        },
+        "xMax": {
+          "type": "number"
+        },
+        "xMin": {
+          "type": "number"
+        },
+        "yMax": {
+          "type": "number"
+        },
+        "yMin": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "startSec",
+        "endSec",
+        "xMin",
+        "yMin",
+        "xMax",
+        "yMax",
+        "roles"
+      ],
+      "type": "object"
+    },
+    "AttentionFlag": {
+      "enum": [
+        "green",
+        "yellow",
+        "red"
+      ],
+      "type": "string"
+    },
+    "AuditEntry": {
+      "description": "`GET /v1/orgs/{id}/audit` item (AUTH-5). `before`/`after` are redacted snapshots.",
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "actor_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "actor_type": {
+          "$ref": "#/$defs/ActorType"
+        },
+        "after": true,
+        "before": true,
+        "id": {
+          "type": "string"
+        },
+        "org_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "target_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "target_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "ts",
+        "actor_type",
+        "action"
+      ],
+      "type": "object"
+    },
+    "AuditPage": {
+      "description": "`GET /v1/orgs/{id}/audit`.\nCursor-paginated list envelope: `cursor` is opaque, `limit <= 100`.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/AuditEntry"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "BundleAdoption": {
+      "description": "Devices on one bundle version.",
+      "properties": {
+        "bundle_version": {
+          "type": "string"
+        },
+        "devices": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "bundle_version",
+        "devices"
+      ],
+      "type": "object"
+    },
+    "CaptureSource": {
+      "enum": [
+        "truedepth",
+        "simulated",
+        "synthetic"
+      ],
+      "type": "string"
+    },
+    "Clip": {
+      "properties": {
+        "areas": {
+          "items": {
+            "$ref": "#/$defs/Area"
+          },
+          "type": "array"
+        },
+        "category": {
+          "type": "string"
+        },
+        "durationSec": {
+          "type": "number"
+        },
+        "id": {
+          "type": "string"
+        },
+        "maxMonths": {
+          "type": "integer"
+        },
+        "minMonths": {
+          "type": "integer"
+        },
+        "protocols": {
+          "items": {
+            "$ref": "#/$defs/Membership"
+          },
+          "type": "array"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "category",
+        "durationSec",
+        "minMonths",
+        "maxMonths",
+        "protocols",
+        "areas"
+      ],
+      "type": "object"
+    },
+    "ClipList": {
+      "description": "`GET /v1/sessions/{id}/clips` response.",
+      "examples": [
+        {
+          "items": [
+            {
+              "baseline_ref": "provisional-literature-seeded",
+              "clip_id": "stim_05_geopref_split_10s",
+              "deviation": -0.07,
+              "dwell_eye": 0.33,
+              "dwell_geometric": 0.21,
+              "dwell_mouth": null,
+              "dwell_social": 0.62,
+              "expected": 0.4,
+              "fixation_count": 14,
+              "gaze_cue_accuracy": null,
+              "mean_fixation_ms": 280.0,
+              "metric": "eye_dwell_ratio",
+              "order": 1,
+              "orienting_latency_ms": null,
+              "recorded": 0.33,
+              "rows": [
+                {
+                  "acceptable_high": null,
+                  "acceptable_low": 0.3,
+                  "deviation": -0.07,
+                  "direction": "higherBetter",
+                  "expected": 0.4,
+                  "imputed": false,
+                  "metric": "eye_dwell_ratio",
+                  "recorded": 0.33,
+                  "score": 0.7,
+                  "segment_id": "faces",
+                  "source": "literature",
+                  "status": "monitor",
+                  "target_aoi": null
+                }
+              ],
+              "score": 0.74,
+              "status": "monitor",
+              "weight": 0.3
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ClipScore"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "ClipScore": {
+      "description": "`GET /v1/sessions/{id}/clips` item: the stored per-clip row plus its metric rows. The\nflat `metric/expected/recorded/deviation/baseline_ref` columns come from the worst-status\nrow (ties: largest |deviation|), all `null` for a clip without rows (CON-19).",
+      "examples": [
+        {
+          "baseline_ref": "provisional-literature-seeded",
+          "clip_id": "stim_05_geopref_split_10s",
+          "deviation": -0.07,
+          "dwell_eye": 0.33,
+          "dwell_geometric": 0.21,
+          "dwell_mouth": null,
+          "dwell_social": 0.62,
+          "expected": 0.4,
+          "fixation_count": 14,
+          "gaze_cue_accuracy": null,
+          "mean_fixation_ms": 280.0,
+          "metric": "eye_dwell_ratio",
+          "order": 1,
+          "orienting_latency_ms": null,
+          "recorded": 0.33,
+          "rows": [
+            {
+              "acceptable_high": null,
+              "acceptable_low": 0.3,
+              "deviation": -0.07,
+              "direction": "higherBetter",
+              "expected": 0.4,
+              "imputed": false,
+              "metric": "eye_dwell_ratio",
+              "recorded": 0.33,
+              "score": 0.7,
+              "segment_id": "faces",
+              "source": "literature",
+              "status": "monitor",
+              "target_aoi": null
+            }
+          ],
+          "score": 0.74,
+          "status": "monitor",
+          "weight": 0.3
+        }
+      ],
+      "properties": {
+        "baseline_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "clip_id": {
+          "type": "string"
+        },
+        "deviation": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dwell_eye": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dwell_geometric": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dwell_mouth": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dwell_social": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fixation_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gaze_cue_accuracy": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mean_fixation_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metric": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "order": {
+          "type": "integer"
+        },
+        "orienting_latency_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recorded": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rows": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/MetricRow"
+          },
+          "type": "array"
+        },
+        "score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExpectationStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Worst row status; `null` for a clip with no scored rows."
+        },
+        "weight": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "clip_id",
+        "order"
+      ],
+      "type": "object"
+    },
+    "ConfigBundle": {
+      "description": "The signed bundle served by `GET /v1/config/bundle` (CON-5, CON-6).\n\n`signature` is `ed25519:` + base64url (no padding) of the Ed25519 signature over the\nRFC 8785 canonical form of this object with the `signature` member removed; `key_id`\nnames the signing key so keys can rotate. Use [`crate::signing`] to sign and verify.",
+      "properties": {
+        "baselines": {
+          "$ref": "#/$defs/NormativeBaselineSet"
+        },
+        "bundle_version": {
+          "type": "string"
+        },
+        "catalog": {
+          "$ref": "#/$defs/StimulusCatalog"
+        },
+        "feature_flags": {
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "type": "object"
+        },
+        "key_id": {
+          "type": "string"
+        },
+        "scoring_profile": {
+          "$ref": "#/$defs/ScoringProfile"
+        },
+        "signature": {
+          "pattern": "^ed25519:[A-Za-z0-9_-]+$",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "bundle_version",
+        "key_id",
+        "catalog",
+        "baselines",
+        "scoring_profile",
+        "feature_flags",
+        "signed_at",
+        "signature"
+      ],
+      "title": "ConfigBundle",
+      "type": "object"
+    },
+    "ConfigBundleSummary": {
+      "description": "`GET /v1/config/bundles` item (the bundle body itself is `ConfigBundle`).",
+      "properties": {
+        "baselines_version": {
+          "type": "string"
+        },
+        "bundle_version": {
+          "type": "string"
+        },
+        "catalog_version": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "key_id": {
+          "type": "string"
+        },
+        "published_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "scoring_profile_version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "bundle_version",
+        "catalog_version",
+        "baselines_version",
+        "scoring_profile_version",
+        "key_id",
+        "published_at"
+      ],
+      "type": "object"
+    },
+    "ConfigDocument": {
+      "description": "`GET /v1/config/{kind}/{version}`.",
+      "properties": {
+        "body": {
+          "description": "The `StimulusCatalog`, `NormativeBaselineSet` or `ScoringProfile` document."
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "created_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ConfigDocumentKind"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "published_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/ConfigDocumentStatus"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "version",
+        "status",
+        "body",
+        "created_at"
+      ],
+      "type": "object"
+    },
+    "ConfigDocumentKind": {
+      "description": "Config document kind.",
+      "enum": [
+        "stimulus_catalog",
+        "normative_baselines",
+        "scoring_profile"
+      ],
+      "type": "string"
+    },
+    "ConfigDocumentPage": {
+      "description": "`GET /v1/config/{kind}`.\nCursor-paginated list envelope: `cursor` is opaque, `limit <= 100`.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ConfigDocument"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "ConfigDocumentStatus": {
+      "description": "Lifecycle `draft -> candidate -> published -> retired`; only `published` is bundled.",
+      "enum": [
+        "draft",
+        "candidate",
+        "published",
+        "retired"
+      ],
+      "type": "string"
+    },
+    "CreateConfigDocumentRequest": {
+      "description": "`POST /v1/config/{kind}` (creates a `draft`).",
+      "properties": {
+        "body": true,
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "body"
+      ],
+      "type": "object"
+    },
+    "CreateReviewRequest": {
+      "description": "`POST /v1/orgs/{id}/review` (manual enqueue).",
+      "properties": {
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "session_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id"
+      ],
+      "type": "object"
+    },
+    "CreateUserRequest": {
+      "description": "`POST /v1/orgs/{id}/users`.",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/Role"
+        }
+      },
+      "required": [
+        "email",
+        "role",
+        "password"
+      ],
+      "type": "object"
+    },
+    "Device": {
+      "description": "`GET /v1/orgs/{id}/devices` item.",
+      "properties": {
+        "app_version": {
+          "type": "string"
+        },
+        "config_bundle_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "enrolled_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_seen_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "org_id": {
+          "type": "string"
+        },
+        "platform": {
+          "type": "string"
+        },
+        "revoked_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "org_id",
+        "platform",
+        "app_version",
+        "enrolled_at"
+      ],
+      "type": "object"
+    },
+    "DevicePage": {
+      "description": "`GET /v1/orgs/{id}/devices`.\nCursor-paginated list envelope: `cursor` is opaque, `limit <= 100`.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/Device"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "DwellUnits": {
+      "description": "Units of the `dwell_*` columns. Ratios of valid clip samples, never seconds (CON-13).",
+      "enum": [
+        "ratio"
+      ],
+      "type": "string"
+    },
+    "EnrolCodeRequest": {
+      "description": "`POST /v1/orgs/{id}/devices/enrol-code`.",
+      "properties": {
+        "expires_in_days": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Default 7."
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "max_uses": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Default 1."
+        }
+      },
+      "type": "object"
+    },
+    "EnrolCodeResponse": {
+      "description": "The new enrol code; the plain code is returned only here.",
+      "examples": [
+        {
+          "code": "K7Q4-9XMP",
+          "expires_at": "2026-11-06T12:00:00.000Z",
+          "id": "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+          "max_uses": 1
+        }
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "max_uses": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "code",
+        "max_uses",
+        "expires_at"
+      ],
+      "type": "object"
+    },
+    "ExpectationStatus": {
+      "enum": [
+        "onTarget",
+        "monitor",
+        "atypical"
+      ],
+      "type": "string"
+    },
+    "FlagThresholds": {
+      "description": "Traffic-light thresholds (`AttentionFlagAlgorithm`).",
+      "properties": {
+        "atypicalShareForRed": {
+          "description": "Share of atypical rows that forces red even with a high composite.",
+          "type": "number"
+        },
+        "greenFloor": {
+          "description": "Composite at or above which the flag can be green.",
+          "type": "number"
+        },
+        "lowConfidenceShare": {
+          "description": "Share of scored clips below the quality gate that forces yellow.",
+          "type": "number"
+        },
+        "yellowFloor": {
+          "description": "Composite below which the flag is red.",
+          "type": "number"
+        }
+      },
+      "required": [
+        "greenFloor",
+        "yellowFloor",
+        "lowConfidenceShare",
+        "atypicalShareForRed"
+      ],
+      "type": "object"
+    },
+    "GazeQualityVerdict": {
+      "enum": [
+        "optimal",
+        "acceptable",
+        "degraded",
+        "rejected"
+      ],
+      "type": "string"
+    },
+    "GazeSessionRecord": {
+      "additionalProperties": true,
+      "description": "The full on-device record (`GazeSessionRecord.swift`), carried as `rawPayload`.\n\nDates are RFC 3339 UTC strings with milliseconds (`2026-10-26T07:33:20.000Z`), as\n`SessionPayloadCoding` writes them. Keys this type does not know (for example a future\n`bundleVersion` or `normCollection`) are kept in [`GazeSessionRecord::extra`] and written\nback unchanged, so `sessions.summary` stores the record without loss.",
+      "properties": {
+        "calibratedDistanceCm": {
+          "type": "number"
+        },
+        "captureSource": {
+          "$ref": "#/$defs/CaptureSource"
+        },
+        "durationSec": {
+          "type": "number"
+        },
+        "endedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "eyeDwellRatio": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "firstEyeLatencyMs": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "flatAffectScore": {
+          "type": "number"
+        },
+        "id": {
+          "type": "string"
+        },
+        "legacyProvenance": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mouthDwellRatio": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "participantId": {
+          "description": "Pseudonymous participant token, never a name (CNS-7).",
+          "type": "string"
+        },
+        "perVideo": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/PerVideoScoreReport"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "perVideoComposite": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "qualityVerdict": {
+          "$ref": "#/$defs/GazeQualityVerdict"
+        },
+        "schemaVersion": {
+          "description": "Record form (`\"v1.6\"`); the wire form drops the `v`.",
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "smileReactivityIndex": {
+          "type": "number"
+        },
+        "socialPreferenceScore": {
+          "type": "number"
+        },
+        "socialSmileIntensity": {
+          "type": "number"
+        },
+        "startedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "surpriseScoreMean": {
+          "type": "number"
+        },
+        "validFrameRatio": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        "zeroRawVideoEnforced": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "participantId",
+        "captureSource",
+        "startedAt",
+        "endedAt",
+        "durationSec",
+        "socialPreferenceScore",
+        "validFrameRatio",
+        "calibratedDistanceCm",
+        "qualityVerdict",
+        "socialSmileIntensity",
+        "smileReactivityIndex",
+        "flatAffectScore",
+        "surpriseScoreMean",
+        "schemaVersion",
+        "zeroRawVideoEnforced"
+      ],
+      "type": "object"
+    },
+    "Health": {
+      "description": "`GET /health` (liveness, CON-22).",
+      "examples": [
+        {
+          "status": "ok"
+        }
+      ],
+      "properties": {
+        "status": {
+          "description": "Always `ok` when the process answers.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "type": "object"
+    },
+    "InvalidParam": {
+      "description": "One rejected request parameter (`invalid_params[]`).",
+      "properties": {
+        "name": {
+          "description": "JSON pointer or field name, e.g. `sessionId` or `/perVideo/0/dwell_social`.",
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "LabelInput": {
+      "description": "A human annotation attached by a reviewer.",
+      "properties": {
+        "clip_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "key": {
+          "type": "string"
+        },
+        "value": true
+      },
+      "required": [
+        "key",
+        "value"
+      ],
+      "type": "object"
+    },
+    "LoginRequest": {
+      "description": "`POST /v1/auth/login`.",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "email",
+        "password"
+      ],
+      "type": "object"
+    },
+    "Membership": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "order": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "order"
+      ],
+      "type": "object"
+    },
+    "MetricRow": {
+      "description": "One scored expected-vs-recorded cell of a clip (CON-19).",
+      "examples": [
+        {
+          "acceptable_high": null,
+          "acceptable_low": 0.3,
+          "deviation": -0.07,
+          "direction": "higherBetter",
+          "expected": 0.4,
+          "imputed": false,
+          "metric": "eye_dwell_ratio",
+          "recorded": 0.33,
+          "score": 0.7,
+          "segment_id": "faces",
+          "source": "literature",
+          "status": "monitor",
+          "target_aoi": null
+        }
+      ],
+      "properties": {
+        "acceptable_high": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "acceptable_low": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "deviation": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`recorded - expected`; `null` when there is no expected value."
+        },
+        "direction": {
+          "$ref": "#/$defs/NormativeDirection"
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "imputed": {
+          "type": "boolean"
+        },
+        "metric": {
+          "description": "Biomarker key, e.g. `eye_dwell_ratio`.",
+          "type": "string"
+        },
+        "recorded": {
+          "type": "number"
+        },
+        "score": {
+          "type": "number"
+        },
+        "segment_id": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/ExpectationStatus"
+        },
+        "target_aoi": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "segment_id",
+        "metric",
+        "direction",
+        "recorded",
+        "status",
+        "score",
+        "imputed",
+        "source"
+      ],
+      "type": "object"
+    },
+    "Metrics": {
+      "description": "`GET /v1/orgs/{id}/metrics` (console dashboard).",
+      "examples": [
+        {
+          "bundle_adoption": [
+            {
+              "bundle_version": "2026.10.30-1",
+              "devices": 3
+            }
+          ],
+          "devices_active": 3,
+          "flag_distribution": {
+            "green": 25,
+            "red": 3,
+            "unreliable": 2,
+            "yellow": 10
+          },
+          "quality_distribution": {
+            "acceptable": 8,
+            "degraded": 2,
+            "optimal": 30
+          },
+          "review_queue_size": 4,
+          "sessions_30d": 40,
+          "sessions_7d": 12
+        }
+      ],
+      "properties": {
+        "bundle_adoption": {
+          "items": {
+            "$ref": "#/$defs/BundleAdoption"
+          },
+          "type": "array"
+        },
+        "devices_active": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "flag_distribution": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "description": "Keyed by `SessionAttentionFlag` value.",
+          "type": "object"
+        },
+        "quality_distribution": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "description": "Keyed by quality verdict.",
+          "type": "object"
+        },
+        "review_queue_size": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "sessions_30d": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "sessions_7d": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sessions_7d",
+        "sessions_30d",
+        "flag_distribution",
+        "quality_distribution",
+        "review_queue_size",
+        "devices_active",
+        "bundle_adoption"
+      ],
+      "type": "object"
+    },
+    "NormativeBaselineSet": {
+      "properties": {
+        "ageBrackets": {
+          "items": {
+            "$ref": "#/$defs/AgeBracket"
+          },
+          "type": "array"
+        },
+        "provenance": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "schemaVersion": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "videos": {
+          "additionalProperties": {
+            "$ref": "#/$defs/NormativeVideo"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "status",
+        "ageBrackets",
+        "videos"
+      ],
+      "type": "object"
+    },
+    "NormativeDirection": {
+      "enum": [
+        "higherBetter",
+        "lowerBetter",
+        "band"
+      ],
+      "type": "string"
+    },
+    "NormativeExpectation": {
+      "properties": {
+        "biomarker": {
+          "type": "string"
+        },
+        "byAge": {
+          "additionalProperties": {
+            "$ref": "#/$defs/NormativeRange"
+          },
+          "description": "Keyed by age-bracket id (`\"18-23\"`) or `\"default\"`.",
+          "type": "object"
+        },
+        "citation": {
+          "type": "string"
+        },
+        "direction": {
+          "$ref": "#/$defs/NormativeDirection"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source": {
+          "description": "`\"literature\"` or `\"interpolated\"`.",
+          "type": "string"
+        },
+        "targetAOI": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "biomarker",
+        "direction",
+        "byAge",
+        "citation",
+        "source"
+      ],
+      "type": "object"
+    },
+    "NormativeRange": {
+      "properties": {
+        "acceptableHigh": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "acceptableLow": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "NormativeSegment": {
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "endSec": {
+          "type": "number"
+        },
+        "expectations": {
+          "items": {
+            "$ref": "#/$defs/NormativeExpectation"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "startSec": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "description",
+        "startSec",
+        "endSec",
+        "expectations"
+      ],
+      "type": "object"
+    },
+    "NormativeVideo": {
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "segments": {
+          "items": {
+            "$ref": "#/$defs/NormativeSegment"
+          },
+          "type": "array"
+        },
+        "title": {
+          "type": "string"
+        },
+        "weight": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "title",
+        "category",
+        "weight",
+        "segments"
+      ],
+      "type": "object"
+    },
+    "Org": {
+      "description": "`GET /v1/orgs/{id}`.",
+      "examples": [
+        {
+          "id": "5f0e1d2c-3b4a-4968-8776-655443322110",
+          "kind": "clinic",
+          "name": "Example Clinic",
+          "retention_months": 24
+        }
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/OrgKind"
+        },
+        "name": {
+          "type": "string"
+        },
+        "retention_months": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "OrgKind": {
+      "description": "Organisation kind.",
+      "enum": [
+        "home",
+        "clinic",
+        "research"
+      ],
+      "type": "string"
+    },
+    "OrgPatch": {
+      "description": "`PATCH /v1/orgs/{id}`; absent members are unchanged.",
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "retention_months": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "settings": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Merged into `organizations.settings` (e.g. `audit_rate`)."
+        }
+      },
+      "type": "object"
+    },
+    "OrgUser": {
+      "description": "`GET /v1/orgs/{id}/users` item.",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "last_login_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "org_id": {
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/Role"
+        },
+        "status": {
+          "$ref": "#/$defs/UserStatus"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "role",
+        "org_id",
+        "status"
+      ],
+      "type": "object"
+    },
+    "OrgUserPage": {
+      "description": "`GET /v1/orgs/{id}/users`.\nCursor-paginated list envelope: `cursor` is opaque, `limit <= 100`.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/OrgUser"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "Participant": {
+      "description": "`GET /v1/orgs/{id}/participants` item. `id` is `participants.id` (CON-20).",
+      "properties": {
+        "age_bracket_at_enrol": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "language": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_session_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "org_id": {
+          "type": "string"
+        },
+        "participant_token": {
+          "type": "string"
+        },
+        "session_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "withdrawn_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "org_id",
+        "participant_token",
+        "session_count"
+      ],
+      "type": "object"
+    },
+    "ParticipantPage": {
+      "description": "`GET /v1/orgs/{id}/participants`.\nCursor-paginated list envelope: `cursor` is opaque, `limit <= 100`.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/Participant"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "PerVideoScoreReport": {
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "hasBaseline": {
+          "type": "boolean"
+        },
+        "lowConfidence": {
+          "type": "boolean"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/PerVideoScoreRow"
+          },
+          "type": "array"
+        },
+        "stimulusId": {
+          "type": "string"
+        },
+        "subscore": {
+          "type": "number"
+        },
+        "title": {
+          "type": "string"
+        },
+        "validSampleRatio": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        "weight": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "stimulusId",
+        "title",
+        "category",
+        "rows",
+        "subscore",
+        "validSampleRatio",
+        "lowConfidence",
+        "hasBaseline",
+        "weight"
+      ],
+      "type": "object"
+    },
+    "PerVideoScoreRow": {
+      "properties": {
+        "acceptableHigh": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "acceptableLow": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "biomarker": {
+          "type": "string"
+        },
+        "citation": {
+          "type": "string"
+        },
+        "direction": {
+          "$ref": "#/$defs/NormativeDirection"
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "imputed": {
+          "type": "boolean"
+        },
+        "metricKey": {
+          "type": "string"
+        },
+        "observed": {
+          "type": "number"
+        },
+        "score": {
+          "type": "number"
+        },
+        "segmentDescription": {
+          "type": "string"
+        },
+        "segmentId": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/ExpectationStatus"
+        },
+        "targetAOI": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "segmentId",
+        "segmentDescription",
+        "biomarker",
+        "metricKey",
+        "direction",
+        "observed",
+        "status",
+        "score",
+        "imputed",
+        "citation",
+        "source"
+      ],
+      "type": "object"
+    },
+    "Problem": {
+      "description": "RFC 7807 problem details.",
+      "examples": [
+        {
+          "detail": "sessionId is required",
+          "invalid_params": [
+            {
+              "name": "sessionId",
+              "reason": "missing"
+            }
+          ],
+          "status": 400,
+          "title": "Validation failed",
+          "type": "https://schemas.curv.org/asd/problems/validation-failed"
+        }
+      ],
+      "properties": {
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "instance": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "invalid_params": {
+          "items": {
+            "$ref": "#/$defs/InvalidParam"
+          },
+          "type": "array"
+        },
+        "status": {
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "title": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "title",
+        "status"
+      ],
+      "type": "object"
+    },
+    "QualityGateParams": {
+      "description": "Per-sample quality gate parameters (`GazeQualityGate.init` defaults).",
+      "properties": {
+        "blinkThreshold": {
+          "type": "number"
+        },
+        "maxDistanceCm": {
+          "type": "number"
+        },
+        "maxPitchRad": {
+          "type": "number"
+        },
+        "maxYawRad": {
+          "type": "number"
+        },
+        "minConfidence": {
+          "type": "number"
+        },
+        "minDistanceCm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "minDistanceCm",
+        "maxDistanceCm",
+        "maxYawRad",
+        "maxPitchRad",
+        "minConfidence",
+        "blinkThreshold"
+      ],
+      "type": "object"
+    },
+    "Ready": {
+      "description": "`GET /health/ready` (DB and blob store, CON-22). `status` is `ok` only when every\ncheck is `ok`; the HTTP status is 503 otherwise.",
+      "examples": [
+        {
+          "checks": {
+            "blob_store": "ok",
+            "database": "ok"
+          },
+          "status": "ok"
+        }
+      ],
+      "properties": {
+        "checks": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "checks"
+      ],
+      "type": "object"
+    },
+    "RefreshRequest": {
+      "description": "`POST /v1/auth/refresh` and `POST /v1/auth/logout` (`{refresh_token}` in the body).",
+      "properties": {
+        "refresh_token": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "refresh_token"
+      ],
+      "type": "object"
+    },
+    "RegisterDeviceRequest": {
+      "description": "`POST /v1/devices/register` body as the iOS app sends it.",
+      "properties": {
+        "app_version": {
+          "type": "string"
+        },
+        "device_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Sent on re-registration: the server rotates this device's token without consuming\na use of the code (CON-11)."
+        },
+        "enrol_code": {
+          "type": "string"
+        },
+        "platform": {
+          "description": "`iOS`, `Android`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "enrol_code",
+        "platform",
+        "app_version"
+      ],
+      "type": "object"
+    },
+    "RegisterDeviceResponse": {
+      "description": "`POST /v1/devices/register` response (CON-10).",
+      "examples": [
+        {
+          "config_bundle_version": null,
+          "device_id": "9a8b7c6d-5e4f-4321-8fed-cba987654321",
+          "device_token": "dvc_Qm9ndXNUb2tlbkZvckV4YW1wbGVPbmx5",
+          "org_id": "5f0e1d2c-3b4a-4968-8776-655443322110",
+          "status": "registered"
+        }
+      ],
+      "properties": {
+        "config_bundle_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Latest bundle for the org, `null` when none is published."
+        },
+        "device_id": {
+          "type": "string"
+        },
+        "device_token": {
+          "description": "`dvc_` + 32 random bytes base64url; shown once, stored hashed.",
+          "type": "string"
+        },
+        "org_id": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/RegistrationStatus"
+        }
+      },
+      "required": [
+        "status",
+        "device_id",
+        "device_token",
+        "org_id"
+      ],
+      "type": "object"
+    },
+    "RegistrationStatus": {
+      "description": "Whether a registration created a device or rotated an existing device's token.",
+      "enum": [
+        "registered",
+        "rotated"
+      ],
+      "type": "string"
+    },
+    "ReviewItem": {
+      "description": "`GET /v1/orgs/{id}/review` item.",
+      "properties": {
+        "assigned_to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "decided_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "decided_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "decision": true,
+        "id": {
+          "type": "string"
+        },
+        "org_id": {
+          "type": "string"
+        },
+        "reason": {
+          "$ref": "#/$defs/ReviewReason"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/ReviewStatus"
+        }
+      },
+      "required": [
+        "id",
+        "org_id",
+        "session_id",
+        "reason",
+        "status",
+        "created_at"
+      ],
+      "type": "object"
+    },
+    "ReviewPage": {
+      "description": "`GET /v1/orgs/{id}/review`.\nCursor-paginated list envelope: `cursor` is opaque, `limit <= 100`.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ReviewItem"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "ReviewReason": {
+      "description": "Why a session entered the review queue.",
+      "enum": [
+        "low_quality",
+        "flag_red",
+        "random_audit",
+        "norm_candidate",
+        "manual"
+      ],
+      "type": "string"
+    },
+    "ReviewStatus": {
+      "description": "Review item state.",
+      "enum": [
+        "open",
+        "in_review",
+        "done",
+        "dismissed"
+      ],
+      "type": "string"
+    },
+    "Role": {
+      "description": "RBAC role: org-scoped roles plus the global `superadmin` (AUTH-4).",
+      "enum": [
+        "owner",
+        "admin",
+        "clinician",
+        "researcher",
+        "reviewer",
+        "viewer",
+        "superadmin"
+      ],
+      "type": "string"
+    },
+    "ScoringProfile": {
+      "description": "Scoring parameters delivered in the bundle (`scoring_profile` config document).",
+      "examples": [
+        {
+          "flag": {
+            "atypicalShareForRed": 0.4,
+            "greenFloor": 0.65,
+            "lowConfidenceShare": 0.5,
+            "yellowFloor": 0.35
+          },
+          "lowConfidenceValidRatio": 0.6,
+          "qualityGate": {
+            "blinkThreshold": 0.45,
+            "maxDistanceCm": 65.0,
+            "maxPitchRad": 0.52,
+            "maxYawRad": 0.61,
+            "minConfidence": 0.5,
+            "minDistanceCm": 35.0
+          },
+          "schemaVersion": "1.0.0"
+        }
+      ],
+      "properties": {
+        "flag": {
+          "$ref": "#/$defs/FlagThresholds"
+        },
+        "lowConfidenceValidRatio": {
+          "description": "Clips below this valid-sample ratio are low-confidence.",
+          "type": "number"
+        },
+        "qualityGate": {
+          "$ref": "#/$defs/QualityGateParams"
+        },
+        "schemaVersion": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "flag",
+        "lowConfidenceValidRatio",
+        "qualityGate"
+      ],
+      "type": "object"
+    },
+    "SessionAttentionFlag": {
+      "description": "Backend-derived flag: the device enum plus `unreliable` (CON-15).",
+      "enum": [
+        "green",
+        "yellow",
+        "red",
+        "unreliable"
+      ],
+      "type": "string"
+    },
+    "SessionDetail": {
+      "description": "`GET /v1/sessions/{id}`: the summary plus stored measurements.",
+      "examples": [
+        {
+          "affect": {
+            "flatAffectScore": 0.12,
+            "socialSmileIntensity": 0.41
+          },
+          "age_pack": "18-30",
+          "attention_flag": "yellow",
+          "battery": "express_30s",
+          "bundle_version": null,
+          "calibrated_distance_cm": 38.0,
+          "capture_source": "truedepth",
+          "composite_confidence": 0.5,
+          "composite_score": 0.74,
+          "device_id": "9a8b7c6d-5e4f-4321-8fed-cba987654321",
+          "duration_sec": 32.5,
+          "eye_dwell": 0.33,
+          "first_eye_latency_ms": null,
+          "id": "SESS-GOLDEN-0001",
+          "lang": "en",
+          "mouth_dwell": null,
+          "org_id": "5f0e1d2c-3b4a-4968-8776-655443322110",
+          "participant_id": "7f1c1c1e-0000-4000-8000-000000000001",
+          "participant_token": "child-SESS-GOL",
+          "quality_verdict": "optimal",
+          "report_pdf_available": false,
+          "reviewed": false,
+          "schema_version": "1.6",
+          "social_preference": 0.62,
+          "started_at": "2026-10-26T07:33:20.000Z",
+          "valid_frame_ratio": 0.93
+        }
+      ],
+      "properties": {
+        "affect": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "age_pack": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attention_flag": {
+          "$ref": "#/$defs/SessionAttentionFlag"
+        },
+        "battery": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Catalog protocol id, e.g. `express_30s` (CON-16)."
+        },
+        "bundle_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "calibrated_distance_cm": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "capture_source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CaptureSource"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "composite_confidence": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`1 - share of low-confidence clips` (ING-2)."
+        },
+        "composite_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "device_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "duration_sec": {
+          "type": "number"
+        },
+        "eye_dwell": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "first_eye_latency_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "lang": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mouth_dwell": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "org_id": {
+          "type": "string"
+        },
+        "participant_id": {
+          "description": "`participants.id` (UUID, CON-20).",
+          "type": "string"
+        },
+        "participant_token": {
+          "description": "The pseudonymous token the device sent (CON-20).",
+          "type": "string"
+        },
+        "quality_verdict": {
+          "type": "string"
+        },
+        "report_pdf_available": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reviewed": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "schema_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "social_preference": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "started_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "valid_frame_ratio": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "participant_id",
+        "participant_token",
+        "started_at",
+        "duration_sec",
+        "quality_verdict",
+        "attention_flag",
+        "org_id"
+      ],
+      "type": "object"
+    },
+    "SessionIngestRequest": {
+      "description": "Curv Pediatric ASD Gaze Session Ingestion Schema (v1.6)",
+      "properties": {
+        "attentionFlag": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AttentionFlag"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Explicit `null` when the device did not compute a flag; the server then derives it\n(CON-15). `None` = key absent, `Some(None)` = `null`."
+        },
+        "battery": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Catalog protocol id (`express_30s`, CON-16) or explicit `null` when unknown."
+        },
+        "calibratedDistanceCm": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "captureSource": {
+          "$ref": "#/$defs/CaptureSource"
+        },
+        "durationSec": {
+          "type": "number"
+        },
+        "eyeDwellRatio": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "firstEyeLatencyMs": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mouthDwellRatio": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "participantToken": {
+          "description": "Pseudonymous token (CNS-7), never a name.",
+          "type": "string"
+        },
+        "perVideo": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/SessionPerVideoScore"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "qualityVerdict": {
+          "$ref": "#/$defs/GazeQualityVerdict"
+        },
+        "rawPayload": {
+          "$ref": "#/$defs/GazeSessionRecord"
+        },
+        "schemaVersion": {
+          "description": "Wire form (`\"1.6\"`), equal to the `X-Schema-Version` header (CON-21).",
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "socialPreferenceScore": {
+          "type": "number"
+        },
+        "validRatio": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "sessionId",
+        "participantToken",
+        "captureSource",
+        "durationSec",
+        "validRatio",
+        "socialPreferenceScore",
+        "qualityVerdict",
+        "schemaVersion",
+        "rawPayload"
+      ],
+      "title": "SessionIngestRequest",
+      "type": "object"
+    },
+    "SessionIngestResponse": {
+      "description": "`POST /v1/sessions` success body. Key casing follows the iOS decoder\n(`sessionId`, `frames_upload_url`). A replay returns the original body with\n`duplicate: true` (CON-17). Upload URLs are absolute pre-signed URLs or relative\n`/v1/sessions/{id}/blobs/{frames|report}` paths (CON-18); `null` when no upload is wanted.",
+      "examples": [
+        {
+          "duplicate": false,
+          "frames_upload_url": "/v1/sessions/SESS-GOLDEN-0001/blobs/frames",
+          "report_upload_url": null,
+          "sessionId": "SESS-GOLDEN-0001",
+          "status": "accepted"
+        }
+      ],
+      "properties": {
+        "duplicate": {
+          "type": "boolean"
+        },
+        "frames_upload_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "report_upload_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/SessionIngestStatus"
+        }
+      },
+      "required": [
+        "sessionId",
+        "status",
+        "duplicate"
+      ],
+      "type": "object"
+    },
+    "SessionIngestStatus": {
+      "description": "Outcome recorded for an accepted session.",
+      "enum": [
+        "accepted"
+      ],
+      "type": "string"
+    },
+    "SessionPage": {
+      "description": "`GET /v1/orgs/{id}/sessions`.\nCursor-paginated list envelope: `cursor` is opaque, `limit <= 100`.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/SessionSummary"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "SessionPerVideoDetails": {
+      "description": "`SessionPerVideoRow.Details` (camelCase).",
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "dwellUnits": {
+          "$ref": "#/$defs/DwellUnits"
+        },
+        "hasBaseline": {
+          "type": "boolean"
+        },
+        "lowConfidence": {
+          "type": "boolean"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/PerVideoScoreRow"
+          },
+          "type": "array"
+        },
+        "subscore": {
+          "type": "number"
+        },
+        "title": {
+          "type": "string"
+        },
+        "validSampleRatio": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "title",
+        "category",
+        "subscore",
+        "validSampleRatio",
+        "lowConfidence",
+        "hasBaseline",
+        "dwellUnits",
+        "rows"
+      ],
+      "type": "object"
+    },
+    "SessionPerVideoScore": {
+      "description": "One flattened per-clip row (`SessionPerVideoRow` in Swift; schema name\n`SessionPerVideoScore`, which the Swift schema test looks up by name). snake_case.\n\nA metric the clip did not measure, or measured only by imputation, is an absent key.",
+      "properties": {
+        "clip_id": {
+          "type": "string"
+        },
+        "details": {
+          "$ref": "#/$defs/SessionPerVideoDetails"
+        },
+        "dwell_eye": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dwell_geometric": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dwell_mouth": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dwell_social": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fixation_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mean_fixation_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "order": {
+          "description": "1-based play order.",
+          "type": "integer"
+        },
+        "orienting_latency_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Measured first-entry latency; an imputed latency is not sent."
+        },
+        "score": {
+          "type": "number"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExpectationStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Worst row status of the clip; absent when the clip has no scored rows."
+        },
+        "weight": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "clip_id",
+        "order",
+        "score",
+        "weight",
+        "details"
+      ],
+      "type": "object"
+    },
+    "SessionSummary": {
+      "description": "`GET /v1/orgs/{id}/sessions` item.",
+      "examples": [
+        {
+          "attention_flag": "yellow",
+          "battery": "express_30s",
+          "bundle_version": null,
+          "capture_source": "truedepth",
+          "composite_confidence": 0.5,
+          "composite_score": 0.74,
+          "device_id": "9a8b7c6d-5e4f-4321-8fed-cba987654321",
+          "duration_sec": 32.5,
+          "id": "SESS-GOLDEN-0001",
+          "participant_id": "7f1c1c1e-0000-4000-8000-000000000001",
+          "participant_token": "child-SESS-GOL",
+          "quality_verdict": "optimal",
+          "reviewed": false,
+          "started_at": "2026-10-26T07:33:20.000Z"
+        }
+      ],
+      "properties": {
+        "attention_flag": {
+          "$ref": "#/$defs/SessionAttentionFlag"
+        },
+        "battery": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Catalog protocol id, e.g. `express_30s` (CON-16)."
+        },
+        "bundle_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "capture_source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CaptureSource"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "composite_confidence": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`1 - share of low-confidence clips` (ING-2)."
+        },
+        "composite_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "device_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "duration_sec": {
+          "type": "number"
+        },
+        "id": {
+          "type": "string"
+        },
+        "participant_id": {
+          "description": "`participants.id` (UUID, CON-20).",
+          "type": "string"
+        },
+        "participant_token": {
+          "description": "The pseudonymous token the device sent (CON-20).",
+          "type": "string"
+        },
+        "quality_verdict": {
+          "type": "string"
+        },
+        "reviewed": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "started_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "participant_id",
+        "participant_token",
+        "started_at",
+        "duration_sec",
+        "quality_verdict",
+        "attention_flag"
+      ],
+      "type": "object"
+    },
+    "StimulusCatalog": {
+      "properties": {
+        "agePacks": {
+          "items": {
+            "$ref": "#/$defs/AgePack"
+          },
+          "type": "array"
+        },
+        "clips": {
+          "items": {
+            "$ref": "#/$defs/Clip"
+          },
+          "type": "array"
+        },
+        "comment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fallbackLanguage": {
+          "type": "string"
+        },
+        "languages": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "schemaVersion": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "languages",
+        "fallbackLanguage",
+        "agePacks",
+        "clips"
+      ],
+      "type": "object"
+    },
+    "TokenPair": {
+      "description": "Login and refresh response (AUTH-2).",
+      "examples": [
+        {
+          "access_token": "eyJhbGciOiJFZERTQSJ9.e30.c2ln",
+          "expires_in": 900,
+          "refresh_token": "rt_4s9QpZ0bYq7mN2xK",
+          "user": {
+            "email": "clinician@example.org",
+            "id": "0b7c9e2a-5d1f-4c3e-9a8b-1f2e3d4c5b6a",
+            "org_id": "5f0e1d2c-3b4a-4968-8776-655443322110",
+            "role": "clinician"
+          }
+        }
+      ],
+      "properties": {
+        "access_token": {
+          "type": "string"
+        },
+        "expires_in": {
+          "description": "Access-token lifetime in seconds (900).",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "refresh_token": {
+          "description": "Opaque, rotated on every refresh.",
+          "type": "string"
+        },
+        "user": {
+          "$ref": "#/$defs/User"
+        }
+      },
+      "required": [
+        "access_token",
+        "refresh_token",
+        "expires_in",
+        "user"
+      ],
+      "type": "object"
+    },
+    "UpdateReviewRequest": {
+      "description": "`PATCH /v1/review/{id}`.",
+      "properties": {
+        "assigned_to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "decision": true,
+        "labels": {
+          "items": {
+            "$ref": "#/$defs/LabelInput"
+          },
+          "type": "array"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReviewStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "UpdateUserRequest": {
+      "description": "`PATCH /v1/orgs/{id}/users/{user_id}`.",
+      "properties": {
+        "role": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Role"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UserStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "User": {
+      "description": "The signed-in user (`TokenPair.user`).",
+      "examples": [
+        {
+          "email": "clinician@example.org",
+          "id": "0b7c9e2a-5d1f-4c3e-9a8b-1f2e3d4c5b6a",
+          "org_id": "5f0e1d2c-3b4a-4968-8776-655443322110",
+          "role": "clinician"
+        }
+      ],
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "org_id": {
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/Role"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "role",
+        "org_id"
+      ],
+      "type": "object"
+    },
+    "UserStatus": {
+      "description": "User account status.",
+      "enum": [
+        "active",
+        "disabled"
+      ],
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.curv.org/asd/api-v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Request and response bodies of the ASD backend `/v1` API. Errors are `Problem` (application/problem+json). Each type is under `$defs`.",
+  "title": "ASD API v1"
+}

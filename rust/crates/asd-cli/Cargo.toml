@@ -15,6 +15,10 @@ name = "asd-cli"
 path = "src/main.rs"
 
 [dependencies]
-asd-core.workspace = true
-asd-contract.workspace = true
+# `synth` feature: `asd-cli synth` (WP-R.4, cmd/synth.rs).
+asd-core = { workspace = true, features = ["synth"] }
+asd-contract = { workspace = true, features = ["validate"] }
 asd-sync.workspace = true
+serde_json.workspace = true
+# Key generation for `bundle keygen` (WP-R.3).
+getrandom = "0.4"

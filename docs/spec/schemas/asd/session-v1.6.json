@@ -1,35 +1,477 @@
 {
   "$defs": {
-    "SessionPerVideoScore": {
+    "AttentionFlag": {
+      "enum": [
+        "green",
+        "yellow",
+        "red"
+      ],
+      "type": "string"
+    },
+    "CaptureSource": {
+      "enum": [
+        "truedepth",
+        "simulated",
+        "synthetic"
+      ],
+      "type": "string"
+    },
+    "DwellUnits": {
+      "description": "Units of the `dwell_*` columns. Ratios of valid clip samples, never seconds (CON-13).",
+      "enum": [
+        "ratio"
+      ],
+      "type": "string"
+    },
+    "ExpectationStatus": {
+      "enum": [
+        "onTarget",
+        "monitor",
+        "atypical"
+      ],
+      "type": "string"
+    },
+    "GazeQualityVerdict": {
+      "enum": [
+        "optimal",
+        "acceptable",
+        "degraded",
+        "rejected"
+      ],
+      "type": "string"
+    },
+    "GazeSessionRecord": {
+      "additionalProperties": true,
+      "description": "The full on-device record (`GazeSessionRecord.swift`), carried as `rawPayload`.\n\nDates are RFC 3339 UTC strings with milliseconds (`2026-10-26T07:33:20.000Z`), as\n`SessionPayloadCoding` writes them. Keys this type does not know (for example a future\n`bundleVersion` or `normCollection`) are kept in [`GazeSessionRecord::extra`] and written\nback unchanged, so `sessions.summary` stores the record without loss.",
       "properties": {
-        "clip_id": {
-          "title": "Clip Id",
+        "calibratedDistanceCm": {
+          "type": "number"
+        },
+        "captureSource": {
+          "$ref": "#/$defs/CaptureSource"
+        },
+        "durationSec": {
+          "type": "number"
+        },
+        "endedAt": {
+          "format": "date-time",
           "type": "string"
         },
-        "order": {
-          "default": 0,
-          "title": "Order",
-          "type": "integer"
+        "eyeDwellRatio": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
-        "dwell_social": {
-          "default": 0.0,
-          "title": "Dwell Social",
+        "firstEyeLatencyMs": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "flatAffectScore": {
           "type": "number"
         },
-        "dwell_geometric": {
-          "default": 0.0,
-          "title": "Dwell Geometric",
+        "id": {
+          "type": "string"
+        },
+        "legacyProvenance": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mouthDwellRatio": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "participantId": {
+          "description": "Pseudonymous participant token, never a name (CNS-7).",
+          "type": "string"
+        },
+        "perVideo": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/PerVideoScoreReport"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "perVideoComposite": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "qualityVerdict": {
+          "$ref": "#/$defs/GazeQualityVerdict"
+        },
+        "schemaVersion": {
+          "description": "Record form (`\"v1.6\"`); the wire form drops the `v`.",
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "smileReactivityIndex": {
           "type": "number"
+        },
+        "socialPreferenceScore": {
+          "type": "number"
+        },
+        "socialSmileIntensity": {
+          "type": "number"
+        },
+        "startedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "surpriseScoreMean": {
+          "type": "number"
+        },
+        "validFrameRatio": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        "zeroRawVideoEnforced": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "participantId",
+        "captureSource",
+        "startedAt",
+        "endedAt",
+        "durationSec",
+        "socialPreferenceScore",
+        "validFrameRatio",
+        "calibratedDistanceCm",
+        "qualityVerdict",
+        "socialSmileIntensity",
+        "smileReactivityIndex",
+        "flatAffectScore",
+        "surpriseScoreMean",
+        "schemaVersion",
+        "zeroRawVideoEnforced"
+      ],
+      "type": "object"
+    },
+    "NormativeDirection": {
+      "enum": [
+        "higherBetter",
+        "lowerBetter",
+        "band"
+      ],
+      "type": "string"
+    },
+    "PerVideoScoreReport": {
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "hasBaseline": {
+          "type": "boolean"
+        },
+        "lowConfidence": {
+          "type": "boolean"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/PerVideoScoreRow"
+          },
+          "type": "array"
+        },
+        "stimulusId": {
+          "type": "string"
+        },
+        "subscore": {
+          "type": "number"
+        },
+        "title": {
+          "type": "string"
+        },
+        "validSampleRatio": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        "weight": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "stimulusId",
+        "title",
+        "category",
+        "rows",
+        "subscore",
+        "validSampleRatio",
+        "lowConfidence",
+        "hasBaseline",
+        "weight"
+      ],
+      "type": "object"
+    },
+    "PerVideoScoreRow": {
+      "properties": {
+        "acceptableHigh": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "acceptableLow": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "biomarker": {
+          "type": "string"
+        },
+        "citation": {
+          "type": "string"
+        },
+        "direction": {
+          "$ref": "#/$defs/NormativeDirection"
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "imputed": {
+          "type": "boolean"
+        },
+        "metricKey": {
+          "type": "string"
+        },
+        "observed": {
+          "type": "number"
+        },
+        "score": {
+          "type": "number"
+        },
+        "segmentDescription": {
+          "type": "string"
+        },
+        "segmentId": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/ExpectationStatus"
+        },
+        "targetAOI": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "segmentId",
+        "segmentDescription",
+        "biomarker",
+        "metricKey",
+        "direction",
+        "observed",
+        "status",
+        "score",
+        "imputed",
+        "citation",
+        "source"
+      ],
+      "type": "object"
+    },
+    "SessionPerVideoDetails": {
+      "description": "`SessionPerVideoRow.Details` (camelCase).",
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "dwellUnits": {
+          "$ref": "#/$defs/DwellUnits"
+        },
+        "hasBaseline": {
+          "type": "boolean"
+        },
+        "lowConfidence": {
+          "type": "boolean"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/PerVideoScoreRow"
+          },
+          "type": "array"
+        },
+        "subscore": {
+          "type": "number"
+        },
+        "title": {
+          "type": "string"
+        },
+        "validSampleRatio": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "title",
+        "category",
+        "subscore",
+        "validSampleRatio",
+        "lowConfidence",
+        "hasBaseline",
+        "dwellUnits",
+        "rows"
+      ],
+      "type": "object"
+    },
+    "SessionPerVideoScore": {
+      "description": "One flattened per-clip row (`SessionPerVideoRow` in Swift; schema name\n`SessionPerVideoScore`, which the Swift schema test looks up by name). snake_case.\n\nA metric the clip did not measure, or measured only by imputation, is an absent key.",
+      "properties": {
+        "clip_id": {
+          "type": "string"
+        },
+        "details": {
+          "$ref": "#/$defs/SessionPerVideoDetails"
         },
         "dwell_eye": {
-          "default": 0.0,
-          "title": "Dwell Eye",
-          "type": "number"
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dwell_geometric": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "dwell_mouth": {
-          "default": 0.0,
-          "title": "Dwell Mouth",
-          "type": "number"
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dwell_social": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fixation_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mean_fixation_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "order": {
+          "description": "1-based play order.",
+          "type": "integer"
         },
         "orienting_latency_ms": {
           "anyOf": [
@@ -40,204 +482,50 @@
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Orienting Latency Ms"
+          "description": "Measured first-entry latency; an imputed latency is not sent."
         },
-        "gaze_cue_accuracy": {
-          "anyOf": [
-            {
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Gaze Cue Accuracy"
-        },
-        "fixation_count": {
-          "default": 0,
-          "title": "Fixation Count",
-          "type": "integer"
-        },
-        "mean_fixation_ms": {
-          "default": 0.0,
-          "title": "Mean Fixation Ms",
+        "score": {
           "type": "number"
         },
         "status": {
-          "default": "onTarget",
-          "title": "Status",
-          "type": "string"
-        },
-        "score": {
-          "default": 0.0,
-          "title": "Score",
-          "type": "number"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExpectationStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Worst row status of the clip; absent when the clip has no scored rows."
         },
         "weight": {
-          "default": 1.0,
-          "title": "Weight",
           "type": "number"
-        },
-        "baseline_ref": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Baseline Ref"
-        },
-        "details": {
-          "anyOf": [
-            {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Details"
         }
       },
       "required": [
-        "clip_id"
+        "clip_id",
+        "order",
+        "score",
+        "weight",
+        "details"
       ],
-      "title": "SessionPerVideoScore",
       "type": "object"
     }
   },
+  "$id": "https://schemas.curv.org/asd/session-v1.6.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Curv Pediatric ASD Gaze Session Ingestion Schema (v1.6)",
   "properties": {
-    "sessionId": {
-      "title": "Sessionid",
-      "type": "string"
-    },
-    "participantToken": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Participanttoken"
-    },
-    "captureSource": {
-      "default": "truedepth",
-      "title": "Capturesource",
-      "type": "string"
-    },
-    "durationSec": {
-      "default": 30.0,
-      "title": "Durationsec",
-      "type": "number"
-    },
-    "validRatio": {
-      "default": 0.95,
-      "title": "Validratio",
-      "type": "number"
-    },
-    "socialPreferenceScore": {
-      "default": 0.5,
-      "title": "Socialpreferencescore",
-      "type": "number"
-    },
-    "socialDwellSec": {
-      "anyOf": [
-        {
-          "type": "number"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Socialdwellsec"
-    },
-    "geometricDwellSec": {
-      "anyOf": [
-        {
-          "type": "number"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Geometricdwellsec"
-    },
-    "eyeDwellRatio": {
-      "anyOf": [
-        {
-          "type": "number"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Eyedwellratio"
-    },
-    "mouthDwellRatio": {
-      "anyOf": [
-        {
-          "type": "number"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Mouthdwellratio"
-    },
-    "firstEyeLatencyMs": {
-      "anyOf": [
-        {
-          "type": "number"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Firsteyelatencyms"
-    },
-    "qualityVerdict": {
-      "default": "optimal",
-      "title": "Qualityverdict",
-      "type": "string"
-    },
-    "calibratedDistanceCm": {
-      "anyOf": [
-        {
-          "type": "number"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Calibrateddistancecm"
-    },
     "attentionFlag": {
       "anyOf": [
         {
-          "type": "string"
+          "$ref": "#/$defs/AttentionFlag"
         },
         {
           "type": "null"
         }
       ],
-      "default": "green",
-      "title": "Attentionflag"
+      "description": "Explicit `null` when the device did not compute a flag; the server then derives it\n(CON-15). `None` = key absent, `Some(None)` = `null`."
     },
     "battery": {
       "anyOf": [
@@ -248,12 +536,60 @@
           "type": "null"
         }
       ],
-      "default": "express_30s",
-      "title": "Battery"
+      "description": "Catalog protocol id (`express_30s`, CON-16) or explicit `null` when unknown."
     },
-    "schemaVersion": {
-      "default": "1.6",
-      "title": "Schemaversion",
+    "calibratedDistanceCm": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "captureSource": {
+      "$ref": "#/$defs/CaptureSource"
+    },
+    "durationSec": {
+      "type": "number"
+    },
+    "eyeDwellRatio": {
+      "anyOf": [
+        {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "firstEyeLatencyMs": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "mouthDwellRatio": {
+      "anyOf": [
+        {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "participantToken": {
+      "description": "Pseudonymous token (CNS-7), never a name.",
       "type": "string"
     },
     "perVideo": {
@@ -267,29 +603,41 @@
         {
           "type": "null"
         }
-      ],
-      "default": null,
-      "title": "Pervideo"
+      ]
+    },
+    "qualityVerdict": {
+      "$ref": "#/$defs/GazeQualityVerdict"
     },
     "rawPayload": {
-      "anyOf": [
-        {
-          "additionalProperties": true,
-          "type": "object"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Rawpayload"
+      "$ref": "#/$defs/GazeSessionRecord"
+    },
+    "schemaVersion": {
+      "description": "Wire form (`\"1.6\"`), equal to the `X-Schema-Version` header (CON-21).",
+      "type": "string"
+    },
+    "sessionId": {
+      "type": "string"
+    },
+    "socialPreferenceScore": {
+      "type": "number"
+    },
+    "validRatio": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "type": "number"
     }
   },
   "required": [
-    "sessionId"
+    "sessionId",
+    "participantToken",
+    "captureSource",
+    "durationSec",
+    "validRatio",
+    "socialPreferenceScore",
+    "qualityVerdict",
+    "schemaVersion",
+    "rawPayload"
   ],
   "title": "SessionIngestRequest",
-  "type": "object",
-  "$id": "https://schemas.curv.org/asd/session-v1.6.json",
-  "description": "Curv Pediatric ASD Gaze Session Ingestion Schema (v1.6)"
+  "type": "object"
 }

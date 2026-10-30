@@ -77,7 +77,10 @@ def main():
                 "score": 0.89,
                 "weight": 1.0,
             }
-        ]
+        ],
+        # Required since the schemars export (CON-2); this check reads only top-level keys.
+        # The full contract check is `asd-cli schema validate` (WP-D.7 deletes this script).
+        "rawPayload": {},
     }
     errs = validate_payload(stored_schema, valid_payload)
     if errs:
