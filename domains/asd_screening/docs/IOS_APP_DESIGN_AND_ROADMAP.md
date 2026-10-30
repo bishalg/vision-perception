@@ -63,7 +63,7 @@ flowchart TD
 ### 2.1 Privacy-by-Design & Zero Raw Video Storage
 1. **No Video Recording**: The device's front camera is used strictly in-memory by ARKit for real-time mesh tracking. **No raw video frames (`CVPixelBuffer`) or facial images are ever recorded to persistent disk storage**.
 2. **Telemetry Only**: The app persists strictly numerical time-series: $(t, x_{\text{norm}}, y_{\text{norm}}, \text{pitch}, \text{yaw}, \text{confidence}, \text{eye\_openness})$.
-3. **Encrypted Local Storage**: Telemetry files are encrypted at rest using Apple CryptoKit (`AES-GCM-256`) with keys bound to the device's Secure Enclave.
+3. **Encrypted Local Storage**: Telemetry files are encrypted at rest using Apple CryptoKit (`AES-GCM-256`) with a device-bound Keychain key (not Secure Enclave).
 4. **COPPA / HIPAA De-identification**: Participant tokens are random UUIDv4 hashes; no child names or dates of birth are stored alongside gaze telemetry.
 
 ### 2.2 Clinical Validity & Sensor Fusion

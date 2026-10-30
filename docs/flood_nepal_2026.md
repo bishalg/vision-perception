@@ -160,17 +160,17 @@ graph TD
 ```
 
 #### CDK Stack Definitions:
-- **`NepalFloodStorageStack`** ([`aws_infra/stacks/storage_stack.py`](file:///Users/bishalghimire/Documents/WORK/Code/vision-perception/aws_infra/stacks/storage_stack.py)):
+- **`NepalFloodStorageStack`** ([`aws_infra/stacks/storage_stack.py`](../aws_infra/stacks/storage_stack.py)):
   - **Data Bucket**: `vision-perception-flood-data` (versioned, HTTPS-enforced, CORS enabled, 90-day S3-IA transition).
   - **Audit Bucket**: `vision-perception-audit` (dedicated bucket storing immutable action receipts and agent traces; completely eliminates recursive S3 notification loops).
   - **Events Table**: `vision-perception-events-dev` (Amazon DynamoDB table with PAY_PER_REQUEST billing and TTL attribute, managing server-side idempotency, `evidenceToken` validation, and alert lifecycle state).
-- **`NepalFloodAlertStack`** ([`aws_infra/stacks/alert_stack.py`](file:///Users/bishalghimire/Documents/WORK/Code/vision-perception/aws_infra/stacks/alert_stack.py)):
+- **`NepalFloodAlertStack`** ([`aws_infra/stacks/alert_stack.py`](../aws_infra/stacks/alert_stack.py)):
   - **SNS Topic**: `flood-disaster-alerts` with email subscription configured via `SNS_ALERT_EMAIL`.
   - **SQS Fallback Queue**: `flood-disaster-alerts-queue` (subscribed to SNS topic for automated demo polling and programmatic verification without human email confirmation delays).
-- **`NepalFloodIAMStack`** ([`aws_infra/stacks/iam_stack.py`](file:///Users/bishalghimire/Documents/WORK/Code/vision-perception/aws_infra/stacks/iam_stack.py)):
+- **`NepalFloodIAMStack`** ([`aws_infra/stacks/iam_stack.py`](../aws_infra/stacks/iam_stack.py)):
   - `FloodLambdaExecutionRole`: Least-privilege permissions across S3 data/audit buckets, DynamoDB event table, SQS queue, CloudWatch logging, and Bedrock runtime.
   - `FloodBedrockAgentRole`: Foundation model invocation permissions for Claude 3.5 Sonnet v2 (`anthropic.claude-3-5-sonnet-20241022-v2:0`).
-- **`NepalFloodAgentStack`** ([`aws_infra/stacks/agent_stack.py`](file:///Users/bishalghimire/Documents/WORK/Code/vision-perception/aws_infra/stacks/agent_stack.py)):
+- **`NepalFloodAgentStack`** ([`aws_infra/stacks/agent_stack.py`](../aws_infra/stacks/agent_stack.py)):
   - Bedrock Agent configured with two-tool Action Group OpenAPI specification (`getFloodEvidence` and `dispatchFloodAlert`).
   - Strict evidence-first system prompt (`agent/system_prompt.txt`).
   - S3 EventBridge notification filter scoped strictly to `prefix: "events/"` and `suffix: "flood_delta.json"`.

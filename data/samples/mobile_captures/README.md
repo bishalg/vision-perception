@@ -4,7 +4,7 @@ Real palm photos used to iterate Heart / Head / Life / Fate overlays on desktop
 **before** trusting phone overlays.
 
 **Living baseline (metrics + rubric + Android-later plan):**
-[`docs/palm_crease_baseline.md`](../../docs/palm_crease_baseline.md)
+[`docs/palm_crease_baseline.md`](../../../docs/palm_crease_baseline.md)
 
 ```bash
 python3 scripts/palm_crease_baseline_metrics.py --markdown

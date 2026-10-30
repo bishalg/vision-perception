@@ -161,4 +161,4 @@ Every frame processed through the pipeline outputs an immutable `PerceptionEvide
 
 ## 5. Summary & Next Steps
 
-This architectural blueprint establishes the unified roadmap for evolving `vision-perception` into a multi-modal, real-time perception platform. In the immediate next step, the dedicated real-time flood monitoring specification will be articulated in [`docs/flood_realtime_architecture.md`](file:///Users/bishalghimire/Documents/WORK/Code/vision-perception/docs/flood_realtime_architecture.md).
+This architectural blueprint establishes the unified roadmap for evolving `vision-perception` into a multi-modal, real-time perception platform. In the immediate next step, the dedicated real-time flood monitoring specification will be articulated in [`docs/flood_realtime_architecture.md`](../flood_realtime_architecture.md).

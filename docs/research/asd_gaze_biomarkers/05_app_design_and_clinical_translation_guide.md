@@ -162,7 +162,7 @@ The `DoctorReportGenerator.swift` module formats the extracted session telemetry
    - No `.mp4` or `.mov` files are created, stored, or transmitted.
 2. **Encrypted Telemetry Storage**:
    - Only numerical biomarker vectors are persisted to disk.
-   - Encrypted with **Apple CryptoKit (`AES-GCM-256`)** using keys backed by the device's Secure Enclave.
+   - Encrypted with **Apple CryptoKit (`AES-GCM-256`)** using a device-bound Keychain key (not Secure Enclave).
 3. **FDA SaMD Considerations**:
    - Adheres to FDA Class II Software as a Medical Device (SaMD) principles modeled after EarliPoint (`DEN220050`).
    - Clear clinical disclaimers, audit trails, and strict exclusion of uncalibrated or low-quality sessions ($<75\%$ valid tracking).

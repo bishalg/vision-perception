@@ -20,8 +20,7 @@ Metadata for computer vision and medical/developmental screening apps is strictl
    - `Short Description`: Strictly **≤ 80 characters**.
    - `Full Description`: Strictly **≤ 4,000 characters** with 2–3% natural keyword density.
 3. **Medical Disclaimer Invariant**:
-   - For `EarlyGaze` (Autism/ADHD), all product page descriptions must explicitly state:
-     > *"EarlyGaze is an observational developmental screening aid and monitoring reference. It is NOT a diagnostic medical device and does NOT diagnose Autism Spectrum Disorder (ASD), ADHD, or any medical condition."*
+   - For the ASD gaze app (store name "Eye Gaze", an observation diary), every description must contain the sentence "This is not a diagnostic tool." and "Part of Open Spectrum Tracking", and must state that the app does not diagnose any condition and is not a medical device (enforced by `scripts/check_asd_claims.py`; see `docs/spec/modules/asd-gaze-app-store-readiness/claims-denylist.md`).
 4. **Appeeky ASO Skills**:
    - 34 specialized agent skills installed in `.agents/skills/` (including `aso-router`, `metadata-optimization`, `android-aso`, `rating-prompt-strategy`).
 
@@ -32,7 +31,7 @@ Metadata for computer vision and medical/developmental screening apps is strictl
 | Application | Platform | App Store Title (≤30) | Subtitle (≤30) | Primary Target Keywords |
 | :--- | :--- | :--- | :--- | :--- |
 | **PalmReader** | iOS & Android | `PalmReader: Hand Line Scanner` (29) | `Samudrika Shastra & Palmistry` (29) | `palmistry,samudrika,lifeline,heartline,headline,mount,fortune,destiny,future,kundli,horoscope` (93/100) |
-| **EarlyGaze** | iOS & Android | `EarlyGaze: Autism & ADHD Test` (29) | `At-Home Pediatric Gaze Track` (28) | `mchat,pediatric,toddler,development,screening,biomarker,saccade,telehealth,sensory,behavior,focus` (97/100) |
+| **Eye Gaze** (observation diary; `apps/ios_asd_gaze_app`) | iOS & Android | `Eye Gaze` (8) | `Engagement and daily notes` (26) | `diary,toddler,development,attention,gaze,milestones,mood,parent,routine,observation,eye` (87/100) |
 
 ---
 

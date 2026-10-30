@@ -24,7 +24,7 @@ referenced from the module specs rather than duplicated.
 | [ADR-0002](adr/ADR-0002-consent-and-data-retention.md) | Consent-gated capture, on-device retention and deletion model | Proposed |
 | [ADR-0003](adr/ADR-0003-fhir-profile-and-coding.md) | FHIR R4 Bundle profile and coding strategy for parent observations | Proposed |
 | [ADR-0004](adr/ADR-0004-claims-and-naming-policy.md) | Non-diagnostic claims and naming policy (App Store 1.4.1) | Proposed |
-| [ADR-0005](adr/ADR-0005-org-account-and-bundle-id.md) | Publishing organisation, bundle identifier and review contact | Proposed, needs human decision |
+| [ADR-0005](adr/ADR-0005-org-account-and-bundle-id.md) | Publishing organisation, bundle identifier and review contact | Accepted (H4 resolved 2026-10-29: `com.open-spectrum.eye-gaze`, App Name "Eye Gaze") |
 
 ## Rules
 

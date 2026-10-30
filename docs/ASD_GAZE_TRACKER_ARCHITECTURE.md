@@ -63,7 +63,7 @@ The **ASD Pediatric Gaze Screening App** is an objective digital biomarker colle
    - Only mathematical time-series data is recorded:
      $$\{ t_i, x_i, y_i, \text{yaw}_i, \text{pitch}_i, \text{distance}_i, \text{AOIs}_i, \text{smile}_i \}$$
 3. **Hardware-Bound Encryption at Rest**:
-   - Stored session telemetry is encrypted with Apple **CryptoKit (`AES-GCM-256`)** using keys backed by the device's Secure Enclave.
+   - Stored session telemetry is encrypted with Apple **CryptoKit (`AES-GCM-256`)** using a device-bound Keychain key (`ThisDeviceOnly`; not Secure Enclave).
 4. **COPPA / HIPAA De-identification**:
    - Child names or birthdays are never bundled with raw gaze samples. Participants are referenced solely by randomized UUID hashes.
 

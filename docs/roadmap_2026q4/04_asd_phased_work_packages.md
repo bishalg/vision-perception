@@ -10,7 +10,7 @@
 | WP-A.1 | Device checklist + demo-tools screen | 1 | I | done | DemoToolsView, DemoRelease config, build tests, symbols gate |
 | WP-A.2 | Fix known bugs (double CareKit write, delete-all semantics, classifier double-run, elevatedRisk string) | 1 | S | done | RiskStratification scoped to ASD_RESEARCH_CLASSIFIER, duplicate writes eliminated, classifier passed to summary |
 | WP-A.3 | Protected file-backed history store (old WP-4.3) | 1 | S | done | Protected file store (.completeFileProtectionUntilFirstUserAuthentication), defaults migration, dedupe preserved |
-| WP-A.4 | Sync client: device registration, bearer token, idempotency + schema headers, new `/v1/sessions` payload, pre-signed uploads | 1 | S | todo | |
+| WP-A.4 | Sync client: device registration, bearer token, idempotency + schema headers, new `/v1/sessions` payload, pre-signed uploads | 1 | S | done | Device registration, Keychain token, idempotent /v1/sessions client, pre-signed uploads; 338 app tests green; contract unverified against backend |
 | WP-A.5 | `ScoringProfile` + remote config bundle consumption with Ed25519 verify and bundled fallback | 2 | S | todo | |
 | WP-A.6 | Swift 6 language mode (old WP-4.2) | 2 | S | todo | |
 | WP-A.7 | `Biomarker*`→`Engagement*` renames + claims-gate scanner covers model strings (old WP-4.4) | 2 | I | todo | |
@@ -27,7 +27,7 @@
 | WP-B.8 | Server-side PDF regeneration + FHIR bundle endpoint (parity with iOS output, golden tests) | 3 | I | todo | |
 | WP-B.9 | Dataset export job (parquet/jsonl + labels), retention sweep, erasure execution | 3 | S | todo | |
 | WP-B.10 | FHIR façade + SMART-on-FHIR server validation (only if a clinic partner needs it) | 4 | S | backlog | |
-| WP-C.1 | Console scaffold: Next.js, auth, layout, sessions table/detail, overview KPIs | 1 | S | todo | |
+| WP-C.1 | Console scaffold: Next.js, auth, layout, sessions table/detail, overview KPIs | 1 | S | partial | Mock-mode console, 36 tests; live mode needs backend contract; no Playwright or org switcher yet |
 | WP-C.2 | Review queue + devices/enrol QR | 1 | I | todo | |
 | WP-C.3 | Participants timeline, users/roles, audit page | 2 | I | todo | |
 | WP-C.4 | Catalog editor (clips, AOI timeline, batteries) | 2 | S | todo | |
@@ -37,12 +37,12 @@
 | WP-D.1 | Stimulus clips: rights or replacement; durations measured; catalog corrected | 1 | I + owner | done | All 10 clips measured at 8.0s via ffprobe, catalog aligned, NOTICE.md updated |
 | WP-D.2 | Session JSON Schema export + Swift/Python parity gate in CI | 1 | I | done | session-v1.6.json exported from Pydantic, parity test in scripts/check_session_schema_parity.py, gated in CI |
 | WP-D.3 | Age-band model: cleared dataset, train, validate (≥0.90 recall), CoreML, manifest + licence in `models/asd_age` | 2 | S | todo | |
-| WP-D.4 | Synthetic session generator shared by seed script and tests | 1 | I | todo | |
+| WP-D.4 | Synthetic session generator shared by seed script and tests | 1 | I | done | tools/asd_synth, seeded, schema-validated, 7 tests |
 | WP-D.5 | ML roadmap refresh: what an attention classifier would need (n, labels, validation plan) — doc only | 3 | A | backlog | |
 | WP-D.6 | Decide/Link C++ `AsdBiomarkerPack` into kit via xcframework, or retire the claim | 4 | A | backlog | low value |
 | WP-E.1 | Pitch/deck re-base to non-diagnostic reality; aspirational section | 1 | I | done | Re-based to observation diary, 6 metrics, 2027 aspirational roadmap |
 | WP-E.2 | Org Apple account, bundle id, publisher domain, privacy policy + support pages live | 2 | owner + I | todo | H-6 |
-| WP-E.3 | Docs drift sweep (iOS 18, Keychain not SE, names, screenshots) | 1 | I | todo | |
+| WP-E.3 | Docs drift sweep (iOS 18, Keychain not SE, names, screenshots) | 1 | I | done | Keychain, iOS 18, names, links fixed; owner follow-ups listed in commit |
 | WP-E.4 | M-CHAT licence outcome → keep gate or enable | 3 | owner | todo | H-7 |
 | WP-E.5 | Native hi/ne review of store text | 3 | owner | todo | |
 | WP-E.6 | Security/privacy review pack: threat model, data-flow diagram, DPIA-lite, retention policy, AWS BAA | 3 | A + I | todo | |

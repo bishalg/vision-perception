@@ -4,7 +4,7 @@
 
 ## 1. What the app actually is today (Release build)
 
-**Name:** "EarlyGaze Observation Diary" (placeholder, H-9). Bundle `org.curv.asd.gazecollector`. iOS 18+, iPhone/iPad with TrueDepth (enforced by `UIRequiredDeviceCapabilities`).
+**Name:** "EarlyGaze Observation Diary" (placeholder, H-9). Bundle `com.open-spectrum.eye-gaze` (widget `.carewidget`); store name "Eye Gaze" (`fastlane/metadata/en-US/name.txt`). iOS 18+, iPhone/iPad with TrueDepth (enforced by `UIRequiredDeviceCapabilities`).
 
 **Flow:** Mode selection (Parent & Caregiver / Clinic) → onboarding (child age bracket 12–60 mo, language, 30 s or 60 s battery, consent switch) → optional on-camera age-band check (inert without a model) → On-Demand-Resources download of the stimulus pack → positioning (distance 35–65 cm, yaw ≤35°, pitch ≤30°) → 5-point bubble calibration (affine) → 4 or 8 video clips → results.
 

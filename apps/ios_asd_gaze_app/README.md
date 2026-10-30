@@ -1,7 +1,7 @@
 # iOS Pediatric Gaze Collector (`apps/ios_asd_gaze_app`)
 
 > **Application**: Pediatric Social Attention & Oculomotor Gaze Collector  
-> **Platform**: iOS / iPadOS 17.0+ (TrueDepth ARKit 6, Swift 6 Concurrency)  
+> **Platform**: iOS / iPadOS 18.0+ (TrueDepth ARKit face tracking; Swift 5.9 language mode with complete strict-concurrency checking)  
 > **Architecture**: Model-View-Controller (MVC) + Apple ResearchKit & CareKit + Liquid Glass Design  
 > **Package Link**: [`domains/asd_screening/ios`](../../domains/asd_screening/ios) (`CurvAsdGazeKit`)  
 > **Full Architecture & Handover Guide**: [`docs/ASD_GAZE_TRACKER_ARCHITECTURE.md`](../../docs/ASD_GAZE_TRACKER_ARCHITECTURE.md)  
@@ -32,13 +32,13 @@ open apps/ios_asd_gaze_app/AsdGazeCollector.xcodeproj
 
 ### Option B: Deploy to Connected iPhone (CLI)
 ```bash
-./scripts/run_gaze_app_device.sh
+./scripts/run_gaze_app_device.sh   # from the repository root
 ```
 Builds, signs, installs via `xcrun devicectl`, and launches directly on your paired physical device.
 
 ### Option C: Run in iPhone Simulator (CLI)
 ```bash
-./scripts/run_gaze_app_sim.sh
+./scripts/run_gaze_app_sim.sh   # from the repository root
 ```
 Boots the first available iPhone simulator, builds, installs, and launches automatically.
 
