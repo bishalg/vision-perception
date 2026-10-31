@@ -66,11 +66,17 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
     if let Err(e) = &result {
         if e.is_final(job.attempts) {
             let message: String = e.message().chars().take(500).collect();
+            // Fenced like every write of a run: a reclaimed run never fails the export
+            // over the attempt that now owns the job.
             let marked = sqlx::query!(
                 "UPDATE exports SET status = 'failed', error = $2, completed_at = now()
-                 WHERE id = $1 AND status IN ('queued', 'running')",
+                 WHERE id = $1 AND status IN ('queued', 'running')
+                   AND EXISTS (SELECT 1 FROM jobs
+                               WHERE id = $3 AND attempts = $4 AND status = 'running')",
                 export_id,
                 message,
+                job.id,
+                job.attempts,
             )
             .execute(&ctx.pool)
             .await;
@@ -154,13 +160,21 @@ async fn run(ctx: &JobContext, job: &Job, export_id: Uuid) -> Result<Value, JobE
         .map_err(|_| permanent("invalid stored filters"))?;
     let parsed =
         filters::parse(&stored_filters).map_err(|_| permanent("invalid stored filters"))?;
-    sqlx::query!(
+    let started = sqlx::query!(
         "UPDATE exports SET status = 'running', started_at = coalesce(started_at, now())
-         WHERE id = $1 AND status IN ('queued', 'running')",
-        export_id
+         WHERE id = $1 AND status IN ('queued', 'running')
+           AND EXISTS (SELECT 1 FROM jobs
+                       WHERE id = $2 AND attempts = $3 AND status = 'running')",
+        export_id,
+        job.id,
+        job.attempts,
     )
     .execute(&ctx.pool)
     .await?;
+    if started.rows_affected() == 0 {
+        // Reclaimed before it started (or the export changed state): render nothing.
+        return Err(permanent("job was reclaimed while running"));
+    }
 
     // ---- phase 1: one snapshot
     let snap = record::load(
@@ -275,7 +289,7 @@ async fn run(ctx: &JobContext, job: &Job, export_id: Uuid) -> Result<Value, JobE
     }
     let sha256 = Sha256::digest(&artifact.bytes).to_vec();
     let byte_size = i64::try_from(artifact.bytes.len()).expect("capped at 500 MB");
-    let key = export_build::blob_key(row.org_id, export_id, &artifact.file_name);
+    let key = export_build::blob_key(row.org_id, export_id, job.attempts, &artifact.file_name);
     blobs
         .put_object_large(&key, artifact.content_type, Bytes::from(artifact.bytes))
         .await
@@ -293,6 +307,26 @@ async fn run(ctx: &JobContext, job: &Job, export_id: Uuid) -> Result<Value, JobE
     });
     let excluded_json = serde_json::to_value(&excluded).expect("string keys");
     let mut tx = ctx.pool.begin().await?;
+    // Fence: this attempt must still own the job. The row lock holds off `reclaim_stale`
+    // and a newer claim until this transaction ends.
+    let owns_job = sqlx::query_scalar!(
+        r#"SELECT 1 AS "one!" FROM jobs
+           WHERE id = $1 AND attempts = $2 AND status = 'running'
+           FOR UPDATE"#,
+        job.id,
+        job.attempts,
+    )
+    .fetch_optional(&mut *tx)
+    .await?
+    .is_some();
+    if !owns_job {
+        tx.rollback().await?;
+        // Our artifact is nobody's: remove it (best effort; the key is ours alone).
+        if let Err(e) = blobs.delete(&key).await {
+            tracing::warn!(%export_id, error = %e, "could not delete a stale run's artifact");
+        }
+        return Err(permanent("job was reclaimed while running"));
+    }
     sqlx::query!("DELETE FROM export_items WHERE export_id = $1", export_id)
         .execute(&mut *tx)
         .await?;

@@ -28,6 +28,9 @@ pub enum AppError {
     /// 403 `forbidden`.
     #[error("forbidden")]
     Forbidden,
+    /// 403 with a specific slug (`clinical-role-not-assignable`, RBAC-3).
+    #[error("forbidden: {slug}")]
+    ForbiddenWith { slug: &'static str, detail: String },
     /// 404 `not-found`; also used for other orgs' resources (AUTH-4).
     #[error("not found")]
     NotFound,
@@ -80,6 +83,9 @@ impl AppError {
                 Problem::new(StatusCode::SERVICE_UNAVAILABLE, slug).with_detail(detail.clone())
             }
             Self::Forbidden => Problem::new(StatusCode::FORBIDDEN, "forbidden"),
+            Self::ForbiddenWith { slug, detail } => {
+                Problem::new(StatusCode::FORBIDDEN, slug).with_detail(detail.clone())
+            }
             Self::NotFound => Problem::not_found(),
             Self::Conflict { slug, detail } => {
                 Problem::new(StatusCode::CONFLICT, slug).with_detail(detail.clone())
@@ -146,6 +152,11 @@ mod tests {
         );
         assert_eq!(status(AppError::Unauthorized), (401, "unauthorized".into()));
         assert_eq!(status(AppError::Forbidden), (403, "forbidden".into()));
+        let (slug, detail) = s("clinical-role-not-assignable");
+        assert_eq!(
+            status(AppError::ForbiddenWith { slug, detail }),
+            (403, slug.into())
+        );
         assert_eq!(status(AppError::NotFound), (404, "not-found".into()));
         let (slug, detail) = s("idempotency-key-reused");
         assert_eq!(

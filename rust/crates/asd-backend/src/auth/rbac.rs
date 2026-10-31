@@ -41,6 +41,10 @@ pub enum Action {
     ConfigRead,
     ConfigWrite,
     ConfigPublish,
+    /// Create, approve, publish and retire the global `config_documents` (no org: every
+    /// tenant's ingest reads them). No org role; superadmin only (security audit
+    /// finding 2). Composing an org's bundle stays `ConfigPublish`.
+    ConfigGlobalManage,
     JobRun,
     ParticipantErase,
     // ---- WP-C.9: clinician workspace and interop (RBAC-1)
@@ -78,6 +82,7 @@ impl Action {
         Action::ConfigRead,
         Action::ConfigWrite,
         Action::ConfigPublish,
+        Action::ConfigGlobalManage,
         Action::JobRun,
         Action::ParticipantErase,
         Action::WorklistRead,
@@ -158,6 +163,8 @@ pub const MATRIX: &[(Action, &[Role])] = &[
     (Action::ConfigRead, &[Owner, Admin, Clinician, Researcher]),
     (Action::ConfigWrite, &[Owner, Admin, Researcher]),
     (Action::ConfigPublish, &[Owner, Admin]),
+    // Global documents: superadmin only (it is allowed every non-clinical action).
+    (Action::ConfigGlobalManage, &[]),
     (Action::JobRun, &[Owner, Admin, Researcher]),
     (Action::ParticipantErase, &[Owner, Admin]),
     // WP-C.9, RBAC-2. Admin (operations) never reads clinical content (ADR-0008 D2).
@@ -219,6 +226,25 @@ pub fn rank(role: Role) -> u8 {
 /// an owner). `superadmin` is never assignable through the org API.
 pub fn can_assign(actor: Role, target: Role) -> bool {
     target != Role::Superadmin && rank(target) <= rank(actor)
+}
+
+/// RBAC-3 and ADR-0008 D2 applied to user management (security audit finding 1): whether
+/// `actor` may give a user role `to` (from role `from`; `None` when creating the user).
+///
+/// Whoever creates a user chooses its password, and whoever promotes a user may have
+/// chosen it earlier, so either can sign in as that user. An actor that may not read
+/// clinical content (superadmin, admin) therefore never grants a clinical-content action
+/// ([`CLINICAL_CONTENT_ACTIONS`]) that it lacks itself and that the user did not already
+/// hold: superadmin gets no owner, admin, clinician or researcher; admin gets no clinician
+/// (owner is above its rank anyway). Demotions and status changes stay allowed. An actor
+/// with `ClinicalContentRead` (owner: the clinic itself) provisions clinicians. There is
+/// no invitation flow yet (users are created `active` with a password), so these are
+/// refused with `403 clinical-role-not-assignable`.
+pub fn can_provision(actor: Role, from: Option<Role>, to: Role) -> bool {
+    allows(actor, Action::ClinicalContentRead)
+        || CLINICAL_CONTENT_ACTIONS
+            .iter()
+            .all(|&a| !allows(to, a) || allows(actor, a) || from.is_some_and(|f| allows(f, a)))
 }
 
 pub fn role_as_str(role: Role) -> &'static str {
@@ -284,6 +310,7 @@ pub mod perm {
         ConfigRead,
         ConfigWrite,
         ConfigPublish,
+        ConfigGlobalManage,
         JobRun,
         ParticipantErase,
         WorklistRead,
@@ -366,6 +393,33 @@ mod tests {
         assert!(!can_assign(Role::Superadmin, Role::Superadmin));
         assert!(can_assign(Role::Superadmin, Role::Owner));
         assert!(!can_assign(Role::Clinician, Role::Admin));
+    }
+
+    #[test]
+    fn non_clinical_actors_never_provision_clinical_roles() {
+        use Role::Superadmin;
+        // Creating a user.
+        for target in [Owner, Admin, Clinician, Researcher] {
+            assert!(!can_provision(Superadmin, None, target), "{target:?}");
+        }
+        for target in [Reviewer, Viewer] {
+            assert!(can_provision(Superadmin, None, target), "{target:?}");
+        }
+        assert!(!can_provision(Admin, None, Clinician));
+        for target in [Admin, Researcher, Reviewer, Viewer] {
+            assert!(can_provision(Admin, None, target), "{target:?}");
+        }
+        for target in [Owner, Admin, Clinician, Researcher, Reviewer, Viewer] {
+            assert!(can_provision(Owner, None, target), "{target:?}");
+        }
+        // Role changes: promotions into new clinical actions are refused, demotions are not.
+        assert!(!can_provision(Superadmin, Some(Viewer), Clinician));
+        assert!(!can_provision(Superadmin, Some(Viewer), Owner));
+        assert!(!can_provision(Admin, Some(Researcher), Clinician));
+        assert!(can_provision(Superadmin, Some(Owner), Admin));
+        assert!(can_provision(Superadmin, Some(Clinician), Viewer));
+        assert!(can_provision(Superadmin, Some(Viewer), Reviewer));
+        assert!(can_provision(Admin, Some(Clinician), Clinician));
     }
 
     #[test]

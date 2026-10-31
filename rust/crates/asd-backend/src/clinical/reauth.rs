@@ -9,6 +9,10 @@
 //! TOTP parameters are the authenticator-app defaults (RFC 6238, Key Uri Format): secret
 //! in RFC 4648 base32, HMAC-SHA-1, 6 digits, 30-second steps, one step of clock skew either
 //! way. No enrolment flow exists yet; this verifies what an enrolment would store.
+//!
+//! Replay (security audit finding 7): an accepted code is spent. The step it matched is
+//! stored in `users.last_totp_step` (migration 0015) with a compare-and-set, and a code of
+//! the same or an earlier step is refused. The login flow does not check TOTP (deferred).
 
 use std::sync::Arc;
 
@@ -94,7 +98,24 @@ pub async fn step_up(
         let Some(code) = totp_code_given else {
             return Err(StepUpError::Failed);
         };
-        if !verify_totp(&secret, code, unix_now()) {
+        let Some(step) = matched_totp_step(&secret, code, unix_now()) else {
+            return Err(StepUpError::Failed);
+        };
+        // An accepted code is spent (security audit finding 7): record its step with a
+        // compare-and-set, so the same code (or one of an earlier step) never passes again,
+        // not even in two concurrent requests.
+        let step = i64::try_from(step).map_err(|_| StepUpError::Failed)?;
+        let spent = sqlx::query_scalar!(
+            r#"UPDATE users SET last_totp_step = $2
+               WHERE id = $1 AND (last_totp_step IS NULL OR last_totp_step < $2)
+               RETURNING 1 AS "one!""#,
+            user_id,
+            step
+        )
+        .fetch_optional(db)
+        .await
+        .map_err(|e| StepUpError::Other(e.into()))?;
+        if spent.is_none() {
             return Err(StepUpError::Failed);
         }
     }
@@ -148,18 +169,24 @@ pub fn totp_code(secret: &str, unix_time: u64) -> Option<String> {
 }
 
 /// True when `code` matches the step of `unix_time` or one step either side. An unusable
-/// stored secret never verifies (fail closed).
+/// stored secret never verifies (fail closed). Does not check reuse: [`step_up`] does.
 pub fn verify_totp(secret: &str, code: &str, unix_time: u64) -> bool {
+    matched_totp_step(secret, code, unix_time).is_some()
+}
+
+/// The time step (`unix / 30`) whose code `code` is, within one step of `unix_time`; the
+/// latest one if several match. `None` when none does or the secret is unusable.
+pub fn matched_totp_step(secret: &str, code: &str, unix_time: u64) -> Option<u64> {
     let Some(key) = base32_decode(secret) else {
         tracing::error!("stored TOTP secret is not base32; step-up refused");
-        return false;
+        return None;
     };
     let code = code.trim();
     if code.len() != TOTP_DIGITS as usize || !code.bytes().all(|b| b.is_ascii_digit()) {
-        return false;
+        return None;
     }
     let step = unix_time / TOTP_STEP_SECS;
-    let mut ok = false;
+    let mut matched = None;
     for counter in step.saturating_sub(TOTP_SKEW_STEPS)..=step + TOTP_SKEW_STEPS {
         // Constant-time comparison; every window step is checked.
         let expected = hotp(&key, counter);
@@ -167,9 +194,11 @@ pub fn verify_totp(secret: &str, code: &str, unix_time: u64) -> bool {
             .bytes()
             .zip(code.bytes())
             .fold(0u8, |acc, (a, b)| acc | (a ^ b));
-        ok |= diff == 0;
+        if diff == 0 {
+            matched = Some(counter);
+        }
     }
-    ok
+    matched
 }
 
 /// Checks `meaning_ack` and the hash format of a sign body before any work.
@@ -221,6 +250,13 @@ mod tests {
         assert!(!verify_totp(secret, "12345", t));
         assert!(!verify_totp(secret, "abcdef", t));
         assert!(!verify_totp("!!", &code, t));
+        let step = t / TOTP_STEP_SECS;
+        assert_eq!(matched_totp_step(secret, &code, t), Some(step));
+        assert_eq!(
+            matched_totp_step(secret, &code, t + TOTP_STEP_SECS),
+            Some(step)
+        );
+        assert_eq!(matched_totp_step(secret, "12345", t), None);
     }
 
     #[test]

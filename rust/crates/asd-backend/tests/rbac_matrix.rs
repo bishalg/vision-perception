@@ -356,6 +356,140 @@ async fn role_assignment_never_exceeds_the_actors_rank() {
     c.db.cleanup().await;
 }
 
+/// RBAC-3 / ADR-0008 D2 (security audit finding 1): an actor that may not read clinical
+/// content (superadmin, admin) never creates a user, nor promotes one, into a role holding
+/// clinical-content actions it lacks: it would choose (or already know) that user's password
+/// and log in as them. Owners still provision clinicians.
+#[tokio::test]
+async fn non_clinical_actors_never_provision_clinical_roles() {
+    let Some(c) = setup().await else { return };
+    let (_, root) = c.token(None, Role::Superadmin).await;
+    let (_, admin) = c.token(Some(c.org), Role::Admin).await;
+    let (_, owner) = c.token(Some(c.org), Role::Owner).await;
+    let users = format!("/v1/orgs/{}/users", c.org);
+    let body = |role: &str| {
+        json!({
+            "email": format!("{role}-{}@example.org", Uuid::new_v4().simple()),
+            "role": role,
+            "password": "a long enough password"
+        })
+    };
+    let refused = |status: StatusCode, resp: &Value, what: &str| {
+        assert_eq!(status, StatusCode::FORBIDDEN, "{what}: {resp}");
+        assert_eq!(slug(resp), "clinical-role-not-assignable", "{what}: {resp}");
+    };
+
+    // Superadmin: no owner, clinician, admin (MRN read) or researcher (de-identified export).
+    for role in ["owner", "clinician", "admin", "researcher"] {
+        let (status, resp) = c.call(Method::POST, &users, Some(body(role)), &root).await;
+        refused(status, &resp, &format!("superadmin creating {role}"));
+    }
+    // Admin: no clinician (owner is already above its rank: plain 403).
+    let (status, resp) = c
+        .call(Method::POST, &users, Some(body("clinician")), &admin)
+        .await;
+    refused(status, &resp, "admin creating a clinician");
+    // Roles without clinical-content actions stay provisionable.
+    for (actor, role) in [
+        (&root, "viewer"),
+        (&root, "reviewer"),
+        (&admin, "researcher"),
+    ] {
+        let (status, resp) = c.call(Method::POST, &users, Some(body(role)), actor).await;
+        assert_eq!(status, StatusCode::CREATED, "creating {role}: {resp}");
+    }
+    // Nothing was created by the refused calls.
+    let n: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM users WHERE org_id = $1 AND role = 'clinician'")
+            .bind(c.org)
+            .fetch_one(&c.db.pool)
+            .await
+            .unwrap();
+    assert_eq!(n, 0);
+
+    // Promotions: a viewer (whose password the actor may have chosen) never becomes a
+    // clinician or an owner through a non-clinical actor.
+    let viewer = seed_user(&c.db.pool, Some(c.org), Role::Viewer, "pv@example.org").await;
+    for (actor, role, who) in [
+        (&root, "clinician", "superadmin"),
+        (&root, "owner", "superadmin"),
+        (&root, "admin", "superadmin"),
+        (&admin, "clinician", "admin"),
+    ] {
+        let (status, resp) = c
+            .call(
+                Method::PATCH,
+                &format!("{users}/{viewer}"),
+                Some(json!({"role": role})),
+                actor,
+            )
+            .await;
+        refused(
+            status,
+            &resp,
+            &format!("{who} promoting a viewer to {role}"),
+        );
+    }
+    let role: String = sqlx::query_scalar("SELECT role FROM users WHERE id = $1")
+        .bind(viewer)
+        .fetch_one(&c.db.pool)
+        .await
+        .unwrap();
+    assert_eq!(role, "viewer");
+
+    // An owner creates and promotes clinicians.
+    let (status, resp) = c
+        .call(Method::POST, &users, Some(body("clinician")), &owner)
+        .await;
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "owner creating a clinician: {resp}"
+    );
+    assert_eq!(resp["role"], "clinician");
+    let (status, resp) = c
+        .call(
+            Method::PATCH,
+            &format!("{users}/{viewer}"),
+            Some(json!({"role": "clinician"})),
+            &owner,
+        )
+        .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "owner promoting to clinician: {resp}"
+    );
+    // Demoting, or changing only the status of, a clinical user stays an admin's job.
+    let (status, resp) = c
+        .call(
+            Method::PATCH,
+            &format!("{users}/{viewer}"),
+            Some(json!({"status": "disabled"})),
+            &admin,
+        )
+        .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "admin disabling a clinician: {resp}"
+    );
+    let (status, resp) = c
+        .call(
+            Method::PATCH,
+            &format!("{users}/{viewer}"),
+            Some(json!({"role": "viewer"})),
+            &root,
+        )
+        .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "superadmin demoting a clinician: {resp}"
+    );
+    c.db.cleanup().await;
+}
+
 #[tokio::test]
 async fn users_cannot_change_their_own_role_or_status_and_the_last_owner_stays() {
     let Some(c) = setup().await else { return };

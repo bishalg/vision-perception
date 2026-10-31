@@ -57,7 +57,8 @@ export const worklistItemSchema = sessionSummarySchema.extend({
   assigned_to: str,
   clinical_state: clinicalStateSchema.nullable().optional(),
   cosign_required: z.boolean(),
-  has_patient_ref: z.boolean(),
+  /** MRN-6: absent for a caller without `PatientRefRead` (superadmin). */
+  has_patient_ref: z.boolean().optional(),
   review_id: str,
 });
 export type WorklistItem = z.infer<typeof worklistItemSchema>;

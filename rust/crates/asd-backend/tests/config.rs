@@ -46,15 +46,20 @@ struct Ctx {
     db: TestDb,
     state: AppState,
     org: Uuid,
-    /// org admin A (publisher), org admin B (second pair of eyes), researcher (author)
+    /// Org admin and org owner (compose their org's bundles, never touch the global
+    /// documents), researcher, viewer, clinician. `root`, `root2` and `root3` are three
+    /// distinct superadmins: the global config documents are theirs alone, with the
+    /// four-eyes rule between them (security audit finding 2).
     admin: String,
     admin_id: Uuid,
     admin2: String,
     researcher: String,
-    researcher_id: Uuid,
     viewer: String,
     clinician: String,
     root: String,
+    root_id: Uuid,
+    root2: String,
+    root3: String,
 }
 
 fn state_for(db: &TestDb, signer: Option<BundleSigner>) -> AppState {
@@ -75,7 +80,12 @@ async fn setup_with(signer: Option<BundleSigner>) -> Option<Ctx> {
     let viewer_id = seed_user(p, Some(org), Role::Viewer, "view@a.test").await;
     let clinician_id = seed_user(p, Some(org), Role::Clinician, "clin@a.test").await;
     let root_id = seed_user(p, None, Role::Superadmin, "root@curv.test").await;
+    let root2_id = seed_user(p, None, Role::Superadmin, "root2@curv.test").await;
+    let root3_id = seed_user(p, None, Role::Superadmin, "root3@curv.test").await;
     Some(Ctx {
+        root2: access_token(&state, root2_id, None, Role::Superadmin),
+        root3: access_token(&state, root3_id, None, Role::Superadmin),
+        root_id,
         admin: access_token(&state, admin_id, Some(org), Role::Admin),
         admin2: access_token(&state, admin2_id, Some(org), Role::Owner),
         researcher: access_token(&state, researcher_id, Some(org), Role::Researcher),
@@ -83,7 +93,6 @@ async fn setup_with(signer: Option<BundleSigner>) -> Option<Ctx> {
         clinician: access_token(&state, clinician_id, Some(org), Role::Clinician),
         root: access_token(&state, root_id, None, Role::Superadmin),
         admin_id,
-        researcher_id,
         db,
         state,
         org,
@@ -142,10 +151,10 @@ impl Ctx {
         assert_eq!(s, StatusCode::OK, "{b}");
     }
 
-    /// Publishes catalog, baselines and scoring profile `v` (researcher authors, admin2
-    /// approves, admin publishes).
+    /// Publishes catalog, baselines and scoring profile `v` (root authors, root2 approves
+    /// and publishes).
     async fn publish_all(&self, v: &str) {
-        let (r, a2, a) = (&self.researcher, &self.admin2, &self.admin);
+        let (r, a2, a) = (&self.root, &self.root2, &self.root2);
         self.publish_doc("stimulus_catalog", v, catalog(), r, a2, a)
             .await;
         self.publish_doc("normative_baselines", v, baselines(), r, a2, a)
@@ -195,21 +204,40 @@ async fn document_routes_need_a_user_and_the_matrix_role() {
     let (s, b) = c.get("/v1/config/scoring_profile", &c.clinician).await;
     assert_eq!(s, StatusCode::OK, "{b}");
 
-    // ConfigWrite: owner, admin, researcher; not clinician.
-    let (s, _) = c
-        .post("/v1/config/scoring_profile", &create, &c.clinician)
-        .await;
-    assert_eq!(s, StatusCode::FORBIDDEN);
-    let (s, b) = c
-        .post("/v1/config/scoring_profile", &create, &c.researcher)
-        .await;
+    // The documents are global (no org): create, approve, publish and retire are for
+    // superadmins only. No org role, owner and admin included, may change what every
+    // tenant's ingest reads (security audit finding 2).
+    for token in [&c.admin, &c.admin2, &c.researcher, &c.clinician, &c.viewer] {
+        let (s, b) = c.post("/v1/config/scoring_profile", &create, token).await;
+        assert_eq!(s, StatusCode::FORBIDDEN, "{b}");
+        assert_eq!(slug(&b), "forbidden");
+    }
+    let (s, b) = c.post("/v1/config/scoring_profile", &create, &c.root).await;
     assert_eq!(s, StatusCode::CREATED, "{b}");
-
-    // ConfigPublish: owner, admin; not researcher.
-    let (s, _) = c
-        .post_empty("/v1/config/scoring_profile/1/approve", &c.researcher)
+    for step in ["approve", "publish", "retire"] {
+        for token in [&c.admin, &c.admin2, &c.researcher] {
+            let (s, b) = c
+                .post_empty(&format!("/v1/config/scoring_profile/1/{step}"), token)
+                .await;
+            assert_eq!(s, StatusCode::FORBIDDEN, "{step}: {b}");
+        }
+    }
+    let (s, b) = c
+        .post_empty("/v1/config/scoring_profile/1/approve", &c.root2)
         .await;
-    assert_eq!(s, StatusCode::FORBIDDEN);
+    assert_eq!(s, StatusCode::OK, "{b}");
+    for token in [&c.admin, &c.admin2] {
+        for step in ["publish", "retire"] {
+            let (s, b) = c
+                .post_empty(&format!("/v1/config/scoring_profile/1/{step}"), token)
+                .await;
+            assert_eq!(s, StatusCode::FORBIDDEN, "{step} a candidate: {b}");
+        }
+    }
+    let (_, b) = c.get("/v1/config/scoring_profile/1", &c.admin).await;
+    assert_eq!(b["status"], "candidate", "refused calls change nothing");
+
+    // ConfigPublish (bundle compose, per org): owner, admin; not researcher.
     let (s, _) = c.post_empty("/v1/config/bundles", &c.researcher).await;
     assert_eq!(s, StatusCode::FORBIDDEN);
 
@@ -222,7 +250,7 @@ async fn document_routes_need_a_user_and_the_matrix_role() {
 #[tokio::test]
 async fn create_validates_the_body_per_kind_and_versions_are_unique() {
     let Some(c) = setup().await else { return };
-    let r = &c.researcher;
+    let r = &c.root;
 
     let (s, b) = c
         .post(
@@ -235,7 +263,7 @@ async fn create_validates_the_body_per_kind_and_versions_are_unique() {
     assert_eq!(b["kind"], "stimulus_catalog");
     assert_eq!(b["version"], "c1");
     assert_eq!(b["status"], "draft");
-    assert_eq!(b["created_by"], c.researcher_id.to_string());
+    assert_eq!(b["created_by"], c.root_id.to_string());
     assert_eq!(b["notes"], "kit");
     assert_eq!(b["published_at"], Value::Null);
     assert_eq!(b["body"], catalog(), "the body is stored as given");
@@ -301,49 +329,48 @@ async fn create_validates_the_body_per_kind_and_versions_are_unique() {
 #[tokio::test]
 async fn lifecycle_is_draft_approve_publish_with_four_eyes() {
     let Some(c) = setup().await else { return };
-    // The admin authors this one, so the admin may neither approve nor publish it.
+    // Superadmin `root` authors this one, so it may neither approve nor publish it.
     let (s, b) = c
         .post(
             "/v1/config/scoring_profile",
             &json!({"version": "p1", "body": profile()}),
-            &c.admin,
+            &c.root,
         )
         .await;
     assert_eq!(s, StatusCode::CREATED, "{b}");
 
     // Publish straight from draft: invalid transition.
     let (s, b) = c
-        .post_empty("/v1/config/scoring_profile/p1/publish", &c.admin2)
+        .post_empty("/v1/config/scoring_profile/p1/publish", &c.root2)
         .await;
     assert_eq!(s, StatusCode::CONFLICT, "{b}");
     assert_eq!(slug(&b), "invalid-transition");
 
     let (s, b) = c
-        .post_empty("/v1/config/scoring_profile/p1/approve", &c.admin)
+        .post_empty("/v1/config/scoring_profile/p1/approve", &c.root)
         .await;
     assert_eq!(s, StatusCode::FORBIDDEN, "{b}");
     assert_eq!(slug(&b), "four-eyes-required");
 
     let (s, b) = c
-        .post_empty("/v1/config/scoring_profile/p1/approve", &c.admin2)
+        .post_empty("/v1/config/scoring_profile/p1/approve", &c.root2)
         .await;
     assert_eq!(s, StatusCode::OK, "{b}");
     assert_eq!(b["status"], "candidate");
     // Approving twice is not a transition.
     let (s, b) = c
-        .post_empty("/v1/config/scoring_profile/p1/approve", &c.admin2)
+        .post_empty("/v1/config/scoring_profile/p1/approve", &c.root2)
         .await;
     assert_eq!(s, StatusCode::CONFLICT, "{b}");
 
     let (s, b) = c
-        .post_empty("/v1/config/scoring_profile/p1/publish", &c.admin)
+        .post_empty("/v1/config/scoring_profile/p1/publish", &c.root)
         .await;
     assert_eq!(s, StatusCode::FORBIDDEN, "{b}");
     assert_eq!(slug(&b), "four-eyes-required");
-    // A superadmin is held to the same rule only for its own documents; here it is a
-    // second person.
+    // A third superadmin publishes: author and approver are both someone else.
     let (s, b) = c
-        .post_empty("/v1/config/scoring_profile/p1/publish", &c.root)
+        .post_empty("/v1/config/scoring_profile/p1/publish", &c.root3)
         .await;
     assert_eq!(s, StatusCode::OK, "{b}");
     assert_eq!(b["status"], "published");
@@ -354,15 +381,15 @@ async fn lifecycle_is_draft_approve_publish_with_four_eyes() {
         "scoring_profile",
         "p2",
         profile(),
-        &c.researcher,
-        &c.admin2,
-        &c.admin,
+        &c.root3,
+        &c.root2,
+        &c.root,
     )
     .await;
     let (_, b) = c.get("/v1/config/scoring_profile/p1", &c.admin).await;
     assert_eq!(b["status"], "retired");
     let (_, b) = c
-        .get("/v1/config/scoring_profile?status=published", &c.admin)
+        .get("/v1/config/scoring_profile?status=published", &c.root)
         .await;
     let items = b["items"].as_array().unwrap();
     assert_eq!(items.len(), 1, "{b}");
@@ -370,16 +397,16 @@ async fn lifecycle_is_draft_approve_publish_with_four_eyes() {
 
     // Retire: anything not yet retired; retiring twice is a conflict.
     let (s, b) = c
-        .post_empty("/v1/config/scoring_profile/p2/retire", &c.admin)
+        .post_empty("/v1/config/scoring_profile/p2/retire", &c.root)
         .await;
     assert_eq!(s, StatusCode::OK, "{b}");
     assert_eq!(b["status"], "retired");
     let (s, _) = c
-        .post_empty("/v1/config/scoring_profile/p2/retire", &c.admin)
+        .post_empty("/v1/config/scoring_profile/p2/retire", &c.root)
         .await;
     assert_eq!(s, StatusCode::CONFLICT);
     let (s, _) = c
-        .post_empty("/v1/config/scoring_profile/p2/publish", &c.admin2)
+        .post_empty("/v1/config/scoring_profile/p2/publish", &c.root2)
         .await;
     assert_eq!(
         s,
@@ -443,12 +470,12 @@ async fn seeded_drafts_need_two_different_people_and_are_never_published_by_seed
     let (_, b) = c.get("/v1/config/scoring_profile", &c.admin).await;
     let version = b["items"][0]["version"].as_str().unwrap().to_owned();
     let base = format!("/v1/config/scoring_profile/{version}");
-    let (s, b) = c.post_empty(&format!("{base}/approve"), &c.admin).await;
+    let (s, b) = c.post_empty(&format!("{base}/approve"), &c.root).await;
     assert_eq!(s, StatusCode::OK, "{b}");
-    let (s, b) = c.post_empty(&format!("{base}/publish"), &c.admin).await;
+    let (s, b) = c.post_empty(&format!("{base}/publish"), &c.root).await;
     assert_eq!(s, StatusCode::FORBIDDEN, "{b}");
     assert_eq!(slug(&b), "four-eyes-required");
-    let (s, b) = c.post_empty(&format!("{base}/publish"), &c.admin2).await;
+    let (s, b) = c.post_empty(&format!("{base}/publish"), &c.root2).await;
     assert_eq!(s, StatusCode::OK, "{b}");
     c.db.cleanup().await;
 }
@@ -460,7 +487,7 @@ async fn seeding_skips_when_any_document_exists() {
         .post(
             "/v1/config/scoring_profile",
             &json!({"version": "mine", "body": profile()}),
-            &c.researcher,
+            &c.root,
         )
         .await;
     assert_eq!(s, StatusCode::CREATED);

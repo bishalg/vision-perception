@@ -253,9 +253,11 @@ pub fn ttl_hours(setting: Option<i64>) -> i32 {
     i32::try_from(h).expect("clamped")
 }
 
-/// Blob key of an artifact (EXJ-3): deterministic per export, so a re-run overwrites.
-pub fn blob_key(org: Uuid, export: Uuid, file_name: &str) -> String {
-    format!("exports/{org}/{export}/{file_name}")
+/// Blob key of an artifact (EXJ-3): one per job attempt (`jobs.attempts`), so a run whose
+/// job was reclaimed never overwrites the artifact a later attempt recorded (security
+/// audit finding 3). The key used is stored in `exports.blob_key`; downloads read it.
+pub fn blob_key(org: Uuid, export: Uuid, attempt: i32, file_name: &str) -> String {
+    format!("exports/{org}/{export}/{attempt}/{file_name}")
 }
 
 // ---- HL7 profile (INTG-3 `hl7 {...}`) -----------------------------------------------------

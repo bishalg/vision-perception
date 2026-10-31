@@ -1225,3 +1225,51 @@ async fn identical_replay_of_a_1_7_body_is_200_duplicate_and_changes_nothing() {
     assert_eq!(tracking_columns(&f, "SESS-GOLDEN-0001").await, before);
     f.db.cleanup().await;
 }
+
+/// Security audit finding 5: values the schema lets through but a DB CHECK refuses
+/// (`tracking_accuracy_deg >= 0`, `duration_sec >= 0`) are a 400 naming the field, never a
+/// 500. Unknown tracking enums are refused by the schema and the typed decode.
+#[tokio::test]
+async fn v1_7_values_a_db_check_refuses_are_400_not_500() {
+    let Some(f) = Fixture::new().await else {
+        return;
+    };
+    let router = f.router();
+    let negative = golden_v1_7_tracking("S-NEG-ACC", "good", Some(-0.5));
+    let (status, _, resp) =
+        send(router.clone(), post_session_v1_7(Some(&f.dev()), &negative)).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "{resp}");
+    assert_eq!(problem_slug(&resp), "validation-failed");
+    assert_eq!(
+        param_names(&resp),
+        ["/rawPayload/trackingQuality/estimatedAccuracyDeg"]
+    );
+
+    let mut duration = golden_v1_7_with_id("S-NEG-DUR");
+    duration["durationSec"] = json!(-1.0);
+    let (status, _, resp) =
+        send(router.clone(), post_session_v1_7(Some(&f.dev()), &duration)).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "{resp}");
+    assert_eq!(param_names(&resp), ["/durationSec"]);
+
+    for (pointer, value) in [("verdict", "excellent"), ("calibration/quality", "perfect")] {
+        let mut body = golden_v1_7_with_id("S-BAD-ENUM");
+        *body
+            .pointer_mut(&format!("/rawPayload/trackingQuality/{pointer}"))
+            .unwrap() = json!(value);
+        let (status, _, resp) =
+            send(router.clone(), post_session_v1_7(Some(&f.dev()), &body)).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{pointer}: {resp}");
+        assert_eq!(problem_slug(&resp), "validation-failed");
+    }
+    assert_eq!(f.count("SELECT count(*) FROM sessions").await, 0);
+    // Zero is a valid accuracy.
+    ingest_v1_7_ok(
+        &router,
+        &f.dev(),
+        &golden_v1_7_tracking("S-ZERO-ACC", "good", Some(0.0)),
+    )
+    .await;
+    assert_eq!(f.count("SELECT count(*) FROM sessions").await, 1);
+    f.db.cleanup().await;
+}

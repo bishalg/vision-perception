@@ -347,7 +347,10 @@ pub struct WorklistItem {
     /// Hours since the session was received.
     pub age_hours: f64,
     pub cosign_required: bool,
-    pub has_patient_ref: bool,
+    /// Whether a hospital MRN is on file (MRN-6). Absent for a caller without
+    /// `PatientRefRead` (superadmin); the MRN itself is never in this type.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub has_patient_ref: Option<bool>,
 }
 
 fn example_worklist_item() -> WorklistItem {
@@ -358,7 +361,7 @@ fn example_worklist_item() -> WorklistItem {
         assigned_to: None,
         age_hours: 5.5,
         cosign_required: false,
-        has_patient_ref: false,
+        has_patient_ref: Some(false),
     }
 }
 

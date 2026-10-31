@@ -158,10 +158,11 @@ async fn jobs_are_idempotent_and_renders_deterministic() {
         .fetch_one(&c.db.pool)
         .await
         .unwrap();
+    // One key per attempt (security audit finding 3): this was attempt 1.
     assert_eq!(
         key,
         format!(
-            "exports/{}/{id}/{}",
+            "exports/{}/{id}/1/{}",
             c.org,
             done["file_name"].as_str().unwrap()
         )
@@ -180,7 +181,8 @@ async fn jobs_are_idempotent_and_renders_deterministic() {
     assert_eq!(again["completed_at"], done["completed_at"]);
     assert_eq!(c.audit_rows("export.complete").await.len(), 1);
 
-    // A crash before the record phase re-renders: same key, same bytes (XC-8).
+    // A crash before the record phase re-renders: same bytes (XC-8), under the new
+    // attempt's key.
     sqlx::query("UPDATE exports SET status = 'running' WHERE id = $1")
         .bind(id)
         .execute(&c.db.pool)
@@ -203,6 +205,170 @@ async fn jobs_are_idempotent_and_renders_deterministic() {
     );
     let bytes = c.artifact(&id.to_string()).await;
     assert_eq!(rerun["sha256"], hex(&Sha256::digest(&bytes)));
+    c.db.cleanup().await;
+}
+
+/// `(blob_key, sha256, completed_at, error)` of an export row: what a run records.
+type Recorded = (
+    Option<String>,
+    Option<Vec<u8>>,
+    Option<chrono::DateTime<chrono::Utc>>,
+    Option<String>,
+);
+
+async fn export_status(c: &Ctx, id: Uuid) -> (String, Recorded) {
+    let (status, key, sha, completed, error) = sqlx::query_as(
+        "SELECT status, blob_key, sha256, completed_at, error FROM exports WHERE id = $1",
+    )
+    .bind(id)
+    .fetch_one(&c.db.pool)
+    .await
+    .unwrap();
+    (status, (key, sha, completed, error))
+}
+
+/// The router's blob store; the first artifact upload first lets the job be reclaimed and
+/// claimed again by another worker (the race of trap 4: a slow run loses its claim while it
+/// uploads). The new claim is kept in `claimed`.
+struct ReclaimDuringUpload {
+    inner: Arc<dyn BlobStore>,
+    pool: sqlx::PgPool,
+    claimed: tokio::sync::Mutex<Option<asd_backend::jobs::Job>>,
+}
+
+#[async_trait]
+impl BlobStore for ReclaimDuringUpload {
+    async fn presign_put(&self, k: &str, ct: &str) -> Result<PresignedPut, BlobError> {
+        self.inner.presign_put(k, ct).await
+    }
+    async fn put(&self, k: &str, ct: &str, b: Bytes) -> Result<(), BlobError> {
+        self.inner.put(k, ct, b).await
+    }
+    async fn get(&self, k: &str) -> Result<Option<StoredBlob>, BlobError> {
+        self.inner.get(k).await
+    }
+    async fn ready(&self) -> Result<(), BlobError> {
+        self.inner.ready().await
+    }
+    async fn delete(&self, k: &str) -> Result<(), BlobError> {
+        self.inner.delete(k).await
+    }
+    async fn put_object_large(&self, k: &str, ct: &str, b: Bytes) -> Result<(), BlobError> {
+        let mut claimed = self.claimed.lock().await;
+        if claimed.is_none() {
+            sqlx::query("UPDATE jobs SET started_at = now() - interval '1 hour'")
+                .execute(&self.pool)
+                .await
+                .unwrap();
+            let n = runner::reclaim_stale(&self.pool, std::time::Duration::from_secs(60))
+                .await
+                .unwrap();
+            assert_eq!(n, 1, "the silent run is reclaimed");
+            *claimed = runner::claim_next(&self.pool, "worker-2").await.unwrap();
+        }
+        self.inner.put_object_large(k, ct, b).await
+    }
+}
+
+/// Security audit finding 3 (EXJ-9, trap 4): a run whose job was reclaimed and claimed
+/// again records nothing (neither success nor failure), and writes its artifact under its
+/// own attempt's key, so it never overwrites the artifact the current attempt recorded.
+#[tokio::test]
+async fn a_reclaimed_run_never_records_over_the_current_attempt() {
+    let Some(c) = Ctx::new().await else { return };
+    cohort(&c).await;
+    let (_, clin) = c.token(Role::Clinician).await;
+    // De-identified: a fresh salt per run, so two runs render different bytes.
+    let (s, made) = c
+        .request_export(&clin, body("csv", "deidentified", "clinical_care"))
+        .await;
+    assert_eq!(s, StatusCode::ACCEPTED, "{made}");
+    let id = uuid(&made["id"]);
+    let pool = &c.db.pool;
+    let (_, nothing) = export_status(&c, id).await;
+
+    // Attempt 1 renders; while it uploads, it loses the job to attempt 2.
+    let stale = runner::claim_next(pool, "worker-1").await.unwrap().unwrap();
+    let racing = Arc::new(ReclaimDuringUpload {
+        inner: c.state.blobs.clone(),
+        pool: pool.clone(),
+        claimed: tokio::sync::Mutex::new(None),
+    });
+    // A silent worker: no heartbeat while it runs.
+    let mut ctx = c
+        .job_ctx()
+        .with_heartbeat_every(std::time::Duration::from_secs(3600));
+    ctx.blobs = Some(racing.clone());
+    runner::execute_in(&ctx, &stale).await.unwrap();
+    let current = racing
+        .claimed
+        .lock()
+        .await
+        .clone()
+        .expect("attempt 2 claimed");
+    assert_eq!((stale.attempts, current.attempts), (1, 2));
+    let (status, recorded) = export_status(&c, id).await;
+    assert_eq!(recorded, nothing, "the stale run recorded");
+    assert!(status == "queued" || status == "running", "{status}");
+    assert!(c.audit_rows("export.complete").await.is_empty());
+
+    // The stale run also never fails the export over attempt 2.
+    let no_blobs = JobContext::db_only(pool.clone());
+    runner::execute_in(&no_blobs, &stale).await.unwrap();
+    assert_eq!(
+        export_status(&c, id).await.1,
+        nothing,
+        "stale failure recorded"
+    );
+
+    // Attempt 2 records; its key names the attempt.
+    let outcome = runner::execute_in(&c.job_ctx(), &current).await.unwrap();
+    assert_eq!(outcome, runner::Outcome::Succeeded);
+    let (_, done) = c
+        .call(Method::GET, &format!("/v1/exports/{id}"), None, &clin)
+        .await;
+    assert_eq!(done["status"], "succeeded", "{done}");
+    let (_, recorded) = export_status(&c, id).await;
+    let key = |attempt: i32| {
+        format!(
+            "exports/{}/{id}/{attempt}/{}",
+            c.org,
+            done["file_name"].as_str().unwrap()
+        )
+    };
+    assert_eq!(recorded.0, Some(key(2)));
+    // The stale run removed its own artifact when it found it had lost the job.
+    assert!(c.state.blobs.get(&key(1)).await.unwrap().is_none());
+    // The stale run, once more after the success, changes nothing either.
+    runner::execute_in(&c.job_ctx(), &stale).await.unwrap();
+    assert_eq!(export_status(&c, id).await.1, recorded);
+
+    // Downloaded through the API (the stored key), the bytes match the recorded hash.
+    let (s, url) = c
+        .call(
+            Method::POST,
+            &format!("/v1/exports/{id}/download-url"),
+            None,
+            &clin,
+        )
+        .await;
+    assert_eq!(s, StatusCode::OK, "{url}");
+    let response = {
+        use tower::ServiceExt;
+        c.app
+            .clone()
+            .oneshot(common::get(url["url"].as_str().unwrap()))
+            .await
+            .unwrap()
+    };
+    assert_eq!(response.status(), StatusCode::OK);
+    let bytes = {
+        use http_body_util::BodyExt;
+        response.into_body().collect().await.unwrap().to_bytes()
+    };
+    assert_eq!(done["sha256"], hex(&Sha256::digest(&bytes)));
+    assert_eq!(done["byte_size"], bytes.len());
+    assert_eq!(c.audit_rows("export.complete").await.len(), 1);
     c.db.cleanup().await;
 }
 

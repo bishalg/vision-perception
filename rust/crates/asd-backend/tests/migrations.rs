@@ -275,6 +275,39 @@ async fn migrator_is_idempotent_and_records_every_version() {
     db.cleanup().await;
 }
 
+/// Security audit (0015): the org-scoped newest-first indexes behind the audit log
+/// and the session/worklist lists (findings 4), and the spent TOTP step (finding 7).
+#[tokio::test]
+async fn migration_0015_adds_list_indexes_and_the_totp_step() {
+    let Some(db) = TestDb::migrated().await else {
+        return;
+    };
+    for (table, columns) in [
+        ("audit_log", "(org_id, id DESC)"),
+        ("sessions", "(org_id, received_at DESC, id DESC)"),
+    ] {
+        let defs: Vec<String> = sqlx::query_scalar(
+            "SELECT indexdef FROM pg_indexes \
+             WHERE schemaname = current_schema() AND tablename = $1",
+        )
+        .bind(table)
+        .fetch_all(&db.pool)
+        .await
+        .unwrap();
+        assert!(
+            defs.iter()
+                .any(|d| d.ends_with(&format!("USING btree {columns}"))),
+            "{table} {columns} missing; have {defs:?}"
+        );
+    }
+    assert_has(
+        &columns(&db.pool, "users").await,
+        "users",
+        &["last_totp_step"],
+    );
+    db.cleanup().await;
+}
+
 #[tokio::test]
 async fn pending_migrations_lists_everything_on_an_empty_database() {
     let Some(db) = TestDb::empty().await else {

@@ -216,6 +216,26 @@ pub fn validate(
             }
         }
     }
+    // Values the schema allows but a column CHECK refuses (0001 `duration_sec >= 0`, 0013
+    // `tracking_accuracy_deg >= 0`): a 400 naming the field, never a 500 from the insert.
+    // JSON has no NaN or infinity, so the parsed numbers are finite; checked anyway. The
+    // tracking enums are typed, so an unknown value never decodes.
+    let non_negative = |v: f64| v.is_finite() && v >= 0.0;
+    if !non_negative(request.duration_sec) {
+        errors.push(param("/durationSec", "must be a number >= 0"));
+    }
+    if let Some(accuracy) = raw
+        .tracking_quality
+        .as_ref()
+        .and_then(|tq| tq.estimated_accuracy_deg)
+    {
+        if !non_negative(accuracy) {
+            errors.push(param(
+                "/rawPayload/trackingQuality/estimatedAccuracyDeg",
+                "must be a number >= 0 (degrees of visual angle)",
+            ));
+        }
+    }
     let started_at = parse_date(&raw.started_at, "/rawPayload/startedAt", &mut errors);
     let ended_at = parse_date(&raw.ended_at, "/rawPayload/endedAt", &mut errors);
 

@@ -2,12 +2,19 @@
 //!
 //! Config document lifecycle (CFG-1): `draft -> candidate -> published -> retired`.
 //!
-//! | Step     | From                      | Who (RBAC)      | Four-eyes rule                                  |
-//! |----------|---------------------------|-----------------|-------------------------------------------------|
-//! | create   | -                         | `ConfigWrite`   | -                                               |
-//! | approve  | `draft`                   | `ConfigPublish` | approver != author                              |
-//! | publish  | `candidate`               | `ConfigPublish` | publisher != author; seeded: != approver        |
-//! | retire   | draft, candidate, published| `ConfigPublish` | -                                               |
+//! | Step     | From                       | Who (RBAC)           | Four-eyes rule                             |
+//! |----------|----------------------------|----------------------|--------------------------------------------|
+//! | create   | -                          | `ConfigGlobalManage` | -                                          |
+//! | approve  | `draft`                    | `ConfigGlobalManage` | approver != author                         |
+//! | publish  | `candidate`                | `ConfigGlobalManage` | publisher != author; seeded: != approver   |
+//! | retire   | draft, candidate, published| `ConfigGlobalManage` | -                                          |
+//!
+//! The documents have no org: every tenant's ingest reads the published ones (e.g.
+//! `ingest::auto_review` reads the scoring profile). `ConfigGlobalManage` is therefore
+//! superadmin only, and the four-eyes rule holds between two distinct superadmins
+//! (security audit finding 2). Org owners and admins compose their own org's bundles
+//! (`ConfigPublish`); a norm run is promoted to a *draft* with `ConfigWrite`
+//! (`routes::jobs`), which only superadmins can then approve and publish.
 //!
 //! Publishing retires the previously published document of the same kind in the same
 //! transaction (one published document per kind, enforced by a partial unique index in

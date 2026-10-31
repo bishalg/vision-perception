@@ -331,6 +331,61 @@ async fn totp_required_when_enrolled() {
     ctx.cleanup().await;
 }
 
+/// Security audit finding 7: an accepted TOTP code is spent. The same code (or any code of
+/// the same or an earlier time step) is refused on the next step-up.
+#[tokio::test]
+async fn a_totp_code_is_accepted_once() {
+    let Some(ctx) = setup().await else { return };
+    sqlx::query("UPDATE users SET totp_secret = $2 WHERE id = $1")
+        .bind(ctx.clin_a.id)
+        .bind(TOTP_SECRET)
+        .execute(ctx.pool())
+        .await
+        .unwrap();
+    let first = draft_ready(&ctx, "S-1", "green").await;
+    let second = draft_ready(&ctx, "S-2", "green").await;
+    let code = totp_code(TOTP_SECRET, now_unix()).unwrap();
+
+    let id = first["id"].as_str().unwrap();
+    let hash = first["content_hash"].as_str().unwrap();
+    let (status, _, body) = post_action(
+        &ctx,
+        &ctx.clin_a.token,
+        id,
+        "sign",
+        &sign_body(hash, PASSWORD, Some(&code)),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let step: Option<i64> = sqlx::query_scalar("SELECT last_totp_step FROM users WHERE id = $1")
+        .bind(ctx.clin_a.id)
+        .fetch_one(ctx.pool())
+        .await
+        .unwrap();
+    assert!(step.is_some(), "the accepted step is stored");
+
+    let id = second["id"].as_str().unwrap();
+    let hash = second["content_hash"].as_str().unwrap();
+    let (status, _, body) = post_action(
+        &ctx,
+        &ctx.clin_a.token,
+        id,
+        "sign",
+        &sign_body(hash, PASSWORD, Some(&code)),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED, "replayed code: {body}");
+    assert_eq!(slug(&body), "reauthentication-failed");
+    assert_eq!(state_of(&ctx, id).await.0, "in_progress");
+    assert_eq!(
+        audit_rows(ctx.pool(), "clinical_review.sign_failed", id)
+            .await
+            .len(),
+        1
+    );
+    ctx.cleanup().await;
+}
+
 #[test]
 fn totp_matches_rfc_6238() {
     // RFC 6238 appendix B, SHA-1 secret "12345678901234567890", truncated to 6 digits.

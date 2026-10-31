@@ -493,6 +493,8 @@ export const PROBLEM_SLUGS = [
   "export-too-large",
   "consent-purpose-mismatch",
   "host-key-mismatch",
+  // Security audit (RBAC-3): a non-clinical actor cannot create or promote a clinical-role user.
+  "clinical-role-not-assignable",
 ] as const;
 export type ProblemSlug = (typeof PROBLEM_SLUGS)[number];
 

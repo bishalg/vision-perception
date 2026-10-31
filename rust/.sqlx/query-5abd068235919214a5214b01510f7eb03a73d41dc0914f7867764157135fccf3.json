@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE exports SET status = 'running', started_at = coalesce(started_at, now())\n         WHERE id = $1 AND status IN ('queued', 'running')\n           AND EXISTS (SELECT 1 FROM jobs\n                       WHERE id = $2 AND attempts = $3 AND status = 'running')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5abd068235919214a5214b01510f7eb03a73d41dc0914f7867764157135fccf3"
+}

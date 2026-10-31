@@ -13,6 +13,12 @@
 //! refresh tokens (and the access-token extractor refuses them at once). `invited` users
 //! are listed as such and cannot sign in; `PATCH` sets only `active` or `disabled`.
 //!
+//! Clinical roles (security audit finding 1, RBAC-3, ADR-0008 D2): an actor that may not
+//! read clinical content (superadmin, admin) never creates a user, nor promotes one, into a
+//! role holding clinical-content actions it lacks, because it chooses (or may know) that
+//! user's password: `403 clinical-role-not-assignable` ([`rbac::can_provision`]). Owners
+//! provision clinicians. No password set or reset endpoint exists.
+//!
 //! Signer profile (WP-C.9, NOTE-6): `display_name` (<= 120 characters) and
 //! `professional_registration` (<= 60, e.g. "NMC 12345") on create and update (by
 //! `UserManage`), and by the user through `GET/PATCH /v1/users/me` (any signed-in user,
@@ -206,6 +212,18 @@ pub fn valid_email(email: &str) -> bool {
         && !email.chars().any(char::is_whitespace)
 }
 
+/// `403 clinical-role-not-assignable` (see [`rbac::can_provision`]).
+fn clinical_role_not_assignable(role: Role) -> AppError {
+    AppError::ForbiddenWith {
+        slug: asd_contract::problem::CLINICAL_ROLE_NOT_ASSIGNABLE,
+        detail: format!(
+            "the {} role holds clinical-content permissions you do not have; an owner of \
+             the organisation must create or promote this user",
+            rbac::role_as_str(role)
+        ),
+    }
+}
+
 fn not_an_org_role() -> AppError {
     AppError::Validation(vec![InvalidParam {
         name: "role".into(),
@@ -298,6 +316,10 @@ async fn create(
     }
     if !rbac::can_assign(auth.principal.role, req.role) {
         return Err(AppError::Forbidden);
+    }
+    // The actor chooses this user's password: no clinical role it could not use itself.
+    if !rbac::can_provision(auth.principal.role, None, req.role) {
+        return Err(clinical_role_not_assignable(req.role));
     }
 
     let pw_hash = password::hash_blocking(req.password).await?;
@@ -410,6 +432,9 @@ async fn update(
     let new_role = req.role.unwrap_or(current_role);
     if !rbac::can_assign(actor, new_role) {
         return Err(AppError::Forbidden);
+    }
+    if !rbac::can_provision(actor, Some(current_role), new_role) {
+        return Err(clinical_role_not_assignable(new_role));
     }
     let new_status: &str = match req.status {
         Some(s) => status_str(s),

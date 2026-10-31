@@ -4538,7 +4538,8 @@
         "export-expired",
         "export-too-large",
         "consent-purpose-mismatch",
-        "host-key-mismatch"
+        "host-key-mismatch",
+        "clinical-role-not-assignable"
       ],
       "type": "string"
     },
@@ -8480,7 +8481,15 @@
           "type": "number"
         },
         "has_patient_ref": {
-          "type": "boolean"
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Whether a hospital MRN is on file (MRN-6). Absent for a caller without\n`PatientRefRead` (superadmin); the MRN itself is never in this type."
         },
         "id": {
           "type": "string"
@@ -8553,8 +8562,7 @@
         "quality_verdict",
         "attention_flag",
         "age_hours",
-        "cosign_required",
-        "has_patient_ref"
+        "cosign_required"
       ],
       "type": "object"
     },

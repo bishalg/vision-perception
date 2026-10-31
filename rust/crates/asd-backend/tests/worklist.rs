@@ -134,6 +134,14 @@ async fn access_by_org_and_role() {
         let (status, body) = worklist(&ctx, token, "").await;
         assert_eq!(status, StatusCode::OK, "{who}: {body}");
         assert_eq!(ids(&body), ["S-1"], "{who}");
+        // MRN-6 (security audit finding 6): whether an MRN is on file is shown only to a
+        // caller with `PatientRefRead`; the superadmin's rows do not carry the field.
+        let item = &body["items"][0];
+        if who == "superadmin" {
+            assert!(item.get("has_patient_ref").is_none(), "{who}: {item}");
+        } else {
+            assert_eq!(item["has_patient_ref"], false, "{who}: {item}");
+        }
     }
     let (status, _, _) = get_as(&ctx, &ctx.clin_a.token, "/v1/orgs/not-a-uuid/worklist").await;
     assert_eq!(status, StatusCode::NOT_FOUND);

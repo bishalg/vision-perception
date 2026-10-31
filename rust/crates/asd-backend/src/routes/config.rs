@@ -9,9 +9,10 @@
 //!
 //! User plane (bearer = JWT, `auth::rbac` matrix):
 //! - `GET  /v1/config/{kind}?status=&cursor=&limit=` (`ConfigRead`) -> `ConfigDocumentPage`
-//! - `POST /v1/config/{kind}` (`ConfigWrite`) `CreateConfigDocumentRequest` -> 201 draft
+//! - `POST /v1/config/{kind}` (`ConfigGlobalManage`: superadmin only, the documents are
+//!   global) `CreateConfigDocumentRequest` -> 201 draft
 //! - `GET  /v1/config/{kind}/{version}` (`ConfigRead`) -> `ConfigDocument`
-//! - `POST /v1/config/{kind}/{version}/approve|publish|retire` (`ConfigPublish`) ->
+//! - `POST /v1/config/{kind}/{version}/approve|publish|retire` (`ConfigGlobalManage`) ->
 //!   `ConfigDocument` (four-eyes rule, see `config_docs::lifecycle`)
 //! - `POST /v1/config/bundles` (`ConfigPublish`) `{org_id?, feature_flags?}` -> 201
 //!   `ConfigBundleSummary` + `ETag`
@@ -172,7 +173,7 @@ async fn list_documents(
 }
 
 async fn create_document(
-    auth: Require<perm::ConfigWrite>,
+    auth: Require<perm::ConfigGlobalManage>,
     meta: RequestMeta,
     State(state): State<AppState>,
     Path(raw_kind): Path<String>,
@@ -213,7 +214,7 @@ enum Transition {
 }
 
 async fn transition(
-    auth: Require<perm::ConfigPublish>,
+    auth: Require<perm::ConfigGlobalManage>,
     meta: RequestMeta,
     state: AppState,
     raw_kind: String,
@@ -233,7 +234,7 @@ async fn transition(
 }
 
 async fn approve_document(
-    auth: Require<perm::ConfigPublish>,
+    auth: Require<perm::ConfigGlobalManage>,
     meta: RequestMeta,
     State(state): State<AppState>,
     Path((kind, version)): Path<(String, String)>,
@@ -242,7 +243,7 @@ async fn approve_document(
 }
 
 async fn publish_document(
-    auth: Require<perm::ConfigPublish>,
+    auth: Require<perm::ConfigGlobalManage>,
     meta: RequestMeta,
     State(state): State<AppState>,
     Path((kind, version)): Path<(String, String)>,
@@ -251,7 +252,7 @@ async fn publish_document(
 }
 
 async fn retire_document(
-    auth: Require<perm::ConfigPublish>,
+    auth: Require<perm::ConfigGlobalManage>,
     meta: RequestMeta,
     State(state): State<AppState>,
     Path((kind, version)): Path<(String, String)>,

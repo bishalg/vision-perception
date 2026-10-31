@@ -26,7 +26,7 @@ use serde_json::Value;
 
 use crate::app::AppState;
 use crate::auth::extractors::Require;
-use crate::auth::rbac::perm;
+use crate::auth::rbac::{self, perm, Action};
 use crate::clinical::review::parse_state;
 use crate::clinical::{cosign_required, ClinicalSettings, FLAGGED};
 use crate::error::{AppError, AppResult};
@@ -159,6 +159,8 @@ async fn list(
 ) -> AppResult<Json<WorklistPage>> {
     let org = auth.org();
     let me = auth.principal.user_id;
+    // MRN-6: whether an MRN is on file only for a caller who may read it (not superadmin).
+    let show_ref = rbac::allows(auth.principal.role, Action::PatientRefRead);
     let f = query_or_problem(query)?.parse()?;
     let settings = {
         let mut conn = state.db.acquire().await?;
@@ -288,7 +290,7 @@ async fn list(
             assigned_to: r.assigned_to.map(|u| u.to_string()),
             age_hours: (r.age_secs / 3600.0).max(0.0),
             cosign_required: cosign,
-            has_patient_ref: r.has_patient_ref,
+            has_patient_ref: show_ref.then_some(r.has_patient_ref),
         });
     }
     Ok(Json(WorklistPage {

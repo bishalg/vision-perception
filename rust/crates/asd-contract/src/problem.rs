@@ -62,6 +62,10 @@ pub const EXPORT_TOO_LARGE: &str = "export-too-large";
 pub const CONSENT_PURPOSE_MISMATCH: &str = "consent-purpose-mismatch";
 /// Delivery status only: the SFTP host key does not match the pinned one (INTG-5).
 pub const HOST_KEY_MISMATCH: &str = "host-key-mismatch";
+/// 403: an actor that may not read clinical content (superadmin, org admin) cannot create a
+/// user, or promote one, into a role holding clinical-content actions it lacks: it would
+/// choose or know that user's password (RBAC-3, ADR-0008 D2). An owner provisions it.
+pub const CLINICAL_ROLE_NOT_ASSIGNABLE: &str = "clinical-role-not-assignable";
 
 /// Every slug above, published as `$defs/ProblemSlug` in `api-v1.json` so clients can
 /// check their spelling. Route-specific slugs (e.g. `email-taken`, `last-owner`) are
@@ -90,6 +94,7 @@ pub const SLUGS: &[&str] = &[
     EXPORT_TOO_LARGE,
     CONSENT_PURPOSE_MISMATCH,
     HOST_KEY_MISMATCH,
+    CLINICAL_ROLE_NOT_ASSIGNABLE,
 ];
 
 /// Full `type` URI for a slug.
