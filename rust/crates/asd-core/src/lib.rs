@@ -6,6 +6,7 @@
 pub mod aggregate;
 pub mod baselines;
 pub mod flag;
+pub mod gaze;
 pub mod metrics;
 pub mod norms;
 pub mod quality;

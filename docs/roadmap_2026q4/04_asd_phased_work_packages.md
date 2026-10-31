@@ -22,7 +22,7 @@
 | WP-A.11 | iOS consumes the Rust core: xcframework `binaryTarget`, engines become wrappers, golden parity tests, `asd-sync` in the sync client, `device_id` on re-register | 1–2 | S | todo | FFI-3/4, CON-7/11; depends on WP-R.5, WP-B.2, WP-D.7 |
 | WP-A.12 | Android Kotlin bindings from the same UniFFI definitions (`cargo-ndk`) | 4 | S | backlog | depends on WP-R.5 |
 | WP-G.0 | Swift capture hygiene: record untracked frames, no cross-child calibration reuse, no fabricated calibration point, orientation lock | 2 | I | todo | TRK-1, CAL-1, CAL-3; lowers validRatio on track loss (H-G1); spec `docs/spec/modules/asd-gaze-robustness/` |
-| WP-G.1 | Rust tracking types, raw log format, device geometry table, unclamped raycast, visual-angle maths | 2 | S | todo | GEO-1..6, PIPE-2, REP-1; ADR-0007 |
+| WP-G.1 | Rust tracking types, raw log format, device geometry table, unclamped raycast, visual-angle maths | 2 | S | done | `asd-core::gaze` geometry/raycast/raw_log + tracking types; 42 device entries (community id list, M4 iPad camera offset + iPad16,5/6 to verify in G.14); ARKit camera-axis mirroring to confirm in G.8 |
 | WP-G.2 | Rust calibration models (screen/angular affine, homography, poly2), robust target aggregation, LOO-CV quality, selection | 2 | S | todo | CAL-2..8; depends on G.1 |
 | WP-G.3 | Rust per-sample pipeline: track state, confidence, 1-Euro port, gap fill, AOI video→screen mapping | 2 | S | todo | TRK, CNF, GAP, PIPE-1/3/5, GEO-7; depends on G.1, G.2, G.4 |
 | WP-G.4 | Rust validation, drift monitor, re-calibration advice, session TrackingQuality summary | 2 | S | todo | VAL, DRF, CAL-9, QS-1..4; depends on G.1 |

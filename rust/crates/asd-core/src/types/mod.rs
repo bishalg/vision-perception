@@ -18,6 +18,7 @@ pub mod frame;
 pub mod metrics;
 pub mod quality;
 pub mod scoring;
+pub mod tracking;
 
 pub use baselines::{
     AgeBracket, NormativeBaselineSet, NormativeDirection, NormativeExpectation, NormativeRange,
