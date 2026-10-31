@@ -1,0 +1,54 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO erasure_requests (org_id, participant_id, requested_by_type, requested_by)\n         VALUES ($1, $2, 'device', $3)\n         RETURNING id, scope, requested_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "erasure_requests",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "scope",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "erasure_requests",
+            "name": "scope"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "requested_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "erasure_requests",
+            "name": "requested_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "b97cfcb2cee2510976c8cb63c1b4cf141549459112d76c8a3fa1f9e49b50e037"
+}

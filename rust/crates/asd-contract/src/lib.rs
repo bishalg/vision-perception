@@ -7,6 +7,7 @@
 //! default so the mobile library does not link a validator.
 
 pub mod api_v1;
+pub mod care;
 pub mod config;
 mod jcs;
 mod mirror;

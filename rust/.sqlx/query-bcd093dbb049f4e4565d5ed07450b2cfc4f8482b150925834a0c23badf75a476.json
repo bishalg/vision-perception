@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, scope, requested_at FROM erasure_requests\n         WHERE participant_id = $1 AND completed_at IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "erasure_requests",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "scope",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "erasure_requests",
+            "name": "scope"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "requested_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "erasure_requests",
+            "name": "requested_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "bcd093dbb049f4e4565d5ed07450b2cfc4f8482b150925834a0c23badf75a476"
+}

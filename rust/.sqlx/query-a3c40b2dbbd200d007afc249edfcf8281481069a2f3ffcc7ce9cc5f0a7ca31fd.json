@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE participants SET withdrawn_at = coalesce(withdrawn_at, now()) WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a3c40b2dbbd200d007afc249edfcf8281481069a2f3ffcc7ce9cc5f0a7ca31fd"
+}

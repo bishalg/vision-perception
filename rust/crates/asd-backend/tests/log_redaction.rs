@@ -185,6 +185,14 @@ fn http_request_logs_never_contain_the_path_token() {
             get(&format!("/v1/participants/{TOKEN}/summary?email={EMAIL}")),
         )
         .await;
+        // WP-B.6 made the summary a real route: no bearer is 401 and the log carries the
+        // route template, never the token.
+        assert_eq!(status, http::StatusCode::UNAUTHORIZED);
+        let (status, _, _) = send(
+            app.clone(),
+            get(&format!("/v1/participants/{TOKEN}/unknown?email={EMAIL}")),
+        )
+        .await;
         assert_eq!(status, http::StatusCode::NOT_FOUND);
         let (status, _, _) = send(app, get(&format!("/health?p={ENROLLED_TOKEN}"))).await;
         assert_eq!(status, http::StatusCode::OK);

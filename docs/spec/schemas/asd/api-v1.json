@@ -225,6 +225,165 @@
       ],
       "type": "string"
     },
+    "CareEventInput": {
+      "description": "One care event of a batch.",
+      "properties": {
+        "idempotency_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Per-event key, unique per org: an event whose key was stored before is counted as a\nduplicate and not stored again."
+        },
+        "kind": {
+          "$ref": "#/$defs/CareEventKind"
+        },
+        "occurred_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "When it happened (RFC 3339); the server's receive time when absent."
+        },
+        "payload": {
+          "default": {},
+          "description": "Free-form event body. Tasks carry `task_id` and optional `metadata.type`\n(`session`, `checkin`); diary entries carry `mood`. Must be a JSON object."
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "CareEventKind": {
+      "description": "What a care event records (`care_events.kind`).",
+      "enum": [
+        "task",
+        "medication",
+        "diary",
+        "milestone"
+      ],
+      "type": "string"
+    },
+    "CareEventsRequest": {
+      "description": "`POST /v1/care/events` body.",
+      "properties": {
+        "events": {
+          "description": "1 to [`MAX_EVENTS_PER_BATCH`] events.",
+          "items": {
+            "$ref": "#/$defs/CareEventInput"
+          },
+          "type": "array"
+        },
+        "participant_token": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "participant_token",
+        "events"
+      ],
+      "type": "object"
+    },
+    "CareEventsResponse": {
+      "description": "`POST /v1/care/events` response (`201` new, `200` replay).",
+      "properties": {
+        "accepted": {
+          "description": "Events stored by this call.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "duplicate": {
+          "description": "True when the whole batch was a replay of an earlier `X-Idempotency-Key`.",
+          "type": "boolean"
+        },
+        "duplicates": {
+          "description": "Events skipped because their `idempotency_key` was already stored.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "participant_token": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "participant_token",
+        "accepted",
+        "duplicates",
+        "duplicate"
+      ],
+      "type": "object"
+    },
+    "CareSummary": {
+      "description": "`GET /v1/participants/{token}/summary`: counts over the participant's care events. An\nunknown token answers all zeros (the old CareKit summary did the same).",
+      "properties": {
+        "checkin_count": {
+          "description": "Same for `checkin`.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "completion_rate_percent": {
+          "description": "100 when any task was completed, else 0 (the CareKit port's rule).",
+          "type": "number"
+        },
+        "diary_entries": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "medication_doses": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "milestones": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "participant_token": {
+          "type": "string"
+        },
+        "recent_moods": {
+          "description": "Distinct diary moods, newest first (at most 10).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "session_count": {
+          "description": "Task events whose `task_id` contains `session` or whose `metadata.type` is `session`.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "task_completions": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total_events": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "participant_token",
+        "total_events",
+        "task_completions",
+        "medication_doses",
+        "diary_entries",
+        "milestones",
+        "session_count",
+        "checkin_count",
+        "completion_rate_percent",
+        "recent_moods"
+      ],
+      "type": "object"
+    },
     "Clip": {
       "properties": {
         "areas": {
@@ -1001,6 +1160,46 @@
         "code",
         "max_uses",
         "expires_at"
+      ],
+      "type": "object"
+    },
+    "ErasureRequestResponse": {
+      "description": "`POST /v1/participants/{token}/erasure`: the stored request (execution is a job,\nWP-B.9). Consent is withdrawn at once, so no new data is accepted for the participant.",
+      "properties": {
+        "completed_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`null` until the erasure job ran."
+        },
+        "duplicate": {
+          "description": "True when an open request already existed and is returned unchanged.",
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "participant_token": {
+          "type": "string"
+        },
+        "requested_at": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "participant_token",
+        "scope",
+        "requested_at",
+        "duplicate"
       ],
       "type": "object"
     },

@@ -21,11 +21,11 @@ use schemars::generate::SchemaSettings;
 use schemars::{JsonSchema, SchemaGenerator};
 use serde_json::{json, Map, Value};
 
-use crate::api_v1;
 use crate::config::{self, ConfigBundle, ScoringProfile};
 use crate::problem::{InvalidParam, Problem};
 use crate::session_v1_6::{self, SessionIngestRequest, SessionIngestResponse};
 use crate::signing::canonical_bytes;
+use crate::{api_v1, care};
 
 /// File name of the session ingest schema.
 pub const SESSION_FILE: &str = "session-v1.6.json";
@@ -185,6 +185,10 @@ pub fn api_v1() -> Value {
         api_v1::AuditPage,
         api_v1::Health,
         api_v1::Ready,
+        care::CareEventsRequest,
+        care::CareEventsResponse,
+        care::CareSummary,
+        care::ErasureRequestResponse,
     );
     let mut defs = gen.take_definitions(true);
     defs.insert(

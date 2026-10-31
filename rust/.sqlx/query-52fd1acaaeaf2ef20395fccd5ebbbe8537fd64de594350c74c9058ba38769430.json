@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT e.payload ->> 'mood' AS \"mood!\"\n           FROM care_events e\n           JOIN participants p ON p.id = e.participant_id\n           WHERE p.org_id = $1 AND p.token = $2 AND e.kind = 'diary'\n             AND coalesce(e.payload ->> 'mood', '') <> ''\n           GROUP BY e.payload ->> 'mood'\n           ORDER BY max(e.occurred_at) DESC, e.payload ->> 'mood'\n           LIMIT $3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "mood!",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "52fd1acaaeaf2ef20395fccd5ebbbe8537fd64de594350c74c9058ba38769430"
+}
