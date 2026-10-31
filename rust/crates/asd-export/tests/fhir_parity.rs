@@ -7,8 +7,8 @@ mod support;
 
 use std::collections::BTreeSet;
 
-use asd_report::fhir::{self, BundleInput, FhirDevice, FhirSubject, ReportDocument};
-use asd_report::{export_refusal, observation_status, Refusal};
+use asd_export::fhir::{self, BundleInput, FhirDevice, FhirSubject, ReportDocument};
+use asd_export::{export_refusal, observation_status, Refusal};
 use serde_json::{json, Value};
 use support::*;
 

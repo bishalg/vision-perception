@@ -1,3 +1,5 @@
+//! owner: WP-B.8 (moved from `asd-report` into `asd-export` by WP-I.1, XC-2)
+//!
 //! The shareable observation diary PDF: a port of the iOS `DoctorReportGenerator`.
 //!
 //! Same page (US Letter, 36 pt margins), same sections in the same order and positions,
@@ -14,12 +16,10 @@
 //! - Helvetica replaces the system font, so line widths differ slightly;
 //! - the output is deterministic: no creation date, no document id.
 
-mod canvas;
-
 use asd_contract::session_v1_6::GazeSessionRecord;
 use asd_core::types::CaptureSource;
 
-use self::canvas::{colors, Canvas, Font, PAGE_HEIGHT, PAGE_WIDTH};
+use super::canvas::{colors, Canvas, Font, PAGE_HEIGHT, PAGE_WIDTH};
 use crate::claims;
 use crate::mchat::{MchatResult, MchatRiskLevel};
 use crate::{export_refusal, ids, ReportError};

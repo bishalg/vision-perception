@@ -1,6 +1,6 @@
-//! Shared fixtures for the `asd-report` golden tests.
+//! Shared fixtures for the `asd-export` golden tests (moved from `asd-report`, WP-I.1).
 //!
-//! Goldens are rewritten with `ASD_WRITE_GOLDEN=1 cargo test -p asd-report`; review the
+//! Goldens are rewritten with `ASD_WRITE_GOLDEN=1 cargo test -p asd-export`; review the
 //! diff before committing.
 #![allow(dead_code)] // each test binary uses a different subset
 
@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use asd_contract::session_v1_6::GazeSessionRecord;
-use asd_report::mchat::{MchatResult, MchatRiskLevel};
+use asd_export::mchat::{MchatResult, MchatRiskLevel};
 use serde_json::{json, Value};
 
 pub fn repo_root() -> PathBuf {

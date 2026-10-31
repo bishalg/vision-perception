@@ -1,3 +1,5 @@
+//! owner: WP-B.8 (moved from `asd-report` into `asd-export` by WP-I.1, XC-2)
+//!
 //! FHIR R4 export unit: a `Bundle` of `type: collection` (ADR-0003 decision 1).
 //!
 //! Port of the iOS `FHIRBundleBuilder` + `FHIRInteroperabilityMapper`; the iOS golden

@@ -2,13 +2,13 @@
 //!
 //! Server-side reports of a stored session (API-2):
 //! - `GET /v1/sessions/{id}/report.pdf` regenerates the observation diary from
-//!   `sessions.summary` with `asd-report` (the device-uploaded copy stays available as
+//!   `sessions.summary` with `asd-export` (the device-uploaded copy stays available as
 //!   `?source=device`, see `blobs.rs`);
 //! - `GET /v1/sessions/{id}/fhir` returns the FHIR R4 collection bundle with the PDF as a
 //!   `DocumentReference`.
 //!
-//! Both are byte-identical to what `asd-report` builds from the same record (parity with
-//! iOS is proven in `asd-report`'s golden tests), refuse synthetic sessions (409
+//! Both are byte-identical to what `asd-export` builds from the same record (parity with
+//! iOS is proven in `asd-export`'s golden tests), refuse synthetic sessions (409
 //! `capture-source-rejected`, SIM-5) and answer 404 for another org's session (AUTH-4).
 //! Needs `DATABASE_URL`; skipped otherwise.
 
@@ -16,8 +16,8 @@ mod common;
 mod ingest_support;
 
 use asd_contract::session_v1_6::GazeSessionRecord;
-use asd_report::fhir::{self, BundleInput, FhirDevice, FhirSubject, ReportDocument};
-use asd_report::pdf::{self, DoctorReportInput};
+use asd_export::fhir::{self, BundleInput, FhirDevice, FhirSubject, ReportDocument};
+use asd_export::pdf::{self, DoctorReportInput};
 use common::{send, TestDb};
 use http::StatusCode;
 use ingest_support::*;

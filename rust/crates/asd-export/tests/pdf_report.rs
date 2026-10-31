@@ -7,9 +7,9 @@
 
 mod support;
 
-use asd_report::mchat::{MchatResult, MchatRiskLevel};
-use asd_report::pdf::{self, CareSummary, DoctorReportInput};
-use asd_report::{claims, Refusal, ReportError};
+use asd_export::mchat::{MchatResult, MchatRiskLevel};
+use asd_export::pdf::{self, CareSummary, DoctorReportInput};
+use asd_export::{claims, Refusal, ReportError};
 use serde_json::json;
 use support::*;
 

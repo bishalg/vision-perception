@@ -5,7 +5,7 @@
 //! Device plane (API-1): `POST /v1/sessions` (ING-1..3, CON-13..18, CON-21).
 //! User plane (API-2): `GET /v1/orgs/{id}/sessions`, `GET /v1/sessions/{id}`,
 //! `GET /v1/sessions/{id}/clips` (CON-19), `GET /v1/sessions/{id}/report.pdf` (regenerated
-//! server-side by `asd-report`, WP-B.8; `?source=device` serves the device-uploaded copy,
+//! server-side by `asd-export`, WP-B.8; `?source=device` serves the device-uploaded copy,
 //! or 404 until one exists) and `GET /v1/sessions/{id}/fhir` (FHIR R4 bundle, WP-B.8).
 //!
 //! Auth (WP-B.2): the device plane takes a [`DevicePrincipal`] (`dvc_` bearer) and is
@@ -234,5 +234,5 @@ async fn fhir_bundle(
     let bundle = crate::report::fhir_bundle(&src)?;
     let bytes = serde_json::to_vec(&bundle)
         .map_err(|e| AppError::Internal(format!("bundle encode: {e}")))?;
-    Ok(private_body(bytes, asd_report::fhir::CONTENT_TYPE))
+    Ok(private_body(bytes, asd_export::fhir::CONTENT_TYPE))
 }

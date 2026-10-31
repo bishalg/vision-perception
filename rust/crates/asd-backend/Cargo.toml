@@ -23,7 +23,7 @@ asd-core.workspace = true
 asd-contract = { workspace = true, features = ["validate"] }
 asd-sync.workspace = true
 # WP-B.8: server-side report PDF and FHIR R4 bundle (one implementation with every platform).
-asd-report.workspace = true
+asd-export.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

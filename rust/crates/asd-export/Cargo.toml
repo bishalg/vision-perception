@@ -1,0 +1,55 @@
+[package]
+name = "asd-export"
+description = "ASD export bridge: every outbound format (CSV, XLSX, PDF, FHIR R4, HL7 v2.5.1), de-identification, consent policy, code tables and watermarks (ADR-0008, XC-1..8)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+# XC-1: pure crate (no I/O, no async). `pdf` and `xlsx` are on in the backend; the iOS
+# static library (future FFI use) builds with `--no-default-features`.
+[features]
+default = ["pdf", "xlsx"]
+# PDF engine (and, from WP-I.5, embedded font data).
+pdf = ["dep:pdf-writer"]
+# XLSX writer (WP-I.2).
+xlsx = ["dep:rust_xlsxwriter"]
+
+[dependencies]
+asd-core.workspace = true
+# The stored session record (`sessions.summary`) is `asd_contract::session_v1_6::GazeSessionRecord`;
+# `ExportRecord` reuses the `/v1` session, clip and metric-row types.
+asd-contract.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+# Manifest hashes (SHA-256) and the de-identification pseudonyms (HMAC-SHA256, XC-4).
+sha2.workspace = true
+hmac = "0.12"
+# FHIR timestamps: RFC 3339 in, ISO 8601 whole seconds UTC out (as ISO8601DateFormatter).
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+# Org time zones (IANA, NOTE-7): HL7 `TS`, printed and spreadsheet times (trap 11).
+chrono-tz = { version = "0.10", default-features = false, features = ["std"] }
+# Name-based (v5, SHA-1) UUIDs for every bundle fullUrl, as FHIRBundleBuilder.uuid.
+uuid = { version = "1", features = ["v5"] }
+# DocumentReference attachment: base64 data and SHA-1 hash (FHIR Attachment.hash); HL7 ED.
+base64 = "0.22"
+sha1_smol = "1"
+# Multi-table CSV exports are a ZIP (CSV-3). Deflate only, pure-Rust backend; no
+# encryption, no other codecs, no clock (timestamps are fixed for XC-8).
+zip = { version = "9", default-features = false, features = ["deflate-flate2"] }
+# Not used directly: selects flate2's pure-Rust backend (miniz_oxide), which zip's
+# `deflate-flate2` feature leaves unset (flate2 fails to build without a backend).
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+# Low-level, deterministic PDF writer (MIT OR Apache-2.0): base-14 fonts, nothing embedded.
+pdf-writer = { version = "0.15", optional = true }
+# XLSX-1 (MIT OR Apache-2.0).
+rust_xlsxwriter = { version = "0.102", optional = true, default-features = false }
+
+[[test]]
+name = "pdf_report"
+required-features = ["pdf"]

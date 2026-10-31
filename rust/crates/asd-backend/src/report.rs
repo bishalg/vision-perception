@@ -1,9 +1,9 @@
 //! owner: WP-B.8
 //!
 //! Server-side reports of a stored session: the observation diary PDF and the FHIR R4
-//! bundle, built by `asd-report` from `sessions.summary` (the full `GazeSessionRecord` as
+//! bundle, built by `asd-export` from `sessions.summary` (the full `GazeSessionRecord` as
 //! received, ING-2). This module only loads the inputs and maps refusals to problems; the
-//! formatting lives in `asd-report`, shared with every platform.
+//! formatting lives in `asd-export`, shared with every platform.
 //!
 //! Inputs the server has: the record, the participant token (never a name, CNS-7), the
 //! enrolment age bracket when one was recorded, and the recording device's app version.
@@ -15,9 +15,9 @@
 
 use asd_contract::problem::CAPTURE_SOURCE_REJECTED;
 use asd_contract::session_v1_6::GazeSessionRecord;
-use asd_report::fhir::{self, BundleInput, FhirDevice, FhirSubject, ReportDocument};
-use asd_report::pdf::{self, DoctorReportInput};
-use asd_report::{export_refusal, ReportError};
+use asd_export::fhir::{self, BundleInput, FhirDevice, FhirSubject, ReportDocument};
+use asd_export::pdf::{self, DoctorReportInput};
+use asd_export::{export_refusal, ReportError};
 use serde_json::Value;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -145,7 +145,7 @@ mod tests {
 
     #[test]
     fn synthetic_refusal_is_a_409_with_the_contract_slug() {
-        let e = map_error(ReportError::Refused(asd_report::Refusal::SyntheticCapture));
+        let e = map_error(ReportError::Refused(asd_export::Refusal::SyntheticCapture));
         let p = e.to_problem();
         assert_eq!(p.status, 409);
         assert!(p.type_uri.ends_with("/capture-source-rejected"));

@@ -67,7 +67,7 @@
 | WP-C.12 | Referral/summary letters + printable clinical summary endpoints | 3 | I | todo | NOTE-3..5; needs C.10, C.11, I.5, I.6 migration |
 | WP-C.13 | Console: worklist, clinical review tab, sign/cosign dialogs, clinical settings | 3 | I | todo | UI-*; needs C.2, C.10 |
 | WP-C.14 | Console: participant workspace (timeline, MRN, notes, letters, print) | 3 | I | todo | needs C.11, C.12, C.13 |
-| WP-I.1 | `asd-export` crate foundation: model, de-id, consent policy, verified code table, watermark; fold B.8 PDF/FHIR code in | 3 | S | todo | XC-*; needs B.8 merged |
+| WP-I.1 | `asd-export` crate foundation: model, de-id, consent policy, verified code table, watermark; fold B.8 PDF/FHIR code in | 3 | S | done | `asd-report` folded into `asd-export` (goldens byte-identical); ExportRecord v1, de-id, consent policy (24-row table), watermark, code table; session bundle keeps unverified `93044-6` + XFDF code as documented iOS-parity exception (Q6) |
 | WP-I.2 | CSV (canonical/Excel/Sheets) + XLSX encoders | 3 | I | todo | CSV-*, XLSX-*; needs I.1 |
 | WP-I.3 | FHIR R4 clinical bundle (DiagnosticReport, DocumentReference, Practitioner), iOS id parity, code verification | 3 | S | todo | FHX-*; needs I.1 |
 | WP-I.4 | HL7 v2.5.1 ORU^R01 encoder (file delivery) | 3 | I | todo | HL7-*; needs I.1 |
