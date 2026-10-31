@@ -42,4 +42,4 @@ This folder is the single entry point for any human or AI agent picking up this 
 - Dates are absolute (YYYY-MM-DD). "Now" = 2026-10-27.
 - "Must / should / may" are RFC-2119 style.
 - `H-n` = a human decision only the owner can make. They are collected in `00 §4`.
-- Work-package IDs: `WP-A.n` ASD iOS app, `WP-B.n` backend, `WP-C.n` admin panel (console), `WP-D.n` data/ML, `WP-E.n` compliance/release, `WP-F.n` flood, `WP-P.n` palm, `WP-X.n` platform.
+- Work-package IDs: `WP-A.n` ASD iOS app, `WP-B.n` backend, `WP-C.n` admin panel (console), `WP-I.n` interop and export bridge, `WP-G.n` gaze-tracking robustness, `WP-D.n` data/ML, `WP-E.n` compliance/release, `WP-F.n` flood, `WP-P.n` palm, `WP-X.n` platform.

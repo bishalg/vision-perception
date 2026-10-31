@@ -16,6 +16,8 @@ referenced from the module specs rather than duplicated.
 | --- | --- | --- | --- | --- | --- |
 | ASD gaze app, App Store readiness | [technical.md](modules/asd-gaze-app-store-readiness/technical.md) | [acceptance.md](modules/asd-gaze-app-store-readiness/acceptance.md) | [qa-validation.md](modules/asd-gaze-app-store-readiness/qa-validation.md) | [non-technical.md](modules/asd-gaze-app-store-readiness/non-technical.md) | [work-packages.md](modules/asd-gaze-app-store-readiness/work-packages.md) |
 | ASD Rust core and backend | [technical.md](modules/asd-rust-core-and-backend/technical.md) | [acceptance.md](modules/asd-rust-core-and-backend/acceptance.md) | [qa-validation.md](modules/asd-rust-core-and-backend/qa-validation.md) | [non-technical.md](modules/asd-rust-core-and-backend/non-technical.md) | [work-packages.md](modules/asd-rust-core-and-backend/work-packages.md) |
+| ASD gaze-tracking robustness | [technical.md](modules/asd-gaze-robustness/technical.md) | [acceptance.md](modules/asd-gaze-robustness/acceptance.md) | (tests per WP) | — | [work-packages.md](modules/asd-gaze-robustness/work-packages.md) |
+| ASD clinician workspace and interop | [technical.md](modules/asd-clinician-and-interop/technical.md) | [acceptance.md](modules/asd-clinician-and-interop/acceptance.md) | [qa-validation.md](modules/asd-clinician-and-interop/qa-validation.md) | [non-technical.md](modules/asd-clinician-and-interop/non-technical.md) | [work-packages.md](modules/asd-clinician-and-interop/work-packages.md) |
 
 ## Architecture decision records
 
@@ -27,6 +29,8 @@ referenced from the module specs rather than duplicated.
 | [ADR-0004](adr/ADR-0004-claims-and-naming-policy.md) | Non-diagnostic claims and naming policy (App Store 1.4.1) | Proposed |
 | [ADR-0005](adr/ADR-0005-org-account-and-bundle-id.md) | Publishing organisation, bundle identifier and review contact | Accepted (H4 resolved 2026-10-29: `com.open-spectrum.eye-gaze`, App Name "Eye Gaze") |
 | [ADR-0006](adr/ADR-0006-rust-core-and-backend.md) | Rust is the single implementation of ASD core logic, contracts and backend | Proposed (owner decision in `CLAUDE.md`, 2026-10-30) |
+| [ADR-0007](adr/ADR-0007-gaze-tracking-robustness.md) | Gaze-tracking maths in Rust, per-session accuracy in degrees, bench-decided calibration model | Proposed (2026-10-31) |
+| [ADR-0008](adr/ADR-0008-clinician-workspace-and-interop.md) | Clinician workspace inside the console and one Rust export bridge to hospital systems | Proposed (2026-10-31) |
 
 ## Rules
 

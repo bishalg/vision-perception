@@ -3,6 +3,7 @@
 > Status table is the live tracker. Update it when a WP changes state. Phases overlap on purpose: app, backend and console streams run in parallel when they share no files.
 > Agent tiers: **A** = `architect` (Fable, design only), **S** = `senior-implementer` (Opus), **I** = `implementer` (Sonnet). Main session integrates, runs gates, commits.
 > **2026-10-30:** backend and shared maths are Rust (`CLAUDE.md`, ADR-0006). New prefix **WP-R.n** = Rust core crates (`rust/`). WP-B.* were renumbered to the Rust plan; detail per package (files, tests, traps) is in `docs/spec/modules/asd-rust-core-and-backend/work-packages.md`, this table stays the status tracker.
+> **2026-10-31:** new prefixes **WP-I.n** = interoperability and export bridge (`asd-export` crate, deliveries) and **WP-C.9+** = clinician workspace; detail in `docs/spec/modules/asd-clinician-and-interop/work-packages.md` (ADR-0008). **WP-G.n** = gaze-tracking robustness; detail in `docs/spec/modules/asd-gaze-robustness/work-packages.md` (ADR-0007).
 
 ## 0. Status table
 
@@ -20,6 +21,21 @@
 | WP-A.10 | TestFlight beta pipeline (fastlane `beta`), crash reporting decision | 3 | I | todo | |
 | WP-A.11 | iOS consumes the Rust core: xcframework `binaryTarget`, engines become wrappers, golden parity tests, `asd-sync` in the sync client, `device_id` on re-register | 1–2 | S | todo | FFI-3/4, CON-7/11; depends on WP-R.5, WP-B.2, WP-D.7 |
 | WP-A.12 | Android Kotlin bindings from the same UniFFI definitions (`cargo-ndk`) | 4 | S | backlog | depends on WP-R.5 |
+| WP-G.0 | Swift capture hygiene: record untracked frames, no cross-child calibration reuse, no fabricated calibration point, orientation lock | 2 | I | todo | TRK-1, CAL-1, CAL-3; lowers validRatio on track loss (H-G1); spec `docs/spec/modules/asd-gaze-robustness/` |
+| WP-G.1 | Rust tracking types, raw log format, device geometry table, unclamped raycast, visual-angle maths | 2 | S | todo | GEO-1..6, PIPE-2, REP-1; ADR-0007 |
+| WP-G.2 | Rust calibration models (screen/angular affine, homography, poly2), robust target aggregation, LOO-CV quality, selection | 2 | S | todo | CAL-2..8; depends on G.1 |
+| WP-G.3 | Rust per-sample pipeline: track state, confidence, 1-Euro port, gap fill, AOI video→screen mapping | 2 | S | todo | TRK, CNF, GAP, PIPE-1/3/5, GEO-7; depends on G.1, G.2, G.4 |
+| WP-G.4 | Rust validation, drift monitor, re-calibration advice, session TrackingQuality summary | 2 | S | todo | VAL, DRF, CAL-9, QS-1..4; depends on G.1 |
+| WP-G.5 | Rust synthetic tracking generator, replay, `asd-cli gaze synth/replay/bench-report`, scenario goldens | 2 | I | todo | TV-1/2, BEN-5; depends on G.2–G.4 |
+| WP-G.6 | Contract session v1.7 (`trackingQuality`), `ScoringProfile.trackingQuality` params, schema export | 2 | S | todo | SCH-1, SCH-3, QS-5; depends on G.1 |
+| WP-G.7 | asd-ffi `GazePipelineHandle` (flat per-frame records) | 2 | S | todo | ADR-0007 D2; depends on WP-R.5, G.3, G.4 |
+| WP-G.8 | iOS bench capture build (`ASD_BENCH_CAPTURE`, raw tracking JSONL, 13-point grid) | 2 | I | todo | BEN-2; depends on G.1, G.0 |
+| WP-G.9 | Kit integration: GazeProcessingActor runs the Rust pipeline; session v1.7 writer; per-frame cost measured | 3 | S | todo | PIPE-4, QS-1, SCH-2; depends on G.7, WP-A.11, G.0, G.6 |
+| WP-G.10 | App UI: child-friendly calibration, validation step, inter-clip drift checks, re-calibration prompts | 3 | I | todo | CAL-7..9, VAL-1, DRF-1; depends on G.9 |
+| WP-G.11 | Backend accepts 1.6+1.7, tracking columns, `low_tracking_quality` review rule, API fields | 2 | S | todo | SCH-2, SCH-4; depends on G.6 |
+| WP-G.12 | Console Quality tab tracking section, drift chart, loss bar, tracking filter | 2 | I | todo | CSL-1..3; depends on G.11 |
+| WP-G.13 | Scoring uses tracking quality (accuracy cap, AOI resolution guard, I-VT in °/s), versioned | 3 | S | backlog | SCR-1..4; owner gate H-G2; depends on G.4, G.6 |
+| WP-G.14 | Bench execution, device matrix, threshold and calibration-model decision | 3 | owner + I | todo | BEN-1..8, DEV-2/3; depends on G.8, G.5; H-G4, H-G5 |
 | WP-R.0 | Cargo workspace skeleton at `rust/`, six crates, domain types ported 1:1 from Swift, `deny.toml`, `scripts/rust_test.sh`, `rust.yml` | 1 | I | done | 10 round-trip tests, fmt+clippy+deny clean; serial, run first |
 | WP-R.1 | `asd-core` scoring engine, baselines validate, attention flag, quality gate + golden vectors | 1 | S | done | CORE-1..4, CORE-7 |
 | WP-R.2 | `asd-core` metrics extraction (I-VT, AOI dwell, affect) + session aggregator + golden vectors | 1 | S | done | CORE-5..6 |
@@ -39,12 +55,29 @@
 | WP-B.10 | FHIR façade + SMART-on-FHIR server validation (only if a clinic partner needs it) | 4 | S | backlog | |
 | WP-C.1 | Console scaffold: Next.js, auth, layout, sessions table/detail, overview KPIs | 1 | S | partial | Mock-mode console, 36 tests; live mode needs backend contract; no Playwright or org switcher yet |
 | WP-C.2 | Review queue + devices/enrol QR | 1 | I | todo | |
-| WP-C.3 | Participants timeline, users/roles, audit page | 2 | I | todo | |
+| WP-C.3 | Participants list, users/roles, audit page (participant detail/timeline moved to WP-C.14) | 2 | I | todo | |
 | WP-C.4 | Catalog editor (clips, AOI timeline, batteries) | 2 | S | todo | |
 | WP-C.5 | Baselines editor + scoring profile editor + sandbox re-score + bundle publish with approval | 2 | S | todo | |
 | WP-C.6 | Cohorts, norm-runs, exports, model registry | 3 | I | todo | |
 | WP-C.7 | Replay heatmaps, hi/ne strings, superadmin | 4 | I | backlog | |
 | WP-C.8 | Console contract alignment to `api-v1.json`: `battery` string, `capture_source` + `synthetic`, clip `rows[]`, `participant_token`; zod-vs-schema test | 1 | I | done | API-3, CON-16/19/20; depends on R.3 |
+| WP-C.9 | Clinical foundation: migration 0008, envelope encryption + MRN blind index, 14 RBAC actions (superadmin excluded from clinical content), `asd-contract::clinical`, user display name/registration, encrypted review notes | 3 | S | todo | ADR-0008; RBAC/KEY/MIG-2; needs B.6 merged |
+| WP-C.10 | Worklist + clinical review sign/cosign/amend (hash-bound, step-up re-auth) | 3 | S | todo | CW-1/2, SIGN-*; needs C.9 |
+| WP-C.11 | Participant detail + timeline, MRN mapping, encrypted clinical notes | 3 | I | todo | CW-3, MRN-*, NOTE-1/2; needs C.9, B.6 |
+| WP-C.12 | Referral/summary letters + printable clinical summary endpoints | 3 | I | todo | NOTE-3..5; needs C.10, C.11, I.5, I.6 migration |
+| WP-C.13 | Console: worklist, clinical review tab, sign/cosign dialogs, clinical settings | 3 | I | todo | UI-*; needs C.2, C.10 |
+| WP-C.14 | Console: participant workspace (timeline, MRN, notes, letters, print) | 3 | I | todo | needs C.11, C.12, C.13 |
+| WP-I.1 | `asd-export` crate foundation: model, de-id, consent policy, verified code table, watermark; fold B.8 PDF/FHIR code in | 3 | S | todo | XC-*; needs B.8 merged |
+| WP-I.2 | CSV (canonical/Excel/Sheets) + XLSX encoders | 3 | I | todo | CSV-*, XLSX-*; needs I.1 |
+| WP-I.3 | FHIR R4 clinical bundle (DiagnosticReport, DocumentReference, Practitioner), iOS id parity, code verification | 3 | S | todo | FHX-*; needs I.1 |
+| WP-I.4 | HL7 v2.5.1 ORU^R01 encoder (file delivery) | 3 | I | todo | HL7-*; needs I.1 |
+| WP-I.5 | PDF/A-2b clinical summary + letter renderer (A4, Devanagari) | 3 | S | todo | PDF-*; needs I.1, owner Q3 (OFL fonts) |
+| WP-I.6 | Export jobs: migration 0009, runner run_after/heartbeat/context, consent filter, artifacts, signed download URLs, disclosures | 3 | S | todo | EXJ-*; needs I.1, I.2, C.9 |
+| WP-I.7 | Delivery: integration settings (encrypted write-only secrets), signed webhooks, SFTP, SSRF guard, auto-deliver on final sign | 3 | S | todo | INTG-*, DLV-1..6; needs I.6, C.10 |
+| WP-I.8 | Console: exports page + integration settings | 3 | I | todo | needs I.6, I.7, C.13 |
+| WP-I.9 | FHIR push via SMART Backend Services (migration 0010) | 4 | S | backlog | DLV-7; relates to WP-B.10 |
+| WP-I.10 | SMART EHR launch of the console | 4 | S | backlog | needs I.9, C.14 |
+| WP-I.11 | HL7 MLLP/TLS sender + ACK handling | 4 | S | backlog | only if a partner needs real-time HL7 |
 | WP-D.1 | Stimulus clips: rights or replacement; durations measured; catalog corrected | 1 | I + owner | done | All 10 clips measured at 8.0s via ffprobe, catalog aligned, NOTICE.md updated |
 | WP-D.2 | Session JSON Schema export + Swift/Python parity gate in CI | 1 | I | done (to be replaced) | Pydantic export + `scripts/check_session_schema_parity.py`; superseded by WP-R.3 + WP-D.7 (Rust export, `asd-cli schema check`) |
 | WP-D.3 | Age-band model: cleared dataset, train, validate (≥0.90 recall), CoreML, manifest + licence in `models/asd_age` | 2 | S | todo | |
@@ -123,6 +156,7 @@ Exit: a scoring-profile change published from the console changes a re-scored se
 - **WP-C.6** cohorts, norm-runs, exports, model registry.
 - **WP-A.8** stimulus CDN; **WP-A.9** replay down-sample upload; **WP-A.10** TestFlight beta.
 - **WP-E.4** M-CHAT decision; **WP-E.5** native locale review; **WP-E.6** security/privacy pack.
+- **Clinician workspace + interop bridge** (ADR-0008, `docs/spec/modules/asd-clinician-and-interop/`): Wave 1 WP-C.9 + WP-I.1; Wave 2 WP-C.10, C.11, I.2, I.3, I.4, I.5; Wave 3 WP-I.6, C.12, C.13; Wave 4 WP-I.7, C.14, I.8. Exit: a clinician signs a session and an HL7 ORU^R01 file lands on the hospital's SFTP, while a researcher downloads a de-identified Sheets CSV with no identifiers.
 
 Exit: a clinic (or friendly pilot site) can be onboarded end to end: org created, devices enrolled, sessions flowing, reviewers working the queue, researcher exports a labelled dataset.
 
