@@ -1,0 +1,357 @@
+{
+  "manifest_version": 1,
+  "export_id": "0b9f6c1e-7a51-4c1e-9d43-2f1a7f0c9e11",
+  "dialect": "csv",
+  "watermark": {
+    "export_id": "0b9f6c1e-7a51-4c1e-9d43-2f1a7f0c9e11",
+    "requested_by_display": "Dr. Sita Sharma",
+    "requested_at_utc": "2026-10-31T09:15:00Z",
+    "mode": "identified",
+    "purpose": "clinical_care",
+    "org_name": "Kathmandu Child Clinic"
+  },
+  "watermark_line": "Export 0b9f6c1e-7a51-4c1e-9d43-2f1a7f0c9e11 · Kathmandu Child Clinic · identified · clinical care · requested by Dr. Sita Sharma · 2026-10-31T09:15:00Z",
+  "notice": "This is not a diagnostic tool.",
+  "tables": [
+    {
+      "file": "sessions.csv",
+      "rows": 1,
+      "sha256": "eb63cf4e72d1b7985ff713d6b1c82cd633dd98d3cafb97a01540bfcba5fdf267",
+      "columns": [
+        {
+          "name": "export_id",
+          "description": "Identifier of this export (also in the watermark)."
+        },
+        {
+          "name": "session_id",
+          "description": "Session identifier (a pseudonym when de-identified)."
+        },
+        {
+          "name": "participant_token",
+          "description": "Pseudonymous participant token (a pseudonym when de-identified)."
+        },
+        {
+          "name": "started_at",
+          "description": "Session start. csv: RFC 3339 UTC; csv_excel, csv_sheets and XLSX: local time (YYYY-MM-DD HH:MM:SS) in the organisation time zone. YYYY-MM when de-identified."
+        },
+        {
+          "name": "utc_offset",
+          "description": "UTC offset of started_at in the organisation time zone, e.g. +05:45; +00:00 in the csv dialect; empty when started_at is reduced to a month."
+        },
+        {
+          "name": "days_since_first_session",
+          "description": "Whole days since the participant's first session in this export (de-identified exports only)."
+        },
+        {
+          "name": "duration_sec",
+          "description": "Capture duration in seconds."
+        },
+        {
+          "name": "battery",
+          "description": "Protocol id, e.g. express_30s."
+        },
+        {
+          "name": "capture_source",
+          "description": "truedepth, simulated or synthetic."
+        },
+        {
+          "name": "quality_verdict",
+          "description": "Capture quality verdict."
+        },
+        {
+          "name": "attention_flag",
+          "description": "Screening attention flag: green, yellow, red or unreliable. Not a diagnosis."
+        },
+        {
+          "name": "composite_score",
+          "description": "Composite score of the session."
+        },
+        {
+          "name": "composite_confidence",
+          "description": "1 minus the share of low-confidence clips."
+        },
+        {
+          "name": "bundle_version",
+          "description": "Stimulus bundle version."
+        },
+        {
+          "name": "device_id",
+          "description": "Capture device identifier (empty when de-identified)."
+        },
+        {
+          "name": "org_id",
+          "description": "Organisation identifier."
+        },
+        {
+          "name": "age_pack",
+          "description": "Age pack used for the norms."
+        },
+        {
+          "name": "age_bracket_at_enrol",
+          "description": "Age bracket at enrolment."
+        },
+        {
+          "name": "lang",
+          "description": "Language of the session."
+        },
+        {
+          "name": "schema_version",
+          "description": "Session schema version."
+        },
+        {
+          "name": "valid_frame_ratio",
+          "description": "Share of frames with a valid gaze estimate."
+        },
+        {
+          "name": "calibrated_distance_cm",
+          "description": "Calibrated viewing distance in centimetres."
+        },
+        {
+          "name": "social_preference",
+          "description": "Social preference score."
+        },
+        {
+          "name": "eye_dwell",
+          "description": "Share of dwell time on the eyes."
+        },
+        {
+          "name": "mouth_dwell",
+          "description": "Share of dwell time on the mouth."
+        },
+        {
+          "name": "first_eye_latency_ms",
+          "description": "Latency of the first fixation on the eyes in milliseconds."
+        },
+        {
+          "name": "reviewed",
+          "description": "A clinician review exists."
+        },
+        {
+          "name": "mrn",
+          "description": "Medical record number (identified exports only)."
+        },
+        {
+          "name": "mrn_assigning_authority",
+          "description": "Hospital that assigned the MRN (identified exports only)."
+        },
+        {
+          "name": "review_state",
+          "description": "State of the clinical review, empty when none."
+        },
+        {
+          "name": "report_status",
+          "description": "preliminary, final or amended."
+        },
+        {
+          "name": "disposition",
+          "description": "The clinician's disposition, empty when none."
+        }
+      ]
+    },
+    {
+      "file": "clips.csv",
+      "rows": 2,
+      "sha256": "3fdd3019cf1b4de1becdd7942b929c79c88f42f64a54c74047a6d6c318b4d24a",
+      "columns": [
+        {
+          "name": "export_id",
+          "description": "Identifier of this export (also in the watermark)."
+        },
+        {
+          "name": "session_id",
+          "description": "Session identifier (a pseudonym when de-identified)."
+        },
+        {
+          "name": "clip_id",
+          "description": "Stimulus clip identifier."
+        },
+        {
+          "name": "clip_order",
+          "description": "Position of the clip in the session."
+        },
+        {
+          "name": "status",
+          "description": "Worst status of the clip's metric rows: onTarget, monitor or atypical."
+        },
+        {
+          "name": "score",
+          "description": "Clip score."
+        },
+        {
+          "name": "weight",
+          "description": "Clip weight in the composite."
+        },
+        {
+          "name": "dwell_social",
+          "description": "Dwell share on social areas of interest."
+        },
+        {
+          "name": "dwell_geometric",
+          "description": "Dwell share on geometric areas of interest."
+        },
+        {
+          "name": "dwell_eye",
+          "description": "Dwell share on the eyes."
+        },
+        {
+          "name": "dwell_mouth",
+          "description": "Dwell share on the mouth."
+        },
+        {
+          "name": "orienting_latency_ms",
+          "description": "Orienting latency in milliseconds."
+        },
+        {
+          "name": "gaze_cue_accuracy",
+          "description": "Accuracy of following the gaze cue."
+        },
+        {
+          "name": "fixation_count",
+          "description": "Number of fixations."
+        },
+        {
+          "name": "mean_fixation_ms",
+          "description": "Mean fixation duration in milliseconds."
+        }
+      ]
+    },
+    {
+      "file": "metric_rows.csv",
+      "rows": 6,
+      "sha256": "6e4e3ce63f8ab5f049d4da75cf116882e7f6de46a8afde93d9083bbf5a7c466c",
+      "columns": [
+        {
+          "name": "export_id",
+          "description": "Identifier of this export (also in the watermark)."
+        },
+        {
+          "name": "session_id",
+          "description": "Session identifier (a pseudonym when de-identified)."
+        },
+        {
+          "name": "clip_id",
+          "description": "Stimulus clip identifier."
+        },
+        {
+          "name": "segment_id",
+          "description": "Segment of the clip the row scores."
+        },
+        {
+          "name": "metric",
+          "description": "Biomarker key, e.g. eye_dwell_ratio."
+        },
+        {
+          "name": "target_aoi",
+          "description": "Area of interest the metric refers to."
+        },
+        {
+          "name": "direction",
+          "description": "higherBetter, lowerBetter or band."
+        },
+        {
+          "name": "expected",
+          "description": "Expected value from the norms."
+        },
+        {
+          "name": "acceptable_low",
+          "description": "Lower bound of the acceptable range."
+        },
+        {
+          "name": "acceptable_high",
+          "description": "Upper bound of the acceptable range."
+        },
+        {
+          "name": "recorded",
+          "description": "Recorded value."
+        },
+        {
+          "name": "deviation",
+          "description": "recorded minus expected."
+        },
+        {
+          "name": "status",
+          "description": "onTarget, monitor or atypical."
+        },
+        {
+          "name": "score",
+          "description": "Row score."
+        },
+        {
+          "name": "imputed",
+          "description": "The value was imputed, not measured."
+        },
+        {
+          "name": "source",
+          "description": "Origin of the norm."
+        }
+      ]
+    },
+    {
+      "file": "reviews.csv",
+      "rows": 1,
+      "sha256": "ee950cbc4165c9eff7c2adfc37bb96a387a3db942f44593ddc7404a88f1e2cb6",
+      "columns": [
+        {
+          "name": "export_id",
+          "description": "Identifier of this export (also in the watermark)."
+        },
+        {
+          "name": "session_id",
+          "description": "Session identifier (a pseudonym when de-identified)."
+        },
+        {
+          "name": "review_state",
+          "description": "open, in_progress, awaiting_cosign, final or amending."
+        },
+        {
+          "name": "version_no",
+          "description": "Version of the review described."
+        },
+        {
+          "name": "amended",
+          "description": "The version is a signed amendment."
+        },
+        {
+          "name": "report_status",
+          "description": "preliminary, final or amended."
+        },
+        {
+          "name": "disposition",
+          "description": "The clinician's disposition."
+        },
+        {
+          "name": "signed_at",
+          "description": "Time of the current signed state (same time rules as sessions.started_at)."
+        },
+        {
+          "name": "utc_offset",
+          "description": "UTC offset of signed_at (see sessions.utc_offset)."
+        },
+        {
+          "name": "content_hash",
+          "description": "SHA-256 of the signed snapshot (identified exports only)."
+        },
+        {
+          "name": "signature_count",
+          "description": "Number of signatures."
+        },
+        {
+          "name": "signers",
+          "description": "Signers' display names in signing order, separated by '; ' (identified exports only)."
+        },
+        {
+          "name": "registrations",
+          "description": "Signers' professional registrations, separated by '; ' (identified exports only)."
+        },
+        {
+          "name": "impression",
+          "description": "Clinical impression (when the requester may read it)."
+        },
+        {
+          "name": "recommendations",
+          "description": "Recommendations (when the requester may read it)."
+        }
+      ]
+    }
+  ]
+}

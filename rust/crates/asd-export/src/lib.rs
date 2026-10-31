@@ -118,6 +118,9 @@ pub enum ExportError {
     /// More rows than one artifact may hold (XLSX-3, EXJ-9; `400 export-too-large`).
     #[error("{rows} rows exceed the limit of {limit}")]
     ExportTooLarge { rows: usize, limit: usize },
+    /// The ZIP or XLSX container writer failed (tabular encoders, WP-I.2).
+    #[error("tabular encoder failed: {0}")]
+    Tabular(String),
 }
 
 /// Why `record`'s gaze Observation cannot be exported, or `None` when it can.

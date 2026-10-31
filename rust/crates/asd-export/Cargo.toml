@@ -50,6 +50,14 @@ pdf-writer = { version = "0.15", optional = true }
 # XLSX-1 (MIT OR Apache-2.0).
 rust_xlsxwriter = { version = "0.102", optional = true, default-features = false }
 
+[dev-dependencies]
+# Reads the XLSX back in tests (WP-I.2; MIT), so no binary golden is committed.
+calamine = { version = "0.37", default-features = false }
+
 [[test]]
 name = "pdf_report"
 required-features = ["pdf"]
+
+[[test]]
+name = "xlsx"
+required-features = ["xlsx"]

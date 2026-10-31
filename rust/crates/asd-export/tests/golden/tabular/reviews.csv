@@ -1,0 +1,2 @@
+export_id,session_id,review_state,version_no,amended,report_status,disposition,signed_at,utc_offset,content_hash,signature_count,signers,registrations,impression,recommendations
+0b9f6c1e-7a51-4c1e-9d43-2f1a7f0c9e11,SESS-GOLDEN-0001,final,2,true,amended,monitor,2026-10-02T08:30:00.000Z,+00:00,c0ffee0000000000000000000000000000000000000000000000000000c0ffee,2,Dr. SIGNER-SENTINEL; Dr. COSIGNER-SENTINEL,NMC-SENTINEL-12345,IMPRESSION-SENTINEL text,RECOMMENDATIONS-SENTINEL text

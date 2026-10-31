@@ -68,7 +68,7 @@
 | WP-C.13 | Console: worklist, clinical review tab, sign/cosign dialogs, clinical settings | 3 | I | todo | UI-*; needs C.2, C.10 |
 | WP-C.14 | Console: participant workspace (timeline, MRN, notes, letters, print) | 3 | I | todo | needs C.11, C.12, C.13 |
 | WP-I.1 | `asd-export` crate foundation: model, de-id, consent policy, verified code table, watermark; fold B.8 PDF/FHIR code in | 3 | S | done | `asd-report` folded into `asd-export` (goldens byte-identical); ExportRecord v1, de-id, consent policy (24-row table), watermark, code table; session bundle keeps unverified `93044-6` + XFDF code as documented iOS-parity exception (Q6) |
-| WP-I.2 | CSV (canonical/Excel/Sheets) + XLSX encoders | 3 | I | todo | CSV-*, XLSX-*; needs I.1 |
+| WP-I.2 | CSV (canonical/Excel/Sheets) + XLSX encoders | 3 | I | done | CSV canonical/Excel(BOM+CRLF)/Sheets + 5-file ZIP with manifest hashes, XLSX with README/watermark header+footer, formula-injection escaping, de-id applied inside encoder, 200k-row XLSX cap |
 | WP-I.3 | FHIR R4 clinical bundle (DiagnosticReport, DocumentReference, Practitioner), iOS id parity, code verification | 3 | S | todo | FHX-*; needs I.1 |
 | WP-I.4 | HL7 v2.5.1 ORU^R01 encoder (file delivery) | 3 | I | done | ORU^R01 encoder, P/F/C goldens, 300-case escaping property test, +0545 timestamps, refuses de-identified/no-MRN. Follow-up: verify `MR`/UCUM entries in codes.rs; `Hl7Profile` to be mapped from I.6 integration settings |
 | WP-I.5 | PDF/A-2b clinical summary + letter renderer (A4, Devanagari) | 3 | S | todo | PDF-*; needs I.1, owner Q3 (OFL fonts) |
