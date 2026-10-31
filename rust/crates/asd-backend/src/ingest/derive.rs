@@ -1,10 +1,12 @@
 //! owner: WP-B.3
 //!
-//! Derived session columns (ING-2, CON-15) and per-clip rows (CON-19). Pure functions over
-//! the validated request; nothing is defaulted: unknown stays `None`.
+//! Derived session columns (ING-2, CON-15), tracking-quality columns (SCH-4, QS-5) and
+//! per-clip rows (CON-19). Pure functions over the validated request (the 1.7 type; a 1.6
+//! request is carried as 1.7 without a tracking record); nothing is defaulted: unknown stays
+//! `None`.
 
 use asd_contract::api_v1::{MetricRow, SessionAttentionFlag};
-use asd_contract::session_v1_6::{SessionIngestRequest, SessionPerVideoRow};
+use asd_contract::session_v1_7::{self, SessionIngestRequest, SessionPerVideoRow};
 use asd_core::flag::{assess, FlagThresholds};
 use asd_core::types::{
     AttentionFlag, ExpectationStatus, PerVideoScoreReport, PerVideoScoreRow, PerVideoSessionScore,
@@ -33,18 +35,19 @@ pub fn attention_flag(req: &SessionIngestRequest) -> SessionAttentionFlag {
     let Some(videos) = req.raw_payload.per_video.as_deref() else {
         return SessionAttentionFlag::Unreliable;
     };
+    let videos: Vec<PerVideoScoreReport> = videos.iter().map(|v| v.report.clone()).collect();
     if req.valid_ratio < MIN_VALID_RATIO_FOR_FLAG || !videos.iter().any(|v| v.has_baseline) {
         return SessionAttentionFlag::Unreliable;
     }
     let composite = req
         .raw_payload
         .per_video_composite
-        .unwrap_or_else(|| weighted_composite(videos));
+        .unwrap_or_else(|| weighted_composite(&videos));
     let score = PerVideoSessionScore {
         age_bracket_id: String::new(),
         age_months: 0,
         composite_score: composite,
-        videos: videos.to_vec(),
+        videos,
         baseline_status: String::new(),
         baseline_schema_version: String::new(),
         scored_at_utc: String::new(),
@@ -78,10 +81,10 @@ pub fn composite_score(req: &SessionIngestRequest) -> Option<f64> {
 pub fn composite_confidence(req: &SessionIngestRequest) -> Option<f64> {
     let flags: Vec<bool> = match (&req.raw_payload.per_video, &req.per_video) {
         (Some(videos), _) if !videos.is_empty() => {
-            videos.iter().map(|v| v.low_confidence).collect()
+            videos.iter().map(|v| v.report.low_confidence).collect()
         }
         (_, Some(rows)) if !rows.is_empty() => {
-            rows.iter().map(|r| r.details.low_confidence).collect()
+            rows.iter().map(|r| r.details.base.low_confidence).collect()
         }
         _ => return None,
     };
@@ -117,6 +120,51 @@ pub fn norm_consented(req: &SessionIngestRequest) -> bool {
         .and_then(|n| n.get("consented"))
         .and_then(Value::as_bool)
         == Some(true)
+}
+
+/// Stored `calibrated_distance_cm`. 1.6: the value the device sent (unchanged). 1.7 (QS-5):
+/// the calibration pose distance when a calibration ran, else `None`, whatever the top-level
+/// value says; a 1.6-era app wrote a fixed 35 cm when nothing was measured.
+pub fn calibrated_distance_cm(req: &SessionIngestRequest) -> Option<f64> {
+    if req.schema_version == session_v1_7::SCHEMA_VERSION {
+        session_v1_7::calibrated_distance_cm(req.raw_payload.tracking_quality.as_ref())
+    } else {
+        req.calibrated_distance_cm
+    }
+}
+
+/// The SCH-4 columns, all `None` without a tracking-quality record (every 1.6 session).
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct TrackingColumns {
+    pub verdict: Option<String>,
+    pub accuracy_deg: Option<f64>,
+    pub calibration_quality: Option<String>,
+    pub calibration_model: Option<String>,
+    pub pipeline_version: Option<String>,
+    pub device_model: Option<String>,
+}
+
+/// Record spelling of a unit enum (`good`, `screenAffine`).
+fn wire<T: serde::Serialize>(value: &T) -> Option<String> {
+    match serde_json::to_value(value) {
+        Ok(Value::String(s)) => Some(s),
+        _ => None,
+    }
+}
+
+/// SCH-4 columns from `rawPayload.trackingQuality`.
+pub fn tracking_columns(req: &SessionIngestRequest) -> TrackingColumns {
+    let Some(tq) = req.raw_payload.tracking_quality.as_ref() else {
+        return TrackingColumns::default();
+    };
+    TrackingColumns {
+        verdict: wire(&tq.verdict),
+        accuracy_deg: tq.estimated_accuracy_deg,
+        calibration_quality: wire(&tq.calibration.quality),
+        calibration_model: tq.calibration.model.as_ref().and_then(wire),
+        pipeline_version: Some(tq.pipeline_version.clone()),
+        device_model: Some(tq.device.model_identifier.clone()),
+    }
 }
 
 fn severity(status: ExpectationStatus) -> u8 {
@@ -202,7 +250,8 @@ pub fn status_str(status: ExpectationStatus) -> &'static str {
 pub fn clip_rows(rows: &[SessionPerVideoRow]) -> Vec<ClipRow> {
     rows.iter()
         .map(|r| {
-            let worst = worst_row(&r.details.rows).map(|i| &r.details.rows[i]);
+            let rows = &r.details.base.rows;
+            let worst = worst_row(rows).map(|i| &rows[i]);
             ClipRow {
                 clip_id: r.clip_id.clone(),
                 order: i32::try_from(r.order).unwrap_or(i32::MAX),
@@ -271,7 +320,14 @@ mod tests {
             "../../../../../apps/ios_asd_gaze_app/Tests/Fixtures/expected-session-v1.6.json"
         ))
         .unwrap();
-        let videos = golden.raw_payload.per_video.clone().unwrap();
+        let videos: Vec<PerVideoScoreReport> = golden
+            .raw_payload
+            .per_video
+            .clone()
+            .unwrap()
+            .into_iter()
+            .map(|v| v.report)
+            .collect();
         assert!((weighted_composite(&videos) - 0.74).abs() < 1e-12);
         assert_eq!(weighted_composite(&videos[1..]), 0.0);
         assert_eq!(composite_confidence(&golden), Some(0.5));
@@ -297,5 +353,47 @@ mod tests {
         assert_eq!(attention_flag(&req), SessionAttentionFlag::Unreliable);
         req.valid_ratio = 0.60;
         assert_eq!(attention_flag(&req), SessionAttentionFlag::Green);
+    }
+}
+
+#[cfg(test)]
+mod tracking_tests {
+    use super::*;
+
+    fn golden_1_7() -> SessionIngestRequest {
+        serde_json::from_str(include_str!(
+            "../../../../../apps/ios_asd_gaze_app/Tests/Fixtures/expected-session-v1.7.json"
+        ))
+        .unwrap()
+    }
+
+    #[test]
+    fn tracking_columns_come_from_the_record() {
+        let req = golden_1_7();
+        assert_eq!(
+            tracking_columns(&req),
+            TrackingColumns {
+                verdict: Some("good".into()),
+                accuracy_deg: Some(1.63),
+                calibration_quality: Some("good".into()),
+                calibration_model: Some("screenAffine".into()),
+                pipeline_version: Some("asd-gaze/1.0.0".into()),
+                device_model: Some("iPad13,18".into()),
+            }
+        );
+        let mut none = req.clone();
+        none.raw_payload.tracking_quality = None;
+        assert_eq!(tracking_columns(&none), TrackingColumns::default());
+    }
+
+    #[test]
+    fn distance_is_measured_for_1_7_and_as_sent_for_1_6() {
+        let mut req = golden_1_7();
+        req.calibrated_distance_cm = Some(35.0);
+        assert_eq!(calibrated_distance_cm(&req), Some(38.0));
+        req.raw_payload.tracking_quality = None;
+        assert_eq!(calibrated_distance_cm(&req), None);
+        req.schema_version = "1.6".into();
+        assert_eq!(calibrated_distance_cm(&req), Some(35.0));
     }
 }

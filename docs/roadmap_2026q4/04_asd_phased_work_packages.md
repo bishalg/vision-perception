@@ -32,7 +32,7 @@
 | WP-G.8 | iOS bench capture build (`ASD_BENCH_CAPTURE`, raw tracking JSONL, 13-point grid) | 2 | I | todo | BEN-2; depends on G.1, G.0 |
 | WP-G.9 | Kit integration: GazeProcessingActor runs the Rust pipeline; session v1.7 writer; per-frame cost measured | 3 | S | todo | PIPE-4, QS-1, SCH-2; depends on G.7, WP-A.11, G.0, G.6 |
 | WP-G.10 | App UI: child-friendly calibration, validation step, inter-clip drift checks, re-calibration prompts | 3 | I | todo | CAL-7..9, VAL-1, DRF-1; depends on G.9 |
-| WP-G.11 | Backend accepts 1.6+1.7, tracking columns, `low_tracking_quality` review rule, API fields | 2 | S | todo | SCH-2, SCH-4; depends on G.6 |
+| WP-G.11 | Backend accepts 1.6+1.7, tracking columns, `low_tracking_quality` review rule, API fields | 2 | S | done | 1.6 + 1.7 ingest (1.6 upgraded losslessly), migration 0013 tracking columns, `low_tracking_quality` review rule, list filter + detail `tracking_quality`; distance NULL when unmeasured (no more fabricated 35 cm for 1.7). TODO before G.9: `report.rs` decodes 1.6 only → 500 for 1.7 without calibratedDistanceCm |
 | WP-G.12 | Console Quality tab tracking section, drift chart, loss bar, tracking filter | 2 | I | todo | CSL-1..3; depends on G.11 |
 | WP-G.13 | Scoring uses tracking quality (accuracy cap, AOI resolution guard, I-VT in °/s), versioned | 3 | S | backlog | SCR-1..4; owner gate H-G2; depends on G.4, G.6 |
 | WP-G.14 | Bench execution, device matrix, threshold and calibration-model decision | 3 | owner + I | todo | BEN-1..8, DEV-2/3; depends on G.8, G.5; H-G4, H-G5 |

@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*) AS \"n!\" FROM sessions s\n           WHERE s.org_id = $1\n             AND ($2::text IS NULL OR s.attention_flag = $2)\n             AND ($3::text IS NULL OR s.quality_verdict = $3)\n             AND ($4::timestamptz IS NULL OR s.started_at >= $4)\n             AND ($5::timestamptz IS NULL OR s.started_at <= $5)\n             AND ($6::text IS NULL OR s.bundle_version = $6)\n             AND ($7::bool IS NULL OR EXISTS (\n                     SELECT 1 FROM review_items r\n                     WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed')) = $7)\n             AND ($8::text IS NULL OR s.tracking_verdict = $8)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "n!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Text",
+        "Bool",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "2da084929771fb5effbda7e200076619510e2ce069a8ed75011f0fc355f07dc5"
+}

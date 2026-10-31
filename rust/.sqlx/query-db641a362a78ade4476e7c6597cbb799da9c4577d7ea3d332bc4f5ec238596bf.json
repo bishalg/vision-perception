@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT s.id, s.org_id, s.participant_id, s.participant_token, s.started_at,\n                  s.duration_sec, s.battery, s.capture_source, s.quality_verdict,\n                  s.attention_flag, s.composite_score, s.composite_confidence,\n                  s.bundle_version, s.device_id, s.age_pack, s.lang, s.schema_version,\n                  s.valid_frame_ratio, s.calibrated_distance_cm, s.social_preference,\n                  s.eye_dwell, s.mouth_dwell, s.first_eye_latency_ms, s.affect,\n                  s.report_pdf_key,\n                  EXISTS (SELECT 1 FROM review_items r\n                          WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed'))\n                      AS \"reviewed!\"\n           FROM sessions s WHERE s.id = $1",
+  "query": "SELECT s.id, s.org_id, s.participant_id, s.participant_token, s.started_at,\n                  s.duration_sec, s.battery, s.capture_source, s.quality_verdict,\n                  s.attention_flag, s.composite_score, s.composite_confidence,\n                  s.bundle_version, s.device_id, s.age_pack, s.lang, s.schema_version,\n                  s.valid_frame_ratio, s.calibrated_distance_cm, s.social_preference,\n                  s.eye_dwell, s.mouth_dwell, s.first_eye_latency_ms, s.affect,\n                  s.report_pdf_key, s.tracking_verdict, s.tracking_accuracy_deg,\n                  CASE WHEN s.tracking_verdict IS NOT NULL\n                       THEN s.summary -> 'trackingQuality' END AS tracking_quality,\n                  EXISTS (SELECT 1 FROM review_items r\n                          WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed'))\n                      AS \"reviewed!\"\n           FROM sessions s WHERE s.id = $1",
   "describe": {
     "columns": [
       {
@@ -280,6 +280,34 @@
       },
       {
         "ordinal": 25,
+        "name": "tracking_verdict",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "tracking_verdict"
+          }
+        }
+      },
+      {
+        "ordinal": 26,
+        "name": "tracking_accuracy_deg",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "tracking_accuracy_deg"
+          }
+        }
+      },
+      {
+        "ordinal": 27,
+        "name": "tracking_quality",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 28,
         "name": "reviewed!",
         "type_info": "Bool",
         "origin": "Expression"
@@ -316,8 +344,11 @@
       true,
       true,
       true,
+      true,
+      true,
+      null,
       null
     ]
   },
-  "hash": "bf4a2ba2e1c27119365671678a722fde953f8e15228b8920049cd6697a05d285"
+  "hash": "db641a362a78ade4476e7c6597cbb799da9c4577d7ea3d332bc4f5ec238596bf"
 }

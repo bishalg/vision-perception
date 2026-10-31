@@ -67,6 +67,8 @@ pub fn golden_session() -> (SessionDetail, Vec<ClipScore>) {
             bundle_version: Some("2026.10.1".into()),
             device_id: Some(DEVICE_ID.into()),
             reviewed: Some(false),
+            tracking_verdict: None,
+            tracking_accuracy_deg: None,
         },
         org_id: "5f1e2d3c-4b5a-4968-8776-655443322110".into(),
         age_pack: Some("24-36m".into()),
@@ -80,6 +82,7 @@ pub fn golden_session() -> (SessionDetail, Vec<ClipScore>) {
         first_eye_latency_ms: req.first_eye_latency_ms,
         affect: None,
         report_pdf_available: Some(false),
+        tracking_quality: None,
     };
     let clips = req
         .per_video

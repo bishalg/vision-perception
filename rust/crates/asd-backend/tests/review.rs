@@ -5,6 +5,7 @@
 
 mod common;
 mod ingest_support;
+mod tracking_support;
 
 use asd_backend::ingest::auto_review::audit_draw;
 use asd_contract::api_v1::{ReviewItem, ReviewPage, ReviewReason, ReviewStatus};
@@ -13,6 +14,7 @@ use http::StatusCode;
 use ingest_support::*;
 use serde_json::{json, Value};
 use sqlx::Row;
+use tracking_support::*;
 use uuid::Uuid;
 
 struct Fixture {
@@ -377,5 +379,148 @@ async fn patch_review_is_role_and_org_checked() {
     assert_eq!(status, StatusCode::OK, "{body}");
     assert_eq!(body["status"], "in_review");
     assert_eq!(body["decided_at"], Value::Null);
+    f.db.cleanup().await;
+}
+
+// ---- low_tracking_quality (WP-G.11, SCH-4) -------------------------------------------------
+
+#[tokio::test]
+async fn poor_or_unusable_tracking_opens_low_tracking_quality_in_the_ingest_transaction() {
+    let Some(f) = Fixture::new().await else {
+        return;
+    };
+    for (id, verdict, accuracy, expected) in [
+        ("S-GOOD", "good", Some(1.63), false),
+        ("S-FAIR", "fair", Some(3.0), false),
+        ("S-POOR", "poor", Some(4.2), true),
+        ("S-UNUSABLE", "unusable", None, true),
+        // Server re-check against ScoringProfile.trackingQuality.verdict.accuracyBands
+        // (default fairMaxDeg 3.5): a device-side `fair` above the band is still poor.
+        ("S-FAIR-OVER", "fair", Some(3.6), true),
+        ("S-FAIR-EDGE", "fair", Some(3.5), false),
+    ] {
+        let body = golden_v1_7_tracking(id, verdict, accuracy);
+        ingest_v1_7_ok(&f.router, &f.dev(), &body).await;
+        let want: Vec<&str> = if expected {
+            vec!["low_tracking_quality"]
+        } else {
+            vec![]
+        };
+        assert_eq!(f.reasons(id).await, want, "{id}");
+    }
+
+    // Written with the session, in the same transaction: the ingest audit row lists it.
+    let after: Value = sqlx::query_scalar(
+        "SELECT after FROM audit_log WHERE action = 'session.ingest' AND target_id = 'S-POOR'",
+    )
+    .fetch_one(&f.db.pool)
+    .await
+    .unwrap();
+    assert_eq!(after["review_reasons"], json!(["low_tracking_quality"]));
+
+    // Beside the other rules, in the fixed order.
+    let mut both = golden_v1_7_tracking("S-BOTH", "poor", Some(4.2));
+    both["validRatio"] = json!(0.7);
+    ingest_v1_7_ok(&f.router, &f.dev(), &both).await;
+    let after: Value = sqlx::query_scalar(
+        "SELECT after FROM audit_log WHERE action = 'session.ingest' AND target_id = 'S-BOTH'",
+    )
+    .fetch_one(&f.db.pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        after["review_reasons"],
+        json!(["low_quality", "low_tracking_quality"])
+    );
+
+    // A 1.6 session never gets it, whatever its rawPayload carries.
+    let mut v16 = golden_with_id("S-V16");
+    v16["rawPayload"]["trackingQuality"] = json!({"verdict": "unusable"});
+    ingest_ok(&f.router, &f.dev(), &v16).await;
+    assert!(f.reasons("S-V16").await.is_empty());
+
+    // The queue lists and filters the new reason; items decode as the contract type.
+    let viewer = f.user("viewer").await;
+    let (status, _, body) = send(
+        f.router.clone(),
+        user_get(
+            &viewer,
+            &format!("/v1/orgs/{}/review?reason=low_tracking_quality", f.org),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let page: ReviewPage = serde_json::from_value(body).unwrap();
+    assert_eq!(page.total, Some(4));
+    assert!(page
+        .items
+        .iter()
+        .all(|i| i.reason == ReviewReason::LowTrackingQuality));
+    f.db.cleanup().await;
+}
+
+#[tokio::test]
+async fn low_tracking_quality_uses_the_published_scoring_profile_thresholds() {
+    let Some(f) = Fixture::new().await else {
+        return;
+    };
+    // A published profile that tightens the fair band to 3.0 degrees.
+    let mut profile =
+        serde_json::to_value(asd_contract::config::ScoringProfile::default()).unwrap();
+    profile["trackingQuality"]["verdict"]["accuracyBands"]["fairMaxDeg"] = json!(3.0);
+    sqlx::query(
+        "INSERT INTO config_documents (kind, version, status, body, published_at) \
+         VALUES ('scoring_profile', 'g11-test', 'published', $1, now())",
+    )
+    .bind(&profile)
+    .execute(&f.db.pool)
+    .await
+    .unwrap();
+    ingest_v1_7_ok(
+        &f.router,
+        &f.dev(),
+        &golden_v1_7_tracking("S-TIGHT", "fair", Some(3.2)),
+    )
+    .await;
+    assert_eq!(f.reasons("S-TIGHT").await, ["low_tracking_quality"]);
+    ingest_v1_7_ok(
+        &f.router,
+        &f.dev(),
+        &golden_v1_7_tracking("S-OK", "fair", Some(2.9)),
+    )
+    .await;
+    assert!(f.reasons("S-OK").await.is_empty());
+    f.db.cleanup().await;
+}
+
+#[tokio::test]
+async fn migration_0013_constrains_tracking_values_and_review_reasons() {
+    let Some(f) = Fixture::new().await else {
+        return;
+    };
+    ingest_v1_7_ok(&f.router, &f.dev(), &golden_v1_7()).await;
+    for sql in [
+        "UPDATE sessions SET tracking_verdict = 'excellent'",
+        "UPDATE sessions SET calibration_quality = 'great'",
+        "UPDATE sessions SET tracking_accuracy_deg = -1",
+    ] {
+        assert!(sqlx::query(sql).execute(&f.db.pool).await.is_err(), "{sql}");
+    }
+    sqlx::query(
+        "INSERT INTO review_items (org_id, session_id, reason) \
+         VALUES ($1, 'SESS-GOLDEN-0001', 'low_tracking_quality')",
+    )
+    .bind(f.org)
+    .execute(&f.db.pool)
+    .await
+    .expect("low_tracking_quality is an allowed reason");
+    assert!(sqlx::query(
+        "INSERT INTO review_items (org_id, session_id, reason) \
+         VALUES ($1, 'SESS-GOLDEN-0001', 'bogus')",
+    )
+    .bind(f.org)
+    .execute(&f.db.pool)
+    .await
+    .is_err());
     f.db.cleanup().await;
 }

@@ -1,14 +1,25 @@
 //! owner: WP-B.3
 //!
 //! `GET /v1/orgs/{id}/sessions` (filters `flag, quality, from, to, bundle_version,
-//! reviewed`, cursor over `(started_at, id)`, newest first) and `GET /v1/sessions/{id}`.
-//! Bodies are `asd-contract::api_v1::{SessionPage, SessionDetail}` (API-3).
+//! reviewed, tracking`, cursor over `(started_at, id)`, newest first) and
+//! `GET /v1/sessions/{id}`. Bodies are `asd-contract::api_v1::{SessionPage, SessionDetail}`
+//! (API-3).
+//!
+//! Tracking quality (SCH-4, WP-G.11): list items carry `tracking_verdict` and
+//! `tracking_accuracy_deg`; `tracking=good|fair|poor|unusable` filters on the verdict. The
+//! detail adds `tracking_quality`, the stored `rawPayload.trackingQuality` in snake_case,
+//! read only for a session whose tracking columns were derived (1.7 with a record), so an
+//! unknown `trackingQuality` key in a 1.6 record is never surfaced.
 //!
 //! `reviewed` = the session has a review item a human closed (`done` or `dismissed`).
 
 use std::collections::BTreeMap;
 
-use asd_contract::api_v1::{SessionAttentionFlag, SessionDetail, SessionPage, SessionSummary};
+use asd_contract::api_v1::{
+    SessionAttentionFlag, SessionDetail, SessionPage, SessionSummary, SessionTrackingQuality,
+};
+use asd_contract::session_v1_7::TrackingQuality;
+use asd_core::types::tracking::TrackingVerdict;
 use chrono::{DateTime, Duration, NaiveDate, Utc};
 use serde::Deserialize;
 use serde_json::Value;
@@ -28,6 +39,7 @@ pub struct SessionQuery {
     pub to: Option<String>,
     pub bundle_version: Option<String>,
     pub reviewed: Option<String>,
+    pub tracking: Option<String>,
     pub cursor: Option<String>,
     pub limit: Option<String>,
 }
@@ -42,6 +54,8 @@ pub struct SessionFilters {
     pub to: Option<DateTime<Utc>>,
     pub bundle_version: Option<String>,
     pub reviewed: Option<bool>,
+    /// Tracking verdict (`good|fair|poor|unusable`).
+    pub tracking: Option<String>,
     pub cursor: Option<Cursor>,
     pub limit: i64,
 }
@@ -90,6 +104,12 @@ impl SessionQuery {
         };
         let from = bound("from", self.from, false);
         let to = bound("to", self.to, true);
+        let tracking = non_empty(self.tracking);
+        if let Some(t) = &tracking {
+            if serde_json::from_value::<TrackingVerdict>(Value::String(t.clone())).is_err() {
+                errors.push(bad("tracking", "must be good, fair, poor or unusable"));
+            }
+        }
         let reviewed = match non_empty(self.reviewed).as_deref() {
             None => None,
             Some("true") => Some(true),
@@ -128,10 +148,20 @@ impl SessionQuery {
             to,
             bundle_version: non_empty(self.bundle_version),
             reviewed,
+            tracking,
             cursor,
             limit,
         })
     }
+}
+
+pub(crate) fn parse_verdict(s: Option<String>) -> AppResult<Option<TrackingVerdict>> {
+    s.map(|s| {
+        serde_json::from_value(Value::String(s)).map_err(|_| {
+            AppError::Internal("stored tracking_verdict is not in the contract".into())
+        })
+    })
+    .transpose()
 }
 
 fn parse_flag(s: &str) -> AppResult<SessionAttentionFlag> {
@@ -155,6 +185,8 @@ struct SummaryColumns {
     bundle_version: Option<String>,
     device_id: Option<Uuid>,
     reviewed: bool,
+    tracking_verdict: Option<String>,
+    tracking_accuracy_deg: Option<f64>,
 }
 
 impl SummaryColumns {
@@ -174,6 +206,8 @@ impl SummaryColumns {
             bundle_version: self.bundle_version,
             device_id: self.device_id.map(|d| d.to_string()),
             reviewed: Some(self.reviewed),
+            tracking_verdict: parse_verdict(self.tracking_verdict)?,
+            tracking_accuracy_deg: self.tracking_accuracy_deg,
         })
     }
 }
@@ -188,6 +222,7 @@ pub async fn list(db: &PgPool, org: Uuid, f: &SessionFilters) -> AppResult<Sessi
         r#"SELECT s.id, s.participant_id, s.participant_token, s.started_at, s.duration_sec,
                   s.battery, s.capture_source, s.quality_verdict, s.attention_flag,
                   s.composite_score, s.composite_confidence, s.bundle_version, s.device_id,
+                  s.tracking_verdict, s.tracking_accuracy_deg,
                   EXISTS (SELECT 1 FROM review_items r
                           WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed'))
                       AS "reviewed!"
@@ -202,6 +237,7 @@ pub async fn list(db: &PgPool, org: Uuid, f: &SessionFilters) -> AppResult<Sessi
                      SELECT 1 FROM review_items r
                      WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed')) = $7)
              AND ($8::timestamptz IS NULL OR (s.started_at, s.id) < ($8, $9::text))
+             AND ($11::text IS NULL OR s.tracking_verdict = $11)
            ORDER BY s.started_at DESC, s.id DESC
            LIMIT $10"#,
         org,
@@ -214,6 +250,7 @@ pub async fn list(db: &PgPool, org: Uuid, f: &SessionFilters) -> AppResult<Sessi
         after_at,
         after_id,
         f.limit + 1,
+        f.tracking,
     )
     .fetch_all(db)
     .await?;
@@ -228,7 +265,8 @@ pub async fn list(db: &PgPool, org: Uuid, f: &SessionFilters) -> AppResult<Sessi
              AND ($6::text IS NULL OR s.bundle_version = $6)
              AND ($7::bool IS NULL OR EXISTS (
                      SELECT 1 FROM review_items r
-                     WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed')) = $7)"#,
+                     WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed')) = $7)
+             AND ($8::text IS NULL OR s.tracking_verdict = $8)"#,
         org,
         f.flag,
         f.quality,
@@ -236,6 +274,7 @@ pub async fn list(db: &PgPool, org: Uuid, f: &SessionFilters) -> AppResult<Sessi
         f.to,
         f.bundle_version,
         f.reviewed,
+        f.tracking,
     )
     .fetch_one(db)
     .await?;
@@ -262,6 +301,8 @@ pub async fn list(db: &PgPool, org: Uuid, f: &SessionFilters) -> AppResult<Sessi
                 bundle_version: r.bundle_version,
                 device_id: r.device_id,
                 reviewed: r.reviewed,
+                tracking_verdict: r.tracking_verdict,
+                tracking_accuracy_deg: r.tracking_accuracy_deg,
             }
             .into_dto()?,
         );
@@ -292,7 +333,9 @@ pub async fn detail(
                   s.bundle_version, s.device_id, s.age_pack, s.lang, s.schema_version,
                   s.valid_frame_ratio, s.calibrated_distance_cm, s.social_preference,
                   s.eye_dwell, s.mouth_dwell, s.first_eye_latency_ms, s.affect,
-                  s.report_pdf_key,
+                  s.report_pdf_key, s.tracking_verdict, s.tracking_accuracy_deg,
+                  CASE WHEN s.tracking_verdict IS NOT NULL
+                       THEN s.summary -> 'trackingQuality' END AS tracking_quality,
                   EXISTS (SELECT 1 FROM review_items r
                           WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed'))
                       AS "reviewed!"
@@ -327,8 +370,18 @@ pub async fn detail(
         bundle_version: r.bundle_version,
         device_id: r.device_id,
         reviewed: r.reviewed,
+        tracking_verdict: r.tracking_verdict,
+        tracking_accuracy_deg: r.tracking_accuracy_deg,
     }
     .into_dto()?;
+    let tracking_quality = r
+        .tracking_quality
+        .map(|v| {
+            serde_json::from_value::<TrackingQuality>(v)
+                .map(|tq| SessionTrackingQuality::from(&tq))
+                .map_err(|e| AppError::Internal(format!("stored trackingQuality: {e}")))
+        })
+        .transpose()?;
     Ok(Some((
         r.org_id,
         SessionDetail {
@@ -345,6 +398,7 @@ pub async fn detail(
             first_eye_latency_ms: r.first_eye_latency_ms,
             affect,
             report_pdf_available,
+            tracking_quality,
         },
     )))
 }
@@ -386,12 +440,13 @@ mod tests {
             flag: Some("purple".into()),
             reviewed: Some("maybe".into()),
             limit: Some("500".into()),
+            tracking: Some("excellent".into()),
             ..Default::default()
         };
         let Err(AppError::Validation(p)) = q.parse() else {
             panic!("expected validation error")
         };
         let names: Vec<_> = p.iter().map(|p| p.name.as_str()).collect();
-        assert_eq!(names, ["flag", "reviewed", "limit"]);
+        assert_eq!(names, ["flag", "tracking", "reviewed", "limit"]);
     }
 }

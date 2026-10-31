@@ -7,14 +7,18 @@
 
 mod common;
 mod ingest_support;
+mod tracking_support;
 
 use asd_contract::api_v1::{
     ClipList, Metrics, ParticipantPage, SessionAttentionFlag, SessionDetail, SessionPage,
+    SessionTrackingQuality,
 };
+use asd_core::types::tracking::TrackingVerdict;
 use common::{send, TestDb};
 use http::StatusCode;
 use ingest_support::*;
 use serde_json::{json, Value};
+use tracking_support::*;
 use uuid::Uuid;
 
 #[tokio::test]
@@ -256,6 +260,7 @@ async fn bad_list_parameters_are_400() {
         "?flag=purple",
         "?from=last-week",
         "?reviewed=maybe",
+        "?tracking=excellent",
     ] {
         let (status, body) = f.list(query).await;
         assert_eq!(status, StatusCode::BAD_REQUEST, "{query}: {body}");
@@ -512,5 +517,166 @@ async fn participants_list_counts_sessions() {
         .find(|p| p.participant_token == "child-other")
         .unwrap();
     assert_eq!(other_p.session_count, 1);
+    f.db.cleanup().await;
+}
+
+// ---- tracking quality (WP-G.11, SCH-4, QS-5) ------------------------------------------------
+
+/// A 1.7 session with a chosen id, start time, tracking verdict and accuracy.
+fn session_v1_7(id: &str, started: &str, verdict: &str, accuracy: Option<f64>) -> Value {
+    let mut v = golden_v1_7_tracking(id, verdict, accuracy);
+    v["rawPayload"]["startedAt"] = json!(started);
+    v
+}
+
+#[tokio::test]
+async fn session_list_carries_and_filters_by_tracking_verdict() {
+    let Some(f) = Fixture::new().await else {
+        return;
+    };
+    // One 1.6 session (no tracking) and three 1.7 sessions.
+    ingest_ok(
+        &f.router,
+        &f.dev(),
+        &session(
+            "T-16",
+            "2026-10-01T10:00:00.000Z",
+            Some("green"),
+            "optimal",
+            None,
+        ),
+    )
+    .await;
+    for body in [
+        session_v1_7("T-GOOD", "2026-10-02T10:00:00.000Z", "good", Some(1.63)),
+        session_v1_7("T-POOR", "2026-10-03T10:00:00.000Z", "poor", Some(4.2)),
+        session_v1_7("T-UNUSABLE", "2026-10-04T10:00:00.000Z", "unusable", None),
+    ] {
+        ingest_v1_7_ok(&f.router, &f.dev(), &body).await;
+    }
+
+    let (status, body) = f.list("").await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let page: SessionPage = serde_json::from_value(body.clone()).unwrap();
+    let by_id = |id: &str| page.items.iter().find(|s| s.id == id).unwrap().clone();
+    assert_eq!(
+        by_id("T-GOOD").tracking_verdict,
+        Some(TrackingVerdict::Good)
+    );
+    assert_eq!(by_id("T-GOOD").tracking_accuracy_deg, Some(1.63));
+    assert_eq!(
+        by_id("T-UNUSABLE").tracking_verdict,
+        Some(TrackingVerdict::Unusable)
+    );
+    assert_eq!(by_id("T-UNUSABLE").tracking_accuracy_deg, None);
+    assert_eq!(by_id("T-16").tracking_verdict, None);
+    // Present as null for a 1.6 session, not omitted.
+    let item16 = body["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|i| i["id"] == "T-16")
+        .unwrap();
+    assert_eq!(item16["tracking_verdict"], Value::Null);
+    assert_eq!(item16["tracking_accuracy_deg"], Value::Null);
+
+    for (query, expected) in [
+        ("?tracking=good", vec!["T-GOOD"]),
+        ("?tracking=poor", vec!["T-POOR"]),
+        ("?tracking=unusable", vec!["T-UNUSABLE"]),
+        ("?tracking=fair", vec![]),
+        ("?tracking=poor&flag=yellow", vec!["T-POOR"]),
+        ("?tracking=poor&flag=green", vec![]),
+    ] {
+        let (status, body) = f.list(query).await;
+        assert_eq!(status, StatusCode::OK, "{query}: {body}");
+        assert_eq!(ids(&body), expected, "{query}");
+        assert_eq!(body["total"], expected.len(), "{query}");
+    }
+    f.db.cleanup().await;
+}
+
+#[tokio::test]
+async fn session_detail_returns_tracking_quality_snake_case() {
+    let Some(f) = Fixture::new().await else {
+        return;
+    };
+    let payload = golden_v1_7();
+    ingest_v1_7_ok(&f.router, &f.dev(), &payload).await;
+    let (status, _, body) = send(
+        f.router.clone(),
+        user_get(&f.user, "/v1/sessions/SESS-GOLDEN-0001"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let d: SessionDetail = serde_json::from_value(body.clone()).unwrap();
+    assert_eq!(d.schema_version.as_deref(), Some("1.7"));
+    assert_eq!(d.summary.tracking_verdict, Some(TrackingVerdict::Good));
+    assert_eq!(d.summary.tracking_accuracy_deg, Some(1.63));
+    // QS-5: the calibration pose distance.
+    assert_eq!(d.calibrated_distance_cm, Some(38.0));
+
+    let tq = &body["tracking_quality"];
+    assert_eq!(tq["pipeline_version"], "asd-gaze/1.0.0");
+    assert_eq!(tq["device"]["model_identifier"], "iPad13,18");
+    assert_eq!(tq["device"]["geometry_source"], "table");
+    assert_eq!(tq["calibration"]["model"], "screenAffine");
+    assert_eq!(tq["calibration"]["loo_cv_deg"], 1.64);
+    assert_eq!(tq["calibration"]["pose"]["distance_cm"], 38.0);
+    assert_eq!(tq["validation"]["precision_rms_raw_deg"], 0.48);
+    assert_eq!(tq["drift_checks"][0]["offset_deg"], 1.1);
+    assert_eq!(tq["drift_checks"][1]["offset_deg"], Value::Null);
+    assert_eq!(tq["conditions"]["distance_cm_median"], 39.5);
+    assert_eq!(tq["loss"]["gap_filled_sec"], 0.3);
+    assert_eq!(tq["confidence"]["low_confidence_sample_ratio"], 0.07);
+    assert_eq!(tq["estimated_accuracy_deg"], 1.63);
+    assert_eq!(tq["verdict"], "good");
+    // No camelCase key anywhere in the view.
+    fn no_camel(v: &Value) -> bool {
+        match v {
+            Value::Object(m) => m
+                .iter()
+                .all(|(k, v)| !k.chars().any(|c| c.is_ascii_uppercase()) && no_camel(v)),
+            Value::Array(a) => a.iter().all(no_camel),
+            _ => true,
+        }
+    }
+    assert!(no_camel(tq), "{tq}");
+    assert_eq!(
+        d.tracking_quality.unwrap(),
+        SessionTrackingQuality::from(
+            &serde_json::from_value::<asd_contract::session_v1_7::TrackingQuality>(
+                payload["rawPayload"]["trackingQuality"].clone()
+            )
+            .unwrap()
+        )
+    );
+    f.db.cleanup().await;
+}
+
+#[tokio::test]
+async fn v1_6_session_detail_has_null_tracking_quality() {
+    let Some(f) = Fixture::new().await else {
+        return;
+    };
+    // Even with an unknown `trackingQuality` key in a 1.6 record.
+    let mut body16 = golden();
+    body16["rawPayload"]["trackingQuality"] = json!({"verdict": "good"});
+    ingest_ok(&f.router, &f.dev(), &body16).await;
+    let (status, _, body) = send(
+        f.router.clone(),
+        user_get(&f.user, "/v1/sessions/SESS-GOLDEN-0001"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let obj = body.as_object().unwrap();
+    for key in [
+        "tracking_quality",
+        "tracking_verdict",
+        "tracking_accuracy_deg",
+    ] {
+        assert_eq!(obj.get(key), Some(&Value::Null), "{key}");
+    }
+    assert_eq!(body["calibrated_distance_cm"], 38.0);
     f.db.cleanup().await;
 }

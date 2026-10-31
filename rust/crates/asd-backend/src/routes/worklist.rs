@@ -178,7 +178,7 @@ async fn list(
         r#"SELECT s.id, s.participant_id, s.participant_token, s.started_at, s.duration_sec,
                   s.battery, s.capture_source, s.quality_verdict, s.attention_flag,
                   s.composite_score, s.composite_confidence, s.bundle_version, s.device_id,
-                  s.received_at,
+                  s.received_at, s.tracking_verdict, s.tracking_accuracy_deg,
                   EXISTS (SELECT 1 FROM review_items r
                           WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed'))
                       AS "reviewed!",
@@ -280,6 +280,8 @@ async fn list(
                 bundle_version: r.bundle_version,
                 device_id: r.device_id.map(|d| d.to_string()),
                 reviewed: Some(r.reviewed),
+                tracking_verdict: crate::read::sessions::parse_verdict(r.tracking_verdict)?,
+                tracking_accuracy_deg: r.tracking_accuracy_deg,
             },
             review_id: r.review_id.map(|u| u.to_string()),
             clinical_state,

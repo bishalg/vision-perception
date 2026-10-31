@@ -57,6 +57,7 @@ export const en = {
       random_audit: "Random audit",
       norm_candidate: "Norm candidate",
       manual: "Manual",
+      low_tracking_quality: "Low tracking quality",
     },
     statuses: { open: "Open", in_review: "In review", done: "Done", dismissed: "Dismissed" },
     actions: {

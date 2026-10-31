@@ -12,6 +12,9 @@
 //! [`AuditEvent::device`] in the same transaction (AUTH-5). A participant whose consent was
 //! withdrawn (`participants.withdrawn_at` set, ADR-B8 erasure flow) gets no new data: the
 //! post, replays included, is refused with `409 participant-withdrawn` and nothing is stored.
+//!
+//! Schema 1.7 (WP-G.11): the SCH-4 tracking columns and the QS-5 calibrated distance are
+//! derived in [`derive`], and `low_tracking_quality` is opened in the same transaction.
 
 pub mod auto_review;
 pub mod derive;
@@ -102,15 +105,19 @@ pub async fn ingest(
 
     let flag = derive::attention_flag(req);
     let battery = req.battery.clone().flatten();
+    let tracking = derive::tracking_columns(req);
     let inserted = sqlx::query_scalar!(
         r#"INSERT INTO sessions (
                id, org_id, participant_id, participant_token, device_id, capture_source,
                started_at, ended_at, duration_sec, battery, bundle_version, schema_version,
                quality_verdict, valid_frame_ratio, calibrated_distance_cm, social_preference,
                eye_dwell, mouth_dwell, first_eye_latency_ms, affect, composite_score,
-               composite_confidence, attention_flag, summary, idempotency_key)
+               composite_confidence, attention_flag, summary, idempotency_key,
+               tracking_verdict, tracking_accuracy_deg, calibration_quality,
+               calibration_model, tracking_pipeline_version, device_model)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
-                   $17, $18, $19, $20, $21, $22, $23, $24, $25)
+                   $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
+                   $31)
            ON CONFLICT (id) DO NOTHING
            RETURNING 1 AS "one!: i32""#,
         req.session_id,
@@ -127,7 +134,7 @@ pub async fn ingest(
         req.schema_version,
         enum_str(&req.quality_verdict)?,
         req.valid_ratio,
-        req.calibrated_distance_cm,
+        derive::calibrated_distance_cm(req),
         req.social_preference_score,
         req.eye_dwell_ratio,
         req.mouth_dwell_ratio,
@@ -138,6 +145,12 @@ pub async fn ingest(
         flag_str(flag),
         v.raw_payload,
         v.idempotency_key,
+        tracking.verdict,
+        tracking.accuracy_deg,
+        tracking.calibration_quality,
+        tracking.calibration_model,
+        tracking.pipeline_version,
+        tracking.device_model,
     )
     .fetch_optional(&mut *tx)
     .await?;
@@ -180,9 +193,19 @@ pub async fn ingest(
     let settings = sqlx::query_scalar!("SELECT settings FROM organizations WHERE id = $1", org)
         .fetch_one(&mut *tx)
         .await?;
+    // Thresholds are read only for a session that has a tracking record (never for 1.6).
+    let tracking_quality = req.raw_payload.tracking_quality.as_ref();
+    let low_tracking = match tracking_quality {
+        Some(_) => auto_review::low_tracking_quality(
+            tracking_quality,
+            &auto_review::tracking_params(&mut tx).await?,
+        ),
+        None => false,
+    };
     let reasons = auto_review::reasons(
         &req.session_id,
         req.valid_ratio,
+        low_tracking,
         flag,
         derive::norm_consented(req),
         auto_review::audit_rate(&settings),

@@ -11,6 +11,7 @@
 
 mod common;
 mod ingest_support;
+mod tracking_support;
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -27,6 +28,7 @@ use http::StatusCode;
 use ingest_support::*;
 use serde_json::{json, Value};
 use sqlx::Row;
+use tracking_support::*;
 use uuid::Uuid;
 
 /// Posts `body` as `f`'s enrolled device (validation tests need the DB only to
@@ -954,5 +956,272 @@ async fn ingest_for_a_withdrawn_participant_is_refused_and_stores_nothing() {
     other["participantToken"] = json!("child-other");
     other["rawPayload"]["participantId"] = json!("child-other");
     ingest_ok(&router, &f.dev(), &other).await;
+    f.db.cleanup().await;
+}
+
+// ---- schema 1.7 (WP-G.11: SCH-2, SCH-4, QS-5) ---------------------------------------------
+
+/// The tracking columns of one stored session, in SCH-4 order.
+async fn tracking_columns(
+    f: &Fixture,
+    id: &str,
+) -> (
+    Option<String>,
+    Option<f64>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+) {
+    let row = sqlx::query(
+        "SELECT tracking_verdict, tracking_accuracy_deg, calibration_quality, \
+                calibration_model, tracking_pipeline_version, device_model \
+         FROM sessions WHERE id = $1",
+    )
+    .bind(id)
+    .fetch_one(&f.db.pool)
+    .await
+    .unwrap();
+    (
+        row.get(0),
+        row.get(1),
+        row.get(2),
+        row.get(3),
+        row.get(4),
+        row.get(5),
+    )
+}
+
+async fn stored_distance(f: &Fixture, id: &str) -> Option<f64> {
+    sqlx::query_scalar("SELECT calibrated_distance_cm FROM sessions WHERE id = $1")
+        .bind(id)
+        .fetch_one(&f.db.pool)
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn v1_6_post_is_still_201_with_null_tracking_columns() {
+    let Some(f) = Fixture::new().await else {
+        return;
+    };
+    ingest_ok(&f.router(), &f.dev(), &golden()).await;
+    assert_eq!(
+        tracking_columns(&f, "SESS-GOLDEN-0001").await,
+        (None, None, None, None, None, None)
+    );
+    // 1.6 keeps the distance it sent (unchanged behaviour).
+    assert_eq!(stored_distance(&f, "SESS-GOLDEN-0001").await, Some(38.0));
+    f.db.cleanup().await;
+}
+
+#[tokio::test]
+async fn v1_6_payload_with_an_unknown_tracking_key_is_accepted_as_before() {
+    let Some(f) = Fixture::new().await else {
+        return;
+    };
+    // 1.6 allows unknown rawPayload keys; a 1.6 body is never read as 1.7 (SCH-2).
+    let mut body = golden();
+    body["rawPayload"]["trackingQuality"] = json!({"verdict": "excellent"});
+    body["perVideo"][0]["details"]["meanSampleConfidence"] = json!("n/a");
+    let (status, resp) = post_as(&f, &body).await;
+    assert_eq!(status, StatusCode::CREATED, "{resp}");
+    assert_eq!(
+        tracking_columns(&f, "SESS-GOLDEN-0001").await,
+        (None, None, None, None, None, None)
+    );
+    let summary: Value =
+        sqlx::query_scalar("SELECT summary FROM sessions WHERE id = 'SESS-GOLDEN-0001'")
+            .fetch_one(&f.db.pool)
+            .await
+            .unwrap();
+    assert_eq!(summary, body["rawPayload"]);
+    f.db.cleanup().await;
+}
+
+#[tokio::test]
+async fn v1_7_post_is_201_with_derived_tracking_columns() {
+    let Some(f) = Fixture::new().await else {
+        return;
+    };
+    let payload = golden_v1_7();
+    let (status, _, resp) = send(f.router(), post_session_v1_7(Some(&f.dev()), &payload)).await;
+    assert_eq!(status, StatusCode::CREATED, "{resp}");
+    assert_eq!(resp["status"], "accepted");
+    assert_eq!(resp["duplicate"], false);
+    assert_eq!(
+        tracking_columns(&f, "SESS-GOLDEN-0001").await,
+        (
+            Some("good".into()),
+            Some(1.63),
+            Some("good".into()),
+            Some("screenAffine".into()),
+            Some("asd-gaze/1.0.0".into()),
+            Some("iPad13,18".into()),
+        )
+    );
+    let row =
+        sqlx::query("SELECT schema_version, summary FROM sessions WHERE id = 'SESS-GOLDEN-0001'")
+            .fetch_one(&f.db.pool)
+            .await
+            .unwrap();
+    assert_eq!(row.get::<String, _>("schema_version"), "1.7");
+    // The record is stored exactly as received (ING-2).
+    assert_eq!(row.get::<Value, _>("summary"), payload["rawPayload"]);
+    // Clip rows and details as for 1.6; details keep the QS-3 fields.
+    assert_eq!(f.count("SELECT count(*) FROM session_clip_scores").await, 2);
+    let details: Value = sqlx::query_scalar(
+        "SELECT details FROM session_clip_scores WHERE session_id = 'SESS-GOLDEN-0001' \
+         AND clip_order = 1",
+    )
+    .fetch_one(&f.db.pool)
+    .await
+    .unwrap();
+    assert_eq!(details, payload["perVideo"][0]["details"]);
+    f.db.cleanup().await;
+}
+
+#[tokio::test]
+async fn v1_7_calibrated_distance_is_the_calibration_pose_never_a_default() {
+    let Some(f) = Fixture::new().await else {
+        return;
+    };
+    // QS-5: the measured pose distance, whatever the top-level value says.
+    let mut measured = golden_v1_7_with_id("S-POSE");
+    measured["calibratedDistanceCm"] = json!(35);
+    measured["rawPayload"]["calibratedDistanceCm"] = json!(35);
+    measured["rawPayload"]["trackingQuality"]["calibration"]["pose"]["distanceCm"] = json!(41.5);
+    ingest_v1_7_ok(&f.router(), &f.dev(), &measured).await;
+    assert_eq!(stored_distance(&f, "S-POSE").await, Some(41.5));
+
+    // Skipped calibration: no distance, even though the app sent its 35 cm default.
+    let mut skipped = golden_v1_7_with_id("S-SKIP");
+    skipped["calibratedDistanceCm"] = json!(35);
+    skipped["rawPayload"]["calibratedDistanceCm"] = json!(35);
+    skipped["rawPayload"]["trackingQuality"]["calibration"]["quality"] = json!("skipped");
+    ingest_v1_7_ok(&f.router(), &f.dev(), &skipped).await;
+    assert_eq!(stored_distance(&f, "S-SKIP").await, None);
+
+    // No tracking-quality record: nothing measured, nothing stored.
+    let mut no_record = golden_v1_7_with_id("S-NOREC");
+    no_record["rawPayload"]
+        .as_object_mut()
+        .unwrap()
+        .remove("trackingQuality");
+    ingest_v1_7_ok(&f.router(), &f.dev(), &no_record).await;
+    assert_eq!(stored_distance(&f, "S-NOREC").await, None);
+    assert_eq!(
+        tracking_columns(&f, "S-NOREC").await,
+        (None, None, None, None, None, None)
+    );
+    f.db.cleanup().await;
+}
+
+#[tokio::test]
+async fn schema_version_must_be_1_6_or_1_7_and_equal_in_header_and_body() {
+    let Some(f) = Fixture::new().await else {
+        return;
+    };
+    let cases = [
+        // (header, body)
+        (Some("1.7"), golden()),
+        (Some("1.6"), golden_v1_7()),
+        (Some("1.8"), golden_v1_7()),
+        (None, golden_v1_7()),
+    ];
+    for (header, body) in cases {
+        let (status, _, resp) = send(
+            f.router(),
+            post_session_raw(
+                Some(&f.dev()),
+                Some("SESS-GOLDEN-0001"),
+                header,
+                serde_json::to_vec(&body).unwrap(),
+            ),
+        )
+        .await;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{header:?}: {resp}");
+        assert_eq!(
+            problem_slug(&resp),
+            "unsupported-schema-version",
+            "{header:?}"
+        );
+    }
+    assert_eq!(f.count("SELECT count(*) FROM sessions").await, 0);
+    f.db.cleanup().await;
+}
+
+#[tokio::test]
+async fn each_version_is_checked_against_its_own_schema() {
+    let Some(f) = Fixture::new().await else {
+        return;
+    };
+    // 1.7: a typed trackingQuality with a value outside the contract is rejected.
+    let mut bad = golden_v1_7();
+    bad["rawPayload"]["trackingQuality"]["verdict"] = json!("excellent");
+    let (status, _, resp) = send(f.router(), post_session_v1_7(Some(&f.dev()), &bad)).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "{resp}");
+    assert_eq!(problem_slug(&resp), "validation-failed");
+    let names = param_names(&resp);
+    assert!(
+        names
+            .iter()
+            .any(|n| "/rawPayload/trackingQuality/verdict".starts_with(n.as_str()) && n.len() > 1),
+        "{names:?}"
+    );
+
+    // 1.6 still requires rawPayload.calibratedDistanceCm; 1.7 does not.
+    let mut v16 = golden();
+    v16["rawPayload"]
+        .as_object_mut()
+        .unwrap()
+        .remove("calibratedDistanceCm");
+    let (status, resp) = post_as(&f, &v16).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "{resp}");
+    assert_eq!(problem_slug(&resp), "validation-failed");
+
+    let mut v17 = golden_v1_7();
+    v17["rawPayload"]
+        .as_object_mut()
+        .unwrap()
+        .remove("calibratedDistanceCm");
+    ingest_v1_7_ok(&f.router(), &f.dev(), &v17).await;
+    f.db.cleanup().await;
+}
+
+#[tokio::test]
+async fn identical_replay_of_a_1_7_body_is_200_duplicate_and_changes_nothing() {
+    let Some(f) = Fixture::new().await else {
+        return;
+    };
+    let router = f.router();
+    let first = ingest_v1_7_ok(&router, &f.dev(), &golden_v1_7()).await;
+    let before = tracking_columns(&f, "SESS-GOLDEN-0001").await;
+
+    let pretty = serde_json::to_vec_pretty(&golden_v1_7()).unwrap();
+    let (status, _, replay) = send(
+        router.clone(),
+        post_session_raw(
+            Some(&f.dev()),
+            Some("SESS-GOLDEN-0001"),
+            Some("1.7"),
+            pretty,
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{replay}");
+    let mut expected = first.clone();
+    expected["duplicate"] = json!(true);
+    assert_eq!(replay, expected);
+    assert_eq!(f.count("SELECT count(*) FROM sessions").await, 1);
+    assert_eq!(f.count("SELECT count(*) FROM review_items").await, 0);
+    assert_eq!(tracking_columns(&f, "SESS-GOLDEN-0001").await, before);
+
+    // The same key with the body changed (here: the verdict) is still a 409 (CON-17).
+    let changed = golden_v1_7_tracking("SESS-GOLDEN-0001", "poor", Some(4.2));
+    let (status, _, resp) = send(router.clone(), post_session_v1_7(Some(&f.dev()), &changed)).await;
+    assert_eq!(status, StatusCode::CONFLICT, "{resp}");
+    assert_eq!(problem_slug(&resp), "idempotency-key-reused");
+    assert_eq!(tracking_columns(&f, "SESS-GOLDEN-0001").await, before);
     f.db.cleanup().await;
 }

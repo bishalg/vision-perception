@@ -5,10 +5,18 @@
 //! decode, then the checks the schema cannot express (capture source policy, identifier
 //! charset, `rawPayload` consistency, unique clip ids, RFC 3339 dates, idempotency key).
 //! Nothing here fills in a missing value (CON-14).
+//!
+//! Schema versions (SCH-2, WP-G.11): `X-Schema-Version` is `1.6` or `1.7` and the body's
+//! `schemaVersion` must equal it. Each version is checked against its own exported schema
+//! and decoded as its own type, so a 1.6 body is accepted or refused exactly as before
+//! (1.6 allows unknown keys that 1.7 types, such as `rawPayload.trackingQuality`). A 1.6
+//! request is then carried as the 1.7 type ([`upgrade_v1_6`], lossless: 1.7 is 1.6 plus
+//! optional fields), with no tracking-quality record.
 
 use asd_contract::problem as slugs;
 use asd_contract::schema;
-use asd_contract::session_v1_6::{SessionIngestRequest, SCHEMA_VERSION};
+use asd_contract::session_v1_6;
+use asd_contract::session_v1_7::{self, SessionIngestRequest};
 use asd_core::types::CaptureSource;
 use chrono::{DateTime, Utc};
 use serde_json::Value;
@@ -20,9 +28,15 @@ use crate::problem::InvalidParam;
 /// Longest accepted `sessionId` / `participantToken`.
 pub const MAX_ID_LEN: usize = 128;
 
+/// Session schema versions `POST /v1/sessions` accepts (SCH-2; CON-21 becomes a set).
+pub const SUPPORTED_SCHEMA_VERSIONS: [&str; 2] =
+    [session_v1_6::SCHEMA_VERSION, session_v1_7::SCHEMA_VERSION];
+
 /// A request that passed every check.
 #[derive(Debug, Clone)]
 pub struct ValidatedSession {
+    /// The request as the 1.7 type; `schema_version` says which version was sent (a 1.6
+    /// request has no tracking-quality record and no QS-3 fields).
     pub request: SessionIngestRequest,
     /// SHA-256 of the JCS canonical body (key order and whitespace do not matter).
     pub request_hash: [u8; 32],
@@ -100,31 +114,42 @@ pub fn validate(
         )])
     })?;
 
-    // CON-21: the header is mandatory, supported, and equal to the body's version.
-    match schema_version_header {
+    // CON-21 / SCH-2: the header is mandatory, supported, and equal to the body's version.
+    let version = match schema_version_header {
         None => return Err(unsupported("X-Schema-Version header is required".into())),
-        Some(v) if v != SCHEMA_VERSION => {
+        Some(v) if !SUPPORTED_SCHEMA_VERSIONS.contains(&v) => {
             return Err(unsupported(format!(
-                "X-Schema-Version {v} is not supported (expected {SCHEMA_VERSION})"
+                "X-Schema-Version {v} is not supported (expected one of {})",
+                SUPPORTED_SCHEMA_VERSIONS.join(", ")
             )))
         }
-        Some(_) => {}
-    }
+        Some(v) => v,
+    };
     if let Some(body_version) = value.get("schemaVersion").and_then(Value::as_str) {
-        if body_version != SCHEMA_VERSION {
+        if body_version != version {
             return Err(unsupported(format!(
-                "schemaVersion {body_version} does not match X-Schema-Version {SCHEMA_VERSION}"
+                "schemaVersion {body_version} does not match X-Schema-Version {version}"
             )));
         }
     }
 
-    if let Err(errors) = schema::validate_session(&value) {
+    let is_v1_7 = version == session_v1_7::SCHEMA_VERSION;
+    let checked = if is_v1_7 {
+        schema::validate_session_v1_7(&value)
+    } else {
+        schema::validate_session(&value)
+    };
+    if let Err(errors) = checked {
         return Err(AppError::Validation(
             errors.iter().map(|e| schema_param(e)).collect(),
         ));
     }
-    let request: SessionIngestRequest = serde_json::from_value(value.clone())
-        .map_err(|e| AppError::Validation(vec![param("/", e.to_string())]))?;
+    let decode_err = |e: serde_json::Error| AppError::Validation(vec![param("/", e.to_string())]);
+    let request: SessionIngestRequest = if is_v1_7 {
+        serde_json::from_value(value.clone()).map_err(decode_err)?
+    } else {
+        upgrade_v1_6(serde_json::from_value(value.clone()).map_err(decode_err)?)
+    };
 
     // CON-13: capture-source policy.
     match request.capture_source {
@@ -221,6 +246,151 @@ pub fn validate(
     }
 }
 
+/// A decoded 1.6 request as the 1.7 type, without loss: every 1.6 field maps to the
+/// same 1.7 field, the 1.7-only fields stay absent (no tracking record, no QS-3 fields), and
+/// unknown `rawPayload` keys stay in `extra`. Exhaustive destructuring: a field added to
+/// either version fails to compile here.
+pub fn upgrade_v1_6(req: session_v1_6::SessionIngestRequest) -> SessionIngestRequest {
+    let session_v1_6::SessionIngestRequest {
+        session_id,
+        participant_token,
+        capture_source,
+        duration_sec,
+        valid_ratio,
+        social_preference_score,
+        eye_dwell_ratio,
+        mouth_dwell_ratio,
+        first_eye_latency_ms,
+        quality_verdict,
+        calibrated_distance_cm,
+        attention_flag,
+        battery,
+        schema_version,
+        per_video,
+        raw_payload,
+    } = req;
+    SessionIngestRequest {
+        session_id,
+        participant_token,
+        capture_source,
+        duration_sec,
+        valid_ratio,
+        social_preference_score,
+        eye_dwell_ratio,
+        mouth_dwell_ratio,
+        first_eye_latency_ms,
+        quality_verdict,
+        calibrated_distance_cm,
+        attention_flag,
+        battery,
+        schema_version,
+        per_video: per_video.map(|rows| rows.into_iter().map(upgrade_row).collect()),
+        raw_payload: upgrade_record(raw_payload),
+    }
+}
+
+fn upgrade_row(row: session_v1_6::SessionPerVideoRow) -> session_v1_7::SessionPerVideoRow {
+    let session_v1_6::SessionPerVideoRow {
+        clip_id,
+        order,
+        dwell_social,
+        dwell_geometric,
+        dwell_eye,
+        dwell_mouth,
+        orienting_latency_ms,
+        fixation_count,
+        mean_fixation_ms,
+        status,
+        score,
+        weight,
+        details,
+    } = row;
+    session_v1_7::SessionPerVideoRow {
+        clip_id,
+        order,
+        dwell_social,
+        dwell_geometric,
+        dwell_eye,
+        dwell_mouth,
+        orienting_latency_ms,
+        fixation_count,
+        mean_fixation_ms,
+        status,
+        score,
+        weight,
+        details: session_v1_7::SessionPerVideoDetails {
+            base: details,
+            tracking: session_v1_7::ClipTracking::default(),
+        },
+    }
+}
+
+fn upgrade_record(r: session_v1_6::GazeSessionRecord) -> session_v1_7::GazeSessionRecord {
+    let session_v1_6::GazeSessionRecord {
+        id,
+        session_id,
+        participant_id,
+        capture_source,
+        started_at,
+        ended_at,
+        duration_sec,
+        social_preference_score,
+        valid_frame_ratio,
+        eye_dwell_ratio,
+        mouth_dwell_ratio,
+        first_eye_latency_ms,
+        calibrated_distance_cm,
+        quality_verdict,
+        social_smile_intensity,
+        smile_reactivity_index,
+        flat_affect_score,
+        surprise_score_mean,
+        notes,
+        schema_version,
+        zero_raw_video_enforced,
+        legacy_provenance,
+        per_video_composite,
+        per_video,
+        extra,
+    } = r;
+    session_v1_7::GazeSessionRecord {
+        id,
+        session_id,
+        participant_id,
+        capture_source,
+        started_at,
+        ended_at,
+        duration_sec,
+        social_preference_score,
+        valid_frame_ratio,
+        eye_dwell_ratio,
+        mouth_dwell_ratio,
+        first_eye_latency_ms,
+        calibrated_distance_cm: Some(calibrated_distance_cm),
+        quality_verdict,
+        social_smile_intensity,
+        smile_reactivity_index,
+        flat_affect_score,
+        surprise_score_mean,
+        notes,
+        schema_version,
+        zero_raw_video_enforced,
+        legacy_provenance,
+        per_video_composite,
+        per_video: per_video.map(|videos| {
+            videos
+                .into_iter()
+                .map(|report| session_v1_7::PerVideoReport {
+                    report,
+                    tracking: session_v1_7::ClipTracking::default(),
+                })
+                .collect()
+        }),
+        tracking_quality: None,
+        extra,
+    }
+}
+
 /// Short, PHI-free label of a JSON syntax error (serde's message can quote input).
 trait ClassifyLabel {
     fn classify_label(&self) -> &'static str;
@@ -259,6 +429,36 @@ mod tests {
         ] {
             assert!(!is_safe_id(bad), "{bad:?}");
         }
+    }
+
+    #[test]
+    fn upgrading_a_1_6_request_is_lossless() {
+        let text = include_str!(
+            "../../../../../apps/ios_asd_gaze_app/Tests/Fixtures/expected-session-v1.6.json"
+        );
+        let v16: session_v1_6::SessionIngestRequest = serde_json::from_str(text).unwrap();
+        // The golden has no 1.7-only key, so the 1.7 decode of the same JSON is the target.
+        let v17: SessionIngestRequest = serde_json::from_str(text).unwrap();
+        let up = upgrade_v1_6(v16);
+        assert_eq!(up, v17);
+        assert!(up.raw_payload.tracking_quality.is_none());
+        assert_eq!(up.raw_payload.calibrated_distance_cm, Some(38.0));
+    }
+
+    #[test]
+    fn upgrading_keeps_unknown_record_keys_in_extra() {
+        let mut v: Value = serde_json::from_str(include_str!(
+            "../../../../../apps/ios_asd_gaze_app/Tests/Fixtures/expected-session-v1.6.json"
+        ))
+        .unwrap();
+        v["rawPayload"]["trackingQuality"] = serde_json::json!({"verdict": "excellent"});
+        let v16: session_v1_6::SessionIngestRequest = serde_json::from_value(v).unwrap();
+        let up = upgrade_v1_6(v16);
+        assert!(up.raw_payload.tracking_quality.is_none());
+        assert_eq!(
+            up.raw_payload.extra["trackingQuality"],
+            serde_json::json!({"verdict": "excellent"})
+        );
     }
 
     #[test]

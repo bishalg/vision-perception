@@ -403,6 +403,16 @@
       },
       "type": "object"
     },
+    "CalibrationQuality": {
+      "enum": [
+        "good",
+        "fair",
+        "poor",
+        "failed",
+        "skipped"
+      ],
+      "type": "string"
+    },
     "CaptureSource": {
       "enum": [
         "truedepth",
@@ -2271,6 +2281,13 @@
       ],
       "type": "object"
     },
+    "GeometrySource": {
+      "enum": [
+        "table",
+        "idiomDefault"
+      ],
+      "type": "string"
+    },
     "Health": {
       "description": "`GET /health` (liveness, CON-22).",
       "examples": [
@@ -3017,6 +3034,15 @@
       ],
       "type": "object"
     },
+    "Orientation": {
+      "enum": [
+        "portrait",
+        "portraitUpsideDown",
+        "landscapeLeft",
+        "landscapeRight"
+      ],
+      "type": "string"
+    },
     "Paper": {
       "description": "NOTE-7 `settings.paper`, default `a4`.",
       "enum": [
@@ -3508,6 +3534,18 @@
       ],
       "type": "object"
     },
+    "RecalReason": {
+      "enum": [
+        "calibrationQuality",
+        "validationAccuracy",
+        "drift",
+        "poseShift",
+        "orientationChanged",
+        "calibrationAge",
+        "operatorRequest"
+      ],
+      "type": "string"
+    },
     "RecalibrationParams": {
       "properties": {
         "maxCalibrationAgeSec": {
@@ -3865,7 +3903,8 @@
         "flag_red",
         "random_audit",
         "norm_candidate",
-        "manual"
+        "manual",
+        "low_tracking_quality"
       ],
       "type": "string"
     },
@@ -4457,6 +4496,118 @@
       ],
       "type": "string"
     },
+    "SessionCalibration": {
+      "description": "`tracking_quality.calibration`.",
+      "properties": {
+        "age_sec_at_start": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attempts": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "condition_number": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layout_points": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "loo_cv_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "missing_points": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CalModelKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pose": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SessionCalibrationPose"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "quality": {
+          "$ref": "#/$defs/CalibrationQuality"
+        },
+        "residual_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "usable_points": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "layout_points",
+        "usable_points",
+        "missing_points",
+        "quality",
+        "attempts"
+      ],
+      "type": "object"
+    },
+    "SessionCalibrationPose": {
+      "description": "Head pose at calibration.",
+      "properties": {
+        "distance_cm": {
+          "type": "number"
+        },
+        "pitch_deg": {
+          "type": "number"
+        },
+        "yaw_deg": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "distance_cm",
+        "yaw_deg",
+        "pitch_deg"
+      ],
+      "type": "object"
+    },
     "SessionDetail": {
       "description": "`GET /v1/sessions/{id}`: the summary plus stored measurements.",
       "examples": [
@@ -4489,6 +4640,131 @@
           "schema_version": "1.6",
           "social_preference": 0.62,
           "started_at": "2026-10-26T07:33:20.000Z",
+          "tracking_accuracy_deg": null,
+          "tracking_quality": null,
+          "tracking_verdict": null,
+          "valid_frame_ratio": 0.93
+        },
+        {
+          "affect": {
+            "flatAffectScore": 0.12,
+            "socialSmileIntensity": 0.41
+          },
+          "age_pack": "18-30",
+          "attention_flag": "yellow",
+          "battery": "express_30s",
+          "bundle_version": null,
+          "calibrated_distance_cm": 38.0,
+          "capture_source": "truedepth",
+          "composite_confidence": 0.5,
+          "composite_score": 0.74,
+          "device_id": "9a8b7c6d-5e4f-4321-8fed-cba987654321",
+          "duration_sec": 32.5,
+          "eye_dwell": 0.33,
+          "first_eye_latency_ms": null,
+          "id": "SESS-GOLDEN-0017",
+          "lang": "en",
+          "mouth_dwell": null,
+          "org_id": "5f0e1d2c-3b4a-4968-8776-655443322110",
+          "participant_id": "7f1c1c1e-0000-4000-8000-000000000001",
+          "participant_token": "child-SESS-GOL",
+          "quality_verdict": "optimal",
+          "report_pdf_available": false,
+          "reviewed": false,
+          "schema_version": "1.7",
+          "social_preference": 0.62,
+          "started_at": "2026-10-26T07:33:20.000Z",
+          "tracking_accuracy_deg": 1.63,
+          "tracking_quality": {
+            "calibration": {
+              "age_sec_at_start": 6.5,
+              "attempts": 1,
+              "condition_number": 42.5,
+              "layout_points": 5,
+              "loo_cv_deg": 1.64,
+              "missing_points": 0,
+              "model": "screenAffine",
+              "pose": {
+                "distance_cm": 38.0,
+                "pitch_deg": -4.25,
+                "yaw_deg": 3.5
+              },
+              "quality": "good",
+              "residual_deg": 1.12,
+              "usable_points": 5
+            },
+            "conditions": {
+              "ambient_intensity_median": 870.0,
+              "distance_cm_iqr": 4.25,
+              "distance_cm_median": 39.5,
+              "glasses": false,
+              "head_speed_deg_per_sec_p90": 18.5,
+              "light_asymmetry": 0.12
+            },
+            "confidence": {
+              "low_confidence_sample_ratio": 0.07,
+              "mean_fixation": 0.86,
+              "mean_sample": 0.82
+            },
+            "device": {
+              "geometry_source": "table",
+              "model_identifier": "iPad13,18",
+              "orientation": "landscapeLeft",
+              "sample_rate_hz": 60.0,
+              "screen_height_mm": 165.64,
+              "screen_width_mm": 238.25
+            },
+            "drift_checks": [
+              {
+                "at_sec": 11.2,
+                "drift_deg": 0.4,
+                "missed": false,
+                "offset_deg": 1.1,
+                "x_norm": 0.5,
+                "y_norm": 0.5
+              }
+            ],
+            "estimated_accuracy_deg": 1.63,
+            "loss": {
+              "artifact_sec": 0.05,
+              "blink_sec": 0.6,
+              "gap_filled_sec": 0.3,
+              "longest_gap_sec": 0.45,
+              "offscreen_sec": 0.4,
+              "track_loss_sec": 0.85
+            },
+            "max_drift_deg": 0.4,
+            "params_version": "1.0.0",
+            "pipeline_version": "asd-gaze/1.0.0",
+            "recalibrations": [
+              {
+                "at_sec": 23.5,
+                "new_quality": "fair",
+                "reason": "drift"
+              }
+            ],
+            "validation": {
+              "accuracy_deg": 1.63,
+              "complete": true,
+              "data_loss": 0.24,
+              "precision_rms_deg": 0.22,
+              "precision_rms_raw_deg": 0.48,
+              "targets": [
+                {
+                  "accuracy_deg": 1.4,
+                  "data_loss": 0.02,
+                  "missed": false,
+                  "precision_rms_deg": 0.21,
+                  "sd_deg": 0.35,
+                  "valid_samples": 58,
+                  "x_norm": 0.3,
+                  "y_norm": 0.3
+                }
+              ]
+            },
+            "verdict": "good"
+          },
+          "tracking_verdict": "good",
           "valid_frame_ratio": 0.93
         }
       ],
@@ -4693,6 +4969,39 @@
           "format": "date-time",
           "type": "string"
         },
+        "tracking_accuracy_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "QS-2 estimated gaze accuracy, degrees; `null` when not measured (SCH-4)."
+        },
+        "tracking_quality": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SessionTrackingQuality"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The session's tracking-quality record (QS-1, snake_case); `null` for a 1.6 session\n(app version before tracking quality) or without a record (SCH-4)."
+        },
+        "tracking_verdict": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TrackingVerdict"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "QS-4 tracking verdict of a schema 1.7 session; `null` for a 1.6 session or when the\ndevice sent no tracking-quality record (SCH-4)."
+        },
         "valid_frame_ratio": {
           "anyOf": [
             {
@@ -4713,6 +5022,50 @@
         "quality_verdict",
         "attention_flag",
         "org_id"
+      ],
+      "type": "object"
+    },
+    "SessionDriftCheck": {
+      "description": "One drift check.",
+      "properties": {
+        "at_sec": {
+          "type": "number"
+        },
+        "drift_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "missed": {
+          "type": "boolean"
+        },
+        "offset_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "x_norm": {
+          "type": "number"
+        },
+        "y_norm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "at_sec",
+        "x_norm",
+        "y_norm",
+        "missed"
       ],
       "type": "object"
     },
@@ -5100,6 +5453,26 @@
       ],
       "type": "object"
     },
+    "SessionRecalibration": {
+      "description": "One re-calibration that happened.",
+      "properties": {
+        "at_sec": {
+          "type": "number"
+        },
+        "new_quality": {
+          "$ref": "#/$defs/CalibrationQuality"
+        },
+        "reason": {
+          "$ref": "#/$defs/RecalReason"
+        }
+      },
+      "required": [
+        "at_sec",
+        "reason",
+        "new_quality"
+      ],
+      "type": "object"
+    },
     "SessionSummary": {
       "description": "`GET /v1/orgs/{id}/sessions` item.",
       "examples": [
@@ -5117,7 +5490,27 @@
           "participant_token": "child-SESS-GOL",
           "quality_verdict": "optimal",
           "reviewed": false,
-          "started_at": "2026-10-26T07:33:20.000Z"
+          "started_at": "2026-10-26T07:33:20.000Z",
+          "tracking_accuracy_deg": null,
+          "tracking_verdict": null
+        },
+        {
+          "attention_flag": "yellow",
+          "battery": "express_30s",
+          "bundle_version": null,
+          "capture_source": "truedepth",
+          "composite_confidence": 0.5,
+          "composite_score": 0.74,
+          "device_id": "9a8b7c6d-5e4f-4321-8fed-cba987654321",
+          "duration_sec": 32.5,
+          "id": "SESS-GOLDEN-0017",
+          "participant_id": "7f1c1c1e-0000-4000-8000-000000000001",
+          "participant_token": "child-SESS-GOL",
+          "quality_verdict": "optimal",
+          "reviewed": false,
+          "started_at": "2026-10-26T07:33:20.000Z",
+          "tracking_accuracy_deg": 1.63,
+          "tracking_verdict": "good"
         }
       ],
       "properties": {
@@ -5216,6 +5609,28 @@
         "started_at": {
           "format": "date-time",
           "type": "string"
+        },
+        "tracking_accuracy_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "QS-2 estimated gaze accuracy, degrees; `null` when not measured (SCH-4)."
+        },
+        "tracking_verdict": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TrackingVerdict"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "QS-4 tracking verdict of a schema 1.7 session; `null` for a 1.6 session or when the\ndevice sent no tracking-quality record (SCH-4)."
         }
       },
       "required": [
@@ -5226,6 +5641,380 @@
         "duration_sec",
         "quality_verdict",
         "attention_flag"
+      ],
+      "type": "object"
+    },
+    "SessionTrackingConditions": {
+      "description": "`tracking_quality.conditions`; each value `null` when not measured.",
+      "properties": {
+        "ambient_intensity_median": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "distance_cm_iqr": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "distance_cm_median": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "glasses": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Operator answer at the positioning step; `null` when not asked."
+        },
+        "head_speed_deg_per_sec_p90": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "light_asymmetry": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "SessionTrackingConfidence": {
+      "description": "`tracking_quality.confidence`.",
+      "properties": {
+        "low_confidence_sample_ratio": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        "mean_fixation": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mean_sample": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "mean_sample",
+        "low_confidence_sample_ratio"
+      ],
+      "type": "object"
+    },
+    "SessionTrackingDevice": {
+      "description": "`tracking_quality.device`.",
+      "properties": {
+        "geometry_source": {
+          "$ref": "#/$defs/GeometrySource"
+        },
+        "model_identifier": {
+          "description": "Hardware model identifier, e.g. `iPad13,18`.",
+          "type": "string"
+        },
+        "orientation": {
+          "$ref": "#/$defs/Orientation"
+        },
+        "sample_rate_hz": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "screen_height_mm": {
+          "type": "number"
+        },
+        "screen_width_mm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "model_identifier",
+        "geometry_source",
+        "orientation",
+        "screen_width_mm",
+        "screen_height_mm"
+      ],
+      "type": "object"
+    },
+    "SessionTrackingLoss": {
+      "description": "`tracking_quality.loss`, seconds.",
+      "properties": {
+        "artifact_sec": {
+          "type": "number"
+        },
+        "blink_sec": {
+          "type": "number"
+        },
+        "gap_filled_sec": {
+          "type": "number"
+        },
+        "longest_gap_sec": {
+          "type": "number"
+        },
+        "offscreen_sec": {
+          "type": "number"
+        },
+        "track_loss_sec": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "track_loss_sec",
+        "blink_sec",
+        "offscreen_sec",
+        "artifact_sec",
+        "gap_filled_sec",
+        "longest_gap_sec"
+      ],
+      "type": "object"
+    },
+    "SessionTrackingQuality": {
+      "description": "`SessionDetail.tracking_quality` (QS-1, snake_case).",
+      "properties": {
+        "calibration": {
+          "$ref": "#/$defs/SessionCalibration"
+        },
+        "conditions": {
+          "$ref": "#/$defs/SessionTrackingConditions"
+        },
+        "confidence": {
+          "$ref": "#/$defs/SessionTrackingConfidence"
+        },
+        "device": {
+          "$ref": "#/$defs/SessionTrackingDevice"
+        },
+        "drift_checks": {
+          "items": {
+            "$ref": "#/$defs/SessionDriftCheck"
+          },
+          "type": "array"
+        },
+        "estimated_accuracy_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "QS-2, degrees; `null` when not measured."
+        },
+        "loss": {
+          "$ref": "#/$defs/SessionTrackingLoss"
+        },
+        "max_drift_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "params_version": {
+          "description": "`TrackingQualityParams.schemaVersion` the session ran with.",
+          "type": "string"
+        },
+        "pipeline_version": {
+          "description": "asd-core gaze maths version (`asd-gaze/1.0.0`).",
+          "type": "string"
+        },
+        "recalibrations": {
+          "items": {
+            "$ref": "#/$defs/SessionRecalibration"
+          },
+          "type": "array"
+        },
+        "validation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SessionValidation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "verdict": {
+          "$ref": "#/$defs/TrackingVerdict",
+          "description": "QS-4."
+        }
+      },
+      "required": [
+        "pipeline_version",
+        "params_version",
+        "device",
+        "calibration",
+        "drift_checks",
+        "recalibrations",
+        "conditions",
+        "loss",
+        "confidence",
+        "verdict"
+      ],
+      "type": "object"
+    },
+    "SessionValidation": {
+      "description": "`tracking_quality.validation`.",
+      "properties": {
+        "accuracy_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "data_loss": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        "precision_rms_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "precision_rms_raw_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "targets": {
+          "items": {
+            "$ref": "#/$defs/SessionValidationTarget"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "complete",
+        "targets",
+        "data_loss"
+      ],
+      "type": "object"
+    },
+    "SessionValidationTarget": {
+      "description": "One validation target.",
+      "properties": {
+        "accuracy_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "data_loss": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        "missed": {
+          "type": "boolean"
+        },
+        "precision_rms_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sd_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "valid_samples": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "x_norm": {
+          "type": "number"
+        },
+        "y_norm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x_norm",
+        "y_norm",
+        "data_loss",
+        "valid_samples",
+        "missed"
       ],
       "type": "object"
     },
@@ -5876,6 +6665,15 @@
       },
       "type": "object"
     },
+    "TrackingVerdict": {
+      "enum": [
+        "good",
+        "fair",
+        "poor",
+        "unusable"
+      ],
+      "type": "string"
+    },
     "UpdateClinicalReviewRequest": {
       "description": "`PATCH /v1/clinical-reviews/{id}` (draft save, SIGN-2, SIGN-3). Absent = unchanged.",
       "properties": {
@@ -6360,7 +7158,9 @@
           "quality_verdict": "optimal",
           "review_id": null,
           "reviewed": false,
-          "started_at": "2026-10-26T07:33:20.000Z"
+          "started_at": "2026-10-26T07:33:20.000Z",
+          "tracking_accuracy_deg": null,
+          "tracking_verdict": null
         }
       ],
       "properties": {
@@ -6500,6 +7300,28 @@
         "started_at": {
           "format": "date-time",
           "type": "string"
+        },
+        "tracking_accuracy_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "QS-2 estimated gaze accuracy, degrees; `null` when not measured (SCH-4)."
+        },
+        "tracking_verdict": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TrackingVerdict"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "QS-4 tracking verdict of a schema 1.7 session; `null` for a 1.6 session or when the\ndevice sent no tracking-quality record (SCH-4)."
         }
       },
       "required": [

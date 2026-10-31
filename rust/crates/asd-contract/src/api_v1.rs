@@ -11,12 +11,14 @@
 
 use std::collections::BTreeMap;
 
+use asd_core::types::tracking::TrackingVerdict;
 use asd_core::types::{CaptureSource, ExpectationStatus, NormativeDirection};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::mirror;
+pub use crate::tracking_api::SessionTrackingQuality;
 
 // ---- roles and auth (AUTH-1..4) --------------------------------------------------------
 
@@ -268,7 +270,7 @@ pub enum SessionAttentionFlag {
 
 /// `GET /v1/orgs/{id}/sessions` item.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[schemars(example = example_session_summary())]
+#[schemars(example = example_session_summary(), example = example_session_summary_v1_7())]
 pub struct SessionSummary {
     pub id: String,
     /// `participants.id` (UUID, CON-20).
@@ -297,11 +299,19 @@ pub struct SessionSummary {
     pub device_id: Option<String>,
     #[serde(default)]
     pub reviewed: Option<bool>,
+    /// QS-4 tracking verdict of a schema 1.7 session; `null` for a 1.6 session or when the
+    /// device sent no tracking-quality record (SCH-4).
+    #[serde(default)]
+    #[schemars(with = "Option<mirror::TrackingVerdict>")]
+    pub tracking_verdict: Option<TrackingVerdict>,
+    /// QS-2 estimated gaze accuracy, degrees; `null` when not measured (SCH-4).
+    #[serde(default)]
+    pub tracking_accuracy_deg: Option<f64>,
 }
 
 /// `GET /v1/sessions/{id}`: the summary plus stored measurements.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[schemars(example = example_session_detail())]
+#[schemars(example = example_session_detail(), example = example_session_detail_v1_7())]
 pub struct SessionDetail {
     #[serde(flatten)]
     pub summary: SessionSummary,
@@ -328,6 +338,10 @@ pub struct SessionDetail {
     pub affect: Option<BTreeMap<String, Value>>,
     #[serde(default)]
     pub report_pdf_available: Option<bool>,
+    /// The session's tracking-quality record (QS-1, snake_case); `null` for a 1.6 session
+    /// (app version before tracking quality) or without a record (SCH-4).
+    #[serde(default)]
+    pub tracking_quality: Option<SessionTrackingQuality>,
 }
 
 /// One scored expected-vs-recorded cell of a clip (CON-19).
@@ -490,6 +504,9 @@ pub enum ReviewReason {
     RandomAudit,
     NormCandidate,
     Manual,
+    // Tracking verdict `poor` or `unusable` (SCH-4, schema 1.7 sessions). A plain comment:
+    // a doc comment would turn the exported enum into a `oneOf`.
+    LowTrackingQuality,
 }
 
 /// Review item state.
@@ -715,6 +732,8 @@ pub(crate) fn example_session_summary() -> SessionSummary {
         bundle_version: None,
         device_id: Some("9a8b7c6d-5e4f-4321-8fed-cba987654321".into()),
         reviewed: Some(false),
+        tracking_verdict: None,
+        tracking_accuracy_deg: None,
     }
 }
 
@@ -736,6 +755,26 @@ fn example_session_detail() -> SessionDetail {
             ("flatAffectScore".to_string(), Value::from(0.12)),
         ])),
         report_pdf_available: Some(false),
+        tracking_quality: None,
+    }
+}
+
+/// A schema 1.7 session: tracking columns set (SCH-4).
+fn example_session_summary_v1_7() -> SessionSummary {
+    SessionSummary {
+        id: "SESS-GOLDEN-0017".into(),
+        tracking_verdict: Some(TrackingVerdict::Good),
+        tracking_accuracy_deg: Some(1.63),
+        ..example_session_summary()
+    }
+}
+
+fn example_session_detail_v1_7() -> SessionDetail {
+    SessionDetail {
+        summary: example_session_summary_v1_7(),
+        schema_version: Some("1.7".into()),
+        tracking_quality: Some(crate::tracking_api::example_tracking_quality()),
+        ..example_session_detail()
     }
 }
 

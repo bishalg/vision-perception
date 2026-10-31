@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO sessions (\n               id, org_id, participant_id, participant_token, device_id, capture_source,\n               started_at, ended_at, duration_sec, battery, bundle_version, schema_version,\n               quality_verdict, valid_frame_ratio, calibrated_distance_cm, social_preference,\n               eye_dwell, mouth_dwell, first_eye_latency_ms, affect, composite_score,\n               composite_confidence, attention_flag, summary, idempotency_key,\n               tracking_verdict, tracking_accuracy_deg, calibration_quality,\n               calibration_model, tracking_pipeline_version, device_model)\n           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,\n                   $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,\n                   $31)\n           ON CONFLICT (id) DO NOTHING\n           RETURNING 1 AS \"one!: i32\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "one!: i32",
+        "type_info": "Int4",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Float8",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Float8",
+        "Float8",
+        "Float8",
+        "Float8",
+        "Float8",
+        "Float8",
+        "Jsonb",
+        "Float8",
+        "Float8",
+        "Text",
+        "Jsonb",
+        "Text",
+        "Text",
+        "Float8",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "2b683757c9d6affb06de58f995f0bc3284dda192228fd63cc4466a925037fac3"
+}

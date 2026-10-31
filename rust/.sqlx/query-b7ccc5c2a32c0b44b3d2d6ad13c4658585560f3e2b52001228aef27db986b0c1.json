@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT s.id, s.participant_id, s.participant_token, s.started_at, s.duration_sec,\n                  s.battery, s.capture_source, s.quality_verdict, s.attention_flag,\n                  s.composite_score, s.composite_confidence, s.bundle_version, s.device_id,\n                  s.received_at,\n                  EXISTS (SELECT 1 FROM review_items r\n                          WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed'))\n                      AS \"reviewed!\",\n                  cr.id AS \"review_id?\", cr.state AS \"clinical_state?\",\n                  cr.assigned_to AS \"assigned_to?\", cr.cosign_required AS \"cosign_required?\",\n                  EXISTS (SELECT 1 FROM patient_refs p WHERE p.participant_id = s.participant_id)\n                      AS \"has_patient_ref!\",\n                  EXTRACT(EPOCH FROM (now() - s.received_at))::float8 AS \"age_secs!\"\n           FROM sessions s\n           LEFT JOIN clinical_reviews cr ON cr.session_id = s.id\n           WHERE s.org_id = $1\n             AND (cr.state IS NULL OR cr.state <> 'final')\n             AND (NOT $2::bool OR s.attention_flag = ANY($3::text[]))\n             AND ($4::bool OR s.capture_source <> 'synthetic')\n             AND ($5::text IS NULL OR COALESCE(cr.state, 'open') = $5)\n             AND ($6::text IS NULL OR s.attention_flag = $6)\n             AND ($7::text = 'any'\n                  OR ($7 = 'me' AND cr.assigned_to = $8)\n                  OR ($7 = 'unassigned' AND cr.assigned_to IS NULL))\n             AND ($9::timestamptz IS NULL OR s.received_at >= $9)\n             AND ($10::timestamptz IS NULL OR s.received_at <= $10)\n             AND ($11::timestamptz IS NULL OR (s.received_at, s.id) < ($11, $12::text))\n           ORDER BY s.received_at DESC, s.id DESC\n           LIMIT $13",
+  "query": "SELECT s.id, s.participant_id, s.participant_token, s.started_at, s.duration_sec,\n                  s.battery, s.capture_source, s.quality_verdict, s.attention_flag,\n                  s.composite_score, s.composite_confidence, s.bundle_version, s.device_id,\n                  s.tracking_verdict, s.tracking_accuracy_deg,\n                  EXISTS (SELECT 1 FROM review_items r\n                          WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed'))\n                      AS \"reviewed!\"\n           FROM sessions s\n           WHERE s.org_id = $1\n             AND ($2::text IS NULL OR s.attention_flag = $2)\n             AND ($3::text IS NULL OR s.quality_verdict = $3)\n             AND ($4::timestamptz IS NULL OR s.started_at >= $4)\n             AND ($5::timestamptz IS NULL OR s.started_at <= $5)\n             AND ($6::text IS NULL OR s.bundle_version = $6)\n             AND ($7::bool IS NULL OR EXISTS (\n                     SELECT 1 FROM review_items r\n                     WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed')) = $7)\n             AND ($8::timestamptz IS NULL OR (s.started_at, s.id) < ($8, $9::text))\n             AND ($11::text IS NULL OR s.tracking_verdict = $11)\n           ORDER BY s.started_at DESC, s.id DESC\n           LIMIT $10",
   "describe": {
     "columns": [
       {
@@ -148,93 +148,46 @@
       },
       {
         "ordinal": 13,
-        "name": "received_at",
-        "type_info": "Timestamptz",
+        "name": "tracking_verdict",
+        "type_info": "Text",
         "origin": {
           "Table": {
             "table": "sessions",
-            "name": "received_at"
+            "name": "tracking_verdict"
           }
         }
       },
       {
         "ordinal": 14,
-        "name": "reviewed!",
-        "type_info": "Bool",
-        "origin": "Expression"
+        "name": "tracking_accuracy_deg",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "tracking_accuracy_deg"
+          }
+        }
       },
       {
         "ordinal": 15,
-        "name": "review_id?",
-        "type_info": "Uuid",
-        "origin": {
-          "Table": {
-            "table": "clinical_reviews",
-            "name": "id"
-          }
-        }
-      },
-      {
-        "ordinal": 16,
-        "name": "clinical_state?",
-        "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "clinical_reviews",
-            "name": "state"
-          }
-        }
-      },
-      {
-        "ordinal": 17,
-        "name": "assigned_to?",
-        "type_info": "Uuid",
-        "origin": {
-          "Table": {
-            "table": "clinical_reviews",
-            "name": "assigned_to"
-          }
-        }
-      },
-      {
-        "ordinal": 18,
-        "name": "cosign_required?",
+        "name": "reviewed!",
         "type_info": "Bool",
-        "origin": {
-          "Table": {
-            "table": "clinical_reviews",
-            "name": "cosign_required"
-          }
-        }
-      },
-      {
-        "ordinal": 19,
-        "name": "has_patient_ref!",
-        "type_info": "Bool",
-        "origin": "Expression"
-      },
-      {
-        "ordinal": 20,
-        "name": "age_secs!",
-        "type_info": "Float8",
         "origin": "Expression"
       }
     ],
     "parameters": {
       "Left": [
         "Uuid",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Text",
         "Bool",
-        "TextArray",
-        "Bool",
-        "Text",
-        "Text",
-        "Text",
-        "Uuid",
-        "Timestamptz",
-        "Timestamptz",
         "Timestamptz",
         "Text",
-        "Int8"
+        "Int8",
+        "Text"
       ]
     },
     "nullable": [
@@ -251,15 +204,10 @@
       true,
       true,
       true,
-      false,
-      null,
-      false,
-      false,
       true,
-      false,
-      null,
+      true,
       null
     ]
   },
-  "hash": "63cdc2bcfb8d701c829ae6bc3a8dcae147a88497eab7cbf7bd4ec230b7ff0967"
+  "hash": "b7ccc5c2a32c0b44b3d2d6ad13c4658585560f3e2b52001228aef27db986b0c1"
 }

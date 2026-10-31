@@ -87,6 +87,33 @@ export type Metrics = z.infer<typeof metricsSchema>;
 
 // ---- sessions -------------------------------------------------------------
 
+/** `TrackingVerdict` (QS-4). */
+export const TRACKING_VERDICTS = ["good", "fair", "poor", "unusable"] as const;
+
+/**
+ * `SessionTrackingQuality`: the session's tracking-quality record (QS-1, snake_case). Rendering is
+ * WP-G.12; the shape is kept loose below the top level (passthrough) so a later additive field does
+ * not break parsing.
+ */
+export const sessionTrackingQualitySchema = z
+  .object({
+    pipeline_version: z.string(),
+    params_version: z.string(),
+    device: z.object({ model_identifier: z.string() }).passthrough(),
+    calibration: z.object({ quality: z.string(), model: str }).passthrough(),
+    validation: z.object({ accuracy_deg: num }).passthrough().nullable().optional(),
+    drift_checks: z.array(z.object({ at_sec: z.number(), offset_deg: num }).passthrough()),
+    max_drift_deg: num,
+    recalibrations: z.array(z.object({ at_sec: z.number() }).passthrough()),
+    conditions: z.object({ distance_cm_median: num }).passthrough(),
+    loss: z.object({ track_loss_sec: z.number() }).passthrough(),
+    confidence: z.object({ mean_sample: z.number() }).passthrough(),
+    estimated_accuracy_deg: num,
+    verdict: z.enum(TRACKING_VERDICTS),
+  })
+  .passthrough();
+export type SessionTrackingQuality = z.infer<typeof sessionTrackingQualitySchema>;
+
 export const sessionSummarySchema = z.object({
   id: z.string(),
   /** `participants.id` (UUID, CON-20). */
@@ -105,6 +132,10 @@ export const sessionSummarySchema = z.object({
   bundle_version: str,
   device_id: str,
   reviewed: z.boolean().nullable().optional(),
+  /** QS-4 tracking verdict of a schema 1.7 session; null for 1.6 (SCH-4, WP-G.11). */
+  tracking_verdict: z.enum(TRACKING_VERDICTS).nullable().optional(),
+  /** QS-2 estimated gaze accuracy in degrees; null when not measured. */
+  tracking_accuracy_deg: num,
 });
 export type SessionSummary = z.infer<typeof sessionSummarySchema>;
 
@@ -121,6 +152,7 @@ export const sessionDetailSchema = sessionSummarySchema.extend({
   first_eye_latency_ms: num,
   affect: z.record(z.string(), z.unknown()).nullable().optional(),
   report_pdf_available: z.boolean().nullable().optional(),
+  tracking_quality: sessionTrackingQualitySchema.nullable().optional(),
 });
 export type SessionDetail = z.infer<typeof sessionDetailSchema>;
 
@@ -196,7 +228,14 @@ export type SessionPage = z.infer<typeof sessionPageSchema>;
 // ---- review queue ---------------------------------------------------------
 
 /** `ReviewReason`: why the backend put a session in the queue (rules run at ingest, ING-3). */
-export const REVIEW_REASONS = ["low_quality", "flag_red", "random_audit", "norm_candidate", "manual"] as const;
+export const REVIEW_REASONS = [
+  "low_quality",
+  "flag_red",
+  "random_audit",
+  "norm_candidate",
+  "manual",
+  "low_tracking_quality",
+] as const;
 export const reviewReasonSchema = z.enum(REVIEW_REASONS);
 export type ReviewReason = z.infer<typeof reviewReasonSchema>;
 
