@@ -19,7 +19,7 @@
 | WP-A.8 | Stimulus CDN support with signed URLs; ODR fallback | 3 | S | todo | |
 | WP-A.9 | Replay down-sample upload (for console heatmaps) | 3 | S | todo | |
 | WP-A.10 | TestFlight beta pipeline (fastlane `beta`), crash reporting decision | 3 | I | todo | |
-| WP-A.11 | iOS consumes the Rust core: xcframework `binaryTarget`, engines become wrappers, golden parity tests, `asd-sync` in the sync client, `device_id` on re-register | 1–2 | S | todo | FFI-3/4, CON-7/11; depends on WP-R.5, WP-B.2, WP-D.7 |
+| WP-A.11 | iOS consumes the Rust core: xcframework `binaryTarget`, engines become wrappers, golden parity tests, `asd-sync` in the sync client, `device_id` on re-register | 1–2 | S | done | 6 kit engines are FFI wrappers; GoldenParity + LegacyParity tests; sync via asd-sync, device_id on re-register; ios_test.sh builds xcframework. Follow-ups: asd-ffi format_scored_at ms rounding, dwell/affect/bracket maths still in Swift |
 | WP-A.12 | Android Kotlin bindings from the same UniFFI definitions (`cargo-ndk`) | 4 | S | backlog | depends on WP-R.5 |
 | WP-G.0 | Swift capture hygiene: record untracked frames, no cross-child calibration reuse, no fabricated calibration point, orientation lock | 2 | I | todo | TRK-1, CAL-1, CAL-3; lowers validRatio on track loss (H-G1); spec `docs/spec/modules/asd-gaze-robustness/` |
 | WP-G.1 | Rust tracking types, raw log format, device geometry table, unclamped raycast, visual-angle maths | 2 | S | done | `asd-core::gaze` geometry/raycast/raw_log + tracking types; 42 device entries (community id list, M4 iPad camera offset + iPad16,5/6 to verify in G.14); ARKit camera-axis mirroring to confirm in G.8 |

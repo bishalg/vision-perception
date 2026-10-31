@@ -148,6 +148,79 @@ final class DeviceRegistrationServiceTests: XCTestCase {
         XCTAssertEqual(renewed.enrolCode, "CODE-1")
     }
 
+    /// CON-11: a re-registration names the device, so the server rotates its token instead
+    /// of spending another use of the (usually one-time) enrol code. A first registration
+    /// has no device id to send.
+    func testReRegisterSendsTheStoredDeviceId() async throws {
+        let transport = StubSyncTransport(handler: Self.registered)
+        let store = InMemoryDeviceCredentialStore()
+        let service = makeService(store: store, transport: transport)
+        _ = try await service.register(.enrolCode("CODE-1"))
+        let first = try XCTUnwrap(JSONSerialization.jsonObject(with: transport.requests[0].httpBody ?? Data()) as? [String: Any])
+        XCTAssertNil(first["device_id"], "a first registration sends no device_id")
+
+        transport.handler = { _ in
+            (200, ["Content-Type": "application/json"], jsonData([
+                "status": "rotated",
+                "device_id": "dev-1",
+                "device_token": "tok-rotated",
+                "org_id": "org-home",
+                "config_bundle_version": NSNull()
+            ]))
+        }
+        let renewed = try await service.reRegister()
+        let second = try XCTUnwrap(JSONSerialization.jsonObject(with: transport.requests[1].httpBody ?? Data()) as? [String: Any])
+        XCTAssertEqual(second["device_id"] as? String, "dev-1")
+        XCTAssertEqual(second["enrol_code"] as? String, "CODE-1")
+        XCTAssertEqual(renewed.deviceToken, "tok-rotated")
+        XCTAssertEqual(renewed.deviceId, "dev-1")
+        XCTAssertNil(renewed.configBundleVersion)
+        XCTAssertEqual(store.load(), renewed)
+    }
+
+    /// The idempotency key of a registration is a fresh UUID per call (ADR-B5).
+    func testEachRegistrationHasAFreshIdempotencyKey() async throws {
+        let transport = StubSyncTransport(handler: Self.registered)
+        let service = makeService(store: InMemoryDeviceCredentialStore(), transport: transport)
+        _ = try await service.register(.enrolCode("CODE"))
+        _ = try await service.register(.enrolCode("CODE"))
+        let keys = transport.requests.compactMap { $0.value(forHTTPHeaderField: "X-Idempotency-Key") }
+        XCTAssertEqual(keys.count, 2)
+        XCTAssertNotEqual(keys[0], keys[1])
+        XCTAssertNotNil(UUID(uuidString: keys[0]))
+    }
+
+    /// CON-10 response shape, classified by asd-sync: a 2xx without `device_id` is not a
+    /// registration (the former Swift decoder accepted it with a nil device id).
+    func testResponseWithoutDeviceIdIsInvalid() async {
+        let transport = StubSyncTransport { _ in
+            (200, [:], jsonData(["status": "registered", "device_token": "tok", "org_id": "org-home"]))
+        }
+        let store = InMemoryDeviceCredentialStore()
+        do {
+            _ = try await makeService(store: store, transport: transport).register(.enrolCode("CODE"))
+            XCTFail("expected an error")
+        } catch {
+            XCTAssertEqual(error as? DeviceRegistrationError, .invalidResponse)
+        }
+        XCTAssertNil(store.load())
+    }
+
+    func testInsecureBaseURLIsRefusedWithoutANetworkCall() async {
+        let transport = StubSyncTransport(handler: Self.registered)
+        do {
+            _ = try await makeService(
+                store: InMemoryDeviceCredentialStore(),
+                transport: transport,
+                baseURL: URL(string: "http://api.example.org")!
+            ).register(.enrolCode("CODE"))
+            XCTFail("expected an error")
+        } catch {
+            XCTAssertEqual(error as? DeviceRegistrationError, .insecureURL)
+        }
+        XCTAssertTrue(transport.requests.isEmpty)
+    }
+
     func testReRegisterRejectedClearsTheCredential() async throws {
         let store = InMemoryDeviceCredentialStore()
         let transport = StubSyncTransport(handler: Self.registered)

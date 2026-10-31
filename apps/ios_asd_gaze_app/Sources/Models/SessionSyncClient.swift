@@ -1,3 +1,4 @@
+import AsdCore
 import CurvAsdGazeKit
 import Foundation
 import os
@@ -250,6 +251,9 @@ public enum SessionSyncError: Error, Equatable, Sendable {
     case http(status: Int, retryAfter: TimeInterval?)
     /// An upload URL that is not https with a DNS host.
     case insecureURL
+    /// The payload can never be sent (asd-sync refused it: unsupported schema version,
+    /// simulated or legacy provenance, or a body that breaks the session contract).
+    case invalidPayload
 }
 
 /// Device-plane HTTP client for sessions (`02 §4`, `ADR-B4`, `ADR-B5`).
@@ -258,9 +262,11 @@ public enum SessionSyncError: Error, Equatable, Sendable {
 /// `X-Idempotency-Key: <sessionId>`, `X-Schema-Version` and `User-Agent`. The
 /// bearer goes only to the API host; pre-signed blob URLs on other hosts get no
 /// credentials.
+///
+/// The protocol decisions (headers, canonical body, URL rules, what a status means,
+/// `Retry-After`) come from the Rust `asd-sync` crate (CON-7); this type owns only the
+/// transport, the credential and the one re-registration.
 public struct SessionSyncClient: Sendable {
-    static let sessionsPath = "v1/sessions"
-
     private static let logger = Logger(subsystem: "com.visionperception.asd", category: "SessionSyncClient")
 
     public let apiBaseURL: URL
@@ -275,26 +281,22 @@ public struct SessionSyncClient: Sendable {
         self.clientInfo = clientInfo
     }
 
-    public var sessionsURL: URL { apiBaseURL.appendingPathComponent(Self.sessionsPath) }
-
     public func makeSessionRequest(_ payload: SessionIngestPayload, token: String) throws -> URLRequest {
-        let url = sessionsURL
+        let body = try SessionPayloadCoding.encoder().encode(payload)
+        let built: AsdSyncRequest
         do {
-            try ResearchStudyConfiguration.validateIngestURL(url)
-        } catch {
-            throw SessionSyncError.insecureURL
+            built = try syncBuildSessionRequestJson(
+                payloadJson: String(decoding: body, as: UTF8.self),
+                deviceToken: token,
+                client: clientInfo.asdClientInfo
+            )
+        } catch AsdError.NotRegistered {
+            throw SessionSyncError.notRegistered
+        } catch let error as AsdError {
+            Self.logger.error("Session \(payload.sessionId, privacy: .public) refused by asd-sync: \(String(describing: error), privacy: .public)")
+            throw SessionSyncError.invalidPayload
         }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.timeoutInterval = 20
-        request.setValue("application/json", forHTTPHeaderField: SyncHeader.contentType)
-        request.setValue("application/json", forHTTPHeaderField: SyncHeader.accept)
-        request.setValue("Bearer \(token)", forHTTPHeaderField: SyncHeader.authorization)
-        request.setValue(payload.sessionId, forHTTPHeaderField: SyncHeader.idempotencyKey)
-        request.setValue(payload.schemaVersion, forHTTPHeaderField: SyncHeader.schemaVersion)
-        request.setValue(clientInfo.userAgent, forHTTPHeaderField: SyncHeader.userAgent)
-        request.httpBody = try SessionPayloadCoding.encoder().encode(payload)
-        return request
+        return try URLRequest(built, apiBaseURL: apiBaseURL)
     }
 
     /// Posts one session. A 401/403 re-registers once while `mayReRegister` is
@@ -302,54 +304,59 @@ public struct SessionSyncClient: Sendable {
     /// idempotent replay and counts as accepted.
     public func postSession(_ payload: SessionIngestPayload, mayReRegister: inout Bool) async throws -> SessionIngestResponse {
         guard var credential = registration.currentCredential() else { throw SessionSyncError.notRegistered }
-        var (data, response) = try await transport.send(makeSessionRequest(payload, token: credential.deviceToken))
+        var (status, outcome) = try await send(makeSessionRequest(payload, token: credential.deviceToken))
 
-        if Self.isAuthFailure(response.statusCode) {
+        if case .reauthenticate = outcome {
             guard mayReRegister else {
                 registration.clear()
                 throw SessionSyncError.unauthorized
             }
             mayReRegister = false
-            Self.logger.info("Session upload got HTTP \(response.statusCode, privacy: .public); re-registering once")
+            Self.logger.info("Session upload got HTTP \(status, privacy: .public); re-registering once")
             do {
                 credential = try await registration.reRegister()
             } catch is DeviceRegistrationError {
                 throw SessionSyncError.unauthorized
             }
-            (data, response) = try await transport.send(makeSessionRequest(payload, token: credential.deviceToken))
-            if Self.isAuthFailure(response.statusCode) {
+            (status, outcome) = try await send(makeSessionRequest(payload, token: credential.deviceToken))
+            if case .reauthenticate = outcome {
                 registration.clear()
                 throw SessionSyncError.unauthorized
             }
         }
 
-        if response.statusCode == 409 {
+        switch outcome {
+        case .accepted(let ack):
+            return SessionIngestResponse(
+                // A body that is not a session response still means "accepted".
+                sessionId: ack.sessionId ?? payload.sessionId,
+                status: ack.status,
+                duplicate: ack.duplicate,
+                framesUploadURL: ack.framesUploadUrl,
+                reportUploadURL: ack.reportUploadUrl
+            )
+        case .duplicate:
             return SessionIngestResponse(sessionId: payload.sessionId, status: "duplicate", duplicate: true, framesUploadURL: nil, reportUploadURL: nil)
+        case .retryAfter(let seconds):
+            throw SessionSyncError.http(status: status, retryAfter: seconds)
+        case .reauthenticate, .fatal:
+            throw SessionSyncError.http(status: status, retryAfter: nil)
         }
-        guard (200...299).contains(response.statusCode) else {
-            throw SessionSyncError.http(status: response.statusCode, retryAfter: retryAfterSeconds(response))
-        }
-        return (try? JSONDecoder().decode(SessionIngestResponse.self, from: data))
-            ?? SessionIngestResponse(sessionId: payload.sessionId, status: nil, duplicate: nil, framesUploadURL: nil, reportUploadURL: nil)
     }
 
     /// Absolute https URLs are used as given; relative ones resolve against the
-    /// API base. Either way the https/DNS rule applies.
+    /// API base. Either way the https/DNS rule applies (asd-sync, F7).
     public func resolveUploadURL(_ raw: String) throws -> URL {
-        guard let url = URL(string: raw, relativeTo: apiBaseURL)?.absoluteURL else {
-            throw SessionSyncError.insecureURL
-        }
-        do {
-            try ResearchStudyConfiguration.validateIngestURL(url)
-        } catch {
+        guard let target = try? syncValidateUploadUrl(url: raw, apiBase: apiBaseURL.absoluteString),
+              let url = URL(string: target.url) else {
             throw SessionSyncError.insecureURL
         }
         return url
     }
 
+    /// True only for the API host: the one place the device bearer may go (asd-sync).
     public func isAPIHost(_ url: URL) -> Bool {
-        guard let host = url.host?.lowercased(), let apiHost = apiBaseURL.host?.lowercased() else { return false }
-        return host == apiHost
+        (try? syncValidateUploadUrl(url: url.absoluteString, apiBase: apiBaseURL.absoluteString))?.attachBearer ?? false
     }
 
     /// PUTs one blob. The bearer is attached only for the API host.
@@ -363,13 +370,51 @@ public struct SessionSyncClient: Sendable {
             request.setValue("Bearer \(credential.deviceToken)", forHTTPHeaderField: SyncHeader.authorization)
         }
         request.httpBody = data
-        let (_, response) = try await transport.send(request)
-        guard (200...299).contains(response.statusCode) else {
-            throw SessionSyncError.http(status: response.statusCode, retryAfter: retryAfterSeconds(response))
+        let (status, outcome) = try await send(request)
+        switch outcome {
+        case .accepted:
+            return
+        case .retryAfter(let seconds):
+            throw SessionSyncError.http(status: status, retryAfter: seconds)
+        case .duplicate, .reauthenticate, .fatal:
+            throw SessionSyncError.http(status: status, retryAfter: nil)
         }
     }
 
-    static func isAuthFailure(_ status: Int) -> Bool {
-        status == 401 || status == 403
+    /// Sends a request and lets asd-sync classify the answer.
+    private func send(_ request: URLRequest) async throws -> (status: Int, outcome: AsdSyncOutcome) {
+        let (data, response) = try await transport.send(request)
+        let headers = response.allHeaderFields.compactMap { name, value -> AsdHttpHeader? in
+            guard let name = name as? String else { return nil }
+            return AsdHttpHeader(name: name, value: "\(value)")
+        }
+        let status = response.statusCode
+        // HTTP statuses are three digits; anything else is not an answer asd-sync can accept.
+        let wire = UInt16(exactly: status) ?? 0
+        return (status, syncClassifyResponse(status: wire, headers: headers, body: data))
+    }
+}
+
+extension SyncClientInfo {
+    /// The identity asd-sync puts in `User-Agent` (`EyeGaze-iOS/<version> (<build>; iOS <os>)`).
+    var asdClientInfo: AsdClientInfo {
+        AsdClientInfo(product: "EyeGaze-iOS", appVersion: appVersion, build: build, osName: "iOS", osVersion: osVersion)
+    }
+}
+
+extension URLRequest {
+    /// The request asd-sync built, addressed under the API base (whose URL rules it applies).
+    init(_ built: AsdSyncRequest, apiBaseURL: URL) throws {
+        guard let raw = try? syncEndpointUrl(apiBase: apiBaseURL.absoluteString, path: built.path),
+              let url = URL(string: raw) else {
+            throw SessionSyncError.insecureURL
+        }
+        self.init(url: url)
+        httpMethod = built.method
+        timeoutInterval = TimeInterval(built.timeoutSecs)
+        for header in built.headers {
+            setValue(header.value, forHTTPHeaderField: header.name)
+        }
+        httpBody = built.body
     }
 }

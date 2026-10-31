@@ -219,6 +219,56 @@ final class SessionIngestPayloadTests: XCTestCase {
         }
     }
 
+    /// CON-7: the body asd-sync sends is the Swift payload document (decoded with the
+    /// contract types and re-encoded canonically): same keys and values, nothing dropped
+    /// (rawPayload keeps fields the contract does not name), dates unchanged.
+    func testSessionRequestBodyIsTheSwiftPayloadInCanonicalForm() throws {
+        let client = SessionSyncClient(
+            apiBaseURL: URL(string: "https://api.example.org")!,
+            transport: StubSyncTransport { _ in (200, [:], Data()) },
+            registration: DeviceRegistrationService(
+                apiBaseURL: URL(string: "https://api.example.org")!,
+                transport: StubSyncTransport { _ in (200, [:], Data()) },
+                store: InMemoryDeviceCredentialStore(),
+                clientInfo: SyncClientInfo(appVersion: "1.0.0", build: "3", osVersion: "18.0")
+            ),
+            clientInfo: SyncClientInfo(appVersion: "1.0.0", build: "3", osVersion: "18.0")
+        )
+        for flag in [AttentionFlag.yellow, nil] {
+            let payload = try SessionIngestPayload(record: Self.goldenRecord(), attentionFlag: flag)
+            let request = try client.makeSessionRequest(payload, token: "tok")
+            let body = try XCTUnwrap(request.httpBody)
+            let sent = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? NSDictionary)
+            let swift = try XCTUnwrap(JSONSerialization.jsonObject(with: SessionPayloadCoding.encoder().encode(payload)) as? NSDictionary)
+            XCTAssertEqual(sent, swift)
+            XCTAssertEqual(request.url?.absoluteString, "https://api.example.org/v1/sessions")
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.timeoutInterval, 20)
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "application/json")
+            // The queue decodes what it stored and asd-sync re-encodes it: still the same document.
+            let reloaded = try SessionPayloadCoding.decoder().decode(SessionIngestPayload.self, from: body)
+            XCTAssertEqual(reloaded, payload)
+        }
+    }
+
+    func testEmptyTokenIsNotRegistered() throws {
+        let client = SessionSyncClient(
+            apiBaseURL: URL(string: "https://api.example.org")!,
+            transport: StubSyncTransport { _ in (200, [:], Data()) },
+            registration: DeviceRegistrationService(
+                apiBaseURL: URL(string: "https://api.example.org")!,
+                transport: StubSyncTransport { _ in (200, [:], Data()) },
+                store: InMemoryDeviceCredentialStore(),
+                clientInfo: SyncClientInfo(appVersion: "1.0.0", build: "3", osVersion: "18.0")
+            ),
+            clientInfo: SyncClientInfo(appVersion: "1.0.0", build: "3", osVersion: "18.0")
+        )
+        let payload = try SessionIngestPayload(record: Self.goldenRecord(), attentionFlag: nil)
+        XCTAssertThrowsError(try client.makeSessionRequest(payload, token: "  ")) { error in
+            XCTAssertEqual(error as? SessionSyncError, .notRegistered)
+        }
+    }
+
     // MARK: - Field mapping
 
     func testTopLevelFieldsMapFromRecord() throws {

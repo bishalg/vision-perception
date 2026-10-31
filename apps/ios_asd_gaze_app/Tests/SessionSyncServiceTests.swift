@@ -260,6 +260,39 @@ final class SessionSyncServiceTests: XCTestCase {
 
         let keys = log.entries(path: Self.sessionsPath).map { $0.headers["X-Idempotency-Key"] }
         XCTAssertEqual(keys, ["SESS-RETRY-KEY", "SESS-RETRY-KEY"])
+        let bodies = log.entries(path: Self.sessionsPath).map(\.body)
+        XCTAssertEqual(bodies[0], bodies[1], "asd-sync's canonical body: a retry sends identical bytes")
+    }
+
+    /// asd-sync refuses a payload whose schema version it does not support; the session is
+    /// quarantined without a request (the server would answer 400 unsupported-schema-version).
+    @MainActor
+    func testUnsupportedSchemaVersionIsQuarantinedWithoutARequest() {
+        consent()
+        registerToken()
+        let service = makeService()
+        let old = GazeSessionRecord.fixture(sessionId: "SESS-OLD-SCHEMA", participantId: "child-old", schemaVersion: "v1.5")
+        XCTAssertTrue(service.enqueueSession(old))
+        route([Self.sessionsPath: Self.ingested()])
+
+        XCTAssertFalse(sync(service))
+        XCTAssertTrue(log.entries(path: Self.sessionsPath).isEmpty)
+        XCTAssertEqual(service.pendingQueueCount, 0)
+        XCTAssertEqual(queuedFiles("Quarantine").count, 1)
+    }
+
+    /// `Retry-After` is read by asd-sync: delta-seconds only, capped at an hour.
+    @MainActor
+    func testRetryAfterIsCappedAtOneHour() throws {
+        consent()
+        registerToken()
+        let service = makeService()
+        service.enqueueSession(record())
+        route([Self.sessionsPath: { request in (httpResponse(request, 503, headers: ["Retry-After": "86400"]), Data()) }])
+
+        XCTAssertFalse(sync(service))
+        let meta = try XCTUnwrap(readMeta())
+        XCTAssertEqual(meta.nextAttemptAt, clock.instant.timeIntervalSince1970 + 3600, accuracy: 0.001)
     }
 
     @MainActor
@@ -299,7 +332,7 @@ final class SessionSyncServiceTests: XCTestCase {
                 return (httpResponse(request, 200), jsonData(["sessionId": "SESS-401", "status": "ingested"]))
             },
             Self.registerPath: { request in
-                (httpResponse(request, 200), jsonData(["device_token": "tok-fresh", "org_id": "org-home", "device_id": "dev-1"]))
+                (httpResponse(request, 200), jsonData(["status": "rotated", "device_token": "tok-fresh", "org_id": "org-home", "device_id": "dev-1"]))
             }
         ])
 
@@ -308,6 +341,7 @@ final class SessionSyncServiceTests: XCTestCase {
         XCTAssertEqual(log.entries(path: Self.registerPath).count, 1)
         let registerBody = try XCTUnwrap(JSONSerialization.jsonObject(with: log.entries(path: Self.registerPath)[0].body) as? [String: Any])
         XCTAssertEqual(registerBody["enrol_code"] as? String, "CODE-401")
+        XCTAssertEqual(registerBody["device_id"] as? String, "dev-1", "CON-11: re-registration rotates this device's token")
         XCTAssertEqual(log.entries(path: Self.sessionsPath).last?.headers["Authorization"], "Bearer tok-fresh")
         XCTAssertEqual(credentials.load()?.deviceToken, "tok-fresh")
         XCTAssertEqual(service.pendingQueueCount, 0)
@@ -324,7 +358,7 @@ final class SessionSyncServiceTests: XCTestCase {
         route([
             Self.sessionsPath: { request in (httpResponse(request, 401), Data()) },
             Self.registerPath: { request in
-                (httpResponse(request, 200), jsonData(["device_token": "tok-also-bad", "org_id": "org-home"]))
+                (httpResponse(request, 200), jsonData(["status": "rotated", "device_token": "tok-also-bad", "org_id": "org-home", "device_id": "dev-1"]))
             }
         ])
 
@@ -613,7 +647,7 @@ final class SessionSyncServiceTests: XCTestCase {
         let service = makeService()
         XCTAssertEqual(service.deviceRegistration, .unregistered)
         route([Self.registerPath: { request in
-            (httpResponse(request, 200), jsonData(["device_token": "tok-new", "org_id": "org-clinic"]))
+            (httpResponse(request, 200), jsonData(["status": "registered", "device_token": "tok-new", "org_id": "org-clinic", "device_id": "dev-new"]))
         }])
 
         try await service.registerDevice(enrolCode: "CLINIC-CODE")

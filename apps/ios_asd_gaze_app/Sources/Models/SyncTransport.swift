@@ -68,12 +68,5 @@ public struct SyncClientInfo: Sendable, Equatable {
     }
 }
 
-/// Seconds from a `Retry-After` header. Only the delta-seconds form is honoured;
-/// an HTTP-date or garbage falls back to the client's own schedule.
-func retryAfterSeconds(_ response: HTTPURLResponse) -> TimeInterval? {
-    guard let raw = response.value(forHTTPHeaderField: SyncHeader.retryAfter)?
-        .trimmingCharacters(in: .whitespaces),
-        let seconds = TimeInterval(raw), seconds >= 0, seconds.isFinite else { return nil }
-    // A hostile or broken server must not park the queue for days.
-    return min(seconds, 3600)
-}
+// `Retry-After` parsing (delta-seconds only, capped at 3600 s) moved to asd-sync
+// (`classify_response`, CON-7); `SessionSyncClient` reads it from the outcome.

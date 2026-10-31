@@ -8,7 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		009DC93A3CCBEE25B3B75A6F /* ResearchKitStudyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 581CB2A8A2DD547E98C49E96 /* ResearchKitStudyTests.swift */; };
-		02218DEC5DD4CCD746E79866 /* CareActivityKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5A2D8651F7A4E443540B6140 /* CareActivityKit */; };
+		02218DEC5DD4CCD746E79866 /* AsdCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1EEDC56CFA96817E3DB585F4 /* AsdCore */; };
 		038289E384FEE25602847803 /* stim_01_social_peekaboo_8s.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 36AA1BA891D699EB46EC830A /* stim_01_social_peekaboo_8s.mp4 */; };
 		03D43FA0C903DB98E462F5D3 /* BiomarkerAffectAndQualityViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82F2AE9490B590F4773EB2C7 /* BiomarkerAffectAndQualityViews.swift */; };
 		09433672909C24EC1937E52A /* HealthKitMoodStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A12D94D7B76B41E158A1C2F /* HealthKitMoodStore.swift */; };
@@ -46,16 +46,18 @@
 		3AC35CA9B34AB4A91405ADEE /* CareAlertScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00C9B43FF9E89F1CFD20770C /* CareAlertScheduler.swift */; };
 		3C581CEB623A8E80C51BBB61 /* ARKitMoodFusionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38B5C98A8DC049CA9448B7E1 /* ARKitMoodFusionController.swift */; };
 		3CFDE5C6155977F6F950CA68 /* ARKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 22E6F2A8134BE4D7D3C40207 /* ARKit.framework */; };
+		404740B457C8AEBEA89F4C71 /* CareKitStore in Frameworks */ = {isa = PBXBuildFile; productRef = D70B6E3928D5B5C50D4C16AE /* CareKitStore */; };
 		413DB3A6C0E953E959A93872 /* LiquidGlassContrastTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 011AFAF6529D0195ADA26BA1 /* LiquidGlassContrastTests.swift */; };
 		4152FFABF4BD1BDE21CF9544 /* SmartOnFhirAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBED732DAB0236044946C9E7 /* SmartOnFhirAuthService.swift */; };
 		458349D2129CA3F911E8F0E0 /* AsdGazeCareWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6C0062C6D7EEBF81C6AE25E1 /* AsdGazeCareWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		45A572D620F22243DA4FCCD0 /* FHIRBundleBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22B05152D44EB5561CA62634 /* FHIRBundleBuilder.swift */; };
 		45E033BA69F348A4CCEADABD /* ResearchStudyConsentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A63371C06337F00E97F6D0C9 /* ResearchStudyConsentView.swift */; };
+		46792328556AE4DEDC723185 /* CareKitStore in Frameworks */ = {isa = PBXBuildFile; productRef = EE64E1AB5E49B4DA55A508EA /* CareKitStore */; };
 		488DFFE6E0CC6D0C55DF83DF /* CurvAsdGazeKit in Frameworks */ = {isa = PBXBuildFile; productRef = BA36CB4B4BB59E6796DC72BA /* CurvAsdGazeKit */; };
 		4B8E9F7334C2AC49BB3CBF42 /* ClinicalInteroperabilityStandards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7587971C40BCA5A14C0F2135 /* ClinicalInteroperabilityStandards.swift */; };
 		4CEA1A9FB0F24693CEE9A1A3 /* FHIRCareMapperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78A9E3C2DFC154F3B09F38E8 /* FHIRCareMapperTests.swift */; };
 		4D97318B3F0C19A9B0165FD8 /* stim_04_surprise_giftbox_10s.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 47464ADA3137E9AF46BD2852 /* stim_04_surprise_giftbox_10s.mp4 */; };
-		4DA29EF21AEC96DC2A8C281D /* CareActivityKit in Frameworks */ = {isa = PBXBuildFile; productRef = 2CDBB58E77583920639C584C /* CareActivityKit */; };
+		4DA29EF21AEC96DC2A8C281D /* AsdCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1B39B9350B13C34508B54150 /* AsdCore */; };
 		504360D82D32C05521F178D9 /* stim_05_geopref_split_10s.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 398D47A0037DA9F90E75721C /* stim_05_geopref_split_10s.mp4 */; };
 		50EF16BFDD4DAB616A9B24CB /* GazeSessionHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 680B362C494B77DBEC7EDC7C /* GazeSessionHistoryStore.swift */; };
 		565E2DC2D5A358510020D90E /* CareActivityKit in Frameworks */ = {isa = PBXBuildFile; productRef = 2A44B01B48D3979B323912BF /* CareActivityKit */; };
@@ -82,7 +84,7 @@
 		7164EC699E5AABD46E0B4CAD /* ResearchStudyConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CF7534828C2CD72AB73D782 /* ResearchStudyConfiguration.swift */; };
 		72D3BC5817C096564F0F7ED7 /* MoodDiaryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3E9070E87CB086B06E8B635 /* MoodDiaryModels.swift */; };
 		7464913B7891C6A7CE7BAA77 /* CryptoKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CA4E9FE1E111B4651734C739 /* CryptoKit.framework */; };
-		758CF18483E339F894419951 /* CareKitStore in Frameworks */ = {isa = PBXBuildFile; productRef = EE64E1AB5E49B4DA55A508EA /* CareKitStore */; };
+		758CF18483E339F894419951 /* CareActivityKit in Frameworks */ = {isa = PBXBuildFile; productRef = 2CDBB58E77583920639C584C /* CareActivityKit */; };
 		77C290F6926CDBB3D76C62DE /* FHIRCareCodings.swift in Sources */ = {isa = PBXBuildFile; fileRef = C94094F5B9B980D1A21C3B42 /* FHIRCareCodings.swift */; };
 		77E5703A5BBD96E84387D54D /* ConsentGatingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 835517977453B7D4A0622FD1 /* ConsentGatingTests.swift */; };
 		78FF60A100FC461B9F3F7320 /* ClinicalTermTooltip.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC27795827636A12B3D2635F /* ClinicalTermTooltip.swift */; };
@@ -149,7 +151,7 @@
 		D64C4861FF928213800E16F0 /* CarePlanDomainModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB546E5A3B84C0A7B004DA57 /* CarePlanDomainModels.swift */; };
 		D77FB22C64EBAF6EF23F875F /* ClinicalDevelopmentModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D063D17414F7406EB0B9E9 /* ClinicalDevelopmentModelsTests.swift */; };
 		D82425DDC100FD9DCA6AC6D0 /* expected-bundle.json in Resources */ = {isa = PBXBuildFile; fileRef = 21DA1A68B03A496ABAFEF2CB /* expected-bundle.json */; };
-		DC4351CFF8331089EF4C22B0 /* CareKitStore in Frameworks */ = {isa = PBXBuildFile; productRef = D70B6E3928D5B5C50D4C16AE /* CareKitStore */; };
+		DC4351CFF8331089EF4C22B0 /* CareActivityKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5A2D8651F7A4E443540B6140 /* CareActivityKit */; };
 		DE3A65E17734FDF035297800 /* SubjectAgeQuickCheckCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 760938E707B2DC30599A6886 /* SubjectAgeQuickCheckCard.swift */; };
 		DF51B7CF0492F80200F9BBFA /* stim_07_cartoon_slapstick_penguin_8s.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 1D2872BCDCFE9D5F5FF11CAA /* stim_07_cartoon_slapstick_penguin_8s.mp4 */; };
 		E06EBE7828B8F7C724BCA478 /* MainGazeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3111366AAA094728086AD5E8 /* MainGazeScannerView.swift */; };
@@ -376,8 +378,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				904C322537F0DE4C99EB120E /* CurvAsdGazeKit in Frameworks */,
-				4DA29EF21AEC96DC2A8C281D /* CareActivityKit in Frameworks */,
-				758CF18483E339F894419951 /* CareKitStore in Frameworks */,
+				4DA29EF21AEC96DC2A8C281D /* AsdCore in Frameworks */,
+				758CF18483E339F894419951 /* CareActivityKit in Frameworks */,
+				46792328556AE4DEDC723185 /* CareKitStore in Frameworks */,
 				3CFDE5C6155977F6F950CA68 /* ARKit.framework in Frameworks */,
 				F1140E7565E023A46FDF2A2A /* SceneKit.framework in Frameworks */,
 				FEBB2149664384DA4F2312E0 /* AVFoundation.framework in Frameworks */,
@@ -399,8 +402,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				488DFFE6E0CC6D0C55DF83DF /* CurvAsdGazeKit in Frameworks */,
-				02218DEC5DD4CCD746E79866 /* CareActivityKit in Frameworks */,
-				DC4351CFF8331089EF4C22B0 /* CareKitStore in Frameworks */,
+				02218DEC5DD4CCD746E79866 /* AsdCore in Frameworks */,
+				DC4351CFF8331089EF4C22B0 /* CareActivityKit in Frameworks */,
+				404740B457C8AEBEA89F4C71 /* CareKitStore in Frameworks */,
 				AAE1FF736264C64335C69AB2 /* Network.framework in Frameworks */,
 				64ACC82F11CD4887615A3740 /* PDFKit.framework in Frameworks */,
 			);
@@ -718,6 +722,7 @@
 			name = AsdGazeCollector;
 			packageProductDependencies = (
 				B5868E95ED9EBB691A9E914F /* CurvAsdGazeKit */,
+				1B39B9350B13C34508B54150 /* AsdCore */,
 				2CDBB58E77583920639C584C /* CareActivityKit */,
 				EE64E1AB5E49B4DA55A508EA /* CareKitStore */,
 			);
@@ -760,6 +765,7 @@
 			name = AsdGazeCollectorTests;
 			packageProductDependencies = (
 				BA36CB4B4BB59E6796DC72BA /* CurvAsdGazeKit */,
+				1EEDC56CFA96817E3DB585F4 /* AsdCore */,
 				5A2D8651F7A4E443540B6140 /* CareActivityKit */,
 				D70B6E3928D5B5C50D4C16AE /* CareKitStore */,
 			);
@@ -1492,6 +1498,14 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		1B39B9350B13C34508B54150 /* AsdCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AsdCore;
+		};
+		1EEDC56CFA96817E3DB585F4 /* AsdCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AsdCore;
+		};
 		2A44B01B48D3979B323912BF /* CareActivityKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = CareActivityKit;

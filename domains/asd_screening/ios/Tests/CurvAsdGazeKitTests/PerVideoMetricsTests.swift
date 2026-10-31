@@ -175,17 +175,55 @@ final class PerVideoMetricsTests: XCTestCase {
             frame(stimulusId: "clip", mediaTime: 4.0, x: 0.8, y: 0.2, aoiNames: ["Gaze_Target_Right"], smile: 0.8),
             frame(stimulusId: "clip", mediaTime: 5.0, x: 0.8, y: 0.2, aoiNames: ["Gaze_Target_Right"], smile: 0.8)
         ]
-        let window = PerVideoMetricsExtractor.extractClip(
-            stimulusId: "clip",
-            frames: Array(frames.suffix(2)),
-            timeOriginSec: 3.5
+        // The section window is cut inside the core (WP-A.11 removed the Swift `extractClip`):
+        // a segment starting at 3.5 s sees only the last two frames, with latency measured
+        // from the segment start. The whole-clip set (which has Actor_Face) is the fallback
+        // and must not be used while the window has frames.
+        func expectation(_ biomarker: String, _ aoi: String?, _ direction: NormativeDirection) -> NormativeExpectation {
+            NormativeExpectation(
+                biomarker: biomarker,
+                direction: direction,
+                targetAOI: aoi,
+                byAge: ["default": NormativeRange(expected: 0.5, acceptableLow: 0.25, acceptableHigh: 0.75)],
+                citation: "test",
+                source: "test",
+                note: nil
+            )
+        }
+        let video = NormativeVideo(
+            title: "clip",
+            category: "test",
+            weight: 1,
+            segments: [NormativeSegment(
+                id: "late",
+                description: "from 3.5 s",
+                startSec: 3.5,
+                endSec: 10,
+                expectations: [
+                    expectation("aoi_dwell_ratio", "Gaze_Target_Right", .higherBetter),
+                    expectation("aoi_dwell_ratio", "Actor_Face", .higherBetter),
+                    expectation("first_entry_latency_ms", "Gaze_Target_Right", .lowerBetter),
+                    expectation("social_smile_intensity_mean", nil, .higherBetter)
+                ]
+            )]
         )
+        let wholeClip = PerVideoMetricsExtractor.extract(from: frames)[0]
+        XCTAssertNotNil(wholeClip.metrics[PerVideoMetricKey.aoiDwellRatio.key(targetAOI: "Actor_Face")])
+        let report = PerVideoScoringEngine.scoreVideo(
+            metricSet: wholeClip,
+            video: video,
+            baseline: NormativeBaselineLibrary.loadBundled()!,
+            bracketId: "default",
+            clipFrames: frames
+        )
+        func observed(_ key: String) -> Double? { report.rows.first { $0.metricKey == key }?.observed }
         let target = PerVideoMetricKey.aoiDwellRatio.key(targetAOI: "Gaze_Target_Right")
         let face = PerVideoMetricKey.aoiDwellRatio.key(targetAOI: "Actor_Face")
-        XCTAssertEqual(window.metrics[target]!, 1.0, accuracy: 0.001)
-        XCTAssertNil(window.metrics[face])
+        XCTAssertEqual(observed(target)!, 1.0, accuracy: 0.001)
+        XCTAssertNil(observed(face))
         let latency = PerVideoMetricKey.firstEntryLatencyMs.key(targetAOI: "Gaze_Target_Right")
-        XCTAssertEqual(window.metrics[latency]!, 500, accuracy: 1)
-        XCTAssertEqual(window.metrics[PerVideoMetricKey.socialSmileIntensityMean.key(targetAOI: nil)]!, 0.8, accuracy: 0.001)
+        XCTAssertEqual(observed(latency)!, 500, accuracy: 1)
+        XCTAssertEqual(report.rows.first { $0.metricKey == latency }?.imputed, false)
+        XCTAssertEqual(observed(PerVideoMetricKey.socialSmileIntensityMean.key(targetAOI: nil))!, 0.8, accuracy: 0.001)
     }
 }

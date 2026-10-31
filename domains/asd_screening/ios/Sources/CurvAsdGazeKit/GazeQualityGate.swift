@@ -1,6 +1,10 @@
 import Foundation
 
 /// Real-time quality verification for pediatric gaze capture.
+///
+/// The checks and their reason strings live in the Rust core (`asd-core::quality`, CORE-7);
+/// this type keeps the public Swift API and delegates (FFI-3). The default thresholds mirror
+/// `ScoringProfile.qualityGate` of the core (checked by a test).
 public struct GazeQualityGate: Sendable {
     public let minDistanceCm: Double
     public let maxDistanceCm: Double
@@ -16,7 +20,7 @@ public struct GazeQualityGate: Sendable {
         case rejected
     }
 
-    public struct Evaluation: Sendable, Equatable {
+    public struct Evaluation: Sendable, Equatable, Decodable {
         public let isValid: Bool
         public let verdict: Verdict
         public let failureReasons: [String]
@@ -49,43 +53,33 @@ public struct GazeQualityGate: Sendable {
         self.maxPitchRad = maxPitchRad
         self.minConfidence = minConfidence
         self.blinkThreshold = blinkThreshold
+        // Encoded once: `evaluateSample` runs for every 60 Hz sample.
+        self.gateJSON = (try? AsdCoreBridge.encode(CoreQualityGate(
+            minDistanceCm: minDistanceCm,
+            maxDistanceCm: maxDistanceCm,
+            maxYawRad: maxYawRad,
+            maxPitchRad: maxPitchRad,
+            minConfidence: minConfidence,
+            blinkThreshold: blinkThreshold
+        ))) ?? ""
     }
+
+    /// The thresholds as the core's gate document (`ScoringProfile.qualityGate`).
+    private let gateJSON: String
 
     /// Evaluates a single sample against pediatric acquisition criteria.
     public func evaluateSample(_ sample: GazeTelemetrySample) -> Evaluation {
-        var reasons: [String] = []
-
-        // 1. Distance check
-        if sample.distanceToScreenCm < minDistanceCm {
-            reasons.append("Subject too close (< \(Int(minDistanceCm)) cm)")
-        } else if sample.distanceToScreenCm > maxDistanceCm {
-            reasons.append("Subject too far (> \(Int(maxDistanceCm)) cm)")
+        do {
+            return try AsdCoreBridge.evaluateQuality(sample, gateJSON: gateJSON)
+        } catch {
+            AsdCoreBridge.report("evaluate_quality", error)
+            // A sample the core cannot read (for example a non-finite reading) is not data.
+            return Evaluation(
+                isValid: false,
+                verdict: .rejected,
+                failureReasons: ["Tracking data unreadable"],
+                isBlink: false
+            )
         }
-
-        // 2. Head pose check
-        if abs(sample.headYawRad) > maxYawRad {
-            reasons.append("Excessive head yaw (> \(Int(maxYawRad * 180 / .pi))°)")
-        }
-        if abs(sample.headPitchRad) > maxPitchRad {
-            reasons.append("Excessive head pitch (> \(Int(maxPitchRad * 180 / .pi))°)")
-        }
-
-        // 3. Eye closure / blink check (either eye occluded triggers blink rejection)
-        let isBlink = sample.leftEyeOpenness < blinkThreshold || sample.rightEyeOpenness < blinkThreshold
-        if isBlink {
-            reasons.append("Blink or ocular occlusion")
-        }
-
-        // 4. Tracking confidence check
-        if sample.confidence < minConfidence {
-            reasons.append("Low tracking confidence (< \(Int(minConfidence * 100))%)")
-        }
-
-        if !reasons.isEmpty {
-            let verdict: Verdict = (isBlink || reasons.count > 2) ? .rejected : .degraded
-            return Evaluation(isValid: false, verdict: verdict, failureReasons: reasons, isBlink: isBlink)
-        }
-
-        return Evaluation(isValid: true, verdict: .optimal, isBlink: false)
     }
 }

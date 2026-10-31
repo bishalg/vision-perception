@@ -3,9 +3,9 @@
 #
 # Usage: scripts/ios_test.sh [--dry-run] [-h|--help]
 #
-# Steps: kit tests, kit TSAN, kit strict-concurrency build, xcodegen, app tests
-# on an iPhone simulator, unsigned Release build, then static gates (claims,
-# privacy API audit, Release-binary symbol check).
+# Steps: Rust core xcframework (FFI-2), kit tests (incl. GoldenParityTests), kit TSAN,
+# kit strict-concurrency build, xcodegen, app tests on an iPhone simulator, unsigned
+# Release build, then static gates (claims, schema, privacy API audit, Release symbols).
 #
 # Environment:
 #   DERIVED_DATA  derived-data root, never inside the repo (default /private/tmp/asd-app-dd).
@@ -14,7 +14,11 @@
 #   SIM_NAME      simulator name (default "iPhone 18 Pro"; must exist, see
 #                 `xcrun simctl list devices available`)
 #   SIM_DESTINATION  full xcodebuild destination, overrides SIM_NAME
-#   ASD_CARGO_TARGET_DIR  cargo target dir for asd-cli (default $CARGO_TARGET_DIR, else rust/target)
+#   ASD_CARGO_TARGET_DIR  cargo target dir for asd-ffi and asd-cli (default $CARGO_TARGET_DIR,
+#                 else rust/target)
+#   ASD_CORE_PROFILE  debug (default, fast) or release: profile of the Rust core linked
+#                 into the kit and the app. The xcframework goes to the kit's git-ignored
+#                 build/asd (SwiftPM binary targets must live inside the package).
 #
 # --dry-run prints each command without running it.
 set -euo pipefail
@@ -23,7 +27,7 @@ DRY_RUN=0
 for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY_RUN=1 ;;
-    -h|--help) sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,23p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "unknown argument: $arg (try --help)" >&2; exit 2 ;;
   esac
 done
@@ -37,9 +41,16 @@ APP_DIR="apps/ios_asd_gaze_app"
 KIT_SCRATCH="${DERIVED_DATA}-kit"
 KIT_TSAN_SCRATCH="${DERIVED_DATA}-kit-tsan"
 REL_DD="${DERIVED_DATA}-rel"
+ASD_TARGET="${ASD_CARGO_TARGET_DIR:-${CARGO_TARGET_DIR:-$ROOT/rust/target}}"
+ASD_CORE_PROFILE="${ASD_CORE_PROFILE:-debug}"
 
 case "$DERIVED_DATA" in
   "$ROOT"/*) echo "DERIVED_DATA must not be inside the repository: $DERIVED_DATA" >&2; exit 2 ;;
+esac
+case "$ASD_CORE_PROFILE" in
+  debug) CORE_FLAGS=(--debug) ;;
+  release) CORE_FLAGS=() ;;
+  *) echo "ASD_CORE_PROFILE must be debug or release: $ASD_CORE_PROFILE" >&2; exit 2 ;;
 esac
 
 step() { printf '\n== %s ==\n' "$1"; }
@@ -47,6 +58,10 @@ run() {
   printf '+ %s\n' "$*"
   if [ "$DRY_RUN" -eq 0 ]; then "$@"; fi
 }
+
+step "Rust core: AsdCore.xcframework ($ASD_CORE_PROFILE, FFI-2)"
+run env ASD_XCFRAMEWORK_OUT="$KIT_DIR/build/asd" CARGO_TARGET_DIR="$ASD_TARGET" \
+  bash "$ROOT/scripts/build_asd_xcframework.sh" ${CORE_FLAGS[@]+"${CORE_FLAGS[@]}"}
 
 step "Kit tests"
 run swift test --package-path "$KIT_DIR" --scratch-path "$KIT_SCRATCH"
@@ -85,7 +100,6 @@ step "Static gate: claims and secrets"
 run python3 scripts/check_asd_claims.py --swift --secrets
 
 step "Static gate: JSON schema contract (Rust asd-cli, GATE-1)"
-ASD_TARGET="${ASD_CARGO_TARGET_DIR:-${CARGO_TARGET_DIR:-$ROOT/rust/target}}"
 run cargo build --quiet --manifest-path "$ROOT/rust/Cargo.toml" -p asd-cli --target-dir "$ASD_TARGET"
 run "$ASD_TARGET/debug/asd-cli" schema check
 run "$ASD_TARGET/debug/asd-cli" schema validate \

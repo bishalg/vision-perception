@@ -771,6 +771,9 @@ public final class ResearchKitSyncService: ObservableObject {
                 return .held
             case .insecureURL:
                 return .quarantine(code: -4)
+            case .invalidPayload:
+                // asd-sync refused the payload itself; retrying cannot help.
+                return .quarantine(code: -5)
             case .http(let status, let retryAfter):
                 if status == 408 || status == 429 || status >= 500 {
                     return .transient(retryAfter: retryAfter)

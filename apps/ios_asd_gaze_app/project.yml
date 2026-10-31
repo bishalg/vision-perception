@@ -91,6 +91,8 @@ targets:
           PROVISIONING_PROFILE_SPECIFIER: "Eye Gaze AppStore"
     dependencies:
       - package: CurvAsdGazeKit
+      - package: CurvAsdGazeKit
+        product: AsdCore
       - package: CareActivityKit
       - package: CareKit
         product: CareKitStore
@@ -156,6 +158,8 @@ targets:
     dependencies:
       - target: AsdGazeCollector
       - package: CurvAsdGazeKit
+      - package: CurvAsdGazeKit
+        product: AsdCore
       - package: CareActivityKit
       - package: CareKit
         product: CareKitStore

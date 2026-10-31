@@ -77,6 +77,7 @@ extension GazeSessionRecord {
         flatAffectScore: Double = 0.2,
         surpriseScoreMean: Double = 0.2,
         notes: String? = nil,
+        schemaVersion: String = GazeSessionRecord.currentSchemaVersion,
         legacyProvenance: Bool? = nil,
         perVideoComposite: Double? = nil,
         perVideo: [PerVideoScoreReport]? = nil
@@ -101,6 +102,7 @@ extension GazeSessionRecord {
             flatAffectScore: flatAffectScore,
             surpriseScoreMean: surpriseScoreMean,
             notes: notes,
+            schemaVersion: schemaVersion,
             legacyProvenance: legacyProvenance,
             perVideoComposite: perVideoComposite,
             perVideo: perVideo

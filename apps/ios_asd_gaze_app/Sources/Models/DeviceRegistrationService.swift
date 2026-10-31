@@ -1,3 +1,4 @@
+import AsdCore
 import Foundation
 import os
 
@@ -29,7 +30,6 @@ public enum DeviceRegistrationMethod: Sendable, Equatable {
 public struct DeviceRegistrationService: Sendable {
     /// App Attest stays off until it is implemented and reviewed.
     public static let appAttestEnabledByDefault = false
-    static let registerPath = "v1/devices/register"
 
     private static let logger = Logger(subsystem: "com.visionperception.asd", category: "DeviceRegistrationService")
 
@@ -68,6 +68,13 @@ public struct DeviceRegistrationService: Sendable {
 
     @discardableResult
     public func register(_ method: DeviceRegistrationMethod) async throws -> DeviceCredential {
+        try await register(method, deviceId: nil)
+    }
+
+    /// `deviceId` is sent on re-registration so the server rotates that device's token
+    /// without consuming a use of the enrol code (CON-11). Request, URL rules and response
+    /// classification come from asd-sync (CON-7, CON-10).
+    private func register(_ method: DeviceRegistrationMethod, deviceId: String?) async throws -> DeviceCredential {
         let code: String
         switch method {
         case .appAttest:
@@ -77,57 +84,55 @@ public struct DeviceRegistrationService: Sendable {
             _ = appAttestEnabled
             throw DeviceRegistrationError.appAttestUnavailable
         case .enrolCode(let raw):
+            // Trimmed here only to store what was sent; asd-sync trims and refuses an empty code.
             code = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !code.isEmpty else { throw DeviceRegistrationError.emptyEnrolCode }
         }
 
-        let url = apiBaseURL.appendingPathComponent(Self.registerPath)
+        let built: AsdSyncRequest
         do {
-            try ResearchStudyConfiguration.validateIngestURL(url)
+            built = try syncBuildRegisterRequest(
+                enrolCode: code,
+                deviceId: deviceId,
+                // Non-session calls use a fresh UUID (ADR-B5).
+                idempotencyKey: UUID().uuidString,
+                client: clientInfo.asdClientInfo
+            )
+        } catch AsdError.InvalidArgument {
+            throw DeviceRegistrationError.emptyEnrolCode
+        }
+        let request: URLRequest
+        do {
+            request = try URLRequest(built, apiBaseURL: apiBaseURL)
         } catch {
             throw DeviceRegistrationError.insecureURL
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.timeoutInterval = 15
-        request.setValue("application/json", forHTTPHeaderField: SyncHeader.contentType)
-        request.setValue("application/json", forHTTPHeaderField: SyncHeader.accept)
-        request.setValue(clientInfo.userAgent, forHTTPHeaderField: SyncHeader.userAgent)
-        // Non-session calls use a fresh UUID (ADR-B5).
-        request.setValue(UUID().uuidString, forHTTPHeaderField: SyncHeader.idempotencyKey)
-        request.httpBody = try JSONSerialization.data(withJSONObject: [
-            "enrol_code": code,
-            "platform": "iOS",
-            "app_version": clientInfo.appVersion
-        ], options: [.sortedKeys])
-
         let (data, response) = try await transport.send(request)
-        guard (200...299).contains(response.statusCode) else {
+        let status = UInt16(exactly: response.statusCode) ?? 0
+        switch syncClassifyRegisterResponse(status: status, body: data) {
+        case .rejected:
             Self.logger.warning("Device registration refused (HTTP \(response.statusCode, privacy: .public))")
             throw DeviceRegistrationError.rejected(status: response.statusCode)
-        }
-        guard let body = try? JSONDecoder().decode(RegisterResponse.self, from: data),
-              !body.deviceToken.isEmpty, !body.orgId.isEmpty else {
+        case .invalid:
             throw DeviceRegistrationError.invalidResponse
+        case let .registered(outcome, deviceId, deviceToken, orgId, configBundleVersion):
+            let credential = DeviceCredential(
+                deviceToken: deviceToken,
+                orgId: orgId,
+                deviceId: deviceId,
+                configBundleVersion: configBundleVersion,
+                apiHost: apiHost,
+                enrolCode: code,
+                registeredAt: now()
+            )
+            do {
+                try store.save(credential)
+            } catch {
+                throw DeviceRegistrationError.storageFailed
+            }
+            Self.logger.info("Device \(outcome, privacy: .public) with org \(orgId, privacy: .public)")
+            return credential
         }
-
-        let credential = DeviceCredential(
-            deviceToken: body.deviceToken,
-            orgId: body.orgId,
-            deviceId: body.deviceId,
-            configBundleVersion: body.configBundleVersion,
-            apiHost: apiHost,
-            enrolCode: code,
-            registeredAt: now()
-        )
-        do {
-            try store.save(credential)
-        } catch {
-            throw DeviceRegistrationError.storageFailed
-        }
-        Self.logger.info("Device registered with org \(body.orgId, privacy: .public)")
-        return credential
     }
 
     /// One re-registration with the stored enrol code after a 401 (WP-A.4).
@@ -135,12 +140,12 @@ public struct DeviceRegistrationService: Sendable {
     /// a transport failure keeps it for the next attempt.
     @discardableResult
     public func reRegister() async throws -> DeviceCredential {
-        guard let code = currentCredential()?.enrolCode else {
+        guard let credential = currentCredential(), let code = credential.enrolCode else {
             store.clear()
             throw DeviceRegistrationError.notRegistered
         }
         do {
-            return try await register(.enrolCode(code))
+            return try await register(.enrolCode(code), deviceId: credential.deviceId)
         } catch let error as DeviceRegistrationError {
             store.clear()
             throw error
@@ -149,19 +154,5 @@ public struct DeviceRegistrationService: Sendable {
 
     public func clear() {
         store.clear()
-    }
-
-    private struct RegisterResponse: Decodable {
-        let deviceToken: String
-        let orgId: String
-        let deviceId: String?
-        let configBundleVersion: String?
-
-        enum CodingKeys: String, CodingKey {
-            case deviceToken = "device_token"
-            case orgId = "org_id"
-            case deviceId = "device_id"
-            case configBundleVersion = "config_bundle_version"
-        }
     }
 }

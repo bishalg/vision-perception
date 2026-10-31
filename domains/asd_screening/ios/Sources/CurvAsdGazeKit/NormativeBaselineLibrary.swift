@@ -119,24 +119,16 @@ public enum NormativeBaselineLibrary {
 
     /// Validates coverage: every catalog clip id passed in has a profile,
     /// and every expectation resolves for every declared bracket. Returns human-readable problems.
+    ///
+    /// Delegates to the Rust core (`asd-core::baselines::validate`, CORE-3, FFI-3). Problem
+    /// order is deterministic: missing profiles in `requiredVideoIds` order, then per video in
+    /// ascending id order (the former Swift order followed `Dictionary` iteration).
     public static func validate(_ set: NormativeBaselineSet, requiredVideoIds: [String]) -> [String] {
-        var problems: [String] = []
-        let bracketIds = set.ageBrackets.map { $0.id }
-        for videoId in requiredVideoIds where set.videos[videoId] == nil {
-            problems.append("missing video profile: \(videoId)")
+        do {
+            return try AsdCoreBridge.validateBaselines(set, requiredVideoIds: requiredVideoIds)
+        } catch {
+            AsdCoreBridge.report("validate_baselines", error)
+            return ["baseline set could not be validated"]
         }
-        for (videoId, video) in set.videos {
-            if video.segments.isEmpty {
-                problems.append("\(videoId): no segments")
-            }
-            for segment in video.segments {
-                for expectation in segment.expectations {
-                    for bracketId in bracketIds where expectation.range(forBracketId: bracketId) == nil {
-                        problems.append("\(videoId)/\(segment.id)/\(expectation.biomarker): no range for bracket \(bracketId)")
-                    }
-                }
-            }
-        }
-        return problems
     }
 }

@@ -97,8 +97,12 @@ public enum AOIRole {
 /// never filled with a default or the session length. Smile reactivity is the session peak minus
 /// the mean smile in the first 500 ms. Per-clip scoring still applies that same
 /// peak-minus-baseline formula inside each clip.
+///
+/// The reduction lives in the Rust core (`asd-core::aggregate`, CORE-6); this type keeps the
+/// public Swift API (FFI-3). The core uses the built-in role sets, which cover every role
+/// the bundled catalog assigns (guarded by an asd-core test and `LegacyParityTests`).
 public enum SessionBiomarkerAggregator {
-    public struct Aggregates: Equatable, Sendable {
+    public struct Aggregates: Equatable, Sendable, Decodable {
         public let socialDwellSec: Double
         public let geometricDwellSec: Double
         public let socialPreferenceScore: Double
@@ -114,7 +118,15 @@ public enum SessionBiomarkerAggregator {
     public static let frameIntervalSec: Double = 1.0 / 60.0
 
     public static func aggregate(validFrames: [GazeFrame], durationSec: Double) -> Aggregates {
-        guard !validFrames.isEmpty else {
+        aggregate(coreFrames: validFrames.map { CoreFrame($0) }, durationSec: durationSec)
+    }
+
+    static func aggregate(coreFrames: [CoreFrame], durationSec: Double) -> Aggregates {
+        do {
+            return try AsdCoreBridge.aggregateSession(coreFrames, durationSec: durationSec)
+        } catch {
+            AsdCoreBridge.report("aggregate_session", error)
+            // Nothing measured: unmeasured ratios and latency stay nil (PLC-1/2).
             return Aggregates(
                 socialDwellSec: 0,
                 geometricDwellSec: 0,
@@ -128,80 +140,5 @@ public enum SessionBiomarkerAggregator {
                 surpriseScoreMean: 0
             )
         }
-
-        var socialFrames = 0
-        var geometricFrames = 0
-        var eyeFrames = 0
-        var mouthFrames = 0
-        var firstOrientSec: Double?
-        var smileSum = 0.0
-        var surpriseSum = 0.0
-        var expressivitySum = 0.0
-        var peakSmile = 0.0
-        var baselineSmileSum = 0.0
-        var baselineCount = 0
-
-        for frame in validFrames {
-            if AOIRole.intersects(frame.activeAOINames, kind: .social) {
-                socialFrames += 1
-            }
-            if AOIRole.intersects(frame.activeAOINames, kind: .geometric) {
-                geometricFrames += 1
-            }
-            if AOIRole.intersects(frame.activeAOINames, kind: .eye) {
-                eyeFrames += 1
-            }
-            if AOIRole.intersects(frame.activeAOINames, kind: .mouth) {
-                mouthFrames += 1
-            }
-
-            let sessionSec = frame.gaze.videoTimeSec
-            if firstOrientSec == nil, AOIRole.intersects(frame.activeAOINames, kind: .orienting) {
-                firstOrientSec = sessionSec
-            }
-
-            let smile = frame.affect.socialSmileIntensity
-            smileSum += smile
-            peakSmile = max(peakSmile, smile)
-            surpriseSum += frame.affect.surpriseScore
-            expressivitySum += frame.affect.expressivityIndex
-            if sessionSec <= 0.5 {
-                baselineSmileSum += smile
-                baselineCount += 1
-            }
-        }
-
-        let socialDwell = Double(socialFrames) * frameIntervalSec
-        let geometricDwell = Double(geometricFrames) * frameIntervalSec
-        let totalPref = socialDwell + geometricDwell
-        let preference = totalPref > 0 ? (socialDwell - geometricDwell) / totalPref : 0
-
-        let faceFeatureFrames = eyeFrames + mouthFrames
-        let eyeRatio: Double? = faceFeatureFrames > 0
-            ? Double(eyeFrames) / Double(faceFeatureFrames)
-            : nil
-        let mouthRatio: Double? = faceFeatureFrames > 0
-            ? Double(mouthFrames) / Double(faceFeatureFrames)
-            : nil
-
-        let count = Double(validFrames.count)
-        let meanSmile = smileSum / count
-        let baselineMean = baselineCount > 0 ? baselineSmileSum / Double(baselineCount) : meanSmile
-        let reactivity = max(0.0, min(1.0, peakSmile - baselineMean))
-        let meanExpressivity = expressivitySum / count
-        let flatAffect = max(0.0, min(1.0, 1.0 - (meanExpressivity * 50.0)))
-
-        return Aggregates(
-            socialDwellSec: socialDwell,
-            geometricDwellSec: geometricDwell,
-            socialPreferenceScore: preference,
-            eyeDwellRatio: eyeRatio,
-            mouthDwellRatio: mouthRatio,
-            firstOrientLatencyMs: firstOrientSec.map { max(0, $0) * 1000.0 },
-            socialSmileIntensityMean: meanSmile,
-            smileReactivityIndex: reactivity,
-            flatAffectScore: flatAffect,
-            surpriseScoreMean: surpriseSum / count
-        )
     }
 }

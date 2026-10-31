@@ -13,6 +13,10 @@ on:
       - "rust/crates/asd-cli/**"
       - "rust/crates/asd-contract/**"
       - "rust/crates/asd-core/**"
+      - "rust/crates/asd-ffi/**"
+      - "rust/crates/asd-sync/**"
+      - "rust/Cargo.lock"
+      - "scripts/build_asd_xcframework.sh"
       - "docs/spec/schemas/asd/**"
       - ".github/workflows/ios.yml"
   pull_request:
@@ -27,6 +31,10 @@ on:
       - "rust/crates/asd-cli/**"
       - "rust/crates/asd-contract/**"
       - "rust/crates/asd-core/**"
+      - "rust/crates/asd-ffi/**"
+      - "rust/crates/asd-sync/**"
+      - "rust/Cargo.lock"
+      - "scripts/build_asd_xcframework.sh"
       - "docs/spec/schemas/asd/**"
       - ".github/workflows/ios.yml"
 
@@ -56,12 +64,15 @@ jobs:
           restore-keys: |
             ios-${{ runner.os }}-
 
-      - name: Install Rust toolchain
+      # The Rust core is linked into the kit and the app as AsdCore.xcframework (FFI-2/3).
+      # Slices are arm64 only; macos-15 runners and their simulators are Apple silicon.
+      - name: Install Rust toolchain and Apple targets
         run: |
           rustup show active-toolchain || rustup toolchain install stable --profile minimal
+          rustup target add aarch64-apple-ios aarch64-apple-ios-sim aarch64-apple-darwin
           cargo --version
 
-      - name: Cache cargo (asd-cli)
+      - name: Cache cargo (asd-ffi slices, asd-cli)
         uses: actions/cache@v4
         with:
           path: |

@@ -38,6 +38,10 @@ public struct AttentionFlagAssessment: Codable, Sendable, Equatable {
 /// Unreliable looking time stays yellow, so a thin sample cannot paint green or red.
 /// A strong composite with few atypical rows is green. A weak composite, or a large
 /// share of atypical rows, is red. Everything between is yellow.
+///
+/// The rule and its wording live in the Rust core (`asd-core::flag`, CORE-4), read with the
+/// bundled default `ScoringProfile`; this type keeps the public Swift API (FFI-3). The
+/// constants below mirror that profile's `flag` thresholds (checked by a test).
 public enum AttentionFlagAlgorithm {
     public static let greenFloor = 0.65
     public static let yellowFloor = 0.35
@@ -47,49 +51,16 @@ public enum AttentionFlagAlgorithm {
     public static let atypicalShareForRed = 0.40
 
     public static func assess(_ score: PerVideoSessionScore) -> AttentionFlagAssessment {
-        let scored = score.videos.filter(\.hasBaseline)
-        guard !scored.isEmpty else {
+        do {
+            return try AsdCoreBridge.assessFlag(score)
+        } catch {
+            AsdCoreBridge.report("assess_flag", error)
+            // Never green or red without the core's verdict.
             return AttentionFlagAssessment(
                 flag: .yellow,
-                headline: "Not enough scored clips",
-                detail: "Run a full stimulus set before reading a flag. This is a screening signal, not a diagnosis."
+                headline: "Flag not available",
+                detail: "This result could not be read. Run the session again. This is a screening signal, not a diagnosis."
             )
         }
-
-        let lowShare = Double(scored.filter(\.lowConfidence).count) / Double(scored.count)
-        if lowShare >= lowConfidenceShare {
-            return AttentionFlagAssessment(
-                flag: .yellow,
-                headline: "Recheck — looking time was unreliable",
-                detail: "Too many clips fell below the quality gate. Seat the child again and repeat. This is a screening signal, not a diagnosis."
-            )
-        }
-
-        let rows = scored.flatMap(\.rows)
-        let atypicalShare = rows.isEmpty
-            ? 0
-            : Double(rows.filter { $0.status == .atypical }.count) / Double(rows.count)
-
-        if score.compositeScore >= greenFloor && atypicalShare < atypicalShareForRed {
-            return AttentionFlagAssessment(
-                flag: .green,
-                headline: "Looking matches the age reference",
-                detail: "Looking time sits in the expected range for this age. This is a screening signal, not a diagnosis."
-            )
-        }
-
-        if score.compositeScore < yellowFloor || atypicalShare >= atypicalShareForRed {
-            return AttentionFlagAssessment(
-                flag: .red,
-                headline: "Looking differs from the age reference",
-                detail: "Share this result with your pediatrician at the next visit. This is a screening signal, not a diagnosis."
-            )
-        }
-
-        return AttentionFlagAssessment(
-            flag: .yellow,
-            headline: "Some clips differ from the age reference",
-            detail: "A repeat session is worth doing. This is a screening signal, not a diagnosis."
-        )
     }
 }
