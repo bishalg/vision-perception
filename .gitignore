@@ -46,6 +46,7 @@ build-*/
 cmake-build-*/
 _build/
 bin/
+!rust/crates/*/src/bin/
 lib/
 # `lib/` targets build-output dirs, but real sources live under tools/lib/.
 !tools/lib/

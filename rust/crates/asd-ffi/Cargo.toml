@@ -10,7 +10,26 @@ publish.workspace = true
 [lints]
 workspace = true
 
+[lib]
+# `lib` for the Rust tests, `staticlib` for the Apple xcframework and Android (FFI-2).
+crate-type = ["lib", "staticlib"]
+
+[[bin]]
+# `cargo run -p asd-ffi --features cli --bin uniffi-bindgen -- generate ...`
+# (scripts/build_asd_xcframework.sh). Feature-gated so the mobile library never links it.
+name = "uniffi-bindgen"
+path = "src/bin/uniffi-bindgen.rs"
+required-features = ["cli"]
+
+[features]
+default = []
+cli = ["uniffi/cli"]
+
 [dependencies]
 asd-core.workspace = true
 asd-contract.workspace = true
 asd-sync.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+uniffi = "0.32"

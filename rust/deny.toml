@@ -28,6 +28,7 @@ exceptions = [
     { allow = ["MPL-2.0"], crate = "uniffi_core" },
     { allow = ["MPL-2.0"], crate = "uniffi_macros" },
     { allow = ["MPL-2.0"], crate = "uniffi_meta" },
+    { allow = ["MPL-2.0"], crate = "uniffi_pipeline" },
     { allow = ["MPL-2.0"], crate = "uniffi_checksum_derive" },
     { allow = ["MPL-2.0"], crate = "uniffi_udl" },
     { allow = ["MPL-2.0"], crate = "uniffi_internal_macros" },
@@ -45,6 +46,13 @@ deny = [
 [advisories]
 version = 2
 yanked = "deny"
+ignore = [
+    # basic-toml is unmaintained (no fix exists). It reaches the graph only through
+    # askama -> uniffi_bindgen, i.e. the `asd-ffi/cli` feature that runs the binding
+    # generator at build time (scripts/build_asd_xcframework.sh); it is never linked into
+    # the app library. Drop this when UniFFI moves askama off basic-toml.
+    { id = "RUSTSEC-2026-0374", reason = "build-time only, via uniffi_bindgen (asd-ffi/cli)" },
+]
 
 [sources]
 unknown-registry = "deny"

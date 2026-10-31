@@ -1,0 +1,12 @@
+# owner: WP-R.5. UniFFI binding settings (FFI-2).
+
+[bindings.swift]
+# Generated Swift file `asd_core.swift` and C module `asd_coreFFI`. Both must differ from
+# the SwiftPM binary target name `AsdCoreFFI` (work-packages.md, trap 10).
+module_name = "asd_core"
+ffi_module_name = "asd_coreFFI"
+ffi_module_filename = "asd_coreFFI"
+
+[bindings.kotlin]
+# WP-A.12 (Android, cargo-ndk) consumes the same definitions.
+package_name = "org.curv.asd.core"

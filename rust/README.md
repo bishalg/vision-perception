@@ -24,6 +24,32 @@ CARGO_TARGET_DIR=/private/tmp/asd-rust cargo test --manifest-path rust/Cargo.tom
 Do not add a `rust/Makefile` (the repo `.gitignore` ignores every `Makefile` outside `services/**`).
 Tools: `cargo install cargo-deny sqlx-cli --locked`.
 
+## Apple build (asd-ffi, FFI-2)
+
+```bash
+scripts/build_asd_xcframework.sh          # release; --debug for a faster dev build
+```
+
+Builds `asd-ffi` as a static library for `aarch64-apple-ios`, `aarch64-apple-ios-sim` and
+`aarch64-apple-darwin` (adds the rustup targets if missing), generates the Swift bindings
+with the crate's own `uniffi-bindgen` binary (`--features cli`, library mode) and writes,
+git-ignored:
+
+- `build/asd/AsdCore.xcframework`: `libasd_ffi.a` per slice, headers under
+  `Headers/asd_coreFFI/` (C module `asd_coreFFI`);
+- `build/asd/swift/asd_core.swift`: the Swift API (`coreVersion()`, `scoreSessionJson(...)`,
+  `verifyBundle(...)`, `syncBuildSessionRequestJson(...)`, ...).
+
+SwiftPM consumes it as `binaryTarget(name: "AsdCoreFFI", path: ...)` plus a wrapper target
+that compiles `asd_core.swift` and depends on `AsdCoreFFI`. Slices are arm64 only: build
+for a concrete simulator (or `ARCHS=arm64`), not `generic/platform=iOS Simulator`, which
+also links x86_64. Documents cross the boundary as JSON in the Swift `Codable` format
+(ADR-0006 §4); every fallible call throws `AsdError` (`InvalidJson`, `InvalidArgument`,
+`NotRegistered`, `UploadRefused`, `InvalidUrl`). Bindings settings: `crates/asd-ffi/uniffi.toml`.
+
+Android (WP-A.12, not wired yet): `cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -o <jniLibs>
+build -p asd-ffi --release`, then `uniffi-bindgen generate --library <lib> --language kotlin`.
+
 ## First run (fresh database)
 
 Nothing in the API can create the first org or user, so a new deployment is bootstrapped
