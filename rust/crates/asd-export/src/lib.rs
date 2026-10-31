@@ -112,6 +112,9 @@ pub enum ExportError {
     /// The purpose does not allow the mode (XC-5; `400 consent-purpose-mismatch`).
     #[error(transparent)]
     Policy(#[from] policy::PolicyError),
+    /// HL7 v2 refusals (no MRN, de-identified, missing PDF; WP-I.4).
+    #[error(transparent)]
+    Hl7(#[from] hl7v2::Hl7Error),
     /// More rows than one artifact may hold (XLSX-3, EXJ-9; `400 export-too-large`).
     #[error("{rows} rows exceed the limit of {limit}")]
     ExportTooLarge { rows: usize, limit: usize },
