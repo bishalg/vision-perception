@@ -177,6 +177,8 @@ pub struct AdviceState {
     pub calibration_model: Option<CalModelKind>,
     /// Accuracy of the validation after the current calibration.
     pub validation_accuracy_deg: Option<f64>,
+    /// `complete` of that validation (VAL-2); `None` while no validation target was shown.
+    pub validation_complete: Option<bool>,
     /// [`DriftMonitor::triggered`].
     pub drift_triggered: bool,
     pub calibration_pose: Option<CalibrationPose>,
@@ -205,7 +207,10 @@ fn pose_shifted(
         || (now.pitch_deg - cal.pitch_deg).abs() > r.pose_shift_angle_deg
 }
 
-/// CAL-9 advice. Reasons are listed in trigger order (1-6). A re-calibration trigger whose
+/// CAL-9 advice. Reasons are listed in trigger order (1-6). Trigger 2 (`validationAccuracy`)
+/// also fires when a validation was shown but no target was hit (no accuracy, no drift
+/// reference), and warns when the validation is `incomplete` with an accuracy inside the
+/// bands. A re-calibration trigger whose
 /// ceiling is spent (`maxRecalibrationsPerSession`, or `maxRecalibrationsInBattery` inside the
 /// battery) becomes a warning with `limitReached`. The VAL-4 warn band alone gives `warn`
 /// (when a re-calibration is advised anyway, the warn-band reason is not listed).
@@ -226,7 +231,15 @@ pub fn advise(state: &AdviceState, params: &TrackingQualityParams) -> RecalAdvic
     ) {
         RecalAction::Recalibrate => recal.push(RecalReason::ValidationAccuracy),
         RecalAction::Warn => warn.push(RecalReason::ValidationAccuracy),
-        RecalAction::None => {}
+        RecalAction::None => match (state.validation_complete, state.validation_accuracy_deg) {
+            // A validation was shown but no target was hit: the calibration is unverified
+            // and there is no drift reference (DRF-2), so drift cannot be monitored.
+            (Some(_), None) => recal.push(RecalReason::ValidationAccuracy),
+            // VAL-2 `incomplete` (fewer than `minTargetsHit`): the accuracy rests on too few
+            // targets; the operator is warned but may continue.
+            (Some(false), Some(_)) => warn.push(RecalReason::ValidationAccuracy),
+            _ => {}
+        },
     }
     if state.drift_triggered {
         recal.push(RecalReason::Drift);

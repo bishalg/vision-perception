@@ -13,7 +13,7 @@
 use std::path::PathBuf;
 
 use asd_core::gaze::aoi_space::{NormBox, ScreenAoi};
-use asd_core::gaze::calibration::{CalModel, TargetStatus};
+use asd_core::gaze::calibration::{CalModel, CalibrationOutcome, TargetStatus};
 use asd_core::gaze::filter::OneEuro2D;
 use asd_core::gaze::gapfill;
 use asd_core::gaze::geometry::idiom_default;
@@ -947,4 +947,303 @@ fn push_cost_on_the_host() {
         summary_ms
     );
     assert!(p99 <= 0.2, "PIPE-4 budget on the host: p99 {p99} ms");
+}
+
+// ------------------------------------------------------------------------------------------
+// Audit regressions (H1, M1, M2, L1, L3)
+// ------------------------------------------------------------------------------------------
+
+/// Like [`run_target`], with the head at `distance_m` and the eyes in `eye` state. Windows
+/// that never collect enough close on the frame clock (`maxTargetWaitMs` for calibration).
+fn run_target_as(
+    p: &mut GazePipeline,
+    clock: &mut Clock,
+    kind: TargetKind,
+    target: [f64; 2],
+    bias: [f64; 2],
+    distance_m: f64,
+    eye: Eye,
+) -> TargetResult {
+    p.begin_target(kind, target).expect("begin_target");
+    let f = face(distance_m, 0.0);
+    for _ in 0..600 {
+        p.push(&frame(clock.tick(), &f, target, bias, eye));
+        if p.target_complete() {
+            break;
+        }
+    }
+    assert!(p.target_complete(), "{kind:?} window never completed");
+    p.end_target().expect("end_target")
+}
+
+fn calibrate_as(
+    p: &mut GazePipeline,
+    clock: &mut Clock,
+    bias: [f64; 2],
+    distance_m: f64,
+    eye: Eye,
+    reason: Option<RecalReason>,
+) -> CalibrationOutcome {
+    p.start_calibration(None, reason).unwrap();
+    while let Some(TargetStatus::Pending { target_norm, .. }) = p.calibration_status() {
+        run_target_as(
+            p,
+            clock,
+            TargetKind::Calibration,
+            target_norm,
+            bias,
+            distance_m,
+            eye,
+        );
+    }
+    p.finish_calibration().unwrap()
+}
+
+fn validate_as(
+    p: &mut GazePipeline,
+    clock: &mut Clock,
+    bias: [f64; 2],
+    distance_m: f64,
+    eye: Eye,
+) -> Vec<TargetResult> {
+    let layout = TrackingQualityParams::default().validation.layout;
+    layout
+        .into_iter()
+        .map(|t| run_target_as(p, clock, TargetKind::Validation, t, bias, distance_m, eye))
+        .collect()
+}
+
+/// H1: a re-calibration after the head moved more than `poseShiftDistancePct` away from the
+/// previous calibration pose must not judge its own samples against that old pose (the
+/// samples of a new calibration define the new pose).
+#[test]
+fn recalibration_after_a_large_distance_shift_is_as_good_as_a_fresh_one() {
+    let bias = [1.0, -0.5];
+    let mut fresh = GazePipeline::new(config());
+    let mut cf = Clock::new(0.0);
+    let fresh_outcome = calibrate_as(&mut fresh, &mut cf, bias, 0.62, Eye::Open, None);
+    assert_eq!(fresh_outcome.record.usable_points, 5);
+
+    let mut p = GazePipeline::new(config());
+    let mut c = Clock::new(0.0);
+    let first = calibrate_as(&mut p, &mut c, bias, 0.45, Eye::Open, None);
+    assert_eq!(first.record.quality, CalibrationQuality::Good);
+    validate_as(&mut p, &mut c, bias, 0.45, Eye::Open);
+    let again = calibrate_as(
+        &mut p,
+        &mut c,
+        bias,
+        0.62,
+        Eye::Open,
+        Some(RecalReason::PoseShift),
+    );
+    assert_eq!(again.record.usable_points, 5, "{:?}", again.record);
+    assert_eq!(again.record.quality, fresh_outcome.record.quality);
+    assert_ne!(again.record.quality, CalibrationQuality::Failed);
+    assert_close(
+        again.record.pose.unwrap().distance_cm,
+        62.0,
+        1e-6,
+        "new calibration pose",
+    );
+    let q = p.summary();
+    assert_eq!(q.calibration.quality, fresh_outcome.record.quality);
+    assert_eq!(
+        q.recalibrations[0].new_quality,
+        fresh_outcome.record.quality
+    );
+}
+
+/// M1: a failed re-calibration leaves the applied calibration, its pose, its validation and
+/// the drift reference in place; the failed attempt is only in `recalibrations[]`.
+#[test]
+fn failed_recalibration_keeps_the_applied_calibration_and_its_validation() {
+    let bias = [1.5, -0.8];
+    let mut p = GazePipeline::new(config());
+    let mut c = Clock::new(0.0);
+    let good = calibrate_as(&mut p, &mut c, bias, 0.40, Eye::Open, None);
+    assert_eq!(good.record.quality, CalibrationQuality::Good);
+    validate_as(&mut p, &mut c, bias, 0.40, Eye::Open);
+    let before = p.summary();
+    let model_before = p.calibration().cloned();
+    let reference_before = p.drift_reference_deg();
+    assert!(reference_before.is_some());
+
+    // The child leaves: every target of the re-calibration is lost.
+    let failed = calibrate_as(
+        &mut p,
+        &mut c,
+        bias,
+        0.40,
+        Eye::NoFace,
+        Some(RecalReason::OperatorRequest),
+    );
+    assert_eq!(failed.record.quality, CalibrationQuality::Failed);
+
+    assert_eq!(
+        p.calibration().cloned(),
+        model_before,
+        "model stays applied"
+    );
+    assert_eq!(p.drift_reference_deg(), reference_before);
+    let q = p.summary();
+    assert_eq!(q.calibration.quality, CalibrationQuality::Good);
+    assert_eq!(q.calibration.model, before.calibration.model);
+    assert_eq!(q.calibration.pose, before.calibration.pose);
+    assert_eq!(q.calibration.usable_points, 5);
+    assert_eq!(q.calibration.residual_deg, before.calibration.residual_deg);
+    assert_eq!(q.calibration.attempts, 2, "attempts counts every attempt");
+    assert_eq!(q.validation, before.validation, "validation still applies");
+    assert_eq!(q.verdict, before.verdict);
+    assert_eq!(q.recalibrations.len(), 1);
+    assert_eq!(q.recalibrations[0].new_quality, CalibrationQuality::Failed);
+    assert_eq!(q.recalibrations[0].reason, RecalReason::OperatorRequest);
+    // QS-5 `calibratedDistanceCm` reads this pose: still the applied calibration's.
+    assert_close(
+        q.calibration.pose.unwrap().distance_cm,
+        40.0,
+        1e-6,
+        "calibrated distance",
+    );
+    // Advice is about the applied calibration: nothing to do.
+    assert_eq!(p.advice().action, RecalAction::None, "{:?}", p.advice());
+}
+
+/// M1 corner: a failed *first* calibration is still the session's calibration record.
+#[test]
+fn failed_first_calibration_is_recorded_and_advised() {
+    let mut p = GazePipeline::new(config());
+    let mut c = Clock::new(0.0);
+    let failed = calibrate_as(&mut p, &mut c, [0.0, 0.0], 0.40, Eye::NoFace, None);
+    assert_eq!(failed.record.quality, CalibrationQuality::Failed);
+    assert!(p.calibration().is_none());
+    let q = p.summary();
+    assert_eq!(q.calibration.quality, CalibrationQuality::Failed);
+    assert_eq!(q.calibration.attempts, 1);
+    let a = p.advice();
+    assert_eq!(a.action, RecalAction::Recalibrate);
+    assert!(a.reasons.contains(&RecalReason::CalibrationQuality));
+}
+
+/// M2: a validation whose every target was lost has no accuracy and sets no drift
+/// reference. It must advise a re-calibration, the drift checks that follow measure no drift,
+/// and the verdict cannot be `good` from the drift-check fallback (QS-2) alone.
+#[test]
+fn validation_with_every_target_lost_advises_recalibration_and_caps_the_verdict() {
+    let bias = [1.0, -0.5];
+    let mut p = GazePipeline::new(config());
+    let mut c = Clock::new(0.0);
+    calibrate_as(&mut p, &mut c, bias, 0.40, Eye::Open, None);
+    let val = validate_as(&mut p, &mut c, bias, 0.40, Eye::NoFace);
+    assert!(val.iter().all(|r| r.outcome == TargetOutcome::Missed));
+    let rec = p.validation().unwrap();
+    assert!(!rec.complete);
+    assert_eq!(rec.accuracy_deg, None);
+    assert_eq!(p.drift_reference_deg(), None, "no drift reference");
+
+    let a = p.advice();
+    assert_eq!(a.action, RecalAction::Recalibrate, "{a:?}");
+    assert!(
+        a.reasons.contains(&RecalReason::ValidationAccuracy),
+        "{a:?}"
+    );
+
+    // A clean recording with two hit drift checks.
+    let f = face(0.40, 0.0);
+    p.set_recording(true);
+    for _ in 0..120 {
+        p.push(&frame(c.tick(), &f, [0.4, 0.45], bias, Eye::Open));
+    }
+    p.set_recording(false);
+    for _ in 0..2 {
+        let t = p.next_check_target();
+        let r = run_target(&mut p, &mut c, TargetKind::DriftCheck, t, bias);
+        assert_eq!(r.outcome, TargetOutcome::Hit);
+    }
+    let q = p.summary();
+    assert!(q
+        .drift_checks
+        .iter()
+        .all(|d| !d.missed && d.drift_deg.is_none()));
+    assert!(q.estimated_accuracy_deg.is_some(), "QS-2 check fallback");
+    assert_eq!(q.verdict, TrackingVerdict::Fair, "{q:?}");
+    assert!(p
+        .advice()
+        .reasons
+        .contains(&RecalReason::ValidationAccuracy));
+}
+
+/// M2: an incomplete validation (2 of 4 hit) with a good accuracy still warns.
+#[test]
+fn incomplete_validation_warns() {
+    let bias = [1.0, -0.5];
+    let mut p = GazePipeline::new(config());
+    let mut c = Clock::new(0.0);
+    calibrate_as(&mut p, &mut c, bias, 0.40, Eye::Open, None);
+    let layout = TrackingQualityParams::default().validation.layout;
+    for (i, t) in layout.into_iter().enumerate() {
+        let eye = if i < 2 { Eye::Open } else { Eye::NoFace };
+        run_target_as(&mut p, &mut c, TargetKind::Validation, t, bias, 0.40, eye);
+    }
+    let rec = p.validation().unwrap();
+    assert!(!rec.complete);
+    assert!(rec.accuracy_deg.unwrap() < 0.5);
+    let a = p.advice();
+    assert_eq!(a.action, RecalAction::Warn, "{a:?}");
+    assert_eq!(a.reasons, vec![RecalReason::ValidationAccuracy]);
+}
+
+/// L3: an orientation change while a calibration runs rejects that calibration (its
+/// geometry no longer matches the screen): the attempt is `failed` and not applied.
+#[test]
+fn orientation_change_during_calibration_rejects_it() {
+    let mut p = GazePipeline::new(config());
+    let mut c = Clock::new(0.0);
+    p.start_calibration(None, None).unwrap();
+    let mut n = 0;
+    while let Some(TargetStatus::Pending { target_norm, .. }) = p.calibration_status() {
+        p.begin_target(TargetKind::Calibration, target_norm)
+            .unwrap();
+        let f = face(0.40, 0.0);
+        for _ in 0..600 {
+            let mut raw = frame(c.tick(), &f, target_norm, [0.0, 0.0], Eye::Open);
+            if n >= 2 {
+                raw.orientation = Orientation::PortraitUpsideDown;
+            }
+            p.push(&raw);
+            if p.target_complete() {
+                break;
+            }
+        }
+        p.end_target().unwrap();
+        n += 1;
+    }
+    let outcome = p.finish_calibration().unwrap();
+    assert_eq!(outcome.record.quality, CalibrationQuality::Failed);
+    assert!(
+        p.calibration().is_none(),
+        "a rejected calibration is not applied"
+    );
+    assert_eq!(p.advice().action, RecalAction::Recalibrate);
+}
+
+/// L1: frames before the first face read as "no data", not as a blink.
+#[test]
+fn telemetry_before_the_first_face_is_not_a_blink() {
+    let mut p = GazePipeline::new(config());
+    let gate = QualityGate::default();
+    let mut w = TelemetryWriter::new(0.0, gate);
+    let lost = p.push(&frame(
+        0.0,
+        &face(0.4, 0.0),
+        [0.5, 0.5],
+        [0.0, 0.0],
+        Eye::NoFace,
+    ));
+    let t = w.sample(&lost);
+    assert!(!t.is_valid);
+    assert_eq!(t.confidence, 0.0);
+    let e = w.evaluate(&t);
+    assert!(!e.is_blink, "{:?}", e.failure_reasons);
+    assert!(!e.is_valid);
 }

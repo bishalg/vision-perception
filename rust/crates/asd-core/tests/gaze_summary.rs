@@ -97,6 +97,7 @@ fn vin(acc: Option<f64>) -> VerdictInput {
         data_loss: 0.0,
         geometry_source: GeometrySource::Table,
         calibration_quality: CalibrationQuality::Good,
+        validation_complete: true,
     }
 }
 

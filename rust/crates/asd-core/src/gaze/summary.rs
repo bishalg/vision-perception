@@ -52,10 +52,17 @@ pub struct VerdictInput {
     pub data_loss: f64,
     pub geometry_source: GeometrySource,
     pub calibration_quality: CalibrationQuality,
+    /// A `complete` validation (VAL-2) followed the calibration in effect. Without one the
+    /// accuracy is not verified by a validation (absent, incomplete, or only the QS-2
+    /// drift-check fallback) and the verdict is at most `fair`.
+    pub validation_complete: bool,
 }
 
 /// QS-4 verdict. Band upper bounds are inclusive; non-finite inputs fail towards the worse
 /// verdict (a NaN accuracy or valid ratio is `unusable`, a NaN data loss is at least `poor`).
+/// Besides the QS-4 `fair` caps, a session without a `complete` validation is at most `fair`
+/// (an accuracy taken from drift checks alone, or from fewer than `minTargetsHit` validation
+/// targets, is not enough for `good`).
 pub fn verdict(input: &VerdictInput, params: &VerdictParams) -> TrackingVerdict {
     let bands = &params.accuracy_bands;
     let acc = match input.estimated_accuracy_deg {
@@ -78,6 +85,7 @@ pub fn verdict(input: &VerdictInput, params: &VerdictParams) -> TrackingVerdict 
         || input.data_loss > params.fair_above_data_loss
         || input.geometry_source == GeometrySource::IdiomDefault
         || input.calibration_quality == CalibrationQuality::Skipped
+        || !input.validation_complete
     {
         return TrackingVerdict::Fair;
     }
@@ -150,6 +158,7 @@ pub fn tracking_quality(input: SummaryInput, params: &TrackingQualityParams) -> 
             data_loss: input.data_loss,
             geometry_source: input.device.geometry_source,
             calibration_quality: input.calibration.quality,
+            validation_complete: input.validation.as_ref().is_some_and(|v| v.complete),
         },
         &params.verdict,
     );

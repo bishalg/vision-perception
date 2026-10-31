@@ -199,6 +199,7 @@ fn calm() -> AdviceState {
         calibration_quality: Some(CalibrationQuality::Good),
         calibration_model: Some(CalModelKind::ScreenAffine),
         validation_accuracy_deg: Some(1.0),
+        validation_complete: Some(true),
         drift_triggered: false,
         calibration_pose: Some(pose(50.0, 0.0, 0.0)),
         recent_pose: Some(pose(50.0, 0.0, 0.0)),

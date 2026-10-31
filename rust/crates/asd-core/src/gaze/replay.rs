@@ -11,8 +11,15 @@
 //!   open when the next target is due, or when the log ends, is closed there. A target whose
 //!   whole window lies between two frames is opened and closed at once (outcome `missed`).
 //! - **Calibration.** Consecutive `calibration` targets form one calibration: it starts at the
-//!   first of them with exactly their positions as the layout and is fitted when the next
-//!   non-calibration target (or the end of the log) comes.
+//!   first of them with their positions as the layout (a position repeated right after itself
+//!   is a CAL-3 re-show of the same target, not a new one) and is fitted when the next
+//!   non-calibration target (or the end of the log) comes. The pipeline decides retries
+//!   (`calibration_status`), so a scheduled calibration target is matched against the
+//!   pipeline's pending target: when the pipeline wants a retry that the log does not show
+//!   (the next scheduled position is another target), the retry is skipped and the target
+//!   ends `missed` (`GazePipeline::skip_calibration_target`; the log has no frames for it);
+//!   when the log re-shows a target the pipeline already accepted, that window is not opened.
+//!   A log without retries replays exactly as before.
 //! - **Recording.** A frame counts in the session summary exactly when it carries
 //!   `clip_media_time_sec` (it belongs to a stimulus clip), so positioning, calibration,
 //!   validation and drift-check frames never count (pipeline docs, `set_recording`).
@@ -22,6 +29,7 @@
 use serde::Serialize;
 use thiserror::Error;
 
+use super::calibration::TargetStatus;
 use super::pipeline::{GazePipeline, PipelineConfig, PipelineError};
 use super::raw_log::RawLog;
 use crate::types::tracking::{
@@ -64,7 +72,8 @@ pub struct ReplayReport {
     pub frames: usize,
     /// Frames that counted in the summary (clip frames).
     pub recorded_frames: usize,
-    /// One result per scheduled target, in schedule order.
+    /// One result per target window played, in schedule order (a calibration re-show the
+    /// pipeline did not need plays no window; a skipped retry adds no result).
     pub targets: Vec<TargetResult>,
     /// Advice at the end of the log (CAL-9, VAL-4, DRF-3).
     pub advice: RecalAdvice,
@@ -130,20 +139,31 @@ impl Player<'_> {
         Ok(())
     }
 
+    /// Opens the window of scheduled target `index` (or, for a calibration re-show the
+    /// pipeline did not need, opens nothing).
     fn begin(&mut self, index: usize) -> Result<(), ReplayError> {
         let t = &self.targets[index];
         let at = [t.x_norm, t.y_norm];
         if t.kind == TargetKind::Calibration {
             if !self.calibrating {
-                let layout: Vec<[f64; 2]> = self.targets[index..]
+                let mut layout: Vec<[f64; 2]> = Vec::new();
+                for x in self.targets[index..]
                     .iter()
                     .take_while(|x| x.kind == TargetKind::Calibration)
-                    .map(|x| [x.x_norm, x.y_norm])
-                    .collect();
+                {
+                    let p = [x.x_norm, x.y_norm];
+                    // A re-show (CAL-3 retry) is the same target again, not a new one.
+                    if layout.last() != Some(&p) {
+                        layout.push(p);
+                    }
+                }
                 self.pipeline
                     .start_calibration(Some(layout), None)
                     .map_err(|e| self.err(index, e))?;
                 self.calibrating = true;
+            }
+            if !self.drive_calibration(index, at)? {
+                return Ok(());
             }
         } else {
             self.finish_calibration(index)?;
@@ -155,6 +175,38 @@ impl Player<'_> {
         Ok(())
     }
 
+    /// Brings the running calibration to the scheduled position `at` (module docs,
+    /// "Calibration"): a retry the log never shows is skipped (the target ends `missed`); a
+    /// re-show the pipeline does not need opens no window. Returns whether to open `at`.
+    fn drive_calibration(&mut self, index: usize, at: [f64; 2]) -> Result<bool, ReplayError> {
+        loop {
+            let Some(TargetStatus::Pending {
+                target_norm,
+                attempt,
+                ..
+            }) = self.pipeline.calibration_status()
+            else {
+                // Complete (or no session): begin_target reports the error.
+                return Ok(true);
+            };
+            if same(target_norm, at) {
+                return Ok(true);
+            }
+            if attempt > 1 {
+                self.pipeline
+                    .skip_calibration_target()
+                    .map_err(|e| self.err(index, e))?;
+                continue;
+            }
+            let reshow = index > 0 && {
+                let prev = &self.targets[index - 1];
+                prev.kind == TargetKind::Calibration && same([prev.x_norm, prev.y_norm], at)
+            };
+            // A genuine schedule mismatch is reported by begin_target.
+            return Ok(!reshow);
+        }
+    }
+
     fn end(&mut self) {
         if self.open {
             self.open = false;
@@ -164,6 +216,11 @@ impl Player<'_> {
             }
         }
     }
+}
+
+/// Two scheduled positions are the same target.
+fn same(a: [f64; 2], b: [f64; 2]) -> bool {
+    (a[0] - b[0]).abs() <= 1e-9 && (a[1] - b[1]).abs() <= 1e-9
 }
 
 /// Replays `log` through a fresh pipeline.

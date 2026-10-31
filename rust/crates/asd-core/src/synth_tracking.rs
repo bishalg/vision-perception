@@ -14,6 +14,7 @@
 //! - seeded Gaussian **noise** and rare **outliers** (glasses-like reflections),
 //! - **blinks** (blend shapes 0.9), **track-loss** runs (no face), single-frame **spikes**,
 //! - **dropped** frames (a validation target for which the log has no frames at all),
+//! - a **starved** calibration target (face lost through its window), optionally re-shown,
 //! - a head **pose change** between calibration and validation (distance, yaw, pitch).
 //!
 //! The coordinate conventions are `gaze::raycast::CAMERA_AXES` (metres, device-fixed portrait
@@ -132,6 +133,12 @@ pub struct Spec {
     pub grid13: bool,
     /// Index of a validation target whose frames are absent from the log.
     pub drop_validation_target: Option<usize>,
+    /// Index of a calibration target during whose (first) window the face is lost, so the
+    /// target collects no sample (CAL-3 `needsRetry`).
+    pub starve_cal_target: Option<usize>,
+    /// The schedule re-shows the starved target right after its first window, as the app
+    /// does on `needsRetry` (CAL-3: re-shown once, immediately).
+    pub reshow_starved: bool,
 }
 
 impl Spec {
@@ -165,11 +172,13 @@ impl Spec {
             drift_checks: true,
             grid13: false,
             drop_validation_target: None,
+            starve_cal_target: None,
+            reshow_starved: false,
         }
     }
 }
 
-/// The TV-2 scenarios (plus `glasses_noise` and `head_sway`).
+/// The TV-2 scenarios (plus `glasses_noise`, `head_sway` and `cal_target_starved`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Scenario {
     Ideal,
@@ -187,9 +196,10 @@ pub enum Scenario {
     MissingTarget,
     GlassesNoise,
     HeadSway,
+    CalTargetStarved,
 }
 
-pub const SCENARIOS: [Scenario; 15] = [
+pub const SCENARIOS: [Scenario; 16] = [
     Scenario::Ideal,
     Scenario::BiasOnly,
     Scenario::BiasGain,
@@ -205,6 +215,7 @@ pub const SCENARIOS: [Scenario; 15] = [
     Scenario::MissingTarget,
     Scenario::GlassesNoise,
     Scenario::HeadSway,
+    Scenario::CalTargetStarved,
 ];
 
 impl Scenario {
@@ -225,6 +236,7 @@ impl Scenario {
             Scenario::MissingTarget => "missing_target",
             Scenario::GlassesNoise => "glasses_noise",
             Scenario::HeadSway => "head_sway",
+            Scenario::CalTargetStarved => "cal_target_starved",
         }
     }
 
@@ -303,6 +315,11 @@ impl Scenario {
             Scenario::HeadSway => {
                 s.bias_deg = [1.0, -0.5];
                 s.sway_deg = 6.0;
+            }
+            // The face is lost through the 2nd calibration target; the log does not re-show it.
+            Scenario::CalTargetStarved => {
+                s.bias_deg = [1.0, -0.5];
+                s.starve_cal_target = Some(1);
             }
         }
         s
@@ -458,6 +475,8 @@ struct Plan {
     ramp_end: f64,
     drift_start: f64,
     end: f64,
+    /// `[start, end]` of the starved calibration window (`Spec::starve_cal_target`).
+    starved: Option<(f64, f64)>,
 }
 
 /// Schedules one target window at `*t` and moves `*t` past it.
@@ -490,15 +509,24 @@ fn plan(spec: &Spec, rng: &mut Rng) -> Plan {
 
     let cal = &params.calibration;
     let cal_win = (cal.settle_ms + cal.collect_ms) / 1000.0;
-    for p in &cal.layout5 {
-        window(
-            &mut targets,
-            &mut segs,
-            TargetKind::Calibration,
-            *p,
-            cal_win,
-            &mut t,
-        );
+    let mut starved = None;
+    for (i, p) in cal.layout5.iter().enumerate() {
+        let showings = if spec.starve_cal_target == Some(i) {
+            starved = Some((t, t + cal_win));
+            1 + usize::from(spec.reshow_starved)
+        } else {
+            1
+        };
+        for _ in 0..showings {
+            window(
+                &mut targets,
+                &mut segs,
+                TargetKind::Calibration,
+                *p,
+                cal_win,
+                &mut t,
+            );
+        }
     }
     t += POSE_RAMP_SEC;
     let ramp_end = t;
@@ -556,6 +584,7 @@ fn plan(spec: &Spec, rng: &mut Rng) -> Plan {
         ramp_end,
         drift_start,
         end: t + GAP_SEC,
+        starved,
     }
 }
 
@@ -683,7 +712,8 @@ pub fn generate_with(spec: &Spec, label: &str, seed: u64) -> RawLog {
             clip_media_time_sec: clip.map(|(_, c)| r6(t - c.start)),
             stimulus_id: clip.map(|(k, _)| format!("synth_clip_{}", k + 1)),
         };
-        if !fl.lost {
+        let starved = plan.starved.is_some_and(|(a, b)| t >= a && t <= b);
+        if !fl.lost && !starved {
             let pose = pose_at(spec, &plan, t);
             let anchor = face_transform(
                 pose.yaw_deg,

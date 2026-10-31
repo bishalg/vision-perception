@@ -190,7 +190,9 @@ start with `apps/` or `rust/`.
   RMS-S2S over hit targets.
 - **VAL-4** Validation accuracy > `validation.maxAccuracyDeg` (default 5.0°) → advise
   re-calibration (CAL-9.2). Above `validation.warnAccuracyDeg` (default 3.5°) the
-  operator sees a warning but may continue.
+  operator sees a warning but may continue. A validation shown with no hit target
+  advises re-calibration (reason `validationAccuracy`); an incomplete validation whose
+  accuracy is within limits gives a warning with the same reason (audit 2026-10-31).
 - **VAL-5** A bench-only 13-point validation grid (3×3 at 0.1/0.5/0.9 plus 4 at
   0.3/0.7) exists behind the bench build flag (BEN-2); it never ships in Release.
 
@@ -323,7 +325,8 @@ start with `apps/` or `rust/`.
 - **QS-4** Verdict: `unusable` when `estimatedAccuracyDeg` is absent or above the
   `failed` band, or `validRatio < 0.50`; `poor` above the `fair` band or data loss
   > 40 %; `fair` above the `good` band or data loss > 20 % or `geometrySource =
-  idiomDefault` or `calibration.quality = skipped`; else `good`. The existing
+  idiomDefault` or `calibration.quality = skipped` or no complete validation (accuracy
+  from drift checks alone never earns `good`, audit 2026-10-31); else `good`. The existing
   `qualityVerdict` (validRatio based) is unchanged.
 - **QS-5** `calibratedDistanceCm` = `trackingQuality.calibration.pose.distanceCm` when a
   calibration ran in the session; absent otherwise (fixes G-F14; needs 1.7, SCH-2).

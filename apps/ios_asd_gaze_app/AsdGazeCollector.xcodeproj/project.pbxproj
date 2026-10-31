@@ -49,6 +49,7 @@
 		404740B457C8AEBEA89F4C71 /* CareKitStore in Frameworks */ = {isa = PBXBuildFile; productRef = D70B6E3928D5B5C50D4C16AE /* CareKitStore */; };
 		413DB3A6C0E953E959A93872 /* LiquidGlassContrastTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 011AFAF6529D0195ADA26BA1 /* LiquidGlassContrastTests.swift */; };
 		4152FFABF4BD1BDE21CF9544 /* SmartOnFhirAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBED732DAB0236044946C9E7 /* SmartOnFhirAuthService.swift */; };
+		44F2DB1CFEFF309C1D9D651B /* expected-session-v1.7.json in Resources */ = {isa = PBXBuildFile; fileRef = 4D67B8CF02CABCB40AF6505E /* expected-session-v1.7.json */; };
 		458349D2129CA3F911E8F0E0 /* AsdGazeCareWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6C0062C6D7EEBF81C6AE25E1 /* AsdGazeCareWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		45A572D620F22243DA4FCCD0 /* FHIRBundleBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22B05152D44EB5561CA62634 /* FHIRBundleBuilder.swift */; };
 		45E033BA69F348A4CCEADABD /* ResearchStudyConsentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A63371C06337F00E97F6D0C9 /* ResearchStudyConsentView.swift */; };
@@ -254,6 +255,7 @@
 		48B1E6902FFE822878A6BA04 /* SceneKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SceneKit.framework; path = System/Library/Frameworks/SceneKit.framework; sourceTree = SDKROOT; };
 		4B37E4FE99D79271873B231C /* MoodDiaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoodDiaryView.swift; sourceTree = "<group>"; };
 		4C4E1DA6CDFFFC55B1FDE950 /* StimulusVideoPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StimulusVideoPlayerView.swift; sourceTree = "<group>"; };
+		4D67B8CF02CABCB40AF6505E /* expected-session-v1.7.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "expected-session-v1.7.json"; sourceTree = "<group>"; };
 		4E5AE14EBA68525EA5DF2C41 /* MCHATHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCHATHistoryView.swift; sourceTree = "<group>"; };
 		4FD481B904A060525B006291 /* FHIRNamespaces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FHIRNamespaces.swift; sourceTree = "<group>"; };
 		526122C5EA7A82F90C044C72 /* ClinicalDashboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClinicalDashboardViewModel.swift; sourceTree = "<group>"; };
@@ -524,6 +526,7 @@
 			children = (
 				21DA1A68B03A496ABAFEF2CB /* expected-bundle.json */,
 				F01C7452E5F5362E5BE057AE /* expected-session-v1.6.json */,
+				4D67B8CF02CABCB40AF6505E /* expected-session-v1.7.json */,
 			);
 			path = Fixtures;
 			sourceTree = "<group>";
@@ -825,6 +828,7 @@
 				176612B6AD625E2C9C06ADDF /* dashboard_and_guardians.feature in Resources */,
 				D82425DDC100FD9DCA6AC6D0 /* expected-bundle.json in Resources */,
 				AA4820B00FE0D92FC84DA8B9 /* expected-session-v1.6.json in Resources */,
+				44F2DB1CFEFF309C1D9D651B /* expected-session-v1.7.json in Resources */,
 				660CB33E5B39A0D83619A74B /* mode_selection.feature in Resources */,
 				D11EC332015D418B2458E64B /* onboarding.feature in Resources */,
 			);

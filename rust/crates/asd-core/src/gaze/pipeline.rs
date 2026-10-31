@@ -29,14 +29,25 @@
 //!   validation and drift-check windows are complete after `settleMs + collectMs` of frame
 //!   time ([`GazePipeline::target_complete`]) and are judged by `validation::target_result`.
 //! - **A calibration is applied only when its quality is `good`, `fair` or `poor`.** A
-//!   `failed` attempt (or one that could not be fitted) is recorded, advice asks for a
-//!   re-calibration, and the model that was in effect stays in effect (none on the first
-//!   attempt). The calibration record of the summary is always the latest attempt; `attempts`
-//!   counts every attempt of the session; each attempt after the first is a
-//!   `recalibrations[]` entry with the reason given to [`GazePipeline::start_calibration`]
-//!   (`operatorRequest` when none). A new calibration clears the validation of the previous
-//!   one, calls `DriftMonitor::on_recalibrated`, and resets the 1-Euro filter (the calibrated
-//!   space jumps); the validation that follows sets the drift reference.
+//!   `failed` attempt (or one that could not be fitted) is not applied. When an in-session
+//!   calibration is in effect, it stays in effect *with everything that describes it*: the
+//!   summary's calibration record (model, quality, pose, so QS-5 `calibratedDistanceCm`),
+//!   its orientation and age, its validation and the drift reference; the failed attempt
+//!   appears only as a `recalibrations[]` entry (`newQuality: failed`). Without one (first
+//!   attempt), the failed attempt becomes the calibration record and advice asks for a
+//!   re-calibration (CAL-9.1). `attempts` counts every attempt of the session; each attempt
+//!   after the first is a `recalibrations[]` entry with the reason given to
+//!   [`GazePipeline::start_calibration`] (`operatorRequest` when none). An applied new
+//!   calibration clears the validation of the previous one, calls
+//!   `DriftMonitor::on_recalibrated`, and resets the 1-Euro filter (the calibrated space
+//!   jumps); the validation that follows sets the drift reference.
+//! - **Calibration samples carry no pose-shift factor.** Their confidence (CAL-2 gate) is
+//!   CNF-1 without the distance-shift-from-calibration factor, because a new calibration
+//!   defines a new pose; judging it against the pose it replaces would reject every sample
+//!   after a move of more than `poseShiftDistancePct`.
+//! - **An orientation change while a calibration runs rejects it** (GEO-3, CAL-9.5): the
+//!   `CalibrationSession` holds the geometry of the orientation it started in, so the attempt
+//!   is scored `failed` at [`GazePipeline::finish_calibration`] and is not applied.
 //! - **The summary covers recorded frames only** ([`GazePipeline::set_recording`]): loss,
 //!   `validRatio`, data loss, confidence, conditions and the sample rate. Recording is off
 //!   until the native app turns it on for the stimulus clips; frames during positioning,
@@ -68,7 +79,8 @@ use thiserror::Error;
 
 use super::aoi_space::{active_aoi_names, ScreenAoi};
 use super::calibration::{
-    gaze_angles_deg, CalModel, CalibrationOutcome, CalibrationSession, SampleGate, TargetStatus,
+    gaze_angles_deg, CalModel, CalSessionError, CalibrationOutcome, CalibrationSession, SampleGate,
+    TargetStatus,
 };
 use super::confidence::{self, ConfidenceFeatures, ConfidenceLimits};
 use super::drift::{self, AdviceState, DriftMonitor};
@@ -84,8 +96,9 @@ use crate::quality::{self, Evaluation, QualityGate};
 use crate::types::tracking::{
     CalModelKind, CalibrationQuality, CalibrationRecord, ConfidenceSummary, DeviceGeometry,
     DriftCheckRecord, GeometrySource, LossSummary, Orientation, ProcessedSample, RawTrackingSample,
-    RecalAdvice, RecalReason, RecalibrationRecord, TargetKind, TargetResult, TrackState,
-    TrackingConditions, TrackingDevice, TrackingQuality, TrackingQualityParams, ValidationRecord,
+    RecalAdvice, RecalReason, RecalibrationRecord, TargetKind, TargetOutcome, TargetResult,
+    TrackState, TrackingConditions, TrackingDevice, TrackingQuality, TrackingQualityParams,
+    ValidationRecord,
 };
 use crate::types::GazeTelemetrySample;
 
@@ -199,6 +212,8 @@ pub struct GazePipeline {
     calibration: Option<CalModel>,
     cal_session: Option<CalibrationSession>,
     cal_reason: Option<RecalReason>,
+    /// The orientation changed while the running calibration collected (L3, GEO-3).
+    cal_orientation_changed: bool,
     cal_state: Option<CalState>,
     cal_attempts: u32,
     recalibrations: Vec<RecalibrationRecord>,
@@ -232,6 +247,7 @@ impl GazePipeline {
             calibration: config.calibration.clone(),
             cal_session: None,
             cal_reason: None,
+            cal_orientation_changed: false,
             cal_state: None,
             cal_attempts: 0,
             recalibrations: Vec::new(),
@@ -282,6 +298,9 @@ impl GazePipeline {
         self.orientation = orientation;
         self.geo = self.config.geometry.rotate(orientation);
         self.filter.reset();
+        if self.cal_session.is_some() {
+            self.cal_orientation_changed = true;
+        }
     }
 
     /// Frames pushed while recording count in the session summary.
@@ -385,7 +404,8 @@ impl GazePipeline {
                 true,
             )
         });
-        out.confidence = self.confidence_of(&out, out.track_state);
+        out.confidence =
+            self.confidence_of(&out, out.track_state, self.pose_shift_pct(out.distance_cm));
         out.valid = self.is_valid(out.track_state, out.confidence);
 
         // Filter (tracked only, sample time), then the AOI hit test.
@@ -409,9 +429,14 @@ impl GazePipeline {
         state == TrackState::Tracked && confidence >= self.config.quality_gate.min_confidence
     }
 
-    /// CNF-1 for a frame judged with `state`.
-    fn confidence_of(&self, p: &ProcessedSample, state: TrackState) -> f64 {
-        let mut f = ConfidenceFeatures::from_processed(p, self.pose_shift_pct(p.distance_cm));
+    /// CNF-1 for a frame judged with `state` and the given pose shift.
+    fn confidence_of(
+        &self,
+        p: &ProcessedSample,
+        state: TrackState,
+        pose_shift_pct: Option<f64>,
+    ) -> f64 {
+        let mut f = ConfidenceFeatures::from_processed(p, pose_shift_pct);
         f.track_state = state;
         confidence::sample(&f, &self.limits)
     }
@@ -518,7 +543,7 @@ impl GazePipeline {
     }
 
     /// The frame as the calibration sees it: state and confidence from the raw ray, without
-    /// the off-screen rule (module docs).
+    /// the off-screen rule and without the CNF-1 pose-shift factor (module docs).
     fn calibration_view(
         &self,
         out: &ProcessedSample,
@@ -536,7 +561,9 @@ impl GazePipeline {
                 )
             });
             p.track_state = state;
-            p.confidence = self.confidence_of(out, state);
+            // No pose-shift factor: the samples of a calibration define its pose, so they are
+            // never judged against the pose of the calibration they replace.
+            p.confidence = self.confidence_of(out, state, None);
             p.valid = self.is_valid(state, p.confidence);
         }
         p
@@ -565,12 +592,40 @@ impl GazePipeline {
             self.geo,
         ));
         self.cal_reason = reason;
+        self.cal_orientation_changed = false;
         Ok(())
     }
 
     /// What the calibration UI should show next; `None` when no calibration is running.
     pub fn calibration_status(&self) -> Option<TargetStatus> {
         self.cal_session.as_ref().map(CalibrationSession::status)
+    }
+
+    /// Gives up on the pending calibration target (operator skip, or a replayed log that never
+    /// re-showed a target the pipeline wants to retry): it is closed without samples at the
+    /// last frame time, through its remaining retries, so it ends `missed` (CAL-3) and the
+    /// next target becomes pending. Returns the final (`missed`) result.
+    pub fn skip_calibration_target(&mut self) -> Result<TargetResult, PipelineError> {
+        if self.target.is_some() {
+            return Err(PipelineError::TargetOpen);
+        }
+        let t = self.last_t_sec.unwrap_or(0.0);
+        let session = self
+            .cal_session
+            .as_mut()
+            .ok_or(PipelineError::NoCalibrationSession)?;
+        loop {
+            session.begin_target(t).map_err(|e| match e {
+                CalSessionError::AlreadyRunning => PipelineError::TargetOpen,
+                CalSessionError::Complete => PipelineError::CalibrationComplete,
+            })?;
+            let r = session
+                .end_target(t)
+                .ok_or(PipelineError::CalibrationComplete)?;
+            if r.outcome != TargetOutcome::NeedsRetry {
+                return Ok(r);
+            }
+        }
     }
 
     /// Opens a target window at the next pushed frame. For `calibration` the target must be
@@ -675,7 +730,11 @@ impl GazePipeline {
             .cal_session
             .take()
             .ok_or(PipelineError::NoCalibrationSession)?;
-        let outcome = session.finish();
+        let mut outcome = session.finish();
+        if std::mem::take(&mut self.cal_orientation_changed) {
+            // L3 / GEO-3: the session's geometry no longer matches the screen.
+            outcome.record.quality = CalibrationQuality::Failed;
+        }
         let at = self.last_t_sec.unwrap_or(0.0);
         self.cal_attempts += 1;
         let quality = outcome.record.quality;
@@ -689,9 +748,33 @@ impl GazePipeline {
                 new_quality: quality,
             });
         }
-        if let (Ok(fit), false) = (&outcome.fit, quality == CalibrationQuality::Failed) {
-            self.calibration = Some(fit.selected.model.clone());
-        }
+        let applied = match (&outcome.fit, quality == CalibrationQuality::Failed) {
+            (Ok(fit), false) => Some(fit.selected.model.clone()),
+            _ => None,
+        };
+        let keeps_applied = self
+            .cal_state
+            .as_ref()
+            .is_some_and(|c| c.record.quality != CalibrationQuality::Failed);
+        let Some(model) = applied else {
+            if keeps_applied {
+                // M1: the calibration in effect stays in effect with its record, pose,
+                // orientation, age, validation and drift reference; the failed attempt is
+                // recorded in `recalibrations[]` only.
+                return Ok(outcome);
+            }
+            // No in-session calibration to keep: the failed attempt is the record.
+            self.cal_state = Some(CalState {
+                record: outcome.record.clone(),
+                at_sec: at,
+                orientation: self.orientation,
+            });
+            self.validation_targets.clear();
+            self.drift.on_recalibrated();
+            self.filter.reset();
+            return Ok(outcome);
+        };
+        self.calibration = Some(model);
         self.cal_state = Some(CalState {
             record: outcome.record.clone(),
             at_sec: at,
@@ -713,6 +796,13 @@ impl GazePipeline {
         self.drift.checks()
     }
 
+    /// The DRF-2 drift reference (mean validation offset over hit targets, degrees) of the
+    /// calibration in effect. `None` before a validation, or when no validation target was
+    /// hit: drift checks then record no `driftDeg` and the advice asks for a re-calibration.
+    pub fn drift_reference_deg(&self) -> Option<[f64; 2]> {
+        self.drift.reference_offset_deg()
+    }
+
     /// Position of the next drift check target (DRF-1).
     pub fn next_check_target(&self) -> [f64; 2] {
         self.drift.next_check_target()
@@ -727,10 +817,12 @@ impl GazePipeline {
         let in_battery_count = self.first_recorded_sec.map_or(0, |s| {
             self.recalibrations.iter().filter(|r| r.at_sec >= s).count()
         });
+        let validation = self.validation();
         let state = AdviceState {
             calibration_quality: self.cal_state.as_ref().map(|c| c.record.quality),
             calibration_model: self.calibration.as_ref().map(CalModel::kind),
-            validation_accuracy_deg: self.validation().and_then(|v| v.accuracy_deg),
+            validation_accuracy_deg: validation.as_ref().and_then(|v| v.accuracy_deg),
+            validation_complete: validation.as_ref().map(|v| v.complete),
             drift_triggered: self.drift.triggered(),
             calibration_pose: self.cal_state.as_ref().and_then(|c| c.record.pose),
             recent_pose: drift::median_pose(&recent, last - window, last),
@@ -978,8 +1070,11 @@ fn rotation_angle_deg(a: &[f64; 16], b: &[f64; 16]) -> f64 {
 ///   Swift actor froze the point during blinks).
 /// - Pose, distance and eye openness are the frame's own values, or the last known ones for a
 ///   frame without a face (trap 6: never zeros). Before the first face frame the Swift
-///   "searching" values are used (point (0.5, 0.5), distance 48 cm, pose 0, eyes 0); such
-///   frames are invalid with confidence 0.
+///   "searching" values are used (point (0.5, 0.5), distance 48 cm, pose 0) except that the
+///   eyes read as open (1.0, not the Swift 0.0), so a frame with no face is never counted as
+///   a blink by the CORE-7 gate; such frames are invalid with confidence 0. The frame fields
+///   are not optional on the wire, so pose and distance cannot be absent here; consumers must
+///   rely on `isValid` / `confidence` for these frames.
 /// - Times are relative to `origin_sec` (the session clock origin).
 #[derive(Debug, Clone, PartialEq)]
 pub struct TelemetryWriter {
@@ -1004,8 +1099,8 @@ impl TelemetryWriter {
             pitch: 0.0,
             roll: 0.0,
             distance_cm: 48.0,
-            left_open: 0.0,
-            right_open: 0.0,
+            left_open: 1.0,
+            right_open: 1.0,
         }
     }
 
