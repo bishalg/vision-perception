@@ -68,7 +68,7 @@ describe("mock client: review queue", () => {
     const created = open.items.map((i) => i.created_at);
     expect([...created].sort().reverse()).toEqual(created);
     const all = await api.listReview(MOCK_ORG_ID, { limit: 100 });
-    expect(new Set(all.items.map((i) => i.reason))).toEqual(new Set(["low_quality", "flag_red", "random_audit", "norm_candidate", "manual"]));
+    expect(new Set(all.items.map((i) => i.reason))).toEqual(new Set(["low_quality", "flag_red", "random_audit", "norm_candidate", "manual", "low_tracking_quality"]));
     const red = await api.listReview(MOCK_ORG_ID, { reason: "flag_red", limit: 100 });
     expect(red.items.every((i) => i.reason === "flag_red")).toBe(true);
     const first = await api.listReview(MOCK_ORG_ID, { status: "open", limit: 3 });

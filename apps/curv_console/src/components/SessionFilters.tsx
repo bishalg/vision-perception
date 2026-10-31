@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { en } from "@/messages/en";
-import { ATTENTION_FLAGS, QUALITY_VERDICTS, type SessionListQuery } from "@/lib/api";
+import { ATTENTION_FLAGS, QUALITY_VERDICTS, TRACKING_VERDICTS, type SessionListQuery } from "@/lib/api";
 
 const f = en.sessions.filters;
 
@@ -24,6 +24,15 @@ export function SessionFilters({ orgId, query }: { orgId: string; query: Session
           <option value="">{f.any}</option>
           {QUALITY_VERDICTS.map((x) => (
             <option key={x} value={x}>{x}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        {f.tracking}
+        <select name="tracking" defaultValue={query.tracking ?? ""}>
+          <option value="">{f.any}</option>
+          {TRACKING_VERDICTS.map((x) => (
+            <option key={x} value={x}>{en.detail.tracking.verdicts[x]}</option>
           ))}
         </select>
       </label>

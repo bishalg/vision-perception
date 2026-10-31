@@ -89,29 +89,112 @@ export type Metrics = z.infer<typeof metricsSchema>;
 
 /** `TrackingVerdict` (QS-4). */
 export const TRACKING_VERDICTS = ["good", "fair", "poor", "unusable"] as const;
+export type TrackingVerdict = (typeof TRACKING_VERDICTS)[number];
 
-/**
- * `SessionTrackingQuality`: the session's tracking-quality record (QS-1, snake_case). Rendering is
- * WP-G.12; the shape is kept loose below the top level (passthrough) so a later additive field does
- * not break parsing.
- */
-export const sessionTrackingQualitySchema = z
-  .object({
-    pipeline_version: z.string(),
-    params_version: z.string(),
-    device: z.object({ model_identifier: z.string() }).passthrough(),
-    calibration: z.object({ quality: z.string(), model: str }).passthrough(),
-    validation: z.object({ accuracy_deg: num }).passthrough().nullable().optional(),
-    drift_checks: z.array(z.object({ at_sec: z.number(), offset_deg: num }).passthrough()),
-    max_drift_deg: num,
-    recalibrations: z.array(z.object({ at_sec: z.number() }).passthrough()),
-    conditions: z.object({ distance_cm_median: num }).passthrough(),
-    loss: z.object({ track_loss_sec: z.number() }).passthrough(),
-    confidence: z.object({ mean_sample: z.number() }).passthrough(),
-    estimated_accuracy_deg: num,
-    verdict: z.enum(TRACKING_VERDICTS),
-  })
-  .passthrough();
+/** `CalibrationQuality`, `CalModelKind`, `RecalReason`, `GeometrySource`, `Orientation` (api-v1.json). */
+export const CALIBRATION_QUALITIES = ["good", "fair", "poor", "failed", "skipped"] as const;
+export const CAL_MODEL_KINDS = ["screenAffine", "angularAffine", "screenHomography", "screenPoly2"] as const;
+export const RECAL_REASONS = [
+  "calibrationQuality", "validationAccuracy", "drift", "poseShift", "orientationChanged", "calibrationAge",
+  "operatorRequest",
+] as const;
+export const GEOMETRY_SOURCES = ["table", "idiomDefault"] as const;
+export const ORIENTATIONS = ["portrait", "portraitUpsideDown", "landscapeLeft", "landscapeRight"] as const;
+
+const unit = z.number().min(0).max(1);
+
+/** `SessionTrackingQuality` and its parts: the session's tracking-quality record (QS-1, snake_case). */
+export const sessionCalibrationSchema = z.object({
+  layout_points: z.number().int(),
+  usable_points: z.number().int(),
+  missing_points: z.number().int(),
+  quality: z.enum(CALIBRATION_QUALITIES),
+  attempts: z.number().int(),
+  model: z.enum(CAL_MODEL_KINDS).nullable().optional(),
+  residual_deg: num,
+  loo_cv_deg: num,
+  condition_number: num,
+  age_sec_at_start: num,
+  pose: z
+    .object({ distance_cm: z.number(), yaw_deg: z.number(), pitch_deg: z.number() })
+    .nullable()
+    .optional(),
+});
+export const sessionValidationTargetSchema = z.object({
+  x_norm: z.number(),
+  y_norm: z.number(),
+  missed: z.boolean(),
+  accuracy_deg: num,
+  precision_rms_deg: num,
+  sd_deg: num,
+  data_loss: unit,
+  valid_samples: z.number().int().min(0),
+});
+export const sessionValidationSchema = z.object({
+  complete: z.boolean(),
+  data_loss: unit,
+  targets: z.array(sessionValidationTargetSchema),
+  accuracy_deg: num,
+  precision_rms_deg: num,
+  precision_rms_raw_deg: num,
+});
+export const sessionDriftCheckSchema = z.object({
+  at_sec: z.number(),
+  x_norm: z.number(),
+  y_norm: z.number(),
+  missed: z.boolean(),
+  offset_deg: num,
+  drift_deg: num,
+});
+export const sessionRecalibrationSchema = z.object({
+  at_sec: z.number(),
+  reason: z.enum(RECAL_REASONS),
+  new_quality: z.enum(CALIBRATION_QUALITIES),
+});
+export const sessionTrackingConditionsSchema = z.object({
+  distance_cm_median: num,
+  distance_cm_iqr: num,
+  head_speed_deg_per_sec_p90: num,
+  ambient_intensity_median: num,
+  light_asymmetry: num,
+  glasses: z.boolean().nullable().optional(),
+});
+export const sessionTrackingConfidenceSchema = z.object({
+  mean_sample: unit,
+  low_confidence_sample_ratio: unit,
+  mean_fixation: unit.nullable().optional(),
+});
+export const sessionTrackingDeviceSchema = z.object({
+  model_identifier: z.string(),
+  geometry_source: z.enum(GEOMETRY_SOURCES),
+  orientation: z.enum(ORIENTATIONS),
+  screen_width_mm: z.number(),
+  screen_height_mm: z.number(),
+  sample_rate_hz: num,
+});
+export const sessionTrackingLossSchema = z.object({
+  track_loss_sec: z.number(),
+  blink_sec: z.number(),
+  offscreen_sec: z.number(),
+  artifact_sec: z.number(),
+  gap_filled_sec: z.number(),
+  longest_gap_sec: z.number(),
+});
+export const sessionTrackingQualitySchema = z.object({
+  pipeline_version: z.string(),
+  params_version: z.string(),
+  device: sessionTrackingDeviceSchema,
+  calibration: sessionCalibrationSchema,
+  validation: sessionValidationSchema.nullable().optional(),
+  drift_checks: z.array(sessionDriftCheckSchema),
+  max_drift_deg: num,
+  recalibrations: z.array(sessionRecalibrationSchema),
+  conditions: sessionTrackingConditionsSchema,
+  loss: sessionTrackingLossSchema,
+  confidence: sessionTrackingConfidenceSchema,
+  estimated_accuracy_deg: num,
+  verdict: z.enum(TRACKING_VERDICTS),
+});
 export type SessionTrackingQuality = z.infer<typeof sessionTrackingQualitySchema>;
 
 export const sessionSummarySchema = z.object({
@@ -209,6 +292,8 @@ export const sessionFiltersSchema = z.object({
   to: z.string().optional(),
   bundle_version: z.string().optional(),
   reviewed: z.boolean().optional(),
+  /** QS-4 tracking verdict filter (`tracking=good|fair|poor|unusable`, WP-G.12). */
+  tracking: z.enum(TRACKING_VERDICTS).optional(),
 });
 export type SessionFilters = z.infer<typeof sessionFiltersSchema>;
 

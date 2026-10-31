@@ -1,5 +1,5 @@
 /** Parse and serialise the sessions list URL state (filters + cursor). Opaque ids only; no PHI in URLs. */
-import { ATTENTION_FLAGS, type AttentionFlag, type SessionListQuery } from "@/lib/api";
+import { ATTENTION_FLAGS, TRACKING_VERDICTS, type AttentionFlag, type SessionListQuery, type TrackingVerdict } from "@/lib/api";
 
 type Raw = Record<string, string | string[] | undefined>;
 
@@ -15,6 +15,8 @@ export function parseSessionQuery(raw: Raw): SessionListQuery {
   const q: SessionListQuery = {};
   const flag = one(raw, "flag");
   if (flag && (ATTENTION_FLAGS as readonly string[]).includes(flag)) q.flag = flag as AttentionFlag;
+  const tracking = one(raw, "tracking");
+  if (tracking && (TRACKING_VERDICTS as readonly string[]).includes(tracking)) q.tracking = tracking as TrackingVerdict;
   const quality = one(raw, "quality");
   if (quality) q.quality = quality.slice(0, 40);
   const from = one(raw, "from");

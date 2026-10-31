@@ -24,6 +24,7 @@ import {
   type TokenPair,
 } from "./types";
 import { createMockClinical } from "./mock/clinical";
+import { MOCK_TRACKING_CYCLE, mockTrackingQuality } from "./mock/tracking";
 
 /** Real orgs are UUIDs (CON-20); the mock uses a fixed one so URLs look like production. */
 export const MOCK_ORG_ID = "5f0e1d2c-3b4a-4968-8776-655443322110";
@@ -99,12 +100,16 @@ function buildFixtures(): { details: SessionDetail[]; clips: Map<string, ClipSco
     const id = `SESS-MOCK-${String(i + 1).padStart(4, "0")}`;
     const started = new Date(MOCK_FIXED_NOW - i * 7.3 * 3600_000).toISOString();
     const unreliable = flag === "unreliable";
+    // Every 3rd session is schema 1.7 with a tracking record; the rest are 1.6 (null tracking, SCH-4).
+    const trackingVerdict = i % 3 === 0 ? MOCK_TRACKING_CYCLE[(i / 3) % MOCK_TRACKING_CYCLE.length]! : null;
+    const duration = Math.round(150 + r() * 200);
+    const tracking = trackingVerdict ? mockTrackingQuality(trackingVerdict, duration) : null;
     details.push({
       id,
       org_id: MOCK_ORG_ID,
       ...participant(participants, Math.floor(r() * 18)),
       started_at: started,
-      duration_sec: Math.round(150 + r() * 200),
+      duration_sec: duration,
       battery: BATTERIES[Math.floor(r() * BATTERIES.length)]!,
       capture_source: SOURCES[Math.floor(r() * SOURCES.length)]!,
       quality_verdict: quality,
@@ -116,15 +121,19 @@ function buildFixtures(): { details: SessionDetail[]; clips: Map<string, ClipSco
       reviewed: r() > 0.6,
       age_pack: ["2-3y", "3-4y", "4-5y"][i % 3]!,
       lang: "en",
-      schema_version: "1.6",
+      schema_version: tracking ? "1.7" : "1.6",
       valid_frame_ratio: Math.round((0.5 + r() * 0.5) * 100) / 100,
-      calibrated_distance_cm: Math.round(40 + r() * 20),
+      // An "unusable" 1.7 session never calibrated, so it has no distance (shown as "Not measured").
+      calibrated_distance_cm: trackingVerdict === "unusable" ? null : Math.round(40 + r() * 20),
       social_preference: Math.round(r() * 100) / 100,
       eye_dwell: Math.round(r() * 100) / 100,
       mouth_dwell: Math.round(r() * 60) / 100,
       first_eye_latency_ms: Math.round(300 + r() * 900),
       affect: { engagement: Math.round(r() * 100) / 100 },
       report_pdf_available: !unreliable,
+      tracking_verdict: trackingVerdict,
+      tracking_accuracy_deg: tracking?.estimated_accuracy_deg ?? null,
+      tracking_quality: tracking,
     });
     clips.set(
       id,
@@ -202,6 +211,8 @@ function toSummary(d: SessionDetail): SessionSummary {
     bundle_version: d.bundle_version,
     device_id: d.device_id,
     reviewed: d.reviewed,
+    tracking_verdict: d.tracking_verdict,
+    tracking_accuracy_deg: d.tracking_accuracy_deg,
   };
 }
 
@@ -259,6 +270,7 @@ function validation(name: string, reason: string): ApiError {
 /** One review item per session at most, picked by the first matching rule (the backend may add several). */
 function reviewReasonFor(d: SessionDetail, i: number): ReviewReason | null {
   if (i % 11 === 5) return "manual";
+  if (d.tracking_verdict === "poor" || d.tracking_verdict === "unusable") return "low_tracking_quality";
   if (d.attention_flag === "red") return "flag_red";
   if (d.quality_verdict === "rejected" || d.quality_verdict === "degraded") return "low_quality";
   if (d.capture_source === "synthetic") return "norm_candidate";
@@ -399,6 +411,7 @@ export function createMockClient(): CurvApi & AuthApi {
         return (
           (!query.flag || d.attention_flag === query.flag) &&
           (!query.quality || d.quality_verdict === query.quality) &&
+          (!query.tracking || d.tracking_verdict === query.tracking) &&
           (!query.bundle_version || d.bundle_version === query.bundle_version) &&
           (query.reviewed === undefined || Boolean(d.reviewed) === query.reviewed) &&
           (from === undefined || t >= from) &&

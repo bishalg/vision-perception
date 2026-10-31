@@ -117,3 +117,24 @@ button.danger { background: var(--surface); color: var(--red); border-color: var
 .meaning { margin: .5rem 0; padding: .5rem .75rem; border-left: 4px solid var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
 button.secondary { background: var(--surface); color: var(--text); border-color: var(--border); }
 .signatures { padding-left: 1.25rem; }
+
+/* Tracking quality (WP-G.12). Text always accompanies colour. */
+.badge-trk-good { color: var(--green); }
+.badge-trk-fair { color: var(--yellow); }
+.badge-trk-poor, .badge-trk-unusable { color: var(--red); }
+.tracking { margin-top: 1.5rem; }
+.tracking h2, .tracking h3 { margin: 1rem 0 .5rem; }
+.lossbar { display: flex; height: 1.1rem; border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+.lossbar > span { display: block; min-width: 2px; }
+.lossbar .seg-tracked { background: var(--green); }
+.lossbar .seg-blink { background: var(--yellow); }
+.lossbar .seg-lost { background: var(--red); }
+.lossbar .seg-offscreen { background: var(--grey); }
+.lossbar .seg-artifact { background: #7a4fb5; }
+.legend { list-style: none; display: flex; flex-wrap: wrap; gap: .25rem 1rem; padding: 0; margin: .5rem 0 0; font-size: .85rem; }
+.drift-chart { width: 100%; max-width: 640px; height: auto; }
+.drift-chart .axis { stroke: var(--muted); stroke-width: 1; }
+.drift-chart .line { fill: none; stroke: var(--text, currentColor); stroke-width: 2; }
+.drift-chart .warn { stroke: var(--yellow); stroke-dasharray: 4 3; }
+.drift-chart .hard { stroke: var(--red); stroke-dasharray: 4 3; }
+.drift-chart text { font-size: 11px; fill: currentColor; }

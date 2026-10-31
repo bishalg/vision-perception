@@ -18,6 +18,22 @@ import {
   PROBLEM_SLUGS,
   QUALITY_VERDICTS,
   ROLES,
+  CALIBRATION_QUALITIES,
+  CAL_MODEL_KINDS,
+  GEOMETRY_SOURCES,
+  ORIENTATIONS,
+  RECAL_REASONS,
+  TRACKING_VERDICTS,
+  sessionCalibrationSchema,
+  sessionDriftCheckSchema,
+  sessionRecalibrationSchema,
+  sessionTrackingConditionsSchema,
+  sessionTrackingConfidenceSchema,
+  sessionTrackingDeviceSchema,
+  sessionTrackingLossSchema,
+  sessionTrackingQualitySchema,
+  sessionValidationSchema,
+  sessionValidationTargetSchema,
   REVIEW_REASONS,
   REVIEW_STATUSES,
   USER_STATUSES,
@@ -62,6 +78,16 @@ const OBJECT_SCHEMAS: Record<string, ZodType & { shape: Record<string, ZodType &
   Metrics: metricsSchema,
   SessionSummary: sessionSummarySchema,
   SessionDetail: sessionDetailSchema,
+  SessionTrackingQuality: sessionTrackingQualitySchema,
+  SessionCalibration: sessionCalibrationSchema,
+  SessionValidation: sessionValidationSchema,
+  SessionValidationTarget: sessionValidationTargetSchema,
+  SessionDriftCheck: sessionDriftCheckSchema,
+  SessionRecalibration: sessionRecalibrationSchema,
+  SessionTrackingConditions: sessionTrackingConditionsSchema,
+  SessionTrackingConfidence: sessionTrackingConfidenceSchema,
+  SessionTrackingDevice: sessionTrackingDeviceSchema,
+  SessionTrackingLoss: sessionTrackingLossSchema,
   ClipScore: clipScoreSchema,
   MetricRow: metricRowSchema,
   ClipList: clipListSchema,
@@ -83,7 +109,9 @@ const OBJECT_SCHEMAS: Record<string, ZodType & { shape: Record<string, ZodType &
  */
 const NO_PUBLISHED_EXAMPLES = new Set([
   "User", "Problem", "ReviewItem", "ReviewPage", "UpdateReviewRequest", "LabelInput", "Device", "DevicePage",
-  "EnrolCodeRequest",
+  "EnrolCodeRequest", "SessionTrackingQuality", "SessionCalibration", "SessionValidation",
+  "SessionValidationTarget", "SessionDriftCheck", "SessionRecalibration", "SessionTrackingConditions",
+  "SessionTrackingConfidence", "SessionTrackingDevice", "SessionTrackingLoss",
 ]);
 
 describe("api-v1.json contract", () => {
@@ -127,6 +155,27 @@ describe("api-v1.json contract", () => {
     expect([...PROBLEM_SLUGS]).toEqual(defs.ProblemSlug!.enum);
     expect([...REVIEW_REASONS]).toEqual(defs.ReviewReason!.enum);
     expect([...REVIEW_STATUSES]).toEqual(defs.ReviewStatus!.enum);
+    expect([...TRACKING_VERDICTS]).toEqual(defs.TrackingVerdict!.enum);
+    expect([...CALIBRATION_QUALITIES]).toEqual(defs.CalibrationQuality!.enum);
+    expect([...CAL_MODEL_KINDS]).toEqual(defs.CalModelKind!.enum);
+    expect([...RECAL_REASONS]).toEqual(defs.RecalReason!.enum);
+    expect([...GEOMETRY_SOURCES]).toEqual(defs.GeometrySource!.enum);
+    expect([...ORIENTATIONS]).toEqual(defs.Orientation!.enum);
+  });
+
+  it("SessionDetail is accepted with and without tracking_quality (1.6 sessions carry null)", () => {
+    const examples = defs.SessionDetail!.examples as Record<string, unknown>[];
+    expect(examples.some((e) => e.tracking_quality)).toBe(true);
+    expect(examples.some((e) => e.tracking_quality === null)).toBe(true);
+    for (const e of examples) {
+      const parsed = sessionDetailSchema.parse(e);
+      expect(parsed.tracking_quality ?? null).toEqual(e.tracking_quality ?? null);
+    }
+    const without = { ...examples.find((e) => e.tracking_quality)! };
+    delete without.tracking_quality;
+    expect(sessionDetailSchema.parse(without).tracking_quality).toBeUndefined();
+    const bad = { ...examples.find((e) => e.tracking_quality)!, tracking_quality: { verdict: "bogus" } };
+    expect(sessionDetailSchema.safeParse(bad).success).toBe(false);
   });
 
   it("review and device shapes the backend emits are accepted; out-of-contract values are not", () => {

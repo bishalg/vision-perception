@@ -36,7 +36,25 @@ test("filters live in the URL and narrow the table", async ({ page }) => {
   const org = await loginToOverview(page);
   await page.goto(`/${org}/sessions?flag=red`);
   await expect(page.getByLabel("Flag")).toHaveValue("red");
-  const badges = page.locator("table.data tbody tr .badge");
+  // Flag badges only: the tracking column has its own badges (`badge-trk-*`).
+  const badges = page.locator("table.data tbody tr .badge:not([class*='badge-trk'])");
   const n = await badges.count();
   for (let i = 0; i < n; i++) await expect(badges.nth(i)).toHaveText("Red");
+});
+
+test("tracking filter narrows the table; Quality tab shows the tracking section", async ({ page }) => {
+  const org = await loginToOverview(page);
+  await page.goto(`/${org}/sessions?tracking=poor`);
+  await expect(page.getByLabel("Tracking")).toHaveValue("poor");
+  const rows = page.locator("table.data tbody tr");
+  test.skip((await rows.count()) === 0, "no poor-tracking sessions in this org");
+  await expect(rows.locator(".badge-trk-poor")).toHaveCount(await rows.count());
+
+  await rows.first().getByRole("link").click();
+  await page.getByRole("navigation", { name: "Session sections" }).getByRole("link", { name: "Quality" }).click();
+  await expect(page.getByRole("heading", { name: "Tracking", exact: true })).toBeVisible();
+  await expect(page.getByText("Tracking verdict")).toBeVisible();
+  await expect(page.getByText("Estimated accuracy")).toBeVisible();
+  await expect(page.getByRole("img", { name: /Gaze offset in degrees/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Data loss by track state" })).toBeVisible();
 });

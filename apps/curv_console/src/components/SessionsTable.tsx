@@ -3,6 +3,7 @@ import { en } from "@/messages/en";
 import type { SessionSummary } from "@/lib/api";
 import { formatDateTime, formatDuration, formatNumber, formatPercent } from "@/lib/format";
 import { FlagBadge } from "./FlagBadge";
+import { TrackingBadge } from "./TrackingQuality";
 
 const c = en.sessions.cols;
 
@@ -19,6 +20,7 @@ export function SessionsTable({ orgId, sessions }: { orgId: string; sessions: Se
             <th scope="col" className="num">{c.composite}</th>
             <th scope="col" className="num">{c.confidence}</th>
             <th scope="col">{c.quality}</th>
+            <th scope="col">{c.tracking}</th>
             <th scope="col" className="num">{c.duration}</th>
             <th scope="col">{c.bundle}</th>
             <th scope="col">{c.reviewed}</th>
@@ -37,6 +39,10 @@ export function SessionsTable({ orgId, sessions }: { orgId: string; sessions: Se
               <td data-label={c.composite} className="num">{formatNumber(s.composite_score)}</td>
               <td data-label={c.confidence} className="num">{formatPercent(s.composite_confidence)}</td>
               <td data-label={c.quality}>{s.quality_verdict}</td>
+              <td data-label={c.tracking}>
+                <TrackingBadge verdict={s.tracking_verdict} />
+                {s.tracking_accuracy_deg != null ? ` ${en.detail.tracking.deg(s.tracking_accuracy_deg)}` : ""}
+              </td>
               <td data-label={c.duration} className="num">{formatDuration(s.duration_sec)}</td>
               <td data-label={c.bundle}>{s.bundle_version ?? "-"}</td>
               <td data-label={c.reviewed}>{s.reviewed ? "Yes" : "No"}</td>
