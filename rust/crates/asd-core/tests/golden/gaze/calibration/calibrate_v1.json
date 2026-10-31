@@ -1,0 +1,63 @@
+{
+  "schema": "asd-golden/1",
+  "function": "calibrate",
+  "note": "WP-G.2. Hand-built: targets are exact images of the raw points under a stated transform, so the expected residual and LOO-CV are 0 and the probes follow from the transform. Geometry: 100 x 200 mm portrait panel (tests/gaze_calibration.rs test_geo). Points are CalPoint (camelCase).",
+  "vectors": [
+    {
+      "name": "swift_offset_bias_screen_affine",
+      "transform": "target = raw - (0.12, -0.08) (GazeCalibrationProfileTests.testFitCorrectsConstantOffsetBias, inverted)",
+      "input": {
+        "params": {},
+        "points": [
+          { "targetNorm": [0.50, 0.50], "rawNorm": [0.62, 0.42], "eyePosMm": [50.0, 100.0, 400.0] },
+          { "targetNorm": [0.22, 0.24], "rawNorm": [0.34, 0.16], "eyePosMm": [50.0, 100.0, 400.0] },
+          { "targetNorm": [0.78, 0.24], "rawNorm": [0.90, 0.16], "eyePosMm": [50.0, 100.0, 400.0] },
+          { "targetNorm": [0.22, 0.76], "rawNorm": [0.34, 0.68], "eyePosMm": [50.0, 100.0, 400.0] },
+          { "targetNorm": [0.78, 0.76], "rawNorm": [0.90, 0.68], "eyePosMm": [50.0, 100.0, 400.0] }
+        ]
+      },
+      "expected": {
+        "model": "screenAffine",
+        "quality": "good",
+        "residualDeg": 0.0,
+        "looCvDeg": 0.0,
+        "tolerance": 1e-9,
+        "probes": [
+          { "raw": [0.62, 0.42], "calibrated": [0.50, 0.50] },
+          { "raw": [0.0, 0.0], "calibrated": [-0.12, 0.08] },
+          { "raw": [1.2, 1.1], "calibrated": [1.08, 1.18] }
+        ]
+      }
+    },
+    {
+      "name": "nine_point_poly2_auto_select",
+      "transform": "target = (x + 0.3 x y, y + 0.3 x^2); autoSelect on: poly2 is exact, beats screenAffine by more than 0.3 deg",
+      "input": {
+        "params": { "autoSelect": true },
+        "points": [
+          { "targetNorm": [0.575, 0.575], "rawNorm": [0.5, 0.5], "eyePosMm": [50.0, 100.0, 400.0] },
+          { "targetNorm": [0.12432, 0.12432], "rawNorm": [0.12, 0.12], "eyePosMm": [50.0, 100.0, 400.0] },
+          { "targetNorm": [0.91168, 0.35232], "rawNorm": [0.88, 0.12], "eyePosMm": [50.0, 100.0, 400.0] },
+          { "targetNorm": [0.15168, 0.88432], "rawNorm": [0.12, 0.88], "eyePosMm": [50.0, 100.0, 400.0] },
+          { "targetNorm": [1.11232, 1.11232], "rawNorm": [0.88, 0.88], "eyePosMm": [50.0, 100.0, 400.0] },
+          { "targetNorm": [0.518, 0.195], "rawNorm": [0.5, 0.12], "eyePosMm": [50.0, 100.0, 400.0] },
+          { "targetNorm": [0.138, 0.50432], "rawNorm": [0.12, 0.5], "eyePosMm": [50.0, 100.0, 400.0] },
+          { "targetNorm": [1.012, 0.73232], "rawNorm": [0.88, 0.5], "eyePosMm": [50.0, 100.0, 400.0] },
+          { "targetNorm": [0.632, 0.955], "rawNorm": [0.5, 0.88], "eyePosMm": [50.0, 100.0, 400.0] }
+        ]
+      },
+      "expected": {
+        "model": "screenPoly2",
+        "quality": "good",
+        "residualDeg": 0.0,
+        "looCvDeg": 0.0,
+        "tolerance": 1e-9,
+        "probes": [
+          { "raw": [0.3, 0.6], "calibrated": [0.354, 0.627] },
+          { "raw": [0.0, 0.0], "calibrated": [0.0, 0.0] },
+          { "raw": [1.0, 1.0], "calibrated": [1.3, 1.3] }
+        ]
+      }
+    }
+  ]
+}
