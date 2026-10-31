@@ -156,7 +156,12 @@ fn score_session_rejects_malformed_json() {
 
 #[test]
 fn format_scored_at_matches_golden_vectors() {
-    for (name, input, expected) in vectors("scoring/scored_at_v1.json") {
+    let all = [
+        vectors("scoring/scored_at_v1.json"),
+        // Millisecond rounding before truncation (fraction >= 0.9995 s), WP-A.11 follow-up.
+        vectors("scoring/scored_at_ms_rounding_v1.json"),
+    ];
+    for (name, input, expected) in all.into_iter().flatten() {
         let unix = input["unixSeconds"]
             .as_f64()
             .unwrap_or_else(|| panic!("{name}: {input}"));

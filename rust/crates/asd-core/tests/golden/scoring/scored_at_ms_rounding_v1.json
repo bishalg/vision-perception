@@ -1,0 +1,68 @@
+{
+  "derivation" : "Generated on macOS 27.2 with swiftc: print(ISO8601DateFormatter().string(from: Date(timeIntervalSince1970: unixSeconds))). Foundation (CFDateFormatter) converts the instant to ICU milliseconds as (t + 978307200) * 1000 + 0.5 and ICU floors, so a fraction >= 0.9995 s rounds up to the next second before the whole-second format. A 35191-value grid around every .0005/.4995/.9995 edge was checked against the Rust port; these vectors are a readable subset. Follow-up of WP-A.11.",
+  "function" : "format_scored_at",
+  "schema" : "asd-golden/1",
+  "source" : "PerVideoScoringEngine.score: ISO8601DateFormatter().string(from: scoredAt)",
+  "vectors" : [
+    {
+      "expected" : { "scoredAtUtc" : "1970-01-01T00:00:00Z" },
+      "input" : { "unixSeconds" : 0.9994 },
+      "name" : "epoch_fraction_0.9994_stays"
+    },
+    {
+      "expected" : { "scoredAtUtc" : "1970-01-01T00:00:01Z" },
+      "input" : { "unixSeconds" : 0.9995 },
+      "name" : "epoch_fraction_0.9995_rounds_up"
+    },
+    {
+      "expected" : { "scoredAtUtc" : "2026-10-24T00:00:00Z" },
+      "input" : { "unixSeconds" : 1792800000.9994 },
+      "name" : "fraction_0.9994_stays"
+    },
+    {
+      "expected" : { "scoredAtUtc" : "2026-10-24T00:00:01Z" },
+      "input" : { "unixSeconds" : 1792800000.9995 },
+      "name" : "fraction_0.9995_rounds_up"
+    },
+    {
+      "expected" : { "scoredAtUtc" : "2026-10-24T00:00:01Z" },
+      "input" : { "unixSeconds" : 1792800000.9999 },
+      "name" : "fraction_0.9999_rounds_up"
+    },
+    {
+      "expected" : { "scoredAtUtc" : "2026-10-24T00:00:00Z" },
+      "input" : { "unixSeconds" : 1792800000.5 },
+      "name" : "half_second_truncates"
+    },
+    {
+      "expected" : { "scoredAtUtc" : "1970-01-01T00:01:00Z" },
+      "input" : { "unixSeconds" : 59.9995 },
+      "name" : "minute_rollover"
+    },
+    {
+      "expected" : { "scoredAtUtc" : "1970-01-02T00:00:00Z" },
+      "input" : { "unixSeconds" : 86399.9995 },
+      "name" : "day_rollover"
+    },
+    {
+      "expected" : { "scoredAtUtc" : "2028-02-29T00:00:00Z" },
+      "input" : { "unixSeconds" : 1835395199.9995 },
+      "name" : "rollover_into_leap_day"
+    },
+    {
+      "expected" : { "scoredAtUtc" : "1970-01-01T00:00:00Z" },
+      "input" : { "unixSeconds" : -0.0005 },
+      "name" : "pre_epoch_half_ms_rounds_to_epoch"
+    },
+    {
+      "expected" : { "scoredAtUtc" : "1969-12-31T23:59:59Z" },
+      "input" : { "unixSeconds" : -0.0006 },
+      "name" : "pre_epoch_0.0006"
+    },
+    {
+      "expected" : { "scoredAtUtc" : "1969-12-31T23:59:59Z" },
+      "input" : { "unixSeconds" : -1.0005 },
+      "name" : "pre_epoch_minus_1.0005"
+    }
+  ]
+}

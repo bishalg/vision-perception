@@ -335,10 +335,23 @@ fn swift_max(x: f64, y: f64) -> f64 {
     }
 }
 
+/// Seconds between the Unix epoch and Foundation's reference date (2001-01-01).
+const FOUNDATION_REFERENCE_OFFSET_SEC: f64 = 978_307_200.0;
+
 /// Formats an instant like Swift `ISO8601DateFormatter().string(from:)` with default
-/// options: UTC, whole seconds (fractions floored), `YYYY-MM-DDTHH:MM:SSZ`.
+/// options: UTC, whole seconds, `YYYY-MM-DDTHH:MM:SSZ`.
+///
+/// Foundation first rounds to milliseconds and then drops the fraction, so a fraction of
+/// 0.9995 s or more shows the next second. The arithmetic follows `CFDateFormatter`:
+/// `Date(timeIntervalSince1970:)` stores the time since the reference date, which becomes
+/// ICU milliseconds as `(t + 978307200) * 1000 + 0.5`, floored by ICU (golden
+/// `scored_at_ms_rounding_v1.json`). The round trip through the reference date is kept on
+/// purpose: near the epoch it loses low bits, and Swift's output depends on that.
 pub fn format_scored_at(unix_seconds: f64) -> String {
-    let secs = unix_seconds.floor() as i64;
+    let since_reference = unix_seconds - FOUNDATION_REFERENCE_OFFSET_SEC;
+    let icu_ms = ((since_reference + FOUNDATION_REFERENCE_OFFSET_SEC) * 1000.0 + 0.5).floor();
+    // `as` saturates out-of-range values and maps NaN to 0: never a panic.
+    let secs = (icu_ms as i64).div_euclid(1000);
     let days = secs.div_euclid(86_400);
     let tod = secs.rem_euclid(86_400);
     let (year, month, day) = civil_from_days(days);

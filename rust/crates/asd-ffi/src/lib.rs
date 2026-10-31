@@ -24,6 +24,8 @@ use serde::Serialize;
 
 uniffi::setup_scaffolding!("asd_core");
 
+pub mod gaze;
+
 /// The single error type of the boundary. The variant is the kind; `message` is for logs
 /// and never contains document contents beyond a serde position hint.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]

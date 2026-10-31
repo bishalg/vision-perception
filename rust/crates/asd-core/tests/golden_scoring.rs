@@ -179,6 +179,17 @@ fn golden_format_scored_at() {
     }
 }
 
+/// Foundation rounds to milliseconds before the whole-second format (fraction >= 0.9995 s
+/// shows the next second); WP-A.11 follow-up.
+#[test]
+fn golden_format_scored_at_ms_rounding() {
+    for v in load("scored_at_ms_rounding_v1.json", "format_scored_at") {
+        let secs = v.input["unixSeconds"].as_f64().unwrap();
+        let actual = json!({ "scoredAtUtc": scoring::format_scored_at(secs) });
+        assert_close(&actual, &v.expected, &v.name);
+    }
+}
+
 #[test]
 fn golden_validate_baselines() {
     for v in load("validate_baselines_v1.json", "validate_baselines") {
