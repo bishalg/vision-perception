@@ -454,7 +454,14 @@ async fn file(
     )
     .ok_or(AppError::Forbidden)?;
     let key = ensure_downloadable(&row)?;
-    let blob = state.blobs.get(&key).await?.ok_or(expired())?;
+    // `ensure_downloadable` already refused an expired export, so a missing artifact here is
+    // a server fault (lost blob, or a worker on a separate in-memory store), not "expired".
+    let blob = state.blobs.get(&key).await?.ok_or_else(|| {
+        AppError::Internal(format!(
+            "export {} artifact missing from the blob store",
+            row.id
+        ))
+    })?;
     let file_name = row.file_name.unwrap_or_else(|| "export.bin".into());
     let mut response = Response::new(Body::from(blob.bytes));
     let h = response.headers_mut();

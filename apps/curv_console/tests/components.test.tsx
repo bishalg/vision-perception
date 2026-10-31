@@ -96,12 +96,16 @@ describe("components", () => {
     expect(within(body[0]!).getByText(clips[0]!.clip_id)).toBeInTheDocument();
   });
 
-  it("ReportPanel offers a download only when a report exists", async () => {
+  it("ReportPanel offers the server-rendered report for live captures, not for simulated or synthetic ones", async () => {
     const s = await createMockClient().getSession("SESS-MOCK-0001");
-    const { rerender } = render(<ReportPanel session={{ ...s, report_pdf_available: true }} />);
+    const { rerender } = render(<ReportPanel session={{ ...s, capture_source: "truedepth", report_pdf_available: false }} />);
     expect(screen.getByRole("link", { name: "Download PDF report" })).toHaveAttribute("href", "/api/report/SESS-MOCK-0001");
-    rerender(<ReportPanel session={{ ...s, report_pdf_available: false }} />);
+    rerender(<ReportPanel session={{ ...s, capture_source: "synthetic", report_pdf_available: false }} />);
     expect(screen.queryByRole("link")).toBeNull();
+    rerender(<ReportPanel session={{ ...s, capture_source: "simulated", report_pdf_available: null }} />);
+    expect(screen.queryByRole("link")).toBeNull();
+    rerender(<ReportPanel session={{ ...s, capture_source: "simulated", report_pdf_available: true }} />);
+    expect(screen.getByRole("link", { name: "Download PDF report" })).toBeVisible();
   });
 
   it("LoginForm shows an error returned by the action and submits credentials", async () => {

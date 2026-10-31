@@ -133,6 +133,13 @@ async fn worker(config: Config) -> Result<(), String> {
     let pool = db::connect_lazy(&config).map_err(|e| format!("database url: {e}"))?;
     // WP-B.5: the job loop (`jobs::runner`, `FOR UPDATE SKIP LOCKED` on `jobs`). WP-I.6:
     // the worker gets the same blob store, keyring and config as the API (JobContext).
+    if config.blob_backend == asd_backend::config::BlobBackend::Memory {
+        // The in-memory store is per process: artifacts this worker writes (exports) are
+        // invisible to `serve`, so their downloads fail. Use S3 (or MinIO) for exports.
+        tracing::warn!(
+            "ASD_BLOB_BACKEND=memory in a separate worker process: export artifacts will not be downloadable from the API; use s3"
+        );
+    }
     let blobs = app::build_blob_store(&config).await;
     let ctx = asd_backend::jobs::JobContext::from_state(&app::AppState::new(pool, blobs, config));
     let worker_id = format!("worker-{}", uuid::Uuid::new_v4().simple());

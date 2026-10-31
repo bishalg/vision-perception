@@ -27,9 +27,8 @@ test("sessions table -> session detail with Clips, Quality and Report tabs", asy
 
   await tabs.getByRole("link", { name: "Report" }).click();
   await expect(page).toHaveURL(/tab=report/);
-  await expect(
-    page.getByRole("link", { name: "Download PDF report" }).or(page.getByText("No report is available for this session.")),
-  ).toBeVisible();
+  // A live (TrueDepth) capture always has a server-rendered report.
+  await expect(page.getByRole("link", { name: "Download PDF report" })).toBeVisible();
 });
 
 test("filters live in the URL and narrow the table", async ({ page }) => {

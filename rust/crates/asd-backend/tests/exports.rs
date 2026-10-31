@@ -274,6 +274,23 @@ async fn download_urls_are_audited_short_lived_and_org_scoped() {
     let (_, owner) = c.token(Role::Owner).await;
     assert_eq!(download(&c, &ident, &owner).await.0, StatusCode::OK);
 
+    // A succeeded, unexpired export whose artifact is gone (lost blob, or a worker on a
+    // separate in-memory store) is a server fault: 500, never 410 export-expired.
+    let ident_id: Uuid = ident["id"].as_str().unwrap().parse().unwrap();
+    let ident_key: String = sqlx::query_scalar("SELECT blob_key FROM exports WHERE id = $1")
+        .bind(ident_id)
+        .fetch_one(&c.db.pool)
+        .await
+        .unwrap();
+    c.state.blobs.delete(&ident_key).await.unwrap();
+    let (s, ident_url) = download(&c, &ident, &clin).await;
+    assert_eq!(s, StatusCode::OK);
+    let ident_link = ident_url["url"].as_str().unwrap().to_owned();
+    assert_eq!(
+        raw_get(&c, &ident_link).await.0,
+        StatusCode::INTERNAL_SERVER_ERROR
+    );
+
     // Past expires_at: 410 export-expired, for the URL and for an issued link.
     sqlx::query("UPDATE exports SET expires_at = now() - interval '1 minute' WHERE id = $1")
         .bind(done["id"].as_str().unwrap().parse::<Uuid>().unwrap())
