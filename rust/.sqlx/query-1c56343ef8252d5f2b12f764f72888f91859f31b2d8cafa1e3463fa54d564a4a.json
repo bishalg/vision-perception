@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE clinical_review_versions SET\n               disposition = $2, impression_ct = $3, impression_key_id = $4,\n               recommendations_ct = $5, recommendations_key_id = $6, content_hash = $7,\n               updated_by = $8, updated_at = now()\n           WHERE id = $1 AND status = 'draft'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Bytea",
+        "Uuid",
+        "Bytea",
+        "Uuid",
+        "Bytea",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1c56343ef8252d5f2b12f764f72888f91859f31b2d8cafa1e3463fa54d564a4a"
+}

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE clinical_reviews SET state = $2, assigned_to = COALESCE($3, assigned_to),\n               row_version = row_version + 1, updated_at = now()\n           WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9548ad7a24fc75f3fe3466e0fa9051aa13c58b9e6c0653af4ec757af435e2fe4"
+}

@@ -10,12 +10,14 @@ pub mod audit;
 pub mod auth;
 pub mod blob;
 pub mod care;
+pub mod clinical; // WP-C.10
 pub mod config;
 pub mod config_docs;
 pub mod crypto;
 pub mod db;
 pub mod error;
 pub mod ingest;
+pub mod interop; // WP-C.10
 pub mod jobs;
 pub mod problem;
 pub mod read;

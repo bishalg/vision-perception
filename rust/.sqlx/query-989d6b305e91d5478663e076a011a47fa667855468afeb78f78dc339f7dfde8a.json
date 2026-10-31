@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*) AS \"n!\"\n           FROM sessions s\n           LEFT JOIN clinical_reviews cr ON cr.session_id = s.id\n           WHERE s.org_id = $1\n             AND (cr.state IS NULL OR cr.state <> 'final')\n             AND (NOT $2::bool OR s.attention_flag = ANY($3::text[]))\n             AND ($4::bool OR s.capture_source <> 'synthetic')\n             AND ($5::text IS NULL OR COALESCE(cr.state, 'open') = $5)\n             AND ($6::text IS NULL OR s.attention_flag = $6)\n             AND ($7::text = 'any'\n                  OR ($7 = 'me' AND cr.assigned_to = $8)\n                  OR ($7 = 'unassigned' AND cr.assigned_to IS NULL))\n             AND ($9::timestamptz IS NULL OR s.received_at >= $9)\n             AND ($10::timestamptz IS NULL OR s.received_at <= $10)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "n!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool",
+        "TextArray",
+        "Bool",
+        "Text",
+        "Text",
+        "Text",
+        "Uuid",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "989d6b305e91d5478663e076a011a47fa667855468afeb78f78dc339f7dfde8a"
+}

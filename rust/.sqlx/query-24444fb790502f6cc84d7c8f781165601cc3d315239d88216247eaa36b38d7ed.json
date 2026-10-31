@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE clinical_reviews SET state = $2, cosign_required = $3,\n               row_version = row_version + 1, updated_at = now()\n           WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "24444fb790502f6cc84d7c8f781165601cc3d315239d88216247eaa36b38d7ed"
+}

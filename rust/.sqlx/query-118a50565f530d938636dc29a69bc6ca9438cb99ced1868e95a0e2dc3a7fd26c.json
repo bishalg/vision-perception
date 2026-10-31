@@ -1,0 +1,184 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, version_no, status, disposition, impression_ct, impression_key_id,\n                  recommendations_ct, recommendations_key_id, amend_reason_ct,\n                  amend_reason_key_id, content_hash, created_by, created_at, signed_at\n           FROM clinical_review_versions WHERE review_id = $1\n           ORDER BY version_no DESC LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "clinical_review_versions",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "version_no",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "clinical_review_versions",
+            "name": "version_no"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "clinical_review_versions",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "disposition",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "clinical_review_versions",
+            "name": "disposition"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "impression_ct",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "clinical_review_versions",
+            "name": "impression_ct"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "impression_key_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "clinical_review_versions",
+            "name": "impression_key_id"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "recommendations_ct",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "clinical_review_versions",
+            "name": "recommendations_ct"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "recommendations_key_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "clinical_review_versions",
+            "name": "recommendations_key_id"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "amend_reason_ct",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "clinical_review_versions",
+            "name": "amend_reason_ct"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "amend_reason_key_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "clinical_review_versions",
+            "name": "amend_reason_key_id"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "content_hash",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "clinical_review_versions",
+            "name": "content_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "created_by",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "clinical_review_versions",
+            "name": "created_by"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "clinical_review_versions",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "signed_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "clinical_review_versions",
+            "name": "signed_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "118a50565f530d938636dc29a69bc6ca9438cb99ced1868e95a0e2dc3a7fd26c"
+}

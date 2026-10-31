@@ -1,0 +1,124 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT s.id, v.version_no, s.role, s.signer_id, s.signer_display_name,\n                  s.signer_registration, s.meaning, s.content_hash, s.signed_at\n           FROM clinical_signatures s JOIN clinical_review_versions v ON v.id = s.version_id\n           WHERE s.review_id = $1\n           ORDER BY s.signed_at, v.version_no, s.role DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "clinical_signatures",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "version_no",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "clinical_review_versions",
+            "name": "version_no"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "role",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "clinical_signatures",
+            "name": "role"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "signer_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "clinical_signatures",
+            "name": "signer_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "signer_display_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "clinical_signatures",
+            "name": "signer_display_name"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "signer_registration",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "clinical_signatures",
+            "name": "signer_registration"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "meaning",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "clinical_signatures",
+            "name": "meaning"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "content_hash",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "clinical_signatures",
+            "name": "content_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "signed_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "clinical_signatures",
+            "name": "signed_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "c43da13d55333cd018b59210c6fb26a51c8a29d5f8992662d4e59be2634a821b"
+}

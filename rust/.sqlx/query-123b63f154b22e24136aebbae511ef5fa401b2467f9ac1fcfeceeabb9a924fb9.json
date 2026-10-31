@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE clinical_review_versions\n           SET status = 'signed', content_hash = $2, signed_at = now(), updated_by = $3,\n               updated_at = now()\n           WHERE id = $1 AND status = 'draft'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bytea",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "123b63f154b22e24136aebbae511ef5fa401b2467f9ac1fcfeceeabb9a924fb9"
+}

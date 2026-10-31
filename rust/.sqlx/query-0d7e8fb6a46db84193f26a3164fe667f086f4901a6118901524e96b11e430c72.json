@@ -1,0 +1,208 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, org_id, attention_flag, bundle_version, schema_version, started_at,\n                  duration_sec, quality_verdict, composite_score, composite_confidence,\n                  valid_frame_ratio, calibrated_distance_cm, social_preference, eye_dwell,\n                  mouth_dwell, first_eye_latency_ms\n           FROM sessions WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "org_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "org_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "attention_flag",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "attention_flag"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "bundle_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "bundle_version"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "schema_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "schema_version"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "started_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "started_at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "duration_sec",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "duration_sec"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "quality_verdict",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "quality_verdict"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "composite_score",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "composite_score"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "composite_confidence",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "composite_confidence"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "valid_frame_ratio",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "valid_frame_ratio"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "calibrated_distance_cm",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "calibrated_distance_cm"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "social_preference",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "social_preference"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "eye_dwell",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "eye_dwell"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "mouth_dwell",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "mouth_dwell"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "first_eye_latency_ms",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "first_eye_latency_ms"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "0d7e8fb6a46db84193f26a3164fe667f086f4901a6118901524e96b11e430c72"
+}

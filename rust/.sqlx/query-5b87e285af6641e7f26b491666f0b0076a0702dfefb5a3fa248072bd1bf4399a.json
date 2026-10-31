@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO clinical_reviews (org_id, session_id, assigned_to, cosign_required, created_by)\n           VALUES ($1, $2, $3, $4, $5)\n           ON CONFLICT (session_id) DO NOTHING\n           RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "clinical_reviews",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Bool",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "5b87e285af6641e7f26b491666f0b0076a0702dfefb5a3fa248072bd1bf4399a"
+}

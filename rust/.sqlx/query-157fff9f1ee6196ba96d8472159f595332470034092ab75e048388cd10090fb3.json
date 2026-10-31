@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO clinical_review_versions\n               (id, review_id, org_id, version_no, status, disposition, impression_ct,\n                impression_key_id, recommendations_ct, recommendations_key_id,\n                amend_reason_ct, amend_reason_key_id, content_hash, created_by, updated_by)\n           VALUES ($1, $2, $3, $4, 'draft', $5, $6, $7, $8, $9, $10, $11, $12, $13, $13)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Int4",
+        "Text",
+        "Bytea",
+        "Uuid",
+        "Bytea",
+        "Uuid",
+        "Bytea",
+        "Uuid",
+        "Bytea",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "157fff9f1ee6196ba96d8472159f595332470034092ab75e048388cd10090fb3"
+}

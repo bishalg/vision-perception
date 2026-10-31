@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE clinical_reviews SET state = $2, row_version = row_version + 1,\n               updated_at = now()\n           WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "774544818265d319c955d8f1078423fc84992e13afffcdd3abd68d6ab87bbb0c"
+}
