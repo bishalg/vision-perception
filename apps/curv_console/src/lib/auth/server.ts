@@ -1,8 +1,18 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { getApi, type CurvApi } from "@/lib/api";
-import { ACCESS_COOKIE, ORG_COOKIE, REFRESH_COOKIE, SESSION_COOKIE_NAMES, cookieSecure, sessionCookies } from "./cookies";
+import { getApi, type CurvApi, type Role } from "@/lib/api";
+import { RECENT_ORGS_COOKIE, parseRecentOrgs } from "@/lib/orgs";
+import {
+  ACCESS_COOKIE,
+  ORG_COOKIE,
+  REFRESH_COOKIE,
+  ROLE_COOKIE,
+  SESSION_COOKIE_NAMES,
+  cookieSecure,
+  readRole,
+  sessionCookies,
+} from "./cookies";
 import type { TokenPair } from "@/lib/api";
 
 export async function writeSession(pair: TokenPair): Promise<void> {
@@ -16,6 +26,17 @@ export async function writeSession(pair: TokenPair): Promise<void> {
 export async function clearSession(): Promise<void> {
   const jar = await cookies();
   for (const name of SESSION_COOKIE_NAMES) jar.delete(name);
+  jar.delete(RECENT_ORGS_COOKIE);
+}
+
+/** The signed-in role, for hiding controls only (the backend enforces RBAC). */
+export async function currentRole(): Promise<Role | undefined> {
+  return readRole((await cookies()).get(ROLE_COOKIE)?.value);
+}
+
+/** Orgs visited recently (most recent first), maintained by proxy.ts. */
+export async function recentOrgs(): Promise<string[]> {
+  return parseRecentOrgs((await cookies()).get(RECENT_ORGS_COOKIE)?.value);
 }
 
 export async function readRefreshToken(): Promise<string | undefined> {

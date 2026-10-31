@@ -18,17 +18,27 @@ import {
   PROBLEM_SLUGS,
   QUALITY_VERDICTS,
   ROLES,
+  REVIEW_REASONS,
+  REVIEW_STATUSES,
   USER_STATUSES,
   clipListSchema,
   clipScoreSchema,
+  deviceSchema,
+  devicePageSchema,
+  enrolCodeRequestSchema,
+  enrolCodeResponseSchema,
+  labelInputSchema,
   metricRowSchema,
   metricsSchema,
   orgSchema,
   problemSchema,
+  reviewItemSchema,
+  reviewPageSchema,
   sessionDetailSchema,
   sessionPageSchema,
   sessionSummarySchema,
   tokenPairSchema,
+  updateReviewRequestSchema,
   userSchema,
 } from "./types";
 
@@ -56,7 +66,25 @@ const OBJECT_SCHEMAS: Record<string, ZodType & { shape: Record<string, ZodType &
   MetricRow: metricRowSchema,
   ClipList: clipListSchema,
   Problem: problemSchema,
+  ReviewItem: reviewItemSchema,
+  ReviewPage: reviewPageSchema,
+  UpdateReviewRequest: updateReviewRequestSchema,
+  LabelInput: labelInputSchema,
+  Device: deviceSchema,
+  DevicePage: devicePageSchema,
+  EnrolCodeRequest: enrolCodeRequestSchema,
+  EnrolCodeResponse: enrolCodeResponseSchema,
 } as never;
+
+/**
+ * Types the contract publishes without `examples` (request bodies, envelopes, and the review/device items
+ * that WP-B.3 has not given examples yet). Their properties and required members are still checked, and the
+ * fixtures below stand in for examples.
+ */
+const NO_PUBLISHED_EXAMPLES = new Set([
+  "User", "Problem", "ReviewItem", "ReviewPage", "UpdateReviewRequest", "LabelInput", "Device", "DevicePage",
+  "EnrolCodeRequest",
+]);
 
 describe("api-v1.json contract", () => {
   it("is a generated document with $defs", () => {
@@ -68,7 +96,7 @@ describe("api-v1.json contract", () => {
     it(`${name}: zod accepts every published example`, () => {
       expect(def, `${name} missing from api-v1.json`).toBeDefined();
       const examples = def!.examples ?? [];
-      if (name !== "User" && name !== "Problem") expect(examples.length).toBeGreaterThan(0);
+      if (!NO_PUBLISHED_EXAMPLES.has(name)) expect(examples.length).toBeGreaterThan(0);
       for (const example of examples) expect(schema.parse(example)).toBeTruthy();
     });
 
@@ -97,6 +125,26 @@ describe("api-v1.json contract", () => {
     expect([...QUALITY_VERDICTS]).toEqual(defs.GazeQualityVerdict!.enum);
     expect([...USER_STATUSES]).toEqual(defs.UserStatus!.enum);
     expect([...PROBLEM_SLUGS]).toEqual(defs.ProblemSlug!.enum);
+    expect([...REVIEW_REASONS]).toEqual(defs.ReviewReason!.enum);
+    expect([...REVIEW_STATUSES]).toEqual(defs.ReviewStatus!.enum);
+  });
+
+  it("review and device shapes the backend emits are accepted; out-of-contract values are not", () => {
+    const item = {
+      id: "6a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", org_id: "o", session_id: "S1", reason: "flag_red",
+      status: "open", created_at: "2026-10-30T09:00:00.000Z", assigned_to: null, decision: null,
+      decided_by: null, decided_at: null,
+    };
+    expect(reviewPageSchema.parse({ items: [item], next_cursor: null, total: 1 }).items[0]!.reason).toBe("flag_red");
+    expect(reviewItemSchema.safeParse({ ...item, reason: "quality_low" }).success).toBe(false);
+    expect(reviewItemSchema.safeParse({ ...item, status: "closed" }).success).toBe(false);
+    const device = {
+      id: "d", org_id: "o", platform: "ios", app_version: "1.4.0", enrolled_at: "2026-10-30T09:00:00.000Z",
+      label: null, revoked_at: null, last_seen_at: null, config_bundle_version: null,
+    };
+    expect(devicePageSchema.parse({ items: [device], next_cursor: null, total: null }).items).toHaveLength(1);
+    expect(updateReviewRequestSchema.parse({ status: "done", labels: [{ key: "k", value: true }] }).labels).toHaveLength(1);
+    expect(labelInputSchema.safeParse({ key: "k" }).success).toBe(false);
   });
 
   it("User.org_id is null for the superadmin (no org) and a string otherwise", () => {
@@ -110,7 +158,8 @@ describe("api-v1.json contract", () => {
     const ex = defs.SessionSummary!.examples![0] as Record<string, unknown>;
     expect(sessionSummarySchema.safeParse({ ...ex, attention_flag: "orange" }).success).toBe(false);
     expect(sessionSummarySchema.safeParse({ ...ex, capture_source: "mocked" }).success).toBe(false);
-    const { participant_token: _omit, ...noToken } = ex;
+    const noToken = { ...ex };
+    delete noToken.participant_token;
     expect(sessionSummarySchema.safeParse(noToken).success).toBe(false);
   });
 
@@ -141,6 +190,9 @@ describe("mock client produces contract-valid data", () => {
       clipListSchema.parse({ items: await api.getSessionClips(id) });
     }
     orgSchema.parse(await api.getOrg(MOCK_ORG_ID));
+    reviewPageSchema.parse(await api.listReview(MOCK_ORG_ID, { limit: 100 }));
+    devicePageSchema.parse(await api.listDevices(MOCK_ORG_ID));
+    enrolCodeResponseSchema.parse(await api.createEnrolCode(MOCK_ORG_ID, {}));
     metricsSchema.parse(await api.getMetrics(MOCK_ORG_ID));
     tokenPairSchema.parse(await api.login("demo@example.org", "demo"));
   });

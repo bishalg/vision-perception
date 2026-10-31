@@ -14,3 +14,11 @@ export async function loadOrNotFound<T>(load: () => Promise<T>): Promise<T> {
     throw err;
   }
 }
+
+/**
+ * Wall-clock time of this server render. Server components render once per request, so reading the clock is
+ * safe here; it is passed to client components so relative times match between server and client.
+ */
+export function requestTime(): number {
+  return Date.now();
+}

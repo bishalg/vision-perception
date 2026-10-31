@@ -1,7 +1,26 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getApi } from "@/lib/api";
-import { ACCESS_COOKIE, REFRESH_COOKIE, cookieSecure, sessionCookies } from "@/lib/auth/cookies";
+import { ACCESS_COOKIE, REFRESH_COOKIE, REFRESH_MAX_AGE_SEC, cookieSecure, sessionCookies } from "@/lib/auth/cookies";
 import { decideGuard } from "@/lib/auth/guard";
+import { RECENT_ORGS_COOKIE, orgFromPath, rememberOrg } from "@/lib/orgs";
+
+/** Remember the org of an org-scoped page for the org switcher (ids only, httpOnly). */
+function trackOrg(request: NextRequest, response: NextResponse): NextResponse {
+  const org = orgFromPath(request.nextUrl.pathname);
+  if (!org) return response;
+  const current = request.cookies.get(RECENT_ORGS_COOKIE)?.value;
+  const next = rememberOrg(current, org);
+  if (next !== current) {
+    response.cookies.set(RECENT_ORGS_COOKIE, next, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: cookieSecure(),
+      path: "/",
+      maxAge: REFRESH_MAX_AGE_SEC,
+    });
+  }
+  return response;
+}
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -25,7 +44,7 @@ export async function proxy(request: NextRequest) {
       for (const c of specs) request.cookies.set(c.name, c.value);
       const response = NextResponse.next({ request: { headers: request.headers } });
       for (const c of specs) response.cookies.set(c.name, c.value, c.options);
-      return response;
+      return trackOrg(request, response);
     } catch {
       const response = NextResponse.redirect(new URL("/login", request.url));
       for (const name of [ACCESS_COOKIE, REFRESH_COOKIE]) response.cookies.delete(name);
@@ -33,7 +52,7 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  return trackOrg(request, NextResponse.next());
 }
 
 export const config = {

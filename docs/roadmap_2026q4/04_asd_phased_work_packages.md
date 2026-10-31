@@ -53,8 +53,8 @@
 | WP-B.8 | Server-side PDF regeneration + FHIR bundle endpoint (parity with iOS output, golden tests) | 3 | I | todo | |
 | WP-B.9 | Dataset export job (parquet/jsonl + labels), retention sweep, erasure execution | 3 | S | todo | |
 | WP-B.10 | FHIR façade + SMART-on-FHIR server validation (only if a clinic partner needs it) | 4 | S | backlog | |
-| WP-C.1 | Console scaffold: Next.js, auth, layout, sessions table/detail, overview KPIs | 1 | S | partial | Mock-mode console, 36 tests; live mode needs backend contract; no Playwright or org switcher yet |
-| WP-C.2 | Review queue + devices/enrol QR | 1 | I | todo | |
+| WP-C.1 | Console scaffold: Next.js, auth, layout, sessions table/detail, overview KPIs | 1 | S | done | Live mode vs Rust backend, org switcher, overview/sessions, Playwright 11/11 mock + live; 129 unit tests |
+| WP-C.2 | Review queue + devices/enrol QR | 1 | I | done | Review triage (j/k, 1–4), devices revoke, enrol code + QR. Backend gaps: no `GET /v1/orgs`, review items lack session summary |
 | WP-C.3 | Participants list, users/roles, audit page (participant detail/timeline moved to WP-C.14) | 2 | I | todo | |
 | WP-C.4 | Catalog editor (clips, AOI timeline, batteries) | 2 | S | todo | |
 | WP-C.5 | Baselines editor + scoring profile editor + sandbox re-score + bundle publish with approval | 2 | S | todo | |

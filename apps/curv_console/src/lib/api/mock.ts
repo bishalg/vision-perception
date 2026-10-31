@@ -9,8 +9,15 @@ import {
   type ClipScore,
   type ClipStatus,
   type CurvApi,
+  type Device,
+  type EnrolCodeRequest,
   type Metrics,
   type MetricRow,
+  type ReviewItem,
+  type ReviewReason,
+  type Role,
+  REVIEW_STATUSES,
+  ROLES,
   type SessionDetail,
   type SessionListQuery,
   type SessionSummary,
@@ -220,17 +227,125 @@ function tally(values: string[]): Record<string, number> {
   return out;
 }
 
+const MOCK_USER_ID = "0b7c9e2a-5d1f-4c3e-9a8b-1f2e3d4c5b6a";
+
+/** The email's local part picks the role (`viewer@...` signs in as a viewer) so role-gated UI can be tried. */
+function roleFor(email: string): Role {
+  const local = email.split("@")[0]?.toLowerCase() ?? "";
+  return (ROLES as readonly string[]).includes(local) ? (local as Role) : "admin";
+}
+
+/** Tokens carry the email so refresh can restore the same user. Mock only: never do this with real tokens. */
 function pair(email: string): TokenPair {
+  const role = roleFor(email);
   return {
-    access_token: "mock-access",
-    refresh_token: "mock-refresh",
+    access_token: `mock-access.${btoa(email)}`,
+    refresh_token: `mock-refresh.${btoa(email)}`,
     expires_in: 900,
-    user: { id: "0b7c9e2a-5d1f-4c3e-9a8b-1f2e3d4c5b6a", email, role: "admin", org_id: MOCK_ORG_ID },
+    user: { id: MOCK_USER_ID, email, role, org_id: role === "superadmin" ? null : MOCK_ORG_ID },
   };
+}
+
+function validation(name: string, reason: string): ApiError {
+  return new ApiError(400, {
+    type: `${PROBLEM_BASE}validation-failed`,
+    title: "Validation failed",
+    status: 400,
+    invalid_params: [{ name, reason }],
+  });
+}
+
+/** One review item per session at most, picked by the first matching rule (the backend may add several). */
+function reviewReasonFor(d: SessionDetail, i: number): ReviewReason | null {
+  if (i % 11 === 5) return "manual";
+  if (d.attention_flag === "red") return "flag_red";
+  if (d.quality_verdict === "rejected" || d.quality_verdict === "degraded") return "low_quality";
+  if (d.capture_source === "synthetic") return "norm_candidate";
+  if (i % 7 === 0) return "random_audit";
+  return null;
+}
+
+function buildReviewItems(details: SessionDetail[]): ReviewItem[] {
+  const items: ReviewItem[] = [];
+  details.forEach((d, i) => {
+    const reason = reviewReasonFor(d, i);
+    if (!reason) return;
+    const closed = d.reviewed === true;
+    const decidedAt = new Date(Date.parse(d.started_at) + 86_400_000).toISOString();
+    items.push({
+      id: uuid(rng(5000 + i)),
+      org_id: MOCK_ORG_ID,
+      session_id: d.id,
+      reason,
+      status: closed ? (i % 2 ? "done" : "dismissed") : i % 9 === 1 ? "in_review" : "open",
+      created_at: new Date(Date.parse(d.started_at) + 10 * 60_000).toISOString(),
+      assigned_to: i % 9 === 1 ? MOCK_USER_ID : null,
+      decision: closed ? { action: i % 2 ? "confirm" : "dismiss" } : null,
+      decided_by: closed ? MOCK_USER_ID : null,
+      decided_at: closed ? decidedAt : null,
+    });
+  });
+  return items;
+}
+
+function buildDevices(details: SessionDetail[]): Device[] {
+  const lastSeen = (id: string) => details.find((d) => d.device_id === id)?.started_at ?? null;
+  const devices: Device[] = DEVICES.map((id, k) => ({
+    id,
+    org_id: MOCK_ORG_ID,
+    platform: "ios",
+    app_version: k === 3 ? "1.3.2" : "1.4.0",
+    enrolled_at: new Date(MOCK_FIXED_NOW - (60 - k * 7) * 86_400_000).toISOString(),
+    label: `iPad room ${k + 1}`,
+    revoked_at: null,
+    last_seen_at: lastSeen(id),
+    config_bundle_version: k === 3 ? "2026.10.1" : "2026.11.0",
+  }));
+  devices.push({
+    id: uuid(rng(9100)),
+    org_id: MOCK_ORG_ID,
+    platform: "ios",
+    app_version: "1.2.0",
+    enrolled_at: new Date(MOCK_FIXED_NOW - 120 * 86_400_000).toISOString(),
+    label: "Lost iPad",
+    revoked_at: new Date(MOCK_FIXED_NOW - 30 * 86_400_000).toISOString(),
+    last_seen_at: null,
+    config_bundle_version: null,
+  });
+  return devices.sort((a, b) => b.enrolled_at.localeCompare(a.enrolled_at));
+}
+
+const ENROL_ALPHABET = "ABCDEFGHJKMNPQRSTVWXYZ23456789";
+
+function enrolCode(): string {
+  const pick = () => ENROL_ALPHABET[Math.floor(Math.random() * ENROL_ALPHABET.length)]!;
+  const part = () => Array.from({ length: 4 }, pick).join("");
+  return `${part()}-${part()}`;
+}
+
+function page<T>(rows: T[], key: (row: T) => [string, string], cursor: string | undefined, limit = DEFAULT_LIMIT) {
+  const size = Math.min(Math.max(limit, 1), 100);
+  let start = 0;
+  if (cursor) {
+    const after = decodeCursor(cursor);
+    if (!after) throw invalidCursor();
+    start = rows.findIndex((r) => key(r)[0] === after.startedAt && key(r)[1] === after.id) + 1;
+    if (start === 0) throw invalidCursor();
+  }
+  const slice = rows.slice(start, start + size);
+  const last = slice[slice.length - 1];
+  const more = start + size < rows.length;
+  return { slice, next_cursor: more && last ? encodeCursor(...key(last)) : null, total: rows.length };
 }
 
 export function createMockClient(): CurvApi & AuthApi {
   const { details, clips } = buildFixtures();
+  const reviews = buildReviewItems(details);
+  const devices = buildDevices(details);
+  const labels: { session_id: string; key: string; value: unknown; clip_id?: string | null }[] = [];
+  const ensureOrg = (orgId: string) => {
+    if (orgId !== MOCK_ORG_ID) throw notFound("Organisation not found");
+  };
 
   return {
     async login(email, password) {
@@ -240,8 +355,15 @@ export function createMockClient(): CurvApi & AuthApi {
       return pair(email);
     },
     async refresh(refreshToken) {
-      if (refreshToken !== "mock-refresh") throw unauthorized("Invalid refresh token");
-      return pair("demo@example.org");
+      const prefix = "mock-refresh.";
+      if (!refreshToken.startsWith(prefix)) throw unauthorized("Invalid refresh token");
+      let email: string;
+      try {
+        email = atob(refreshToken.slice(prefix.length));
+      } catch {
+        throw unauthorized("Invalid refresh token");
+      }
+      return pair(email);
     },
     async logout() {},
     async getOrg(orgId) {
@@ -259,8 +381,8 @@ export function createMockClient(): CurvApi & AuthApi {
         sessions_30d: last30.length,
         flag_distribution: tally(last30.map((d) => d.attention_flag)),
         quality_distribution: tally(last30.map((d) => d.quality_verdict)),
-        review_queue_size: details.filter((d) => !d.reviewed && d.attention_flag === "red").length,
-        devices_active: new Set(details.map((d) => d.device_id)).size,
+        review_queue_size: reviews.filter((r) => r.status === "open" || r.status === "in_review").length,
+        devices_active: devices.filter((d) => !d.revoked_at).length,
         bundle_adoption: Object.entries(bundles).map(([bundle_version, devices]) => ({ bundle_version, devices })),
       };
       return metrics;
@@ -281,23 +403,9 @@ export function createMockClient(): CurvApi & AuthApi {
           (to === undefined || t <= to)
         );
       });
-      const limit = Math.min(Math.max(query.limit ?? DEFAULT_LIMIT, 1), 100);
       // `details` is ordered newest first, which is the backend's `(started_at, id)` descending order.
-      let start = 0;
-      if (query.cursor) {
-        const after = decodeCursor(query.cursor);
-        if (!after) throw invalidCursor();
-        start = filtered.findIndex((d) => d.started_at === after.startedAt && d.id === after.id) + 1;
-        if (start === 0) throw invalidCursor();
-      }
-      const slice = filtered.slice(start, start + limit);
-      const last = slice[slice.length - 1];
-      const more = start + limit < filtered.length;
-      return {
-        items: slice.map(toSummary),
-        next_cursor: more && last ? encodeCursor(last.started_at, last.id) : null,
-        total: filtered.length,
-      };
+      const { slice, next_cursor, total } = page(filtered, (d) => [d.started_at, d.id], query.cursor, query.limit);
+      return { items: slice.map(toSummary), next_cursor, total };
     },
     async getSession(sessionId) {
       const found = details.find((d) => d.id === sessionId);
@@ -308,6 +416,62 @@ export function createMockClient(): CurvApi & AuthApi {
       const found = clips.get(sessionId);
       if (!found) throw notFound("Session not found");
       return found;
+    },
+    async listReview(orgId, query = {}) {
+      ensureOrg(orgId);
+      const rows = reviews
+        .filter((r) => (!query.status || r.status === query.status) && (!query.reason || r.reason === query.reason))
+        .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id));
+      const { slice, next_cursor, total } = page(rows, (r) => [r.created_at, r.id], query.cursor, query.limit);
+      return { items: slice.map((r) => ({ ...r })), next_cursor, total };
+    },
+    async updateReview(reviewId, patch) {
+      const item = reviews.find((r) => r.id === reviewId);
+      if (!item) throw notFound("Review item not found");
+      if (patch.status != null && !(REVIEW_STATUSES as readonly string[]).includes(patch.status)) {
+        throw validation("status", "must be open, in_review, done or dismissed");
+      }
+      if (patch.assigned_to != null && patch.assigned_to !== MOCK_USER_ID) {
+        throw validation("assigned_to", "must be a user id of this org");
+      }
+      if (patch.status != null) {
+        item.status = patch.status;
+        const closed = patch.status === "done" || patch.status === "dismissed";
+        item.decided_by = closed ? MOCK_USER_ID : null;
+        item.decided_at = closed ? new Date().toISOString() : null;
+        const session = details.find((d) => d.id === item.session_id);
+        if (session && closed) session.reviewed = true;
+      }
+      if (patch.assigned_to != null) item.assigned_to = patch.assigned_to;
+      if (patch.decision !== undefined && patch.decision !== null) item.decision = patch.decision;
+      for (const l of patch.labels ?? []) labels.push({ session_id: item.session_id, ...l });
+      return { ...item };
+    },
+    async listDevices(orgId, query = {}) {
+      ensureOrg(orgId);
+      const { slice, next_cursor } = page(devices, (d) => [d.enrolled_at, d.id], query.cursor, query.limit);
+      // The backend does not count devices (total: null).
+      return { items: slice.map((d) => ({ ...d })), next_cursor, total: null };
+    },
+    async revokeDevice(deviceId) {
+      const device = devices.find((d) => d.id === deviceId);
+      if (!device) throw notFound("Device not found");
+      device.revoked_at ??= new Date().toISOString();
+      return { ...device };
+    },
+    async createEnrolCode(orgId, request: EnrolCodeRequest = {}) {
+      ensureOrg(orgId);
+      const maxUses = request.max_uses ?? 1;
+      const days = request.expires_in_days ?? 7;
+      if (!Number.isInteger(maxUses) || maxUses < 1 || maxUses > 1000) throw validation("max_uses", "must be 1 to 1000");
+      if (!Number.isInteger(days) || days < 1 || days > 90) throw validation("expires_in_days", "must be 1 to 90");
+      if ((request.label?.trim().length ?? 0) > 200) throw validation("label", "must be at most 200 characters");
+      return {
+        id: uuid(Math.random),
+        code: enrolCode(),
+        max_uses: maxUses,
+        expires_at: new Date(Date.now() + days * 86_400_000).toISOString(),
+      };
     },
   };
 }

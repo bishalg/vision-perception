@@ -192,6 +192,110 @@ export const sessionPageSchema = z.object({
 });
 export type SessionPage = z.infer<typeof sessionPageSchema>;
 
+// ---- review queue ---------------------------------------------------------
+
+/** `ReviewReason`: why the backend put a session in the queue (rules run at ingest, ING-3). */
+export const REVIEW_REASONS = ["low_quality", "flag_red", "random_audit", "norm_candidate", "manual"] as const;
+export const reviewReasonSchema = z.enum(REVIEW_REASONS);
+export type ReviewReason = z.infer<typeof reviewReasonSchema>;
+
+/** `ReviewStatus`. `done` and `dismissed` are terminal for the queue. */
+export const REVIEW_STATUSES = ["open", "in_review", "done", "dismissed"] as const;
+export const reviewStatusSchema = z.enum(REVIEW_STATUSES);
+export type ReviewStatus = z.infer<typeof reviewStatusSchema>;
+
+/** `LabelInput`: a human annotation attached by a reviewer. `value` is any JSON. */
+export const labelInputSchema = z.object({
+  key: z.string(),
+  value: z.unknown().refine((v) => v !== undefined, "value is required"),
+  clip_id: str,
+});
+export type LabelInput = z.infer<typeof labelInputSchema>;
+
+/** GET /orgs/{id}/review item. */
+export const reviewItemSchema = z.object({
+  id: z.string(),
+  org_id: z.string(),
+  session_id: z.string(),
+  reason: reviewReasonSchema,
+  status: reviewStatusSchema,
+  created_at: z.string(),
+  assigned_to: str,
+  /** Free JSON written by the console's triage action. */
+  decision: z.unknown().optional(),
+  decided_by: str,
+  decided_at: str,
+});
+export type ReviewItem = z.infer<typeof reviewItemSchema>;
+
+export const reviewPageSchema = z.object({
+  items: z.array(reviewItemSchema),
+  next_cursor: z.string().nullable().optional(),
+  total: z.number().int().nullable().optional(),
+});
+export type ReviewPage = z.infer<typeof reviewPageSchema>;
+
+/** PATCH /review/{id}: absent members are unchanged; labels are appended. */
+export const updateReviewRequestSchema = z.object({
+  status: reviewStatusSchema.nullable().optional(),
+  assigned_to: str,
+  decision: z.unknown().optional(),
+  labels: z.array(labelInputSchema).optional(),
+});
+export type UpdateReviewRequest = z.infer<typeof updateReviewRequestSchema>;
+
+export interface ReviewListQuery {
+  status?: ReviewStatus;
+  reason?: ReviewReason;
+  cursor?: string;
+  limit?: number;
+}
+
+// ---- devices --------------------------------------------------------------
+
+/** GET /orgs/{id}/devices item. */
+export const deviceSchema = z.object({
+  id: z.string(),
+  org_id: z.string(),
+  platform: z.string(),
+  app_version: z.string(),
+  enrolled_at: z.string(),
+  label: str,
+  revoked_at: str,
+  last_seen_at: str,
+  config_bundle_version: str,
+});
+export type Device = z.infer<typeof deviceSchema>;
+
+export const devicePageSchema = z.object({
+  items: z.array(deviceSchema),
+  next_cursor: z.string().nullable().optional(),
+  total: z.number().int().nullable().optional(),
+});
+export type DevicePage = z.infer<typeof devicePageSchema>;
+
+/** POST /orgs/{id}/devices/enrol-code body (all optional; backend defaults: 1 use, 7 days). */
+export const enrolCodeRequestSchema = z.object({
+  label: str,
+  max_uses: z.number().int().min(1).nullable().optional(),
+  expires_in_days: z.number().int().min(1).nullable().optional(),
+});
+export type EnrolCodeRequest = z.infer<typeof enrolCodeRequestSchema>;
+
+/** The plain code is returned only by this response; the console never stores it. */
+export const enrolCodeResponseSchema = z.object({
+  id: z.string(),
+  code: z.string().min(1),
+  max_uses: z.number().int().min(0),
+  expires_at: z.string(),
+});
+export type EnrolCodeResponse = z.infer<typeof enrolCodeResponseSchema>;
+
+export interface PageQuery {
+  cursor?: string;
+  limit?: number;
+}
+
 // ---- client interface -----------------------------------------------------
 
 export interface CurvApi {
@@ -200,6 +304,11 @@ export interface CurvApi {
   listSessions(orgId: string, query?: SessionListQuery): Promise<SessionPage>;
   getSession(sessionId: string): Promise<SessionDetail>;
   getSessionClips(sessionId: string): Promise<ClipScore[]>;
+  listReview(orgId: string, query?: ReviewListQuery): Promise<ReviewPage>;
+  updateReview(reviewId: string, patch: UpdateReviewRequest): Promise<ReviewItem>;
+  listDevices(orgId: string, query?: PageQuery): Promise<DevicePage>;
+  revokeDevice(deviceId: string): Promise<Device>;
+  createEnrolCode(orgId: string, request?: EnrolCodeRequest): Promise<EnrolCodeResponse>;
 }
 
 export interface AuthApi {

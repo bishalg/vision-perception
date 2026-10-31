@@ -79,3 +79,29 @@ table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
   table.responsive td::before { content: attr(data-label); color: var(--muted); }
   table.data .num { text-align: right; }
 }
+
+/* Org switcher, nav state */
+.org-switcher { display: flex; gap: .5rem; align-items: center; }
+.org-switcher select { max-width: 16rem; }
+.mainnav a { text-decoration: none; padding: .25rem 0; border-bottom: 2px solid transparent; }
+.mainnav a.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.sr-status { min-height: 1.5em; margin: .25rem 0; color: var(--muted); }
+
+/* Review queue */
+.toolbar { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0 1rem; }
+.toolbar button { background: var(--surface); color: var(--text); border-color: var(--border); }
+.toolbar button:hover:not(:disabled) { border-color: var(--accent); }
+kbd { font: 600 .75rem ui-monospace, SFMono-Regular, Menlo, monospace; border: 1px solid var(--border); border-radius: 4px; padding: 0 .3rem; }
+.picker { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; margin-bottom: 1rem; }
+.review-table tbody tr { cursor: pointer; }
+.review-table tr.selected { background: color-mix(in srgb, var(--accent) 14%, transparent); box-shadow: inset 4px 0 0 var(--accent); }
+
+/* Devices */
+.enrol { margin-bottom: 1.25rem; }
+.enrol-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .75rem; align-items: end; }
+.enrol-result { display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: center; margin-top: 1rem; }
+.enrol-code { font: 700 1.75rem ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .1em; margin: 0; }
+.qr { border-radius: 6px; border: 1px solid var(--border); }
+button.danger { background: var(--surface); color: var(--red); border-color: var(--red); padding: .25rem .75rem; }
+.confirm { display: inline-flex; gap: .5rem; align-items: center; }

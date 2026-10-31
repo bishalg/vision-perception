@@ -101,4 +101,54 @@ describe("live client", () => {
   it("skips empty query values", () => {
     expect(buildSessionQuery({ flag: undefined, quality: "" })).toBe("");
   });
+
+  const reviewItem = {
+    id: "r1", org_id: "o1", session_id: "S1", reason: "flag_red", status: "open",
+    created_at: "2026-10-30T09:00:00.000Z", assigned_to: null, decision: null, decided_by: null, decided_at: null,
+  };
+  const device = {
+    id: "d1", org_id: "o1", platform: "ios", app_version: "1.4.0", enrolled_at: "2026-10-30T09:00:00.000Z",
+    label: "Room 2", revoked_at: null, last_seen_at: null, config_bundle_version: null,
+  };
+
+  it("lists the review queue with status/reason/cursor and patches an item with a JSON body", async () => {
+    const f = vi.fn()
+      .mockResolvedValueOnce(json({ items: [reviewItem], next_cursor: null, total: 1 }))
+      .mockResolvedValueOnce(json({ ...reviewItem, status: "done" }));
+    const api = createLiveClient({ baseUrl: "https://api.test", accessToken: "t", fetchImpl: f as unknown as typeof fetch });
+    const page = await api.listReview("o1", { status: "open", reason: "flag_red", cursor: "c", limit: 25 });
+    expect(page.total).toBe(1);
+    expect(f.mock.calls[0]![0]).toBe("https://api.test/v1/orgs/o1/review?status=open&reason=flag_red&cursor=c&limit=25");
+    const patch = { status: "done" as const, decision: { action: "confirm" }, labels: [{ key: "review", value: "confirmed" }] };
+    const updated = await api.updateReview("r 1", patch);
+    expect(updated.status).toBe("done");
+    const [url, init] = f.mock.calls[1]!;
+    expect(url).toBe("https://api.test/v1/review/r%201");
+    expect(init.method).toBe("PATCH");
+    expect(init.headers.Authorization).toBe("Bearer t");
+    expect(JSON.parse(init.body)).toEqual(patch);
+  });
+
+  it("lists devices, revokes with POST /devices/{id}/revoke and creates an enrol code", async () => {
+    const f = vi.fn()
+      .mockResolvedValueOnce(json({ items: [device], next_cursor: "n" }))
+      .mockResolvedValueOnce(json({ ...device, revoked_at: "2026-10-31T09:00:00.000Z" }))
+      .mockResolvedValueOnce(json({ id: "e1", code: "K7Q4-9XMP", max_uses: 2, expires_at: "2026-11-06T12:00:00.000Z" }, 201));
+    const api = createLiveClient({ baseUrl: "https://api.test", accessToken: "t", fetchImpl: f as unknown as typeof fetch });
+    expect((await api.listDevices("o1", { cursor: "c" })).next_cursor).toBe("n");
+    expect(f.mock.calls[0]![0]).toBe("https://api.test/v1/orgs/o1/devices?cursor=c");
+    expect((await api.revokeDevice("d1")).revoked_at).not.toBeNull();
+    expect(f.mock.calls[1]![0]).toBe("https://api.test/v1/devices/d1/revoke");
+    expect(f.mock.calls[1]![1].method).toBe("POST");
+    const code = await api.createEnrolCode("o1", { label: "Room 2", max_uses: 2 });
+    expect(code.code).toBe("K7Q4-9XMP");
+    expect(f.mock.calls[2]![0]).toBe("https://api.test/v1/orgs/o1/devices/enrol-code");
+    expect(JSON.parse(f.mock.calls[2]![1].body)).toEqual({ label: "Room 2", max_uses: 2 });
+  });
+
+  it("rejects a review item whose reason is outside the contract", async () => {
+    const f = vi.fn().mockResolvedValue(json({ items: [{ ...reviewItem, reason: "quality_low" }] }));
+    const api = createLiveClient({ baseUrl: "https://api.test", fetchImpl: f as unknown as typeof fetch });
+    await expect(api.listReview("o1")).rejects.toThrow();
+  });
 });

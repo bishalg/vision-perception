@@ -3,8 +3,13 @@ import type { ZodType } from "zod";
 import {
   ApiError,
   clipListSchema,
+  deviceSchema,
+  devicePageSchema,
+  enrolCodeResponseSchema,
   metricsSchema,
   orgSchema,
+  reviewItemSchema,
+  reviewPageSchema,
   sessionDetailSchema,
   sessionPageSchema,
   tokenPairSchema,
@@ -22,7 +27,8 @@ export interface LiveOptions {
   fetchImpl?: typeof fetch;
 }
 
-export function buildSessionQuery(query: SessionListQuery = {}): string {
+/** Query string for any list endpoint; undefined and empty values are skipped. */
+export function buildQuery(query: object = {}): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
     if (value === undefined || value === "") continue;
@@ -30,6 +36,10 @@ export function buildSessionQuery(query: SessionListQuery = {}): string {
   }
   const text = params.toString();
   return text ? `?${text}` : "";
+}
+
+export function buildSessionQuery(query: SessionListQuery = {}): string {
+  return buildQuery(query);
 }
 
 async function toApiError(res: Response): Promise<ApiError> {
@@ -80,5 +90,11 @@ export function createLiveClient(opts: LiveOptions): CurvApi & AuthApi {
       request(`/orgs/${enc(orgId)}/sessions${buildSessionQuery(query)}`, sessionPageSchema),
     getSession: (id) => request(`/sessions/${enc(id)}`, sessionDetailSchema),
     getSessionClips: async (id) => (await request(`/sessions/${enc(id)}/clips`, clipListSchema)).items,
+    listReview: (orgId, query) => request(`/orgs/${enc(orgId)}/review${buildQuery(query)}`, reviewPageSchema),
+    updateReview: (id, patch) => request(`/review/${enc(id)}`, reviewItemSchema, { method: "PATCH", body: patch }),
+    listDevices: (orgId, query) => request(`/orgs/${enc(orgId)}/devices${buildQuery(query)}`, devicePageSchema),
+    revokeDevice: (id) => request(`/devices/${enc(id)}/revoke`, deviceSchema, { method: "POST" }),
+    createEnrolCode: (orgId, body) =>
+      request(`/orgs/${enc(orgId)}/devices/enrol-code`, enrolCodeResponseSchema, { method: "POST", body: body ?? {} }),
   };
 }

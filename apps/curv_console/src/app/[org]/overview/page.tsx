@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Distribution } from "@/components/Distribution";
 import { KpiCard } from "@/components/KpiCard";
 import { loadOrNotFound } from "@/lib/loaders";
@@ -21,6 +22,9 @@ export default async function OverviewPage({ params }: { params: Promise<{ org: 
         <KpiCard label={t.reviewQueue} value={m.review_queue_size} />
         <KpiCard label={t.devicesActive} value={m.devices_active} />
       </div>
+      <p>
+        <Link href={`/${encodeURIComponent(org)}/review`}>{t.openQueue}</Link>
+      </p>
       <div className="two-col">
         <Distribution title={t.flags} counts={m.flag_distribution} />
         <Distribution title={t.quality} counts={m.quality_distribution} />
