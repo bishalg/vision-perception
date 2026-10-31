@@ -95,6 +95,15 @@
 
 **Migration rule (2026-10-31 audit):** backend migrations are applied in order and numbers 0007 and 0010–0012 were never used. A new migration must take the next number above the highest existing one (≥0014 today), never a gap, or it will be applied out of order on databases that already ran later migrations.
 
+**Audit 2026-10-31 (independent backend-security and gaze/contract reviews, fresh-DB gates, live smoke `scripts/live_smoke.sh`).** Fixed: superadmin/admin clinical-role provisioning bypass, global config publish by org roles, export reclaim overwrite, list indexes, ingest 500s, worklist MRN flag, TOTP replay (0015); gaze recalibration after pose shift, replay retries, failed-recal isolation, empty validation (asd-core); 1.7 report decode; console report link; export missing-artifact 410. Open (owner or follow-up):
+- WP-G.3 gap: per-clip QS-3/CNF-3 values (`ClipTracking`) have no Rust producer; add to `GazePipeline` before WP-G.9.
+- Swift aggregate fallback writes socialPreference 0 / flatAffect 1 when scoring fails; decide: unscorable flag or optional fields in 1.7.
+- Gaze L2 deferred: `calibrated_median_norm` absent for angularAffine.
+- Login does not ask for TOTP; `totp_secret` stored in clear. Enrol-code rotation accepts expired codes (CON-11 as specified).
+- Norm-run promote still lets org roles create a *draft* global baselines document (publish is superadmin-only).
+- Smoke export download + sha256 needs `ASD_BLOB_BACKEND=s3` (MinIO); the memory store is per process.
+- Flaky timing test `tests/auth.rs` rate-limit window on a loaded machine.
+
 ## 1. Phase 1 — Demo-ready vertical slice (2026-10-27 → 2026-11-16)
 
 Goal: a real session captured on an iPhone lands in a cloud backend and is visible in a console, with no over-claims. Exit = all D1–D9 in `01 §5`.
