@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT p.id, p.org_id, p.token, p.age_bracket_at_enrol, p.language, p.withdrawn_at,\n                  p.created_at,\n                  (SELECT count(*) FROM sessions s WHERE s.participant_id = p.id) AS \"session_count!\",\n                  (SELECT max(s.started_at) FROM sessions s WHERE s.participant_id = p.id)\n                      AS last_session_at\n           FROM participants p\n           WHERE p.org_id = $1\n             AND ($2::timestamptz IS NULL OR (p.created_at, p.id::text) < ($2, $3::text))\n           ORDER BY p.created_at DESC, p.id::text DESC\n           LIMIT $4",
+  "query": "SELECT p.id, p.org_id, p.token, p.age_bracket_at_enrol, p.language, p.withdrawn_at,\n                  p.created_at,\n                  (SELECT count(*) FROM sessions s WHERE s.participant_id = p.id) AS \"session_count!\",\n                  (SELECT max(s.started_at) FROM sessions s WHERE s.participant_id = p.id)\n                      AS last_session_at,\n                  EXISTS (SELECT 1 FROM patient_refs r WHERE r.participant_id = p.id)\n                      AS \"has_patient_ref!\"\n           FROM participants p\n           WHERE p.org_id = $1\n             AND ($2::timestamptz IS NULL OR (p.created_at, p.id::text) < ($2, $3::text))\n           ORDER BY p.created_at DESC, p.id::text DESC\n           LIMIT $4",
   "describe": {
     "columns": [
       {
@@ -91,6 +91,12 @@
         "name": "last_session_at",
         "type_info": "Timestamptz",
         "origin": "Expression"
+      },
+      {
+        "ordinal": 9,
+        "name": "has_patient_ref!",
+        "type_info": "Bool",
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -110,8 +116,9 @@
       true,
       false,
       null,
+      null,
       null
     ]
   },
-  "hash": "e01034cce60094a1a31c847b2b771fba7052e1f02f54c3fadb8618e4cf0e65f3"
+  "hash": "1a1b2126e69d662667dea2827397560a000c1315837c1125927ca67e3d3d11ae"
 }

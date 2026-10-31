@@ -9,3 +9,4 @@
 pub mod clips;
 pub mod cursor;
 pub mod sessions;
+pub mod timeline;

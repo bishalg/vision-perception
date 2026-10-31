@@ -2734,6 +2734,17 @@
             }
           ]
         },
+        "has_patient_ref": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Whether a hospital MRN is on file (MRN-5/6). Absent for a caller without\n`PatientRefRead`; the MRN itself is never in this type."
+        },
         "id": {
           "type": "string"
         },

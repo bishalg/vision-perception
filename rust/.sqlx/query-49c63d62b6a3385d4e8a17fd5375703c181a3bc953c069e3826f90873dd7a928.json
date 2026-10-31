@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT participant_id FROM patient_refs WHERE org_id = $1 AND mrn_bidx = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "participant_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "patient_refs",
+            "name": "participant_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bytea"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "49c63d62b6a3385d4e8a17fd5375703c181a3bc953c069e3826f90873dd7a928"
+}

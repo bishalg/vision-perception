@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO patient_refs\n                 (id, org_id, participant_id, assigning_authority, mrn_ct, mrn_key_id, mrn_bidx,\n                  created_by, updated_by)\n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8) RETURNING updated_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "patient_refs",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Bytea",
+        "Uuid",
+        "Bytea",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "412e3c97a604ae7c7c5326bfd61b394d676b1f73497c285d8579b7401312aeaf"
+}

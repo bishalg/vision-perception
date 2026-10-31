@@ -248,6 +248,10 @@ pub struct Participant {
     pub session_count: u32,
     pub last_session_at: Option<String>,
     pub withdrawn_at: Option<String>,
+    /// Whether a hospital MRN is on file (MRN-5/6). Absent for a caller without
+    /// `PatientRefRead`; the MRN itself is never in this type.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub has_patient_ref: Option<bool>,
 }
 
 // ---- sessions (CON-15, CON-16, CON-19, CON-20) -----------------------------------------

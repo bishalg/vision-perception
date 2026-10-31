@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, assigning_authority, mrn_ct, mrn_key_id, updated_at\n           FROM patient_refs WHERE participant_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "patient_refs",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "assigning_authority",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "patient_refs",
+            "name": "assigning_authority"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "mrn_ct",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "patient_refs",
+            "name": "mrn_ct"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "mrn_key_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "patient_refs",
+            "name": "mrn_key_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "patient_refs",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "46df74d00ea96780686165fd6131e32f6f408d152eda93f8287094eddf6d0b5d"
+}

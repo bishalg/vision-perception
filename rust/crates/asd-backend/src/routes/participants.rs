@@ -14,7 +14,7 @@ use serde::Deserialize;
 
 use crate::app::AppState;
 use crate::auth::extractors::Require;
-use crate::auth::rbac::perm;
+use crate::auth::rbac::{self, perm, Action};
 use crate::error::{AppError, AppResult};
 use crate::problem::InvalidParam;
 use crate::read::cursor::{self, Cursor};
@@ -36,6 +36,8 @@ async fn list(
     query: Result<Query<PageQuery>, QueryRejection>,
 ) -> AppResult<Json<ParticipantPage>> {
     let org = auth.org();
+    // MRN-6: whether an MRN exists is only for callers who may read it (WP-C.11).
+    let show_ref = rbac::allows(auth.principal.role, Action::PatientRefRead);
     let q = query_or_problem(query)?;
     let limit = match q.limit.filter(|s| !s.is_empty()) {
         Some(raw) => cursor::limit(Some(raw.parse().map_err(|_| {
@@ -59,7 +61,9 @@ async fn list(
                   p.created_at,
                   (SELECT count(*) FROM sessions s WHERE s.participant_id = p.id) AS "session_count!",
                   (SELECT max(s.started_at) FROM sessions s WHERE s.participant_id = p.id)
-                      AS last_session_at
+                      AS last_session_at,
+                  EXISTS (SELECT 1 FROM patient_refs r WHERE r.participant_id = p.id)
+                      AS "has_patient_ref!"
            FROM participants p
            WHERE p.org_id = $1
              AND ($2::timestamptz IS NULL OR (p.created_at, p.id::text) < ($2, $3::text))
@@ -96,6 +100,7 @@ async fn list(
                 session_count: u32::try_from(r.session_count).unwrap_or(u32::MAX),
                 last_session_at: r.last_session_at.map(cursor::ts),
                 withdrawn_at: r.withdrawn_at.map(cursor::ts),
+                has_patient_ref: show_ref.then_some(r.has_patient_ref),
             }
         })
         .collect();

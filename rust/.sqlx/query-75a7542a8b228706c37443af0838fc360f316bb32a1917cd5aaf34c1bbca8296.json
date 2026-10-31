@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH t AS (\n             SELECT 'session' AS kind, s.id AS id, s.started_at AS at, s.id AS session_id,\n                    NULL::uuid AS actor_id, NULL::text AS actor_name,\n                    jsonb_build_object('attention_flag', s.attention_flag) AS summary\n             FROM sessions s\n             WHERE s.participant_id = $1 AND s.org_id = $2\n           UNION ALL\n             SELECT 'clinical_review', r.id::text, r.created_at, r.session_id,\n                    r.created_by, u.display_name,\n                    jsonb_build_object('event', 'opened', 'state', r.state)\n             FROM clinical_reviews r\n             JOIN sessions s ON s.id = r.session_id\n             LEFT JOIN users u ON u.id = r.created_by\n             WHERE s.participant_id = $1 AND r.org_id = $2\n           UNION ALL\n             SELECT 'clinical_review', g.id::text, g.signed_at, r.session_id,\n                    g.signer_id, g.signer_display_name,\n                    jsonb_build_object(\n                        'event', CASE g.role WHEN 'sign' THEN 'signed' ELSE 'cosigned' END,\n                        'version_no', v.version_no)\n             FROM clinical_signatures g\n             JOIN clinical_reviews r ON r.id = g.review_id\n             JOIN clinical_review_versions v ON v.id = g.version_id\n             JOIN sessions s ON s.id = r.session_id\n             WHERE s.participant_id = $1 AND g.org_id = $2\n           UNION ALL\n             SELECT 'note', n.id::text, n.created_at, n.session_id,\n                    n.author_id, u.display_name,\n                    jsonb_build_object('note_kind', n.kind)\n             FROM clinical_notes n\n             LEFT JOIN users u ON u.id = n.author_id\n             WHERE n.participant_id = $1 AND n.org_id = $2\n           UNION ALL\n             SELECT 'letter', l.id::text, l.created_at, NULL::text,\n                    l.author_id, u.display_name,\n                    jsonb_build_object('letter_kind', l.kind, 'status', l.status)\n             FROM referral_letters l\n             LEFT JOIN users u ON u.id = l.author_id\n             WHERE l.participant_id = $1 AND l.org_id = $2\n           UNION ALL\n             SELECT 'care_event', c.id::text, c.occurred_at, NULL::text,\n                    NULL::uuid, NULL::text,\n                    jsonb_build_object('care_kind', c.kind)\n             FROM care_events c\n             WHERE c.participant_id = $1 AND c.org_id = $2\n         ), k AS (\n             SELECT t.*, (t.kind || ':' || t.id) COLLATE \"C\" AS key FROM t\n         )\n         SELECT kind AS \"kind!\", id AS \"id!\", at AS \"at!\", session_id, actor_id, actor_name,\n                summary AS \"summary!\", key AS \"key!\"\n         FROM k\n         WHERE ($3::timestamptz IS NULL OR (at, key) < ($3, $4::text COLLATE \"C\"))\n         ORDER BY at DESC, key DESC\n         LIMIT $5",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "kind!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "id!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "at!",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "session_id",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "actor_id",
+        "type_info": "Uuid",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "actor_name",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "summary!",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "key!",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Timestamptz",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "75a7542a8b228706c37443af0838fc360f316bb32a1917cd5aaf34c1bbca8296"
+}

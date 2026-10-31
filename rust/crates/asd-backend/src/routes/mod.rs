@@ -15,8 +15,11 @@ pub mod devices;
 pub mod health;
 pub mod jobs;
 pub mod metrics;
+pub mod notes;
 pub mod orgs;
+pub mod participant_detail;
 pub mod participants;
+pub mod patient_refs;
 pub mod review;
 pub mod sessions;
 pub mod users;
@@ -33,6 +36,9 @@ pub fn v1() -> Router<AppState> {
         .merge(metrics::router())
         .merge(participants::router())
         .merge(care::router()) // WP-B.6
+        .merge(participant_detail::router()) // WP-C.11
+        .merge(patient_refs::router()) // WP-C.11
+        .merge(notes::router()) // WP-C.11
         // WP-B.5: norm aggregation jobs and runs.
         .merge(jobs::router())
         // WP-B.4: config documents, bundles, device bundle delivery.

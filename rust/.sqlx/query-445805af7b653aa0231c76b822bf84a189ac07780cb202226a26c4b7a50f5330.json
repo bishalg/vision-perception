@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO clinical_notes\n             (id, org_id, participant_id, session_id, kind, body_ct, body_key_id, corrects_id,\n              author_id)\n           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Bytea",
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "445805af7b653aa0231c76b822bf84a189ac07780cb202226a26c4b7a50f5330"
+}
