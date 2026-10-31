@@ -7,7 +7,10 @@
 
 use std::path::PathBuf;
 
-use asd_contract::config::{ConfigBundle, FlagThresholds, QualityGateParams, ScoringProfile};
+use asd_contract::config::{
+    ConfigBundle, FlagThresholds, QualityGateParams, ScoringProfile, TrackingQualityParams,
+    SCORING_PROFILE_SCHEMA_VERSION,
+};
 use asd_contract::schema;
 use asd_core::types::{NormativeBaselineSet, StimulusCatalog};
 use serde_json::{json, Value};
@@ -102,7 +105,7 @@ fn default_scoring_profile_literal_values() {
     assert_eq!(
         ScoringProfile::default(),
         ScoringProfile {
-            schema_version: "1.0.0".into(),
+            schema_version: "1.1.0".into(),
             flag: FlagThresholds {
                 green_floor: 0.65,
                 yellow_floor: 0.35,
@@ -118,6 +121,7 @@ fn default_scoring_profile_literal_values() {
                 min_confidence: 0.50,
                 blink_threshold: 0.45,
             },
+            tracking_quality: asd_core::types::tracking::TrackingQualityParams::default(),
         }
     );
 }
@@ -125,10 +129,11 @@ fn default_scoring_profile_literal_values() {
 #[test]
 fn scoring_profile_is_camel_case() {
     let v = serde_json::to_value(ScoringProfile::default()).unwrap();
+    let tracking = serde_json::to_value(TrackingQualityParams::default()).unwrap();
     assert_eq!(
         v,
         json!({
-            "schemaVersion": "1.0.0",
+            "schemaVersion": "1.1.0",
             "flag": {
                 "greenFloor": 0.65,
                 "yellowFloor": 0.35,
@@ -143,7 +148,8 @@ fn scoring_profile_is_camel_case() {
                 "maxPitchRad": 0.52,
                 "minConfidence": 0.5,
                 "blinkThreshold": 0.45
-            }
+            },
+            "trackingQuality": tracking
         })
     );
     let back: ScoringProfile = serde_json::from_value(v).unwrap();
@@ -234,4 +240,123 @@ fn bundled_catalog_and_baselines_validate_against_their_schema_definitions() {
     let mut bundle = serde_json::to_value(sample_bundle()).unwrap();
     bundle["signature"] = json!("ed25519:AAAA");
     schema::validate(&schema, &bundle).expect("strict validation of bundled documents");
+}
+
+// ---- SCH-3 (WP-G.6): `ScoringProfile.trackingQuality` ------------------------------------
+
+#[test]
+fn scoring_profile_schema_version_is_1_1_0() {
+    assert_eq!(SCORING_PROFILE_SCHEMA_VERSION, "1.1.0");
+    assert_eq!(ScoringProfile::default().schema_version, "1.1.0");
+}
+
+#[test]
+fn tracking_quality_params_are_the_asd_core_type_and_defaults() {
+    // Single source: the contract re-exports the asd-core type, it does not copy it.
+    let p: asd_core::types::tracking::TrackingQualityParams =
+        ScoringProfile::default().tracking_quality;
+    assert_eq!(
+        p,
+        asd_core::types::tracking::TrackingQualityParams::default()
+    );
+    assert_eq!(
+        p.schema_version,
+        asd_core::types::tracking::TRACKING_PARAMS_SCHEMA_VERSION
+    );
+}
+
+#[test]
+fn an_old_profile_without_tracking_quality_decodes_to_the_defaults() {
+    let mut v = serde_json::to_value(ScoringProfile::default()).unwrap();
+    v.as_object_mut().unwrap().remove("trackingQuality");
+    v["schemaVersion"] = json!("1.0.0");
+    let p: ScoringProfile = serde_json::from_value(v).expect("1.0.0 profile decodes");
+    assert_eq!(p.tracking_quality, TrackingQualityParams::default());
+    assert_eq!(
+        p.schema_version, "1.0.0",
+        "the document's own version is kept"
+    );
+
+    // A partial object fills the rest from the defaults (per-struct serde(default)).
+    let mut v = serde_json::to_value(ScoringProfile::default()).unwrap();
+    v["trackingQuality"] = json!({"provisional": false, "drift": {"warnDeg": 2.0}});
+    let p: ScoringProfile = serde_json::from_value(v).unwrap();
+    assert!(!p.tracking_quality.provisional);
+    assert_eq!(p.tracking_quality.drift.warn_deg, 2.0);
+    assert_eq!(
+        p.tracking_quality.drift.hard_deg,
+        TrackingQualityParams::default().drift.hard_deg
+    );
+}
+
+#[test]
+fn an_old_bundle_without_tracking_quality_decodes_and_validates() {
+    let mut bundle = serde_json::to_value(sample_bundle()).unwrap();
+    bundle["signature"] = json!("ed25519:AAAA");
+    let profile = bundle["scoring_profile"].as_object_mut().unwrap();
+    profile.remove("trackingQuality");
+    profile.insert("schemaVersion".into(), json!("1.0.0"));
+    let decoded: ConfigBundle = serde_json::from_value(bundle.clone()).expect("old bundle");
+    assert_eq!(
+        decoded.scoring_profile.tracking_quality,
+        TrackingQualityParams::default()
+    );
+    schema::validate(&schema::config_bundle_v1(), &bundle).expect("old bundle validates");
+}
+
+#[test]
+fn exported_tracking_quality_default_equals_the_asd_core_defaults() {
+    let core =
+        serde_json::to_value(asd_core::types::tracking::TrackingQualityParams::default()).unwrap();
+    let schema = schema::config_bundle_v1();
+    let profile = &schema["$defs"]["ScoringProfile"];
+    assert_eq!(
+        profile["properties"]["trackingQuality"]["default"], core,
+        "schema default is the asd-core default"
+    );
+    assert_eq!(profile["examples"][0]["trackingQuality"], core);
+    let required = profile["required"].as_array().unwrap();
+    assert!(
+        !required.contains(&json!("trackingQuality")),
+        "trackingQuality is optional (serde default)"
+    );
+    // Field-level defaults inside the params come from the same asd-core values.
+    let drift = &schema["$defs"]["DriftParams"]["properties"];
+    assert_eq!(drift["warnDeg"]["default"], core["drift"]["warnDeg"]);
+    assert_eq!(drift["hardDeg"]["default"], core["drift"]["hardDeg"]);
+    let committed: Value = serde_json::from_str(
+        &std::fs::read_to_string(repo_root().join("docs/spec/schemas/asd/config-bundle-v1.json"))
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(committed, schema, "config-bundle-v1.json regenerated");
+}
+
+#[test]
+fn schema_rejects_bad_tracking_params() {
+    let schema = schema::config_bundle_v1();
+    let mut base = serde_json::to_value(sample_bundle()).unwrap();
+    base["signature"] = json!("ed25519:AAAA");
+    for (pointer, bad) in [
+        (
+            "/scoring_profile/trackingQuality/drift/warnDeg",
+            json!("1.5"),
+        ),
+        (
+            "/scoring_profile/trackingQuality/calibration/defaultModel",
+            json!("cubic"),
+        ),
+        ("/scoring_profile/trackingQuality/provisional", json!(1)),
+        (
+            "/scoring_profile/trackingQuality/calibration/layout5/0",
+            json!([0.5]),
+        ),
+    ] {
+        let mut v = base.clone();
+        *v.pointer_mut(pointer).unwrap() = bad;
+        assert!(
+            schema::validate(&schema, &v).is_err(),
+            "{pointer} must be rejected"
+        );
+    }
 }

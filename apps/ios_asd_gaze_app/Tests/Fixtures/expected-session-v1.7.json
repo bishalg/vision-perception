@@ -1,0 +1,419 @@
+{
+  "attentionFlag": "yellow",
+  "battery": null,
+  "calibratedDistanceCm": 38,
+  "captureSource": "truedepth",
+  "durationSec": 32.5,
+  "eyeDwellRatio": 0.33,
+  "participantToken": "child-SESS-GOL",
+  "perVideo": [
+    {
+      "clip_id": "stim_05_geopref_split_10s",
+      "details": {
+        "aoiMinSizeDeg": 4.6,
+        "category": "GeoPref",
+        "dwellUnits": "ratio",
+        "hasBaseline": true,
+        "lowConfidence": false,
+        "meanFixationConfidence": 0.88,
+        "meanSampleConfidence": 0.84,
+        "nearestCheckOffsetDeg": 1.1,
+        "rows": [
+          {
+            "acceptableLow": 0.55,
+            "biomarker": "social_dwell_ratio",
+            "citation": "Pierce et al., eLife 2019",
+            "direction": "higherBetter",
+            "expected": 0.7,
+            "imputed": false,
+            "metricKey": "social_dwell_ratio",
+            "observed": 0.62,
+            "score": 1,
+            "segmentDescription": "Split screen",
+            "segmentId": "social_geo_split",
+            "source": "literature",
+            "status": "onTarget"
+          },
+          {
+            "acceptableHigh": 0.4,
+            "biomarker": "geometric_dwell_ratio",
+            "citation": "Pierce et al., eLife 2019",
+            "direction": "lowerBetter",
+            "expected": 0.25,
+            "imputed": false,
+            "metricKey": "geometric_dwell_ratio",
+            "observed": 0.21,
+            "score": 1,
+            "segmentDescription": "Split screen",
+            "segmentId": "social_geo_split",
+            "source": "literature",
+            "status": "onTarget"
+          },
+          {
+            "acceptableLow": 0.3,
+            "biomarker": "eye_dwell_ratio",
+            "citation": "Jones & Klin, Nature 2013",
+            "direction": "higherBetter",
+            "expected": 0.4,
+            "imputed": false,
+            "metricKey": "eye_dwell_ratio",
+            "observed": 0.33,
+            "score": 0.7,
+            "segmentDescription": "Face region",
+            "segmentId": "faces",
+            "source": "literature",
+            "status": "monitor"
+          },
+          {
+            "acceptableHigh": 1500,
+            "biomarker": "first_entry_latency_ms",
+            "citation": "provisional",
+            "direction": "lowerBetter",
+            "expected": 800,
+            "imputed": true,
+            "metricKey": "first_entry_latency_ms::Gaze_Target_Right",
+            "observed": 10000,
+            "score": 0,
+            "segmentDescription": "Gaze cue",
+            "segmentId": "cue",
+            "source": "provisional",
+            "status": "atypical",
+            "targetAOI": "Gaze_Target_Right"
+          },
+          {
+            "acceptableHigh": 20,
+            "acceptableLow": 6,
+            "biomarker": "fixation_count",
+            "citation": "provisional",
+            "direction": "band",
+            "expected": 12,
+            "imputed": false,
+            "metricKey": "fixation_count",
+            "observed": 14,
+            "score": 1,
+            "segmentDescription": "Whole clip",
+            "segmentId": "whole_clip",
+            "source": "provisional",
+            "status": "onTarget"
+          },
+          {
+            "acceptableHigh": 500,
+            "acceptableLow": 150,
+            "biomarker": "mean_fixation_duration_ms",
+            "citation": "provisional",
+            "direction": "band",
+            "expected": 300,
+            "imputed": false,
+            "metricKey": "mean_fixation_duration_ms",
+            "observed": 280,
+            "score": 1,
+            "segmentDescription": "Whole clip",
+            "segmentId": "whole_clip",
+            "source": "provisional",
+            "status": "onTarget"
+          }
+        ],
+        "subscore": 0.74,
+        "title": "Geometric vs Social Preference",
+        "validSampleRatio": 0.95
+      },
+      "dwell_eye": 0.33,
+      "dwell_geometric": 0.21,
+      "dwell_social": 0.62,
+      "fixation_count": 14,
+      "mean_fixation_ms": 280,
+      "order": 1,
+      "score": 0.74,
+      "status": "atypical",
+      "weight": 0.3
+    },
+    {
+      "clip_id": "untagged",
+      "details": {
+        "category": "Other",
+        "dwellUnits": "ratio",
+        "hasBaseline": false,
+        "lowConfidence": true,
+        "meanSampleConfidence": 0.41,
+        "rows": [],
+        "subscore": 0,
+        "title": "Untagged frames",
+        "validSampleRatio": 0.4
+      },
+      "order": 2,
+      "score": 0,
+      "weight": 0
+    }
+  ],
+  "qualityVerdict": "optimal",
+  "rawPayload": {
+    "calibratedDistanceCm": 38,
+    "captureSource": "truedepth",
+    "durationSec": 32.5,
+    "endedAt": "2026-10-26T07:33:52.500Z",
+    "eyeDwellRatio": 0.33,
+    "flatAffectScore": 0.12,
+    "id": "rec-golden-0001",
+    "participantId": "child-SESS-GOL",
+    "perVideo": [
+      {
+        "aoiMinSizeDeg": 4.6,
+        "category": "GeoPref",
+        "hasBaseline": true,
+        "lowConfidence": false,
+        "meanFixationConfidence": 0.88,
+        "meanSampleConfidence": 0.84,
+        "nearestCheckOffsetDeg": 1.1,
+        "rows": [
+          {
+            "acceptableLow": 0.55,
+            "biomarker": "social_dwell_ratio",
+            "citation": "Pierce et al., eLife 2019",
+            "direction": "higherBetter",
+            "expected": 0.7,
+            "imputed": false,
+            "metricKey": "social_dwell_ratio",
+            "observed": 0.62,
+            "score": 1,
+            "segmentDescription": "Split screen",
+            "segmentId": "social_geo_split",
+            "source": "literature",
+            "status": "onTarget"
+          },
+          {
+            "acceptableHigh": 0.4,
+            "biomarker": "geometric_dwell_ratio",
+            "citation": "Pierce et al., eLife 2019",
+            "direction": "lowerBetter",
+            "expected": 0.25,
+            "imputed": false,
+            "metricKey": "geometric_dwell_ratio",
+            "observed": 0.21,
+            "score": 1,
+            "segmentDescription": "Split screen",
+            "segmentId": "social_geo_split",
+            "source": "literature",
+            "status": "onTarget"
+          },
+          {
+            "acceptableLow": 0.3,
+            "biomarker": "eye_dwell_ratio",
+            "citation": "Jones & Klin, Nature 2013",
+            "direction": "higherBetter",
+            "expected": 0.4,
+            "imputed": false,
+            "metricKey": "eye_dwell_ratio",
+            "observed": 0.33,
+            "score": 0.7,
+            "segmentDescription": "Face region",
+            "segmentId": "faces",
+            "source": "literature",
+            "status": "monitor"
+          },
+          {
+            "acceptableHigh": 1500,
+            "biomarker": "first_entry_latency_ms",
+            "citation": "provisional",
+            "direction": "lowerBetter",
+            "expected": 800,
+            "imputed": true,
+            "metricKey": "first_entry_latency_ms::Gaze_Target_Right",
+            "observed": 10000,
+            "score": 0,
+            "segmentDescription": "Gaze cue",
+            "segmentId": "cue",
+            "source": "provisional",
+            "status": "atypical",
+            "targetAOI": "Gaze_Target_Right"
+          },
+          {
+            "acceptableHigh": 20,
+            "acceptableLow": 6,
+            "biomarker": "fixation_count",
+            "citation": "provisional",
+            "direction": "band",
+            "expected": 12,
+            "imputed": false,
+            "metricKey": "fixation_count",
+            "observed": 14,
+            "score": 1,
+            "segmentDescription": "Whole clip",
+            "segmentId": "whole_clip",
+            "source": "provisional",
+            "status": "onTarget"
+          },
+          {
+            "acceptableHigh": 500,
+            "acceptableLow": 150,
+            "biomarker": "mean_fixation_duration_ms",
+            "citation": "provisional",
+            "direction": "band",
+            "expected": 300,
+            "imputed": false,
+            "metricKey": "mean_fixation_duration_ms",
+            "observed": 280,
+            "score": 1,
+            "segmentDescription": "Whole clip",
+            "segmentId": "whole_clip",
+            "source": "provisional",
+            "status": "onTarget"
+          }
+        ],
+        "stimulusId": "stim_05_geopref_split_10s",
+        "subscore": 0.74,
+        "title": "Geometric vs Social Preference",
+        "validSampleRatio": 0.95,
+        "weight": 0.3
+      },
+      {
+        "category": "Other",
+        "hasBaseline": false,
+        "lowConfidence": true,
+        "meanSampleConfidence": 0.41,
+        "rows": [],
+        "stimulusId": "untagged",
+        "subscore": 0,
+        "title": "Untagged frames",
+        "validSampleRatio": 0.4,
+        "weight": 0
+      }
+    ],
+    "perVideoComposite": 0.74,
+    "qualityVerdict": "optimal",
+    "schemaVersion": "v1.7",
+    "sessionId": "SESS-GOLDEN-0001",
+    "smileReactivityIndex": 0.22,
+    "socialPreferenceScore": 0.62,
+    "socialSmileIntensity": 0.41,
+    "startedAt": "2026-10-26T07:33:20.000Z",
+    "surpriseScoreMean": 0.18,
+    "trackingQuality": {
+      "calibration": {
+        "ageSecAtStart": 6.5,
+        "attempts": 1,
+        "conditionNumber": 42.5,
+        "layoutPoints": 5,
+        "looCvDeg": 1.64,
+        "missingPoints": 0,
+        "model": "screenAffine",
+        "pose": {
+          "distanceCm": 38,
+          "pitchDeg": -4.25,
+          "yawDeg": 3.5
+        },
+        "quality": "good",
+        "residualDeg": 1.12,
+        "usablePoints": 5
+      },
+      "conditions": {
+        "ambientIntensityMedian": 870,
+        "distanceCmIqr": 4.25,
+        "distanceCmMedian": 39.5,
+        "glasses": false,
+        "headSpeedDegPerSecP90": 18.5,
+        "lightAsymmetry": 0.12
+      },
+      "confidence": {
+        "lowConfidenceSampleRatio": 0.07,
+        "meanFixation": 0.86,
+        "meanSample": 0.82
+      },
+      "device": {
+        "geometrySource": "table",
+        "modelIdentifier": "iPad13,18",
+        "orientation": "landscapeLeft",
+        "sampleRateHz": 60,
+        "screenHeightMm": 165.64,
+        "screenWidthMm": 238.25
+      },
+      "driftChecks": [
+        {
+          "atSec": 11.2,
+          "driftDeg": 0.4,
+          "missed": false,
+          "offsetDeg": 1.1,
+          "xNorm": 0.5,
+          "yNorm": 0.5
+        },
+        {
+          "atSec": 22.8,
+          "missed": true,
+          "xNorm": 0.3,
+          "yNorm": 0.3
+        }
+      ],
+      "estimatedAccuracyDeg": 1.63,
+      "loss": {
+        "artifactSec": 0.05,
+        "blinkSec": 0.6,
+        "gapFilledSec": 0.3,
+        "longestGapSec": 0.45,
+        "offscreenSec": 0.4,
+        "trackLossSec": 0.85
+      },
+      "maxDriftDeg": 0.4,
+      "paramsVersion": "1.0.0",
+      "pipelineVersion": "asd-gaze/1.0.0",
+      "recalibrations": [
+        {
+          "atSec": 23.5,
+          "newQuality": "fair",
+          "reason": "drift"
+        }
+      ],
+      "validation": {
+        "accuracyDeg": 1.63,
+        "complete": true,
+        "dataLoss": 0.24,
+        "precisionRmsDeg": 0.22,
+        "precisionRmsRawDeg": 0.48,
+        "targets": [
+          {
+            "accuracyDeg": 1.4,
+            "dataLoss": 0.02,
+            "missed": false,
+            "precisionRmsDeg": 0.21,
+            "sdDeg": 0.35,
+            "validSamples": 58,
+            "xNorm": 0.3,
+            "yNorm": 0.3
+          },
+          {
+            "accuracyDeg": 1.9,
+            "dataLoss": 0.05,
+            "missed": false,
+            "precisionRmsDeg": 0.25,
+            "sdDeg": 0.41,
+            "validSamples": 55,
+            "xNorm": 0.7,
+            "yNorm": 0.3
+          },
+          {
+            "accuracyDeg": 1.6,
+            "dataLoss": 0,
+            "missed": false,
+            "precisionRmsDeg": 0.19,
+            "sdDeg": 0.33,
+            "validSamples": 60,
+            "xNorm": 0.3,
+            "yNorm": 0.7
+          },
+          {
+            "dataLoss": 0.9,
+            "missed": true,
+            "validSamples": 4,
+            "xNorm": 0.7,
+            "yNorm": 0.7
+          }
+        ]
+      },
+      "verdict": "good"
+    },
+    "validFrameRatio": 0.93,
+    "zeroRawVideoEnforced": true
+  },
+  "schemaVersion": "1.7",
+  "sessionId": "SESS-GOLDEN-0001",
+  "socialPreferenceScore": 0.62,
+  "validRatio": 0.93
+}

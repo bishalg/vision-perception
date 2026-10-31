@@ -1,0 +1,1350 @@
+{
+  "$defs": {
+    "AttentionFlag": {
+      "enum": [
+        "green",
+        "yellow",
+        "red"
+      ],
+      "type": "string"
+    },
+    "CalModelKind": {
+      "enum": [
+        "screenAffine",
+        "angularAffine",
+        "screenHomography",
+        "screenPoly2"
+      ],
+      "type": "string"
+    },
+    "CalibrationPose": {
+      "properties": {
+        "distanceCm": {
+          "type": "number"
+        },
+        "pitchDeg": {
+          "type": "number"
+        },
+        "yawDeg": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "distanceCm",
+        "yawDeg",
+        "pitchDeg"
+      ],
+      "type": "object"
+    },
+    "CalibrationQuality": {
+      "enum": [
+        "good",
+        "fair",
+        "poor",
+        "failed",
+        "skipped"
+      ],
+      "type": "string"
+    },
+    "CalibrationRecord": {
+      "properties": {
+        "ageSecAtStart": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attempts": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "conditionNumber": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "layoutPoints": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "looCvDeg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "missingPoints": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CalModelKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pose": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CalibrationPose"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "quality": {
+          "$ref": "#/$defs/CalibrationQuality"
+        },
+        "residualDeg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "usablePoints": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "layoutPoints",
+        "usablePoints",
+        "missingPoints",
+        "quality",
+        "attempts"
+      ],
+      "type": "object"
+    },
+    "CaptureSource": {
+      "enum": [
+        "truedepth",
+        "simulated",
+        "synthetic"
+      ],
+      "type": "string"
+    },
+    "ConfidenceSummary": {
+      "properties": {
+        "lowConfidenceSampleRatio": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        "meanFixation": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "meanSample": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "meanSample",
+        "lowConfidenceSampleRatio"
+      ],
+      "type": "object"
+    },
+    "DriftCheckRecord": {
+      "properties": {
+        "atSec": {
+          "type": "number"
+        },
+        "driftDeg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "missed": {
+          "type": "boolean"
+        },
+        "offsetDeg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "xNorm": {
+          "type": "number"
+        },
+        "yNorm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "atSec",
+        "xNorm",
+        "yNorm",
+        "missed"
+      ],
+      "type": "object"
+    },
+    "DwellUnits": {
+      "description": "Units of the `dwell_*` columns. Ratios of valid clip samples, never seconds (CON-13).",
+      "enum": [
+        "ratio"
+      ],
+      "type": "string"
+    },
+    "ExpectationStatus": {
+      "enum": [
+        "onTarget",
+        "monitor",
+        "atypical"
+      ],
+      "type": "string"
+    },
+    "GazeQualityVerdict": {
+      "enum": [
+        "optimal",
+        "acceptable",
+        "degraded",
+        "rejected"
+      ],
+      "type": "string"
+    },
+    "GazeSessionRecord": {
+      "additionalProperties": true,
+      "description": "The full on-device record, carried as `rawPayload` (1.7). Same rules as the 1.6 record\n(RFC 3339 dates, unknown keys kept in [`GazeSessionRecord::extra`]).",
+      "properties": {
+        "calibratedDistanceCm": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "QS-5: the calibration pose distance when a calibration ran; absent otherwise\n(required in 1.6)."
+        },
+        "captureSource": {
+          "$ref": "#/$defs/CaptureSource"
+        },
+        "durationSec": {
+          "type": "number"
+        },
+        "endedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "eyeDwellRatio": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "firstEyeLatencyMs": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "flatAffectScore": {
+          "type": "number"
+        },
+        "id": {
+          "type": "string"
+        },
+        "legacyProvenance": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mouthDwellRatio": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "participantId": {
+          "description": "Pseudonymous participant token, never a name (CNS-7).",
+          "type": "string"
+        },
+        "perVideo": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/PerVideoScoreReport"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "perVideoComposite": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "qualityVerdict": {
+          "$ref": "#/$defs/GazeQualityVerdict"
+        },
+        "schemaVersion": {
+          "description": "Record form (`\"v1.7\"`); the wire form drops the `v`.",
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "smileReactivityIndex": {
+          "type": "number"
+        },
+        "socialPreferenceScore": {
+          "type": "number"
+        },
+        "socialSmileIntensity": {
+          "type": "number"
+        },
+        "startedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "surpriseScoreMean": {
+          "type": "number"
+        },
+        "trackingQuality": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TrackingQuality"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Session tracking-quality record (QS-1); absent when the gaze pipeline did not run."
+        },
+        "validFrameRatio": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        "zeroRawVideoEnforced": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "participantId",
+        "captureSource",
+        "startedAt",
+        "endedAt",
+        "durationSec",
+        "socialPreferenceScore",
+        "validFrameRatio",
+        "qualityVerdict",
+        "socialSmileIntensity",
+        "smileReactivityIndex",
+        "flatAffectScore",
+        "surpriseScoreMean",
+        "schemaVersion",
+        "zeroRawVideoEnforced"
+      ],
+      "type": "object"
+    },
+    "GeometrySource": {
+      "enum": [
+        "table",
+        "idiomDefault"
+      ],
+      "type": "string"
+    },
+    "LossSummary": {
+      "properties": {
+        "artifactSec": {
+          "type": "number"
+        },
+        "blinkSec": {
+          "type": "number"
+        },
+        "gapFilledSec": {
+          "type": "number"
+        },
+        "longestGapSec": {
+          "type": "number"
+        },
+        "offscreenSec": {
+          "type": "number"
+        },
+        "trackLossSec": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "trackLossSec",
+        "blinkSec",
+        "offscreenSec",
+        "artifactSec",
+        "gapFilledSec",
+        "longestGapSec"
+      ],
+      "type": "object"
+    },
+    "NormativeDirection": {
+      "enum": [
+        "higherBetter",
+        "lowerBetter",
+        "band"
+      ],
+      "type": "string"
+    },
+    "Orientation": {
+      "enum": [
+        "portrait",
+        "portraitUpsideDown",
+        "landscapeLeft",
+        "landscapeRight"
+      ],
+      "type": "string"
+    },
+    "PerVideoScoreReport": {
+      "description": "`rawPayload.perVideo[]` in 1.7: the asd-core `PerVideoScoreReport` plus [`ClipTracking`]\n(both flattened, camelCase).",
+      "properties": {
+        "aoiMinSizeDeg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Smallest dimension of the clip's role-bearing AOIs, degrees at the session's median\ndistance."
+        },
+        "category": {
+          "type": "string"
+        },
+        "hasBaseline": {
+          "type": "boolean"
+        },
+        "lowConfidence": {
+          "type": "boolean"
+        },
+        "meanFixationConfidence": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Mean confidence of the samples inside fixations."
+        },
+        "meanSampleConfidence": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Mean CNF-1 confidence over the clip's samples."
+        },
+        "nearestCheckOffsetDeg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Offset of the drift check right after the clip, degrees."
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/PerVideoScoreRow"
+          },
+          "type": "array"
+        },
+        "stimulusId": {
+          "type": "string"
+        },
+        "subscore": {
+          "type": "number"
+        },
+        "title": {
+          "type": "string"
+        },
+        "validSampleRatio": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        "weight": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "stimulusId",
+        "title",
+        "category",
+        "rows",
+        "subscore",
+        "validSampleRatio",
+        "lowConfidence",
+        "hasBaseline",
+        "weight"
+      ],
+      "type": "object"
+    },
+    "PerVideoScoreRow": {
+      "properties": {
+        "acceptableHigh": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "acceptableLow": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "biomarker": {
+          "type": "string"
+        },
+        "citation": {
+          "type": "string"
+        },
+        "direction": {
+          "$ref": "#/$defs/NormativeDirection"
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "imputed": {
+          "type": "boolean"
+        },
+        "metricKey": {
+          "type": "string"
+        },
+        "observed": {
+          "type": "number"
+        },
+        "score": {
+          "type": "number"
+        },
+        "segmentDescription": {
+          "type": "string"
+        },
+        "segmentId": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/ExpectationStatus"
+        },
+        "targetAOI": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "segmentId",
+        "segmentDescription",
+        "biomarker",
+        "metricKey",
+        "direction",
+        "observed",
+        "status",
+        "score",
+        "imputed",
+        "citation",
+        "source"
+      ],
+      "type": "object"
+    },
+    "RecalReason": {
+      "enum": [
+        "calibrationQuality",
+        "validationAccuracy",
+        "drift",
+        "poseShift",
+        "orientationChanged",
+        "calibrationAge",
+        "operatorRequest"
+      ],
+      "type": "string"
+    },
+    "RecalibrationRecord": {
+      "properties": {
+        "atSec": {
+          "type": "number"
+        },
+        "newQuality": {
+          "$ref": "#/$defs/CalibrationQuality"
+        },
+        "reason": {
+          "$ref": "#/$defs/RecalReason"
+        }
+      },
+      "required": [
+        "atSec",
+        "reason",
+        "newQuality"
+      ],
+      "type": "object"
+    },
+    "SessionPerVideoDetails": {
+      "description": "`perVideo[].details` in 1.7: the 1.6 details plus [`ClipTracking`] (flattened, camelCase).",
+      "properties": {
+        "aoiMinSizeDeg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Smallest dimension of the clip's role-bearing AOIs, degrees at the session's median\ndistance."
+        },
+        "category": {
+          "type": "string"
+        },
+        "dwellUnits": {
+          "$ref": "#/$defs/DwellUnits"
+        },
+        "hasBaseline": {
+          "type": "boolean"
+        },
+        "lowConfidence": {
+          "type": "boolean"
+        },
+        "meanFixationConfidence": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Mean confidence of the samples inside fixations."
+        },
+        "meanSampleConfidence": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Mean CNF-1 confidence over the clip's samples."
+        },
+        "nearestCheckOffsetDeg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Offset of the drift check right after the clip, degrees."
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/PerVideoScoreRow"
+          },
+          "type": "array"
+        },
+        "subscore": {
+          "type": "number"
+        },
+        "title": {
+          "type": "string"
+        },
+        "validSampleRatio": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "title",
+        "category",
+        "subscore",
+        "validSampleRatio",
+        "lowConfidence",
+        "hasBaseline",
+        "dwellUnits",
+        "rows"
+      ],
+      "type": "object"
+    },
+    "SessionPerVideoScore": {
+      "description": "One flattened per-clip row (schema name `SessionPerVideoScore`, as in 1.6). snake_case;\nidentical to the 1.6 row except that `details` carries the QS-3 fields.",
+      "properties": {
+        "clip_id": {
+          "type": "string"
+        },
+        "details": {
+          "$ref": "#/$defs/SessionPerVideoDetails"
+        },
+        "dwell_eye": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dwell_geometric": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dwell_mouth": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dwell_social": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fixation_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mean_fixation_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "order": {
+          "description": "1-based play order.",
+          "type": "integer"
+        },
+        "orienting_latency_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Measured first-entry latency; an imputed latency is not sent."
+        },
+        "score": {
+          "type": "number"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExpectationStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Worst row status of the clip; absent when the clip has no scored rows."
+        },
+        "weight": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "clip_id",
+        "order",
+        "score",
+        "weight",
+        "details"
+      ],
+      "type": "object"
+    },
+    "TrackingConditions": {
+      "properties": {
+        "ambientIntensityMedian": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "distanceCmIqr": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "distanceCmMedian": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "glasses": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "headSpeedDegPerSecP90": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lightAsymmetry": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "TrackingDevice": {
+      "properties": {
+        "geometrySource": {
+          "$ref": "#/$defs/GeometrySource"
+        },
+        "modelIdentifier": {
+          "type": "string"
+        },
+        "orientation": {
+          "$ref": "#/$defs/Orientation"
+        },
+        "sampleRateHz": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "screenHeightMm": {
+          "type": "number"
+        },
+        "screenWidthMm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "modelIdentifier",
+        "geometrySource",
+        "orientation",
+        "screenWidthMm",
+        "screenHeightMm"
+      ],
+      "type": "object"
+    },
+    "TrackingQuality": {
+      "description": "`rawPayload.trackingQuality` (QS-1, schema 1.7).",
+      "properties": {
+        "calibration": {
+          "$ref": "#/$defs/CalibrationRecord"
+        },
+        "conditions": {
+          "$ref": "#/$defs/TrackingConditions"
+        },
+        "confidence": {
+          "$ref": "#/$defs/ConfidenceSummary"
+        },
+        "device": {
+          "$ref": "#/$defs/TrackingDevice"
+        },
+        "driftChecks": {
+          "items": {
+            "$ref": "#/$defs/DriftCheckRecord"
+          },
+          "type": "array"
+        },
+        "estimatedAccuracyDeg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "QS-2; absent when not measured."
+        },
+        "loss": {
+          "$ref": "#/$defs/LossSummary"
+        },
+        "maxDriftDeg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "paramsVersion": {
+          "description": "`TrackingQualityParams.schemaVersion` the session ran with.",
+          "type": "string"
+        },
+        "pipelineVersion": {
+          "description": "asd-core gaze maths version (`asd-gaze/1.0.0`).",
+          "type": "string"
+        },
+        "recalibrations": {
+          "items": {
+            "$ref": "#/$defs/RecalibrationRecord"
+          },
+          "type": "array"
+        },
+        "validation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ValidationRecord"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "verdict": {
+          "$ref": "#/$defs/TrackingVerdict",
+          "description": "QS-4."
+        }
+      },
+      "required": [
+        "pipelineVersion",
+        "paramsVersion",
+        "device",
+        "calibration",
+        "conditions",
+        "loss",
+        "confidence",
+        "verdict"
+      ],
+      "type": "object"
+    },
+    "TrackingVerdict": {
+      "enum": [
+        "good",
+        "fair",
+        "poor",
+        "unusable"
+      ],
+      "type": "string"
+    },
+    "ValidationRecord": {
+      "properties": {
+        "accuracyDeg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "dataLoss": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        "precisionRmsDeg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "precisionRmsRawDeg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "targets": {
+          "items": {
+            "$ref": "#/$defs/ValidationTargetRecord"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "complete",
+        "targets",
+        "dataLoss"
+      ],
+      "type": "object"
+    },
+    "ValidationTargetRecord": {
+      "properties": {
+        "accuracyDeg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dataLoss": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        "missed": {
+          "type": "boolean"
+        },
+        "precisionRmsDeg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sdDeg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "validSamples": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "xNorm": {
+          "type": "number"
+        },
+        "yNorm": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "xNorm",
+        "yNorm",
+        "dataLoss",
+        "validSamples",
+        "missed"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.curv.org/asd/session-v1.7.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Curv Pediatric ASD Gaze Session Ingestion Schema (v1.7)",
+  "properties": {
+    "attentionFlag": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AttentionFlag"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Explicit `null` when the device did not compute a flag (CON-15)."
+    },
+    "battery": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Catalog protocol id or explicit `null` when unknown."
+    },
+    "calibratedDistanceCm": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "captureSource": {
+      "$ref": "#/$defs/CaptureSource"
+    },
+    "durationSec": {
+      "type": "number"
+    },
+    "eyeDwellRatio": {
+      "anyOf": [
+        {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "firstEyeLatencyMs": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "mouthDwellRatio": {
+      "anyOf": [
+        {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "participantToken": {
+      "description": "Pseudonymous token (CNS-7), never a name.",
+      "type": "string"
+    },
+    "perVideo": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/SessionPerVideoScore"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "qualityVerdict": {
+      "$ref": "#/$defs/GazeQualityVerdict"
+    },
+    "rawPayload": {
+      "$ref": "#/$defs/GazeSessionRecord"
+    },
+    "schemaVersion": {
+      "description": "Wire form (`\"1.7\"`), equal to the `X-Schema-Version` header (CON-21).",
+      "type": "string"
+    },
+    "sessionId": {
+      "type": "string"
+    },
+    "socialPreferenceScore": {
+      "type": "number"
+    },
+    "validRatio": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "type": "number"
+    }
+  },
+  "required": [
+    "sessionId",
+    "participantToken",
+    "captureSource",
+    "durationSec",
+    "validRatio",
+    "socialPreferenceScore",
+    "qualityVerdict",
+    "schemaVersion",
+    "rawPayload"
+  ],
+  "title": "SessionIngestRequest",
+  "type": "object"
+}

@@ -24,11 +24,14 @@ use serde_json::{json, Map, Value};
 use crate::config::{self, ConfigBundle, ScoringProfile};
 use crate::problem::{InvalidParam, Problem};
 use crate::session_v1_6::{self, SessionIngestRequest, SessionIngestResponse};
+use crate::session_v1_7;
 use crate::signing::canonical_bytes;
 use crate::{api_v1, care, clinical};
 
-/// File name of the session ingest schema.
+/// File name of the session ingest schema (1.6, the wire version of current clients).
 pub const SESSION_FILE: &str = "session-v1.6.json";
+/// File name of the session ingest schema 1.7 (SCH-1, WP-G.6).
+pub const SESSION_V1_7_FILE: &str = "session-v1.7.json";
 /// File name of the config bundle schema.
 pub const CONFIG_BUNDLE_FILE: &str = "config-bundle-v1.json";
 /// File name of the `/v1` DTO schema.
@@ -120,6 +123,11 @@ fn root_for<T: JsonSchema>(id: &str) -> Value {
 /// `session-v1.6.json`: `SessionIngestRequest` with every nested type in `$defs`.
 pub fn session_v1_6() -> Value {
     root_for::<SessionIngestRequest>(session_v1_6::SCHEMA_ID)
+}
+
+/// `session-v1.7.json`: the 1.7 `SessionIngestRequest` (1.6 plus tracking quality, SCH-1).
+pub fn session_v1_7() -> Value {
+    root_for::<session_v1_7::SessionIngestRequest>(session_v1_7::SCHEMA_ID)
 }
 
 /// `config-bundle-v1.json`: the signed `ConfigBundle`.
@@ -269,6 +277,10 @@ pub fn documents() -> Vec<SchemaDocument> {
             value: session_v1_6(),
         },
         SchemaDocument {
+            file_name: SESSION_V1_7_FILE,
+            value: session_v1_7(),
+        },
+        SchemaDocument {
             file_name: CONFIG_BUNDLE_FILE,
             value: config_bundle_v1(),
         },
@@ -397,8 +409,14 @@ pub fn validate(schema: &Value, instance: &Value) -> Result<(), Vec<String>> {
     }
 }
 
-/// Validates a session ingest payload against the exported session schema (CON-4).
+/// Validates a session ingest payload against the exported session schema 1.6 (CON-4).
 #[cfg(feature = "validate")]
 pub fn validate_session(instance: &Value) -> Result<(), Vec<String>> {
     validate(&session_v1_6(), instance)
+}
+
+/// Validates a session ingest payload against the exported session schema 1.7 (SCH-1).
+#[cfg(feature = "validate")]
+pub fn validate_session_v1_7(instance: &Value) -> Result<(), Vec<String>> {
+    validate(&session_v1_7(), instance)
 }

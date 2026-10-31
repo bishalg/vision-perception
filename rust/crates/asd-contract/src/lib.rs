@@ -15,4 +15,5 @@ mod mirror;
 pub mod problem;
 pub mod schema;
 pub mod session_v1_6;
+pub mod session_v1_7;
 pub mod signing;

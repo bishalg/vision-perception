@@ -1,5 +1,22 @@
 {
   "$defs": {
+    "AccuracyBands": {
+      "properties": {
+        "fairMaxDeg": {
+          "default": 3.5,
+          "type": "number"
+        },
+        "goodMaxDeg": {
+          "default": 2.5,
+          "type": "number"
+        },
+        "poorMaxDeg": {
+          "default": 5.0,
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
     "AgeBracket": {
       "properties": {
         "id": {
@@ -80,6 +97,162 @@
       ],
       "type": "object"
     },
+    "CalModelKind": {
+      "enum": [
+        "screenAffine",
+        "angularAffine",
+        "screenHomography",
+        "screenPoly2"
+      ],
+      "type": "string"
+    },
+    "CalibrationParams": {
+      "properties": {
+        "autoSelect": {
+          "default": false,
+          "type": "boolean"
+        },
+        "bands": {
+          "$ref": "#/$defs/AccuracyBands",
+          "default": {
+            "fairMaxDeg": 3.5,
+            "goodMaxDeg": 2.5,
+            "poorMaxDeg": 5.0
+          }
+        },
+        "collectMs": {
+          "default": 1200.0,
+          "type": "number"
+        },
+        "defaultModel": {
+          "$ref": "#/$defs/CalModelKind",
+          "default": "screenAffine"
+        },
+        "eligibilityMarginPoints": {
+          "default": 2,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "layout5": {
+          "default": [
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.12,
+              0.12
+            ],
+            [
+              0.88,
+              0.12
+            ],
+            [
+              0.12,
+              0.88
+            ],
+            [
+              0.88,
+              0.88
+            ]
+          ],
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "layout9": {
+          "default": [
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.12,
+              0.12
+            ],
+            [
+              0.88,
+              0.12
+            ],
+            [
+              0.12,
+              0.88
+            ],
+            [
+              0.88,
+              0.88
+            ],
+            [
+              0.5,
+              0.12
+            ],
+            [
+              0.12,
+              0.5
+            ],
+            [
+              0.88,
+              0.5
+            ],
+            [
+              0.5,
+              0.88
+            ]
+          ],
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "madRejectK": {
+          "default": 3.0,
+          "type": "number"
+        },
+        "maxConditionNumber": {
+          "default": 1000000.0,
+          "type": "number"
+        },
+        "maxRetriesPerTarget": {
+          "default": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maxTargetWaitMs": {
+          "default": 4000.0,
+          "type": "number"
+        },
+        "minImprovementDeg": {
+          "default": 0.3,
+          "type": "number"
+        },
+        "minSamplesPerTarget": {
+          "default": 20,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "minUsablePoints": {
+          "default": 4,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "settleMs": {
+          "default": 400.0,
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
     "Clip": {
       "properties": {
         "areas": {
@@ -125,6 +298,120 @@
       ],
       "type": "object"
     },
+    "ConfidenceParams": {
+      "properties": {
+        "distanceComfortMaxCm": {
+          "default": 60.0,
+          "type": "number"
+        },
+        "distanceComfortMinCm": {
+          "default": 40.0,
+          "type": "number"
+        },
+        "eyeOpennessComfort": {
+          "default": 0.7,
+          "type": "number"
+        },
+        "headSpeedComfortDegPerSec": {
+          "default": 30.0,
+          "type": "number"
+        },
+        "maxHeadSpeedDegPerSec": {
+          "default": 120.0,
+          "type": "number"
+        },
+        "poseComfortFraction": {
+          "default": 0.6,
+          "type": "number"
+        },
+        "poseShiftComfortPct": {
+          "default": 10.0,
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "DriftParams": {
+      "properties": {
+        "checkLayout": {
+          "default": [
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.3,
+              0.3
+            ],
+            [
+              0.7,
+              0.3
+            ],
+            [
+              0.3,
+              0.7
+            ],
+            [
+              0.7,
+              0.7
+            ]
+          ],
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "collectMs": {
+          "default": 900.0,
+          "type": "number"
+        },
+        "hardDeg": {
+          "default": 3.0,
+          "type": "number"
+        },
+        "minSamples": {
+          "default": 10,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "settleMs": {
+          "default": 300.0,
+          "type": "number"
+        },
+        "warnConsecutive": {
+          "default": 2,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "warnDeg": {
+          "default": 1.5,
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "FilterParams": {
+      "properties": {
+        "beta": {
+          "default": 0.015,
+          "type": "number"
+        },
+        "dCutoffHz": {
+          "default": 1.0,
+          "type": "number"
+        },
+        "minCutoffHz": {
+          "default": 1.2,
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
     "FlagThresholds": {
       "description": "Traffic-light thresholds (`AttentionFlagAlgorithm`).",
       "properties": {
@@ -151,6 +438,23 @@
         "lowConfidenceShare",
         "atypicalShareForRed"
       ],
+      "type": "object"
+    },
+    "GapFillParams": {
+      "properties": {
+        "lossIntervalCapMs": {
+          "default": 100.0,
+          "type": "number"
+        },
+        "maxDeg": {
+          "default": 1.0,
+          "type": "number"
+        },
+        "maxMs": {
+          "default": 75.0,
+          "type": "number"
+        }
+      },
       "type": "object"
     },
     "Membership": {
@@ -390,6 +694,54 @@
       ],
       "type": "object"
     },
+    "RecalibrationParams": {
+      "properties": {
+        "maxCalibrationAgeSec": {
+          "default": 600.0,
+          "type": "number"
+        },
+        "maxRecalibrationsInBattery": {
+          "default": 1,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maxRecalibrationsPerSession": {
+          "default": 2,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "poseShiftAngleDeg": {
+          "default": 15.0,
+          "type": "number"
+        },
+        "poseShiftDistancePct": {
+          "default": 20.0,
+          "type": "number"
+        },
+        "poseWindowSec": {
+          "default": 3.0,
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "ScoringCouplingParams": {
+      "properties": {
+        "aoiResolutionFactor": {
+          "default": 2.0,
+          "type": "number"
+        },
+        "ivtVelocityDegPerSec": {
+          "default": 30.0,
+          "type": "number"
+        },
+        "maxAccuracyDegForScoring": {
+          "default": 5.0,
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
     "ScoringProfile": {
       "description": "Scoring parameters delivered in the bundle (`scoring_profile` config document).",
       "examples": [
@@ -409,7 +761,247 @@
             "minConfidence": 0.5,
             "minDistanceCm": 35.0
           },
-          "schemaVersion": "1.0.0"
+          "schemaVersion": "1.1.0",
+          "trackingQuality": {
+            "calibration": {
+              "autoSelect": false,
+              "bands": {
+                "fairMaxDeg": 3.5,
+                "goodMaxDeg": 2.5,
+                "poorMaxDeg": 5.0
+              },
+              "collectMs": 1200.0,
+              "defaultModel": "screenAffine",
+              "eligibilityMarginPoints": 2,
+              "layout5": [
+                [
+                  0.5,
+                  0.5
+                ],
+                [
+                  0.12,
+                  0.12
+                ],
+                [
+                  0.88,
+                  0.12
+                ],
+                [
+                  0.12,
+                  0.88
+                ],
+                [
+                  0.88,
+                  0.88
+                ]
+              ],
+              "layout9": [
+                [
+                  0.5,
+                  0.5
+                ],
+                [
+                  0.12,
+                  0.12
+                ],
+                [
+                  0.88,
+                  0.12
+                ],
+                [
+                  0.12,
+                  0.88
+                ],
+                [
+                  0.88,
+                  0.88
+                ],
+                [
+                  0.5,
+                  0.12
+                ],
+                [
+                  0.12,
+                  0.5
+                ],
+                [
+                  0.88,
+                  0.5
+                ],
+                [
+                  0.5,
+                  0.88
+                ]
+              ],
+              "madRejectK": 3.0,
+              "maxConditionNumber": 1000000.0,
+              "maxRetriesPerTarget": 1,
+              "maxTargetWaitMs": 4000.0,
+              "minImprovementDeg": 0.3,
+              "minSamplesPerTarget": 20,
+              "minUsablePoints": 4,
+              "settleMs": 400.0
+            },
+            "confidence": {
+              "distanceComfortMaxCm": 60.0,
+              "distanceComfortMinCm": 40.0,
+              "eyeOpennessComfort": 0.7,
+              "headSpeedComfortDegPerSec": 30.0,
+              "maxHeadSpeedDegPerSec": 120.0,
+              "poseComfortFraction": 0.6,
+              "poseShiftComfortPct": 10.0
+            },
+            "drift": {
+              "checkLayout": [
+                [
+                  0.5,
+                  0.5
+                ],
+                [
+                  0.3,
+                  0.3
+                ],
+                [
+                  0.7,
+                  0.3
+                ],
+                [
+                  0.3,
+                  0.7
+                ],
+                [
+                  0.7,
+                  0.7
+                ]
+              ],
+              "collectMs": 900.0,
+              "hardDeg": 3.0,
+              "minSamples": 10,
+              "settleMs": 300.0,
+              "warnConsecutive": 2,
+              "warnDeg": 1.5
+            },
+            "filter": {
+              "beta": 0.015,
+              "dCutoffHz": 1.0,
+              "minCutoffHz": 1.2
+            },
+            "gapFill": {
+              "lossIntervalCapMs": 100.0,
+              "maxDeg": 1.0,
+              "maxMs": 75.0
+            },
+            "provisional": true,
+            "recalibration": {
+              "maxCalibrationAgeSec": 600.0,
+              "maxRecalibrationsInBattery": 1,
+              "maxRecalibrationsPerSession": 2,
+              "poseShiftAngleDeg": 15.0,
+              "poseShiftDistancePct": 20.0,
+              "poseWindowSec": 3.0
+            },
+            "schemaVersion": "1.0.0",
+            "scoring": {
+              "aoiResolutionFactor": 2.0,
+              "ivtVelocityDegPerSec": 30.0,
+              "maxAccuracyDegForScoring": 5.0
+            },
+            "trackState": {
+              "blinkRecoveryMs": 50.0,
+              "maxEyeSpeedDegPerSec": 1000.0,
+              "offscreenMarginNorm": 0.02
+            },
+            "validation": {
+              "benchLayout13": [
+                [
+                  0.1,
+                  0.1
+                ],
+                [
+                  0.5,
+                  0.1
+                ],
+                [
+                  0.9,
+                  0.1
+                ],
+                [
+                  0.1,
+                  0.5
+                ],
+                [
+                  0.5,
+                  0.5
+                ],
+                [
+                  0.9,
+                  0.5
+                ],
+                [
+                  0.1,
+                  0.9
+                ],
+                [
+                  0.5,
+                  0.9
+                ],
+                [
+                  0.9,
+                  0.9
+                ],
+                [
+                  0.3,
+                  0.3
+                ],
+                [
+                  0.7,
+                  0.3
+                ],
+                [
+                  0.3,
+                  0.7
+                ],
+                [
+                  0.7,
+                  0.7
+                ]
+              ],
+              "collectMs": 1000.0,
+              "layout": [
+                [
+                  0.3,
+                  0.3
+                ],
+                [
+                  0.7,
+                  0.3
+                ],
+                [
+                  0.3,
+                  0.7
+                ],
+                [
+                  0.7,
+                  0.7
+                ]
+              ],
+              "maxAccuracyDeg": 5.0,
+              "minSamplesPerTarget": 12,
+              "minTargetsHit": 3,
+              "settleMs": 400.0,
+              "warnAccuracyDeg": 3.5
+            },
+            "verdict": {
+              "accuracyBands": {
+                "fairMaxDeg": 3.5,
+                "goodMaxDeg": 2.5,
+                "poorMaxDeg": 5.0
+              },
+              "fairAboveDataLoss": 0.2,
+              "poorAboveDataLoss": 0.4,
+              "unusableBelowValidRatio": 0.5
+            }
+          }
         }
       ],
       "properties": {
@@ -425,6 +1017,250 @@
         },
         "schemaVersion": {
           "type": "string"
+        },
+        "trackingQuality": {
+          "$ref": "#/$defs/TrackingQualityParams",
+          "default": {
+            "calibration": {
+              "autoSelect": false,
+              "bands": {
+                "fairMaxDeg": 3.5,
+                "goodMaxDeg": 2.5,
+                "poorMaxDeg": 5.0
+              },
+              "collectMs": 1200.0,
+              "defaultModel": "screenAffine",
+              "eligibilityMarginPoints": 2,
+              "layout5": [
+                [
+                  0.5,
+                  0.5
+                ],
+                [
+                  0.12,
+                  0.12
+                ],
+                [
+                  0.88,
+                  0.12
+                ],
+                [
+                  0.12,
+                  0.88
+                ],
+                [
+                  0.88,
+                  0.88
+                ]
+              ],
+              "layout9": [
+                [
+                  0.5,
+                  0.5
+                ],
+                [
+                  0.12,
+                  0.12
+                ],
+                [
+                  0.88,
+                  0.12
+                ],
+                [
+                  0.12,
+                  0.88
+                ],
+                [
+                  0.88,
+                  0.88
+                ],
+                [
+                  0.5,
+                  0.12
+                ],
+                [
+                  0.12,
+                  0.5
+                ],
+                [
+                  0.88,
+                  0.5
+                ],
+                [
+                  0.5,
+                  0.88
+                ]
+              ],
+              "madRejectK": 3.0,
+              "maxConditionNumber": 1000000.0,
+              "maxRetriesPerTarget": 1,
+              "maxTargetWaitMs": 4000.0,
+              "minImprovementDeg": 0.3,
+              "minSamplesPerTarget": 20,
+              "minUsablePoints": 4,
+              "settleMs": 400.0
+            },
+            "confidence": {
+              "distanceComfortMaxCm": 60.0,
+              "distanceComfortMinCm": 40.0,
+              "eyeOpennessComfort": 0.7,
+              "headSpeedComfortDegPerSec": 30.0,
+              "maxHeadSpeedDegPerSec": 120.0,
+              "poseComfortFraction": 0.6,
+              "poseShiftComfortPct": 10.0
+            },
+            "drift": {
+              "checkLayout": [
+                [
+                  0.5,
+                  0.5
+                ],
+                [
+                  0.3,
+                  0.3
+                ],
+                [
+                  0.7,
+                  0.3
+                ],
+                [
+                  0.3,
+                  0.7
+                ],
+                [
+                  0.7,
+                  0.7
+                ]
+              ],
+              "collectMs": 900.0,
+              "hardDeg": 3.0,
+              "minSamples": 10,
+              "settleMs": 300.0,
+              "warnConsecutive": 2,
+              "warnDeg": 1.5
+            },
+            "filter": {
+              "beta": 0.015,
+              "dCutoffHz": 1.0,
+              "minCutoffHz": 1.2
+            },
+            "gapFill": {
+              "lossIntervalCapMs": 100.0,
+              "maxDeg": 1.0,
+              "maxMs": 75.0
+            },
+            "provisional": true,
+            "recalibration": {
+              "maxCalibrationAgeSec": 600.0,
+              "maxRecalibrationsInBattery": 1,
+              "maxRecalibrationsPerSession": 2,
+              "poseShiftAngleDeg": 15.0,
+              "poseShiftDistancePct": 20.0,
+              "poseWindowSec": 3.0
+            },
+            "schemaVersion": "1.0.0",
+            "scoring": {
+              "aoiResolutionFactor": 2.0,
+              "ivtVelocityDegPerSec": 30.0,
+              "maxAccuracyDegForScoring": 5.0
+            },
+            "trackState": {
+              "blinkRecoveryMs": 50.0,
+              "maxEyeSpeedDegPerSec": 1000.0,
+              "offscreenMarginNorm": 0.02
+            },
+            "validation": {
+              "benchLayout13": [
+                [
+                  0.1,
+                  0.1
+                ],
+                [
+                  0.5,
+                  0.1
+                ],
+                [
+                  0.9,
+                  0.1
+                ],
+                [
+                  0.1,
+                  0.5
+                ],
+                [
+                  0.5,
+                  0.5
+                ],
+                [
+                  0.9,
+                  0.5
+                ],
+                [
+                  0.1,
+                  0.9
+                ],
+                [
+                  0.5,
+                  0.9
+                ],
+                [
+                  0.9,
+                  0.9
+                ],
+                [
+                  0.3,
+                  0.3
+                ],
+                [
+                  0.7,
+                  0.3
+                ],
+                [
+                  0.3,
+                  0.7
+                ],
+                [
+                  0.7,
+                  0.7
+                ]
+              ],
+              "collectMs": 1000.0,
+              "layout": [
+                [
+                  0.3,
+                  0.3
+                ],
+                [
+                  0.7,
+                  0.3
+                ],
+                [
+                  0.3,
+                  0.7
+                ],
+                [
+                  0.7,
+                  0.7
+                ]
+              ],
+              "maxAccuracyDeg": 5.0,
+              "minSamplesPerTarget": 12,
+              "minTargetsHit": 3,
+              "settleMs": 400.0,
+              "warnAccuracyDeg": 3.5
+            },
+            "verdict": {
+              "accuracyBands": {
+                "fairMaxDeg": 3.5,
+                "goodMaxDeg": 2.5,
+                "poorMaxDeg": 5.0
+              },
+              "fairAboveDataLoss": 0.2,
+              "poorAboveDataLoss": 0.4,
+              "unusableBelowValidRatio": 0.5
+            }
+          },
+          "description": "Gaze-robustness thresholds (SCH-3). Absent in a 1.0.0 profile: the asd-core defaults."
         }
       },
       "required": [
@@ -479,6 +1315,454 @@
         "agePacks",
         "clips"
       ],
+      "type": "object"
+    },
+    "TrackStateParams": {
+      "properties": {
+        "blinkRecoveryMs": {
+          "default": 50.0,
+          "type": "number"
+        },
+        "maxEyeSpeedDegPerSec": {
+          "default": 1000.0,
+          "type": "number"
+        },
+        "offscreenMarginNorm": {
+          "default": 0.02,
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "TrackingQualityParams": {
+      "description": "Every threshold of the gaze-robustness spec (SCH-3). Each member is optional; a missing\nmember takes the default shown.",
+      "properties": {
+        "calibration": {
+          "$ref": "#/$defs/CalibrationParams",
+          "default": {
+            "autoSelect": false,
+            "bands": {
+              "fairMaxDeg": 3.5,
+              "goodMaxDeg": 2.5,
+              "poorMaxDeg": 5.0
+            },
+            "collectMs": 1200.0,
+            "defaultModel": "screenAffine",
+            "eligibilityMarginPoints": 2,
+            "layout5": [
+              [
+                0.5,
+                0.5
+              ],
+              [
+                0.12,
+                0.12
+              ],
+              [
+                0.88,
+                0.12
+              ],
+              [
+                0.12,
+                0.88
+              ],
+              [
+                0.88,
+                0.88
+              ]
+            ],
+            "layout9": [
+              [
+                0.5,
+                0.5
+              ],
+              [
+                0.12,
+                0.12
+              ],
+              [
+                0.88,
+                0.12
+              ],
+              [
+                0.12,
+                0.88
+              ],
+              [
+                0.88,
+                0.88
+              ],
+              [
+                0.5,
+                0.12
+              ],
+              [
+                0.12,
+                0.5
+              ],
+              [
+                0.88,
+                0.5
+              ],
+              [
+                0.5,
+                0.88
+              ]
+            ],
+            "madRejectK": 3.0,
+            "maxConditionNumber": 1000000.0,
+            "maxRetriesPerTarget": 1,
+            "maxTargetWaitMs": 4000.0,
+            "minImprovementDeg": 0.3,
+            "minSamplesPerTarget": 20,
+            "minUsablePoints": 4,
+            "settleMs": 400.0
+          }
+        },
+        "confidence": {
+          "$ref": "#/$defs/ConfidenceParams",
+          "default": {
+            "distanceComfortMaxCm": 60.0,
+            "distanceComfortMinCm": 40.0,
+            "eyeOpennessComfort": 0.7,
+            "headSpeedComfortDegPerSec": 30.0,
+            "maxHeadSpeedDegPerSec": 120.0,
+            "poseComfortFraction": 0.6,
+            "poseShiftComfortPct": 10.0
+          }
+        },
+        "drift": {
+          "$ref": "#/$defs/DriftParams",
+          "default": {
+            "checkLayout": [
+              [
+                0.5,
+                0.5
+              ],
+              [
+                0.3,
+                0.3
+              ],
+              [
+                0.7,
+                0.3
+              ],
+              [
+                0.3,
+                0.7
+              ],
+              [
+                0.7,
+                0.7
+              ]
+            ],
+            "collectMs": 900.0,
+            "hardDeg": 3.0,
+            "minSamples": 10,
+            "settleMs": 300.0,
+            "warnConsecutive": 2,
+            "warnDeg": 1.5
+          }
+        },
+        "filter": {
+          "$ref": "#/$defs/FilterParams",
+          "default": {
+            "beta": 0.015,
+            "dCutoffHz": 1.0,
+            "minCutoffHz": 1.2
+          }
+        },
+        "gapFill": {
+          "$ref": "#/$defs/GapFillParams",
+          "default": {
+            "lossIntervalCapMs": 100.0,
+            "maxDeg": 1.0,
+            "maxMs": 75.0
+          }
+        },
+        "provisional": {
+          "default": true,
+          "description": "`true` until the bench replaces the literature defaults (BEN-6).",
+          "type": "boolean"
+        },
+        "recalibration": {
+          "$ref": "#/$defs/RecalibrationParams",
+          "default": {
+            "maxCalibrationAgeSec": 600.0,
+            "maxRecalibrationsInBattery": 1,
+            "maxRecalibrationsPerSession": 2,
+            "poseShiftAngleDeg": 15.0,
+            "poseShiftDistancePct": 20.0,
+            "poseWindowSec": 3.0
+          }
+        },
+        "schemaVersion": {
+          "default": "1.0.0",
+          "type": "string"
+        },
+        "scoring": {
+          "$ref": "#/$defs/ScoringCouplingParams",
+          "default": {
+            "aoiResolutionFactor": 2.0,
+            "ivtVelocityDegPerSec": 30.0,
+            "maxAccuracyDegForScoring": 5.0
+          }
+        },
+        "trackState": {
+          "$ref": "#/$defs/TrackStateParams",
+          "default": {
+            "blinkRecoveryMs": 50.0,
+            "maxEyeSpeedDegPerSec": 1000.0,
+            "offscreenMarginNorm": 0.02
+          }
+        },
+        "validation": {
+          "$ref": "#/$defs/ValidationParams",
+          "default": {
+            "benchLayout13": [
+              [
+                0.1,
+                0.1
+              ],
+              [
+                0.5,
+                0.1
+              ],
+              [
+                0.9,
+                0.1
+              ],
+              [
+                0.1,
+                0.5
+              ],
+              [
+                0.5,
+                0.5
+              ],
+              [
+                0.9,
+                0.5
+              ],
+              [
+                0.1,
+                0.9
+              ],
+              [
+                0.5,
+                0.9
+              ],
+              [
+                0.9,
+                0.9
+              ],
+              [
+                0.3,
+                0.3
+              ],
+              [
+                0.7,
+                0.3
+              ],
+              [
+                0.3,
+                0.7
+              ],
+              [
+                0.7,
+                0.7
+              ]
+            ],
+            "collectMs": 1000.0,
+            "layout": [
+              [
+                0.3,
+                0.3
+              ],
+              [
+                0.7,
+                0.3
+              ],
+              [
+                0.3,
+                0.7
+              ],
+              [
+                0.7,
+                0.7
+              ]
+            ],
+            "maxAccuracyDeg": 5.0,
+            "minSamplesPerTarget": 12,
+            "minTargetsHit": 3,
+            "settleMs": 400.0,
+            "warnAccuracyDeg": 3.5
+          }
+        },
+        "verdict": {
+          "$ref": "#/$defs/VerdictParams",
+          "default": {
+            "accuracyBands": {
+              "fairMaxDeg": 3.5,
+              "goodMaxDeg": 2.5,
+              "poorMaxDeg": 5.0
+            },
+            "fairAboveDataLoss": 0.2,
+            "poorAboveDataLoss": 0.4,
+            "unusableBelowValidRatio": 0.5
+          }
+        }
+      },
+      "type": "object"
+    },
+    "ValidationParams": {
+      "properties": {
+        "benchLayout13": {
+          "default": [
+            [
+              0.1,
+              0.1
+            ],
+            [
+              0.5,
+              0.1
+            ],
+            [
+              0.9,
+              0.1
+            ],
+            [
+              0.1,
+              0.5
+            ],
+            [
+              0.5,
+              0.5
+            ],
+            [
+              0.9,
+              0.5
+            ],
+            [
+              0.1,
+              0.9
+            ],
+            [
+              0.5,
+              0.9
+            ],
+            [
+              0.9,
+              0.9
+            ],
+            [
+              0.3,
+              0.3
+            ],
+            [
+              0.7,
+              0.3
+            ],
+            [
+              0.3,
+              0.7
+            ],
+            [
+              0.7,
+              0.7
+            ]
+          ],
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "collectMs": {
+          "default": 1000.0,
+          "type": "number"
+        },
+        "layout": {
+          "default": [
+            [
+              0.3,
+              0.3
+            ],
+            [
+              0.7,
+              0.3
+            ],
+            [
+              0.3,
+              0.7
+            ],
+            [
+              0.7,
+              0.7
+            ]
+          ],
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "maxAccuracyDeg": {
+          "default": 5.0,
+          "type": "number"
+        },
+        "minSamplesPerTarget": {
+          "default": 12,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "minTargetsHit": {
+          "default": 3,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "settleMs": {
+          "default": 400.0,
+          "type": "number"
+        },
+        "warnAccuracyDeg": {
+          "default": 3.5,
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "VerdictParams": {
+      "properties": {
+        "accuracyBands": {
+          "$ref": "#/$defs/AccuracyBands",
+          "default": {
+            "fairMaxDeg": 3.5,
+            "goodMaxDeg": 2.5,
+            "poorMaxDeg": 5.0
+          }
+        },
+        "fairAboveDataLoss": {
+          "default": 0.2,
+          "type": "number"
+        },
+        "poorAboveDataLoss": {
+          "default": 0.4,
+          "type": "number"
+        },
+        "unusableBelowValidRatio": {
+          "default": 0.5,
+          "type": "number"
+        }
+      },
       "type": "object"
     }
   },

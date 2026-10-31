@@ -6,9 +6,14 @@
 //! camelCase like the bundled JSON). `ScoringProfile` is new; its defaults equal today's
 //! Swift constants (`AttentionFlagAlgorithm`, `PerVideoScoringEngine.lowConfidenceValidRatio`,
 //! `GazeQualityGate.init`). The bundle envelope is snake_case like the rest of `/v1`.
+//!
+//! Profile schema 1.1.0 (SCH-3, WP-G.6) adds `trackingQuality`: the asd-core
+//! [`TrackingQualityParams`] (re-exported, not copied), `serde(default)`, so a 1.0.0
+//! profile or an older bundle decodes to the asd-core defaults.
 
 use std::collections::BTreeMap;
 
+pub use asd_core::types::tracking::TrackingQualityParams;
 use asd_core::types::{NormativeBaselineSet, StimulusCatalog};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -18,7 +23,7 @@ use crate::mirror;
 /// `$id` of the exported bundle schema.
 pub const CONFIG_BUNDLE_SCHEMA_ID: &str = "https://schemas.curv.org/asd/config-bundle-v1.json";
 /// Version written into a default [`ScoringProfile`].
-pub const SCORING_PROFILE_SCHEMA_VERSION: &str = "1.0.0";
+pub const SCORING_PROFILE_SCHEMA_VERSION: &str = "1.1.0";
 
 /// Traffic-light thresholds (`AttentionFlagAlgorithm`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -80,6 +85,10 @@ pub struct ScoringProfile {
     /// Clips below this valid-sample ratio are low-confidence.
     pub low_confidence_valid_ratio: f64,
     pub quality_gate: QualityGateParams,
+    /// Gaze-robustness thresholds (SCH-3). Absent in a 1.0.0 profile: the asd-core defaults.
+    #[serde(default)]
+    #[schemars(with = "mirror::TrackingQualityParams")]
+    pub tracking_quality: TrackingQualityParams,
 }
 
 impl Default for ScoringProfile {
@@ -89,6 +98,7 @@ impl Default for ScoringProfile {
             flag: FlagThresholds::default(),
             low_confidence_valid_ratio: 0.60,
             quality_gate: QualityGateParams::default(),
+            tracking_quality: TrackingQualityParams::default(),
         }
     }
 }
