@@ -1,0 +1,37 @@
+{
+  "case": "skipped_single_check_unusable_v1",
+  "function": "summary::tracking_quality",
+  "derivation": "Hand-built (WP-G.4). Calibration skipped, no validation, one hit check (offset 1.0, no drift reference) and one missed: QS-2 needs >= 2 hit checks without validation, so estimatedAccuracyDeg is absent (not defaulted) and the verdict is unusable (QS-4). maxDriftDeg, validation, calibration fit values, conditions and meanFixation are all absent keys. Golden files are immutable: change = new file.",
+  "input": {
+    "params": {},
+    "summary": {
+      "device": {"modelIdentifier": "iPhone17,3", "geometrySource": "table", "orientation": "portrait", "screenWidthMm": 64.0, "screenHeightMm": 139.0},
+      "calibration": {"layoutPoints": 5, "usablePoints": 0, "missingPoints": 0, "quality": "skipped", "attempts": 0},
+      "driftChecks": [
+        {"atSec": 60.0, "xNorm": 0.5, "yNorm": 0.5, "offsetDeg": 1.0, "missed": false},
+        {"atSec": 120.0, "xNorm": 0.3, "yNorm": 0.3, "missed": true}
+      ],
+      "recalibrations": [],
+      "conditions": {},
+      "loss": {"trackLossSec": 0.0, "blinkSec": 0.0, "offscreenSec": 0.0, "artifactSec": 0.0, "gapFilledSec": 0.0, "longestGapSec": 0.0},
+      "confidence": {"meanSample": 0.5, "lowConfidenceSampleRatio": 0.5},
+      "validRatio": 0.95,
+      "dataLoss": 0.05
+    }
+  },
+  "expected": {
+    "pipelineVersion": "asd-gaze/1.0.0",
+    "paramsVersion": "1.0.0",
+    "device": {"modelIdentifier": "iPhone17,3", "geometrySource": "table", "orientation": "portrait", "screenWidthMm": 64.0, "screenHeightMm": 139.0},
+    "calibration": {"layoutPoints": 5, "usablePoints": 0, "missingPoints": 0, "quality": "skipped", "attempts": 0},
+    "driftChecks": [
+      {"atSec": 60.0, "xNorm": 0.5, "yNorm": 0.5, "offsetDeg": 1.0, "missed": false},
+      {"atSec": 120.0, "xNorm": 0.3, "yNorm": 0.3, "missed": true}
+    ],
+    "recalibrations": [],
+    "conditions": {},
+    "loss": {"trackLossSec": 0.0, "blinkSec": 0.0, "offscreenSec": 0.0, "artifactSec": 0.0, "gapFilledSec": 0.0, "longestGapSec": 0.0},
+    "confidence": {"meanSample": 0.5, "lowConfidenceSampleRatio": 0.5},
+    "verdict": "unusable"
+  }
+}

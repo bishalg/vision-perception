@@ -1,0 +1,24 @@
+{
+  "case": "no_target_hit_v1",
+  "function": "validation::summarize",
+  "derivation": "Hand-built (WP-G.4). No target hit: accuracy and precision are unmeasured and absent (CON-14); the record still exists with complete = false; dataLoss (1 + 1 + 0.5 + 0.5) / 4 = 0.75. Golden files are immutable: change = new file.",
+  "input": {
+    "params": {},
+    "targets": [
+      {"kind": "validation", "xNorm": 0.3, "yNorm": 0.3, "startedAtSec": 1.0, "endedAtSec": 2.4, "attempt": 1, "outcome": "missed", "validSamples": 0, "totalSamples": 0, "dataLoss": 1.0},
+      {"kind": "validation", "xNorm": 0.7, "yNorm": 0.3, "startedAtSec": 2.5, "endedAtSec": 3.9, "attempt": 1, "outcome": "missed", "validSamples": 0, "totalSamples": 0, "dataLoss": 1.0},
+      {"kind": "validation", "xNorm": 0.3, "yNorm": 0.7, "startedAtSec": 4.0, "endedAtSec": 5.4, "attempt": 1, "outcome": "missed", "validSamples": 6, "totalSamples": 42, "dataLoss": 0.5},
+      {"kind": "validation", "xNorm": 0.7, "yNorm": 0.7, "startedAtSec": 5.5, "endedAtSec": 6.9, "attempt": 1, "outcome": "missed", "validSamples": 9, "totalSamples": 42, "dataLoss": 0.5}
+    ]
+  },
+  "expected": {
+    "complete": false,
+    "targets": [
+      {"xNorm": 0.3, "yNorm": 0.3, "dataLoss": 1.0, "validSamples": 0, "missed": true},
+      {"xNorm": 0.7, "yNorm": 0.3, "dataLoss": 1.0, "validSamples": 0, "missed": true},
+      {"xNorm": 0.3, "yNorm": 0.7, "dataLoss": 0.5, "validSamples": 6, "missed": true},
+      {"xNorm": 0.7, "yNorm": 0.7, "dataLoss": 0.5, "validSamples": 9, "missed": true}
+    ],
+    "dataLoss": 0.75
+  }
+}

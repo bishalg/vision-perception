@@ -1,0 +1,43 @@
+{
+  "case": "idiom_default_caps_fair_v1",
+  "function": "summary::tracking_quality",
+  "derivation": "Hand-built (WP-G.4). Validation accuracy 1.0; hit check offsets 2.0, 3.0 (one missed check ignored) -> median 2.5; estimatedAccuracyDeg = max(1.0, 2.5) = 2.5, inside the good band (upper bound inclusive), but geometrySource idiomDefault caps the verdict at fair (QS-4). One re-calibration recorded with its reason. Golden files are immutable: change = new file.",
+  "input": {
+    "params": {},
+    "summary": {
+      "device": {"modelIdentifier": "iPad99,9", "geometrySource": "idiomDefault", "orientation": "landscapeLeft", "screenWidthMm": 247.0, "screenHeightMm": 178.0, "sampleRateHz": 60.0},
+      "calibration": {"model": "screenAffine", "layoutPoints": 5, "usablePoints": 5, "missingPoints": 0, "residualDeg": 0.5, "looCvDeg": 1.0, "conditionNumber": 8.0, "quality": "good", "pose": {"distanceCm": 50.0, "yawDeg": 0.0, "pitchDeg": 0.0}, "ageSecAtStart": 12.0, "attempts": 2},
+      "validation": {"complete": true, "targets": [], "accuracyDeg": 1.0, "precisionRmsDeg": 0.25, "precisionRmsRawDeg": 0.5, "dataLoss": 0.125},
+      "driftChecks": [
+        {"atSec": 60.0, "xNorm": 0.5, "yNorm": 0.5, "offsetDeg": 2.0, "driftDeg": 1.0, "missed": false},
+        {"atSec": 120.0, "xNorm": 0.3, "yNorm": 0.3, "missed": true},
+        {"atSec": 180.0, "xNorm": 0.7, "yNorm": 0.3, "offsetDeg": 3.0, "driftDeg": 2.0, "missed": false}
+      ],
+      "recalibrations": [{"atSec": 200.0, "reason": "drift", "newQuality": "good"}],
+      "conditions": {"distanceCmMedian": 50.0},
+      "loss": {"trackLossSec": 0.0, "blinkSec": 1.0, "offscreenSec": 0.0, "artifactSec": 0.0, "gapFilledSec": 0.0, "longestGapSec": 0.25},
+      "confidence": {"meanSample": 0.75, "lowConfidenceSampleRatio": 0.125},
+      "validRatio": 0.75,
+      "dataLoss": 0.2
+    }
+  },
+  "expected": {
+    "pipelineVersion": "asd-gaze/1.0.0",
+    "paramsVersion": "1.0.0",
+    "device": {"modelIdentifier": "iPad99,9", "geometrySource": "idiomDefault", "orientation": "landscapeLeft", "screenWidthMm": 247.0, "screenHeightMm": 178.0, "sampleRateHz": 60.0},
+    "calibration": {"model": "screenAffine", "layoutPoints": 5, "usablePoints": 5, "missingPoints": 0, "residualDeg": 0.5, "looCvDeg": 1.0, "conditionNumber": 8.0, "quality": "good", "pose": {"distanceCm": 50.0, "yawDeg": 0.0, "pitchDeg": 0.0}, "ageSecAtStart": 12.0, "attempts": 2},
+    "validation": {"complete": true, "targets": [], "accuracyDeg": 1.0, "precisionRmsDeg": 0.25, "precisionRmsRawDeg": 0.5, "dataLoss": 0.125},
+    "driftChecks": [
+      {"atSec": 60.0, "xNorm": 0.5, "yNorm": 0.5, "offsetDeg": 2.0, "driftDeg": 1.0, "missed": false},
+      {"atSec": 120.0, "xNorm": 0.3, "yNorm": 0.3, "missed": true},
+      {"atSec": 180.0, "xNorm": 0.7, "yNorm": 0.3, "offsetDeg": 3.0, "driftDeg": 2.0, "missed": false}
+    ],
+    "maxDriftDeg": 2.0,
+    "recalibrations": [{"atSec": 200.0, "reason": "drift", "newQuality": "good"}],
+    "conditions": {"distanceCmMedian": 50.0},
+    "loss": {"trackLossSec": 0.0, "blinkSec": 1.0, "offscreenSec": 0.0, "artifactSec": 0.0, "gapFilledSec": 0.0, "longestGapSec": 0.25},
+    "confidence": {"meanSample": 0.75, "lowConfidenceSampleRatio": 0.125},
+    "estimatedAccuracyDeg": 2.5,
+    "verdict": "fair"
+  }
+}

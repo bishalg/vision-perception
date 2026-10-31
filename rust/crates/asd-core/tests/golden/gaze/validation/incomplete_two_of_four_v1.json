@@ -1,0 +1,27 @@
+{
+  "case": "incomplete_two_of_four_v1",
+  "function": "validation::summarize",
+  "derivation": "Hand-built (WP-G.4). Two hits: accuracy median (1.5 + 4.5) / 2 = 3.0, precision (0.5 + 1.0) / 2 = 0.75, raw (1.0 + 2.0) / 2 = 1.5; dataLoss (0 + 1 + 0.5 + 0.5) / 4 = 0.5; 2 of 4 hit -> incomplete, still recorded (VAL-2). Golden files are immutable: change = new file.",
+  "input": {
+    "params": {},
+    "targets": [
+      {"kind": "validation", "xNorm": 0.3, "yNorm": 0.3, "startedAtSec": 1.0, "endedAtSec": 2.4, "attempt": 1, "outcome": "hit", "validSamples": 20, "totalSamples": 42, "dataLoss": 0.0, "accuracyDeg": 1.5, "offsetDeg": [1.5, 0.0], "precisionRmsDeg": 0.5, "precisionRmsRawDeg": 1.0, "sdDeg": 0.25},
+      {"kind": "validation", "xNorm": 0.7, "yNorm": 0.3, "startedAtSec": 2.5, "endedAtSec": 3.9, "attempt": 1, "outcome": "missed", "validSamples": 0, "totalSamples": 0, "dataLoss": 1.0},
+      {"kind": "validation", "xNorm": 0.3, "yNorm": 0.7, "startedAtSec": 4.0, "endedAtSec": 5.4, "attempt": 1, "outcome": "missed", "validSamples": 11, "totalSamples": 42, "dataLoss": 0.5},
+      {"kind": "validation", "xNorm": 0.7, "yNorm": 0.7, "startedAtSec": 5.5, "endedAtSec": 6.9, "attempt": 1, "outcome": "hit", "validSamples": 12, "totalSamples": 42, "dataLoss": 0.5, "accuracyDeg": 4.5, "offsetDeg": [0.0, -4.5], "precisionRmsDeg": 1.0, "precisionRmsRawDeg": 2.0, "sdDeg": 0.5}
+    ]
+  },
+  "expected": {
+    "complete": false,
+    "targets": [
+      {"xNorm": 0.3, "yNorm": 0.3, "accuracyDeg": 1.5, "precisionRmsDeg": 0.5, "sdDeg": 0.25, "dataLoss": 0.0, "validSamples": 20, "missed": false},
+      {"xNorm": 0.7, "yNorm": 0.3, "dataLoss": 1.0, "validSamples": 0, "missed": true},
+      {"xNorm": 0.3, "yNorm": 0.7, "dataLoss": 0.5, "validSamples": 11, "missed": true},
+      {"xNorm": 0.7, "yNorm": 0.7, "accuracyDeg": 4.5, "precisionRmsDeg": 1.0, "sdDeg": 0.5, "dataLoss": 0.5, "validSamples": 12, "missed": false}
+    ],
+    "accuracyDeg": 3.0,
+    "precisionRmsDeg": 0.75,
+    "precisionRmsRawDeg": 1.5,
+    "dataLoss": 0.5
+  }
+}

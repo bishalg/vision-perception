@@ -1,0 +1,23 @@
+{
+  "case": "no_reference_drift_absent_v1",
+  "function": "drift::DriftMonitor",
+  "derivation": "Hand-built (WP-G.4). Every validation target missed -> no reference offset. Checks record offsetDeg (accuracy) but driftDeg is unmeasured and absent (CON-14); maxDriftDeg absent (null in this harness's wrapper object); DRF-3 never fires. Golden files are immutable: change = new file.",
+  "input": {
+    "params": {},
+    "validation": [
+      {"kind": "validation", "xNorm": 0.3, "yNorm": 0.3, "startedAtSec": 1.0, "endedAtSec": 2.4, "attempt": 1, "outcome": "missed", "validSamples": 2, "totalSamples": 42, "dataLoss": 0.9}
+    ],
+    "checks": [
+      {"kind": "driftCheck", "xNorm": 0.5, "yNorm": 0.5, "startedAtSec": 60.0, "endedAtSec": 61.2, "attempt": 1, "outcome": "hit", "validSamples": 50, "totalSamples": 54, "dataLoss": 0.0, "accuracyDeg": 4.0, "offsetDeg": [4.0, 0.0]},
+      {"kind": "driftCheck", "xNorm": 0.3, "yNorm": 0.3, "startedAtSec": 120.0, "endedAtSec": 121.2, "attempt": 1, "outcome": "hit", "validSamples": 50, "totalSamples": 54, "dataLoss": 0.0, "accuracyDeg": 6.0, "offsetDeg": [0.0, 6.0]}
+    ]
+  },
+  "expected": {
+    "checks": [
+      {"atSec": 60.0, "xNorm": 0.5, "yNorm": 0.5, "offsetDeg": 4.0, "missed": false},
+      {"atSec": 120.0, "xNorm": 0.3, "yNorm": 0.3, "offsetDeg": 6.0, "missed": false}
+    ],
+    "maxDriftDeg": null,
+    "triggeredAfter": [false, false]
+  }
+}

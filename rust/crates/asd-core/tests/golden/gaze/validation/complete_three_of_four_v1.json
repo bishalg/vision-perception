@@ -1,0 +1,27 @@
+{
+  "case": "complete_three_of_four_v1",
+  "function": "validation::summarize",
+  "derivation": "Hand-built (WP-G.4). Hit accuracies 1.0, 3.0, 2.0 -> median 2.0; precision 0.25, 0.5, 0.375 -> 0.375; raw 0.5, 1.0, 0.75 -> 0.75; dataLoss mean (0 + 0.25 + 0.75 + 0) / 4 = 0.25; 3 of 4 hit -> complete (VAL-2, VAL-3). Golden files are immutable: change = new file.",
+  "input": {
+    "params": {},
+    "targets": [
+      {"kind": "validation", "xNorm": 0.3, "yNorm": 0.3, "startedAtSec": 1.0, "endedAtSec": 2.4, "attempt": 1, "outcome": "hit", "validSamples": 40, "totalSamples": 42, "dataLoss": 0.0, "accuracyDeg": 1.0, "offsetDeg": [1.0, 0.0], "precisionRmsDeg": 0.25, "precisionRmsRawDeg": 0.5, "sdDeg": 0.125},
+      {"kind": "validation", "xNorm": 0.7, "yNorm": 0.3, "startedAtSec": 2.5, "endedAtSec": 3.9, "attempt": 1, "outcome": "hit", "validSamples": 30, "totalSamples": 42, "dataLoss": 0.25, "accuracyDeg": 3.0, "offsetDeg": [0.0, 3.0], "precisionRmsDeg": 0.5, "precisionRmsRawDeg": 1.0, "sdDeg": 0.25},
+      {"kind": "validation", "xNorm": 0.3, "yNorm": 0.7, "startedAtSec": 4.0, "endedAtSec": 5.4, "attempt": 1, "outcome": "missed", "validSamples": 4, "totalSamples": 42, "dataLoss": 0.75},
+      {"kind": "validation", "xNorm": 0.7, "yNorm": 0.7, "startedAtSec": 5.5, "endedAtSec": 6.9, "attempt": 1, "outcome": "hit", "validSamples": 38, "totalSamples": 42, "dataLoss": 0.0, "accuracyDeg": 2.0, "offsetDeg": [-2.0, 0.0], "precisionRmsDeg": 0.375, "precisionRmsRawDeg": 0.75, "sdDeg": 0.1875}
+    ]
+  },
+  "expected": {
+    "complete": true,
+    "targets": [
+      {"xNorm": 0.3, "yNorm": 0.3, "accuracyDeg": 1.0, "precisionRmsDeg": 0.25, "sdDeg": 0.125, "dataLoss": 0.0, "validSamples": 40, "missed": false},
+      {"xNorm": 0.7, "yNorm": 0.3, "accuracyDeg": 3.0, "precisionRmsDeg": 0.5, "sdDeg": 0.25, "dataLoss": 0.25, "validSamples": 30, "missed": false},
+      {"xNorm": 0.3, "yNorm": 0.7, "dataLoss": 0.75, "validSamples": 4, "missed": true},
+      {"xNorm": 0.7, "yNorm": 0.7, "accuracyDeg": 2.0, "precisionRmsDeg": 0.375, "sdDeg": 0.1875, "dataLoss": 0.0, "validSamples": 38, "missed": false}
+    ],
+    "accuracyDeg": 2.0,
+    "precisionRmsDeg": 0.375,
+    "precisionRmsRawDeg": 0.75,
+    "dataLoss": 0.25
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "case": "hard_single_check_latches_v1",
+  "function": "drift::DriftMonitor",
+  "derivation": "Hand-built (WP-G.4). Reference = mean of (0,0) and (1,1) = (0.5,0.5). Check 1 offset equals the reference (constant bias) -> drift 0. Check 2 offset (3.5,4.5) -> difference (3,4) -> drift 5 > hardDeg 3 -> fires on one check. Check 3 back at the reference: the trigger stays latched until re-calibration. Golden files are immutable: change = new file.",
+  "input": {
+    "params": {},
+    "validation": [
+      {"kind": "validation", "xNorm": 0.3, "yNorm": 0.3, "startedAtSec": 1.0, "endedAtSec": 2.4, "attempt": 1, "outcome": "hit", "validSamples": 40, "totalSamples": 42, "dataLoss": 0.0, "accuracyDeg": 0.0, "offsetDeg": [0.0, 0.0]},
+      {"kind": "validation", "xNorm": 0.7, "yNorm": 0.3, "startedAtSec": 2.5, "endedAtSec": 3.9, "attempt": 1, "outcome": "hit", "validSamples": 40, "totalSamples": 42, "dataLoss": 0.0, "accuracyDeg": 1.5, "offsetDeg": [1.0, 1.0]}
+    ],
+    "checks": [
+      {"kind": "driftCheck", "xNorm": 0.5, "yNorm": 0.5, "startedAtSec": 60.0, "endedAtSec": 61.2, "attempt": 1, "outcome": "hit", "validSamples": 50, "totalSamples": 54, "dataLoss": 0.0, "accuracyDeg": 0.75, "offsetDeg": [0.5, 0.5]},
+      {"kind": "driftCheck", "xNorm": 0.3, "yNorm": 0.3, "startedAtSec": 120.0, "endedAtSec": 121.2, "attempt": 1, "outcome": "hit", "validSamples": 50, "totalSamples": 54, "dataLoss": 0.0, "accuracyDeg": 5.75, "offsetDeg": [3.5, 4.5]},
+      {"kind": "driftCheck", "xNorm": 0.7, "yNorm": 0.3, "startedAtSec": 180.0, "endedAtSec": 181.2, "attempt": 1, "outcome": "hit", "validSamples": 50, "totalSamples": 54, "dataLoss": 0.0, "accuracyDeg": 0.75, "offsetDeg": [0.5, 0.5]}
+    ]
+  },
+  "expected": {
+    "checks": [
+      {"atSec": 60.0, "xNorm": 0.5, "yNorm": 0.5, "offsetDeg": 0.75, "driftDeg": 0.0, "missed": false},
+      {"atSec": 120.0, "xNorm": 0.3, "yNorm": 0.3, "offsetDeg": 5.75, "driftDeg": 5.0, "missed": false},
+      {"atSec": 180.0, "xNorm": 0.7, "yNorm": 0.3, "offsetDeg": 0.75, "driftDeg": 0.0, "missed": false}
+    ],
+    "maxDriftDeg": 5.0,
+    "triggeredAfter": [false, true, true]
+  }
+}

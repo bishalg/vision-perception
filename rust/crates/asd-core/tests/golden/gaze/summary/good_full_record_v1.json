@@ -1,0 +1,41 @@
+{
+  "case": "good_full_record_v1",
+  "function": "summary::tracking_quality",
+  "derivation": "Hand-built (WP-G.4). Validation accuracy 1.5; hit check offsets 1.0, 2.0 -> median 1.5; estimatedAccuracyDeg = max(1.5, 1.5) = 1.5 (QS-2); maxDriftDeg = max(0.25, 0.5) = 0.5; 1.5 <= good 2.5, dataLoss 0.1 <= 0.2, validRatio 0.9 >= 0.5, table geometry, calibration good -> verdict good (QS-4). validRatio and dataLoss are inputs only, not record keys. Golden files are immutable: change = new file.",
+  "input": {
+    "params": {},
+    "summary": {
+      "device": {"modelIdentifier": "iPhone17,3", "geometrySource": "table", "orientation": "portrait", "screenWidthMm": 64.0, "screenHeightMm": 139.0, "sampleRateHz": 60.0},
+      "calibration": {"model": "screenAffine", "layoutPoints": 5, "usablePoints": 5, "missingPoints": 0, "residualDeg": 0.75, "looCvDeg": 1.25, "conditionNumber": 12.5, "quality": "good", "pose": {"distanceCm": 45.0, "yawDeg": 2.0, "pitchDeg": -3.0}, "ageSecAtStart": 30.0, "attempts": 1},
+      "validation": {"complete": true, "targets": [{"xNorm": 0.3, "yNorm": 0.3, "accuracyDeg": 1.5, "precisionRmsDeg": 0.25, "sdDeg": 0.125, "dataLoss": 0.0, "validSamples": 40, "missed": false}], "accuracyDeg": 1.5, "precisionRmsDeg": 0.25, "precisionRmsRawDeg": 0.5, "dataLoss": 0.0},
+      "driftChecks": [
+        {"atSec": 60.0, "xNorm": 0.5, "yNorm": 0.5, "offsetDeg": 1.0, "driftDeg": 0.25, "missed": false},
+        {"atSec": 120.0, "xNorm": 0.3, "yNorm": 0.3, "offsetDeg": 2.0, "driftDeg": 0.5, "missed": false}
+      ],
+      "recalibrations": [],
+      "conditions": {"distanceCmMedian": 46.0, "distanceCmIqr": 4.0, "headSpeedDegPerSecP90": 18.5, "ambientIntensityMedian": 950.0, "glasses": false},
+      "loss": {"trackLossSec": 1.5, "blinkSec": 2.25, "offscreenSec": 0.5, "artifactSec": 0.0, "gapFilledSec": 0.25, "longestGapSec": 0.75},
+      "confidence": {"meanSample": 0.875, "meanFixation": 0.9, "lowConfidenceSampleRatio": 0.0625},
+      "validRatio": 0.9,
+      "dataLoss": 0.1
+    }
+  },
+  "expected": {
+    "pipelineVersion": "asd-gaze/1.0.0",
+    "paramsVersion": "1.0.0",
+    "device": {"modelIdentifier": "iPhone17,3", "geometrySource": "table", "orientation": "portrait", "screenWidthMm": 64.0, "screenHeightMm": 139.0, "sampleRateHz": 60.0},
+    "calibration": {"model": "screenAffine", "layoutPoints": 5, "usablePoints": 5, "missingPoints": 0, "residualDeg": 0.75, "looCvDeg": 1.25, "conditionNumber": 12.5, "quality": "good", "pose": {"distanceCm": 45.0, "yawDeg": 2.0, "pitchDeg": -3.0}, "ageSecAtStart": 30.0, "attempts": 1},
+    "validation": {"complete": true, "targets": [{"xNorm": 0.3, "yNorm": 0.3, "accuracyDeg": 1.5, "precisionRmsDeg": 0.25, "sdDeg": 0.125, "dataLoss": 0.0, "validSamples": 40, "missed": false}], "accuracyDeg": 1.5, "precisionRmsDeg": 0.25, "precisionRmsRawDeg": 0.5, "dataLoss": 0.0},
+    "driftChecks": [
+      {"atSec": 60.0, "xNorm": 0.5, "yNorm": 0.5, "offsetDeg": 1.0, "driftDeg": 0.25, "missed": false},
+      {"atSec": 120.0, "xNorm": 0.3, "yNorm": 0.3, "offsetDeg": 2.0, "driftDeg": 0.5, "missed": false}
+    ],
+    "maxDriftDeg": 0.5,
+    "recalibrations": [],
+    "conditions": {"distanceCmMedian": 46.0, "distanceCmIqr": 4.0, "headSpeedDegPerSecP90": 18.5, "ambientIntensityMedian": 950.0, "glasses": false},
+    "loss": {"trackLossSec": 1.5, "blinkSec": 2.25, "offscreenSec": 0.5, "artifactSec": 0.0, "gapFilledSec": 0.25, "longestGapSec": 0.75},
+    "confidence": {"meanSample": 0.875, "meanFixation": 0.9, "lowConfidenceSampleRatio": 0.0625},
+    "estimatedAccuracyDeg": 1.5,
+    "verdict": "good"
+  }
+}
