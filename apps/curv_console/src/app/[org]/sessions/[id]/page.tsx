@@ -6,7 +6,19 @@ import { KpiCard } from "@/components/KpiCard";
 import { QualityPanel } from "@/components/QualityPanel";
 import { ReportPanel } from "@/components/ReportPanel";
 import { SessionTabs, parseTab } from "@/components/SessionTabs";
-import { authedApi } from "@/lib/auth/server";
+import { ReviewPanel } from "@/components/clinical/ReviewPanel";
+import { ApiError } from "@/lib/api";
+import { authedApi, currentRole } from "@/lib/auth/server";
+import { can } from "@/lib/permissions";
+import { clinicalErrorMessage, clinicalText } from "@/messages/clinical";
+import {
+  amendReviewAction,
+  claimReviewAction,
+  cosignReviewAction,
+  reloadReviewAction,
+  saveDraftAction,
+  signReviewAction,
+} from "../../worklist/actions";
 import { formatDateTime, formatNumber, formatPercent } from "@/lib/format";
 import { loadOrNotFound } from "@/lib/loaders";
 import { en } from "@/messages/en";
@@ -26,6 +38,8 @@ export default async function SessionDetailPage({
   if (session.org_id !== org) notFound();
   const t = en.detail;
   const basePath = `/${encodeURIComponent(org)}/sessions/${encodeURIComponent(id)}`;
+  const role = await currentRole();
+  const showClinical = can(role, "worklist.read");
   const clips = tab === "clips" ? await loadOrNotFound(() => api.getSessionClips(id)) : [];
   return (
     <>
@@ -45,10 +59,50 @@ export default async function SessionDetailPage({
         <KpiCard label={t.quality} value={session.quality_verdict} />
         <KpiCard label={t.bundle} value={session.bundle_version ?? "-"} />
       </div>
-      <SessionTabs basePath={basePath} active={tab} />
+      <SessionTabs basePath={basePath} active={tab} hidden={showClinical ? [] : ["clinical"]} />
       {tab === "clips" ? <ClipsTable clips={clips} /> : null}
       {tab === "quality" ? <QualityPanel session={session} /> : null}
       {tab === "report" ? <ReportPanel session={session} /> : null}
+      {tab === "clinical" ? (
+        showClinical ? (
+          <ClinicalTab org={org} sessionId={id} role={role} />
+        ) : (
+          <p className="muted">{clinicalText.review.denied}</p>
+        )
+      ) : null}
     </>
+  );
+}
+
+/** Loads the session's review (404 = not started) and wires the server actions. Clinical text never enters a URL. */
+async function ClinicalTab({ org, sessionId, role }: { org: string; sessionId: string; role: Awaited<ReturnType<typeof currentRole>> }) {
+  const api = await authedApi();
+  let review;
+  try {
+    review = await api.getSessionClinicalReview(sessionId);
+  } catch (err) {
+    if (err instanceof ApiError && err.status !== 401) {
+      return <p role="alert" className="error">{clinicalErrorMessage(err.slug, err.status)}</p>;
+    }
+    throw err;
+  }
+  return (
+    <ReviewPanel
+      // Keyed by id only: a server refresh after an action must not discard the panel's notices and dialogs.
+      key={review?.id ?? "none"}
+      review={review}
+      canWrite={can(role, "clinical.write")}
+      canSign={can(role, "clinical.sign")}
+      canCosign={can(role, "clinical.cosign")}
+      canContent={can(role, "clinical.content")}
+      actions={{
+        claim: claimReviewAction.bind(null, org, sessionId),
+        save: saveDraftAction.bind(null, org),
+        sign: signReviewAction.bind(null, org),
+        cosign: cosignReviewAction.bind(null, org),
+        amend: amendReviewAction.bind(null, org),
+        reload: reloadReviewAction,
+      }}
+    />
   );
 }

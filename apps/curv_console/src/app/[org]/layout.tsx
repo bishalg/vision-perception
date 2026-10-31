@@ -4,7 +4,7 @@ import { NavLinks } from "@/components/NavLinks";
 import { OrgSwitcher } from "@/components/OrgSwitcher";
 import { authedApi, currentRole, homeOrg, recentOrgs } from "@/lib/auth/server";
 import { loadOrNotFound } from "@/lib/loaders";
-import { can } from "@/lib/permissions";
+import { navLinks } from "@/lib/nav";
 import { en } from "@/messages/en";
 
 export default async function OrgLayout({
@@ -27,12 +27,7 @@ export default async function OrgLayout({
     ...resolved.flatMap((r) => (r.status === "fulfilled" ? [{ id: r.value.id, name: r.value.name }] : [])),
   ];
   const base = `/${encodeURIComponent(org)}`;
-  const links = [
-    { href: `${base}/overview`, text: en.nav.overview },
-    { href: `${base}/sessions`, text: en.nav.sessions },
-    { href: `${base}/review`, text: en.nav.review },
-    ...(can(role, "device.read") ? [{ href: `${base}/devices`, text: en.nav.devices }] : []),
-  ];
+  const links = navLinks(base, role);
   return (
     <div className="shell">
       <header className="topbar">

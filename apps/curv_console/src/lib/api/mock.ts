@@ -23,6 +23,7 @@ import {
   type SessionSummary,
   type TokenPair,
 } from "./types";
+import { createMockClinical } from "./mock/clinical";
 
 /** Real orgs are UUIDs (CON-20); the mock uses a fixed one so URLs look like production. */
 export const MOCK_ORG_ID = "5f0e1d2c-3b4a-4968-8776-655443322110";
@@ -348,6 +349,7 @@ export function createMockClient(): CurvApi & AuthApi {
   };
 
   return {
+    ...createMockClinical({ details, orgId: MOCK_ORG_ID, userId: MOCK_USER_ID, now: MOCK_FIXED_NOW, ensureOrg, page }),
     async login(email, password) {
       if (!email || password !== MOCK_PASSWORD) {
         throw unauthorized("Invalid email or password");

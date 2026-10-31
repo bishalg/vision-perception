@@ -14,6 +14,8 @@ export const en = {
     overview: "Overview",
     sessions: "Sessions",
     review: "Review",
+    worklist: "Worklist",
+    clinicalSettings: "Clinical settings",
     devices: "Devices",
     signOut: "Sign out",
     main: "Main navigation",
@@ -165,7 +167,7 @@ export const en = {
   },
   detail: {
     back: "Back to sessions",
-    tabs: { clips: "Clips", quality: "Quality", report: "Report" },
+    tabs: { clips: "Clips", quality: "Quality", report: "Report", clinical: "Clinical review" },
     composite: "Composite",
     confidence: "Confidence",
     flag: "Flag",

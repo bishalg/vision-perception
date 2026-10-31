@@ -1,5 +1,6 @@
 /** Live HTTP implementation of the typed API. This is the only module that calls `fetch` against the backend. */
 import type { ZodType } from "zod";
+import { createLiveClinical } from "./clinical";
 import {
   ApiError,
   clipListSchema,
@@ -61,9 +62,10 @@ export function createLiveClient(opts: LiveOptions): CurvApi & AuthApi {
   async function request<T>(
     path: string,
     schema: ZodType<T> | null,
-    init: { method?: string; body?: unknown; auth?: boolean } = {},
+    init: { method?: string; body?: unknown; auth?: boolean; headers?: Record<string, string> } = {},
   ): Promise<T> {
     const headers: Record<string, string> = { Accept: "application/json" };
+    Object.assign(headers, init.headers);
     if (init.body !== undefined) headers["Content-Type"] = "application/json";
     if (init.auth !== false && opts.accessToken) headers.Authorization = `Bearer ${opts.accessToken}`;
     const res = await doFetch(`${base}/v1${path}`, {
@@ -79,6 +81,7 @@ export function createLiveClient(opts: LiveOptions): CurvApi & AuthApi {
 
   const enc = encodeURIComponent;
   return {
+    ...createLiveClinical(request, buildQuery),
     login: (email, password) =>
       request("/auth/login", tokenPairSchema, { method: "POST", body: { email, password }, auth: false }),
     refresh: (refresh_token) =>

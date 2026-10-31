@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { en } from "@/messages/en";
 
-export const TABS = ["clips", "quality", "report"] as const;
+export const TABS = ["clips", "quality", "report", "clinical"] as const;
 export type Tab = (typeof TABS)[number];
 
 export function parseTab(value: string | string[] | undefined): Tab {
@@ -9,10 +9,10 @@ export function parseTab(value: string | string[] | undefined): Tab {
   return (TABS as readonly string[]).includes(v ?? "") ? (v as Tab) : "clips";
 }
 
-export function SessionTabs({ basePath, active }: { basePath: string; active: Tab }) {
+export function SessionTabs({ basePath, active, hidden = [] }: { basePath: string; active: Tab; hidden?: readonly Tab[] }) {
   return (
     <nav className="tabs" aria-label="Session sections">
-      {TABS.map((t) => (
+      {TABS.filter((t) => !hidden.includes(t)).map((t) => (
         <Link
           key={t}
           href={`${basePath}?tab=${t}`}

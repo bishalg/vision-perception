@@ -4,6 +4,7 @@
  * that file (examples, enums, required fields), so contract drift fails CI. Every live response is also parsed here.
  */
 import { z } from "zod";
+import type { ClinicalApi } from "./clinical";
 
 /** `SessionAttentionFlag`: the 3 device values plus backend-derived `unreliable` (CON-15). */
 export const ATTENTION_FLAGS = ["green", "yellow", "red", "unreliable"] as const;
@@ -298,7 +299,7 @@ export interface PageQuery {
 
 // ---- client interface -----------------------------------------------------
 
-export interface CurvApi {
+export interface CurvApi extends ClinicalApi {
   getOrg(orgId: string): Promise<Org>;
   getMetrics(orgId: string): Promise<Metrics>;
   listSessions(orgId: string, query?: SessionListQuery): Promise<SessionPage>;

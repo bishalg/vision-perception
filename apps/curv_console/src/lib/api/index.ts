@@ -4,6 +4,7 @@ import { createMockClient } from "./mock";
 import type { AuthApi, CurvApi } from "./types";
 
 export * from "./types";
+export * from "./clinical";
 
 export type ApiMode = "mock" | "live";
 
