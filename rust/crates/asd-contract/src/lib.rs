@@ -10,6 +10,7 @@ pub mod api_v1;
 pub mod care;
 pub mod clinical;
 pub mod config;
+pub mod export;
 mod jcs;
 mod mirror;
 pub mod problem;

@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT version_id, role, signer_id, signer_display_name, signer_registration,\n                  signed_at\n           FROM clinical_signatures WHERE version_id = ANY($1)\n           ORDER BY signed_at, id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "version_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "clinical_signatures",
+            "name": "version_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "role",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "clinical_signatures",
+            "name": "role"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "signer_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "clinical_signatures",
+            "name": "signer_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "signer_display_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "clinical_signatures",
+            "name": "signer_display_name"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "signer_registration",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "clinical_signatures",
+            "name": "signer_registration"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "signed_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "clinical_signatures",
+            "name": "signed_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "d4d810d4525cf67149eda4d168a6851003d41ac574db9560396be2388763db83"
+}

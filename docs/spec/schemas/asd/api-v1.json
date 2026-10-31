@@ -1846,6 +1846,136 @@
       ],
       "type": "object"
     },
+    "Disclosure": {
+      "description": "One export that included the participant (EXJ-6, accounting of disclosures).",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "deliveries": {
+          "items": {
+            "$ref": "#/$defs/DisclosureDelivery"
+          },
+          "type": "array"
+        },
+        "export_id": {
+          "type": "string"
+        },
+        "format": {
+          "$ref": "#/$defs/ExportFormat"
+        },
+        "kind": {
+          "$ref": "#/$defs/ExportKind"
+        },
+        "mode": {
+          "$ref": "#/$defs/ExportMode"
+        },
+        "purpose": {
+          "$ref": "#/$defs/ExportPurpose"
+        },
+        "requested_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "session_ids": {
+          "description": "The participant's sessions in the export.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "status": {
+          "$ref": "#/$defs/ExportStatus"
+        }
+      },
+      "required": [
+        "export_id",
+        "kind",
+        "format",
+        "mode",
+        "purpose",
+        "status",
+        "created_at",
+        "session_ids",
+        "deliveries"
+      ],
+      "type": "object"
+    },
+    "DisclosureDelivery": {
+      "description": "One delivery of an export (DLV-5), as listed with a disclosure.",
+      "properties": {
+        "delivered_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "destination_id": {
+          "type": "string"
+        },
+        "destination_name": {
+          "type": "string"
+        },
+        "status": {
+          "description": "`pending | sending | delivered | failed`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "destination_id",
+        "destination_name",
+        "status"
+      ],
+      "type": "object"
+    },
+    "DisclosurePage": {
+      "description": "`GET /v1/participants/{id}/disclosures` (`ClinicalContentRead`), newest first.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/Disclosure"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
     "Disposition": {
       "description": "SIGN-2: the clinician's statement. Never pre-filled from the attention flag.",
       "enum": [
@@ -1856,6 +1986,23 @@
         "not_interpretable"
       ],
       "type": "string"
+    },
+    "DownloadUrl": {
+      "description": "`POST /v1/exports/{id}/download-url` (EXJ-5): a pre-signed GET (absolute) or a relative\n`/v1/exports/{id}/file?t=...` (proxy blob mode), valid five minutes.",
+      "properties": {
+        "expires_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "url",
+        "expires_at"
+      ],
+      "type": "object"
     },
     "DriftParams": {
       "properties": {
@@ -2047,6 +2194,415 @@
         "onTarget",
         "monitor",
         "atypical"
+      ],
+      "type": "string"
+    },
+    "Export": {
+      "description": "An export (EXJ-1..4). Never carries clinical content: counts, hashes and the request.",
+      "examples": [
+        {
+          "byte_size": 18204,
+          "completed_at": "2026-10-31T09:00:04.000Z",
+          "content_type": "application/zip",
+          "created_at": "2026-10-31T09:00:00.000Z",
+          "destination_ids": [],
+          "error": null,
+          "excluded": {
+            "no_research_consent": 3,
+            "withdrawn": 1
+          },
+          "expires_at": "2026-11-03T09:00:04.000Z",
+          "file_name": "export-4f0e7a52-csv.zip",
+          "filters": {
+            "from": "2026-10-01"
+          },
+          "format": "csv",
+          "id": "4f0e7a52-6a8c-4c3e-9a51-2f6b0c1d9e01",
+          "kind": "bulk",
+          "mode": "deidentified",
+          "org_id": "0b7e8f1c-2d3a-4b5c-8d9e-0f1a2b3c4d5e",
+          "purpose": "research",
+          "reason": "Quarterly research extract for the ethics-approved cohort study",
+          "requested_by": "8d2c1b0a-9f8e-4d7c-b6a5-4e3d2c1b0a9f",
+          "row_count": 42,
+          "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+          "status": "succeeded"
+        }
+      ],
+      "properties": {
+        "byte_size": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "completed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "content_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "destination_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Short error class when `failed`; never patient data."
+        },
+        "excluded": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "description": "Excluded sessions by reason (`withdrawn`, `no_research_consent`, `mode_not_allowed`,\n`capture_source_refused`).",
+          "type": "object"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "When the artifact is deleted (EXJ-4)."
+        },
+        "file_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "filters": {
+          "$ref": "#/$defs/ExportFilters"
+        },
+        "format": {
+          "$ref": "#/$defs/ExportFormat"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ExportKind"
+        },
+        "mode": {
+          "$ref": "#/$defs/ExportMode"
+        },
+        "org_id": {
+          "type": "string"
+        },
+        "purpose": {
+          "$ref": "#/$defs/ExportPurpose"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "requested_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "row_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Sessions in the artifact."
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Hex SHA-256 of the artifact."
+        },
+        "status": {
+          "$ref": "#/$defs/ExportStatus"
+        }
+      },
+      "required": [
+        "id",
+        "org_id",
+        "kind",
+        "format",
+        "mode",
+        "purpose",
+        "status",
+        "filters",
+        "reason",
+        "destination_ids",
+        "created_at",
+        "excluded"
+      ],
+      "type": "object"
+    },
+    "ExportFilters": {
+      "additionalProperties": false,
+      "description": "EXJ-1 filters: the session-list filters plus id and clinical-state lists. Every field\nis optional; an empty filter selects every session of the org.",
+      "properties": {
+        "bundle_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "clinical_state": {
+          "description": "Clinical review states (`open`, `final`, ...); `none` selects sessions without a\nclinical review.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "flag": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Attention flag (`green|yellow|red|unreliable`)."
+        },
+        "from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`started_at` lower bound: RFC 3339 or `YYYY-MM-DD` (start of day, UTC)."
+        },
+        "participant_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "quality": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Quality verdict."
+        },
+        "reviewed": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Whether the session has a finished review-queue item."
+        },
+        "session_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`started_at` upper bound: RFC 3339 or `YYYY-MM-DD` (end of day, UTC)."
+        }
+      },
+      "type": "object"
+    },
+    "ExportFormat": {
+      "description": "EXJ-1 artifact format. `csv`, `csv_excel`, `csv_sheets`: ZIP of the four tables\nplus `manifest.json` in the three CSV dialects (CSV-1, CSV-3); `xlsx`: one workbook\n(XLSX-1); `pdf_summary`: PDF/A clinical summary (WP-I.5, not available yet);\n`fhir_bundle`: one FHIR R4 clinical report bundle, exactly one session\n(`filters.session_ids`); `fhir_ndjson`: one bundle per line, any number of sessions;\n`hl7v2`: one ORU^R01 message, exactly one session, identified only (HL7-7).",
+      "enum": [
+        "csv",
+        "csv_excel",
+        "csv_sheets",
+        "xlsx",
+        "pdf_summary",
+        "fhir_bundle",
+        "fhir_ndjson",
+        "hl7v2"
+      ],
+      "type": "string"
+    },
+    "ExportKind": {
+      "description": "`exports.kind`: a stored job artifact or a single synchronous document render (EXJ-7).",
+      "enum": [
+        "bulk",
+        "document"
+      ],
+      "type": "string"
+    },
+    "ExportMode": {
+      "description": "EXJ-1: identified (token, MRN and clinical text where the requester may read them) or\nde-identified (XC-4).",
+      "enum": [
+        "identified",
+        "deidentified"
+      ],
+      "type": "string"
+    },
+    "ExportPage": {
+      "description": "`GET /v1/orgs/{id}/exports`, newest first.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/Export"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "ExportPurpose": {
+      "description": "EXJ-1: why the export is made; decides which modes and sessions are allowed (XC-5).",
+      "enum": [
+        "clinical_care",
+        "research",
+        "quality_improvement",
+        "patient_request"
+      ],
+      "type": "string"
+    },
+    "ExportRequest": {
+      "additionalProperties": false,
+      "description": "`POST /v1/orgs/{id}/exports` (EXJ-1). Answers `202` with the [`Export`].",
+      "properties": {
+        "destination_ids": {
+          "default": [],
+          "description": "Delivery destinations (WP-I.7); empty = download only.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "filters": {
+          "$ref": "#/$defs/ExportFilters",
+          "default": {}
+        },
+        "format": {
+          "$ref": "#/$defs/ExportFormat"
+        },
+        "mode": {
+          "$ref": "#/$defs/ExportMode"
+        },
+        "purpose": {
+          "$ref": "#/$defs/ExportPurpose"
+        },
+        "reason": {
+          "description": "10..500 characters, shown in the audit log.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "format",
+        "mode",
+        "purpose",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "ExportStatus": {
+      "description": "`exports.status`. `expired`: the artifact was deleted after `expires_at`; the\naccounting stays (EXJ-4).",
+      "enum": [
+        "queued",
+        "running",
+        "succeeded",
+        "failed",
+        "expired"
       ],
       "type": "string"
     },

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO export_items (export_id, participant_id, session_id)\n         SELECT $1, p, s FROM unnest($2::uuid[], $3::text[]) AS t (p, s)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a6974e589a81b8d8b79953d661eca6c261a0be4149f28f8638a8ed9160652ca9"
+}

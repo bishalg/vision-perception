@@ -28,7 +28,12 @@ const TABLES: &[&str] = &[
     "devices",
     "enrol_codes",
     "erasure_requests",
+    // WP-I.6 (0009_exports.sql).
+    "export_deliveries",
+    "export_items",
+    "exports",
     "idempotency_keys",
+    "integration_destinations",
     "jobs",
     "labels",
     "norm_runs",

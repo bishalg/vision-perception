@@ -16,6 +16,7 @@ pub mod config_docs;
 pub mod crypto;
 pub mod db;
 pub mod error;
+pub mod export_build; // WP-I.6
 pub mod ingest;
 pub mod interop; // WP-C.10
 pub mod jobs;

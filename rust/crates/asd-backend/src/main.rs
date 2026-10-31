@@ -131,11 +131,14 @@ async fn serve(config: Config) -> Result<(), String> {
 
 async fn worker(config: Config) -> Result<(), String> {
     let pool = db::connect_lazy(&config).map_err(|e| format!("database url: {e}"))?;
-    // WP-B.5: the job loop (`jobs::runner`, `FOR UPDATE SKIP LOCKED` on `jobs`).
+    // WP-B.5: the job loop (`jobs::runner`, `FOR UPDATE SKIP LOCKED` on `jobs`). WP-I.6:
+    // the worker gets the same blob store, keyring and config as the API (JobContext).
+    let blobs = app::build_blob_store(&config).await;
+    let ctx = asd_backend::jobs::JobContext::from_state(&app::AppState::new(pool, blobs, config));
     let worker_id = format!("worker-{}", uuid::Uuid::new_v4().simple());
-    tracing::info!(%worker_id, kinds = ?[asd_backend::jobs::KIND_NORM_AGGREGATE], "worker started");
-    asd_backend::jobs::runner::worker_loop(
-        pool,
+    tracing::info!(%worker_id, kinds = ?asd_backend::jobs::KINDS, "worker started");
+    asd_backend::jobs::runner::worker_loop_in(
+        ctx,
         worker_id,
         asd_backend::jobs::runner::DEFAULT_POLL_INTERVAL,
         asd_backend::jobs::runner::DEFAULT_VISIBILITY_TIMEOUT,

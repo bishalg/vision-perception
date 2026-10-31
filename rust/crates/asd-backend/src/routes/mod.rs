@@ -13,6 +13,7 @@ pub mod care;
 pub mod clinical_reviews; // WP-C.10
 pub mod config;
 pub mod devices;
+pub mod exports; // WP-I.6
 pub mod health;
 pub mod jobs;
 pub mod metrics;
@@ -43,6 +44,7 @@ pub fn v1() -> Router<AppState> {
         .merge(notes::router()) // WP-C.11
         .merge(worklist::router()) // WP-C.10
         .merge(clinical_reviews::router()) // WP-C.10
+        .merge(exports::router()) // WP-I.6
         // WP-B.5: norm aggregation jobs and runs.
         .merge(jobs::router())
         // WP-B.4: config documents, bundles, device bundle delivery.

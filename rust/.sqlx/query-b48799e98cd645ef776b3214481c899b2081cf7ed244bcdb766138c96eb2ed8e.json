@@ -1,0 +1,347 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT e.id, e.org_id, e.kind, e.format, e.mode, e.purpose, e.status, e.filters,\n                  e.reason, e.destination_ids, e.include_clinical_content, e.include_mrn,\n                  e.requested_by, e.job_id, e.ttl_hours, e.download_secret, e.blob_key,\n                  e.file_name, e.content_type, e.sha256, e.byte_size, e.row_count, e.excluded,\n                  e.error, e.created_at, e.completed_at, e.expires_at,\n                  coalesce(j.status = 'failed', false) AS \"job_failed!\"\n           FROM exports e LEFT JOIN jobs j ON j.id = e.job_id\n           WHERE e.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "org_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "org_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "format",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "format"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "mode",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "mode"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "purpose",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "purpose"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "filters",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "filters"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "reason"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "destination_ids",
+        "type_info": "UuidArray",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "destination_ids"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "include_clinical_content",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "include_clinical_content"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "include_mrn",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "include_mrn"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "requested_by",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "requested_by"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "job_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "job_id"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "ttl_hours",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "ttl_hours"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "download_secret",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "download_secret"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "blob_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "blob_key"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "file_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "file_name"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "content_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "content_type"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "sha256",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "sha256"
+          }
+        }
+      },
+      {
+        "ordinal": 20,
+        "name": "byte_size",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "byte_size"
+          }
+        }
+      },
+      {
+        "ordinal": 21,
+        "name": "row_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "row_count"
+          }
+        }
+      },
+      {
+        "ordinal": 22,
+        "name": "excluded",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "excluded"
+          }
+        }
+      },
+      {
+        "ordinal": 23,
+        "name": "error",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "error"
+          }
+        }
+      },
+      {
+        "ordinal": 24,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 25,
+        "name": "completed_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "completed_at"
+          }
+        }
+      },
+      {
+        "ordinal": 26,
+        "name": "expires_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "expires_at"
+          }
+        }
+      },
+      {
+        "ordinal": 27,
+        "name": "job_failed!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "b48799e98cd645ef776b3214481c899b2081cf7ed244bcdb766138c96eb2ed8e"
+}

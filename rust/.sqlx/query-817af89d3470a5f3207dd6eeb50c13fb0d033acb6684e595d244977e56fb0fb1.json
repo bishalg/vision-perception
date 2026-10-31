@@ -1,0 +1,208 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT session_id, clip_id, clip_order, status, score, weight, dwell_social,\n                  dwell_geometric, dwell_eye, dwell_mouth, orienting_latency_ms,\n                  gaze_cue_accuracy, fixation_count, mean_fixation_ms, baseline_ref, details\n           FROM session_clip_scores WHERE session_id = ANY($1)\n           ORDER BY session_id, clip_order, clip_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "session_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "session_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "clip_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "clip_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "clip_order",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "clip_order"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "score",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "score"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "weight",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "weight"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "dwell_social",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "dwell_social"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "dwell_geometric",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "dwell_geometric"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "dwell_eye",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "dwell_eye"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "dwell_mouth",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "dwell_mouth"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "orienting_latency_ms",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "orienting_latency_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "gaze_cue_accuracy",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "gaze_cue_accuracy"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "fixation_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "fixation_count"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "mean_fixation_ms",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "mean_fixation_ms"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "baseline_ref",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "baseline_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "details",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "session_clip_scores",
+            "name": "details"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "817af89d3470a5f3207dd6eeb50c13fb0d033acb6684e595d244977e56fb0fb1"
+}

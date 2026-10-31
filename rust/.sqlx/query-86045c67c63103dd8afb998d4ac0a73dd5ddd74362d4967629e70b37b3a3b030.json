@@ -1,0 +1,36 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT config -> 'hl7' AS \"hl7!\", environment FROM integration_destinations\n               WHERE org_id = $1 AND id = ANY($2) AND config ? 'hl7'\n               ORDER BY created_at, id LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "hl7!",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "environment",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "integration_destinations",
+            "name": "environment"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      null,
+      false
+    ]
+  },
+  "hash": "86045c67c63103dd8afb998d4ac0a73dd5ddd74362d4967629e70b37b3a3b030"
+}

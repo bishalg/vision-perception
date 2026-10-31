@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE jobs\n         SET status = CASE WHEN attempts >= $2 THEN 'failed' ELSE 'queued' END,\n             finished_at = CASE WHEN attempts >= $2 THEN now() ELSE NULL END,\n             error = 'worker stopped before the job finished', locked_by = NULL,\n             heartbeat_at = NULL, run_after = now()\n         WHERE status = 'running'\n           AND greatest(started_at, heartbeat_at) < now() - make_interval(secs => $1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Float8",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "73328a38f4438707bb934963eec66fb708f2868cd918a3e3bef7d4f0d8c9328e"
+}

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE exports\n         SET status = 'succeeded', blob_key = $2, file_name = $3, content_type = $4,\n             sha256 = $5, byte_size = $6, row_count = $7, excluded = $8, error = NULL,\n             ttl_hours = $9, completed_at = now(),\n             expires_at = now() + make_interval(hours => $9)\n         WHERE id = $1 AND status IN ('queued', 'running')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Bytea",
+        "Int8",
+        "Int4",
+        "Jsonb",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "23ab9b024298b419ffeab1c209acfa3738f4a8b7723578b002ff16015831b0f2"
+}
