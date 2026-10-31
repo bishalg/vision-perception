@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT s.org_id, s.participant_token, s.summary,\n                  p.age_bracket_at_enrol, d.app_version AS \"app_version?\"\n           FROM sessions s\n           JOIN participants p ON p.id = s.participant_id\n           LEFT JOIN devices d ON d.id = s.device_id\n           WHERE s.id = $1",
+  "query": "SELECT s.org_id, s.participant_token, s.summary, s.schema_version,\n                  p.age_bracket_at_enrol, d.app_version AS \"app_version?\"\n           FROM sessions s\n           JOIN participants p ON p.id = s.participant_id\n           LEFT JOIN devices d ON d.id = s.device_id\n           WHERE s.id = $1",
   "describe": {
     "columns": [
       {
@@ -38,6 +38,17 @@
       },
       {
         "ordinal": 3,
+        "name": "schema_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "schema_version"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
         "name": "age_bracket_at_enrol",
         "type_info": "Text",
         "origin": {
@@ -48,7 +59,7 @@
         }
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "app_version?",
         "type_info": "Text",
         "origin": {
@@ -68,9 +79,10 @@
       false,
       false,
       false,
+      false,
       true,
       true
     ]
   },
-  "hash": "80614d66a7274cca01ddff353cc62eb16f2ae1db7008826c603345e8c0e0910b"
+  "hash": "4dd9750059eaa48168750badcc5d655e4a90c713889bcc8c9d301cb6d30de4e1"
 }

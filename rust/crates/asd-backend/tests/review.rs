@@ -187,6 +187,17 @@ async fn review_queue_lists_org_items_with_filters() {
         .items
         .iter()
         .all(|i| i.status == ReviewStatus::Open && i.session_id == "S-RED"));
+    // The list carries a short session summary, so the console needs no call per item.
+    for i in &page.items {
+        let s = i.session.as_ref().expect("session summary");
+        assert_eq!(
+            s.attention_flag,
+            asd_contract::api_v1::SessionAttentionFlag::Red
+        );
+        assert_eq!(s.participant_token, "child-SESS-GOL");
+        assert!(s.started_at.ends_with('Z'), "{}", s.started_at);
+        assert!(!s.quality_verdict.is_empty());
+    }
 
     let (_, _, body) = send(
         f.router.clone(),

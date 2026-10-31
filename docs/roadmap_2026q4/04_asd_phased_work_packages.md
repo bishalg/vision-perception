@@ -32,7 +32,7 @@
 | WP-G.8 | iOS bench capture build (`ASD_BENCH_CAPTURE`, raw tracking JSONL, 13-point grid) | 2 | I | todo | BEN-2; depends on G.1, G.0 |
 | WP-G.9 | Kit integration: GazeProcessingActor runs the Rust pipeline; session v1.7 writer; per-frame cost measured | 3 | S | todo | PIPE-4, QS-1, SCH-2; depends on G.7, WP-A.11, G.0, G.6 |
 | WP-G.10 | App UI: child-friendly calibration, validation step, inter-clip drift checks, re-calibration prompts | 3 | I | todo | CAL-7..9, VAL-1, DRF-1; depends on G.9 |
-| WP-G.11 | Backend accepts 1.6+1.7, tracking columns, `low_tracking_quality` review rule, API fields | 2 | S | done | 1.6 + 1.7 ingest (1.6 upgraded losslessly), migration 0013 tracking columns, `low_tracking_quality` review rule, list filter + detail `tracking_quality`; distance NULL when unmeasured (no more fabricated 35 cm for 1.7). TODO before G.9: `report.rs` decodes 1.6 only → 500 for 1.7 without calibratedDistanceCm |
+| WP-G.11 | Backend accepts 1.6+1.7, tracking columns, `low_tracking_quality` review rule, API fields | 2 | S | done | 1.6 + 1.7 ingest (1.6 upgraded losslessly), migration 0013 tracking columns, `low_tracking_quality` review rule, list filter + detail `tracking_quality`; distance NULL when unmeasured (no more fabricated 35 cm for 1.7). `report.rs` decodes by schema_version (1.7 without calibratedDistanceCm no longer 500s; report builders never read the distance) |
 | WP-G.12 | Console Quality tab tracking section, drift chart, loss bar, tracking filter | 2 | I | done | Quality tab tracking section (verdict, accuracy, calibration, loss bar, drift chart, conditions), Tracking column + filter, 'Not measured' for nulls/1.6; Playwright 16/16. Gap: drift warn/hard lines need thresholds in the API payload |
 | WP-G.13 | Scoring uses tracking quality (accuracy cap, AOI resolution guard, I-VT in °/s), versioned | 3 | S | backlog | SCR-1..4; owner gate H-G2; depends on G.4, G.6 |
 | WP-G.14 | Bench execution, device matrix, threshold and calibration-model decision | 3 | owner + I | todo | BEN-1..8, DEV-2/3; depends on G.8, G.5; H-G4, H-G5 |
@@ -75,7 +75,7 @@
 | WP-I.6 | Export jobs: migration 0009, runner run_after/heartbeat/context, consent filter, artifacts, signed download URLs, disclosures | 3 | S | done | migration 0009, export jobs (CSV/XLSX/FHIR/NDJSON/HL7; PDF pending I.5), runner run_after + heartbeat + fencing, consent filter with exclusion counts, signed 5-min download URLs (superadmin refused), disclosures, expiry sweep. Gap: no zip-scan test of de-identified CSV in backend |
 | WP-I.7 | Delivery: integration settings (encrypted write-only secrets), signed webhooks, SFTP, SSRF guard, auto-deliver on final sign | 3 | S | todo | INTG-*, DLV-1..6; needs I.6, C.10 |
 | WP-I.8 | Console: exports page + integration settings | 3 | I | todo | needs I.6, I.7, C.13 |
-| WP-I.9 | FHIR push via SMART Backend Services (migration 0010) | 4 | S | backlog | DLV-7; relates to WP-B.10 |
+| WP-I.9 | FHIR push via SMART Backend Services (new migration ≥0014; see migration rule) | 4 | S | backlog | DLV-7; relates to WP-B.10 |
 | WP-I.10 | SMART EHR launch of the console | 4 | S | backlog | needs I.9, C.14 |
 | WP-I.11 | HL7 MLLP/TLS sender + ACK handling | 4 | S | backlog | only if a partner needs real-time HL7 |
 | WP-D.1 | Stimulus clips: rights or replacement; durations measured; catalog corrected | 1 | I + owner | done | All 10 clips measured at 8.0s via ffprobe, catalog aligned, NOTICE.md updated |
@@ -92,6 +92,8 @@
 | WP-E.5 | Native hi/ne review of store text | 3 | owner | todo | |
 | WP-E.6 | Security/privacy review pack: threat model, data-flow diagram, DPIA-lite, retention policy, AWS BAA | 3 | A + I | todo | |
 | WP-E.7 | App Store submission dry run (`appstore_precheck`, screenshots, age assurance flag) | 4 | I | backlog | |
+
+**Migration rule (2026-10-31 audit):** backend migrations are applied in order and numbers 0007 and 0010–0012 were never used. A new migration must take the next number above the highest existing one (≥0014 today), never a gap, or it will be applied out of order on databases that already ran later migrations.
 
 ## 1. Phase 1 — Demo-ready vertical slice (2026-10-27 → 2026-11-16)
 

@@ -3437,6 +3437,18 @@
               "type": "null"
             }
           ]
+        },
+        "settings": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`organizations.settings` (non-secret keys only: secret-looking keys are refused on\nwrite and filtered here). Present on `GET /v1/orgs/{id}`; absent in `GET /v1/orgs`."
         }
       },
       "required": [
@@ -4399,6 +4411,17 @@
         "reason": {
           "$ref": "#/$defs/ReviewReason"
         },
+        "session": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReviewSessionSummary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Short summary of the session, so the console needs no call per item. Present in\nthe list; absent from write responses."
+        },
         "session_id": {
           "type": "string"
         },
@@ -4463,6 +4486,31 @@
         "low_tracking_quality"
       ],
       "type": "string"
+    },
+    "ReviewSessionSummary": {
+      "description": "The session fields shown beside a review item.",
+      "properties": {
+        "attention_flag": {
+          "$ref": "#/$defs/SessionAttentionFlag"
+        },
+        "participant_token": {
+          "type": "string"
+        },
+        "quality_verdict": {
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "attention_flag",
+        "quality_verdict",
+        "participant_token",
+        "started_at"
+      ],
+      "type": "object"
     },
     "ReviewStatus": {
       "description": "Review item state.",
@@ -7514,6 +7562,28 @@
         },
         "role": {
           "$ref": "#/$defs/Role"
+        },
+        "totp_enrolled": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "True when the user has a TOTP secret (the secret is never returned): a sign or\ncosign then needs a `totp_code`."
+        },
+        "user_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Same value as `id`, named for the console (sign / cosign checks)."
         }
       },
       "required": [

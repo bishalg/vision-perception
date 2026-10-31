@@ -39,7 +39,7 @@ pub struct ReportSource {
 /// checks org access on [`ReportSource::org_id`].
 pub async fn load(db: &PgPool, id: &str) -> AppResult<Option<ReportSource>> {
     let Some(row) = sqlx::query!(
-        r#"SELECT s.org_id, s.participant_token, s.summary,
+        r#"SELECT s.org_id, s.participant_token, s.summary, s.schema_version,
                   p.age_bracket_at_enrol, d.app_version AS "app_version?"
            FROM sessions s
            JOIN participants p ON p.id = s.participant_id
@@ -52,8 +52,7 @@ pub async fn load(db: &PgPool, id: &str) -> AppResult<Option<ReportSource>> {
     else {
         return Ok(None);
     };
-    let record: GazeSessionRecord = serde_json::from_value(row.summary)
-        .map_err(|e| AppError::Internal(format!("stored summary does not decode: {e}")))?;
+    let record = decode_record(row.summary, &row.schema_version)?;
     Ok(Some(ReportSource {
         org_id: row.org_id,
         record,
@@ -64,6 +63,21 @@ pub async fn load(db: &PgPool, id: &str) -> AppResult<Option<ReportSource>> {
             .and_then(age_months_from_bracket),
         app_version: row.app_version,
     }))
+}
+
+/// Decodes a stored summary by its schema version. Reports are built from the 1.6 record
+/// type; a 1.7 record may omit `calibratedDistanceCm` (QS-5), which 1.6 requires. The
+/// report builders never read it, so a 1.7 record without it gets the neutral `0.0`
+/// before decoding; the 1.7-only keys (`trackingQuality`, ...) ride along in `extra`.
+fn decode_record(mut summary: Value, schema_version: &str) -> AppResult<GazeSessionRecord> {
+    if schema_version == asd_contract::session_v1_7::SCHEMA_VERSION {
+        if let Some(obj) = summary.as_object_mut() {
+            obj.entry("calibratedDistanceCm")
+                .or_insert_with(|| Value::from(0.0));
+        }
+    }
+    serde_json::from_value(summary)
+        .map_err(|e| AppError::Internal(format!("stored summary does not decode: {e}")))
 }
 
 /// Midpoint months of an iOS `PediatricAgeBracket` raw value (`"24–35 mo"`, also with a

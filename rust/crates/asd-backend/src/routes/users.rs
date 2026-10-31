@@ -487,6 +487,7 @@ async fn update(
 
 fn user_profile(
     id: Uuid,
+    totp_enrolled: bool,
     email: String,
     role: &str,
     org_id: Option<Uuid>,
@@ -494,6 +495,8 @@ fn user_profile(
 ) -> AppResult<UserProfile> {
     Ok(UserProfile {
         id: id.to_string(),
+        user_id: Some(id.to_string()),
+        totp_enrolled: Some(totp_enrolled),
         email,
         role: rbac::role_from_str(role)
             .ok_or_else(|| AppError::Internal(format!("unknown role in database: {role}")))?,
@@ -509,8 +512,9 @@ async fn get_me(
     principal: UserPrincipal,
 ) -> AppResult<Json<UserProfile>> {
     let row = sqlx::query!(
-        "SELECT email, role, org_id, display_name, professional_registration
-         FROM users WHERE id = $1",
+        r#"SELECT email, role, org_id, display_name, professional_registration,
+                (totp_secret IS NOT NULL AND btrim(totp_secret) <> '') AS "totp_enrolled!"
+         FROM users WHERE id = $1"#,
         principal.user_id
     )
     .fetch_optional(&state.db)
@@ -518,6 +522,7 @@ async fn get_me(
     .ok_or(AppError::Unauthorized)?;
     Ok(Json(user_profile(
         principal.user_id,
+        row.totp_enrolled,
         row.email,
         &row.role,
         row.org_id,
@@ -547,8 +552,9 @@ async fn patch_me(
     }
     let mut tx = state.db.begin().await?;
     let row = sqlx::query!(
-        "SELECT email, role, org_id, display_name, professional_registration
-         FROM users WHERE id = $1 FOR UPDATE",
+        r#"SELECT email, role, org_id, display_name, professional_registration,
+                (totp_secret IS NOT NULL AND btrim(totp_secret) <> '') AS "totp_enrolled!"
+         FROM users WHERE id = $1 FOR UPDATE"#,
         principal.user_id
     )
     .fetch_optional(&mut *tx)
@@ -579,6 +585,7 @@ async fn patch_me(
     tx.commit().await?;
     Ok(Json(user_profile(
         principal.user_id,
+        row.totp_enrolled,
         row.email,
         &row.role,
         row.org_id,

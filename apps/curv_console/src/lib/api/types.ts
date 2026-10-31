@@ -68,6 +68,8 @@ export const orgSchema = z.object({
   name: z.string(),
   kind: z.enum(ORG_KINDS),
   retention_months: z.number().int().nullable().optional(),
+  /** Non-secret org settings; on `GET /orgs/{id}` only (absent in the org list). */
+  settings: z.record(z.string(), z.unknown()).nullable().optional(),
 });
 export type Org = z.infer<typeof orgSchema>;
 
@@ -350,6 +352,16 @@ export const reviewItemSchema = z.object({
   decision: z.unknown().optional(),
   decided_by: str,
   decided_at: str,
+  /** Short session summary (list only), so the queue needs no call per item. */
+  session: z
+    .object({
+      attention_flag: z.enum(["green", "yellow", "red", "unreliable"]),
+      quality_verdict: z.string(),
+      participant_token: z.string(),
+      started_at: z.string(),
+    })
+    .nullable()
+    .optional(),
 });
 export type ReviewItem = z.infer<typeof reviewItemSchema>;
 

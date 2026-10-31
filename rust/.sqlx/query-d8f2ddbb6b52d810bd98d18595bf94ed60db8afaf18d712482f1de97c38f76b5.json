@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT email, role, org_id, display_name, professional_registration\n         FROM users WHERE id = $1 FOR UPDATE",
+  "query": "SELECT email, role, org_id, display_name, professional_registration,\n                (totp_secret IS NOT NULL AND btrim(totp_secret) <> '') AS \"totp_enrolled!\"\n         FROM users WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -57,6 +57,12 @@
             "name": "professional_registration"
           }
         }
+      },
+      {
+        "ordinal": 5,
+        "name": "totp_enrolled!",
+        "type_info": "Bool",
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -69,8 +75,9 @@
       false,
       true,
       true,
-      true
+      true,
+      null
     ]
   },
-  "hash": "95918416c7a75b9467d13545e0ab5ae8bb382c7aa59cd0dcc1a1e5fa79ba4486"
+  "hash": "d8f2ddbb6b52d810bd98d18595bf94ed60db8afaf18d712482f1de97c38f76b5"
 }

@@ -305,6 +305,13 @@ pub fn letter_content_hash_hex(snapshot: &LetterSnapshot) -> String {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct UserProfile {
     pub id: String,
+    /// Same value as `id`, named for the console (sign / cosign checks).
+    #[serde(default)]
+    pub user_id: Option<String>,
+    /// True when the user has a TOTP secret (the secret is never returned): a sign or
+    /// cosign then needs a `totp_code`.
+    #[serde(default)]
+    pub totp_enrolled: Option<bool>,
     pub email: String,
     pub role: Role,
     /// `null` only for `superadmin`.

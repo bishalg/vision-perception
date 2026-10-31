@@ -13,7 +13,8 @@
 //! `503 clinical-crypto-unavailable` and stores nothing. The note is still never returned.
 
 use asd_contract::api_v1::{
-    CreateReviewRequest, ReviewItem, ReviewPage, ReviewReason, ReviewStatus, UpdateReviewRequest,
+    CreateReviewRequest, ReviewItem, ReviewPage, ReviewReason, ReviewSessionSummary, ReviewStatus,
+    UpdateReviewRequest,
 };
 use axum::extract::rejection::{JsonRejection, QueryRejection};
 use axum::extract::{Path, Query, State};
@@ -92,6 +93,7 @@ fn item(
         decided_by: decided_by.map(|u| u.to_string()),
         decided_at: decided_at.map(cursor::ts),
         created_at: cursor::ts(created_at),
+        session: None,
     })
 }
 
@@ -142,14 +144,17 @@ async fn list(
     };
 
     let rows = sqlx::query!(
-        r#"SELECT id, org_id, session_id, reason, status, assigned_to, decision, decided_by,
-                  decided_at, created_at
-           FROM review_items
-           WHERE org_id = $1
-             AND ($2::text IS NULL OR status = $2)
-             AND ($3::text IS NULL OR reason = $3)
-             AND ($4::timestamptz IS NULL OR (created_at, id::text) < ($4, $5::text))
-           ORDER BY created_at DESC, id::text DESC
+        r#"SELECT r.id, r.org_id, r.session_id, r.reason, r.status, r.assigned_to, r.decision,
+                  r.decided_by, r.decided_at, r.created_at,
+                  s.attention_flag AS "s_flag?", s.quality_verdict AS "s_verdict?",
+                  s.participant_token AS "s_token?", s.started_at AS "s_started?"
+           FROM review_items r
+           LEFT JOIN sessions s ON s.id = r.session_id AND s.org_id = r.org_id
+           WHERE r.org_id = $1
+             AND ($2::text IS NULL OR r.status = $2)
+             AND ($3::text IS NULL OR r.reason = $3)
+             AND ($4::timestamptz IS NULL OR (r.created_at, r.id::text) < ($4, $5::text))
+           ORDER BY r.created_at DESC, r.id::text DESC
            LIMIT $6"#,
         org,
         status,
@@ -177,7 +182,18 @@ async fn list(
     let mut last = None;
     for r in rows.into_iter().take(limit) {
         last = Some(Cursor::new(r.created_at, r.id.to_string()));
-        items.push(item(
+        let session = match (r.s_flag, r.s_verdict, r.s_token, r.s_started) {
+            (Some(flag), Some(quality_verdict), Some(participant_token), Some(started)) => {
+                Some(ReviewSessionSummary {
+                    attention_flag: parse(flag)?,
+                    quality_verdict,
+                    participant_token,
+                    started_at: cursor::ts(started),
+                })
+            }
+            _ => None,
+        };
+        let mut it = item(
             r.id,
             r.org_id,
             r.session_id,
@@ -188,7 +204,9 @@ async fn list(
             r.decided_by,
             r.decided_at,
             r.created_at,
-        )?);
+        )?;
+        it.session = session;
+        items.push(it);
     }
     Ok(Json(ReviewPage {
         items,

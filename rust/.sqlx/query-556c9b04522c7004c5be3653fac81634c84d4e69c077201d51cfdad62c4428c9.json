@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, org_id, session_id, reason, status, assigned_to, decision, decided_by,\n                  decided_at, created_at\n           FROM review_items\n           WHERE org_id = $1\n             AND ($2::text IS NULL OR status = $2)\n             AND ($3::text IS NULL OR reason = $3)\n             AND ($4::timestamptz IS NULL OR (created_at, id::text) < ($4, $5::text))\n           ORDER BY created_at DESC, id::text DESC\n           LIMIT $6",
+  "query": "SELECT r.id, r.org_id, r.session_id, r.reason, r.status, r.assigned_to, r.decision,\n                  r.decided_by, r.decided_at, r.created_at,\n                  s.attention_flag AS \"s_flag?\", s.quality_verdict AS \"s_verdict?\",\n                  s.participant_token AS \"s_token?\", s.started_at AS \"s_started?\"\n           FROM review_items r\n           LEFT JOIN sessions s ON s.id = r.session_id AND s.org_id = r.org_id\n           WHERE r.org_id = $1\n             AND ($2::text IS NULL OR r.status = $2)\n             AND ($3::text IS NULL OR r.reason = $3)\n             AND ($4::timestamptz IS NULL OR (r.created_at, r.id::text) < ($4, $5::text))\n           ORDER BY r.created_at DESC, r.id::text DESC\n           LIMIT $6",
   "describe": {
     "columns": [
       {
@@ -112,6 +112,50 @@
             "name": "created_at"
           }
         }
+      },
+      {
+        "ordinal": 10,
+        "name": "s_flag?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "attention_flag"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "s_verdict?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "quality_verdict"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "s_token?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "participant_token"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "s_started?",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "started_at"
+          }
+        }
       }
     ],
     "parameters": {
@@ -134,8 +178,12 @@
       true,
       true,
       true,
+      false,
+      false,
+      false,
+      false,
       false
     ]
   },
-  "hash": "0fcc687c4849577c0d7cfae4d7197ebc5f01e16c3ee8ec6f7a542376920e81e1"
+  "hash": "556c9b04522c7004c5be3653fac81634c84d4e69c077201d51cfdad62c4428c9"
 }

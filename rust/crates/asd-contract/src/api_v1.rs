@@ -169,6 +169,10 @@ pub struct Org {
     pub kind: OrgKind,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub retention_months: Option<u32>,
+    /// `organizations.settings` (non-secret keys only: secret-looking keys are refused on
+    /// write and filtered here). Present on `GET /v1/orgs/{id}`; absent in `GET /v1/orgs`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub settings: Option<BTreeMap<String, Value>>,
 }
 
 /// `PATCH /v1/orgs/{id}`; absent members are unchanged.
@@ -449,6 +453,11 @@ page!(
     Participant
 );
 page!(
+    /// `GET /v1/orgs` (the orgs the caller can open).
+    OrgPage,
+    Org
+);
+page!(
     /// `GET /v1/orgs/{id}/users`.
     OrgUserPage,
     OrgUser
@@ -533,6 +542,20 @@ pub struct ReviewItem {
     pub decided_at: Option<String>,
     #[schemars(extend("format" = "date-time"))]
     pub created_at: String,
+    /// Short summary of the session, so the console needs no call per item. Present in
+    /// the list; absent from write responses.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session: Option<ReviewSessionSummary>,
+}
+
+/// The session fields shown beside a review item.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct ReviewSessionSummary {
+    pub attention_flag: SessionAttentionFlag,
+    pub quality_verdict: String,
+    pub participant_token: String,
+    #[schemars(extend("format" = "date-time"))]
+    pub started_at: String,
 }
 
 /// `POST /v1/orgs/{id}/review` (manual enqueue).
@@ -713,6 +736,7 @@ fn example_org() -> Org {
         name: "Example Clinic".into(),
         kind: OrgKind::Clinic,
         retention_months: Some(24),
+        settings: None,
     }
 }
 

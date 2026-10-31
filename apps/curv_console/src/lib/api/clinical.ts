@@ -149,6 +149,10 @@ export type AmendClinicalReviewRequest = z.infer<typeof amendClinicalReviewReque
 
 export const userProfileSchema = z.object({
   id: z.string(),
+  /** Same as `id`. */
+  user_id: str,
+  /** True when the user has a TOTP secret (never returned). */
+  totp_enrolled: z.boolean().nullable().optional(),
   email: z.string(),
   role: roleSchema,
   org_id: str,

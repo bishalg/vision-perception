@@ -11,7 +11,7 @@
 //! look like secrets, MRNs or integration settings are refused, because the audit row of
 //! every change is permanent (G3, trap 2), and that row carries only the keys that changed.
 
-use asd_contract::api_v1::{AuditEntry, AuditPage, Org, OrgKind, OrgPatch};
+use asd_contract::api_v1::{AuditEntry, AuditPage, Org, OrgKind, OrgPage, OrgPatch};
 use asd_contract::clinical::{
     settings as keys, CosignPolicy, Paper, PatientRefMode, WorklistScope, MAX_LETTERHEAD_LINES,
     MAX_LETTERHEAD_LINE_CHARS,
@@ -23,7 +23,7 @@ use serde_json::{json, Map, Value};
 
 use crate::app::AppState;
 use crate::audit::AuditEvent;
-use crate::auth::extractors::{ApiJson, RequestMeta, Require};
+use crate::auth::extractors::{ApiJson, RequestMeta, Require, UserPrincipal};
 use crate::auth::rbac::perm;
 use crate::error::{AppError, AppResult};
 use crate::problem::InvalidParam;
@@ -31,6 +31,7 @@ use listing::{rfc3339, ListParams};
 
 pub fn router() -> Router<AppState> {
     Router::new()
+        .route("/orgs", get(list_orgs))
         .route("/orgs/{id}", get(get_org).patch(patch_org))
         .route("/orgs/{id}/audit", get(list_audit))
 }
@@ -294,7 +295,7 @@ async fn get_org(
 ) -> AppResult<Json<Org>> {
     let org = auth.org();
     let row = sqlx::query!(
-        "SELECT id, name, kind, retention_months FROM organizations WHERE id = $1",
+        "SELECT id, name, kind, retention_months, settings FROM organizations WHERE id = $1",
         org
     )
     .fetch_optional(&state.db)
@@ -305,6 +306,83 @@ async fn get_org(
         name: row.name,
         kind: org_kind(&row.kind)?,
         retention_months: u32::try_from(row.retention_months).ok(),
+        settings: Some(public_settings(&row.settings)),
+    }))
+}
+
+/// The settings that may be shown: secret-looking keys (never written, C.9) are dropped
+/// at any depth as a second line of defence against rows written before the check.
+fn public_settings(settings: &Value) -> std::collections::BTreeMap<String, Value> {
+    fn clean(v: &Value) -> Value {
+        match v {
+            Value::Object(m) => Value::Object(
+                m.iter()
+                    .filter(|(k, _)| !forbidden_setting_key(k))
+                    .map(|(k, v)| (k.clone(), clean(v)))
+                    .collect(),
+            ),
+            other => other.clone(),
+        }
+    }
+    match clean(settings) {
+        Value::Object(m) => m.into_iter().collect(),
+        _ => Default::default(),
+    }
+}
+
+/// `GET /v1/orgs`: the orgs the caller can open for the console org switcher. A user sees
+/// their own org; `superadmin` sees all, newest first, paginated. Settings are not listed.
+async fn list_orgs(
+    State(state): State<AppState>,
+    principal: UserPrincipal,
+    page: ListParams,
+) -> AppResult<Json<OrgPage>> {
+    let after = page.cursor_ts()?;
+    let (after_at, after_id) = match after {
+        Some((t, i)) => (Some(t), Some(i)),
+        None => (None, None),
+    };
+    let own = if principal.is_superadmin() {
+        None
+    } else {
+        Some(principal.org_id.ok_or(AppError::NotFound)?)
+    };
+    let rows = sqlx::query!(
+        "SELECT id, name, kind, retention_months, created_at FROM organizations
+         WHERE ($1::uuid IS NULL OR id = $1)
+           AND ($2::timestamptz IS NULL OR (created_at, id) < ($2, $3::uuid))
+         ORDER BY created_at DESC, id DESC
+         LIMIT $4",
+        own,
+        after_at,
+        after_id,
+        i64::from(page.limit) + 1
+    )
+    .fetch_all(&state.db)
+    .await?;
+    let (rows, more) = listing::split_page(rows, page.limit);
+    let next_cursor = more
+        .then(|| {
+            rows.last()
+                .map(|r| listing::encode_ts_cursor(r.created_at, r.id))
+        })
+        .flatten();
+    let items = rows
+        .into_iter()
+        .map(|r| {
+            Ok(Org {
+                id: r.id.to_string(),
+                name: r.name,
+                kind: org_kind(&r.kind)?,
+                retention_months: u32::try_from(r.retention_months).ok(),
+                settings: None,
+            })
+        })
+        .collect::<AppResult<Vec<_>>>()?;
+    Ok(Json(OrgPage {
+        items,
+        next_cursor,
+        total: None,
     }))
 }
 
@@ -400,6 +478,7 @@ async fn patch_org(
         name: new_name,
         kind: org_kind(&current.kind)?,
         retention_months: u32::try_from(new_retention).ok(),
+        settings: Some(public_settings(&new_settings)),
     }))
 }
 

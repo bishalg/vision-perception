@@ -14,6 +14,7 @@
 
 mod common;
 mod ingest_support;
+mod tracking_support;
 
 use asd_contract::session_v1_6::GazeSessionRecord;
 use asd_export::fhir::{self, BundleInput, FhirDevice, FhirSubject, ReportDocument};
@@ -22,6 +23,7 @@ use common::{send, TestDb};
 use http::StatusCode;
 use ingest_support::*;
 use serde_json::{json, Value};
+use tracking_support::*;
 use uuid::Uuid;
 
 const SESSION: &str = "SESS-GOLDEN-0001";
@@ -244,5 +246,55 @@ async fn unknown_report_source_is_400() {
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(problem_slug(&problem), "validation-failed");
     assert_eq!(problem["invalid_params"][0]["name"], "source");
+    f.db.cleanup().await;
+}
+
+/// QS-5: a 1.7 session may omit `calibratedDistanceCm`; the reports must still build, and
+/// match what `asd-export` renders from the same record.
+#[tokio::test]
+async fn v1_7_session_without_calibrated_distance_reports_ok() {
+    let Some(f) = Fixture::new(false).await else {
+        return;
+    };
+    let mut body = golden_v1_7_with_id("SESS-17-NODIST");
+    body.as_object_mut().unwrap().remove("calibratedDistanceCm");
+    body["rawPayload"]
+        .as_object_mut()
+        .unwrap()
+        .remove("calibratedDistanceCm");
+    ingest_v1_7_ok(&f.router, &f.device, &body).await;
+    let user = f.user("clinician").await;
+
+    let (status, headers, bytes) = send_raw(
+        f.router.clone(),
+        user_get(&user, "/v1/sessions/SESS-17-NODIST/report.pdf"),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "{}",
+        String::from_utf8_lossy(&bytes)
+    );
+    assert_eq!(common::content_type(&headers), "application/pdf");
+    let mut record = body["rawPayload"].clone();
+    record["calibratedDistanceCm"] = json!(0.0);
+    let record: GazeSessionRecord = serde_json::from_value(record).unwrap();
+    assert_eq!(bytes, expected_pdf(&record));
+
+    let (status, headers, bytes) = send_raw(
+        f.router.clone(),
+        user_get(&user, "/v1/sessions/SESS-17-NODIST/fhir"),
+    )
+    .await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "{}",
+        String::from_utf8_lossy(&bytes)
+    );
+    assert_eq!(common::content_type(&headers), "application/fhir+json");
+    let bundle: Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(bundle["resourceType"], "Bundle");
     f.db.cleanup().await;
 }
