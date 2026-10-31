@@ -1,4 +1,5 @@
-//! owner: WP-B.5 (claim, execute, record); WP-I.6 (`run_after`, heartbeat, phased handlers)
+//! owner: WP-B.5 (claim, execute, record); WP-I.6 (`run_after`, heartbeat, phased handlers);
+//! WP-I.7 (`export_deliver` arm, per-kind attempt limits)
 //!
 //! The job runner: claim, execute, record. `asd-backend worker` runs [`worker_loop_in`];
 //! tests call [`run_pending`] / [`run_pending_in`] to drain the queue deterministically.
@@ -29,7 +30,8 @@
 //! A handler error rolls back what was open, then:
 //!
 //! - [`JobError::Permanent`] (bad params, unknown kind): `failed`, no retry;
-//! - [`JobError::Transient`] (database trouble): back to `queued` until [`MAX_ATTEMPTS`];
+//! - [`JobError::Transient`] (database trouble): back to `queued` until the kind's attempt
+//!   limit ([`max_attempts`]: [`MAX_ATTEMPTS`], or [`DELIVERY_MAX_ATTEMPTS`] for deliveries);
 //! - [`JobError::RetryAfter`]: as `Transient`, but not claimed again before the delay
 //!   (`jobs.run_after`; blob store outages, DLV-1 backoff).
 //!
@@ -46,11 +48,25 @@ use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use uuid::Uuid;
 
-use super::{export, norm_aggregate, Job, JobContext, KIND_EXPORT, KIND_NORM_AGGREGATE};
+use super::{
+    deliver, export, norm_aggregate, Job, JobContext, KIND_DELIVER, KIND_EXPORT,
+    KIND_NORM_AGGREGATE,
+};
 use crate::error::AppError;
 
-/// A job is attempted at most this many times.
+/// A job is attempted at most this many times (unless its kind says otherwise).
 pub const MAX_ATTEMPTS: i32 = 3;
+/// DLV-1: a delivery is tried once and then after each of the five backoff delays
+/// (`asd_contract::export::DELIVERY_BACKOFF_SECS`) before it is `failed`.
+pub const DELIVERY_MAX_ATTEMPTS: i32 = 1 + asd_contract::export::DELIVERY_BACKOFF_SECS.len() as i32;
+
+/// The attempt limit of a job kind.
+pub fn max_attempts(kind: &str) -> i32 {
+    match kind {
+        KIND_DELIVER => DELIVERY_MAX_ATTEMPTS,
+        _ => MAX_ATTEMPTS,
+    }
+}
 /// A `running` job silent for longer than this is presumed orphaned by a dead worker.
 pub const DEFAULT_VISIBILITY_TIMEOUT: Duration = Duration::from_secs(15 * 60);
 /// Idle sleep between polls of an empty queue.
@@ -76,11 +92,17 @@ impl JobError {
         }
     }
 
-    /// Whether the runner gives up after this error on attempt `attempts`.
+    /// Whether the runner gives up after this error on attempt `attempts` of a job with
+    /// the default limit ([`MAX_ATTEMPTS`]).
     pub fn is_final(&self, attempts: i32) -> bool {
+        self.is_final_for(KIND_EXPORT, attempts)
+    }
+
+    /// Whether the runner gives up after this error on attempt `attempts` of a `kind` job.
+    pub fn is_final_for(&self, kind: &str, attempts: i32) -> bool {
         match self {
             Self::Permanent(_) => true,
-            Self::Transient(_) | Self::RetryAfter(..) => attempts >= MAX_ATTEMPTS,
+            Self::Transient(_) | Self::RetryAfter(..) => attempts >= max_attempts(kind),
         }
     }
 }
@@ -159,7 +181,7 @@ pub async fn execute(pool: &PgPool, job: &Job) -> Result<Outcome, sqlx::Error> {
 pub async fn execute_in(ctx: &JobContext, job: &Job) -> Result<Outcome, sqlx::Error> {
     let result = match job.kind.as_str() {
         KIND_NORM_AGGREGATE => run_in_transaction(&ctx.pool, job).await,
-        KIND_EXPORT => run_phased(ctx, job).await,
+        KIND_EXPORT | KIND_DELIVER => run_phased(ctx, job).await,
         other => Err(JobError::Permanent(format!("unknown job kind {other:?}"))),
     };
     match result {
@@ -197,7 +219,10 @@ async fn run_in_transaction(pool: &PgPool, job: &Job) -> Result<(), JobError> {
 
 async fn run_phased(ctx: &JobContext, job: &Job) -> Result<(), JobError> {
     let heartbeat = Heartbeat::start(ctx.pool.clone(), job.id, job.attempts, ctx.heartbeat_every);
-    let result = export::execute(ctx, job).await;
+    let result = match job.kind.as_str() {
+        KIND_DELIVER => deliver::execute(ctx, job).await,
+        _ => export::execute(ctx, job).await,
+    };
     heartbeat.stop().await;
     mark_succeeded(&ctx.pool, job, &result?).await
 }
@@ -225,7 +250,7 @@ async fn mark_succeeded(pool: &PgPool, job: &Job, result: &Value) -> Result<(), 
 }
 
 async fn record_failure(pool: &PgPool, job: &Job, error: JobError) -> Result<Outcome, sqlx::Error> {
-    let retry = !error.is_final(job.attempts);
+    let retry = !error.is_final_for(&job.kind, job.attempts);
     let delay = match &error {
         JobError::RetryAfter(_, d) => d.as_secs_f64(),
         _ => 0.0,
@@ -348,14 +373,18 @@ pub async fn reclaim_stale(pool: &PgPool, timeout: Duration) -> Result<u64, sqlx
     let seconds = timeout.as_secs_f64();
     let r = sqlx::query!(
         "UPDATE jobs
-         SET status = CASE WHEN attempts >= $2 THEN 'failed' ELSE 'queued' END,
-             finished_at = CASE WHEN attempts >= $2 THEN now() ELSE NULL END,
+         SET status = CASE WHEN attempts >= CASE kind WHEN $3::text THEN $4::int ELSE $2::int END
+                           THEN 'failed' ELSE 'queued' END,
+             finished_at = CASE WHEN attempts >= CASE kind WHEN $3::text THEN $4::int ELSE $2::int END
+                                THEN now() ELSE NULL END,
              error = 'worker stopped before the job finished', locked_by = NULL,
              heartbeat_at = NULL, run_after = now()
          WHERE status = 'running'
            AND greatest(started_at, heartbeat_at) < now() - make_interval(secs => $1)",
         seconds,
         MAX_ATTEMPTS,
+        KIND_DELIVER,
+        DELIVERY_MAX_ATTEMPTS,
     )
     .execute(pool)
     .await?;

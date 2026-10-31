@@ -1,0 +1,112 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, org_id, export_id, destination_id, event, status, created_at, remote_ref\n         FROM export_deliveries WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "export_deliveries",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "org_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "export_deliveries",
+            "name": "org_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "export_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "export_deliveries",
+            "name": "export_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "destination_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "export_deliveries",
+            "name": "destination_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "event",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "export_deliveries",
+            "name": "event"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "export_deliveries",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "export_deliveries",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "remote_ref",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "export_deliveries",
+            "name": "remote_ref"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "bdf35928ac0b6b7f9f94e3abb748688c8f40c9aefbc4da60dce428598688aedb"
+}

@@ -1,4 +1,4 @@
-//! owner: WP-I.6
+//! owner: WP-I.6; WP-I.7 (queues the export's deliveries on success, fails them on failure)
 //!
 //! The `export` job (EXJ-3), a phased handler (G5, trap 3):
 //!
@@ -76,6 +76,16 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
             .await;
             if let Err(db) = marked {
                 tracing::warn!(%export_id, error = %db, "could not mark the export failed");
+            }
+            // DLV-1: deliveries of an export that will never exist fail with it.
+            if let Err(db) = crate::interop::outbox::fail_for_export(
+                &ctx.pool,
+                export_id,
+                crate::interop::ErrorClass::ExportUnavailable,
+            )
+            .await
+            {
+                tracing::warn!(%export_id, error = %db, "could not fail the export's deliveries");
             }
         }
     }
@@ -346,6 +356,8 @@ async fn run(ctx: &JobContext, job: &Job, export_id: Uuid) -> Result<Value, JobE
             .record(&mut tx)
             .await?;
     }
+    // DLV-1: the artifact exists from this commit on; queue its deliveries with it.
+    crate::interop::outbox::enqueue_ready(&mut tx, export_id).await?;
     tx.commit().await?;
     Ok(json!({
         "export_id": export_id,

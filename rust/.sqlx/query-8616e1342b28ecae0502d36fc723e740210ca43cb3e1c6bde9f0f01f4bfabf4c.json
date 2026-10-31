@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE integration_destinations\n         SET name = $2, config = $3, environment = $4, status = $5, updated_at = now()\n         WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Jsonb",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8616e1342b28ecae0502d36fc723e740210ca43cb3e1c6bde9f0f01f4bfabf4c"
+}

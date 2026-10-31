@@ -1650,6 +1650,39 @@
       ],
       "type": "object"
     },
+    "CreateIntegrationRequest": {
+      "additionalProperties": false,
+      "description": "`POST /v1/orgs/{id}/integrations` (`IntegrationManage`).",
+      "properties": {
+        "config": {
+          "$ref": "#/$defs/IntegrationConfig",
+          "default": {}
+        },
+        "environment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IntegrationEnvironment"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Default `test`."
+        },
+        "kind": {
+          "$ref": "#/$defs/IntegrationKind"
+        },
+        "name": {
+          "description": "1..120 characters.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "name"
+      ],
+      "type": "object"
+    },
     "CreateLetterRequest": {
       "description": "`POST /v1/participants/{id}/letters`.",
       "properties": {
@@ -1740,6 +1773,154 @@
         "password"
       ],
       "type": "object"
+    },
+    "Delivery": {
+      "description": "One delivery of an export to a destination (DLV-1, DLV-5).",
+      "properties": {
+        "attempts": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "delivered_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "destination_id": {
+          "type": "string"
+        },
+        "destination_name": {
+          "type": "string"
+        },
+        "event": {
+          "$ref": "#/$defs/DeliveryEvent"
+        },
+        "export_id": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "last_error_class": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Enum spelling only, never remote text."
+        },
+        "remote_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/DeliveryStatus"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "export_id",
+        "destination_id",
+        "destination_name",
+        "event",
+        "status",
+        "attempts",
+        "created_at",
+        "updated_at"
+      ],
+      "type": "object"
+    },
+    "DeliveryEvent": {
+      "description": "DLV-2 webhook event type.",
+      "oneOf": [
+        {
+          "const": "export.ready",
+          "description": "A requested export is ready to download.",
+          "type": "string"
+        },
+        {
+          "const": "review.finalized",
+          "description": "A clinical review was finalised; its export is ready (DLV-6).",
+          "type": "string"
+        }
+      ]
+    },
+    "DeliveryPage": {
+      "description": "`GET /v1/integrations/{id}/deliveries` and `GET /v1/exports/{id}/deliveries`, newest\nfirst.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/Delivery"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "DeliveryStatus": {
+      "description": "DLV-5 delivery status.",
+      "enum": [
+        "pending",
+        "sending",
+        "delivered",
+        "failed"
+      ],
+      "type": "string"
+    },
+    "DeliveryTrigger": {
+      "description": "INTG-3 `trigger`: `on_final_sign` delivers every finalised clinical review (DLV-6).",
+      "enum": [
+        "manual",
+        "on_final_sign"
+      ],
+      "type": "string"
     },
     "Device": {
       "description": "`GET /v1/orgs/{id}/devices` item.",
@@ -2859,6 +3040,341 @@
       },
       "required": [
         "status"
+      ],
+      "type": "object"
+    },
+    "Integration": {
+      "description": "A delivery destination (INTG-1). Secrets never appear: `has_secret` and the first 8 hex\nof the secret's SHA-256 (INTG-2); for SFTP, the public key it authenticates with.",
+      "properties": {
+        "config": {
+          "$ref": "#/$defs/IntegrationConfig"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "environment": {
+          "$ref": "#/$defs/IntegrationEnvironment"
+        },
+        "has_secret": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/IntegrationKind"
+        },
+        "last_test_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_test_error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Short error class of the last failed test (INTG-4)."
+        },
+        "last_test_ok": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "org_id": {
+          "type": "string"
+        },
+        "secret_fingerprint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ssh_public_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "sftp: OpenSSH public key to install at the hospital (INTG-5)."
+        },
+        "status": {
+          "$ref": "#/$defs/IntegrationStatus"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "org_id",
+        "kind",
+        "name",
+        "environment",
+        "status",
+        "config",
+        "has_secret",
+        "created_at",
+        "updated_at"
+      ],
+      "type": "object"
+    },
+    "IntegrationConfig": {
+      "additionalProperties": false,
+      "description": "INTG-3 destination settings. One shape for every kind; the backend checks which keys a\nkind needs. Unknown keys are refused, so nothing secret can be smuggled into `config`\n(secrets go through `PUT /v1/integrations/{id}/secret`, INTG-2).",
+      "properties": {
+        "events": {
+          "description": "webhook: events the receiver wants (default: all). Auto-deliveries (DLV-6) go only\nto webhooks that accept `review.finalized`.",
+          "items": {
+            "$ref": "#/$defs/DeliveryEvent"
+          },
+          "type": "array"
+        },
+        "fhir": {
+          "description": "FHIR profile (INTG-3 `fhir {...}`)."
+        },
+        "file_prefix": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "sftp: prefix of dropped file names (`[A-Za-z0-9._-]`)."
+        },
+        "format": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExportFormat"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Format of auto-deliveries (required with `trigger = on_final_sign`)."
+        },
+        "hl7": {
+          "description": "HL7 v2 profile (INTG-3 `hl7 {...}`, HL7-2)."
+        },
+        "host": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "sftp: host name or address."
+        },
+        "host_key_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "sftp (INTG-5, mandatory): the server's host key fingerprint as printed by\n`ssh-keygen -lf` (`SHA256:<base64>`). Pinned: a mismatch fails the delivery."
+        },
+        "mode": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExportMode"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Mode of auto-deliveries; DLV-6 auto-exports are `identified`."
+        },
+        "port": {
+          "anyOf": [
+            {
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "sftp: port (default 22)."
+        },
+        "remote_dir": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "sftp: absolute directory the files are dropped in."
+        },
+        "trigger": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DeliveryTrigger"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Default `manual`."
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "webhook: `https://` receiver URL, no user info (DLV-3)."
+        },
+        "username": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "IntegrationEnvironment": {
+      "description": "INTG-1: only `production` destinations receive auto-deliveries (DLV-6).",
+      "enum": [
+        "test",
+        "production"
+      ],
+      "type": "string"
+    },
+    "IntegrationKind": {
+      "description": "INTG-1 destination kind. `fhir_server` (WP-I.9) and `hl7_mllp` (WP-I.11) are refused\nuntil their channels exist.",
+      "enum": [
+        "webhook",
+        "sftp",
+        "fhir_server",
+        "hl7_mllp"
+      ],
+      "type": "string"
+    },
+    "IntegrationPage": {
+      "description": "`GET /v1/orgs/{id}/integrations` (`IntegrationRead`).",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/Integration"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "IntegrationStatus": {
+      "description": "INTG-1: a `disabled` destination is never delivered to.",
+      "enum": [
+        "active",
+        "disabled"
+      ],
+      "type": "string"
+    },
+    "IntegrationTestResult": {
+      "description": "`POST /v1/integrations/{id}/test` (INTG-4): a synthetic delivery (token `TEST-0000`, no\nparticipant data). Never carries the remote response body.",
+      "properties": {
+        "error_class": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Short error class when not ok (`connect-failed`, `host-key-mismatch`, ...)."
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "remote_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "E.g. `http 204` or the dropped file path."
+        },
+        "tested_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ok",
+        "tested_at"
       ],
       "type": "object"
     },
@@ -4025,6 +4541,19 @@
         "host-key-mismatch"
       ],
       "type": "string"
+    },
+    "PutIntegrationSecretRequest": {
+      "additionalProperties": false,
+      "description": "`PUT /v1/integrations/{id}/secret` (INTG-2, webhook only): `whsec_` + base64 of 24..64\nrandom bytes. Write-only: never returned, logged or audited.",
+      "properties": {
+        "secret": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "secret"
+      ],
+      "type": "object"
     },
     "PutPatientRefRequest": {
       "description": "`PUT /v1/participants/{id}/patient-ref`.",
@@ -6791,6 +7320,24 @@
       ],
       "type": "object"
     },
+    "SshPublicKey": {
+      "description": "`POST /v1/integrations/{id}/ssh-key` (INTG-5): generates (or rotates) the destination's\nEd25519 key and returns its public half.",
+      "properties": {
+        "fingerprint": {
+          "description": "`SHA256:<base64>`, as `ssh-keygen -lf` prints it.",
+          "type": "string"
+        },
+        "public_key": {
+          "description": "`ssh-ed25519 AAAA... curv-asd-<destination>`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "public_key",
+        "fingerprint"
+      ],
+      "type": "object"
+    },
     "StimulusCatalog": {
       "properties": {
         "agePacks": {
@@ -7315,6 +7862,53 @@
           "anyOf": [
             {
               "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "UpdateIntegrationRequest": {
+      "additionalProperties": false,
+      "description": "`PATCH /v1/integrations/{id}` (`IntegrationManage`). `config` replaces the whole config.",
+      "properties": {
+        "config": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IntegrationConfig"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "environment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IntegrationEnvironment"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IntegrationStatus"
             },
             {
               "type": "null"

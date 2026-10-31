@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE export_deliveries\n                 SET status = 'failed', updated_at = now(),\n                     last_error_class = coalesce(last_error_class, 'database-unavailable')\n                 WHERE id = $1 AND status IN ('pending', 'sending')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "378c2996fbd6fe163839e85a346af3f9580b1c59fc901507b296b7552b455134"
+}

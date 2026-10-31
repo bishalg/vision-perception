@@ -30,6 +30,7 @@ use crate::config::Config;
 use crate::crypto::Keyring;
 use crate::error::AppResult;
 
+pub mod deliver; // WP-I.7
 pub mod export;
 pub mod norm_aggregate;
 pub mod runner;
@@ -38,8 +39,10 @@ pub mod runner;
 pub const KIND_NORM_AGGREGATE: &str = "norm_aggregate";
 /// `jobs.kind` of an export (`POST /v1/orgs/{id}/exports`, EXJ-3).
 pub const KIND_EXPORT: &str = "export";
+/// `jobs.kind` of one delivery of an export to a destination (DLV-1, WP-I.7).
+pub const KIND_DELIVER: &str = "export_deliver";
 /// Every kind the runner executes.
-pub const KINDS: &[&str] = &[KIND_NORM_AGGREGATE, KIND_EXPORT];
+pub const KINDS: &[&str] = &[KIND_NORM_AGGREGATE, KIND_EXPORT, KIND_DELIVER];
 
 /// How often a running phased job refreshes `jobs.heartbeat_at` by default: well inside
 /// the 15-minute visibility timeout.

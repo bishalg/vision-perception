@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE jobs\n         SET status = CASE WHEN attempts >= CASE kind WHEN $3::text THEN $4::int ELSE $2::int END\n                           THEN 'failed' ELSE 'queued' END,\n             finished_at = CASE WHEN attempts >= CASE kind WHEN $3::text THEN $4::int ELSE $2::int END\n                                THEN now() ELSE NULL END,\n             error = 'worker stopped before the job finished', locked_by = NULL,\n             heartbeat_at = NULL, run_after = now()\n         WHERE status = 'running'\n           AND greatest(started_at, heartbeat_at) < now() - make_interval(secs => $1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Float8",
+        "Int4",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "408d43fa5b660e9dad7ba72f5905635e10cdf9bc3de9468e069052efdda08d2c"
+}

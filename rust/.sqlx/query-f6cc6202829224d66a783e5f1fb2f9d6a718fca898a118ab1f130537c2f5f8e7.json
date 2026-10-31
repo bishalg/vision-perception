@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE integration_destinations\n         SET last_test_at = $2, last_test_ok = $3, last_test_error = $4\n         WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "Bool",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f6cc6202829224d66a783e5f1fb2f9d6a718fca898a118ab1f130537c2f5f8e7"
+}

@@ -80,6 +80,21 @@ aws-lc-rs = "1"
 unicode-normalization = "0.1"
 # Wipes KEK and data-key bytes on drop. Already in the graph.
 zeroize = "1"
+# ---- delivery channels (WP-I.7, DLV-2..4). Outbound HTTPS for webhooks is hyper's client
+# with hyper-rustls and the platform trust store (rustls-native-certs), all already in the
+# graph through aws-sdk-s3, so no new licence surface. Not reqwest: its rustls feature
+# brings rustls-platform-verifier, and the SSRF guard (DLV-3) needs a resolver we control
+# anyway. `webpki-roots` (CDLA-Permissive-2.0) stays out (trap 18).
+hyper = { version = "1", features = ["client", "http1"] }
+hyper-util = { version = "0.1", features = ["client-legacy", "http1", "tokio"] }
+hyper-rustls = { version = "0.27", default-features = false, features = ["aws-lc-rs", "http1", "native-tokio", "tls12"] }
+rustls = { version = "0.23", default-features = false, features = ["aws_lc_rs", "std", "tls12"] }
+rustls-native-certs = "0.8"
+http-body-util = "0.1"
+# SFTP drop (DLV-4, INTG-5): pure-Rust SSH (Apache-2.0), no libssh2/OpenSSL (ADR-0008).
+# No default features: `rsa` pulls the `rsa` crate (RUSTSEC-2023-0071); keys are Ed25519.
+russh = { version = "0.65", default-features = false, features = ["aws-lc-rs"] }
+russh-sftp = "3"
 
 [dev-dependencies]
 # WP-B.5 tests drive norm runs with the deterministic synthetic session generator.

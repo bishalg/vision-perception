@@ -293,9 +293,293 @@ pub struct DisclosurePage {
     pub total: Option<u64>,
 }
 
+// ---- integrations and deliveries (WP-I.7: INTG-1..5, DLV-1..6) ----------------------------
+
+/// DLV-2: webhook-receiver download links live 15 minutes (EXJ-5 rules otherwise).
+pub const WEBHOOK_DOWNLOAD_TTL_SECS: u64 = 900;
+/// DLV-1: delays before the 2nd..6th delivery attempt (1 min, 5 min, 30 min, 2 h, 12 h);
+/// the 6th failure marks the delivery `failed`.
+pub const DELIVERY_BACKOFF_SECS: [u64; 5] = [60, 300, 1_800, 7_200, 43_200];
+/// INTG-1: destination name, in characters.
+pub const MAX_INTEGRATION_NAME_CHARS: usize = 120;
+/// DLV-2: the prefix of a Standard Webhooks signing secret.
+pub const WEBHOOK_SECRET_PREFIX: &str = "whsec_";
+
+str_enum!(
+    /// INTG-1 destination kind. `fhir_server` (WP-I.9) and `hl7_mllp` (WP-I.11) are refused
+    /// until their channels exist.
+    IntegrationKind {
+        Webhook => "webhook",
+        Sftp => "sftp",
+        FhirServer => "fhir_server",
+        Hl7Mllp => "hl7_mllp",
+    }
+);
+
+str_enum!(
+    /// INTG-1: only `production` destinations receive auto-deliveries (DLV-6).
+    IntegrationEnvironment {
+        Test => "test",
+        Production => "production",
+    }
+);
+
+str_enum!(
+    /// INTG-1: a `disabled` destination is never delivered to.
+    IntegrationStatus {
+        Active => "active",
+        Disabled => "disabled",
+    }
+);
+
+str_enum!(
+    /// INTG-3 `trigger`: `on_final_sign` delivers every finalised clinical review (DLV-6).
+    DeliveryTrigger {
+        Manual => "manual",
+        OnFinalSign => "on_final_sign",
+    }
+);
+
+str_enum!(
+    /// DLV-5 delivery status.
+    DeliveryStatus {
+        Pending => "pending",
+        Sending => "sending",
+        Delivered => "delivered",
+        Failed => "failed",
+    }
+);
+
+/// DLV-2 webhook event type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+pub enum DeliveryEvent {
+    /// A requested export is ready to download.
+    #[serde(rename = "export.ready")]
+    ExportReady,
+    /// A clinical review was finalised; its export is ready (DLV-6).
+    #[serde(rename = "review.finalized")]
+    ReviewFinalized,
+}
+
+impl DeliveryEvent {
+    pub const ALL: &'static [DeliveryEvent] = &[Self::ExportReady, Self::ReviewFinalized];
+
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::ExportReady => "export.ready",
+            Self::ReviewFinalized => "review.finalized",
+        }
+    }
+
+    pub fn parse(s: &str) -> Option<Self> {
+        Self::ALL.iter().copied().find(|e| e.as_str() == s)
+    }
+}
+
+/// INTG-3 destination settings. One shape for every kind; the backend checks which keys a
+/// kind needs. Unknown keys are refused, so nothing secret can be smuggled into `config`
+/// (secrets go through `PUT /v1/integrations/{id}/secret`, INTG-2).
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct IntegrationConfig {
+    /// webhook: `https://` receiver URL, no user info (DLV-3).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    /// webhook: events the receiver wants (default: all). Auto-deliveries (DLV-6) go only
+    /// to webhooks that accept `review.finalized`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub events: Vec<DeliveryEvent>,
+    /// sftp: host name or address.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub host: Option<String>,
+    /// sftp: port (default 22).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub port: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub username: Option<String>,
+    /// sftp: absolute directory the files are dropped in.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remote_dir: Option<String>,
+    /// sftp (INTG-5, mandatory): the server's host key fingerprint as printed by
+    /// `ssh-keygen -lf` (`SHA256:<base64>`). Pinned: a mismatch fails the delivery.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub host_key_sha256: Option<String>,
+    /// sftp: prefix of dropped file names (`[A-Za-z0-9._-]`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file_prefix: Option<String>,
+    /// Format of auto-deliveries (required with `trigger = on_final_sign`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub format: Option<ExportFormat>,
+    /// Mode of auto-deliveries; DLV-6 auto-exports are `identified`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mode: Option<ExportMode>,
+    /// Default `manual`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger: Option<DeliveryTrigger>,
+    /// HL7 v2 profile (INTG-3 `hl7 {...}`, HL7-2).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hl7: Option<serde_json::Value>,
+    /// FHIR profile (INTG-3 `fhir {...}`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fhir: Option<serde_json::Value>,
+}
+
+/// `POST /v1/orgs/{id}/integrations` (`IntegrationManage`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct CreateIntegrationRequest {
+    pub kind: IntegrationKind,
+    /// 1..120 characters.
+    pub name: String,
+    /// Default `test`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub environment: Option<IntegrationEnvironment>,
+    #[serde(default)]
+    pub config: IntegrationConfig,
+}
+
+/// `PATCH /v1/integrations/{id}` (`IntegrationManage`). `config` replaces the whole config.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct UpdateIntegrationRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub environment: Option<IntegrationEnvironment>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<IntegrationStatus>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub config: Option<IntegrationConfig>,
+}
+
+/// `PUT /v1/integrations/{id}/secret` (INTG-2, webhook only): `whsec_` + base64 of 24..64
+/// random bytes. Write-only: never returned, logged or audited.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PutIntegrationSecretRequest {
+    pub secret: String,
+}
+
+impl std::fmt::Debug for PutIntegrationSecretRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("PutIntegrationSecretRequest { secret: [redacted] }")
+    }
+}
+
+/// A delivery destination (INTG-1). Secrets never appear: `has_secret` and the first 8 hex
+/// of the secret's SHA-256 (INTG-2); for SFTP, the public key it authenticates with.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct Integration {
+    pub id: String,
+    pub org_id: String,
+    pub kind: IntegrationKind,
+    pub name: String,
+    pub environment: IntegrationEnvironment,
+    pub status: IntegrationStatus,
+    pub config: IntegrationConfig,
+    pub has_secret: bool,
+    pub secret_fingerprint: Option<String>,
+    /// sftp: OpenSSH public key to install at the hospital (INTG-5).
+    pub ssh_public_key: Option<String>,
+    #[schemars(extend("format" = "date-time"))]
+    pub created_at: String,
+    #[schemars(extend("format" = "date-time"))]
+    pub updated_at: String,
+    #[schemars(extend("format" = "date-time"))]
+    pub last_test_at: Option<String>,
+    pub last_test_ok: Option<bool>,
+    /// Short error class of the last failed test (INTG-4).
+    pub last_test_error: Option<String>,
+}
+
+/// `GET /v1/orgs/{id}/integrations` (`IntegrationRead`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct IntegrationPage {
+    pub items: Vec<Integration>,
+    pub next_cursor: Option<String>,
+    pub total: Option<u64>,
+}
+
+/// `POST /v1/integrations/{id}/ssh-key` (INTG-5): generates (or rotates) the destination's
+/// Ed25519 key and returns its public half.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct SshPublicKey {
+    /// `ssh-ed25519 AAAA... curv-asd-<destination>`.
+    pub public_key: String,
+    /// `SHA256:<base64>`, as `ssh-keygen -lf` prints it.
+    pub fingerprint: String,
+}
+
+/// `POST /v1/integrations/{id}/test` (INTG-4): a synthetic delivery (token `TEST-0000`, no
+/// participant data). Never carries the remote response body.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct IntegrationTestResult {
+    pub ok: bool,
+    /// Short error class when not ok (`connect-failed`, `host-key-mismatch`, ...).
+    pub error_class: Option<String>,
+    /// E.g. `http 204` or the dropped file path.
+    pub remote_ref: Option<String>,
+    #[schemars(extend("format" = "date-time"))]
+    pub tested_at: String,
+}
+
+/// One delivery of an export to a destination (DLV-1, DLV-5).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct Delivery {
+    pub id: String,
+    pub export_id: String,
+    pub destination_id: String,
+    pub destination_name: String,
+    pub event: DeliveryEvent,
+    pub status: DeliveryStatus,
+    pub attempts: u32,
+    /// Enum spelling only, never remote text.
+    pub last_error_class: Option<String>,
+    pub remote_ref: Option<String>,
+    #[schemars(extend("format" = "date-time"))]
+    pub created_at: String,
+    #[schemars(extend("format" = "date-time"))]
+    pub updated_at: String,
+    #[schemars(extend("format" = "date-time"))]
+    pub delivered_at: Option<String>,
+}
+
+/// `GET /v1/integrations/{id}/deliveries` and `GET /v1/exports/{id}/deliveries`, newest
+/// first.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct DeliveryPage {
+    pub items: Vec<Delivery>,
+    pub next_cursor: Option<String>,
+    pub total: Option<u64>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn integration_config_refuses_unknown_keys_and_redacts_secrets() {
+        let c: IntegrationConfig = serde_json::from_value(serde_json::json!({
+            "url": "https://his.example.org/hook", "events": ["review.finalized"],
+            "trigger": "on_final_sign", "format": "hl7v2"
+        }))
+        .unwrap();
+        assert_eq!(c.events, [DeliveryEvent::ReviewFinalized]);
+        assert_eq!(c.trigger, Some(DeliveryTrigger::OnFinalSign));
+        assert!(serde_json::from_value::<IntegrationConfig>(
+            serde_json::json!({"password": "hunter2"})
+        )
+        .is_err());
+        let s = PutIntegrationSecretRequest {
+            secret: "whsec_abc".into(),
+        };
+        assert!(!format!("{s:?}").contains("abc"));
+        for e in DeliveryEvent::ALL {
+            assert_eq!(serde_json::to_value(e).unwrap(), e.as_str());
+            assert_eq!(DeliveryEvent::parse(e.as_str()), Some(*e));
+        }
+        assert_eq!(DELIVERY_BACKOFF_SECS.len(), 5);
+    }
 
     #[test]
     fn request_defaults_and_unknown_fields() {

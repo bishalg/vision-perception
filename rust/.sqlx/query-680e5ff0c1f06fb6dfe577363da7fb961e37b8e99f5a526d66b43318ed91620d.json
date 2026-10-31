@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO export_deliveries (org_id, export_id, destination_id, event)\n         SELECT $1, $2, d, $4 FROM unnest($3::uuid[]) AS t (d)\n         ON CONFLICT (export_id, destination_id) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "UuidArray",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "680e5ff0c1f06fb6dfe577363da7fb961e37b8e99f5a526d66b43318ed91620d"
+}

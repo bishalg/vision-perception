@@ -60,6 +60,10 @@ pub struct Config {
     /// `ASD_DATA_KEK` (WP-C.9, KEY-2): wraps the per-org clinical data keys. `None` =
     /// clinical-content endpoints answer 503; everything else runs.
     pub data_kek: Option<crate::crypto::Kek>,
+    /// `ASD_PUBLIC_BASE_URL` (WP-I.7, DLV-2): the API's public origin, e.g.
+    /// `https://api.example.org`. Webhook download links in proxy blob mode are absolute
+    /// URLs under it; without it such webhooks fail `download-url-unavailable`.
+    pub public_base_url: Option<String>,
 }
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -167,6 +171,20 @@ impl Config {
                 crate::crypto::Kek::from_base64(&raw).map_err(|r| invalid("ASD_DATA_KEK", r))
             })
             .transpose()?;
+        let public_base_url = get("ASD_PUBLIC_BASE_URL");
+        if let Some(url) = &public_base_url {
+            let scheme_ok = url.starts_with("https://") || url.starts_with("http://");
+            if !scheme_ok
+                || url.ends_with('/')
+                || url.contains(['?', '#', ' ', '@'])
+                || url.parse::<http::Uri>().is_err()
+            {
+                return Err(invalid(
+                    "ASD_PUBLIC_BASE_URL",
+                    format!("`{url}` (expected an origin like https://api.example.org)"),
+                ));
+            }
+        }
         Ok(Self {
             bind_addr,
             database_url,
@@ -182,6 +200,7 @@ impl Config {
             auth,
             bundle_signing,
             data_kek,
+            public_base_url,
         })
     }
 }
@@ -217,6 +236,7 @@ impl fmt::Debug for Config {
             .field("auth", &self.auth)
             .field("bundle_signing", &self.bundle_signing)
             .field("data_kek", &self.data_kek)
+            .field("public_base_url", &self.public_base_url)
             .finish()
     }
 }

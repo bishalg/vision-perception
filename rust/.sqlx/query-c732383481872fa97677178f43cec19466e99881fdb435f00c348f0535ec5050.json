@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE integration_destinations\n         SET secret_ct = $2, secret_key_id = $3, secret_fingerprint = $4, updated_at = now()\n         WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bytea",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c732383481872fa97677178f43cec19466e99881fdb435f00c348f0535ec5050"
+}

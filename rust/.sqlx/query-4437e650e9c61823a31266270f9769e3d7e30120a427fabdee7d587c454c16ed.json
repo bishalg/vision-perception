@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT signer_id FROM clinical_signatures WHERE review_id = $1\n         ORDER BY signed_at DESC, id DESC LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "signer_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "clinical_signatures",
+            "name": "signer_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4437e650e9c61823a31266270f9769e3d7e30120a427fabdee7d587c454c16ed"
+}

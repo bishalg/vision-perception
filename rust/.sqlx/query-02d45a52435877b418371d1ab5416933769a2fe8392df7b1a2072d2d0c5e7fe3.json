@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE export_deliveries\n         SET status = 'sending', attempts = attempts + 1, updated_at = now()\n         WHERE id = $1 AND status IN ('pending', 'sending')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "02d45a52435877b418371d1ab5416933769a2fe8392df7b1a2072d2d0c5e7fe3"
+}

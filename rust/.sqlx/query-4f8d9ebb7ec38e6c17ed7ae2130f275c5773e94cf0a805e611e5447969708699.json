@@ -1,0 +1,208 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, org_id, kind, name, config, status, environment, secret_ct,\n                  secret_key_id, secret_fingerprint, ssh_public_key, created_at, updated_at,\n                  last_test_at, last_test_ok, last_test_error\n           FROM integration_destinations WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "integration_destinations",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "org_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "integration_destinations",
+            "name": "org_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "integration_destinations",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "integration_destinations",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "config",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "integration_destinations",
+            "name": "config"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "integration_destinations",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "environment",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "integration_destinations",
+            "name": "environment"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "secret_ct",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "integration_destinations",
+            "name": "secret_ct"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "secret_key_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "integration_destinations",
+            "name": "secret_key_id"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "secret_fingerprint",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "integration_destinations",
+            "name": "secret_fingerprint"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "ssh_public_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "integration_destinations",
+            "name": "ssh_public_key"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "integration_destinations",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "integration_destinations",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "last_test_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "integration_destinations",
+            "name": "last_test_at"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "last_test_ok",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "integration_destinations",
+            "name": "last_test_ok"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "last_test_error",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "integration_destinations",
+            "name": "last_test_error"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "4f8d9ebb7ec38e6c17ed7ae2130f275c5773e94cf0a805e611e5447969708699"
+}

@@ -251,6 +251,22 @@ pub fn api_v1() -> Value {
         export::DisclosureDelivery,
         export::Disclosure,
         export::DisclosurePage,
+        export::IntegrationKind,
+        export::IntegrationEnvironment,
+        export::IntegrationStatus,
+        export::DeliveryTrigger,
+        export::DeliveryStatus,
+        export::DeliveryEvent,
+        export::IntegrationConfig,
+        export::CreateIntegrationRequest,
+        export::UpdateIntegrationRequest,
+        export::PutIntegrationSecretRequest,
+        export::Integration,
+        export::IntegrationPage,
+        export::SshPublicKey,
+        export::IntegrationTestResult,
+        export::Delivery,
+        export::DeliveryPage,
     );
     let mut defs = gen.take_definitions(true);
     defs.insert(

@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*) AS \"n!\" FROM export_deliveries\n           WHERE ($1::uuid IS NULL OR destination_id = $1)\n             AND ($2::uuid IS NULL OR export_id = $2)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "n!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "f36ee9277b9491e8b3603f0eb6312c7d31e503806321c66649de695cda049003"
+}

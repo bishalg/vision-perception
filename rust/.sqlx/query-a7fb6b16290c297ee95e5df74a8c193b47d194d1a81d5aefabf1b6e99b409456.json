@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO exports\n             (id, org_id, format, mode, purpose, filters, reason, destination_ids,\n              include_clinical_content, include_mrn, requested_by, job_id, ttl_hours,\n              download_secret, review_id)\n           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, $9, $10, $11, $12, $13, $14)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Text",
+        "UuidArray",
+        "Bool",
+        "Uuid",
+        "Uuid",
+        "Int4",
+        "Bytea",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a7fb6b16290c297ee95e5df74a8c193b47d194d1a81d5aefabf1b6e99b409456"
+}

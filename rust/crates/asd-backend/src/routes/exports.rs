@@ -214,6 +214,15 @@ async fn create(
     )
     .execute(&mut *tx)
     .await?;
+    // WP-I.7 (DLV-1): one pending delivery per destination, queued when the export succeeds.
+    crate::interop::outbox::create_deliveries(
+        &mut tx,
+        org,
+        id,
+        &destinations,
+        asd_contract::export::DeliveryEvent::ExportReady,
+    )
+    .await?;
     AuditEvent::user(&auth.principal, "export.create", "export", id)
         .org(org)
         .after(json!({
