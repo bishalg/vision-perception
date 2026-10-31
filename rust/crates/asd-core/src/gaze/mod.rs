@@ -24,6 +24,7 @@ pub mod geometry;
 pub mod pipeline;
 pub mod raw_log;
 pub mod raycast;
+pub mod replay;
 pub mod summary;
 pub mod track_state;
 pub mod validation;

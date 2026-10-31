@@ -22,6 +22,9 @@ commands:
   bundle verify --in FILE --public-key B64
   synth --seed N --count M --out DIR|-
   norms aggregate --input DIR --output FILE [--min-n 12]
+  gaze synth --scenario NAME|all --seed N --out FILE|DIR|-
+  gaze replay FILE [--check] [--model KIND]
+  gaze bench-report --logs DIR [--models all|KIND,...]
 
 `asd-cli <command> --help` shows the options of one command.";
 
@@ -33,6 +36,7 @@ fn main() -> ExitCode {
         Some("bundle") => cmd::bundle::run(rest),
         Some("synth") => cmd::synth::run(rest),
         Some("norms") => cmd::norms::run(rest),
+        Some("gaze") => cmd::gaze::run(rest),
         Some("-h" | "--help" | "help") => {
             println!("{USAGE}");
             0

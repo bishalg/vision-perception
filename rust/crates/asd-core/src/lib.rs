@@ -13,4 +13,6 @@ pub mod quality;
 pub mod scoring;
 #[cfg(feature = "synth")]
 pub mod synth;
+#[cfg(feature = "synth")]
+pub mod synth_tracking;
 pub mod types;

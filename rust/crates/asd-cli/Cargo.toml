@@ -20,5 +20,7 @@ asd-core = { workspace = true, features = ["synth"] }
 asd-contract = { workspace = true, features = ["validate"] }
 asd-sync.workspace = true
 serde_json.workspace = true
+# SHA-256 of bench logs in `gaze bench-report` (BEN-8, WP-G.5).
+sha2.workspace = true
 # Key generation for `bundle keygen` (WP-R.3).
 getrandom = "0.4"
