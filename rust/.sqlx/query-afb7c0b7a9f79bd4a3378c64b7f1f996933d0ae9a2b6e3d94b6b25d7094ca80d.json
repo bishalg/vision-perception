@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO review_items (org_id, session_id, reason, note, created_by)\n           VALUES ($1, $2, 'manual', $3, $4)\n           ON CONFLICT (session_id, reason) DO NOTHING\n           RETURNING id, org_id, session_id, reason, status, assigned_to, decision,\n                     decided_by, decided_at, created_at",
+  "query": "INSERT INTO review_items (id, org_id, session_id, reason, note_ct, note_key_id,\n                                     created_by)\n           VALUES ($1, $2, $3, 'manual', $4, $5, $6)\n           ON CONFLICT (session_id, reason) DO NOTHING\n           RETURNING id, org_id, session_id, reason, status, assigned_to, decision,\n                     decided_by, decided_at, created_at",
   "describe": {
     "columns": [
       {
@@ -117,8 +117,10 @@
     "parameters": {
       "Left": [
         "Uuid",
+        "Uuid",
         "Text",
-        "Text",
+        "Bytea",
+        "Uuid",
         "Uuid"
       ]
     },
@@ -135,5 +137,5 @@
       false
     ]
   },
-  "hash": "d198504ed6586d2daf2b1b74452bef052d7853333b6d38c7f235bac31d74d6e6"
+  "hash": "afb7c0b7a9f79bd4a3378c64b7f1f996933d0ae9a2b6e3d94b6b25d7094ca80d"
 }

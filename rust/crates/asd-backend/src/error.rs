@@ -22,6 +22,9 @@ pub enum AppError {
     /// 401 `unauthorized`.
     #[error("unauthorized")]
     Unauthorized,
+    /// 401 with a specific slug (step-up `reauthentication-failed`, SIGN-5).
+    #[error("unauthorized: {slug}")]
+    UnauthorizedWith { slug: &'static str, detail: String },
     /// 403 `forbidden`.
     #[error("forbidden")]
     Forbidden,
@@ -34,6 +37,9 @@ pub enum AppError {
     /// 410 with a specific slug (e.g. `enrol-code-exhausted`, CON-11).
     #[error("gone: {slug}")]
     Gone { slug: &'static str, detail: String },
+    /// 412 with a specific slug (`stale-version`, SIGN-3).
+    #[error("precondition failed: {slug}")]
+    PreconditionFailed { slug: &'static str, detail: String },
     /// 413 `payload-too-large`.
     #[error("payload too large")]
     PayloadTooLarge,
@@ -43,6 +49,9 @@ pub enum AppError {
     /// 503 `service-unavailable`.
     #[error("service unavailable")]
     Unavailable,
+    /// 503 with a specific slug (`clinical-crypto-unavailable`, KEY-2).
+    #[error("service unavailable: {slug}")]
+    ServiceUnavailable { slug: &'static str, detail: String },
     #[error(transparent)]
     Database(#[from] sqlx::Error),
     #[error(transparent)]
@@ -61,6 +70,15 @@ impl AppError {
                 Problem::new(StatusCode::BAD_REQUEST, slug).with_detail(detail.clone())
             }
             Self::Unauthorized => Problem::new(StatusCode::UNAUTHORIZED, "unauthorized"),
+            Self::UnauthorizedWith { slug, detail } => {
+                Problem::new(StatusCode::UNAUTHORIZED, slug).with_detail(detail.clone())
+            }
+            Self::PreconditionFailed { slug, detail } => {
+                Problem::new(StatusCode::PRECONDITION_FAILED, slug).with_detail(detail.clone())
+            }
+            Self::ServiceUnavailable { slug, detail } => {
+                Problem::new(StatusCode::SERVICE_UNAVAILABLE, slug).with_detail(detail.clone())
+            }
             Self::Forbidden => Problem::new(StatusCode::FORBIDDEN, "forbidden"),
             Self::NotFound => Problem::not_found(),
             Self::Conflict { slug, detail } => {
@@ -136,6 +154,21 @@ mod tests {
         );
         let (slug, detail) = s("enrol-code-exhausted");
         assert_eq!(status(AppError::Gone { slug, detail }), (410, slug.into()));
+        let (slug, detail) = s("reauthentication-failed");
+        assert_eq!(
+            status(AppError::UnauthorizedWith { slug, detail }),
+            (401, slug.into())
+        );
+        let (slug, detail) = s("stale-version");
+        assert_eq!(
+            status(AppError::PreconditionFailed { slug, detail }),
+            (412, slug.into())
+        );
+        let (slug, detail) = s("clinical-crypto-unavailable");
+        assert_eq!(
+            status(AppError::ServiceUnavailable { slug, detail }),
+            (503, slug.into())
+        );
         assert_eq!(
             status(AppError::PayloadTooLarge),
             (413, "payload-too-large".into())

@@ -61,7 +61,7 @@
 | WP-C.6 | Cohorts, norm-runs, exports, model registry | 3 | I | todo | |
 | WP-C.7 | Replay heatmaps, hi/ne strings, superadmin | 4 | I | backlog | |
 | WP-C.8 | Console contract alignment to `api-v1.json`: `battery` string, `capture_source` + `synthetic`, clip `rows[]`, `participant_token`; zod-vs-schema test | 1 | I | done | API-3, CON-16/19/20; depends on R.3 |
-| WP-C.9 | Clinical foundation: migration 0008, envelope encryption + MRN blind index, 14 RBAC actions (superadmin excluded from clinical content), `asd-contract::clinical`, user display name/registration, encrypted review notes | 3 | S | todo | ADR-0008; RBAC/KEY/MIG-2; needs B.6 merged |
+| WP-C.9 | Clinical foundation: migration 0008, envelope encryption + MRN blind index, 14 RBAC actions (superadmin excluded from clinical content), `asd-contract::clinical`, user display name/registration, encrypted review notes | 3 | S | done | Migration 0008, AES-256-GCM envelope (aws-lc-rs) + MRN blind index, superadmin carve-out in `rbac::allows`, signer profile `/v1/users/me`, encrypted review notes + `admin encrypt-review-notes` back-fill, org-settings audit diff only. New optional env `ASD_DATA_KEK` (clinical endpoints 503 without it) |
 | WP-C.10 | Worklist + clinical review sign/cosign/amend (hash-bound, step-up re-auth) | 3 | S | todo | CW-1/2, SIGN-*; needs C.9 |
 | WP-C.11 | Participant detail + timeline, MRN mapping, encrypted clinical notes | 3 | I | todo | CW-3, MRN-*, NOTE-1/2; needs C.9, B.6 |
 | WP-C.12 | Referral/summary letters + printable clinical summary endpoints | 3 | I | todo | NOTE-3..5; needs C.10, C.11, I.5, I.6 migration |

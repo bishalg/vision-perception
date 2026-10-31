@@ -73,6 +73,13 @@ getrandom = "0.4"
 # EdDSA access tokens. aws-lc-rs is already in the graph (aws-sdk-s3); `rust_crypto` would
 # pull `rsa` (RUSTSEC-2023-0071) and `use_pem` is not needed (keys are parsed above).
 jsonwebtoken = { version = "11", default-features = false, features = ["aws_lc_rs"] }
+# ---- clinical data encryption (WP-C.9, KEY-1..7): AES-256-GCM, HMAC-SHA256 and HKDF from
+# aws-lc-rs, which is already in the graph (rustls, jsonwebtoken); used only by `src/crypto`.
+aws-lc-rs = "1"
+# MRN blind-index normalisation (KEY-4: NFKC). Already in the graph through sqlx.
+unicode-normalization = "0.1"
+# Wipes KEK and data-key bytes on drop. Already in the graph.
+zeroize = "1"
 
 [dev-dependencies]
 # WP-B.5 tests drive norm runs with the deterministic synthetic session generator.

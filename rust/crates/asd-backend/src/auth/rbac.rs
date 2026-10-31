@@ -10,6 +10,11 @@
 //!
 //! Route packages add rows here (and a marker in [`perm`]) for their own actions; the
 //! session/review/config rows below are the defaults B.3/B.4/B.5 build on.
+//!
+//! WP-C.9 (RBAC-1..3, ADR-0008 D1/D2): the fourteen clinician-workspace and interop actions.
+//! `superadmin` (the vendor) is allowed everything **except** [`CLINICAL_CONTENT_ACTIONS`]:
+//! it operates the system but never reads clinical content or takes copies of a clinic's
+//! data, even de-identified. The carve-out lives in [`allows`], so no route can forget it.
 
 use asd_contract::api_v1::Role;
 use uuid::Uuid;
@@ -38,6 +43,21 @@ pub enum Action {
     ConfigPublish,
     JobRun,
     ParticipantErase,
+    // ---- WP-C.9: clinician workspace and interop (RBAC-1)
+    WorklistRead,
+    ClinicalReviewWrite,
+    ClinicalSign,
+    ClinicalCosign,
+    ClinicalContentRead,
+    ClinicalNoteWrite,
+    LetterWrite,
+    PatientRefRead,
+    PatientRefWrite,
+    ExportRead,
+    ExportDeidentified,
+    ExportIdentified,
+    IntegrationRead,
+    IntegrationManage,
 }
 
 impl Action {
@@ -60,6 +80,20 @@ impl Action {
         Action::ConfigPublish,
         Action::JobRun,
         Action::ParticipantErase,
+        Action::WorklistRead,
+        Action::ClinicalReviewWrite,
+        Action::ClinicalSign,
+        Action::ClinicalCosign,
+        Action::ClinicalContentRead,
+        Action::ClinicalNoteWrite,
+        Action::LetterWrite,
+        Action::PatientRefRead,
+        Action::PatientRefWrite,
+        Action::ExportRead,
+        Action::ExportDeidentified,
+        Action::ExportIdentified,
+        Action::IntegrationRead,
+        Action::IntegrationManage,
     ];
 
     /// Actions that change nothing.
@@ -75,16 +109,38 @@ impl Action {
                 | Action::MetricsRead
                 | Action::ReviewRead
                 | Action::ConfigRead
+                | Action::WorklistRead
+                | Action::ClinicalContentRead
+                | Action::PatientRefRead
+                | Action::ExportRead
+                | Action::IntegrationRead
         )
     }
 }
+
+/// RBAC-3: actions `superadmin` never gets. Reading or writing clinical content, the MRN,
+/// any export of clinic data (de-identified included) and managing a clinic's integrations.
+/// There is no break-glass path in v1.
+pub const CLINICAL_CONTENT_ACTIONS: &[Action] = &[
+    Action::ClinicalReviewWrite,
+    Action::ClinicalSign,
+    Action::ClinicalCosign,
+    Action::ClinicalContentRead,
+    Action::ClinicalNoteWrite,
+    Action::LetterWrite,
+    Action::PatientRefRead,
+    Action::PatientRefWrite,
+    Action::ExportDeidentified,
+    Action::ExportIdentified,
+    Action::IntegrationManage,
+];
 
 use Role::{Admin, Clinician, Owner, Researcher, Reviewer, Viewer};
 
 const ALL_ORG_ROLES: &[Role] = &[Owner, Admin, Clinician, Researcher, Reviewer, Viewer];
 
-/// The RBAC matrix: action -> org roles allowed. `superadmin` is allowed everything and
-/// is not listed.
+/// The RBAC matrix: action -> org roles allowed. `superadmin` is not listed: it is allowed
+/// every action except [`CLINICAL_CONTENT_ACTIONS`].
 pub const MATRIX: &[(Action, &[Role])] = &[
     (Action::OrgRead, ALL_ORG_ROLES),
     (Action::OrgUpdate, &[Owner, Admin]),
@@ -104,15 +160,36 @@ pub const MATRIX: &[(Action, &[Role])] = &[
     (Action::ConfigPublish, &[Owner, Admin]),
     (Action::JobRun, &[Owner, Admin, Researcher]),
     (Action::ParticipantErase, &[Owner, Admin]),
+    // WP-C.9, RBAC-2. Admin (operations) never reads clinical content (ADR-0008 D2).
+    (Action::WorklistRead, &[Owner, Admin, Clinician]),
+    (Action::ClinicalReviewWrite, &[Clinician]),
+    (Action::ClinicalSign, &[Clinician]),
+    (Action::ClinicalCosign, &[Clinician]),
+    (Action::ClinicalContentRead, &[Owner, Clinician]),
+    (Action::ClinicalNoteWrite, &[Clinician]),
+    (Action::LetterWrite, &[Clinician]),
+    (Action::PatientRefRead, &[Owner, Admin, Clinician]),
+    (Action::PatientRefWrite, &[Owner, Admin, Clinician]),
+    (Action::ExportRead, &[Owner, Admin, Clinician, Researcher]),
+    (
+        Action::ExportDeidentified,
+        &[Owner, Admin, Clinician, Researcher],
+    ),
+    (Action::ExportIdentified, &[Owner, Clinician]),
+    (Action::IntegrationRead, &[Owner, Admin]),
+    (Action::IntegrationManage, &[Owner, Admin]),
 ];
 
-/// True when `role` may perform `action` (in its own org).
+/// True when `role` may perform `action` (in its own org). `superadmin` may do everything
+/// but [`CLINICAL_CONTENT_ACTIONS`] (RBAC-3).
 pub fn allows(role: Role, action: Action) -> bool {
-    role == Role::Superadmin
-        || MATRIX
-            .iter()
-            .find(|(a, _)| *a == action)
-            .is_some_and(|(_, roles)| roles.contains(&role))
+    if role == Role::Superadmin {
+        return !CLINICAL_CONTENT_ACTIONS.contains(&action);
+    }
+    MATRIX
+        .iter()
+        .find(|(a, _)| *a == action)
+        .is_some_and(|(_, roles)| roles.contains(&role))
 }
 
 /// Org check first (404), then the role (403). `org = None` checks the role only; the
@@ -209,6 +286,20 @@ pub mod perm {
         ConfigPublish,
         JobRun,
         ParticipantErase,
+        WorklistRead,
+        ClinicalReviewWrite,
+        ClinicalSign,
+        ClinicalCosign,
+        ClinicalContentRead,
+        ClinicalNoteWrite,
+        LetterWrite,
+        PatientRefRead,
+        PatientRefWrite,
+        ExportRead,
+        ExportDeidentified,
+        ExportIdentified,
+        IntegrationRead,
+        IntegrationManage,
     );
 }
 
@@ -252,6 +343,19 @@ mod tests {
         ));
         let root = principal(Role::Superadmin, None);
         assert!(authorize(&root, Action::OrgUpdate, Some(other)).is_ok());
+        // RBAC-3: the org check passes for superadmin, the clinical carve-out does not.
+        assert!(matches!(
+            authorize(&root, Action::ClinicalContentRead, Some(other)),
+            Err(AppError::Forbidden)
+        ));
+    }
+
+    #[test]
+    fn clinical_content_actions_are_matrix_actions() {
+        for action in CLINICAL_CONTENT_ACTIONS {
+            assert!(Action::ALL.contains(action), "{action:?}");
+            assert!(!allows(Role::Superadmin, *action), "{action:?}");
+        }
     }
 
     #[test]

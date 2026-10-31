@@ -12,6 +12,7 @@ pub mod blob;
 pub mod care;
 pub mod config;
 pub mod config_docs;
+pub mod crypto;
 pub mod db;
 pub mod error;
 pub mod ingest;

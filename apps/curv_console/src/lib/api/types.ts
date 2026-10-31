@@ -344,6 +344,18 @@ export const PROBLEM_SLUGS = [
   "conflict",
   "participant-withdrawn",
   "internal",
+  // WP-C.9 (clinician workspace + interop, ADR-0008)
+  "clinical-crypto-unavailable",
+  "patient-ref-disabled",
+  "stale-version",
+  "content-changed",
+  "reauthentication-failed",
+  "cosigner-must-differ",
+  "signer-profile-incomplete",
+  "export-expired",
+  "export-too-large",
+  "consent-purpose-mismatch",
+  "host-key-mismatch",
 ] as const;
 export type ProblemSlug = (typeof PROBLEM_SLUGS)[number];
 

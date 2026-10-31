@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO org_data_keys (key_id, org_id, wrapped_dek, kek_id)\n             VALUES ($1, $2, $3, $4)\n             ON CONFLICT (org_id) WHERE status = 'active' DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Bytea",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0fd2c4ddb5a322ccae03d07e192e7f49ee685e47eac94374122505e1c0bd4285"
+}

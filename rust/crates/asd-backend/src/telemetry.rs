@@ -4,7 +4,8 @@
 //! sensitive value is never serialised in the first place:
 //!
 //! - fields whose name is sensitive ([`is_sensitive_field`]: `participant_token`,
-//!   `email`, `notes`, `rawPayload`, passwords, tokens, secrets, ...) are dropped, on
+//!   `email`, `notes`, `rawPayload`, passwords, tokens, secrets, and the clinical fields
+//!   `impression`, `recommendations`, `body`, `recipient`, `mrn` of KEY-6) are dropped, on
 //!   events and on spans;
 //! - in every remaining string value (and the message) e-mail addresses become
 //!   `[redacted-email]` and app participant tokens (`child-...`) become
@@ -49,11 +50,28 @@ pub fn is_sensitive_field(name: &str) -> bool {
     matches!(
         n.as_str(),
         "notes" | "note" | "rawpayload" | "authorization" | "cookie" | "setcookie" | "enrolcode"
-    ) || n.contains("email")
+    ) || is_clinical_field(&n)
+        || n.contains("email")
         || n.contains("password")
         || n.contains("secret")
         || n.contains("pwhash")
         || n.ends_with("token")
+}
+
+/// KEY-6: clinical free text and identifiers (`n` is already lower-cased without `_-.`).
+/// `mrn` matches anywhere (`mrn`, `patient_mrn`, `mrn_value`); the others exactly or as a
+/// suffix (`letter_body`, `review_impression`), so `body_len` or `recipient_count` stay.
+fn is_clinical_field(n: &str) -> bool {
+    n.contains("mrn")
+        || [
+            "impression",
+            "recommendations",
+            "body",
+            "recipient",
+            "amendreason",
+        ]
+        .iter()
+        .any(|f| n.ends_with(f))
 }
 
 /// Masks e-mail addresses and child participant tokens inside free text.
@@ -227,6 +245,17 @@ mod tests {
             "token",
             "totp_secret",
             "enrol_code",
+            // KEY-6 (WP-C.9).
+            "impression",
+            "recommendations",
+            "body",
+            "note_body",
+            "recipient",
+            "mrn",
+            "patient_mrn",
+            "mrn_value",
+            "amend_reason",
+            "password",
         ] {
             assert!(is_sensitive_field(name), "{name}");
         }
@@ -238,6 +267,10 @@ mod tests {
             "status",
             "token_count",
             "latency_ms",
+            "body_len",
+            "recipient_count",
+            "key_id",
+            "kek_id",
         ] {
             assert!(!is_sensitive_field(name), "{name}");
         }

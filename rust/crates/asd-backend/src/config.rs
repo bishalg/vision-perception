@@ -57,6 +57,9 @@ pub struct Config {
     pub auth: crate::auth::AuthConfig,
     /// `ASD_BUNDLE_SIGNING_KEY` (WP-B.4, CFG-1); `None` = bundles cannot be composed.
     pub bundle_signing: Option<crate::config_docs::bundle::BundleSigner>,
+    /// `ASD_DATA_KEK` (WP-C.9, KEY-2): wraps the per-org clinical data keys. `None` =
+    /// clinical-content endpoints answer 503; everything else runs.
+    pub data_kek: Option<crate::crypto::Kek>,
 }
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -159,6 +162,11 @@ impl Config {
 
         let auth = crate::auth::AuthConfig::from_lookup(&get)?;
         let bundle_signing = crate::config_docs::bundle::BundleSigner::from_lookup(&get, &auth)?;
+        let data_kek = get("ASD_DATA_KEK")
+            .map(|raw| {
+                crate::crypto::Kek::from_base64(&raw).map_err(|r| invalid("ASD_DATA_KEK", r))
+            })
+            .transpose()?;
         Ok(Self {
             bind_addr,
             database_url,
@@ -173,6 +181,7 @@ impl Config {
             request_timeout,
             auth,
             bundle_signing,
+            data_kek,
         })
     }
 }
@@ -207,6 +216,7 @@ impl fmt::Debug for Config {
             .field("request_timeout", &self.request_timeout)
             .field("auth", &self.auth)
             .field("bundle_signing", &self.bundle_signing)
+            .field("data_kek", &self.data_kek)
             .finish()
     }
 }

@@ -200,6 +200,12 @@ pub struct OrgUser {
     pub org_id: String,
     pub status: UserStatus,
     pub last_login_at: Option<String>,
+    /// Signer profile (NOTE-6); staff data, stored in clear.
+    #[serde(default)]
+    pub display_name: Option<String>,
+    /// e.g. `NMC 12345` (NOTE-6).
+    #[serde(default)]
+    pub professional_registration: Option<String>,
 }
 
 /// `POST /v1/orgs/{id}/users`.
@@ -208,6 +214,12 @@ pub struct CreateUserRequest {
     pub email: String,
     pub role: Role,
     pub password: String,
+    /// Up to 120 characters (NOTE-6).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+    /// Up to 60 characters (NOTE-6).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub professional_registration: Option<String>,
 }
 
 /// `PATCH /v1/orgs/{id}/users/{user_id}`.
@@ -217,6 +229,12 @@ pub struct UpdateUserRequest {
     pub role: Option<Role>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status: Option<UserStatus>,
+    /// Absent = unchanged, `""` = clear; up to 120 characters (NOTE-6).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+    /// Absent = unchanged, `""` = clear; up to 60 characters (NOTE-6).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub professional_registration: Option<String>,
 }
 
 /// `GET /v1/orgs/{id}/participants` item. `id` is `participants.id` (CON-20).
@@ -677,7 +695,7 @@ fn example_org() -> Org {
     }
 }
 
-fn example_session_summary() -> SessionSummary {
+pub(crate) fn example_session_summary() -> SessionSummary {
     SessionSummary {
         id: "SESS-GOLDEN-0001".into(),
         participant_id: "7f1c1c1e-0000-4000-8000-000000000001".into(),

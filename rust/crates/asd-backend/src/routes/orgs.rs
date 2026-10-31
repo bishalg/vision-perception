@@ -3,8 +3,19 @@
 //! `GET /v1/orgs/{id}`, `PATCH /v1/orgs/{id}` (retention, settings) and
 //! `GET /v1/orgs/{id}/audit` (AUTH-5 read side), plus [`listing`]: the cursor/limit
 //! parsing shared by the B.2 list routes (users, devices, audit).
+//!
+//! Settings (WP-C.9): `settings` is an RFC 7396 merge patch (nested objects merge, `null`
+//! removes a key). The clinician-workspace keys are validated ([`settings_errors`]):
+//! `timezone`, `paper`, `letterhead.address_lines` (NOTE-7), `identity.patient_ref_mode`
+//! (MRN-2), `clinical.worklist_scope` (CW-2), `clinical.cosign_policy` (SIGN-6). Keys that
+//! look like secrets, MRNs or integration settings are refused, because the audit row of
+//! every change is permanent (G3, trap 2), and that row carries only the keys that changed.
 
 use asd_contract::api_v1::{AuditEntry, AuditPage, Org, OrgKind, OrgPatch};
+use asd_contract::clinical::{
+    settings as keys, CosignPolicy, Paper, PatientRefMode, WorklistScope, MAX_LETTERHEAD_LINES,
+    MAX_LETTERHEAD_LINE_CHARS,
+};
 use axum::extract::State;
 use axum::routing::get;
 use axum::{Json, Router};
@@ -32,8 +43,249 @@ fn org_kind(kind: &str) -> AppResult<OrgKind> {
         .map_err(|_| AppError::Internal(format!("unknown org kind in database: {kind}")))
 }
 
-fn snapshot(name: &str, retention_months: i32, settings: &Value) -> Value {
-    json!({"name": name, "retention_months": retention_months, "settings": settings})
+/// Audit `before`/`after` holding only what changed: `name`, `retention_months`, and the
+/// top-level settings keys whose value differs (`null` for an absent key). Unchanged
+/// settings never reach the append-only audit log (G3).
+fn audit_diff(
+    (old_name, old_retention, old_settings): (&str, i32, &Value),
+    (new_name, new_retention, new_settings): (&str, i32, &Value),
+) -> (Value, Value) {
+    let mut before = Map::new();
+    let mut after = Map::new();
+    if old_name != new_name {
+        before.insert("name".into(), json!(old_name));
+        after.insert("name".into(), json!(new_name));
+    }
+    if old_retention != new_retention {
+        before.insert("retention_months".into(), json!(old_retention));
+        after.insert("retention_months".into(), json!(new_retention));
+    }
+    let empty = Map::new();
+    let old_map = old_settings.as_object().unwrap_or(&empty);
+    let new_map = new_settings.as_object().unwrap_or(&empty);
+    let mut sb = Map::new();
+    let mut sa = Map::new();
+    let all: std::collections::BTreeSet<&String> = old_map.keys().chain(new_map.keys()).collect();
+    for key in all {
+        let o = old_map.get(key).cloned().unwrap_or(Value::Null);
+        let n = new_map.get(key).cloned().unwrap_or(Value::Null);
+        if o != n {
+            sb.insert(key.clone(), o);
+            sa.insert(key.clone(), n);
+        }
+    }
+    if !sa.is_empty() {
+        before.insert("settings".into(), Value::Object(sb));
+        after.insert("settings".into(), Value::Object(sa));
+    }
+    (Value::Object(before), Value::Object(after))
+}
+
+/// RFC 7396 merge patch of `patch` into `target`.
+fn merge_patch(target: &mut Map<String, Value>, patch: &Map<String, Value>) {
+    for (k, v) in patch {
+        match v {
+            Value::Null => {
+                target.remove(k);
+            }
+            Value::Object(p) => {
+                let entry = target
+                    .entry(k.clone())
+                    .or_insert_with(|| Value::Object(Map::new()));
+                if !entry.is_object() {
+                    *entry = Value::Object(Map::new());
+                }
+                if let Value::Object(t) = entry {
+                    merge_patch(t, p);
+                }
+            }
+            other => {
+                target.insert(k.clone(), other.clone());
+            }
+        }
+    }
+}
+
+/// Setting keys that must never be stored in `organizations.settings`: anything that looks
+/// like a credential, an MRN or integration configuration (those have their own encrypted
+/// table, INTG-1). Same normalisation as the log redaction (case, `_`, `-`, `.` ignored).
+fn forbidden_setting_key(key: &str) -> bool {
+    let n: String = key
+        .chars()
+        .filter(|c| !matches!(c, '_' | '-' | '.'))
+        .flat_map(char::to_lowercase)
+        .collect();
+    crate::telemetry::is_sensitive_field(key)
+        || [
+            "secret",
+            "password",
+            "token",
+            "credential",
+            "privatekey",
+            "apikey",
+            "mrn",
+            "integration",
+            "webhook",
+            "sftp",
+        ]
+        .iter()
+        .any(|w| n.contains(w))
+}
+
+fn bad(errors: &mut Vec<InvalidParam>, name: String, reason: &str) {
+    errors.push(InvalidParam {
+        name,
+        reason: reason.into(),
+    });
+}
+
+/// An IANA zone name shape (`UTC`, `Area/Location[/Sub]`, `Etc/GMT+5`). The zone database
+/// itself is checked by the renderers (`chrono-tz` in WP-I.*); this keeps junk and path
+/// tricks out of the settings.
+fn plausible_time_zone(tz: &str) -> bool {
+    if tz == "UTC" {
+        return true;
+    }
+    let parts: Vec<&str> = tz.split('/').collect();
+    tz.len() <= 64
+        && parts.len() >= 2
+        && parts.iter().all(|p| {
+            !p.is_empty()
+                && p != &"."
+                && p != &".."
+                && p.chars()
+                    .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '+'))
+        })
+        && parts[0].starts_with(|c: char| c.is_ascii_uppercase())
+}
+
+/// Accepts a setting value or says why not.
+type SettingCheck = dyn Fn(&Value) -> Result<(), &'static str>;
+
+/// Checks a nested settings object: only `allowed` keys, each value accepted by `check`.
+fn nested(
+    errors: &mut Vec<InvalidParam>,
+    key: &str,
+    value: &Value,
+    allowed: &[(&str, &SettingCheck)],
+) {
+    let Some(obj) = value.as_object() else {
+        bad(errors, format!("settings.{key}"), "must be an object");
+        return;
+    };
+    for (k, v) in obj {
+        let name = format!("settings.{key}.{k}");
+        match allowed.iter().find(|(a, _)| a == k) {
+            None => bad(errors, name, "unknown setting"),
+            // `null` removes the key (merge patch).
+            Some(_) if v.is_null() => {}
+            Some((_, check)) => {
+                if let Err(reason) = check(v) {
+                    bad(errors, name, reason);
+                }
+            }
+        }
+    }
+}
+
+fn one_of<T>(
+    parse: fn(&str) -> Option<T>,
+    reason: &'static str,
+) -> impl Fn(&Value) -> Result<(), &'static str> {
+    move |v| match v.as_str().and_then(parse) {
+        Some(_) => Ok(()),
+        None => Err(reason),
+    }
+}
+
+fn letterhead_lines(v: &Value) -> Result<(), &'static str> {
+    const REASON: &str = "must be at most 4 lines of at most 80 characters, no line breaks";
+    let lines = v.as_array().ok_or(REASON)?;
+    if lines.len() > MAX_LETTERHEAD_LINES {
+        return Err(REASON);
+    }
+    for line in lines {
+        let s = line.as_str().ok_or(REASON)?;
+        if s.chars().count() > MAX_LETTERHEAD_LINE_CHARS || s.chars().any(char::is_control) {
+            return Err(REASON);
+        }
+    }
+    Ok(())
+}
+
+/// Validation errors for a settings patch (empty = valid).
+pub fn settings_errors(settings: &std::collections::BTreeMap<String, Value>) -> Vec<InvalidParam> {
+    let mut errors = Vec::new();
+    for (key, value) in settings {
+        let name = format!("settings.{key}");
+        if forbidden_setting_key(key) {
+            bad(
+                &mut errors,
+                name,
+                "secrets, MRNs and integration settings are not stored in organization settings",
+            );
+            continue;
+        }
+        if value.is_null() {
+            continue; // removes the key
+        }
+        match key.as_str() {
+            "audit_rate" => {
+                // ING-3 random-audit probability.
+                if !value.as_f64().is_some_and(|r| (0.0..=1.0).contains(&r)) {
+                    bad(&mut errors, name, "must be a number from 0 to 1");
+                }
+            }
+            keys::TIMEZONE => {
+                if !value.as_str().is_some_and(plausible_time_zone) {
+                    bad(
+                        &mut errors,
+                        name,
+                        "must be an IANA time zone such as Asia/Kathmandu",
+                    );
+                }
+            }
+            keys::PAPER => {
+                if value.as_str().and_then(Paper::parse).is_none() {
+                    bad(&mut errors, name, "must be a4 or letter");
+                }
+            }
+            keys::LETTERHEAD => nested(
+                &mut errors,
+                key,
+                value,
+                &[(keys::LETTERHEAD_ADDRESS_LINES, &letterhead_lines)],
+            ),
+            keys::IDENTITY => nested(
+                &mut errors,
+                key,
+                value,
+                &[(
+                    keys::PATIENT_REF_MODE,
+                    &one_of(PatientRefMode::parse, "must be none or mrn"),
+                )],
+            ),
+            keys::CLINICAL => nested(
+                &mut errors,
+                key,
+                value,
+                &[
+                    (
+                        keys::WORKLIST_SCOPE,
+                        &one_of(WorklistScope::parse, "must be all or flagged"),
+                    ),
+                    (
+                        keys::COSIGN_POLICY,
+                        &one_of(CosignPolicy::parse, "must be none, red_flag or always"),
+                    ),
+                ],
+            ),
+            // Other keys stay free-form (existing deployments), still subject to the
+            // forbidden-key rule above.
+            _ => {}
+        }
+    }
+    errors
 }
 
 async fn get_org(
@@ -76,15 +328,7 @@ fn validate_patch(patch: &OrgPatch) -> AppResult<Option<String>> {
         }
     }
     if let Some(settings) = &patch.settings {
-        if let Some(rate) = settings.get("audit_rate") {
-            // ING-3 random-audit probability.
-            if !rate.as_f64().is_some_and(|r| (0.0..=1.0).contains(&r)) {
-                errors.push(InvalidParam {
-                    name: "settings.audit_rate".into(),
-                    reason: "must be a number from 0 to 1".into(),
-                });
-            }
-        }
+        errors.extend(settings_errors(settings));
     }
     if errors.is_empty() {
         Ok(name)
@@ -119,14 +363,20 @@ async fn patch_org(
         Value::Object(m) => m.clone(),
         _ => Map::new(),
     };
-    for (k, v) in patch.settings.iter().flatten() {
-        new_settings.insert(k.clone(), v.clone());
+    if let Some(patch_settings) = &patch.settings {
+        let patch_map: Map<String, Value> = patch_settings
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+        merge_patch(&mut new_settings, &patch_map);
     }
     let new_settings = Value::Object(new_settings);
 
-    let before = snapshot(&current.name, current.retention_months, &current.settings);
-    let after = snapshot(&new_name, new_retention, &new_settings);
-    if before != after {
+    let (before, after) = audit_diff(
+        (&current.name, current.retention_months, &current.settings),
+        (&new_name, new_retention, &new_settings),
+    );
+    if after.as_object().is_some_and(|m| !m.is_empty()) {
         sqlx::query!(
             "UPDATE organizations SET name = $2, retention_months = $3, settings = $4 WHERE id = $1",
             org,
@@ -203,6 +453,88 @@ async fn list_audit(
         next_cursor,
         total: None,
     }))
+}
+
+#[cfg(test)]
+mod settings_tests {
+    use super::*;
+
+    #[test]
+    fn merge_patch_is_rfc7396() {
+        let mut t = json!({"a": 1, "c": {"x": 1, "y": 2}, "d": 5})
+            .as_object()
+            .unwrap()
+            .clone();
+        let p = json!({"a": null, "b": 2, "c": {"y": 3, "z": null}, "d": {"k": 1}});
+        merge_patch(&mut t, p.as_object().unwrap());
+        assert_eq!(
+            Value::Object(t),
+            json!({"b": 2, "c": {"x": 1, "y": 3}, "d": {"k": 1}})
+        );
+    }
+
+    #[test]
+    fn time_zone_shapes() {
+        for ok in [
+            "UTC",
+            "Asia/Kathmandu",
+            "America/Argentina/Buenos_Aires",
+            "Etc/GMT+5",
+            "Asia/Ho_Chi_Minh",
+        ] {
+            assert!(plausible_time_zone(ok), "{ok}");
+        }
+        for bad in [
+            "",
+            "utc",
+            "Kathmandu",
+            "Asia/",
+            "../etc",
+            "Asia/../x",
+            "asia/kathmandu",
+            "A/b c",
+        ] {
+            assert!(!plausible_time_zone(bad), "{bad}");
+        }
+    }
+
+    #[test]
+    fn forbidden_keys() {
+        for k in [
+            "webhook_secret",
+            "sftpPassword",
+            "api-token",
+            "mrn",
+            "patient_mrn",
+            "integrations",
+            "private_key",
+        ] {
+            assert!(forbidden_setting_key(k), "{k}");
+        }
+        for k in [
+            "audit_rate",
+            "timezone",
+            "paper",
+            "letterhead",
+            "identity",
+            "clinical",
+            "exports",
+        ] {
+            assert!(!forbidden_setting_key(k), "{k}");
+        }
+    }
+
+    #[test]
+    fn audit_diff_keeps_only_changes() {
+        let (b, a) = audit_diff(
+            ("A", 24, &json!({"x": 1, "y": 2})),
+            ("A", 24, &json!({"x": 1, "y": 3, "z": 4})),
+        );
+        assert_eq!(b, json!({"settings": {"y": 2, "z": null}}));
+        assert_eq!(a, json!({"settings": {"y": 3, "z": 4}}));
+        let (b, a) = audit_diff(("A", 24, &json!({})), ("A", 24, &json!({})));
+        assert_eq!((b, a), (json!({}), json!({})));
+    }
 }
 
 /// `?cursor=&limit=` for the B.2 list routes: `limit` 1..=100 (default 50), `cursor` an

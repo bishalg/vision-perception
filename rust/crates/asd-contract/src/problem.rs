@@ -37,6 +37,32 @@ pub const PARTICIPANT_WITHDRAWN: &str = "participant-withdrawn";
 /// Unexpected server error (no details leaked).
 pub const INTERNAL: &str = "internal";
 
+// ---- clinician workspace and interop (CTR-2, WP-C.9) ------------------------------------
+
+/// 503: `ASD_DATA_KEK` is not configured, so clinical content cannot be read or written
+/// (KEY-2). The rest of the service keeps working.
+pub const CLINICAL_CRYPTO_UNAVAILABLE: &str = "clinical-crypto-unavailable";
+/// 409: the org's `identity.patient_ref_mode` is `none` (MRN-2).
+pub const PATIENT_REF_DISABLED: &str = "patient-ref-disabled";
+/// 412: `If-Match` does not name the current `row_version` (SIGN-3).
+pub const STALE_VERSION: &str = "stale-version";
+/// 409: the signed `content_hash` is not the current content's hash (SIGN-4).
+pub const CONTENT_CHANGED: &str = "content-changed";
+/// 401: step-up password or TOTP check failed (SIGN-5).
+pub const REAUTHENTICATION_FAILED: &str = "reauthentication-failed";
+/// 409: the cosigner is the first signer (SIGN-6).
+pub const COSIGNER_MUST_DIFFER: &str = "cosigner-must-differ";
+/// 409: the signer has no `display_name` (NOTE-6).
+pub const SIGNER_PROFILE_INCOMPLETE: &str = "signer-profile-incomplete";
+/// 410: the export artifact expired (EXJ-5).
+pub const EXPORT_EXPIRED: &str = "export-expired";
+/// 400: the export exceeds the row cap (XLSX-3, EXJ-9).
+pub const EXPORT_TOO_LARGE: &str = "export-too-large";
+/// 400: the export mode is not allowed for the purpose (XC-5).
+pub const CONSENT_PURPOSE_MISMATCH: &str = "consent-purpose-mismatch";
+/// Delivery status only: the SFTP host key does not match the pinned one (INTG-5).
+pub const HOST_KEY_MISMATCH: &str = "host-key-mismatch";
+
 /// Every slug above, published as `$defs/ProblemSlug` in `api-v1.json` so clients can
 /// check their spelling. Route-specific slugs (e.g. `email-taken`, `last-owner`) are
 /// documented with their route and are not listed here.
@@ -53,6 +79,17 @@ pub const SLUGS: &[&str] = &[
     CONFLICT,
     PARTICIPANT_WITHDRAWN,
     INTERNAL,
+    CLINICAL_CRYPTO_UNAVAILABLE,
+    PATIENT_REF_DISABLED,
+    STALE_VERSION,
+    CONTENT_CHANGED,
+    REAUTHENTICATION_FAILED,
+    COSIGNER_MUST_DIFFER,
+    SIGNER_PROFILE_INCOMPLETE,
+    EXPORT_EXPIRED,
+    EXPORT_TOO_LARGE,
+    CONSENT_PURPOSE_MISMATCH,
+    HOST_KEY_MISMATCH,
 ];
 
 /// Full `type` URI for a slug.

@@ -6,6 +6,11 @@
 //! created automatically at ingest (`ingest::auto_review`). Reads need
 //! `perm::ReviewRead`, writes `perm::ReviewWrite` (the `auth::rbac` matrix); each write adds
 //! one audit row in the same transaction (AUTH-5).
+//!
+//! KEY-7 (WP-C.9): the optional manual-enqueue note is stored encrypted (`note_ct`,
+//! `note_key_id`, AAD `review_items:note_ct:{org}:{id}`); the plaintext `note` column is
+//! never written. A note without a configured `ASD_DATA_KEK` answers
+//! `503 clinical-crypto-unavailable` and stores nothing. The note is still never returned.
 
 use asd_contract::api_v1::{
     CreateReviewRequest, ReviewItem, ReviewPage, ReviewReason, ReviewStatus, UpdateReviewRequest,
@@ -24,6 +29,7 @@ use crate::app::AppState;
 use crate::audit::AuditEvent;
 use crate::auth::extractors::{RequestMeta, Require};
 use crate::auth::rbac::perm;
+use crate::crypto::{Aad, ClinicalCrypto};
 use crate::error::{AppError, AppResult};
 use crate::ingest::auto_review::reason_str;
 use crate::problem::InvalidParam;
@@ -206,6 +212,21 @@ async fn create(
     let user = auth.principal;
     let req = json_or_problem(body)?;
 
+    // The row id is part of the AAD, so it is chosen before the insert (trap 9).
+    let id = Uuid::new_v4();
+    let note = match req.note.as_deref().filter(|n| !n.trim().is_empty()) {
+        Some(text) => {
+            let crypto = ClinicalCrypto::from_state(&state)?;
+            let aad = Aad::new("review_items", "note_ct", org, id);
+            Some(crypto.encrypt_str(org, &aad, text).await?)
+        }
+        None => None,
+    };
+    let (note_ct, note_key_id) = match note {
+        Some(sealed) => (Some(sealed.ciphertext), Some(sealed.key_id)),
+        None => (None, None),
+    };
+
     let mut tx = state.db.begin().await?;
     let exists = sqlx::query_scalar!(
         r#"SELECT 1 AS "one!: i32" FROM sessions WHERE id = $1 AND org_id = $2"#,
@@ -218,14 +239,17 @@ async fn create(
         return Err(AppError::NotFound);
     }
     let created = sqlx::query!(
-        r#"INSERT INTO review_items (org_id, session_id, reason, note, created_by)
-           VALUES ($1, $2, 'manual', $3, $4)
+        r#"INSERT INTO review_items (id, org_id, session_id, reason, note_ct, note_key_id,
+                                     created_by)
+           VALUES ($1, $2, $3, 'manual', $4, $5, $6)
            ON CONFLICT (session_id, reason) DO NOTHING
            RETURNING id, org_id, session_id, reason, status, assigned_to, decision,
                      decided_by, decided_at, created_at"#,
+        id,
         org,
         req.session_id,
-        req.note,
+        note_ct,
+        note_key_id,
         user.user_id,
     )
     .fetch_optional(&mut *tx)

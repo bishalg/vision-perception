@@ -27,17 +27,30 @@ pub const UNREACHABLE_DB_URL: &str = "postgres://asd:asd@127.0.0.1:1/asd_unreach
 
 pub mod auth; // WP-B.2 helpers: seed users/devices, mint tokens, JSON requests
 
-/// Config for tests: memory blob store, a JWT signing key generated for this test process
-/// (never a committed secret), everything else at defaults.
+/// Config for tests: memory blob store, a JWT signing key and a clinical data KEK
+/// generated for this test process (never committed secrets), everything else at defaults.
 pub fn test_config(database_url: &str) -> Config {
     Config::from_lookup(|key| match key {
         "DATABASE_URL" => Some(database_url.to_owned()),
         "ASD_BLOB_BACKEND" => Some("memory".to_owned()),
         "ASD_DB_ACQUIRE_TIMEOUT_MS" => Some("500".to_owned()),
         "ASD_JWT_SIGNING_KEY" => Some(test_jwt_key().to_owned()),
+        "ASD_DATA_KEK" => Some(test_data_kek().to_owned()),
         _ => None,
     })
     .expect("test config is valid")
+}
+
+/// A random 32-byte `ASD_DATA_KEK` (base64) per test process (WP-C.9, KEY-2).
+pub fn test_data_kek() -> &'static str {
+    static KEK: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    KEK.get_or_init(|| {
+        use base64::Engine;
+        let mut k = [0u8; 32];
+        k[..16].copy_from_slice(uuid::Uuid::new_v4().as_bytes());
+        k[16..].copy_from_slice(uuid::Uuid::new_v4().as_bytes());
+        base64::engine::general_purpose::STANDARD.encode(k)
+    })
 }
 
 /// A fresh Ed25519 PKCS#8 PEM per test process (WP-B.2, AUTH-2).

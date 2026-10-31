@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT email, role, status, last_login_at FROM users\n         WHERE id = $1 AND org_id = $2 FOR UPDATE",
+  "query": "SELECT email, role, status, last_login_at, display_name, professional_registration\n         FROM users WHERE id = $1 AND org_id = $2 FOR UPDATE",
   "describe": {
     "columns": [
       {
@@ -46,6 +46,28 @@
             "name": "last_login_at"
           }
         }
+      },
+      {
+        "ordinal": 4,
+        "name": "display_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "display_name"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "professional_registration",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "professional_registration"
+          }
+        }
       }
     ],
     "parameters": {
@@ -58,8 +80,10 @@
       false,
       false,
       false,
+      true,
+      true,
       true
     ]
   },
-  "hash": "2c745b3d924413388be138f808b1ad217723856c317c4565877b76ac1a48c6c4"
+  "hash": "0eded9bf1e8772b50863d32e9b8cd4441b0b16ff550ea039b35d23d343608057"
 }

@@ -20,6 +20,7 @@ use tracing::Span;
 
 use crate::blob::{BlobStore, MemoryBlobStore, S3BlobStore};
 use crate::config::{BlobBackend, Config};
+use crate::crypto::Keyring;
 use crate::problem::Problem;
 use crate::routes;
 
@@ -29,14 +30,22 @@ pub struct AppState {
     pub db: PgPool,
     pub blobs: Arc<dyn BlobStore>,
     pub config: Arc<Config>,
+    /// Per-org data keys under `ASD_DATA_KEK` (KEY-2); `None` without the KEK, in which
+    /// case clinical endpoints answer 503 (`crypto::ClinicalCrypto`) and the rest works.
+    pub keyring: Option<Arc<Keyring>>,
 }
 
 impl AppState {
     pub fn new(db: PgPool, blobs: Arc<dyn BlobStore>, config: Config) -> Self {
+        let keyring = config
+            .data_kek
+            .clone()
+            .map(|kek| Arc::new(Keyring::new(kek, db.clone())));
         Self {
             db,
             blobs,
             config: Arc::new(config),
+            keyring,
         }
     }
 }
@@ -120,6 +129,8 @@ fn cors_layer(origin: &str) -> CorsLayer {
             header::AUTHORIZATION,
             header::CONTENT_TYPE,
             header::IF_NONE_MATCH,
+            // SIGN-3 / NOTE-3: clinical review and letter drafts are patched with If-Match.
+            header::IF_MATCH,
             REQUEST_ID,
             HeaderName::from_static("x-idempotency-key"),
             HeaderName::from_static("x-schema-version"),

@@ -90,6 +90,7 @@ dependencies = [
  "asd-sync",
  "async-trait",
  "aws-config",
+ "aws-lc-rs",
  "aws-sdk-s3",
  "axum",
  "base64 0.22.1",
@@ -111,7 +112,9 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
+ "unicode-normalization",
  "uuid",
+ "zeroize",
 ]
 
 [[package]]

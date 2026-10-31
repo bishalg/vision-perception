@@ -8,6 +8,7 @@
 
 pub mod api_v1;
 pub mod care;
+pub mod clinical;
 pub mod config;
 mod jcs;
 mod mirror;

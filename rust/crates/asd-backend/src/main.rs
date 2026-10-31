@@ -5,8 +5,8 @@
 //! - `asd-backend serve`   HTTP API on `ASD_BIND_ADDR` (never runs migrations);
 //! - `asd-backend worker`  background job loop (job kinds arrive with WP-B.5);
 //! - `asd-backend migrate` applies pending migrations and exits (compose init step);
-//! - `asd-backend admin`   first-run operator commands (`create-org`, `create-user`), see
-//!   `asd_backend::admin`.
+//! - `asd-backend admin`   operator commands (`create-org`, `create-user`,
+//!   `encrypt-review-notes`), see `asd_backend::admin`.
 //!
 //! Configuration is environment only; see `rust/.env.example`.
 
@@ -212,9 +212,18 @@ fn admin_main() -> ExitCode {
             .await
             .map_err(admin::AdminError::Database)?;
         let id = match &command {
-            admin::AdminCommand::CreateOrg(org) => admin::create_org(&pool, org).await,
+            admin::AdminCommand::CreateOrg(org) => {
+                admin::create_org(&pool, org).await.map(|id| id.to_string())
+            }
             admin::AdminCommand::CreateUser(user) => {
-                admin::create_user(&pool, user, password.unwrap_or_default()).await
+                admin::create_user(&pool, user, password.unwrap_or_default())
+                    .await
+                    .map(|id| id.to_string())
+            }
+            admin::AdminCommand::EncryptReviewNotes { batch_size } => {
+                admin::encrypt_review_notes_cli(&pool, &config, *batch_size)
+                    .await
+                    .map(|n| n.to_string())
             }
             admin::AdminCommand::Help => unreachable!("handled above"),
         };

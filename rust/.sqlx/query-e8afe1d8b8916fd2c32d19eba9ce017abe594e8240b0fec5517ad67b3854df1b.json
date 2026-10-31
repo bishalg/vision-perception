@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT wrapped_dek, kek_id FROM org_data_keys WHERE key_id = $1 AND org_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "wrapped_dek",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "org_data_keys",
+            "name": "wrapped_dek"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "kek_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "org_data_keys",
+            "name": "kek_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "e8afe1d8b8916fd2c32d19eba9ce017abe594e8240b0fec5517ad67b3854df1b"
+}

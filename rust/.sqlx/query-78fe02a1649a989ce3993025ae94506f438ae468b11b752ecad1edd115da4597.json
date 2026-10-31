@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE review_items SET note_ct = $2, note_key_id = $3, note = NULL\n                     WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bytea",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "78fe02a1649a989ce3993025ae94506f438ae468b11b752ecad1edd115da4597"
+}

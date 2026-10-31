@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, email, role, status, last_login_at, created_at\n         FROM users\n         WHERE org_id = $1\n           AND ($2::timestamptz IS NULL OR (created_at, id) < ($2, $3))\n         ORDER BY created_at DESC, id DESC\n         LIMIT $4",
+  "query": "INSERT INTO users (org_id, email, pw_hash, role, status, display_name,\n                            professional_registration)\n         VALUES ($1, $2, $3, $4, 'active', $5, $6)\n         ON CONFLICT ((lower(email))) DO NOTHING\n         RETURNING id, email, role, status, last_login_at, display_name,\n                   professional_registration",
   "describe": {
     "columns": [
       {
@@ -60,12 +60,23 @@
       },
       {
         "ordinal": 5,
-        "name": "created_at",
-        "type_info": "Timestamptz",
+        "name": "display_name",
+        "type_info": "Text",
         "origin": {
           "Table": {
             "table": "users",
-            "name": "created_at"
+            "name": "display_name"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "professional_registration",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "professional_registration"
           }
         }
       }
@@ -73,9 +84,11 @@
     "parameters": {
       "Left": [
         "Uuid",
-        "Timestamptz",
-        "Uuid",
-        "Int8"
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
       ]
     },
     "nullable": [
@@ -84,8 +97,9 @@
       false,
       false,
       true,
-      false
+      true,
+      true
     ]
   },
-  "hash": "ccc256b1da662c21425af4c7a243c0070ec4031944e5e4ea3eaf10e06a23e689"
+  "hash": "07e8aafa939aa37cc3f8d0a9f9f651787d8661d04b2b6cca53f87277a8f1fda6"
 }

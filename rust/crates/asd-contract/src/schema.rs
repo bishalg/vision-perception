@@ -25,7 +25,7 @@ use crate::config::{self, ConfigBundle, ScoringProfile};
 use crate::problem::{InvalidParam, Problem};
 use crate::session_v1_6::{self, SessionIngestRequest, SessionIngestResponse};
 use crate::signing::canonical_bytes;
-use crate::{api_v1, care};
+use crate::{api_v1, care, clinical};
 
 /// File name of the session ingest schema.
 pub const SESSION_FILE: &str = "session-v1.6.json";
@@ -189,6 +189,47 @@ pub fn api_v1() -> Value {
         care::CareEventsResponse,
         care::CareSummary,
         care::ErasureRequestResponse,
+        clinical::ClinicalReviewState,
+        clinical::Disposition,
+        clinical::ReviewVersionStatus,
+        clinical::SignatureRole,
+        clinical::CosignPolicy,
+        clinical::WorklistScope,
+        clinical::PatientRefMode,
+        clinical::Paper,
+        clinical::WorklistAssigned,
+        clinical::ClinicalNoteKind,
+        clinical::LetterKind,
+        clinical::LetterStatus,
+        clinical::TimelineEntryKind,
+        clinical::SnapshotMeasurements,
+        clinical::SnapshotClip,
+        clinical::ClinicalReviewSnapshot,
+        clinical::LetterSnapshot,
+        clinical::UserProfile,
+        clinical::UpdateProfileRequest,
+        clinical::WorklistItem,
+        clinical::WorklistPage,
+        clinical::ClinicalSignature,
+        clinical::ClinicalReviewVersion,
+        clinical::ClinicalReview,
+        clinical::ClaimClinicalReviewRequest,
+        clinical::UpdateClinicalReviewRequest,
+        clinical::SignRequest,
+        clinical::AmendClinicalReviewRequest,
+        clinical::PatientRef,
+        clinical::PutPatientRefRequest,
+        clinical::PatientRefSearchRequest,
+        clinical::PatientRefSearchResponse,
+        clinical::ClinicalNote,
+        clinical::CreateClinicalNoteRequest,
+        clinical::ClinicalNotePage,
+        clinical::ReferralLetter,
+        clinical::CreateLetterRequest,
+        clinical::UpdateLetterRequest,
+        clinical::LetterPage,
+        clinical::TimelineEntry,
+        clinical::TimelinePage,
     );
     let mut defs = gen.take_definitions(true);
     defs.insert(

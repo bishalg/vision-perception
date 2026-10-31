@@ -249,10 +249,15 @@ async fn matrix_superadmin_reaches_every_org() {
 }
 
 #[test]
-fn matrix_table_covers_every_action_and_superadmin_has_all() {
-    // No database: the single table in auth/rbac.rs.
+fn matrix_table_covers_every_action_and_superadmin_has_all_but_clinical_content() {
+    // No database: the single table in auth/rbac.rs. Superadmin has every action except
+    // the clinical-content carve-out (RBAC-3, WP-C.9; covered in rbac_clinical.rs).
     for action in Action::ALL {
-        assert!(rbac::allows(Role::Superadmin, *action), "{action:?}");
+        assert_eq!(
+            rbac::allows(Role::Superadmin, *action),
+            !rbac::CLINICAL_CONTENT_ACTIONS.contains(action),
+            "{action:?}"
+        );
         assert!(
             rbac::MATRIX.iter().any(|(a, _)| a == action),
             "{action:?} has no row in MATRIX"
