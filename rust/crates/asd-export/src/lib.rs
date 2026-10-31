@@ -121,6 +121,9 @@ pub enum ExportError {
     /// The ZIP or XLSX container writer failed (tabular encoders, WP-I.2).
     #[error("tabular encoder failed: {0}")]
     Tabular(String),
+    /// A de-identified export of a record that did not go through `deid::apply` (XC-4).
+    #[error("de-identified export of a record that was not de-identified (XC-4)")]
+    NotDeidentified,
 }
 
 /// Why `record`'s gaze Observation cannot be exported, or `None` when it can.

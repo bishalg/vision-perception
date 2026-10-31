@@ -382,3 +382,49 @@ fn a_malformed_timestamp_is_an_error_not_a_guess() {
     .unwrap_err();
     assert!(err.to_string().contains("startedAt"), "{err}");
 }
+
+// ---- v5 UUID scheme (FHX-1, trap 14) -------------------------------------------------------
+
+/// Every `fullUrl` (and the bundle id) of the iOS fixture is reproduced by the public v5
+/// function from its inputs, so the clinical bundle names the same resources as the device.
+#[test]
+fn v5_uuid_function_reproduces_every_full_url_of_the_ios_fixture() {
+    use asd_export::fhir::clinical::resource_id;
+
+    let path = repo_root().join("apps/ios_asd_gaze_app/Tests/Fixtures/expected-bundle.json");
+    let expected: Value =
+        serde_json::from_str(&std::fs::read_to_string(path).expect("iOS golden")).unwrap();
+    let urn = |name: &str| format!("urn:uuid:{}", resource_id(name));
+    let provenance = |target: &str| {
+        urn(&format!(
+            "Provenance/{}",
+            target.trim_start_matches("urn:uuid:")
+        ))
+    };
+
+    let observation = urn("Observation/gaze/GOLDEN01-SESSION");
+    let response = urn("QuestionnaireResponse/mchat/child-GOLDEN01/2026-10-01T09:00:00Z");
+    let score = urn("Observation/mchat-score/child-GOLDEN01/2026-10-01T09:00:00Z");
+    let names = vec![
+        urn("Patient/child-GOLDEN01"),
+        urn("RelatedPerson/child-GOLDEN01"),
+        urn("Device/EarlyGaze Observation Diary/1.0.0"),
+        observation.clone(),
+        provenance(&observation),
+        response.clone(),
+        provenance(&response),
+        score.clone(),
+        provenance(&score),
+    ];
+    let actual: Vec<String> = expected["entry"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["fullUrl"].as_str().unwrap().to_owned())
+        .collect();
+    assert_eq!(actual, names);
+    assert_eq!(
+        expected["id"],
+        resource_id("Bundle/child-GOLDEN01/GOLDEN01-SESSION")
+    );
+}

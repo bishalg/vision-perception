@@ -12,11 +12,23 @@
 //! Exception, on purpose: the WP-B.8 session bundle (`fhir::session`) is a byte-exact port
 //! of the iOS `FHIRBundleBuilder` (parity golden, ADR-0003) and keeps emitting the codes iOS
 //! emits, verified or not (LOINC `93044-6`, the XFDF format code of G7). Its codes are
-//! listed here (a test walks its golden) so the inventory is complete; changing what it
-//! emits is a decision for WP-I.3 together with iOS (ADR-0008 Q6).
+//! listed here (a test walks its golden) so the inventory is complete. WP-I.3 left it
+//! unchanged: what it emits changes together with iOS (ADR-0008 Q6). The clinical bundle
+//! (`fhir::clinical`) reuses its Observation and drops the unverified codings from it.
 //!
 //! Local codes under `http://curv.org/fhir/CodeSystem/...` (ADR-0003 D7) are ours and are
 //! not listed.
+//!
+//! WP-I.3 verification (2026-10-31). Sources: the HL7 FHIR terminology server
+//! `https://tx.fhir.org/r4/CodeSystem/$lookup` (LOINC 2.83, SNOMED CT International Edition
+//! 2025-02-01, UCUM 2.2, THO `provenance-participant-type` 2.0.0, THO `v2-0203` 5.0.0) and
+//! the FHIR R4 pages named per code. loinc.org refused automated access (HTTP 403), so LOINC
+//! codes were checked against the LOINC release the HL7 terminology server publishes.
+//! The lookups also refuted several iOS codes: LOINC `93044-6` is "Level of evidence", the
+//! M-CHAT-R/F codes `80628-1`..`80650-5` are toxicology and drug-level tests, SNOMED CT
+//! `713444003` does not exist, and `device` is not a `provenance-participant-type` code.
+//! They stay `verified = false` with the finding in `source`; the iOS app and the session
+//! bundle still emit them (ADR-0008 Q6, follow-up for iOS).
 
 use std::fmt;
 
@@ -88,6 +100,16 @@ impl fmt::Display for Code {
 const IOS_PARITY: &str = "Emitted by the iOS FHIRBundleBuilder and the WP-B.8 parity bundle \
                           (ADR-0003); not checked against the publisher's release";
 
+/// Source note prefix for codes checked on the HL7 FHIR terminology server (module docs).
+macro_rules! tx_lookup {
+    ($text:literal) => {
+        concat!(
+            "Checked 2026-10-31 (WP-I.3) with https://tx.fhir.org/r4/CodeSystem/$lookup: ",
+            $text
+        )
+    };
+}
+
 // ---- LOINC ---------------------------------------------------------------------------------
 
 /// G8 / ADR-0008 Q6: never sent by new encoders until verified.
@@ -96,22 +118,38 @@ pub const LOINC_GAZE_PANEL: Code = Code {
     code: "93044-6",
     display: "Gaze tracking assessment panel",
     verified: false,
-    source: "iOS ClinicalInteroperabilityStandards.swift:67, kept by ADR-0003; not found \
-             verified against a LOINC release (G8, ADR-0008 Q6)",
+    source: concat!(
+        "iOS ClinicalInteroperabilityStandards.swift:67, kept by ADR-0003 (G8, ADR-0008 Q6). ",
+        tx_lookup!(
+            "LOINC 2.83 names 93044-6 \"Level of evidence\", not a gaze panel: the iOS code \
+             is wrong; do not verify it"
+        )
+    ),
 };
 pub const LOINC_MCHAT_TOTAL: Code = Code {
     system: system::LOINC,
     code: "80649-7",
     display: "M-CHAT-R total score [Score]",
     verified: false,
-    source: IOS_PARITY,
+    source: concat!(
+        "iOS parity bundle. ",
+        tx_lookup!(
+            "LOINC 2.83 names 80649-7 \"Tetramethylenedisulfotetramine [Mass/volume] in \
+             Urine\": wrong code for M-CHAT"
+        )
+    ),
 };
 pub const LOINC_MCHAT_RISK: Code = Code {
     system: system::LOINC,
     code: "80650-5",
     display: "M-CHAT-R risk level [Interpretation]",
     verified: false,
-    source: IOS_PARITY,
+    source: concat!(
+        "iOS parity bundle. ",
+        tx_lookup!(
+            "LOINC 2.83 names 80650-5 \"Tin [Moles/volume] in Blood\": wrong code for M-CHAT"
+        )
+    ),
 };
 /// The M-CHAT-R/F questionnaire panel (`Questionnaire` canonical `http://loinc.org/q/80628-1`).
 pub const LOINC_MCHAT_PANEL: Code = Code {
@@ -119,20 +157,49 @@ pub const LOINC_MCHAT_PANEL: Code = Code {
     code: "80628-1",
     display: "M-CHAT-R/F panel",
     verified: false,
-    source: "iOS StandardCodingSystems.LOINC (questionnaire canonical); display is a local \
-             label, not the LOINC long name",
+    source: concat!(
+        "iOS StandardCodingSystems.LOINC (questionnaire canonical). ",
+        tx_lookup!(
+            "LOINC 2.83 names 80628-1 \"1,1'-Sulfonylbis-2-Methylthioethane [Mass/volume] in \
+             Urine\": wrong code for M-CHAT"
+        )
+    ),
 };
 pub const LOINC_OUTPATIENT_NOTE: Code = Code {
     system: system::LOINC,
     code: "34108-1",
-    display: "Outpatient note",
-    verified: false,
-    source: "iOS DoctorReportGenerator DocumentReference.type (G7); WP-I.3 chooses and \
-             verifies the clinical summary and referral document codes",
+    display: "Outpatient Note",
+    verified: true,
+    source: concat!(
+        "iOS DoctorReportGenerator DocumentReference.type (G7), parity bundle only. ",
+        tx_lookup!("LOINC 2.83, active, display \"Outpatient Note\"")
+    ),
+};
+/// `DocumentReference.type` of the PDF/A clinical summary (FHX-5).
+pub const LOINC_SUMMARY_OF_EPISODE_NOTE: Code = Code {
+    system: system::LOINC,
+    code: "34133-9",
+    display: "Summary of Episode Note",
+    verified: true,
+    source: tx_lookup!("LOINC 2.83, active, display \"Summary of Episode Note\""),
+};
+/// `DocumentReference.type` of a referral letter (FHX-5).
+pub const LOINC_REFERRAL_NOTE: Code = Code {
+    system: system::LOINC,
+    code: "57133-1",
+    display: "Referral Note",
+    verified: true,
+    source: tx_lookup!("LOINC 2.83, active, display \"Referral Note\""),
 };
 
-const MCHAT_ITEM_SOURCE: &str = "iOS StandardCodingSystems.LOINC M-CHAT-R/F item codes 1..20; \
-                                 display is a local label, not the LOINC long name";
+const MCHAT_ITEM_SOURCE: &str = concat!(
+    "iOS StandardCodingSystems.LOINC M-CHAT-R/F item codes 1..20. ",
+    tx_lookup!(
+        "in LOINC 2.83 all twenty (80629-9..80648-9) are toxicology or drug-level tests \
+         (e.g. 80629-9 \"1,2,2-Trimethylpropyl methylphosphonate [Mass/volume] in Blood\"): \
+         wrong codes for M-CHAT items"
+    )
+);
 
 macro_rules! mchat_items {
     ($($code:literal => $display:literal),* $(,)?) => {
@@ -167,7 +234,13 @@ pub const SNOMED_EYE_TRACKING_EXAM: Code = Code {
     code: "713444003",
     display: "Eye tracking examination (procedure)",
     verified: false,
-    source: IOS_PARITY,
+    source: concat!(
+        "iOS parity bundle. ",
+        tx_lookup!(
+            "unknown code in SNOMED CT International Edition 2025-02-01: the iOS code does \
+             not exist"
+        )
+    ),
 };
 
 // ---- HL7 terminology -----------------------------------------------------------------------
@@ -194,7 +267,32 @@ pub const PROVENANCE_PARTICIPANT_DEVICE: Code = Code {
     code: "device",
     display: "Device",
     verified: false,
-    source: IOS_PARITY,
+    source: concat!(
+        "iOS parity bundle. ",
+        tx_lookup!(
+            "unknown code in provenance-participant-type 2.0.0, and not in the R4 value set \
+             https://hl7.org/fhir/R4/valueset-provenance-agent-type.html either"
+        )
+    ),
+};
+const PROVENANCE_PARTICIPANT_SOURCE: &str = "Verified 2026-10-31 (WP-I.3) against \
+     https://hl7.org/fhir/R4/valueset-provenance-agent-type.html and tx.fhir.org $lookup \
+     (provenance-participant-type 2.0.0)";
+/// Provenance agent type of the first signature (FHX-2).
+pub const PROVENANCE_PARTICIPANT_AUTHOR: Code = Code {
+    system: system::PROVENANCE_PARTICIPANT_TYPE,
+    code: "author",
+    display: "Author",
+    verified: true,
+    source: PROVENANCE_PARTICIPANT_SOURCE,
+};
+/// Provenance agent type of the second signature (cosign, FHX-2).
+pub const PROVENANCE_PARTICIPANT_VERIFIER: Code = Code {
+    system: system::PROVENANCE_PARTICIPANT_TYPE,
+    code: "verifier",
+    display: "Verifier",
+    verified: true,
+    source: PROVENANCE_PARTICIPANT_SOURCE,
 };
 pub const DATA_OPERATION_CREATE: Code = Code {
     system: system::DATA_OPERATION,
@@ -215,9 +313,11 @@ pub const V2_IDENTIFIER_TYPE_MR: Code = Code {
     system: system::V2_IDENTIFIER_TYPE,
     code: "MR",
     display: "Medical record number",
-    verified: false,
-    source: "HL7 v2 table 0203 (Identifier Type), required by FHX-3 and HL7-3; verification \
-             owed by WP-I.3",
+    verified: true,
+    source: "HL7 v2 table 0203 (Identifier Type), FHX-3 and HL7-3. Verified 2026-10-31 \
+             (WP-I.3) against https://hl7.org/fhir/R4/v2/0203/index.html (system \
+             http://terminology.hl7.org/CodeSystem/v2-0203, MR \"Medical record number\") and \
+             tx.fhir.org $lookup (v2-0203 5.0.0)",
 };
 pub const US_CORE_CLINICAL_NOTE: Code = Code {
     system: system::US_CORE_DOC_CATEGORY,
@@ -230,24 +330,43 @@ pub const US_CORE_CLINICAL_NOTE: Code = Code {
 
 // ---- IHE -----------------------------------------------------------------------------------
 
-/// G7: this is the XFDF format code, not PDF. Parity bundle only; WP-I.3 adds the verified
-/// IHE PDF format code for new encoders.
+/// G7: this is the XFDF format code, not PDF. Parity bundle only; new encoders use
+/// [`IHE_FORMAT_MIME_TYPE_SUFFICIENT`].
 pub const IHE_FORMAT_XFDF: Code = Code {
     system: system::IHE_FORMAT,
     code: "urn:ihe:iti:xfdf:2008",
     display: "PDF Document",
     verified: false,
-    source: "iOS DoctorReportGenerator.swift:490-568; wrong for a PDF attachment (G7)",
+    source: "iOS DoctorReportGenerator.swift:490-568; wrong for a PDF attachment (G7) and \
+             not in the R4 format-code value set \
+             (https://hl7.org/fhir/R4/valueset-formatcodes.html, checked 2026-10-31, WP-I.3)",
+};
+/// `DocumentReference.content.format` of a generated PDF whose MIME type says all a reader
+/// needs (FHX-5, fixes G7).
+pub const IHE_FORMAT_MIME_TYPE_SUFFICIENT: Code = Code {
+    system: system::IHE_FORMAT,
+    code: "urn:ihe:iti:xds:2017:mimeTypeSufficient",
+    display: "mimeType Sufficient",
+    verified: true,
+    source: "Verified 2026-10-31 (WP-I.3) against \
+             https://hl7.org/fhir/R4/valueset-formatcodes.html (system \
+             http://ihe.net/fhir/ValueSet/IHE.FormatCode.codesystem, display \"mimeType \
+             Sufficient\"). urn:ihe:iti:xds-sd:pdf:2008 is for scanned documents (XDS-SD) and \
+             does not fit a generated PDF",
 };
 
 // ---- UCUM ----------------------------------------------------------------------------------
 
+/// Dimensionless quantities (the gaze Observation components).
 pub const UCUM_UNITY: Code = Code {
     system: system::UCUM,
     code: "1",
     display: "unity",
-    verified: false,
-    source: IOS_PARITY,
+    verified: true,
+    source: tx_lookup!(
+        "UCUM 2.2, code `1` is valid (UCUM defines no display names; its print symbol is \
+         `1` and `unity` is a descriptive label)"
+    ),
 };
 pub const UCUM_MONTH: Code = Code {
     system: system::UCUM,
@@ -264,6 +383,8 @@ pub static ALL: &[&Code] = &[
     &LOINC_MCHAT_RISK,
     &LOINC_MCHAT_PANEL,
     &LOINC_OUTPATIENT_NOTE,
+    &LOINC_SUMMARY_OF_EPISODE_NOTE,
+    &LOINC_REFERRAL_NOTE,
     &LOINC_MCHAT_ITEMS[0],
     &LOINC_MCHAT_ITEMS[1],
     &LOINC_MCHAT_ITEMS[2],
@@ -288,11 +409,14 @@ pub static ALL: &[&Code] = &[
     &OBSERVATION_CATEGORY_EXAM,
     &OBSERVATION_CATEGORY_SURVEY,
     &PROVENANCE_PARTICIPANT_DEVICE,
+    &PROVENANCE_PARTICIPANT_AUTHOR,
+    &PROVENANCE_PARTICIPANT_VERIFIER,
     &DATA_OPERATION_CREATE,
     &ROLE_CODE_PARENT,
     &V2_IDENTIFIER_TYPE_MR,
     &US_CORE_CLINICAL_NOTE,
     &IHE_FORMAT_XFDF,
+    &IHE_FORMAT_MIME_TYPE_SUFFICIENT,
     &UCUM_UNITY,
     &UCUM_MONTH,
 ];

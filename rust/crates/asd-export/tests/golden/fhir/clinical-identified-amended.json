@@ -1,0 +1,513 @@
+{
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:c67b5b58-f10a-5f5d-8605-93c2314b9f2e",
+      "resource": {
+        "id": "child-SESS-GOL",
+        "identifier": [
+          {
+            "assigner": {
+              "display": "TUTH-SENTINEL"
+            },
+            "system": "urn:oid:1.2.524.1.1.1",
+            "type": {
+              "coding": [
+                {
+                  "code": "MR",
+                  "display": "Medical record number",
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203"
+                }
+              ]
+            },
+            "value": "MRN-SENTINEL-4711"
+          },
+          {
+            "system": "http://curv.org/fhir/NamingSystem/participant-token",
+            "value": "child-SESS-GOL"
+          }
+        ],
+        "resourceType": "Patient"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:30e4049e-c57b-5f80-9de7-7a5743c27512",
+      "resource": {
+        "id": "30e4049e-c57b-5f80-9de7-7a5743c27512",
+        "identifier": [
+          {
+            "system": "http://curv.org/fhir/NamingSystem/organization",
+            "value": "5f1e2d3c-4b5a-4968-8776-655443322110"
+          }
+        ],
+        "name": "Kathmandu Child Clinic",
+        "resourceType": "Organization"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:c4f79bf3-a47a-5650-bba8-eb004b59c006",
+      "resource": {
+        "id": "c4f79bf3-a47a-5650-bba8-eb004b59c006",
+        "identifier": [
+          {
+            "system": "http://curv.org/fhir/NamingSystem/console-user",
+            "value": "signer-id-sentinel"
+          },
+          {
+            "system": "https://nmc.org.np/registration",
+            "value": "NMC-SENTINEL-12345"
+          }
+        ],
+        "name": [
+          {
+            "text": "Dr. SIGNER-SENTINEL"
+          }
+        ],
+        "resourceType": "Practitioner"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:6281cc52-33f9-5da6-b63a-a1f4aab243f1",
+      "resource": {
+        "id": "6281cc52-33f9-5da6-b63a-a1f4aab243f1",
+        "identifier": [
+          {
+            "system": "http://curv.org/fhir/NamingSystem/console-user",
+            "value": "cosigner-id-sentinel"
+          }
+        ],
+        "name": [
+          {
+            "text": "Dr. COSIGNER-SENTINEL"
+          }
+        ],
+        "resourceType": "Practitioner"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:c70c0cf4-b156-5148-a57c-6ff379212c16",
+      "resource": {
+        "deviceName": [
+          {
+            "name": "EarlyGaze Observation Diary",
+            "type": "user-friendly-name"
+          }
+        ],
+        "id": "c70c0cf4-b156-5148-a57c-6ff379212c16",
+        "resourceType": "Device",
+        "type": {
+          "text": "Mobile gaze engagement observation app"
+        },
+        "version": [
+          {
+            "value": "1.0"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:e736cad9-9bfb-58ca-bc4f-9240254233ed",
+      "resource": {
+        "category": [
+          {
+            "coding": [
+              {
+                "code": "exam",
+                "display": "Exam",
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "text": "Gaze engagement observation (parent-run phone app)"
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "social-preference-score",
+                  "display": "Social visual preference score",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Social Visual Preference Score"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "score",
+              "value": 0.62
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "eye-region-dwell-ratio",
+                  "display": "Eye region dwell ratio",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Eye Region Dwell Ratio"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "ratio",
+              "value": 0.33
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "valid-frame-ratio",
+                  "display": "Valid frame ratio",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Valid Frame Quality Ratio"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "ratio",
+              "value": 0.93
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "social-smile-intensity-mean",
+                  "display": "Social smile intensity mean",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Social Smile Intensity Mean"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "score",
+              "value": 0.41
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "smile-reactivity-index",
+                  "display": "Smile reactivity index",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Smile Reactivity Index"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "score",
+              "value": 0.22
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "flat-affect-score",
+                  "display": "Neutral expression score",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Neutral Expression Score"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "score",
+              "value": 0.12
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "surprise-score-mean",
+                  "display": "Surprise score mean",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Surprise Score Mean"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "score",
+              "value": 0.18
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "composite-engagement",
+                  "display": "Per-stimulus composite engagement score",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Per-Stimulus Composite Engagement Score"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "score",
+              "value": 0.74
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "clip-score-stim_05_geopref_split_10s",
+                  "display": "Geometric vs Social Preference",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Stimulus subscore: Geometric vs Social Preference"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "score",
+              "value": 0.74
+            }
+          }
+        ],
+        "device": {
+          "reference": "urn:uuid:c70c0cf4-b156-5148-a57c-6ff379212c16"
+        },
+        "effectiveDateTime": "2026-10-26T07:33:20Z",
+        "id": "e736cad9-9bfb-58ca-bc4f-9240254233ed",
+        "identifier": [
+          {
+            "system": "http://curv.org/fhir/NamingSystem/gaze-session",
+            "value": "SESS-GOLDEN-0001"
+          }
+        ],
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "urn:uuid:c67b5b58-f10a-5f5d-8605-93c2314b9f2e"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:fb31853b-428f-563e-86e2-45813e485500",
+      "resource": {
+        "code": {
+          "coding": [
+            {
+              "code": "gaze-observation-review",
+              "display": "Gaze observation review",
+              "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+            }
+          ],
+          "text": "Clinician review of a gaze engagement observation"
+        },
+        "conclusion": "IMPRESSION-SENTINEL text",
+        "conclusionCode": [
+          {
+            "coding": [
+              {
+                "code": "monitor",
+                "display": "Monitor",
+                "system": "http://curv.org/fhir/CodeSystem/clinical-disposition"
+              }
+            ]
+          }
+        ],
+        "effectiveDateTime": "2026-10-26T07:33:20Z",
+        "id": "fb31853b-428f-563e-86e2-45813e485500",
+        "identifier": [
+          {
+            "system": "http://curv.org/fhir/NamingSystem/gaze-session-review",
+            "value": "SESS-GOLDEN-0001"
+          }
+        ],
+        "issued": "2026-10-02T08:30:00Z",
+        "performer": [
+          {
+            "reference": "urn:uuid:30e4049e-c57b-5f80-9de7-7a5743c27512"
+          }
+        ],
+        "resourceType": "DiagnosticReport",
+        "result": [
+          {
+            "reference": "urn:uuid:e736cad9-9bfb-58ca-bc4f-9240254233ed"
+          }
+        ],
+        "resultsInterpreter": [
+          {
+            "reference": "urn:uuid:c4f79bf3-a47a-5650-bba8-eb004b59c006"
+          },
+          {
+            "reference": "urn:uuid:6281cc52-33f9-5da6-b63a-a1f4aab243f1"
+          }
+        ],
+        "status": "amended",
+        "subject": {
+          "reference": "urn:uuid:c67b5b58-f10a-5f5d-8605-93c2314b9f2e"
+        },
+        "text": {
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Clinician review of a gaze engagement observation. Report status: amended.</p><p>Clinician's statement (disposition): Monitor.</p><p>Export 0b7e5a2c-3d4f-4e6a-8b9c-1d2e3f4a5b6c · Kathmandu Child Clinic · identified · clinical care · requested by Dr. Requester · 2026-10-05T06:15:00Z</p><p>This is not a diagnostic tool.</p><p>Part of Open Spectrum Tracking</p></div>",
+          "status": "generated"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:23434815-efc1-5754-8f2a-06ebf0803a95",
+      "resource": {
+        "author": [
+          {
+            "reference": "urn:uuid:30e4049e-c57b-5f80-9de7-7a5743c27512"
+          }
+        ],
+        "content": [
+          {
+            "attachment": {
+              "contentType": "application/pdf",
+              "data": "JVBERi0xLjcgY2xpbmljYWwgc3VtbWFyeSBnb2xkZW4gYnl0ZXM=",
+              "hash": "DneifhiLgI6DEGzBh5gvEP+MNfA=",
+              "size": 38,
+              "title": "Clinical summary of a gaze engagement observation"
+            },
+            "format": {
+              "code": "urn:ihe:iti:xds:2017:mimeTypeSufficient",
+              "display": "mimeType Sufficient",
+              "system": "http://ihe.net/fhir/ValueSet/IHE.FormatCode.codesystem"
+            }
+          }
+        ],
+        "context": {
+          "related": [
+            {
+              "reference": "urn:uuid:fb31853b-428f-563e-86e2-45813e485500"
+            }
+          ]
+        },
+        "date": "2026-10-05T06:15:00Z",
+        "description": "Clinical summary of a gaze engagement observation",
+        "docStatus": "amended",
+        "id": "23434815-efc1-5754-8f2a-06ebf0803a95",
+        "identifier": [
+          {
+            "system": "http://curv.org/fhir/NamingSystem/export",
+            "value": "0b7e5a2c-3d4f-4e6a-8b9c-1d2e3f4a5b6c"
+          }
+        ],
+        "resourceType": "DocumentReference",
+        "status": "current",
+        "subject": {
+          "reference": "urn:uuid:c67b5b58-f10a-5f5d-8605-93c2314b9f2e"
+        },
+        "type": {
+          "coding": [
+            {
+              "code": "34133-9",
+              "display": "Summary of Episode Note",
+              "system": "http://loinc.org"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:23f9ca60-d40f-500d-931f-8a92b7dacc42",
+      "resource": {
+        "agent": [
+          {
+            "onBehalfOf": {
+              "reference": "urn:uuid:30e4049e-c57b-5f80-9de7-7a5743c27512"
+            },
+            "type": {
+              "coding": [
+                {
+                  "code": "author",
+                  "display": "Author",
+                  "system": "http://terminology.hl7.org/CodeSystem/provenance-participant-type"
+                }
+              ]
+            },
+            "who": {
+              "reference": "urn:uuid:c4f79bf3-a47a-5650-bba8-eb004b59c006"
+            }
+          }
+        ],
+        "id": "23f9ca60-d40f-500d-931f-8a92b7dacc42",
+        "recorded": "2026-10-02T08:00:00Z",
+        "resourceType": "Provenance",
+        "target": [
+          {
+            "reference": "urn:uuid:fb31853b-428f-563e-86e2-45813e485500"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:5c6e0da2-1167-5e84-8f5e-6a72338048c5",
+      "resource": {
+        "agent": [
+          {
+            "onBehalfOf": {
+              "reference": "urn:uuid:30e4049e-c57b-5f80-9de7-7a5743c27512"
+            },
+            "type": {
+              "coding": [
+                {
+                  "code": "verifier",
+                  "display": "Verifier",
+                  "system": "http://terminology.hl7.org/CodeSystem/provenance-participant-type"
+                }
+              ]
+            },
+            "who": {
+              "reference": "urn:uuid:6281cc52-33f9-5da6-b63a-a1f4aab243f1"
+            }
+          }
+        ],
+        "id": "5c6e0da2-1167-5e84-8f5e-6a72338048c5",
+        "recorded": "2026-10-02T08:30:00Z",
+        "resourceType": "Provenance",
+        "target": [
+          {
+            "reference": "urn:uuid:fb31853b-428f-563e-86e2-45813e485500"
+          }
+        ]
+      }
+    }
+  ],
+  "id": "dd19414f-3246-5e62-ade0-2a5f0c1e02aa",
+  "identifier": {
+    "system": "http://curv.org/fhir/NamingSystem/export",
+    "value": "0b7e5a2c-3d4f-4e6a-8b9c-1d2e3f4a5b6c"
+  },
+  "meta": {
+    "tag": [
+      {
+        "code": "identified",
+        "display": "identified",
+        "system": "http://curv.org/fhir/CodeSystem/export-mode"
+      },
+      {
+        "code": "clinical_care",
+        "display": "clinical care",
+        "system": "http://curv.org/fhir/CodeSystem/export-mode"
+      }
+    ]
+  },
+  "resourceType": "Bundle",
+  "timestamp": "2026-10-05T06:15:00Z",
+  "type": "collection"
+}
