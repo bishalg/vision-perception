@@ -74,6 +74,7 @@ dependencies = [
  "argon2",
  "asd-contract",
  "asd-core",
+ "asd-report",
  "asd-sync",
  "async-trait",
  "aws-config",
@@ -148,6 +149,22 @@ dependencies = [
  "asd-contract",
  "asd-core",
  "asd-sync",
+]
+
+[[package]]
+name = "asd-report"
+version = "0.1.0"
+dependencies = [
+ "asd-contract",
+ "asd-core",
+ "base64 0.22.1",
+ "chrono",
+ "pdf-writer",
+ "serde",
+ "serde_json",
+ "sha1_smol",
+ "thiserror",
+ "uuid",
 ]
 
 [[package]]
@@ -2028,6 +2045,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "pdf-writer"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f5e456864a7a304047bff84977dc6fb162bd956475d40ba50b2dcecaada7f753"
+dependencies = [
+ "bitflags",
+ "itoa",
+ "memchr",
+ "ryu",
+]
+
+[[package]]
 name = "pem-rfc7468"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2484,6 +2513,12 @@ dependencies = [
  "cpufeatures 0.3.1",
  "digest 0.11.3",
 ]
+
+[[package]]
+name = "sha1_smol"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbfa15b3dddfee50a0fff136974b3e1bde555604ba463834a7eb7deb6417705d"
 
 [[package]]
 name = "sha2"
@@ -3156,6 +3191,7 @@ dependencies = [
  "getrandom 0.4.3",
  "js-sys",
  "serde_core",
+ "sha1_smol",
  "wasm-bindgen",
 ]
 

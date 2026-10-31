@@ -4,8 +4,9 @@
 //!
 //! Device plane (API-1): `POST /v1/sessions` (ING-1..3, CON-13..18, CON-21).
 //! User plane (API-2): `GET /v1/orgs/{id}/sessions`, `GET /v1/sessions/{id}`,
-//! `GET /v1/sessions/{id}/clips` (CON-19), `GET /v1/sessions/{id}/report.pdf` (the
-//! device-uploaded PDF, or 404 until one exists; server rendering is WP-B.8).
+//! `GET /v1/sessions/{id}/clips` (CON-19), `GET /v1/sessions/{id}/report.pdf` (regenerated
+//! server-side by `asd-report`, WP-B.8; `?source=device` serves the device-uploaded copy,
+//! or 404 until one exists) and `GET /v1/sessions/{id}/fhir` (FHIR R4 bundle, WP-B.8).
 //!
 //! Auth (WP-B.2): the device plane takes a [`DevicePrincipal`] (`dvc_` bearer) and is
 //! limited to [`SESSION_POSTS_PER_MINUTE`] per device (AUTH-3, `429` + `Retry-After`); the
@@ -60,6 +61,7 @@ pub fn router() -> Router<AppState> {
         .route("/sessions/{id}", get(detail))
         .route("/sessions/{id}/clips", get(clips))
         .route("/sessions/{id}/report.pdf", get(report_pdf))
+        .route("/sessions/{id}/fhir", get(fhir_bundle))
         .layer(Extension(limiter))
 }
 
@@ -161,29 +163,76 @@ async fn clips(
     Ok(Json(read::clips::list(&state.db, &id).await?))
 }
 
-async fn report_pdf(
-    auth: Require<perm::SessionRead>,
-    State(state): State<AppState>,
-    Path(id): Path<String>,
-) -> AppResult<Response> {
-    let (org, key) = read::sessions::report_key(&state.db, &id)
-        .await?
-        .ok_or(AppError::NotFound)?;
-    auth.ensure_org(org)?;
-    let blob = state.blobs.get(&key).await?.ok_or(AppError::NotFound)?;
-    let mut response = Body::from(blob.bytes).into_response();
+/// `?source=` of `GET /v1/sessions/{id}/report.pdf`.
+#[derive(Debug, Default, serde::Deserialize)]
+struct ReportQuery {
+    source: Option<String>,
+}
+
+/// A private, uncached binary response.
+fn private_body(bytes: impl Into<Body>, content_type: &'static str) -> Response {
+    let mut response = bytes.into().into_response();
     let h = response.headers_mut();
-    h.insert(
-        header::CONTENT_TYPE,
-        HeaderValue::from_static(crate::routes::blobs::REPORT_CONTENT_TYPE),
-    );
+    h.insert(header::CONTENT_TYPE, HeaderValue::from_static(content_type));
     h.insert(
         header::CACHE_CONTROL,
         HeaderValue::from_static("private, no-store"),
     );
-    h.insert(
+    response
+}
+
+/// The report regenerated from the stored record (WP-B.8), or with `?source=device` the
+/// PDF the device uploaded (404 until it exists). 409 for a synthetic session.
+async fn report_pdf(
+    auth: Require<perm::SessionRead>,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    query: Result<Query<ReportQuery>, QueryRejection>,
+) -> AppResult<Response> {
+    let bytes: Body = match query_or_problem(query)?.source.as_deref() {
+        None | Some("server") => {
+            let src = crate::report::load(&state.db, &id)
+                .await?
+                .ok_or(AppError::NotFound)?;
+            auth.ensure_org(src.org_id)?;
+            crate::report::render_pdf(&src)?.into()
+        }
+        Some("device") => {
+            let (org, key) = read::sessions::report_key(&state.db, &id)
+                .await?
+                .ok_or(AppError::NotFound)?;
+            auth.ensure_org(org)?;
+            let blob = state.blobs.get(&key).await?.ok_or(AppError::NotFound)?;
+            blob.bytes.into()
+        }
+        Some(_) => {
+            return Err(AppError::Validation(vec![InvalidParam {
+                name: "source".into(),
+                reason: "must be server or device".into(),
+            }]))
+        }
+    };
+    let mut response = private_body(bytes, crate::routes::blobs::REPORT_CONTENT_TYPE);
+    response.headers_mut().insert(
         header::CONTENT_DISPOSITION,
         HeaderValue::from_static("inline; filename=\"report.pdf\""),
     );
     Ok(response)
+}
+
+/// `GET /v1/sessions/{id}/fhir`: the FHIR R4 collection bundle (WP-B.8). 409 for a
+/// synthetic session.
+async fn fhir_bundle(
+    auth: Require<perm::SessionRead>,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> AppResult<Response> {
+    let src = crate::report::load(&state.db, &id)
+        .await?
+        .ok_or(AppError::NotFound)?;
+    auth.ensure_org(src.org_id)?;
+    let bundle = crate::report::fhir_bundle(&src)?;
+    let bytes = serde_json::to_vec(&bundle)
+        .map_err(|e| AppError::Internal(format!("bundle encode: {e}")))?;
+    Ok(private_body(bytes, asd_report::fhir::CONTENT_TYPE))
 }

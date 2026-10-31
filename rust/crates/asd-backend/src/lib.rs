@@ -18,5 +18,6 @@ pub mod ingest;
 pub mod jobs;
 pub mod problem;
 pub mod read;
+pub mod report;
 pub mod routes;
 pub mod telemetry;

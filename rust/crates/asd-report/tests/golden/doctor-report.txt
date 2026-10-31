@@ -1,0 +1,50 @@
+EARLYGAZE OBSERVATION DIARY | PART OF OPEN SPECTRUM TRACKING
+Social Attention Observation Diary: Summary for Your Pediatrician
+CHILD
+child-SESS-GOL
+AGE
+28 Months
+PARENT / GUARDIAN
+Parent / Legal Guardian
+OBSERVATION DATE
+Oct 26, 2026
+PRIVATE BY DESIGN: NO VIDEO WAS RECORDED
+No video, image, or audio was stored. Gaze measurements were computed on the device while the child watched.
+1. Gaze Observations: Social vs. Geometric Looking
+SOCIAL PREFERENCE
++62%
+RECORDING QUALITY
+OPTIMAL
+EYE LOOKING SHARE
+33%
+MOUTH LOOKING SHARE
+Not observed
+First look at eyes: Not observed | Usable gaze samples: 93% | Smile reactivity: 22%
+2. Per-Clip Engagement (Expected vs Recorded)
+OVERALL ENGAGEMENT
+74/100
+Geometric vs Social Preference
+74/100
+Within age range
+• social dwell ratio: 62%
+• geometric dwell ratio: 21%
+• eye dwell ratio: 33%
+• first entry latency ms: 10000 ms (never looked at)
+• fixation count: 14
+• mean fixation duration ms: 280 ms
+Age references are provisional and drawn from published literature. They are not a diagnosis.
+3. M-CHAT-R/F Parent Questionnaire
+M-CHAT-R/F questionnaire pending parent completion.
+4. Home Routine and Diary (Last 7 Days)
+7-DAY ROUTINE COMPLETION
+Not recorded
+MEDICATIONS LOGGED
+Not recorded
+DIARY ENTRIES RECORDED
+Not recorded
+5. Notes for the Visit
+This diary records what the child looked at and how the family routine went. Please share it at your next pediatric visit. Only a qualified
+professional can evaluate a child's development.
+Reviewed by: ___________________________    Date: _________________
+This is not a diagnostic tool.
+Part of Open Spectrum Tracking

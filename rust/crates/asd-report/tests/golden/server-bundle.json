@@ -1,0 +1,411 @@
+{
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:c67b5b58-f10a-5f5d-8605-93c2314b9f2e",
+      "resource": {
+        "extension": [
+          {
+            "url": "http://curv.org/fhir/StructureDefinition/age-in-months",
+            "valueQuantity": {
+              "code": "mo",
+              "system": "http://unitsofmeasure.org",
+              "unit": "mo",
+              "value": 28
+            }
+          }
+        ],
+        "id": "child-SESS-GOL",
+        "identifier": [
+          {
+            "system": "http://curv.org/fhir/NamingSystem/participant-token",
+            "value": "child-SESS-GOL"
+          }
+        ],
+        "resourceType": "Patient"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:9c545dca-cf1c-50f9-a9e7-c4c77a8992e7",
+      "resource": {
+        "id": "9c545dca-cf1c-50f9-a9e7-c4c77a8992e7",
+        "patient": {
+          "reference": "urn:uuid:c67b5b58-f10a-5f5d-8605-93c2314b9f2e"
+        },
+        "relationship": [
+          {
+            "coding": [
+              {
+                "code": "PRN",
+                "display": "parent",
+                "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode"
+              }
+            ]
+          }
+        ],
+        "resourceType": "RelatedPerson"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:c70c0cf4-b156-5148-a57c-6ff379212c16",
+      "resource": {
+        "deviceName": [
+          {
+            "name": "EarlyGaze Observation Diary",
+            "type": "user-friendly-name"
+          }
+        ],
+        "id": "c70c0cf4-b156-5148-a57c-6ff379212c16",
+        "resourceType": "Device",
+        "type": {
+          "text": "Mobile gaze engagement observation app"
+        },
+        "version": [
+          {
+            "value": "1.0"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:e736cad9-9bfb-58ca-bc4f-9240254233ed",
+      "resource": {
+        "category": [
+          {
+            "coding": [
+              {
+                "code": "exam",
+                "display": "Exam",
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "code": "93044-6",
+              "display": "Gaze tracking assessment panel",
+              "system": "http://loinc.org"
+            },
+            {
+              "code": "713444003",
+              "display": "Eye tracking examination (procedure)",
+              "system": "http://snomed.info/sct"
+            }
+          ],
+          "text": "Gaze engagement observation (parent-run phone app)"
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "social-preference-score",
+                  "display": "Social visual preference score",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Social Visual Preference Score"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "score",
+              "value": 0.62
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "eye-region-dwell-ratio",
+                  "display": "Eye region dwell ratio",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Eye Region Dwell Ratio"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "ratio",
+              "value": 0.33
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "valid-frame-ratio",
+                  "display": "Valid frame ratio",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Valid Frame Quality Ratio"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "ratio",
+              "value": 0.93
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "social-smile-intensity-mean",
+                  "display": "Social smile intensity mean",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Social Smile Intensity Mean"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "score",
+              "value": 0.41
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "smile-reactivity-index",
+                  "display": "Smile reactivity index",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Smile Reactivity Index"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "score",
+              "value": 0.22
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "flat-affect-score",
+                  "display": "Neutral expression score",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Neutral Expression Score"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "score",
+              "value": 0.12
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "surprise-score-mean",
+                  "display": "Surprise score mean",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Surprise Score Mean"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "score",
+              "value": 0.18
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "composite-engagement",
+                  "display": "Per-stimulus composite engagement score",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Per-Stimulus Composite Engagement Score"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "score",
+              "value": 0.74
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "code": "clip-score-stim_05_geopref_split_10s",
+                  "display": "Geometric vs Social Preference",
+                  "system": "http://curv.org/fhir/CodeSystem/gaze-engagement"
+                }
+              ],
+              "text": "Stimulus subscore: Geometric vs Social Preference"
+            },
+            "valueQuantity": {
+              "code": "1",
+              "system": "http://unitsofmeasure.org",
+              "unit": "score",
+              "value": 0.74
+            }
+          }
+        ],
+        "device": {
+          "reference": "urn:uuid:c70c0cf4-b156-5148-a57c-6ff379212c16"
+        },
+        "effectiveDateTime": "2026-10-26T07:33:20Z",
+        "id": "e736cad9-9bfb-58ca-bc4f-9240254233ed",
+        "identifier": [
+          {
+            "system": "http://curv.org/fhir/NamingSystem/gaze-session",
+            "value": "SESS-GOLDEN-0001"
+          }
+        ],
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "urn:uuid:c67b5b58-f10a-5f5d-8605-93c2314b9f2e"
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:54867e59-141b-55d6-bb85-29957080dfa8",
+      "resource": {
+        "activity": {
+          "coding": [
+            {
+              "code": "CREATE",
+              "display": "create",
+              "system": "http://terminology.hl7.org/CodeSystem/v3-DataOperation"
+            }
+          ]
+        },
+        "agent": [
+          {
+            "onBehalfOf": {
+              "reference": "urn:uuid:9c545dca-cf1c-50f9-a9e7-c4c77a8992e7"
+            },
+            "type": {
+              "coding": [
+                {
+                  "code": "device",
+                  "display": "Device",
+                  "system": "http://terminology.hl7.org/CodeSystem/provenance-participant-type"
+                }
+              ]
+            },
+            "who": {
+              "reference": "urn:uuid:c70c0cf4-b156-5148-a57c-6ff379212c16"
+            }
+          }
+        ],
+        "entity": [
+          {
+            "role": "source",
+            "what": {
+              "display": "On-device encrypted session vault file",
+              "identifier": {
+                "system": "http://curv.org/fhir/NamingSystem/session-vault",
+                "value": "session_SESS-GOLDEN-0001"
+              }
+            }
+          }
+        ],
+        "extension": [
+          {
+            "url": "http://curv.org/fhir/StructureDefinition/capture-source",
+            "valueCoding": {
+              "code": "truedepth",
+              "display": "Apple TrueDepth front camera (live capture)",
+              "system": "http://curv.org/fhir/CodeSystem/capture-source"
+            }
+          }
+        ],
+        "id": "54867e59-141b-55d6-bb85-29957080dfa8",
+        "recorded": "2026-10-26T07:33:52Z",
+        "resourceType": "Provenance",
+        "target": [
+          {
+            "reference": "urn:uuid:e736cad9-9bfb-58ca-bc4f-9240254233ed"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:ed6fa03c-d8a1-5315-9846-5bd4fa72ab49",
+      "resource": {
+        "category": [
+          {
+            "coding": [
+              {
+                "code": "clinical-note",
+                "display": "Clinical Note",
+                "system": "http://hl7.org/fhir/us/core/CodeSystem/us-core-documentreference-category"
+              }
+            ]
+          }
+        ],
+        "content": [
+          {
+            "attachment": {
+              "contentType": "application/pdf",
+              "data": "JVBERi0xLjcgZ29sZGVu",
+              "hash": "/fyGSU+X0Maf+lhAt64wjFaOr9c=",
+              "language": "en",
+              "size": 15,
+              "title": "EarlyGaze Observation Diary report"
+            },
+            "format": {
+              "code": "urn:ihe:iti:xfdf:2008",
+              "display": "PDF Document",
+              "system": "http://ihe.net/fhir/ValueSet/IHE.FormatCode.codesystem"
+            }
+          }
+        ],
+        "context": {
+          "event": [
+            {
+              "coding": [
+                {
+                  "code": "713444003",
+                  "display": "Eye tracking examination (procedure)",
+                  "system": "http://snomed.info/sct"
+                }
+              ]
+            }
+          ]
+        },
+        "date": "2026-10-26T07:33:20Z",
+        "description": "EarlyGaze Observation Diary report",
+        "id": "ed6fa03c-d8a1-5315-9846-5bd4fa72ab49",
+        "resourceType": "DocumentReference",
+        "status": "current",
+        "subject": {
+          "display": "Child (pseudonymous)",
+          "reference": "urn:uuid:c67b5b58-f10a-5f5d-8605-93c2314b9f2e"
+        },
+        "type": {
+          "coding": [
+            {
+              "code": "34108-1",
+              "display": "Outpatient note",
+              "system": "http://loinc.org"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "id": "cee0b71f-101b-5ba5-b1bd-a7083e633528",
+  "resourceType": "Bundle",
+  "type": "collection"
+}

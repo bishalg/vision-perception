@@ -7,6 +7,7 @@ members = [
     "crates/asd-ffi",
     "crates/asd-backend",
     "crates/asd-cli",
+    "crates/asd-report",
 ]
 
 [workspace.package]
@@ -29,6 +30,7 @@ sha2 = "0.10"
 asd-core = { path = "crates/asd-core" }
 asd-contract = { path = "crates/asd-contract" }
 asd-sync = { path = "crates/asd-sync" }
+asd-report = { path = "crates/asd-report" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

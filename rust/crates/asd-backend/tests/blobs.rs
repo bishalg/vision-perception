@@ -1,7 +1,7 @@
 //! owner: WP-B.3
 //!
 //! CON-18 blob uploads. `BLOB_MODE=proxy`: `PUT /v1/sessions/{id}/blobs/{frames|report}`
-//! under the device bearer stores the blob at the ADR-B3 key; `GET /v1/sessions/{id}/report.pdf`
+//! under the device bearer stores the blob at the ADR-B3 key; `GET /v1/sessions/{id}/report.pdf?source=device`
 //! (console) serves the device-uploaded PDF or 404. `BLOB_MODE=presigned`: the proxy route
 //! does not exist (404) and `POST /v1/sessions` hands out absolute URLs (`sessions.rs`).
 
@@ -119,7 +119,10 @@ async fn proxy_report_upload_is_served_to_the_console() {
     // Before the upload: 404 and report_pdf_available false.
     let (status, _, body) = send(
         f.router.clone(),
-        user_get(&uh, "/v1/sessions/SESS-GOLDEN-0001/report.pdf"),
+        user_get(
+            &uh,
+            "/v1/sessions/SESS-GOLDEN-0001/report.pdf?source=device",
+        ),
     )
     .await;
     assert_eq!(status, StatusCode::NOT_FOUND, "{body}");
@@ -145,7 +148,10 @@ async fn proxy_report_upload_is_served_to_the_console() {
 
     let (status, headers, bytes) = send_raw(
         f.router.clone(),
-        user_get(&uh, "/v1/sessions/SESS-GOLDEN-0001/report.pdf"),
+        user_get(
+            &uh,
+            "/v1/sessions/SESS-GOLDEN-0001/report.pdf?source=device",
+        ),
     )
     .await;
     assert_eq!(status, StatusCode::OK);
@@ -163,7 +169,10 @@ async fn proxy_report_upload_is_served_to_the_console() {
     let (_, other) = seed_user(&f.db.pool, Some(other_org), "owner").await;
     let (status, _, _) = send_raw(
         f.router.clone(),
-        user_get(&other, "/v1/sessions/SESS-GOLDEN-0001/report.pdf"),
+        user_get(
+            &other,
+            "/v1/sessions/SESS-GOLDEN-0001/report.pdf?source=device",
+        ),
     )
     .await;
     assert_eq!(status, StatusCode::NOT_FOUND);
@@ -286,7 +295,10 @@ async fn presigned_report_is_served_once_the_device_put_it() {
         .unwrap();
     let (status, _, bytes) = send_raw(
         f.router.clone(),
-        user_get(&uh, "/v1/sessions/SESS-GOLDEN-0001/report.pdf"),
+        user_get(
+            &uh,
+            "/v1/sessions/SESS-GOLDEN-0001/report.pdf?source=device",
+        ),
     )
     .await;
     assert_eq!(status, StatusCode::OK);

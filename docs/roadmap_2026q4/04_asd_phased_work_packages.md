@@ -50,7 +50,7 @@
 | WP-B.5 | Norm aggregation job (worker loop, `asd-core::norms`) + promote to draft baselines | 2 | I | done | depends on B.3, B.4, R.4 |
 | WP-B.6 | Care events (`/v1/care/events`), participant summary, erasure request (port of deleted `shims.py` semantics) | 2 | I | done | 3 device routes, migration 0006, per-event + per-batch idempotency, erasure request withdraws consent (deletion in B.9); 14 tests |
 | WP-B.7 | AWS deployment (ECS Fargate, RDS, S3, Secrets, ALB/ACM, WAF, logs) under `aws_infra/asd/` | 3 | S | todo | H-4, H-11 (IaC language) |
-| WP-B.8 | Server-side PDF regeneration + FHIR bundle endpoint (parity with iOS output, golden tests) | 3 | I | todo | |
+| WP-B.8 | Server-side PDF regeneration + FHIR bundle endpoint (parity with iOS output, golden tests) | 3 | I | done | New `asd-report` crate (FHIR R4 + PDF), byte goldens + iOS bundle parity; `report.pdf` now server-rendered (`?source=device` = uploaded copy); synthetic → 409. Gaps: M-CHAT/CareKit not on server, age bracket never set at ingest, iOS `_ms` shown as % bug |
 | WP-B.9 | Dataset export job (parquet/jsonl + labels), retention sweep, erasure execution | 3 | S | todo | |
 | WP-B.10 | FHIR façade + SMART-on-FHIR server validation (only if a clinic partner needs it) | 4 | S | backlog | |
 | WP-C.1 | Console scaffold: Next.js, auth, layout, sessions table/detail, overview KPIs | 1 | S | done | Live mode vs Rust backend, org switcher, overview/sessions, Playwright 11/11 mock + live; 129 unit tests |

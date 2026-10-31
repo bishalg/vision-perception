@@ -324,6 +324,8 @@ build/asd/
 !rust/.sqlx/**
 !rust/.env.example
 !rust/Cargo.lock
+# WP-B.8 golden report PDFs (trap 1: *.pdf is ignored above)
+!rust/crates/asd-report/tests/golden/*.pdf
 
 # console source dir named lib/ is real source, not build output
 !apps/curv_console/src/lib/
