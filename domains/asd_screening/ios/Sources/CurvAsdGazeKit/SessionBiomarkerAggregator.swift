@@ -117,42 +117,20 @@ public enum SessionBiomarkerAggregator {
 
     public static let frameIntervalSec: Double = 1.0 / 60.0
 
-    public static func aggregate(validFrames: [GazeFrame], durationSec: Double) -> Aggregates {
-        aggregate(coreFrames: validFrames.map { CoreFrame($0) }, durationSec: durationSec)
+    /// Throws when the core refuses the frames (only for a document this kit encoded with a
+    /// non-finite number, logged as a fault). There is no fallback value: the caller marks
+    /// the session `unscorable` (`aggregation_failed`, session schema 1.8) instead of
+    /// recording placeholder scores (CON-14).
+    public static func aggregate(validFrames: [GazeFrame], durationSec: Double) throws -> Aggregates {
+        try aggregate(coreFrames: validFrames.map { CoreFrame($0) }, durationSec: durationSec)
     }
 
-    static func aggregate(coreFrames: [CoreFrame], durationSec: Double) -> Aggregates {
+    static func aggregate(coreFrames: [CoreFrame], durationSec: Double) throws -> Aggregates {
         do {
             return try AsdCoreBridge.aggregateSession(coreFrames, durationSec: durationSec)
         } catch {
             AsdCoreBridge.report("aggregate_session", error)
-            // Nothing measured: unmeasured ratios and latency stay nil (PLC-1/2).
-            //
-            // TODO(WP-G.9 owner decision, blocked on a contract change): the zeros and the
-            // `flatAffectScore: 1` below are fabricated values, not measurements. They should be
-            // absent and the session marked unscorable, but session schema 1.7 cannot say so:
-            // `socialPreferenceScore` (top level and `rawPayload`), `socialSmileIntensity`,
-            // `smileReactivityIndex`, `flatAffectScore` and `surpriseScoreMean` (`rawPayload`)
-            // are required numbers in `asd-contract::session_v1_7` (`SessionIngestRequest`,
-            // `GazeSessionRecord`), and `qualityVerdict` / `trackingQuality.verdict` describe
-            // capture quality, not a refused computation. Needed: make those five fields
-            // optional (absent = not computed, CON-14) in a new session schema version, or add
-            // an explicit marker such as `rawPayload.scoringStatus: "unscorable"`; then return
-            // `nil` metrics here and stop the record from carrying numbers. This path runs only
-            // when the core refuses a document this kit encoded (a non-finite number), which
-            // `AsdCoreBridge.report` logs as a fault.
-            return Aggregates(
-                socialDwellSec: 0,
-                geometricDwellSec: 0,
-                socialPreferenceScore: 0,
-                eyeDwellRatio: nil,
-                mouthDwellRatio: nil,
-                firstOrientLatencyMs: nil,
-                socialSmileIntensityMean: 0,
-                smileReactivityIndex: 0,
-                flatAffectScore: 1,
-                surpriseScoreMean: 0
-            )
+            throw error
         }
     }
 }

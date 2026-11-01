@@ -4,9 +4,9 @@
 //! schema version and hand back what the scorer needs. No scoring happens here.
 //!
 //! Accepted documents:
-//! - a `POST /v1/sessions` body (`schemaVersion` `1.6` or `1.7`, has `rawPayload`);
+//! - a `POST /v1/sessions` body (`schemaVersion` `1.6`, `1.7` or `1.8`, has `rawPayload`);
 //! - a bare `rawPayload` record as the backend stores it in `sessions.summary`
-//!   (`schemaVersion` `v1.6` or `v1.7`).
+//!   (`schemaVersion` `v1.6`, `v1.7` or `v1.8`).
 //!
 //! Without frames, the metric sets are rebuilt from the device's own score rows
 //! (`rawPayload.perVideo[].rows[]`): every non-imputed row's `observed` value under its
@@ -16,7 +16,7 @@
 use std::collections::BTreeMap;
 
 use asd_contract::api_v1::ClipScore;
-use asd_contract::{session_v1_6, session_v1_7};
+use asd_contract::{session_v1_6, session_v1_7, session_v1_8};
 use asd_core::metrics::PerVideoMetricKey;
 use asd_core::scoring;
 use asd_core::types::{AttentionFlag, PerVideoMetricSet, PerVideoScoreReport, PerVideoScoreRow};
@@ -29,7 +29,7 @@ use crate::error::BoundaryError;
 #[derive(Debug, Clone, PartialEq)]
 pub struct SessionView {
     pub session_id: String,
-    /// Wire form (`1.6`, `1.7`) for both accepted documents.
+    /// Wire form (`1.6`, `1.7`, `1.8`) for both accepted documents.
     pub schema_version: String,
     /// `rawPayload.perVideo` (the device's per-clip score reports), empty when absent.
     pub reports: Vec<PerVideoScoreReport>,
@@ -101,8 +101,26 @@ fn decode_request(value: Value, version: &str) -> Result<SessionView, BoundaryEr
             device_composite: r.per_video_composite,
             device_flag: req.attention_flag.flatten(),
         })
+    } else if version == session_v1_8::SCHEMA_VERSION {
+        // 1.8 keeps the 1.7 per-clip report; an unscorable session simply has none.
+        let req: session_v1_8::SessionIngestRequest =
+            serde_json::from_value(value).map_err(invalid)?;
+        let r = req.raw_payload;
+        Ok(SessionView {
+            session_id: req.session_id,
+            schema_version: req.schema_version,
+            has_reports: r.per_video.is_some(),
+            reports: r
+                .per_video
+                .unwrap_or_default()
+                .into_iter()
+                .map(|v| v.report)
+                .collect(),
+            device_composite: r.per_video_composite,
+            device_flag: req.attention_flag.flatten(),
+        })
     } else {
-        Err(unsupported(version, "\"1.6\" or \"1.7\""))
+        Err(unsupported(version, "\"1.6\", \"1.7\" or \"1.8\""))
     }
 }
 
@@ -133,10 +151,25 @@ fn decode_record(value: Value, version: &str) -> Result<SessionView, BoundaryErr
             device_composite: r.per_video_composite,
             device_flag: None,
         })
+    } else if wire == session_v1_8::SCHEMA_VERSION {
+        let r: session_v1_8::GazeSessionRecord = serde_json::from_value(value).map_err(invalid)?;
+        Ok(SessionView {
+            session_id: r.session_id,
+            schema_version: wire.to_owned(),
+            has_reports: r.per_video.is_some(),
+            reports: r
+                .per_video
+                .unwrap_or_default()
+                .into_iter()
+                .map(|v| v.report)
+                .collect(),
+            device_composite: r.per_video_composite,
+            device_flag: None,
+        })
     } else {
         Err(unsupported(
             version,
-            "a request with rawPayload (\"1.6\"/\"1.7\") or a record (\"v1.6\"/\"v1.7\")",
+            "a request with rawPayload (\"1.6\"-\"1.8\") or a record (\"v1.6\"-\"v1.8\")",
         ))
     }
 }
@@ -459,9 +492,9 @@ mod tests {
 
     #[test]
     fn versions_are_read_from_the_document() {
-        let err = decode(r#"{"schemaVersion":"1.8","rawPayload":{}}"#).unwrap_err();
+        let err = decode(r#"{"schemaVersion":"1.9","rawPayload":{}}"#).unwrap_err();
         assert_eq!(err.kind(), "unsupportedSchemaVersion");
-        let err = decode(r#"{"schemaVersion":"v1.8"}"#).unwrap_err();
+        let err = decode(r#"{"schemaVersion":"v1.9"}"#).unwrap_err();
         assert_eq!(err.kind(), "unsupportedSchemaVersion");
         assert_eq!(decode("1").unwrap_err().kind(), "invalidJson");
         assert_eq!(decode("{").unwrap_err().kind(), "invalidJson");

@@ -778,7 +778,18 @@ public struct MainGazeScannerView: View {
                 enrollment: ResearchKitStudyStore.shared.fetchEnrollment(),
                 sessionId: summary.sessionId
             )
-            let sessionRecord = GazeSessionRecord(summary: summary, participantToken: participantToken)
+            // ING-3: norm-collection consent only through the gate (research consent, opt-in,
+            // live capture); WP-A.5: the configuration that ran the session.
+            let sessionRecord = GazeSessionRecord(
+                summary: summary,
+                participantToken: participantToken,
+                bundleVersion: ScoringConfiguration.active.bundleVersion,
+                normCollection: NormCollectionConsent(metadata: NormCollectionGate.collectionMetadata(
+                    enrollment: ResearchKitStudyStore.shared.fetchEnrollment(),
+                    childAgeMonths: ChildProfileStore.shared.profile.ageBracket.midpointMonths,
+                    captureSource: summary.captureSource
+                ))
+            )
             GazeSessionHistoryStore.shared.record(sessionRecord)
 
             // 2. Batch encrypt & persist volatile RAM frames to disk atomically off main thread

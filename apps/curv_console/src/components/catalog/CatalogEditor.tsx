@@ -5,12 +5,15 @@ import { useState, useTransition, type ReactNode } from "react";
 import { AOI_ROLES, type Area, type CatalogClip, type StimulusCatalog } from "@/lib/api/catalog";
 import {
   clipHasErrors,
+  fieldPath,
   newArea,
   newClip,
   serverFieldErrors,
   shapeErrors,
   type FieldPath,
 } from "@/lib/catalog";
+import { useCoreCheck } from "@/components/config/DraftShell";
+import { validateCatalog } from "@/lib/asd/ops";
 import { catalogText } from "@/messages/catalog";
 import { AoiFrame } from "./AoiFrame";
 import { AoiTimeline } from "./AoiTimeline";
@@ -134,8 +137,20 @@ export function CatalogEditor({
   const [pending, startTransition] = useTransition();
 
   const local = attempted ? shapeErrors(catalog, version, t.shape) : {};
-  const errors: Record<FieldPath, string> = { ...(server?.fields ?? {}), ...local };
-  const localCount = Object.keys(local).length;
+  // The Rust core's own catalog rules (asd-wasm `validateCatalog`, the backend's checks) run on every change; each
+  // problem is shown at the field its JSON path names. When the module cannot load, the server still decides.
+  const check = useCoreCheck(catalog, validateCatalog);
+  const core: Record<FieldPath, string> = {};
+  const coreGeneral: string[] = [];
+  if (check.state === "done") {
+    for (const fp of check.validation.fieldProblems) {
+      const path = fieldPath(fp.path);
+      core[path] = core[path] ? `${core[path]}; ${fp.message}` : fp.message;
+    }
+    if (check.validation.fieldProblems.length === 0) coreGeneral.push(...check.validation.problems);
+  }
+  const errors: Record<FieldPath, string> = { ...(server?.fields ?? {}), ...core, ...local };
+  const localCount = Object.keys({ ...core, ...local }).length + coreGeneral.length;
 
   const update = (fn: (c: StimulusCatalog) => StimulusCatalog) => setCatalog((c) => fn(c));
   const updateClip = (i: number, patch: Partial<CatalogClip>) =>
@@ -160,7 +175,7 @@ export function CatalogEditor({
   function submit() {
     setAttempted(true);
     const found = shapeErrors(catalog, version, t.shape);
-    if (Object.keys(found).length) return;
+    if (Object.keys(found).length || Object.keys(core).length || coreGeneral.length) return;
     startTransition(async () => {
       const r = await save({ version: version.trim(), ...(notes.trim() ? { notes: notes.trim() } : {}), body: catalog });
       if (r.ok) {
@@ -372,7 +387,10 @@ export function CatalogEditor({
 
       <section className={`panel ${s.section}`}>
         {attempted && localCount ? (
-          <p role="alert" className={s.alert}>{e.fixFirst(localCount)}</p>
+          <div role="alert" className={s.alert}>
+            <p style={{ margin: 0 }}>{e.fixFirst(localCount)}</p>
+            {coreGeneral.length ? <ul>{coreGeneral.map((m, i) => <li key={i}>{m}</li>)}</ul> : null}
+          </div>
         ) : null}
         {server ? (
           <div role="alert" className={s.alert}>

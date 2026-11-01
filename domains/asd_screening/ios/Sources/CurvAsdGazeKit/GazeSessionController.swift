@@ -13,6 +13,12 @@ import ARKit
 /// placeholder defaults. A metric that was not measured is `nil` and must be omitted
 /// by every export (PLC-3). Tests build instances through a fixture helper that lives
 /// in the test target.
+///
+/// Scoring outcome (session schema 1.8, SCH-5): the five score values
+/// (`socialPreferenceScore`, `socialSmileIntensityMean`, `smileReactivityIndex`,
+/// `flatAffectScore`, `surpriseScoreMean`) are present together on a `scored` summary and
+/// all `nil` on an `unscorable` one, which carries the `unscorableReason` instead. Nothing
+/// substitutes a number for a score that was not computed (CON-14).
 public struct GazeSessionReportSummary: Codable, Sendable, Equatable {
     public let sessionId: String
     /// Capture provenance (SIM-4). Simulated summaries are refused by every clinical sink.
@@ -21,7 +27,12 @@ public struct GazeSessionReportSummary: Codable, Sendable, Equatable {
     public let totalFrames: Int
     public let validFrames: Int
     public let validRatio: Double
-    public let socialPreferenceScore: Double
+    /// `.unscorable` when on-device scoring did not produce the five score values.
+    public let scoringStatus: ScoringStatus
+    /// Why the session is unscorable; `nil` on a scored session.
+    public let unscorableReason: UnscorableReason?
+    /// `nil` when `unscorable`.
+    public let socialPreferenceScore: Double?
     public let socialDwellSec: Double
     public let geometricDwellSec: Double
     /// Share of eye-region hits among eye+mouth hits; `nil` when no face AOI hit occurred (PLC-2).
@@ -31,10 +42,14 @@ public struct GazeSessionReportSummary: Codable, Sendable, Equatable {
     /// First-look latency to the eye region. `nil` until a real first-fixation
     /// detector exists (PLC-1); never a constant.
     public let firstEyeLatencyMs: Double?
-    public let socialSmileIntensityMean: Double
-    public let smileReactivityIndex: Double
-    public let flatAffectScore: Double
-    public let surpriseScoreMean: Double
+    /// `nil` when `unscorable`.
+    public let socialSmileIntensityMean: Double?
+    /// `nil` when `unscorable`.
+    public let smileReactivityIndex: Double?
+    /// `nil` when `unscorable`.
+    public let flatAffectScore: Double?
+    /// `nil` when `unscorable`.
+    public let surpriseScoreMean: Double?
     public let qualityVerdict: GazeQualityGate.Verdict
     /// Assistive on-device subject age-band signal (nil when no age model is
     /// installed, estimation is disabled, or the window never stabilized). Band +
@@ -58,16 +73,17 @@ public struct GazeSessionReportSummary: Codable, Sendable, Equatable {
         totalFrames: Int,
         validFrames: Int,
         validRatio: Double,
-        socialPreferenceScore: Double,
+        socialPreferenceScore: Double?,
         socialDwellSec: Double,
         geometricDwellSec: Double,
         eyeDwellRatio: Double?,
         mouthDwellRatio: Double?,
         firstEyeLatencyMs: Double?,
-        socialSmileIntensityMean: Double,
-        smileReactivityIndex: Double,
-        flatAffectScore: Double,
-        surpriseScoreMean: Double,
+        socialSmileIntensityMean: Double?,
+        smileReactivityIndex: Double?,
+        flatAffectScore: Double?,
+        surpriseScoreMean: Double?,
+        unscorableReason: UnscorableReason? = nil,
         qualityVerdict: GazeQualityGate.Verdict,
         subjectAgeSignal: SubjectAgeSignal?,
         interruptionCount: Int,
@@ -81,16 +97,26 @@ public struct GazeSessionReportSummary: Codable, Sendable, Equatable {
         self.totalFrames = totalFrames
         self.validFrames = validFrames
         self.validRatio = validRatio
-        self.socialPreferenceScore = socialPreferenceScore
+        // Scored only with all five values and no reason; otherwise none of them (SCH-5).
+        let scores = unscorableReason == nil ? SessionScores(
+            socialPreferenceScore: socialPreferenceScore,
+            socialSmileIntensityMean: socialSmileIntensityMean,
+            smileReactivityIndex: smileReactivityIndex,
+            flatAffectScore: flatAffectScore,
+            surpriseScoreMean: surpriseScoreMean
+        ) : nil
+        self.scoringStatus = scores == nil ? .unscorable : .scored
+        self.unscorableReason = scores == nil ? unscorableReason : nil
+        self.socialPreferenceScore = scores?.socialPreferenceScore
+        self.socialSmileIntensityMean = scores?.socialSmileIntensityMean
+        self.smileReactivityIndex = scores?.smileReactivityIndex
+        self.flatAffectScore = scores?.flatAffectScore
+        self.surpriseScoreMean = scores?.surpriseScoreMean
         self.socialDwellSec = socialDwellSec
         self.geometricDwellSec = geometricDwellSec
         self.eyeDwellRatio = eyeDwellRatio
         self.mouthDwellRatio = mouthDwellRatio
         self.firstEyeLatencyMs = firstEyeLatencyMs
-        self.socialSmileIntensityMean = socialSmileIntensityMean
-        self.smileReactivityIndex = smileReactivityIndex
-        self.flatAffectScore = flatAffectScore
-        self.surpriseScoreMean = surpriseScoreMean
         self.qualityVerdict = qualityVerdict
         self.subjectAgeSignal = subjectAgeSignal
         self.interruptionCount = interruptionCount
@@ -99,8 +125,20 @@ public struct GazeSessionReportSummary: Codable, Sendable, Equatable {
         self.clipTracking = clipTracking
     }
 
+    /// The five score values together; `nil` when `unscorable` (SCH-5).
+    public var scores: SessionScores? {
+        SessionScores(
+            socialPreferenceScore: socialPreferenceScore,
+            socialSmileIntensityMean: socialSmileIntensityMean,
+            smileReactivityIndex: smileReactivityIndex,
+            flatAffectScore: flatAffectScore,
+            surpriseScoreMean: surpriseScoreMean
+        )
+    }
+
     private enum CodingKeys: String, CodingKey {
         case sessionId, captureSource, durationSec, totalFrames, validFrames, validRatio
+        case scoringStatus, unscorableReason
         case socialPreferenceScore, socialDwellSec, geometricDwellSec
         case eyeDwellRatio, mouthDwellRatio, firstEyeLatencyMs
         case socialSmileIntensityMean, smileReactivityIndex, flatAffectScore, surpriseScoreMean
@@ -122,30 +160,37 @@ public struct GazeSessionReportSummary: Codable, Sendable, Equatable {
     /// only recording path was TrueDepth or the then-unlabelled simulation fallback;
     /// any future clinical import of vault lines must re-check provenance from the
     /// header and the record's `legacyProvenance`, not from this default.
+    /// Scoring outcome (1.8): a summary written before `scoringStatus` existed carried the
+    /// five numbers and decodes as scored; an `unscorable` one decodes without them.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        sessionId = try c.decode(String.self, forKey: .sessionId)
-        captureSource = try c.decodeIfPresent(CaptureSource.self, forKey: .captureSource) ?? .trueDepth
-        durationSec = try c.decode(Double.self, forKey: .durationSec)
-        totalFrames = try c.decode(Int.self, forKey: .totalFrames)
-        validFrames = try c.decode(Int.self, forKey: .validFrames)
-        validRatio = try c.decode(Double.self, forKey: .validRatio)
-        socialPreferenceScore = try c.decode(Double.self, forKey: .socialPreferenceScore)
-        socialDwellSec = try c.decode(Double.self, forKey: .socialDwellSec)
-        geometricDwellSec = try c.decode(Double.self, forKey: .geometricDwellSec)
-        eyeDwellRatio = try c.decodeIfPresent(Double.self, forKey: .eyeDwellRatio)
-        mouthDwellRatio = try c.decodeIfPresent(Double.self, forKey: .mouthDwellRatio)
-        firstEyeLatencyMs = try c.decodeIfPresent(Double.self, forKey: .firstEyeLatencyMs)
-        socialSmileIntensityMean = try c.decode(Double.self, forKey: .socialSmileIntensityMean)
-        smileReactivityIndex = try c.decode(Double.self, forKey: .smileReactivityIndex)
-        flatAffectScore = try c.decode(Double.self, forKey: .flatAffectScore)
-        surpriseScoreMean = try c.decode(Double.self, forKey: .surpriseScoreMean)
-        qualityVerdict = try c.decode(GazeQualityGate.Verdict.self, forKey: .qualityVerdict)
-        subjectAgeSignal = try c.decodeIfPresent(SubjectAgeSignal.self, forKey: .subjectAgeSignal)
-        interruptionCount = try c.decodeIfPresent(Int.self, forKey: .interruptionCount) ?? 0
-        interruptedSec = try c.decodeIfPresent(Double.self, forKey: .interruptedSec) ?? 0
-        trackingQuality = try c.decodeIfPresent(JSONValue.self, forKey: .trackingQuality)
-        clipTracking = try c.decodeIfPresent([ClipTrackingEntry].self, forKey: .clipTracking)
+        let status = try c.decodeIfPresent(ScoringStatus.self, forKey: .scoringStatus) ?? .scored
+        let reason = try c.decodeIfPresent(UnscorableReason.self, forKey: .unscorableReason)
+        self.init(
+            sessionId: try c.decode(String.self, forKey: .sessionId),
+            captureSource: try c.decodeIfPresent(CaptureSource.self, forKey: .captureSource) ?? .trueDepth,
+            durationSec: try c.decode(Double.self, forKey: .durationSec),
+            totalFrames: try c.decode(Int.self, forKey: .totalFrames),
+            validFrames: try c.decode(Int.self, forKey: .validFrames),
+            validRatio: try c.decode(Double.self, forKey: .validRatio),
+            socialPreferenceScore: try c.decodeIfPresent(Double.self, forKey: .socialPreferenceScore),
+            socialDwellSec: try c.decode(Double.self, forKey: .socialDwellSec),
+            geometricDwellSec: try c.decode(Double.self, forKey: .geometricDwellSec),
+            eyeDwellRatio: try c.decodeIfPresent(Double.self, forKey: .eyeDwellRatio),
+            mouthDwellRatio: try c.decodeIfPresent(Double.self, forKey: .mouthDwellRatio),
+            firstEyeLatencyMs: try c.decodeIfPresent(Double.self, forKey: .firstEyeLatencyMs),
+            socialSmileIntensityMean: try c.decodeIfPresent(Double.self, forKey: .socialSmileIntensityMean),
+            smileReactivityIndex: try c.decodeIfPresent(Double.self, forKey: .smileReactivityIndex),
+            flatAffectScore: try c.decodeIfPresent(Double.self, forKey: .flatAffectScore),
+            surpriseScoreMean: try c.decodeIfPresent(Double.self, forKey: .surpriseScoreMean),
+            unscorableReason: status == .unscorable ? (reason ?? .other) : nil,
+            qualityVerdict: try c.decode(GazeQualityGate.Verdict.self, forKey: .qualityVerdict),
+            subjectAgeSignal: try c.decodeIfPresent(SubjectAgeSignal.self, forKey: .subjectAgeSignal),
+            interruptionCount: try c.decodeIfPresent(Int.self, forKey: .interruptionCount) ?? 0,
+            interruptedSec: try c.decodeIfPresent(Double.self, forKey: .interruptedSec) ?? 0,
+            trackingQuality: try c.decodeIfPresent(JSONValue.self, forKey: .trackingQuality),
+            clipTracking: try c.decodeIfPresent([ClipTrackingEntry].self, forKey: .clipTracking)
+        )
     }
 
 }
@@ -257,7 +302,7 @@ public final class GazeSessionController: ObservableObject {
     #endif
 
     public init(
-        qualityGate: GazeQualityGate = GazeQualityGate(),
+        qualityGate: GazeQualityGate = ScoringConfiguration.active.qualityGate,
         aoiTracker: StimulusAOITracker = StimulusAOITracker.makeGeoPrefBattery(),
         calibrationProfile: GazeCalibrationProfile = .identity,
         subjectAgeEstimator: SubjectAgeEstimator? = nil

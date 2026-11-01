@@ -9,8 +9,10 @@ import { describe, expect, it } from "vitest";
 import type { ZodType } from "zod";
 import { participantSchema } from "./admin";
 import { createMockClient, MOCK_ORG_ID } from "./mock";
+import { sessionRawSchema } from "./types";
 import {
   NOTE_KINDS,
+  careSummarySchema,
   TIMELINE_KINDS,
   clinicalNotePageSchema,
   clinicalNoteSchema,
@@ -41,6 +43,7 @@ type Shaped = ZodType & { shape: Record<string, ZodType & { isOptional(): boolea
 
 const SCHEMAS: Record<string, Shaped> = {
   Participant: participantSchema,
+  CareSummary: careSummarySchema,
   ClinicalNote: clinicalNoteSchema,
   ClinicalNotePage: clinicalNotePageSchema,
   CreateClinicalNoteRequest: createClinicalNoteRequestSchema,
@@ -82,6 +85,9 @@ describe("api-v1.json contract: participant workspace (WP-C.14)", () => {
     const timeline = timelinePageSchema.parse(await mock.getParticipantTimeline(first.id));
     expect(timeline.items.some((e) => e.kind === "session")).toBe(true);
     expect(timeline.items.some((e) => e.kind === "note")).toBe(true);
+    careSummarySchema.parse(await mock.getParticipantCareSummary(first.id));
+    const mine = (await mock.listSessions(MOCK_ORG_ID, { participant_id: first.id, limit: 1 })).items[0]!;
+    sessionRawSchema.parse(await mock.getSessionRaw(mine.id));
     const notes = clinicalNotePageSchema.parse(await mock.listParticipantNotes(first.id));
     expect(notes.items.some((n) => n.corrected_by)).toBe(true);
     expect(disclosurePageSchema.parse(await mock.listParticipantDisclosures(first.id)).items).toHaveLength(1);

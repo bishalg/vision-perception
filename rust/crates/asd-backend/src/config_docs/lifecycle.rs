@@ -116,32 +116,38 @@ pub fn scoring_profile_problems(p: &ScoringProfile) -> Vec<String> {
 }
 
 /// The body must decode as the kind's contract type (and pass its own checks), so a
-/// published document always composes into a valid bundle.
+/// published document always composes into a valid bundle. Problems of the catalog and the
+/// scoring profile name the member (`body.clips[2].areas[0].xMin`, `body.flag.greenFloor`),
+/// the same paths the console editor gets from asd-wasm; the rest name `body`.
 pub fn validate_body(kind: ConfigDocumentKind, body: &Value) -> Result<(), Vec<InvalidParam>> {
     let decode_err = |e: serde_json::Error| vec![param("body", e.to_string())];
+    let at = |ps: Vec<asd_contract::profile_checks::ProfileProblem>| -> Vec<InvalidParam> {
+        ps.into_iter()
+            .map(|p| param(&format!("body.{}", p.path), p.message))
+            .collect()
+    };
     let problems = match kind {
         ConfigDocumentKind::StimulusCatalog => {
             let c: StimulusCatalog = serde_json::from_value(body.clone()).map_err(decode_err)?;
-            let mut p = Vec::new();
-            if c.clips.is_empty() {
-                p.push("clips must not be empty".to_owned());
-            }
-            p
+            at(asd_contract::catalog_checks::catalog_problems(&c))
         }
         ConfigDocumentKind::NormativeBaselines => {
             let set: NormativeBaselineSet =
                 serde_json::from_value(body.clone()).map_err(decode_err)?;
             asd_core::baselines::validate::<&str>(&set, &[])
+                .into_iter()
+                .map(|p| param("body", p))
+                .collect()
         }
         ConfigDocumentKind::ScoringProfile => {
             let p: ScoringProfile = serde_json::from_value(body.clone()).map_err(decode_err)?;
-            scoring_profile_problems(&p)
+            at(asd_contract::profile_checks::scoring_profile_problems(&p))
         }
     };
     if problems.is_empty() {
         Ok(())
     } else {
-        Err(problems.into_iter().map(|p| param("body", p)).collect())
+        Err(problems)
     }
 }
 
@@ -289,7 +295,7 @@ pub async fn create(
     .await?
     .ok_or_else(|| {
         conflict(
-            "config-version-exists",
+            asd_contract::problem::CONFIG_VERSION_EXISTS,
             format!("{} version `{version}` already exists", kind_str(kind)),
         )
     })?;
@@ -303,7 +309,7 @@ pub async fn create(
 
 fn wrong_state(row: &DocRow, step: &str, expected: &str) -> ConfigApiError {
     conflict(
-        "invalid-transition",
+        asd_contract::problem::INVALID_TRANSITION,
         format!(
             "cannot {step} a {} document (expected {expected})",
             row.status
@@ -330,7 +336,7 @@ pub async fn approve(
     if let Err(problems) = validate_body(kind, &before.body) {
         let reasons: Vec<String> = problems.into_iter().map(|p| p.reason).collect();
         return Err(conflict(
-            "config-invalid",
+            asd_contract::problem::CONFIG_INVALID,
             format!("the document body is not valid: {}", reasons.join("; ")),
         ));
     }
@@ -503,6 +509,31 @@ mod tests {
         let mut swapped = p;
         swapped.flag.yellow_floor = 0.9;
         assert!(!scoring_profile_problems(&swapped).is_empty());
+    }
+
+    #[test]
+    fn body_problems_carry_json_paths() {
+        let mut catalog: Value =
+            serde_json::from_str(include_str!("../../seed/stimulus_catalog.json")).unwrap();
+        catalog["clips"][2]["areas"][0]["xMin"] = json!(1.4);
+        catalog["fallbackLanguage"] = json!("fr");
+        let err = validate_body(ConfigDocumentKind::StimulusCatalog, &catalog).unwrap_err();
+        let names: Vec<&str> = err.iter().map(|p| p.name.as_str()).collect();
+        assert_eq!(
+            names,
+            [
+                "body.fallbackLanguage",
+                "body.clips[2].areas[0].xMin",
+                "body.clips[2].areas[0].xMax"
+            ]
+        );
+        let mut p = serde_json::to_value(ScoringProfile::default()).unwrap();
+        p["flag"]["greenFloor"] = json!(1.5);
+        let err = validate_body(ConfigDocumentKind::ScoringProfile, &p).unwrap_err();
+        assert_eq!(err[0].name, "body.flag.greenFloor");
+        // A shape failure names the whole body.
+        let err = validate_body(ConfigDocumentKind::StimulusCatalog, &json!({})).unwrap_err();
+        assert_eq!(err[0].name, "body");
     }
 
     #[test]

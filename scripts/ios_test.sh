@@ -110,6 +110,10 @@ run "$ASD_TARGET/debug/asd-cli" schema validate \
 run "$ASD_TARGET/debug/asd-cli" schema validate \
   "$ROOT/docs/spec/schemas/asd/session-v1.7.json" \
   "$ROOT/$APP_DIR/Tests/Fixtures/expected-session-v1.7.json"
+run "$ASD_TARGET/debug/asd-cli" schema validate \
+  "$ROOT/docs/spec/schemas/asd/session-v1.8.json" \
+  "$ROOT/$APP_DIR/Tests/Fixtures/expected-session-v1.8.json" \
+  "$ROOT/$APP_DIR/Tests/Fixtures/expected-session-v1.8-unscorable.json"
 
 step "Static gate: privacy API use"
 run bash scripts/check_privacy_api_use.sh

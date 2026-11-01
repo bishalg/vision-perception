@@ -140,7 +140,8 @@ public struct GazeTelemetrySession: Identifiable, Sendable, Equatable {
     public let startedAt: Date
     public let totalValidTimeSec: Double
     public let sessionDurationSec: Double
-    public let socialTargetRatio: Double
+    /// `nil` for an unscorable session (SCH-5).
+    public let socialTargetRatio: Double?
     public let trackingConfidenceIndex: Double
     /// `nil` when not measured (PLC-1); render "Not observed".
     public let saccadicLatencyMs: Double?
@@ -153,7 +154,7 @@ public struct GazeTelemetrySession: Identifiable, Sendable, Equatable {
         startedAt: Date,
         totalValidTimeSec: Double,
         sessionDurationSec: Double,
-        socialTargetRatio: Double,
+        socialTargetRatio: Double?,
         trackingConfidenceIndex: Double,
         saccadicLatencyMs: Double?,
         stimulusTag: StimulusContextTag,
@@ -178,7 +179,7 @@ public struct GazeTelemetrySession: Identifiable, Sendable, Equatable {
     }
 
     public init(from record: GazeSessionRecord) {
-        let socialRatio = max(0, min(1, (record.socialPreferenceScore + 1.0) / 2.0))
+        let socialRatio = record.socialPreferenceScore.map { max(0, min(1, ($0 + 1.0) / 2.0)) }
         let confidence: Double
         switch record.qualityVerdict.lowercased() {
         case "optimal": confidence = min(1, record.validFrameRatio)

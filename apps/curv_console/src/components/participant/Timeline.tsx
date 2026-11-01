@@ -36,9 +36,23 @@ function flagOf(e: TimelineEntry) {
   return parsed?.success ? parsed.data : null;
 }
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** A `?from=` / `?to=` calendar day (`YYYY-MM-DD`); anything else is dropped. */
+export function parseDay(value: string | string[] | undefined): string | undefined {
+  const v = Array.isArray(value) ? value[0] : value;
+  return v && DATE_RE.test(v) ? v : undefined;
+}
+
+/**
+ * The timeline page. `entries` are already filtered by the server (`kind`, `from`, `to` of
+ * `GET /participants/{id}/timeline`), so the cursor continues inside the filter.
+ */
 export function Timeline({
   entries,
   kinds,
+  from,
+  to,
   basePath,
   orgPath,
   nextCursor,
@@ -46,6 +60,9 @@ export function Timeline({
 }: {
   entries: TimelineEntry[];
   kinds: TimelineKind[];
+  /** Inclusive calendar days (UTC) the server filtered by. */
+  from?: string;
+  to?: string;
   /** `/org/participants/id`, the page the filter and paging links point back to. */
   basePath: string;
   /** `/org`, for session links. */
@@ -53,10 +70,12 @@ export function Timeline({
   nextCursor: string | null | undefined;
   hasCursor: boolean;
 }) {
-  const shown = kinds.length ? entries.filter((e) => kinds.includes(e.kind)) : entries;
+  const filtered = kinds.length > 0 || Boolean(from) || Boolean(to);
   const keep = new URLSearchParams();
   keep.set("tab", "timeline");
   for (const k of kinds) keep.append("kind", k);
+  if (from) keep.set("from", from);
+  if (to) keep.set("to", to);
   const next = new URLSearchParams(keep);
   if (nextCursor) next.set("cursor", nextCursor);
   return (
@@ -73,14 +92,19 @@ export function Timeline({
             </label>
           ))}
         </fieldset>
+        <label>
+          {t.from} <input type="date" name="from" defaultValue={from ?? ""} />
+        </label>
+        <label>
+          {t.to} <input type="date" name="to" defaultValue={to ?? ""} />
+        </label>
         <div className="filter-actions">
           <button type="submit">{t.apply}</button>
-          {kinds.length ? <Link href={`${basePath}?tab=timeline`}>{t.clear}</Link> : null}
+          {filtered ? <Link href={`${basePath}?tab=timeline`}>{t.clear}</Link> : null}
         </div>
       </form>
-      {kinds.length ? <p className="muted">{t.filterNote}</p> : null}
-      {shown.length === 0 ? (
-        <p className="muted">{entries.length === 0 ? t.empty : t.emptyFiltered}</p>
+      {entries.length === 0 ? (
+        <p className="muted">{filtered ? t.emptyFiltered : t.empty}</p>
       ) : (
         <div className="table-wrap">
           <table className="data responsive">
@@ -93,7 +117,7 @@ export function Timeline({
               </tr>
             </thead>
             <tbody>
-              {shown.map((e) => (
+              {entries.map((e) => (
                 <tr key={`${e.kind}:${e.id}`} data-kind={e.kind}>
                   <td data-label={t.cols.when}>{formatDateTime(e.at)}</td>
                   <td data-label={t.cols.kind}>{t.kinds[e.kind]}</td>
@@ -111,7 +135,7 @@ export function Timeline({
         </div>
       )}
       <nav className="pagination" aria-label="Timeline pages">
-        {hasCursor ? <Link href={`${basePath}?tab=timeline${kinds.map((k) => `&kind=${k}`).join("")}`}>{t.newest}</Link> : null}
+        {hasCursor ? <Link href={`${basePath}?${keep.toString()}`}>{t.newest}</Link> : null}
         {nextCursor ? (
           <Link rel="next" href={`${basePath}?${next.toString()}`}>
             {t.older}

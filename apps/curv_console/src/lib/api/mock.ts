@@ -20,6 +20,7 @@ import {
   ROLES,
   type SessionDetail,
   type SessionListQuery,
+  type SessionRaw,
   type SessionSummary,
   type TokenPair,
 } from "./types";
@@ -215,6 +216,74 @@ function buildFixtures(): { details: SessionDetail[]; clips: Map<string, ClipSco
     );
   }
   return { details, clips };
+}
+
+/**
+ * The stored record a device would have sent, rebuilt from the fixtures: one `perVideo` report per clip whose rows are
+ * the clip's metric rows (what the asd-wasm API decode does in reverse), de-identified like the backend (token only).
+ */
+export function mockSessionRaw(d: SessionDetail, clipRows: ClipScore[]): SessionRaw {
+  const version = d.schema_version ?? "1.6";
+  const ratio = d.valid_frame_ratio ?? 1;
+  const perVideo = [...clipRows]
+    .sort((a, b) => a.order - b.order)
+    .map((c) => ({
+      stimulusId: c.clip_id,
+      title: c.clip_id,
+      category: "",
+      rows: c.rows.map((r) => ({
+        segmentId: r.segment_id,
+        segmentDescription: "",
+        biomarker: r.metric,
+        ...(r.target_aoi ? { targetAOI: r.target_aoi } : {}),
+        metricKey: r.target_aoi ? `${r.metric}::${r.target_aoi}` : r.metric,
+        direction: r.direction,
+        observed: r.recorded,
+        ...(r.expected != null ? { expected: r.expected } : {}),
+        ...(r.acceptable_low != null ? { acceptableLow: r.acceptable_low } : {}),
+        ...(r.acceptable_high != null ? { acceptableHigh: r.acceptable_high } : {}),
+        status: r.status,
+        score: r.score,
+        imputed: r.imputed,
+        citation: "",
+        source: r.source,
+      })),
+      subscore: c.score ?? 0,
+      validSampleRatio: ratio,
+      lowConfidence: false,
+      hasBaseline: c.rows.length > 0,
+      weight: c.weight ?? 0,
+    }));
+  const end = new Date(Date.parse(d.started_at) + d.duration_sec * 1000).toISOString();
+  return {
+    session_id: d.id,
+    schema_version: version,
+    participant_token: d.participant_token,
+    raw_payload: {
+      id: d.id,
+      sessionId: d.id,
+      participantId: d.participant_token,
+      captureSource: d.capture_source,
+      startedAt: d.started_at,
+      endedAt: end,
+      durationSec: d.duration_sec,
+      ...(version === "1.8" ? { scoringStatus: d.scoring_status ?? "scored" } : {}),
+      socialPreferenceScore: d.social_preference ?? 0,
+      validFrameRatio: ratio,
+      calibratedDistanceCm: d.calibrated_distance_cm ?? 50,
+      qualityVerdict: d.quality_verdict,
+      socialSmileIntensity: 0,
+      smileReactivityIndex: 0,
+      flatAffectScore: 0,
+      surpriseScoreMean: 0,
+      schemaVersion: `v${version}`,
+      zeroRawVideoEnforced: true,
+      perVideoComposite: d.composite_score ?? null,
+      perVideo,
+    },
+    frames_available: false,
+    frames_purged: false,
+  };
 }
 
 function toSummary(d: SessionDetail): SessionSummary {
@@ -480,6 +549,7 @@ export function createMockClient(): CurvApi & AuthApi {
           (!query.quality || d.quality_verdict === query.quality) &&
           (!query.tracking || d.tracking_verdict === query.tracking) &&
           (!query.bundle_version || d.bundle_version === query.bundle_version) &&
+          (!query.participant_id || d.participant_id === query.participant_id) &&
           (query.reviewed === undefined || Boolean(d.reviewed) === query.reviewed) &&
           (from === undefined || t >= from) &&
           (to === undefined || t <= to)
@@ -498,6 +568,11 @@ export function createMockClient(): CurvApi & AuthApi {
       const found = clips.get(sessionId);
       if (!found) throw notFound("Session not found");
       return found;
+    },
+    async getSessionRaw(sessionId) {
+      const found = details.find((d) => d.id === sessionId);
+      if (!found) throw notFound("Session not found");
+      return mockSessionRaw(found, clips.get(sessionId) ?? []);
     },
     async listReview(orgId, query = {}) {
       ensureOrg(orgId);

@@ -212,15 +212,16 @@ public struct BiomarkerRiskStratificationDetailSection: View {
             )
 
             // Row 4: Facial Affective Synchrony (Duchenne Smile)
-            let smilePct = Int(summary.socialSmileIntensityMean * 100)
-            let isSmileNormal = smilePct >= 20
-            let smileStatus = isSmileNormal ? "Synchronous" : (smilePct >= 10 ? "Attenuated" : "Blunted")
-            let smileColor = isSmileNormal ? LiquidGlass.emeraldMint : (smilePct >= 10 ? LiquidGlass.warmAmber : LiquidGlass.signalAtypical)
+            // SCH-5: an unscorable session has no smile value.
+            let smilePct = summary.socialSmileIntensityMean.map { Int($0 * 100) }
+            let isSmileNormal = (smilePct ?? 0) >= 20
+            let smileStatus = smilePct == nil ? "Not scored" : (isSmileNormal ? "Synchronous" : ((smilePct ?? 0) >= 10 ? "Attenuated" : "Blunted"))
+            let smileColor = smilePct == nil ? Color.secondary : (isSmileNormal ? LiquidGlass.emeraldMint : ((smilePct ?? 0) >= 10 ? LiquidGlass.warmAmber : LiquidGlass.signalAtypical))
 
             riskMatrixCellRow(
                 icon: "face.smiling.fill",
                 title: "Facial Affective Synchrony",
-                observed: "\(smilePct)% Intensity",
+                observed: smilePct.map { "\($0)% Intensity" } ?? "Not scored",
                 target: "≥ 20.0%",
                 weight: "12% Weight",
                 status: smileStatus,

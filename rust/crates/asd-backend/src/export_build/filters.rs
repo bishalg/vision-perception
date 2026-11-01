@@ -51,6 +51,7 @@ pub fn parse(f: &ExportFilters) -> AppResult<ParsedFilters> {
         bundle_version: f.bundle_version.clone(),
         reviewed: None,
         tracking: None,
+        participant_id: None,
         cursor: None,
         limit: None,
     }

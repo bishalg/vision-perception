@@ -284,10 +284,11 @@ public final class CarePlanStore: ObservableObject {
 
     /// Record completion of a gaze screening session in both CareKit and ResearchKit.
     /// Simulated sessions are ignored entirely (SIM-5): no task, trend, CareKit or
-    /// ResearchKit state changes.
+    /// ResearchKit state changes. An unscorable session (`socialScore == nil`, SCH-5) completes
+    /// the task but adds no trend point and no CareKit outcome value.
     public func markScreeningCompleted(
         captureSource: CaptureSource,
-        socialScore: Double,
+        socialScore: Double?,
         validFramePercentage: Double = 94.0,
         summary: GazeSessionReportSummary? = nil,
         riskScore: Double? = nil,
@@ -298,6 +299,10 @@ public final class CarePlanStore: ObservableObject {
             tasks[index].isCompleted = true
             tasks[index].completedAt = Date()
             saveTasks()
+        }
+        guard let socialScore else {
+            if let summary { researchStore.recordActiveStepResult(summary: summary) }
+            return
         }
         if let lastIndex = weeklyHistory.indices.last {
             let existing = weeklyHistory[lastIndex]

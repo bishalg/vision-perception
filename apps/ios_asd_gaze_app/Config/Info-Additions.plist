@@ -6,6 +6,16 @@
 	     not offer it) and `front-facing-camera` filters no iOS 18 device but is not honoured on visionOS
 	     builds. Face tracking is gated at runtime instead (CaptureEntryGate, GazeSessionController.startSession).
 	     Capabilities cannot be added back after release: that would tighten the requirement. -->
+	<!-- WP-A.5: Ed25519 public keys trusted for delivered config bundles (GET /v1/config/bundle).
+	     Each entry: keyId (the backend's key_id, `asd-cli bundle keygen` prints it) and publicKey
+	     (base64url, 32 bytes). Several entries = key rotation. Empty: delivered bundles are never
+	     fetched or trusted and the bundled configuration scores. Optional maxAgeDays expires
+	     bundles by signed_at (absent: no expiry). -->
+	<key>ASDConfigBundle</key>
+	<dict>
+		<key>trustedKeys</key>
+		<array/>
+	</dict>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>

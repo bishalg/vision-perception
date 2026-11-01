@@ -8,6 +8,7 @@
 
 pub mod api_v1;
 pub mod care;
+pub mod catalog_checks; // WP-C.4
 pub mod clinical;
 pub mod config;
 pub mod export;

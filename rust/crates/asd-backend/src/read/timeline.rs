@@ -10,6 +10,9 @@
 //!   not selected, so a body cannot reach this stream.
 //! - `care_event`: the kind and time; the payload is device free text and is not included.
 //!
+//! Filters (`kind` any of the five, `from`/`to` inclusive on `at`) apply before the page is
+//! cut, so the cursor continues inside the filtered stream.
+//!
 //! `key` is `"{kind}:{id}"`, unique across the five tables, and sorts with `COLLATE "C"`,
 //! so rows on one instant have a fixed order and the cursor never skips or repeats one.
 
@@ -20,16 +23,80 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use super::cursor::{self, Cursor};
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
+use crate::problem::InvalidParam;
+
+/// Parsed `?kind=&from=&to=` of the timeline.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct TimelineFilters {
+    /// Entry kinds to keep; empty keeps all.
+    pub kinds: Vec<TimelineEntryKind>,
+    pub from: Option<DateTime<Utc>>,
+    /// Inclusive upper bound.
+    pub to: Option<DateTime<Utc>>,
+}
+
+impl TimelineFilters {
+    /// From the raw query pairs: `kind` may repeat and each value may be a comma list.
+    /// Problems are collected so one response names every bad parameter.
+    pub fn from_pairs(pairs: &[(String, String)]) -> AppResult<Self> {
+        let mut errors = Vec::new();
+        let mut kinds = Vec::new();
+        let (mut from, mut to) = (None, None);
+        for (k, v) in pairs {
+            match k.as_str() {
+                "kind" => {
+                    for part in v.split(',').map(str::trim).filter(|p| !p.is_empty()) {
+                        match TimelineEntryKind::parse(part) {
+                            Some(kind) if !kinds.contains(&kind) => kinds.push(kind),
+                            Some(_) => {}
+                            None => errors.push(InvalidParam {
+                                name: "kind".into(),
+                                reason:
+                                    "must be session, clinical_review, note, letter or care_event"
+                                        .into(),
+                            }),
+                        }
+                    }
+                }
+                "from" | "to" if !v.is_empty() => {
+                    let upper = k == "to";
+                    match super::sessions::parse_bound(v, upper) {
+                        Some(t) if upper => to = Some(t),
+                        Some(t) => from = Some(t),
+                        None => errors.push(InvalidParam {
+                            name: k.clone(),
+                            reason: "must be RFC 3339 or YYYY-MM-DD".into(),
+                        }),
+                    }
+                }
+                _ => {}
+            }
+        }
+        if errors.is_empty() {
+            Ok(Self { kinds, from, to })
+        } else {
+            Err(AppError::Validation(errors))
+        }
+    }
+}
 
 /// One page of the timeline of `participant` (already checked to belong to `org`).
 pub async fn page(
     db: &PgPool,
     org: Uuid,
     participant: Uuid,
+    filters: &TimelineFilters,
     after: Option<&Cursor>,
     limit: i64,
 ) -> AppResult<TimelinePage> {
+    let kinds: Option<Vec<String>> = (!filters.kinds.is_empty()).then(|| {
+        filters
+            .kinds
+            .iter()
+            .map(|k| k.as_str().to_owned())
+            .collect()
+    });
     let (after_at, after_key) = match after {
         Some(c) => (Some(c.at), Some(c.id.as_str())),
         None => (None, None),
@@ -87,6 +154,9 @@ pub async fn page(
                 summary AS "summary!", key AS "key!"
          FROM k
          WHERE ($3::timestamptz IS NULL OR (at, key) < ($3, $4::text COLLATE "C"))
+           AND ($6::text[] IS NULL OR kind = ANY($6))
+           AND ($7::timestamptz IS NULL OR at >= $7)
+           AND ($8::timestamptz IS NULL OR at <= $8)
          ORDER BY at DESC, key DESC
          LIMIT $5"#,
         participant,
@@ -94,6 +164,9 @@ pub async fn page(
         after_at,
         after_key,
         limit + 1,
+        kinds.as_deref(),
+        filters.from,
+        filters.to,
     )
     .fetch_all(db)
     .await?;

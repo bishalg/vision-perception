@@ -8,16 +8,27 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createMockClient } from "@/lib/api/mock";
 import { MOCK_BASELINES_VERSIONS, mockBaselineSet, mockScoringProfile } from "@/lib/api/mock/configSeed";
+import { emptyCatalog, newArea, newClip } from "@/lib/catalog";
+import type { StimulusCatalog } from "@/lib/api/catalog";
 import { scoringProfileSchema } from "@/lib/api/config";
 import { AsdCore, type AsdWasmExports } from "@/lib/asd/core";
 import {
   contractInfo,
   defaultScoringProfile,
   rescoreApiSession,
+  rescoreSession,
   validateBaselines,
+  validateCatalog,
   validateScoringProfile,
 } from "@/lib/asd/ops";
 import { HAS_WASM, WASM_DIR, nodeCore } from "./asdCoreNode";
+
+function emptyCatalogWithClip(): StimulusCatalog {
+  const c = emptyCatalog();
+  const clip = newClip([]);
+  c.clips.push({ ...clip, title: "T", category: "c", areas: [{ ...newArea(clip, 0), roles: ["social"] }] });
+  return c;
+}
 
 function fake(over: Partial<AsdWasmExports>): AsdWasmExports {
   const ok = () => JSON.stringify({ ok: true, result: {} });
@@ -25,7 +36,9 @@ function fake(over: Partial<AsdWasmExports>): AsdWasmExports {
     contractInfo: ok,
     defaultScoringProfile: ok,
     validateScoringProfile: ok,
+    validateCatalog: ok,
     validateBaselines: ok,
+    rescoreSession: ok,
     rescoreApiSession: ok,
     lastPanic: () => undefined,
     ...over,
@@ -88,7 +101,7 @@ describe.skipIf(!HAS_WASM)("real asd-wasm build", () => {
 
   it("declares every export the console calls", () => {
     const dts = readFileSync(join(WASM_DIR!, "asd_wasm.js"), "utf8");
-    for (const name of ["contractInfo", "defaultScoringProfile", "validateScoringProfile", "validateBaselines", "rescoreApiSession", "lastPanic"]) {
+    for (const name of ["contractInfo", "defaultScoringProfile", "validateScoringProfile", "validateCatalog", "validateBaselines", "rescoreSession", "rescoreApiSession", "lastPanic"]) {
       expect(dts, name).toMatch(new RegExp(`export function ${name}\\(`));
     }
   });
@@ -97,7 +110,7 @@ describe.skipIf(!HAS_WASM)("real asd-wasm build", () => {
     const info = await contractInfo(core);
     expect(info.ok).toBe(true);
     if (info.ok) {
-      expect(info.result.sessionSchemaVersions).toEqual(["1.6", "1.7"]);
+      expect(info.result.sessionSchemaVersions).toEqual(["1.6", "1.7", "1.8"]);
       expect(info.result.lowConfidenceValidRatio).toBe(0.6);
     }
     const profile = await defaultScoringProfile(core);
@@ -125,6 +138,22 @@ describe.skipIf(!HAS_WASM)("real asd-wasm build", () => {
       expect(r.result.fieldProblems[0]!.message).toBe("flag.greenFloor must be in [0, 1]");
     }
     const shape = await validateScoringProfile(core, { flag: {} });
+    expect(shape.ok && shape.result.valid).toBe(false);
+  });
+
+  it("validateCatalog runs the backend's catalog rules with JSON paths", async () => {
+    const good = await validateCatalog(core, emptyCatalogWithClip());
+    expect(good).toEqual({ ok: true, result: { valid: true, problems: [], fieldProblems: [] } });
+    const bad = emptyCatalogWithClip();
+    bad.clips[0]!.areas[0]!.xMin = 1.4;
+    bad.fallbackLanguage = "fr";
+    const r = await validateCatalog(core, bad);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.result.valid).toBe(false);
+      expect(r.result.fieldProblems.map((p) => p.path)).toEqual(["fallbackLanguage", "clips[0].areas[0].xMin", "clips[0].areas[0].xMax"]);
+    }
+    const shape = await validateCatalog(core, { clips: [] });
     expect(shape.ok && shape.result.valid).toBe(false);
   });
 
@@ -158,6 +187,27 @@ describe.skipIf(!HAS_WASM)("real asd-wasm build", () => {
       }
     }
     expect(changed).toBeGreaterThan(0);
+  });
+
+  it("re-scores the stored record of every mock session (1.6, 1.7 and 1.8) with the recorded clip ratios", async () => {
+    const api = createMockClient();
+    const page = await api.listSessions("5f0e1d2c-3b4a-4968-8776-655443322110", { limit: 64 });
+    const baselines = (await api.getConfigDocument("normative_baselines", MOCK_BASELINES_VERSIONS.published)).body;
+    const versions = new Set<string>();
+    for (const s of page.items) {
+      const raw = await api.getSessionRaw(s.id);
+      versions.add(raw.schema_version);
+      const r = await rescoreSession(core, raw.raw_payload, mockScoringProfile(), baselines, { ageMonths: 30 });
+      expect(r.ok, JSON.stringify(r)).toBe(true);
+      if (r.ok) {
+        expect(r.result.sessionId).toBe(s.id);
+        expect(r.result.schemaVersion).toBe(raw.schema_version);
+        expect(r.result.metricSource).toBe("sessionReport");
+        // The record carries the device's per-clip ratio, so no "every clip uses the session's ratio" warning.
+        expect(r.result.warnings.join(" ")).not.toMatch(/no per-clip valid-sample ratio/);
+      }
+    }
+    expect([...versions].sort()).toEqual(["1.6", "1.7", "1.8"]);
   });
 
   it("bad input is an envelope, not an exception", async () => {

@@ -100,18 +100,6 @@ export type StimulusCatalog = z.infer<typeof stimulusCatalogSchema>;
 export const AOI_ROLES = ["social", "geometric", "eye", "mouth", "orienting"] as const;
 export type AoiRole = (typeof AOI_ROLES)[number];
 
-/**
- * Problem slugs only the config routes return (`config_docs::ConfigApiError` and its conflicts). They are not in the
- * contract's `ProblemSlug` enum yet, so they live here and not in `PROBLEM_SLUGS`.
- */
-export const CONFIG_PROBLEM_SLUGS = [
-  "four-eyes-required",
-  "invalid-transition",
-  "config-version-exists",
-  "config-invalid",
-  "bundle-signing-unavailable",
-] as const;
-
 export interface ConfigListQuery {
   status?: ConfigDocumentStatus;
   cursor?: string;

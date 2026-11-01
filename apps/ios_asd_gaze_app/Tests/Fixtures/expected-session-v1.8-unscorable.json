@@ -1,0 +1,28 @@
+{
+  "attentionFlag": null,
+  "battery": null,
+  "captureSource": "truedepth",
+  "durationSec": 32.5,
+  "participantToken": "child-SESS-GOL",
+  "qualityVerdict": "degraded",
+  "rawPayload": {
+    "captureSource": "truedepth",
+    "durationSec": 32.5,
+    "endedAt": "2026-10-26T07:33:52.500Z",
+    "id": "rec-golden-0002",
+    "participantId": "child-SESS-GOL",
+    "qualityVerdict": "degraded",
+    "schemaVersion": "v1.8",
+    "scoringStatus": "unscorable",
+    "sessionId": "SESS-GOLDEN-0002",
+    "startedAt": "2026-10-26T07:33:20.000Z",
+    "unscorableReason": "insufficient_valid_gaze",
+    "validFrameRatio": 0.12,
+    "zeroRawVideoEnforced": true
+  },
+  "schemaVersion": "1.8",
+  "scoringStatus": "unscorable",
+  "sessionId": "SESS-GOLDEN-0002",
+  "unscorableReason": "insufficient_valid_gaze",
+  "validRatio": 0.12
+}

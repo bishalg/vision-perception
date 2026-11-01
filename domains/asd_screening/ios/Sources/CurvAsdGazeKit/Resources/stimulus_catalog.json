@@ -67,8 +67,8 @@
         { "id": "comprehensive_60s", "order": 4 }
       ],
       "areas": [
-        { "name": "Actor_Eyes", "startSec": 0.0, "endSec": 10.0, "xMin": 0.36, "yMin": 0.20, "xMax": 0.64, "yMax": 0.38, "roles": ["social", "eye", "orienting"] },
-        { "name": "Gift_Box", "startSec": 0.0, "endSec": 10.0, "xMin": 0.28, "yMin": 0.55, "xMax": 0.72, "yMax": 0.95, "roles": ["geometric"] }
+        { "name": "Actor_Eyes", "startSec": 0.0, "endSec": 8.0, "xMin": 0.36, "yMin": 0.20, "xMax": 0.64, "yMax": 0.38, "roles": ["social", "eye", "orienting"] },
+        { "name": "Gift_Box", "startSec": 0.0, "endSec": 8.0, "xMin": 0.28, "yMin": 0.55, "xMax": 0.72, "yMax": 0.95, "roles": ["geometric"] }
       ]
     },
     {
@@ -83,8 +83,8 @@
         { "id": "comprehensive_60s", "order": 0 }
       ],
       "areas": [
-        { "name": "Social_Actor", "startSec": 0.0, "endSec": 10.0, "xMin": 0.0, "yMin": 0.0, "xMax": 0.5, "yMax": 1.0, "roles": ["social", "orienting"] },
-        { "name": "Geometric_Pattern", "startSec": 0.0, "endSec": 10.0, "xMin": 0.5, "yMin": 0.0, "xMax": 1.0, "yMax": 1.0, "roles": ["geometric"] }
+        { "name": "Social_Actor", "startSec": 0.0, "endSec": 8.0, "xMin": 0.0, "yMin": 0.0, "xMax": 0.5, "yMax": 1.0, "roles": ["social", "orienting"] },
+        { "name": "Geometric_Pattern", "startSec": 0.0, "endSec": 8.0, "xMin": 0.5, "yMin": 0.0, "xMax": 1.0, "yMax": 1.0, "roles": ["geometric"] }
       ]
     },
     {
@@ -138,8 +138,8 @@
         { "id": "comprehensive_60s", "order": 6 }
       ],
       "areas": [
-        { "name": "Teacher_Face", "startSec": 0.0, "endSec": 10.0, "xMin": 0.28, "yMin": 0.15, "xMax": 0.72, "yMax": 0.75, "roles": ["social", "orienting"] },
-        { "name": "Teacher_Mouth", "startSec": 0.0, "endSec": 10.0, "xMin": 0.40, "yMin": 0.48, "xMax": 0.60, "yMax": 0.64, "roles": ["social", "mouth"] }
+        { "name": "Teacher_Face", "startSec": 0.0, "endSec": 8.0, "xMin": 0.28, "yMin": 0.15, "xMax": 0.72, "yMax": 0.75, "roles": ["social", "orienting"] },
+        { "name": "Teacher_Mouth", "startSec": 0.0, "endSec": 8.0, "xMin": 0.40, "yMin": 0.48, "xMax": 0.60, "yMax": 0.64, "roles": ["social", "mouth"] }
       ]
     },
     {
@@ -153,7 +153,7 @@
         { "id": "comprehensive_60s", "order": 7 }
       ],
       "areas": [
-        { "name": "Animal_Puppies", "startSec": 0.0, "endSec": 9.0, "xMin": 0.18, "yMin": 0.25, "xMax": 0.82, "yMax": 0.85, "roles": [] }
+        { "name": "Animal_Puppies", "startSec": 0.0, "endSec": 8.0, "xMin": 0.18, "yMin": 0.25, "xMax": 0.82, "yMax": 0.85, "roles": [] }
       ]
     }
   ]

@@ -228,13 +228,13 @@ final class SessionSyncServiceTests: XCTestCase {
         XCTAssertEqual(post.url.absoluteString, "https://api.example.org/v1/sessions")
         XCTAssertEqual(post.headers["Authorization"], "Bearer tok-headers")
         XCTAssertEqual(post.headers["X-Idempotency-Key"], "SESS-HDR-1")
-        XCTAssertEqual(post.headers["X-Schema-Version"], "1.7")
+        XCTAssertEqual(post.headers["X-Schema-Version"], "1.8")
         XCTAssertEqual(post.headers["User-Agent"], "EyeGaze-iOS/1.0.0 (3; iOS 18.0)")
         XCTAssertEqual(post.headers["Content-Type"], "application/json")
 
         let body = try XCTUnwrap(JSONSerialization.jsonObject(with: post.body) as? [String: Any])
         XCTAssertEqual(body["sessionId"] as? String, "SESS-HDR-1")
-        XCTAssertEqual(body["schemaVersion"] as? String, "1.7")
+        XCTAssertEqual(body["schemaVersion"] as? String, "1.8")
         XCTAssertEqual(body["attentionFlag"] as? String, "green")
         XCTAssertNotNil(body["rawPayload"])
 

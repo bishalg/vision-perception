@@ -1,5 +1,5 @@
 /** WP-C.14: participant workspace. Wire format, mock rules, components and RBAC. */
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Disclosures } from "@/components/participant/Disclosures";
@@ -7,7 +7,7 @@ import { MrnPanel, type MrnPanelProps } from "@/components/participant/MrnPanel"
 import { NotesPanel } from "@/components/participant/NotesPanel";
 import { PrintSummary } from "@/components/participant/PrintSummary";
 import { ParticipantTabs, parseWorkspaceTab } from "@/components/participant/ParticipantTabs";
-import { Timeline, describeEntry, parseKinds } from "@/components/participant/Timeline";
+import { Timeline, describeEntry, parseDay, parseKinds } from "@/components/participant/Timeline";
 import { ParticipantsTable } from "@/components/ParticipantsTable";
 import { ROLES, type ClinicalReview } from "@/lib/api";
 import { createLiveClient } from "@/lib/api/live";
@@ -54,6 +54,26 @@ describe("live client wire format", () => {
     const t = client(json({ items: [entry()], next_cursor: null }));
     await t.api.getParticipantTimeline("p1", { cursor: "c", limit: 25 });
     expect(t.f.mock.calls[0]![0]).toBe("https://api.test/v1/participants/p1/timeline?cursor=c&limit=25");
+  });
+
+  it("sends timeline filters as query parameters, kinds as a comma list", async () => {
+    const t = client(json({ items: [], next_cursor: null }));
+    await t.api.getParticipantTimeline("p1", { kind: ["session", "note"], from: "2026-10-01", to: "2026-10-31", limit: 25 });
+    expect(t.f.mock.calls[0]![0]).toBe(
+      "https://api.test/v1/participants/p1/timeline?kind=session%2Cnote&from=2026-10-01&to=2026-10-31&limit=25",
+    );
+    const e = client(json({ items: [], next_cursor: null }));
+    await e.api.getParticipantTimeline("p1", { kind: [] });
+    expect(e.f.mock.calls[0]![0]).toBe("https://api.test/v1/participants/p1/timeline");
+  });
+
+  it("reads the care summary and the sessions of one participant", async () => {
+    const s = client(json({ participant_token: "child-001", total_events: 0, task_completions: 0, medication_doses: 0, diary_entries: 0, milestones: 0, session_count: 0, checkin_count: 0, completion_rate_percent: 0, recent_moods: [] }));
+    await s.api.getParticipantCareSummary("p/1");
+    expect(s.f.mock.calls[0]![0]).toBe("https://api.test/v1/participants/p%2F1/summary");
+    const l = client(json({ items: [], next_cursor: null, total: 0 }));
+    await l.api.listSessions("o", { participant_id: "p1", limit: 21 });
+    expect(l.f.mock.calls[0]![0]).toBe("https://api.test/v1/orgs/o/sessions?participant_id=p1&limit=21");
   });
 
   it("creates a note and a correction with POST bodies", async () => {
@@ -120,6 +140,44 @@ describe("mock client", () => {
     expect(seen.length).toBeGreaterThan(3);
   });
 
+  it("filters the timeline by kind and range, and the cursor continues inside the filter", async () => {
+    const { api, p } = await first();
+    const all = (await api.getParticipantTimeline(p.id, { limit: 100 })).items;
+    const sessions = (await api.getParticipantTimeline(p.id, { kind: ["session"], limit: 100 })).items;
+    expect(sessions.length).toBeGreaterThan(0);
+    expect(sessions.every((e) => e.kind === "session")).toBe(true);
+    expect(sessions).toEqual(all.filter((e) => e.kind === "session"));
+    const two = (await api.getParticipantTimeline(p.id, { kind: ["session", "note"], limit: 100 })).items;
+    expect(two).toEqual(all.filter((e) => e.kind === "session" || e.kind === "note"));
+    const seen: string[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await api.getParticipantTimeline(p.id, { kind: ["session"], limit: 1, cursor });
+      seen.push(...page.items.map((e) => e.id));
+      cursor = page.next_cursor ?? undefined;
+    } while (cursor);
+    expect(seen).toEqual(sessions.map((e) => e.id));
+    // A bare `to` day is inclusive.
+    const day = all[0]!.at.slice(0, 10);
+    const onDay = (await api.getParticipantTimeline(p.id, { from: day, to: day, limit: 100 })).items;
+    expect(onDay.length).toBeGreaterThan(0);
+    expect(onDay.every((e) => e.at.startsWith(day))).toBe(true);
+    await expect(api.getParticipantTimeline(p.id, { from: "yesterday" })).rejects.toMatchObject({ status: 400 });
+  });
+
+  it("lists the sessions of one participant and reads its care summary and a session's raw record", async () => {
+    const { api, p } = await first();
+    const mine = await api.listSessions(MOCK_ORG_ID, { participant_id: p.id, limit: 100 });
+    expect(mine.items.length).toBeGreaterThan(0);
+    expect(mine.items.every((s) => s.participant_id === p.id)).toBe(true);
+    expect(mine.total).toBe(mine.items.length);
+    expect((await api.getParticipantCareSummary(p.id)).participant_token).toBe(p.participant_token);
+    const raw = await api.getSessionRaw(mine.items[0]!.id);
+    expect(raw.participant_token).toBe(p.participant_token);
+    expect(raw.raw_payload).not.toHaveProperty("notes");
+    await expect(api.getSessionRaw("nope")).rejects.toMatchObject({ status: 404 });
+  });
+
   it("notes are append-only: a correction links both ways and the original reports corrected_by", async () => {
     const { api, p } = await first();
     const before = (await api.listParticipantNotes(p.id)).items;
@@ -159,15 +217,33 @@ describe("mock client", () => {
 describe("Timeline", () => {
   const entries = [entry(), entry({ kind: "note", id: "n1", summary: { note_kind: "general" }, actor_display_name: "Dr A" })];
 
-  it("filters by kind on the page and links back with the filter kept", () => {
+  it("shows what the server filtered and links back with the filter kept", () => {
     expect(parseKinds(["note", "bogus", "note"])).toEqual(["note"]);
-    render(<Timeline entries={entries} kinds={["note"]} basePath="/o/participants/p1" orgPath="/o" nextCursor="abc" hasCursor />);
+    expect(parseDay("2026-10-05")).toBe("2026-10-05");
+    expect(parseDay(["2026-10-05", "x"])).toBe("2026-10-05");
+    expect(parseDay("yesterday")).toBeUndefined();
+    const served = [entries[1]!];
+    render(
+      <Timeline entries={served} kinds={["note"]} from="2026-10-01" to="2026-10-31" basePath="/o/participants/p1" orgPath="/o" nextCursor="abc" hasCursor />,
+    );
     const rows = screen.getAllByRole("row").slice(1);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toHaveAttribute("data-kind", "note");
-    expect(screen.getByRole("link", { name: "Older" })).toHaveAttribute("href", "/o/participants/p1?tab=timeline&kind=note&cursor=abc");
-    expect(screen.getByRole("link", { name: "Newest" })).toHaveAttribute("href", "/o/participants/p1?tab=timeline&kind=note");
+    expect(screen.getByRole("link", { name: "Older" })).toHaveAttribute(
+      "href",
+      "/o/participants/p1?tab=timeline&kind=note&from=2026-10-01&to=2026-10-31&cursor=abc",
+    );
+    expect(screen.getByRole("link", { name: "Newest" })).toHaveAttribute(
+      "href",
+      "/o/participants/p1?tab=timeline&kind=note&from=2026-10-01&to=2026-10-31",
+    );
     expect(screen.getByRole("checkbox", { name: "Note" })).toBeChecked();
+    expect(screen.getByLabelText("From")).toHaveValue("2026-10-01");
+    // The page's rows are not filtered again on the client, and the old page-only caveat is gone.
+    expect(screen.queryByText(/apply to the entries on this page/)).toBeNull();
+    cleanup();
+    render(<Timeline entries={entries} kinds={["note"]} basePath="/o/participants/p1" orgPath="/o" nextCursor={null} hasCursor={false} />);
+    expect(screen.getAllByRole("row")).toHaveLength(3);
   });
 
   it("shows all entries without a filter, links sessions, and describes headers only", () => {
@@ -177,6 +253,11 @@ describe("Timeline", () => {
     expect(screen.queryByRole("link", { name: "Older" })).toBeNull();
     expect(describeEntry(entry({ kind: "clinical_review", summary: { state: "awaiting_cosign", version_no: 2 } }))).toBe("Review awaiting cosign, version 2");
     expect(describeEntry(entry({ kind: "care_event", summary: { care_kind: "diary" } }))).toBe("Care event: diary");
+  });
+
+  it("explains an empty filtered page differently from an empty timeline", () => {
+    render(<Timeline entries={[]} kinds={["letter"]} basePath="/o/participants/p1" orgPath="/o" nextCursor={null} hasCursor={false} />);
+    expect(screen.getByText("No entries match the chosen filters.")).toBeInTheDocument();
   });
 
   it("explains an empty page", () => {
@@ -364,6 +445,7 @@ describe("PrintSummary", () => {
         participant={participant}
         generatedAt="2026-11-01T00:00:00Z"
         notes={[note()]}
+        care={{ participant_token: "child-001", total_events: 5, task_completions: 2, medication_doses: 1, diary_entries: 1, milestones: 1, session_count: 2, checkin_count: 0, completion_rate_percent: 100, recent_moods: ["calm"] }}
         rows={[
           { sessionId: "s1", at: "2026-10-30T09:00:00Z", flag: "red", review: review("final") },
           { sessionId: "s2", at: "2026-10-29T09:00:00Z", flag: "green", review: draft },
@@ -378,6 +460,7 @@ describe("PrintSummary", () => {
     expect(screen.getByText("Draft (unsigned)")).toBeInTheDocument();
     expect(screen.getByText("Not reviewed")).toBeInTheDocument();
     expect(screen.getByText("Original text")).toBeInTheDocument();
+    expect(screen.getByText(/5 care events recorded: 2 tasks completed.*Recent moods: calm/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Print" })).toBeInTheDocument();
   });
 

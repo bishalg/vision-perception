@@ -148,10 +148,13 @@ pulls `@img/sharp-libvips-*` (LGPL-3.0, dynamically loaded); this app sets `imag
 - `decision` and label keys/values are free JSON in the contract; the triage vocabulary above is a console convention
   that only `exclude_from_norms` is read by the backend.
 - The QR payload is the plain enrol code; the iOS app has no QR scanner yet and no URL format is defined.
-- WP-C.5 sandbox: no endpoint returns a stored session's `rawPayload` or frames, so the re-score uses the API form
-  (`SessionDetail` + clip rows, asd-wasm `rescoreApiSession`): one valid-sample ratio for every clip and no segment
-  windows. Sessions carry no age; the sandbox asks for it. The sandbox-before-publish gate and the required changelog
-  note are not enforced by the backend.
+- WP-C.5 sandbox: re-score uses the stored record from `GET /v1/sessions/{id}/raw` (asd-wasm `rescoreSession`, schema
+  1.6 to 1.8, per-clip valid-sample ratios as recorded). Gaze frames are encrypted on the device and not served, so
+  segment windows are not recomputed. Sessions carry no age; the sandbox asks for it. The sandbox-before-publish gate
+  and the required changelog note are not enforced by the backend.
+- WP-C.14 participant workspace: timeline `kind`/`from`/`to` filters, `GET /orgs/{id}/sessions?participant_id=` and
+  `GET /participants/{id}/summary` (care counts for the print view; owner and clinician, audited) are served by the
+  backend; the console no longer filters a page client-side or scrapes the timeline.
 
 ## Not yet done
 

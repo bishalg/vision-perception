@@ -7,17 +7,26 @@
 //! - [`classify_response`] / [`classify_register_response`]: what an HTTP answer means;
 //! - [`validate_upload_url`] / [`validate_ingest_url`] / [`endpoint_url`]: the https and
 //!   DNS-host rules of F7 and whether a bearer may be attached;
-//! - [`backoff_schedule`] / [`next_retry_delay`]: the retry schedule.
+//! - [`backoff_schedule`] / [`next_retry_delay`]: the retry schedule;
+//! - [`build_config_bundle_request`] / [`classify_config_bundle_response`] /
+//!   [`accept_bundle`]: config bundle delivery and the device's trust decision (WP-A.5).
 //!
 //! Ported from `SessionSyncClient.swift`, `DeviceRegistrationService.swift`,
 //! `SyncTransport.swift` (`retryAfterSeconds`), `ResearchStudyConfiguration.validateIngestURL`
 //! and `ResearchSyncRetryPolicy`; their tests are the oracle (`tests/protocol.rs`).
 
+mod config_bundle;
 mod request;
 mod response;
 mod retry;
 mod url_rules;
 
+pub use config_bundle::{
+    accept_bundle, build_config_bundle_request, classify_config_bundle_response,
+    compare_bundle_versions, parse_bundle_version, parse_rfc3339_unix, BundlePolicy,
+    BundleRejection, ConfigBundleOutcome, TrustedKey, CONFIG_BUNDLE_PATH,
+    CONFIG_BUNDLE_TIMEOUT_SECS, MAX_CLOCK_SKEW_SECS,
+};
 pub use request::{
     build_register_request, build_session_request, build_session_request_json,
     build_session_request_v1_7, build_session_request_v1_8, ClientInfo, SyncRequest, REGISTER_PATH,

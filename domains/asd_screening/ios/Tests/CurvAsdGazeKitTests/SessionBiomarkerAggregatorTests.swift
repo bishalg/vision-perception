@@ -32,7 +32,7 @@ final class SessionBiomarkerAggregatorTests: XCTestCase {
             frame(timeSec: 0.0, names: ["Face_Center", "Eye_Region"]),
             frame(timeSec: 1.0 / 60.0, names: ["Geometric_Pattern"])
         ]
-        let result = SessionBiomarkerAggregator.aggregate(validFrames: frames, durationSec: 2.0 / 60.0)
+        let result = try SessionBiomarkerAggregator.aggregate(validFrames: frames, durationSec: 2.0 / 60.0)
 
         XCTAssertEqual(result.socialDwellSec, 1.0 / 60.0, accuracy: 1e-9)
         XCTAssertEqual(result.geometricDwellSec, 1.0 / 60.0, accuracy: 1e-9)
@@ -47,25 +47,25 @@ final class SessionBiomarkerAggregatorTests: XCTestCase {
             frame(timeSec: 0.4, names: ["Teacher_Mouth"]),
             frame(timeSec: 0.6, names: ["Teacher_Mouth"])
         ]
-        let result = SessionBiomarkerAggregator.aggregate(validFrames: frames, durationSec: 1.0)
+        let result = try SessionBiomarkerAggregator.aggregate(validFrames: frames, durationSec: 1.0)
         XCTAssertEqual(try XCTUnwrap(result.eyeDwellRatio), 1.0 / 3.0, accuracy: 1e-9)
         XCTAssertEqual(try XCTUnwrap(result.mouthDwellRatio), 2.0 / 3.0, accuracy: 1e-9)
         XCTAssertEqual(try XCTUnwrap(result.firstOrientLatencyMs), 200.0, accuracy: 1e-6)
     }
 
-    func testGiftBoxCompetesWithSocialPreference() {
+    func testGiftBoxCompetesWithSocialPreference() throws {
         let frames = [
             frame(timeSec: 0.0, names: ["Actor_Eyes"]),
             frame(timeSec: 0.1, names: ["Gift_Box"]),
             frame(timeSec: 0.2, names: ["Gift_Box"])
         ]
-        let result = SessionBiomarkerAggregator.aggregate(validFrames: frames, durationSec: 0.3)
+        let result = try SessionBiomarkerAggregator.aggregate(validFrames: frames, durationSec: 0.3)
         XCTAssertEqual(result.socialPreferenceScore, (1.0 - 2.0) / 3.0, accuracy: 1e-9)
     }
 
-    func testPuppyControlDoesNotInflateSocialPreference() {
+    func testPuppyControlDoesNotInflateSocialPreference() throws {
         let frames = [frame(timeSec: 0.2, names: ["Animal_Puppies"])]
-        let result = SessionBiomarkerAggregator.aggregate(validFrames: frames, durationSec: 1.0)
+        let result = try SessionBiomarkerAggregator.aggregate(validFrames: frames, durationSec: 1.0)
         XCTAssertEqual(result.socialPreferenceScore, 0.0, accuracy: 1e-9)
         XCTAssertEqual(result.socialDwellSec, 0.0, accuracy: 1e-9)
         // Never oriented to a person and never hit a face feature: unmeasured, not a default.
@@ -74,8 +74,8 @@ final class SessionBiomarkerAggregatorTests: XCTestCase {
         XCTAssertNil(result.mouthDwellRatio)
     }
 
-    func testEmptyValidFramesLeaveOptionalMetricsUnmeasured() {
-        let result = SessionBiomarkerAggregator.aggregate(validFrames: [], durationSec: 5.0)
+    func testEmptyValidFramesLeaveOptionalMetricsUnmeasured() throws {
+        let result = try SessionBiomarkerAggregator.aggregate(validFrames: [], durationSec: 5.0)
         XCTAssertNil(result.firstOrientLatencyMs)
         XCTAssertNil(result.eyeDwellRatio)
         XCTAssertNil(result.mouthDwellRatio)
@@ -104,21 +104,22 @@ final class SessionBiomarkerAggregatorTests: XCTestCase {
         XCTAssertNil(never.mouthDwellRatio)
     }
 
-    func testSmileReactivityIsPeakAboveOpeningBaseline() {
+    func testSmileReactivityIsPeakAboveOpeningBaseline() throws {
         let frames = [
             frame(timeSec: 0.1, names: ["Social_Actor"], smile: 0.10),
             frame(timeSec: 0.4, names: ["Social_Actor"], smile: 0.10),
             frame(timeSec: 2.0, names: ["Social_Actor"], smile: 0.70)
         ]
-        let result = SessionBiomarkerAggregator.aggregate(validFrames: frames, durationSec: 2.0)
+        let result = try SessionBiomarkerAggregator.aggregate(validFrames: frames, durationSec: 2.0)
         XCTAssertEqual(result.smileReactivityIndex, 0.60, accuracy: 1e-9)
     }
 
-    func testTurnTakingAOIStillHitsAfterEightSeconds() {
+    func testTurnTakingAOIsCoverTheWholeClip() {
+        // The clip is 8.0 s (the `_10s` id is a legacy name); its AOIs must last to the end.
         let tracker = StimulusAOITracker.tracker(forVideoNamed: "stim_09_social_turn_taking_10s")
-        let hits = tracker.activeAOIs(atTimeSec: 9.2, xNorm: 0.50, yNorm: 0.40)
+        let hits = tracker.activeAOIs(atTimeSec: 7.95, xNorm: 0.50, yNorm: 0.40)
         XCTAssertTrue(hits.contains("Teacher_Face"))
-        let mouth = tracker.activeAOIs(atTimeSec: 9.2, xNorm: 0.50, yNorm: 0.55)
+        let mouth = tracker.activeAOIs(atTimeSec: 7.95, xNorm: 0.50, yNorm: 0.55)
         XCTAssertTrue(mouth.contains("Teacher_Mouth"))
     }
 

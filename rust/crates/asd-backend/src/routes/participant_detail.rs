@@ -4,7 +4,8 @@
 //!
 //! - `GET /v1/participants/{id}`: the [`Participant`] of `GET /v1/orgs/{id}/participants`;
 //!   `has_patient_ref` is present only for a caller who may read the MRN (MRN-6).
-//! - `GET /v1/participants/{id}/timeline`: [`crate::read::timeline`], headers only.
+//! - `GET /v1/participants/{id}/timeline`: [`crate::read::timeline`], headers only; filters
+//!   `kind` (repeatable or comma list), `from`, `to`.
 //!
 //! A participant of another org, an unknown id and a malformed id are all `404` (AUTH-4).
 //! The helpers below are shared by the MRN and note routes.
@@ -32,6 +33,27 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/participants/{id}", get(detail))
         .route("/participants/{id}/timeline", get(timeline_page))
+}
+
+/// `?kind=&from=&to=&cursor=&limit=` of the timeline: `kind` may repeat or be a comma list.
+fn timeline_query(
+    q: Result<Query<Vec<(String, String)>>, QueryRejection>,
+) -> AppResult<(timeline::TimelineFilters, i64, Option<Cursor>)> {
+    let pairs = query_or_problem(q)?;
+    let filters = timeline::TimelineFilters::from_pairs(&pairs)?;
+    let pick = |name: &str| {
+        pairs
+            .iter()
+            .rev()
+            .find(|(k, _)| k == name)
+            .map(|(_, v)| v.clone())
+    };
+    let (limit, after) = PageQuery {
+        cursor: pick("cursor"),
+        limit: pick("limit"),
+    }
+    .parse()?;
+    Ok((filters, limit, after))
 }
 
 /// `?cursor=&limit=` of the paged lists in this package.
@@ -116,12 +138,12 @@ async fn timeline_page(
     auth: Require<perm::ParticipantRead>,
     State(state): State<AppState>,
     Path(raw_id): Path<String>,
-    query: Result<Query<PageQuery>, QueryRejection>,
+    query: Result<Query<Vec<(String, String)>>, QueryRejection>,
 ) -> AppResult<Json<TimelinePage>> {
     let (id, org) = participant_org(&state.db, &raw_id).await?;
     auth.ensure_org(org)?;
-    let (limit, after) = page_query(query)?.parse()?;
+    let (filters, limit, after) = timeline_query(query)?;
     Ok(Json(
-        timeline::page(&state.db, org, id, after.as_ref(), limit).await?,
+        timeline::page(&state.db, org, id, &filters, after.as_ref(), limit).await?,
     ))
 }

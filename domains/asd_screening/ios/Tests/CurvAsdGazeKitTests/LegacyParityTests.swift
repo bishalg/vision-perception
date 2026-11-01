@@ -174,11 +174,11 @@ final class LegacyParityTests: XCTestCase {
 
     // MARK: - Aggregate
 
-    func testSessionAggregateMatchesSwiftOracle() {
+    func testSessionAggregateMatchesSwiftOracle() throws {
         for seed in Self.seeds {
             let valid = session(seed: seed).filter { $0.gaze.isValid && $0.qualityVerdict != .rejected }
             for subset in [valid, Array(valid.prefix(1)), [], valid.filter { !$0.activeAOINames.isEmpty }] {
-                let rust = SessionBiomarkerAggregator.aggregate(validFrames: subset, durationSec: 10)
+                let rust = try SessionBiomarkerAggregator.aggregate(validFrames: subset, durationSec: 10)
                 let swift = LegacySessionBiomarkerAggregator.aggregate(validFrames: subset, durationSec: 10)
                 Golden.assertClose(GoldenParityTests.json(rust), GoldenParityTests.json(swift), "aggregate seed \(seed) n=\(subset.count)")
             }

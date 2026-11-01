@@ -116,14 +116,13 @@ public final class BiomarkerClassificationEngine: @unchecked Sendable {
         summary: GazeSessionReportSummary,
         startTime: CFAbsoluteTime
     ) -> BiomarkerClassificationResult? {
-        var featureDictionary: [String: Double] = [
-            "socialPreferenceScore": summary.socialPreferenceScore,
-            "socialSmileIntensityMean": summary.socialSmileIntensityMean,
-            "smileReactivityIndex": summary.smileReactivityIndex,
-            "flatAffectScore": summary.flatAffectScore,
-            "surpriseScoreMean": summary.surpriseScoreMean,
-            "validRatio": summary.validRatio
-        ]
+        var featureDictionary: [String: Double] = ["validRatio": summary.validRatio]
+        // An unscorable session (SCH-5) has no score features at all.
+        if let value = summary.socialPreferenceScore { featureDictionary["socialPreferenceScore"] = value }
+        if let value = summary.socialSmileIntensityMean { featureDictionary["socialSmileIntensityMean"] = value }
+        if let value = summary.smileReactivityIndex { featureDictionary["smileReactivityIndex"] = value }
+        if let value = summary.flatAffectScore { featureDictionary["flatAffectScore"] = value }
+        if let value = summary.surpriseScoreMean { featureDictionary["surpriseScoreMean"] = value }
         // Absent metrics are absent features (PLC-4); a model that requires them
         // fails prediction and the heuristic path runs instead.
         if let value = summary.eyeDwellRatio { featureDictionary["eyeDwellRatio"] = value }
@@ -194,7 +193,7 @@ public final class BiomarkerClassificationEngine: @unchecked Sendable {
                 key: "socialPreference",
                 label: "Low Social Preference Index (< 50%)",
                 weight: 0.42,
-                risk: 1.0 - max(0.0, min(1.0, (summary.socialPreferenceScore + 1.0) / 2.0))
+                risk: summary.socialPreferenceScore.map { 1.0 - max(0.0, min(1.0, ($0 + 1.0) / 2.0)) }
             ),
             // Eye dwell: typical 0.25 - 0.45, reduced < 0.18.
             Term(
@@ -214,13 +213,13 @@ public final class BiomarkerClassificationEngine: @unchecked Sendable {
                 key: "flatAffect",
                 label: "Affective Hypomimia (Flat Affect)",
                 weight: 0.12,
-                risk: max(0.0, min(1.0, summary.flatAffectScore))
+                risk: summary.flatAffectScore.map { max(0.0, min(1.0, $0)) }
             ),
             Term(
                 key: "smileReactivity",
                 label: "Attenuated Smile Reactivity",
                 weight: 0.08,
-                risk: 1.0 - max(0.0, min(1.0, summary.smileReactivityIndex / 0.50))
+                risk: summary.smileReactivityIndex.map { 1.0 - max(0.0, min(1.0, $0 / 0.50)) }
             )
         ]
 

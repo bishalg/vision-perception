@@ -92,6 +92,11 @@ export async function validateScoringProfile(core: AsdCore, profile: unknown): P
   return decode(await core.call("validateScoringProfile", json(profile)), validationSchema, "validateScoringProfile");
 }
 
+/** Shape plus the backend's catalog rules (asd-contract `catalog_checks`), with the JSON path (`clips[2].areas[0].xMin`) of each problem. */
+export async function validateCatalog(core: AsdCore, catalog: unknown): Promise<Envelope<Validation>> {
+  return decode(await core.call("validateCatalog", json(catalog)), validationSchema, "validateCatalog");
+}
+
 /** asd-core baseline coverage (`baselines::validate`), the check the backend runs on create and approve. */
 export async function validateBaselines(
   core: AsdCore,
@@ -109,6 +114,25 @@ export interface RescoreOptions {
   ageMonths: number;
   scoredAtUtc?: string;
   validSampleRatio?: number;
+}
+
+/**
+ * Re-score a stored record (the `raw_payload` of `GET /sessions/{id}/raw`, schema 1.6 to 1.8) with a profile and
+ * baseline set. Without frames the metric sets are rebuilt from the device's own score rows, so the re-score uses the
+ * recorded per-clip valid-sample ratios. No writes.
+ */
+export async function rescoreSession(
+  core: AsdCore,
+  record: unknown,
+  profile: ScoringProfile | unknown,
+  baselines: NormativeBaselineSet | unknown,
+  options: RescoreOptions,
+): Promise<Envelope<RescoreResult>> {
+  return decode(
+    await core.call("rescoreSession", json(record), json(profile), json(baselines), json(options)),
+    rescoreResultSchema,
+    "rescoreSession",
+  );
 }
 
 /** Re-score a session as read from the API (detail + clip rows) with a profile and baseline set. No writes. */

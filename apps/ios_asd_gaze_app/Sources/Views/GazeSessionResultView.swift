@@ -88,16 +88,26 @@ public struct GazeSessionResultView: View {
                                 participantToken: participantToken
                             ))
                         )
-                        if let score = perVideoScore {
-                            AttentionFlagBanner(assessment: AttentionFlagAlgorithm.assess(score))
+                        // SCH-5: no flag for an unscorable session.
+                        if summary.scoringStatus == .scored, let score = perVideoScore {
+                            AttentionFlagBanner(assessment: AttentionFlagAlgorithm.assess(
+                                score, scoringProfileJSON: ScoringConfiguration.active.scoringProfileJSON
+                            ))
                         }
-                        socialPreferenceCard
+                        // SCH-5: no score cards for an unscorable session.
+                        if summary.scoringStatus == .scored {
+                            socialPreferenceCard
+                        } else {
+                            NotScoredNotice(reason: summary.unscorableReason)
+                        }
                         perVideoMatrixEntry
                         medicalDisclaimerBanner
                         #if ASD_RESEARCH_CLASSIFIER
                         mlClassificationCard
                         #endif
-                        facialAffectMetricsCard
+                        if summary.scoringStatus == .scored {
+                            facialAffectMetricsCard
+                        }
                         qualityAndContractCard
                         actionButtonsSection
                         NotDiagnosticFooter()
@@ -306,6 +316,11 @@ public struct GazeSessionResultView: View {
         }
     }
 
+    /// A score value as text, or "Not scored" for an unscorable session (SCH-5).
+    static func scoreText(_ value: Double?, _ format: (Double) -> String) -> String {
+        value.map(format) ?? "Not scored"
+    }
+
     private var socialPreferenceCard: some View {
         NavigationLink(value: BiomarkerDetailType.socialPreference) {
             VStack(alignment: .leading, spacing: 10) {
@@ -327,7 +342,7 @@ public struct GazeSessionResultView: View {
                 // Preference Spectrum Bar [-1.0 ... +1.0]
                 VStack(spacing: 4) {
                     GeometryReader { geo in
-                        let clamped = max(-1.0, min(1.0, summary.socialPreferenceScore))
+                        let clamped = max(-1.0, min(1.0, summary.socialPreferenceScore ?? 0))
                         let normX = (clamped + 1.0) / 2.0 * geo.size.width
 
                         ZStack(alignment: .leading) {
@@ -354,7 +369,7 @@ public struct GazeSessionResultView: View {
                             .font(.system(size: 10))
                             .foregroundColor(.purple)
                         Spacer()
-                        Text(String(format: "%+.2f", summary.socialPreferenceScore))
+                        Text(summary.socialPreferenceScore.map { String(format: "%+.2f", $0) } ?? "Not scored")
                             .font(.system(size: 12, weight: .bold, design: .monospaced))
                             .foregroundColor(.primary)
                         Spacer()
@@ -498,10 +513,10 @@ public struct GazeSessionResultView: View {
                 }
 
                 HStack(spacing: 16) {
-                    metricCol(title: "Smile Reactivity", value: String(format: "%.2f", summary.smileReactivityIndex))
-                    metricCol(title: "Mean Smile", value: String(format: "%d%%", Int(summary.socialSmileIntensityMean * 100)))
-                    metricCol(title: "Flat Affect", value: String(format: "%.2f", summary.flatAffectScore))
-                    metricCol(title: "Surprise Mean", value: String(format: "%d%%", Int(summary.surpriseScoreMean * 100)))
+                    metricCol(title: "Smile Reactivity", value: Self.scoreText(summary.smileReactivityIndex) { String(format: "%.2f", $0) })
+                    metricCol(title: "Mean Smile", value: Self.scoreText(summary.socialSmileIntensityMean) { String(format: "%d%%", Int($0 * 100)) })
+                    metricCol(title: "Flat Affect", value: Self.scoreText(summary.flatAffectScore) { String(format: "%.2f", $0) })
+                    metricCol(title: "Surprise Mean", value: Self.scoreText(summary.surpriseScoreMean) { String(format: "%d%%", Int($0 * 100)) })
                 }
             }
             .glassCard(cornerRadius: 16, padding: 14)
@@ -710,7 +725,7 @@ public struct GazeSessionResultView: View {
             careKitCompletionRate: carePlanStore.completionRatio,
             careKitMedicationsLogged: carePlanStore.medications.count,
             careKitDiaryEntriesLogged: carePlanStore.streakDays,
-            notes: "Social preference index: \(String(format: "%+.2f", summary.socialPreferenceScore)). Usable samples: \(String(format: "%.1f%%", summary.validRatio * 100))."
+            notes: "Social preference index: \(Self.scoreText(summary.socialPreferenceScore) { String(format: "%+.2f", $0) }). Usable samples: \(String(format: "%.1f%%", summary.validRatio * 100))."
         )
 
         let pdfData = DoctorReportGenerator.generatePDFData(input: input)
@@ -760,7 +775,7 @@ public struct GazeSessionResultView: View {
         Recording quality: \(summary.qualityVerdict.rawValue.uppercased()) (\(String(format: "%.1f%%", summary.validRatio * 100)) usable)
 
         WHERE YOUR CHILD LOOKED:
-        • Social preference index: \(String(format: "%+.2f", summary.socialPreferenceScore)) (-1.0 shapes to +1.0 people)
+        • Social preference index: \(Self.scoreText(summary.socialPreferenceScore) { String(format: "%+.2f", $0) }) (-1.0 shapes to +1.0 people)
         • Time on people: \(String(format: "%.2f", summary.socialDwellSec))s (\(String(format: "%.1f%%", socialDwellRatio * 100)))
         • Time on shapes: \(String(format: "%.2f", summary.geometricDwellSec))s (\(String(format: "%.1f%%", geomDwellRatio * 100)))
         • Looking at eyes: \(Self.percentText(summary.eyeDwellRatio))
@@ -769,10 +784,10 @@ public struct GazeSessionResultView: View {
         • First look at eyes: \(summary.firstEyeLatencyMs.map { String(format: "%.0f ms", $0) } ?? "Not observed")
 
         FACIAL EXPRESSION:
-        • Mean smile: \(String(format: "%.1f%%", summary.socialSmileIntensityMean * 100))
-        • Smile reactivity: \(String(format: "%.2f", summary.smileReactivityIndex))
-        • Neutral expression score: \(String(format: "%.2f", summary.flatAffectScore))
-        • Mean surprise: \(String(format: "%.1f%%", summary.surpriseScoreMean * 100))
+        • Mean smile: \(Self.scoreText(summary.socialSmileIntensityMean) { String(format: "%.1f%%", $0 * 100) })
+        • Smile reactivity: \(Self.scoreText(summary.smileReactivityIndex) { String(format: "%.2f", $0) })
+        • Neutral expression score: \(Self.scoreText(summary.flatAffectScore) { String(format: "%.2f", $0) })
+        • Mean surprise: \(Self.scoreText(summary.surpriseScoreMean) { String(format: "%.1f%%", $0 * 100) })
 
         PRIVACY AND ROUTINE:
         • No video or photos were stored

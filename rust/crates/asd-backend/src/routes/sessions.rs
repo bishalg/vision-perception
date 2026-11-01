@@ -6,7 +6,8 @@
 //! User plane (API-2): `GET /v1/orgs/{id}/sessions`, `GET /v1/sessions/{id}`,
 //! `GET /v1/sessions/{id}/clips` (CON-19), `GET /v1/sessions/{id}/report.pdf` (regenerated
 //! server-side by `asd-export`, WP-B.8; `?source=device` serves the device-uploaded copy,
-//! or 404 until one exists) and `GET /v1/sessions/{id}/fhir` (FHIR R4 bundle, WP-B.8).
+//! or 404 until one exists), `GET /v1/sessions/{id}/fhir` (FHIR R4 bundle, WP-B.8) and
+//! `GET /v1/sessions/{id}/raw` (the stored `rawPayload` for the console sandbox).
 //!
 //! Auth (WP-B.2): the device plane takes a [`DevicePrincipal`] (`dvc_` bearer) and is
 //! limited to [`SESSION_POSTS_PER_MINUTE`] per device (AUTH-3, `429` + `Retry-After`); the
@@ -14,7 +15,7 @@
 
 use std::sync::Arc;
 
-use asd_contract::api_v1::{ClipList, SessionDetail, SessionPage};
+use asd_contract::api_v1::{ClipList, SessionDetail, SessionPage, SessionRaw};
 use asd_contract::session_v1_6::{
     SessionIngestResponse, IDEMPOTENCY_KEY_HEADER, SCHEMA_VERSION_HEADER,
 };
@@ -28,6 +29,7 @@ use http::{header, HeaderMap, HeaderValue, StatusCode};
 use uuid::Uuid;
 
 use crate::app::AppState;
+use crate::audit::AuditEvent;
 use crate::auth::extractors::{DevicePrincipal, RequestMeta, Require};
 use crate::auth::rbac::perm;
 use crate::auth::RateLimiter;
@@ -62,6 +64,7 @@ pub fn router() -> Router<AppState> {
         .route("/sessions/{id}/clips", get(clips))
         .route("/sessions/{id}/report.pdf", get(report_pdf))
         .route("/sessions/{id}/fhir", get(fhir_bundle))
+        .route("/sessions/{id}/raw", get(raw))
         .layer(Extension(limiter))
 }
 
@@ -235,4 +238,31 @@ async fn fhir_bundle(
     let bytes = serde_json::to_vec(&bundle)
         .map_err(|e| AppError::Internal(format!("bundle encode: {e}")))?;
     Ok(private_body(bytes, asd_export::fhir::CONTENT_TYPE))
+}
+
+/// `GET /v1/sessions/{id}/raw`: the stored `rawPayload` (de-identified: the participant
+/// token only, no free-text `notes`) so the sandbox re-scores the real record. Needs
+/// `ConfigRead` (owner, admin, clinician, researcher, superadmin: the roles that open the
+/// sandbox, all of which may also read sessions). Every read is audited
+/// (`session.raw_read`); the row names the session, never the payload.
+async fn raw(
+    auth: Require<perm::ConfigRead>,
+    State(state): State<AppState>,
+    meta: RequestMeta,
+    Path(id): Path<String>,
+) -> AppResult<Response> {
+    let (org, body) = read::sessions::raw(&state.db, &id)
+        .await?
+        .ok_or(AppError::NotFound)?;
+    auth.ensure_org(org)?;
+    let mut tx = state.db.begin().await?;
+    AuditEvent::user(&auth.principal, "session.raw_read", "session", &id)
+        .org(org)
+        .meta(&meta)
+        .record(&mut tx)
+        .await?;
+    tx.commit().await?;
+    let bytes = serde_json::to_vec::<SessionRaw>(&body)
+        .map_err(|e| AppError::Internal(format!("raw encode: {e}")))?;
+    Ok(private_body(bytes, "application/json"))
 }

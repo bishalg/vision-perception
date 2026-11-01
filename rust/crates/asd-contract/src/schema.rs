@@ -199,6 +199,7 @@ pub fn api_v1() -> Value {
         api_v1::MetricRow,
         api_v1::ClipScore,
         api_v1::ClipList,
+        api_v1::SessionRaw,
         api_v1::Metrics,
         api_v1::ReviewItem,
         api_v1::ReviewPage,

@@ -13,8 +13,17 @@ public struct BiomarkerFacialAffectDetailSection: View {
     }
 
     public var body: some View {
+        // SCH-5: an unscorable session has no expression values to show.
+        if let scores = summary.scores {
+            scoredBody(scores)
+        } else {
+            NotScoredNotice(reason: summary.unscorableReason)
+        }
+    }
+
+    private func scoredBody(_ scores: SessionScores) -> some View {
         VStack(alignment: .leading, spacing: 18) {
-            let smilePct = Int(summary.socialSmileIntensityMean * 100)
+            let smilePct = Int(scores.socialSmileIntensityMean * 100)
             let isSmileNormal = smilePct >= 20
             let affectStatus = isSmileNormal ? "Smiled often" : (smilePct >= 10 ? "Smiled a little" : "Smiled rarely")
             let affectColor = isSmileNormal ? LiquidGlass.emeraldMint : (smilePct >= 10 ? LiquidGlass.warmAmber : LiquidGlass.warmAmber)
@@ -55,13 +64,13 @@ public struct BiomarkerFacialAffectDetailSection: View {
                     )
                     summaryMetricTile(
                         title: "Reactivity",
-                        value: String(format: "%.2f", summary.smileReactivityIndex),
+                        value: String(format: "%.2f", scores.smileReactivityIndex),
                         subtitle: "Matches clips",
                         color: LiquidGlass.celestialTeal
                     )
                     summaryMetricTile(
                         title: "Surprise",
-                        value: "\(Int(summary.surpriseScoreMean * 100))%",
+                        value: "\(Int(scores.surpriseScoreMean * 100))%",
                         subtitle: "Brow raise",
                         color: Color.purple
                     )
@@ -101,15 +110,15 @@ public struct BiomarkerFacialAffectDetailSection: View {
                 biomarkerDetailMatrixRow(
                     icon: "waveform.path.badge.plus",
                     title: "Smile Reactivity",
-                    observed: String(format: "%.2f Index", summary.smileReactivityIndex),
+                    observed: String(format: "%.2f Index", scores.smileReactivityIndex),
                     target: "≥ 0.30",
                     weight: "Timing",
-                    status: summary.smileReactivityIndex >= 0.30 ? "Responsive" : "Less responsive",
-                    statusColor: summary.smileReactivityIndex >= 0.30 ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber,
+                    status: scores.smileReactivityIndex >= 0.30 ? "Responsive" : "Less responsive",
+                    statusColor: scores.smileReactivityIndex >= 0.30 ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber,
                     explanation: "How closely the child's smiles lined up in time with the funny moments in the clips."
                 )
 
-                let surpPct = Int(summary.surpriseScoreMean * 100)
+                let surpPct = Int(scores.surpriseScoreMean * 100)
                 biomarkerDetailMatrixRow(
                     icon: "eye.fill",
                     title: "Surprise Expression",
@@ -124,11 +133,11 @@ public struct BiomarkerFacialAffectDetailSection: View {
                 biomarkerDetailMatrixRow(
                     icon: "face.dashed.fill",
                     title: "Neutral Expression",
-                    observed: String(format: "%.2f Score", summary.flatAffectScore),
+                    observed: String(format: "%.2f Score", scores.flatAffectScore),
                     target: "≤ 0.25 (Low Baseline)",
                     weight: "Expression Range",
-                    status: summary.flatAffectScore <= 0.25 ? "Expressive" : "More neutral",
-                    statusColor: summary.flatAffectScore <= 0.25 ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber,
+                    status: scores.flatAffectScore <= 0.25 ? "Expressive" : "More neutral",
+                    statusColor: scores.flatAffectScore <= 0.25 ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber,
                     explanation: "How much of the session the face stayed neutral. Children differ widely, and this number does not identify any condition."
                 )
 

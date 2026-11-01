@@ -120,6 +120,32 @@ pub fn score_session_json(
     encode(&score, "session score")
 }
 
+/// [`score_session_json`] with the delivered `ScoringProfile` (WP-A.5): the profile's
+/// `lowConfidenceValidRatio` marks low-confidence clips instead of the bundled default.
+#[uniffi::export]
+pub fn score_session_with_profile_json(
+    metric_sets_json: String,
+    baseline_json: String,
+    age_months: i64,
+    frames_json: String,
+    scored_at_rfc3339: String,
+    profile_json: String,
+) -> Result<String, AsdError> {
+    let metric_sets: Vec<PerVideoMetricSet> = decode(&metric_sets_json, "metric sets")?;
+    let baseline: NormativeBaselineSet = decode(&baseline_json, "baseline set")?;
+    let frames: Vec<GazeFrame> = decode(&frames_json, "frames")?;
+    let profile: ScoringProfile = decode(&profile_json, "scoring profile")?;
+    let score = scoring::score_session_with(
+        &metric_sets,
+        &baseline,
+        age_months,
+        &frames,
+        &scored_at_rfc3339,
+        profile.low_confidence_valid_ratio,
+    );
+    encode(&score, "session score")
+}
+
 /// `ISO8601DateFormatter().string(from:)` of a Unix time: `YYYY-MM-DDTHH:MM:SSZ`.
 #[uniffi::export]
 pub fn format_scored_at(unix_seconds: f64) -> String {
@@ -214,6 +240,181 @@ pub fn verify_bundle(bundle_json: String, public_key_b64: String) -> Result<bool
             | SigningError::InvalidBundle(_)
             | SigningError::Canonicalisation(_)),
         ) => Err(invalid_json("bundle", e)),
+    }
+}
+
+/// One trusted bundle key shipped with the app (rotation: several side by side, chosen by
+/// the bundle's `key_id`).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct AsdTrustedKey {
+    pub key_id: String,
+    pub public_key_b64: String,
+}
+
+/// A verified bundle, its documents as JSON in the Swift `Codable` wire format.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct AsdConfigBundle {
+    pub bundle_version: String,
+    pub key_id: String,
+    pub signed_at: String,
+    /// `StimulusCatalog`.
+    pub catalog_json: String,
+    /// `NormativeBaselineSet`.
+    pub baselines_json: String,
+    /// `ScoringProfile` (camelCase), the document `assess_flag_json` and
+    /// `score_session_with_profile_json` read.
+    pub scoring_profile_json: String,
+    pub feature_flags: std::collections::HashMap<String, bool>,
+}
+
+/// Why a bundle was refused (`asd_sync::BundleRejection`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum AsdBundleRejection {
+    NoTrustedKeys,
+    MalformedTrustedKey,
+    Malformed,
+    Unsigned,
+    UnknownKey,
+    BadSignature,
+    InvalidVersion,
+    Rollback,
+    InvalidSignedAt,
+    Expired,
+    SignedInFuture,
+}
+
+/// The device's decision on one bundle.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum AsdBundleVerdict {
+    /// Signature, key and policy hold: use the documents.
+    Accepted { bundle: AsdConfigBundle },
+    /// Never use it; `message` is for logs (no document contents).
+    Rejected {
+        reason: AsdBundleRejection,
+        message: String,
+    },
+}
+
+/// The device trust decision for a delivered bundle (WP-A.5, CON-6): Ed25519 over JCS against
+/// the app's key ring (`asd_contract::signing`, the only verifier), then no rollback below
+/// `newest_accepted_version` and, when `max_age_secs` is set, no bundle older than that
+/// (`signed_at` against `now_unix_secs`).
+#[uniffi::export]
+pub fn config_accept_bundle(
+    bundle_json: String,
+    trusted_keys: Vec<AsdTrustedKey>,
+    newest_accepted_version: Option<String>,
+    now_unix_secs: i64,
+    max_age_secs: Option<u64>,
+) -> AsdBundleVerdict {
+    use asd_sync::BundleRejection as R;
+    let keys: Vec<asd_sync::TrustedKey> = trusted_keys
+        .into_iter()
+        .map(|k| asd_sync::TrustedKey {
+            key_id: k.key_id,
+            public_key_b64: k.public_key_b64,
+        })
+        .collect();
+    let policy = asd_sync::BundlePolicy {
+        newest_accepted_version,
+        now_unix_secs,
+        max_age_secs,
+    };
+    let rejected = |e: R| {
+        let reason = match &e {
+            R::NoTrustedKeys => AsdBundleRejection::NoTrustedKeys,
+            R::MalformedTrustedKey(_) => AsdBundleRejection::MalformedTrustedKey,
+            R::Malformed(_) => AsdBundleRejection::Malformed,
+            R::Unsigned => AsdBundleRejection::Unsigned,
+            R::UnknownKey(_) => AsdBundleRejection::UnknownKey,
+            R::BadSignature => AsdBundleRejection::BadSignature,
+            R::InvalidVersion(_) => AsdBundleRejection::InvalidVersion,
+            R::Rollback { .. } => AsdBundleRejection::Rollback,
+            R::InvalidSignedAt(_) => AsdBundleRejection::InvalidSignedAt,
+            R::Expired(_) => AsdBundleRejection::Expired,
+            R::SignedInFuture(_) => AsdBundleRejection::SignedInFuture,
+        };
+        AsdBundleVerdict::Rejected {
+            reason,
+            message: e.to_string(),
+        }
+    };
+    let bundle = match asd_sync::accept_bundle(bundle_json.as_bytes(), &keys, &policy) {
+        Ok(b) => b,
+        Err(e) => return rejected(e),
+    };
+    let documents = (
+        encode(&bundle.catalog, "catalog"),
+        encode(&bundle.baselines, "baselines"),
+        encode(&bundle.scoring_profile, "scoring profile"),
+    );
+    match documents {
+        (Ok(catalog_json), Ok(baselines_json), Ok(scoring_profile_json)) => {
+            AsdBundleVerdict::Accepted {
+                bundle: AsdConfigBundle {
+                    bundle_version: bundle.bundle_version,
+                    key_id: bundle.key_id,
+                    signed_at: bundle.signed_at,
+                    catalog_json,
+                    baselines_json,
+                    scoring_profile_json,
+                    feature_flags: bundle.feature_flags.into_iter().collect(),
+                },
+            }
+        }
+        // A decoded bundle of finite numbers always re-encodes; refuse rather than panic.
+        _ => rejected(R::Malformed("documents do not re-encode".into())),
+    }
+}
+
+/// What the answer to `GET /v1/config/bundle` means.
+#[derive(Debug, Clone, PartialEq, uniffi::Enum)]
+pub enum AsdConfigBundleOutcome {
+    /// `200`: a body to pass to [`config_accept_bundle`].
+    Fresh,
+    /// `304`: the held bundle is current.
+    NotModified,
+    /// `404`: no bundle for this device yet; keep what is held.
+    NoBundle,
+    /// `401`/`403`: re-register once, then retry.
+    Reauthenticate,
+    /// `408`, `429`, `5xx`: retry later.
+    RetryAfter { seconds: Option<f64> },
+    /// Anything else.
+    Fatal { status: u16 },
+}
+
+/// `GET /v1/config/bundle` with the device bearer; `held_version` (the verified bundle the
+/// device holds, not the bundled default) becomes `If-None-Match`.
+#[uniffi::export]
+pub fn config_build_bundle_request(
+    device_token: String,
+    held_version: Option<String>,
+    client: AsdClientInfo,
+) -> Result<AsdSyncRequest, AsdError> {
+    let request = asd_sync::build_config_bundle_request(
+        &device_token,
+        held_version.as_deref(),
+        &client.into(),
+    )?;
+    Ok(request.into())
+}
+
+/// Classifies the answer to `GET /v1/config/bundle`.
+#[uniffi::export]
+pub fn config_classify_bundle_response(
+    status: u16,
+    headers: Vec<AsdHttpHeader>,
+) -> AsdConfigBundleOutcome {
+    use asd_sync::ConfigBundleOutcome as O;
+    let headers: Vec<(String, String)> = headers.into_iter().map(|h| (h.name, h.value)).collect();
+    match asd_sync::classify_config_bundle_response(status, &headers) {
+        O::Fresh => AsdConfigBundleOutcome::Fresh,
+        O::NotModified => AsdConfigBundleOutcome::NotModified,
+        O::NoBundle => AsdConfigBundleOutcome::NoBundle,
+        O::Reauthenticate => AsdConfigBundleOutcome::Reauthenticate,
+        O::RetryAfter(seconds) => AsdConfigBundleOutcome::RetryAfter { seconds },
+        O::Fatal { status } => AsdConfigBundleOutcome::Fatal { status },
     }
 }
 

@@ -32,8 +32,16 @@ test("clinician: header and timeline filter", async ({ page }) => {
   for (const kind of await page.locator("table.data tbody tr").evaluateAll((els) => els.map((e) => e.getAttribute("data-kind")))) {
     expect(kind).toBe("note");
   }
+  // The filter is applied by the server, so no page-only caveat is shown.
+  await expect(page.getByText(/apply to the entries on this page/)).toHaveCount(0);
   await page.getByRole("link", { name: "Show all" }).click();
   await expect(page).toHaveURL(/tab=timeline$/);
+  // A date range filters on the server too: an empty far-past range shows the empty message.
+  await page.getByLabel("From").fill("2001-01-01");
+  await page.getByLabel("To", { exact: true }).fill("2001-01-31");
+  await page.getByRole("button", { name: "Apply filter" }).click();
+  await expect(page).toHaveURL(/from=2001-01-01&to=2001-01-31|to=2001-01-31&from=2001-01-01/);
+  await expect(page.getByText("No entries match the chosen filters.")).toBeVisible();
 });
 
 test("clinician: notes show a struck-through original, add a note and correct it", async ({ page }) => {
@@ -76,7 +84,12 @@ test("clinician: MRN is entered by form, shown on request and never in the URL",
   const search = page.getByRole("form", { name: "Find a participant by MRN" });
   await search.getByLabel("Assigning authority").fill("TUTH");
   await search.getByLabel("MRN").fill("12345");
+  // The hit redirects to the page we are already on, so the URL alone does not show the search is done: wait for the
+  // server action and its navigation, or a late re-render resets the unlink confirmation below.
+  const searched = page.waitForResponse((r) => r.request().method() === "POST" && r.request().headers()["next-action"] !== undefined);
   await search.getByRole("button", { name: "Search" }).click();
+  await searched;
+  await expect(search.getByRole("button", { name: "Search" })).toBeEnabled();
   await expect(page).toHaveURL(new RegExp(`${base}\\?tab=mrn$`));
   expect(page.url()).not.toContain("12345");
   await expect(page.getByTestId("mrn-on-file")).toBeVisible();
@@ -98,6 +111,8 @@ test("clinician: disclosures, letters placeholder and the print view", async ({ 
   await page.getByRole("link", { name: "Print summary" }).click();
   await expect(page.getByRole("button", { name: "Print" })).toBeVisible();
   await expect(page.getByRole("table").first()).toContainText("Signed by");
+  await expect(page.getByRole("heading", { name: "Home care activity" })).toBeVisible();
+  await expect(page.getByText(/care events recorded/)).toBeVisible();
   await page.emulateMedia({ media: "print" });
   await expect(page.locator(".topbar")).toBeHidden();
   await expect(page.getByRole("button", { name: "Print" })).toBeHidden();
@@ -114,4 +129,5 @@ test("a viewer sees the timeline and the print summary only, without clinical co
   await page.getByRole("link", { name: "Print summary" }).click();
   await expect(page.getByText("Not shown for your role").first()).toBeVisible();
   await expect(page.getByText("Clinical notes")).toHaveCount(0);
+  await expect(page.getByText("Home care activity")).toHaveCount(0);
 });

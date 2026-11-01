@@ -8,8 +8,8 @@ import { NotesPanel } from "@/components/participant/NotesPanel";
 import { ParticipantHeader } from "@/components/participant/ParticipantHeader";
 import { ParticipantTabs, parseWorkspaceTab } from "@/components/participant/ParticipantTabs";
 import { PrintSummary, type PrintRow } from "@/components/participant/PrintSummary";
-import { Timeline, parseKinds } from "@/components/participant/Timeline";
-import { ApiError, attentionFlagSchema, type ClinicalReview, type CurvApi, type TimelineEntry } from "@/lib/api";
+import { Timeline, parseDay, parseKinds } from "@/components/participant/Timeline";
+import { ApiError, type ClinicalReview, type CurvApi } from "@/lib/api";
 import { authedApi, currentRole } from "@/lib/auth/server";
 import { formatDateTime } from "@/lib/format";
 import { parseCursor } from "@/lib/listQuery";
@@ -83,11 +83,18 @@ export default async function ParticipantWorkspacePage({
   async function panel() {
     switch (tab) {
       case "timeline": {
-        const page = await loadOrNotFound(() => api.getParticipantTimeline(id, { cursor, limit: 25 }));
+        const kinds = parseKinds(sp.kind);
+        const from = parseDay(sp.from);
+        const to = parseDay(sp.to);
+        const page = await loadOrNotFound(() =>
+          api.getParticipantTimeline(id, { cursor, limit: 25, ...(kinds.length ? { kind: kinds } : {}), from, to }),
+        );
         return (
           <Timeline
             entries={page.items}
-            kinds={parseKinds(sp.kind)}
+            kinds={kinds}
+            from={from}
+            to={to}
             basePath={basePath}
             orgPath={orgPath}
             nextCursor={page.next_cursor}
@@ -96,13 +103,11 @@ export default async function ParticipantWorkspacePage({
         );
       }
       case "notes": {
-        const [page, timeline] = await Promise.all([
+        const [page, sessionPage] = await Promise.all([
           loadOrNotFound(() => api.listParticipantNotes(id, { cursor, limit: 25 })),
-          loadOrNotFound(() => api.getParticipantTimeline(id, { limit: 100 })),
+          loadOrNotFound(() => api.listSessions(org, { participant_id: id, limit: 100 })),
         ]);
-        const sessions = timeline.items
-          .filter((e) => e.kind === "session")
-          .map((e) => ({ id: e.id, label: formatDateTime(e.at) }));
+        const sessions = sessionPage.items.map((s) => ({ id: s.id, label: formatDateTime(s.started_at) }));
         return (
           <>
             <NotesPanel
@@ -154,20 +159,20 @@ export default async function ParticipantWorkspacePage({
         );
       }
       case "print": {
-        const timeline = await loadOrNotFound(() => api.getParticipantTimeline(id, { limit: 100 }));
-        const sessionEntries: TimelineEntry[] = timeline.items.filter((e) => e.kind === "session");
-        const used = sessionEntries.slice(0, PRINT_SESSIONS);
+        // One extra row tells whether the list was cut at PRINT_SESSIONS.
+        const sessionPage = await loadOrNotFound(() =>
+          api.listSessions(org, { participant_id: id, limit: PRINT_SESSIONS + 1 }),
+        );
+        const used = sessionPage.items.slice(0, PRINT_SESSIONS);
         const rows: PrintRow[] = await Promise.all(
-          used.map(async (e) => ({
-            sessionId: e.id,
-            at: e.at,
-            flag: (() => {
-              const f = attentionFlagSchema.safeParse(e.summary.attention_flag);
-              return f.success ? f.data : null;
-            })(),
-            review: canContent ? await reviewOf(api, e.id) : undefined,
+          used.map(async (s) => ({
+            sessionId: s.id,
+            at: s.started_at,
+            flag: s.attention_flag,
+            review: canContent ? await reviewOf(api, s.id) : undefined,
           })),
         );
+        const care = canContent ? await loadOrNotFound(() => api.getParticipantCareSummary(id)) : undefined;
         const notes = canContent
           ? (await loadOrNotFound(() => api.listParticipantNotes(id, { limit: 100 }))).items.filter((n) => !n.corrected_by)
           : undefined;
@@ -176,7 +181,8 @@ export default async function ParticipantWorkspacePage({
             participant={participant}
             rows={rows}
             notes={notes}
-            truncated={sessionEntries.length > used.length ? used.length : undefined}
+            care={care}
+            truncated={sessionPage.items.length > used.length ? used.length : undefined}
             generatedAt={new Date(requestTime()).toISOString()}
           />
         );

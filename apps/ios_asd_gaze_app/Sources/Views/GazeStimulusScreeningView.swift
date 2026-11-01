@@ -728,16 +728,16 @@ public struct GazeStimulusScreeningView: View {
         #endif
         let activeBatteryName = proceduralMode?.rawValue ?? (playlist.count > 1 ? "MultiClipBattery_\(playlist.count)Clips" : (currentClip?.videoName ?? "SingleClip"))
 
-        // Per-stimulus expected-vs-recorded scoring against the bundled provisional baseline.
+        // Per-stimulus expected-vs-recorded scoring against the active configuration's
+        // baselines and ScoringProfile (WP-A.5: a verified delivered bundle, else the bundled one).
         // Extraction is linear over frames and runs once here; the result view reuses the tagged frames.
         let childAgeMonths = ChildProfileStore.shared.profile.ageBracket.midpointMonths
-        let perVideoScore: PerVideoSessionScore? = NormativeBaselineLibrary.loadBundled().map { baseline in
-            PerVideoScoringEngine.score(
-                metricSets: PerVideoMetricsExtractor.extract(from: frames),
-                baseline: baseline,
-                ageMonths: childAgeMonths
-            )
-        }
+        let scoringConfiguration = ScoringConfiguration.active
+        let perVideoScore: PerVideoSessionScore? = PerVideoScoringEngine.score(
+            metricSets: PerVideoMetricsExtractor.extract(from: frames),
+            configuration: scoringConfiguration,
+            ageMonths: childAgeMonths
+        )
 
         if recordedSource != nil {
             let participantToken = GazeSessionRecord.participantToken(
@@ -758,9 +758,14 @@ public struct GazeStimulusScreeningView: View {
                 summary: summary,
                 participantToken: participantToken,
                 perVideoComposite: perVideoScore?.compositeScore,
-                perVideo: perVideoScore?.videos
+                perVideo: perVideoScore?.videos,
+                bundleVersion: scoringConfiguration.bundleVersion,
+                normCollection: NormCollectionConsent(metadata: collectionMetadata)
             )
-            let attentionFlag = perVideoScore.map { AttentionFlagAlgorithm.assess($0).flag }
+            // SCH-5: an unscorable session gets no device flag.
+            let attentionFlag = summary.scoringStatus == .scored
+                ? perVideoScore.map { AttentionFlagAlgorithm.assess($0, scoringProfileJSON: scoringConfiguration.scoringProfileJSON).flag }
+                : nil
 
             // Persist encrypted vault off main thread (frames now carry per-clip stimulus attribution)
             Task.detached(priority: .userInitiated) {

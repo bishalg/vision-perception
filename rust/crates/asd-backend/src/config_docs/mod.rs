@@ -90,14 +90,17 @@ impl IntoResponse for ConfigApiError {
     fn into_response(self) -> Response {
         match self {
             Self::App(e) => e.into_response(),
-            Self::FourEyes(detail) => Problem::new(StatusCode::FORBIDDEN, "four-eyes-required")
-                .with_detail(detail)
-                .into_response(),
+            Self::FourEyes(detail) => Problem::new(
+                StatusCode::FORBIDDEN,
+                asd_contract::problem::FOUR_EYES_REQUIRED,
+            )
+            .with_detail(detail)
+            .into_response(),
             Self::SigningUnavailable => {
                 tracing::error!("POST /v1/config/bundles without ASD_BUNDLE_SIGNING_KEY");
                 Problem::new(
                     StatusCode::SERVICE_UNAVAILABLE,
-                    "bundle-signing-unavailable",
+                    asd_contract::problem::BUNDLE_SIGNING_UNAVAILABLE,
                 )
                 .with_detail("the server has no bundle signing key configured")
                 .into_response()

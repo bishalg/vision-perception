@@ -73,6 +73,21 @@ pub const HOST_KEY_MISMATCH: &str = "host-key-mismatch";
 /// choose or know that user's password (RBAC-3, ADR-0008 D2). An owner provisions it.
 pub const CLINICAL_ROLE_NOT_ASSIGNABLE: &str = "clinical-role-not-assignable";
 
+// ---- config documents (WP-B.4, CFG-1) ----------------------------------------------------
+
+/// 403: the four-eyes rule: the author cannot approve or publish their own document.
+pub const FOUR_EYES_REQUIRED: &str = "four-eyes-required";
+/// 409: the lifecycle step does not apply to the document's status.
+pub const INVALID_TRANSITION: &str = "invalid-transition";
+/// 409: that `(kind, version)` already exists.
+pub const CONFIG_VERSION_EXISTS: &str = "config-version-exists";
+/// 409: a stored document body or a bundle member fails its checks.
+pub const CONFIG_INVALID: &str = "config-invalid";
+/// 409: a bundle needs a published document of each kind and one is missing.
+pub const CONFIG_NOT_PUBLISHED: &str = "config-not-published";
+/// 503: no bundle signing key is configured.
+pub const BUNDLE_SIGNING_UNAVAILABLE: &str = "bundle-signing-unavailable";
+
 /// Every slug above, published as `$defs/ProblemSlug` in `api-v1.json` so clients can
 /// check their spelling. Route-specific slugs (e.g. `email-taken`, `last-owner`) are
 /// documented with their route and are not listed here.
@@ -103,6 +118,12 @@ pub const SLUGS: &[&str] = &[
     CONSENT_PURPOSE_MISMATCH,
     HOST_KEY_MISMATCH,
     CLINICAL_ROLE_NOT_ASSIGNABLE,
+    FOUR_EYES_REQUIRED,
+    INVALID_TRANSITION,
+    CONFIG_VERSION_EXISTS,
+    CONFIG_INVALID,
+    CONFIG_NOT_PUBLISHED,
+    BUNDLE_SIGNING_UNAVAILABLE,
 ];
 
 /// Full `type` URI for a slug.

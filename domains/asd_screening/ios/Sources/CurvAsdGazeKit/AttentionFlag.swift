@@ -50,9 +50,11 @@ public enum AttentionFlagAlgorithm {
     /// Share of scored rows beyond the reference band that forces red even when the composite is high.
     public static let atypicalShareForRed = 0.40
 
-    public static func assess(_ score: PerVideoSessionScore) -> AttentionFlagAssessment {
+    /// Assesses with the bundled default profile, or with `scoringProfileJSON` (the
+    /// `ScoringProfile` of the active configuration, WP-A.5) when given.
+    public static func assess(_ score: PerVideoSessionScore, scoringProfileJSON: String? = nil) -> AttentionFlagAssessment {
         do {
-            return try AsdCoreBridge.assessFlag(score)
+            return try AsdCoreBridge.assessFlag(score, profileJSON: scoringProfileJSON ?? AsdCoreBridge.defaultScoringProfileJSON)
         } catch {
             AsdCoreBridge.report("assess_flag", error)
             // Never green or red without the core's verdict.

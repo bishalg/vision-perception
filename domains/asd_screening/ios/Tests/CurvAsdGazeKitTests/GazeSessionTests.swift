@@ -56,7 +56,7 @@ final class GazeSessionTests: XCTestCase {
 
     #if ASD_SIMULATION_ENABLED
     @MainActor
-    func testSessionControllerSimulationRun() async {
+    func testSessionControllerSimulationRun() async throws {
         let controller = GazeSessionController()
         controller.startSimulatedSession()
         XCTAssertTrue(controller.isRecording)
@@ -72,8 +72,10 @@ final class GazeSessionTests: XCTestCase {
         XCTAssertEqual(summary.totalFrames, 30)
         XCTAssertEqual(summary.captureSource, .simulated)
         XCTAssertGreaterThan(summary.validRatio, 0.8)
-        XCTAssertGreaterThanOrEqual(summary.socialPreferenceScore, -1.0)
-        XCTAssertLessThanOrEqual(summary.socialPreferenceScore, 1.0)
+        XCTAssertEqual(summary.scoringStatus, .scored)
+        let preference = try XCTUnwrap(summary.socialPreferenceScore)
+        XCTAssertGreaterThanOrEqual(preference, -1.0)
+        XCTAssertLessThanOrEqual(preference, 1.0)
         XCTAssertEqual(summary.interruptionCount, 0)
         XCTAssertEqual(summary.interruptedSec, 0)
     }

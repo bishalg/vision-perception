@@ -452,6 +452,24 @@ pub struct ClipList {
     pub items: Vec<ClipScore>,
 }
 
+/// `GET /v1/sessions/{id}/raw`: the stored `rawPayload` for a sandbox re-score. De-identified:
+/// the participant is the pseudonymous token only, and the free-text `notes` member of the
+/// record is removed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct SessionRaw {
+    pub session_id: String,
+    /// Wire form of the stored record (`1.6`, `1.7`, `1.8`).
+    pub schema_version: String,
+    pub participant_token: String,
+    /// The stored `GazeSessionRecord` (camelCase, `v1.x` record form), without `notes`.
+    pub raw_payload: serde_json::Value,
+    /// A frames blob is stored for the session (it is encrypted on the device; the API does
+    /// not serve it).
+    pub frames_available: bool,
+    /// The retention sweep deleted the frames blob.
+    pub frames_purged: bool,
+}
+
 macro_rules! page {
     ($(#[$doc:meta])* $name:ident, $item:ty) => {
         $(#[$doc])*

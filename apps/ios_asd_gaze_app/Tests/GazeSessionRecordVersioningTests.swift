@@ -36,7 +36,8 @@ final class GazeSessionRecordVersioningTests: XCTestCase {
         XCTAssertEqual(record.schemaVersion, "v1.4")
         XCTAssertNil(record.perVideo)
         XCTAssertNil(record.perVideoComposite)
-        XCTAssertEqual(record.socialPreferenceScore, 0.42, accuracy: 1e-9)
+        XCTAssertEqual(try XCTUnwrap(record.socialPreferenceScore), 0.42, accuracy: 1e-9)
+        XCTAssertEqual(record.scoringStatus, .scored, "pre-1.8 records carried the numbers")
     }
 
     func testV15RecordRoundTripWithPerVideoMatrix() throws {
@@ -225,8 +226,9 @@ final class GazeSessionRecordVersioningTests: XCTestCase {
     func testRecordFromSummaryCarriesProvenanceAndAbsentMetrics() throws {
         let summary = GazeSessionReportSummary.fixture(sessionId: "SES-16", captureSource: .simulated)
         let record = GazeSessionRecord(summary: summary, participantToken: "child-SES-16")
-        XCTAssertEqual(record.schemaVersion, "v1.7")
+        XCTAssertEqual(record.schemaVersion, "v1.8")
         XCTAssertEqual(record.schemaVersion, GazeSessionRecord.currentSchemaVersion)
+        XCTAssertEqual(record.scoringStatus, .scored)
         XCTAssertEqual(record.captureSource, .simulated)
         XCTAssertNil(record.legacyProvenance)
         XCTAssertNil(record.eyeDwellRatio)
@@ -244,6 +246,39 @@ final class GazeSessionRecordVersioningTests: XCTestCase {
         XCTAssertEqual(decoded.captureSource, .simulated)
         XCTAssertNil(decoded.firstEyeLatencyMs)
         XCTAssertNil(decoded.legacyProvenance)
+    }
+
+    /// SCH-5: an unscorable summary becomes an unscorable record without numbers, and the
+    /// record round-trips with its status and reason.
+    func testUnscorableSummaryRecordRoundTripsWithoutScores() throws {
+        let summary = GazeSessionReportSummary(
+            sessionId: "UNSC-0001", captureSource: .trueDepth, durationSec: 10, totalFrames: 600,
+            validFrames: 0, validRatio: 0, socialPreferenceScore: nil, socialDwellSec: 0,
+            geometricDwellSec: 0, eyeDwellRatio: nil, mouthDwellRatio: nil, firstEyeLatencyMs: nil,
+            socialSmileIntensityMean: nil, smileReactivityIndex: nil, flatAffectScore: nil,
+            surpriseScoreMean: nil, unscorableReason: .insufficientValidGaze, qualityVerdict: .degraded,
+            subjectAgeSignal: nil, interruptionCount: 0, interruptedSec: 0
+        )
+        let record = GazeSessionRecord(summary: summary, participantToken: "child-UNSC-000")
+        XCTAssertEqual(record.scoringStatus, .unscorable)
+        XCTAssertEqual(record.unscorableReason, .insufficientValidGaze)
+        XCTAssertNil(record.flatAffectScore)
+        let data = try JSONEncoder().encode(record)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertNil(json["flatAffectScore"])
+        XCTAssertNil(json["socialPreferenceScore"])
+        XCTAssertEqual(json["scoringStatus"] as? String, "unscorable")
+        let decoded = try JSONDecoder().decode(GazeSessionRecord.self, from: data)
+        XCTAssertEqual(decoded, record)
+        XCTAssertFalse(record.toOMOPMeasurements(personId: "p").contains { $0.measurementSourceValue == "social-preference-score" })
+    }
+
+    /// A partial set of numbers is not a score: the record is unscorable with none of them.
+    func testPartialScoresAreNotKept() {
+        let record = GazeSessionRecord.fixture(sessionId: "PART", flatAffectScore: nil)
+        XCTAssertEqual(record.scoringStatus, .unscorable)
+        XCTAssertNil(record.socialPreferenceScore)
+        XCTAssertNil(record.smileReactivityIndex)
     }
 
     func testRecordFromSummaryKeepsMeasuredDwellRatios() {

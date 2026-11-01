@@ -145,7 +145,7 @@ async fn published(
 fn decode<T: serde::de::DeserializeOwned>(doc: &Published, kind: &str) -> ConfigApiResult<T> {
     serde_json::from_value(doc.body.clone()).map_err(|e| {
         conflict(
-            "config-invalid",
+            asd_contract::problem::CONFIG_INVALID,
             format!("published {kind} `{}` does not decode: {e}", doc.version),
         )
     })
@@ -175,7 +175,7 @@ pub async fn compose(
     }
     if !missing.is_empty() {
         return Err(conflict(
-            "config-not-published",
+            asd_contract::problem::CONFIG_NOT_PUBLISHED,
             format!("no published document of kind {}", missing.join(", ")),
         ));
     }

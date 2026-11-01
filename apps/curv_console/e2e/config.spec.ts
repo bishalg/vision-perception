@@ -74,6 +74,8 @@ test("sandbox gate: the approved profile publishes only after a sandbox run of i
   await expect(page.getByRole("heading", { name: "Sandbox re-score" })).toBeVisible();
   await expect(page.getByText(/lowConfidenceValidRatio is not applied/)).toBeVisible();
   await expect(page.getByText(/"unreliable" flag is not reproduced/)).toBeVisible();
+  // The re-score reads the stored record, so the old API-form caveat about one session-wide valid ratio is gone.
+  await expect(page.getByText(/stored record with its own per-clip valid-sample ratios/)).toBeVisible();
   await expect(page.getByText(/^Rust core /)).toBeVisible();
   await page.getByRole("button", { name: "Run re-score" }).click();
   const summary = page.getByRole("region", { name: "Summary" });

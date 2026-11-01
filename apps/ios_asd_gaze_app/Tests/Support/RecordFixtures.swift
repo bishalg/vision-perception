@@ -78,7 +78,7 @@ extension GazeSessionRecord {
         qualityVerdict: String = "optimal",
         socialSmileIntensity: Double = 0.3,
         smileReactivityIndex: Double = 0.3,
-        flatAffectScore: Double = 0.2,
+        flatAffectScore: Double? = 0.2,
         surpriseScoreMean: Double = 0.2,
         notes: String? = nil,
         schemaVersion: String = GazeSessionRecord.currentSchemaVersion,

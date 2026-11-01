@@ -11,6 +11,12 @@ struct AsdGazeApp: App {
     @ObservedObject private var moodFusion = ARKitMoodFusionController.shared
     @ObservedObject private var appMode = AppModeStore.shared
 
+    init() {
+        // WP-A.5: the scoring configuration of this launch (a verified delivered bundle, else
+        // the bundled default), installed before any session can start.
+        ConfigBundleStore.standard.installAtLaunch()
+    }
+
     var body: some Scene {
         WindowGroup {
             ZStack {
@@ -53,6 +59,8 @@ struct AsdGazeApp: App {
                     medications: CarePlanStore.shared.medications
                 )
                 ARKitMoodFusionController.shared.startListening()
+                // A newer bundle is persisted for the next launch (WP-A.5).
+                await ResearchKitSyncService.shared?.refreshConfigBundle()
                 #if ASD_ML_DATA_EXPORT
                 // CNS-2: training-data logger exists only in ML data-export builds.
                 BlendShapeCSVLogger.shared.startListening()

@@ -595,7 +595,7 @@ fn hostile_numbers_do_not_panic() {
 fn contract_info_and_default_profile() {
     let info = ok(&asd_wasm::contract_info());
     assert_eq!(info["coreVersion"], env!("CARGO_PKG_VERSION"));
-    assert_eq!(info["sessionSchemaVersions"], json!(["1.6", "1.7"]));
+    assert_eq!(info["sessionSchemaVersions"], json!(["1.6", "1.7", "1.8"]));
     assert_eq!(
         info["scoringProfileSchemaVersion"],
         asd_contract::config::SCORING_PROFILE_SCHEMA_VERSION
@@ -657,6 +657,49 @@ fn validation_reports_problems_without_failing() {
     assert_eq!(not_a_set["valid"], false);
 }
 
+#[test]
+fn validate_catalog_is_the_backend_check() {
+    let raw = include_str!("../../asd-backend/seed/stimulus_catalog.json");
+    assert_eq!(
+        ok(&asd_wasm::validate_catalog(raw)),
+        json!({"valid": true, "problems": [], "fieldProblems": []})
+    );
+
+    let mut bad: serde_json::Value = serde_json::from_str(raw).unwrap();
+    bad["clips"][2]["areas"][0]["xMin"] = json!(1.4);
+    bad["fallbackLanguage"] = json!("fr");
+    let r = ok(&asd_wasm::validate_catalog(&bad.to_string()));
+    assert_eq!(r["valid"], false);
+    let paths: Vec<&str> = r["fieldProblems"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| p["path"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        paths,
+        [
+            "fallbackLanguage",
+            "clips[2].areas[0].xMin",
+            "clips[2].areas[0].xMax"
+        ]
+    );
+    // The same list as the one the backend and asd-contract produce.
+    let catalog: asd_core::types::StimulusCatalog = serde_json::from_value(bad).unwrap();
+    assert_eq!(
+        r["problems"],
+        json!(asd_contract::catalog_checks::catalog_problem_messages(
+            &catalog
+        ))
+    );
+
+    // A shape failure is a problem, not an error envelope.
+    let shape = ok(&asd_wasm::validate_catalog(r#"{"clips":[]}"#));
+    assert_eq!(shape["valid"], false);
+    assert_eq!(shape["problems"].as_array().unwrap().len(), 1);
+    assert_eq!(shape["fieldProblems"], json!([]));
+}
+
 /// Round trip: a session carrying the Swift-scored reports of a golden vector re-scores to
 /// the same reports with the same baseline and age (vectors without frames: segment windows
 /// need frames).
@@ -682,4 +725,31 @@ fn rescore_from_reports_reproduces_the_device_score() {
         checked += 1;
     }
     assert!(checked >= 5, "only {checked} vectors without frames");
+}
+
+/// 1.8 keeps the 1.7 per-clip report, so a 1.8 copy of the 1.7 fixture re-scores the same,
+/// as a request and as the bare record the backend stores.
+#[test]
+fn rescore_reads_v1_8_requests_and_records() {
+    let mut req = parse(SESSION_V1_7);
+    req["schemaVersion"] = json!("1.8");
+    req["scoringStatus"] = json!("scored");
+    req["rawPayload"]["schemaVersion"] = json!("v1.8");
+    req["rawPayload"]["scoringStatus"] = json!("scored");
+    let base = cases();
+    let v17 = ok(&run(&base[1]));
+    for session in [req.to_string(), record_of(&req.to_string())] {
+        let case = Case {
+            session,
+            profile: base[1].profile.clone(),
+            baselines: base[1].baselines.clone(),
+            options: base[1].options.clone(),
+            frames: None,
+            name: "v1_8",
+        };
+        let out = ok(&run(&case));
+        assert_eq!(out["schemaVersion"], "1.8");
+        assert_eq!(out["score"], v17["score"]);
+        assert_eq!(out["flag"], v17["flag"]);
+    }
 }

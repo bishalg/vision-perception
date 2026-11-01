@@ -307,6 +307,21 @@ export type ClipScore = z.infer<typeof clipScoreSchema>;
 
 export const clipListSchema = z.object({ items: z.array(clipScoreSchema) });
 
+/**
+ * GET /sessions/{id}/raw: the stored `rawPayload` for the sandbox re-score. De-identified (token only, no `notes`);
+ * the record is camelCase and is handed to the Rust core untouched, so it stays opaque here.
+ */
+export const sessionRawSchema = z.object({
+  session_id: z.string(),
+  schema_version: z.string(),
+  participant_token: z.string(),
+  raw_payload: z.record(z.string(), z.unknown()),
+  /** A frames blob exists; it is encrypted on the device and the API does not serve it. */
+  frames_available: z.boolean(),
+  frames_purged: z.boolean(),
+});
+export type SessionRaw = z.infer<typeof sessionRawSchema>;
+
 export const sessionFiltersSchema = z.object({
   flag: attentionFlagSchema.optional(),
   quality: z.string().optional(),
@@ -316,6 +331,8 @@ export const sessionFiltersSchema = z.object({
   reviewed: z.boolean().optional(),
   /** QS-4 tracking verdict filter (`tracking=good|fair|poor|unusable`, WP-G.12). */
   tracking: z.enum(TRACKING_VERDICTS).optional(),
+  /** Only this participant's sessions (participant row id). */
+  participant_id: z.string().optional(),
 });
 export type SessionFilters = z.infer<typeof sessionFiltersSchema>;
 
@@ -462,6 +479,8 @@ export interface CurvApi extends ClinicalApi, AdminApi, ExportsApi, CatalogApi, 
   listSessions(orgId: string, query?: SessionListQuery): Promise<SessionPage>;
   getSession(sessionId: string): Promise<SessionDetail>;
   getSessionClips(sessionId: string): Promise<ClipScore[]>;
+  /** The stored record for a sandbox re-score (config roles; audited). */
+  getSessionRaw(sessionId: string): Promise<SessionRaw>;
   listReview(orgId: string, query?: ReviewListQuery): Promise<ReviewPage>;
   updateReview(reviewId: string, patch: UpdateReviewRequest): Promise<ReviewItem>;
   listDevices(orgId: string, query?: PageQuery): Promise<DevicePage>;
@@ -519,6 +538,13 @@ export const PROBLEM_SLUGS = [
   "host-key-mismatch",
   // Security audit (RBAC-3): a non-clinical actor cannot create or promote a clinical-role user.
   "clinical-role-not-assignable",
+  // Config documents (CFG-1): lifecycle, four-eyes, bundle composition.
+  "four-eyes-required",
+  "invalid-transition",
+  "config-version-exists",
+  "config-invalid",
+  "config-not-published",
+  "bundle-signing-unavailable",
 ] as const;
 export type ProblemSlug = (typeof PROBLEM_SLUGS)[number];
 

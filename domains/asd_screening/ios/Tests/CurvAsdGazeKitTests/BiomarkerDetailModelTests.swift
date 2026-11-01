@@ -149,7 +149,10 @@ final class BiomarkerDetailModelTests: XCTestCase {
         XCTAssertEqual(summary.totalFrames, 0)
         XCTAssertEqual(summary.validFrames, 0)
         XCTAssertEqual(summary.validRatio, 0.0)
-        XCTAssertEqual(summary.socialPreferenceScore, 0.0)
+        // SCH-5: nothing recorded is unscorable, with no placeholder score.
+        XCTAssertEqual(summary.scoringStatus, .unscorable)
+        XCTAssertEqual(summary.unscorableReason, .insufficientValidGaze)
+        XCTAssertNil(summary.socialPreferenceScore)
         XCTAssertEqual(summary.socialDwellSec, 0.0)
         XCTAssertEqual(summary.geometricDwellSec, 0.0)
         XCTAssertEqual(summary.qualityVerdict, GazeQualityGate.Verdict.rejected)

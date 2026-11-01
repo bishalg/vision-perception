@@ -80,6 +80,14 @@ pub fn validate_scoring_profile(profile_json: &str) -> String {
     envelope(Ok(api::validate_scoring_profile(profile_json)))
 }
 
+/// `{valid, problems, fieldProblems}`: the catalog decodes as the asd-core `StimulusCatalog`
+/// and passes the backend's value rules (asd-contract `catalog_checks`); `fieldProblems` are
+/// `{path, message}` with the wire JSON path (`clips[2].areas[0].xMin`).
+#[wasm_bindgen(js_name = validateCatalog)]
+pub fn validate_catalog(catalog_json: &str) -> String {
+    envelope(Ok(api::validate_catalog(catalog_json)))
+}
+
 /// `{valid, problems, fieldProblems}`: asd-core baseline coverage check (`fieldProblems` is
 /// empty: the coverage lines name `video/segment/biomarker` in their text). `required_ids_json` is an
 /// optional JSON array of stimulus ids that must have a profile.
@@ -122,7 +130,7 @@ pub fn extract_metrics(frames_json: &str) -> String {
     envelope(api::extract_metrics(frames_json))
 }
 
-/// Sandbox re-score of a stored session (1.6/1.7 request or bare `rawPayload` record) with
+/// Sandbox re-score of a stored session (1.6/1.7/1.8 request or bare `rawPayload` record) with
 /// a scoring profile and baseline set. `options_json`: `{"ageMonths": n, "scoredAtUtc"?:
 /// "..."}`. `frames_json` (optional `[GazeFrame]`) selects the exact device path. Result:
 /// `{sessionId, schemaVersion, metricSource, score, flag, device, warnings}`.

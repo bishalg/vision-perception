@@ -228,7 +228,7 @@ public actor GazeProcessingActor {
     }
 
     public init(
-        qualityGate: GazeQualityGate = GazeQualityGate(),
+        qualityGate: GazeQualityGate = ScoringConfiguration.active.qualityGate,
         aoiTracker: StimulusAOITracker = StimulusAOITracker.makeGeoPrefBattery(),
         calibrationProfile: GazeCalibrationProfile = .identity,
         deviceModelIdentifier: String = GazeDeviceInfo.modelIdentifier,
@@ -992,16 +992,18 @@ extension GazeSessionReportSummary {
                 totalFrames: 0,
                 validFrames: 0,
                 validRatio: 0,
-                socialPreferenceScore: 0,
+                socialPreferenceScore: nil,
                 socialDwellSec: 0,
                 geometricDwellSec: 0,
                 eyeDwellRatio: nil,
                 mouthDwellRatio: nil,
                 firstEyeLatencyMs: nil,
-                socialSmileIntensityMean: 0,
-                smileReactivityIndex: 0,
-                flatAffectScore: 0,
-                surpriseScoreMean: 0,
+                socialSmileIntensityMean: nil,
+                smileReactivityIndex: nil,
+                flatAffectScore: nil,
+                surpriseScoreMean: nil,
+                // Nothing recorded: nothing to score (SCH-5), no placeholder numbers.
+                unscorableReason: .insufficientValidGaze,
                 qualityVerdict: .rejected,
                 subjectAgeSignal: subjectAgeSignal,
                 interruptionCount: interruptionCount,
@@ -1036,10 +1038,20 @@ extension GazeSessionReportSummary {
 
         // Ratios, latency and affect come from the shared reducer; dwell seconds and
         // preference are recomputed above from timestamps (its dwell assumes 60 fps).
-        let biomarkers = SessionBiomarkerAggregator.aggregate(
-            validFrames: validFrames,
-            durationSec: durationSec
-        )
+        // SCH-5: no valid sample, or a core refusal, makes the session unscorable; its five
+        // score values are absent, never 0 (CON-14). Ratios and latency stay nil (PLC-1/2).
+        let biomarkers: SessionBiomarkerAggregator.Aggregates?
+        let unscorableReason: UnscorableReason?
+        if validFrames.isEmpty {
+            biomarkers = nil
+            unscorableReason = .insufficientValidGaze
+        } else if let measured = try? SessionBiomarkerAggregator.aggregate(validFrames: validFrames, durationSec: durationSec) {
+            biomarkers = measured
+            unscorableReason = nil
+        } else {
+            biomarkers = nil
+            unscorableReason = .aggregationFailed
+        }
         let totalPreferenceDwell = socialDwell + geometricDwell
         let preference = totalPreferenceDwell > 0
             ? (socialDwell - geometricDwell) / totalPreferenceDwell
@@ -1061,13 +1073,14 @@ extension GazeSessionReportSummary {
             socialDwellSec: socialDwell,
             geometricDwellSec: geometricDwell,
             // PLC-1/PLC-2: measured from smoothed fixations and catalog AOI roles; nil when unobserved.
-            eyeDwellRatio: biomarkers.eyeDwellRatio,
-            mouthDwellRatio: biomarkers.mouthDwellRatio,
-            firstEyeLatencyMs: biomarkers.firstOrientLatencyMs,
-            socialSmileIntensityMean: biomarkers.socialSmileIntensityMean,
-            smileReactivityIndex: biomarkers.smileReactivityIndex,
-            flatAffectScore: biomarkers.flatAffectScore,
-            surpriseScoreMean: biomarkers.surpriseScoreMean,
+            eyeDwellRatio: biomarkers?.eyeDwellRatio,
+            mouthDwellRatio: biomarkers?.mouthDwellRatio,
+            firstEyeLatencyMs: biomarkers?.firstOrientLatencyMs,
+            socialSmileIntensityMean: biomarkers?.socialSmileIntensityMean,
+            smileReactivityIndex: biomarkers?.smileReactivityIndex,
+            flatAffectScore: biomarkers?.flatAffectScore,
+            surpriseScoreMean: biomarkers?.surpriseScoreMean,
+            unscorableReason: unscorableReason,
             qualityVerdict: verdict,
             subjectAgeSignal: subjectAgeSignal,
             interruptionCount: interruptionCount,

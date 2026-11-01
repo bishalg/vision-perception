@@ -8,7 +8,7 @@ import { FlagBadge } from "@/components/FlagBadge";
 import type { SessionSummary } from "@/lib/api";
 import type { ConfigDocumentKind } from "@/lib/api/catalog";
 import { browserCore } from "@/lib/asd/browser";
-import { defaultScoringProfile, rescoreApiSession, type ContractInfo, type RescoreResult } from "@/lib/asd/ops";
+import { defaultScoringProfile, rescoreSession, type ContractInfo, type RescoreResult } from "@/lib/asd/ops";
 import { recordSandboxRun, summarizeSandbox, type SandboxOutcome } from "@/lib/configDocs";
 import { formatNumber } from "@/lib/format";
 import { configText } from "@/messages/config";
@@ -50,7 +50,7 @@ const composite = (r: RescoreResult | null) => r?.score.compositeScore ?? null;
 
 /**
  * Sandbox re-score (spec 03 §4.5, IA `/config/sandbox`): re-scores the chosen sessions with the `published` and the
- * `draft` documents through the Rust core in the browser (asd-wasm `rescoreApiSession`) and shows the per-session
+ * `draft` documents through the Rust core in the browser (asd-wasm `rescoreSession` over the stored record) and shows the per-session
  * flag and composite change and a summary. Writes nothing; `record` remembers the run in this browser for the
  * publish gate of those versions.
  */
@@ -119,12 +119,13 @@ export function SandboxRunner({
       const right = { profile: draft.profile ?? fallback, baselines: draft.baselines };
       const out: Row[] = [];
       let panicked = false;
-      for (const { detail, clips } of loaded.sessions) {
-        const summary = sessions.find((x) => x.id === detail.id) ?? detail;
-        const opts = { ageMonths: ageOf(detail.id) };
+      for (const { id, record } of loaded.sessions) {
+        const summary = sessions.find((x) => x.id === id);
+        if (!summary) continue;
+        const opts = { ageMonths: ageOf(id) };
         const [before, after] = [
-          await rescoreApiSession(core, detail, clips, left.profile, left.baselines, opts),
-          await rescoreApiSession(core, detail, clips, right.profile, right.baselines, opts),
+          await rescoreSession(core, record, left.profile, left.baselines, opts),
+          await rescoreSession(core, record, right.profile, right.baselines, opts),
         ];
         for (const r of [before, after]) {
           if (!r.ok && r.error.kind === "panic") panicked = true;

@@ -10,6 +10,7 @@ import { createLiveParticipant } from "./participant";
 import {
   ApiError,
   clipListSchema,
+  sessionRawSchema,
   deviceSchema,
   devicePageSchema,
   enrolCodeResponseSchema,
@@ -110,6 +111,7 @@ export function createLiveClient(opts: LiveOptions): CurvApi & AuthApi {
       request(`/orgs/${enc(orgId)}/sessions${buildSessionQuery(query)}`, sessionPageSchema),
     getSession: (id) => request(`/sessions/${enc(id)}`, sessionDetailSchema),
     getSessionClips: async (id) => (await request(`/sessions/${enc(id)}/clips`, clipListSchema)).items,
+    getSessionRaw: (id) => request(`/sessions/${enc(id)}/raw`, sessionRawSchema),
     listReview: (orgId, query) => request(`/orgs/${enc(orgId)}/review${buildQuery(query)}`, reviewPageSchema),
     updateReview: (id, patch) => request(`/review/${enc(id)}`, reviewItemSchema, { method: "PATCH", body: patch }),
     listDevices: (orgId, query) => request(`/orgs/${enc(orgId)}/devices${buildQuery(query)}`, devicePageSchema),

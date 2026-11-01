@@ -5,13 +5,15 @@ import CurvAsdGazeKit
 // MARK: - Per-Stimulus Matrix (Expected vs Recorded)
 
 /// Computes the per-video expected-vs-recorded score from stimulus-tagged frames and the
-/// bundled provisional baseline. Recomputed on demand — extraction is linear over frames.
+/// active scoring configuration (bundled or a verified delivered bundle, WP-A.5). Recomputed on demand — extraction is linear over frames.
 struct PerVideoMatrixModel {
     let sessionScore: PerVideoSessionScore?
     let baselineStatus: String?
 
     init(recordedFrames: [GazeFrame], childAgeMonths: Int) {
-        guard let baseline = NormativeBaselineLibrary.loadBundled() else {
+        // WP-A.5: the active configuration's baselines and ScoringProfile.
+        let configuration = ScoringConfiguration.active
+        guard let baseline = configuration.baselines else {
             sessionScore = nil
             baselineStatus = nil
             return
@@ -21,7 +23,8 @@ struct PerVideoMatrixModel {
             metricSets: metricSets,
             baseline: baseline,
             ageMonths: childAgeMonths,
-            frames: recordedFrames
+            frames: recordedFrames,
+            scoringProfileJSON: configuration.scoringProfileJSON
         )
         baselineStatus = baseline.status
     }

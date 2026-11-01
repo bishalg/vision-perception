@@ -45,6 +45,26 @@ pub fn score_session(
     frames: &[GazeFrame],
     scored_at_utc: &str,
 ) -> PerVideoSessionScore {
+    score_session_with(
+        metric_sets,
+        baseline,
+        age_months,
+        frames,
+        scored_at_utc,
+        LOW_CONFIDENCE_VALID_RATIO,
+    )
+}
+
+/// [`score_session`] with the low-confidence clip threshold of a delivered
+/// `ScoringProfile.lowConfidenceValidRatio` (WP-A.5) instead of the bundled default.
+pub fn score_session_with(
+    metric_sets: &[PerVideoMetricSet],
+    baseline: &NormativeBaselineSet,
+    age_months: i64,
+    frames: &[GazeFrame],
+    scored_at_utc: &str,
+    low_confidence_valid_ratio: f64,
+) -> PerVideoSessionScore {
     let bracket_id = resolved_bracket_id(baseline, age_months);
     let mut frames_by_clip: BTreeMap<&str, Vec<GazeFrame>> = BTreeMap::new();
     for frame in frames {
@@ -65,7 +85,7 @@ pub fn score_session(
                 rows: Vec::new(),
                 subscore: 0.0,
                 valid_sample_ratio: metric_set.valid_sample_ratio,
-                low_confidence: metric_set.valid_sample_ratio < LOW_CONFIDENCE_VALID_RATIO,
+                low_confidence: metric_set.valid_sample_ratio < low_confidence_valid_ratio,
                 has_baseline: false,
                 weight: 0.0,
             });
@@ -75,7 +95,13 @@ pub fn score_session(
         let clip_frames = frames_by_clip
             .get(metric_set.stimulus_id.as_str())
             .map_or(&[][..], Vec::as_slice);
-        let report = score_video(metric_set, video, &bracket_id, clip_frames);
+        let report = score_video_with(
+            metric_set,
+            video,
+            &bracket_id,
+            clip_frames,
+            low_confidence_valid_ratio,
+        );
         weighted_sum += video.weight * report.subscore;
         weight_sum += video.weight;
         reports.push(report);
@@ -136,6 +162,23 @@ pub fn score_video(
     bracket_id: &str,
     clip_frames: &[GazeFrame],
 ) -> PerVideoScoreReport {
+    score_video_with(
+        metric_set,
+        video,
+        bracket_id,
+        clip_frames,
+        LOW_CONFIDENCE_VALID_RATIO,
+    )
+}
+
+/// [`score_video`] with an explicit low-confidence clip threshold.
+pub fn score_video_with(
+    metric_set: &PerVideoMetricSet,
+    video: &NormativeVideo,
+    bracket_id: &str,
+    clip_frames: &[GazeFrame],
+    low_confidence_valid_ratio: f64,
+) -> PerVideoScoreReport {
     let clip_duration_ms = swift_max(metric_set.observed_duration_sec, 0.5) * 1000.0;
     let mut rows = Vec::new();
 
@@ -192,7 +235,7 @@ pub fn score_video(
         rows,
         subscore,
         valid_sample_ratio: metric_set.valid_sample_ratio,
-        low_confidence: metric_set.valid_sample_ratio < LOW_CONFIDENCE_VALID_RATIO,
+        low_confidence: metric_set.valid_sample_ratio < low_confidence_valid_ratio,
         has_baseline: true,
         weight: video.weight,
     }
@@ -380,6 +423,42 @@ fn civil_from_days(days: i64) -> (i64, i64, i64) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn low_confidence_threshold_comes_from_the_caller() {
+        let set = PerVideoMetricSet {
+            stimulus_id: "clip".into(),
+            clip_frame_count: 100,
+            valid_frame_count: 65,
+            valid_sample_ratio: 0.65,
+            observed_duration_sec: 10.0,
+            aoi_dwell_ratios: BTreeMap::new(),
+            metrics: BTreeMap::new(),
+        };
+        let baseline = NormativeBaselineSet {
+            schema_version: "1".into(),
+            status: "provisional".into(),
+            provenance: None,
+            age_brackets: Vec::new(),
+            videos: BTreeMap::new(),
+        };
+        let default = score_session(std::slice::from_ref(&set), &baseline, 24, &[], "");
+        assert!(
+            !default.videos[0].low_confidence,
+            "0.65 >= the 0.60 default"
+        );
+        let strict = score_session_with(std::slice::from_ref(&set), &baseline, 24, &[], "", 0.70);
+        assert!(strict.videos[0].low_confidence, "0.65 < a delivered 0.70");
+        let same = score_session_with(
+            std::slice::from_ref(&set),
+            &baseline,
+            24,
+            &[],
+            "",
+            LOW_CONFIDENCE_VALID_RATIO,
+        );
+        assert_eq!(same, default);
+    }
 
     #[test]
     fn band_score_clamps_like_swift() {

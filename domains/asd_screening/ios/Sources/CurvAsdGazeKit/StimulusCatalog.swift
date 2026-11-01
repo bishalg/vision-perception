@@ -123,7 +123,9 @@ extension StimulusCatalog: Codable {
 
 extension StimulusCatalog {
 
-    public static let current: StimulusCatalog = loadBundled() ?? .empty
+    /// The catalog of the active scoring configuration: the bundled one, or the catalog of a
+    /// verified delivered config bundle installed at launch (WP-A.5).
+    public static var current: StimulusCatalog { ScoringConfiguration.active.catalog }
 
     public static let empty = StimulusCatalog(
         schemaVersion: "0",

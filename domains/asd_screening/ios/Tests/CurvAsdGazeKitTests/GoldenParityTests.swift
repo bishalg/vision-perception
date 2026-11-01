@@ -213,7 +213,7 @@ final class GoldenParityTests: XCTestCase {
     func testSessionAggregateMatchesGolden() throws {
         for v in try vectors("aggregate", "session") {
             let input = try dict(v.input)
-            let aggregates = SessionBiomarkerAggregator.aggregate(
+            let aggregates = try SessionBiomarkerAggregator.aggregate(
                 coreFrames: try frames(input["validFrames"]),
                 durationSec: try XCTUnwrap(input["durationSec"] as? Double)
             )

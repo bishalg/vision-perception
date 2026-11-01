@@ -32,6 +32,28 @@ export const MAX_NOTE_CHARS = 20_000;
 export const MAX_ASSIGNING_AUTHORITY_CHARS = 40;
 export const MAX_MRN_CHARS = 64;
 
+/** `GET /participants/{id}/summary`: counts over the participant's care events (clinical content roles; audited). */
+export const careSummarySchema = z.object({
+  participant_token: z.string(),
+  total_events: z.number().int().min(0),
+  task_completions: z.number().int().min(0),
+  medication_doses: z.number().int().min(0),
+  diary_entries: z.number().int().min(0),
+  milestones: z.number().int().min(0),
+  session_count: z.number().int().min(0),
+  checkin_count: z.number().int().min(0),
+  completion_rate_percent: z.number(),
+  recent_moods: z.array(z.string()),
+});
+export type CareSummary = z.infer<typeof careSummarySchema>;
+
+/** Server-side timeline filters: kinds (any of), inclusive `from`/`to` as RFC 3339 or `YYYY-MM-DD` (UTC). */
+export interface TimelineQuery extends PageQuery {
+  kind?: readonly TimelineKind[];
+  from?: string;
+  to?: string;
+}
+
 /** `GET /participants/{id}`: the same `Participant` as the list items. */
 export const participantDetailSchema = participantSchema;
 
@@ -141,8 +163,10 @@ export type DisclosurePage = z.infer<typeof disclosurePageSchema>;
 
 export interface ParticipantApi {
   getParticipant(participantId: string): Promise<z.infer<typeof participantDetailSchema>>;
-  /** Newest first, headers only (CW-3). */
-  getParticipantTimeline(participantId: string, query?: PageQuery): Promise<TimelinePage>;
+  /** Newest first, headers only (CW-3); `kind`, `from` and `to` filter on the server and the cursor continues inside them. */
+  getParticipantTimeline(participantId: string, query?: TimelineQuery): Promise<TimelinePage>;
+  /** Care-event counts for the print summary. 403 without clinical content access; the read is audited. */
+  getParticipantCareSummary(participantId: string): Promise<CareSummary>;
   listParticipantNotes(participantId: string, query?: PageQuery): Promise<ClinicalNotePage>;
   createParticipantNote(participantId: string, request: CreateClinicalNoteRequest): Promise<ClinicalNote>;
   /** `null` when no MRN is linked (404). Throws 409 `patient-ref-disabled` when the org does not use MRNs. Audited. */
@@ -158,7 +182,12 @@ export function createLiveParticipant(request: LiveRequest, buildQuery: (q: obje
   return {
     getParticipant: (id) => request(`/participants/${enc(id)}`, participantDetailSchema),
     getParticipantTimeline: (id, query) =>
-      request(`/participants/${enc(id)}/timeline${buildQuery(query ?? {})}`, timelinePageSchema),
+      // `kind` is sent as a comma list (`String(array)`), which the backend accepts like repeated params.
+      request(
+        `/participants/${enc(id)}/timeline${buildQuery({ ...query, kind: query?.kind?.length ? query.kind : undefined })}`,
+        timelinePageSchema,
+      ),
+    getParticipantCareSummary: (id) => request(`/participants/${enc(id)}/summary`, careSummarySchema),
     listParticipantNotes: (id, query) =>
       request(`/participants/${enc(id)}/notes${buildQuery(query ?? {})}`, clinicalNotePageSchema),
     createParticipantNote: (id, body) =>

@@ -1,7 +1,7 @@
 //! owner: WP-B.3
 //!
 //! `GET /v1/orgs/{id}/sessions` (filters `flag, quality, from, to, bundle_version,
-//! reviewed, tracking`, cursor over `(started_at, id)`, newest first) and
+//! reviewed, tracking, participant_id`, cursor over `(started_at, id)`, newest first) and
 //! `GET /v1/sessions/{id}`. Bodies are `asd-contract::api_v1::{SessionPage, SessionDetail}`
 //! (API-3).
 //!
@@ -20,7 +20,8 @@
 use std::collections::BTreeMap;
 
 use asd_contract::api_v1::{
-    SessionAttentionFlag, SessionDetail, SessionPage, SessionSummary, SessionTrackingQuality,
+    SessionAttentionFlag, SessionDetail, SessionPage, SessionRaw, SessionSummary,
+    SessionTrackingQuality,
 };
 use asd_contract::session_v1_7::TrackingQuality;
 use asd_contract::session_v1_8::{ScoringStatus, UnscorableReason};
@@ -45,6 +46,7 @@ pub struct SessionQuery {
     pub bundle_version: Option<String>,
     pub reviewed: Option<String>,
     pub tracking: Option<String>,
+    pub participant_id: Option<String>,
     pub cursor: Option<String>,
     pub limit: Option<String>,
 }
@@ -61,6 +63,8 @@ pub struct SessionFilters {
     pub reviewed: Option<bool>,
     /// Tracking verdict (`good|fair|poor|unusable`).
     pub tracking: Option<String>,
+    /// Only this participant's sessions (a participant of another org matches nothing).
+    pub participant_id: Option<Uuid>,
     pub cursor: Option<Cursor>,
     pub limit: i64,
 }
@@ -74,7 +78,7 @@ fn bad(name: &str, reason: &str) -> InvalidParam {
 
 /// RFC 3339, or a calendar date `YYYY-MM-DD` (UTC): the day's first instant for `from`,
 /// its last microsecond for `to`.
-fn parse_bound(raw: &str, upper: bool) -> Option<DateTime<Utc>> {
+pub(crate) fn parse_bound(raw: &str, upper: bool) -> Option<DateTime<Utc>> {
     if let Ok(t) = DateTime::parse_from_rfc3339(raw) {
         return Some(t.with_timezone(&Utc));
     }
@@ -115,6 +119,16 @@ impl SessionQuery {
                 errors.push(bad("tracking", "must be good, fair, poor or unusable"));
             }
         }
+        let participant_id = match non_empty(self.participant_id) {
+            None => None,
+            Some(raw) => match Uuid::parse_str(&raw) {
+                Ok(id) => Some(id),
+                Err(_) => {
+                    errors.push(bad("participant_id", "must be a participant id (UUID)"));
+                    None
+                }
+            },
+        };
         let reviewed = match non_empty(self.reviewed).as_deref() {
             None => None,
             Some("true") => Some(true),
@@ -154,6 +168,7 @@ impl SessionQuery {
             bundle_version: non_empty(self.bundle_version),
             reviewed,
             tracking,
+            participant_id,
             cursor,
             limit,
         })
@@ -268,6 +283,7 @@ pub async fn list(db: &PgPool, org: Uuid, f: &SessionFilters) -> AppResult<Sessi
                      WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed')) = $7)
              AND ($8::timestamptz IS NULL OR (s.started_at, s.id) < ($8, $9::text))
              AND ($11::text IS NULL OR s.tracking_verdict = $11)
+             AND ($12::uuid IS NULL OR s.participant_id = $12)
            ORDER BY s.started_at DESC, s.id DESC
            LIMIT $10"#,
         org,
@@ -281,6 +297,7 @@ pub async fn list(db: &PgPool, org: Uuid, f: &SessionFilters) -> AppResult<Sessi
         after_id,
         f.limit + 1,
         f.tracking,
+        f.participant_id,
     )
     .fetch_all(db)
     .await?;
@@ -296,7 +313,8 @@ pub async fn list(db: &PgPool, org: Uuid, f: &SessionFilters) -> AppResult<Sessi
              AND ($7::bool IS NULL OR EXISTS (
                      SELECT 1 FROM review_items r
                      WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed')) = $7)
-             AND ($8::text IS NULL OR s.tracking_verdict = $8)"#,
+             AND ($8::text IS NULL OR s.tracking_verdict = $8)
+             AND ($9::uuid IS NULL OR s.participant_id = $9)"#,
         org,
         f.flag,
         f.quality,
@@ -305,6 +323,7 @@ pub async fn list(db: &PgPool, org: Uuid, f: &SessionFilters) -> AppResult<Sessi
         f.bundle_version,
         f.reviewed,
         f.tracking,
+        f.participant_id,
     )
     .fetch_one(db)
     .await?;
@@ -434,6 +453,40 @@ pub async fn detail(
             affect,
             report_pdf_available,
             tracking_quality,
+        },
+    )))
+}
+
+/// What `GET /v1/sessions/{id}/raw` returns before the access check: the owning org and the
+/// de-identified body.
+pub async fn raw(db: &PgPool, id: &str) -> AppResult<Option<(Uuid, SessionRaw)>> {
+    let Some(r) = sqlx::query!(
+        r#"SELECT org_id, participant_token, schema_version, summary,
+                  frames_blob_key IS NOT NULL AS "frames_available!",
+                  frames_purged_at IS NOT NULL AS "frames_purged!"
+           FROM sessions WHERE id = $1"#,
+        id,
+    )
+    .fetch_optional(db)
+    .await?
+    else {
+        return Ok(None);
+    };
+    let mut payload = r.summary;
+    if let Value::Object(m) = &mut payload {
+        // Free text typed on the device may name the child; it never leaves the clinic's
+        // record through this route.
+        m.remove("notes");
+    }
+    Ok(Some((
+        r.org_id,
+        SessionRaw {
+            session_id: id.to_owned(),
+            schema_version: r.schema_version,
+            participant_token: r.participant_token,
+            raw_payload: payload,
+            frames_available: r.frames_available,
+            frames_purged: r.frames_purged,
         },
     )))
 }

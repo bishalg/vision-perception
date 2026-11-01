@@ -1,7 +1,7 @@
 import type { ClinicalReview } from "@/lib/api/clinical";
 import type { Participant } from "@/lib/api/admin";
 import type { AttentionFlag } from "@/lib/api/types";
-import type { ClinicalNote } from "@/lib/api/participant";
+import type { CareSummary, ClinicalNote } from "@/lib/api/participant";
 import { formatDateTime } from "@/lib/format";
 import { en } from "@/messages/en";
 import { participantText } from "@/messages/participant";
@@ -26,6 +26,7 @@ export function PrintSummary({
   participant,
   rows,
   notes,
+  care,
   truncated,
   generatedAt,
 }: {
@@ -33,6 +34,8 @@ export function PrintSummary({
   rows: PrintRow[];
   /** Current (not corrected) notes; empty without clinical-content access. */
   notes: ClinicalNote[] | undefined;
+  /** Care-event counts; `undefined` without clinical-content access. */
+  care?: CareSummary;
   truncated?: number;
   generatedAt: string;
 }) {
@@ -93,6 +96,13 @@ export function PrintSummary({
           </table>
         )}
         {truncated ? <p className="muted">{t.truncated(truncated)}</p> : null}
+
+        {care ? (
+          <>
+            <h3>{t.careHeading}</h3>
+            <p>{t.careLine(care)}</p>
+          </>
+        ) : null}
 
         {notes ? (
           <>

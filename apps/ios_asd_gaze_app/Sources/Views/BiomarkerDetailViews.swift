@@ -311,7 +311,7 @@ public struct BiomarkerDetailView: View {
             return "Debug"
         #endif
         case .facialAffect:
-            return "\(Int(summary.socialSmileIntensityMean * 100))% Smile"
+            return summary.socialSmileIntensityMean.map { "\(Int($0 * 100))% Smile" } ?? "Not scored"
         case .dataQuality:
             return "\(String(format: "%.1f%%", summary.validRatio * 100)) Usable"
         }
@@ -333,17 +333,18 @@ public struct BiomarkerDetailView: View {
                 let ratio: Double
                 switch type {
                 case .socialPreference:
-                    ratio = runningTotal > 0 ? Double(runningSocial) / Double(runningTotal) : (summary.socialPreferenceScore * 0.5 + 0.5)
+                    ratio = runningTotal > 0 ? Double(runningSocial) / Double(runningTotal) : (summary.socialPreferenceScore.map { $0 * 0.5 + 0.5 } ?? 0.5)
                 case .facialAffect:
                     let smileSum = slice.reduce(0.0) { $0 + $1.affect.socialSmileIntensity }
-                    ratio = runningTotal > 0 ? (smileSum / Double(runningTotal)) : summary.socialSmileIntensityMean
+                    ratio = runningTotal > 0 ? (smileSum / Double(runningTotal)) : (summary.socialSmileIntensityMean ?? 0)
                 case .dataQuality:
                     let totalInWindow = recordedFrames.filter { $0.gaze.videoTimeSec <= targetTime }.count
                     ratio = totalInWindow > 0 ? Double(runningTotal) / Double(totalInWindow) : summary.validRatio
                 #if ASD_RESEARCH_CLASSIFIER
                 case .mlClassification:
                     let socialRatio = runningTotal > 0 ? Double(runningSocial) / Double(runningTotal) : 0.5
-                    let smileMean = runningTotal > 0 ? (slice.reduce(0.0) { $0 + $1.affect.socialSmileIntensity } / Double(runningTotal)) : summary.socialSmileIntensityMean
+                    let fallbackSmile: Double = summary.socialSmileIntensityMean ?? 0
+                    let smileMean: Double = runningTotal > 0 ? (slice.reduce(0.0) { $0 + $1.affect.socialSmileIntensity } / Double(runningTotal)) : fallbackSmile
                     let eyeRatio = summary.eyeDwellRatio ?? 0
                     let baseScore = (socialRatio * 0.55 + min(1.0, eyeRatio / 0.35) * 0.30 + min(1.0, smileMean / 0.25) * 0.15)
                     ratio = max(0.1, min(0.95, baseScore))
@@ -362,7 +363,7 @@ public struct BiomarkerDetailView: View {
             case .socialPreference:
                 targetRatio = summary.socialDwellSec / max(0.1, summary.socialDwellSec + summary.geometricDwellSec)
             case .facialAffect:
-                targetRatio = summary.socialSmileIntensityMean
+                targetRatio = summary.socialSmileIntensityMean ?? 0
             case .dataQuality:
                 targetRatio = summary.validRatio
             #if ASD_RESEARCH_CLASSIFIER
@@ -411,7 +412,7 @@ public struct BiomarkerDetailView: View {
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text(String(format: "%+.2f", summary.socialPreferenceScore))
+                        Text(summary.socialPreferenceScore.map { String(format: "%+.2f", $0) } ?? "Not scored")
                             .font(.system(size: 20, weight: .bold, design: .monospaced))
                             .foregroundColor(.primary)
                         Text("GeoPref Score")

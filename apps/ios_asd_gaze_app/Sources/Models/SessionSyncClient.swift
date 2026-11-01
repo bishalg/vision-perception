@@ -3,7 +3,7 @@ import CurvAsdGazeKit
 import Foundation
 import os
 
-// MARK: - Payload (`POST /v1/sessions`, schema `docs/spec/schemas/asd/session-v1.7.json`)
+// MARK: - Payload (`POST /v1/sessions`, schema `docs/spec/schemas/asd/session-v1.8.json`)
 
 public enum SessionPayloadError: Error, Equatable, Sendable {
     /// Simulated sessions are refused by every sink (SIM-5).
@@ -109,14 +109,26 @@ public struct SessionPerVideoRow: Codable, Equatable, Sendable {
 /// The `POST /v1/sessions` body: the backend's `SessionIngestRequest` fields mapped
 /// from a `GazeSessionRecord`, plus the full record in `rawPayload` so nothing the
 /// app measured is lost (`02 §4`).
+///
+/// Schema 1.8 (SCH-5): `scoringStatus` (and `unscorableReason`) at the top level equal the
+/// record's; an `unscorable` session has no `socialPreferenceScore`, no affect values in
+/// `rawPayload` and no device `attentionFlag` (explicit `null`). A record of an earlier
+/// version (or a payload queued by an earlier build) keeps its own schema version and shape.
 public struct SessionIngestPayload: Codable, Equatable, Sendable {
+    /// Wire schema version of the records this build writes (`X-Schema-Version`).
+    public static let currentSchemaVersion = "1.8"
+
     public let sessionId: String
     /// Pseudonymous token (CNS-7), never a name.
     public let participantToken: String
     public let captureSource: String
     public let durationSec: Double
     public let validRatio: Double
-    public let socialPreferenceScore: Double
+    /// `scored` or `unscorable` (1.8); `nil` only for a payload queued as 1.6/1.7.
+    public let scoringStatus: String?
+    public let unscorableReason: String?
+    /// `nil` when unscorable.
+    public let socialPreferenceScore: Double?
     public let eyeDwellRatio: Double?
     public let mouthDwellRatio: Double?
     public let firstEyeLatencyMs: Double?
@@ -128,13 +140,14 @@ public struct SessionIngestPayload: Codable, Equatable, Sendable {
     /// Sent as explicit `null` when unknown: the backend would otherwise
     /// default it to "express_30s".
     public let battery: String?
-    /// Wire form ("1.7"), also sent as `X-Schema-Version`.
+    /// Wire form ("1.8"), also sent as `X-Schema-Version`.
     public let schemaVersion: String
     public let perVideo: [SessionPerVideoRow]?
     public let rawPayload: GazeSessionRecord
 
     enum CodingKeys: String, CodingKey {
         case sessionId, participantToken, captureSource, durationSec, validRatio, socialPreferenceScore
+        case scoringStatus, unscorableReason
         case eyeDwellRatio, mouthDwellRatio, firstEyeLatencyMs, qualityVerdict, calibratedDistanceCm
         case attentionFlag, battery, schemaVersion, perVideo, rawPayload
     }
@@ -147,15 +160,21 @@ public struct SessionIngestPayload: Codable, Equatable, Sendable {
         captureSource = record.captureSource.rawValue
         durationSec = record.durationSec
         validRatio = record.validFrameRatio
+        // The record's own version decides the wire version (asd-sync refuses unsupported
+        // ones); the 1.8 scoring keys exist only on a 1.8 body.
+        let wire = Self.wireSchemaVersion(record.schemaVersion)
+        scoringStatus = wire == Self.currentSchemaVersion ? record.scoringStatus.rawValue : nil
+        unscorableReason = wire == Self.currentSchemaVersion ? record.unscorableReason?.rawValue : nil
         socialPreferenceScore = record.socialPreferenceScore
         eyeDwellRatio = record.eyeDwellRatio
         mouthDwellRatio = record.mouthDwellRatio
         firstEyeLatencyMs = record.firstEyeLatencyMs
         qualityVerdict = record.qualityVerdict
         calibratedDistanceCm = record.calibratedDistanceCm
-        self.attentionFlag = attentionFlag?.rawValue
+        // SCH-5: an unscorable session carries no device flag.
+        self.attentionFlag = record.scoringStatus == .scored ? attentionFlag?.rawValue : nil
         self.battery = battery
-        schemaVersion = Self.wireSchemaVersion(record.schemaVersion)
+        schemaVersion = wire
         perVideo = record.perVideo.map { reports in
             reports.enumerated().map { SessionPerVideoRow(report: $1, order: $0 + 1) }
         }
@@ -169,6 +188,28 @@ public struct SessionIngestPayload: Codable, Equatable, Sendable {
             : recordVersion
     }
 
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        sessionId = try c.decode(String.self, forKey: .sessionId)
+        participantToken = try c.decode(String.self, forKey: .participantToken)
+        captureSource = try c.decode(String.self, forKey: .captureSource)
+        durationSec = try c.decode(Double.self, forKey: .durationSec)
+        validRatio = try c.decode(Double.self, forKey: .validRatio)
+        scoringStatus = try c.decodeIfPresent(String.self, forKey: .scoringStatus)
+        unscorableReason = try c.decodeIfPresent(String.self, forKey: .unscorableReason)
+        socialPreferenceScore = try c.decodeIfPresent(Double.self, forKey: .socialPreferenceScore)
+        eyeDwellRatio = try c.decodeIfPresent(Double.self, forKey: .eyeDwellRatio)
+        mouthDwellRatio = try c.decodeIfPresent(Double.self, forKey: .mouthDwellRatio)
+        firstEyeLatencyMs = try c.decodeIfPresent(Double.self, forKey: .firstEyeLatencyMs)
+        qualityVerdict = try c.decode(String.self, forKey: .qualityVerdict)
+        calibratedDistanceCm = try c.decodeIfPresent(Double.self, forKey: .calibratedDistanceCm)
+        attentionFlag = try c.decodeIfPresent(String.self, forKey: .attentionFlag)
+        battery = try c.decodeIfPresent(String.self, forKey: .battery)
+        schemaVersion = try c.decode(String.self, forKey: .schemaVersion)
+        perVideo = try c.decodeIfPresent([SessionPerVideoRow].self, forKey: .perVideo)
+        rawPayload = try c.decode(GazeSessionRecord.self, forKey: .rawPayload)
+    }
+
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(sessionId, forKey: .sessionId)
@@ -176,7 +217,10 @@ public struct SessionIngestPayload: Codable, Equatable, Sendable {
         try c.encode(captureSource, forKey: .captureSource)
         try c.encode(durationSec, forKey: .durationSec)
         try c.encode(validRatio, forKey: .validRatio)
-        try c.encode(socialPreferenceScore, forKey: .socialPreferenceScore)
+        try c.encodeIfPresent(scoringStatus, forKey: .scoringStatus)
+        try c.encodeIfPresent(unscorableReason, forKey: .unscorableReason)
+        // Absent when unscorable (SCH-5, CON-14).
+        try c.encodeIfPresent(socialPreferenceScore, forKey: .socialPreferenceScore)
         // Unmeasured metrics are absent keys, never a default (PLC-1/2).
         try c.encodeIfPresent(eyeDwellRatio, forKey: .eyeDwellRatio)
         try c.encodeIfPresent(mouthDwellRatio, forKey: .mouthDwellRatio)

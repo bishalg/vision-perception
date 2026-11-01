@@ -211,7 +211,7 @@ export const configText = {
       unreliable:
         "The backend-only \"unreliable\" flag is not reproduced: such sessions are re-scored as if they were scored on the device, and their recorded flag is shown as unreliable.",
       perClip:
-        "The API has no per-clip valid-sample ratio, so every clip uses the session's valid frame ratio; segment windows need frames, so each metric uses its recorded value for every segment.",
+        "The re-score reads the stored record with its own per-clip valid-sample ratios. Gaze frames are encrypted on the device and not stored for re-scoring, so segment windows are not recomputed: each metric uses its recorded value for every segment.",
       device: "\"Recorded\" is what the device sent; compare Published with Draft to see the effect of the change alone.",
     },
     recordedUnreliable: "unreliable",

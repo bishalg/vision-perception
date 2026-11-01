@@ -7,7 +7,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { CatalogFailure, CatalogResult } from "@/components/catalog/types";
-import { ApiError, type ClipScore, type SessionDetail } from "@/lib/api";
+import { ApiError } from "@/lib/api";
 import type { ConfigTransition } from "@/lib/api/catalog";
 import {
   normativeBaselineSetSchema,
@@ -84,14 +84,15 @@ export async function transitionDocAction(
   }
 }
 
+/** A stored session for the sandbox: its de-identified `rawPayload` record (`GET /v1/sessions/{id}/raw`). */
 export interface SandboxSession {
-  detail: SessionDetail;
-  clips: ClipScore[];
+  id: string;
+  record: Record<string, unknown>;
 }
 
 const MAX_SANDBOX_SESSIONS = 50;
 
-/** Reads the sessions to re-score (detail + clip rows). Read-only; the backend scopes them to the caller's org. */
+/** Reads the stored records to re-score. Read-only (each read is audited); the backend scopes them to the caller's org. */
 export async function loadSandboxSessionsAction(
   ids: string[],
 ): Promise<CatalogResult<{ sessions: SandboxSession[] }>> {
@@ -101,8 +102,8 @@ export async function loadSandboxSessionsAction(
     const api = await authedApi();
     const sessions = await Promise.all(
       parsed.data.map(async (id) => {
-        const [detail, clips] = await Promise.all([api.getSession(id), api.getSessionClips(id)]);
-        return { detail, clips };
+        const raw = await api.getSessionRaw(id);
+        return { id, record: raw.raw_payload };
       }),
     );
     return { ok: true, sessions };

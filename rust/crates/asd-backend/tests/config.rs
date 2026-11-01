@@ -300,6 +300,37 @@ async fn create_validates_the_body_per_kind_and_versions_are_unique() {
         assert_eq!(slug(&b), "validation-failed", "{b}");
     }
 
+    // Catalog value rules: problems name the member (WP-C.4).
+    let mut bad = catalog();
+    bad["clips"][2]["areas"][0]["xMin"] = json!(1.4);
+    bad["clips"][3]["id"] = bad["clips"][0]["id"].clone();
+    bad["fallbackLanguage"] = json!("fr");
+    let (s, b) = c
+        .post(
+            "/v1/config/stimulus_catalog",
+            &json!({"version": "bad", "body": bad}),
+            r,
+        )
+        .await;
+    assert_eq!(s, StatusCode::BAD_REQUEST, "{b}");
+    assert_eq!(slug(&b), "validation-failed", "{b}");
+    let names: Vec<&str> = b["invalid_params"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| p["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        names,
+        [
+            "body.fallbackLanguage",
+            "body.clips[2].areas[0].xMin",
+            "body.clips[2].areas[0].xMax",
+            "body.clips[3].id"
+        ],
+        "{b}"
+    );
+
     // Out-of-range thresholds: yellow floor above green floor.
     let mut p = profile();
     p["flag"]["yellowFloor"] = json!(0.9);

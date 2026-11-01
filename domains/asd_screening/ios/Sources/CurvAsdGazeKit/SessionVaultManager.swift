@@ -295,13 +295,14 @@ public struct SessionVaultManager: Sendable {
         perVideoScore: PerVideoSessionScore? = nil,
         collection: [String: Any]? = nil
     ) -> [String: Any] {
-        var biomarkers: [String: Any] = [
-            "socialPreferenceScore": report.socialPreferenceScore,
-            "socialSmileIntensity": report.socialSmileIntensityMean,
-            "smileReactivityIndex": report.smileReactivityIndex,
-            "flatAffectScore": report.flatAffectScore,
-            "surpriseScoreMean": report.surpriseScoreMean
-        ]
+        // SCH-5: an unscorable session exports its status and reason, no score values.
+        var biomarkers: [String: Any] = ["scoringStatus": report.scoringStatus.rawValue]
+        if let value = report.unscorableReason { biomarkers["unscorableReason"] = value.rawValue }
+        if let value = report.socialPreferenceScore { biomarkers["socialPreferenceScore"] = value }
+        if let value = report.socialSmileIntensityMean { biomarkers["socialSmileIntensity"] = value }
+        if let value = report.smileReactivityIndex { biomarkers["smileReactivityIndex"] = value }
+        if let value = report.flatAffectScore { biomarkers["flatAffectScore"] = value }
+        if let value = report.surpriseScoreMean { biomarkers["surpriseScoreMean"] = value }
         if let value = report.eyeDwellRatio { biomarkers["eyeDwellRatio"] = value }
         if let value = report.mouthDwellRatio { biomarkers["mouthDwellRatio"] = value }
         if let value = report.firstEyeLatencyMs { biomarkers["firstEyeLatencyMs"] = value }
@@ -384,11 +385,12 @@ public struct SessionVaultManager: Sendable {
 
     private static func careKitJson(report: GazeSessionReportSummary, extraOutcome: [String: Any]) -> [String: Any] {
         var outcome: [String: Any] = [
-            "socialPreferenceScore": report.socialPreferenceScore,
+            "scoringStatus": report.scoringStatus.rawValue,
             "qualityVerdict": report.qualityVerdict.rawValue,
             "captureSource": report.captureSource.rawValue,
             "timestamp": ISO8601DateFormatter().string(from: Date())
         ]
+        if let value = report.socialPreferenceScore { outcome["socialPreferenceScore"] = value }
         outcome.merge(extraOutcome) { _, new in new }
         return [
             "identifier": "OCKCarePlanActivity",

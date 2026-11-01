@@ -1,0 +1,10 @@
+{
+  "trusted": {
+    "keyId": "ed25519-730a5edc28c2f8da",
+    "publicKey": "vHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU"
+  },
+  "untrusted": {
+    "keyId": "ed25519-b28baab33e1f95a7",
+    "publicKey": "VRVPQgZepaG-oFRjgmviaE65LfksEAAnqrquV8pVQgc"
+  }
+}

@@ -28,7 +28,7 @@ final class ClinicalDevelopmentModelsTests: XCTestCase {
         XCTAssertTrue(medium.clinicalRecommendation.contains("Follow-Up"))
     }
 
-    func testGazeTelemetrySessionMapsValidTimeAndSocialRatio() {
+    func testGazeTelemetrySessionMapsValidTimeAndSocialRatio() throws {
         let record = GazeSessionRecord.fixture(
             sessionId: "s1",
             participantId: "p",
@@ -44,7 +44,7 @@ final class ClinicalDevelopmentModelsTests: XCTestCase {
         )
         let session = GazeTelemetrySession(from: record)
         XCTAssertEqual(session.totalValidTimeSec, 27, accuracy: 0.01)
-        XCTAssertEqual(session.socialTargetRatio, 0.6, accuracy: 0.01)
+        XCTAssertEqual(try XCTUnwrap(session.socialTargetRatio), 0.6, accuracy: 0.01)
         XCTAssertEqual(session.stimulusTag, .faceToFace)
         XCTAssertGreaterThan(session.trackingConfidenceIndex, 0.8)
     }

@@ -345,17 +345,19 @@ public struct ORKActiveStepResult: Sendable, Codable, Equatable {
     public let isValid: Bool
     public let validSampleRatio: Double
     public let qualityVerdict: String
-    public let socialPreferenceScore: Double
+    /// `nil` when the session is unscorable (SCH-5); omitted from the encoded JSON.
+    public let socialPreferenceScore: Double?
     /// `nil` when not measured (PLC-2); omitted from the encoded JSON.
     public let eyeDwellRatio: Double?
     /// `nil` when not measured (PLC-2); omitted from the encoded JSON.
     public let mouthDwellRatio: Double?
     /// `nil` until a first-fixation detector exists (PLC-1); omitted from the encoded JSON.
     public let firstEyeLatencyMs: Double?
-    public let socialSmileIntensity: Double
-    public let smileReactivityIndex: Double
-    public let flatAffectScore: Double
-    public let surpriseScoreMean: Double
+    /// The affect values are `nil` when the session is unscorable (SCH-5).
+    public let socialSmileIntensity: Double?
+    public let smileReactivityIndex: Double?
+    public let flatAffectScore: Double?
+    public let surpriseScoreMean: Double?
     public let telemetrySampleCount: Int
     public let recordedAt: Date
 
@@ -367,14 +369,14 @@ public struct ORKActiveStepResult: Sendable, Codable, Equatable {
         isValid: Bool,
         validSampleRatio: Double,
         qualityVerdict: String,
-        socialPreferenceScore: Double,
+        socialPreferenceScore: Double?,
         eyeDwellRatio: Double?,
         mouthDwellRatio: Double?,
         firstEyeLatencyMs: Double?,
-        socialSmileIntensity: Double,
-        smileReactivityIndex: Double,
-        flatAffectScore: Double,
-        surpriseScoreMean: Double,
+        socialSmileIntensity: Double?,
+        smileReactivityIndex: Double?,
+        flatAffectScore: Double?,
+        surpriseScoreMean: Double?,
         telemetrySampleCount: Int = 0,
         recordedAt: Date = Date()
     ) {
@@ -401,7 +403,7 @@ public struct ORKActiveStepResult: Sendable, Codable, Equatable {
         self.init(
             sessionId: summary.sessionId,
             durationSec: summary.durationSec,
-            isValid: summary.validRatio >= 0.60,
+            isValid: summary.validRatio >= 0.60 && summary.scoringStatus == .scored,
             validSampleRatio: summary.validRatio,
             qualityVerdict: summary.qualityVerdict.rawValue,
             socialPreferenceScore: summary.socialPreferenceScore,

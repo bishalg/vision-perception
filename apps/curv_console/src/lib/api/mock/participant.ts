@@ -13,6 +13,8 @@ import {
   type ParticipantApi,
   type PatientRef,
   type TimelineEntry,
+  type TimelineQuery,
+  TIMELINE_KINDS,
 } from "../participant";
 import { ApiError, PROBLEM_BASE, type PageQuery, type SessionDetail } from "../types";
 
@@ -142,7 +144,24 @@ export function createMockParticipant(ctx: MockParticipantContext): ParticipantA
       return { ...p, has_patient_ref: refs.has(id) };
     },
 
-    async getParticipantTimeline(id, query = {}) {
+    async getParticipantCareSummary(id) {
+      const p = await find(id);
+      const sessions = sessionsOf(id).length;
+      return {
+        participant_token: p.participant_token,
+        total_events: 2 + sessions,
+        task_completions: sessions,
+        medication_doses: 0,
+        diary_entries: 1,
+        milestones: 1,
+        session_count: sessions,
+        checkin_count: 0,
+        completion_rate_percent: sessions > 0 ? 100 : 0,
+        recent_moods: ["calm"],
+      };
+    },
+
+    async getParticipantTimeline(id, query: TimelineQuery = {}) {
       await find(id);
       const entries: TimelineEntry[] = [];
       sessionsOf(id).forEach((s, i) => {
@@ -192,8 +211,23 @@ export function createMockParticipant(ctx: MockParticipantContext): ParticipantA
           });
         }
       }
-      entries.sort((a, b) => b.at.localeCompare(a.at) || b.id.localeCompare(a.id));
-      const { slice, next_cursor } = ctx.page(entries, (e) => [e.at, e.id], query.cursor, query.limit);
+      for (const k of query.kind ?? []) {
+        if (!(TIMELINE_KINDS as readonly string[]).includes(k)) throw invalid("kind", "must be a timeline entry kind");
+      }
+      // A bare `to` day is inclusive, like the backend.
+      const bound = (raw: string | undefined, upper: boolean) => {
+        if (!raw) return undefined;
+        const t = Date.parse(raw);
+        if (Number.isNaN(t)) throw invalid(upper ? "to" : "from", "must be RFC 3339 or YYYY-MM-DD");
+        return upper && raw.length <= 10 ? t + DAY - 1 : t;
+      };
+      const from = bound(query.from, false);
+      const to = bound(query.to, true);
+      const kept = entries
+        .filter((e) => !query.kind?.length || query.kind.includes(e.kind))
+        .filter((e) => (from === undefined || Date.parse(e.at) >= from) && (to === undefined || Date.parse(e.at) <= to));
+      kept.sort((a, b) => b.at.localeCompare(a.at) || b.id.localeCompare(a.id));
+      const { slice, next_cursor } = ctx.page(kept, (e) => [e.at, e.id], query.cursor, query.limit);
       return { items: slice, next_cursor };
     },
 

@@ -253,7 +253,7 @@ describe.skipIf(!HAS_WASM)("editors and sandbox with the Rust core", () => {
     const sessions = (await m.listSessions(MOCK_ORG_ID, { limit: 8 })).items;
     const load = vi.fn(async (ids: string[]) => ({
       ok: true as const,
-      sessions: await Promise.all(ids.map(async (id) => ({ detail: await m.getSession(id), clips: await m.getSessionClips(id) }))),
+      sessions: await Promise.all(ids.map(async (id) => ({ id, record: (await m.getSessionRaw(id)).raw_payload }))),
     }));
     render(
       <SandboxRunner

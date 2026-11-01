@@ -177,6 +177,8 @@ public final class ResearchKitSyncService: ObservableObject {
     private let now: @Sendable () -> Date
     /// `nil` when the configuration has no `apiBaseURL` (WP-A.4).
     private let sessionClient: SessionSyncClient?
+    /// `GET /v1/config/bundle` (WP-A.5); `nil` without an `apiBaseURL`.
+    private let configClient: ConfigBundleClient?
     /// Base for queued blob paths (the app container path changes between installs).
     private let blobRoot: URL
 
@@ -263,8 +265,16 @@ public final class ResearchKitSyncService: ObservableObject {
                 registration: registration,
                 clientInfo: info
             )
+            self.configClient = ConfigBundleClient(
+                apiBaseURL: apiBaseURL,
+                transport: transport,
+                registration: registration,
+                clientInfo: info,
+                now: now
+            )
         } else {
             self.sessionClient = nil
+            self.configClient = nil
         }
 
         self.queueDirectory = queueDirectory ?? Self.defaultQueueDirectory()
@@ -323,6 +333,14 @@ public final class ResearchKitSyncService: ObservableObject {
         } catch {
             Self.logger.error("Failed to write research study payload: \(error.localizedDescription, privacy: .public)")
         }
+    }
+
+    /// Fetches the device's config bundle (WP-A.5). An accepted bundle is persisted and scores
+    /// from the next launch; a refused one changes nothing.
+    @discardableResult
+    public func refreshConfigBundle() async -> ConfigBundleClient.Outcome {
+        guard let configClient else { return .disabled }
+        return await configClient.refresh()
     }
 
     /// Whether this build uploads sessions to `/v1/sessions` (an `apiBaseURL` is configured).

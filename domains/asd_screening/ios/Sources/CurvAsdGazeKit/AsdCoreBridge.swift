@@ -137,15 +137,28 @@ enum AsdCoreBridge {
         baseline: NormativeBaselineSet,
         ageMonths: Int,
         frames: [CoreFrame],
-        scoredAtUtc: String
+        scoredAtUtc: String,
+        profileJSON: String? = nil
     ) throws -> PerVideoSessionScore {
-        let json = try scoreSessionJson(
-            metricSetsJson: encode(metricSets),
-            baselineJson: encode(baseline),
-            ageMonths: Int64(ageMonths),
-            framesJson: encode(frames),
-            scoredAtRfc3339: scoredAtUtc
-        )
+        let json: String
+        if let profileJSON {
+            json = try scoreSessionWithProfileJson(
+                metricSetsJson: encode(metricSets),
+                baselineJson: encode(baseline),
+                ageMonths: Int64(ageMonths),
+                framesJson: encode(frames),
+                scoredAtRfc3339: scoredAtUtc,
+                profileJson: profileJSON
+            )
+        } else {
+            json = try scoreSessionJson(
+                metricSetsJson: encode(metricSets),
+                baselineJson: encode(baseline),
+                ageMonths: Int64(ageMonths),
+                framesJson: encode(frames),
+                scoredAtRfc3339: scoredAtUtc
+            )
+        }
         return try decode(PerVideoSessionScore.self, from: json)
     }
 

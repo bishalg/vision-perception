@@ -5,14 +5,15 @@
 //! asd-contract and encodes; the only logic of its own is reading a stored session
 //! ([`crate::session`]).
 
+use asd_contract::catalog_checks;
 use asd_contract::config::{
     ScoringProfile, CONFIG_BUNDLE_SCHEMA_ID, SCORING_PROFILE_SCHEMA_VERSION,
 };
 use asd_contract::profile_checks::{self, ProfileProblem};
-use asd_contract::{session_v1_6, session_v1_7};
+use asd_contract::{session_v1_6, session_v1_7, session_v1_8};
 use asd_core::types::{
     AttentionFlag, AttentionFlagAssessment, GazeFrame, NormativeBaselineSet, PerVideoMetricSet,
-    PerVideoSessionScore,
+    PerVideoSessionScore, StimulusCatalog,
 };
 use asd_core::{baselines, flag, metrics, scoring};
 use serde::de::DeserializeOwned;
@@ -45,8 +46,8 @@ pub struct ContractInfo {
     /// Workspace version of the linked Rust core.
     pub core_version: &'static str,
     /// Session `schemaVersion` values [`rescore_session`] accepts (wire form).
-    pub session_schema_versions: [&'static str; 2],
-    pub session_schema_ids: [&'static str; 2],
+    pub session_schema_versions: [&'static str; 3],
+    pub session_schema_ids: [&'static str; 3],
     /// `schemaVersion` of [`default_scoring_profile`].
     pub scoring_profile_schema_version: &'static str,
     pub config_bundle_schema_id: &'static str,
@@ -58,8 +59,16 @@ pub struct ContractInfo {
 pub fn contract_info() -> ContractInfo {
     ContractInfo {
         core_version: env!("CARGO_PKG_VERSION"),
-        session_schema_versions: [session_v1_6::SCHEMA_VERSION, session_v1_7::SCHEMA_VERSION],
-        session_schema_ids: [session_v1_6::SCHEMA_ID, session_v1_7::SCHEMA_ID],
+        session_schema_versions: [
+            session_v1_6::SCHEMA_VERSION,
+            session_v1_7::SCHEMA_VERSION,
+            session_v1_8::SCHEMA_VERSION,
+        ],
+        session_schema_ids: [
+            session_v1_6::SCHEMA_ID,
+            session_v1_7::SCHEMA_ID,
+            session_v1_8::SCHEMA_ID,
+        ],
         scoring_profile_schema_version: SCORING_PROFILE_SCHEMA_VERSION,
         config_bundle_schema_id: CONFIG_BUNDLE_SCHEMA_ID,
         low_confidence_valid_ratio: scoring::LOW_CONFIDENCE_VALID_RATIO,
@@ -101,6 +110,22 @@ pub fn validate_scoring_profile(profile_json: &str) -> Validation {
     match decode::<ScoringProfile>(profile_json, "scoring profile") {
         Ok(profile) => {
             let field_problems = profile_checks::scoring_profile_problems(&profile);
+            Validation {
+                valid: field_problems.is_empty(),
+                problems: field_problems.iter().map(|p| p.message.clone()).collect(),
+                field_problems,
+            }
+        }
+        Err(e) => Validation::from(vec![e.message().to_owned()]),
+    }
+}
+
+/// A `StimulusCatalog` check: the shape (it decodes), then the value rules the backend runs
+/// on create and approve (asd-contract `catalog_checks`), with the JSON path of each problem.
+pub fn validate_catalog(catalog_json: &str) -> Validation {
+    match decode::<StimulusCatalog>(catalog_json, "stimulus catalog") {
+        Ok(catalog) => {
+            let field_problems = catalog_checks::catalog_problems(&catalog);
             Validation {
                 valid: field_problems.is_empty(),
                 problems: field_problems.iter().map(|p| p.message.clone()).collect(),
@@ -208,7 +233,7 @@ pub struct DeviceResult {
 #[serde(rename_all = "camelCase")]
 pub struct RescoreResult {
     pub session_id: String,
-    /// Wire form (`1.6`, `1.7`).
+    /// Wire form (`1.6`, `1.7`, `1.8`).
     pub schema_version: String,
     pub metric_source: MetricSource,
     /// `scoring::score_session` with the given baselines.

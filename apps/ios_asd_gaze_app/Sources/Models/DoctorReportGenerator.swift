@@ -236,7 +236,11 @@ public enum DoctorReportGenerator {
         }
 
         let colW = contentWidth / 4.0
-        let prefPercent = Int(rec.socialPreferenceScore * 100)
+        // SCH-5: an unscorable session prints "Not scored", never a number.
+        let prefText = rec.socialPreferenceScore.map { score -> String in
+            let percent = Int(score * 100)
+            return "\(percent > 0 ? "+" : "")\(percent)%"
+        } ?? "Not scored"
 
         func percentText(_ value: Double?) -> String {
             guard let value else { return "Not observed" }
@@ -244,7 +248,7 @@ public enum DoctorReportGenerator {
         }
 
         let metrics: [(String, String)] = [
-            ("SOCIAL PREFERENCE", "\(prefPercent > 0 ? "+" : "")\(prefPercent)%"),
+            ("SOCIAL PREFERENCE", prefText),
             ("RECORDING QUALITY", rec.qualityVerdict.uppercased()),
             ("EYE LOOKING SHARE", percentText(opt(rec.eyeDwellRatio))),
             ("MOUTH LOOKING SHARE", percentText(opt(rec.mouthDwellRatio)))
@@ -265,7 +269,7 @@ public enum DoctorReportGenerator {
             .foregroundColor: UIColor.secondaryLabel
         ]
         let latencyText = opt(rec.firstEyeLatencyMs).map { "\(Int($0)) ms" } ?? "Not observed"
-        let subText = "First look at eyes: \(latencyText) | Usable gaze samples: \(Int(rec.validFrameRatio * 100))% | Smile reactivity: \(Int(rec.smileReactivityIndex * 100))%"
+        let subText = "First look at eyes: \(latencyText) | Usable gaze samples: \(Int(rec.validFrameRatio * 100))% | Smile reactivity: \(rec.smileReactivityIndex.map { "\(Int($0 * 100))%" } ?? "Not scored")"
         subText.draw(at: CGPoint(x: margin + 12, y: top + 48), withAttributes: subAttr)
 
         return top + 68

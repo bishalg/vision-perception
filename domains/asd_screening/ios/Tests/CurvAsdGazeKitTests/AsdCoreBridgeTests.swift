@@ -80,16 +80,47 @@ final class AsdCoreBridgeTests: XCTestCase {
         XCTAssertEqual(evaluation.failureReasons, ["Tracking data unreadable"])
     }
 
-    func testUnreadableFramesYieldNoMetricsAndUnmeasuredAggregates() {
+    /// SCH-5: a refused aggregation has no fallback numbers; the summary is `unscorable`
+    /// (`aggregation_failed`) and carries none of the five score values.
+    func testUnreadableFramesYieldNoMetricsAndAnUnscorableSummary() {
         let frame = GazeFrame(
             gaze: GazeTelemetrySample(timestampMs: 0, xNorm: .infinity, yNorm: 0.5, confidence: 1),
             activeAOINames: ["Eye_Region"]
         )
         XCTAssertEqual(PerVideoMetricsExtractor.extract(from: [frame]), [])
-        let aggregates = SessionBiomarkerAggregator.aggregate(validFrames: [frame], durationSec: 1)
-        XCTAssertNil(aggregates.eyeDwellRatio)
-        XCTAssertNil(aggregates.firstOrientLatencyMs)
-        XCTAssertEqual(aggregates.flatAffectScore, 1)
+        XCTAssertThrowsError(try SessionBiomarkerAggregator.aggregate(validFrames: [frame], durationSec: 1))
+
+        let second = GazeFrame(
+            gaze: GazeTelemetrySample(timestampMs: 16, xNorm: .infinity, yNorm: 0.5, confidence: 1),
+            activeAOINames: ["Eye_Region"]
+        )
+        let summary = GazeSessionReportSummary.aggregate(
+            frames: [frame, second],
+            sessionId: "NAN",
+            captureSource: .trueDepth,
+            subjectAgeSignal: nil
+        )
+        XCTAssertEqual(summary.scoringStatus, .unscorable)
+        XCTAssertEqual(summary.unscorableReason, .aggregationFailed)
+        XCTAssertNil(summary.socialPreferenceScore)
+        XCTAssertNil(summary.socialSmileIntensityMean)
+        XCTAssertNil(summary.smileReactivityIndex)
+        XCTAssertNil(summary.flatAffectScore)
+        XCTAssertNil(summary.surpriseScoreMean)
+        XCTAssertNil(summary.eyeDwellRatio)
+    }
+
+    func testEmptySessionIsUnscorableWithoutNumbers() {
+        let summary = GazeSessionReportSummary.aggregate(
+            frames: [], sessionId: "EMPTY", captureSource: .trueDepth, subjectAgeSignal: nil
+        )
+        XCTAssertEqual(summary.scoringStatus, .unscorable)
+        XCTAssertEqual(summary.unscorableReason, .insufficientValidGaze)
+        XCTAssertNil(summary.socialPreferenceScore)
+        XCTAssertNil(summary.flatAffectScore)
+        let json = String(decoding: try! JSONEncoder().encode(summary), as: UTF8.self)
+        XCTAssertFalse(json.contains("flatAffectScore"), "absent, never a placeholder")
+        XCTAssertTrue(json.contains("\"unscorableReason\":\"insufficient_valid_gaze\""))
     }
 
     func testUnreadableScoreIsNeverGreenOrRed() {

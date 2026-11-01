@@ -17,7 +17,15 @@ export interface AsdWasmExports {
   contractInfo(): string;
   defaultScoringProfile(): string;
   validateScoringProfile(profileJson: string): string;
+  validateCatalog(catalogJson: string): string;
   validateBaselines(baselinesJson: string, requiredIdsJson?: string | null): string;
+  rescoreSession(
+    sessionJson: string,
+    profileJson: string,
+    baselinesJson: string,
+    optionsJson: string,
+    framesJson?: string | null,
+  ): string;
   rescoreApiSession(
     sessionJson: string,
     clipsJson: string,

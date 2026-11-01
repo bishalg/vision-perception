@@ -300,10 +300,12 @@ public enum FHIRInteroperabilityMapper {
             )
         }
 
-        var rows = [
-            row("Social Visual Preference Score", sourceValue: "social-preference-score",
-                value: record.socialPreferenceScore, unit: "score")
-        ]
+        // SCH-5: an unscorable session has no preference score row.
+        var rows: [OMOPMeasurementRecord] = []
+        if let socialPreferenceScore = record.socialPreferenceScore {
+            rows.append(row("Social Visual Preference Score", sourceValue: "social-preference-score",
+                            value: socialPreferenceScore, unit: "score"))
+        }
         if let firstEyeLatencyMs = record.firstEyeLatencyMs {
             rows.append(row("First Eye Fixation Latency", sourceValue: "first-eye-fixation-latency-ms",
                             value: firstEyeLatencyMs, unit: "ms"))

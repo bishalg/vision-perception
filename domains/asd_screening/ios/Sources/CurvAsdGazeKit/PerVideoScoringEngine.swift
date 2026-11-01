@@ -152,15 +152,38 @@ public enum PerVideoScoringEngine {
         baseline: NormativeBaselineSet,
         ageMonths: Int,
         frames: [GazeFrame] = [],
-        scoredAt: Date = Date()
+        scoredAt: Date = Date(),
+        scoringProfileJSON: String? = nil
     ) -> PerVideoSessionScore {
         score(
             metricSets: metricSets,
             baseline: baseline,
             ageMonths: ageMonths,
             coreFrames: frames.map { CoreFrame($0) },
-            scoredAtUtc: AsdCoreBridge.formatScoredAt(scoredAt)
+            scoredAtUtc: AsdCoreBridge.formatScoredAt(scoredAt),
+            scoringProfileJSON: scoringProfileJSON
         )
+    }
+
+    /// Scores against a scoring configuration's baselines and `ScoringProfile` (WP-A.5);
+    /// `nil` when the configuration has no baselines.
+    public static func score(
+        metricSets: [PerVideoMetricSet],
+        configuration: ScoringConfiguration,
+        ageMonths: Int,
+        frames: [GazeFrame] = [],
+        scoredAt: Date = Date()
+    ) -> PerVideoSessionScore? {
+        configuration.baselines.map { baseline in
+            score(
+                metricSets: metricSets,
+                baseline: baseline,
+                ageMonths: ageMonths,
+                frames: frames,
+                scoredAt: scoredAt,
+                scoringProfileJSON: configuration.scoringProfileJSON
+            )
+        }
     }
 
     static func score(
@@ -168,7 +191,8 @@ public enum PerVideoScoringEngine {
         baseline: NormativeBaselineSet,
         ageMonths: Int,
         coreFrames: [CoreFrame],
-        scoredAtUtc: String
+        scoredAtUtc: String,
+        scoringProfileJSON: String? = nil
     ) -> PerVideoSessionScore {
         do {
             return try AsdCoreBridge.scoreSession(
@@ -176,7 +200,8 @@ public enum PerVideoScoringEngine {
                 baseline: baseline,
                 ageMonths: ageMonths,
                 frames: coreFrames,
-                scoredAtUtc: scoredAtUtc
+                scoredAtUtc: scoredAtUtc,
+                profileJSON: scoringProfileJSON
             )
         } catch {
             AsdCoreBridge.report("score_session", error)

@@ -4817,7 +4817,13 @@
         "export-too-large",
         "consent-purpose-mismatch",
         "host-key-mismatch",
-        "clinical-role-not-assignable"
+        "clinical-role-not-assignable",
+        "four-eyes-required",
+        "invalid-transition",
+        "config-version-exists",
+        "config-invalid",
+        "config-not-published",
+        "bundle-signing-unavailable"
       ],
       "type": "string"
     },
@@ -7108,6 +7114,41 @@
         "score",
         "weight",
         "details"
+      ],
+      "type": "object"
+    },
+    "SessionRaw": {
+      "description": "`GET /v1/sessions/{id}/raw`: the stored `rawPayload` for a sandbox re-score. De-identified:\nthe participant is the pseudonymous token only, and the free-text `notes` member of the\nrecord is removed.",
+      "properties": {
+        "frames_available": {
+          "description": "A frames blob is stored for the session (it is encrypted on the device; the API does\nnot serve it).",
+          "type": "boolean"
+        },
+        "frames_purged": {
+          "description": "The retention sweep deleted the frames blob.",
+          "type": "boolean"
+        },
+        "participant_token": {
+          "type": "string"
+        },
+        "raw_payload": {
+          "description": "The stored `GazeSessionRecord` (camelCase, `v1.x` record form), without `notes`."
+        },
+        "schema_version": {
+          "description": "Wire form of the stored record (`1.6`, `1.7`, `1.8`).",
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id",
+        "schema_version",
+        "participant_token",
+        "raw_payload",
+        "frames_available",
+        "frames_purged"
       ],
       "type": "object"
     },

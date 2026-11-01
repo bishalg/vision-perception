@@ -3,10 +3,11 @@ import CurvAsdGazeKit
 import Foundation
 import XCTest
 
-/// WP-A.4 / WP-G.9 (SCH-2): the `POST /v1/sessions` body built from a `GazeSessionRecord`
-/// matches the session contract 1.7 (`docs/spec/schemas/asd/session-v1.7.json`) and the
-/// golden `Tests/Fixtures/expected-session-v1.7.json` (the 1.6 golden plus `trackingQuality`
-/// and the per-clip tracking keys).
+/// WP-A.4 / WP-G.9 / SCH-5: the `POST /v1/sessions` body built from a `GazeSessionRecord`
+/// matches the session contract 1.8 (`docs/spec/schemas/asd/session-v1.8.json`) and the
+/// golden `Tests/Fixtures/expected-session-v1.8.json` (the 1.7 golden plus `scoringStatus`).
+/// `expected-session-v1.6.json` / `-v1.7.json` stay as history: records of those versions
+/// still decode.
 final class SessionIngestPayloadTests: XCTestCase {
 
     // MARK: - Fixture
@@ -173,7 +174,7 @@ final class SessionIngestPayloadTests: XCTestCase {
     /// pipeline's document verbatim, so the fixture's own record is the input here.
     static let goldenTrackingQuality: JSONValue = {
         // swiftlint:disable:next force_try
-        let data = try! Data(contentsOf: try! FHIRFixtures.url("expected-session-v1.7.json"))
+        let data = try! Data(contentsOf: try! FHIRFixtures.url("expected-session-v1.8.json"))
         let object = try! JSONSerialization.jsonObject(with: data) as! [String: Any]
         let raw = object["rawPayload"] as! [String: Any]
         let quality = try! JSONSerialization.data(withJSONObject: raw["trackingQuality"]!)
@@ -193,7 +194,7 @@ final class SessionIngestPayloadTests: XCTestCase {
         let object = try encodedObject(payload)
 
         let errors = SessionSchemaFile.validate(object, against: schema, root: schema)
-        XCTAssertEqual(errors, [], "payload must validate against docs/spec/schemas/asd/session-v1.7.json")
+        XCTAssertEqual(errors, [], "payload must validate against docs/spec/schemas/asd/session-v1.8.json")
     }
 
     func testPayloadSendsOnlyKeysTheSchemaDeclares() throws {
@@ -225,15 +226,15 @@ final class SessionIngestPayloadTests: XCTestCase {
     func testPayloadMatchesGoldenFile() throws {
         let payload = try SessionIngestPayload(record: Self.goldenRecord(), attentionFlag: .yellow)
         let actual = try SessionPayloadCoding.encoder().encode(payload)
-        let expected = try Data(contentsOf: try FHIRFixtures.url("expected-session-v1.7.json"))
+        let expected = try Data(contentsOf: try FHIRFixtures.url("expected-session-v1.8.json"))
 
         let actualObject = try JSONSerialization.jsonObject(with: actual) as? NSDictionary
         let expectedObject = try JSONSerialization.jsonObject(with: expected) as? NSDictionary
         XCTAssertNotNil(expectedObject)
         if actualObject != expectedObject {
-            let out = FileManager.default.temporaryDirectory.appendingPathComponent("actual-session-v1.7.json")
+            let out = FileManager.default.temporaryDirectory.appendingPathComponent("actual-session-v1.8.json")
             try? actual.write(to: out)
-            XCTFail("payload differs from Tests/Fixtures/expected-session-v1.7.json; actual written to \(out.path)")
+            XCTFail("payload differs from Tests/Fixtures/expected-session-v1.8.json; actual written to \(out.path)")
         }
     }
 
@@ -299,13 +300,16 @@ final class SessionIngestPayloadTests: XCTestCase {
         XCTAssertEqual(object["calibratedDistanceCm"] as? Double, 38.0)
         XCTAssertEqual(object["qualityVerdict"] as? String, "optimal")
         XCTAssertEqual(object["attentionFlag"] as? String, "green")
-        XCTAssertEqual(object["schemaVersion"] as? String, "1.7")
+        XCTAssertEqual(object["schemaVersion"] as? String, "1.8")
+        XCTAssertEqual(object["scoringStatus"] as? String, "scored")
+        XCTAssertNil(object["unscorableReason"])
     }
 
     func testWireSchemaVersionDropsTheRecordPrefix() {
         XCTAssertEqual(SessionIngestPayload.wireSchemaVersion("v1.6"), "1.6")
         XCTAssertEqual(SessionIngestPayload.wireSchemaVersion("1.6"), "1.6")
-        XCTAssertEqual(SessionIngestPayload.wireSchemaVersion(GazeSessionRecord.currentSchemaVersion), "1.7")
+        XCTAssertEqual(SessionIngestPayload.wireSchemaVersion(GazeSessionRecord.currentSchemaVersion), "1.8")
+        XCTAssertEqual(SessionIngestPayload.currentSchemaVersion, "1.8")
     }
 
     func testUnmeasuredMetricsAreAbsentKeysNotDefaults() throws {
@@ -361,7 +365,8 @@ final class SessionIngestPayloadTests: XCTestCase {
         let object = try encodedObject(SessionIngestPayload(record: record, attentionFlag: nil))
         let raw = try XCTUnwrap(object["rawPayload"] as? [String: Any])
         XCTAssertEqual(raw["sessionId"] as? String, record.sessionId)
-        XCTAssertEqual(raw["schemaVersion"] as? String, "v1.7")
+        XCTAssertEqual(raw["schemaVersion"] as? String, "v1.8")
+        XCTAssertEqual(raw["scoringStatus"] as? String, "scored")
         XCTAssertEqual(raw["captureSource"] as? String, "truedepth")
         XCTAssertEqual(raw["startedAt"] as? String, "2026-10-26T07:33:20.000Z")
         XCTAssertNotNil(raw["perVideo"])
@@ -399,7 +404,7 @@ final class SessionIngestPayloadTests: XCTestCase {
         let summary = GazeSessionReportSummary.fixture(sessionId: "NO-CAL")
         let record = GazeSessionRecord(summary: summary, participantToken: "child-NO-CAL")
         XCTAssertNil(record.calibratedDistanceCm)
-        XCTAssertEqual(record.schemaVersion, "v1.7")
+        XCTAssertEqual(record.schemaVersion, "v1.8")
         let object = try encodedObject(SessionIngestPayload(record: record, attentionFlag: nil))
         XCTAssertNil(object["calibratedDistanceCm"])
         XCTAssertNil((object["rawPayload"] as? [String: Any])?["calibratedDistanceCm"])
@@ -431,6 +436,163 @@ final class SessionIngestPayloadTests: XCTestCase {
         XCTAssertEqual(record.calibratedDistanceCm, 38, "the fixture's calibration pose distance")
         XCTAssertEqual(record.perVideo?[0].meanSampleConfidence, 0.7)
         XCTAssertNil(record.perVideo?[1].meanSampleConfidence)
+    }
+
+    // MARK: - 1.8 scoring outcome (SCH-5)
+
+    /// An unscorable record: the five score values absent, the reason present.
+    static func unscorableRecord() -> GazeSessionRecord {
+        let golden = goldenRecord()
+        return GazeSessionRecord(
+            id: "rec-golden-0002",
+            sessionId: "SESS-GOLDEN-0002",
+            participantId: golden.participantId,
+            captureSource: .trueDepth,
+            startedAt: golden.startedAt,
+            endedAt: golden.endedAt,
+            durationSec: golden.durationSec,
+            socialPreferenceScore: nil,
+            validFrameRatio: 0.12,
+            eyeDwellRatio: nil,
+            mouthDwellRatio: nil,
+            firstEyeLatencyMs: nil,
+            calibratedDistanceCm: nil,
+            qualityVerdict: "degraded",
+            socialSmileIntensity: nil,
+            smileReactivityIndex: nil,
+            flatAffectScore: nil,
+            surpriseScoreMean: nil,
+            unscorableReason: .insufficientValidGaze
+        )
+    }
+
+    func testUnscorablePayloadOmitsEveryScoreAndTheFlag() throws {
+        let payload = try SessionIngestPayload(record: Self.unscorableRecord(), attentionFlag: .green)
+        let object = try encodedObject(payload)
+        XCTAssertEqual(object["scoringStatus"] as? String, "unscorable")
+        XCTAssertEqual(object["unscorableReason"] as? String, "insufficient_valid_gaze")
+        XCTAssertNil(object["socialPreferenceScore"], "never a placeholder (CON-14)")
+        XCTAssertTrue(object["attentionFlag"] is NSNull, "an unscorable session carries no device flag")
+        let raw = try XCTUnwrap(object["rawPayload"] as? [String: Any])
+        XCTAssertEqual(raw["scoringStatus"] as? String, "unscorable")
+        XCTAssertEqual(raw["unscorableReason"] as? String, "insufficient_valid_gaze")
+        for key in ["socialPreferenceScore", "socialSmileIntensity", "smileReactivityIndex", "flatAffectScore", "surpriseScoreMean"] {
+            XCTAssertNil(raw[key], key)
+        }
+        let schema = try SessionSchemaFile.load()
+        XCTAssertEqual(SessionSchemaFile.validate(object, against: schema, root: schema), [])
+    }
+
+    /// asd-sync applies the 1.8 scoring rules: the unscorable body is accepted and sent as
+    /// 1.8, and a body that claims `scored` without the numbers never leaves the device.
+    func testAsdSyncAcceptsUnscorableAndRefusesAScoredBodyWithoutNumbers() throws {
+        let client = SessionSyncClient(
+            apiBaseURL: URL(string: "https://api.example.org")!,
+            transport: StubSyncTransport { _ in (200, [:], Data()) },
+            registration: DeviceRegistrationService(
+                apiBaseURL: URL(string: "https://api.example.org")!,
+                transport: StubSyncTransport { _ in (200, [:], Data()) },
+                store: InMemoryDeviceCredentialStore(),
+                clientInfo: SyncClientInfo(appVersion: "1.0.0", build: "3", osVersion: "18.0")
+            ),
+            clientInfo: SyncClientInfo(appVersion: "1.0.0", build: "3", osVersion: "18.0")
+        )
+        let payload = try SessionIngestPayload(record: Self.unscorableRecord(), attentionFlag: nil)
+        let request = try client.makeSessionRequest(payload, token: "tok")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "X-Schema-Version"), "1.8")
+
+        var object = try encodedObject(payload)
+        object["scoringStatus"] = "scored"
+        var raw = try XCTUnwrap(object["rawPayload"] as? [String: Any])
+        raw["scoringStatus"] = "scored"
+        raw.removeValue(forKey: "unscorableReason")
+        object["rawPayload"] = raw
+        object.removeValue(forKey: "unscorableReason")
+        let broken = try SessionPayloadCoding.decoder().decode(
+            SessionIngestPayload.self, from: JSONSerialization.data(withJSONObject: object)
+        )
+        XCTAssertThrowsError(try client.makeSessionRequest(broken, token: "tok")) { error in
+            XCTAssertEqual(error as? SessionSyncError, .invalidPayload)
+        }
+    }
+
+    func testUnscorablePayloadMatchesItsGoldenFile() throws {
+        let payload = try SessionIngestPayload(record: Self.unscorableRecord(), attentionFlag: nil)
+        let actual = try SessionPayloadCoding.encoder().encode(payload)
+        let expected = try Data(contentsOf: try FHIRFixtures.url("expected-session-v1.8-unscorable.json"))
+        let actualObject = try JSONSerialization.jsonObject(with: actual) as? NSDictionary
+        let expectedObject = try JSONSerialization.jsonObject(with: expected) as? NSDictionary
+        if actualObject != expectedObject {
+            let out = FileManager.default.temporaryDirectory.appendingPathComponent("actual-session-v1.8-unscorable.json")
+            try? actual.write(to: out)
+            XCTFail("payload differs from Tests/Fixtures/expected-session-v1.8-unscorable.json; actual written to \(out.path)")
+        }
+    }
+
+    /// History: the 1.7 golden still decodes; its record is scored and, re-sent, stays a 1.7
+    /// body without the 1.8 keys.
+    func testV17GoldenStillDecodesAndKeepsItsVersion() throws {
+        let data = try Data(contentsOf: try FHIRFixtures.url("expected-session-v1.7.json"))
+        let old = try SessionPayloadCoding.decoder().decode(SessionIngestPayload.self, from: data)
+        XCTAssertEqual(old.schemaVersion, "1.7")
+        XCTAssertNil(old.scoringStatus)
+        XCTAssertEqual(old.rawPayload.scoringStatus, .scored)
+        XCTAssertEqual(old.rawPayload.socialPreferenceScore, 0.62)
+        let again = try encodedObject(SessionIngestPayload(record: old.rawPayload, attentionFlag: nil))
+        XCTAssertEqual(again["schemaVersion"] as? String, "1.7")
+        XCTAssertNil(again["scoringStatus"])
+        XCTAssertEqual(again["socialPreferenceScore"] as? Double, 0.62)
+    }
+
+    // MARK: - Bundle version and norm-collection consent (ING-2, ING-3)
+
+    func testBundleVersionAndNormConsentReachRawPayloadOnlyWhenSet() throws {
+        let summary = GazeSessionReportSummary.fixture(sessionId: "NORM-0001")
+        let plain = try encodedObject(SessionIngestPayload(
+            record: GazeSessionRecord(summary: summary, participantToken: "child-NORM-000"), attentionFlag: nil
+        ))
+        let plainRaw = try XCTUnwrap(plain["rawPayload"] as? [String: Any])
+        XCTAssertNil(plainRaw["bundleVersion"], "bundled default: no version")
+        XCTAssertNil(plainRaw["normCollection"], "no consent: no normCollection, never a default")
+
+        let metadata = NormCollectionMetadata(
+            consentVersion: "v2", studyIdentifier: "STUDY", participantId: "STUDY-ASD-1",
+            childAgeMonths: 24, deviceModel: "iPhone", isSimulator: false, collectedAtUtc: "2026-11-01T00:00:00Z"
+        )
+        let record = GazeSessionRecord(
+            summary: summary,
+            participantToken: "STUDY-ASD-1",
+            bundleVersion: "2026.11.01-2",
+            normCollection: NormCollectionConsent(metadata: metadata)
+        )
+        let raw = try XCTUnwrap(try encodedObject(SessionIngestPayload(record: record, attentionFlag: nil))["rawPayload"] as? [String: Any])
+        XCTAssertEqual(raw["bundleVersion"] as? String, "2026.11.01-2")
+        let norm = try XCTUnwrap(raw["normCollection"] as? [String: Any])
+        XCTAssertEqual(norm["consented"] as? Bool, true)
+        XCTAssertEqual(norm["consentVersion"] as? String, "v2")
+        XCTAssertNil(norm["deviceModel"], "only the consent facts travel")
+    }
+
+    func testNormConsentRequiresTheGate() {
+        XCTAssertNil(NormCollectionConsent(metadata: nil))
+        var enrollment = ResearchStudyEnrollment(participantId: "STUDY-ASD-1")
+        enrollment.isConsented = true
+        // Research consent alone (no opt-in) opens nothing.
+        XCTAssertNil(NormCollectionConsent(metadata: NormCollectionGate.collectionMetadata(
+            enrollment: enrollment, childAgeMonths: 24, captureSource: .trueDepth
+        )))
+        enrollment.normCollectionOptIn = true
+        XCTAssertNil(NormCollectionConsent(metadata: NormCollectionGate.collectionMetadata(
+            enrollment: enrollment, childAgeMonths: 24, captureSource: .simulated
+        )))
+        let consent = NormCollectionConsent(metadata: NormCollectionGate.collectionMetadata(
+            enrollment: enrollment, childAgeMonths: 24, captureSource: .trueDepth
+        ))
+        XCTAssertEqual(consent?.consented, true)
+        enrollment.isConsented = false
+        XCTAssertNil(NormCollectionConsent(metadata: NormCollectionGate.collectionMetadata(
+            enrollment: enrollment, childAgeMonths: 24, captureSource: .trueDepth
+        )), "revoked research consent closes the gate")
     }
 
     // MARK: - Refusals (SIM-5)
@@ -465,7 +627,7 @@ enum SessionSchemaFile {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("docs/spec/schemas/asd/session-v1.7.json")
+            .appendingPathComponent("docs/spec/schemas/asd/session-v1.8.json")
     }
 
     static func load() throws -> [String: Any] {

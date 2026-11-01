@@ -23,7 +23,7 @@ public struct GazeTelemetryReviewCard: View {
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                 metric("Valid time", String(format: "%.0fs", session.totalValidTimeSec))
-                metric("Social target", "\(Int(session.socialTargetRatio * 100))%")
+                metric("Social target", session.socialTargetRatio.map { "\(Int($0 * 100))%" } ?? "Not scored")
                 metric("Confidence", "\(Int(session.trackingConfidenceIndex * 100))%")
                 metric("Saccade latency", session.saccadicLatencyMs.map { String(format: "%.0f ms", $0) } ?? "Not observed")
             }
