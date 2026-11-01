@@ -72,13 +72,16 @@ pub fn default_scoring_profile() -> String {
     envelope(Ok(api::default_scoring_profile()))
 }
 
-/// `{valid, problems}`: the profile decodes as the contract `ScoringProfile`.
+/// `{valid, problems, fieldProblems}`: the profile decodes as the contract `ScoringProfile`
+/// and passes the backend's range checks (asd-contract `profile_checks`); `fieldProblems`
+/// are `{path, message}` with the camelCase member path.
 #[wasm_bindgen(js_name = validateScoringProfile)]
 pub fn validate_scoring_profile(profile_json: &str) -> String {
     envelope(Ok(api::validate_scoring_profile(profile_json)))
 }
 
-/// `{valid, problems}`: asd-core baseline coverage check. `required_ids_json` is an
+/// `{valid, problems, fieldProblems}`: asd-core baseline coverage check (`fieldProblems` is
+/// empty: the coverage lines name `video/segment/biomarker` in their text). `required_ids_json` is an
 /// optional JSON array of stimulus ids that must have a profile.
 #[wasm_bindgen(js_name = validateBaselines)]
 pub fn validate_baselines(baselines_json: &str, required_ids_json: Option<String>) -> String {
@@ -137,5 +140,27 @@ pub fn rescore_session(
         baselines_json,
         options_json,
         frames_json.as_deref(),
+    ))
+}
+
+/// Sandbox re-score of a session as the console reads it: `session_json` is the API
+/// `SessionDetail`, `clips_json` the `items` of `GET /v1/sessions/{id}/clips`.
+/// `options_json`: `{"ageMonths": n, "scoredAtUtc"?: "...", "validSampleRatio"?: r}`.
+/// Same result as [`rescore_session`] (`metricSource` is `sessionReport`); what the API
+/// form cannot carry is listed in `warnings`.
+#[wasm_bindgen(js_name = rescoreApiSession)]
+pub fn rescore_api_session(
+    session_json: &str,
+    clips_json: &str,
+    profile_json: &str,
+    baselines_json: &str,
+    options_json: &str,
+) -> String {
+    envelope(api::rescore_api_session(
+        session_json,
+        clips_json,
+        profile_json,
+        baselines_json,
+        options_json,
     ))
 }

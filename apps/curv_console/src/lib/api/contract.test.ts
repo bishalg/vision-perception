@@ -35,6 +35,8 @@ import {
   ORIENTATIONS,
   RECAL_REASONS,
   TRACKING_VERDICTS,
+  SCORING_STATUSES,
+  UNSCORABLE_REASONS,
   sessionCalibrationSchema,
   sessionDriftCheckSchema,
   sessionRecalibrationSchema,
@@ -228,6 +230,8 @@ describe("api-v1.json contract", () => {
     expect([...REVIEW_REASONS]).toEqual(defs.ReviewReason!.enum);
     expect([...REVIEW_STATUSES]).toEqual(defs.ReviewStatus!.enum);
     expect([...TRACKING_VERDICTS]).toEqual(defs.TrackingVerdict!.enum);
+    expect([...SCORING_STATUSES]).toEqual(defs.ScoringStatus!.enum);
+    expect([...UNSCORABLE_REASONS]).toEqual(defs.UnscorableReason!.enum);
     expect([...CALIBRATION_QUALITIES]).toEqual(defs.CalibrationQuality!.enum);
     expect([...CAL_MODEL_KINDS]).toEqual(defs.CalModelKind!.enum);
     expect([...RECAL_REASONS]).toEqual(defs.RecalReason!.enum);

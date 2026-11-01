@@ -320,8 +320,10 @@ enum GazePipelineDocuments {
     }
 
     /// The kit's affine profile as a Rust `CalModel` (`screenAffine`, the same `a..f`), or `nil`
-    /// for an uncalibrated profile. Until the views calibrate through the pipeline (WP-G.10)
-    /// this carries the BubbleCalibrationView fit; the pipeline records it as `skipped`.
+    /// for an uncalibrated profile. The app's views calibrate through the pipeline (WP-G.10:
+    /// Rust fits and records the model), so they no longer pass a fitted profile here; this path
+    /// remains only for callers that inject a precomputed profile, which the pipeline records
+    /// as `skipped`.
     static func calibrationModel(_ profile: GazeCalibrationProfile) throws -> String? {
         guard profile.isCalibrated else { return nil }
         struct ScreenAffine: Encodable {

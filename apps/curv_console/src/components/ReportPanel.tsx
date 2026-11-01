@@ -1,5 +1,6 @@
 import { en } from "@/messages/en";
 import type { SessionDetail } from "@/lib/api";
+import { notScoredLabel } from "./ScoringStatus";
 
 /**
  * The server renders the observation diary PDF from the stored record for every live
@@ -13,8 +14,14 @@ export function reportAvailable(session: Pick<SessionDetail, "capture_source" | 
 
 export function ReportPanel({ session }: { session: SessionDetail }) {
   const r = en.detail.report;
+  const notScored = notScoredLabel(session);
   return (
     <div className="panel">
+      {notScored ? (
+        <p role="status">
+          <strong>{notScored}.</strong> {en.detail.scoring.reportNote}
+        </p>
+      ) : null}
       {reportAvailable(session) ? (
         <a className="button" href={`/api/report/${encodeURIComponent(session.id)}`}>
           {r.download}

@@ -1,0 +1,193 @@
+/** User-visible strings for the participant workspace (WP-C.14). en only; imported where used. */
+import type { NoteKind, TimelineKind } from "@/lib/api/participant";
+
+const errors: Record<string, string> = {
+  "validation-failed": "Some fields were rejected.",
+  forbidden: "Your role cannot do this.",
+  "not-found": "Not found.",
+  conflict: "That patient reference is already linked to another participant.",
+  "patient-ref-disabled": "This organisation does not store hospital patient references.",
+  "clinical-crypto-unavailable": "Clinical encryption is unavailable. Try again shortly.",
+  "participant-withdrawn": "This participant has withdrawn.",
+  "rate-limited": "Too many requests. Wait a moment and try again.",
+  unavailable: "Could not reach the server. Try again shortly.",
+  fallback: "The request failed. Try again.",
+};
+
+export function participantErrorMessage(slug: string | null, status: number): string {
+  if (slug && errors[slug]) return errors[slug];
+  if (status === 403) return errors.forbidden!;
+  if (status === 404) return errors["not-found"]!;
+  if (status === 409) return errors.conflict!;
+  if (status === 429) return errors["rate-limited"]!;
+  if (status === 0) return errors.unavailable!;
+  return errors.fallback!;
+}
+
+export const TAB_IDS = ["timeline", "notes", "mrn", "letters", "disclosures", "print"] as const;
+export type WorkspaceTab = (typeof TAB_IDS)[number];
+
+export const participantText = {
+  title: "Participant",
+  back: "Back to participants",
+  header: {
+    ageBracket: "Age bracket",
+    language: "Language",
+    sessions: "Sessions",
+    lastSession: "Last session",
+    status: "Status",
+    mrn: "MRN",
+    mrnOnFile: "On file",
+    mrnNone: "None linked",
+    withdrawn: "Withdrawn",
+    active: "Active",
+    withdrawnNote: "This participant has withdrawn consent. New captures are refused.",
+  },
+  tabsLabel: "Participant sections",
+  tabs: {
+    timeline: "Timeline",
+    notes: "Notes",
+    mrn: "MRN",
+    letters: "Letters",
+    disclosures: "Disclosures",
+    print: "Print summary",
+  } satisfies Record<WorkspaceTab, string>,
+  timeline: {
+    title: "Timeline",
+    intro: "Sessions, clinical reviews, notes, letters and care events, newest first. Entries show headers only.",
+    filterLegend: "Show",
+    apply: "Apply filter",
+    clear: "Show all",
+    empty: "Nothing on the timeline yet.",
+    emptyFiltered: "No entries of the chosen kinds on this page.",
+    filterNote: "Filters apply to the entries on this page; use Older to load more.",
+    cols: { when: "When", kind: "Kind", detail: "Detail", by: "By" },
+    older: "Older",
+    newest: "Newest",
+    openSession: "Open session",
+    kinds: {
+      session: "Session",
+      clinical_review: "Clinical review",
+      note: "Note",
+      letter: "Letter",
+      care_event: "Care event",
+    } satisfies Record<TimelineKind, string>,
+    flag: (f: string) => `Attention flag ${f}`,
+    review: (state: string, v: unknown) => `Review ${state.replace(/_/g, " ")}${typeof v === "number" ? `, version ${v}` : ""}`,
+    note: (k: string) => (k === "correction" ? "Correction to a note" : "Clinical note"),
+    letter: (kind: string, status: unknown) =>
+      `${kind === "referral" ? "Referral" : "Summary"} letter${typeof status === "string" ? ` (${status})` : ""}`,
+    care: (k: string) => `Care event: ${k.replace(/_/g, " ")}`,
+  },
+  notes: {
+    title: "Clinical notes",
+    intro:
+      "Notes are encrypted and append-only. A correction is added as a new note; the original stays visible, struck through.",
+    deniedRead: "Your role cannot read clinical notes.",
+    empty: "No notes yet.",
+    newTitle: "Add a note",
+    body: "Note",
+    session: "About session",
+    noSession: "No specific session",
+    add: "Add note",
+    adding: "Saving…",
+    correctionOf: "Correction of an earlier note",
+    correct: "Correct",
+    correctTitle: "Correct this note",
+    correctHelp: "The original is kept and shown struck through. Your text replaces it for reading.",
+    saveCorrection: "Save correction",
+    cancel: "Cancel",
+    saved: "Note saved.",
+    failed: "The note was not saved.",
+    corrected: "Corrected",
+    correctedBy: "Corrected by a later note",
+    byline: (author: string | null | undefined, at: string) => `${author ?? "Unknown author"}, ${at}`,
+    kindLabel: { general: "Note", correction: "Correction" } satisfies Record<NoteKind, string>,
+    older: "Older",
+    newest: "Newest",
+    count: (shown: number, total: number | null | undefined) =>
+      total == null ? `${shown} shown` : `${shown} of ${total} shown`,
+    readOnly: "Only clinicians can add notes.",
+    maxHint: (n: number) => `Up to ${n.toLocaleString("en-US")} characters.`,
+  },
+  mrn: {
+    title: "Hospital patient reference (MRN)",
+    intro:
+      "Links this pseudonymous participant to a hospital record number. The number is encrypted, every view and change is audited, and it never appears in a URL.",
+    disabledTitle: "Disabled",
+    disabled:
+      "This organisation does not store hospital patient references. An owner or admin can switch identity.patient_ref_mode to mrn in the organisation settings.",
+    none: "No MRN is linked to this participant.",
+    onFile: "An MRN is on file. Viewing it is recorded in the audit log.",
+    reveal: "Show MRN",
+    hide: "Hide MRN",
+    authority: "Assigning authority",
+    number: "MRN",
+    updated: "Updated",
+    linkTitle: "Link an MRN",
+    replaceTitle: "Replace the MRN",
+    authorityHelp: "Short code of the issuing hospital, for example TUTH.",
+    save: "Save MRN",
+    saving: "Saving…",
+    saved: "MRN saved.",
+    unlink: "Unlink MRN",
+    confirmUnlink: "Remove the MRN link from this participant? The mapping is deleted and the change is audited.",
+    confirmUnlinkButton: "Yes, unlink",
+    cancel: "Cancel",
+    unlinked: "MRN unlinked.",
+    failed: "The MRN request failed.",
+    noRead: "Your role cannot view or change patient references.",
+    searchTitle: "Find a participant by MRN",
+    searchHelp: "Sent as a form POST. The number is not kept in the address bar or browser history.",
+    searchButton: "Search",
+    notFound: "No participant has that MRN.",
+  },
+  letters: {
+    title: "Letters",
+    soon: "Referral and summary letters are coming soon. Letters will be created, finalised and printed from here.",
+  },
+  disclosures: {
+    title: "Disclosures",
+    intro: "Every export that included this participant, newest first (accounting of disclosures).",
+    deniedRead: "Your role cannot read disclosures.",
+    empty: "This participant's data has not been exported.",
+    cols: { when: "When", what: "Export", mode: "Mode", purpose: "Purpose", status: "Status", sessions: "Sessions", deliveries: "Deliveries" },
+    noDeliveries: "None",
+    older: "Older",
+    newest: "Newest",
+    modes: { identified: "Identified", deidentified: "De-identified" } as Record<string, string>,
+    purposes: {
+      clinical_care: "Clinical care",
+      research: "Research",
+      quality_improvement: "Quality improvement",
+      patient_request: "Patient request",
+    } as Record<string, string>,
+    byline: (who: string) => `by ${who}`,
+  },
+  print: {
+    title: "Clinical summary",
+    intro: "A print-optimised view. Use Print, then choose Save as PDF in the print dialog if you need a file.",
+    button: "Print",
+    heading: "Participant clinical summary",
+    generated: "Prepared",
+    participant: "Participant",
+    sessionsHeading: "Sessions and reviews",
+    cols: { when: "Date", flag: "Flag", review: "Clinical review", disposition: "Disposition", impression: "Impression" },
+    noSessions: "No sessions recorded.",
+    notReviewed: "Not reviewed",
+    draft: "Draft (unsigned)",
+    signedBy: (names: string) => `Signed by ${names}`,
+    hidden: "Not shown for your role",
+    notesHeading: "Clinical notes",
+    noNotes: "No notes.",
+    truncated: (n: number) => `Showing the latest ${n} entries only.`,
+    footer: "Confidential. Contains clinical information; handle under the organisation's privacy policy. Observation record, not a diagnosis.",
+    dispositions: {
+      no_concern_noted: "No concern noted",
+      monitor: "Monitor",
+      refer_for_evaluation: "Refer for evaluation",
+      recapture_requested: "Recapture requested",
+      not_interpretable: "Not interpretable",
+    } as Record<string, string>,
+  },
+};

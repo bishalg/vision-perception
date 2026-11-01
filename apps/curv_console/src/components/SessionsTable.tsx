@@ -3,6 +3,7 @@ import { en } from "@/messages/en";
 import type { SessionSummary } from "@/lib/api";
 import { formatDateTime, formatDuration, formatNumber, formatPercent } from "@/lib/format";
 import { FlagBadge } from "./FlagBadge";
+import { ScoreValue } from "./ScoringStatus";
 import { TrackingBadge } from "./TrackingQuality";
 
 const c = en.sessions.cols;
@@ -36,7 +37,9 @@ export function SessionsTable({ orgId, sessions }: { orgId: string; sessions: Se
               </td>
               <td data-label={c.participant}>{s.participant_token}</td>
               <td data-label={c.flag}><FlagBadge flag={s.attention_flag} /></td>
-              <td data-label={c.composite} className="num">{formatNumber(s.composite_score)}</td>
+              <td data-label={c.composite} className="num">
+                <ScoreValue session={s} value={formatNumber(s.composite_score)} />
+              </td>
               <td data-label={c.confidence} className="num">{formatPercent(s.composite_confidence)}</td>
               <td data-label={c.quality}>{s.quality_verdict}</td>
               <td data-label={c.tracking}>

@@ -1,4 +1,5 @@
 import SwiftUI
+import AsdCore
 import CurvAsdGazeKit
 
 // MARK: - Step 3: Full-Screen Stimulus Screening View
@@ -11,7 +12,11 @@ import CurvAsdGazeKit
 /// • Top-right: Real-time session elapsed timer
 /// • Bottom: Dedicated, expansive Real-Time Emotion & Facial Affect HUD
 public struct GazeStimulusScreeningView: View {
-    @StateObject private var controller = GazeSessionController()
+    @StateObject private var controller: GazeSessionController
+    /// Clips, drift checks and re-calibration prompts (DRF-1, CAL-9).
+    @State private var battery: GazeBatteryFlow
+    @State private var advicePollInFlight = false
+    @State private var lastAdvicePollSec: Double = 0
     @State private var sessionTimer: Timer?
     @State private var elapsedSeconds: Double = 0.0
     @State private var currentClipElapsedSec: Double = 0.0
@@ -29,9 +34,6 @@ public struct GazeStimulusScreeningView: View {
 
     public let playlist: [StimulusPlaylistItem]
     public let proceduralMode: ProceduralStimulusMode?
-    /// CAL-1: participant and session whose calibration this capture may apply.
-    /// Without it the capture runs uncalibrated.
-    public let calibrationBinding: CalibrationBinding?
 
     // Callbacks
     #if ASD_RESEARCH_CLASSIFIER
@@ -55,13 +57,15 @@ public struct GazeStimulusScreeningView: View {
     public init(
         playlist: [StimulusPlaylistItem] = StimulusPlaylistBattery.standard30s,
         proceduralMode: ProceduralStimulusMode? = nil,
-        calibrationBinding: CalibrationBinding? = nil,
+        controller: GazeSessionController? = nil,
         onComplete: @escaping (GazeSessionReportSummary, [GazeFrame], BiomarkerClassificationResult?) -> Void,
         onAbort: @escaping () -> Void
     ) {
-        self.playlist = playlist.isEmpty ? StimulusPlaylistBattery.standard30s : playlist
+        let resolved = playlist.isEmpty ? StimulusPlaylistBattery.standard30s : playlist
+        self.playlist = resolved
         self.proceduralMode = proceduralMode
-        self.calibrationBinding = calibrationBinding
+        _controller = StateObject(wrappedValue: controller ?? GazeSessionController())
+        _battery = State(initialValue: GazeBatteryFlow(clipCount: resolved.count))
         self.onComplete = onComplete
         self.onAbort = onAbort
     }
@@ -69,7 +73,7 @@ public struct GazeStimulusScreeningView: View {
     public init(
         videoName: String = "stim_05_geopref_split_10s",
         proceduralMode: ProceduralStimulusMode? = nil,
-        calibrationBinding: CalibrationBinding? = nil,
+        controller: GazeSessionController? = nil,
         onComplete: @escaping (GazeSessionReportSummary, [GazeFrame], BiomarkerClassificationResult?) -> Void,
         onAbort: @escaping () -> Void
     ) {
@@ -82,7 +86,8 @@ public struct GazeStimulusScreeningView: View {
             )
         ]
         self.proceduralMode = proceduralMode
-        self.calibrationBinding = calibrationBinding
+        _controller = StateObject(wrappedValue: controller ?? GazeSessionController())
+        _battery = State(initialValue: GazeBatteryFlow(clipCount: 1))
         self.onComplete = onComplete
         self.onAbort = onAbort
     }
@@ -90,13 +95,15 @@ public struct GazeStimulusScreeningView: View {
     public init(
         playlist: [StimulusPlaylistItem] = StimulusPlaylistBattery.standard30s,
         proceduralMode: ProceduralStimulusMode? = nil,
-        calibrationBinding: CalibrationBinding? = nil,
+        controller: GazeSessionController? = nil,
         onComplete: @escaping (GazeSessionReportSummary, [GazeFrame]) -> Void,
         onAbort: @escaping () -> Void
     ) {
-        self.playlist = playlist.isEmpty ? StimulusPlaylistBattery.standard30s : playlist
+        let resolved = playlist.isEmpty ? StimulusPlaylistBattery.standard30s : playlist
+        self.playlist = resolved
         self.proceduralMode = proceduralMode
-        self.calibrationBinding = calibrationBinding
+        _controller = StateObject(wrappedValue: controller ?? GazeSessionController())
+        _battery = State(initialValue: GazeBatteryFlow(clipCount: resolved.count))
         self.onComplete = onComplete
         self.onAbort = onAbort
     }
@@ -104,7 +111,7 @@ public struct GazeStimulusScreeningView: View {
     public init(
         videoName: String = "stim_05_geopref_split_10s",
         proceduralMode: ProceduralStimulusMode? = nil,
-        calibrationBinding: CalibrationBinding? = nil,
+        controller: GazeSessionController? = nil,
         onComplete: @escaping (GazeSessionReportSummary, [GazeFrame]) -> Void,
         onAbort: @escaping () -> Void
     ) {
@@ -117,7 +124,8 @@ public struct GazeStimulusScreeningView: View {
             )
         ]
         self.proceduralMode = proceduralMode
-        self.calibrationBinding = calibrationBinding
+        _controller = StateObject(wrappedValue: controller ?? GazeSessionController())
+        _battery = State(initialValue: GazeBatteryFlow(clipCount: 1))
         self.onComplete = onComplete
         self.onAbort = onAbort
     }
@@ -130,8 +138,8 @@ public struct GazeStimulusScreeningView: View {
 
             GeometryReader { geo in
                 ZStack {
-                    // 1. Full-Screen Clinical Stimulus
-                    stimulusContent()
+                    // 1. Full-Screen Stimulus, or the drift check / re-calibration between clips
+                    batteryStepContent()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                     // 2. Invisible TrueDepth camera tracking session kept alive
@@ -161,9 +169,11 @@ public struct GazeStimulusScreeningView: View {
 
                         Spacer()
 
-                        bottomEmotionHUD
-                            .padding(.horizontal, 16)
-                            .padding(.bottom, bottomSafeInset + 10)
+                        if isPlayingClip {
+                            bottomEmotionHUD
+                                .padding(.horizontal, 16)
+                                .padding(.bottom, bottomSafeInset + 10)
+                        }
                     }
                 }
             }
@@ -197,6 +207,7 @@ public struct GazeStimulusScreeningView: View {
             titleVisibility: .visible
         ) {
             Button("Abort & Return to Start", role: .destructive) {
+                battery.abort()
                 endCapture()
                 onAbort()
             }
@@ -417,6 +428,46 @@ public struct GazeStimulusScreeningView: View {
         }
     }
 
+    // MARK: - Battery steps (clip, drift check, re-calibration; DRF-1, CAL-9)
+
+    private var isPlayingClip: Bool {
+        if case .clip = battery.step { return true }
+        return false
+    }
+
+    @ViewBuilder
+    private func batteryStepContent() -> some View {
+        switch battery.step {
+        case .clip:
+            stimulusContent()
+        case .driftCheck:
+            DriftCheckTargetView(controller: controller) { advice in
+                battery.driftCheckFinished(advice: advice)
+                enterCurrentStep()
+            }
+        case let .recalibrationPrompt(_, reasons):
+            RecalibrationPromptView(
+                reasons: reasons,
+                onRecalibrate: {
+                    battery.acceptRecalibration()
+                    enterCurrentStep()
+                },
+                onContinue: {
+                    battery.declineRecalibration()
+                    enterCurrentStep()
+                }
+            )
+        case let .recalibrating(afterClip, reason):
+            CalibrationRoundView(controller: controller, reason: reason) { _ in
+                battery.recalibrationFinished()
+                enterCurrentStep()
+            }
+            .id("recalibration-\(afterClip)")
+        case .finished:
+            Color.black
+        }
+    }
+
     // MARK: - Stimulus Content (Video / Procedural / Fallback)
 
     @ViewBuilder
@@ -434,7 +485,7 @@ public struct GazeStimulusScreeningView: View {
                         videoURL: videoURL,
                         isLooping: true,
                         onEnded: {
-                            advanceToNextClipIfNeeded()
+                            endCurrentClip()
                         },
                         onMediaUpdate: { mediaTime in
                             currentClipMediaTimeSec = mediaTime
@@ -529,8 +580,7 @@ public struct GazeStimulusScreeningView: View {
             if camera.state == .unknown { entryBlock = .consentRequired }
             return
         }
-        controller.calibrationBinding = calibrationBinding
-        controller.reloadCalibrationProfile()
+        battery = GazeBatteryFlow(clipCount: playlist.count)
         currentClipIndex = 0
         currentClipElapsedSec = 0.0
         currentClipMediaTimeSec = 0.0
@@ -543,10 +593,16 @@ public struct GazeStimulusScreeningView: View {
             initialBattery = StimulusAOITracker.makeGeoPrefBattery()
         }
 
-        // CNS-1: consent token required; SIM-2: no simulation fallback on unsupported hardware.
-        guard controller.startSessionWithConsent(battery: initialBattery, stimulusId: currentClip?.videoName) else {
-            entryBlock = .consentRequired
-            return
+        if controller.isRecording, controller.captureSource != nil {
+            // The wizard's capture session, already calibrated and validated in this pipeline:
+            // the first clip opens in the same session (QS-1, QS-3).
+            controller.switchStimulusClip(battery: initialBattery, stimulusId: currentClip?.videoName)
+        } else {
+            // CNS-1: consent token required; SIM-2: no simulation fallback on unsupported hardware.
+            guard controller.startSessionWithConsent(battery: initialBattery, stimulusId: currentClip?.videoName) else {
+                entryBlock = .consentRequired
+                return
+            }
         }
         entryBlock = nil
         guard controller.blockReason == nil else { return }
@@ -554,61 +610,90 @@ public struct GazeStimulusScreeningView: View {
 
         sessionTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { _ in
             MainActor.assumeIsolated {
-                elapsedSeconds += 1.0 / 60.0
-                currentClipElapsedSec += 1.0 / 60.0
-
-                // Prefer the AVPlayer media clock once the periodic observer is live; the
-                // wall-clock accumulation stays as fallback for procedural/fallback stimuli
-                // and stalled playback (advance on whichever reports the clip duration first).
-                let mediaClockActive = currentClipMediaTimeSec > 0.01
-                let effectiveClipTime = mediaClockActive ? currentClipMediaTimeSec : currentClipElapsedSec
-
-                #if ASD_SIMULATION_ENABLED
-                if controller.isSimulationMode {
-                    controller.tickSimulatedFrame(
-                        timeSec: elapsedSeconds,
-                        clipTimeSec: effectiveClipTime,
-                        stimulusId: currentClip?.videoName,
-                        clipMediaTimeSec: mediaClockActive ? currentClipMediaTimeSec : nil
-                    )
-                }
-                #endif
-
-                // Cartoon animation
-                cartoonBounce = sin(elapsedSeconds * 4.2) * 9.0
-                cartoonBlink = fmod(elapsedSeconds, 3.5) < 0.15
-
-                // Advance to next video in playlist if target clip duration reached
-                if let clip = currentClip,
-                   currentClipElapsedSec >= clip.targetDurationSec || effectiveClipTime >= clip.targetDurationSec {
-                    advanceToNextClipIfNeeded()
-                }
-
-                // Auto-complete when total session duration is reached
-                if elapsedSeconds >= sessionDurationSec {
-                    finishSession()
-                }
+                tickClip()
             }
         }
     }
 
-    private func advanceToNextClipIfNeeded() {
-        guard currentClipIndex + 1 < playlist.count else {
-            if elapsedSeconds >= sessionDurationSec {
-                finishSession()
+    /// One display tick. Only a playing clip advances its clocks; drift checks and
+    /// re-calibration run on the pipeline's frame time (their own views).
+    private func tickClip() {
+        guard isPlayingClip else { return }
+        elapsedSeconds += 1.0 / 60.0
+        currentClipElapsedSec += 1.0 / 60.0
+
+        // Prefer the AVPlayer media clock once the periodic observer is live; the
+        // wall-clock accumulation stays as fallback for procedural/fallback stimuli
+        // and stalled playback (end on whichever reports the clip duration first).
+        let mediaClockActive = currentClipMediaTimeSec > 0.01
+        let effectiveClipTime = mediaClockActive ? currentClipMediaTimeSec : currentClipElapsedSec
+
+        #if ASD_SIMULATION_ENABLED
+        if controller.isSimulationMode {
+            controller.tickSimulatedFrame(
+                timeSec: elapsedSeconds,
+                clipTimeSec: effectiveClipTime,
+                stimulusId: currentClip?.videoName,
+                clipMediaTimeSec: mediaClockActive ? currentClipMediaTimeSec : nil
+            )
+        }
+        #endif
+
+        // Cartoon animation
+        cartoonBounce = sin(elapsedSeconds * 4.2) * 9.0
+        cartoonBlink = fmod(elapsedSeconds, 3.5) < 0.15
+
+        pollAdviceIfDue()
+
+        if let clip = currentClip,
+           currentClipElapsedSec >= clip.targetDurationSec || effectiveClipTime >= clip.targetDurationSec {
+            endCurrentClip()
+        }
+    }
+
+    /// Reads the pipeline's advice about once a second while a clip plays. A `recalibrate`
+    /// is only held (CAL-9: never acted on mid-clip) and offered after the clip's drift check.
+    private func pollAdviceIfDue() {
+        guard !advicePollInFlight, elapsedSeconds - lastAdvicePollSec >= 1.0 else { return }
+        advicePollInFlight = true
+        lastAdvicePollSec = elapsedSeconds
+        Task {
+            let advice = await controller.recalibrationAdvice()
+            battery.noteAdvice(advice)
+            advicePollInFlight = false
+        }
+    }
+
+    /// The playing clip ended (its duration, or the player's end): stop counting its frames
+    /// and show the drift check that follows it (DRF-1, QS-3).
+    private func endCurrentClip() {
+        guard isPlayingClip else { return }
+        controller.endStimulusClip()
+        withAnimation(.easeInOut(duration: 0.25)) {
+            battery.clipEnded()
+        }
+    }
+
+    /// Acts on the battery step just entered: opens the next clip in the same session, or
+    /// finishes the session after the last check.
+    private func enterCurrentStep() {
+        switch battery.step {
+        case let .clip(index):
+            withAnimation(.easeInOut(duration: 0.3)) {
+                currentClipIndex = index
+                currentClipElapsedSec = 0.0
+                currentClipMediaTimeSec = 0.0
             }
-            return
-        }
-
-        withAnimation(.easeInOut(duration: 0.3)) {
-            currentClipIndex += 1
-            currentClipElapsedSec = 0.0
-            currentClipMediaTimeSec = 0.0
-        }
-
-        if let nextClip = currentClip {
-            let nextBattery = StimulusAOITracker.tracker(forVideoNamed: nextClip.videoName)
-            controller.switchStimulusClip(battery: nextBattery, stimulusId: nextClip.videoName)
+            if let clip = currentClip {
+                controller.switchStimulusClip(
+                    battery: StimulusAOITracker.tracker(forVideoNamed: clip.videoName),
+                    stimulusId: clip.videoName
+                )
+            }
+        case .finished:
+            finishSession()
+        default:
+            break
         }
     }
 
@@ -626,6 +711,7 @@ public struct GazeStimulusScreeningView: View {
     }
 
     private func finishSession() {
+        guard camera.isSessionActive else { return }
         stopSession()
         camera.sessionDidEnd()
         Task { await finalizeSession() }

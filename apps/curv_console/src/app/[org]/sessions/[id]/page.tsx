@@ -5,6 +5,7 @@ import { FlagBadge } from "@/components/FlagBadge";
 import { KpiCard } from "@/components/KpiCard";
 import { QualityPanel } from "@/components/QualityPanel";
 import { ReportPanel } from "@/components/ReportPanel";
+import { notScoredLabel } from "@/components/ScoringStatus";
 import { SessionTabs, parseTab } from "@/components/SessionTabs";
 import { ReviewPanel } from "@/components/clinical/ReviewPanel";
 import { ApiError } from "@/lib/api";
@@ -50,7 +51,7 @@ export default async function SessionDetailPage({
         {session.participant_token} <span className="muted">{formatDateTime(session.started_at)}</span>
       </h1>
       <div className="kpi-grid">
-        <KpiCard label={t.composite} value={formatNumber(session.composite_score)} />
+        <KpiCard label={t.composite} value={notScoredLabel(session) ?? formatNumber(session.composite_score)} />
         <KpiCard label={t.confidence} value={formatPercent(session.composite_confidence)} />
         <section className="kpi" aria-label={t.flag}>
           <div className="kpi-label">{t.flag}</div>

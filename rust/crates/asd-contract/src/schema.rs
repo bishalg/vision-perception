@@ -25,6 +25,7 @@ use crate::config::{self, ConfigBundle, ScoringProfile};
 use crate::problem::{InvalidParam, Problem};
 use crate::session_v1_6::{self, SessionIngestRequest, SessionIngestResponse};
 use crate::session_v1_7;
+use crate::session_v1_8;
 use crate::signing::canonical_bytes;
 use crate::{api_v1, care, clinical, export, privacy};
 
@@ -32,6 +33,8 @@ use crate::{api_v1, care, clinical, export, privacy};
 pub const SESSION_FILE: &str = "session-v1.6.json";
 /// File name of the session ingest schema 1.7 (SCH-1, WP-G.6).
 pub const SESSION_V1_7_FILE: &str = "session-v1.7.json";
+/// File name of the session ingest schema 1.8 (SCH-5: explicit scoring status).
+pub const SESSION_V1_8_FILE: &str = "session-v1.8.json";
 /// File name of the config bundle schema.
 pub const CONFIG_BUNDLE_FILE: &str = "config-bundle-v1.json";
 /// File name of the `/v1` DTO schema.
@@ -128,6 +131,22 @@ pub fn session_v1_6() -> Value {
 /// `session-v1.7.json`: the 1.7 `SessionIngestRequest` (1.6 plus tracking quality, SCH-1).
 pub fn session_v1_7() -> Value {
     root_for::<session_v1_7::SessionIngestRequest>(session_v1_7::SCHEMA_ID)
+}
+
+/// `session-v1.8.json`: the 1.8 `SessionIngestRequest` (1.7 plus `scoringStatus`, SCH-5).
+/// The scoring rules (`scored` needs every score field as a number, `unscorable` allows
+/// none) are added as `allOf` / `if` / `then` / `else` on the request and on
+/// `GazeSessionRecord`; `session_v1_8::scoring_violations` is the typed form of the same
+/// rules.
+pub fn session_v1_8() -> Value {
+    let mut value = root_for::<session_v1_8::SessionIngestRequest>(session_v1_8::SCHEMA_ID);
+    value["allOf"] = json!([session_v1_8::scoring_rule_schema(&[
+        "socialPreferenceScore"
+    ])]);
+    value["$defs"]["GazeSessionRecord"]["allOf"] = json!([session_v1_8::scoring_rule_schema(
+        &session_v1_8::SCORE_FIELDS
+    )]);
+    value
 }
 
 /// `config-bundle-v1.json`: the signed `ConfigBundle`.
@@ -322,6 +341,10 @@ pub fn documents() -> Vec<SchemaDocument> {
             value: session_v1_7(),
         },
         SchemaDocument {
+            file_name: SESSION_V1_8_FILE,
+            value: session_v1_8(),
+        },
+        SchemaDocument {
             file_name: CONFIG_BUNDLE_FILE,
             value: config_bundle_v1(),
         },
@@ -405,14 +428,19 @@ pub fn check(dir: &Path) -> Result<(), Vec<Drift>> {
     }
 }
 
+/// Conditional keywords whose subschemas narrow properties an object already declares
+/// (session 1.8 scoring rules); they are not object shapes of their own.
+const CONDITIONALS: [&str; 3] = ["if", "then", "else"];
+
 /// Sets `additionalProperties: false` on every object schema that declares `properties`
 /// and says nothing about additional ones. For strict checks in tests and tooling only:
-/// the contract itself tolerates unknown keys (Swift does).
+/// the contract itself tolerates unknown keys (Swift does). `if` / `then` / `else` are left
+/// alone: they only narrow properties declared beside them.
 pub fn forbid_additional_properties(value: &mut Value) {
     match value {
         Value::Object(map) => {
             for (key, child) in map.iter_mut() {
-                if !DATA_KEYWORDS.contains(&key.as_str()) {
+                if !DATA_KEYWORDS.contains(&key.as_str()) && !CONDITIONALS.contains(&key.as_str()) {
                     forbid_additional_properties(child);
                 }
             }
@@ -460,4 +488,10 @@ pub fn validate_session(instance: &Value) -> Result<(), Vec<String>> {
 #[cfg(feature = "validate")]
 pub fn validate_session_v1_7(instance: &Value) -> Result<(), Vec<String>> {
     validate(&session_v1_7(), instance)
+}
+
+/// Validates a session ingest payload against the exported session schema 1.8 (SCH-5).
+#[cfg(feature = "validate")]
+pub fn validate_session_v1_8(instance: &Value) -> Result<(), Vec<String>> {
+    validate(&session_v1_8(), instance)
 }

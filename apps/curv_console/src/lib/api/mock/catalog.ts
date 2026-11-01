@@ -15,7 +15,22 @@ import {
   type ConfigDocumentKind,
   type StimulusCatalog,
 } from "../catalog";
+import {
+  normativeBaselineSetSchema,
+  scoringProfileSchema,
+  type BundlesApi,
+  type ConfigBundleSummary,
+} from "../config";
 import { SEED_CATALOG } from "./catalogSeed";
+import {
+  MOCK_BASELINES_VERSIONS,
+  MOCK_SCORING_VERSIONS,
+  mockBaselineSet,
+  mockScoringProfile,
+} from "./configSeed";
+
+/** Key id the mock bundles claim (no real signature in mock mode). */
+export const MOCK_BUNDLE_KEY_ID = "mock-ed25519-key-1";
 
 export interface MockCatalogContext {
   userId: string;
@@ -95,7 +110,7 @@ interface Row {
   approvedBy: string | null;
 }
 
-export function createMockCatalog(ctx: MockCatalogContext): CatalogApi {
+export function createMockCatalog(ctx: MockCatalogContext): CatalogApi & BundlesApi {
   const { userId, now } = ctx;
   const iso = (daysAgo: number) => new Date(now - daysAgo * 86_400_000).toISOString();
   const { published, candidate, draft } = seedCatalogs();
@@ -128,7 +143,58 @@ export function createMockCatalog(ctx: MockCatalogContext): CatalogApi {
       approvedBy: MOCK_CONFIG_APPROVER_ID,
     },
   ];
+  // WP-C.5: baselines and scoring profiles (newest first per kind).
+  const other = (n: number, kind: ConfigDocumentKind, over: Partial<ConfigDocument> & Pick<ConfigDocument, "version" | "status" | "body">) =>
+    doc(n, { kind, ...over });
+  const bv = MOCK_BASELINES_VERSIONS;
+  const sv = MOCK_SCORING_VERSIONS;
+  rows.push(
+    {
+      doc: other(5, "normative_baselines", { version: bv.draft, status: "draft", body: mockBaselineSet(true), created_at: iso(2), notes: "Eye-dwell norms from norm run 7; stricter social floors." }),
+      approvedBy: null,
+    },
+    {
+      doc: other(6, "normative_baselines", { version: bv.published, status: "published", body: mockBaselineSet(), created_at: iso(24), published_at: iso(22), notes: "Literature seed for the mock clips." }),
+      approvedBy: MOCK_CONFIG_APPROVER_ID,
+    },
+    {
+      doc: other(7, "normative_baselines", { version: bv.bundled, status: "retired", body: mockBaselineSet(), created_by: null, created_at: iso(60), published_at: iso(59), notes: "Seeded from the bundled kit." }),
+      approvedBy: MOCK_CONFIG_APPROVER_ID,
+    },
+    {
+      doc: other(8, "scoring_profile", { version: sv.candidate, status: "candidate", body: mockScoringProfile(true), created_at: iso(3), notes: "Raise the green and yellow floors; red at 30 % atypical." }),
+      approvedBy: MOCK_CONFIG_APPROVER_ID,
+    },
+    {
+      doc: other(9, "scoring_profile", { version: sv.published, status: "published", body: mockScoringProfile(), created_at: iso(24), published_at: iso(22), notes: "Swift constants." }),
+      approvedBy: MOCK_CONFIG_APPROVER_ID,
+    },
+    {
+      doc: other(10, "scoring_profile", { version: sv.bundled, status: "retired", body: mockScoringProfile(), created_by: null, created_at: iso(60), published_at: iso(59), notes: "Seeded from the bundled kit." }),
+      approvedBy: MOCK_CONFIG_APPROVER_ID,
+    },
+  );
   let seq = rows.length;
+  const bundles: ConfigBundleSummary[] = [
+    {
+      id: "b0d1e000-0000-4000-8000-000000000002",
+      bundle_version: "2026.10.10-1",
+      catalog_version: v.published,
+      baselines_version: bv.published,
+      scoring_profile_version: sv.published,
+      key_id: MOCK_BUNDLE_KEY_ID,
+      published_at: iso(21),
+    },
+    {
+      id: "b0d1e000-0000-4000-8000-000000000001",
+      bundle_version: "2026.09.02-1",
+      catalog_version: v.bundled,
+      baselines_version: bv.bundled,
+      scoring_profile_version: sv.bundled,
+      key_id: MOCK_BUNDLE_KEY_ID,
+      published_at: iso(59),
+    },
+  ];
 
   const find = (kind: ConfigDocumentKind, version: string) => {
     const row = rows.find((r) => r.doc.kind === kind && r.doc.version === version);
@@ -164,6 +230,16 @@ export function createMockCatalog(ctx: MockCatalogContext): CatalogApi {
         }
         if (parsed.data.clips.length === 0) {
           throw problem(400, "validation-failed", "Validation failed", undefined, [{ name: "body", reason: "clips must not be empty" }]);
+        }
+      } else {
+        // Shape only; the Rust range and coverage checks run in the console (asd-wasm) and in the real backend.
+        const schema = kind === "scoring_profile" ? scoringProfileSchema : normativeBaselineSetSchema;
+        const parsed = schema.safeParse(req.body);
+        if (!parsed.success) {
+          const i = parsed.error.issues[0]!;
+          throw problem(400, "validation-failed", "Validation failed", undefined, [
+            { name: "body", reason: `${i.message} at ${i.path.join(".")}` },
+          ]);
         }
       }
       if (rows.some((r) => r.doc.kind === kind && r.doc.version === req.version)) {
@@ -206,6 +282,32 @@ export function createMockCatalog(ctx: MockCatalogContext): CatalogApi {
         row.doc.status = "retired";
       }
       return clone(row.doc);
+    },
+    async listConfigBundles(q) {
+      const { slice, next_cursor } = ctx.page(bundles, (b) => [b.published_at, b.id], q?.cursor, q?.limit);
+      return { items: clone(slice), next_cursor, total: null };
+    },
+    async composeConfigBundle() {
+      // Like `config_docs::bundle::compose`: every kind needs a published document.
+      const live = (kind: ConfigDocumentKind) => rows.find((r) => r.doc.kind === kind && r.doc.status === "published")?.doc;
+      const [catalog, baselines, scoring] = (["stimulus_catalog", "normative_baselines", "scoring_profile"] as const).map(live);
+      if (!catalog || !baselines || !scoring) {
+        throw problem(409, "conflict", "Conflict", "every config kind needs a published document before a bundle can be composed");
+      }
+      const at = new Date(Math.max(Date.now(), now));
+      const day = at.toISOString().slice(0, 10).replace(/-/g, ".");
+      const n = bundles.filter((b) => b.bundle_version.startsWith(`${day}-`)).length + 1;
+      const summary: ConfigBundleSummary = {
+        id: `b0d1e000-0000-4000-8000-${String(bundles.length + 1).padStart(12, "0")}`,
+        bundle_version: `${day}-${n}`,
+        catalog_version: catalog.version,
+        baselines_version: baselines.version,
+        scoring_profile_version: scoring.version,
+        key_id: MOCK_BUNDLE_KEY_ID,
+        published_at: at.toISOString(),
+      };
+      bundles.unshift(summary);
+      return clone(summary);
     },
   };
 }

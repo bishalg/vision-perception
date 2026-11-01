@@ -1,12 +1,13 @@
 //! owner: WP-B.3
 //!
 //! Derived session columns (ING-2, CON-15), tracking-quality columns (SCH-4, QS-5) and
-//! per-clip rows (CON-19). Pure functions over the validated request (the 1.7 type; a 1.6
-//! request is carried as 1.7 without a tracking record); nothing is defaulted: unknown stays
-//! `None`.
+//! per-clip rows (CON-19), and the SCH-5 scoring columns. Pure functions over the validated
+//! request (the 1.8 type; a 1.6 request is carried without a tracking record, 1.6 and 1.7
+//! requests as `scored`); nothing is defaulted: unknown stays `None`.
 
 use asd_contract::api_v1::{MetricRow, SessionAttentionFlag};
-use asd_contract::session_v1_7::{self, SessionIngestRequest, SessionPerVideoRow};
+use asd_contract::session_v1_6;
+use asd_contract::session_v1_8::{self, SessionIngestRequest, SessionPerVideoRow};
 use asd_core::flag::{assess, FlagThresholds};
 use asd_core::types::{
     AttentionFlag, ExpectationStatus, PerVideoScoreReport, PerVideoScoreRow, PerVideoSessionScore,
@@ -28,7 +29,11 @@ fn from_device(flag: AttentionFlag) -> SessionAttentionFlag {
 /// absent) the server runs `asd-core::flag::assess` over `rawPayload.perVideo` when
 /// `validRatio >= 0.60` and at least one clip was scored against a baseline; otherwise the
 /// session is `unreliable`. Thresholds are the bundled `ScoringProfile` defaults (F3).
+/// An `unscorable` 1.8 session (which carries no device flag, SCH-5) is always `unreliable`.
 pub fn attention_flag(req: &SessionIngestRequest) -> SessionAttentionFlag {
+    if req.is_unscorable() {
+        return SessionAttentionFlag::Unreliable;
+    }
     if let Some(Some(flag)) = req.attention_flag {
         return from_device(flag);
     }
@@ -101,15 +106,47 @@ pub fn bundle_version(req: &SessionIngestRequest) -> Option<String> {
         .map(str::to_owned)
 }
 
-/// The device's affect means as stored in `sessions.affect` (keys as in `rawPayload`).
-pub fn affect(req: &SessionIngestRequest) -> Value {
+/// The device's affect means as stored in `sessions.affect` (keys as in `rawPayload`);
+/// `None` for an `unscorable` session, which has none (SCH-5).
+pub fn affect(req: &SessionIngestRequest) -> Option<Value> {
     let r = &req.raw_payload;
-    json!({
-        "socialSmileIntensity": r.social_smile_intensity,
-        "smileReactivityIndex": r.smile_reactivity_index,
-        "flatAffectScore": r.flat_affect_score,
-        "surpriseScoreMean": r.surprise_score_mean,
-    })
+    match (
+        r.social_smile_intensity,
+        r.smile_reactivity_index,
+        r.flat_affect_score,
+        r.surprise_score_mean,
+    ) {
+        (Some(smile), Some(reactivity), Some(flat), Some(surprise)) if !req.is_unscorable() => {
+            Some(json!({
+                "socialSmileIntensity": smile,
+                "smileReactivityIndex": reactivity,
+                "flatAffectScore": flat,
+                "surpriseScoreMean": surprise,
+            }))
+        }
+        _ => None,
+    }
+}
+
+/// Stored `social_preference`: the device score, `None` for an `unscorable` session.
+pub fn social_preference(req: &SessionIngestRequest) -> Option<f64> {
+    if req.is_unscorable() {
+        None
+    } else {
+        req.social_preference_score
+    }
+}
+
+/// Stored `scoring_status` / `unscorable_reason` (SCH-5): what a 1.8 session sent; both
+/// `None` for a 1.6 or 1.7 session, which cannot say.
+pub fn scoring_columns(req: &SessionIngestRequest) -> (Option<&'static str>, Option<&'static str>) {
+    if req.schema_version != session_v1_8::SCHEMA_VERSION {
+        return (None, None);
+    }
+    (
+        Some(req.scoring_status.as_str()),
+        req.unscorable_reason.map(|r| r.as_str()),
+    )
 }
 
 /// `rawPayload.normCollection.consented == true` (ING-3 `norm_candidate`).
@@ -122,14 +159,14 @@ pub fn norm_consented(req: &SessionIngestRequest) -> bool {
         == Some(true)
 }
 
-/// Stored `calibrated_distance_cm`. 1.6: the value the device sent (unchanged). 1.7 (QS-5):
-/// the calibration pose distance when a calibration ran, else `None`, whatever the top-level
-/// value says; a 1.6-era app wrote a fixed 35 cm when nothing was measured.
+/// Stored `calibrated_distance_cm`. 1.6: the value the device sent (unchanged). 1.7 and
+/// 1.8 (QS-5): the calibration pose distance when a calibration ran, else `None`, whatever
+/// the top-level value says; a 1.6-era app wrote a fixed 35 cm when nothing was measured.
 pub fn calibrated_distance_cm(req: &SessionIngestRequest) -> Option<f64> {
-    if req.schema_version == session_v1_7::SCHEMA_VERSION {
-        session_v1_7::calibrated_distance_cm(req.raw_payload.tracking_quality.as_ref())
-    } else {
+    if req.schema_version == session_v1_6::SCHEMA_VERSION {
         req.calibrated_distance_cm
+    } else {
+        session_v1_8::calibrated_distance_cm(req.raw_payload.tracking_quality.as_ref())
     }
 }
 
@@ -314,12 +351,19 @@ mod tests {
         assert_eq!(worst_row(&rows), Some(1));
     }
 
+    /// The 1.6 golden as the backend carries it (1.6 decoded as 1.7, then 1.8, `scored`).
+    fn golden_1_6() -> SessionIngestRequest {
+        session_v1_8::upgrade_v1_7(
+            serde_json::from_str(include_str!(
+                "../../../../../apps/ios_asd_gaze_app/Tests/Fixtures/expected-session-v1.6.json"
+            ))
+            .unwrap(),
+        )
+    }
+
     #[test]
     fn weighted_composite_skips_unscored_clips() {
-        let golden: SessionIngestRequest = serde_json::from_str(include_str!(
-            "../../../../../apps/ios_asd_gaze_app/Tests/Fixtures/expected-session-v1.6.json"
-        ))
-        .unwrap();
+        let golden = golden_1_6();
         let videos: Vec<PerVideoScoreReport> = golden
             .raw_payload
             .per_video
@@ -338,10 +382,7 @@ mod tests {
 
     #[test]
     fn device_flag_is_kept_and_missing_flag_is_derived() {
-        let mut req: SessionIngestRequest = serde_json::from_str(include_str!(
-            "../../../../../apps/ios_asd_gaze_app/Tests/Fixtures/expected-session-v1.6.json"
-        ))
-        .unwrap();
+        let mut req = golden_1_6();
         assert_eq!(attention_flag(&req), SessionAttentionFlag::Yellow);
         req.attention_flag = Some(None);
         assert_eq!(attention_flag(&req), SessionAttentionFlag::Green);
@@ -361,10 +402,49 @@ mod tracking_tests {
     use super::*;
 
     fn golden_1_7() -> SessionIngestRequest {
+        session_v1_8::upgrade_v1_7(
+            serde_json::from_str(include_str!(
+                "../../../../../apps/ios_asd_gaze_app/Tests/Fixtures/expected-session-v1.7.json"
+            ))
+            .unwrap(),
+        )
+    }
+
+    fn unscorable_1_8() -> SessionIngestRequest {
         serde_json::from_str(include_str!(
-            "../../../../../apps/ios_asd_gaze_app/Tests/Fixtures/expected-session-v1.7.json"
+            "../../../asd-contract/tests/fixtures/session-v1.8-unscorable.json"
         ))
         .unwrap()
+    }
+
+    #[test]
+    fn scoring_columns_are_stored_for_1_8_only() {
+        let scored = golden_1_7();
+        assert_eq!(scoring_columns(&scored), (None, None), "1.7 cannot say");
+        assert_eq!(social_preference(&scored), Some(0.62));
+        assert!(affect(&scored).is_some());
+
+        let unscorable = unscorable_1_8();
+        assert_eq!(
+            scoring_columns(&unscorable),
+            (Some("unscorable"), Some("aggregation_failed"))
+        );
+        assert_eq!(social_preference(&unscorable), None);
+        assert_eq!(affect(&unscorable), None);
+        assert_eq!(
+            attention_flag(&unscorable),
+            SessionAttentionFlag::Unreliable
+        );
+        assert_eq!(
+            calibrated_distance_cm(&unscorable),
+            Some(38.0),
+            "QS-5 as 1.7"
+        );
+
+        let mut scored_1_8 = scored.clone();
+        scored_1_8.schema_version = "1.8".into();
+        assert_eq!(scoring_columns(&scored_1_8), (Some("scored"), None));
+        assert_eq!(attention_flag(&scored_1_8), attention_flag(&scored));
     }
 
     #[test]

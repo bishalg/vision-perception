@@ -225,16 +225,21 @@ fn gaze_section(c: &mut Canvas, record: Option<&GazeSessionRecord>, y: f32) -> f
         );
         return top + 68.0;
     };
-    let pref = trunc(rec.social_preference_score * 100.0);
     let quality = serde_json::to_value(rec.quality_verdict)
         .ok()
         .and_then(|v| v.as_str().map(str::to_uppercase))
         .unwrap_or_default();
+    // SCH-5: an unscorable record has no score numbers; say so instead.
+    let unscored = crate::not_scored(rec);
+    let preference = match unscored {
+        Some(n) => n.label().to_uppercase(),
+        None => {
+            let pref = trunc(rec.social_preference_score * 100.0);
+            format!("{}{pref}%", if pref > 0 { "+" } else { "" })
+        }
+    };
     let items = [
-        (
-            "SOCIAL PREFERENCE",
-            format!("{}{pref}%", if pref > 0 { "+" } else { "" }),
-        ),
+        ("SOCIAL PREFERENCE", preference),
         ("RECORDING QUALITY", quality),
         ("EYE LOOKING SHARE", percent(rec.eye_dwell_ratio)),
         ("MOUTH LOOKING SHARE", percent(rec.mouth_dwell_ratio)),
@@ -243,10 +248,13 @@ fn gaze_section(c: &mut Canvas, record: Option<&GazeSessionRecord>, y: f32) -> f
     let latency = rec
         .first_eye_latency_ms
         .map_or_else(|| NOT_OBSERVED.to_owned(), |ms| format!("{} ms", trunc(ms)));
+    let reactivity = match unscored {
+        Some(n) => n.label(),
+        None => format!("{}%", trunc(rec.smile_reactivity_index * 100.0)),
+    };
     let sub = format!(
-        "First look at eyes: {latency} | Usable gaze samples: {}% | Smile reactivity: {}%",
+        "First look at eyes: {latency} | Usable gaze samples: {}% | Smile reactivity: {reactivity}",
         trunc(rec.valid_frame_ratio * 100.0),
-        trunc(rec.smile_reactivity_index * 100.0)
     );
     c.text(
         &sub,

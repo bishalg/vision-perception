@@ -485,6 +485,31 @@ public actor GazeProcessingActor {
         pipeline?.nextCheckTarget()
     }
 
+    /// Validation of the calibration in effect (`ValidationRecord`, VAL-2/VAL-3); `nil` before
+    /// any validation target or without a pipeline.
+    public func validationSummary() -> GazeValidationSummary? {
+        guard let pipeline else { return nil }
+        do {
+            guard let json = try pipeline.validationJson() else { return nil }
+            return try JSONDecoder().decode(GazeValidationSummary.self, from: Data(json.utf8))
+        } catch {
+            AsdCoreBridge.report("gaze_validation", error)
+            return nil
+        }
+    }
+
+    /// Target layouts and window timing from this session's pipeline config; `nil` without a
+    /// pipeline (simulated session).
+    public func targetSchedule() -> GazeTargetSchedule? {
+        guard let pipeline else { return nil }
+        do {
+            return try GazeTargetSchedule(configJSON: pipeline.configJson())
+        } catch {
+            AsdCoreBridge.report("gaze_target_schedule", error)
+            return nil
+        }
+    }
+
     // MARK: - Camera session lifecycle (CAM-2)
 
     /// The camera session was interrupted (phone call, another app took the camera).

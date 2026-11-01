@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Participant } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { adminText } from "@/messages/admin";
@@ -43,7 +44,15 @@ export function ParticipantsTable({
         <tbody>
           {participants.map((p) => (
             <tr key={p.id}>
-              <td data-label={c.token}>{p.participant_token}</td>
+              <td data-label={c.token}>
+                {orgId ? (
+                  <Link href={`/${encodeURIComponent(orgId)}/participants/${encodeURIComponent(p.id)}`}>
+                    {p.participant_token}
+                  </Link>
+                ) : (
+                  p.participant_token
+                )}
+              </td>
               <td data-label={c.age}>{p.age_bracket_at_enrol ?? "-"}</td>
               <td data-label={c.language}>{p.language ?? "-"}</td>
               <td data-label={c.sessions}>{p.session_count}</td>

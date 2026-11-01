@@ -15,6 +15,10 @@
 //!
 //! Schema 1.7 (WP-G.11): the SCH-4 tracking columns and the QS-5 calibrated distance are
 //! derived in [`derive`], and `low_tracking_quality` is opened in the same transaction.
+//!
+//! Schema 1.8 (WP-G.12, SCH-5): `scoring_status` / `unscorable_reason` are stored as sent; an
+//! `unscorable` session stores no social preference and no affect, its flag is
+//! `unreliable`, and the `unscorable` review item is opened in the same transaction.
 
 pub mod auto_review;
 pub mod derive;
@@ -106,6 +110,7 @@ pub async fn ingest(
     let flag = derive::attention_flag(req);
     let battery = req.battery.clone().flatten();
     let tracking = derive::tracking_columns(req);
+    let (scoring_status, unscorable_reason) = derive::scoring_columns(req);
     let inserted = sqlx::query_scalar!(
         r#"INSERT INTO sessions (
                id, org_id, participant_id, participant_token, device_id, capture_source,
@@ -114,10 +119,11 @@ pub async fn ingest(
                eye_dwell, mouth_dwell, first_eye_latency_ms, affect, composite_score,
                composite_confidence, attention_flag, summary, idempotency_key,
                tracking_verdict, tracking_accuracy_deg, calibration_quality,
-               calibration_model, tracking_pipeline_version, device_model)
+               calibration_model, tracking_pipeline_version, device_model, scoring_status,
+               unscorable_reason)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
                    $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
-                   $31)
+                   $31, $32, $33)
            ON CONFLICT (id) DO NOTHING
            RETURNING 1 AS "one!: i32""#,
         req.session_id,
@@ -135,7 +141,7 @@ pub async fn ingest(
         enum_str(&req.quality_verdict)?,
         req.valid_ratio,
         derive::calibrated_distance_cm(req),
-        req.social_preference_score,
+        derive::social_preference(req),
         req.eye_dwell_ratio,
         req.mouth_dwell_ratio,
         req.first_eye_latency_ms,
@@ -151,6 +157,8 @@ pub async fn ingest(
         tracking.calibration_model,
         tracking.pipeline_version,
         tracking.device_model,
+        scoring_status,
+        unscorable_reason,
     )
     .fetch_optional(&mut *tx)
     .await?;
@@ -206,6 +214,7 @@ pub async fn ingest(
         &req.session_id,
         req.valid_ratio,
         low_tracking,
+        req.is_unscorable(),
         flag,
         derive::norm_consented(req),
         auto_review::audit_rate(&settings),

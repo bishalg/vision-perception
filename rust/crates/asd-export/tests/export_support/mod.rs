@@ -69,6 +69,8 @@ pub fn golden_session() -> (SessionDetail, Vec<ClipScore>) {
             reviewed: Some(false),
             tracking_verdict: None,
             tracking_accuracy_deg: None,
+            scoring_status: None,
+            unscorable_reason: None,
         },
         org_id: "5f1e2d3c-4b5a-4968-8776-655443322110".into(),
         age_pack: Some("24-36m".into()),

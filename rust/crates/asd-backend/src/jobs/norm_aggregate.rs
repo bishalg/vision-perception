@@ -18,6 +18,8 @@
 //!   `source_filter.include_synthetic` (dev/test servers only, `ASD_ALLOW_SYNTHETIC`);
 //! - the quality verdict is `optimal` or `acceptable` and `valid_frame_ratio >= 0.80`
 //!   (the ING-3 `low_quality` threshold);
+//! - the session was scored: a schema 1.8 session with `scoring_status = 'unscorable'` never
+//!   feeds a norm (SCH-5; 1.6 and 1.7 sessions have no status and always carry scores);
 //! - no review item of the session is still `open` or `in_review`, and none is marked
 //!   "exclude from norms" (label `exclude_from_norms = true`, or a `done` item whose
 //!   decision has `exclude_from_norms: true`);
@@ -169,6 +171,7 @@ pub async fn execute(tx: &mut PgConnection, job: &Job) -> Result<Value, JobError
                  AND p.withdrawn_at IS NULL
                  AND s.quality_verdict IN ('optimal', 'acceptable')
                  AND s.valid_frame_ratio >= $5
+                 AND s.scoring_status IS DISTINCT FROM 'unscorable'
                  AND (s.capture_source = 'truedepth'
                       OR ($6 AND s.capture_source = 'synthetic'))
                  AND NOT EXISTS (

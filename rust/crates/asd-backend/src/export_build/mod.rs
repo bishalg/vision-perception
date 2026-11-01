@@ -445,7 +445,7 @@ pub fn render(input: &RenderInput<'_>) -> Result<Artifact, RenderError> {
                     .gazes
                     .get(i)
                     .and_then(Option::as_ref)
-                    .and_then(|v| serde_json::from_value(v.clone()).ok())
+                    .and_then(|v| asd_export::stored_record(v.clone()).ok())
                     .ok_or(RenderError::StoredRecord)?;
                 let version = input
                     .app_versions

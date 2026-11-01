@@ -117,7 +117,8 @@ describe("mock lifecycle", () => {
     ]);
     const published = await api.listConfigDocuments("stimulus_catalog", { status: "published" });
     expect(published.items.map((d) => d.version)).toEqual([MOCK_CATALOG_VERSIONS.published]);
-    expect((await api.listConfigDocuments("scoring_profile")).items).toEqual([]);
+    // WP-C.5 seeds the other kinds separately; the catalog list is not mixed with them.
+    expect((await api.listConfigDocuments("scoring_profile")).items.every((d) => d.kind === "scoring_profile")).toBe(true);
   });
 
   it("approves and publishes someone else's draft; publishing retires the previous one", async () => {

@@ -33,9 +33,15 @@
 //! Refusal (SIM-5): simulated and synthetic captures never become a health record. The
 //! session bundle omits the gaze `Observation` for them (as iOS does) and the diary PDF
 //! refuses them outright; [`export_refusal`] says why.
+//!
+//! Stored records of every session schema (1.6, 1.7, 1.8) are read with [`stored_record`].
+//! A schema 1.8 `unscorable` record has no score numbers (SCH-5); [`not_scored`] says so and
+//! every builder then prints "Not scored" instead of a number.
 
 use asd_contract::session_v1_6::GazeSessionRecord;
+use asd_contract::session_v1_8::{ScoringStatus, UnscorableReason, SCORE_FIELDS};
 use asd_core::types::{CaptureSource, GazeQualityVerdict};
+use serde_json::Value;
 
 pub mod claims;
 pub mod codes;
@@ -157,4 +163,68 @@ pub fn observation_status(record: &GazeSessionRecord) -> Option<&'static str> {
         GazeQualityVerdict::Degraded => Some("preliminary"),
         GazeQualityVerdict::Rejected => None,
     }
+}
+
+/// SCH-5: a schema 1.8 session whose on-device scoring failed. Its record carries no score
+/// numbers; reports print [`NotScored::label`] where the numbers would be.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NotScored {
+    /// Why, when the device said.
+    pub reason: Option<UnscorableReason>,
+}
+
+impl NotScored {
+    /// `Not scored` or `Not scored (aggregation failed)`.
+    pub fn label(&self) -> String {
+        match self.reason {
+            None => "Not scored".to_owned(),
+            Some(r) => format!("Not scored ({})", r.as_str().replace('_', " ")),
+        }
+    }
+}
+
+/// `Some` for a record with `scoringStatus: unscorable` (schema 1.8). The 1.6 record type
+/// keeps the 1.8 keys in `extra`; a 1.6 or 1.7 record is always scored.
+pub fn not_scored(record: &GazeSessionRecord) -> Option<NotScored> {
+    let status: Option<ScoringStatus> = record
+        .extra
+        .get("scoringStatus")
+        .and_then(|v| serde_json::from_value(v.clone()).ok());
+    (status == Some(ScoringStatus::Unscorable)).then(|| NotScored {
+        reason: record
+            .extra
+            .get("unscorableReason")
+            .and_then(|v| serde_json::from_value(v.clone()).ok()),
+    })
+}
+
+/// Decodes a stored `sessions.summary` (the `rawPayload` of any session schema) as the
+/// report record type (the 1.6 `GazeSessionRecord`; later keys ride along in `extra`).
+///
+/// Two 1.6-required keys may be missing from a later record, and only for the type:
+/// - `calibratedDistanceCm` (optional since 1.7, QS-5): no builder reads it;
+/// - the five score fields of an `unscorable` 1.8 record (SCH-5): every builder checks
+///   [`not_scored`] first and never prints them.
+///
+/// Both get a neutral `0.0` that never reaches an artifact. A `scored` record missing a score
+/// field is refused, as before.
+pub fn stored_record(mut summary: Value) -> Result<GazeSessionRecord, serde_json::Error> {
+    if let Some(obj) = summary.as_object_mut() {
+        let unscorable = obj.get("scoringStatus").and_then(Value::as_str) == Some("unscorable");
+        // A stored 1.6 record always has it (validated at ingest).
+        if !obj.contains_key("calibratedDistanceCm") {
+            obj.insert("calibratedDistanceCm".into(), Value::from(0.0));
+        }
+        if unscorable {
+            for key in SCORE_FIELDS {
+                match obj.get(key) {
+                    None | Some(Value::Null) => {
+                        obj.insert(key.into(), Value::from(0.0));
+                    }
+                    Some(_) => {}
+                }
+            }
+        }
+    }
+    serde_json::from_value(summary)
 }

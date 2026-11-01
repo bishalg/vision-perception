@@ -6,17 +6,20 @@
 //! charset, `rawPayload` consistency, unique clip ids, RFC 3339 dates, idempotency key).
 //! Nothing here fills in a missing value (CON-14).
 //!
-//! Schema versions (SCH-2, WP-G.11): `X-Schema-Version` is `1.6` or `1.7` and the body's
-//! `schemaVersion` must equal it. Each version is checked against its own exported schema
-//! and decoded as its own type, so a 1.6 body is accepted or refused exactly as before
-//! (1.6 allows unknown keys that 1.7 types, such as `rawPayload.trackingQuality`). A 1.6
-//! request is then carried as the 1.7 type ([`upgrade_v1_6`], lossless: 1.7 is 1.6 plus
-//! optional fields), with no tracking-quality record.
+//! Schema versions (SCH-2, WP-G.11; SCH-5, WP-G.12): `X-Schema-Version` is `1.6`, `1.7` or
+//! `1.8` and the body's `schemaVersion` must equal it. Each version is checked against its
+//! own exported schema and decoded as its own type, so a 1.6 or 1.7 body is accepted or
+//! refused exactly as before (1.6 allows unknown keys that 1.7 types, such as
+//! `rawPayload.trackingQuality`). A 1.8 body is also checked against the scoring rules
+//! (`session_v1_8::scoring_violations`). Every request is then carried as the 1.8 type: a
+//! 1.6 request via [`upgrade_v1_6`] (no tracking-quality record) and a 1.7 one via
+//! `session_v1_8::upgrade_v1_7`, both `scored` with their numbers kept.
 
 use asd_contract::problem as slugs;
 use asd_contract::schema;
 use asd_contract::session_v1_6;
-use asd_contract::session_v1_7::{self, SessionIngestRequest};
+use asd_contract::session_v1_7;
+use asd_contract::session_v1_8::{self, SessionIngestRequest};
 use asd_core::types::CaptureSource;
 use chrono::{DateTime, Utc};
 use serde_json::Value;
@@ -29,14 +32,18 @@ use crate::problem::InvalidParam;
 pub const MAX_ID_LEN: usize = 128;
 
 /// Session schema versions `POST /v1/sessions` accepts (SCH-2; CON-21 becomes a set).
-pub const SUPPORTED_SCHEMA_VERSIONS: [&str; 2] =
-    [session_v1_6::SCHEMA_VERSION, session_v1_7::SCHEMA_VERSION];
+pub const SUPPORTED_SCHEMA_VERSIONS: [&str; 3] = [
+    session_v1_6::SCHEMA_VERSION,
+    session_v1_7::SCHEMA_VERSION,
+    session_v1_8::SCHEMA_VERSION,
+];
 
 /// A request that passed every check.
 #[derive(Debug, Clone)]
 pub struct ValidatedSession {
-    /// The request as the 1.7 type; `schema_version` says which version was sent (a 1.6
-    /// request has no tracking-quality record and no QS-3 fields).
+    /// The request as the 1.8 type; `schema_version` says which version was sent (a 1.6
+    /// request has no tracking-quality record and no QS-3 fields; 1.6 and 1.7 requests are
+    /// `scored`).
     pub request: SessionIngestRequest,
     /// SHA-256 of the JCS canonical body (key order and whitespace do not matter).
     pub request_hash: [u8; 32],
@@ -133,8 +140,9 @@ pub fn validate(
         }
     }
 
-    let is_v1_7 = version == session_v1_7::SCHEMA_VERSION;
-    let checked = if is_v1_7 {
+    let checked = if version == session_v1_8::SCHEMA_VERSION {
+        schema::validate_session_v1_8(&value)
+    } else if version == session_v1_7::SCHEMA_VERSION {
         schema::validate_session_v1_7(&value)
     } else {
         schema::validate_session(&value)
@@ -145,10 +153,27 @@ pub fn validate(
         ));
     }
     let decode_err = |e: serde_json::Error| AppError::Validation(vec![param("/", e.to_string())]);
-    let request: SessionIngestRequest = if is_v1_7 {
-        serde_json::from_value(value.clone()).map_err(decode_err)?
+    let request: SessionIngestRequest = if version == session_v1_8::SCHEMA_VERSION {
+        let request: SessionIngestRequest =
+            serde_json::from_value(value.clone()).map_err(decode_err)?;
+        // SCH-5: the schema states the same rules; checked on the typed value as well so a
+        // rule never depends on the validator alone.
+        let violations = session_v1_8::scoring_violations(&request);
+        if !violations.is_empty() {
+            return Err(AppError::Validation(
+                violations
+                    .into_iter()
+                    .map(|v| param(v.pointer, v.reason))
+                    .collect(),
+            ));
+        }
+        request
+    } else if version == session_v1_7::SCHEMA_VERSION {
+        session_v1_8::upgrade_v1_7(serde_json::from_value(value.clone()).map_err(decode_err)?)
     } else {
-        upgrade_v1_6(serde_json::from_value(value.clone()).map_err(decode_err)?)
+        session_v1_8::upgrade_v1_7(upgrade_v1_6(
+            serde_json::from_value(value.clone()).map_err(decode_err)?,
+        ))
     };
 
     // CON-13: capture-source policy.
@@ -270,7 +295,7 @@ pub fn validate(
 /// same 1.7 field, the 1.7-only fields stay absent (no tracking record, no QS-3 fields), and
 /// unknown `rawPayload` keys stay in `extra`. Exhaustive destructuring: a field added to
 /// either version fails to compile here.
-pub fn upgrade_v1_6(req: session_v1_6::SessionIngestRequest) -> SessionIngestRequest {
+pub fn upgrade_v1_6(req: session_v1_6::SessionIngestRequest) -> session_v1_7::SessionIngestRequest {
     let session_v1_6::SessionIngestRequest {
         session_id,
         participant_token,
@@ -289,7 +314,7 @@ pub fn upgrade_v1_6(req: session_v1_6::SessionIngestRequest) -> SessionIngestReq
         per_video,
         raw_payload,
     } = req;
-    SessionIngestRequest {
+    session_v1_7::SessionIngestRequest {
         session_id,
         participant_token,
         capture_source,
@@ -458,7 +483,7 @@ mod tests {
         );
         let v16: session_v1_6::SessionIngestRequest = serde_json::from_str(text).unwrap();
         // The golden has no 1.7-only key, so the 1.7 decode of the same JSON is the target.
-        let v17: SessionIngestRequest = serde_json::from_str(text).unwrap();
+        let v17: session_v1_7::SessionIngestRequest = serde_json::from_str(text).unwrap();
         let up = upgrade_v1_6(v16);
         assert_eq!(up, v17);
         assert!(up.raw_payload.tracking_quality.is_none());

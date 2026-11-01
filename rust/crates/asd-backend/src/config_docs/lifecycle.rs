@@ -108,55 +108,11 @@ pub fn validate_version(version: &str) -> Result<(), InvalidParam> {
     }
 }
 
-/// Range checks on a scoring profile; the type itself only checks the shape.
+/// Range checks on a scoring profile; the type itself only checks the shape. The rules
+/// live in asd-contract (`profile_checks`) so the console editor runs the same ones via
+/// asd-wasm; the backend reports their messages.
 pub fn scoring_profile_problems(p: &ScoringProfile) -> Vec<String> {
-    let mut problems = Vec::new();
-    let unit = |name: &str, v: f64, problems: &mut Vec<String>| {
-        if !(0.0..=1.0).contains(&v) {
-            problems.push(format!("{name} must be in [0, 1]"));
-        }
-    };
-    unit("flag.greenFloor", p.flag.green_floor, &mut problems);
-    unit("flag.yellowFloor", p.flag.yellow_floor, &mut problems);
-    unit(
-        "flag.lowConfidenceShare",
-        p.flag.low_confidence_share,
-        &mut problems,
-    );
-    unit(
-        "flag.atypicalShareForRed",
-        p.flag.atypical_share_for_red,
-        &mut problems,
-    );
-    unit(
-        "lowConfidenceValidRatio",
-        p.low_confidence_valid_ratio,
-        &mut problems,
-    );
-    unit(
-        "qualityGate.minConfidence",
-        p.quality_gate.min_confidence,
-        &mut problems,
-    );
-    unit(
-        "qualityGate.blinkThreshold",
-        p.quality_gate.blink_threshold,
-        &mut problems,
-    );
-    if p.flag.yellow_floor > p.flag.green_floor {
-        problems.push("flag.yellowFloor must not exceed flag.greenFloor".into());
-    }
-    let q = &p.quality_gate;
-    if !(q.min_distance_cm > 0.0 && q.min_distance_cm < q.max_distance_cm) {
-        problems.push("qualityGate needs 0 < minDistanceCm < maxDistanceCm".into());
-    }
-    if !(q.max_yaw_rad > 0.0 && q.max_pitch_rad > 0.0) {
-        problems.push("qualityGate.maxYawRad and maxPitchRad must be positive".into());
-    }
-    if p.schema_version.trim().is_empty() {
-        problems.push("schemaVersion is required".into());
-    }
-    problems
+    asd_contract::profile_checks::scoring_profile_problem_messages(p)
 }
 
 /// The body must decode as the kind's contract type (and pass its own checks), so a

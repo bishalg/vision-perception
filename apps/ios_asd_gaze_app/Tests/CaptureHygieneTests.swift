@@ -5,7 +5,7 @@ import UIKit
 import XCTest
 
 /// WP-G.0: capture hygiene. TRK-1 is covered in the kit (`GazeProcessingActorTests`);
-/// here CAL-1, CAL-3 and the orientation lock.
+/// here CAL-1 and the orientation lock (CAL-3 runs in the Rust pipeline, WP-G.10).
 @MainActor
 final class CaptureHygieneTests: XCTestCase {
     private var suiteName: String!
@@ -22,54 +22,8 @@ final class CaptureHygieneTests: XCTestCase {
         super.tearDown()
     }
 
-    // MARK: CAL-3 no fabricated target point
-
-    private let measured = CGPoint(x: 0.4, y: 0.6)
-
-    func testStarvedTargetIsRetriedOnceThenFailsWithoutRecordingAPoint() {
-        var acc = CalibrationAccumulator(targetCount: 5)
-        XCTAssertEqual(acc.submit(medianRaw: measured), .accepted(isComplete: false))
-        XCTAssertEqual(acc.submit(medianRaw: nil), .retryTarget)
-        XCTAssertEqual(acc.submit(medianRaw: nil), .failed)
-        XCTAssertEqual(acc.rawPoints, [measured], "no point is invented for the starved target")
-        XCTAssertFalse(acc.canFit, "a failed calibration must never be fitted or persisted")
-        XCTAssertEqual(acc.submit(medianRaw: measured), .failed, "failure is terminal until a new attempt")
-    }
-
-    func testRetryThatCollectsSamplesRecoversAndRetriesResetPerTarget() {
-        var acc = CalibrationAccumulator(targetCount: 3)
-        XCTAssertEqual(acc.submit(medianRaw: nil), .retryTarget)
-        XCTAssertEqual(acc.submit(medianRaw: measured), .accepted(isComplete: false))
-        XCTAssertEqual(acc.submit(medianRaw: nil), .retryTarget, "next target gets its own single retry")
-        XCTAssertEqual(acc.submit(medianRaw: measured), .accepted(isComplete: false))
-        XCTAssertEqual(acc.submit(medianRaw: measured), .accepted(isComplete: true))
-        XCTAssertTrue(acc.canFit)
-        XCTAssertEqual(acc.rawPoints.count, 3)
-    }
-
-    func testIncompleteOrFitFailedAccumulatorCannotFit() {
-        var acc = CalibrationAccumulator(targetCount: 2)
-        _ = acc.submit(medianRaw: measured)
-        XCTAssertFalse(acc.canFit)
-        _ = acc.submit(medianRaw: measured)
-        XCTAssertTrue(acc.canFit)
-        acc.markFitFailed()
-        XCTAssertFalse(acc.canFit)
-    }
-
-    func testCalibrationStarvedOfSamplesNeverPersists() {
-        // Mirrors BubbleCalibrationView: persist only when `canFit`.
-        var acc = CalibrationAccumulator(targetCount: 2)
-        _ = acc.submit(medianRaw: measured)
-        _ = acc.submit(medianRaw: nil)
-        _ = acc.submit(medianRaw: nil)
-        let controller = GazeSessionController()
-        controller.calibrationBinding = CalibrationBinding(participantKey: "child-A", sessionId: "S1")
-        defer { BoundCalibrationStore.reset() }
-        if acc.canFit { XCTFail("must not fit") }
-        XCTAssertFalse(controller.calibrationProfile.isCalibrated)
-        XCTAssertFalse(BoundCalibrationStore.load(for: controller.calibrationBinding).isCalibrated)
-    }
+    // CAL-3 (no fabricated target point, one re-show) is decided by the Rust pipeline since
+    // WP-G.10; see the kit's GazeTargetFlowTests.testStarvedTargetIsReShownOnceThenMissed.
 
     // MARK: CAL-1 per participant and session
 

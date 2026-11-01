@@ -20,10 +20,11 @@ public extension GazeSessionController {
         token: ConsentToken,
         battery: StimulusAOITracker? = nil,
         stimulusId: String? = nil,
+        beginsClip: Bool = true,
         store: ChildProfileStore = .shared
     ) -> Bool {
         guard ConsentToken.mint(from: store) != nil else { return false }
-        startSession(battery: battery, stimulusId: stimulusId)
+        startSession(battery: battery, stimulusId: stimulusId, beginsClip: beginsClip)
         return true
     }
 }

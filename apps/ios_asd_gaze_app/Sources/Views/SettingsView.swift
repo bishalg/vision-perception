@@ -67,8 +67,8 @@ public struct SettingsView: View {
                 refreshNotificationStatus()
             }
             .fullScreenCover(isPresented: $showQuickCalibrate) {
+                // A calibration check in a session of its own (CAL-1: never applied elsewhere).
                 BubbleCalibrationView(
-                    calibrationBinding: calibrationCheckBinding,
                     onClose: {
                         showQuickCalibrate = false
                         calibrationProfile = BoundCalibrationStore.load(for: calibrationCheckBinding)

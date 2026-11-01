@@ -15,9 +15,12 @@
 
 use std::collections::BTreeMap;
 
+use asd_contract::api_v1::ClipScore;
 use asd_contract::{session_v1_6, session_v1_7};
 use asd_core::metrics::PerVideoMetricKey;
-use asd_core::types::{AttentionFlag, PerVideoMetricSet, PerVideoScoreReport};
+use asd_core::scoring;
+use asd_core::types::{AttentionFlag, PerVideoMetricSet, PerVideoScoreReport, PerVideoScoreRow};
+use serde::Deserialize;
 use serde_json::Value;
 
 use crate::error::BoundaryError;
@@ -136,6 +139,132 @@ fn decode_record(value: Value, version: &str) -> Result<SessionView, BoundaryErr
             "a request with rawPayload (\"1.6\"/\"1.7\") or a record (\"v1.6\"/\"v1.7\")",
         ))
     }
+}
+
+/// The members of an API `SessionDetail` a re-score reads; everything else is ignored, so
+/// additive changes to the API type do not break the console's sandbox.
+#[derive(Debug, Deserialize)]
+struct ApiSession {
+    id: String,
+    #[serde(default)]
+    schema_version: Option<String>,
+    #[serde(default)]
+    composite_score: Option<f64>,
+    #[serde(default)]
+    attention_flag: Option<String>,
+    #[serde(default)]
+    valid_frame_ratio: Option<f64>,
+}
+
+/// Decodes a session as the console reads it from `/v1` (`SessionDetail` plus the `items`
+/// of `GET /v1/sessions/{id}/clips`) into the same view as a stored record. Each clip's
+/// metric rows become the report rows (`metricKey` = `scoring::composed_key(metric,
+/// target_aoi)`, `observed` = `recorded`), clips in `order`.
+///
+/// What the API form loses, each returned as a warning:
+/// - the per-clip valid-sample ratio: every clip gets `valid_sample_ratio` if given, else
+///   the session's `valid_frame_ratio`, else 1;
+/// - the backend-only `unreliable` flag: the device flag is then `None` and the re-score
+///   does not reproduce it.
+pub fn decode_api(
+    session_json: &str,
+    clips_json: &str,
+    valid_sample_ratio: Option<f64>,
+) -> Result<(SessionView, Vec<String>), BoundaryError> {
+    let session: ApiSession = serde_json::from_str(session_json).map_err(invalid)?;
+    let mut clips: Vec<ClipScore> =
+        serde_json::from_str(clips_json).map_err(|e| BoundaryError::invalid_json("clips", e))?;
+    clips.sort_by_key(|c| c.order);
+    let mut warnings = Vec::new();
+
+    let ratio = match (valid_sample_ratio, session.valid_frame_ratio) {
+        (Some(r), _) => {
+            warnings.push(format!(
+                "the API has no per-clip valid-sample ratio; every clip uses the given {r}"
+            ));
+            r
+        }
+        (None, Some(r)) => {
+            warnings.push(format!(
+                "the API has no per-clip valid-sample ratio; every clip uses the session's \
+                 valid frame ratio {r}"
+            ));
+            r
+        }
+        (None, None) => {
+            warnings.push(
+                "the session has no valid frame ratio; every clip is treated as fully valid"
+                    .to_owned(),
+            );
+            1.0
+        }
+    };
+
+    let device_flag = match session.attention_flag.as_deref() {
+        None => None,
+        Some("unreliable") => {
+            warnings.push(
+                "the backend marked this session unreliable (a backend-only rule); the \
+                 re-score does not reproduce that flag"
+                    .to_owned(),
+            );
+            None
+        }
+        Some(other) => Some(
+            serde_json::from_value::<AttentionFlag>(Value::String(other.to_owned()))
+                .map_err(invalid)?,
+        ),
+    };
+
+    let reports = clips
+        .into_iter()
+        .map(|clip| {
+            let rows: Vec<PerVideoScoreRow> = clip
+                .rows
+                .into_iter()
+                .map(|r| PerVideoScoreRow {
+                    metric_key: scoring::composed_key(&r.metric, r.target_aoi.as_deref()),
+                    segment_id: r.segment_id,
+                    segment_description: String::new(),
+                    biomarker: r.metric,
+                    target_aoi: r.target_aoi,
+                    direction: r.direction,
+                    observed: r.recorded,
+                    expected: r.expected,
+                    acceptable_low: r.acceptable_low,
+                    acceptable_high: r.acceptable_high,
+                    status: r.status,
+                    score: r.score,
+                    imputed: r.imputed,
+                    citation: String::new(),
+                    source: r.source,
+                })
+                .collect();
+            PerVideoScoreReport {
+                has_baseline: !rows.is_empty(),
+                title: clip.clip_id.clone(),
+                stimulus_id: clip.clip_id,
+                category: String::new(),
+                rows,
+                subscore: clip.score.unwrap_or(0.0),
+                valid_sample_ratio: ratio,
+                low_confidence: false,
+                weight: clip.weight.unwrap_or(0.0),
+            }
+        })
+        .collect();
+
+    Ok((
+        SessionView {
+            session_id: session.id,
+            schema_version: session.schema_version.unwrap_or_default(),
+            reports,
+            has_reports: true,
+            device_composite: session.composite_score,
+            device_flag,
+        },
+        warnings,
+    ))
 }
 
 /// Metric sets rebuilt from the device's score reports, plus warnings for what a report
@@ -289,6 +418,43 @@ mod tests {
         assert_eq!(warnings.len(), 2, "{warnings:?}");
         assert!(warnings[0].starts_with("clip: social_dwell_ratio differs"));
         assert!(warnings[1].starts_with("other: had no baseline"));
+    }
+
+    #[test]
+    fn api_session_becomes_reports_with_warnings() {
+        let session = r#"{"id":"S1","schema_version":"1.6","composite_score":0.6,
+            "attention_flag":"unreliable","valid_frame_ratio":0.7,"extra":1}"#;
+        let clips = r#"[
+          {"clip_id":"b","order":1,"rows":[]},
+          {"clip_id":"a","order":0,"weight":0.5,"rows":[
+            {"segment_id":"s","metric":"eye_dwell_ratio","target_aoi":"eyes","direction":"band",
+             "expected":0.3,"acceptable_low":0.2,"acceptable_high":0.4,"recorded":0.25,
+             "deviation":-0.05,"status":"onTarget","score":1.0,"imputed":false,"source":"lit"}]}
+        ]"#;
+        let (view, warnings) = decode_api(session, clips, None).unwrap();
+        assert_eq!(view.session_id, "S1");
+        assert_eq!(view.device_flag, None);
+        assert_eq!(view.device_composite, Some(0.6));
+        assert_eq!(view.reports.len(), 2);
+        assert_eq!(view.reports[0].stimulus_id, "a");
+        assert_eq!(view.reports[0].rows[0].metric_key, "eye_dwell_ratio::eyes");
+        assert_eq!(view.reports[0].valid_sample_ratio, 0.7);
+        assert!(!view.reports[1].has_baseline);
+        assert_eq!(warnings.len(), 2, "{warnings:?}");
+        assert!(warnings[1].contains("unreliable"));
+
+        let green = r#"{"id":"S2","attention_flag":"green"}"#;
+        let (view, warnings) = decode_api(green, "[]", Some(0.9)).unwrap();
+        assert_eq!(view.device_flag, Some(AttentionFlag::Green));
+        assert!(warnings[0].contains("0.9"));
+        assert_eq!(
+            decode_api("{}", "[]", None).unwrap_err().kind(),
+            "invalidJson"
+        );
+        assert_eq!(
+            decode_api(green, "{}", None).unwrap_err().kind(),
+            "invalidJson"
+        );
     }
 
     #[test]

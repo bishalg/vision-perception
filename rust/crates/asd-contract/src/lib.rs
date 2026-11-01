@@ -15,8 +15,10 @@ mod jcs;
 mod mirror;
 pub mod privacy; // WP-B.9
 pub mod problem;
+pub mod profile_checks; // WP-C.5
 pub mod schema;
 pub mod session_v1_6;
 pub mod session_v1_7;
+pub mod session_v1_8;
 pub mod signing;
 pub mod tracking_api;

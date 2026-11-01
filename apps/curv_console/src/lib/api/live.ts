@@ -3,8 +3,10 @@ import type { ZodType } from "zod";
 import { createLiveAdmin } from "./admin";
 import { createLiveExports } from "./exports";
 import { createLiveCatalog } from "./catalog";
+import { createLiveBundles } from "./config";
 import { createLivePrivacy } from "./privacy";
 import { createLiveClinical } from "./clinical";
+import { createLiveParticipant } from "./participant";
 import {
   ApiError,
   clipListSchema,
@@ -87,9 +89,11 @@ export function createLiveClient(opts: LiveOptions): CurvApi & AuthApi {
   const enc = encodeURIComponent;
   return {
     ...createLiveClinical(request, buildQuery),
+    ...createLiveParticipant(request, buildQuery),
     ...createLiveAdmin(request, buildQuery),
     ...createLiveExports(request, buildQuery),
     ...createLiveCatalog(request, buildQuery),
+    ...createLiveBundles(request, buildQuery),
     ...createLivePrivacy(request, buildQuery),
     login: (email, password, totpCode) =>
       request("/auth/login", tokenPairSchema, {

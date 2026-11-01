@@ -344,14 +344,19 @@ public final class GazeSessionController: ObservableObject {
     ///
     /// Never falls back to simulation (SIM-2): when face tracking is unsupported the
     /// controller moves to `.unavailable(.faceTrackingUnsupported)` and does not record.
-    public func startSession(battery: StimulusAOITracker? = nil, stimulusId: String? = nil) {
+    ///
+    /// - Parameter beginsClip: open the first stimulus clip now (default). Pass `false` when
+    ///   the session starts with calibration and validation (WP-G.10); `switchStimulusClip`
+    ///   then opens the first clip in the same pipeline, so the session records its own
+    ///   calibration (CAL-1, QS-1).
+    public func startSession(battery: StimulusAOITracker? = nil, stimulusId: String? = nil, beginsClip: Bool = true) {
         #if canImport(ARKit) && !os(macOS)
         guard ARFaceTrackingConfiguration.isSupported else {
             markUnavailable(.faceTrackingUnsupported)
             return
         }
         tearDownARSession()
-        beginRecording(battery: battery, stimulusId: stimulusId, source: .trueDepth)
+        beginRecording(battery: battery, stimulusId: stimulusId, source: .trueDepth, beginsClip: beginsClip)
 
         let session = ARSession()
         session.delegateQueue = arDelegateQueue
@@ -368,11 +373,11 @@ public final class GazeSessionController: ObservableObject {
     #if ASD_SIMULATION_ENABLED
     /// Starts a deterministic simulated session (Debug builds only, SIM-3). Frames
     /// arrive through `tickSimulatedFrame`; every summary is `.simulated`.
-    public func startSimulatedSession(battery: StimulusAOITracker? = nil, stimulusId: String? = nil) {
+    public func startSimulatedSession(battery: StimulusAOITracker? = nil, stimulusId: String? = nil, beginsClip: Bool = true) {
         #if canImport(ARKit) && !os(macOS)
         tearDownARSession()
         #endif
-        beginRecording(battery: battery, stimulusId: stimulusId, source: .simulated)
+        beginRecording(battery: battery, stimulusId: stimulusId, source: .simulated, beginsClip: beginsClip)
     }
     #endif
 
@@ -384,7 +389,7 @@ public final class GazeSessionController: ObservableObject {
         currentQuality = GazeQualityGate.Evaluation(isValid: false, verdict: .rejected, failureReasons: [trackingStage.label])
     }
 
-    private func beginRecording(battery: StimulusAOITracker?, stimulusId: String?, source: CaptureSource) {
+    private func beginRecording(battery: StimulusAOITracker?, stimulusId: String?, source: CaptureSource, beginsClip: Bool) {
         if let battery = battery {
             self.aoiTracker = battery
         }
@@ -406,7 +411,8 @@ public final class GazeSessionController: ObservableObject {
             captureSource: source,
             stimulusId: stimulusId,
             originTimestamp: ProcessInfo.processInfo.systemUptime,
-            orientation: Self.interfaceOrientation()
+            orientation: Self.interfaceOrientation(),
+            beginsClip: beginsClip
         )
 
         isRecording = true
@@ -509,6 +515,16 @@ public final class GazeSessionController: ObservableObject {
     /// Where to show the next drift check target.
     public func nextCheckTarget() async -> GazeVec2? {
         await sessionBridge.perform { await $0.nextCheckTarget() } ?? nil
+    }
+
+    /// Validation of the calibration in effect (VAL-2, VAL-3); `nil` before any validation target.
+    public func validationSummary() async -> GazeValidationSummary? {
+        await sessionBridge.perform { await $0.validationSummary() } ?? nil
+    }
+
+    /// Target layouts and window timing of the session pipeline (CAL-7, VAL-1, DRF-1).
+    public func targetSchedule() async -> GazeTargetSchedule? {
+        await sessionBridge.perform { await $0.targetSchedule() } ?? nil
     }
 
     /// Ends the session and returns its summary (CONC-4).
@@ -748,3 +764,6 @@ private final class NotificationObserverToken: @unchecked Sendable {
         NotificationCenter.default.removeObserver(token)
     }
 }
+
+/// The app drives calibration, validation and drift checks through the controller (WP-G.10).
+extension GazeSessionController: GazeTargetSession {}

@@ -5381,7 +5381,8 @@
         "random_audit",
         "norm_candidate",
         "manual",
-        "low_tracking_quality"
+        "low_tracking_quality",
+        "unscorable"
       ],
       "type": "string"
     },
@@ -5988,6 +5989,14 @@
       ],
       "type": "object"
     },
+    "ScoringStatus": {
+      "description": "Whether on-device scoring produced the session's scores.",
+      "enum": [
+        "scored",
+        "unscorable"
+      ],
+      "type": "string"
+    },
     "SessionAttentionFlag": {
       "description": "Backend-derived flag: the device enum plus `unreliable` (CON-15).",
       "enum": [
@@ -6140,11 +6149,13 @@
           "report_pdf_available": false,
           "reviewed": false,
           "schema_version": "1.6",
+          "scoring_status": null,
           "social_preference": 0.62,
           "started_at": "2026-10-26T07:33:20.000Z",
           "tracking_accuracy_deg": null,
           "tracking_quality": null,
           "tracking_verdict": null,
+          "unscorable_reason": null,
           "valid_frame_ratio": 0.93
         },
         {
@@ -6174,6 +6185,7 @@
           "report_pdf_available": false,
           "reviewed": false,
           "schema_version": "1.7",
+          "scoring_status": null,
           "social_preference": 0.62,
           "started_at": "2026-10-26T07:33:20.000Z",
           "tracking_accuracy_deg": 1.63,
@@ -6267,6 +6279,128 @@
             "verdict": "good"
           },
           "tracking_verdict": "good",
+          "unscorable_reason": null,
+          "valid_frame_ratio": 0.93
+        },
+        {
+          "affect": null,
+          "age_pack": "18-30",
+          "attention_flag": "unreliable",
+          "battery": "express_30s",
+          "bundle_version": null,
+          "calibrated_distance_cm": 38.0,
+          "capture_source": "truedepth",
+          "composite_confidence": 0.5,
+          "composite_score": 0.74,
+          "device_id": "9a8b7c6d-5e4f-4321-8fed-cba987654321",
+          "duration_sec": 32.5,
+          "eye_dwell": 0.33,
+          "first_eye_latency_ms": null,
+          "id": "SESS-GOLDEN-0019",
+          "lang": "en",
+          "mouth_dwell": null,
+          "org_id": "5f0e1d2c-3b4a-4968-8776-655443322110",
+          "participant_id": "7f1c1c1e-0000-4000-8000-000000000001",
+          "participant_token": "child-SESS-GOL",
+          "quality_verdict": "optimal",
+          "report_pdf_available": false,
+          "reviewed": false,
+          "schema_version": "1.8",
+          "scoring_status": "unscorable",
+          "social_preference": null,
+          "started_at": "2026-10-26T07:33:20.000Z",
+          "tracking_accuracy_deg": 1.63,
+          "tracking_quality": {
+            "calibration": {
+              "age_sec_at_start": 6.5,
+              "attempts": 1,
+              "condition_number": 42.5,
+              "layout_points": 5,
+              "loo_cv_deg": 1.64,
+              "missing_points": 0,
+              "model": "screenAffine",
+              "pose": {
+                "distance_cm": 38.0,
+                "pitch_deg": -4.25,
+                "yaw_deg": 3.5
+              },
+              "quality": "good",
+              "residual_deg": 1.12,
+              "usable_points": 5
+            },
+            "conditions": {
+              "ambient_intensity_median": 870.0,
+              "distance_cm_iqr": 4.25,
+              "distance_cm_median": 39.5,
+              "glasses": false,
+              "head_speed_deg_per_sec_p90": 18.5,
+              "light_asymmetry": 0.12
+            },
+            "confidence": {
+              "low_confidence_sample_ratio": 0.07,
+              "mean_fixation": 0.86,
+              "mean_sample": 0.82
+            },
+            "device": {
+              "geometry_source": "table",
+              "model_identifier": "iPad13,18",
+              "orientation": "landscapeLeft",
+              "sample_rate_hz": 60.0,
+              "screen_height_mm": 165.64,
+              "screen_width_mm": 238.25
+            },
+            "drift_checks": [
+              {
+                "at_sec": 11.2,
+                "drift_deg": 0.4,
+                "missed": false,
+                "offset_deg": 1.1,
+                "x_norm": 0.5,
+                "y_norm": 0.5
+              }
+            ],
+            "estimated_accuracy_deg": 1.63,
+            "loss": {
+              "artifact_sec": 0.05,
+              "blink_sec": 0.6,
+              "gap_filled_sec": 0.3,
+              "longest_gap_sec": 0.45,
+              "offscreen_sec": 0.4,
+              "track_loss_sec": 0.85
+            },
+            "max_drift_deg": 0.4,
+            "params_version": "1.0.0",
+            "pipeline_version": "asd-gaze/1.0.0",
+            "recalibrations": [
+              {
+                "at_sec": 23.5,
+                "new_quality": "fair",
+                "reason": "drift"
+              }
+            ],
+            "validation": {
+              "accuracy_deg": 1.63,
+              "complete": true,
+              "data_loss": 0.24,
+              "precision_rms_deg": 0.22,
+              "precision_rms_raw_deg": 0.48,
+              "targets": [
+                {
+                  "accuracy_deg": 1.4,
+                  "data_loss": 0.02,
+                  "missed": false,
+                  "precision_rms_deg": 0.21,
+                  "sd_deg": 0.35,
+                  "valid_samples": 58,
+                  "x_norm": 0.3,
+                  "y_norm": 0.3
+                }
+              ]
+            },
+            "verdict": "good"
+          },
+          "tracking_verdict": "good",
+          "unscorable_reason": "aggregation_failed",
           "valid_frame_ratio": 0.93
         }
       ],
@@ -6457,6 +6591,17 @@
             }
           ]
         },
+        "scoring_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScoringStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SCH-5 scoring outcome of a schema 1.8 session; `null` for a 1.6 or 1.7 session (those\nalways carry score numbers). `unscorable`: the session has no scores; show \"not\nscored\", never a number."
+        },
         "social_preference": {
           "anyOf": [
             {
@@ -6503,6 +6648,17 @@
             }
           ],
           "description": "QS-4 tracking verdict of a schema 1.7 session; `null` for a 1.6 session or when the\ndevice sent no tracking-quality record (SCH-4)."
+        },
+        "unscorable_reason": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UnscorableReason"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Why an `unscorable` session was not scored, when the device said; `null` otherwise."
         },
         "valid_frame_ratio": {
           "anyOf": [
@@ -6992,9 +7148,11 @@
           "participant_token": "child-SESS-GOL",
           "quality_verdict": "optimal",
           "reviewed": false,
+          "scoring_status": null,
           "started_at": "2026-10-26T07:33:20.000Z",
           "tracking_accuracy_deg": null,
-          "tracking_verdict": null
+          "tracking_verdict": null,
+          "unscorable_reason": null
         },
         {
           "attention_flag": "yellow",
@@ -7010,9 +7168,31 @@
           "participant_token": "child-SESS-GOL",
           "quality_verdict": "optimal",
           "reviewed": false,
+          "scoring_status": null,
           "started_at": "2026-10-26T07:33:20.000Z",
           "tracking_accuracy_deg": 1.63,
-          "tracking_verdict": "good"
+          "tracking_verdict": "good",
+          "unscorable_reason": null
+        },
+        {
+          "attention_flag": "unreliable",
+          "battery": "express_30s",
+          "bundle_version": null,
+          "capture_source": "truedepth",
+          "composite_confidence": 0.5,
+          "composite_score": 0.74,
+          "device_id": "9a8b7c6d-5e4f-4321-8fed-cba987654321",
+          "duration_sec": 32.5,
+          "id": "SESS-GOLDEN-0019",
+          "participant_id": "7f1c1c1e-0000-4000-8000-000000000001",
+          "participant_token": "child-SESS-GOL",
+          "quality_verdict": "optimal",
+          "reviewed": false,
+          "scoring_status": "unscorable",
+          "started_at": "2026-10-26T07:33:20.000Z",
+          "tracking_accuracy_deg": 1.63,
+          "tracking_verdict": "good",
+          "unscorable_reason": "aggregation_failed"
         }
       ],
       "properties": {
@@ -7108,6 +7288,17 @@
             }
           ]
         },
+        "scoring_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScoringStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SCH-5 scoring outcome of a schema 1.8 session; `null` for a 1.6 or 1.7 session (those\nalways carry score numbers). `unscorable`: the session has no scores; show \"not\nscored\", never a number."
+        },
         "started_at": {
           "format": "date-time",
           "type": "string"
@@ -7133,6 +7324,17 @@
             }
           ],
           "description": "QS-4 tracking verdict of a schema 1.7 session; `null` for a 1.6 session or when the\ndevice sent no tracking-quality record (SCH-4)."
+        },
+        "unscorable_reason": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UnscorableReason"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Why an `unscorable` session was not scored, when the device said; `null` otherwise."
         }
       },
       "required": [
@@ -8194,6 +8396,18 @@
       ],
       "type": "string"
     },
+    "UnscorableReason": {
+      "description": "Why a session is `unscorable` (optional; absent when the device does not know).",
+      "enum": [
+        "aggregation_failed",
+        "insufficient_valid_gaze",
+        "tracking_unusable",
+        "calibration_failed",
+        "no_scorable_clips",
+        "other"
+      ],
+      "type": "string"
+    },
     "UpdateClinicalReviewRequest": {
       "description": "`PATCH /v1/clinical-reviews/{id}` (draft save, SIGN-2, SIGN-3). Absent = unchanged.",
       "properties": {
@@ -8747,9 +8961,11 @@
           "quality_verdict": "optimal",
           "review_id": null,
           "reviewed": false,
+          "scoring_status": null,
           "started_at": "2026-10-26T07:33:20.000Z",
           "tracking_accuracy_deg": null,
-          "tracking_verdict": null
+          "tracking_verdict": null,
+          "unscorable_reason": null
         }
       ],
       "properties": {
@@ -8894,6 +9110,17 @@
             }
           ]
         },
+        "scoring_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScoringStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SCH-5 scoring outcome of a schema 1.8 session; `null` for a 1.6 or 1.7 session (those\nalways carry score numbers). `unscorable`: the session has no scores; show \"not\nscored\", never a number."
+        },
         "started_at": {
           "format": "date-time",
           "type": "string"
@@ -8919,6 +9146,17 @@
             }
           ],
           "description": "QS-4 tracking verdict of a schema 1.7 session; `null` for a 1.6 session or when the\ndevice sent no tracking-quality record (SCH-4)."
+        },
+        "unscorable_reason": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UnscorableReason"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Why an `unscorable` session was not scored, when the device said; `null` otherwise."
         }
       },
       "required": [

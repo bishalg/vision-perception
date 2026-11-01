@@ -305,6 +305,108 @@ fn bless_rescore_golden() {
     std::fs::write(path, serde_json::to_string_pretty(&doc).unwrap() + "\n").unwrap();
 }
 
+/// The console's form of a stored session: `SessionDetail` + `GET /sessions/{id}/clips`
+/// items, built here from the golden request the way the backend stores it.
+fn api_form_of(request: &str) -> (String, String) {
+    let req = parse(request);
+    let raw = &req["rawPayload"];
+    let session = json!({
+        "id": req["sessionId"],
+        "schema_version": req["schemaVersion"],
+        "composite_score": raw["perVideoComposite"],
+        "attention_flag": req["attentionFlag"],
+        "valid_frame_ratio": 0.8,
+    });
+    let clips: Vec<Value> = raw["perVideo"]
+        .as_array()
+        .expect("perVideo")
+        .iter()
+        .enumerate()
+        .map(|(i, v)| {
+            let report = if v.get("report").is_some() {
+                &v["report"]
+            } else {
+                v
+            };
+            let rows: Vec<Value> = report["rows"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|r| {
+                    json!({
+                        "segment_id": r["segmentId"], "metric": r["biomarker"],
+                        "target_aoi": r.get("targetAOI").cloned().unwrap_or(Value::Null),
+                        "direction": r["direction"], "expected": r.get("expected"),
+                        "acceptable_low": r.get("acceptableLow"),
+                        "acceptable_high": r.get("acceptableHigh"),
+                        "recorded": r["observed"], "deviation": null, "status": r["status"],
+                        "score": r["score"], "imputed": r["imputed"], "source": r["source"],
+                    })
+                })
+                .collect();
+            json!({"clip_id": report["stimulusId"], "order": i, "weight": report["weight"],
+                   "score": report["subscore"], "rows": rows})
+        })
+        .collect();
+    (session.to_string(), Value::Array(clips).to_string())
+}
+
+#[test]
+fn api_session_rescore_scores_the_same_rows_as_the_stored_session() {
+    for request in [SESSION_V1_6, SESSION_V1_7] {
+        let (session, clips) = api_form_of(request);
+        let options = r#"{"ageMonths":28,"scoredAtUtc":"2026-11-01T00:00:00Z"}"#;
+        let api = ok(&asd_wasm::rescore_api_session(
+            &session,
+            &clips,
+            &profile_json(),
+            BASELINES,
+            options,
+        ));
+        let stored = ok(&asd_wasm::rescore_session(
+            request,
+            &profile_json(),
+            BASELINES,
+            options,
+            None,
+        ));
+        assert_eq!(api["metricSource"], "sessionReport");
+        assert_eq!(api["sessionId"], stored["sessionId"]);
+        assert_eq!(api["device"], stored["device"]);
+        let videos = |v: &Value| -> Vec<(Value, Value)> {
+            v["score"]["videos"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|x| (x["stimulusId"].clone(), x["rows"].clone()))
+                .collect()
+        };
+        assert_eq!(videos(&api), videos(&stored));
+        assert!(api["warnings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|w| w.as_str().unwrap().contains("valid frame ratio 0.8")));
+    }
+
+    let (session, clips) = api_form_of(SESSION_V1_6);
+    let kind = |o: &str| {
+        err_kind(&asd_wasm::rescore_api_session(
+            &session,
+            &clips,
+            &profile_json(),
+            BASELINES,
+            o,
+        ))
+    };
+    assert_eq!(kind(r#"{"ageMonths":-1}"#), "invalidArgument");
+    assert_eq!(
+        kind(r#"{"ageMonths":20,"validSampleRatio":1.5}"#),
+        "invalidArgument"
+    );
+    assert_eq!(kind(r#"{"ageMonths":20,"typo":1}"#), "invalidJson");
+}
+
 #[test]
 fn rescore_with_frames_is_the_device_path() {
     let case = cases().pop().expect("frames case");
@@ -509,10 +611,35 @@ fn contract_info_and_default_profile() {
 #[test]
 fn validation_reports_problems_without_failing() {
     let good = ok(&asd_wasm::validate_scoring_profile(&profile_json()));
-    assert_eq!(good, json!({"valid": true, "problems": []}));
+    assert_eq!(
+        good,
+        json!({"valid": true, "problems": [], "fieldProblems": []})
+    );
     let bad = ok(&asd_wasm::validate_scoring_profile(r#"{"flag":{}}"#));
     assert_eq!(bad["valid"], false);
     assert_eq!(bad["problems"].as_array().unwrap().len(), 1);
+    assert_eq!(bad["fieldProblems"], json!([]));
+
+    // Range checks: the same rules and messages as the backend (asd-contract profile_checks).
+    let mut out_of_range = ScoringProfile::default();
+    out_of_range.flag.green_floor = 1.5;
+    out_of_range.quality_gate.min_distance_cm = 80.0;
+    let ranged = ok(&asd_wasm::validate_scoring_profile(
+        &serde_json::to_string(&out_of_range).unwrap(),
+    ));
+    assert_eq!(ranged["valid"], false);
+    assert_eq!(
+        ranged["fieldProblems"],
+        json!([
+            {"path": "flag.greenFloor", "message": "flag.greenFloor must be in [0, 1]"},
+            {"path": "qualityGate.maxDistanceCm",
+             "message": "qualityGate needs 0 < minDistanceCm < maxDistanceCm"}
+        ])
+    );
+    assert_eq!(
+        ranged["problems"],
+        json!(asd_contract::profile_checks::scoring_profile_problem_messages(&out_of_range))
+    );
 
     assert_eq!(
         ok(&asd_wasm::validate_baselines(BASELINES, None))["valid"],

@@ -8,11 +8,15 @@
     "node": ">=20.9"
   },
   "scripts": {
+    "asd-wasm": "node scripts/prepare-asd-wasm.mjs",
+    "predev": "node scripts/prepare-asd-wasm.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/prepare-asd-wasm.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "pretest": "node scripts/prepare-asd-wasm.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",

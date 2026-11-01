@@ -8,6 +8,7 @@
 use asd_contract::config::{
     ScoringProfile, CONFIG_BUNDLE_SCHEMA_ID, SCORING_PROFILE_SCHEMA_VERSION,
 };
+use asd_contract::profile_checks::{self, ProfileProblem};
 use asd_contract::{session_v1_6, session_v1_7};
 use asd_core::types::{
     AttentionFlag, AttentionFlagAssessment, GazeFrame, NormativeBaselineSet, PerVideoMetricSet,
@@ -72,11 +73,16 @@ pub fn default_scoring_profile() -> ScoringProfile {
 
 // --- validation ---------------------------------------------------------------------------
 
-/// Outcome of a document check: `valid` is `problems.is_empty()`.
+/// Outcome of a document check: `valid` is `problems.is_empty()`. `fieldProblems` repeats
+/// the problems that name a document member (`path`, camelCase dotted) for an editor to show
+/// next to the field; the rest (shape errors, baseline coverage lines) are only in
+/// `problems`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Validation {
     pub valid: bool,
     pub problems: Vec<String>,
+    pub field_problems: Vec<ProfileProblem>,
 }
 
 impl Validation {
@@ -84,19 +90,25 @@ impl Validation {
         Self {
             valid: problems.is_empty(),
             problems,
+            field_problems: Vec::new(),
         }
     }
 }
 
-/// Shape check of a `ScoringProfile` (it decodes as the contract type). Range checks are
-/// not in a shared crate yet, so they are not run here.
+/// A `ScoringProfile` check: the shape (it decodes as the contract type), then the range
+/// checks the backend runs on create and approve (asd-contract `profile_checks`).
 pub fn validate_scoring_profile(profile_json: &str) -> Validation {
-    Validation::from(
-        match decode::<ScoringProfile>(profile_json, "scoring profile") {
-            Ok(_) => Vec::new(),
-            Err(e) => vec![e.message().to_owned()],
-        },
-    )
+    match decode::<ScoringProfile>(profile_json, "scoring profile") {
+        Ok(profile) => {
+            let field_problems = profile_checks::scoring_profile_problems(&profile);
+            Validation {
+                valid: field_problems.is_empty(),
+                problems: field_problems.iter().map(|p| p.message.clone()).collect(),
+                field_problems,
+            }
+        }
+        Err(e) => Validation::from(vec![e.message().to_owned()]),
+    }
 }
 
 /// `NormativeBaselineLibrary.validate` (asd-core `baselines::validate`): the set decodes
@@ -223,13 +235,87 @@ pub fn rescore_session(
     let profile: ScoringProfile = decode(profile_json, "scoring profile")?;
     let baseline: NormativeBaselineSet = decode(baselines_json, "baseline set")?;
     let options: RescoreOptions = decode(options_json, "options")?;
-    if options.age_months < 0 {
+    check_age(options.age_months)?;
+    rescore_view(
+        view,
+        &profile,
+        &baseline,
+        options.age_months,
+        &options.scored_at_utc,
+        frames_json,
+        Vec::new(),
+    )
+}
+
+/// Options of [`rescore_api_session`]. Unknown keys are refused so a typo is not ignored.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApiRescoreOptions {
+    /// The child's age at capture; the session does not carry it.
+    pub age_months: i64,
+    /// Written verbatim into `score.scoredAtUtc`; empty when absent.
+    #[serde(default)]
+    pub scored_at_utc: String,
+    /// Valid-sample ratio for every clip (the API has no per-clip ratio); default: the
+    /// session's `valid_frame_ratio`.
+    #[serde(default)]
+    pub valid_sample_ratio: Option<f64>,
+}
+
+/// Sandbox re-score of a session as the console reads it from `/v1`: the `SessionDetail`
+/// (`GET /v1/sessions/{id}`) and its `[ClipScore]` (`GET /v1/sessions/{id}/clips`, the
+/// `items`). The clips' metric rows are the device's score rows, so this is the
+/// [`rescore_session`] path without frames ([`session::decode_api`] says what the API
+/// form loses; each loss is a warning).
+pub fn rescore_api_session(
+    session_json: &str,
+    clips_json: &str,
+    profile_json: &str,
+    baselines_json: &str,
+    options_json: &str,
+) -> Result<RescoreResult, BoundaryError> {
+    let options: ApiRescoreOptions = decode(options_json, "options")?;
+    check_age(options.age_months)?;
+    if let Some(r) = options.valid_sample_ratio {
+        if !(0.0..=1.0).contains(&r) {
+            return Err(BoundaryError::InvalidArgument(
+                "options.validSampleRatio must be in [0, 1]".into(),
+            ));
+        }
+    }
+    let (view, warnings) =
+        session::decode_api(session_json, clips_json, options.valid_sample_ratio)?;
+    let profile: ScoringProfile = decode(profile_json, "scoring profile")?;
+    let baseline: NormativeBaselineSet = decode(baselines_json, "baseline set")?;
+    rescore_view(
+        view,
+        &profile,
+        &baseline,
+        options.age_months,
+        &options.scored_at_utc,
+        None,
+        warnings,
+    )
+}
+
+fn check_age(age_months: i64) -> Result<(), BoundaryError> {
+    if age_months < 0 {
         return Err(BoundaryError::InvalidArgument(
             "options.ageMonths must not be negative".into(),
         ));
     }
+    Ok(())
+}
 
-    let mut warnings = Vec::new();
+fn rescore_view(
+    view: session::SessionView,
+    profile: &ScoringProfile,
+    baseline: &NormativeBaselineSet,
+    age_months: i64,
+    scored_at_utc: &str,
+    frames_json: Option<&str>,
+    mut warnings: Vec<String>,
+) -> Result<RescoreResult, BoundaryError> {
     let (metric_source, score) = match frames_json {
         Some(json) => {
             let frames: Vec<GazeFrame> = decode(json, "frames")?;
@@ -237,13 +323,8 @@ pub fn rescore_session(
                 warnings.push("frames is empty, so no clip is scored".to_owned());
             }
             let metric_sets = metrics::extract(&frames);
-            let score = scoring::score_session(
-                &metric_sets,
-                &baseline,
-                options.age_months,
-                &frames,
-                &options.scored_at_utc,
-            );
+            let score =
+                scoring::score_session(&metric_sets, baseline, age_months, &frames, scored_at_utc);
             (MetricSource::Frames, score)
         }
         None => {
@@ -255,13 +336,8 @@ pub fn rescore_session(
             }
             let (metric_sets, rebuilt) = session::metric_sets_from_reports(&view.reports);
             warnings.extend(rebuilt);
-            let score = scoring::score_session(
-                &metric_sets,
-                &baseline,
-                options.age_months,
-                &[],
-                &options.scored_at_utc,
-            );
+            let score =
+                scoring::score_session(&metric_sets, baseline, age_months, &[], scored_at_utc);
             for (set, video) in metric_sets.iter().zip(&score.videos) {
                 if set.observed_duration_sec == 0.0 && video.rows.iter().any(|r| r.imputed) {
                     warnings.push(format!(
@@ -274,7 +350,7 @@ pub fn rescore_session(
             (MetricSource::SessionReport, score)
         }
     };
-    let flag = flag::assess(&score, &thresholds(&profile));
+    let flag = flag::assess(&score, &thresholds(profile));
 
     Ok(RescoreResult {
         session_id: view.session_id,

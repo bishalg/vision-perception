@@ -19,6 +19,7 @@
 		0F82A0ED34D9FCF844D1190C /* FHIRBundleBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0781428976F4BBF2CC1D5AA /* FHIRBundleBuilderTests.swift */; };
 		102B0035594F3435E1680D60 /* SimulatedDataBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55D9A35BAFCFDFC7EE725AF8 /* SimulatedDataBadge.swift */; };
 		10452C9E39B5A631BA8E2114 /* GazeScreeningWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75053E80AAB8A4C1494A61D5 /* GazeScreeningWizardView.swift */; };
+		109EBFB3B9F657A4F221A2B8 /* DriftCheckTargetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482C3399CA9A7A6910B82C78 /* DriftCheckTargetView.swift */; };
 		1167142F1D8F0E099D002A14 /* SessionSyncServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98730FA6339BB87D6DA96A92 /* SessionSyncServiceTests.swift */; };
 		172F76895B2ADF8D0D67596C /* CareKitClinicalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFF20B6639768C9A0E7E78FB /* CareKitClinicalStore.swift */; };
 		176612B6AD625E2C9C06ADDF /* dashboard_and_guardians.feature in Resources */ = {isa = PBXBuildFile; fileRef = 9BA364F2B8D921966F273502 /* dashboard_and_guardians.feature */; };
@@ -41,13 +42,13 @@
 		300541B0F4D8FEA1344A8BE8 /* BlendShapeLoggerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DCE094A0CD26066CA5F60F2 /* BlendShapeLoggerTests.swift */; };
 		34A2661BEECE0AE1A177B7D9 /* care_data_and_privacy.feature in Resources */ = {isa = PBXBuildFile; fileRef = D6DCDD823D9C377F697E504E /* care_data_and_privacy.feature */; };
 		35719B322FBE06434A10E9A0 /* PDFKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D055165C8B89ACF21CA75796 /* PDFKit.framework */; };
-		360FF5F344FDEC97895D970C /* CalibrationAccumulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35BACE43EAC9A13A748F82B2 /* CalibrationAccumulator.swift */; };
 		36177A6E5A141007149A2019 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A964440896F4E6DA13B314B1 /* WidgetKit.framework */; };
 		375C12DFA0A4EFA0D838C458 /* CaptureOrientationLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2CA5B09A755FE918F6A7824 /* CaptureOrientationLock.swift */; };
 		3A5CFB73461D25AD01EC1E2F /* GazePositioningStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 869BC9A2A7BE8A3C527D271E /* GazePositioningStepView.swift */; };
 		3AC35CA9B34AB4A91405ADEE /* CareAlertScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00C9B43FF9E89F1CFD20770C /* CareAlertScheduler.swift */; };
 		3C581CEB623A8E80C51BBB61 /* ARKitMoodFusionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38B5C98A8DC049CA9448B7E1 /* ARKitMoodFusionController.swift */; };
 		3CFDE5C6155977F6F950CA68 /* ARKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 22E6F2A8134BE4D7D3C40207 /* ARKit.framework */; };
+		3D280F7C413A3B89901E317D /* ValidationStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FA5FB902DE53D64789FD24E /* ValidationStepView.swift */; };
 		404740B457C8AEBEA89F4C71 /* CareKitStore in Frameworks */ = {isa = PBXBuildFile; productRef = D70B6E3928D5B5C50D4C16AE /* CareKitStore */; };
 		413DB3A6C0E953E959A93872 /* LiquidGlassContrastTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 011AFAF6529D0195ADA26BA1 /* LiquidGlassContrastTests.swift */; };
 		4152FFABF4BD1BDE21CF9544 /* SmartOnFhirAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBED732DAB0236044946C9E7 /* SmartOnFhirAuthService.swift */; };
@@ -161,8 +162,10 @@
 		DF51B7CF0492F80200F9BBFA /* stim_07_cartoon_slapstick_penguin_8s.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 1D2872BCDCFE9D5F5FF11CAA /* stim_07_cartoon_slapstick_penguin_8s.mp4 */; };
 		E06EBE7828B8F7C724BCA478 /* MainGazeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3111366AAA094728086AD5E8 /* MainGazeScannerView.swift */; };
 		E6631BC51E8AD808DC34E2B9 /* UnsupportedDeviceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD4FFF01E8DEA4584A9AC139 /* UnsupportedDeviceView.swift */; };
+		E681B4E93A97CB64A90261F1 /* GazeCalibrationScreenTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FA883D58B7F9A38EF5AAABF /* GazeCalibrationScreenTests.swift */; };
 		E75219426EB87200EFECC910 /* MoodDiaryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0C302E49E1425EA5CCFB052 /* MoodDiaryViewModel.swift */; };
 		E77FFBA830198F7F58442B13 /* DataDeletionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2ED4DF9E6F04C2F2E618A22 /* DataDeletionService.swift */; };
+		E840698DAA045D4C8CE424B3 /* GazeTargetStage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 769F59E33EE97AB2BF6ECCF0 /* GazeTargetStage.swift */; };
 		EB7511A91B4FA1047888E004 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 14598D0ED2B1CE4BFDB4156C /* HealthKit.framework */; };
 		EB7EF5070B1ED51164F0F743 /* StimulusPlaylistTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0D50DB436426D4B609643B4 /* StimulusPlaylistTests.swift */; };
 		EC98E48A07DEDFD53EAD1B69 /* DeviceRegistrationServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAA1CF408568D1370FD4C438 /* DeviceRegistrationServiceTests.swift */; };
@@ -230,6 +233,7 @@
 		1E5C0EEC1D6F532BF41105B4 /* MilestoneDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MilestoneDetailView.swift; sourceTree = "<group>"; };
 		1ED89FFCA52556C3A2591522 /* MCHATGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCHATGateTests.swift; sourceTree = "<group>"; };
 		1F4747195609401C10812B67 /* CameraAccessCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraAccessCoordinator.swift; sourceTree = "<group>"; };
+		1FA883D58B7F9A38EF5AAABF /* GazeCalibrationScreenTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeCalibrationScreenTests.swift; sourceTree = "<group>"; };
 		20F54BD401B98FED6FAD3055 /* BiomarkerRiskStratificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiomarkerRiskStratificationView.swift; sourceTree = "<group>"; };
 		21DA1A68B03A496ABAFEF2CB /* expected-bundle.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "expected-bundle.json"; sourceTree = "<group>"; };
 		220C4058D7B72B1A80C2AF2C /* CarePlanModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarePlanModels.swift; sourceTree = "<group>"; };
@@ -243,7 +247,6 @@
 		30843A265B32FE1A7C81CB2B /* SplashScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashScreenView.swift; sourceTree = "<group>"; };
 		3111366AAA094728086AD5E8 /* MainGazeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainGazeScannerView.swift; sourceTree = "<group>"; };
 		319C2C9DF38E48593AFC3E4A /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
-		35BACE43EAC9A13A748F82B2 /* CalibrationAccumulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationAccumulator.swift; sourceTree = "<group>"; };
 		35D6242A2902B10E099D3EDC /* CameraDeniedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraDeniedView.swift; sourceTree = "<group>"; };
 		36AA1BA891D699EB46EC830A /* stim_01_social_peekaboo_8s.mp4 */ = {isa = PBXFileReference; path = stim_01_social_peekaboo_8s.mp4; sourceTree = "<group>"; };
 		37CCAC020A34C51C4280F971 /* GazeSessionRecordVersioningTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeSessionRecordVersioningTests.swift; sourceTree = "<group>"; };
@@ -257,6 +260,7 @@
 		439D9846928A6D348C3DA218 /* DoctorReportGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoctorReportGeneratorTests.swift; sourceTree = "<group>"; };
 		448AD29ECC98B480318ECCA5 /* GazeSessionResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeSessionResultView.swift; sourceTree = "<group>"; };
 		47464ADA3137E9AF46BD2852 /* stim_04_surprise_giftbox_10s.mp4 */ = {isa = PBXFileReference; path = stim_04_surprise_giftbox_10s.mp4; sourceTree = "<group>"; };
+		482C3399CA9A7A6910B82C78 /* DriftCheckTargetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriftCheckTargetView.swift; sourceTree = "<group>"; };
 		48B1E6902FFE822878A6BA04 /* SceneKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SceneKit.framework; path = System/Library/Frameworks/SceneKit.framework; sourceTree = SDKROOT; };
 		4B37E4FE99D79271873B231C /* MoodDiaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoodDiaryView.swift; sourceTree = "<group>"; };
 		4C4E1DA6CDFFFC55B1FDE950 /* StimulusVideoPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StimulusVideoPlayerView.swift; sourceTree = "<group>"; };
@@ -293,6 +297,7 @@
 		75A2150C5701F544F4545D7A /* CareKitDashboardModals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareKitDashboardModals.swift; sourceTree = "<group>"; };
 		760938E707B2DC30599A6886 /* SubjectAgeQuickCheckCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubjectAgeQuickCheckCard.swift; sourceTree = "<group>"; };
 		763263288E4294815CD0FD89 /* DoctorReportGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoctorReportGenerator.swift; sourceTree = "<group>"; };
+		769F59E33EE97AB2BF6ECCF0 /* GazeTargetStage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeTargetStage.swift; sourceTree = "<group>"; };
 		78A9E3C2DFC154F3B09F38E8 /* FHIRCareMapperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FHIRCareMapperTests.swift; sourceTree = "<group>"; };
 		7AB99C7116FFBE3F3BA0684F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		7B3C64050069DF6F5046613F /* PerVideoResultViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerVideoResultViews.swift; sourceTree = "<group>"; };
@@ -310,6 +315,7 @@
 		89D3CA3B939BBF06DFC923BD /* ClinicalInteroperabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClinicalInteroperabilityTests.swift; sourceTree = "<group>"; };
 		8A342C1C8613ECBEAD66DE16 /* ObservationQuickLogBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObservationQuickLogBar.swift; sourceTree = "<group>"; };
 		8D5A014B62627C2FC8B69B3F /* DeviceEnrolmentRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceEnrolmentRow.swift; sourceTree = "<group>"; };
+		8FA5FB902DE53D64789FD24E /* ValidationStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ValidationStepView.swift; sourceTree = "<group>"; };
 		90EBDBBF152C6DA8BDFEBEA6 /* CareActivityKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = CareActivityKit; path = CareActivityKit; sourceTree = SOURCE_ROOT; };
 		941B39E3F663044B60693CA2 /* ResearchKitStudyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResearchKitStudyStore.swift; sourceTree = "<group>"; };
 		98730FA6339BB87D6DA96A92 /* SessionSyncServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSyncServiceTests.swift; sourceTree = "<group>"; };
@@ -441,11 +447,13 @@
 				DB5DEE76A9B148318FBAAF35 /* DemoToolsView.swift */,
 				8D5A014B62627C2FC8B69B3F /* DeviceEnrolmentRow.swift */,
 				0FCF1E0E52117640E2BA8BFD /* DiaryHistoryEditorView.swift */,
+				482C3399CA9A7A6910B82C78 /* DriftCheckTargetView.swift */,
 				869BC9A2A7BE8A3C527D271E /* GazePositioningStepView.swift */,
 				9B8571A70F409315436A3E01 /* GazeReplayHeatmapFullScreenView.swift */,
 				75053E80AAB8A4C1494A61D5 /* GazeScreeningWizardView.swift */,
 				448AD29ECC98B480318ECCA5 /* GazeSessionResultView.swift */,
 				FA087B3C47AC8A0B4B540148 /* GazeStimulusScreeningView.swift */,
+				769F59E33EE97AB2BF6ECCF0 /* GazeTargetStage.swift */,
 				E5B67CCC538018766DBC2B17 /* GazeTelemetryReviewCard.swift */,
 				3111366AAA094728086AD5E8 /* MainGazeScannerView.swift */,
 				C6B1A3AE747DED42D544ECE8 /* MCHATAvailability.swift */,
@@ -468,6 +476,7 @@
 				4C4E1DA6CDFFFC55B1FDE950 /* StimulusVideoPlayerView.swift */,
 				760938E707B2DC30599A6886 /* SubjectAgeQuickCheckCard.swift */,
 				DD4FFF01E8DEA4584A9AC139 /* UnsupportedDeviceView.swift */,
+				8FA5FB902DE53D64789FD24E /* ValidationStepView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -575,7 +584,6 @@
 				57B7589323D11CE24F631B64 /* AppModeStore.swift */,
 				38B5C98A8DC049CA9448B7E1 /* ARKitMoodFusionController.swift */,
 				DD1DB7F2655A5B1BBC5C5FC7 /* BlendShapeCSVLogger.swift */,
-				35BACE43EAC9A13A748F82B2 /* CalibrationAccumulator.swift */,
 				1F4747195609401C10812B67 /* CameraAccessCoordinator.swift */,
 				1714A4723566AA06FE47B172 /* CaptureEntryGate.swift */,
 				98EE536B2A1BB98FBDC5B10D /* CareAlertPreferences.swift */,
@@ -698,6 +706,7 @@
 				439D9846928A6D348C3DA218 /* DoctorReportGeneratorTests.swift */,
 				A0781428976F4BBF2CC1D5AA /* FHIRBundleBuilderTests.swift */,
 				78A9E3C2DFC154F3B09F38E8 /* FHIRCareMapperTests.swift */,
+				1FA883D58B7F9A38EF5AAABF /* GazeCalibrationScreenTests.swift */,
 				9BEDEA37416B7B891B7A5B58 /* GazePipelineCostTests.swift */,
 				37CCAC020A34C51C4280F971 /* GazeSessionRecordVersioningTests.swift */,
 				011AFAF6529D0195ADA26BA1 /* LiquidGlassContrastTests.swift */,
@@ -885,7 +894,6 @@
 				2C16EF91E993F15C10F182AD /* BiomarkerRiskStratificationView.swift in Sources */,
 				7BB8455F8D3D954FF67EE105 /* BlendShapeCSVLogger.swift in Sources */,
 				B6B9DF0064AFF850D3948FD5 /* BubbleCalibrationView.swift in Sources */,
-				360FF5F344FDEC97895D970C /* CalibrationAccumulator.swift in Sources */,
 				630B5055C5D20A576696C319 /* CameraAccessCoordinator.swift in Sources */,
 				83F8A9BB4C7A013FFA60AA5F /* CameraDeniedView.swift in Sources */,
 				B65F6BE7EF29EC6F27A67120 /* CaptureEntryGate.swift in Sources */,
@@ -912,6 +920,7 @@
 				193B437EF99F525402175841 /* DeviceRegistrationService.swift in Sources */,
 				FD9B81D911EB756AD94D3A21 /* DiaryHistoryEditorView.swift in Sources */,
 				8C111BD51FBFD274F67C5434 /* DoctorReportGenerator.swift in Sources */,
+				109EBFB3B9F657A4F221A2B8 /* DriftCheckTargetView.swift in Sources */,
 				45A572D620F22243DA4FCCD0 /* FHIRBundleBuilder.swift in Sources */,
 				77C290F6926CDBB3D76C62DE /* FHIRCareCodings.swift in Sources */,
 				6F09A6435C31F97BDFE3862E /* FHIRCareMapper.swift in Sources */,
@@ -925,6 +934,7 @@
 				B14E9B1D6BD842D04EF1FF39 /* GazeSessionRecord.swift in Sources */,
 				BAA4122DA672A103917B20C7 /* GazeSessionResultView.swift in Sources */,
 				EFF88103F82CFD161D7D39CB /* GazeStimulusScreeningView.swift in Sources */,
+				E840698DAA045D4C8CE424B3 /* GazeTargetStage.swift in Sources */,
 				251D4BF0223CB2527AA44A52 /* GazeTelemetryReviewCard.swift in Sources */,
 				09433672909C24EC1937E52A /* HealthKitMoodStore.swift in Sources */,
 				097C3A01FD450EFF0EFD87D1 /* LiquidGlassTheme.swift in Sources */,
@@ -962,6 +972,7 @@
 				DE3A65E17734FDF035297800 /* SubjectAgeQuickCheckCard.swift in Sources */,
 				88C56ECFE0ADA434D8A0CB9B /* SyncTransport.swift in Sources */,
 				E6631BC51E8AD808DC34E2B9 /* UnsupportedDeviceView.swift in Sources */,
+				3D280F7C413A3B89901E317D /* ValidationStepView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -993,6 +1004,7 @@
 				27355FA13ED6B22D40A3ACD5 /* DoctorReportGeneratorTests.swift in Sources */,
 				0F82A0ED34D9FCF844D1190C /* FHIRBundleBuilderTests.swift in Sources */,
 				4CEA1A9FB0F24693CEE9A1A3 /* FHIRCareMapperTests.swift in Sources */,
+				E681B4E93A97CB64A90261F1 /* GazeCalibrationScreenTests.swift in Sources */,
 				4B8794F815CA81B5B14D4699 /* GazePipelineCostTests.swift in Sources */,
 				C4CA02A95984D4F6E02C6386 /* GazeSessionRecordVersioningTests.swift in Sources */,
 				413DB3A6C0E953E959A93872 /* LiquidGlassContrastTests.swift in Sources */,

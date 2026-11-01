@@ -120,7 +120,18 @@ static SESSIONS: &[Column] = &[
     c("schema_version", "Session schema version."),
     c("valid_frame_ratio", "Share of frames with a valid gaze estimate."),
     c("calibrated_distance_cm", "Calibrated viewing distance in centimetres."),
-    c("social_preference", "Social preference score."),
+    c(
+        "scoring_status",
+        "scored or unscorable (schema 1.8); empty for older sessions, which are always scored.",
+    ),
+    c(
+        "unscorable_reason",
+        "Why an unscorable session was not scored, when known; empty otherwise.",
+    ),
+    c(
+        "social_preference",
+        "Social preference score; empty when the session was not scored.",
+    ),
     c("eye_dwell", "Share of dwell time on the eyes."),
     c("mouth_dwell", "Share of dwell time on the mouth."),
     c(
@@ -370,6 +381,8 @@ pub fn rows(
                     opt_text(s.schema_version.as_deref()),
                     opt_f(s.valid_frame_ratio),
                     opt_f(s.calibrated_distance_cm),
+                    sm.scoring_status.as_ref().map_or(Cell::Empty, wire),
+                    sm.unscorable_reason.as_ref().map_or(Cell::Empty, wire),
                     opt_f(s.social_preference),
                     opt_f(s.eye_dwell),
                     opt_f(s.mouth_dwell),

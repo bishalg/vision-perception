@@ -16,7 +16,7 @@
     {
       "file": "sessions.csv",
       "rows": 1,
-      "sha256": "eb63cf4e72d1b7985ff713d6b1c82cd633dd98d3cafb97a01540bfcba5fdf267",
+      "sha256": "8127103a88f381cffce8f23b00a73badad27bde0f451ada11ed9de7f8e959d43",
       "columns": [
         {
           "name": "export_id",
@@ -107,8 +107,16 @@
           "description": "Calibrated viewing distance in centimetres."
         },
         {
+          "name": "scoring_status",
+          "description": "scored or unscorable (schema 1.8); empty for older sessions, which are always scored."
+        },
+        {
+          "name": "unscorable_reason",
+          "description": "Why an unscorable session was not scored, when known; empty otherwise."
+        },
+        {
           "name": "social_preference",
-          "description": "Social preference score."
+          "description": "Social preference score; empty when the session was not scored."
         },
         {
           "name": "eye_dwell",

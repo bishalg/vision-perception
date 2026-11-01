@@ -184,7 +184,7 @@ pub async fn session_facts(
             composite_confidence: s.composite_confidence,
             valid_frame_ratio: Some(s.valid_frame_ratio),
             calibrated_distance_cm: s.calibrated_distance_cm,
-            social_preference: Some(s.social_preference),
+            social_preference: s.social_preference,
             eye_dwell: s.eye_dwell,
             mouth_dwell: s.mouth_dwell,
             first_eye_latency_ms: s.first_eye_latency_ms,

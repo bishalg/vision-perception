@@ -197,6 +197,7 @@ pub async fn load(
                   s.composite_score, s.composite_confidence, s.bundle_version, s.device_id,
                   s.age_pack, s.lang, s.schema_version, s.valid_frame_ratio,
                   s.calibrated_distance_cm, s.tracking_verdict, s.tracking_accuracy_deg, s.social_preference, s.eye_dwell, s.mouth_dwell,
+                  s.scoring_status, s.unscorable_reason,
                   s.first_eye_latency_ms, s.affect,
                   s.report_pdf_key IS NOT NULL AS "has_report!",
                   EXISTS (SELECT 1 FROM review_items r
@@ -440,6 +441,8 @@ pub async fn load(
 
     let mut sessions = Vec::with_capacity(rows.len());
     for r in rows {
+        let (scoring_status, unscorable_reason) =
+            crate::read::sessions::parse_scoring(r.scoring_status, r.unscorable_reason)?;
         let summary = SessionSummary {
             id: r.id.clone(),
             participant_id: r.participant_id.to_string(),
@@ -458,6 +461,8 @@ pub async fn load(
             reviewed: Some(r.reviewed),
             tracking_verdict: crate::read::sessions::parse_verdict(r.tracking_verdict)?,
             tracking_accuracy_deg: r.tracking_accuracy_deg,
+            scoring_status,
+            unscorable_reason,
         };
         let affect: Option<BTreeMap<String, Value>> =
             r.affect.and_then(|a| serde_json::from_value(a).ok());
@@ -469,7 +474,7 @@ pub async fn load(
             schema_version: Some(r.schema_version),
             valid_frame_ratio: Some(r.valid_frame_ratio),
             calibrated_distance_cm: r.calibrated_distance_cm,
-            social_preference: Some(r.social_preference),
+            social_preference: r.social_preference,
             eye_dwell: r.eye_dwell,
             mouth_dwell: r.mouth_dwell,
             first_eye_latency_ms: r.first_eye_latency_ms,

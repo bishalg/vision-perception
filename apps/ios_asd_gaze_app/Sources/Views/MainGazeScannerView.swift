@@ -139,8 +139,8 @@ public struct MainGazeScannerView: View {
                 }
             }
             .fullScreenCover(isPresented: $showCalibrationSheet) {
+                // A calibration check in a session of its own (CAL-1: never applied elsewhere).
                 BubbleCalibrationView(
-                    calibrationBinding: ChildProfileStore.shared.calibrationBinding(sessionId: scannerSessionId),
                     onClose: {
                         showCalibrationSheet = false
                         controller.reloadCalibrationProfile()

@@ -32,9 +32,16 @@ export type UiAction =
   // WP-C.4 global config documents: ConfigRead; ConfigGlobalManage (create/approve/publish/retire) is superadmin only.
   | "config.read"
   | "config.manage"
+  // WP-C.5 composing a signed config bundle (ConfigPublish): owners and admins for their org, superadmin any.
+  | "config.publish"
   // WP-B.9 erasure requests, participant erasure and the retention sweep (ParticipantErase). Unlike the clinical
   // actions the backend lets the superadmin through (not clinical content), so it is not in NO_SUPERADMIN.
-  | "participant.erase";
+  | "participant.erase"
+  // WP-C.14 (ClinicalNoteWrite, PatientRefRead, PatientRefWrite). Notes and disclosures are read with
+  // `clinical.content`. The MRN actions are clinical content: never for the superadmin (RBAC-3).
+  | "note.write"
+  | "patientref.read"
+  | "patientref.write";
 
 const MATRIX: Record<UiAction, readonly Role[]> = {
   "review.write": ["owner", "admin", "clinician", "reviewer"],
@@ -57,8 +64,12 @@ const MATRIX: Record<UiAction, readonly Role[]> = {
   "integration.read": ["owner", "admin"],
   "integration.manage": ["owner", "admin"],
   "config.read": ["owner", "admin", "clinician", "researcher"],
+  "config.publish": ["owner", "admin"],
   "config.manage": [],
   "participant.erase": ["owner", "admin"],
+  "note.write": ["clinician"],
+  "patientref.read": ["owner", "admin", "clinician"],
+  "patientref.write": ["owner", "admin", "clinician"],
 };
 
 /** RBAC-3: the superadmin short-circuit does not apply to clinical content actions. */
@@ -71,6 +82,9 @@ const NO_SUPERADMIN: readonly UiAction[] = [
   "export.identified",
   "export.download",
   "integration.manage",
+  "note.write",
+  "patientref.read",
+  "patientref.write",
 ];
 
 export function can(role: Role | undefined, action: UiAction): boolean {

@@ -11,6 +11,10 @@
 //! read only for a session whose tracking columns were derived (1.7 with a record), so an
 //! unknown `trackingQuality` key in a 1.6 record is never surfaced.
 //!
+//! Scoring status (SCH-5, schema 1.8): list items carry `scoring_status` and
+//! `unscorable_reason` (both `null` before 1.8); an `unscorable` session has a `null`
+//! `social_preference` and no `affect`.
+//!
 //! `reviewed` = the session has a review item a human closed (`done` or `dismissed`).
 
 use std::collections::BTreeMap;
@@ -19,6 +23,7 @@ use asd_contract::api_v1::{
     SessionAttentionFlag, SessionDetail, SessionPage, SessionSummary, SessionTrackingQuality,
 };
 use asd_contract::session_v1_7::TrackingQuality;
+use asd_contract::session_v1_8::{ScoringStatus, UnscorableReason};
 use asd_core::types::tracking::TrackingVerdict;
 use chrono::{DateTime, Duration, NaiveDate, Utc};
 use serde::Deserialize;
@@ -164,6 +169,24 @@ pub(crate) fn parse_verdict(s: Option<String>) -> AppResult<Option<TrackingVerdi
     .transpose()
 }
 
+/// A stored `scoring_status` / `unscorable_reason` as its contract enum.
+pub(crate) fn parse_scoring(
+    status: Option<String>,
+    reason: Option<String>,
+) -> AppResult<(Option<ScoringStatus>, Option<UnscorableReason>)> {
+    fn parse<T: serde::de::DeserializeOwned>(s: Option<String>, col: &str) -> AppResult<Option<T>> {
+        s.map(|s| {
+            serde_json::from_value(Value::String(s))
+                .map_err(|_| AppError::Internal(format!("stored {col} is not in the contract")))
+        })
+        .transpose()
+    }
+    Ok((
+        parse(status, "scoring_status")?,
+        parse(reason, "unscorable_reason")?,
+    ))
+}
+
 fn parse_flag(s: &str) -> AppResult<SessionAttentionFlag> {
     serde_json::from_value(Value::String(s.to_owned()))
         .map_err(|_| AppError::Internal("stored attention_flag is not in the contract".into()))
@@ -187,10 +210,14 @@ struct SummaryColumns {
     reviewed: bool,
     tracking_verdict: Option<String>,
     tracking_accuracy_deg: Option<f64>,
+    scoring_status: Option<String>,
+    unscorable_reason: Option<String>,
 }
 
 impl SummaryColumns {
     fn into_dto(self) -> AppResult<SessionSummary> {
+        let (scoring_status, unscorable_reason) =
+            parse_scoring(self.scoring_status, self.unscorable_reason)?;
         Ok(SessionSummary {
             id: self.id,
             participant_id: self.participant_id.to_string(),
@@ -208,6 +235,8 @@ impl SummaryColumns {
             reviewed: Some(self.reviewed),
             tracking_verdict: parse_verdict(self.tracking_verdict)?,
             tracking_accuracy_deg: self.tracking_accuracy_deg,
+            scoring_status,
+            unscorable_reason,
         })
     }
 }
@@ -222,7 +251,8 @@ pub async fn list(db: &PgPool, org: Uuid, f: &SessionFilters) -> AppResult<Sessi
         r#"SELECT s.id, s.participant_id, s.participant_token, s.started_at, s.duration_sec,
                   s.battery, s.capture_source, s.quality_verdict, s.attention_flag,
                   s.composite_score, s.composite_confidence, s.bundle_version, s.device_id,
-                  s.tracking_verdict, s.tracking_accuracy_deg,
+                  s.tracking_verdict, s.tracking_accuracy_deg, s.scoring_status,
+                  s.unscorable_reason,
                   EXISTS (SELECT 1 FROM review_items r
                           WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed'))
                       AS "reviewed!"
@@ -303,6 +333,8 @@ pub async fn list(db: &PgPool, org: Uuid, f: &SessionFilters) -> AppResult<Sessi
                 reviewed: r.reviewed,
                 tracking_verdict: r.tracking_verdict,
                 tracking_accuracy_deg: r.tracking_accuracy_deg,
+                scoring_status: r.scoring_status,
+                unscorable_reason: r.unscorable_reason,
             }
             .into_dto()?,
         );
@@ -334,6 +366,7 @@ pub async fn detail(
                   s.valid_frame_ratio, s.calibrated_distance_cm, s.social_preference,
                   s.eye_dwell, s.mouth_dwell, s.first_eye_latency_ms, s.affect,
                   s.report_pdf_key, s.tracking_verdict, s.tracking_accuracy_deg,
+                  s.scoring_status, s.unscorable_reason,
                   CASE WHEN s.tracking_verdict IS NOT NULL
                        THEN s.summary -> 'trackingQuality' END AS tracking_quality,
                   EXISTS (SELECT 1 FROM review_items r
@@ -372,6 +405,8 @@ pub async fn detail(
         reviewed: r.reviewed,
         tracking_verdict: r.tracking_verdict,
         tracking_accuracy_deg: r.tracking_accuracy_deg,
+        scoring_status: r.scoring_status,
+        unscorable_reason: r.unscorable_reason,
     }
     .into_dto()?;
     let tracking_quality = r
@@ -392,7 +427,7 @@ pub async fn detail(
             schema_version: Some(r.schema_version),
             valid_frame_ratio: Some(r.valid_frame_ratio),
             calibrated_distance_cm: r.calibrated_distance_cm,
-            social_preference: Some(r.social_preference),
+            social_preference: r.social_preference,
             eye_dwell: r.eye_dwell,
             mouth_dwell: r.mouth_dwell,
             first_eye_latency_ms: r.first_eye_latency_ms,

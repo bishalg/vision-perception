@@ -67,6 +67,7 @@ export const en = {
       norm_candidate: "Norm candidate",
       manual: "Manual",
       low_tracking_quality: "Low tracking quality",
+      unscorable: "Not scored",
     },
     statuses: { open: "Open", in_review: "In review", done: "Done", dismissed: "Dismissed" },
     actions: {
@@ -257,6 +258,19 @@ export const en = {
         yes: "Yes",
         no: "No",
       },
+    },
+    scoring: {
+      notScored: "Not scored",
+      withReason: (reason: string) => `Not scored (${reason})`,
+      reasons: {
+        aggregation_failed: "aggregation failed",
+        insufficient_valid_gaze: "insufficient valid gaze",
+        tracking_unusable: "tracking unusable",
+        calibration_failed: "calibration failed",
+        no_scorable_clips: "no scorable clips",
+        other: "other",
+      },
+      reportNote: "This session was not scored on the device: the report shows no scores.",
     },
     report: {
       download: "Download PDF report",

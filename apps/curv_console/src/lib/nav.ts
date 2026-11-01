@@ -3,6 +3,7 @@ import type { Role } from "@/lib/api";
 import { can } from "@/lib/permissions";
 import { adminText } from "@/messages/admin";
 import { catalogText } from "@/messages/catalog";
+import { configText } from "@/messages/config";
 import { en } from "@/messages/en";
 import { privacyText } from "@/messages/privacy";
 
@@ -24,5 +25,13 @@ export function navLinks(base: string, role: Role | undefined): { href: string; 
     ...(can(role, "participant.erase") ? [{ href: `${base}/erasure`, text: privacyText.nav.erasure }] : []),
     ...(can(role, "participant.erase") ? [{ href: `${base}/settings/retention`, text: privacyText.nav.retention }] : []),
     ...(can(role, "config.read") ? [{ href: `${base}/config/catalog`, text: catalogText.nav }] : []),
+    ...(can(role, "config.read")
+      ? [
+          { href: `${base}/config/baselines`, text: configText.nav.baselines },
+          { href: `${base}/config/scoring`, text: configText.nav.scoring },
+          { href: `${base}/config/sandbox`, text: configText.nav.sandbox },
+          { href: `${base}/config/bundles`, text: configText.nav.bundles },
+        ]
+      : []),
   ];
 }

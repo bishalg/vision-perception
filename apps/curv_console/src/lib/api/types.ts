@@ -7,8 +7,10 @@ import { z } from "zod";
 import type { AdminApi } from "./admin";
 import type { ExportsApi } from "./exports";
 import type { CatalogApi } from "./catalog";
+import type { BundlesApi } from "./config";
 import type { ClinicalApi } from "./clinical";
 import type { PrivacyApi } from "./privacy";
+import type { ParticipantApi } from "./participant";
 
 /** `SessionAttentionFlag`: the 3 device values plus backend-derived `unreliable` (CON-15). */
 export const ATTENTION_FLAGS = ["green", "yellow", "red", "unreliable"] as const;
@@ -203,6 +205,16 @@ export const sessionTrackingQualitySchema = z.object({
 });
 export type SessionTrackingQuality = z.infer<typeof sessionTrackingQualitySchema>;
 
+/** `ScoringStatus` (SCH-5, session schema 1.8): `unscorable` sessions carry no score numbers. */
+export const SCORING_STATUSES = ["scored", "unscorable"] as const;
+export type ScoringStatus = (typeof SCORING_STATUSES)[number];
+/** `UnscorableReason`: why an `unscorable` session was not scored, when the device said. */
+export const UNSCORABLE_REASONS = [
+  "aggregation_failed", "insufficient_valid_gaze", "tracking_unusable", "calibration_failed", "no_scorable_clips",
+  "other",
+] as const;
+export type UnscorableReason = (typeof UNSCORABLE_REASONS)[number];
+
 export const sessionSummarySchema = z.object({
   id: z.string(),
   /** `participants.id` (UUID, CON-20). */
@@ -225,6 +237,10 @@ export const sessionSummarySchema = z.object({
   tracking_verdict: z.enum(TRACKING_VERDICTS).nullable().optional(),
   /** QS-2 estimated gaze accuracy in degrees; null when not measured. */
   tracking_accuracy_deg: num,
+  /** SCH-5 scoring outcome of a schema 1.8 session; null for 1.6/1.7 (always scored). */
+  scoring_status: z.enum(SCORING_STATUSES).nullable().optional(),
+  /** Why an `unscorable` session was not scored; null otherwise. */
+  unscorable_reason: z.enum(UNSCORABLE_REASONS).nullable().optional(),
 });
 export type SessionSummary = z.infer<typeof sessionSummarySchema>;
 
@@ -326,6 +342,7 @@ export const REVIEW_REASONS = [
   "norm_candidate",
   "manual",
   "low_tracking_quality",
+  "unscorable",
 ] as const;
 export const reviewReasonSchema = z.enum(REVIEW_REASONS);
 export type ReviewReason = z.infer<typeof reviewReasonSchema>;
@@ -439,7 +456,7 @@ export interface PageQuery {
 
 // ---- client interface -----------------------------------------------------
 
-export interface CurvApi extends ClinicalApi, AdminApi, ExportsApi, CatalogApi, PrivacyApi {
+export interface CurvApi extends ClinicalApi, AdminApi, ExportsApi, CatalogApi, BundlesApi, PrivacyApi, ParticipantApi {
   getOrg(orgId: string): Promise<Org>;
   getMetrics(orgId: string): Promise<Metrics>;
   listSessions(orgId: string, query?: SessionListQuery): Promise<SessionPage>;

@@ -357,6 +357,36 @@ start with `apps/` or `rust/`.
   CHECK constraint. API: session list items gain `tracking_verdict`,
   `tracking_accuracy_deg`; list filter `tracking=good|fair|poor|unusable`; session detail
   gains `tracking_quality` (the QS-1 object, snake_case per `/v1`).
+- **SCH-5** Session schema **1.8** (owner decision 2026-11-01) = 1.7 plus an explicit
+  scoring outcome, so a session whose on-device scoring failed is sent without invented
+  numbers (CON-14). Contract: `asd-contract::session_v1_8`, exported as
+  `docs/spec/schemas/asd/session-v1.8.json`; golden examples
+  `rust/crates/asd-contract/tests/fixtures/session-v1.8-{scored,unscorable}.json`.
+  - Required `scoringStatus: "scored" | "unscorable"` at the top level and in
+    `rawPayload` (equal). Optional `unscorableReason` (top level and `rawPayload`, equal),
+    only on an `unscorable` session: `aggregation_failed`, `insufficient_valid_gaze`,
+    `tracking_unusable`, `calibration_failed`, `no_scorable_clips`, `other`.
+  - The five score fields (`socialPreferenceScore` at the top level and in `rawPayload`;
+    `rawPayload.socialSmileIntensity`, `smileReactivityIndex`, `flatAffectScore`,
+    `surpriseScoreMean`) become optional: required numbers when `scored`, absent or `null`
+    when `unscorable`. An `unscorable` session also carries no device `attentionFlag`
+    (absent or `null`). The schema states the rule with `allOf`/`if`/`then`/`else`;
+    `session_v1_8::scoring_violations` is the same rule on the typed request and runs in
+    the backend and in `asd-sync` (a breaking body never leaves the device).
+  - Not additive: 1.8 requires `scoringStatus`, so a 1.7 body is not a 1.8 body.
+    `session_v1_8::upgrade_v1_7` maps a 1.7 request onto 1.8 as `scored`, without loss.
+  - Backend: `X-Schema-Version` ∈ {`1.6`, `1.7`, `1.8`}. Migration 0019 adds
+    `sessions.scoring_status` and `unscorable_reason` (NULL before 1.8; 1.6 and 1.7 are
+    always scored) and makes `social_preference` nullable only for `unscorable` rows. An
+    `unscorable` session stores no social preference and no affect, its flag is
+    `unreliable`, it gets the review reason `unscorable`, and norm aggregation never reads
+    it. `/v1` session list, detail and worklist items gain `scoring_status` and
+    `unscorable_reason`; the tabular and dataset exports gain both columns. The diary PDF
+    prints "Not scored (reason)" where the numbers would be, and the FHIR gaze Observation
+    has no score or affect component, only a note. 1.6 and 1.7 behaviour is unchanged.
+  - Rollout: `asd-sync` builds 1.8 requests (`build_session_request_v1_8`, and the JSON
+    entry point by `schemaVersion`); the iOS writer moves to 1.8 in a follow-up and
+    stops writing placeholder scores in `SessionBiomarkerAggregator`.
 
 ## 9. Scoring coupling (SCR) - opt-in, owner-approved (WP-G.13)
 

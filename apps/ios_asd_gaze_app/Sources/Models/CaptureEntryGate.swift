@@ -99,9 +99,10 @@ public extension GazeSessionController {
     func startSessionWithConsent(
         battery: StimulusAOITracker? = nil,
         stimulusId: String? = nil,
+        beginsClip: Bool = true,
         store: ChildProfileStore = .shared
     ) -> Bool {
         guard let token = ConsentToken.mint(from: store) else { return false }
-        return startConsentedSession(token: token, battery: battery, stimulusId: stimulusId, store: store)
+        return startConsentedSession(token: token, battery: battery, stimulusId: stimulusId, beginsClip: beginsClip, store: store)
     }
 }

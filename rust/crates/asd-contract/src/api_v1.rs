@@ -18,6 +18,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::mirror;
+pub use crate::session_v1_8::{ScoringStatus, UnscorableReason};
 pub use crate::tracking_api::SessionTrackingQuality;
 
 // ---- roles and auth (AUTH-1..4) --------------------------------------------------------
@@ -285,7 +286,11 @@ pub enum SessionAttentionFlag {
 
 /// `GET /v1/orgs/{id}/sessions` item.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[schemars(example = example_session_summary(), example = example_session_summary_v1_7())]
+#[schemars(
+    example = example_session_summary(),
+    example = example_session_summary_v1_7(),
+    example = example_session_summary_v1_8_unscorable()
+)]
 pub struct SessionSummary {
     pub id: String,
     /// `participants.id` (UUID, CON-20).
@@ -322,11 +327,23 @@ pub struct SessionSummary {
     /// QS-2 estimated gaze accuracy, degrees; `null` when not measured (SCH-4).
     #[serde(default)]
     pub tracking_accuracy_deg: Option<f64>,
+    /// SCH-5 scoring outcome of a schema 1.8 session; `null` for a 1.6 or 1.7 session (those
+    /// always carry score numbers). `unscorable`: the session has no scores; show "not
+    /// scored", never a number.
+    #[serde(default)]
+    pub scoring_status: Option<ScoringStatus>,
+    /// Why an `unscorable` session was not scored, when the device said; `null` otherwise.
+    #[serde(default)]
+    pub unscorable_reason: Option<UnscorableReason>,
 }
 
 /// `GET /v1/sessions/{id}`: the summary plus stored measurements.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[schemars(example = example_session_detail(), example = example_session_detail_v1_7())]
+#[schemars(
+    example = example_session_detail(),
+    example = example_session_detail_v1_7(),
+    example = example_session_detail_v1_8_unscorable()
+)]
 pub struct SessionDetail {
     #[serde(flatten)]
     pub summary: SessionSummary,
@@ -527,6 +544,8 @@ pub enum ReviewReason {
     // Tracking verdict `poor` or `unusable` (SCH-4, schema 1.7 sessions). A plain comment:
     // a doc comment would turn the exported enum into a `oneOf`.
     LowTrackingQuality,
+    // Schema 1.8 session with `scoringStatus: unscorable` (SCH-5).
+    Unscorable,
 }
 
 /// Review item state.
@@ -769,6 +788,8 @@ pub(crate) fn example_session_summary() -> SessionSummary {
         reviewed: Some(false),
         tracking_verdict: None,
         tracking_accuracy_deg: None,
+        scoring_status: None,
+        unscorable_reason: None,
     }
 }
 
@@ -808,6 +829,30 @@ fn example_session_detail_v1_7() -> SessionDetail {
     SessionDetail {
         summary: example_session_summary_v1_7(),
         schema_version: Some("1.7".into()),
+        tracking_quality: Some(crate::tracking_api::example_tracking_quality()),
+        ..example_session_detail()
+    }
+}
+
+/// A schema 1.8 session whose on-device scoring failed (SCH-5): no score numbers.
+fn example_session_summary_v1_8_unscorable() -> SessionSummary {
+    SessionSummary {
+        id: "SESS-GOLDEN-0019".into(),
+        attention_flag: SessionAttentionFlag::Unreliable,
+        tracking_verdict: Some(TrackingVerdict::Good),
+        tracking_accuracy_deg: Some(1.63),
+        scoring_status: Some(ScoringStatus::Unscorable),
+        unscorable_reason: Some(UnscorableReason::AggregationFailed),
+        ..example_session_summary()
+    }
+}
+
+fn example_session_detail_v1_8_unscorable() -> SessionDetail {
+    SessionDetail {
+        summary: example_session_summary_v1_8_unscorable(),
+        schema_version: Some("1.8".into()),
+        social_preference: None,
+        affect: None,
         tracking_quality: Some(crate::tracking_api::example_tracking_quality()),
         ..example_session_detail()
     }

@@ -585,6 +585,131 @@ public enum Localizer {
             "ne": "iOS सेटिङ खोल्नुहोस्",
             "hi": "iOS सेटिंग खोलें"
         ],
+        "target_calibration_hint": [
+            "en": "Watch the balloon!",
+            "ne": "बेलुन हेर्नुहोस्!",
+            "hi": "गुब्बारे को देखो!"
+        ],
+        "target_validation_hint": [
+            "en": "Find the star!",
+            "ne": "तारा खोज्नुहोस्!",
+            "hi": "तारा ढूँढो!"
+        ],
+        "target_check_hint": [
+            "en": "Spot the ladybug!",
+            "ne": "सानो कीरा खोज्नुहोस्!",
+            "hi": "लेडीबग ढूँढो!"
+        ],
+        "calibrate_result_great": [
+            "en": "Great job!",
+            "ne": "धेरै राम्रो!",
+            "hi": "बहुत बढ़िया!"
+        ],
+        "calibrate_result_poor_title": [
+            "en": "Calibration was not steady",
+            "ne": "क्यालिब्रेसन स्थिर भएन",
+            "hi": "कैलिब्रेशन स्थिर नहीं रहा"
+        ],
+        "calibrate_result_poor_body": [
+            "en": "The gaze points were spread out. Check the lighting and distance and keep the phone still, then try again, or continue with this calibration.",
+            "ne": "दृष्टि बिन्दुहरू छरिएका थिए। उज्यालो र दूरी जाँच गर्नुहोस् र फोन स्थिर राख्नुहोस्, अनि फेरि प्रयास गर्नुहोस्, वा यही क्यालिब्रेसनसँग अगाडि बढ्नुहोस्।",
+            "hi": "नज़र के बिंदु बिखरे हुए थे। रोशनी और दूरी जाँचें और फ़ोन स्थिर रखें, फिर दोबारा कोशिश करें, या इसी कैलिब्रेशन के साथ आगे बढ़ें।"
+        ],
+        "calibrate_continue_anyway": [
+            "en": "Continue anyway",
+            "ne": "जे भए पनि अगाडि बढ्नुहोस्",
+            "hi": "फिर भी आगे बढ़ें"
+        ],
+        "calibrate_limit_reached": [
+            "en": "No more calibration attempts are available in this session.",
+            "ne": "यो सत्रमा थप क्यालिब्रेसन प्रयास उपलब्ध छैन।",
+            "hi": "इस सत्र में और कैलिब्रेशन प्रयास उपलब्ध नहीं हैं।"
+        ],
+        "validation_result_recal_title": [
+            "en": "The gaze check was off",
+            "ne": "दृष्टि जाँच मिलेन",
+            "hi": "नज़र की जाँच सही नहीं रही"
+        ],
+        "validation_result_warn_title": [
+            "en": "The gaze check is borderline",
+            "ne": "दृष्टि जाँच सीमामा छ",
+            "hi": "नज़र की जाँच सीमा पर है"
+        ],
+        "validation_result_offset": [
+            "en": "Measured offset: %.1f°",
+            "ne": "मापिएको विचलन: %.1f°",
+            "hi": "मापा गया विचलन: %.1f°"
+        ],
+        "validation_result_missed": [
+            "en": "The child did not look at enough of the stars.",
+            "ne": "बच्चाले पर्याप्त ताराहरू हेरेन।",
+            "hi": "बच्चे ने पर्याप्त तारे नहीं देखे।"
+        ],
+        "validation_calibrate_again": [
+            "en": "Calibrate again",
+            "ne": "फेरि क्यालिब्रेट गर्नुहोस्",
+            "hi": "फिर से कैलिब्रेट करें"
+        ],
+        "validation_continue": [
+            "en": "Continue",
+            "ne": "अगाडि बढ्नुहोस्",
+            "hi": "आगे बढ़ें"
+        ],
+        "recal_prompt_title": [
+            "en": "Calibrate again before the next video?",
+            "ne": "अर्को भिडियो अघि फेरि क्यालिब्रेट गर्ने?",
+            "hi": "अगले वीडियो से पहले फिर से कैलिब्रेट करें?"
+        ],
+        "recal_prompt_body": [
+            "en": "Tracking changed during the last video. A short calibration keeps the gaze measurements usable.",
+            "ne": "पछिल्लो भिडियोमा ट्र्याकिङ बदलियो। छोटो क्यालिब्रेसनले दृष्टि मापनलाई प्रयोगयोग्य राख्छ।",
+            "hi": "पिछले वीडियो के दौरान ट्रैकिंग बदल गई। एक छोटा कैलिब्रेशन नज़र के माप को उपयोगी बनाए रखता है।"
+        ],
+        "recal_prompt_accept": [
+            "en": "Calibrate now",
+            "ne": "अहिले क्यालिब्रेट गर्नुहोस्",
+            "hi": "अभी कैलिब्रेट करें"
+        ],
+        "recal_prompt_decline": [
+            "en": "Keep going",
+            "ne": "जारी राख्नुहोस्",
+            "hi": "जारी रखें"
+        ],
+        "recal_reason_quality": [
+            "en": "The calibration quality was low.",
+            "ne": "क्यालिब्रेसनको गुणस्तर कम थियो।",
+            "hi": "कैलिब्रेशन की गुणवत्ता कम थी।"
+        ],
+        "recal_reason_validation": [
+            "en": "The gaze check after calibration was off.",
+            "ne": "क्यालिब्रेसनपछिको दृष्टि जाँच मिलेन।",
+            "hi": "कैलिब्रेशन के बाद नज़र की जाँच सही नहीं रही।"
+        ],
+        "recal_reason_drift": [
+            "en": "The gaze has drifted since calibration.",
+            "ne": "क्यालिब्रेसनपछि दृष्टि सरेको छ।",
+            "hi": "कैलिब्रेशन के बाद से नज़र खिसक गई है।"
+        ],
+        "recal_reason_pose": [
+            "en": "The child's head moved away from the calibration position.",
+            "ne": "बच्चाको टाउको क्यालिब्रेसनको स्थितिबाट सरेको छ।",
+            "hi": "बच्चे का सिर कैलिब्रेशन की स्थिति से हट गया है।"
+        ],
+        "recal_reason_orientation": [
+            "en": "The device was turned.",
+            "ne": "उपकरण घुमाइयो।",
+            "hi": "डिवाइस घुमाया गया।"
+        ],
+        "recal_reason_age": [
+            "en": "The calibration is getting old.",
+            "ne": "क्यालिब्रेसन पुरानो हुँदैछ।",
+            "hi": "कैलिब्रेशन पुराना हो रहा है।"
+        ],
+        "recal_reason_operator": [
+            "en": "Requested by the operator.",
+            "ne": "सञ्चालकको अनुरोधमा।",
+            "hi": "संचालक के अनुरोध पर।"
+        ],
         "settings_conditions_section": [
             "en": "Medical conditions",
             "ne": "चिकित्सा अवस्थाहरू",

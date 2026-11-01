@@ -8,6 +8,7 @@ use asd_contract::session_v1_6::{
     SessionIngestRequest, IDEMPOTENCY_KEY_HEADER, SCHEMA_VERSION, SCHEMA_VERSION_HEADER,
 };
 use asd_contract::session_v1_7;
+use asd_contract::session_v1_8;
 use asd_contract::signing::canonical_bytes;
 use asd_core::types::CaptureSource;
 
@@ -153,6 +154,36 @@ pub fn build_session_request_v1_7(
     )
 }
 
+/// [`build_session_request`] for a schema 1.8 body (SCH-5: explicit `scoringStatus`; an
+/// `unscorable` session carries no score numbers). Same rules, plus the 1.8 scoring rules
+/// (`session_v1_8::scoring_violations`): a body the server would refuse with
+/// `validation-failed` is [`SyncError::InvalidPayload`] here and never leaves the device.
+pub fn build_session_request_v1_8(
+    payload: &session_v1_8::SessionIngestRequest,
+    device_token: &str,
+    client: &ClientInfo,
+) -> Result<SyncRequest, SyncError> {
+    session_request(
+        SessionParts {
+            capture_source: payload.capture_source,
+            legacy_provenance: payload.raw_payload.legacy_provenance,
+            schema_version: &payload.schema_version,
+            supported: session_v1_8::SCHEMA_VERSION,
+            started_at: &payload.raw_payload.started_at,
+            ended_at: &payload.raw_payload.ended_at,
+            session_id: &payload.session_id,
+        },
+        || {
+            if let Some(v) = session_v1_8::scoring_violations(payload).first() {
+                return Err(format!("{}: {}", v.pointer, v.reason));
+            }
+            canonical_bytes(payload).map_err(|e| e.to_string())
+        },
+        device_token,
+        client,
+    )
+}
+
 /// The fields the request rules read, from either contract version.
 struct SessionParts<'a> {
     capture_source: CaptureSource,
@@ -214,8 +245,8 @@ fn session_request<E: std::fmt::Display>(
 }
 
 /// [`build_session_request`] from payload JSON (the FFI entry point): the document is
-/// decoded with the contract types of its `schemaVersion` (`1.6` or `1.7`) first, so a
-/// payload the server would reject with `validation-failed` never leaves the device.
+/// decoded with the contract types of its `schemaVersion` (`1.6`, `1.7` or `1.8`) first, so
+/// a payload the server would reject with `validation-failed` never leaves the device.
 pub fn build_session_request_json(
     payload_json: &[u8],
     device_token: &str,
@@ -228,6 +259,11 @@ pub fn build_session_request_json(
     }
     let invalid = |e: serde_json::Error| SyncError::InvalidPayload(e.to_string());
     let version: Version = serde_json::from_slice(payload_json).map_err(invalid)?;
+    if version.schema_version.as_deref() == Some(session_v1_8::SCHEMA_VERSION) {
+        let payload: session_v1_8::SessionIngestRequest =
+            serde_json::from_slice(payload_json).map_err(invalid)?;
+        return build_session_request_v1_8(&payload, device_token, client);
+    }
     if version.schema_version.as_deref() == Some(session_v1_7::SCHEMA_VERSION) {
         let payload: session_v1_7::SessionIngestRequest =
             serde_json::from_slice(payload_json).map_err(invalid)?;

@@ -181,6 +181,7 @@ async fn list(
                   s.battery, s.capture_source, s.quality_verdict, s.attention_flag,
                   s.composite_score, s.composite_confidence, s.bundle_version, s.device_id,
                   s.received_at, s.tracking_verdict, s.tracking_accuracy_deg,
+                  s.scoring_status, s.unscorable_reason,
                   EXISTS (SELECT 1 FROM review_items r
                           WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed'))
                       AS "reviewed!",
@@ -266,6 +267,8 @@ async fn list(
             serde_json::from_value(Value::String(r.attention_flag)).map_err(|_| {
                 AppError::Internal("stored attention_flag is not in the contract".into())
             })?;
+        let (scoring_status, unscorable_reason) =
+            crate::read::sessions::parse_scoring(r.scoring_status, r.unscorable_reason)?;
         items.push(WorklistItem {
             session: SessionSummary {
                 id: r.id,
@@ -284,6 +287,8 @@ async fn list(
                 reviewed: Some(r.reviewed),
                 tracking_verdict: crate::read::sessions::parse_verdict(r.tracking_verdict)?,
                 tracking_accuracy_deg: r.tracking_accuracy_deg,
+                scoring_status,
+                unscorable_reason,
             },
             review_id: r.review_id.map(|u| u.to_string()),
             clinical_state,

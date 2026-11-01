@@ -27,6 +27,7 @@ import { createMockAdmin } from "./mock/admin";
 import { createMockClinical } from "./mock/clinical";
 import { createMockExports } from "./mock/exports";
 import { createMockPrivacy } from "./mock/privacy";
+import { createMockParticipant } from "./mock/participant";
 import { createMockCatalog } from "./mock/catalog";
 import { MOCK_TRACKING_CYCLE, mockTrackingQuality } from "./mock/tracking";
 
@@ -141,7 +142,21 @@ function buildFixtures(): { details: SessionDetail[]; clips: Map<string, ClipSco
       tracking_verdict: trackingVerdict,
       tracking_accuracy_deg: tracking?.estimated_accuracy_deg ?? null,
       tracking_quality: tracking,
+      scoring_status: null,
+      unscorable_reason: null,
     });
+    // SCH-5: a few schema 1.8 sessions whose on-device scoring failed (no score numbers, flag `unreliable`).
+    if (i % 21 === 9) {
+      Object.assign(details[details.length - 1]!, {
+        schema_version: "1.8",
+        scoring_status: "unscorable",
+        unscorable_reason: i === 9 ? "aggregation_failed" : null,
+        attention_flag: "unreliable",
+        composite_score: null,
+        social_preference: null,
+        affect: null,
+      } satisfies Partial<SessionDetail>);
+    }
     clips.set(
       id,
       CLIPS.slice(0, 4 + (i % 2) * 4).map((clip, order) => {
@@ -220,6 +235,8 @@ function toSummary(d: SessionDetail): SessionSummary {
     reviewed: d.reviewed,
     tracking_verdict: d.tracking_verdict,
     tracking_accuracy_deg: d.tracking_accuracy_deg,
+    scoring_status: d.scoring_status,
+    unscorable_reason: d.unscorable_reason,
   };
 }
 
@@ -281,6 +298,7 @@ function validation(name: string, reason: string): ApiError {
 /** One review item per session at most, picked by the first matching rule (the backend may add several). */
 function reviewReasonFor(d: SessionDetail, i: number): ReviewReason | null {
   if (i % 11 === 5) return "manual";
+  if (d.scoring_status === "unscorable") return "unscorable";
   if (d.tracking_verdict === "poor" || d.tracking_verdict === "unusable") return "low_tracking_quality";
   if (d.attention_flag === "red") return "flag_red";
   if (d.quality_verdict === "rejected" || d.quality_verdict === "degraded") return "low_quality";
@@ -388,6 +406,14 @@ export function createMockClient(): CurvApi & AuthApi {
   return {
     ...createMockClinical({ details, orgId: MOCK_ORG_ID, userId: MOCK_USER_ID, now: MOCK_FIXED_NOW, ensureOrg, page }),
     ...exportsApi,
+    ...createMockParticipant({
+      details,
+      orgId: MOCK_ORG_ID,
+      userId: MOCK_USER_ID,
+      now: MOCK_FIXED_NOW,
+      page,
+      listParticipants: admin.listParticipants,
+    }),
     ...createMockPrivacy({
       orgId: MOCK_ORG_ID,
       now: MOCK_FIXED_NOW,

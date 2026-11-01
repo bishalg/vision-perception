@@ -28,7 +28,7 @@ export default defineConfig({
   webServer: external
     ? undefined
     : {
-        command: `npx next dev --port ${PORT}`,
+        command: `node scripts/prepare-asd-wasm.mjs && npx next dev --port ${PORT}`,
         url: `http://localhost:${PORT}/login`,
         reuseExistingServer: !process.env.CI,
         timeout: 180_000,

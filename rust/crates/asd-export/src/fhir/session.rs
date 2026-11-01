@@ -296,6 +296,13 @@ fn gaze_observation(
         "component": gaze_components(record),
         "device": reference(device_url),
     });
+    // SCH-5: say why the score components are missing.
+    if let Some(n) = crate::not_scored(record) {
+        obs["note"] = json!([{"text": format!(
+            "{}: on-device scoring did not produce scores for this session.",
+            n.label()
+        )}]);
+    }
     // SIM-4: records written before provenance existed say so.
     if record.legacy_provenance == Some(true) {
         obs["meta"] = json!({"tag": [coding(
@@ -308,9 +315,12 @@ fn gaze_observation(
 }
 
 /// Components in a fixed order; unmeasured metrics are absent (PLC-3). First-look latency
-/// is never exported: there is no real first-fixation detector yet (PLC-1).
+/// is never exported: there is no real first-fixation detector yet (PLC-1). An unscorable
+/// 1.8 record (SCH-5) has no social preference and no affect component.
 fn gaze_components(record: &GazeSessionRecord) -> Vec<Value> {
     let system = local("CodeSystem/gaze-engagement");
+    let scored = crate::not_scored(record).is_none();
+    let score = |v: f64| scored.then_some(v);
     let mut out = Vec::new();
     let mut add = |code: &str, display: &str, text: &str, value: Option<f64>, unit: &str| {
         let Some(value) = value else { return };
@@ -324,7 +334,7 @@ fn gaze_components(record: &GazeSessionRecord) -> Vec<Value> {
         "social-preference-score",
         "Social visual preference score",
         "Social Visual Preference Score",
-        Some(r.social_preference_score),
+        score(r.social_preference_score),
         "score",
     );
     add(
@@ -352,28 +362,28 @@ fn gaze_components(record: &GazeSessionRecord) -> Vec<Value> {
         "social-smile-intensity-mean",
         "Social smile intensity mean",
         "Social Smile Intensity Mean",
-        Some(r.social_smile_intensity),
+        score(r.social_smile_intensity),
         "score",
     );
     add(
         "smile-reactivity-index",
         "Smile reactivity index",
         "Smile Reactivity Index",
-        Some(r.smile_reactivity_index),
+        score(r.smile_reactivity_index),
         "score",
     );
     add(
         "flat-affect-score",
         "Neutral expression score",
         "Neutral Expression Score",
-        Some(r.flat_affect_score),
+        score(r.flat_affect_score),
         "score",
     );
     add(
         "surprise-score-mean",
         "Surprise score mean",
         "Surprise Score Mean",
-        Some(r.surprise_score_mean),
+        score(r.surprise_score_mean),
         "score",
     );
     add(

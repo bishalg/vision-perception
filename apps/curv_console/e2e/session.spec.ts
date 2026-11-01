@@ -57,3 +57,17 @@ test("tracking filter narrows the table; Quality tab shows the tracking section"
   await expect(page.getByRole("img", { name: /Gaze offset in degrees/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Data loss by track state" })).toBeVisible();
 });
+
+test("an unscorable 1.8 session shows Not scored instead of numbers (SCH-5)", async ({ page }) => {
+  const org = await loginToOverview(page);
+  // SESS-MOCK-0010 is a mock 1.8 session whose on-device scoring failed (aggregation_failed).
+  const response = await page.goto(`/${org}/sessions/SESS-MOCK-0010`);
+  test.skip(response?.status() === 404, "no unscorable session in this org");
+  await expect(page.getByRole("region", { name: "Composite", exact: true })).toContainText("Not scored (aggregation failed)");
+  await page.goto(`/${org}/sessions/SESS-MOCK-0010?tab=quality`);
+  await expect(page.getByText("Social preference").locator("xpath=following-sibling::dd")).toHaveText(
+    "Not scored (aggregation failed)",
+  );
+  await page.goto(`/${org}/sessions/SESS-MOCK-0010?tab=report`);
+  await expect(page.getByRole("status")).toContainText("Not scored (aggregation failed).");
+});

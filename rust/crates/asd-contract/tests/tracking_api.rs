@@ -111,9 +111,10 @@ fn session_dtos_carry_the_tracking_members_as_nullable() {
         defs["TrackingVerdict"]["enum"],
         json!(["good", "fair", "poor", "unusable"])
     );
-    // Published examples: one 1.6 session (nulls) and one 1.7 session (values).
+    // Published examples: one 1.6 session (nulls), one 1.7 session (values) and one
+    // unscorable 1.8 session (SCH-5).
     let examples = defs["SessionDetail"]["examples"].as_array().unwrap();
-    assert_eq!(examples.len(), 2);
+    assert_eq!(examples.len(), 3);
     let decoded: Vec<SessionDetail> = examples
         .iter()
         .map(|e| serde_json::from_value(e.clone()).unwrap())

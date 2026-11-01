@@ -12,6 +12,10 @@
 //! profile (asd-core defaults when none is published). The re-check keeps a session whose
 //! device ran older or looser thresholds from slipping past a tightened profile. A 1.6
 //! session never gets this reason.
+//!
+//! WP-G.12 (SCH-5): `unscorable` for every schema 1.8 session sent with `scoringStatus:
+//! unscorable`, so a session without scores is looked at by a person. Such a session is also
+//! kept out of norm aggregation (`jobs::norm_aggregate`). 1.6 and 1.7 sessions never get it.
 
 use asd_contract::api_v1::{ReviewReason, SessionAttentionFlag};
 use asd_contract::config::{ScoringProfile, TrackingQualityParams};
@@ -90,6 +94,7 @@ pub fn reasons(
     session_id: &str,
     valid_ratio: f64,
     low_tracking: bool,
+    unscorable: bool,
     flag: SessionAttentionFlag,
     norm_consented: bool,
     audit_rate: f64,
@@ -100,6 +105,9 @@ pub fn reasons(
     }
     if low_tracking {
         out.push(ReviewReason::LowTrackingQuality);
+    }
+    if unscorable {
+        out.push(ReviewReason::Unscorable);
     }
     if flag == SessionAttentionFlag::Red {
         out.push(ReviewReason::FlagRed);
@@ -121,6 +129,7 @@ pub fn reason_str(reason: ReviewReason) -> &'static str {
         ReviewReason::NormCandidate => "norm_candidate",
         ReviewReason::Manual => "manual",
         ReviewReason::LowTrackingQuality => "low_tracking_quality",
+        ReviewReason::Unscorable => "unscorable",
     }
 }
 
@@ -165,22 +174,22 @@ mod tests {
     #[test]
     fn rules() {
         use SessionAttentionFlag::*;
-        assert!(reasons("S", 0.8, false, Yellow, false, 0.0).is_empty());
+        assert!(reasons("S", 0.8, false, false, Yellow, false, 0.0).is_empty());
         assert_eq!(
-            reasons("S", 0.79, false, Yellow, false, 0.0),
+            reasons("S", 0.79, false, false, Yellow, false, 0.0),
             [ReviewReason::LowQuality]
         );
         assert_eq!(
-            reasons("S", 0.9, false, Red, false, 0.0),
+            reasons("S", 0.9, false, false, Red, false, 0.0),
             [ReviewReason::FlagRed]
         );
-        assert!(reasons("S", 0.9, false, Unreliable, false, 0.0).is_empty());
+        assert!(reasons("S", 0.9, false, false, Unreliable, false, 0.0).is_empty());
         assert_eq!(
-            reasons("S", 0.9, false, Green, true, 0.0),
+            reasons("S", 0.9, false, false, Green, true, 0.0),
             [ReviewReason::NormCandidate]
         );
         assert_eq!(
-            reasons("S", 0.9, false, Green, false, 1.0),
+            reasons("S", 0.9, false, false, Green, false, 1.0),
             [ReviewReason::RandomAudit]
         );
     }
@@ -189,7 +198,7 @@ mod tests {
     fn low_tracking_rule_and_order() {
         use SessionAttentionFlag::*;
         assert_eq!(
-            reasons("S", 0.7, true, Red, false, 0.0),
+            reasons("S", 0.7, true, false, Red, false, 0.0),
             [
                 ReviewReason::LowQuality,
                 ReviewReason::LowTrackingQuality,
@@ -221,6 +230,25 @@ mod tests {
         assert!(low_tracking_quality(Some(&tq), &params));
         tq.estimated_accuracy_deg = None;
         assert!(!low_tracking_quality(Some(&tq), &params));
+    }
+
+    #[test]
+    fn unscorable_rule_and_order() {
+        use SessionAttentionFlag::*;
+        assert_eq!(
+            reasons("S", 0.9, false, true, Unreliable, false, 0.0),
+            [ReviewReason::Unscorable]
+        );
+        assert_eq!(
+            reasons("S", 0.7, true, true, Unreliable, true, 0.0),
+            [
+                ReviewReason::LowQuality,
+                ReviewReason::LowTrackingQuality,
+                ReviewReason::Unscorable,
+                ReviewReason::NormCandidate
+            ]
+        );
+        assert_eq!(reason_str(ReviewReason::Unscorable), "unscorable");
     }
 
     #[test]

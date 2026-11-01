@@ -94,6 +94,24 @@ CI: `.github/workflows/console.yml`.
 - Enrol codes are shown once (text + QR of the plain code) and never stored by the console. The QR is drawn as an
   inline SVG from the `qrcode` library's module matrix.
 
+## Rust core in the browser (WP-C.5)
+
+The baselines and scoring-profile editors validate with, and the sandbox re-scores with, the Rust core compiled to
+WebAssembly (`rust/crates/asd-wasm`, built by `scripts/build_asd_wasm.sh` into `build/asd/wasm`). The console never
+re-implements a scoring or validation rule. `scripts/prepare-asd-wasm.mjs` copies the build into `public/asd-wasm/`
+(git-ignored); it runs as `predev`, `prebuild` and `pretest`, and before the Playwright dev server. When the build is
+missing it runs `build_asd_wasm.sh` if `wasm-pack` is installed, otherwise it warns and the pages show "Rust core
+unavailable" (everything else, mock mode included, works; `ASD_WASM_REQUIRED=1` makes it fail instead, for releases).
+The browser imports `/asd-wasm/asd_wasm.js` at runtime (not bundled); `src/lib/asd/core.ts` turns a wasm abort into a
+`panic` envelope and loads a fresh instance. The unit tests load the same files in Node (`tests/asdCoreNode.ts`) and
+skip the core-backed cases when the build is absent.
+
+Pages: `/[org]/config/baselines`, `/[org]/config/scoring` (version history, view, diff, new draft, approve / publish /
+retire for superadmins, four-eyes on the server), `/[org]/config/sandbox` (re-score sessions with draft vs published
+documents, no writes) and `/[org]/config/bundles` (compose and sign from the published documents: owners, admins,
+superadmins). Publishing a baselines or scoring-profile version asks for a sandbox run of that version in the same
+browser first, and every draft needs a changelog note: both are console rules, the backend does not enforce them.
+
 ## API contract (WP-C.8)
 
 The contract is the Rust `asd-contract::api_v1` types, exported as `docs/spec/schemas/asd/api-v1.json`. The zod schemas
@@ -130,6 +148,10 @@ pulls `@img/sharp-libvips-*` (LGPL-3.0, dynamically loaded); this app sets `imag
 - `decision` and label keys/values are free JSON in the contract; the triage vocabulary above is a console convention
   that only `exclude_from_norms` is read by the backend.
 - The QR payload is the plain enrol code; the iOS app has no QR scanner yet and no URL format is defined.
+- WP-C.5 sandbox: no endpoint returns a stored session's `rawPayload` or frames, so the re-score uses the API form
+  (`SessionDetail` + clip rows, asd-wasm `rescoreApiSession`): one valid-sample ratio for every clip and no segment
+  windows. Sessions carry no age; the sandbox asks for it. The sandbox-before-publish gate and the required changelog
+  note are not enforced by the backend.
 
 ## Not yet done
 

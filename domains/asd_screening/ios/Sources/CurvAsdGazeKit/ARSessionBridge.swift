@@ -30,7 +30,8 @@ public final class ARSessionBridge: NSObject, Sendable {
             captureSource: CaptureSource,
             stimulusId: String?,
             originTimestamp: TimeInterval,
-            orientation: GazeOrientation?
+            orientation: GazeOrientation?,
+            beginsClip: Bool
         )
         case frame(FaceAnchorSnapshot, timestamp: TimeInterval)
         case simulated(timeSec: Double, target: CGPoint?, clipTimeSec: Double?, stimulusId: String?, clipMediaTimeSec: Double?)
@@ -127,7 +128,8 @@ public final class ARSessionBridge: NSObject, Sendable {
         captureSource: CaptureSource,
         stimulusId: String?,
         originTimestamp: TimeInterval,
-        orientation: GazeOrientation? = nil
+        orientation: GazeOrientation? = nil,
+        beginsClip: Bool = true
     ) {
         continuation.yield(.start(
             battery: battery,
@@ -135,7 +137,8 @@ public final class ARSessionBridge: NSObject, Sendable {
             captureSource: captureSource,
             stimulusId: stimulusId,
             originTimestamp: originTimestamp,
-            orientation: orientation
+            orientation: orientation,
+            beginsClip: beginsClip
         ))
     }
 
@@ -244,14 +247,15 @@ public final class ARSessionBridge: NSObject, Sendable {
         uiSink: @Sendable (GazeUIState) -> Void
     ) async {
         switch event {
-        case let .start(battery, profile, captureSource, stimulusId, origin, orientation):
+        case let .start(battery, profile, captureSource, stimulusId, origin, orientation, beginsClip):
             await actor.startSession(
                 battery: battery,
                 profile: profile,
                 captureSource: captureSource,
                 stimulusId: stimulusId,
                 originTimestamp: origin,
-                orientation: orientation
+                orientation: orientation,
+                beginsClip: beginsClip
             )
         case let .frame(snapshot, timestamp):
             uiSink(await actor.processFaceAnchor(snapshot: snapshot, timestamp: timestamp))

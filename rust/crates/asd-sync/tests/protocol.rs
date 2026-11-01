@@ -11,10 +11,10 @@ use asd_contract::session_v1_6::SessionIngestRequest;
 use asd_core::types::CaptureSource;
 use asd_sync::{
     backoff_schedule, build_register_request, build_session_request, build_session_request_json,
-    build_session_request_v1_7, classify_register_response, classify_response, endpoint_url,
-    next_retry_delay, retry_after_seconds, validate_ingest_url, validate_upload_url, ClientInfo,
-    RegisterOutcome, SyncError, SyncOutcome, UrlError, BACKOFF_DELAYS_SECS, MAX_ATTEMPTS,
-    REGISTER_PATH, SESSIONS_PATH,
+    build_session_request_v1_7, build_session_request_v1_8, classify_register_response,
+    classify_response, endpoint_url, next_retry_delay, retry_after_seconds, validate_ingest_url,
+    validate_upload_url, ClientInfo, RegisterOutcome, SyncError, SyncOutcome, UrlError,
+    BACKOFF_DELAYS_SECS, MAX_ATTEMPTS, REGISTER_PATH, SESSIONS_PATH,
 };
 use serde_json::{json, Value};
 
@@ -153,6 +153,52 @@ fn schema_1_7_payload_keeps_tracking_quality() {
         build_session_request_v1_7(&v17, "t", &client()).unwrap_err(),
         SyncError::UnsupportedSchemaVersion("1.6".into())
     );
+}
+
+/// SCH-5 (WP-G.12): a 1.8 body goes out as 1.8, scored or unscorable, byte-identical to its
+/// RFC 8785 form; a body breaking the scoring rule is refused before it leaves the device.
+#[test]
+fn schema_1_8_payloads_go_out_as_1_8_and_the_scoring_rule_is_checked() {
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../asd-contract/tests/fixtures");
+    for name in ["session-v1.8-scored.json", "session-v1.8-unscorable.json"] {
+        let text = std::fs::read_to_string(dir.join(name)).unwrap();
+        let req = build_session_request_json(text.as_bytes(), "t", &client()).unwrap();
+        assert_eq!(
+            header(&req.headers, "X-Schema-Version"),
+            Some("1.8"),
+            "{name}"
+        );
+        let sent: Value = serde_json::from_slice(&req.body).unwrap();
+        let original: Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(sent, original, "{name}: nothing dropped or added");
+    }
+
+    let text = std::fs::read_to_string(dir.join("session-v1.8-unscorable.json")).unwrap();
+    let mut bad: Value = serde_json::from_str(&text).unwrap();
+    bad["rawPayload"]["flatAffectScore"] = json!(1);
+    let err =
+        build_session_request_json(&serde_json::to_vec(&bad).unwrap(), "t", &client()).unwrap_err();
+    assert!(
+        matches!(&err, SyncError::InvalidPayload(m) if m.contains("/rawPayload/flatAffectScore")),
+        "{err:?}"
+    );
+    // A typed 1.8 request labelled 1.7 is refused by the 1.8 builder.
+    let mut v18: asd_contract::session_v1_8::SessionIngestRequest =
+        serde_json::from_str(&text).unwrap();
+    v18.schema_version = "1.7".into();
+    assert_eq!(
+        build_session_request_v1_8(&v18, "t", &client()).unwrap_err(),
+        SyncError::UnsupportedSchemaVersion("1.7".into())
+    );
+    // A 1.7 document labelled 1.8 has no scoringStatus and does not decode.
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../apps/ios_asd_gaze_app/Tests/Fixtures/expected-session-v1.7.json");
+    let mut v17: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    v17["schemaVersion"] = json!("1.8");
+    assert!(matches!(
+        build_session_request_json(&serde_json::to_vec(&v17).unwrap(), "t", &client()),
+        Err(SyncError::InvalidPayload(_))
+    ));
 }
 
 #[test]
