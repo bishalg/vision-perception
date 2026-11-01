@@ -120,11 +120,11 @@ pub async fn ingest(
                composite_confidence, attention_flag, summary, idempotency_key,
                tracking_verdict, tracking_accuracy_deg, calibration_quality,
                calibration_model, tracking_pipeline_version, device_model, scoring_status,
-               unscorable_reason)
+               unscorable_reason, request_hash)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
                    $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
-                   $31, $32, $33)
-           ON CONFLICT (id) DO NOTHING
+                   $31, $32, $33, $34)
+           ON CONFLICT DO NOTHING
            RETURNING 1 AS "one!: i32""#,
         req.session_id,
         org,
@@ -159,14 +159,36 @@ pub async fn ingest(
         tracking.device_model,
         scoring_status,
         unscorable_reason,
+        &v.request_hash[..],
     )
     .fetch_optional(&mut *tx)
     .await?;
     if inserted.is_none() {
-        // `sessionId` is globally unique; another org already holds this one.
+        // WP-B.12 (HK-4): the housekeeping sweep deletes idempotency keys after 7 days, so a
+        // late post claims the key afresh and meets a `sessions` unique constraint (the
+        // primary key, or the globally unique `idempotency_key`). The untargeted
+        // `ON CONFLICT DO NOTHING` turns either into "no row"; the stored session then
+        // decides: this org's session under this key with the same body is a replay
+        // (`200`), anything else is `409 idempotency-key-reused`, never a `500`.
+        if stored_replay(&mut tx, org, &v).await? {
+            tx.rollback().await?;
+            let (frames, report) =
+                blobs::upload_urls(state, org, &req.participant_token, &req.session_id).await?;
+            return Ok(Ingested {
+                status: StatusCode::OK,
+                response: SessionIngestResponse {
+                    session_id: req.session_id.clone(),
+                    status: SessionIngestStatus::Accepted,
+                    duplicate: true,
+                    frames_upload_url: frames,
+                    report_upload_url: report,
+                },
+            });
+        }
         return Err(AppError::Conflict {
             slug: slugs::IDEMPOTENCY_KEY_REUSED,
-            detail: "this sessionId is already taken".into(),
+            detail: "this sessionId or X-Idempotency-Key is already taken by another request"
+                .into(),
         });
     }
 
@@ -248,6 +270,31 @@ pub async fn ingest(
         status: StatusCode::CREATED,
         response,
     })
+}
+
+/// Whether the session row that blocked the insert is this very request stored earlier:
+/// same id, same org, same idempotency key and the same body (`request_hash`; for rows
+/// stored before migration 0021, `summary` equal to the posted `rawPayload` and the same
+/// `participant_token`, so a repost cannot mint upload URLs for another participant).
+async fn stored_replay(
+    conn: &mut PgConnection,
+    org: Uuid,
+    v: &ValidatedSession,
+) -> AppResult<bool> {
+    let same = sqlx::query_scalar!(
+        r#"SELECT COALESCE(request_hash = $4, summary = $5 AND participant_token = $6) AS "same"
+           FROM sessions
+           WHERE id = $1 AND org_id = $2 AND idempotency_key = $3"#,
+        v.request.session_id,
+        org,
+        v.idempotency_key,
+        &v.request_hash[..],
+        v.raw_payload,
+        v.request.participant_token,
+    )
+    .fetch_optional(&mut *conn)
+    .await?;
+    Ok(same.flatten() == Some(true))
 }
 
 /// `409 participant-withdrawn` when the org's participant with this token has withdrawn consent

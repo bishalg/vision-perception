@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import type { CatalogFailure, CatalogResult } from "@/components/catalog/types";
 import { ApiError } from "@/lib/api";
 import { stimulusCatalogSchema, type ConfigTransition } from "@/lib/api/catalog";

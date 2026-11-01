@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM idempotency_keys WHERE ctid IN (\n                 SELECT ctid FROM idempotency_keys\n                 WHERE created_at < now() - interval '7 days' LIMIT $1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4485b169dbba52e795825a41191c0a7ffc7f6b388c733a50a98f445eaf17a595"
+}

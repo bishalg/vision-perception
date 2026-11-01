@@ -1,5 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
-import { LIVE, login } from "./helpers";
+import { type Page } from "@playwright/test";
+import { expect, test, LIVE, login } from "./helpers";
 
 // Mock mode picks the role from the email's local part and seeds notes, disclosures and MRNs on the newest participant.
 test.skip(LIVE, "participant workspace flows use the mock backend's seeded participants");

@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*) AS \"n!\" FROM enrol_codes c\n                   WHERE coalesce(c.revoked_at, c.expires_at) < now() - interval '90 days'\n                     AND NOT EXISTS (SELECT 1 FROM devices d WHERE d.enrol_code_id = c.id)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "n!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "7836b1da1e1aaf2a8de93d68d94221accf255203291b46eef7338f71ea8cb97c"
+}

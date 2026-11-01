@@ -3,6 +3,7 @@
 > Status table is the live tracker. Update it when a WP changes state. Phases overlap on purpose: app, backend and console streams run in parallel when they share no files.
 > Agent tiers: **A** = `architect` (Fable, design only), **S** = `senior-implementer` (Opus), **I** = `implementer` (Sonnet). Main session integrates, runs gates, commits.
 > **2026-10-30:** backend and shared maths are Rust (`CLAUDE.md`, ADR-0006). New prefix **WP-R.n** = Rust core crates (`rust/`). WP-B.* were renumbered to the Rust plan; detail per package (files, tests, traps) is in `docs/spec/modules/asd-rust-core-and-backend/work-packages.md`, this table stays the status tracker.
+> **2026-11-01 (phase 5):** security-operations batch designed in ADR-0009; MUST ids in `docs/spec/modules/asd-rust-core-and-backend/technical.md §8`, package detail in that module's `work-packages.md` ("Phase 5 wave"); plan summary in §7 below.
 > **2026-10-31:** new prefixes **WP-I.n** = interoperability and export bridge (`asd-export` crate, deliveries) and **WP-C.9+** = clinician workspace; detail in `docs/spec/modules/asd-clinician-and-interop/work-packages.md` (ADR-0008). **WP-G.n** = gaze-tracking robustness; detail in `docs/spec/modules/asd-gaze-robustness/work-packages.md` (ADR-0007).
 
 ## 0. Status table
@@ -13,14 +14,15 @@
 | WP-A.2 | Fix known bugs (double CareKit write, delete-all semantics, classifier double-run, elevatedRisk string) | 1 | S | done | RiskStratification scoped to ASD_RESEARCH_CLASSIFIER, duplicate writes eliminated, classifier passed to summary |
 | WP-A.3 | Protected file-backed history store (old WP-4.3) | 1 | S | done | Protected file store (.completeFileProtectionUntilFirstUserAuthentication), defaults migration, dedupe preserved |
 | WP-A.4 | Sync client: device registration, bearer token, idempotency + schema headers, new `/v1/sessions` payload, pre-signed uploads | 1 | S | done | Device registration, Keychain token, idempotent /v1/sessions client, pre-signed uploads; 338 app tests green; contract unverified against backend |
-| WP-A.5 | `ScoringProfile` + remote config bundle consumption with Ed25519 verify and bundled fallback | 2 | S | done | 2026-11-01: signature check, rollback refusal and expiry in Rust (`asd-sync::config_bundle`, `asd-ffi` `config_*`); Swift `ScoringConfiguration` + `ConfigBundleService` (Application Support cache, bundled fallback). Trusted-keys list in Info.plist ships empty: no remote bundle is trusted until the owner adds a real key. `ScoringProfile.trackingQuality` not yet wired into the gaze pipeline |
-| WP-A.6 | Swift 6 language mode (old WP-4.2) | 2 | S | todo | |
-| WP-A.7 | `Biomarker*`→`Engagement*` renames + claims-gate scanner covers model strings (old WP-4.4) | 2 | I | todo | |
+| WP-A.5 | `ScoringProfile` + remote config bundle consumption with Ed25519 verify and bundled fallback | 2 | S | done | 2026-11-01: signature check, rollback refusal and expiry in Rust (`asd-sync::config_bundle`, `asd-ffi` `config_*`); Swift `ScoringConfiguration` + `ConfigBundleService` (Application Support cache, bundled fallback). Trusted-keys list in Info.plist ships empty: no remote bundle is trusted until the owner adds a real key. `ScoringProfile.trackingQuality` wiring → WP-A.13 (phase 5) |
+| WP-A.6 | Swift 6 language mode (old WP-4.2) | 2 | S | todo | waits for phase 6: tree-wide, cannot run beside A.13/G.8 (ADR-0009 D10) |
+| WP-A.7 | `Biomarker*`→`Engagement*` renames + claims-gate scanner covers model strings (old WP-4.4) | 2 | I | todo | waits for phase 6, runs alone last; owner to confirm whether `check_asd_claims.py` may be extended or must move to `asd-cli` first (ADR-0009 Q5) |
 | WP-A.8 | Stimulus CDN support with signed URLs; ODR fallback | 3 | S | todo | |
 | WP-A.9 | Replay down-sample upload (for console heatmaps) | 3 | S | todo | |
 | WP-A.10 | TestFlight beta pipeline (fastlane `beta`), crash reporting decision | 3 | I | todo | |
 | WP-A.11 | iOS consumes the Rust core: xcframework `binaryTarget`, engines become wrappers, golden parity tests, `asd-sync` in the sync client, `device_id` on re-register | 1–2 | S | done | 6 kit engines are FFI wrappers; GoldenParity + LegacyParity tests; sync via asd-sync, device_id on re-register; ios_test.sh builds xcframework. Follow-ups: asd-ffi format_scored_at ms rounding, dwell/affect/bracket maths still in Swift |
 | WP-A.12 | Android Kotlin bindings from the same UniFFI definitions (`cargo-ndk`) | 4 | S | backlog | depends on WP-R.5 |
+| WP-A.13 | `ScoringProfile.trackingQuality` into the gaze pipeline via `asd-ffi gaze_config_json_for_profile` (CFG-3) | 5 | S | done | phase 5 wave 1; closes the A.5 gap; H-G2 gates only G.13, not this; 2026-11-01: `gaze_config_json_for_profile` builds the pipeline config from the profile and refuses invalid values (`TrackingQualityParams::validate`, also run by `profile_checks` at publish and by `accept_bundle` on device); the kit takes its gate from that one config |
 | WP-G.0 | Swift capture hygiene: record untracked frames, no cross-child calibration reuse, no fabricated calibration point, orientation lock | 2 | I | done | TRK-1, CAL-1, CAL-3; lowers validRatio on track loss (H-G1); spec `docs/spec/modules/asd-gaze-robustness/` | done 2026-11-01: untracked frames buffered, `BoundCalibrationStore` (child key + session id), `CalibrationAccumulator` (no fabricated point), `CaptureOrientationLock`; device check of rotation/overlay pending |
 | WP-G.1 | Rust tracking types, raw log format, device geometry table, unclamped raycast, visual-angle maths | 2 | S | done | `asd-core::gaze` geometry/raycast/raw_log + tracking types; 42 device entries (community id list, M4 iPad camera offset + iPad16,5/6 to verify in G.14); ARKit camera-axis mirroring to confirm in G.8 |
 | WP-G.2 | Rust calibration models (screen/angular affine, homography, poly2), robust target aggregation, LOO-CV quality, selection | 2 | S | done | 4 models + MAD aggregation + retry-once + LOO bands + auto-select + CalibrationSession; 49 tests; angular-affine holds <0.3° across a 10 cm head move vs >1° for screen-affine (synthetic) |
@@ -29,7 +31,7 @@
 | WP-G.5 | Rust synthetic tracking generator, replay, `asd-cli gaze synth/replay/bench-report`, scenario goldens | 2 | I | done | 15 seeded scenarios + goldens, `asd-cli gaze synth/replay/bench-report` (model ranking, light-vs-error Spearman, per-log SHA-256) |
 | WP-G.6 | Contract session v1.7 (`trackingQuality`), `ScoringProfile.trackingQuality` params, schema export | 2 | S | done | session-v1.7.json alongside byte-identical 1.6; all 1.7 fields optional; ScoringProfile 1.1.0 with trackingQuality defaults from asd-core; backend/iOS still 1.6 until G.11/G.9 |
 | WP-G.7 | asd-ffi `GazePipelineHandle` (flat per-frame records) | 2 | S | done | `GazePipelineHandle` + `GazeTelemetryWriterHandle` over UniFFI, byte-identical to asd-core on scripted + 36k-frame sessions; host p99 0.002 ms/frame; also fixed `format_scored_at` to match Foundation exactly (35,191 edge values) |
-| WP-G.8 | iOS bench capture build (`ASD_BENCH_CAPTURE`, raw tracking JSONL, 13-point grid) | 2 | I | todo | BEN-2; depends on G.1, G.0 |
+| WP-G.8 | iOS bench capture build (`ASD_BENCH_CAPTURE`, raw tracking JSONL, 13-point grid) | 2 | I | done | Debug-only flag (app + kit), `BenchCaptureView`/`BenchLogWriter`, `ARSessionBridge` tap, `check_release_symbols.sh [Release\|DemoRelease]`; on-device 10 s log + `asd-cli gaze replay --check` and the free-viewing clip still open (owner, G.14); `ios_test.sh` builds DemoRelease and runs the gate on it (2026-11-01) |
 | WP-G.9 | Kit integration: GazeProcessingActor runs the Rust pipeline; session v1.7 writer; per-frame cost measured | 3 | S | done | 2026-11-01: actor pushes every frame through GazePipelineHandle, sessions posted as 1.7 with trackingQuality + per-clip ClipTracking (asd-sync gains the 1.7 request path); Swift raycast/1-Euro moved to test-only legacy refs; push p99 0.026 ms sim (budget 0.2 ms, device number pending). Until G.10 every live session verdict is `unusable` (calibration recorded as skipped). Scoring fallback (socialPreference 0 / flatAffect 1) still present: owner chose session 1.8 with `scoringStatus` + optional score fields |
 | WP-G.10 | App UI: child-friendly calibration, validation step, inter-clip drift checks, re-calibration prompts | 3 | I | done | 2026-11-01: calibration + validation run through the Rust pipeline in one session per wizard run (Swift fit removed from the live path), balloon calibration, star validation, ladybug drift check after each clip, re-calibration offered only after a clip's check; good synthetic session → verdict `good`. Not done: CNF-2 glasses/light hint, Maestro/UI tests; child/device tuning (sounds 1103/1104, timing) pending |
 | WP-G.11 | Backend accepts 1.6+1.7, tracking columns, `low_tracking_quality` review rule, API fields | 2 | S | done | 1.6 + 1.7 ingest (1.6 upgraded losslessly), migration 0013 tracking columns, `low_tracking_quality` review rule, list filter + detail `tracking_quality`; distance NULL when unmeasured (no more fabricated 35 cm for 1.7). `report.rs` decodes by schema_version (1.7 without calibratedDistanceCm no longer 500s; report builders never read the distance) |
@@ -53,6 +55,11 @@
 | WP-B.8 | Server-side PDF regeneration + FHIR bundle endpoint (parity with iOS output, golden tests) | 3 | I | done | New `asd-report` crate (FHIR R4 + PDF), byte goldens + iOS bundle parity; `report.pdf` now server-rendered (`?source=device` = uploaded copy); synthetic → 409. Gaps: M-CHAT/CareKit not on server, age bracket never set at ingest, iOS `_ms` shown as % bug |
 | WP-B.9 | Dataset export job (parquet/jsonl + labels), retention sweep, erasure execution | 3 | S | done | 2026-11-01 (0017): dataset_jsonl/parquet export formats (always de-identified, research purpose), nightly retention sweep (frames blobs only, per 02 §5) with dry run, erasure job with tombstone; participants with signed clinical records are `held` (ADR-0008 Q2 open); console erasure/retention pages |
 | WP-B.10 | FHIR façade + SMART-on-FHIR server validation (only if a clinic partner needs it) | 4 | S | backlog | |
+| WP-B.11 | TOTP enrolment API: `/v1/users/me/totp/{enrol,confirm}`, `DELETE /v1/users/me/totp`, pending seed (migration 0020), DTOs + `api-v1.json` | 5 | S | done | AUTH-6..8, AUTH-10; phase 5 wave 1; 2026-11-01: enrol/confirm/disable routes, pending seed (0020), 4 slugs incl. `invalid-credentials`; confirm on an enrolled user is 409 `totp-already-enrolled`, expired pending is 410 and cleared; limiter is per process |
+| WP-B.12 | `housekeeping_sweep` job: idempotency keys 7 d, expired refresh tokens, unreferenced expired enrol codes 90 d, unreferenced finished jobs 30 d | 5 | I | done | HK-1..5; phase 5 wave 1; reuses the runner and the nightly-scheduling pattern; 2026-11-01: `jobs/housekeeping.rs`, also clears expired pending TOTP seeds; indexes in 0021; `HousekeepingRequest/Result` in `asd-contract` |
+| WP-B.13 | Prometheus `/metrics` on a separate listener (`ASD_METRICS_BIND_ADDR`), route-template labels, API HSTS | 5 | I | todo | OBS-2..4; phase 5 wave 2 (shares `main.rs`/`config.rs` with B.15) |
+| WP-B.14 | Migration 0022 drops `users.totp_secret` + `review_items.note` behind a guard; `migrate` runs the 0016 back-fill before new migrations; `admin reset-totp`; remove `encrypt-review-notes` | 5 | S | todo | KEY-11, KEY-12, AUTH-9; phase 5 wave 3, after B.11 + B.15 |
+| WP-B.15 | KEK rotation: `ASD_DATA_KEK_PREVIOUS` read-only keys in `Keyring`, `admin rotate-kek` (re-wrap DEKs, re-seal TOTP seeds, CAS, audit), runbook | 5 | S | done | KEY-8..10; phase 5 wave 1. Integration secrets are under org DEKs and need no re-seal (security pack corrected); 2026-11-01: `crypto/rotate.rs` (CAS on old KEK id, `SKIP LOCKED`, exit 3 on remaining), covers `wrapped_dek`, `totp_secret_ct` and `totp_pending_ct` |
 | WP-C.1 | Console scaffold: Next.js, auth, layout, sessions table/detail, overview KPIs | 1 | S | done | Live mode vs Rust backend, org switcher, overview/sessions, Playwright 11/11 mock + live; 129 unit tests |
 | WP-C.2 | Review queue + devices/enrol QR | 1 | I | done | Review triage (j/k, 1–4), devices revoke, enrol code + QR. Backend gaps: no `GET /v1/orgs`, review items lack session summary |
 | WP-C.3 | Participants list, users/roles, audit page (participant detail/timeline moved to WP-C.14) | 2 | I | done | 2026-11-01; backend gaps: no invite/password reset, no audit filters, users/audit `total: null` |
@@ -67,6 +74,8 @@
 | WP-C.12 | Referral/summary letters + printable clinical summary endpoints | 3 | I | todo | NOTE-3..5; needs C.10, C.11, I.5, I.6 migration |
 | WP-C.13 | Console: worklist, clinical review tab, sign/cosign dialogs, clinical settings | 3 | I | done | worklist, Clinical review tab, sign/cosign/amend dialogs (password/TOTP never in React state), clinical settings + signer profile; Playwright 15/15. Backend gaps: org settings not readable, no TOTP-enrolled flag, no user id in session |
 | WP-C.14 | Console: participant workspace (timeline, MRN, notes, letters, print) | 3 | I | done | 2026-11-01: workspace tabs timeline/notes (append-only corrections)/MRN (reveal audited)/disclosures/print (HTML @media print); letters placeholder until C.12. Backend gaps closed in phase 4 (timeline filters, session-by-participant filter, console participant summary) |
+| WP-C.15 | Console security settings: TOTP enrol (QR + seed), confirm, disable; nudge banner for privileged roles; mock + live | 5 | I | done | phase 5 wave 2, after B.11 (schema); 2026-11-01: `[org]/settings/security` (QR, seed shown once, confirm, disable), `TotpNudge` for owner/admin/clinician/superadmin; mock + live; e2e `security.spec.ts` |
+| WP-C.16 | Console CSP (per-request nonce in `proxy.ts`, `wasm-unsafe-eval`) + HSTS; Playwright CSP-violation listener | 5 | I | done | CSP-1..4; phase 5 wave 1; 2026-11-01: per-request nonce on every response incl. redirects, all routes dynamic (`connection()`), postbuild strips/guards static HTML, zod jitless via `@/lib/zod` (lint-enforced), HSTS in production; Playwright `prod` project runs against `next start` |
 | WP-I.1 | `asd-export` crate foundation: model, de-id, consent policy, verified code table, watermark; fold B.8 PDF/FHIR code in | 3 | S | done | `asd-report` folded into `asd-export` (goldens byte-identical); ExportRecord v1, de-id, consent policy (24-row table), watermark, code table; session bundle keeps unverified `93044-6` + XFDF code as documented iOS-parity exception (Q6) |
 | WP-I.2 | CSV (canonical/Excel/Sheets) + XLSX encoders | 3 | I | done | CSV canonical/Excel(BOM+CRLF)/Sheets + 5-file ZIP with manifest hashes, XLSX with README/watermark header+footer, formula-injection escaping, de-id applied inside encoder, 200k-row XLSX cap |
 | WP-I.3 | FHIR R4 clinical bundle (DiagnosticReport, DocumentReference, Practitioner), iOS id parity, code verification | 3 | S | done | DiagnosticReport/Observation/DocumentReference/Practitioner/Provenance + transaction bundle; unverified codes dropped by default. FOUND: iOS LOINC 93044-6 = 'Level of evidence', all 23 M-CHAT LOINC codes are toxicology tests, SNOMED 713444003 does not exist — iOS + session bundle must change (Q6) |
@@ -93,7 +102,7 @@
 | WP-E.6 | Security/privacy review pack: threat model, data-flow diagram, DPIA-lite, retention policy, AWS BAA | 3 | A + I | done | 2026-11-01: `docs/security/` (threat model, data flow, DPIA-lite, retention policy, AWS BAA checklist); owner decisions O-1..O-15 open |
 | WP-E.7 | App Store submission dry run (`appstore_precheck`, screenshots, age assurance flag) | 4 | I | backlog | |
 
-**Migration rule (2026-10-31 audit):** backend migrations are applied in order and numbers 0007 and 0010–0012 were never used. A new migration must take the next number above the highest existing one (≥0020 today), never a gap, or it will be applied out of order on databases that already ran later migrations.
+**Migration rule (2026-10-31 audit):** backend migrations are applied in order and numbers 0007 and 0010–0012 were never used. A new migration must take the next number above the highest existing one (≥0022 today: 0020 is WP-B.11 pending TOTP, 0021 is ingest `request_hash` + housekeeping indexes; WP-B.14 takes 0022, so ≥0023 after it), never a gap, or it will be applied out of order on databases that already ran later migrations.
 
 **Audit 2026-10-31 (independent backend-security and gaze/contract reviews, fresh-DB gates, live smoke `scripts/live_smoke.sh`).** Fixed: superadmin/admin clinical-role provisioning bypass, global config publish by org roles, export reclaim overwrite, list indexes, ingest 500s, worklist MRN flag, TOTP replay (0015); gaze recalibration after pose shift, replay retries, failed-recal isolation, empty validation (asd-core); 1.7 report decode; console report link; export missing-artifact 410. Open (owner or follow-up):
 - ~~WP-G.3 gap: per-clip ClipTracking producer~~ done 2026-11-01.
@@ -103,9 +112,9 @@
 - ~~Norm-run promote lets org roles create a draft global baselines document~~ done 2026-11-01.
 - Smoke export download + sha256 needs `ASD_BLOB_BACKEND=s3` (MinIO); the memory store is per process.
 - ~~Flaky timing test `tests/auth.rs`~~ done 2026-11-01 (injectable clock).
-- 2026-11-01: login now requires TOTP for enrolled users (`totp-required`/`totp-invalid`, console code step); seeds encrypted under `ASD_DATA_KEK` (0016, backfilled by `asd-backend migrate`); norm-run promote is superadmin-only. Follow-ups: KEK rotation must re-encrypt seeds (no tool yet); drop plaintext `users.totp_secret` column in a later migration; no TOTP enrolment flow yet.
+- 2026-11-01: login now requires TOTP for enrolled users (`totp-required`/`totp-invalid`, console code step); seeds encrypted under `ASD_DATA_KEK` (0016, backfilled by `asd-backend migrate`); norm-run promote is superadmin-only. Follow-ups: KEK rotation must re-encrypt seeds (no tool yet) → WP-B.15; drop plaintext `users.totp_secret` column in a later migration → WP-B.14; no TOTP enrolment flow yet → WP-B.11 + WP-C.15 (all phase 5, ADR-0009).
 - 2026-11-01 session schema 1.8 (SCH-5, migration 0019): required `scoringStatus` (`scored`|`unscorable` + reason), the five score/affect fields optional; backend accepts 1.6/1.7/1.8, unscorable → flag `unreliable`, review reason `unscorable`, excluded from norms; console/exports show "Not scored". Follow-up: iOS writer to 1.8 and remove the SessionBiomarkerAggregator placeholder scores.
-- 2026-11-01 phase 4: iOS writes session 1.8; the SessionBiomarkerAggregator placeholder scores are gone, failed scoring is recorded as `scoringStatus: unscorable` (fixtures `expected-session-v1.8*.json`, checked by `ios_test.sh`). iOS sends `rawPayload.normCollection` only with research consent plus the norm-collection opt-in (open: whether research consent without the opt-in counts as `research_consented` in exports).
+- 2026-11-01 phase 4: iOS writes session 1.8; the SessionBiomarkerAggregator placeholder scores are gone, failed scoring is recorded as `scoringStatus: unscorable` (fixtures `expected-session-v1.8*.json`, checked by `ios_test.sh`). iOS sends `rawPayload.normCollection` only with research consent plus the norm-collection opt-in (open: whether research consent without the opt-in counts as `research_consented` in exports; 2026-11-01 ADR-0009 Q4 recommends keeping the conservative reading, owner decision under DPIA O-6).
 - 2026-11-01 catalog checks: `asd-contract::catalog_checks` shared by backend (errors carry `body.<path>`), `asd-wasm` `validateCatalog` and the console catalog editor; config problem slugs added to the contract. Catalog AOI `endSec` 10.0/9.0 trimmed to 8.0 in both catalog copies (all ten videos measure 8.0 s; the `_10s`/`_3s` ids are legacy names).
 - 2026-11-01 C.14/C.5 backend gaps closed: timeline `kind`/`from`/`to` filters, `?participant_id=` on the session list, `GET /v1/participants/{id}/summary` for console users, `GET /v1/sessions/{id}/raw` (sandbox re-score uses the real payload); `asd-wasm` decodes 1.8.
 - 2026-11-01 console gaps closed (0018): GET org user, audit filters, integrations paging, `GET /v1/orgs/{id}/export-destinations` for exporters, `DELETE /v1/integrations/{id}` archives (409 while deliveries in flight).
@@ -208,3 +217,52 @@ Each stream is one agent; streams share no files except `project.yml` (A only) a
 | 1 | WP-R.1, WP-R.2, WP-R.3, WP-R.4, WP-B.1 | S, S, S, I, S | only `rust/Cargo.lock` (main session regenerates) |
 | 2 | WP-B.2, WP-B.3, WP-R.5, WP-D.7, WP-C.8 | S, S, S, I, I | none (B.3 stubs the device-token extractor until B.2 merges) |
 | 3 | WP-A.11, WP-B.4, WP-B.5, WP-B.6 | S, S, I, I | none |
+
+## 7. Phase 5 batch — security operations (designed 2026-11-01, ADR-0009)
+
+Implementation batch, not a calendar phase. Nine packages; the detail (files, tests
+first, not-to-touch, traps) is in `docs/spec/modules/asd-rust-core-and-backend/work-packages.md`
+("Phase 5 wave") and, for WP-G.8, `docs/spec/modules/asd-gaze-robustness/work-packages.md`.
+MUST statements: `asd-rust-core-and-backend/technical.md §8`; acceptance scenarios 17–24.
+
+| WP | One line | Tier | Wave | Shares files with |
+|---|---|---|---|---|
+| WP-B.11 | TOTP enrol/confirm/disable API, pending seed columns (0020), DTOs, schema regen | S | 1 | — |
+| WP-B.12 | Daily `housekeeping_sweep` job (idempotency keys, refresh tokens, enrol codes, finished jobs) | I | 1 | — |
+| WP-B.15 | KEK rotation: previous-KEK reads, `admin rotate-kek`, runbook | S | 1 | B.13, B.14 (`main.rs`, `config.rs`) |
+| WP-C.16 | Console CSP (nonce) + HSTS, e2e violation listener | I | 1 | — |
+| WP-A.13 | `trackingQuality` → pipeline config built in `asd-ffi`; kit stops assembling gate JSON | S | 1 | — (kit files disjoint from G.8) |
+| WP-G.8 | iOS bench capture build (`ASD_BENCH_CAPTURE`, raw JSONL, 13-point grid) | I | 1 | — |
+| WP-C.15 | Console security settings page (QR, confirm, disable, nudge) | I | 2 | needs B.11's `api-v1.json` |
+| WP-B.13 | Prometheus listener + API HSTS | I | 2 | B.15 (wave 1), B.14 (`main.rs`) |
+| WP-B.14 | Drop plaintext columns (0022) with guard, `migrate` pre-back-fill, `reset-totp`, remove `encrypt-review-notes` | S | 3 | B.11, B.15, B.13 |
+
+Parallel groups: **wave 1** = {B.11, B.12, B.15, C.16, A.13, G.8}; **wave 2** = {C.15,
+B.13}; **wave 3** = {B.14}. After each wave the main session runs `cargo sqlx prepare`,
+regenerates `docs/spec/schemas/asd/api-v1.json`, runs every gate and commits.
+
+Deliberately out of this batch: WP-A.6 Swift 6 and WP-A.7 renames (tree-wide, phase 6);
+mandatory TOTP per role (O-10); DEK rotation (F2); console idle timeout; worker metrics;
+HSTS `preload`; org-admin TOTP reset; the `research_consented` semantics (ADR-0009 Q4).
+
+Still blocked on the owner, unchanged: fonts for I.5/C.12 (Q3); IaC tool for B.7 (H-11);
+catalog rules (org-role drafts, editable drafts, media/licence fields); clinical-record
+erasure (ADR-0008 Q2 / O-1); G.14 device bench (H-G4/H-G5; G.8 only makes it possible);
+DPIA decisions O-1..O-15. Dependencies of this batch on those: B.13's private interface
+and the KEK-in-KMS custody (O-9) are wired by B.7; nothing in the batch waits for them.
+
+Owner decisions for this batch (recommendation in brackets, none blocks wave 1):
+1. O-10 roles that must have TOTP and the grace period [owner, admin, clinician,
+   superadmin; enforce in phase 6 after a 14-day nudge].
+2. Finished-job retention [30 days, unreferenced rows only].
+3. HSTS `preload` [no, until WP-E.2 fixes the domain].
+4. `research_consented` without the norm opt-in [keep excluded; explicit consent object
+   in session 1.9 if the broader reading is wanted; record under O-6].
+5. Whether `scripts/check_asd_claims.py` may be extended for WP-A.7 or must be ported to
+   `asd-cli` first [small extension acceptable; it is dev tooling, not product logic].
+
+Gates at the end of the batch: `scripts/rust_test.sh` with a UTF-8 Postgres
+(`initdb -E UTF8 --locale=C -k ''` on a free port, `ASD_REQUIRE_ALL=1`),
+`scripts/build_asd_wasm.sh --test`, `scripts/ios_test.sh`, and in `apps/curv_console`
+`npm test`, `npm run lint`, `npm run typecheck`, `CURV_API_MODE=mock npm run build`,
+`npm run e2e`.

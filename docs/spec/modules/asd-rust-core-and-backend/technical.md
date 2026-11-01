@@ -291,6 +291,150 @@ base64url of `(started_at, id)`), `limit ≤ 100`, response `{items, next_cursor
   (DB URL, JWT key, bundle signing key), ALB + ACM + WAF rate rules, CloudWatch logs.
   IaC language: owner decision H-11 (ADR-0006 D9).
 
+## 8. Phase 5 security operations (AUTH-6..10, KEY-8..12, OBS-2..4, HK, CSP, CFG-3)
+
+Added 2026-11-01 (ADR-0009). Builds on `auth/totp.rs`, `crypto/keyring.rs`, the phased
+job runner (`jobs/runner.rs`) and the console `proxy.ts`.
+
+### TOTP enrolment (AUTH)
+
+- **AUTH-6** `POST /v1/users/me/totp/enrol` `{password}` (any signed-in console user,
+  5/min per user): verifies the password (Argon2id, same path as login), generates a
+  20-byte seed from the system CSPRNG, seals it with `Keyring::seal_user_secret` under AAD
+  `users:totp_pending_ct:<nil>:{user_id}` into `users.totp_pending_ct` /
+  `totp_pending_kek_id`, sets `totp_pending_expires_at = now() + 10 min`, and answers
+  `200 {secret (base32), otpauth_url, expires_at}`. A second call replaces the pending seed.
+  `409 totp-already-enrolled` when `totp_secret_ct` is set; `401 invalid-credentials`
+  on a wrong password (audited `auth.password_failed`); `503
+  clinical-crypto-unavailable` without `ASD_DATA_KEK`. The response is the only place the
+  seed appears in clear; `secret` is a redacted field name (OBS-1) so it can never be
+  logged.
+- **AUTH-7** `POST /v1/users/me/totp/confirm` `{code}` (5/min per user): the code must
+  match the *pending* seed within one step of skew (`reauth::matched_totp_step`); on
+  success one `UPDATE` moves the pending seed to `totp_secret_ct`/`totp_secret_kek_id`,
+  clears the pending columns and sets `last_totp_step` to the spent step; answers
+  `200 {totp_enrolled: true}` and writes audit `user.totp_enrolled`. `401 totp-invalid`
+  on mismatch (audited `auth.totp_enrol_failed`), `410 totp-enrolment-expired` when the
+  pending seed is absent or past `totp_pending_expires_at`.
+- **AUTH-8** `DELETE /v1/users/me/totp` `{password, code}`: password and a valid current
+  code (spent through `verify_and_spend`) are both required; clears `totp_secret_ct`,
+  `totp_secret_kek_id`, `last_totp_step` and any pending seed; audit `user.totp_disabled`.
+  `404 totp-not-enrolled` when not enrolled.
+- **AUTH-9** `asd-backend admin reset-totp --user <uuid>` clears the same columns with
+  audit `user.totp_reset` (`actor: operator`), stdout the user id. No HTTP endpoint lets
+  one user change another user's TOTP in this phase.
+- **AUTH-10** A pending seed is never consulted by login or step-up (`load_secret` reads
+  only `totp_secret_ct`). The `otpauth` URL is
+  `otpauth://totp/{issuer}:{email}?secret=..&issuer={issuer}&algorithm=SHA1&digits=6&period=30`
+  with issuer the constant `Eye Gaze Console` (`auth::totp::TOTP_ISSUER`), percent-encoded.
+  `GET /v1/users/me` keeps `totp_enrolled` and gains `totp_pending: bool`.
+
+### Key rotation and plaintext drop (KEY)
+
+- **KEY-8** `Keyring` holds one active `Kek` (`ASD_DATA_KEK`) and zero or more previous
+  KEKs (`ASD_DATA_KEK_PREVIOUS`, comma-separated base64, each 32 bytes, duplicates and the
+  active key refused at config time). Unwrapping a DEK or opening a user secret selects
+  the KEK whose `id()` equals the stored `kek_id`; an unknown `kek_id` is
+  `CryptoError::KeyUnwrap` (503) logged with the stored and the configured fingerprints.
+  Every write uses the active KEK and stores its `kek_id`.
+- **KEY-9** `asd-backend admin rotate-kek [--batch N] [--dry-run]`: for every
+  `org_data_keys` row and every `users` row with a sealed secret or pending seed whose
+  `kek_id` is not the active one, open with the matching previous KEK, seal under the
+  active KEK and `UPDATE ... WHERE <pk> = $1 AND <kek column> = $old` (compare-and-set,
+  batches of `N` default 500, one transaction each, `FOR UPDATE SKIP LOCKED`). Prints
+  `{rewrapped_deks, resealed_users, remaining}`; writes one `crypto.kek_rotated` audit row
+  (org NULL, counts and fingerprints only); exit code 3 when `remaining > 0` (rows under a
+  KEK not in the configured set). Idempotent: a second run changes nothing. DEK bytes, AADs
+  and the MRN blind-index key are unchanged.
+- **KEY-10** Rotation runbook (in `rust/README.md`): (1) set `ASD_DATA_KEK=new` and
+  `ASD_DATA_KEK_PREVIOUS=old` on API and worker, restart; (2) `rotate-kek`; (3) check
+  `remaining = 0`; (4) remove `PREVIOUS`, restart. A process started with only the new
+  KEK before step 3 answers `503` for rows still under the old one, by design.
+- **KEY-11** Migration 0021 begins with a `DO $$` guard that raises
+  `plaintext TOTP seeds remain: run "asd-backend migrate" with ASD_DATA_KEK set` or
+  `plaintext review notes remain: run "asd-backend admin encrypt-review-notes"` when the
+  respective column holds a non-NULL value, then drops `users.totp_secret`,
+  `review_items.note`, index `review_items_plain_note_idx` and constraint
+  `users_totp_secret_one_form`. The service code stops referencing either column in the
+  same package (no runtime branch may depend on a column that 0021 removes).
+- **KEY-12** `asd-backend migrate` order: (a) if migration 0016 is applied and column
+  `users.totp_secret` exists and `legacy_secret_count > 0`: run `encrypt_legacy_secrets`
+  (refuse with the existing message when `ASD_DATA_KEK` is unset) **before** applying any
+  pending migration; (b) apply pending migrations; (c) the existing post-migration
+  back-fill (for databases that just received 0016 in step b). `migrate` must be re-runnable
+  after a failed 0021 guard without manual SQL.
+
+### Observability (OBS)
+
+- **OBS-2** `ASD_METRICS_BIND_ADDR` (optional) starts a second listener in `serve` with a
+  router containing only `GET /metrics` (Prometheus text exposition 0.0.4, no auth, no
+  CORS, no request logging of the scrape). Unset = no listener. The main router never
+  serves `/metrics`; `/orgs/{id}/metrics` keeps its meaning.
+- **OBS-3** Metric set and label safety: `http_requests_total{route,method,status}` and
+  `http_request_duration_seconds{route,method}` (histogram, buckets 5 ms..10 s) where
+  `route` is the matched Axum path template (`/v1/sessions/{id}`), never the raw path;
+  `auth_rate_limited_total{limiter}` (`login_ip`, `login_user`, `totp_user`,
+  `register_ip`, `ingest_device`); `jobs_rows{kind,status}` gauge from one `GROUP BY` query
+  cached for 10 s; `asd_backend_build_info{version,git_sha}`. No label may carry an org id,
+  user id, token, e-mail or path parameter value; the test asserts the exposition text
+  contains none of the ids used by the scenario.
+- **OBS-4** Every API response carries `Strict-Transport-Security: max-age=63072000;
+  includeSubDomains` (no `preload`), set by a `SetResponseHeaderLayer` in `app::router`.
+
+### Housekeeping sweep (HK)
+
+- **HK-1** Job kind `housekeeping_sweep` (phased handler `jobs/housekeeping.rs`), queued
+  once per day by the worker loop next to `retention::schedule_nightly` with its own
+  advisory-lock key and the same "queued in the last day" check; params
+  `{dry_run, scheduled}`; `POST /v1/jobs/housekeeping` (superadmin only) queues a manual
+  run with `dry_run` optional.
+- **HK-2** Rules, each a batched `DELETE ... WHERE ctid IN (SELECT ctid ... LIMIT 5000)`
+  loop: `idempotency_keys.created_at < now() - 7 days` (every scope);
+  `refresh_tokens.expires_at < now() - 1 day`; `enrol_codes` with
+  `coalesce(revoked_at, expires_at) < now() - 90 days` and `NOT EXISTS (devices.enrol_code_id = id)`;
+  `jobs` with `status IN ('succeeded','failed','cancelled')`, `finished_at < now() - 30 days`
+  and no referencing row in `norm_runs`, `exports`, `export_deliveries`, `erasure_requests`.
+- **HK-3** The job result is `{idempotency_keys, refresh_tokens, enrol_codes, jobs, dry_run}`
+  counts; a run that deleted anything (or any manual run) writes one `housekeeping.sweep`
+  (or `housekeeping.sweep_dry_run`) audit row with org NULL and the counts.
+- **HK-4** Re-posting a session whose idempotency key was swept returns `200 duplicate:true`
+  (the `sessions` primary key still catches it), not `500` and not a second row.
+- **HK-5** A device whose enrol code expired 91 days ago and that is still enrolled can
+  still rotate its token with that code (`status: "rotated"`) after a sweep.
+
+### Console headers (CSP)
+
+- **CSP-1** `proxy.ts` generates a 16-byte random nonce per request and sets
+  `Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-<n>'
+  'strict-dynamic' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self'
+  blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self';
+  form-action 'self'; frame-ancestors 'none'` on every HTML
+  response, plus `'unsafe-eval'` in `script-src` only when `NODE_ENV === "development"`.
+  The nonce is forwarded to Next in the request header `x-nonce` so framework inline
+  scripts carry it.
+- **CSP-2** `next.config.ts` `headers()` adds `Strict-Transport-Security: max-age=63072000;
+  includeSubDomains` and keeps `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy: no-referrer`.
+- **CSP-3** The Playwright suite (mock and live) registers a `securitypolicyviolation`
+  listener on every page it opens (in `e2e/helpers.ts`) and fails the test on any event;
+  the config editors (which load `asd_wasm`), the enrol-code QR page and the participant
+  print view are covered.
+- **CSP-4** `npm run build` in `CURV_API_MODE=mock` and `npm run e2e` pass with the policy
+  enforced; no page uses `dangerouslySetInnerHTML` or an inline `<script>` without the
+  nonce.
+
+### Profile to pipeline (CFG)
+
+- **CFG-3** `asd-ffi::gaze_config_json_for_profile(model_identifier, orientation,
+  scoring_profile_json) -> String` builds the `PipelineConfig` JSON from the device
+  geometry (as `gaze_default_config_json`) with `qualityGate` and `params` taken from the
+  `ScoringProfile` (`asd-contract::config::ScoringProfile`, `trackingQuality` with
+  `serde(default)` for 1.0.0 profiles). Malformed profile JSON is `AsdError::InvalidJson`,
+  never a panic. The kit (`GazePipelineDocuments.config`) calls it with
+  `ScoringConfiguration.active.scoringProfileJSON` and no longer assembles gate JSON in
+  Swift; `GazeSessionController` passes the active configuration's profile JSON to the
+  actor. `ScoringCouplingParams` ride along unused until WP-G.13 (H-G2 gates G.13 only).
+
 ## Public Rust API sketch (load-bearing names only)
 
 ```rust

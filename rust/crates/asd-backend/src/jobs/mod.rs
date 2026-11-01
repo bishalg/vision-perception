@@ -33,6 +33,7 @@ use crate::error::AppResult;
 pub mod deliver; // WP-I.7
 pub mod erasure; // WP-B.9
 pub mod export;
+pub mod housekeeping; // WP-B.12
 pub mod norm_aggregate;
 pub mod retention; // WP-B.9
 pub mod runner;
@@ -47,6 +48,8 @@ pub const KIND_DELIVER: &str = "export_deliver";
 pub const KIND_ERASURE: &str = "erasure";
 /// `jobs.kind` of a retention sweep, nightly or on request (WP-B.9).
 pub const KIND_RETENTION_SWEEP: &str = "retention_sweep";
+/// `jobs.kind` of the daily housekeeping sweep (WP-B.12).
+pub const KIND_HOUSEKEEPING: &str = "housekeeping_sweep";
 /// Every kind the runner executes.
 pub const KINDS: &[&str] = &[
     KIND_NORM_AGGREGATE,
@@ -54,6 +57,7 @@ pub const KINDS: &[&str] = &[
     KIND_DELIVER,
     KIND_ERASURE,
     KIND_RETENTION_SWEEP,
+    KIND_HOUSEKEEPING,
 ];
 
 /// How often a running phased job refreshes `jobs.heartbeat_at` by default: well inside

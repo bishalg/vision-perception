@@ -31,6 +31,8 @@
 
 use std::sync::{Arc, Mutex, MutexGuard};
 
+use asd_contract::config::ScoringProfile;
+use asd_contract::profile_checks;
 use asd_core::gaze::aoi_space::{self, AoiSpace, ScreenAoi, VideoGravity};
 use asd_core::gaze::calibration::{CalModel, TargetStatus};
 use asd_core::gaze::pipeline::{GazePipeline, PipelineConfig, PipelineError, TelemetryWriter};
@@ -585,9 +587,8 @@ impl GazePipelineHandle {
 
 #[uniffi::export]
 impl GazePipelineHandle {
-    /// A pipeline for `PipelineConfig` JSON (camelCase; start from
-    /// [`gaze_default_config_json`] and set `qualityGate` / `params` from the delivered
-    /// `ScoringProfile`).
+    /// A pipeline for `PipelineConfig` JSON (camelCase), normally from
+    /// [`gaze_config_json_for_profile`] with the delivered `ScoringProfile` (CFG-3).
     #[uniffi::constructor]
     pub fn new(config_json: String) -> Result<Arc<Self>, AsdError> {
         let config: PipelineConfig = decode(&config_json, "pipeline config")?;
@@ -597,6 +598,13 @@ impl GazePipelineHandle {
     /// The config this pipeline was created with, JSON.
     pub fn config_json(&self) -> Result<String, AsdError> {
         encode(self.lock().config(), "pipeline config")
+    }
+
+    /// A frames-file writer that gates with exactly this pipeline's `qualityGate` (one source
+    /// for the pipeline and the writer, WP-A.13). `origin_sec`: the session clock origin.
+    pub fn telemetry_writer(&self, origin_sec: f64) -> Arc<GazeTelemetryWriterHandle> {
+        let gate = self.lock().config().quality_gate;
+        Arc::new(GazeTelemetryWriterHandle::with_gate(origin_sec, gate))
     }
 
     /// Processes one ARKit frame. Every frame yields a sample, with or without a face.
@@ -806,6 +814,17 @@ pub struct GazeTelemetryRecord {
 #[derive(Debug, uniffi::Object)]
 pub struct GazeTelemetryWriterHandle {
     inner: Mutex<TelemetryWriter>,
+    /// The gate `inner` evaluates with (read back by tests and tools).
+    gate: QualityGate,
+}
+
+impl GazeTelemetryWriterHandle {
+    fn with_gate(origin_sec: f64, gate: QualityGate) -> Self {
+        Self {
+            inner: Mutex::new(TelemetryWriter::new(origin_sec, gate)),
+            gate,
+        }
+    }
 }
 
 #[uniffi::export]
@@ -818,9 +837,12 @@ impl GazeTelemetryWriterHandle {
             Some(j) => decode(&j, "quality gate")?,
             None => QualityGate::default(),
         };
-        Ok(Arc::new(Self {
-            inner: Mutex::new(TelemetryWriter::new(origin_sec, gate)),
-        }))
+        Ok(Arc::new(Self::with_gate(origin_sec, gate)))
+    }
+
+    /// The `qualityGate` this writer gates with, JSON (camelCase).
+    pub fn quality_gate_json(&self) -> Result<String, AsdError> {
+        encode(&self.gate, "quality gate")
     }
 
     /// The frames-file sample of one processed frame, gated.
@@ -867,6 +889,37 @@ pub fn gaze_default_config_json(
         &PipelineConfig::for_model(&model_identifier, orientation.into()),
         "pipeline config",
     )
+}
+
+/// CFG-3 (WP-A.13): `PipelineConfig` JSON for a hardware model with `qualityGate` and `params`
+/// taken from a delivered `ScoringProfile` (camelCase, `asd_contract::config::ScoringProfile`).
+/// Geometry, geometry source and orientation are those of [`gaze_default_config_json`]. A
+/// profile that predates 1.1.0 (no `trackingQuality`) gets the asd-core defaults, so the
+/// bundled or a 1.0.0 profile yields exactly [`gaze_default_config_json`]. Malformed profile
+/// JSON, and a profile that fails the publisher's value checks
+/// (`asd_contract::profile_checks`, incl. `TrackingQualityParams::validate`), are
+/// `AsdError::InvalidJson`: the pipeline is never configured with values it cannot run with.
+/// The `scoring` coupling block rides along in `params` unread until WP-G.13.
+#[uniffi::export]
+pub fn gaze_config_json_for_profile(
+    model_identifier: String,
+    orientation: GazeOrientation,
+    scoring_profile_json: String,
+) -> Result<String, AsdError> {
+    let profile: ScoringProfile = decode(&scoring_profile_json, "scoring profile")?;
+    let problems = profile_checks::scoring_profile_problem_messages(&profile);
+    if !problems.is_empty() {
+        return Err(AsdError::InvalidJson {
+            message: format!("scoring profile is invalid: {}", problems.join("; ")),
+        });
+    }
+    let config = PipelineConfig {
+        // Field-for-field conversion owned by asd-contract: a new gate field cannot be dropped.
+        quality_gate: QualityGate::from(&profile.quality_gate),
+        params: profile.tracking_quality,
+        ..PipelineConfig::for_model(&model_identifier, orientation.into())
+    };
+    encode(&config, "pipeline config")
 }
 
 /// A clip's catalog areas (`[StimulusCatalog.Area]` JSON) as screen-space AOIs

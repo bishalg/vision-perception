@@ -572,6 +572,146 @@ async fn idempotency_is_scoped_per_org_and_a_taken_session_id_is_409() {
     f.db.cleanup().await;
 }
 
+// ---- after the housekeeping sweep (HK-4): the session row answers ----------------------
+
+/// What the 7-day housekeeping sweep does to the keys of `f`'s org.
+async fn sweep_keys(f: &Fixture) {
+    sqlx::query("DELETE FROM idempotency_keys")
+        .execute(&f.db.pool)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn swept_key_true_replay_is_200_duplicate() {
+    let Some(f) = Fixture::new().await else {
+        return;
+    };
+    let router = f.router();
+    ingest_ok(&router, &f.dev(), &golden()).await;
+    sweep_keys(&f).await;
+    // Same JSON, other key order and whitespace: still the same body.
+    let pretty = serde_json::to_vec_pretty(&golden()).unwrap();
+    let (status, _, body) = send(
+        router,
+        post_session_raw(
+            Some(&f.dev()),
+            Some("SESS-GOLDEN-0001"),
+            Some("1.6"),
+            pretty,
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(body["duplicate"], true);
+    assert_eq!(f.count("SELECT count(*) FROM sessions").await, 1);
+    // The replay rolled its fresh key claim back.
+    assert_eq!(f.count("SELECT count(*) FROM idempotency_keys").await, 0);
+    f.db.cleanup().await;
+}
+
+#[tokio::test]
+async fn swept_key_same_session_with_a_different_body_is_409() {
+    let Some(f) = Fixture::new().await else {
+        return;
+    };
+    let router = f.router();
+    ingest_ok(&router, &f.dev(), &golden()).await;
+    sweep_keys(&f).await;
+    let mut changed = golden();
+    changed["durationSec"] = json!(40.0);
+    let (status, _, body) = send(router, post_session(Some(&f.dev()), &changed)).await;
+    assert_eq!(status, StatusCode::CONFLICT, "{body}");
+    assert_eq!(problem_slug(&body), "idempotency-key-reused");
+    let dur: f64 = sqlx::query_scalar("SELECT duration_sec FROM sessions")
+        .fetch_one(&f.db.pool)
+        .await
+        .unwrap();
+    assert_eq!(dur, 32.5);
+    assert_eq!(f.count("SELECT count(*) FROM idempotency_keys").await, 0);
+    f.db.cleanup().await;
+}
+
+/// Sessions stored before migration 0021 have no `request_hash`; `summary` (the stored
+/// `rawPayload`) decides instead.
+#[tokio::test]
+async fn swept_key_on_a_session_without_request_hash_compares_the_raw_payload() {
+    let Some(f) = Fixture::new().await else {
+        return;
+    };
+    let router = f.router();
+    ingest_ok(&router, &f.dev(), &golden()).await;
+    sweep_keys(&f).await;
+    sqlx::query("UPDATE sessions SET request_hash = NULL")
+        .execute(&f.db.pool)
+        .await
+        .unwrap();
+    let (status, _, body) = send(router.clone(), post_session(Some(&f.dev()), &golden())).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(body["duplicate"], true);
+
+    let mut changed = golden();
+    changed["rawPayload"]["flatAffectScore"] = json!(0.5);
+    let (status, _, body) = send(router.clone(), post_session(Some(&f.dev()), &changed)).await;
+    assert_eq!(status, StatusCode::CONFLICT, "{body}");
+    assert_eq!(problem_slug(&body), "idempotency-key-reused");
+
+    // Another participant: validation ties `rawPayload.participantId` to `participantToken`,
+    // so the payload differs as well; either way it is not a replay and gets no upload URLs.
+    let mut other = golden();
+    other["participantToken"] = json!("child-other");
+    other["rawPayload"]["participantId"] = json!("child-other");
+    let (status, _, body) = send(router, post_session(Some(&f.dev()), &other)).await;
+    assert_eq!(status, StatusCode::CONFLICT, "{body}");
+    assert_eq!(problem_slug(&body), "idempotency-key-reused");
+    f.db.cleanup().await;
+}
+
+#[tokio::test]
+async fn swept_key_reused_by_another_org_is_409() {
+    let Some(f) = Fixture::new().await else {
+        return;
+    };
+    let router = f.router();
+    ingest_ok(&router, &f.dev(), &golden()).await;
+    sweep_keys(&f).await;
+    let org_b = seed_quiet_org(&f.db.pool).await;
+    let (_, dev_b) = seed_device(&f.db.pool, org_b).await;
+    let (status, _, body) = send(router, post_session(Some(&dev_b), &golden())).await;
+    assert_eq!(status, StatusCode::CONFLICT, "{body}");
+    assert_eq!(problem_slug(&body), "idempotency-key-reused");
+    assert_eq!(f.count("SELECT count(*) FROM sessions").await, 1);
+    assert_eq!(f.count("SELECT count(*) FROM idempotency_keys").await, 0);
+    assert_eq!(f.count("SELECT count(*) FROM participants").await, 1);
+    f.db.cleanup().await;
+}
+
+/// `sessions.idempotency_key` is globally unique on its own. A row holding the key under
+/// another `sessionId` (data written before the key had to equal the id) once made the
+/// insert fail with 23505 and a `500`; it is a `409` now.
+#[tokio::test]
+async fn swept_key_held_by_another_session_id_is_409_not_500() {
+    let Some(f) = Fixture::new().await else {
+        return;
+    };
+    let router = f.router();
+    ingest_ok(&router, &f.dev(), &golden_with_id("SESS-HK-A")).await;
+    sqlx::query("UPDATE sessions SET idempotency_key = 'SESS-HK-B' WHERE id = 'SESS-HK-A'")
+        .execute(&f.db.pool)
+        .await
+        .unwrap();
+    sweep_keys(&f).await;
+    let (status, _, body) = send(
+        router,
+        post_session(Some(&f.dev()), &golden_with_id("SESS-HK-B")),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT, "{body}");
+    assert_eq!(problem_slug(&body), "idempotency-key-reused");
+    assert_eq!(f.count("SELECT count(*) FROM sessions").await, 1);
+    f.db.cleanup().await;
+}
+
 #[tokio::test]
 async fn participant_is_upserted_by_org_and_token() {
     let Some(f) = Fixture::new().await else {

@@ -544,6 +544,7 @@ async fn update(
 fn user_profile(
     id: Uuid,
     totp_enrolled: bool,
+    totp_pending: bool,
     email: String,
     role: &str,
     org_id: Option<Uuid>,
@@ -553,6 +554,7 @@ fn user_profile(
         id: id.to_string(),
         user_id: Some(id.to_string()),
         totp_enrolled: Some(totp_enrolled),
+        totp_pending: Some(totp_pending),
         email,
         role: rbac::role_from_str(role)
             .ok_or_else(|| AppError::Internal(format!("unknown role in database: {role}")))?,
@@ -569,7 +571,9 @@ async fn get_me(
 ) -> AppResult<Json<UserProfile>> {
     let row = sqlx::query!(
         r#"SELECT email, role, org_id, display_name, professional_registration,
-                (totp_secret_ct IS NOT NULL OR totp_secret IS NOT NULL) AS "totp_enrolled!"
+                (totp_secret_ct IS NOT NULL OR totp_secret IS NOT NULL) AS "totp_enrolled!",
+                COALESCE(totp_pending_ct IS NOT NULL AND totp_pending_expires_at > now(), false)
+                    AS "totp_pending!"
          FROM users WHERE id = $1"#,
         principal.user_id
     )
@@ -579,6 +583,7 @@ async fn get_me(
     Ok(Json(user_profile(
         principal.user_id,
         row.totp_enrolled,
+        row.totp_pending,
         row.email,
         &row.role,
         row.org_id,
@@ -609,7 +614,9 @@ async fn patch_me(
     let mut tx = state.db.begin().await?;
     let row = sqlx::query!(
         r#"SELECT email, role, org_id, display_name, professional_registration,
-                (totp_secret_ct IS NOT NULL OR totp_secret IS NOT NULL) AS "totp_enrolled!"
+                (totp_secret_ct IS NOT NULL OR totp_secret IS NOT NULL) AS "totp_enrolled!",
+                COALESCE(totp_pending_ct IS NOT NULL AND totp_pending_expires_at > now(), false)
+                    AS "totp_pending!"
          FROM users WHERE id = $1 FOR UPDATE"#,
         principal.user_id
     )
@@ -642,6 +649,7 @@ async fn patch_me(
     Ok(Json(user_profile(
         principal.user_id,
         row.totp_enrolled,
+        row.totp_pending,
         row.email,
         &row.role,
         row.org_id,

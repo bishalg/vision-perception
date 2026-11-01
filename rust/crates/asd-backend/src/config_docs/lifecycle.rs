@@ -531,6 +531,12 @@ mod tests {
         p["flag"]["greenFloor"] = json!(1.5);
         let err = validate_body(ConfigDocumentKind::ScoringProfile, &p).unwrap_err();
         assert_eq!(err[0].name, "body.flag.greenFloor");
+        // WP-A.13: `trackingQuality` values are checked before create and approve, with the
+        // rules the device applies when it accepts a bundle.
+        let mut p = serde_json::to_value(ScoringProfile::default()).unwrap();
+        p["trackingQuality"]["calibration"]["layout5"] = json!([]);
+        let err = validate_body(ConfigDocumentKind::ScoringProfile, &p).unwrap_err();
+        assert_eq!(err[0].name, "body.trackingQuality.calibration.layout5");
         // A shape failure names the whole body.
         let err = validate_body(ConfigDocumentKind::StimulusCatalog, &json!({})).unwrap_err();
         assert_eq!(err[0].name, "body");

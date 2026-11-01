@@ -42,6 +42,17 @@ pub const TOTP_REQUIRED: &str = "totp-required";
 /// 401 from `POST /v1/auth/login`: the `totp_code` is wrong, outside the accepted window or
 /// already used (AUTH-1).
 pub const TOTP_INVALID: &str = "totp-invalid";
+/// 401 from the TOTP enrolment routes (`/v1/users/me/totp`): the password is not the
+/// caller's (AUTH-6, AUTH-8). Distinct from `unauthorized`, which means "sign in again".
+pub const INVALID_CREDENTIALS: &str = "invalid-credentials";
+/// 409 from `POST /v1/users/me/totp/enrol`: the caller already has TOTP; disable it first
+/// (AUTH-6).
+pub const TOTP_ALREADY_ENROLLED: &str = "totp-already-enrolled";
+/// 410 from `POST /v1/users/me/totp/confirm`: no pending enrolment, or it is older than
+/// 10 minutes; start again with `enrol` (AUTH-7).
+pub const TOTP_ENROLMENT_EXPIRED: &str = "totp-enrolment-expired";
+/// 404 from `DELETE /v1/users/me/totp`: the caller has no TOTP to disable (AUTH-8).
+pub const TOTP_NOT_ENROLLED: &str = "totp-not-enrolled";
 
 // ---- clinician workspace and interop (CTR-2, WP-C.9) ------------------------------------
 
@@ -106,6 +117,10 @@ pub const SLUGS: &[&str] = &[
     INTERNAL,
     TOTP_REQUIRED,
     TOTP_INVALID,
+    INVALID_CREDENTIALS,
+    TOTP_ALREADY_ENROLLED,
+    TOTP_ENROLMENT_EXPIRED,
+    TOTP_NOT_ENROLLED,
     CLINICAL_CRYPTO_UNAVAILABLE,
     PATIENT_REF_DISABLED,
     STALE_VERSION,

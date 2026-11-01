@@ -4,8 +4,8 @@
  * sandbox and the editors' validation run the Rust core (asd-wasm) in the browser: the dev server is started after
  * `scripts/prepare-asd-wasm.mjs` copied the build into public/.
  */
-import { expect, test, type Page } from "@playwright/test";
-import { LIVE, MOCK_ORG_ID, login, loginToOverview } from "./helpers";
+import { type Page } from "@playwright/test";
+import { expect, test, LIVE, MOCK_ORG_ID, login, loginToOverview } from "./helpers";
 
 test.skip(LIVE, "mock-mode flows: they rely on the seeded mock config versions");
 

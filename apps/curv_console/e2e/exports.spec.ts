@@ -1,5 +1,4 @@
-import { expect, test } from "@playwright/test";
-import { LIVE, loginToOverview } from "./helpers";
+import { expect, test, LIVE, loginToOverview } from "./helpers";
 
 test.skip(LIVE, "mock-mode flows: they rely on the seeded mock exports and destinations");
 

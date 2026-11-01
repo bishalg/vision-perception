@@ -3,7 +3,7 @@
  * `docs/spec/schemas/asd/api-v1.json`, the `PrivacyApi` interface and its live HTTP implementation. The console
  * only files requests and shows what the backend returns; it deletes and counts nothing itself.
  */
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import type { LiveRequest } from "./clinical";
 import { exportFiltersSchema, exportSchema, type Export } from "./exports";
 

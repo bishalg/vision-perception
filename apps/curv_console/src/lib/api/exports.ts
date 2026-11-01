@@ -5,7 +5,7 @@
  * secret or a signed download URL (the URL is resolved server-side and streamed or redirected, see
  * `app/api/export/[id]/route.ts`).
  */
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import type { LiveRequest } from "./clinical";
 
 const str = z.string().nullable().optional();

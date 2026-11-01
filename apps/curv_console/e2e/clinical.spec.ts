@@ -1,5 +1,4 @@
-import { expect, test } from "@playwright/test";
-import { LIVE, login, PASSWORD } from "./helpers";
+import { expect, test, LIVE, login, PASSWORD } from "./helpers";
 
 // Mock mode picks the role from the email's local part; live runs need seeded clinicians, so these are mock-only.
 test.skip(LIVE, "clinical flows use the mock backend's seeded worklist");

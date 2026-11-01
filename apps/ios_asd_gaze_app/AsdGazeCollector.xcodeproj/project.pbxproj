@@ -14,6 +14,7 @@
 		09433672909C24EC1937E52A /* HealthKitMoodStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A12D94D7B76B41E158A1C2F /* HealthKitMoodStore.swift */; };
 		097C3A01FD450EFF0EFD87D1 /* LiquidGlassTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55BEF992E92622FDFF45F7D7 /* LiquidGlassTheme.swift */; };
 		09A7A90C813B2DF490323482 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A964440896F4E6DA13B314B1 /* WidgetKit.framework */; };
+		0A60766C7BE0138024CC473B /* BenchCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 635D612964656D47C758E812 /* BenchCaptureView.swift */; };
 		0AE7937F3820C8171F98AAEC /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6F3583A2BB261CA58D5C12A4 /* SwiftUI.framework */; };
 		0F24C787FBE677801002134F /* AttentionTrendChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42B86B5FECB656A3C08D6995 /* AttentionTrendChartView.swift */; };
 		0F82A0ED34D9FCF844D1190C /* FHIRBundleBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0781428976F4BBF2CC1D5AA /* FHIRBundleBuilderTests.swift */; };
@@ -150,11 +151,13 @@
 		BA6D6434337C2D6260552C6D /* Speech.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5BCA612032241BBB37AE08CC /* Speech.framework */; };
 		BAA4122DA672A103917B20C7 /* GazeSessionResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 448AD29ECC98B480318ECCA5 /* GazeSessionResultView.swift */; };
 		BD5995CB4E23BFBA297682FF /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C68D4D53FB572F94028D35E0 /* SettingsView.swift */; };
+		BD7CA43B7D12848CE3DC46D1 /* BenchLogWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C037DB1ADE1C9FC6EB59A746 /* BenchLogWriter.swift */; };
 		BE9A1D34A6108C6B0EE1469E /* stim_02_gaze_cue_right_8s.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 2AF78C23D83CEC35FF7CF9CA /* stim_02_gaze_cue_right_8s.mp4 */; };
 		BF5C6D46E6600321345DBBD1 /* RecordFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E16F3699FDFF30D2E93F75C /* RecordFixtures.swift */; };
 		C4CA02A95984D4F6E02C6386 /* GazeSessionRecordVersioningTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37CCAC020A34C51C4280F971 /* GazeSessionRecordVersioningTests.swift */; };
 		C53D794CE42976692A294C09 /* ActivityKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C9F9A5EBCB3EB0469FAF60A7 /* ActivityKit.framework */; };
 		C68230A0F51431F2DEC9D232 /* NotScoredNotice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97377C8F3E906B3267CA3869 /* NotScoredNotice.swift */; };
+		C79D75D3CAAD90E441D213AF /* BenchLogWriterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 053303F7EF209132D09B31FD /* BenchLogWriterTests.swift */; };
 		C908EF0BD3DCF1DF4294B4E5 /* bundle-valid.json in Resources */ = {isa = PBXBuildFile; fileRef = 01B414DC998E9A3A6457E9B8 /* bundle-valid.json */; };
 		CB92649B8BAE2FBF807574B7 /* OnDemandStimulusManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF7864C8743228D8CDF0C364 /* OnDemandStimulusManager.swift */; };
 		CCB2037DF34648F8002677F9 /* MoodDiaryModuleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54DB045F57C2092D7DA4D1DA /* MoodDiaryModuleTests.swift */; };
@@ -225,6 +228,7 @@
 		00C9B43FF9E89F1CFD20770C /* CareAlertScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareAlertScheduler.swift; sourceTree = "<group>"; };
 		011AFAF6529D0195ADA26BA1 /* LiquidGlassContrastTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlassContrastTests.swift; sourceTree = "<group>"; };
 		01B414DC998E9A3A6457E9B8 /* bundle-valid.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "bundle-valid.json"; sourceTree = "<group>"; };
+		053303F7EF209132D09B31FD /* BenchLogWriterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenchLogWriterTests.swift; sourceTree = "<group>"; };
 		0644C1029B989BD15D1883E8 /* PediatricReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PediatricReportView.swift; sourceTree = "<group>"; };
 		08D1EEA639185C538F0414AD /* SessionSyncClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSyncClient.swift; sourceTree = "<group>"; };
 		08F170DAF6C8F52639643E71 /* bundle-wrong-key.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "bundle-wrong-key.json"; sourceTree = "<group>"; };
@@ -296,6 +300,7 @@
 		5E16E2BF993D77A082DCA597 /* stim_03_gaze_cue_left_8s.mp4 */ = {isa = PBXFileReference; path = stim_03_gaze_cue_left_8s.mp4; sourceTree = "<group>"; };
 		612AFD4BB220098D276A59DE /* MoodDiaryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoodDiaryStore.swift; sourceTree = "<group>"; };
 		6131F4DD41BFC27E93725D50 /* StimulusPlaylist.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StimulusPlaylist.swift; sourceTree = "<group>"; };
+		635D612964656D47C758E812 /* BenchCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenchCaptureView.swift; sourceTree = "<group>"; };
 		6465958CA4E2F60B4DA0E0EB /* ARFaceCameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARFaceCameraView.swift; sourceTree = "<group>"; };
 		67C87761633083196B3CE214 /* PhotosUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = PhotosUI.framework; path = System/Library/Frameworks/PhotosUI.framework; sourceTree = SDKROOT; };
 		680B362C494B77DBEC7EDC7C /* GazeSessionHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeSessionHistoryStore.swift; sourceTree = "<group>"; };
@@ -361,6 +366,7 @@
 		B8F0FFAA4FBEA2BBC44701EC /* CarePlanStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarePlanStoreTests.swift; sourceTree = "<group>"; };
 		BBED732DAB0236044946C9E7 /* SmartOnFhirAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartOnFhirAuthService.swift; sourceTree = "<group>"; };
 		BFF20B6639768C9A0E7E78FB /* CareKitClinicalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareKitClinicalStore.swift; sourceTree = "<group>"; };
+		C037DB1ADE1C9FC6EB59A746 /* BenchLogWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenchLogWriter.swift; sourceTree = "<group>"; };
 		C3E3BB45987178EE02CE3BF0 /* onboarding.feature */ = {isa = PBXFileReference; path = onboarding.feature; sourceTree = "<group>"; };
 		C68D4D53FB572F94028D35E0 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		C6B1A3AE747DED42D544ECE8 /* MCHATAvailability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCHATAvailability.swift; sourceTree = "<group>"; };
@@ -455,6 +461,7 @@
 				6DD544B6AE104530F9E0A878 /* AppModeSelectionView.swift */,
 				6465958CA4E2F60B4DA0E0EB /* ARFaceCameraView.swift */,
 				42B86B5FECB656A3C08D6995 /* AttentionTrendChartView.swift */,
+				635D612964656D47C758E812 /* BenchCaptureView.swift */,
 				82F2AE9490B590F4773EB2C7 /* BiomarkerAffectAndQualityViews.swift */,
 				D46DDA36376F5DF620259376 /* BiomarkerDetailViews.swift */,
 				20F54BD401B98FED6FAD3055 /* BiomarkerRiskStratificationView.swift */,
@@ -619,6 +626,7 @@
 				D4C9D0928DBD5776164DBE31 /* AgeAssuranceGate.swift */,
 				57B7589323D11CE24F631B64 /* AppModeStore.swift */,
 				38B5C98A8DC049CA9448B7E1 /* ARKitMoodFusionController.swift */,
+				C037DB1ADE1C9FC6EB59A746 /* BenchLogWriter.swift */,
 				DD1DB7F2655A5B1BBC5C5FC7 /* BlendShapeCSVLogger.swift */,
 				1F4747195609401C10812B67 /* CameraAccessCoordinator.swift */,
 				1714A4723566AA06FE47B172 /* CaptureEntryGate.swift */,
@@ -728,6 +736,7 @@
 			isa = PBXGroup;
 			children = (
 				7089A3889716340164998329 /* AppModeStoreTests.swift */,
+				053303F7EF209132D09B31FD /* BenchLogWriterTests.swift */,
 				1DCE094A0CD26066CA5F60F2 /* BlendShapeLoggerTests.swift */,
 				2F2C472FDFEB8914F96DB965 /* BuildConfigurationTests.swift */,
 				5CCEA926704096B0B542EE19 /* CameraAccessCoordinatorTests.swift */,
@@ -934,6 +943,8 @@
 				68AB55F606DF1BD5B6B22407 /* AppModeStore.swift in Sources */,
 				A9AB6D6ED95D23E6CEF812AC /* AsdGazeApp.swift in Sources */,
 				0F24C787FBE677801002134F /* AttentionTrendChartView.swift in Sources */,
+				0A60766C7BE0138024CC473B /* BenchCaptureView.swift in Sources */,
+				BD7CA43B7D12848CE3DC46D1 /* BenchLogWriter.swift in Sources */,
 				03D43FA0C903DB98E462F5D3 /* BiomarkerAffectAndQualityViews.swift in Sources */,
 				5E2BA197E451540DEDE7BC5C /* BiomarkerDetailViews.swift in Sources */,
 				2C16EF91E993F15C10F182AD /* BiomarkerRiskStratificationView.swift in Sources */,
@@ -1036,6 +1047,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F6910970A2B6EA6D62EA018B /* AppModeStoreTests.swift in Sources */,
+				C79D75D3CAAD90E441D213AF /* BenchLogWriterTests.swift in Sources */,
 				300541B0F4D8FEA1344A8BE8 /* BlendShapeLoggerTests.swift in Sources */,
 				FF9B9D577C49AD9593A40EF2 /* BuildConfigurationTests.swift in Sources */,
 				70B51123E6A7E6F30C211BFE /* CameraAccessCoordinatorTests.swift in Sources */,
@@ -1117,7 +1129,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				OTHER_SWIFT_FLAGS = "$(inherited) -DASD_SIMULATION_ENABLED -DASD_RESEARCH_CLASSIFIER -DASD_DEMO_TOOLS $(ASD_MCHAT_FLAG)";
+				OTHER_SWIFT_FLAGS = "$(inherited) -DASD_SIMULATION_ENABLED -DASD_RESEARCH_CLASSIFIER -DASD_DEMO_TOOLS -DASD_BENCH_CAPTURE $(ASD_MCHAT_FLAG)";
 				PRODUCT_BUNDLE_IDENTIFIER = "$(APP_IDENTIFIER:default=com.open-spectrum.eye-gaze)";
 				PRODUCT_NAME = AsdGazeCollector;
 				SDKROOT = iphoneos;
@@ -1282,6 +1294,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
+				OTHER_SWIFT_FLAGS = "$(inherited) -DASD_BENCH_CAPTURE";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.open-spectrum.AsdGazeCollectorTests";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";

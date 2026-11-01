@@ -234,6 +234,7 @@ public final class GazeSessionController: ObservableObject {
 
     @Published public private(set) var trackingStage: TrackingStage = .searchingFace
 
+    /// The processing actor's gate (derived from its `scoringProfileJSON`).
     public let qualityGate: GazeQualityGate
     /// Main-actor copy of the active AOI battery (the actor holds the one used for hit testing).
     public private(set) var aoiTracker: StimulusAOITracker
@@ -301,21 +302,24 @@ public final class GazeSessionController: ObservableObject {
     private let arDelegateQueue = DispatchQueue(label: "org.curv.asd.arSessionQueue", qos: .userInteractive)
     #endif
 
+    /// `scoringProfileJSON`: the delivered `ScoringProfile` the session pipelines are built
+    /// from (CFG-3); defaults to the active configuration's (read once). `qualityGate` is
+    /// derived from it by the processing actor, never passed separately.
     public init(
-        qualityGate: GazeQualityGate = ScoringConfiguration.active.qualityGate,
+        scoringProfileJSON: String = ScoringConfiguration.active.scoringProfileJSON,
         aoiTracker: StimulusAOITracker = StimulusAOITracker.makeGeoPrefBattery(),
         calibrationProfile: GazeCalibrationProfile = .identity,
         subjectAgeEstimator: SubjectAgeEstimator? = nil
     ) {
-        self.qualityGate = qualityGate
         self.aoiTracker = aoiTracker
         self.calibrationProfile = calibrationProfile
         let actor = GazeProcessingActor(
-            qualityGate: qualityGate,
+            scoringProfileJSON: scoringProfileJSON,
             aoiTracker: aoiTracker,
             calibrationProfile: calibrationProfile
         )
         self.processingActor = actor
+        self.qualityGate = actor.qualityGate
         let estimator = subjectAgeEstimator ?? SubjectAgeEstimator(engine: AgeBandEstimationEngine.shared)
         estimator.isEnabled = false
         self.subjectAgeEstimator = estimator

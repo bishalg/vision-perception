@@ -5,7 +5,7 @@
  * checked for shape here; the backend runs the Rust checks again on create and approve.
  */
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import type { CatalogFailure, CatalogResult } from "@/components/catalog/types";
 import { ApiError } from "@/lib/api";
 import type { ConfigTransition } from "@/lib/api/catalog";

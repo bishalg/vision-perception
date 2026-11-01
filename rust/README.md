@@ -90,6 +90,48 @@ needs an existing `--org`, a superadmin takes none; passwords follow the API pol
 characters). Exit codes: `0` ok, `2` usage or invalid input, `3` conflicts with existing
 data, `1` other errors (e.g. database).
 
+## Rotating the data KEK (`ASD_DATA_KEK`, KEY-8..10)
+
+`ASD_DATA_KEK` wraps each org's data key (`org_data_keys`) and seals per-user secrets (the
+TOTP seed). Rotation re-wraps and re-seals those rows; it does not change the data keys,
+so clinical ciphertexts, integration-destination secrets (sealed with the org data key)
+and MRN blind indexes stay as they are and are not rewritten.
+
+```sh
+NEW=$(openssl rand -base64 32)        # store it in the secret store next to the old key
+
+# 1. API and worker: the new key active, the old one readable. Restart both.
+#      ASD_DATA_KEK=$NEW
+#      ASD_DATA_KEK_PREVIOUS=$OLD
+#    Reads work for rows under either key; every new write uses $NEW.
+
+# 2. Optional check, writes nothing: every row under $OLD is opened.
+asd-backend admin rotate-kek --dry-run
+# {"rewrapped_deks":12,"resealed_users":4,"remaining":0,"dry_run":true}
+
+# 3. Rewrite (batches of 500 rows per transaction; --batch N to change). Same environment
+#    as step 1. Safe to run while the API serves traffic, and safe to run again.
+asd-backend admin rotate-kek
+# {"rewrapped_deks":12,"resealed_users":4,"remaining":0,"dry_run":false}
+
+# 4. Only when remaining is 0: remove ASD_DATA_KEK_PREVIOUS from API and worker, restart.
+#    Keep $OLD in the secret store's history until backups made before step 3 have expired.
+```
+
+- `remaining > 0` exits `3` (the report is still printed): some rows are under a KEK that
+  is not configured, could not be opened, or were locked by a concurrent writer. Run it
+  again; if the count stays, find the stored fingerprint
+  (`SELECT DISTINCT kek_id FROM org_data_keys` and `users.totp_secret_kek_id`), add the
+  matching old key to `ASD_DATA_KEK_PREVIOUS` and rerun. The service logs the stored and
+  configured fingerprints (`kek-` + 16 hex digits) when it meets such a row.
+- A process started with only the new key before step 3 finished answers
+  `503 clinical-crypto-unavailable` (and refuses TOTP logins) for rows still under the old
+  key, by design. Put `ASD_DATA_KEK_PREVIOUS` back and restart to recover.
+- Each run writes one audit row `crypto.kek_rotated` (no org) with the counts and the key
+  fingerprints, never key bytes. `--dry-run` writes nothing.
+- The configuration refuses a `PREVIOUS` entry equal to `ASD_DATA_KEK`, duplicates, and
+  entries that are not base64 of exactly 32 bytes (exit `2`).
+
 ## Conventions
 
 - Licence `Apache-2.0` on every crate; dependencies must pass `rust/deny.toml`.

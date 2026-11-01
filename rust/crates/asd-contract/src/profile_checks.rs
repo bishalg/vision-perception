@@ -9,6 +9,10 @@
 //! Each problem names the profile member it is about (`path`, camelCase dotted as on the
 //! wire, e.g. `flag.greenFloor`) so an editor can show it next to the field; the backend
 //! reports only the `message`.
+//!
+//! `trackingQuality` (SCH-3) is checked by asd-core `TrackingQualityParams::validate`; its
+//! problems appear here under `trackingQuality.` (WP-A.13). The device runs the same checks
+//! before it accepts a delivered bundle (`asd_sync::accept_bundle`).
 
 use serde::Serialize;
 
@@ -77,11 +81,32 @@ pub fn scoring_profile_problems(p: &ScoringProfile) -> Vec<ProfileProblem> {
             "qualityGate.maxYawRad and maxPitchRad must be positive",
         ));
     }
+    if ![
+        q.min_distance_cm,
+        q.max_distance_cm,
+        q.max_yaw_rad,
+        q.max_pitch_rad,
+    ]
+    .iter()
+    .all(|v| v.is_finite())
+    {
+        problems.push(ProfileProblem::new(
+            "qualityGate",
+            "qualityGate distances and angles must be finite numbers",
+        ));
+    }
     if p.schema_version.trim().is_empty() {
         problems.push(ProfileProblem::new(
             "schemaVersion",
             "schemaVersion is required",
         ));
+    }
+    // WP-A.13: the delivered gaze-robustness parameters (SCH-3) the device pipeline runs on.
+    if let Err(tracking) = p.tracking_quality.validate() {
+        problems.extend(tracking.into_iter().map(|t| ProfileProblem {
+            path: format!("trackingQuality.{}", t.path),
+            message: format!("trackingQuality.{}", t.message),
+        }));
     }
     problems
 }
@@ -161,5 +186,39 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(paths(&p), ["schemaVersion"]);
+    }
+
+    #[test]
+    fn quality_gate_values_must_be_finite() {
+        let mut p = ScoringProfile::default();
+        p.quality_gate.max_distance_cm = f64::INFINITY;
+        assert_eq!(paths(&p), ["qualityGate"]);
+        assert_eq!(
+            scoring_profile_problem_messages(&p),
+            ["qualityGate distances and angles must be finite numbers"]
+        );
+    }
+
+    /// WP-A.13: `trackingQuality` value rules (asd-core `TrackingQualityParams::validate`)
+    /// are part of the profile checks, so backend publish and the console editor refuse what
+    /// the device would refuse.
+    #[test]
+    fn tracking_quality_problems_are_profile_problems() {
+        let mut p = ScoringProfile::default();
+        p.tracking_quality.calibration.layout5.clear();
+        p.tracking_quality.calibration.min_samples_per_target = 0;
+        p.tracking_quality.confidence.distance_comfort_min_cm = 90.0;
+        assert_eq!(
+            paths(&p),
+            [
+                "trackingQuality.calibration.minSamplesPerTarget",
+                "trackingQuality.calibration.layout5",
+                "trackingQuality.confidence.distanceComfortMinCm"
+            ]
+        );
+        assert_eq!(
+            scoring_profile_problem_messages(&p)[1],
+            "trackingQuality.calibration.layout5 must not be empty"
+        );
     }
 }

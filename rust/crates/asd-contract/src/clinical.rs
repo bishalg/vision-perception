@@ -312,6 +312,10 @@ pub struct UserProfile {
     /// cosign then needs a `totp_code`.
     #[serde(default)]
     pub totp_enrolled: Option<bool>,
+    /// True while a TOTP enrolment waits for its confirming code and has not expired
+    /// (AUTH-10). Login and step-up ignore a pending seed.
+    #[serde(default)]
+    pub totp_pending: Option<bool>,
     pub email: String,
     pub role: Role,
     /// `null` only for `superadmin`.

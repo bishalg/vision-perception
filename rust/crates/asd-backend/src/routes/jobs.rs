@@ -32,16 +32,18 @@ use crate::auth::extractors::{ApiJson, RequestMeta, Require};
 use crate::auth::rbac::perm;
 use crate::error::{AppError, AppResult};
 use crate::jobs::norm_aggregate::{self, NormParams};
-use crate::jobs::{self, Job};
+use crate::jobs::{self, housekeeping, Job};
 use crate::problem::InvalidParam;
 use crate::read::cursor::{self, Cursor};
 use crate::routes::sessions::{path_uuid, query_or_problem};
 
+use asd_contract::api_v1::HousekeepingRequest;
 use asd_core::norms::{self, CandidateBaselineSet};
 
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/jobs/norm-aggregate", post(enqueue_norm_aggregate))
+        .route("/jobs/housekeeping", post(enqueue_housekeeping))
         .route("/jobs/{id}", get(get_job))
         .route("/norm-runs", get(list_runs))
         .route("/norm-runs/{id}", get(get_run))
@@ -183,6 +185,35 @@ async fn enqueue_norm_aggregate(
         audit = audit.org(org);
     }
     audit.record(&mut tx).await?;
+    tx.commit().await?;
+    Ok((StatusCode::ACCEPTED, Json(job.into())))
+}
+
+/// `POST /v1/jobs/housekeeping` (HK-1): queues a manual housekeeping sweep
+/// ([`HousekeepingRequest`]). Superadmin only: the sweep spans every tenant's idempotency
+/// keys, tokens and jobs. `dry_run` defaults to false.
+async fn enqueue_housekeeping(
+    auth: Require<perm::ConfigGlobalManage>,
+    meta: RequestMeta,
+    State(state): State<AppState>,
+    ApiJson(req): ApiJson<HousekeepingRequest>,
+) -> AppResult<(StatusCode, Json<JobView>)> {
+    let user = auth.principal;
+    let stored = housekeeping::params(req.dry_run, false);
+    let mut tx = state.db.begin().await?;
+    let job = jobs::enqueue(
+        &mut tx,
+        jobs::KIND_HOUSEKEEPING,
+        None,
+        &stored,
+        Some(user.user_id),
+    )
+    .await?;
+    AuditEvent::user(&user, "job.housekeeping.enqueue", "job", job.id)
+        .after(json!({"kind": job.kind, "params": stored}))
+        .meta(&meta)
+        .record(&mut tx)
+        .await?;
     tx.commit().await?;
     Ok((StatusCode::ACCEPTED, Json(job.into())))
 }

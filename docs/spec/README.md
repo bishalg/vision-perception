@@ -31,6 +31,7 @@ referenced from the module specs rather than duplicated.
 | [ADR-0006](adr/ADR-0006-rust-core-and-backend.md) | Rust is the single implementation of ASD core logic, contracts and backend | Proposed (owner decision in `CLAUDE.md`, 2026-10-30) |
 | [ADR-0007](adr/ADR-0007-gaze-tracking-robustness.md) | Gaze-tracking maths in Rust, per-session accuracy in degrees, bench-decided calibration model | Proposed (2026-10-31) |
 | [ADR-0008](adr/ADR-0008-clinician-workspace-and-interop.md) | Clinician workspace inside the console and one Rust export bridge to hospital systems | Proposed (2026-10-31) |
+| [ADR-0009](adr/ADR-0009-phase5-security-operations.md) | Phase 5 security operations: TOTP enrolment, KEK rotation, plaintext column drop, metrics exposure, console CSP/HSTS, housekeeping | Proposed (2026-11-01) |
 
 ## Rules
 

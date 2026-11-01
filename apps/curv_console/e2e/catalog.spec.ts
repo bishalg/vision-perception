@@ -3,8 +3,8 @@
  * as the mock superadmin and open the demo org. The mock gives every login the same user id: a draft created here
  * cannot be approved by the same user (four-eyes), while the seeded draft, authored by someone else, can.
  */
-import { expect, test, type Page } from "@playwright/test";
-import { LIVE, MOCK_ORG_ID, login, loginToOverview } from "./helpers";
+import { type Page } from "@playwright/test";
+import { expect, test, LIVE, MOCK_ORG_ID, login, loginToOverview } from "./helpers";
 
 test.skip(LIVE, "mock-mode flows: they rely on the seeded mock catalog versions");
 

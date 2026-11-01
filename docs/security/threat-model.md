@@ -110,7 +110,7 @@ S spoofing, T tampering, R repudiation, I information disclosure, D denial of se
 |---|---|---|---|
 | I | KEK leak | Not in `Debug` output (fingerprint only); AAD binding stops row swaps | KEK is a base64 environment variable (`ASD_DATA_KEK`). With KEK plus DB dump an attacker opens all clinical text and MRNs (R1) |
 | D | KEK loss | Documented in `rust/.env.example` | Loss of the KEK loses all clinical text and every TOTP seed. No backup process exists yet |
-| T | Key rotation | New DEK gets a new `key_id`; old rows keep decrypting (KEY-5) | **No tool to rotate the KEK.** Rotating means re-wrapping `org_data_keys` and re-sealing `users.totp_secret_ct` and the integration secrets; none of this is scripted (`BE/src/crypto/keyring.rs` doc comment says so). No re-encryption job for old DEKs |
+| T | Key rotation | New DEK gets a new `key_id`; old rows keep decrypting (KEY-5). KEK rotation: `asd-backend admin rotate-kek` re-wraps `org_data_keys` and re-seals `users.totp_secret_ct` under the new KEK while `ASD_DATA_KEK_PREVIOUS` keeps the old one readable; compare-and-set, idempotent, audited `crypto.kek_rotated` (`BE/src/crypto/rotate.rs`, runbook `rust/README.md`). Integration-destination secrets are sealed with the org DEK, so the re-wrap covers them | No DEK rotation or re-encryption job for old DEKs (F2); rotation cadence undecided (O-9) |
 | I | Crypto-shredding | Deleting `org_data_keys` rows makes an org's clinical content unrecoverable | Unwrapped keys are cached per process, so API and workers must restart for it to take effect (`BE/src/crypto/keyring.rs`). Operator action, not an API |
 | I | Plaintext leftovers | 0016 and 0008 convert TOTP seeds and review notes | The plaintext `users.totp_secret` and `review_items.note` columns still exist; a drop migration is pending (`BE/migrations/0016_totp_secret_encryption.sql`, `BE/src/admin.rs`) |
 
@@ -150,7 +150,7 @@ Likelihood and impact are the author's judgement on the current code, for owner 
 
 | Rank | ID | Risk | Why it matters | Follow-up |
 |---|---|---|---|---|
-| 1 | R1 | Single environment-variable KEK, no rotation tool, no backup procedure | One secret decrypts all clinical text, MRNs and TOTP seeds; losing it destroys them | WP-B.7: KEK in KMS or Secrets Manager with versioned backup; build `asd-backend admin rewrap-kek` that re-wraps `org_data_keys`, re-seals `users.totp_secret_ct` and `integration_destinations.secret_ct`, with an audit row |
+| 1 | R1 | Single environment-variable KEK, no backup procedure (rotation tool: `asd-backend admin rotate-kek`, WP-B.15) | One secret decrypts all clinical text, MRNs and TOTP seeds; losing it destroys them | WP-B.7: KEK in KMS or Secrets Manager with versioned backup; rotate with `rotate-kek` (re-wraps `org_data_keys`, re-seals `users.totp_secret_ct`; integration secrets are under the org DEK and need nothing) |
 | 2 | R2 | No TOTP enrolment flow; TOTP not mandatory; plaintext `totp_secret` column still in the schema | Clinical and admin accounts are password-only in practice; step-up signing weakens to password | Build enrolment (QR, confirm code) using `totp::set_secret`; require TOTP for owner, admin, clinician, superadmin; add migration dropping `users.totp_secret` and `review_items.note` after back-fill |
 | 3 | R3 | Erasure leaves signed clinical records (hold) and ADR-0008 Q2 is undecided | A parent's erasure request is only partly honoured; legal exposure depends on jurisdiction | OWNER DECISION O-1 |
 | 4 | R4 | Rate limiters are in memory, per process | With N replicas the limit is N times larger; a restart resets it; login and enrol-code guessing are the targets (`BE/src/auth/mod.rs` says WAF rules are to cover it, DEP-3) | WP-B.7 WAF rate rules; later a shared limiter (Postgres or Redis) for login, TOTP and register |
@@ -165,7 +165,7 @@ Likelihood and impact are the author's judgement on the current code, for owner 
 
 | # | Item | Related risk | Suggested owner package |
 |---|---|---|---|
-| F1 | KEK rotation tool: re-wrap DEKs, re-seal TOTP seeds and integration secrets; test with two KEKs | R1 | new WP after WP-B.7 |
+| F1 | KEK rotation tool: re-wrap DEKs and re-seal TOTP seeds (integration secrets are under DEKs, untouched); tested with two KEKs | R1 | Done: WP-B.15 (`asd-backend admin rotate-kek`, `tests/kek_rotation.rs`) |
 | F2 | DEK re-encryption job (KEY-5 left it out of v1) | R1 | same |
 | F3 | TOTP enrolment endpoints and console screens; enforce for privileged roles | R2 | WP-C follow-up |
 | F4 | Migration dropping `users.totp_secret` and `review_items.note` | R2 | same as F3 |

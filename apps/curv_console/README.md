@@ -48,8 +48,8 @@ needs no CORS for it.
 | `npm test` | vitest (client, mock fixtures, auth guard, components) |
 | `npm run lint` | eslint (next core-web-vitals + typescript) |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm run build` | production build |
-| `npm run e2e` | Playwright smoke (starts `next dev` on :3100 in mock mode; `npm run e2e:install` once for Chromium) |
+| `npm run build` | production build; `postbuild` fails it if any prerendered HTML ships a script without the CSP nonce |
+| `npm run e2e` | Playwright smoke in mock mode (`npm run e2e:install` once for Chromium): project `chromium` runs every spec on `next dev` (:3100); project `prod` runs the CSP specs on `next build` + `next start` (:3200), the only place the production policy (no `'unsafe-eval'`, HSTS) is exercised. `E2E_PROD_REUSE_BUILD=1` skips the rebuild while iterating |
 
 Live e2e against a running console (the same specs; data-dependent steps skip when the org has no data):
 
@@ -72,6 +72,10 @@ CI: `.github/workflows/console.yml`.
   (`Secure` in production or when `CURV_COOKIE_SECURE=true`). The access cookie lifetime equals `expires_in`; when it
   lapses `src/proxy.ts` calls `POST /v1/auth/refresh` with the refresh cookie and rewrites the cookies (rotation).
   Tokens never reach client JS. The report PDF is streamed through `/api/report/[id]`.
+- CSP (WP-C.16): `src/proxy.ts` sets a per-request nonce policy (`'strict-dynamic'`) on every response, redirects
+  included, plus HSTS in production. Every page renders per request (`connection()` in the root layout) so Next can
+  stamp the nonce. zod is imported only through `src/lib/zod.ts` (ESLint enforces it), which sets `jitless` so zod
+  never probes `new Function` under the policy.
 - URLs carry only opaque ids; filter state lives in the query string (the filter form is a plain GET form).
 - Mutations are server actions (`src/app/[org]/review/actions.ts`, `src/app/[org]/devices/actions.ts`) that call the
   typed client with the caller's token and revalidate the affected pages.

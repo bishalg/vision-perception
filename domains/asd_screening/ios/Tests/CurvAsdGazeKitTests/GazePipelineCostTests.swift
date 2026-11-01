@@ -67,7 +67,7 @@ final class GazePipelineCostTests: XCTestCase {
 
     func testPerFrameCostThroughTheFFI() throws {
         let frames = 3_600 // one minute at 60 Hz
-        let config = try GazePipelineDocuments.config(modelIdentifier: "iPhone17,3", orientation: .portrait, gate: GazeQualityGate())
+        let config = try GazePipelineDocuments.config(modelIdentifier: "iPhone17,3", orientation: .portrait, scoringProfileJSON: AsdCoreBridge.defaultScoringProfileJSON)
         let pipeline = try GazePipelineHandle(configJson: config)
         let writer = try GazeTelemetryWriterHandle(originSec: 0, qualityGateJson: nil)
         try pipeline.beginClipJson(clipId: "bench", aoisJson: GazePipelineDocuments.clipAOIs(
@@ -124,7 +124,7 @@ final class GazePipelineCostTests: XCTestCase {
 
     /// The XCTest metric form for device runs (acceptance 12): 600 frames per iteration.
     func testPushClockMetric() throws {
-        let config = try GazePipelineDocuments.config(modelIdentifier: "iPhone17,3", orientation: .portrait, gate: GazeQualityGate())
+        let config = try GazePipelineDocuments.config(modelIdentifier: "iPhone17,3", orientation: .portrait, scoringProfileJSON: AsdCoreBridge.defaultScoringProfileJSON)
         let raws = (0..<600).map {
             RawSampleRecord(snapshot: Self.frame($0), tSec: Double($0) / 60, orientation: .portrait,
                             clipMediaTimeSec: nil, stimulusId: nil)

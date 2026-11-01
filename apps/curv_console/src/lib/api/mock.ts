@@ -30,6 +30,7 @@ import { createMockExports } from "./mock/exports";
 import { createMockPrivacy } from "./mock/privacy";
 import { createMockParticipant } from "./mock/participant";
 import { createMockCatalog } from "./mock/catalog";
+import { createMockTotp } from "./mock/totp";
 import { MOCK_TRACKING_CYCLE, mockTrackingQuality } from "./mock/tracking";
 
 /** Real orgs are UUIDs (CON-20); the mock uses a fixed one so URLs look like production. */
@@ -472,8 +473,18 @@ export function createMockClient(): CurvApi & AuthApi {
     withdrawn,
   });
 
+  const clinical = createMockClinical({ details, orgId: MOCK_ORG_ID, userId: MOCK_USER_ID, now: MOCK_FIXED_NOW, ensureOrg, page });
+  // Real clock: the pending seed expires 10 minutes after enrol, like the backend.
+  const totp = createMockTotp({ password: MOCK_PASSWORD, code: MOCK_TOTP_CODE, now: () => Date.now() });
+
   return {
-    ...createMockClinical({ details, orgId: MOCK_ORG_ID, userId: MOCK_USER_ID, now: MOCK_FIXED_NOW, ensureOrg, page }),
+    ...clinical,
+    async getMyProfile() {
+      return { ...(await clinical.getMyProfile()), ...totp.status() };
+    },
+    enrolTotp: totp.enrolTotp,
+    confirmTotp: totp.confirmTotp,
+    disableTotp: totp.disableTotp,
     ...exportsApi,
     ...createMockParticipant({
       details,

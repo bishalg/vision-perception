@@ -56,7 +56,10 @@ let package = Package(
                 // declares its own. Release builds compile neither simulation nor the
                 // research classifier.
                 .define("ASD_SIMULATION_ENABLED", .when(configuration: .debug)),
-                .define("ASD_RESEARCH_CLASSIFIER", .when(configuration: .debug))
+                .define("ASD_RESEARCH_CLASSIFIER", .when(configuration: .debug)),
+                // ADR-0009 D10 / BEN-2: the bench raw-sample tap in `ARSessionBridge`; Debug
+                // only, asserted absent from Release by `scripts/check_release_symbols.sh`.
+                .define("ASD_BENCH_CAPTURE", .when(configuration: .debug))
             ]
         ),
         .testTarget(
@@ -67,7 +70,9 @@ let package = Package(
             exclude: ["Fixtures"],
             swiftSettings: [
                 .define("ASD_SIMULATION_ENABLED", .when(configuration: .debug)),
-                .define("ASD_RESEARCH_CLASSIFIER", .when(configuration: .debug))
+                .define("ASD_RESEARCH_CLASSIFIER", .when(configuration: .debug)),
+                // The bench tap tests compile only where the kit has the tap (WP-G.8).
+                .define("ASD_BENCH_CAPTURE", .when(configuration: .debug))
             ]
         )
     ]

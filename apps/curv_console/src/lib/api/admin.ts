@@ -3,7 +3,7 @@
  * `docs/spec/schemas/asd/api-v1.json` (checked by `contract.test.ts`), the `AdminApi` interface and the live
  * HTTP implementation. The console holds no RBAC logic beyond hiding controls: the backend answers 403/404.
  */
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import { roleSchema, userStatusSchema, type PageQuery } from "./types";
 import type { LiveRequest } from "./clinical";
 

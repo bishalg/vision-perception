@@ -44,7 +44,7 @@ Starting points already in the repo: the target architecture in `docs/spec/modul
 | S3 | Default bucket encryption SSE-KMS with a CMK; bucket policy denies non-TLS and public access; versioning; separate prefixes already per org (`sessions/{org}/...`, `exports/{org}/...`) | The code sets **no** SSE headers (`BE/src/blob/s3.rs`), so bucket default encryption is mandatory |
 | Application KEK (`ASD_DATA_KEK`) | Generate and hold in Secrets Manager or KMS; versioned backup in a separate account or region; access only for the task role | Today a base64 32-byte env var (`BE/src/crypto/keyring.rs`). **Losing it loses all clinical text and TOTP seeds** (`rust/.env.example`) |
 | KMS-backed KEK (recommended) | Replace the env KEK by KMS: either `GenerateDataKey` once at start and keep it in memory, or KMS Decrypt of a stored wrapped KEK. Needs a code change in `crypto::Kek` (not done) | Owner decision O-9 |
-| KEK rotation | A tool that re-wraps `org_data_keys` and re-seals `users.totp_secret_ct` and `integration_destinations.secret_ct` must exist before production | **Not built** (threat model F1) |
+| KEK rotation | `asd-backend admin rotate-kek` re-wraps `org_data_keys` and re-seals the KEK-sealed user secrets (`users.totp_secret_ct`); `integration_destinations.secret_ct` is sealed with the org data key, so it is covered by the re-wrap and not rewritten. Runbook in `rust/README.md` (set `ASD_DATA_KEK_PREVIOUS`, run, verify `remaining: 0`, remove it) | Built (WP-B.15, ADR-0009); rotation cadence is owner decision O-9 |
 | JWT and bundle signing keys | Two different Ed25519 keys in Secrets Manager; bundle key ideally in KMS (02 ADR-B6 says KMS in Phase 3) | Server refuses equal keys (`BE/src/auth/mod.rs`) |
 | EBS and ephemeral | Fargate ephemeral storage encrypted; the app writes no PHI to local disk by design (blobs go to S3) | Verify at build time |
 | Frames blobs | Already sealed with the device key before upload | `domains/asd_screening/ios/Sources/CurvAsdGazeKit/SessionVaultManager.swift` |
@@ -101,4 +101,4 @@ Starting points already in the repo: the target architecture in `docs/spec/modul
 
 ## 10. Exit criteria for "BAA-ready"
 
-All boxes in sections 2 to 7 checked, the open owner decisions O-1, O-7, O-8, O-9, O-12 closed, KEK rotation tooling available, TOTP enrolment shipped and enforced for privileged roles (threat model R2), and the WP-B.7 acceptance test (smoke run of ingest, review, export, erasure, retention against the AWS stack) passing.
+All boxes in sections 2 to 7 checked, the open owner decisions O-1, O-7, O-8, O-9, O-12 closed, KEK rotation runbook exercised once against the staging stack, TOTP enrolment shipped and enforced for privileged roles (threat model R2), and the WP-B.7 acceptance test (smoke run of ingest, review, export, erasure, retention against the AWS stack) passing.

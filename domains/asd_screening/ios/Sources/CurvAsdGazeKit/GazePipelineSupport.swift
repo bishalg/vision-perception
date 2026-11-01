@@ -264,8 +264,9 @@ extension GazeVec3 {
 
 extension RawSampleRecord {
     /// One ARKit frame for `GazePipelineHandle.push` (PIPE-2). A frame without a tracked face
-    /// carries no pose (the pipeline ignores it anyway, TRK-1).
-    init(
+    /// carries no pose (the pipeline ignores it anyway, TRK-1). Public for the app's bench
+    /// capture, which hands the same records to the Rust raw-log encoder (REP-1).
+    public init(
         snapshot: FaceAnchorSnapshot,
         tSec: Double,
         orientation: GazeOrientation,
@@ -295,28 +296,28 @@ extension RawSampleRecord {
 // MARK: - Documents for the pipeline
 
 enum GazePipelineDocuments {
-    /// `PipelineConfig` JSON for this device with the kit's quality gate
-    /// (`ScoringProfile.qualityGate`); the table geometry or idiom default comes from Rust.
+    /// `PipelineConfig` JSON for this device with `qualityGate` and `params` from the delivered
+    /// `ScoringProfile` (CFG-3, WP-A.13). Rust builds the whole document: the table geometry
+    /// or idiom default, and the profile's gate and `trackingQuality` (the asd-core defaults
+    /// for a profile that predates 1.1.0). Swift only passes the profile JSON through; Rust
+    /// throws for a profile that fails the publisher's value checks (WP-A.13).
     static func config(
         modelIdentifier: String,
         orientation: GazeOrientation,
-        gate: GazeQualityGate
+        scoringProfileJSON: String
     ) throws -> String {
-        let base = try gazeDefaultConfigJson(modelIdentifier: modelIdentifier, orientation: orientation)
-        guard var object = try JSONSerialization.jsonObject(with: Data(base.utf8)) as? [String: Any] else {
-            throw AsdError.InvalidJson(message: "pipeline config is not an object")
-        }
-        let gateData = try JSONEncoder().encode(CoreQualityGate(
-            minDistanceCm: gate.minDistanceCm,
-            maxDistanceCm: gate.maxDistanceCm,
-            maxYawRad: gate.maxYawRad,
-            maxPitchRad: gate.maxPitchRad,
-            minConfidence: gate.minConfidence,
-            blinkThreshold: gate.blinkThreshold
-        ))
-        object["qualityGate"] = try JSONSerialization.jsonObject(with: gateData)
-        let data = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
-        return String(decoding: data, as: UTF8.self)
+        try gazeConfigJsonForProfile(
+            modelIdentifier: modelIdentifier,
+            orientation: orientation,
+            scoringProfileJson: scoringProfileJSON
+        )
+    }
+
+    /// The `qualityGate` object of a `PipelineConfig` JSON, verbatim, for the frames-file
+    /// writer (`GazeTelemetryWriterHandle`), so the writer gates with exactly the parameters
+    /// the pipeline was built with. Swift reads none of its fields.
+    static func qualityGateJSON(ofConfig configJSON: String) throws -> String? {
+        try JSONValue(json: configJSON)["qualityGate"]?.jsonString()
     }
 
     /// The kit's affine profile as a Rust `CalModel` (`screenAffine`, the same `a..f`), or `nil`

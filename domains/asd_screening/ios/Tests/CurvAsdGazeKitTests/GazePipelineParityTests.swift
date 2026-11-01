@@ -276,7 +276,7 @@ final class GazePipelineParityTests: XCTestCase {
         let config = try JSONSerialization.jsonObject(with: Data(GazePipelineDocuments.config(
             modelIdentifier: try XCTUnwrap(header["deviceModel"] as? String),
             orientation: .portrait,
-            gate: GazeQualityGate()
+            scoringProfileJSON: AsdCoreBridge.defaultScoringProfileJSON
         ).utf8)) as? [String: Any]
         XCTAssertEqual(config?["geometrySource"] as? String, "table")
         XCTAssertEqual(

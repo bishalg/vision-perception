@@ -1,5 +1,4 @@
-import { expect, test } from "@playwright/test";
-import { loginToOverview } from "./helpers";
+import { expect, test, loginToOverview } from "./helpers";
 
 test("review queue: keyboard triage closes the selected item (j, then 1 = Confirm)", async ({ page }) => {
   const org = await loginToOverview(page);

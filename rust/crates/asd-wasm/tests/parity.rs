@@ -641,6 +641,19 @@ fn validation_reports_problems_without_failing() {
         json!(asd_contract::profile_checks::scoring_profile_problem_messages(&out_of_range))
     );
 
+    // WP-A.13: `trackingQuality` value rules reach the console editor too.
+    let mut tracking = ScoringProfile::default();
+    tracking.tracking_quality.drift.check_layout.clear();
+    let checked = ok(&asd_wasm::validate_scoring_profile(
+        &serde_json::to_string(&tracking).unwrap(),
+    ));
+    assert_eq!(checked["valid"], false);
+    assert_eq!(
+        checked["fieldProblems"],
+        json!([{"path": "trackingQuality.drift.checkLayout",
+                "message": "trackingQuality.drift.checkLayout must not be empty"}])
+    );
+
     assert_eq!(
         ok(&asd_wasm::validate_baselines(BASELINES, None))["valid"],
         true

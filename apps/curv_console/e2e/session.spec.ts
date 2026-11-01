@@ -1,5 +1,4 @@
-import { expect, test } from "@playwright/test";
-import { loginToOverview } from "./helpers";
+import { expect, test, loginToOverview } from "./helpers";
 
 test("sessions table -> session detail with Clips, Quality and Report tabs", async ({ page }) => {
   const org = await loginToOverview(page);

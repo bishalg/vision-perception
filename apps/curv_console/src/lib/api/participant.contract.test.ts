@@ -6,7 +6,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { ZodType } from "zod";
+import type { ZodType } from "@/lib/zod";
 import { participantSchema } from "./admin";
 import { createMockClient, MOCK_ORG_ID } from "./mock";
 import { sessionRawSchema } from "./types";

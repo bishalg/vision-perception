@@ -67,6 +67,30 @@ public struct GazeQualityGate: Sendable {
     /// The thresholds as the core's gate document (`ScoringProfile.qualityGate`).
     private let gateJSON: String
 
+    /// The gate as the core hands it out: a `qualityGate` document (from a Rust-built
+    /// `PipelineConfig` or a `ScoringProfile`), read verbatim. `nil` if it does not decode.
+    init?(coreGateJSON: String) {
+        guard let g = try? AsdCoreBridge.decode(CoreQualityGate.self, from: coreGateJSON) else {
+            return nil
+        }
+        self.init(
+            minDistanceCm: g.minDistanceCm,
+            maxDistanceCm: g.maxDistanceCm,
+            maxYawRad: g.maxYawRad,
+            maxPitchRad: g.maxPitchRad,
+            minConfidence: g.minConfidence,
+            blinkThreshold: g.blinkThreshold
+        )
+    }
+
+    /// The `qualityGate` of a `ScoringProfile` JSON, read verbatim. `nil` if it does not decode.
+    init?(scoringProfileJSON: String) {
+        guard let gate = try? JSONValue(json: scoringProfileJSON)["qualityGate"]?.jsonString() else {
+            return nil
+        }
+        self.init(coreGateJSON: gate)
+    }
+
     /// Evaluates a single sample against pediatric acquisition criteria.
     public func evaluateSample(_ sample: GazeTelemetrySample) -> Evaluation {
         do {

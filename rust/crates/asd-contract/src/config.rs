@@ -75,6 +75,36 @@ impl Default for QualityGateParams {
     }
 }
 
+/// The core gate of the profile's parameters. Both sides are destructured / built field by
+/// field, so a field added to either struct fails to compile here instead of being dropped
+/// on the way to the pipeline (`asd-ffi::gaze_config_json_for_profile`).
+impl From<&QualityGateParams> for asd_core::quality::QualityGate {
+    fn from(p: &QualityGateParams) -> Self {
+        let QualityGateParams {
+            min_distance_cm,
+            max_distance_cm,
+            max_yaw_rad,
+            max_pitch_rad,
+            min_confidence,
+            blink_threshold,
+        } = *p;
+        Self {
+            min_distance_cm,
+            max_distance_cm,
+            max_yaw_rad,
+            max_pitch_rad,
+            min_confidence,
+            blink_threshold,
+        }
+    }
+}
+
+impl From<QualityGateParams> for asd_core::quality::QualityGate {
+    fn from(p: QualityGateParams) -> Self {
+        Self::from(&p)
+    }
+}
+
 /// Scoring parameters delivered in the bundle (`scoring_profile` config document).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]

@@ -3,7 +3,7 @@
  * result types (`asd-wasm/src/api.rs`: `Validation`, `RescoreResult`, `ContractInfo`) and check shape only; the
  * values are the core's. `tests/asd-wasm.test.ts` runs them against the real module.
  */
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import type { ClipScore, SessionDetail } from "@/lib/api/types";
 import type { NormativeBaselineSet, ScoringProfile } from "@/lib/api/config";
 import type { AsdCore, Envelope } from "./core";

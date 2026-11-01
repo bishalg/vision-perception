@@ -3308,6 +3308,60 @@
       ],
       "type": "object"
     },
+    "HousekeepingRequest": {
+      "additionalProperties": false,
+      "description": "`POST /v1/jobs/housekeeping` (superadmin): queues a manual housekeeping sweep and\nanswers `202` with the job (`GET /v1/jobs/{id}`). An empty object is a real run.",
+      "properties": {
+        "dry_run": {
+          "default": false,
+          "description": "Count what the sweep would remove without removing anything (default `false`).",
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "HousekeepingResult": {
+      "description": "`jobs.result` of a `housekeeping_sweep` job: rows removed (or, in a dry run, removable)\nper rule.",
+      "properties": {
+        "dry_run": {
+          "type": "boolean"
+        },
+        "enrol_codes": {
+          "description": "`enrol_codes` revoked or expired more than 90 days ago that no device references.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "idempotency_keys": {
+          "description": "`idempotency_keys` older than 7 days.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "jobs": {
+          "description": "Finished `jobs` older than 30 days that nothing references.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "refresh_tokens": {
+          "description": "`refresh_tokens` expired more than a day ago.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "totp_pending": {
+          "description": "Users whose expired pending TOTP enrolment was cleared.",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "idempotency_keys",
+        "refresh_tokens",
+        "enrol_codes",
+        "jobs",
+        "totp_pending",
+        "dry_run"
+      ],
+      "type": "object"
+    },
     "Integration": {
       "description": "A delivery destination (INTG-1). Secrets never appear: `has_secret` and the first 8 hex\nof the secret's SHA-256 (INTG-2); for SFTP, the public key it authenticates with.",
       "properties": {
@@ -4806,6 +4860,10 @@
         "internal",
         "totp-required",
         "totp-invalid",
+        "invalid-credentials",
+        "totp-already-enrolled",
+        "totp-enrolment-expired",
+        "totp-not-enrolled",
         "clinical-crypto-unavailable",
         "patient-ref-disabled",
         "stale-version",
@@ -8130,6 +8188,92 @@
       ],
       "type": "object"
     },
+    "TotpConfirmRequest": {
+      "additionalProperties": false,
+      "description": "`POST /v1/users/me/totp/confirm`: a current code from the pending seed (one step of\nclock skew). `200 TotpStatus {totp_enrolled: true}`; `401 totp-invalid` for a wrong\ncode; `410 totp-enrolment-expired` without a live pending seed.",
+      "properties": {
+        "totp_code": {
+          "description": "Current RFC 6238 code (6 digits).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "totp_code"
+      ],
+      "type": "object"
+    },
+    "TotpDisableRequest": {
+      "additionalProperties": false,
+      "description": "`DELETE /v1/users/me/totp`: password and a current, unused code are both required.\n`200 TotpStatus {totp_enrolled: false}`; `401 invalid-credentials` (password), `401\ntotp-required` (no code), `401 totp-invalid` (wrong or used code), `404\ntotp-not-enrolled`.",
+      "properties": {
+        "password": {
+          "type": "string"
+        },
+        "totp_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "password"
+      ],
+      "type": "object"
+    },
+    "TotpEnrolRequest": {
+      "additionalProperties": false,
+      "description": "`POST /v1/users/me/totp/enrol` (any signed-in console user, 5 requests per minute per\nuser across the three TOTP routes). Answers `200 TotpEnrolResponse`; `401`\n`invalid-credentials` for a wrong password, `409 totp-already-enrolled`, `503\nclinical-crypto-unavailable` when the server has no data KEK. A second call replaces\nthe pending seed.",
+      "properties": {
+        "password": {
+          "description": "The caller's current password.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "password"
+      ],
+      "type": "object"
+    },
+    "TotpEnrolResponse": {
+      "description": "The pending seed: the only place it is ever shown in clear. Show it as a QR code of\n`otpauth_url` and as text; it must be confirmed with `POST /v1/users/me/totp/confirm`\nbefore `expires_at` (10 minutes).",
+      "properties": {
+        "expires_at": {
+          "description": "RFC 3339 time after which `confirm` answers `410 totp-enrolment-expired`.",
+          "type": "string"
+        },
+        "otpauth_url": {
+          "description": "`otpauth://totp/{issuer}:{email}?secret=..&issuer=..&algorithm=SHA1&digits=6&period=30`,\npercent-encoded (Key Uri Format).",
+          "type": "string"
+        },
+        "secret": {
+          "description": "RFC 4648 base32 seed (20 random bytes, 32 characters, no padding).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "secret",
+        "otpauth_url",
+        "expires_at"
+      ],
+      "type": "object"
+    },
+    "TotpStatus": {
+      "description": "Result of `confirm` and `DELETE`.",
+      "properties": {
+        "totp_enrolled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "totp_enrolled"
+      ],
+      "type": "object"
+    },
     "TrackStateParams": {
       "properties": {
         "blinkRecoveryMs": {
@@ -8791,6 +8935,17 @@
             }
           ],
           "description": "True when the user has a TOTP secret (the secret is never returned): a sign or\ncosign then needs a `totp_code`."
+        },
+        "totp_pending": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "True while a TOTP enrolment waits for its confirming code and has not expired\n(AUTH-10). Login and step-up ignore a pending seed."
         },
         "user_id": {
           "anyOf": [

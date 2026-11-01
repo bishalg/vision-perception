@@ -1,4 +1,34 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, test as base, type Page } from "@playwright/test";
+
+/**
+ * CSP-3: every page a test opens reports `securitypolicyviolation` events (page and worker-free main frame; the
+ * listener is installed before any page script runs, so it also sees violations during load and after navigations).
+ * A violation fails the test, so a policy that blocks `asd_wasm` cannot hide behind the editors' silent "core
+ * unavailable" fallback. A test that provokes a violation on purpose drains `cspViolations` itself.
+ *
+ * All specs import `test` from here instead of `@playwright/test`.
+ */
+export const test = base.extend<{ cspViolations: string[] }>({
+  cspViolations: async ({}, provide) => {
+    const seen: string[] = [];
+    await provide(seen);
+    expect(seen, "Content-Security-Policy violations").toEqual([]);
+  },
+  page: async ({ page, cspViolations }, provide) => {
+    await page.exposeBinding("__reportCspViolation", (_source, detail: string) => {
+      cspViolations.push(detail);
+    });
+    await page.addInitScript(() => {
+      document.addEventListener("securitypolicyviolation", (e) => {
+        const report = (window as unknown as { __reportCspViolation?: (d: string) => void }).__reportCspViolation;
+        report?.(`${e.violatedDirective} blocked ${e.blockedURI || "inline"} (${e.sourceFile || "page"}:${e.lineNumber})`);
+      });
+    });
+    await provide(page);
+  },
+});
+export { expect };
+
 
 /** Mock mode accepts any email with password "demo"; live runs pass real credentials via env. */
 export const LIVE = Boolean(process.env.E2E_BASE_URL);

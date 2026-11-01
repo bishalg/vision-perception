@@ -6,7 +6,7 @@
  * The schemas check shape only (types and required members, as the contract does). Every rule beyond shape is the
  * Rust backend's: it validates the body when a draft is created and again on approve, and answers problem+json.
  */
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import type { LiveRequest } from "./clinical";
 
 const str = z.string().nullable().optional();

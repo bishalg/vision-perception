@@ -309,6 +309,61 @@ pub struct ScheduledTarget {
     pub label: Option<String>,
 }
 
+/// A bench condition of the BEN-4 matrix (the raw log header's `condition`). A closed list:
+/// the bench screen offers only these, so no free text (and no personal data) reaches a file
+/// name or a header.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum BenchCondition {
+    /// 50 cm, office light (about 300-500 lux), head free but still.
+    Baseline,
+    /// Calibrate at 50 cm, validate at 40 and 60 cm.
+    Distance,
+    /// Validate with the head turned +-15 degrees yaw and +-10 degrees pitch.
+    Head,
+    /// Following a slowly moving target while swaying.
+    Motion,
+    Glasses,
+    /// About 50 lux.
+    LowLight,
+    /// A single lamp at 90 degrees.
+    SideLight,
+    /// Hand over the mouth; one eye partly covered by hair.
+    Occlusion,
+    /// Instructed blinks every 2 s.
+    Blinks,
+}
+
+impl BenchCondition {
+    /// The BEN-4 matrix in spec order.
+    pub const ALL: [BenchCondition; 9] = [
+        BenchCondition::Baseline,
+        BenchCondition::Distance,
+        BenchCondition::Head,
+        BenchCondition::Motion,
+        BenchCondition::Glasses,
+        BenchCondition::LowLight,
+        BenchCondition::SideLight,
+        BenchCondition::Occlusion,
+        BenchCondition::Blinks,
+    ];
+
+    /// The camelCase wire name (also used in bench file names).
+    pub fn as_str(self) -> &'static str {
+        match self {
+            BenchCondition::Baseline => "baseline",
+            BenchCondition::Distance => "distance",
+            BenchCondition::Head => "head",
+            BenchCondition::Motion => "motion",
+            BenchCondition::Glasses => "glasses",
+            BenchCondition::LowLight => "lowLight",
+            BenchCondition::SideLight => "sideLight",
+            BenchCondition::Occlusion => "occlusion",
+            BenchCondition::Blinks => "blinks",
+        }
+    }
+}
+
 /// First line of a raw log (REP-1).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -699,6 +754,308 @@ impl Default for TrackingQualityParams {
             filter: FilterParams::default(),
             verdict: VerdictParams::default(),
             scoring: ScoringCouplingParams::default(),
+        }
+    }
+}
+
+/// One value of a [`TrackingQualityParams`] that the pipeline cannot run with.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParamsProblem {
+    /// camelCase dotted member path relative to `trackingQuality`, e.g. `calibration.layout5`.
+    pub path: String,
+    /// Human-readable reason; starts with `path`.
+    pub message: String,
+}
+
+/// How one number of the params is checked. Every rule also requires a finite value.
+#[derive(Clone, Copy)]
+enum NumRule {
+    NonNegative,
+    Positive,
+    Unit,
+}
+
+struct ParamsChecker {
+    problems: Vec<ParamsProblem>,
+}
+
+impl ParamsChecker {
+    fn push(&mut self, path: &str, message: String) {
+        self.problems.push(ParamsProblem {
+            path: path.to_owned(),
+            message,
+        });
+    }
+
+    fn num(&mut self, path: &str, v: f64, rule: NumRule) {
+        let (ok, what) = match rule {
+            NumRule::NonNegative => (v.is_finite() && v >= 0.0, "must be a finite number >= 0"),
+            NumRule::Positive => (v.is_finite() && v > 0.0, "must be a finite number > 0"),
+            NumRule::Unit => (
+                v.is_finite() && (0.0..=1.0).contains(&v),
+                "must be in [0, 1]",
+            ),
+        };
+        if !ok {
+            self.push(path, format!("{path} {what}"));
+        }
+    }
+
+    fn at_least_one(&mut self, path: &str, v: u32) {
+        if v < 1 {
+            self.push(path, format!("{path} must be at least 1"));
+        }
+    }
+
+    fn layout(&mut self, path: &str, points: &[[f64; 2]]) {
+        if points.is_empty() {
+            self.push(path, format!("{path} must not be empty"));
+        } else if !points
+            .iter()
+            .flatten()
+            .all(|c| c.is_finite() && (0.0..=1.0).contains(c))
+        {
+            self.push(path, format!("{path} points must be finite and in [0, 1]"));
+        }
+    }
+
+    fn not_above(&mut self, path: &str, low: f64, other: &str, high: f64) {
+        // Only meaningful once both values passed their own checks.
+        if low.is_finite() && high.is_finite() && low > high {
+            self.push(path, format!("{path} must not exceed {other}"));
+        }
+    }
+
+    fn bands(&mut self, path: &str, b: &AccuracyBands) {
+        let ok = [b.good_max_deg, b.fair_max_deg, b.poor_max_deg]
+            .iter()
+            .all(|v| v.is_finite() && *v > 0.0)
+            && b.good_max_deg <= b.fair_max_deg
+            && b.fair_max_deg <= b.poor_max_deg;
+        if !ok {
+            self.push(
+                path,
+                format!("{path} needs 0 < goodMaxDeg <= fairMaxDeg <= poorMaxDeg"),
+            );
+        }
+    }
+}
+
+impl TrackingQualityParams {
+    /// Value rules on top of the shape (WP-A.13): every number finite, layouts non-empty and on
+    /// screen, sample minimums at least 1, settle windows >= 0 and collect windows > 0, ordered
+    /// bands and thresholds, `confidence.distanceComfortMinCm < distanceComfortMaxCm`, ratios
+    /// in [0, 1]. Checked by `asd_contract::profile_checks` (backend publish, console editor)
+    /// and by the device before it accepts a delivered bundle (`asd_sync::accept_bundle`).
+    pub fn validate(&self) -> Result<(), Vec<ParamsProblem>> {
+        use NumRule::{NonNegative, Positive, Unit};
+        let mut c = ParamsChecker {
+            problems: Vec::new(),
+        };
+        if self.schema_version.trim().is_empty() {
+            c.push("schemaVersion", "schemaVersion is required".to_owned());
+        }
+
+        let cal = &self.calibration;
+        c.num("calibration.settleMs", cal.settle_ms, NonNegative);
+        c.num("calibration.collectMs", cal.collect_ms, Positive);
+        c.num(
+            "calibration.maxTargetWaitMs",
+            cal.max_target_wait_ms,
+            NonNegative,
+        );
+        c.at_least_one(
+            "calibration.minSamplesPerTarget",
+            cal.min_samples_per_target,
+        );
+        c.num("calibration.madRejectK", cal.mad_reject_k, Positive);
+        c.num(
+            "calibration.minImprovementDeg",
+            cal.min_improvement_deg,
+            NonNegative,
+        );
+        c.bands("calibration.bands", &cal.bands);
+        c.num(
+            "calibration.maxConditionNumber",
+            cal.max_condition_number,
+            Positive,
+        );
+        c.layout("calibration.layout5", &cal.layout5);
+        c.layout("calibration.layout9", &cal.layout9);
+
+        let rec = &self.recalibration;
+        c.num(
+            "recalibration.poseShiftDistancePct",
+            rec.pose_shift_distance_pct,
+            Positive,
+        );
+        c.num(
+            "recalibration.poseShiftAngleDeg",
+            rec.pose_shift_angle_deg,
+            Positive,
+        );
+        c.num("recalibration.poseWindowSec", rec.pose_window_sec, Positive);
+        c.num(
+            "recalibration.maxCalibrationAgeSec",
+            rec.max_calibration_age_sec,
+            Positive,
+        );
+
+        let val = &self.validation;
+        c.layout("validation.layout", &val.layout);
+        c.num("validation.settleMs", val.settle_ms, NonNegative);
+        c.num("validation.collectMs", val.collect_ms, Positive);
+        c.at_least_one("validation.minSamplesPerTarget", val.min_samples_per_target);
+        if val.min_targets_hit < 1 || val.min_targets_hit as usize > val.layout.len().max(1) {
+            c.push(
+                "validation.minTargetsHit",
+                "validation.minTargetsHit must be between 1 and the number of validation.layout points"
+                    .to_owned(),
+            );
+        }
+        c.num(
+            "validation.warnAccuracyDeg",
+            val.warn_accuracy_deg,
+            Positive,
+        );
+        c.num("validation.maxAccuracyDeg", val.max_accuracy_deg, Positive);
+        c.not_above(
+            "validation.warnAccuracyDeg",
+            val.warn_accuracy_deg,
+            "validation.maxAccuracyDeg",
+            val.max_accuracy_deg,
+        );
+        c.layout("validation.benchLayout13", &val.bench_layout13);
+
+        let drift = &self.drift;
+        c.layout("drift.checkLayout", &drift.check_layout);
+        c.num("drift.settleMs", drift.settle_ms, NonNegative);
+        c.num("drift.collectMs", drift.collect_ms, Positive);
+        c.at_least_one("drift.minSamples", drift.min_samples);
+        c.num("drift.warnDeg", drift.warn_deg, Positive);
+        c.num("drift.hardDeg", drift.hard_deg, Positive);
+        c.not_above(
+            "drift.warnDeg",
+            drift.warn_deg,
+            "drift.hardDeg",
+            drift.hard_deg,
+        );
+
+        let ts = &self.track_state;
+        c.num(
+            "trackState.blinkRecoveryMs",
+            ts.blink_recovery_ms,
+            NonNegative,
+        );
+        c.num(
+            "trackState.maxEyeSpeedDegPerSec",
+            ts.max_eye_speed_deg_per_sec,
+            Positive,
+        );
+        c.num(
+            "trackState.offscreenMarginNorm",
+            ts.offscreen_margin_norm,
+            NonNegative,
+        );
+
+        let conf = &self.confidence;
+        c.num(
+            "confidence.eyeOpennessComfort",
+            conf.eye_openness_comfort,
+            Unit,
+        );
+        c.num(
+            "confidence.poseComfortFraction",
+            conf.pose_comfort_fraction,
+            Unit,
+        );
+        c.num(
+            "confidence.distanceComfortMinCm",
+            conf.distance_comfort_min_cm,
+            Positive,
+        );
+        c.num(
+            "confidence.distanceComfortMaxCm",
+            conf.distance_comfort_max_cm,
+            Positive,
+        );
+        if conf.distance_comfort_min_cm.is_finite()
+            && conf.distance_comfort_max_cm.is_finite()
+            && conf.distance_comfort_min_cm >= conf.distance_comfort_max_cm
+        {
+            c.push(
+                "confidence.distanceComfortMinCm",
+                "confidence.distanceComfortMinCm must be below confidence.distanceComfortMaxCm"
+                    .to_owned(),
+            );
+        }
+        c.num(
+            "confidence.headSpeedComfortDegPerSec",
+            conf.head_speed_comfort_deg_per_sec,
+            Positive,
+        );
+        c.num(
+            "confidence.maxHeadSpeedDegPerSec",
+            conf.max_head_speed_deg_per_sec,
+            Positive,
+        );
+        c.num(
+            "confidence.poseShiftComfortPct",
+            conf.pose_shift_comfort_pct,
+            NonNegative,
+        );
+
+        let gap = &self.gap_fill;
+        c.num("gapFill.maxMs", gap.max_ms, NonNegative);
+        c.num("gapFill.maxDeg", gap.max_deg, NonNegative);
+        c.num(
+            "gapFill.lossIntervalCapMs",
+            gap.loss_interval_cap_ms,
+            Positive,
+        );
+
+        let f = &self.filter;
+        c.num("filter.minCutoffHz", f.min_cutoff_hz, Positive);
+        c.num("filter.beta", f.beta, NonNegative);
+        c.num("filter.dCutoffHz", f.d_cutoff_hz, Positive);
+
+        let v = &self.verdict;
+        c.bands("verdict.accuracyBands", &v.accuracy_bands);
+        c.num(
+            "verdict.unusableBelowValidRatio",
+            v.unusable_below_valid_ratio,
+            Unit,
+        );
+        c.num("verdict.poorAboveDataLoss", v.poor_above_data_loss, Unit);
+        c.num("verdict.fairAboveDataLoss", v.fair_above_data_loss, Unit);
+        c.not_above(
+            "verdict.fairAboveDataLoss",
+            v.fair_above_data_loss,
+            "verdict.poorAboveDataLoss",
+            v.poor_above_data_loss,
+        );
+
+        let s = &self.scoring;
+        c.num(
+            "scoring.maxAccuracyDegForScoring",
+            s.max_accuracy_deg_for_scoring,
+            Positive,
+        );
+        c.num(
+            "scoring.aoiResolutionFactor",
+            s.aoi_resolution_factor,
+            Positive,
+        );
+        c.num(
+            "scoring.ivtVelocityDegPerSec",
+            s.ivt_velocity_deg_per_sec,
+            Positive,
+        );
+
+        if c.problems.is_empty() {
+            Ok(())
+        } else {
+            Err(c.problems)
         }
     }
 }

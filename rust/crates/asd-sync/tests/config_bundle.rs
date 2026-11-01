@@ -374,3 +374,76 @@ fn version_order_is_day_then_counter() {
     );
     assert_eq!(compare_bundle_versions("2026.11.01-2", "nope"), None);
 }
+
+/// WP-A.13: a correctly signed bundle whose profile values the pipeline cannot run with
+/// (here: no 5-point calibration layout, a zero sample minimum) is refused with
+/// `InvalidProfile`, so the app keeps its last good bundle or the bundled default. The same
+/// rules as backend publish (asd-contract `profile_checks`).
+#[test]
+fn signed_bundle_with_invalid_profile_values_is_refused() {
+    let mut b = bundle(
+        "2026.11.01-3",
+        "2026-11-01T00:00:00Z",
+        &trusted(SEED_A).key_id,
+    );
+    b.scoring_profile
+        .tracking_quality
+        .calibration
+        .layout5
+        .clear();
+    b.scoring_profile
+        .tracking_quality
+        .validation
+        .min_samples_per_target = 0;
+    let text = signed(b, &key(SEED_A));
+    match accept_bundle(text.as_bytes(), &ring(), &policy(None, None)) {
+        Err(BundleRejection::InvalidProfile(message)) => {
+            assert!(
+                message.contains("trackingQuality.calibration.layout5"),
+                "{message}"
+            );
+            assert!(
+                message.contains("trackingQuality.validation.minSamplesPerTarget"),
+                "{message}"
+            );
+        }
+        other => panic!("expected InvalidProfile, got {other:?}"),
+    }
+
+    // A zero collect window and an inverted drift pair are refused the same way.
+    let mut b = bundle(
+        "2026.11.01-3",
+        "2026-11-01T00:00:00Z",
+        &trusted(SEED_A).key_id,
+    );
+    b.scoring_profile.tracking_quality.calibration.collect_ms = 0.0;
+    b.scoring_profile.tracking_quality.drift.warn_deg = 9.0;
+    b.scoring_profile.tracking_quality.drift.hard_deg = 4.0;
+    let text = signed(b, &key(SEED_A));
+    match accept_bundle(text.as_bytes(), &ring(), &policy(None, None)) {
+        Err(BundleRejection::InvalidProfile(message)) => {
+            assert!(
+                message.contains("trackingQuality.calibration.collectMs"),
+                "{message}"
+            );
+            assert!(
+                message.contains("trackingQuality.drift.warnDeg"),
+                "{message}"
+            );
+        }
+        other => panic!("expected InvalidProfile, got {other:?}"),
+    }
+
+    // An inverted quality gate is refused the same way.
+    let mut b = bundle(
+        "2026.11.01-3",
+        "2026-11-01T00:00:00Z",
+        &trusted(SEED_A).key_id,
+    );
+    b.scoring_profile.quality_gate.min_distance_cm = 90.0;
+    let text = signed(b, &key(SEED_A));
+    assert!(matches!(
+        accept_bundle(text.as_bytes(), &ring(), &policy(None, None)),
+        Err(BundleRejection::InvalidProfile(_))
+    ));
+}

@@ -6,6 +6,7 @@ import { catalogText } from "@/messages/catalog";
 import { configText } from "@/messages/config";
 import { en } from "@/messages/en";
 import { privacyText } from "@/messages/privacy";
+import { securityText } from "@/messages/security";
 
 export function navLinks(base: string, role: Role | undefined): { href: string; text: string }[] {
   return [
@@ -33,5 +34,7 @@ export function navLinks(base: string, role: Role | undefined): { href: string; 
           { href: `${base}/config/bundles`, text: configText.nav.bundles },
         ]
       : []),
+    // WP-C.15: every signed-in user manages their own second factor.
+    { href: `${base}/settings/security`, text: securityText.nav },
   ];
 }

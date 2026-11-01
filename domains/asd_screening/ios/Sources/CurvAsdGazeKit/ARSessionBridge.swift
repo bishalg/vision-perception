@@ -88,6 +88,11 @@ public final class ARSessionBridge: NSObject, Sendable {
     let ageEstimator: SubjectAgeEstimator?
     private let continuation: AsyncStream<Event>.Continuation
     private let ageSink: @Sendable (SubjectAgeSignal) -> Void
+    #if ASD_BENCH_CAPTURE
+    /// Bench raw-sample tap and the interface orientation it reports (BEN-2). The lock is
+    /// taken for a pointer-sized read per frame; nothing else in the bridge is mutable.
+    private let benchState = OSAllocatedUnfairLock(initialState: BenchTapState())
+    #endif
 
     /// - Parameters:
     ///   - processingActor: the single owner of per-frame state.
@@ -191,8 +196,26 @@ public final class ARSessionBridge: NSObject, Sendable {
 
     /// The interface orientation changed (GEO-3).
     public func updateOrientation(_ orientation: GazeOrientation) {
+        #if ASD_BENCH_CAPTURE
+        benchState.withLock { $0.orientation = orientation }
+        #endif
         continuation.yield(.orientation(orientation))
     }
+
+    #if ASD_BENCH_CAPTURE
+    /// Installs (or, with `nil`, removes) the bench raw-sample tap (BEN-2). The closure runs
+    /// on the AR delegate queue for every frame, so it must only copy and enqueue.
+    public func setBenchTap(_ tap: (@Sendable (BenchRawSample) -> Void)?) {
+        benchState.withLock { $0.tap = tap }
+    }
+
+    /// Hands one frame to the tap, if any, with the orientation last given to
+    /// `updateOrientation`. Also called by tests with a hand-built snapshot.
+    func benchEmit(_ snapshot: FaceAnchorSnapshot, timestamp: TimeInterval) {
+        let (tap, orientation) = benchState.withLock { ($0.tap, $0.orientation) }
+        tap?(BenchRawSample(snapshot: snapshot, timestamp: timestamp, orientation: orientation))
+    }
+    #endif
 
     /// Runs `body` on the actor in order with every input submitted before this call and
     /// returns its result; `nil` when the pipeline was torn down before it ran.
@@ -300,6 +323,34 @@ public final class ARSessionBridge: NSObject, Sendable {
     }
 }
 
+#if ASD_BENCH_CAPTURE
+/// One raw frame as the bench log needs it (BEN-2, REP-1): the snapshot already carries
+/// `ARFrame.lightEstimate`; the orientation is the interface orientation at that frame.
+/// Compiled only under `ASD_BENCH_CAPTURE` (Debug).
+public struct BenchRawSample: Sendable {
+    public let snapshot: FaceAnchorSnapshot
+    /// ARKit frame clock, seconds.
+    public let timestamp: TimeInterval
+    public let orientation: GazeOrientation
+
+    public init(snapshot: FaceAnchorSnapshot, timestamp: TimeInterval, orientation: GazeOrientation) {
+        self.snapshot = snapshot
+        self.timestamp = timestamp
+        self.orientation = orientation
+    }
+
+    /// Now on the ARKit frame clock (system uptime), so a bench target schedule and the
+    /// samples share `t_sec`. The kit's privacy manifest declares this use (SystemBootTime,
+    /// 35F9.1); the app reads the clock through here instead of declaring it again.
+    public static var frameClockNow: TimeInterval { ProcessInfo.processInfo.systemUptime }
+}
+
+struct BenchTapState: Sendable {
+    var tap: (@Sendable (BenchRawSample) -> Void)?
+    var orientation: GazeOrientation = .portrait
+}
+#endif
+
 // MARK: - Main-actor hand-off
 
 /// Coalesces pipeline output for the main actor: only the newest UI state is kept,
@@ -390,6 +441,9 @@ extension ARSessionBridge: ARSessionDelegate {
 
         // CNF-2: the frame's light estimate travels with the face (recorded, not a factor).
         let snapshot = faceAnchor.map { FaceAnchorSnapshot(faceAnchor: $0, lightEstimate: frame.lightEstimate) } ?? .untracked
+        #if ASD_BENCH_CAPTURE
+        benchEmit(snapshot, timestamp: frame.timestamp)
+        #endif
         submit(snapshot, timestamp: frame.timestamp)
     }
 

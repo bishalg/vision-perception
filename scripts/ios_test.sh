@@ -5,12 +5,13 @@
 #
 # Steps: Rust core xcframework (FFI-2), kit tests (incl. GoldenParityTests), kit TSAN,
 # kit strict-concurrency build, xcodegen, app tests on an iPhone simulator, unsigned
-# Release build, then static gates (claims, schema, privacy API audit, Release symbols).
+# Release and DemoRelease builds, then static gates (claims, schema, privacy API audit,
+# Release and DemoRelease symbols).
 #
 # Environment:
 #   DERIVED_DATA  derived-data root, never inside the repo (default /private/tmp/asd-app-dd).
 #                 Kit scratch paths are "${DERIVED_DATA}-kit" and "${DERIVED_DATA}-kit-tsan";
-#                 the Release build uses "${DERIVED_DATA}-rel".
+#                 the Release build uses "${DERIVED_DATA}-rel", DemoRelease "${DERIVED_DATA}-demorel".
 #   SIM_NAME      simulator name (default "iPhone 18 Pro"; must exist, see
 #                 `xcrun simctl list devices available`)
 #   SIM_DESTINATION  full xcodebuild destination, overrides SIM_NAME
@@ -27,7 +28,7 @@ DRY_RUN=0
 for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY_RUN=1 ;;
-    -h|--help) sed -n '2,23p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,24p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "unknown argument: $arg (try --help)" >&2; exit 2 ;;
   esac
 done
@@ -41,6 +42,7 @@ APP_DIR="apps/ios_asd_gaze_app"
 KIT_SCRATCH="${DERIVED_DATA}-kit"
 KIT_TSAN_SCRATCH="${DERIVED_DATA}-kit-tsan"
 REL_DD="${DERIVED_DATA}-rel"
+DEMO_REL_DD="${DERIVED_DATA}-demorel"
 ASD_TARGET="${ASD_CARGO_TARGET_DIR:-${CARGO_TARGET_DIR:-$ROOT/rust/target}}"
 # rust/rust-toolchain.toml is only picked up inside rust/; pin the same channel for cargo calls from the root.
 export RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-$(sed -n 's/^channel *= *"\(.*\)"/\1/p' "$ROOT/rust/rust-toolchain.toml")}"
@@ -98,6 +100,16 @@ run xcodebuild build \
   -derivedDataPath "$REL_DD" \
   CODE_SIGNING_ALLOWED=NO
 
+# DemoRelease ships demo tools but never the bench (BEN-2): SwiftPM's
+# `.when(configuration: .debug)` must keep ASD_BENCH_CAPTURE out of the kit here too.
+step "Unsigned DemoRelease build"
+run xcodebuild build \
+  -project "$APP_DIR/AsdGazeCollector.xcodeproj" \
+  -scheme AsdGazeCollector -configuration DemoRelease \
+  -destination 'generic/platform=iOS' \
+  -derivedDataPath "$DEMO_REL_DD" \
+  CODE_SIGNING_ALLOWED=NO
+
 step "Static gate: claims and secrets"
 run python3 scripts/check_asd_claims.py --swift --secrets
 
@@ -121,5 +133,9 @@ run bash scripts/check_privacy_api_use.sh
 step "Static gate: Release binary symbols"
 run bash scripts/check_release_symbols.sh \
   "$REL_DD/Build/Products/Release-iphoneos/AsdGazeCollector.app/AsdGazeCollector"
+
+step "Static gate: DemoRelease binary symbols"
+run bash scripts/check_release_symbols.sh \
+  "$DEMO_REL_DD/Build/Products/DemoRelease-iphoneos/AsdGazeCollector.app/AsdGazeCollector" DemoRelease
 
 step "ios_test.sh: all gates passed"

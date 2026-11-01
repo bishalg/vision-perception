@@ -360,3 +360,28 @@ fn schema_rejects_bad_tracking_params() {
         );
     }
 }
+
+/// WP-A.13: the profile gate converts to the core gate field for field (the conversion the
+/// FFI uses for the pipeline config); the defaults agree and every value is carried.
+#[test]
+fn quality_gate_params_convert_to_the_core_gate_field_for_field() {
+    use asd_core::quality::QualityGate;
+    assert_eq!(
+        QualityGate::from(QualityGateParams::default()),
+        QualityGate::default()
+    );
+    let p = QualityGateParams {
+        min_distance_cm: 30.0,
+        max_distance_cm: 70.0,
+        max_yaw_rad: 0.4,
+        max_pitch_rad: 0.3,
+        min_confidence: 0.6,
+        blink_threshold: 0.5,
+    };
+    let g = QualityGate::from(&p);
+    assert_eq!(
+        serde_json::to_value(g).unwrap(),
+        serde_json::to_value(&p).unwrap(),
+        "same keys, same values"
+    );
+}

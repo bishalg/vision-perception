@@ -12,6 +12,7 @@ final class DataDeletionServiceTests: XCTestCase {
     private var root: URL!
     private var vaultDir: URL!
     private var blendShapeDir: URL!
+    private var benchLogDir: URL!
     private var queueDir: URL!
     private var researchStore: ResearchKitStudyStore!
     private var historyStore: GazeSessionHistoryStore!
@@ -29,8 +30,9 @@ final class DataDeletionServiceTests: XCTestCase {
             .appendingPathComponent("DataDeletion_\(UUID().uuidString)", isDirectory: true)
         vaultDir = root.appendingPathComponent("vault", isDirectory: true)
         blendShapeDir = root.appendingPathComponent("BlendShapeML", isDirectory: true)
+        benchLogDir = root.appendingPathComponent("BenchLogs", isDirectory: true)
         queueDir = root.appendingPathComponent("ResearchStudyQueue", isDirectory: true)
-        for dir in [vaultDir!, blendShapeDir!, queueDir!] {
+        for dir in [vaultDir!, blendShapeDir!, benchLogDir!, queueDir!] {
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         }
         calibrationResets = 0
@@ -72,6 +74,7 @@ final class DataDeletionServiceTests: XCTestCase {
         XCTAssertEqual(report.failures, [])
         XCTAssertEqual(contents(of: vaultDir), [], "Vault directory must be empty")
         XCTAssertFalse(FileManager.default.fileExists(atPath: blendShapeDir.path), "BlendShapeML must be removed")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: benchLogDir.path), "BenchLogs must be removed")
         XCTAssertEqual(regularFiles(under: queueDir), [], "No sync queue files may remain")
         XCTAssertEqual(syncService.pendingQueueCount, 0)
         XCTAssertTrue(historyStore.records.isEmpty)
@@ -101,6 +104,7 @@ final class DataDeletionServiceTests: XCTestCase {
 
     func testDeleteAllToleratesMissingDirectories() throws {
         try FileManager.default.removeItem(at: blendShapeDir)
+        try FileManager.default.removeItem(at: benchLogDir)
         try FileManager.default.removeItem(at: vaultDir)
 
         let report = makeService().deleteAll(includeCarePlans: false)
@@ -118,12 +122,53 @@ final class DataDeletionServiceTests: XCTestCase {
         )
     }
 
+    /// WP-G.8: bench logs are raw per-frame tracking; they are observation data too.
+    func testDeleteAllRemovesBenchLogs() throws {
+        let raw = benchLogDir.appendingPathComponent("bench-20261101-120000.jsonl")
+        try Data("{\"schema\":\"asd-raw-tracking/1\"}\n".utf8).write(to: raw)
+
+        let report = makeService().deleteAll(includeCarePlans: false)
+
+        XCTAssertEqual(report.failures, [])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: benchLogDir.path), "BenchLogs must be removed")
+    }
+
+    func testBenchLogFailureIsReported() throws {
+        // A read-only parent makes the folder undeletable.
+        let lockedParent = root.appendingPathComponent("locked", isDirectory: true)
+        let lockedBench = lockedParent.appendingPathComponent("BenchLogs", isDirectory: true)
+        try FileManager.default.createDirectory(at: lockedBench, withIntermediateDirectories: true)
+        try Data("x".utf8).write(to: lockedBench.appendingPathComponent("bench.jsonl"))
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: lockedParent.path)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: lockedParent.path)
+        }
+
+        let report = makeService(benchLogDirectory: lockedBench).deleteAll(includeCarePlans: false)
+
+        XCTAssertEqual(report.failures, ["bench logs"])
+    }
+
+    func testDefaultBenchLogDirectoryIsDocuments() {
+        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let dir = DataDeletionService.defaultBenchLogDirectory()
+        XCTAssertEqual(dir.lastPathComponent, "BenchLogs")
+        XCTAssertEqual(
+            dir.deletingLastPathComponent().standardizedFileURL.path,
+            documents.standardizedFileURL.path
+        )
+        #if ASD_BENCH_CAPTURE
+        XCTAssertEqual(BenchCaptureModel.logDirectory, dir, "the bench writes where deletion looks")
+        #endif
+    }
+
     // MARK: - Helpers
 
-    private func makeService() -> DataDeletionService {
+    private func makeService(benchLogDirectory: URL? = nil) -> DataDeletionService {
         DataDeletionService(
             vaultDirectory: vaultDir,
             blendShapeDirectory: blendShapeDir,
+            benchLogDirectory: benchLogDirectory ?? benchLogDir,
             historyStore: historyStore,
             researchStore: researchStore,
             purgeQueues: { [syncService] in syncService?.purgeAllQueued() },
@@ -136,6 +181,7 @@ final class DataDeletionServiceTests: XCTestCase {
         try? Data("cipher".utf8).write(to: vaultDir.appendingPathComponent("session-A.jsonl.enc"))
         try? Data("cipher".utf8).write(to: vaultDir.appendingPathComponent("session-B.sim.jsonl.enc"))
         try? Data("a,b\n".utf8).write(to: blendShapeDir.appendingPathComponent("blendshapes-1.csv"))
+        try? Data("{}\n".utf8).write(to: benchLogDir.appendingPathComponent("bench-1.jsonl"))
 
         let sig = ORKConsentSignature(guardianFullName: "Delete Parent", signatureToken: "SIG-DELETE")
         researchStore.saveConsent(signature: sig, participantId: "STUDY-DELETE")

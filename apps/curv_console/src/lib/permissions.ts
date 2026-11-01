@@ -117,3 +117,13 @@ export function assignableRoles(actor: Role | undefined): Role[] {
 export function canEditUserRole(actor: Role | undefined, target: Role): boolean {
   return !!actor && target !== "superadmin" && RANK[target] <= RANK[actor];
 }
+
+/**
+ * ADR-0009 (O-10 recommendation): roles that should have two-step sign-in. Mandatory TOTP is an owner decision
+ * still open, so the console only nudges; `totp_enrolled` comes from `GET /users/me` (unknown -> no nudge).
+ */
+export const TOTP_NUDGE_ROLES: readonly Role[] = ["owner", "admin", "clinician", "superadmin"];
+
+export function shouldNudgeTotp(role: Role | undefined, totpEnrolled: boolean | null | undefined): boolean {
+  return !!role && TOTP_NUDGE_ROLES.includes(role) && totpEnrolled === false;
+}

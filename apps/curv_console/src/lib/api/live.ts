@@ -1,5 +1,5 @@
 /** Live HTTP implementation of the typed API. This is the only module that calls `fetch` against the backend. */
-import type { ZodType } from "zod";
+import type { ZodType } from "@/lib/zod";
 import { createLiveAdmin } from "./admin";
 import { createLiveExports } from "./exports";
 import { createLiveCatalog } from "./catalog";
@@ -7,6 +7,7 @@ import { createLiveBundles } from "./config";
 import { createLivePrivacy } from "./privacy";
 import { createLiveClinical } from "./clinical";
 import { createLiveParticipant } from "./participant";
+import { createLiveTotp } from "./totp";
 import {
   ApiError,
   clipListSchema,
@@ -96,6 +97,7 @@ export function createLiveClient(opts: LiveOptions): CurvApi & AuthApi {
     ...createLiveCatalog(request, buildQuery),
     ...createLiveBundles(request, buildQuery),
     ...createLivePrivacy(request, buildQuery),
+    ...createLiveTotp(request),
     login: (email, password, totpCode) =>
       request("/auth/login", tokenPairSchema, {
         method: "POST",

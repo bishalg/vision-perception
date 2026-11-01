@@ -3,7 +3,7 @@
  * exported as docs/spec/schemas/asd/api-v1.json. `src/lib/api/contract.test.ts` checks these schemas against
  * that file (examples, enums, required fields), so contract drift fails CI. Every live response is also parsed here.
  */
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import type { AdminApi } from "./admin";
 import type { ExportsApi } from "./exports";
 import type { CatalogApi } from "./catalog";
@@ -11,6 +11,7 @@ import type { BundlesApi } from "./config";
 import type { ClinicalApi } from "./clinical";
 import type { PrivacyApi } from "./privacy";
 import type { ParticipantApi } from "./participant";
+import type { TotpApi } from "./totp";
 
 /** `SessionAttentionFlag`: the 3 device values plus backend-derived `unreliable` (CON-15). */
 export const ATTENTION_FLAGS = ["green", "yellow", "red", "unreliable"] as const;
@@ -473,7 +474,8 @@ export interface PageQuery {
 
 // ---- client interface -----------------------------------------------------
 
-export interface CurvApi extends ClinicalApi, AdminApi, ExportsApi, CatalogApi, BundlesApi, PrivacyApi, ParticipantApi {
+export interface CurvApi
+  extends ClinicalApi, AdminApi, ExportsApi, CatalogApi, BundlesApi, PrivacyApi, ParticipantApi, TotpApi {
   getOrg(orgId: string): Promise<Org>;
   getMetrics(orgId: string): Promise<Metrics>;
   listSessions(orgId: string, query?: SessionListQuery): Promise<SessionPage>;
@@ -524,6 +526,11 @@ export const PROBLEM_SLUGS = [
   // TOTP second factor on login.
   "totp-required",
   "totp-invalid",
+  // WP-C.15 TOTP enrolment (`/v1/users/me/totp`): wrong password, and the enrolment state machine.
+  "invalid-credentials",
+  "totp-already-enrolled",
+  "totp-enrolment-expired",
+  "totp-not-enrolled",
   // WP-C.9 (clinician workspace + interop, ADR-0008)
   "clinical-crypto-unavailable",
   "patient-ref-disabled",

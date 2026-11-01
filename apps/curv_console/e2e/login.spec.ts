@@ -1,5 +1,4 @@
-import { expect, test } from "@playwright/test";
-import { LIVE, MOCK_ORG_ID, PASSWORD, SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD, TARGET_ORG_ID, login, loginToOverview } from "./helpers";
+import { expect, test, LIVE, MOCK_ORG_ID, PASSWORD, SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD, TARGET_ORG_ID, login, loginToOverview } from "./helpers";
 
 test("unauthenticated visits go to /login and keep the target", async ({ page }) => {
   await page.goto("/");

@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE users\n         SET totp_secret_ct = $2, totp_secret_kek_id = $3, last_totp_step = $4,\n             totp_pending_ct = NULL, totp_pending_kek_id = NULL, totp_pending_expires_at = NULL\n         WHERE id = $1 AND totp_secret_ct IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bytea",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b320fc3445b91953ebfc8ad8cba28946deab274e4a2049a81a565c46d2d1ed49"
+}

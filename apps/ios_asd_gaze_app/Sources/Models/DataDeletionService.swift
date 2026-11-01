@@ -7,7 +7,7 @@ import os
 ///
 /// `deleteAll(includeCarePlans:)` empties the vault, session history, research
 /// upload queues, the `BlendShapeML` directory if a data-export build left one,
-/// the calibration profile, M-CHAT results and study enrollment. CareKit care
+/// the `BenchLogs` directory if a bench-capture build left one, the calibration profile, M-CHAT results and study enrollment. CareKit care
 /// plans are the parent's own notes, not telemetry: they are deleted only when
 /// the caller passes `includeCarePlans: true` after a separate confirmation.
 @MainActor
@@ -21,10 +21,12 @@ public final class DataDeletionService {
     private static let logger = Logger(subsystem: "com.visionperception.asd", category: "DataDeletionService")
 
     static let blendShapeFolder = "BlendShapeML"
+    static let benchLogFolder = "BenchLogs"
 
     private let fileManager: FileManager
     private let vaultDirectory: URL
     private let blendShapeDirectory: URL
+    private let benchLogDirectory: URL
     private let historyStore: GazeSessionHistoryStore
     private let researchStore: ResearchKitStudyStore
     private let purgeQueues: @MainActor () -> Void
@@ -34,6 +36,7 @@ public final class DataDeletionService {
     public init(
         vaultDirectory: URL,
         blendShapeDirectory: URL,
+        benchLogDirectory: URL,
         historyStore: GazeSessionHistoryStore,
         researchStore: ResearchKitStudyStore,
         purgeQueues: @escaping @MainActor () -> Void,
@@ -43,6 +46,7 @@ public final class DataDeletionService {
     ) {
         self.vaultDirectory = vaultDirectory
         self.blendShapeDirectory = blendShapeDirectory
+        self.benchLogDirectory = benchLogDirectory
         self.historyStore = historyStore
         self.researchStore = researchStore
         self.purgeQueues = purgeQueues
@@ -56,6 +60,7 @@ public final class DataDeletionService {
         DataDeletionService(
             vaultDirectory: SessionVaultManager().vaultDirectory,
             blendShapeDirectory: defaultBlendShapeDirectory(),
+            benchLogDirectory: defaultBenchLogDirectory(),
             historyStore: .shared,
             researchStore: .shared,
             purgeQueues: { ResearchKitSyncService.purgeQueuedUploads() },
@@ -78,6 +83,14 @@ public final class DataDeletionService {
         return base.appendingPathComponent(blendShapeFolder, isDirectory: true)
     }
 
+    /// Where the Debug-only bench capture (`ASD_BENCH_CAPTURE`, WP-G.8) writes its raw
+    /// tracking logs. Known here unconditionally so deletion also cleans up after such a build.
+    public nonisolated static func defaultBenchLogDirectory(fileManager: FileManager = .default) -> URL {
+        let base = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? fileManager.temporaryDirectory
+        return base.appendingPathComponent(benchLogFolder, isDirectory: true)
+    }
+
     /// Deletes every observation store. Each store is attempted even if an
     /// earlier one failed; failures are reported, not thrown.
     @discardableResult
@@ -92,6 +105,9 @@ public final class DataDeletionService {
         purgeQueues()
         if !removeItemIfPresent(blendShapeDirectory) {
             report.failures.append("blend-shape export folder")
+        }
+        if !removeItemIfPresent(benchLogDirectory) {
+            report.failures.append("bench logs")
         }
         resetCalibration()
 

@@ -65,6 +65,79 @@ pub struct LoginRequest {
     pub totp_code: Option<String>,
 }
 
+// ---- TOTP enrolment (AUTH-6..8, ADR-0009) ------------------------------------------------
+
+/// `POST /v1/users/me/totp/enrol` (any signed-in console user, 5 requests per minute per
+/// user across the three TOTP routes). Answers `200 TotpEnrolResponse`; `401`
+/// `invalid-credentials` for a wrong password, `409 totp-already-enrolled`, `503
+/// clinical-crypto-unavailable` when the server has no data KEK. A second call replaces
+/// the pending seed.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct TotpEnrolRequest {
+    /// The caller's current password.
+    pub password: String,
+}
+
+/// The pending seed: the only place it is ever shown in clear. Show it as a QR code of
+/// `otpauth_url` and as text; it must be confirmed with `POST /v1/users/me/totp/confirm`
+/// before `expires_at` (10 minutes).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct TotpEnrolResponse {
+    /// RFC 4648 base32 seed (20 random bytes, 32 characters, no padding).
+    pub secret: String,
+    /// `otpauth://totp/{issuer}:{email}?secret=..&issuer=..&algorithm=SHA1&digits=6&period=30`,
+    /// percent-encoded (Key Uri Format).
+    pub otpauth_url: String,
+    /// RFC 3339 time after which `confirm` answers `410 totp-enrolment-expired`.
+    pub expires_at: String,
+}
+
+/// `POST /v1/users/me/totp/confirm`: a current code from the pending seed (one step of
+/// clock skew). `200 TotpStatus {totp_enrolled: true}`; `401 totp-invalid` for a wrong
+/// code; `410 totp-enrolment-expired` without a live pending seed.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct TotpConfirmRequest {
+    /// Current RFC 6238 code (6 digits).
+    pub totp_code: String,
+}
+
+/// `DELETE /v1/users/me/totp`: password and a current, unused code are both required.
+/// `200 TotpStatus {totp_enrolled: false}`; `401 invalid-credentials` (password), `401
+/// totp-required` (no code), `401 totp-invalid` (wrong or used code), `404
+/// totp-not-enrolled`.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct TotpDisableRequest {
+    pub password: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub totp_code: Option<String>,
+}
+
+/// Result of `confirm` and `DELETE`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct TotpStatus {
+    pub totp_enrolled: bool,
+}
+
+// Secrets never reach a `Debug` string (logs, panics).
+macro_rules! redacted_debug {
+    ($($t:ty),*) => {$(
+        impl std::fmt::Debug for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(concat!(stringify!($t), "(..)"))
+            }
+        }
+    )*};
+}
+redacted_debug!(
+    TotpEnrolRequest,
+    TotpEnrolResponse,
+    TotpConfirmRequest,
+    TotpDisableRequest
+);
+
 /// `POST /v1/auth/refresh` and `POST /v1/auth/logout` (`{refresh_token}` in the body).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct RefreshRequest {
@@ -737,6 +810,35 @@ pub struct Health {
 pub struct Ready {
     pub status: String,
     pub checks: BTreeMap<String, String>,
+}
+
+// ---- housekeeping (HK-1..5, WP-B.12) ---------------------------------------------------
+
+/// `POST /v1/jobs/housekeeping` (superadmin): queues a manual housekeeping sweep and
+/// answers `202` with the job (`GET /v1/jobs/{id}`). An empty object is a real run.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct HousekeepingRequest {
+    /// Count what the sweep would remove without removing anything (default `false`).
+    #[serde(default)]
+    pub dry_run: bool,
+}
+
+/// `jobs.result` of a `housekeeping_sweep` job: rows removed (or, in a dry run, removable)
+/// per rule.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct HousekeepingResult {
+    /// `idempotency_keys` older than 7 days.
+    pub idempotency_keys: u64,
+    /// `refresh_tokens` expired more than a day ago.
+    pub refresh_tokens: u64,
+    /// `enrol_codes` revoked or expired more than 90 days ago that no device references.
+    pub enrol_codes: u64,
+    /// Finished `jobs` older than 30 days that nothing references.
+    pub jobs: u64,
+    /// Users whose expired pending TOTP enrolment was cleared.
+    pub totp_pending: u64,
+    pub dry_run: bool,
 }
 
 // ---- examples (published in api-v1.json) -----------------------------------------------

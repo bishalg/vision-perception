@@ -5,7 +5,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import type { ZodType } from "zod";
+import type { ZodType } from "@/lib/zod";
 import { ApiError, PROBLEM_SLUGS } from "@/lib/api";
 import { createLiveClient } from "@/lib/api/live";
 import { createMockClient, MOCK_ORG_ID } from "@/lib/api/mock";

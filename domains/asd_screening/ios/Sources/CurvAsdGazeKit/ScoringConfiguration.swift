@@ -30,6 +30,9 @@ public enum BundleRejection: String, Error, Sendable, Equatable {
     case invalidSignedAt
     case expired
     case signedInFuture
+    /// Signed, but the scoring profile fails the publisher's value checks (Rust
+    /// `profile_checks`, incl. `trackingQuality`, WP-A.13): the pipeline could not run with it.
+    case invalidProfile
     /// The signed documents do not decode as the kit's catalog / baseline types.
     case undecodableDocuments
 }
@@ -68,18 +71,7 @@ public struct ScoringConfiguration: Sendable {
     /// The per-sample gate built from the profile's `qualityGate` (the bundled default gate
     /// when the profile cannot be read, which the core never hands out).
     public var qualityGate: GazeQualityGate {
-        guard let profile = try? AsdCoreBridge.decode(CoreScoringProfile.self, from: scoringProfileJSON) else {
-            return GazeQualityGate()
-        }
-        let g = profile.qualityGate
-        return GazeQualityGate(
-            minDistanceCm: g.minDistanceCm,
-            maxDistanceCm: g.maxDistanceCm,
-            maxYawRad: g.maxYawRad,
-            maxPitchRad: g.maxPitchRad,
-            minConfidence: g.minConfidence,
-            blinkThreshold: g.blinkThreshold
-        )
+        GazeQualityGate(scoringProfileJSON: scoringProfileJSON) ?? GazeQualityGate()
     }
 
     /// The configuration compiled into this build.
@@ -158,6 +150,7 @@ extension BundleRejection {
         case .invalidSignedAt: self = .invalidSignedAt
         case .expired: self = .expired
         case .signedInFuture: self = .signedInFuture
+        case .invalidProfile: self = .invalidProfile
         }
     }
 }

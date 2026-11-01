@@ -11,6 +11,7 @@ export * from "./catalog";
 export * from "./config";
 export * from "./privacy";
 export * from "./participant";
+export * from "./totp";
 
 export type ApiMode = "mock" | "live";
 

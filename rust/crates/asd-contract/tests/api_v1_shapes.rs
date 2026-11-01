@@ -394,3 +394,49 @@ fn api_schema_publishes_the_contract_problem_slugs() {
     unique.dedup();
     assert_eq!(unique.len(), problem::SLUGS.len(), "no duplicates");
 }
+
+/// GATE-1 inside `cargo test -p asd-contract`: the committed `api-v1.json` is exactly what
+/// `schema::api_v1()` exports (after RFC 8785 canonicalisation). On failure run
+/// `cargo run -p asd-cli -- schema export` and commit the result.
+#[test]
+fn committed_api_v1_json_matches_the_rust_types() {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../docs/spec/schemas/asd")
+        .join(schema::API_FILE);
+    let committed: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    let canonical = |v: &Value| asd_contract::signing::canonical_bytes(v).unwrap();
+    assert!(
+        canonical(&committed) == canonical(&schema::api_v1()),
+        "{} is stale: run `cargo run -p asd-cli -- schema export`",
+        path.display()
+    );
+}
+
+#[test]
+fn housekeeping_dtos_are_exported() {
+    let api = schema::api_v1();
+    let defs = &api["$defs"];
+    assert_eq!(
+        keys(&defs["HousekeepingRequest"]["properties"]),
+        vec!["dry_run"]
+    );
+    assert_eq!(
+        keys(&defs["HousekeepingResult"]["properties"]),
+        vec![
+            "dry_run",
+            "enrol_codes",
+            "idempotency_keys",
+            "jobs",
+            "refresh_tokens",
+            "totp_pending"
+        ]
+    );
+    let req: asd_contract::api_v1::HousekeepingRequest = serde_json::from_value(json!({})).unwrap();
+    assert!(!req.dry_run);
+    assert!(
+        serde_json::from_value::<asd_contract::api_v1::HousekeepingRequest>(
+            json!({"dryRun": true})
+        )
+        .is_err()
+    );
+}

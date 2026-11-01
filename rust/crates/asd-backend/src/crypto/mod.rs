@@ -25,6 +25,7 @@
 pub mod aead;
 pub mod blind_index;
 pub mod keyring;
+pub mod rotate; // WP-B.15 KEY-9
 
 use std::fmt;
 use std::sync::Arc;

@@ -1,5 +1,4 @@
-import { expect, test } from "@playwright/test";
-import { loginToOverview } from "./helpers";
+import { expect, test, loginToOverview } from "./helpers";
 
 test("devices: generate an enrol code shown as text and QR", async ({ page }) => {
   const org = await loginToOverview(page);

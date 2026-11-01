@@ -1,0 +1,43 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE users\n           SET totp_pending_ct = $2, totp_pending_kek_id = $3,\n               totp_pending_expires_at = now() + make_interval(secs => $4)\n           WHERE id = $1 AND totp_secret_ct IS NULL\n           RETURNING email, totp_pending_expires_at AS \"expires_at!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "email",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "expires_at!",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "totp_pending_expires_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bytea",
+        "Text",
+        "Float8"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "2ae2378262a943a2d829c135363368b157c773099aa23c0c0ad54cbe3f2b3cb7"
+}

@@ -216,3 +216,241 @@ after the wave: R.3 → R.4 adapter swap → `cargo test --workspace` → commit
     but still restrict `Access-Control-Allow-Origin` to the console origin for browsers.
 14. iOS rejects IP-literal and `localhost` hosts for every URL including upload URLs;
     with MinIO in compose, use `BLOB_MODE=proxy` for device testing.
+
+## Phase 5 wave (2026-11-01, ADR-0009) — security operations
+
+Batch of nine packages (tracker `04 §7`): WP-B.11..B.15, WP-C.15, WP-C.16, WP-A.13 here,
+WP-G.8 in `docs/spec/modules/asd-gaze-robustness/work-packages.md`. Migration numbers are
+assigned here: **0020** = WP-B.11, **0021** = WP-B.14. Every backend package that adds or
+changes a `sqlx::query!` must run `cargo sqlx prepare --workspace` against a live database
+and commit `rust/.sqlx/` (gate `sqlx prepare --check`).
+
+### Wave 1 (parallel, no shared files)
+
+#### WP-B.11 TOTP enrolment API - `S`
+
+Goal: AUTH-6, AUTH-7, AUTH-8, AUTH-10 (AUTH-9 `reset-totp` ships with B.14, which owns
+`admin.rs`/`main.rs` in its wave; B.11 exposes `totp::reset(db, user_id)` for it).
+Files: `asd-backend/migrations/0020_totp_enrolment.sql` (three nullable columns on
+`users`, check `(totp_pending_ct IS NULL) = (totp_pending_kek_id IS NULL)`),
+`asd-backend/src/auth/totp.rs` (`TOTP_ISSUER`, `pending_aad`, `start_enrolment`,
+`confirm_enrolment`, `disable`, `otpauth_url`), new `asd-backend/src/routes/totp.rs`
+(router merged in `routes/mod.rs`, its own `RateLimiter<Uuid>` 5/min), `routes/users.rs`
+(`totp_pending` on `/users/me` only), `asd-contract/src/api_v1.rs` (DTOs
+`TotpEnrolRequest`, `TotpEnrolResponse`, `TotpConfirmRequest`, `TotpDisableRequest`,
+`TotpStatus`; `UserMe.totp_pending`), `asd-contract/src/problem.rs` (three slugs),
+`docs/spec/schemas/asd/api-v1.json` regenerated with `asd-cli schema`, `rust/.sqlx/`,
+tests `asd-backend/tests/totp_enrol.rs`.
+Not to touch: `routes/auth.rs` login flow, `clinical/reauth.rs`, `crypto/keyring.rs`,
+`config.rs`, `admin.rs`, `main.rs`.
+Tests first: enrol → confirm → login needs code; wrong code 401 and audited; expired
+pending 410; enrol while enrolled 409; disable without code 401, with password + code 200
+and `last_totp_step` NULL; pending seed ignored by login and by step-up; 6th enrol in a
+minute 429; log capture (pattern from `tests/log_redaction.rs`) contains neither the seed
+nor the code; `otpauth_url` percent-encodes `+` in e-mails; `GET /users/me` shows
+`totp_pending`.
+Commands: `scripts/rust_test.sh`, `asd-cli schema check`.
+Depends on: nothing. Parallel with: B.12, B.13, B.15, C.16, A.13, G.8.
+
+#### WP-B.12 Housekeeping sweep - `I`
+
+Goal: HK-1..HK-5.
+Files: new `asd-backend/src/jobs/housekeeping.rs`, `jobs/mod.rs` (`KIND_HOUSEKEEPING`,
+`KINDS`), `jobs/runner.rs` (`run_phased` arm, `schedule_daily` call next to
+`retention::schedule_nightly`), `routes/jobs.rs` (`POST /jobs/housekeeping`, superadmin),
+`asd-contract/src/api_v1.rs` only if a new DTO is needed (prefer reusing the job
+response), `rust/.sqlx/`, tests `asd-backend/tests/housekeeping.rs`.
+Not to touch: `retention.rs`, `erasure.rs`, `export.rs`, `ingest/idempotency.rs`.
+Tests first: the seeded-pairs scenario (acceptance 20) including the FK-referenced job
+and the device-referenced enrol code kept; replay after sweep is `200 duplicate:true`
+(ingest fixture from `tests/ingest_support`); rotation with a swept-eligible but
+referenced code still works; dry run deletes nothing and writes `housekeeping.sweep_dry_run`;
+two workers calling `schedule_daily` concurrently queue one job; a scheduled run that
+deletes nothing writes no audit row.
+Commands: `scripts/rust_test.sh`.
+Depends on: nothing. Parallel with: B.11, B.13, B.15, C.16, A.13, G.8.
+
+#### WP-B.13 Prometheus listener and API HSTS - `I`
+
+Goal: OBS-2, OBS-3, OBS-4.
+Files: `asd-backend/Cargo.toml` (+ `rust/Cargo.lock`; a Prometheus client crate whose
+licence `deny.toml` already allows, no `unsafe`, e.g. `prometheus-client`), new
+`asd-backend/src/observability.rs` (registry, middleware layer, exposition handler, jobs
+gauge query with 10 s cache), `src/app.rs` (metrics layer + `SetResponseHeaderLayer` for
+HSTS), `src/config.rs` (`metrics_bind_addr: Option<SocketAddr>`), `src/main.rs`
+(`serve` spawns the second listener), `src/auth/mod.rs` (`RateLimiter` increments
+`auth_rate_limited_total` on reject, one line), `rust/.env.example`, tests
+`asd-backend/tests/metrics_endpoint.rs`.
+Not to touch: `routes/metrics.rs` (dashboard), `telemetry.rs` log format.
+Tests first: listener off by default (connect refused); `/metrics` on the API port 404;
+route label equals the template after `GET /v1/sessions/{id}`; label-safety grep over
+the exposition for every id/e-mail the test used; histogram has the configured buckets;
+HSTS present on `/health` and on a 404; scrape of `/metrics` produces no request-log line.
+Commands: `scripts/rust_test.sh` (incl. `cargo deny check`).
+Depends on: nothing. Conflicts (`main.rs`, `config.rs`) with B.15 → **wave 2** if B.15 is
+in wave 1; the tracker places it in wave 2.
+
+#### WP-B.15 KEK rotation - `S`
+
+Goal: KEY-8, KEY-9, KEY-10.
+Files: `asd-backend/src/crypto/keyring.rs` (`previous: Vec<Kek>`, selection by `kek_id`
+in `unwrap_key` and `open_user_secret`, `Keyring::with_previous`), new
+`asd-backend/src/crypto/rotate.rs` (the rewrite loops; reads `totp::secret_aad` and, once
+B.11 lands, `totp::pending_aad`: B.14 adds the pending column to the loop), `src/config.rs`
+(`ASD_DATA_KEK_PREVIOUS`, validation), `src/admin.rs` + `src/main.rs` (`rotate-kek`),
+`src/app.rs` (keyring construction passes previous keys), `rust/.env.example`,
+`rust/README.md` runbook, tests `asd-backend/tests/kek_rotation.rs`.
+Not to touch: `auth/totp.rs` (read only), `interop/destination.rs` (secrets are under
+DEKs; nothing to do), `clinical/`.
+Tests first: write under A; start keyring with active B + previous A → reads work, new
+writes carry B's id; `rotate-kek` → `remaining 0`, every row has B's id, decrypted
+values equal the originals, blind index unchanged (`mrn_blind_index` same bytes); rerun
+→ zero changes; keyring with only B after rotation works, with only B before rotation
+→ `KeyUnwrap`; a row rewritten under B by a concurrent writer between select and
+update is not overwritten (CAS); unknown `kek_id` row → `remaining 1`, exit 3; config
+refuses `PREVIOUS` equal to the active key and non-32-byte entries.
+Commands: `scripts/rust_test.sh`.
+Depends on: nothing. Parallel with: B.11, B.12, C.16, A.13, G.8.
+
+#### WP-C.16 Console CSP and HSTS - `I`
+
+Goal: CSP-1..CSP-4.
+Files: `apps/curv_console/src/proxy.ts` (nonce, CSP header, `x-nonce` request header,
+matcher review), `next.config.ts` (HSTS), `src/app/layout.tsx` only if Next needs the
+nonce read explicitly (check `node_modules/next/dist/docs/` for the current CSP guide
+before writing: the console's `AGENTS.md` warns the API differs from training data),
+`e2e/helpers.ts` (violation listener), new `e2e/csp.spec.ts`, new `tests/csp.test.ts`.
+Not to touch: `src/lib/api/**`, settings pages (C.15 owns them).
+Tests first: unit test of the policy builder (nonce differs per call, dev adds
+`unsafe-eval`, production does not, no `unsafe-inline` in `script-src`); e2e: headers on
+`/login`, the scoring-profile editor loads `asd_wasm` with no violation, enrol-code QR
+renders, participant print view renders; negative: a test page or fixture with an
+un-nonced inline script triggers the listener (proves the listener works).
+Commands: `npm test`, `npm run lint`, `npm run typecheck`, `CURV_API_MODE=mock npm run
+build`, `npm run e2e`.
+Depends on: nothing. Parallel with every backend package and A.13, G.8.
+
+#### WP-A.13 `ScoringProfile.trackingQuality` into the gaze pipeline through Rust - `S`
+
+Goal: CFG-3 (closes the WP-A.5 note "trackingQuality not yet wired").
+Files: `asd-ffi/src/gaze.rs` (`gaze_config_json_for_profile`, next to
+`gaze_default_config_json`), the UniFFI definition it is declared in, `asd-ffi/tests/`
+(new `gaze_config_profile.rs`), kit `GazePipelineSupport.swift`
+(`GazePipelineDocuments.config(modelIdentifier:orientation:scoringProfileJSON:)`),
+`GazeProcessingActor.swift` (init takes `scoringProfileJSON: String`, `makePipeline`
+calls the new function; `CoreQualityGate` JSON assembly removed from the pipeline path),
+`GazeSessionController.swift` (passes `ScoringConfiguration.active.scoringProfileJSON`),
+kit tests `GazePipelineDocumentsTests.swift`.
+Not to touch: `ARSessionBridge.swift`, `SettingsView.swift`, `project.yml` (G.8 owns
+them); `asd-core` scoring (G.13); `ScoringConfiguration.qualityGate` stays for the
+per-sample Swift gate callers.
+Tests first (Rust): profile 1.1.0 with a changed `drift` threshold appears in the config;
+1.0.0 profile (no `trackingQuality`) yields JSON identical to `gaze_default_config_json`;
+`qualityGate` comes from the profile; malformed profile → `AsdError::InvalidJson`.
+Tests first (kit): four-point `layout5` → `GazeTargetSchedule.calibrationLayout.count == 4`
+and a scripted session records four calibration targets; `GoldenParityTests` unchanged.
+Commands: `scripts/rust_test.sh`, `scripts/ios_test.sh` (rebuilds the xcframework).
+Depends on: nothing. Parallel with: G.8 (disjoint kit files), all backend packages.
+
+### Wave 2 (after wave 1 is integrated)
+
+#### WP-C.15 Console TOTP enrolment page - `I`
+
+Goal: AUTH-6..8 as seen from the console; nudge for privileged roles.
+Files: new `src/app/[org]/settings/security/page.tsx` + `actions.ts` (server actions:
+enrol, confirm, disable; password and code read from `FormData`, never React state, as
+in `components/clinical/SignDialog`), new `src/components/security/TotpSetup.tsx`
+(`QrCode.tsx` reused with the `otpauth` URL, seed shown as text, confirm form, disable
+form), `src/lib/api/{types,live,mock,index}.ts` (three calls + `UserMe.totp_pending`;
+mock: `MOCK_TOTP_EMAIL` enrolled, others enrol with the mock code), `src/lib/nav.ts`
+(settings entry), `src/messages/en.ts`, layout banner for owner/admin/clinician/superadmin
+without TOTP (`settings/security` link), tests `tests/security-settings.test.tsx`,
+`src/lib/api/contract.test.ts` (zod vs regenerated `api-v1.json`), `e2e/totp.spec.ts`.
+Not to touch: `proxy.ts`, `next.config.ts`, `e2e/helpers.ts` (C.16).
+Tests first: component renders QR + seed from the response, hides both after confirm;
+wrong code keeps the page and shows the problem detail; disable form requires both
+fields; banner shown for an admin without TOTP, hidden for a viewer; contract test
+passes against the new schema; e2e enrol/confirm/disable in mock, enrol/confirm in live
+(code computed from the returned seed in the test, RFC 6238 in `e2e/helpers.ts`).
+Commands: console gates.
+Depends on: B.11 (schema). Parallel with: B.13, B.14.
+
+#### WP-B.14 Drop plaintext columns, migrate ordering - `S`
+
+Goal: KEY-11, KEY-12, AUTH-9 (`admin reset-totp`); extends B.15's rotation to the pending column.
+Files: `asd-backend/migrations/0021_drop_plaintext_columns.sql`, `src/db.rs`
+(`migrate` pre-step; `backfill` keeps running after migrations for the 0016 case),
+`src/main.rs` (`migrate()` calls the pre-step), `src/auth/totp.rs` (delete the legacy
+branch of `load_secret`; `legacy_secret_count` and `encrypt_legacy_secrets` stay because
+step (a) needs them, but query `users.totp_secret` through a runtime `sqlx::query`
+guarded by an `information_schema` check since the column no longer exists at compile
+time), `src/routes/users.rs` (`totp_enrolled` = `totp_secret_ct IS NOT NULL`),
+`src/admin.rs` + `src/main.rs` (remove `encrypt-review-notes`, add `reset-totp`), the review-notes
+back-fill module it calls, `src/crypto/rotate.rs` (pending seed column), `rust/.sqlx/`,
+`rust/README.md`, tests `asd-backend/tests/migrations.rs`, `tests/review_note_encryption.rs`
+(drop the back-fill cases), `tests/kek_rotation.rs` (pending seed), `tests/admin.rs` (`reset-totp`).
+Not to touch: 0016 and 0008 SQL files (history), `routes/totp.rs`.
+Tests first: acceptance 19 scenarios (fresh DB; DB at 0019 with a plaintext seed, with
+and without the KEK; DB with a plaintext note); after 0021 `information_schema.columns`
+has neither column; `tests/migrations.rs` still applies every migration on a fresh DB in
+order; rotation re-seals a pending seed.
+Commands: `scripts/rust_test.sh`.
+Depends on: B.11 (0020, pending columns), B.15 (`rotate.rs`). Runs after both; parallel
+with C.15 only.
+
+#### WP-B.13 — see wave 1 entry; scheduled in wave 2 because it shares `main.rs` and
+`config.rs` with B.15. Parallel with C.15; **not** with B.14 (`main.rs`).
+
+### Integration order
+
+Wave 1: B.11, B.12, B.15, C.16, A.13, G.8 → main session: `cargo sqlx prepare`, regenerate
+`api-v1.json`, full gates, commit. Wave 2: C.15 ∥ B.13 → gates, commit. Wave 3: B.14 →
+gates, commit. The tracker's migration rule becomes "≥0022".
+
+### Traps for implementers (phase 5)
+
+1. `sqlx::query!` is compile-time checked against `rust/.sqlx/`. Any changed query needs
+   `cargo sqlx prepare --workspace` against a migrated database before `rust_test.sh`
+   passes; after 0021 nothing may name `users.totp_secret` or `review_items.note` in a
+   macro query.
+2. `Keyring::open_user_secret` compares `kek_id` to the active key and errors with
+   `KeyUnwrap` *before* trying to decrypt; B.15 must change that comparison to a lookup
+   across active + previous, or previous keys never get used.
+3. Unwrapped DEKs are cached per process (`Keyring.keys`); tests of rotation must build a
+   fresh `Keyring` to prove the database state, not reuse the one that wrote the data.
+4. `jobs` has four incoming foreign keys with no `ON DELETE`; delete only unreferenced rows
+   (HK-2). `devices.enrol_code_id` likewise.
+5. Enrol-code rotation (CON-11) accepts expired codes on purpose; sweeping a referenced
+   code breaks a device's recovery path (HK-5).
+6. `retention::schedule_nightly` dedupes on `params->>'scheduled' = 'true'` and
+   `created_at > now() - 1 day`; copy the pattern with a different advisory-lock key
+   (`SCHEDULE_LOCK` is `0x0B09_5EED`), or two daily jobs block each other.
+7. The telemetry layer drops fields whose name contains `secret`, `code` is **not**
+   redacted (`totpcode` is, `enrolcode` is): name the confirm payload field `totp_code`
+   or log nothing from it.
+8. `routes/metrics.rs` already exists (dashboard). Name the Prometheus module
+   `observability`, never mount it under `/v1`.
+9. `tower_http::set_header::SetResponseHeaderLayer` needs the `set-header` feature;
+   `Cargo.toml` enables only `cors, request-id, timeout, trace, util` today.
+10. The console loads `asd_wasm.js` with a dynamic `import()` of a URL under `/asd-wasm/`;
+    `'strict-dynamic'` lets nonced scripts load it, `'wasm-unsafe-eval'` lets it
+    instantiate. Without both the config editors fall back to "core unavailable" silently
+    (`src/lib/asd/browser.ts`), which the existing tests treat as a pass: add the explicit
+    violation listener first (CSP-3) or the regression is invisible.
+11. Next.js reads the nonce from the request's CSP header or `x-nonce` depending on the
+    version; the console's `AGENTS.md` says the installed Next differs from training data:
+    read `node_modules/next/dist/docs/` on CSP before writing `proxy.ts`.
+12. The `proxy.ts` matcher excludes `_next/static`, `_next/image`, `favicon.ico`; HTML
+    responses all pass through it, so headers set there reach every page. Do not move the
+    CSP to `next.config.ts` `headers()`: it cannot vary per request, so no nonce.
+13. `GazePipelineDocuments.config` sorts keys (`.sortedKeys`) before handing JSON to Rust;
+    the new Rust function makes that moot, but `GazeTargetSchedule(configJSON:)` parses the
+    pipeline's `configJson()` output, so the FFI must keep emitting the same camelCase keys.
+14. `GazeProcessingActor.init` is `nonisolated`-sensitive (strict concurrency complete):
+    pass the profile JSON as a `String` (Sendable), not `ScoringConfiguration`.
+15. `ScoringConfiguration.active` is the delivered or bundled configuration; sessions
+    already record `rawPayload.bundleVersion`, so no new field is needed to know which
+    params ran.
+16. The 0020 migration adds columns to `users`; `tests/migrations.rs` compares applied
+    versions with the embedded list, so add the file and nothing else breaks, but the
+    `CHECK` must allow all-NULL (users without a pending seed).

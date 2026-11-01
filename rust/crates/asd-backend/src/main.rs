@@ -7,7 +7,7 @@
 //! - `asd-backend migrate` applies pending migrations, then the data back-fills that need
 //!   the KEK (0016: TOTP seeds sealed), and exits (compose init step);
 //! - `asd-backend admin`   operator commands (`create-org`, `create-user`,
-//!   `encrypt-review-notes`), see `asd_backend::admin`.
+//!   `encrypt-review-notes`, `rotate-kek`), see `asd_backend::admin`.
 //!
 //! Configuration is environment only; see `rust/.env.example`.
 
@@ -22,7 +22,8 @@ const USAGE: &str = "usage: asd-backend <serve|worker|migrate|admin>\n\
   serve    run the HTTP API (GET /health, /health/ready, /v1/...)\n\
   worker   run the background job worker\n\
   migrate  apply pending database migrations and exit\n\
-  admin    create-org / create-user for a fresh deployment (asd-backend admin --help)\n\
+  admin    create-org / create-user / rotate-kek and other operator commands\n\
+           (asd-backend admin --help)\n\
 \n\
 Configuration comes from the environment; see rust/.env.example.";
 
@@ -237,6 +238,9 @@ fn admin_main() -> ExitCode {
                     .await
                     .map(|n| n.to_string())
             }
+            admin::AdminCommand::RotateKek { batch, dry_run } => {
+                admin::rotate_kek_cli(&pool, &config, *batch, *dry_run).await
+            }
             admin::AdminCommand::Help => unreachable!("handled above"),
         };
         pool.close().await;
@@ -252,6 +256,12 @@ fn admin_main() -> ExitCode {
 }
 
 fn admin_failed(e: &admin::AdminError) -> ExitCode {
+    // `rotate-kek` with rows remaining still prints its report on stdout (KEY-9).
+    if let admin::AdminError::RotationIncomplete(report) = e {
+        if let Ok(json) = admin::report_json(report) {
+            println!("{json}");
+        }
+    }
     eprintln!("asd-backend admin: {e}");
     ExitCode::from(e.exit_code())
 }

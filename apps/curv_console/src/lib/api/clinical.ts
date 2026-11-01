@@ -3,7 +3,7 @@
  * the `ClinicalApi` interface, and the live HTTP implementation. The console holds no hashing or scoring: the
  * `content_hash` shown in dialogs is whatever the API returned, and is echoed back unchanged on sign/cosign.
  */
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import { ApiError, orgSchema, roleSchema, sessionSummarySchema, type Org } from "./types";
 
 const str = z.string().nullable().optional();
@@ -154,6 +154,8 @@ export const userProfileSchema = z.object({
   user_id: str,
   /** True when the user has a TOTP secret (never returned). */
   totp_enrolled: z.boolean().nullable().optional(),
+  /** True while a TOTP enrolment waits for its confirming code (AUTH-10); login ignores it. */
+  totp_pending: z.boolean().nullable().optional(),
   email: z.string(),
   role: roleSchema,
   org_id: str,

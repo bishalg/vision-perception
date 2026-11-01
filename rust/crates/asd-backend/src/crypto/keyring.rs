@@ -1,7 +1,13 @@
-//! owner: WP-C.9
+//! owner: WP-C.9 (KEY-8 previous KEKs: WP-B.15)
 //!
 //! KEY-2, KEY-5: the key-encryption key ([`Kek`], `ASD_DATA_KEK`) and the per-org data keys
 //! ([`Keyring`]).
+//!
+//! - KEY-8: the keyring writes under one active KEK and reads under the active one or any
+//!   previous KEK (`ASD_DATA_KEK_PREVIOUS`), selected by the `kek_id` stored next to the
+//!   wrapped DEK or sealed secret. An id that matches no configured KEK is
+//!   [`CryptoError::KeyUnwrap`] (503), logged with the stored and configured fingerprints.
+//!   `asd-backend admin rotate-kek` ([`super::rotate`]) moves every row to the active KEK.
 //!
 //! - Each org has one `active` 256-bit DEK in `org_data_keys`, created on first use, stored
 //!   wrapped (AES-256-GCM under the KEK, AAD `"org_data_keys:wrapped_dek:{org}:{key_id}"`).
@@ -113,9 +119,12 @@ fn wrap_aad(org: Uuid, key_id: Uuid) -> Aad {
     Aad::new("org_data_keys", "wrapped_dek", org, key_id)
 }
 
-/// Per-org data keys under one KEK. Cheap to share (`Arc<Keyring>` in `AppState`).
+/// Per-org data keys under one active KEK (plus read-only previous KEKs during a
+/// rotation, KEY-8). Cheap to share (`Arc<Keyring>` in `AppState`).
 pub struct Keyring {
     kek: Kek,
+    /// Previous KEKs: used only to open values whose stored `kek_id` names them.
+    previous: Vec<Kek>,
     db: PgPool,
     keys: RwLock<HashMap<Uuid, Arc<DataKey>>>,
     active: RwLock<HashMap<Uuid, Uuid>>,
@@ -124,14 +133,31 @@ pub struct Keyring {
 
 impl fmt::Debug for Keyring {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Keyring").field("kek", &self.kek).finish()
+        f.debug_struct("Keyring")
+            .field("kek", &self.kek)
+            .field("previous", &self.previous)
+            .finish()
     }
 }
 
 impl Keyring {
     pub fn new(kek: Kek, db: PgPool) -> Self {
+        Self::with_previous(kek, Vec::new(), db)
+    }
+
+    /// A keyring that writes under `kek` and also opens values stored under one of
+    /// `previous` (KEY-8). Entries equal to `kek` or repeated are ignored (the
+    /// configuration refuses them before this point).
+    pub fn with_previous(kek: Kek, previous: Vec<Kek>, db: PgPool) -> Self {
+        let mut unique: Vec<Kek> = Vec::with_capacity(previous.len());
+        for p in previous {
+            if p != kek && !unique.contains(&p) {
+                unique.push(p);
+            }
+        }
         Self {
             kek,
+            previous: unique,
             db,
             keys: RwLock::new(HashMap::new()),
             active: RwLock::new(HashMap::new()),
@@ -139,8 +165,35 @@ impl Keyring {
         }
     }
 
+    /// Fingerprint of the active KEK: stored with every new wrap or seal.
     pub fn kek_id(&self) -> &str {
         self.kek.id()
+    }
+
+    /// Fingerprints of the previous KEKs (read-only during a rotation).
+    pub fn previous_kek_ids(&self) -> Vec<&str> {
+        self.previous.iter().map(Kek::id).collect()
+    }
+
+    /// The configured KEK (active or previous) whose fingerprint is `kek_id`.
+    fn kek_for(&self, kek_id: &str) -> Option<&Kek> {
+        std::iter::once(&self.kek)
+            .chain(self.previous.iter())
+            .find(|k| k.id() == kek_id)
+    }
+
+    /// [`kek_for`](Self::kek_for), or [`CryptoError::KeyUnwrap`] logged with the stored
+    /// and the configured fingerprints.
+    fn kek_or_unwrap_error(&self, kek_id: &str, what: &'static str) -> Result<&Kek, CryptoError> {
+        self.kek_for(kek_id).ok_or_else(|| {
+            tracing::error!(
+                stored_kek = kek_id,
+                configured_kek = self.kek.id(),
+                previous_keks = ?self.previous_kek_ids(),
+                "{what} was sealed under a KEK that is not configured (ASD_DATA_KEK / ASD_DATA_KEK_PREVIOUS)"
+            );
+            CryptoError::KeyUnwrap
+        })
     }
 
     /// Encrypts `plaintext` for `org` with its active data key (created on first use).
@@ -211,7 +264,8 @@ impl Keyring {
     /// staff out of other orgs' audit trails), so the key is derived from the KEK
     /// ([`USER_SECRET_KEY_LABEL`]) instead of an org data key. The caller stores
     /// [`kek_id`](Self::kek_id) next to the ciphertext. Rotating `ASD_DATA_KEK` means
-    /// re-sealing these values as well as re-wrapping the org data keys.
+    /// re-sealing these values as well as re-wrapping the org data keys
+    /// (`admin rotate-kek`, KEY-9).
     pub fn seal_user_secret(&self, aad: &Aad, plaintext: &[u8]) -> Result<Vec<u8>, CryptoError> {
         self.kek
             .derived_aead(USER_SECRET_KEY_LABEL)?
@@ -219,25 +273,55 @@ impl Keyring {
     }
 
     /// Opens a [`seal_user_secret`](Self::seal_user_secret) ciphertext stored with
-    /// `kek_id`. A value sealed under another KEK is [`CryptoError::KeyUnwrap`] (503).
+    /// `kek_id`, using the active or the previous KEK of that id (KEY-8). A value sealed
+    /// under a KEK that is not configured is [`CryptoError::KeyUnwrap`] (503).
     pub fn open_user_secret(
         &self,
         aad: &Aad,
         kek_id: &str,
         ciphertext: &[u8],
     ) -> Result<Zeroizing<Vec<u8>>, CryptoError> {
-        if kek_id != self.kek.id() {
-            tracing::error!(
-                stored_kek = kek_id,
-                configured_kek = self.kek.id(),
-                "user secret was sealed under another ASD_DATA_KEK"
-            );
-            return Err(CryptoError::KeyUnwrap);
-        }
-        self.kek
+        self.kek_or_unwrap_error(kek_id, "user secret")?
             .derived_aead(USER_SECRET_KEY_LABEL)?
             .open(aad.as_bytes(), ciphertext)
             .map(Zeroizing::new)
+    }
+
+    // ---- rotation (KEY-9) ------------------------------------------------------------
+
+    /// Opens a user secret stored under `kek_id` and seals the same plaintext, under the
+    /// same AAD, with the active KEK. The caller stores [`kek_id`](Self::kek_id).
+    pub fn reseal_user_secret(
+        &self,
+        aad: &Aad,
+        kek_id: &str,
+        ciphertext: &[u8],
+    ) -> Result<Vec<u8>, CryptoError> {
+        let plain = self.open_user_secret(aad, kek_id, ciphertext)?;
+        self.seal_user_secret(aad, &plain)
+    }
+
+    /// Unwraps an `org_data_keys.wrapped_dek` stored under `kek_id` and wraps the same DEK
+    /// bytes, under the same AAD, with the active KEK. The DEK itself (and so every
+    /// ciphertext and the MRN blind-index key derived from it) is unchanged.
+    pub fn rewrap_dek(
+        &self,
+        org: Uuid,
+        key_id: Uuid,
+        wrapped: &[u8],
+        kek_id: &str,
+    ) -> Result<Vec<u8>, CryptoError> {
+        let aad = wrap_aad(org, key_id);
+        let raw = Zeroizing::new(
+            self.kek_or_unwrap_error(kek_id, "org data key")?
+                .aead()?
+                .open(aad.as_bytes(), wrapped)
+                .map_err(|_| CryptoError::KeyUnwrap)?,
+        );
+        if raw.len() != 32 {
+            return Err(CryptoError::KeyUnwrap);
+        }
+        self.kek.aead()?.seal(aad.as_bytes(), raw.as_slice())
     }
 
     // ---- key loading ------------------------------------------------------------------
@@ -265,7 +349,7 @@ impl Keyring {
         kek_id: &str,
     ) -> Result<Arc<DataKey>, CryptoError> {
         let raw = self
-            .kek
+            .kek_or_unwrap_error(kek_id, "org data key")?
             .aead()?
             .open(wrap_aad(org, key_id).as_bytes(), wrapped)
             .map_err(|_| {
@@ -274,7 +358,7 @@ impl Keyring {
                     %key_id,
                     stored_kek = kek_id,
                     configured_kek = self.kek.id(),
-                    "org data key cannot be unwrapped with the configured ASD_DATA_KEK"
+                    "org data key cannot be unwrapped with the KEK of its stored kek_id"
                 );
                 CryptoError::KeyUnwrap
             })?;

@@ -41,10 +41,14 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(db: PgPool, blobs: Arc<dyn BlobStore>, config: Config) -> Self {
-        let keyring = config
-            .data_kek
-            .clone()
-            .map(|kek| Arc::new(Keyring::new(kek, db.clone())));
+        // KEY-8: previous KEKs (`ASD_DATA_KEK_PREVIOUS`) only open values during a rotation.
+        let keyring = config.data_kek.clone().map(|kek| {
+            Arc::new(Keyring::with_previous(
+                kek,
+                config.data_kek_previous.clone(),
+                db.clone(),
+            ))
+        });
         Self {
             db,
             blobs,

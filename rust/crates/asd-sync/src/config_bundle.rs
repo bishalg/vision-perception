@@ -9,7 +9,8 @@
 //! - [`accept_bundle`]: the trust decision. Signature through
 //!   `asd_contract::signing::verify_bundle_with_keys` (the only verifier, CON-6) against the
 //!   app's key ring (key rotation by `key_id`), then the device policy: no rollback below the
-//!   newest bundle this device accepted, and an optional maximum age of `signed_at`.
+//!   newest bundle this device accepted, and an optional maximum age of `signed_at`; last,
+//!   the profile value checks of every publisher (`asd_contract::profile_checks`, WP-A.13).
 //!
 //! A rejected bundle is never used; the app keeps its last good bundle or the bundled
 //! default.
@@ -17,6 +18,7 @@
 use std::cmp::Ordering;
 
 use asd_contract::config::ConfigBundle;
+use asd_contract::profile_checks;
 use asd_contract::signing::{self, SigningError, VerifyingKey};
 
 use crate::request::{ClientInfo, SyncRequest};
@@ -90,10 +92,16 @@ pub enum BundleRejection {
     /// `signed_at` lies further in the future than the tolerated clock skew.
     #[error("bundle signed at {0} lies in the future")]
     SignedInFuture(String),
+    /// Signed and in policy, but the `scoring_profile` fails the value checks every
+    /// publisher runs (asd-contract `profile_checks`, including `trackingQuality`): the
+    /// pipeline could not run with it. The messages name members, never values.
+    #[error("bundle scoring profile is invalid: {0}")]
+    InvalidProfile(String),
 }
 
 /// Verifies `bundle_json` against the key ring and applies the device policy. On success
-/// the decoded bundle; its `catalog`, `baselines` and `scoring_profile` are safe to use.
+/// the decoded bundle; its `catalog`, `baselines` and `scoring_profile` are safe to use (the
+/// profile has passed `asd_contract::profile_checks`).
 pub fn accept_bundle(
     bundle_json: &[u8],
     keys: &[TrustedKey],
@@ -148,6 +156,12 @@ pub fn accept_bundle(
         if age > i64::try_from(max_age).unwrap_or(i64::MAX) {
             return Err(BundleRejection::Expired(bundle.signed_at));
         }
+    }
+    // WP-A.13: the same value rules as backend publish; a bundle that passes the signature
+    // but not these never configures the pipeline.
+    let problems = profile_checks::scoring_profile_problem_messages(&bundle.scoring_profile);
+    if !problems.is_empty() {
+        return Err(BundleRejection::InvalidProfile(problems.join("; ")));
     }
     Ok(bundle)
 }

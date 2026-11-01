@@ -10,6 +10,12 @@
 //!   run finds nothing; a row that already has a ciphertext only loses its plaintext copy.
 //!   Prints the number of rows changed. A later migration drops `note` once every
 //!   deployment has run it.
+//! - `rotate-kek [--batch N] [--dry-run]` (WP-B.15, KEY-9): re-wraps every org data key
+//!   and re-seals every user secret still under a KEK from `ASD_DATA_KEK_PREVIOUS` with
+//!   the active `ASD_DATA_KEK` ([`crate::crypto::rotate`]). Prints
+//!   `{"rewrapped_deks","resealed_users","remaining","dry_run"}` as JSON; exits 3 (after
+//!   printing) while rows remain under a KEK that is not configured. Runbook:
+//!   `rust/README.md`.
 //!
 //! Each prints only the new id on stdout, so scripts can capture it. The password for
 //! `create-user` comes from [`PASSWORD_ENV`] or the first line of stdin, never from argv
@@ -34,6 +40,7 @@ use uuid::Uuid;
 use crate::audit::AuditEvent;
 use crate::auth::{password, rbac};
 use crate::config::Config;
+use crate::crypto::rotate::{self, RotateOptions, RotateReport};
 use crate::crypto::{Aad, Keyring};
 use crate::routes::auth::normalize_email;
 use crate::routes::users::valid_email;
@@ -46,6 +53,7 @@ pub const USAGE: &str = "usage: asd-backend admin <command> [options]\n\
   create-org  --name <name> --kind home|clinic|research [--retention-months N] [--force]\n\
   create-user --email <email> --role owner|superadmin [--org <org-id>] [--force]\n\
   encrypt-review-notes [--batch-size N]\n\
+  rotate-kek [--batch N] [--dry-run]\n\
 \n\
 create-user reads the password from ASD_ADMIN_PASSWORD, or else the first line of stdin;\n\
 it is never accepted as an argument. owner needs --org; superadmin has no org.\n\
@@ -53,6 +61,9 @@ it is never accepted as an argument. owner needs --org; superadmin has no org.\n
 create-org and create-user print the new id on stdout and write an audit row.\n\
 encrypt-review-notes (needs ASD_DATA_KEK) encrypts review notes stored in clear before\n\
 migration 0008 and prints the number of rows changed; running it again is safe.\n\
+rotate-kek (needs ASD_DATA_KEK=new, ASD_DATA_KEK_PREVIOUS=old) moves every wrapped data key\n\
+and sealed user secret to the new KEK, prints a JSON report and exits 3 while rows remain\n\
+under an unconfigured KEK; running it again is safe. Runbook: rust/README.md.\n\
 Exit codes: 0 ok, 2 usage/invalid input, 3 conflicts with existing data, 1 other errors.";
 
 /// A new organisation.
@@ -86,6 +97,11 @@ pub enum AdminCommand {
     EncryptReviewNotes {
         batch_size: u32,
     },
+    /// KEY-9 KEK rotation.
+    RotateKek {
+        batch: u32,
+        dry_run: bool,
+    },
     Help,
 }
 
@@ -105,6 +121,15 @@ pub enum AdminError {
     OrgNameTaken { name: String, id: Uuid },
     #[error("organisation {0} does not exist")]
     OrgNotFound(Uuid),
+    /// `rotate-kek` finished but rows remain under a KEK that is not configured (or could
+    /// not be opened, or were locked). The report is still printed on stdout.
+    #[error(
+        "{} row(s) are still not under the active ASD_DATA_KEK: they are sealed under a KEK \
+         that is not configured, could not be opened, or were locked; add the missing key to \
+         ASD_DATA_KEK_PREVIOUS and run rotate-kek again",
+        .0.remaining
+    )]
+    RotationIncomplete(RotateReport),
     #[error("database: {0}")]
     Database(#[from] sqlx::Error),
     #[error("{0}")]
@@ -116,7 +141,10 @@ impl AdminError {
     pub fn exit_code(&self) -> u8 {
         match self {
             Self::Usage(_) | Self::Invalid(_) | Self::OrgNotFound(_) => 2,
-            Self::EmailTaken { .. } | Self::SuperadminExists | Self::OrgNameTaken { .. } => 3,
+            Self::EmailTaken { .. }
+            | Self::SuperadminExists
+            | Self::OrgNameTaken { .. }
+            | Self::RotationIncomplete(_) => 3,
             Self::Database(_) | Self::Internal(_) => 1,
         }
     }
@@ -126,9 +154,13 @@ fn usage(msg: impl Into<String>) -> AdminError {
     AdminError::Usage(msg.into())
 }
 
-/// Splits `--flag value` / `--flag=value` / `--force` options. `args` excludes `admin`
-/// and the command name.
-fn options(args: &[String], valued: &[&str]) -> Result<Vec<(String, Option<String>)>, AdminError> {
+/// Splits `--flag value` / `--flag=value` / bare `flags` (e.g. `--force`) options. `args`
+/// excludes `admin` and the command name.
+fn options(
+    args: &[String],
+    valued: &[&str],
+    flags: &[&str],
+) -> Result<Vec<(String, Option<String>)>, AdminError> {
     let mut out = Vec::new();
     let mut it = args.iter();
     while let Some(arg) = it.next() {
@@ -141,9 +173,9 @@ fn options(args: &[String], valued: &[&str]) -> Result<Vec<(String, Option<Strin
                 "the password is never accepted as an argument; set {PASSWORD_ENV} or pipe it on stdin"
             )));
         }
-        if name == "--force" {
+        if flags.contains(&name) {
             if inline.is_some() {
-                return Err(usage("--force takes no value"));
+                return Err(usage(format!("{name} takes no value")));
             }
             out.push((name.to_owned(), None));
         } else if valued.contains(&name) {
@@ -183,7 +215,11 @@ pub fn parse(args: &[String]) -> Result<AdminCommand, AdminError> {
     match command.as_str() {
         "-h" | "--help" | "help" => Ok(AdminCommand::Help),
         "create-org" => {
-            let opts = options(rest, &["--name", "--kind", "--retention-months"])?;
+            let opts = options(
+                rest,
+                &["--name", "--kind", "--retention-months"],
+                &["--force"],
+            )?;
             let name = required(&opts, "--name")?.trim().to_owned();
             if name.is_empty() {
                 return Err(AdminError::Invalid("--name must not be empty".into()));
@@ -214,7 +250,7 @@ pub fn parse(args: &[String]) -> Result<AdminCommand, AdminError> {
             }))
         }
         "create-user" => {
-            let opts = options(rest, &["--email", "--role", "--org"])?;
+            let opts = options(rest, &["--email", "--role", "--org"], &["--force"])?;
             let email = required(&opts, "--email")?;
             let role = match required(&opts, "--role")?.as_str() {
                 "owner" => Role::Owner,
@@ -240,7 +276,7 @@ pub fn parse(args: &[String]) -> Result<AdminCommand, AdminError> {
             }))
         }
         "encrypt-review-notes" => {
-            let opts = options(rest, &["--batch-size"])?;
+            let opts = options(rest, &["--batch-size"], &["--force"])?;
             if take_flag(&opts, "--force") {
                 return Err(usage("encrypt-review-notes takes no --force"));
             }
@@ -256,6 +292,25 @@ pub fn parse(args: &[String]) -> Result<AdminCommand, AdminError> {
                 },
             };
             Ok(AdminCommand::EncryptReviewNotes { batch_size })
+        }
+        "rotate-kek" => {
+            let opts = options(rest, &["--batch"], &["--dry-run"])?;
+            let batch = match take(&opts, "--batch") {
+                None => rotate::DEFAULT_BATCH,
+                Some(v) => match v.parse::<u32>() {
+                    Ok(n) if (1..=rotate::MAX_BATCH).contains(&n) => n,
+                    _ => {
+                        return Err(AdminError::Invalid(format!(
+                            "--batch must be an integer from 1 to {}",
+                            rotate::MAX_BATCH
+                        )))
+                    }
+                },
+            };
+            Ok(AdminCommand::RotateKek {
+                batch,
+                dry_run: take_flag(&opts, "--dry-run"),
+            })
         }
         other => Err(usage(format!("unknown command {other:?}"))),
     }
@@ -458,8 +513,43 @@ pub async fn encrypt_review_notes_cli(
     let kek = config.data_kek.clone().ok_or_else(|| {
         AdminError::Invalid("ASD_DATA_KEK is not set; it is needed to encrypt review notes".into())
     })?;
-    let keyring = Keyring::new(kek, pool.clone());
+    // Mid-rotation the org's active DEK may still be wrapped under a previous KEK.
+    let keyring = Keyring::with_previous(kek, config.data_kek_previous.clone(), pool.clone());
     encrypt_review_notes(pool, &keyring, batch_size).await
+}
+
+/// `rotate-kek` from the CLI (KEY-9): builds the keyring from `ASD_DATA_KEK` (active) and
+/// `ASD_DATA_KEK_PREVIOUS`, runs [`rotate::rotate_kek`] and returns the JSON report.
+/// [`AdminError::RotationIncomplete`] (exit 3) carries the report when rows remain.
+pub async fn rotate_kek_cli(
+    pool: &PgPool,
+    config: &Config,
+    batch: u32,
+    dry_run: bool,
+) -> Result<String, AdminError> {
+    let kek = config.data_kek.clone().ok_or_else(|| {
+        AdminError::Invalid(
+            "ASD_DATA_KEK is not set; rotate-kek needs the new KEK in ASD_DATA_KEK and the old \
+             one in ASD_DATA_KEK_PREVIOUS"
+                .into(),
+        )
+    })?;
+    let keyring = Keyring::with_previous(kek, config.data_kek_previous.clone(), pool.clone());
+    let report = rotate::rotate_kek(pool, &keyring, RotateOptions { batch, dry_run })
+        .await
+        .map_err(|e| match e {
+            crate::crypto::CryptoError::Database(e) => AdminError::Database(e),
+            other => AdminError::Internal(other.to_string()),
+        })?;
+    if report.remaining > 0 {
+        return Err(AdminError::RotationIncomplete(report));
+    }
+    report_json(&report)
+}
+
+/// The `rotate-kek` report as one JSON line.
+pub fn report_json(report: &RotateReport) -> Result<String, AdminError> {
+    serde_json::to_string(report).map_err(|e| AdminError::Internal(e.to_string()))
 }
 
 /// KEY-7 back-fill: encrypts plaintext `review_items.note` values in batches of

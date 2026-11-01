@@ -174,7 +174,14 @@ public struct GazeUIState: Sendable, Equatable {
 /// dwell and interruptions are derived from timestamps, never from an assumed frame rate
 /// (PLC-5).
 public actor GazeProcessingActor {
-    public private(set) var qualityGate: GazeQualityGate
+    /// The delivered `ScoringProfile` JSON every session pipeline is built from (CFG-3): Rust
+    /// takes its `qualityGate` and `trackingQuality` for the pipeline and the frames-file
+    /// writer.
+    public let scoringProfileJSON: String
+    /// The per-sample gate for synthetic frames (which never enter the Rust pipeline, SIM-3).
+    /// Not a separate input: it is the `qualityGate` of the `PipelineConfig` Rust builds from
+    /// `scoringProfileJSON`, so it always matches the pipeline and the frames-file writer.
+    public nonisolated let qualityGate: GazeQualityGate
     public private(set) var aoiTracker: StimulusAOITracker
     public private(set) var calibrationProfile: GazeCalibrationProfile
     /// Hardware model for the geometry table (GEO-2).
@@ -228,59 +235,71 @@ public actor GazeProcessingActor {
     }
 
     public init(
-        qualityGate: GazeQualityGate = ScoringConfiguration.active.qualityGate,
+        scoringProfileJSON: String = ScoringConfiguration.active.scoringProfileJSON,
         aoiTracker: StimulusAOITracker = StimulusAOITracker.makeGeoPrefBattery(),
         calibrationProfile: GazeCalibrationProfile = .identity,
         deviceModelIdentifier: String = GazeDeviceInfo.modelIdentifier,
         orientation: GazeOrientation = .portrait
     ) {
-        self.qualityGate = qualityGate
+        self.scoringProfileJSON = scoringProfileJSON
         self.aoiTracker = aoiTracker
         self.calibrationProfile = calibrationProfile
         self.deviceModelIdentifier = deviceModelIdentifier
         self.orientation = orientation
-        let (pipeline, writer) = Self.makePipeline(
+        let (pipeline, writer, gateJSON) = Self.makePipeline(
             modelIdentifier: deviceModelIdentifier,
             orientation: orientation,
-            gate: qualityGate,
+            scoringProfileJSON: scoringProfileJSON,
             profile: calibrationProfile
         )
         self.pipeline = pipeline
         self.telemetryWriter = writer
+        // When Rust cannot build a config there is no pipeline either; synthetic frames then
+        // gate with the profile's own document, and a profile that does not decode (which
+        // the core never hands out) with the bundled defaults.
+        self.qualityGate = gateJSON.flatMap(GazeQualityGate.init(coreGateJSON:))
+            ?? GazeQualityGate(scoringProfileJSON: scoringProfileJSON)
+            ?? GazeQualityGate()
     }
 
     /// A fresh pipeline and frames-file writer (session clock origin 0: the actor pushes
-    /// session time).
+    /// session time), and the config's `qualityGate` document both were built with.
     private static func makePipeline(
         modelIdentifier: String,
         orientation: GazeOrientation,
-        gate: GazeQualityGate,
+        scoringProfileJSON: String,
         profile: GazeCalibrationProfile
-    ) -> (GazePipelineHandle?, GazeTelemetryWriterHandle?) {
+    ) -> (GazePipelineHandle?, GazeTelemetryWriterHandle?, String?) {
         do {
+            // CFG-3: Rust builds the config (geometry, `qualityGate`, `trackingQuality`) from
+            // the delivered profile; no gate or params JSON is assembled here.
             let config = try GazePipelineDocuments.config(
                 modelIdentifier: modelIdentifier,
                 orientation: orientation,
-                gate: gate
+                scoringProfileJSON: scoringProfileJSON
             )
             let pipeline = try GazePipelineHandle(configJson: config)
             if let model = try GazePipelineDocuments.calibrationModel(profile) {
                 try pipeline.setCalibrationJson(modelJson: model)
             }
-            let gateJSON = String(decoding: try JSONEncoder().encode(CoreQualityGate(
-                minDistanceCm: gate.minDistanceCm,
-                maxDistanceCm: gate.maxDistanceCm,
-                maxYawRad: gate.maxYawRad,
-                maxPitchRad: gate.maxPitchRad,
-                minConfidence: gate.minConfidence,
-                blinkThreshold: gate.blinkThreshold
-            )), as: UTF8.self)
+            let gateJSON = try GazePipelineDocuments.qualityGateJSON(ofConfig: config)
             let writer = try GazeTelemetryWriterHandle(originSec: 0, qualityGateJson: gateJSON)
-            return (pipeline, writer)
+            return (pipeline, writer, gateJSON)
         } catch {
             AsdCoreBridge.report("gaze_pipeline_new", error)
-            return (nil, nil)
+            return (nil, nil, nil)
         }
+    }
+
+    /// Test seam (CFG-3): the current pipeline's `PipelineConfig` JSON, as Rust holds it.
+    func pipelineConfigJSON() -> String? {
+        try? pipeline?.configJson()
+    }
+
+    /// Test seam (CFG-3): one sample through the current frames-file writer, so a test sees
+    /// the gate it was built with.
+    func writeTelemetrySample(_ sample: ProcessedSampleRecord) -> GazeTelemetryRecord? {
+        telemetryWriter?.write(sample: sample)
     }
 
     /// Prepares actor for a fresh recording session. Live (`.trueDepth`) unless the
@@ -331,10 +350,10 @@ public actor GazeProcessingActor {
         self.lastDrawnRawPoint = CGPoint(x: 0.5, y: 0.5)
         self.lastDistanceCm = 48.0
         if captureSource == .trueDepth {
-            (pipeline, telemetryWriter) = Self.makePipeline(
+            (pipeline, telemetryWriter, _) = Self.makePipeline(
                 modelIdentifier: deviceModelIdentifier,
                 orientation: self.orientation,
-                gate: qualityGate,
+                scoringProfileJSON: scoringProfileJSON,
                 profile: calibrationProfile
             )
         } else {

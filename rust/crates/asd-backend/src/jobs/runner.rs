@@ -49,8 +49,9 @@ use tokio::task::JoinHandle;
 use uuid::Uuid;
 
 use super::{
-    deliver, erasure, export, norm_aggregate, retention, Job, JobContext, KIND_DELIVER,
-    KIND_ERASURE, KIND_EXPORT, KIND_NORM_AGGREGATE, KIND_RETENTION_SWEEP,
+    deliver, erasure, export, housekeeping, norm_aggregate, retention, Job, JobContext,
+    KIND_DELIVER, KIND_ERASURE, KIND_EXPORT, KIND_HOUSEKEEPING, KIND_NORM_AGGREGATE,
+    KIND_RETENTION_SWEEP,
 };
 use crate::error::AppError;
 
@@ -186,7 +187,7 @@ pub async fn execute(pool: &PgPool, job: &Job) -> Result<Outcome, sqlx::Error> {
 pub async fn execute_in(ctx: &JobContext, job: &Job) -> Result<Outcome, sqlx::Error> {
     let result = match job.kind.as_str() {
         KIND_NORM_AGGREGATE => run_in_transaction(&ctx.pool, job).await,
-        KIND_EXPORT | KIND_DELIVER | KIND_ERASURE | KIND_RETENTION_SWEEP => {
+        KIND_EXPORT | KIND_DELIVER | KIND_ERASURE | KIND_RETENTION_SWEEP | KIND_HOUSEKEEPING => {
             run_phased(ctx, job).await
         }
         other => Err(JobError::Permanent(format!("unknown job kind {other:?}"))),
@@ -230,6 +231,7 @@ async fn run_phased(ctx: &JobContext, job: &Job) -> Result<(), JobError> {
         KIND_DELIVER => deliver::execute(ctx, job).await,
         KIND_ERASURE => erasure::execute(ctx, job).await,
         KIND_RETENTION_SWEEP => retention::execute(ctx, job).await,
+        KIND_HOUSEKEEPING => housekeeping::execute(ctx, job).await,
         _ => export::execute(ctx, job).await,
     };
     heartbeat.stop().await;
@@ -449,6 +451,11 @@ pub async fn worker_loop_in(
                     Ok(Some(id)) => tracing::info!(job_id = %id, "queued the retention sweep"),
                     Ok(None) => {}
                     Err(e) => tracing::warn!(error = %e, "retention sweep scheduling failed"),
+                }
+                match housekeeping::schedule_daily(&ctx.pool).await {
+                    Ok(Some(id)) => tracing::info!(job_id = %id, "queued the housekeeping sweep"),
+                    Ok(None) => {}
+                    Err(e) => tracing::warn!(error = %e, "housekeeping scheduling failed"),
                 }
                 match erasure::schedule_pending(&ctx.pool).await {
                     Ok(0) => {}

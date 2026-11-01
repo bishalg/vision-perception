@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE users\n             SET totp_pending_ct = NULL, totp_pending_kek_id = NULL, totp_pending_expires_at = NULL\n             WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d60cfaf399c98f9433782aec9bfc5742183bb48115e8156ecd5b6323c3d79504"
+}

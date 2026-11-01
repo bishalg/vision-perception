@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Distribution } from "@/components/Distribution";
 import { KpiCard } from "@/components/KpiCard";
+import { TotpNudge } from "@/components/security/TotpNudge";
 import { loadOrNotFound } from "@/lib/loaders";
-import { authedApi } from "@/lib/auth/server";
+import { authedApi, currentRole } from "@/lib/auth/server";
 import { en } from "@/messages/en";
 
 export const metadata: Metadata = { title: en.overview.title };
@@ -11,11 +12,17 @@ export const metadata: Metadata = { title: en.overview.title };
 export default async function OverviewPage({ params }: { params: Promise<{ org: string }> }) {
   const { org } = await params;
   const api = await authedApi();
-  const m = await loadOrNotFound(() => api.getMetrics(org));
+  const [m, role, profile] = await Promise.all([
+    loadOrNotFound(() => api.getMetrics(org)),
+    currentRole(),
+    // Only for the TOTP nudge: a failure hides the nudge rather than the overview.
+    api.getMyProfile().catch(() => null),
+  ]);
   const t = en.overview;
   return (
     <>
       <h1>{t.title}</h1>
+      <TotpNudge org={org} role={role} totpEnrolled={profile?.totp_enrolled} />
       <div className="kpi-grid">
         <KpiCard label={t.sessions7d} value={m.sessions_7d} />
         <KpiCard label={t.sessions30d} value={m.sessions_30d} />

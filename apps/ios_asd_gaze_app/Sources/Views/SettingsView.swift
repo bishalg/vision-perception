@@ -27,6 +27,9 @@ public struct SettingsView: View {
     #if ASD_DEMO_TOOLS
     @State private var showDemoToolsView: Bool = false
     #endif
+    #if ASD_BENCH_CAPTURE
+    @State private var showBenchCapture: Bool = false
+    #endif
 
     public init() {}
 
@@ -44,6 +47,9 @@ public struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 20) {
                         #if ASD_DEMO_TOOLS
                         demoToolsSection
+                        #endif
+                        #if ASD_BENCH_CAPTURE
+                        benchCaptureSection
                         #endif
                         appModeSection
                         profileSection
@@ -620,6 +626,11 @@ public struct SettingsView: View {
             DemoToolsView()
         }
         #endif
+        #if ASD_BENCH_CAPTURE
+        .fullScreenCover(isPresented: $showBenchCapture) {
+            BenchCaptureView()
+        }
+        #endif
     }
 
     /// Delete-all copy names research data only in a build that has a study (CNS-9).
@@ -762,6 +773,35 @@ public struct SettingsView: View {
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("settings_demo_tools")
+        }
+    }
+    #endif
+
+    #if ASD_BENCH_CAPTURE
+    /// WP-G.8 / BEN-2: Debug-only entry to the bench capture screen.
+    private var benchCaptureSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            GlassSectionHeader(title: "Bench capture", icon: "scope")
+            Button {
+                showBenchCapture = true
+            } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Open Bench Capture")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.primary)
+                        Text("5, 9 and 13-point target runs that record raw tracking logs for the accuracy bench.")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(.secondary)
+                }
+                .glassCard(cornerRadius: 14, padding: 14)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("settings_bench_capture")
         }
     }
     #endif

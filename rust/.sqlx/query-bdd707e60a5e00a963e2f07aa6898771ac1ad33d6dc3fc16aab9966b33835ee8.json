@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE users\n         SET totp_secret = NULL, totp_secret_ct = NULL, totp_secret_kek_id = NULL,\n             last_totp_step = NULL, totp_pending_ct = NULL, totp_pending_kek_id = NULL, totp_pending_expires_at = NULL\n         WHERE id = $1\n         RETURNING org_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "org_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "org_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "bdd707e60a5e00a963e2f07aa6898771ac1ad33d6dc3fc16aab9966b33835ee8"
+}

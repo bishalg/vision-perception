@@ -7,7 +7,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { ZodType } from "zod";
+import type { ZodType } from "@/lib/zod";
 import {
   ACTOR_TYPES,
   auditEntrySchema,
@@ -101,6 +101,13 @@ import {
   sshPublicKeySchema,
   updateIntegrationRequestSchema,
 } from "./exports";
+import {
+  totpConfirmRequestSchema,
+  totpDisableRequestSchema,
+  totpEnrolRequestSchema,
+  totpEnrolResponseSchema,
+  totpStatusSchema,
+} from "./totp";
 
 interface Def {
   enum?: string[];
@@ -171,6 +178,12 @@ const OBJECT_SCHEMAS: Record<string, ZodType & { shape: Record<string, ZodType &
   SshPublicKey: sshPublicKeySchema,
   Delivery: deliverySchema,
   DeliveryPage: deliveryPageSchema,
+  // WP-C.15 TOTP enrolment (AUTH-6..8)
+  TotpEnrolRequest: totpEnrolRequestSchema,
+  TotpEnrolResponse: totpEnrolResponseSchema,
+  TotpConfirmRequest: totpConfirmRequestSchema,
+  TotpDisableRequest: totpDisableRequestSchema,
+  TotpStatus: totpStatusSchema,
 } as never;
 
 /**
@@ -188,6 +201,7 @@ const NO_PUBLISHED_EXAMPLES = new Set([
   "ExportPage", "ExportFilters", "ExportRequest", "DownloadUrl", "Integration", "IntegrationConfig", "IntegrationPage",
   "IntegrationTestResult", "CreateIntegrationRequest", "UpdateIntegrationRequest", "PutIntegrationSecretRequest",
   "SshPublicKey", "Delivery", "DeliveryPage", "DeliverableDestination", "DeliverableDestinationList",
+  "TotpEnrolRequest", "TotpEnrolResponse", "TotpConfirmRequest", "TotpDisableRequest", "TotpStatus",
 ]);
 
 describe("api-v1.json contract", () => {

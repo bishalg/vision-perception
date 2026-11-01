@@ -81,7 +81,7 @@ targets:
         # Debug-only capabilities; Release never defines them. The kit mirrors
         # these in Package.swift because OTHER_SWIFT_FLAGS does not reach SwiftPM.
         Debug:
-          OTHER_SWIFT_FLAGS: "$(inherited) -DASD_SIMULATION_ENABLED -DASD_RESEARCH_CLASSIFIER -DASD_DEMO_TOOLS $(ASD_MCHAT_FLAG)"
+          OTHER_SWIFT_FLAGS: "$(inherited) -DASD_SIMULATION_ENABLED -DASD_RESEARCH_CLASSIFIER -DASD_DEMO_TOOLS -DASD_BENCH_CAPTURE $(ASD_MCHAT_FLAG)"
         DemoRelease:
           OTHER_SWIFT_FLAGS: "$(inherited) -DASD_APP_STORE_AGE_ASSURANCE -DASD_DEMO_TOOLS $(ASD_MCHAT_FLAG)"
         Release:
@@ -155,6 +155,10 @@ targets:
     settings:
       base:
         GENERATE_INFOPLIST_FILE: true
+      configs:
+        # The bench writer tests are compiled only where the app has the flag (WP-G.8).
+        Debug:
+          OTHER_SWIFT_FLAGS: "$(inherited) -DASD_BENCH_CAPTURE"
     dependencies:
       - target: AsdGazeCollector
       - package: CurvAsdGazeKit

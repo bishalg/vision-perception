@@ -26,6 +26,7 @@ pub mod patient_refs;
 pub mod privacy; // WP-B.9
 pub mod review;
 pub mod sessions;
+pub mod totp; // WP-B.11
 pub mod users;
 pub mod worklist; // WP-C.10
 
@@ -57,6 +58,7 @@ pub fn v1() -> Router<AppState> {
         .merge(auth::router())
         .merge(orgs::router())
         .merge(users::router())
+        .merge(totp::router()) // WP-B.11
         .merge(devices::router());
     Router::new().nest("/v1", api)
 }

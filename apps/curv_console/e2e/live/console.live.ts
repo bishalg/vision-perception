@@ -8,7 +8,7 @@
  * The Report tab must offer the download for a live (TrueDepth) capture: the server renders
  * the report from the stored record, whatever `report_pdf_available` (device upload) says.
  */
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../helpers";
 
 const env = (name: string): string => {
   const v = process.env[name];

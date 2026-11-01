@@ -51,3 +51,11 @@ docker compose -f rust/docker-compose.yml up -d && curl -fsS localhost:8000/heal
 | CFG-1, CFG-2 | `asd-backend/tests/config.rs` |
 | OBS-1 | `asd-backend/tests/log_redaction.rs` |
 | DEP-1, DEP-2 | `docker compose up` + `curl /health/ready` in `rust.yml` (smoke job) |
+| AUTH-6..10 | `asd-backend/tests/totp_enrol.rs` (enrol/confirm/disable/expiry/rate limit, log capture asserts no seed or code), `tests/admin.rs` (`reset-totp`) |
+| KEY-8..10 | `asd-backend/tests/kek_rotation.rs` (two KEKs, previous-key reads, rotate, idempotent rerun, remaining count, CAS against a concurrent writer) |
+| KEY-11, KEY-12 | `asd-backend/tests/migrations.rs` (fresh DB, DB at 0019 with plaintext seed, DB with plaintext note; migrate ordering) |
+| HK-1..5 | `asd-backend/tests/housekeeping.rs` (seeded rows, FK-referenced rows kept, replay after sweep, rotation after sweep, audit row, dry run, daily scheduling lock) |
+| OBS-2..4 | `asd-backend/tests/metrics_endpoint.rs` (separate listener, 404 on API port, label safety grep, HSTS header) |
+| CSP-1..4 | `apps/curv_console/tests/csp.test.ts` (policy string, nonce per request, dev-only `unsafe-eval`), `e2e/helpers.ts` violation listener, `e2e/csp.spec.ts` |
+| AUTH-6..8 console | `apps/curv_console/tests/security-settings.test.tsx`, `e2e/totp.spec.ts` |
+| CFG-3 | `asd-ffi/tests/gaze_config_profile.rs`, kit `GazePipelineDocumentsTests.swift` (four-point layout, 1.0.0 profile parity) |

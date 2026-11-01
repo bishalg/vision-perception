@@ -60,6 +60,10 @@ pub struct Config {
     /// `ASD_DATA_KEK` (WP-C.9, KEY-2): wraps the per-org clinical data keys. `None` =
     /// clinical-content endpoints answer 503; everything else runs.
     pub data_kek: Option<crate::crypto::Kek>,
+    /// `ASD_DATA_KEK_PREVIOUS` (WP-B.15, KEY-8): comma-separated base64 KEKs that may still
+    /// open values stored under them during a rotation; never used to write. Needs
+    /// `ASD_DATA_KEK`; an entry equal to it, a duplicate or a non-32-byte entry is refused.
+    pub data_kek_previous: Vec<crate::crypto::Kek>,
     /// `ASD_PUBLIC_BASE_URL` (WP-I.7, DLV-2): the API's public origin, e.g.
     /// `https://api.example.org`. Webhook download links in proxy blob mode are absolute
     /// URLs under it; without it such webhooks fail `download-url-unavailable`.
@@ -171,6 +175,7 @@ impl Config {
                 crate::crypto::Kek::from_base64(&raw).map_err(|r| invalid("ASD_DATA_KEK", r))
             })
             .transpose()?;
+        let data_kek_previous = previous_keks(get("ASD_DATA_KEK_PREVIOUS"), data_kek.as_ref())?;
         let public_base_url = get("ASD_PUBLIC_BASE_URL");
         if let Some(url) = &public_base_url {
             let scheme_ok = url.starts_with("https://") || url.starts_with("http://");
@@ -200,6 +205,7 @@ impl Config {
             auth,
             bundle_signing,
             data_kek,
+            data_kek_previous,
             public_base_url,
         })
     }
@@ -236,9 +242,46 @@ impl fmt::Debug for Config {
             .field("auth", &self.auth)
             .field("bundle_signing", &self.bundle_signing)
             .field("data_kek", &self.data_kek)
+            .field("data_kek_previous", &self.data_kek_previous)
             .field("public_base_url", &self.public_base_url)
             .finish()
     }
+}
+
+/// KEY-8: parses `ASD_DATA_KEK_PREVIOUS`. Errors name the entry by position and never
+/// repeat key material.
+fn previous_keks(
+    raw: Option<String>,
+    active: Option<&crate::crypto::Kek>,
+) -> Result<Vec<crate::crypto::Kek>, ConfigError> {
+    const NAME: &str = "ASD_DATA_KEK_PREVIOUS";
+    let Some(raw) = raw else {
+        return Ok(Vec::new());
+    };
+    let Some(active) = active else {
+        return Err(invalid(NAME, "is set but ASD_DATA_KEK is not"));
+    };
+    let mut out: Vec<crate::crypto::Kek> = Vec::new();
+    for (i, entry) in raw.split(',').enumerate() {
+        let n = i + 1;
+        let entry = entry.trim();
+        if entry.is_empty() {
+            return Err(invalid(NAME, format!("entry {n} is empty")));
+        }
+        let kek = crate::crypto::Kek::from_base64(entry)
+            .map_err(|r| invalid(NAME, format!("entry {n} {r}")))?;
+        if &kek == active {
+            return Err(invalid(
+                NAME,
+                format!("entry {n} equals ASD_DATA_KEK; list only the old keys"),
+            ));
+        }
+        if out.contains(&kek) {
+            return Err(invalid(NAME, format!("entry {n} is a duplicate")));
+        }
+        out.push(kek);
+    }
+    Ok(out)
 }
 
 fn invalid(name: &'static str, reason: impl Into<String>) -> ConfigError {

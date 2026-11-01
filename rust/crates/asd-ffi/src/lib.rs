@@ -25,6 +25,7 @@ use serde::Serialize;
 uniffi::setup_scaffolding!("asd_core");
 
 pub mod gaze;
+pub mod raw_log;
 
 /// The single error type of the boundary. The variant is the kind; `message` is for logs
 /// and never contains document contents beyond a serde position hint.
@@ -281,6 +282,8 @@ pub enum AsdBundleRejection {
     InvalidSignedAt,
     Expired,
     SignedInFuture,
+    /// Signed, but the scoring profile fails the publisher's value checks (WP-A.13).
+    InvalidProfile,
 }
 
 /// The device's decision on one bundle.
@@ -333,6 +336,7 @@ pub fn config_accept_bundle(
             R::InvalidSignedAt(_) => AsdBundleRejection::InvalidSignedAt,
             R::Expired(_) => AsdBundleRejection::Expired,
             R::SignedInFuture(_) => AsdBundleRejection::SignedInFuture,
+            R::InvalidProfile(_) => AsdBundleRejection::InvalidProfile,
         };
         AsdBundleVerdict::Rejected {
             reason,

@@ -4,7 +4,7 @@
  * live HTTP implementation. The console holds no crypto, hashing or MRN normalisation: the MRN is sent in a POST or
  * PUT body only (UI-4) and the backend decides everything else.
  */
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import { participantSchema } from "./admin";
 import type { LiveRequest } from "./clinical";
 import {

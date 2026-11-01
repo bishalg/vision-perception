@@ -166,4 +166,120 @@ final class BuildConfigurationTests: XCTestCase {
         XCTAssertTrue(true, "ASD_DEMO_TOOLS is disabled in Release")
         #endif
     }
+
+    // MARK: - WP-G.8: bench capture is Debug-only (BEN-2, ADR-0009 D10)
+
+    /// The bench flag may only be compiled into Debug. Compile-time: if this build has it, it
+    /// is a Debug build. Source-time: Release and DemoRelease never list it, in the app
+    /// (`project.yml`) or in the kit (`Package.swift` limits it to `.debug`). The binary
+    /// is audited separately by `scripts/check_release_symbols.sh`.
+    func testBenchCaptureFlagIsDebugOnly() throws {
+        #if ASD_BENCH_CAPTURE
+        #if DEBUG
+        XCTAssertTrue(true)
+        #else
+        XCTFail("ASD_BENCH_CAPTURE is defined in a non-Debug build")
+        #endif
+        #endif
+
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let project = try String(contentsOf: root.appendingPathComponent("project.yml"), encoding: .utf8)
+        let flags = try Self.otherSwiftFlags(inProjectYAML: project)
+        XCTAssertEqual(Set(flags.keys), ["Debug", "DemoRelease", "Release"])
+        XCTAssertTrue(try XCTUnwrap(flags["Debug"]).contains("-DASD_BENCH_CAPTURE"))
+        XCTAssertFalse(try XCTUnwrap(flags["DemoRelease"]).contains("ASD_BENCH_CAPTURE"))
+        XCTAssertFalse(try XCTUnwrap(flags["Release"]).contains("ASD_BENCH_CAPTURE"))
+
+        let kitManifest = root.deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("domains/asd_screening/ios/Package.swift")
+        let package = try String(contentsOf: kitManifest, encoding: .utf8)
+        let defines = package.split(separator: "\n").filter { $0.contains("ASD_BENCH_CAPTURE\"") }
+        XCTAssertFalse(defines.isEmpty, "the kit declares the flag")
+        XCTAssertTrue(defines.allSatisfy { $0.contains(".when(configuration: .debug)") }, "\(defines)")
+    }
+
+    /// The test target's own Debug flags must not be read as the app's, and a repeated
+    /// configuration key in the app block is an error, not a silent overwrite.
+    func testOtherSwiftFlagsParserIsScopedToTheAppTarget() throws {
+        let yaml = """
+        targets:
+          AsdGazeCollector:
+            settings:
+              configs:
+                Debug:
+                  OTHER_SWIFT_FLAGS: "-DAPP_DEBUG"
+                Release:
+                  OTHER_SWIFT_FLAGS: "-DAPP_RELEASE"
+          AsdGazeCollectorTests:
+            settings:
+              configs:
+                Debug:
+                  OTHER_SWIFT_FLAGS: "-DTEST_DEBUG"
+        """
+        let flags = try Self.otherSwiftFlags(inProjectYAML: yaml)
+        XCTAssertEqual(flags["Debug"], #"OTHER_SWIFT_FLAGS: "-DAPP_DEBUG""#)
+        XCTAssertEqual(flags["Release"], #"OTHER_SWIFT_FLAGS: "-DAPP_RELEASE""#)
+
+        let duplicate = """
+        targets:
+          AsdGazeCollector:
+            settings:
+              configs:
+                Debug:
+                  OTHER_SWIFT_FLAGS: "-DONE"
+                Debug:
+                  OTHER_SWIFT_FLAGS: "-DTWO"
+        """
+        XCTAssertThrowsError(try Self.otherSwiftFlags(inProjectYAML: duplicate))
+
+        XCTAssertThrowsError(try Self.otherSwiftFlags(inProjectYAML: "targets:\n  Other:\n"), "no app target block")
+    }
+
+    private struct ProjectYAMLError: Error, CustomStringConvertible {
+        let description: String
+    }
+
+    /// `OTHER_SWIFT_FLAGS` of the app target per configuration, read from the
+    /// `configs:` block inside the `  AsdGazeCollector:` target only. Throws if the
+    /// target block is missing or a configuration declares the flags twice.
+    private static func otherSwiftFlags(inProjectYAML yaml: String) throws -> [String: String] {
+        var result: [String: String] = [:]
+        var inAppTarget = false
+        var foundAppTarget = false
+        var current: String?
+        var seen: Set<String> = []
+        for raw in yaml.split(separator: "\n", omittingEmptySubsequences: false) {
+            let line = String(raw)
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty || trimmed.hasPrefix("#") { continue }
+            let indent = line.prefix { $0 == " " }.count
+            // A two-space key is a target name inside `targets:`; a top-level key ends `targets:`.
+            if indent <= 2 {
+                inAppTarget = (line == "  AsdGazeCollector:")
+                foundAppTarget = foundAppTarget || inAppTarget
+                current = nil
+                continue
+            }
+            guard inAppTarget else { continue }
+            if indent == 8, ["Debug:", "DemoRelease:", "Release:"].contains(trimmed) {
+                let name = String(trimmed.dropLast())
+                if !seen.insert(name).inserted {
+                    throw ProjectYAMLError(description: "duplicate \(name) configuration in the app target")
+                }
+                current = name
+            } else if trimmed.hasPrefix("OTHER_SWIFT_FLAGS:"), let name = current {
+                if result[name] != nil {
+                    throw ProjectYAMLError(description: "duplicate OTHER_SWIFT_FLAGS for \(name)")
+                }
+                result[name] = trimmed
+            } else if indent <= 8 {
+                current = nil
+            }
+        }
+        guard foundAppTarget else {
+            throw ProjectYAMLError(description: "no `  AsdGazeCollector:` target block")
+        }
+        return result
+    }
 }

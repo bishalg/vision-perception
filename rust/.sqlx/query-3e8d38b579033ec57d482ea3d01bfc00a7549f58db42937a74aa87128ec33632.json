@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM jobs WHERE ctid IN (\n                 SELECT j.ctid FROM jobs j\n                 WHERE j.status IN ('succeeded', 'failed', 'cancelled')\n                   AND j.finished_at < now() - interval '30 days'\n                   AND NOT EXISTS (SELECT 1 FROM norm_runs r WHERE r.job_id = j.id)\n                   AND NOT EXISTS (SELECT 1 FROM exports e WHERE e.job_id = j.id)\n                   AND NOT EXISTS (SELECT 1 FROM export_deliveries x WHERE x.job_id = j.id)\n                   AND NOT EXISTS (SELECT 1 FROM erasure_requests q WHERE q.job_id = j.id)\n                 LIMIT $1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3e8d38b579033ec57d482ea3d01bfc00a7549f58db42937a74aa87128ec33632"
+}

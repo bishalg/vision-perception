@@ -7,7 +7,7 @@
  * The schemas check shape only. Value rules (profile ranges, baseline coverage) are the Rust core's: the console
  * runs them through asd-wasm (`@/lib/asd/ops`) and the backend runs the same code on create and approve.
  */
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import type { LiveRequest } from "./clinical";
 
 const optStr = z.string().nullable().optional();
