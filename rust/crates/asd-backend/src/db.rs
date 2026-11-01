@@ -44,6 +44,36 @@ pub async fn migrate(pool: &PgPool) -> Result<(), sqlx::migrate::MigrateError> {
     MIGRATOR.run(pool).await
 }
 
+/// Data conversions that SQL cannot do because they need `ASD_DATA_KEK`, run by
+/// `asd-backend migrate` right after the migrations:
+///
+/// - 0016: plaintext `users.totp_secret` seeds are sealed into `totp_secret_ct`
+///   ([`crate::auth::totp::encrypt_legacy_secrets`]). Without the KEK this fails while a
+///   plaintext seed remains, so a deployment never runs with secrets left in clear
+///   unnoticed; with none left it is a no-op.
+///
+/// Idempotent: a second run converts nothing.
+pub async fn backfill(pool: &PgPool, config: &Config) -> Result<(), String> {
+    let legacy = crate::auth::totp::legacy_secret_count(pool)
+        .await
+        .map_err(|e| format!("count plaintext TOTP seeds: {e}"))?;
+    if legacy == 0 {
+        return Ok(());
+    }
+    let Some(kek) = config.data_kek.clone() else {
+        return Err(format!(
+            "{legacy} TOTP seed(s) are stored in clear (migration 0016); set ASD_DATA_KEK and \
+             run `asd-backend migrate` again to encrypt them"
+        ));
+    };
+    let keyring = crate::crypto::Keyring::new(kek, pool.clone());
+    let converted = crate::auth::totp::encrypt_legacy_secrets(pool, &keyring)
+        .await
+        .map_err(|e| format!("encrypt TOTP seeds: {e}"))?;
+    tracing::info!(converted, "TOTP seeds encrypted at rest (0016)");
+    Ok(())
+}
+
 /// Round-trips one query.
 pub async fn ping(pool: &PgPool) -> Result<(), sqlx::Error> {
     let one = sqlx::query_scalar!(r#"SELECT 1 AS "one!: i32""#)

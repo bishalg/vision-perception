@@ -69,7 +69,25 @@ impl Kek {
     fn aead(&self) -> Result<AeadKey, CryptoError> {
         AeadKey::new(&self.bytes)
     }
+
+    /// A key derived from the KEK for one purpose: HMAC-SHA-256(KEK, `label`). Keeps data
+    /// sealed without an org data key apart from the DEK wrapping done with the KEK itself.
+    fn derived_aead(&self, label: &[u8]) -> Result<AeadKey, CryptoError> {
+        let mac = hmac::sign(
+            &hmac::Key::new(hmac::HMAC_SHA256, self.bytes.as_slice()),
+            label,
+        );
+        let bytes: Zeroizing<[u8; 32]> = Zeroizing::new(
+            mac.as_ref()
+                .try_into()
+                .map_err(|_| CryptoError::Internal("HMAC-SHA-256 is 32 bytes".into()))?,
+        );
+        AeadKey::new(&bytes)
+    }
 }
+
+/// Derivation label of the user-secret key ([`Keyring::seal_user_secret`]).
+const USER_SECRET_KEY_LABEL: &[u8] = b"asd-backend/user-secrets/v1";
 
 impl PartialEq for Kek {
     fn eq(&self, other: &Self) -> bool {
@@ -184,6 +202,42 @@ impl Keyring {
     ) -> Result<[u8; 32], CryptoError> {
         let key = self.index_key(org).await?;
         Ok(blind_index::compute(&key, assigning_authority, mrn))
+    }
+
+    // ---- user secrets ------------------------------------------------------------------
+
+    /// Seals a per-user secret (the TOTP seed, `users.totp_secret_ct`). Users are not
+    /// org data (a superadmin has no org, and crypto-shredding an org must not lock its
+    /// staff out of other orgs' audit trails), so the key is derived from the KEK
+    /// ([`USER_SECRET_KEY_LABEL`]) instead of an org data key. The caller stores
+    /// [`kek_id`](Self::kek_id) next to the ciphertext. Rotating `ASD_DATA_KEK` means
+    /// re-sealing these values as well as re-wrapping the org data keys.
+    pub fn seal_user_secret(&self, aad: &Aad, plaintext: &[u8]) -> Result<Vec<u8>, CryptoError> {
+        self.kek
+            .derived_aead(USER_SECRET_KEY_LABEL)?
+            .seal(aad.as_bytes(), plaintext)
+    }
+
+    /// Opens a [`seal_user_secret`](Self::seal_user_secret) ciphertext stored with
+    /// `kek_id`. A value sealed under another KEK is [`CryptoError::KeyUnwrap`] (503).
+    pub fn open_user_secret(
+        &self,
+        aad: &Aad,
+        kek_id: &str,
+        ciphertext: &[u8],
+    ) -> Result<Zeroizing<Vec<u8>>, CryptoError> {
+        if kek_id != self.kek.id() {
+            tracing::error!(
+                stored_kek = kek_id,
+                configured_kek = self.kek.id(),
+                "user secret was sealed under another ASD_DATA_KEK"
+            );
+            return Err(CryptoError::KeyUnwrap);
+        }
+        self.kek
+            .derived_aead(USER_SECRET_KEY_LABEL)?
+            .open(aad.as_bytes(), ciphertext)
+            .map(Zeroizing::new)
     }
 
     // ---- key loading ------------------------------------------------------------------
@@ -356,6 +410,38 @@ impl Keyring {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn user_secrets_round_trip_bound_to_aad_and_kek() {
+        let db = sqlx::postgres::PgPoolOptions::new()
+            .connect_lazy("postgres://u@127.0.0.1:1/none")
+            .unwrap();
+        let ring = Keyring::new(Kek::from_bytes([7u8; 32]), db.clone());
+        let user = Uuid::new_v4();
+        let aad = Aad::new("users", "totp_secret_ct", Uuid::nil(), user);
+        let ct = ring.seal_user_secret(&aad, b"JBSWY3DPEHPK3PXP").unwrap();
+        assert!(!ct.windows(16).any(|w| w == b"JBSWY3DPEHPK3PXP"));
+        let plain = ring.open_user_secret(&aad, ring.kek_id(), &ct).unwrap();
+        assert_eq!(plain.as_slice(), b"JBSWY3DPEHPK3PXP");
+        // Another row, another KEK, or a stale KEK id: refused.
+        let other = Aad::new("users", "totp_secret_ct", Uuid::nil(), Uuid::new_v4());
+        assert!(matches!(
+            ring.open_user_secret(&other, ring.kek_id(), &ct),
+            Err(CryptoError::Decrypt)
+        ));
+        let ring2 = Keyring::new(Kek::from_bytes([8u8; 32]), db);
+        assert!(matches!(
+            ring2.open_user_secret(&aad, ring2.kek_id(), &ct),
+            Err(CryptoError::Decrypt)
+        ));
+        assert!(matches!(
+            ring2.open_user_secret(&aad, ring.kek_id(), &ct),
+            Err(CryptoError::KeyUnwrap)
+        ));
+        // The derived key is not the KEK itself.
+        let direct = ring.kek.aead().unwrap();
+        assert!(direct.open(aad.as_bytes(), &ct).is_err());
+    }
 
     #[test]
     fn kek_parsing_and_debug() {

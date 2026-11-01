@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT totp_secret_ct, totp_secret_kek_id,\n                  (totp_secret IS NOT NULL) AS \"legacy!\"\n           FROM users WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "totp_secret_ct",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "totp_secret_ct"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "totp_secret_kek_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "totp_secret_kek_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "legacy!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "3961a7fa542625c8be483f8250891fc017566d2420c253892030b35697f363a7"
+}

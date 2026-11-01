@@ -608,3 +608,41 @@ fn assert_json_close(want: &Value, got: &Value, at: &str) {
         _ => assert_eq!(want, got, "{at}"),
     }
 }
+
+/// QS-3 in a replay: one entry per synthetic clip, in order, each followed by its drift check;
+/// a clip without a check after it (Gap60msVs200ms has none) has no check offset; raw logs
+/// carry no AOIs.
+#[test]
+fn replay_reports_per_clip_tracking() {
+    let rep = run(Scenario::Drift3DegLinear);
+    let ids: Vec<(&str, u32)> = rep
+        .clips
+        .iter()
+        .map(|c| (c.clip_id.as_str(), c.order))
+        .collect();
+    assert_eq!(
+        ids,
+        vec![
+            ("synth_clip_1", 1),
+            ("synth_clip_2", 2),
+            ("synth_clip_3", 3),
+            ("synth_clip_4", 4)
+        ]
+    );
+    let checks = &rep.summary.drift_checks;
+    assert_eq!(checks.len(), 4);
+    for (c, chk) in rep.clips.iter().zip(checks) {
+        assert_eq!(c.tracking.nearest_check_offset_deg, chk.offset_deg, "{c:?}");
+        assert!(c.tracking.mean_sample_confidence.unwrap() > 0.5, "{c:?}");
+        assert!(c.tracking.mean_fixation_confidence.is_some(), "{c:?}");
+        assert_eq!(c.tracking.aoi_min_size_deg, None);
+    }
+    // The drift grows clip by clip, and so does the offset of the check after each clip.
+    let first = rep.clips[0].tracking.nearest_check_offset_deg.unwrap();
+    let last = rep.clips[3].tracking.nearest_check_offset_deg.unwrap();
+    assert!(last > first + 1.0, "{first} -> {last}");
+
+    let rep = run(Scenario::Gap60msVs200ms);
+    assert_eq!(rep.clips.len(), 1);
+    assert_eq!(rep.clips[0].tracking.nearest_check_offset_deg, None);
+}

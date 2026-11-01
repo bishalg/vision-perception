@@ -16,6 +16,7 @@
 
 pub mod aoi_space;
 pub mod calibration;
+pub mod clip;
 pub mod confidence;
 pub mod drift;
 pub mod filter;

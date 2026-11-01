@@ -40,6 +40,12 @@ final class TrackingPipelineTests: XCTestCase {
     func testCrossControllerCalibrationSynchronization() async {
         let controllerA = GazeSessionController()
         let controllerB = GazeSessionController()
+        let controllerOtherChild = GazeSessionController()
+        // CAL-1: A and B share one participant and session; the third controller is another child.
+        controllerA.calibrationBinding = CalibrationBinding(participantKey: "child-A", sessionId: "S1")
+        controllerB.calibrationBinding = CalibrationBinding(participantKey: "child-A", sessionId: "S1")
+        controllerOtherChild.calibrationBinding = CalibrationBinding(participantKey: "child-B", sessionId: "S1")
+        defer { BoundCalibrationStore.reset() }
 
         // Create a distinct calibrated profile
         let customProfile = GazeCalibrationProfile(
@@ -72,6 +78,7 @@ final class TrackingPipelineTests: XCTestCase {
         XCTAssertTrue(controllerA.calibrationProfile.isCalibrated)
         XCTAssertEqual(controllerB.calibrationProfile.a, 1.15, accuracy: 1e-6)
         XCTAssertEqual(controllerB.calibrationProfile.e, 0.92, accuracy: 1e-6)
+        XCTAssertFalse(controllerOtherChild.calibrationProfile.isCalibrated, "another child must not receive this calibration")
 
         // Reset
         controllerA.resetCalibration()

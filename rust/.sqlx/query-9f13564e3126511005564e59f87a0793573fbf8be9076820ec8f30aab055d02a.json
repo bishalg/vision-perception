@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT email, role, org_id, display_name, professional_registration,\n                (totp_secret IS NOT NULL AND btrim(totp_secret) <> '') AS \"totp_enrolled!\"\n         FROM users WHERE id = $1",
+  "query": "SELECT email, role, org_id, display_name, professional_registration,\n                (totp_secret_ct IS NOT NULL OR totp_secret IS NOT NULL) AS \"totp_enrolled!\"\n         FROM users WHERE id = $1 FOR UPDATE",
   "describe": {
     "columns": [
       {
@@ -79,5 +79,5 @@
       null
     ]
   },
-  "hash": "d8f2ddbb6b52d810bd98d18595bf94ed60db8afaf18d712482f1de97c38f76b5"
+  "hash": "9f13564e3126511005564e59f87a0793573fbf8be9076820ec8f30aab055d02a"
 }

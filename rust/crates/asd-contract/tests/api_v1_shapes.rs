@@ -6,7 +6,7 @@
 //! same examples).
 
 use asd_contract::api_v1::{
-    ClipList, ClipScore, MetricRow, RegisterDeviceRequest, RegisterDeviceResponse,
+    ClipList, ClipScore, LoginRequest, MetricRow, RegisterDeviceRequest, RegisterDeviceResponse,
     RegistrationStatus, Role, SessionAttentionFlag, SessionPage, SessionSummary, TokenPair, User,
 };
 use asd_contract::problem::{self, Problem};
@@ -339,6 +339,27 @@ fn user_status_includes_invited() {
 }
 
 #[test]
+fn login_request_takes_an_optional_totp_code() {
+    let plain: LoginRequest =
+        serde_json::from_value(json!({"email": "a@example.org", "password": "pw"})).unwrap();
+    assert_eq!(plain.totp_code, None);
+    assert_eq!(
+        serde_json::to_value(&plain).unwrap(),
+        json!({"email": "a@example.org", "password": "pw"}),
+        "absent, not null, when there is no code"
+    );
+    let with: LoginRequest = serde_json::from_value(
+        json!({"email": "a@example.org", "password": "pw", "totp_code": "123456"}),
+    )
+    .unwrap();
+    assert_eq!(with.totp_code.as_deref(), Some("123456"));
+    let api = schema::api_v1();
+    let login = &api["$defs"]["LoginRequest"];
+    assert!(login["properties"]["totp_code"].is_object(), "{login}");
+    assert_eq!(login["required"], json!(["email", "password"]));
+}
+
+#[test]
 fn participant_withdrawn_is_its_own_problem_slug() {
     assert_eq!(problem::PARTICIPANT_WITHDRAWN, "participant-withdrawn");
     assert_ne!(problem::PARTICIPANT_WITHDRAWN, problem::CONFLICT);
@@ -363,6 +384,8 @@ fn api_schema_publishes_the_contract_problem_slugs() {
         problem::CONFLICT,
         problem::PARTICIPANT_WITHDRAWN,
         problem::INTERNAL,
+        problem::TOTP_REQUIRED,
+        problem::TOTP_INVALID,
     ] {
         assert!(problem::SLUGS.contains(&slug), "{slug} missing from SLUGS");
     }

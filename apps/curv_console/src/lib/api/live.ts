@@ -1,5 +1,7 @@
 /** Live HTTP implementation of the typed API. This is the only module that calls `fetch` against the backend. */
 import type { ZodType } from "zod";
+import { createLiveAdmin } from "./admin";
+import { createLiveExports } from "./exports";
 import { createLiveClinical } from "./clinical";
 import {
   ApiError,
@@ -52,7 +54,8 @@ async function toApiError(res: Response): Promise<ApiError> {
   } catch {
     problem = null;
   }
-  return new ApiError(res.status, problem);
+  const ra = Number.parseInt(res.headers.get("Retry-After") ?? "", 10);
+  return new ApiError(res.status, problem, undefined, Number.isFinite(ra) && ra >= 0 ? ra : null);
 }
 
 export function createLiveClient(opts: LiveOptions): CurvApi & AuthApi {
@@ -82,8 +85,14 @@ export function createLiveClient(opts: LiveOptions): CurvApi & AuthApi {
   const enc = encodeURIComponent;
   return {
     ...createLiveClinical(request, buildQuery),
-    login: (email, password) =>
-      request("/auth/login", tokenPairSchema, { method: "POST", body: { email, password }, auth: false }),
+    ...createLiveAdmin(request, buildQuery),
+    ...createLiveExports(request, buildQuery),
+    login: (email, password, totpCode) =>
+      request("/auth/login", tokenPairSchema, {
+        method: "POST",
+        body: totpCode ? { email, password, totp_code: totpCode } : { email, password },
+        auth: false,
+      }),
     refresh: (refresh_token) =>
       request("/auth/refresh", tokenPairSchema, { method: "POST", body: { refresh_token }, auth: false }),
     logout: (refresh_token) => request("/auth/logout", null, { method: "POST", body: { refresh_token } }),

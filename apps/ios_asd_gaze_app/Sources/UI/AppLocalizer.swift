@@ -220,10 +220,20 @@ public enum Localizer {
             "ne": "तयार छ – क्यालिब्रेसन सुरु गर्नुहोस्",
             "hi": "तैयार – कैलिब्रेशन शुरू करें"
         ],
-        "wizard_skip_calibrate": [
-            "en": "Skip (Use Saved Calibration)",
-            "ne": "छोड्नुहोस् (सुरक्षित क्यालिब्रेसन प्रयोग गर्नुहोस्)",
-            "hi": "छोड़ें (सहेजी गई कैलिब्रेशन उपयोग करें)"
+        "calibrate_failed_title": [
+            "en": "Calibration did not finish",
+            "ne": "क्यालिब्रेसन पूरा भएन",
+            "hi": "कैलिब्रेशन पूरा नहीं हुआ"
+        ],
+        "calibrate_failed_body": [
+            "en": "We could not see your child's eyes for one of the balloons. Check the lighting and distance, then try again.",
+            "ne": "एउटा बेलुनको लागि हामीले तपाईंको बच्चाको आँखा देख्न सकेनौं। उज्यालो र दूरी जाँच गर्नुहोस्, अनि फेरि प्रयास गर्नुहोस्।",
+            "hi": "एक गुब्बारे के लिए हम आपके बच्चे की आँखें नहीं देख सके। रोशनी और दूरी जाँचें, फिर दोबारा कोशिश करें।"
+        ],
+        "calibrate_try_again": [
+            "en": "Try again",
+            "ne": "फेरि प्रयास गर्नुहोस्",
+            "hi": "फिर कोशिश करें"
         ],
         "wizard_distance_good": [
             "en": "Perfect distance · Keep steady",

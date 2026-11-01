@@ -13,8 +13,8 @@
 //! `ingest::auto_review` reads the scoring profile). `ConfigGlobalManage` is therefore
 //! superadmin only, and the four-eyes rule holds between two distinct superadmins
 //! (security audit finding 2). Org owners and admins compose their own org's bundles
-//! (`ConfigPublish`); a norm run is promoted to a *draft* with `ConfigWrite`
-//! (`routes::jobs`), which only superadmins can then approve and publish.
+//! (`ConfigPublish`); a norm run is promoted to a *draft* with `ConfigGlobalManage`
+//! (`routes::jobs`): creating a global document is superadmin only too.
 //!
 //! Publishing retires the previously published document of the same kind in the same
 //! transaction (one published document per kind, enforced by a partial unique index in

@@ -33,7 +33,23 @@ describe("live client", () => {
     expect(init.method).toBe("POST");
     expect(init.headers.Authorization).toBeUndefined();
     expect(JSON.parse(init.body)).toEqual({ email: "e@x.org", password: "pw" });
+    expect(init.body).not.toContain("totp_code");
     expect(pair.user.org_id).toBe("o");
+  });
+
+  it("sends totp_code only when set and surfaces Retry-After on 429", async () => {
+    const ok = json({ access_token: "a", refresh_token: "r", expires_in: 900, user: { id: "u", email: "e@x.org", role: "admin", org_id: "o" } });
+    const f = vi.fn().mockResolvedValueOnce(ok);
+    const api = createLiveClient({ baseUrl: "https://api.test", fetchImpl: f as unknown as typeof fetch });
+    await api.login("e@x.org", "pw", "123456");
+    expect(JSON.parse(f.mock.calls[0]![1].body)).toEqual({ email: "e@x.org", password: "pw", totp_code: "123456" });
+    const limited = new Response(JSON.stringify({ type: `${PROBLEM_BASE}rate-limited`, title: "Too many", status: 429 }), {
+      status: 429,
+      headers: { "Content-Type": "application/problem+json", "Retry-After": "30" },
+    });
+    const g = vi.fn().mockResolvedValue(limited);
+    const api2 = createLiveClient({ baseUrl: "https://api.test", fetchImpl: g as unknown as typeof fetch });
+    await expect(api2.login("e@x.org", "pw")).rejects.toMatchObject({ status: 429, retryAfter: 30 });
   });
 
   it("raises ApiError carrying the problem+json body", async () => {

@@ -116,11 +116,7 @@ async fn users_me_reports_user_id_and_totp_enrolment_without_the_secret() {
     assert_eq!(me["user_id"], id.to_string());
     assert_eq!(me["totp_enrolled"], false);
 
-    sqlx::query("UPDATE users SET totp_secret = 'JBSWY3DPEHPK3PXP' WHERE id = $1")
-        .bind(id)
-        .execute(&c.db.pool)
-        .await
-        .unwrap();
+    enrol_totp(&c.state, id, "JBSWY3DPEHPK3PXP").await;
     let (_, me) = c.get("/v1/users/me", Some(&tok)).await;
     assert_eq!(me["totp_enrolled"], true);
     assert!(!me.to_string().contains("JBSWY3DPEHPK3PXP"));

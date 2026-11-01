@@ -5,6 +5,8 @@ import type { AuthApi, CurvApi } from "./types";
 
 export * from "./types";
 export * from "./clinical";
+export * from "./admin";
+export * from "./exports";
 
 export type ApiMode = "mock" | "live";
 

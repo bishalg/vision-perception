@@ -68,6 +68,17 @@
 //!   consecutive eye-in-head directions (`calibration::gaze_angles_deg`). Both are absent on
 //!   the first face frame after a frame without a face.
 //! - A missing blink blend shape counts as an open eye (Swift: `?? 0.0`).
+//! - **Per-clip values (QS-3, CNF-3)** come from [`GazePipeline::begin_clip`] /
+//!   [`GazePipeline::end_clip`] and [`GazePipeline::clip_tracking`] (definitions in
+//!   [`clip`]). A clip covers every frame pushed while it is open, whether or not recording is
+//!   on (the app records exactly the clip frames, so the two agree in practice). Its
+//!   confidences are final at `end_clip`; `nearestCheckOffsetDeg` once the following drift
+//!   check ends; `aoiMinSizeDeg` uses the session's median distance, so it is final only when
+//!   the session's last frame has been pushed. The check "right after the clip" is the first
+//!   drift-check window that opens after the clip's last frame and closes before the next
+//!   clip begins; a calibration applied in between (`finish_calibration` applying a model, or
+//!   `set_calibration`) voids it, because the check would then measure another calibration
+//!   than the one the clip was recorded with. A missed check gives no offset.
 //! - Memory: one compact record per recorded frame (about 120 bytes; 10 minutes at 60 Hz is
 //!   about 4 MB), the buffered frames of an open validation or check window, and the last
 //!   `recalibration.poseWindowSec` of tracked poses.
@@ -82,6 +93,7 @@ use super::calibration::{
     gaze_angles_deg, CalModel, CalSessionError, CalibrationOutcome, CalibrationSession, SampleGate,
     TargetStatus,
 };
+use super::clip;
 use super::confidence::{self, ConfidenceFeatures, ConfidenceLimits};
 use super::drift::{self, AdviceState, DriftMonitor};
 use super::filter::OneEuro2D;
@@ -94,11 +106,11 @@ use super::validation::{self, median, quantile, TargetWindow};
 use crate::metrics::MIN_FIXATION_DURATION_SEC;
 use crate::quality::{self, Evaluation, QualityGate};
 use crate::types::tracking::{
-    CalModelKind, CalibrationQuality, CalibrationRecord, ConfidenceSummary, DeviceGeometry,
-    DriftCheckRecord, GeometrySource, LossSummary, Orientation, ProcessedSample, RawTrackingSample,
-    RecalAdvice, RecalReason, RecalibrationRecord, TargetKind, TargetOutcome, TargetResult,
-    TrackState, TrackingConditions, TrackingDevice, TrackingQuality, TrackingQualityParams,
-    ValidationRecord,
+    CalModelKind, CalibrationQuality, CalibrationRecord, ClipTracking, ClipTrackingEntry,
+    ConfidenceSummary, DeviceGeometry, DriftCheckRecord, GeometrySource, LossSummary, Orientation,
+    ProcessedSample, RawTrackingSample, RecalAdvice, RecalReason, RecalibrationRecord, TargetKind,
+    TargetOutcome, TargetResult, TrackState, TrackingConditions, TrackingDevice, TrackingQuality,
+    TrackingQualityParams, ValidationRecord,
 };
 use crate::types::GazeTelemetrySample;
 
@@ -191,6 +203,31 @@ struct Rec {
     ambient: Option<f64>,
 }
 
+/// The clip being played (QS-3).
+#[derive(Debug, Clone)]
+struct OpenClip {
+    clip_id: String,
+    /// Geometry when the clip began (its AOIs are screen-normalised in this orientation).
+    geo: OrientedGeometry,
+    /// Role-bearing AOIs only.
+    aois: Vec<ScreenAoi>,
+    /// Every frame pushed while the clip is open, as the gap-fill view.
+    frames: Vec<GapSample>,
+}
+
+/// A finished clip, waiting for its drift check and the session median distance.
+#[derive(Debug, Clone)]
+struct ClosedClip {
+    clip_id: String,
+    geo: OrientedGeometry,
+    aois: Vec<ScreenAoi>,
+    /// Time of the clip's last frame (`None` for a clip without frames).
+    end_sec: Option<f64>,
+    mean_sample_confidence: Option<f64>,
+    mean_fixation_confidence: Option<f64>,
+    nearest_check_offset_deg: Option<f64>,
+}
+
 /// The latest calibration attempt.
 #[derive(Debug, Clone)]
 struct CalState {
@@ -222,6 +259,10 @@ pub struct GazePipeline {
     target: Option<OpenTarget>,
     aois: Vec<ScreenAoi>,
     clip_origin_sec: Option<f64>,
+    clip: Option<OpenClip>,
+    clips: Vec<ClosedClip>,
+    /// Index into `clips` of the clip whose following drift check is still to come.
+    awaiting_check: Option<usize>,
     recording: bool,
     first_recorded_sec: Option<f64>,
     age_at_start_sec: Option<f64>,
@@ -256,6 +297,9 @@ impl GazePipeline {
             target: None,
             aois: Vec::new(),
             clip_origin_sec: None,
+            clip: None,
+            clips: Vec::new(),
+            awaiting_check: None,
             recording: false,
             first_recorded_sec: None,
             age_at_start_sec: None,
@@ -287,6 +331,8 @@ impl GazePipeline {
     pub fn set_calibration(&mut self, model: Option<CalModel>) {
         self.calibration = model;
         self.filter.reset();
+        // The next drift check measures another calibration than the last clip's (QS-3).
+        self.awaiting_check = None;
     }
 
     /// Switches the interface orientation (GEO-3): rotates the geometry and resets the filter.
@@ -314,6 +360,101 @@ impl GazePipeline {
     pub fn set_clip_aois(&mut self, aois: Vec<ScreenAoi>) {
         self.aois = aois;
         self.clip_origin_sec = None;
+    }
+
+    /// Starts a stimulus clip (QS-3): sets its AOIs for hit testing (as
+    /// [`set_clip_aois`](Self::set_clip_aois)) and collects its frames from the next pushed
+    /// frame. A clip still open is ended first. `clip_id` is reported back by
+    /// [`clip_tracking`](Self::clip_tracking); the play order is the call order.
+    pub fn begin_clip(&mut self, clip_id: impl Into<String>, aois: Vec<ScreenAoi>) {
+        self.end_clip();
+        // A clip began before any check: the previous clip has no check right after it.
+        self.awaiting_check = None;
+        let role_aois = aois
+            .iter()
+            .filter(|a| clip::is_role_bearing(a))
+            .cloned()
+            .collect();
+        self.set_clip_aois(aois);
+        self.clip = Some(OpenClip {
+            clip_id: clip_id.into(),
+            geo: self.geo,
+            aois: role_aois,
+            frames: Vec::new(),
+        });
+    }
+
+    /// Ends the open clip (no-op without one): its confidences are computed now and its frames
+    /// released; the next drift check to close becomes its `nearestCheckOffsetDeg`. Stops AOI
+    /// hit testing.
+    pub fn end_clip(&mut self) {
+        let Some(open) = self.clip.take() else {
+            return;
+        };
+        let p = &self.config.params;
+        let closed = ClosedClip {
+            end_sec: open.frames.last().map(|f| f.t_sec),
+            mean_sample_confidence: clip::mean_sample_confidence(&open.frames),
+            mean_fixation_confidence: clip::mean_fixation_confidence(
+                &open.frames,
+                &open.geo,
+                &p.gap_fill,
+                p.scoring.ivt_velocity_deg_per_sec,
+                MIN_FIXATION_DURATION_SEC,
+            ),
+            nearest_check_offset_deg: None,
+            clip_id: open.clip_id,
+            geo: open.geo,
+            aois: open.aois,
+        };
+        self.clips.push(closed);
+        self.awaiting_check = Some(self.clips.len() - 1);
+        self.set_clip_aois(Vec::new());
+    }
+
+    /// Whether a clip is open.
+    pub fn clip_open(&self) -> bool {
+        self.clip.is_some()
+    }
+
+    /// QS-3 / CNF-3 values of every ended clip, in play order (definitions in [`clip`] and
+    /// the module docs). Values not yet measurable are absent: call it after the session's
+    /// last frame and drift check for the final values. An open clip is not included.
+    pub fn clip_tracking(&self) -> Vec<ClipTrackingEntry> {
+        if self.clips.is_empty() {
+            return Vec::new();
+        }
+        let distance = self.conditions().distance_cm_median;
+        self.clips
+            .iter()
+            .enumerate()
+            .map(|(i, c)| ClipTrackingEntry {
+                clip_id: c.clip_id.clone(),
+                order: (i + 1) as u32,
+                tracking: ClipTracking {
+                    mean_sample_confidence: c.mean_sample_confidence,
+                    mean_fixation_confidence: c.mean_fixation_confidence,
+                    nearest_check_offset_deg: c.nearest_check_offset_deg,
+                    aoi_min_size_deg: clip::aoi_min_size_deg(&c.aois, &c.geo, distance),
+                },
+            })
+            .collect()
+    }
+
+    /// A drift check that opened at `started_at_sec` with `offset_deg` (absent when missed)
+    /// becomes the `nearestCheckOffsetDeg` of the clip waiting for it.
+    fn assign_check(&mut self, started_at_sec: f64, offset_deg: Option<f64>) {
+        let Some(i) = self.awaiting_check.take() else {
+            return;
+        };
+        let Some(c) = self.clips.get_mut(i) else {
+            return;
+        };
+        if c.end_sec
+            .is_none_or(|end| started_at_sec >= end - EPS_MS / 1000.0)
+        {
+            c.nearest_check_offset_deg = offset_deg;
+        }
     }
 
     // --------------------------------------------------------------------------------------
@@ -467,6 +608,17 @@ impl GazePipeline {
 
         if self.target.is_some() {
             self.feed_target(out, raw, face_parts);
+        }
+
+        if let Some(open) = self.clip.as_mut() {
+            open.frames.push(GapSample {
+                t_sec: t,
+                tracked: out.track_state == TrackState::Tracked,
+                point_norm: out.filtered_point_norm,
+                eye_pos_mm: out.eye_pos_mm,
+                confidence: out.confidence,
+                gap_filled: false,
+            });
         }
 
         if self.recording {
@@ -713,7 +865,8 @@ impl GazePipeline {
                     self.validation_targets.push(r.clone());
                     self.drift.set_reference(&self.validation_targets);
                 } else {
-                    self.drift.record_check(&r);
+                    let record = self.drift.record_check(&r);
+                    self.assign_check(r.started_at_sec, record.offset_deg);
                 }
                 Some(r)
             }
@@ -775,6 +928,7 @@ impl GazePipeline {
             return Ok(outcome);
         };
         self.calibration = Some(model);
+        self.awaiting_check = None;
         self.cal_state = Some(CalState {
             record: outcome.record.clone(),
             at_sec: at,

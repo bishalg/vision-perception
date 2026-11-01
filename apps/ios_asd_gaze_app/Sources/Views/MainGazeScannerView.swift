@@ -41,6 +41,8 @@ public struct MainGazeScannerView: View {
     @State private var presentedReport: (summary: GazeSessionReportSummary, frames: [GazeFrame])?
     #endif
     @State private var showCalibrationSheet: Bool = false
+    /// CAL-1: calibration made in this scanner is bound to this session and the current child.
+    @State private var scannerSessionId = UUID().uuidString
     @State private var entryBlock: DeviceBlockReason?
     @StateObject private var camera = CameraAccessCoordinator()
     /// SIM-2/SIM-7: why capture cannot run right now, if it cannot.
@@ -138,6 +140,7 @@ public struct MainGazeScannerView: View {
             }
             .fullScreenCover(isPresented: $showCalibrationSheet) {
                 BubbleCalibrationView(
+                    calibrationBinding: ChildProfileStore.shared.calibrationBinding(sessionId: scannerSessionId),
                     onClose: {
                         showCalibrationSheet = false
                         controller.reloadCalibrationProfile()
@@ -150,6 +153,7 @@ public struct MainGazeScannerView: View {
             }
         }
         .task {
+            controller.calibrationBinding = ChildProfileStore.shared.calibrationBinding(sessionId: scannerSessionId)
             controller.reloadCalibrationProfile()
             await runSessionLoop()
         }

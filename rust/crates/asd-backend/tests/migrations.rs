@@ -308,6 +308,133 @@ async fn migration_0015_adds_list_indexes_and_the_totp_step() {
     db.cleanup().await;
 }
 
+/// 0016: TOTP seeds sealed at rest. A database at 0015 with plaintext seeds is migrated,
+/// then `db::backfill` (what `asd-backend migrate` runs next) seals every seed, clears the
+/// plaintext, audits, and the sealed seed still verifies. Without the KEK the back-fill
+/// refuses while a plaintext seed remains; a second run is a no-op.
+#[tokio::test]
+async fn migration_0016_seals_existing_totp_seeds() {
+    let Some(db) = TestDb::empty().await else {
+        return;
+    };
+    let pool = &db.pool;
+    db::MIGRATOR
+        .run_to(15, pool)
+        .await
+        .expect("migrate to 0015");
+    let org = org(pool).await;
+    let mut users = Vec::new();
+    for (i, (org_id, secret)) in [
+        (Some(org), Some("JBSWY3DPEHPK3PXP")),
+        (None, Some(" GEZDGNBVGY3TQOJQ ")), // a superadmin: no org
+        (Some(org), Some("   ")),           // blank: never enrolled
+        (Some(org), None),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let role = if org_id.is_some() {
+            "clinician"
+        } else {
+            "superadmin"
+        };
+        let id: uuid::Uuid = sqlx::query_scalar(
+            "INSERT INTO users (org_id, email, pw_hash, role, totp_secret) \
+             VALUES ($1, $2, 'x', $3, $4) RETURNING id",
+        )
+        .bind(org_id)
+        .bind(format!("u{i}@example.org"))
+        .bind(role)
+        .bind(secret)
+        .fetch_one(pool)
+        .await
+        .unwrap();
+        users.push(id);
+    }
+
+    db::MIGRATOR.run(pool).await.expect("migrate to the latest");
+    assert_has(
+        &columns(pool, "users").await,
+        "users",
+        &["totp_secret_ct", "totp_secret_kek_id"],
+    );
+    let blank: Option<String> = sqlx::query_scalar("SELECT totp_secret FROM users WHERE id = $1")
+        .bind(users[2])
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    assert_eq!(blank, None, "blank seeds are cleared by the SQL");
+
+    // Without the KEK: refused while plaintext seeds remain, nothing changed.
+    let mut config = common::test_config(common::UNREACHABLE_DB_URL);
+    let kek = config.data_kek.take().expect("test KEK");
+    let err = db::backfill(pool, &config).await.unwrap_err();
+    assert!(
+        err.contains("2 TOTP seed(s)") && err.contains("ASD_DATA_KEK"),
+        "{err}"
+    );
+    assert_eq!(
+        asd_backend::auth::totp::legacy_secret_count(pool)
+            .await
+            .unwrap(),
+        2
+    );
+
+    config.data_kek = Some(kek.clone());
+    db::backfill(pool, &config).await.expect("back-fill");
+    db::backfill(pool, &config)
+        .await
+        .expect("second run is a no-op");
+    assert_eq!(
+        asd_backend::auth::totp::legacy_secret_count(pool)
+            .await
+            .unwrap(),
+        0
+    );
+    let encrypted: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM audit_log WHERE action = 'user.totp_secret_encrypt'",
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    assert_eq!(encrypted, 2);
+
+    let keyring = asd_backend::crypto::Keyring::new(kek, pool.clone());
+    for (id, want) in [
+        (users[0], Some("JBSWY3DPEHPK3PXP")),
+        (users[1], Some("GEZDGNBVGY3TQOJQ")),
+        (users[2], None),
+        (users[3], None),
+    ] {
+        let secret = asd_backend::auth::totp::load_secret(pool, Some(&keyring), id)
+            .await
+            .unwrap();
+        assert_eq!(secret.is_some(), want.is_some(), "{id}");
+        let Some(secret) = secret else { continue };
+        let code = asd_backend::clinical::reauth::totp_code(want.unwrap(), now_unix()).unwrap();
+        assert!(
+            asd_backend::auth::totp::verify_and_spend(pool, id, &secret, &code)
+                .await
+                .unwrap(),
+            "sealed seed of {id} still verifies"
+        );
+    }
+    // A row holds one form only.
+    let both = sqlx::query("UPDATE users SET totp_secret = 'JBSWY3DPEHPK3PXP' WHERE id = $1")
+        .bind(users[0])
+        .execute(pool)
+        .await;
+    assert!(both.is_err(), "plaintext next to a ciphertext is refused");
+    db.cleanup().await;
+}
+
+fn now_unix() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+}
+
 #[tokio::test]
 async fn pending_migrations_lists_everything_on_an_empty_database() {
     let Some(db) = TestDb::empty().await else {

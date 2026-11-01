@@ -1,9 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { MOCK_ORG_ID, MOCK_PASSWORD, createMockClient } from "@/lib/api/mock";
+import { MOCK_ORG_ID, MOCK_PASSWORD, MOCK_TOTP_CODE, MOCK_TOTP_EMAIL, createMockClient } from "@/lib/api/mock";
 import { apiMode, getApi } from "@/lib/api";
 
 describe("mock client", () => {
   const api = createMockClient();
+
+  it("requires the TOTP code for the enrolled mock user", async () => {
+    await expect(api.login(MOCK_TOTP_EMAIL, "nope", MOCK_TOTP_CODE)).rejects.toMatchObject({ status: 401, slug: "unauthorized" });
+    await expect(api.login(MOCK_TOTP_EMAIL, MOCK_PASSWORD)).rejects.toMatchObject({ status: 401, slug: "totp-required" });
+    await expect(api.login(MOCK_TOTP_EMAIL, MOCK_PASSWORD, "000000")).rejects.toMatchObject({ status: 401, slug: "totp-invalid" });
+    expect((await api.login(MOCK_TOTP_EMAIL, MOCK_PASSWORD, MOCK_TOTP_CODE)).user.email).toBe(MOCK_TOTP_EMAIL);
+    // A code sent for a user without TOTP is ignored.
+    expect((await api.login("a@b.c", MOCK_PASSWORD, "999999")).user.org_id).toBe(MOCK_ORG_ID);
+  });
 
   it("logs in only with the demo password", async () => {
     await expect(api.login("a@b.c", "nope")).rejects.toMatchObject({ status: 401 });

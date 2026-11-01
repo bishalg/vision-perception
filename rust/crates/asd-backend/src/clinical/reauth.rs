@@ -2,7 +2,8 @@
 //!
 //! SIGN-5 step-up re-authentication for sign and cosign (and later letter finalize): the
 //! caller's password (Argon2id, AUTH-1) and, when the user has TOTP enrolled
-//! (`users.totp_secret`), a current RFC 6238 code, verified in the same request.
+//! (`users.totp_secret_ct`, sealed, migration 0016), a current RFC 6238 code, verified in
+//! the same request.
 //! Attempts are limited per user (AUTH-1: 10 per minute). The password and code are
 //! verified and dropped; they are never stored, logged or put into an error.
 //!
@@ -12,15 +13,16 @@
 //!
 //! Replay (security audit finding 7): an accepted code is spent. The step it matched is
 //! stored in `users.last_totp_step` (migration 0015) with a compare-and-set, and a code of
-//! the same or an earlier step is refused. The login flow does not check TOTP (deferred).
+//! the same or an earlier step is refused ([`crate::auth::totp::verify_and_spend`], shared
+//! with `POST /v1/auth/login`, which asks enrolled users for a code too).
 
 use std::sync::Arc;
 
 use aws_lc_rs::hmac;
-use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::auth::{password, RateLimiter};
+use crate::app::AppState;
+use crate::auth::{password, totp, RateLimiter};
 use crate::error::{AppError, AppResult};
 
 /// AUTH-1 applied to step-up: attempts per user per minute.
@@ -67,9 +69,10 @@ impl From<StepUpError> for AppError {
     }
 }
 
-/// Verifies `password` (and `totp_code` when the user has TOTP) for `user_id`.
+/// Verifies `password` (and `totp_code` when the user has TOTP) for `user_id`. The seed is
+/// read sealed and the code spent through [`crate::auth::totp`], as for login.
 pub async fn step_up(
-    db: &PgPool,
+    state: &AppState,
     limiter: &StepUpLimiter,
     user_id: Uuid,
     password_plain: &str,
@@ -77,55 +80,36 @@ pub async fn step_up(
 ) -> Result<(), StepUpError> {
     limiter
         .0
-        .check(&user_id)
+        .check_at(&user_id, state.clock.now())
         .map_err(|retry_after_secs| StepUpError::RateLimited { retry_after_secs })?;
-    let row = sqlx::query!(
-        "SELECT pw_hash, totp_secret FROM users WHERE id = $1 AND status = 'active'",
+    let pw_hash = sqlx::query_scalar!(
+        "SELECT pw_hash FROM users WHERE id = $1 AND status = 'active'",
         user_id
     )
-    .fetch_optional(db)
+    .fetch_optional(&state.db)
     .await
     .map_err(|e| StepUpError::Other(e.into()))?;
-    let (pw_hash, totp_secret) = match row {
-        Some(r) => (Some(r.pw_hash), r.totp_secret),
-        None => (None, None),
-    };
+    let active = pw_hash.is_some();
     let password_ok = password::verify_or_dummy_blocking(pw_hash, password_plain.to_owned()).await;
-    if !password_ok {
+    if !password_ok || !active {
         return Err(StepUpError::Failed);
     }
-    if let Some(secret) = totp_secret.filter(|s| !s.trim().is_empty()) {
+    let secret = totp::load_secret(&state.db, state.keyring.as_deref(), user_id)
+        .await
+        .map_err(StepUpError::Other)?;
+    if let Some(secret) = secret {
         let Some(code) = totp_code_given else {
             return Err(StepUpError::Failed);
         };
-        let Some(step) = matched_totp_step(&secret, code, unix_now()) else {
-            return Err(StepUpError::Failed);
-        };
-        // An accepted code is spent (security audit finding 7): record its step with a
-        // compare-and-set, so the same code (or one of an earlier step) never passes again,
-        // not even in two concurrent requests.
-        let step = i64::try_from(step).map_err(|_| StepUpError::Failed)?;
-        let spent = sqlx::query_scalar!(
-            r#"UPDATE users SET last_totp_step = $2
-               WHERE id = $1 AND (last_totp_step IS NULL OR last_totp_step < $2)
-               RETURNING 1 AS "one!""#,
-            user_id,
-            step
-        )
-        .fetch_optional(db)
-        .await
-        .map_err(|e| StepUpError::Other(e.into()))?;
-        if spent.is_none() {
+        // An accepted code is spent (security audit finding 7).
+        let accepted = totp::verify_and_spend(&state.db, user_id, &secret, code)
+            .await
+            .map_err(StepUpError::Other)?;
+        if !accepted {
             return Err(StepUpError::Failed);
         }
     }
     Ok(())
-}
-
-fn unix_now() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| d.as_secs())
 }
 
 /// RFC 4648 base32 (case-insensitive; spaces, hyphens and `=` padding ignored).
@@ -169,7 +153,8 @@ pub fn totp_code(secret: &str, unix_time: u64) -> Option<String> {
 }
 
 /// True when `code` matches the step of `unix_time` or one step either side. An unusable
-/// stored secret never verifies (fail closed). Does not check reuse: [`step_up`] does.
+/// stored secret never verifies (fail closed). Does not check reuse:
+/// [`crate::auth::totp::verify_and_spend`] does.
 pub fn verify_totp(secret: &str, code: &str, unix_time: u64) -> bool {
     matched_totp_step(secret, code, unix_time).is_some()
 }

@@ -187,12 +187,14 @@ fn hit_test_is_inclusive_in_space_and_time() {
             start_sec: 0.0,
             end_sec: 30.0,
             rect: b(0.0, 0.0, 0.5, 1.0),
+            roles: Vec::new(),
         },
         ScreenAoi {
             name: "Geometric_Pattern".into(),
             start_sec: 0.0,
             end_sec: 30.0,
             rect: b(0.5, 0.0, 1.0, 1.0),
+            roles: Vec::new(),
         },
     ];
     assert_eq!(

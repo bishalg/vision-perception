@@ -37,6 +37,17 @@ pub async fn seed_org(pool: &PgPool, name: &str) -> Uuid {
         .expect("insert org")
 }
 
+/// Enrols `user` in TOTP with the base32 `secret`, sealed as the service stores it (0016).
+pub async fn enrol_totp(state: &AppState, user: Uuid, secret: &str) {
+    let keyring = state
+        .keyring
+        .as_deref()
+        .expect("test config sets ASD_DATA_KEK");
+    asd_backend::auth::totp::set_secret(&state.db, keyring, user, Some(secret))
+        .await
+        .expect("enrol TOTP");
+}
+
 /// Inserts an active user with [`PASSWORD`]. `org = None` only for `superadmin`.
 pub async fn seed_user(pool: &PgPool, org: Option<Uuid>, role: Role, email: &str) -> Uuid {
     sqlx::query_scalar(

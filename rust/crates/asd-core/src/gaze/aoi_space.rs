@@ -107,6 +107,10 @@ pub struct ScreenAoi {
     pub start_sec: f64,
     pub end_sec: f64,
     pub rect: NormBox,
+    /// The catalog area's `roles` (QS-3 `aoiMinSizeDeg` counts role-bearing AOIs only);
+    /// absent in JSON when empty.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub roles: Vec<String>,
 }
 
 impl ScreenAoi {
@@ -116,8 +120,8 @@ impl ScreenAoi {
     }
 }
 
-/// The clip's catalog areas as screen-space AOIs. `Screen` passes boxes through; `Video` maps
-/// them with [`video_to_screen`] and leaves out the ones cropped away.
+/// The clip's catalog areas as screen-space AOIs (with their roles). `Screen` passes boxes
+/// through; `Video` maps them with [`video_to_screen`] and leaves out the ones cropped away.
 pub fn clip_aois(
     areas: &[Area],
     space: AoiSpace,
@@ -143,6 +147,7 @@ pub fn clip_aois(
                 start_sec: a.start_sec,
                 end_sec: a.end_sec,
                 rect,
+                roles: a.roles.clone(),
             })
         })
         .collect()

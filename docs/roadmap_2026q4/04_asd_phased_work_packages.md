@@ -21,10 +21,10 @@
 | WP-A.10 | TestFlight beta pipeline (fastlane `beta`), crash reporting decision | 3 | I | todo | |
 | WP-A.11 | iOS consumes the Rust core: xcframework `binaryTarget`, engines become wrappers, golden parity tests, `asd-sync` in the sync client, `device_id` on re-register | 1–2 | S | done | 6 kit engines are FFI wrappers; GoldenParity + LegacyParity tests; sync via asd-sync, device_id on re-register; ios_test.sh builds xcframework. Follow-ups: asd-ffi format_scored_at ms rounding, dwell/affect/bracket maths still in Swift |
 | WP-A.12 | Android Kotlin bindings from the same UniFFI definitions (`cargo-ndk`) | 4 | S | backlog | depends on WP-R.5 |
-| WP-G.0 | Swift capture hygiene: record untracked frames, no cross-child calibration reuse, no fabricated calibration point, orientation lock | 2 | I | todo | TRK-1, CAL-1, CAL-3; lowers validRatio on track loss (H-G1); spec `docs/spec/modules/asd-gaze-robustness/` |
+| WP-G.0 | Swift capture hygiene: record untracked frames, no cross-child calibration reuse, no fabricated calibration point, orientation lock | 2 | I | done | TRK-1, CAL-1, CAL-3; lowers validRatio on track loss (H-G1); spec `docs/spec/modules/asd-gaze-robustness/` | done 2026-11-01: untracked frames buffered, `BoundCalibrationStore` (child key + session id), `CalibrationAccumulator` (no fabricated point), `CaptureOrientationLock`; device check of rotation/overlay pending |
 | WP-G.1 | Rust tracking types, raw log format, device geometry table, unclamped raycast, visual-angle maths | 2 | S | done | `asd-core::gaze` geometry/raycast/raw_log + tracking types; 42 device entries (community id list, M4 iPad camera offset + iPad16,5/6 to verify in G.14); ARKit camera-axis mirroring to confirm in G.8 |
 | WP-G.2 | Rust calibration models (screen/angular affine, homography, poly2), robust target aggregation, LOO-CV quality, selection | 2 | S | done | 4 models + MAD aggregation + retry-once + LOO bands + auto-select + CalibrationSession; 49 tests; angular-affine holds <0.3° across a 10 cm head move vs >1° for screen-affine (synthetic) |
-| WP-G.3 | Rust per-sample pipeline: track state, confidence, 1-Euro port, gap fill, AOI video→screen mapping | 2 | S | done | 1-Euro matches Swift to 1e-12, confidence =0.5 at gate limits, gap fill never touches dwell/validRatio, AOI aspect-fill mapping, GazePipeline; host p99 0.0013 ms/frame. G.9 must call set_recording(true) around clips |
+| WP-G.3 | Rust per-sample pipeline: track state, confidence, 1-Euro port, gap fill, AOI video→screen mapping | 2 | S | done | 1-Euro matches Swift to 1e-12, confidence =0.5 at gate limits, gap fill never touches dwell/validRatio, AOI aspect-fill mapping, GazePipeline; host p99 0.0013 ms/frame. G.9 must call set_recording(true) around clips. 2026-11-01: per-clip `ClipTracking` producer (`begin_clip_json`/`end_clip`/`clip_tracking_json`, read at session end) |
 | WP-G.4 | Rust validation, drift monitor, re-calibration advice, session TrackingQuality summary | 2 | S | done | validation/drift/summary in `asd-core::gaze`, 52 tests + 9 hand-built goldens; G.3 must supply session data loss + validRatio to `SummaryInput` |
 | WP-G.5 | Rust synthetic tracking generator, replay, `asd-cli gaze synth/replay/bench-report`, scenario goldens | 2 | I | done | 15 seeded scenarios + goldens, `asd-cli gaze synth/replay/bench-report` (model ranking, light-vs-error Spearman, per-log SHA-256) |
 | WP-G.6 | Contract session v1.7 (`trackingQuality`), `ScoringProfile.trackingQuality` params, schema export | 2 | S | done | session-v1.7.json alongside byte-identical 1.6; all 1.7 fields optional; ScoringProfile 1.1.0 with trackingQuality defaults from asd-core; backend/iOS still 1.6 until G.11/G.9 |
@@ -55,7 +55,7 @@
 | WP-B.10 | FHIR façade + SMART-on-FHIR server validation (only if a clinic partner needs it) | 4 | S | backlog | |
 | WP-C.1 | Console scaffold: Next.js, auth, layout, sessions table/detail, overview KPIs | 1 | S | done | Live mode vs Rust backend, org switcher, overview/sessions, Playwright 11/11 mock + live; 129 unit tests |
 | WP-C.2 | Review queue + devices/enrol QR | 1 | I | done | Review triage (j/k, 1–4), devices revoke, enrol code + QR. Backend gaps: no `GET /v1/orgs`, review items lack session summary |
-| WP-C.3 | Participants list, users/roles, audit page (participant detail/timeline moved to WP-C.14) | 2 | I | todo | |
+| WP-C.3 | Participants list, users/roles, audit page (participant detail/timeline moved to WP-C.14) | 2 | I | done | 2026-11-01; backend gaps: no invite/password reset, no audit filters, users/audit `total: null` |
 | WP-C.4 | Catalog editor (clips, AOI timeline, batteries) | 2 | S | todo | |
 | WP-C.5 | Baselines editor + scoring profile editor + sandbox re-score + bundle publish with approval | 2 | S | todo | |
 | WP-C.6 | Cohorts, norm-runs, exports, model registry | 3 | I | todo | |
@@ -74,7 +74,7 @@
 | WP-I.5 | PDF/A-2b clinical summary + letter renderer (A4, Devanagari) | 3 | S | todo | PDF-*; needs I.1, owner Q3 (OFL fonts) |
 | WP-I.6 | Export jobs: migration 0009, runner run_after/heartbeat/context, consent filter, artifacts, signed download URLs, disclosures | 3 | S | done | migration 0009, export jobs (CSV/XLSX/FHIR/NDJSON/HL7; PDF pending I.5), runner run_after + heartbeat + fencing, consent filter with exclusion counts, signed 5-min download URLs (superadmin refused), disclosures, expiry sweep. Gap: no zip-scan test of de-identified CSV in backend |
 | WP-I.7 | Delivery: integration settings (encrypted write-only secrets), signed webhooks, SFTP, SSRF guard, auto-deliver on final sign | 3 | S | done | migration 0014; integration routes (write-only encrypted webhook secret, server-generated Ed25519 SFTP key, pinned host key, connection test), HMAC-signed webhooks (hyper+rustls, no redirects), SFTP drop (russh, no RSA), SSRF guard (resolve once, refuse private/loopback/mapped, connect to checked address), outbox with retries, auto-deliver on final sign (`review.finalized`) |
-| WP-I.8 | Console: exports page + integration settings | 3 | I | todo | needs I.6, I.7, C.13 |
+| WP-I.8 | Console: exports page + integration settings | 3 | I | done | 2026-11-01; backend gaps: integrations list not paginated, exporters cannot list destinations, no destination delete |
 | WP-I.9 | FHIR push via SMART Backend Services (new migration ≥0014; see migration rule) | 4 | S | backlog | DLV-7; relates to WP-B.10 |
 | WP-I.10 | SMART EHR launch of the console | 4 | S | backlog | needs I.9, C.14 |
 | WP-I.11 | HL7 MLLP/TLS sender + ACK handling | 4 | S | backlog | only if a partner needs real-time HL7 |
@@ -93,16 +93,17 @@
 | WP-E.6 | Security/privacy review pack: threat model, data-flow diagram, DPIA-lite, retention policy, AWS BAA | 3 | A + I | todo | |
 | WP-E.7 | App Store submission dry run (`appstore_precheck`, screenshots, age assurance flag) | 4 | I | backlog | |
 
-**Migration rule (2026-10-31 audit):** backend migrations are applied in order and numbers 0007 and 0010–0012 were never used. A new migration must take the next number above the highest existing one (≥0014 today), never a gap, or it will be applied out of order on databases that already ran later migrations.
+**Migration rule (2026-10-31 audit):** backend migrations are applied in order and numbers 0007 and 0010–0012 were never used. A new migration must take the next number above the highest existing one (≥0017 today), never a gap, or it will be applied out of order on databases that already ran later migrations.
 
 **Audit 2026-10-31 (independent backend-security and gaze/contract reviews, fresh-DB gates, live smoke `scripts/live_smoke.sh`).** Fixed: superadmin/admin clinical-role provisioning bypass, global config publish by org roles, export reclaim overwrite, list indexes, ingest 500s, worklist MRN flag, TOTP replay (0015); gaze recalibration after pose shift, replay retries, failed-recal isolation, empty validation (asd-core); 1.7 report decode; console report link; export missing-artifact 410. Open (owner or follow-up):
-- WP-G.3 gap: per-clip QS-3/CNF-3 values (`ClipTracking`) have no Rust producer; add to `GazePipeline` before WP-G.9.
+- ~~WP-G.3 gap: per-clip ClipTracking producer~~ done 2026-11-01.
 - Swift aggregate fallback writes socialPreference 0 / flatAffect 1 when scoring fails; decide: unscorable flag or optional fields in 1.7.
 - Gaze L2 deferred: `calibrated_median_norm` absent for angularAffine.
-- Login does not ask for TOTP; `totp_secret` stored in clear. Enrol-code rotation accepts expired codes (CON-11 as specified).
-- Norm-run promote still lets org roles create a *draft* global baselines document (publish is superadmin-only).
+- ~~Login does not ask for TOTP; `totp_secret` stored in clear.~~ done 2026-11-01. Enrol-code rotation accepts expired codes (CON-11 as specified).
+- ~~Norm-run promote lets org roles create a draft global baselines document~~ done 2026-11-01.
 - Smoke export download + sha256 needs `ASD_BLOB_BACKEND=s3` (MinIO); the memory store is per process.
-- Flaky timing test `tests/auth.rs` rate-limit window on a loaded machine.
+- ~~Flaky timing test `tests/auth.rs`~~ done 2026-11-01 (injectable clock).
+- 2026-11-01: login now requires TOTP for enrolled users (`totp-required`/`totp-invalid`, console code step); seeds encrypted under `ASD_DATA_KEK` (0016, backfilled by `asd-backend migrate`); norm-run promote is superadmin-only. Follow-ups: KEK rotation must re-encrypt seeds (no tool yet); drop plaintext `users.totp_secret` column in a later migration; no TOTP enrolment flow yet.
 
 ## 1. Phase 1 — Demo-ready vertical slice (2026-10-27 → 2026-11-16)
 

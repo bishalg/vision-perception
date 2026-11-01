@@ -3,6 +3,7 @@ import CurvAsdGazeKit
 
 @main
 struct AsdGazeApp: App {
+    @UIApplicationDelegateAdaptor(AppOrientationDelegate.self) private var orientationDelegate
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @State private var selectedTab: Int = 0
     @State private var showSplashScreen: Bool = true

@@ -23,6 +23,10 @@
 //! - **Recording.** A frame counts in the session summary exactly when it carries
 //!   `clip_media_time_sec` (it belongs to a stimulus clip), so positioning, calibration,
 //!   validation and drift-check frames never count (pipeline docs, `set_recording`).
+//! - **Clips (QS-3).** A clip begins at a recorded frame whose `stimulus_id` differs from the
+//!   open clip's (or when none is open; a recorded frame without `stimulus_id` belongs to a
+//!   clip with the empty id) and ends at the first frame that is not recorded, or at the end
+//!   of the log. Raw logs carry no AOIs, so `aoiMinSizeDeg` stays absent in a replay.
 //! - **Config.** Built from the header (model, geometry, orientation) with default gate and
 //!   params unless [`ReplayOptions`] overrides them. No wall clock, no randomness (PIPE-5).
 
@@ -33,8 +37,8 @@ use super::calibration::TargetStatus;
 use super::pipeline::{GazePipeline, PipelineConfig, PipelineError};
 use super::raw_log::RawLog;
 use crate::types::tracking::{
-    CalModelKind, RecalAdvice, ScheduledTarget, TargetKind, TargetResult, TrackingQuality,
-    TrackingQualityParams,
+    CalModelKind, ClipTrackingEntry, RecalAdvice, ScheduledTarget, TargetKind, TargetResult,
+    TrackingQuality, TrackingQualityParams,
 };
 
 /// Replay settings.
@@ -79,6 +83,8 @@ pub struct ReplayReport {
     pub advice: RecalAdvice,
     /// The session `trackingQuality` record (QS-1).
     pub summary: TrackingQuality,
+    /// Per-clip QS-3 / CNF-3 values, in play order.
+    pub clips: Vec<ClipTrackingEntry>,
 }
 
 /// Checks the schedule of a header: finite positions and times, `endSec >= startSec`,
@@ -251,6 +257,7 @@ pub fn replay(log: &RawLog, options: &ReplayOptions) -> Result<ReplayReport, Rep
 
     let mut next = 0usize;
     let mut recorded_frames = 0usize;
+    let mut current_clip: Option<String> = None;
     for raw in &log.samples {
         let t = raw.t_sec;
         // The next target is due: a window still open is over.
@@ -268,6 +275,13 @@ pub fn replay(log: &RawLog, options: &ReplayOptions) -> Result<ReplayReport, Rep
         }
         let recording = raw.clip_media_time_sec.is_some();
         recorded_frames += usize::from(recording);
+        let clip_id = raw.stimulus_id.clone().unwrap_or_default();
+        if !recording {
+            p.pipeline.end_clip();
+        } else if current_clip.as_deref() != Some(clip_id.as_str()) || !p.pipeline.clip_open() {
+            p.pipeline.begin_clip(clip_id.clone(), Vec::new());
+            current_clip = Some(clip_id);
+        }
         p.pipeline.set_recording(recording);
         p.pipeline.push(raw);
         if p.open && p.pipeline.target_complete() {
@@ -275,6 +289,7 @@ pub fn replay(log: &RawLog, options: &ReplayOptions) -> Result<ReplayReport, Rep
         }
     }
     p.end();
+    p.pipeline.end_clip();
     // Targets that never became due are not played; a running calibration is fitted.
     p.finish_calibration(next.saturating_sub(1))?;
     p.pipeline.set_recording(false);
@@ -285,5 +300,6 @@ pub fn replay(log: &RawLog, options: &ReplayOptions) -> Result<ReplayReport, Rep
         targets: p.results,
         advice: p.pipeline.advice(),
         summary: p.pipeline.summary(),
+        clips: p.pipeline.clip_tracking(),
     })
 }

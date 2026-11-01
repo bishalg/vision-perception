@@ -36,6 +36,12 @@ pub const CONFLICT: &str = "conflict";
 pub const PARTICIPANT_WITHDRAWN: &str = "participant-withdrawn";
 /// Unexpected server error (no details leaked).
 pub const INTERNAL: &str = "internal";
+/// 401 from `POST /v1/auth/login`: email and password are right, and the user has TOTP
+/// enrolled; send the request again with `totp_code` (AUTH-1).
+pub const TOTP_REQUIRED: &str = "totp-required";
+/// 401 from `POST /v1/auth/login`: the `totp_code` is wrong, outside the accepted window or
+/// already used (AUTH-1).
+pub const TOTP_INVALID: &str = "totp-invalid";
 
 // ---- clinician workspace and interop (CTR-2, WP-C.9) ------------------------------------
 
@@ -83,6 +89,8 @@ pub const SLUGS: &[&str] = &[
     CONFLICT,
     PARTICIPANT_WITHDRAWN,
     INTERNAL,
+    TOTP_REQUIRED,
+    TOTP_INVALID,
     CLINICAL_CRYPTO_UNAVAILABLE,
     PATIENT_REF_DISABLED,
     STALE_VERSION,

@@ -103,13 +103,17 @@ public struct BubbleCalibrationView: View {
     @State private var trackingDropoutFrames: Int = 0
     /// Raw (uncalibrated) gaze samples collected for the in-progress target.
     @State private var collectedRawSamples: [CGPoint] = []
-    /// One robust (median) raw point per completed target, in target order —
-    /// fit against `targetPoints` once all 5 are collected.
-    @State private var fittedRawPoints: [CGPoint] = []
     /// Estimated personal eye-offset bias established from Target 0 (Center),
     /// used to accurately verify intentional saccades toward corner targets.
     @State private var estimatedBias: CGPoint? = nil
+    /// CAL-3: per-target bookkeeping. A target with no real samples is re-shown once,
+    /// then the calibration fails; its own position is never used as a measurement.
+    @State private var accumulator = CalibrationAccumulator(targetCount: 5)
+    @State private var calibrationFailed = false
 
+    /// CAL-1: participant and session the fitted profile is saved for. Without one the
+    /// fit applies to this view's own controller only and is never stored.
+    public let calibrationBinding: CalibrationBinding?
     public let onCalibrationComplete: () -> Void
     public var onClose: (() -> Void)?
 
@@ -139,9 +143,11 @@ public struct BubbleCalibrationView: View {
     private let softFeedbackRadiusPoints: CGFloat = 160.0 // visual-only "looking close" glow, never gates progress
 
     public init(
+        calibrationBinding: CalibrationBinding? = nil,
         onClose: (() -> Void)? = nil,
         onCalibrationComplete: @escaping () -> Void
     ) {
+        self.calibrationBinding = calibrationBinding
         self.onClose = onClose
         self.onCalibrationComplete = onCalibrationComplete
     }
@@ -160,11 +166,12 @@ public struct BubbleCalibrationView: View {
 
                     // Top distance and gaze guidance HUD
                     VStack(spacing: 8) {
+                        captureControlsRow
                         topGuidanceHUD
                         Spacer()
                     }
                     .padding(.horizontal, 16)
-                    .padding(.top, 8)
+                    .padding(.top, geometry.safeAreaInsets.top + 8)
                     .zIndex(10)
 
                     // Active Target Balloon
@@ -187,8 +194,13 @@ public struct BubbleCalibrationView: View {
                         Spacer()
                         bottomHintPill
                     }
-                    .padding(.bottom, 20)
+                    .padding(.bottom, geometry.safeAreaInsets.bottom + 20)
                     .zIndex(10)
+
+                    if calibrationFailed {
+                        calibrationFailedOverlay
+                            .zIndex(20)
+                    }
                 }
                 .onAppear {
                     currentScreenSize = geometry.size
@@ -197,36 +209,10 @@ public struct BubbleCalibrationView: View {
                     currentScreenSize = newSize
                 }
             }
-            .navigationTitle(Localizer.tr("calibrate_title"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-            .toolbar {
-                if onClose != nil {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button(action: handleClose) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.system(size: 16))
-                                Text(Localizer.tr("close"))
-                            }
-                            .foregroundColor(LiquidGlass.celestialTeal)
-                        }
-                    }
-                }
-
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            showGazeReticle.toggle()
-                        }
-                    } label: {
-                        Image(systemName: showGazeReticle ? "eye.fill" : "eye.slash")
-                            .font(.system(size: 15))
-                            .foregroundColor(showGazeReticle ? LiquidGlass.emeraldMint : LiquidGlass.textSecondary)
-                    }
-                    .accessibilityLabel("Toggle Gaze Cursor")
-                }
-            }
+            // GEO groundwork: the layout covers the whole screen, so the normalized target
+            // positions are screen positions, and there is no navigation bar during capture.
+            .ignoresSafeArea()
+            .toolbar(.hidden, for: .navigationBar)
             .overlay {
                 if camera.state.showsDeniedView {
                     CameraDeniedView(state: camera.state, onClose: onClose)
@@ -240,6 +226,7 @@ public struct BubbleCalibrationView: View {
             .onDisappear {
                 stopCalibrationSession()
             }
+            .captureOrientationLocked()
             .cameraScenePhase(camera) { action in
                 switch action {
                 case .stopSession:
@@ -252,6 +239,62 @@ public struct BubbleCalibrationView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Capture controls and failure state
+
+    /// Close and gaze-cursor controls, in the content instead of a navigation bar.
+    private var captureControlsRow: some View {
+        HStack {
+            if onClose != nil {
+                Button(action: handleClose) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 16))
+                        Text(Localizer.tr("close"))
+                    }
+                    .foregroundColor(LiquidGlass.celestialTeal)
+                }
+            }
+            Spacer()
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showGazeReticle.toggle()
+                }
+            } label: {
+                Image(systemName: showGazeReticle ? "eye.fill" : "eye.slash")
+                    .font(.system(size: 15))
+                    .foregroundColor(showGazeReticle ? LiquidGlass.emeraldMint : LiquidGlass.textSecondary)
+            }
+            .accessibilityLabel("Toggle Gaze Cursor")
+        }
+    }
+
+    /// CAL-3: shown when a target never produced samples, even after one retry.
+    private var calibrationFailedOverlay: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 30))
+                .foregroundColor(LiquidGlass.warmAmber)
+            Text(Localizer.tr("calibrate_failed_title"))
+                .font(.system(size: 18, weight: .bold))
+            Text(Localizer.tr("calibrate_failed_body"))
+                .font(.system(size: 14))
+                .multilineTextAlignment(.center)
+            Button {
+                Task { await startCalibrationSession() }
+            } label: {
+                Text(Localizer.tr("calibrate_try_again"))
+                    .font(.system(size: 15, weight: .semibold))
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 10)
+            }
+            .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier("calibration_try_again")
+        }
+        .padding(24)
+        .glassCard(cornerRadius: 20, padding: 20)
+        .padding(.horizontal, 24)
     }
 
     // MARK: - Balloon View with Dwell Inflation
@@ -530,6 +573,9 @@ public struct BubbleCalibrationView: View {
             if camera.state == .unknown { entryBlock = .consentRequired }
             return
         }
+        controller.calibrationBinding = calibrationBinding
+        calibrationFailed = false
+        accumulator = CalibrationAccumulator(targetCount: targetPoints.count)
         currentTargetIndex = 0
         controller.calibrationTarget = targetPoints[0]
         smoothedGaze = targetPoints[0]
@@ -541,7 +587,6 @@ public struct BubbleCalibrationView: View {
         windowElapsedSec = 0.0
         trackingDropoutFrames = 0
         collectedRawSamples = []
-        fittedRawPoints = []
         estimatedBias = nil
         isPopping = false
         isLockedOnTarget = false
@@ -663,15 +708,14 @@ public struct BubbleCalibrationView: View {
             popShockwaveScale = 1.0
         }
 
-        // Finalize this target's raw estimate before resetting the buffer —
-        // falls back to the target's own position (zero assumed error) if
-        // tracking dropped out for the whole window, so a bad target never
-        // poisons the fit with garbage or crashes it with an empty array.
-        let finalizedRaw = medianPoint(collectedRawSamples) ?? targetPoints[currentTargetIndex]
-        fittedRawPoints.append(finalizedRaw)
+        // Finalize this target's raw estimate before resetting the buffer. CAL-3: a
+        // target with no collected samples is never given a made-up point; the
+        // accumulator re-shows it once and then fails the calibration.
+        let medianRaw = medianPoint(collectedRawSamples)
+        let outcome = accumulator.submit(medianRaw: medianRaw)
 
         // Learn personal anatomical offset bias from Target 0 (Center)
-        if currentTargetIndex == 0 {
+        if currentTargetIndex == 0, let finalizedRaw = medianRaw {
             estimatedBias = CGPoint(
                 x: finalizedRaw.x - targetPoints[0].x,
                 y: finalizedRaw.y - targetPoints[0].y
@@ -687,6 +731,14 @@ public struct BubbleCalibrationView: View {
             isLockedOnTarget = false
             popShockwaveScale = 0.0
 
+            if outcome == .retryTarget {
+                // Same target again; nothing is kept from the starved attempt.
+                return
+            }
+            if outcome == .failed {
+                failCalibration()
+                return
+            }
             if currentTargetIndex + 1 < targetPoints.count {
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
                     currentTargetIndex += 1
@@ -694,9 +746,14 @@ public struct BubbleCalibrationView: View {
                 }
             } else {
                 controller.calibrationTarget = nil
-                if let profile = GazeCalibrationProfile.fit(rawPoints: fittedRawPoints, targetPoints: targetPoints) {
-                    controller.applyAndPersist(calibrationProfile: profile)
+                guard accumulator.canFit,
+                      let profile = GazeCalibrationProfile.fit(rawPoints: accumulator.rawPoints, targetPoints: targetPoints)
+                else {
+                    accumulator.markFitFailed()
+                    failCalibration()
+                    return
                 }
+                controller.applyAndPersist(calibrationProfile: profile)
                 // Hand over only after the session has fully stopped, so the next step
                 // never starts while this one is still shutting down.
                 let stopped = stopCalibrationSession()
@@ -706,6 +763,13 @@ public struct BubbleCalibrationView: View {
                 }
             }
         }
+    }
+
+    /// Stops capture and shows the visible "try again" state. Nothing is applied or stored.
+    private func failCalibration() {
+        controller.calibrationTarget = nil
+        stopCalibrationSession()
+        calibrationFailed = true
     }
 
     private func handleClose() {

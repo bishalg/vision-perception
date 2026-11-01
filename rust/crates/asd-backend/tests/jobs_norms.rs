@@ -264,12 +264,25 @@ async fn run_aggregates_eligible_sessions_with_asd_core_then_promotes_a_draft() 
     assert_eq!(rest["items"].as_array().unwrap().len(), 1);
     assert_eq!(rest["items"][0]["id"], run_id, "oldest run last");
 
-    let (status, promoted) = call(
+    // Config documents are global: an org admin may not create even a draft one (security
+    // audit 2026-10-31); a superadmin promotes.
+    let (status, denied) = call(
         pool,
         empty(
             Method::POST,
             &format!("/v1/norm-runs/{run_id}/promote"),
             Some(&admin),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{denied}");
+    let (_, root) = seed_user(pool, None, "superadmin").await;
+    let (status, promoted) = call(
+        pool,
+        empty(
+            Method::POST,
+            &format!("/v1/norm-runs/{run_id}/promote"),
+            Some(&root),
         ),
     )
     .await;
@@ -316,7 +329,7 @@ async fn run_aggregates_eligible_sessions_with_asd_core_then_promotes_a_draft() 
         empty(
             Method::POST,
             &format!("/v1/norm-runs/{run_id}/promote"),
-            Some(&admin),
+            Some(&root),
         ),
     )
     .await;
@@ -372,13 +385,14 @@ async fn synthetic_data_is_excluded_unless_asked_and_an_empty_run_cannot_be_prom
     assert!(any_cell, "cells below n = 12 are withheld (null)");
 
     // Nothing to promote: every cell is withheld.
+    let (_, root) = seed_user(pool, None, "superadmin").await;
     for r in [&run, &with] {
         let (status, body) = call(
             pool,
             empty(
                 Method::POST,
                 &format!("/v1/norm-runs/{}/promote", r["id"].as_str().unwrap()),
-                Some(&admin),
+                Some(&root),
             ),
         )
         .await;
@@ -665,6 +679,7 @@ async fn rbac_org_scoping_validation_and_audit() {
     let run_a = a["items"][0]["id"].as_str().unwrap().to_owned();
     let (status, _) = call(pool, user_get(&admin_b, &format!("/v1/norm-runs/{run_a}"))).await;
     assert_eq!(status, StatusCode::NOT_FOUND);
+    // Promote is superadmin only, so another org's admin is refused before the run is read.
     let (status, _) = call(
         pool,
         empty(
@@ -674,7 +689,7 @@ async fn rbac_org_scoping_validation_and_audit() {
         ),
     )
     .await;
-    assert_eq!(status, StatusCode::NOT_FOUND);
+    assert_eq!(status, StatusCode::FORBIDDEN);
 
     let global = run_to_completion(pool, &root, &json!({})).await;
     assert_eq!(global["org_id"], Value::Null);
@@ -696,18 +711,34 @@ async fn rbac_org_scoping_validation_and_audit() {
     let (_, a2) = call(pool, user_get(&tokens["admin"], "/v1/norm-runs")).await;
     assert_eq!(a2["items"].as_array().unwrap().len(), 3);
 
-    // Promote needs ConfigWrite (a viewer cannot), checked before the run is even read.
-    let (status, _) = call(
-        pool,
-        empty(
-            Method::POST,
-            &format!("/v1/norm-runs/{run_a}/promote"),
-            Some(&tokens["viewer"]),
-        ),
-    )
-    .await;
-    assert_eq!(status, StatusCode::FORBIDDEN);
+    // Promote creates a global config document, even if only a draft: superadmin only
+    // (`ConfigGlobalManage`, security audit 2026-10-31). Every org role is refused before
+    // the run is even read, and nothing is written.
+    for role in [
+        "owner",
+        "admin",
+        "clinician",
+        "researcher",
+        "reviewer",
+        "viewer",
+    ] {
+        let (status, body) = call(
+            pool,
+            empty(
+                Method::POST,
+                &format!("/v1/norm-runs/{run_a}/promote"),
+                Some(&tokens[role]),
+            ),
+        )
+        .await;
+        assert_eq!(status, StatusCode::FORBIDDEN, "{role}: {body}");
+    }
     assert_eq!(audit_count(pool, "norm_run.promote").await, 0);
+    let docs: i64 = sqlx::query_scalar("SELECT count(*) FROM config_documents")
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    assert_eq!(docs, 0);
 
     db.cleanup().await;
 }

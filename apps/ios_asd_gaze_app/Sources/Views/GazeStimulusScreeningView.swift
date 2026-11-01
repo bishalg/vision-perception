@@ -29,6 +29,9 @@ public struct GazeStimulusScreeningView: View {
 
     public let playlist: [StimulusPlaylistItem]
     public let proceduralMode: ProceduralStimulusMode?
+    /// CAL-1: participant and session whose calibration this capture may apply.
+    /// Without it the capture runs uncalibrated.
+    public let calibrationBinding: CalibrationBinding?
 
     // Callbacks
     #if ASD_RESEARCH_CLASSIFIER
@@ -52,11 +55,13 @@ public struct GazeStimulusScreeningView: View {
     public init(
         playlist: [StimulusPlaylistItem] = StimulusPlaylistBattery.standard30s,
         proceduralMode: ProceduralStimulusMode? = nil,
+        calibrationBinding: CalibrationBinding? = nil,
         onComplete: @escaping (GazeSessionReportSummary, [GazeFrame], BiomarkerClassificationResult?) -> Void,
         onAbort: @escaping () -> Void
     ) {
         self.playlist = playlist.isEmpty ? StimulusPlaylistBattery.standard30s : playlist
         self.proceduralMode = proceduralMode
+        self.calibrationBinding = calibrationBinding
         self.onComplete = onComplete
         self.onAbort = onAbort
     }
@@ -64,6 +69,7 @@ public struct GazeStimulusScreeningView: View {
     public init(
         videoName: String = "stim_05_geopref_split_10s",
         proceduralMode: ProceduralStimulusMode? = nil,
+        calibrationBinding: CalibrationBinding? = nil,
         onComplete: @escaping (GazeSessionReportSummary, [GazeFrame], BiomarkerClassificationResult?) -> Void,
         onAbort: @escaping () -> Void
     ) {
@@ -76,6 +82,7 @@ public struct GazeStimulusScreeningView: View {
             )
         ]
         self.proceduralMode = proceduralMode
+        self.calibrationBinding = calibrationBinding
         self.onComplete = onComplete
         self.onAbort = onAbort
     }
@@ -83,11 +90,13 @@ public struct GazeStimulusScreeningView: View {
     public init(
         playlist: [StimulusPlaylistItem] = StimulusPlaylistBattery.standard30s,
         proceduralMode: ProceduralStimulusMode? = nil,
+        calibrationBinding: CalibrationBinding? = nil,
         onComplete: @escaping (GazeSessionReportSummary, [GazeFrame]) -> Void,
         onAbort: @escaping () -> Void
     ) {
         self.playlist = playlist.isEmpty ? StimulusPlaylistBattery.standard30s : playlist
         self.proceduralMode = proceduralMode
+        self.calibrationBinding = calibrationBinding
         self.onComplete = onComplete
         self.onAbort = onAbort
     }
@@ -95,6 +104,7 @@ public struct GazeStimulusScreeningView: View {
     public init(
         videoName: String = "stim_05_geopref_split_10s",
         proceduralMode: ProceduralStimulusMode? = nil,
+        calibrationBinding: CalibrationBinding? = nil,
         onComplete: @escaping (GazeSessionReportSummary, [GazeFrame]) -> Void,
         onAbort: @escaping () -> Void
     ) {
@@ -107,6 +117,7 @@ public struct GazeStimulusScreeningView: View {
             )
         ]
         self.proceduralMode = proceduralMode
+        self.calibrationBinding = calibrationBinding
         self.onComplete = onComplete
         self.onAbort = onAbort
     }
@@ -170,6 +181,7 @@ public struct GazeStimulusScreeningView: View {
             }
         }
         .task { await startSession() }
+        .captureOrientationLocked()
         .onDisappear { endCapture() }
         .cameraScenePhase(camera) { action in
             // CAM-3: backgrounding stops the session. An observation cannot be resumed
@@ -517,6 +529,7 @@ public struct GazeStimulusScreeningView: View {
             if camera.state == .unknown { entryBlock = .consentRequired }
             return
         }
+        controller.calibrationBinding = calibrationBinding
         controller.reloadCalibrationProfile()
         currentClipIndex = 0
         currentClipElapsedSec = 0.0

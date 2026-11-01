@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import CurvAsdGazeKit
 
 /// Caregiver-entered medical condition (tracking aid, not a diagnosis).
 public struct MedicalCondition: Identifiable, Codable, Sendable, Equatable {
@@ -157,11 +158,21 @@ public final class ChildProfileStore: ObservableObject {
 
     private let userDefaults: UserDefaults
 
+    static let calibrationSubjectKeyStorageKey = "org.curv.asd.calibration_subject_key"
+
     @Published public var profile: ChildProfile {
         didSet {
             save()
+            // CAL-1: a different child is a different calibration subject.
+            if oldValue.childName != profile.childName {
+                rotateCalibrationSubjectKey()
+            }
         }
     }
+
+    /// Pseudonymous, stable key of the child currently being observed. Calibrations are
+    /// bound to it (CAL-1) and it changes whenever the child profile is switched or reset.
+    public private(set) var calibrationSubjectKey: String
 
     private convenience init() {
         self.init(userDefaults: .standard)
@@ -170,6 +181,13 @@ public final class ChildProfileStore: ObservableObject {
     /// Injectable persistence for tests; production code uses `shared`.
     init(userDefaults: UserDefaults) {
         self.userDefaults = userDefaults
+        if let stored = userDefaults.string(forKey: Self.calibrationSubjectKeyStorageKey), !stored.isEmpty {
+            self.calibrationSubjectKey = stored
+        } else {
+            let minted = UUID().uuidString
+            userDefaults.set(minted, forKey: Self.calibrationSubjectKeyStorageKey)
+            self.calibrationSubjectKey = minted
+        }
         if let data = userDefaults.data(forKey: Self.storageKey),
            let decoded = try? JSONDecoder().decode(ChildProfile.self, from: data) {
             self.profile = decoded
@@ -187,6 +205,18 @@ public final class ChildProfileStore: ObservableObject {
     public func reset() {
         self.profile = .defaultProfile
         userDefaults.removeObject(forKey: Self.storageKey)
+        rotateCalibrationSubjectKey()
+    }
+
+    private func rotateCalibrationSubjectKey() {
+        let minted = UUID().uuidString
+        calibrationSubjectKey = minted
+        userDefaults.set(minted, forKey: Self.calibrationSubjectKeyStorageKey)
+    }
+
+    /// Calibration binding for the child being observed in `sessionId` (CAL-1).
+    public func calibrationBinding(sessionId: String) -> CalibrationBinding {
+        CalibrationBinding(participantKey: calibrationSubjectKey, sessionId: sessionId)
     }
 
     /// Only the profile store can mint a consent token (CNS-1, ADR-0002 decision 1).

@@ -23,12 +23,17 @@ import {
   type SessionSummary,
   type TokenPair,
 } from "./types";
+import { createMockAdmin } from "./mock/admin";
 import { createMockClinical } from "./mock/clinical";
+import { createMockExports } from "./mock/exports";
 import { MOCK_TRACKING_CYCLE, mockTrackingQuality } from "./mock/tracking";
 
 /** Real orgs are UUIDs (CON-20); the mock uses a fixed one so URLs look like production. */
 export const MOCK_ORG_ID = "5f0e1d2c-3b4a-4968-8776-655443322110";
 export const MOCK_PASSWORD = "demo";
+/** Mock user with TOTP enrolled: login needs `MOCK_TOTP_CODE` after the password (like the backend's two-step flow). */
+export const MOCK_TOTP_EMAIL = "totp@example.org";
+export const MOCK_TOTP_CODE = "123456";
 export const MOCK_FIXED_NOW = Date.parse("2026-11-01T12:00:00Z");
 const DEFAULT_LIMIT = 20;
 
@@ -233,6 +238,10 @@ function unauthorized(detail: string): ApiError {
   return new ApiError(401, { type: `${PROBLEM_BASE}unauthorized`, title: "Unauthorized", status: 401, detail });
 }
 
+function totpProblem(slug: "totp-required" | "totp-invalid", detail: string): ApiError {
+  return new ApiError(401, { type: `${PROBLEM_BASE}${slug}`, title: "Unauthorized", status: 401, detail });
+}
+
 function tally(values: string[]): Record<string, number> {
   const out: Record<string, number> = {};
   for (const v of values) out[v] = (out[v] ?? 0) + 1;
@@ -362,9 +371,24 @@ export function createMockClient(): CurvApi & AuthApi {
 
   return {
     ...createMockClinical({ details, orgId: MOCK_ORG_ID, userId: MOCK_USER_ID, now: MOCK_FIXED_NOW, ensureOrg, page }),
-    async login(email, password) {
+    ...createMockExports({ orgId: MOCK_ORG_ID, userId: MOCK_USER_ID, now: MOCK_FIXED_NOW, ensureOrg, page }),
+    ...createMockAdmin({
+      details,
+      devices,
+      orgId: MOCK_ORG_ID,
+      userId: MOCK_USER_ID,
+      now: MOCK_FIXED_NOW,
+      ensureOrg,
+      page,
+      uuid: (seed) => uuid(rng(seed)),
+    }),
+    async login(email, password, totpCode) {
       if (!email || password !== MOCK_PASSWORD) {
         throw unauthorized("Invalid email or password");
+      }
+      if (email.toLowerCase() === MOCK_TOTP_EMAIL) {
+        if (!totpCode) throw totpProblem("totp-required", "A one-time code is required");
+        if (totpCode !== MOCK_TOTP_CODE) throw totpProblem("totp-invalid", "Invalid one-time code");
       }
       return pair(email);
     },

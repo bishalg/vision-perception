@@ -438,6 +438,7 @@ fn aoi_hits_use_the_filtered_point_and_clip_time_on_tracked_samples() {
                 x_max: 0.5,
                 y_max: 1.0,
             },
+            roles: Vec::new(),
         },
         ScreenAoi {
             name: "Geometric_Pattern".into(),
@@ -449,6 +450,7 @@ fn aoi_hits_use_the_filtered_point_and_clip_time_on_tracked_samples() {
                 x_max: 1.0,
                 y_max: 1.0,
             },
+            roles: Vec::new(),
         },
     ]);
     let f = face(0.40, 0.0);
@@ -1246,4 +1248,217 @@ fn telemetry_before_the_first_face_is_not_a_blink() {
     let e = w.evaluate(&t);
     assert!(!e.is_blink, "{:?}", e.failure_reasons);
     assert!(!e.is_valid);
+}
+
+// ------------------------------------------------------------------------------------------
+// QS-3 / CNF-3 per-clip values (begin_clip / end_clip / clip_tracking)
+// ------------------------------------------------------------------------------------------
+
+fn social_face_aoi() -> ScreenAoi {
+    // 40 x 60 mm on the 100 x 200 mm panel.
+    ScreenAoi {
+        name: "face".into(),
+        start_sec: 0.0,
+        end_sec: 30.0,
+        rect: NormBox {
+            x_min: 0.3,
+            y_min: 0.2,
+            x_max: 0.7,
+            y_max: 0.5,
+        },
+        roles: vec!["social".into()],
+    }
+}
+
+/// `record_clip` inside `begin_clip` / `end_clip`.
+fn play_clip(p: &mut GazePipeline, c: &mut Clock, id: &str, bias: [f64; 2]) {
+    p.begin_clip(id, vec![social_face_aoi()]);
+    assert!(p.clip_open());
+    record_clip(p, c, bias);
+    p.end_clip();
+    assert!(!p.clip_open());
+}
+
+fn drift_check(p: &mut GazePipeline, c: &mut Clock, bias: [f64; 2]) -> f64 {
+    let t = p.next_check_target();
+    run_target(p, c, TargetKind::DriftCheck, t, bias);
+    p.drift_checks().last().unwrap().offset_deg.unwrap()
+}
+
+#[test]
+fn clip_tracking_matches_the_session_rules_for_a_single_clip() {
+    let mut p = GazePipeline::new(config());
+    let mut c = Clock::new(0.0);
+    calibrate(&mut p, &mut c, [0.0, 0.0], None);
+    validate(&mut p, &mut c, [0.0, 0.0]);
+    play_clip(&mut p, &mut c, "clip-1", [0.0, 0.0]);
+    let offset = drift_check(&mut p, &mut c, [0.0, 0.0]);
+
+    let q = p.summary();
+    let clips = p.clip_tracking();
+    assert_eq!(clips.len(), 1);
+    let e = &clips[0];
+    assert_eq!((e.clip_id.as_str(), e.order), ("clip-1", 1));
+    // The only recorded frames are the clip's: the clip values equal the session ones.
+    assert_eq!(
+        e.tracking.mean_sample_confidence,
+        Some(q.confidence.mean_sample)
+    );
+    assert_eq!(
+        e.tracking.mean_fixation_confidence,
+        q.confidence.mean_fixation
+    );
+    assert!(e.tracking.mean_fixation_confidence.is_some());
+    assert_eq!(e.tracking.nearest_check_offset_deg, Some(offset));
+    // 40 mm (the face width) at the session's median distance.
+    let d_mm = q.conditions.distance_cm_median.unwrap() * 10.0;
+    assert_close(
+        e.tracking.aoi_min_size_deg.unwrap(),
+        2.0 * (20.0 / d_mm).atan().to_degrees(),
+        1e-12,
+        "aoiMinSizeDeg",
+    );
+    assert_close(d_mm, 420.0, 1e-6, "median distance");
+}
+
+#[test]
+fn each_clip_gets_the_check_right_after_it_and_sees_drift() {
+    let mut p = GazePipeline::new(config());
+    let mut c = Clock::new(0.0);
+    let bias = [2.0, -1.0];
+    calibrate(&mut p, &mut c, bias, None);
+    validate(&mut p, &mut c, bias);
+
+    play_clip(&mut p, &mut c, "a", bias);
+    let first = drift_check(&mut p, &mut c, bias);
+    // The eye model drifts by 3°: the clip played under it and the check after it show it.
+    let drifted = [bias[0] + 3.0, bias[1]];
+    play_clip(&mut p, &mut c, "b", drifted);
+    let second = drift_check(&mut p, &mut c, drifted);
+    // A clip followed directly by another clip has no check right after it.
+    play_clip(&mut p, &mut c, "c", drifted);
+    play_clip(&mut p, &mut c, "d", drifted);
+    // A missed check (window without frames) gives no offset.
+    p.begin_target(TargetKind::DriftCheck, p.next_check_target())
+        .unwrap();
+    p.end_target().unwrap();
+
+    let clips = p.clip_tracking();
+    let offsets: Vec<Option<f64>> = clips
+        .iter()
+        .map(|e| e.tracking.nearest_check_offset_deg)
+        .collect();
+    assert_eq!(offsets, vec![Some(first), Some(second), None, None]);
+    assert!(first < 0.5, "{first}");
+    assert!(second > 2.5 && second < 3.5, "{second}");
+    let ids: Vec<(&str, u32)> = clips
+        .iter()
+        .map(|e| (e.clip_id.as_str(), e.order))
+        .collect();
+    assert_eq!(ids, vec![("a", 1), ("b", 2), ("c", 3), ("d", 4)]);
+}
+
+#[test]
+fn a_calibration_between_clip_and_check_voids_the_check() {
+    let mut p = GazePipeline::new(config());
+    let mut c = Clock::new(0.0);
+    calibrate(&mut p, &mut c, [0.0, 0.0], None);
+    validate(&mut p, &mut c, [0.0, 0.0]);
+    play_clip(&mut p, &mut c, "a", [0.0, 0.0]);
+    calibrate(
+        &mut p,
+        &mut c,
+        [1.0, 0.0],
+        Some(RecalReason::OperatorRequest),
+    );
+    validate(&mut p, &mut c, [1.0, 0.0]);
+    drift_check(&mut p, &mut c, [1.0, 0.0]);
+    play_clip(&mut p, &mut c, "b", [1.0, 0.0]);
+    p.set_calibration(Some(shift_model(0.0)));
+    drift_check(&mut p, &mut c, [1.0, 0.0]);
+    let clips = p.clip_tracking();
+    assert_eq!(clips[0].tracking.nearest_check_offset_deg, None);
+    assert_eq!(clips[1].tracking.nearest_check_offset_deg, None);
+}
+
+#[test]
+fn empty_and_all_lost_clips() {
+    let mut p = GazePipeline::new(config());
+    let mut c = Clock::new(0.0);
+    // Nothing yet.
+    assert!(p.clip_tracking().is_empty());
+    p.end_clip(); // no-op without an open clip
+    assert!(p.clip_tracking().is_empty());
+
+    // An empty clip: no frames, nothing measured.
+    p.begin_clip("empty", vec![social_face_aoi()]);
+    p.end_clip();
+    // An all-lost clip, recorded.
+    p.set_recording(true);
+    p.begin_clip("lost", vec![social_face_aoi()]);
+    for _ in 0..60 {
+        p.push(&frame(
+            c.tick(),
+            &face(0.4, 0.0),
+            [0.5, 0.5],
+            [0.0; 2],
+            Eye::NoFace,
+        ));
+    }
+    p.end_clip();
+    p.set_recording(false);
+
+    let clips = p.clip_tracking();
+    assert_eq!(clips.len(), 2);
+    assert_eq!(clips[0].tracking, Default::default());
+    let lost = &clips[1].tracking;
+    assert_eq!(lost.mean_sample_confidence, Some(0.0));
+    assert_eq!(lost.mean_fixation_confidence, None);
+    assert_eq!(lost.nearest_check_offset_deg, None);
+    // No tracked recorded frame: no session median distance, so no AOI size.
+    assert_eq!(lost.aoi_min_size_deg, None);
+    assert_eq!(
+        serde_json::to_value(&clips[0]).unwrap(),
+        json!({"clipId": "empty", "order": 1})
+    );
+}
+
+#[test]
+fn begin_clip_ends_the_open_clip_and_an_open_clip_is_not_reported() {
+    let mut p = GazePipeline::new(config());
+    let mut c = Clock::new(0.0);
+    let f = face(0.4, 0.0);
+    p.begin_clip("a", Vec::new());
+    for _ in 0..30 {
+        p.push(&frame(c.tick(), &f, [0.5, 0.5], [0.0; 2], Eye::Open));
+    }
+    p.begin_clip("b", vec![social_face_aoi()]);
+    // The AOIs of "b" are hit tested.
+    let s = p.push(&frame(c.tick(), &f, [0.5, 0.3], [0.0; 2], Eye::Open));
+    assert_eq!(s.active_aoi_names, vec!["face".to_string()]);
+    let clips = p.clip_tracking();
+    assert_eq!(clips.len(), 1);
+    assert_eq!(clips[0].clip_id, "a");
+    assert!(clips[0].tracking.mean_sample_confidence.unwrap() > 0.9);
+    // Not recorded: no session median distance, no AOI size ("a" has no AOIs anyway).
+    assert_eq!(clips[0].tracking.aoi_min_size_deg, None);
+    // end_clip stops hit testing.
+    p.end_clip();
+    let s = p.push(&frame(c.tick(), &f, [0.5, 0.3], [0.0; 2], Eye::Open));
+    assert!(s.active_aoi_names.is_empty());
+    assert_eq!(p.clip_tracking().len(), 2);
+}
+
+#[test]
+fn clip_tracking_is_deterministic() {
+    let run = || {
+        let mut p = GazePipeline::new(config());
+        let mut c = Clock::new(0.0);
+        calibrate(&mut p, &mut c, [1.0, 1.0], None);
+        validate(&mut p, &mut c, [1.0, 1.0]);
+        play_clip(&mut p, &mut c, "a", [1.0, 1.0]);
+        drift_check(&mut p, &mut c, [1.0, 1.0]);
+        serde_json::to_string(&p.clip_tracking()).unwrap()
+    };
+    assert_eq!(run(), run());
 }

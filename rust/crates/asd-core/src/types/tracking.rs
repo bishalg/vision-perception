@@ -618,6 +618,42 @@ pub struct ConfidenceSummary {
     pub low_confidence_sample_ratio: f64,
 }
 
+/// QS-3 / CNF-3 per-clip tracking values, produced by `GazePipeline::clip_tracking`. Same keys
+/// and meaning as `asd_contract::session_v1_7::ClipTracking` (camelCase, every value an absent
+/// key when not measured, CON-14), so its JSON is written into `perVideo[].details` and
+/// `rawPayload.perVideo[]` as is.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClipTracking {
+    /// Mean CNF-1 confidence over the clip's `tracked` frames; 0 when the clip has frames but
+    /// none is tracked; absent for a clip without frames.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mean_sample_confidence: Option<f64>,
+    /// Mean of the CNF-3 fixation confidences of the clip's fixations; absent without one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mean_fixation_confidence: Option<f64>,
+    /// `offsetDeg` of the drift check right after the clip; absent when that check missed, or
+    /// no check followed before the next clip or a new calibration.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub nearest_check_offset_deg: Option<f64>,
+    /// Smallest dimension of the clip's role-bearing AOIs, degrees at the session's median
+    /// distance; absent without a role-bearing AOI or a measured median distance.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub aoi_min_size_deg: Option<f64>,
+}
+
+/// One clip's [`ClipTracking`], in play order.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClipTrackingEntry {
+    /// The id given to `GazePipeline::begin_clip` (the stimulus clip id).
+    pub clip_id: String,
+    /// 1-based play order (`perVideo[].order`).
+    pub order: u32,
+    #[serde(flatten)]
+    pub tracking: ClipTracking,
+}
+
 // ------------------------------------------------------------------------------------------
 // Parameters (SCH-3: `ScoringProfile.trackingQuality`)
 // ------------------------------------------------------------------------------------------

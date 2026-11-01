@@ -643,6 +643,30 @@ impl GazePipelineHandle {
         Ok(())
     }
 
+    /// Starts a stimulus clip (QS-3): sets its AOIs (`[ScreenAoi]` JSON from
+    /// [`gaze_clip_aois_json`], which keeps the catalog roles; `"[]"` for none) and collects
+    /// its frames from the next pushed frame. A clip still open is ended first.
+    pub fn begin_clip_json(&self, clip_id: String, aois_json: String) -> Result<(), AsdError> {
+        let aois: Vec<ScreenAoi> = decode(&aois_json, "screen AOIs")?;
+        self.lock().begin_clip(clip_id, aois);
+        Ok(())
+    }
+
+    /// Ends the open clip (no-op without one) and stops AOI hit testing. Call it when the clip
+    /// stops playing, before the drift check that follows it.
+    pub fn end_clip(&self) {
+        self.lock().end_clip();
+    }
+
+    /// Per-clip QS-3 / CNF-3 values of every ended clip, `[ClipTrackingEntry]` JSON in play
+    /// order: `{clipId, order, meanSampleConfidence?, meanFixationConfidence?,
+    /// nearestCheckOffsetDeg?, aoiMinSizeDeg?}` (camelCase; the four values are the 1.7
+    /// `ClipTracking` keys of `perVideo[].details`). Read it at the end of the session, after
+    /// the last drift check, for the final values.
+    pub fn clip_tracking_json(&self) -> Result<String, AsdError> {
+        encode(&self.lock().clip_tracking(), "clip tracking")
+    }
+
     /// Starts a (re-)calibration. `layout` defaults to the configured 5-point layout;
     /// `reason` is recorded for a re-calibration (`operatorRequest` when absent).
     pub fn start_calibration(

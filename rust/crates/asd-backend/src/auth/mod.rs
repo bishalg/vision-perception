@@ -15,7 +15,7 @@
 use std::collections::HashMap;
 use std::fmt;
 use std::hash::Hash;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -30,6 +30,7 @@ pub mod jwt;
 pub mod password;
 pub mod rbac;
 pub mod refresh;
+pub mod totp;
 
 /// Auth settings, part of [`crate::config::Config`]. `Debug` never prints key material.
 #[derive(Clone, PartialEq, Default)]
@@ -167,6 +168,49 @@ pub fn enrol_code_hash(code: &str) -> [u8; 32] {
 
 // ---- rate limiting (AUTH-1, AUTH-3) ----------------------------------------------------
 
+/// The monotonic time source of the auth rate limits (`AppState.clock`). Production uses
+/// [`SystemClock`]; tests inject a [`ManualClock`] so a limit window never depends on how
+/// fast the machine runs the requests (Argon2 under load can take seconds per attempt).
+pub trait Clock: Send + Sync + fmt::Debug {
+    fn now(&self) -> Instant;
+}
+
+/// [`Instant::now`].
+#[derive(Debug, Default, Clone, Copy)]
+pub struct SystemClock;
+
+impl Clock for SystemClock {
+    fn now(&self) -> Instant {
+        Instant::now()
+    }
+}
+
+/// A clock that stands still until [`advance`](Self::advance) moves it (tests).
+#[derive(Debug)]
+pub struct ManualClock {
+    start: Instant,
+    offset: Mutex<Duration>,
+}
+
+impl ManualClock {
+    pub fn new() -> Arc<Self> {
+        Arc::new(Self {
+            start: Instant::now(),
+            offset: Mutex::new(Duration::ZERO),
+        })
+    }
+
+    pub fn advance(&self, by: Duration) {
+        *self.offset.lock().unwrap_or_else(|p| p.into_inner()) += by;
+    }
+}
+
+impl Clock for ManualClock {
+    fn now(&self) -> Instant {
+        self.start + *self.offset.lock().unwrap_or_else(|p| p.into_inner())
+    }
+}
+
 /// Fixed-window counter per key: at most `limit` hits per `window`. In memory, per
 /// process; with more than one API replica the effective limit is `limit x replicas`
 /// (WAF rate rules cover the AWS deployment, DEP-3).
@@ -271,6 +315,16 @@ mod tests {
             1,
             "Retry-After is at least one second"
         );
+    }
+
+    #[test]
+    fn manual_clock_moves_only_when_advanced() {
+        let clock = ManualClock::new();
+        let t0 = clock.now();
+        assert_eq!(clock.now(), t0);
+        clock.advance(Duration::from_secs(61));
+        assert_eq!(clock.now() - t0, Duration::from_secs(61));
+        assert!(SystemClock.now() >= t0);
     }
 
     #[test]

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { MOCK_ORG_ID, SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD, TARGET_ORG_ID, login, loginToOverview } from "./helpers";
+import { LIVE, MOCK_ORG_ID, PASSWORD, SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD, TARGET_ORG_ID, login, loginToOverview } from "./helpers";
 
 test("unauthenticated visits go to /login and keep the target", async ({ page }) => {
   await page.goto("/");
@@ -13,6 +13,24 @@ test("wrong password shows an error and sets no session", async ({ page }) => {
   // Next also renders an empty route-announcer alert, so match the form's alert by text.
   await expect(page.getByRole("alert").filter({ hasText: "Invalid email or password." })).toBeVisible();
   await expect(page).toHaveURL(/\/login/);
+});
+
+test.describe("TOTP step (mock mode)", () => {
+  test.skip(LIVE, "mock-only: relies on the enrolled mock user");
+
+  test("asks for a code after the password, rejects a wrong one, accepts the right one", async ({ page }) => {
+    await login(page, "totp@example.org", PASSWORD);
+    const code = page.getByLabel("Authentication code");
+    await expect(code).toBeVisible();
+    await expect(code).toHaveAttribute("autocomplete", "one-time-code");
+    expect(page.url()).not.toContain("demo");
+    await code.fill("000000");
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "That code is wrong" })).toBeVisible();
+    await page.getByLabel("Authentication code").fill("123456");
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  });
 });
 
 test("login lands on the overview KPIs; the session cookie is httpOnly; sign out ends it", async ({ page, context }) => {

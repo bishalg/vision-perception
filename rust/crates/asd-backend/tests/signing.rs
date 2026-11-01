@@ -265,12 +265,7 @@ async fn step_up_is_rate_limited() {
 #[tokio::test]
 async fn totp_required_when_enrolled() {
     let Some(ctx) = setup().await else { return };
-    sqlx::query("UPDATE users SET totp_secret = $2 WHERE id = $1")
-        .bind(ctx.clin_a.id)
-        .bind(TOTP_SECRET)
-        .execute(ctx.pool())
-        .await
-        .unwrap();
+    common::auth::enrol_totp(&ctx.state, ctx.clin_a.id, TOTP_SECRET).await;
     let review = draft_ready(&ctx, "S-1", "green").await;
     let id = review["id"].as_str().unwrap();
     let hash = review["content_hash"].as_str().unwrap();
@@ -336,12 +331,7 @@ async fn totp_required_when_enrolled() {
 #[tokio::test]
 async fn a_totp_code_is_accepted_once() {
     let Some(ctx) = setup().await else { return };
-    sqlx::query("UPDATE users SET totp_secret = $2 WHERE id = $1")
-        .bind(ctx.clin_a.id)
-        .bind(TOTP_SECRET)
-        .execute(ctx.pool())
-        .await
-        .unwrap();
+    common::auth::enrol_totp(&ctx.state, ctx.clin_a.id, TOTP_SECRET).await;
     let first = draft_ready(&ctx, "S-1", "green").await;
     let second = draft_ready(&ctx, "S-2", "green").await;
     let code = totp_code(TOTP_SECRET, now_unix()).unwrap();

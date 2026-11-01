@@ -97,7 +97,7 @@ async fn step_up_audited(
     action: &str,
 ) -> AppResult<()> {
     match step_up(
-        &state.db,
+        state,
         limiter,
         principal.user_id,
         &req.password,

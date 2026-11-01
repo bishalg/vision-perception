@@ -4,6 +4,8 @@
  * that file (examples, enums, required fields), so contract drift fails CI. Every live response is also parsed here.
  */
 import { z } from "zod";
+import type { AdminApi } from "./admin";
+import type { ExportsApi } from "./exports";
 import type { ClinicalApi } from "./clinical";
 
 /** `SessionAttentionFlag`: the 3 device values plus backend-derived `unreliable` (CON-15). */
@@ -435,7 +437,7 @@ export interface PageQuery {
 
 // ---- client interface -----------------------------------------------------
 
-export interface CurvApi extends ClinicalApi {
+export interface CurvApi extends ClinicalApi, AdminApi, ExportsApi {
   getOrg(orgId: string): Promise<Org>;
   getMetrics(orgId: string): Promise<Metrics>;
   listSessions(orgId: string, query?: SessionListQuery): Promise<SessionPage>;
@@ -449,7 +451,7 @@ export interface CurvApi extends ClinicalApi {
 }
 
 export interface AuthApi {
-  login(email: string, password: string): Promise<TokenPair>;
+  login(email: string, password: string, totpCode?: string): Promise<TokenPair>;
   refresh(refreshToken: string): Promise<TokenPair>;
   logout(refreshToken: string): Promise<void>;
 }
@@ -481,6 +483,9 @@ export const PROBLEM_SLUGS = [
   "conflict",
   "participant-withdrawn",
   "internal",
+  // TOTP second factor on login.
+  "totp-required",
+  "totp-invalid",
   // WP-C.9 (clinician workspace + interop, ADR-0008)
   "clinical-crypto-unavailable",
   "patient-ref-disabled",
@@ -505,10 +510,13 @@ export class ApiError extends Error {
   get slug(): string | null {
     return this.problem?.type.startsWith(PROBLEM_BASE) ? this.problem.type.slice(PROBLEM_BASE.length) : null;
   }
-  constructor(status: number, problem: Problem | null, message?: string) {
+  /** Seconds from the `Retry-After` header (429 only); null when absent. */
+  readonly retryAfter: number | null;
+  constructor(status: number, problem: Problem | null, message?: string, retryAfter: number | null = null) {
     super(message ?? problem?.detail ?? problem?.title ?? `API error ${status}`);
     this.name = "ApiError";
     this.status = status;
     this.problem = problem;
+    this.retryAfter = retryAfter;
   }
 }

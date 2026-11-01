@@ -49,7 +49,14 @@ pub fn is_sensitive_field(name: &str) -> bool {
         .collect();
     matches!(
         n.as_str(),
-        "notes" | "note" | "rawpayload" | "authorization" | "cookie" | "setcookie" | "enrolcode"
+        "notes"
+            | "note"
+            | "rawpayload"
+            | "authorization"
+            | "cookie"
+            | "setcookie"
+            | "enrolcode"
+            | "totpcode"
     ) || is_clinical_field(&n)
         || n.contains("email")
         || n.contains("password")
@@ -244,6 +251,7 @@ mod tests {
             "access_token",
             "token",
             "totp_secret",
+            "totp_code",
             "enrol_code",
             // KEY-6 (WP-C.9).
             "impression",

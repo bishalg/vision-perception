@@ -18,6 +18,7 @@ use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
 use tracing::Span;
 
+use crate::auth::{Clock, SystemClock};
 use crate::blob::{BlobStore, MemoryBlobStore, S3BlobStore};
 use crate::config::{BlobBackend, Config};
 use crate::crypto::Keyring;
@@ -33,6 +34,9 @@ pub struct AppState {
     /// Per-org data keys under `ASD_DATA_KEK` (KEY-2); `None` without the KEK, in which
     /// case clinical endpoints answer 503 (`crypto::ClinicalCrypto`) and the rest works.
     pub keyring: Option<Arc<Keyring>>,
+    /// Time source of the auth rate limits ([`SystemClock`]; tests swap in a
+    /// [`crate::auth::ManualClock`]).
+    pub clock: Arc<dyn Clock>,
 }
 
 impl AppState {
@@ -46,6 +50,7 @@ impl AppState {
             blobs,
             config: Arc::new(config),
             keyring,
+            clock: Arc::new(SystemClock),
         }
     }
 }

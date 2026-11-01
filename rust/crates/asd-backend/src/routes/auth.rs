@@ -3,9 +3,16 @@
 //! User-plane session endpoints (AUTH-1, AUTH-2), shaped for the console
 //! (`apps/curv_console/src/lib/api/live.ts`):
 //!
-//! - `POST /v1/auth/login` `{email, password}` -> `200 TokenPair`; `401` for any wrong
-//!   credential or a disabled account (one answer, constant time); `429` + `Retry-After`
-//!   beyond 10 attempts per minute per client IP.
+//! - `POST /v1/auth/login` `{email, password, totp_code?}` -> `200 TokenPair`; `401
+//!   unauthorized` for any wrong credential or a disabled account (one answer, constant
+//!   time); `429` + `Retry-After` beyond 10 attempts per minute per client IP.
+//!   Second factor (AUTH-1, security audit 2026-10-31): when email and password are right
+//!   and the user has TOTP enrolled, a request without `totp_code` answers `401
+//!   totp-required` and the client repeats it with the code; a wrong, expired or already
+//!   used code answers `401 totp-invalid` (audited as `auth.login_totp_failed`). Requests
+//!   carrying a code for an enrolled user also count against a per-user limit (10 per
+//!   minute), so spreading guesses over many IPs does not help. The code is checked and
+//!   spent by [`crate::auth::totp`], the same path as the SIGN-5 step-up.
 //! - `POST /v1/auth/refresh` `{refresh_token}` -> `200 TokenPair` with a rotated refresh
 //!   token; reuse of a rotated-out token revokes the family and answers `401`.
 //! - `POST /v1/auth/logout` `{refresh_token}` -> `204`, revoking the token's family.
@@ -14,33 +21,43 @@ use std::net::IpAddr;
 use std::sync::Arc;
 
 use asd_contract::api_v1::{LoginRequest, RefreshRequest, Role, TokenPair, User};
+use asd_contract::problem::{TOTP_INVALID, TOTP_REQUIRED};
 use axum::extract::State;
 use axum::routing::post;
 use axum::{Extension, Json, Router};
 use http::StatusCode;
 use serde_json::json;
 use uuid::Uuid;
+use zeroize::Zeroizing;
 
 use crate::app::AppState;
 use crate::audit::AuditEvent;
 use crate::auth::extractors::{ApiJson, RequestMeta};
 use crate::auth::jwt::{JwtKeys, ACCESS_TOKEN_TTL_SECS};
 use crate::auth::refresh::{self, Rotation};
-use crate::auth::{password, rbac, RateLimiter};
+use crate::auth::{password, rbac, totp, RateLimiter};
 use crate::error::{AppError, AppResult};
 use crate::problem::InvalidParam;
 
 /// AUTH-1: login attempts per client IP per minute.
 pub const LOGIN_ATTEMPTS_PER_MINUTE: u32 = 10;
 
-/// Per-IP login limiter (one per router, shared by its clones).
+/// AUTH-1: login attempts carrying a TOTP code, per user per minute.
+pub const LOGIN_TOTP_ATTEMPTS_PER_MINUTE: u32 = 10;
+
+/// Login limiters (one set per router, shared by its clones): every request per client IP,
+/// and TOTP attempts per user.
 #[derive(Debug)]
-pub struct LoginLimiter(pub RateLimiter<Option<IpAddr>>);
+pub struct LoginLimiter {
+    pub per_ip: RateLimiter<Option<IpAddr>>,
+    pub totp_per_user: RateLimiter<Uuid>,
+}
 
 pub fn router() -> Router<AppState> {
-    let limiter = Arc::new(LoginLimiter(RateLimiter::per_minute(
-        LOGIN_ATTEMPTS_PER_MINUTE,
-    )));
+    let limiter = Arc::new(LoginLimiter {
+        per_ip: RateLimiter::per_minute(LOGIN_ATTEMPTS_PER_MINUTE),
+        totp_per_user: RateLimiter::per_minute(LOGIN_TOTP_ATTEMPTS_PER_MINUTE),
+    });
     Router::new()
         .route("/auth/login", post(login))
         .route("/auth/refresh", post(refresh_tokens))
@@ -90,8 +107,8 @@ async fn login(
     ApiJson(req): ApiJson<LoginRequest>,
 ) -> AppResult<Json<TokenPair>> {
     limiter
-        .0
-        .check(&meta.ip)
+        .per_ip
+        .check_at(&meta.ip, state.clock.now())
         .map_err(|retry_after_secs| AppError::RateLimited { retry_after_secs })?;
     let keys = keys(&state)?;
     let email = normalize_email(&req.email);
@@ -122,6 +139,7 @@ async fn login(
         _ => return Err(AppError::Unauthorized),
     };
     let role = rbac::role_from_str(&user.role).ok_or(AppError::Unauthorized)?;
+    second_factor(&state, &limiter, &meta, user.id, user.org_id, req.totp_code).await?;
 
     let mut tx = state.db.begin().await?;
     sqlx::query!(
@@ -146,6 +164,46 @@ async fn login(
         user.email,
         refresh_token,
     )?))
+}
+
+/// The TOTP check of a login whose password is right. Not enrolled: passes (a stray
+/// `totp_code` is ignored).
+async fn second_factor(
+    state: &AppState,
+    limiter: &LoginLimiter,
+    meta: &RequestMeta,
+    user_id: Uuid,
+    org_id: Option<Uuid>,
+    totp_code: Option<String>,
+) -> AppResult<()> {
+    let Some(secret) = totp::load_secret(&state.db, state.keyring.as_deref(), user_id).await?
+    else {
+        return Ok(());
+    };
+    let Some(code) = totp_code.filter(|c| !c.trim().is_empty()) else {
+        return Err(AppError::UnauthorizedWith {
+            slug: TOTP_REQUIRED,
+            detail: "enter the code from your authenticator app".into(),
+        });
+    };
+    let code = Zeroizing::new(code);
+    limiter
+        .totp_per_user
+        .check_at(&user_id, state.clock.now())
+        .map_err(|retry_after_secs| AppError::RateLimited { retry_after_secs })?;
+    if totp::verify_and_spend(&state.db, user_id, &secret, &code).await? {
+        return Ok(());
+    }
+    let mut tx = state.db.begin().await?;
+    AuditEvent::user_id(user_id, org_id, "auth.login_totp_failed", "user", user_id)
+        .meta(meta)
+        .record(&mut tx)
+        .await?;
+    tx.commit().await?;
+    Err(AppError::UnauthorizedWith {
+        slug: TOTP_INVALID,
+        detail: "the authenticator code is not correct or was already used".into(),
+    })
 }
 
 async fn refresh_tokens(

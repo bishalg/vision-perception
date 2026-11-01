@@ -1,20 +1,24 @@
 //! owner: WP-B.2
 //!
-//! AUTH-1 (Argon2id login, constant-time failure, 10/min/IP), AUTH-2 (EdDSA JWT 15 min,
+//! AUTH-1 (Argon2id login, constant-time failure, 10/min/IP, TOTP second factor), AUTH-2 (EdDSA JWT 15 min,
 //! rotating refresh families with reuse detection, logout), and access-token rejection.
 //! HTTP-level through the real router; needs `DATABASE_URL` (skipped otherwise) except the
 //! tests marked "no database".
 
 mod common;
 
+use std::time::Duration;
+
 use asd_backend::app::AppState;
+use asd_backend::auth::ManualClock;
+use asd_backend::clinical::reauth::totp_code;
 use asd_contract::api_v1::Role;
 use axum::Router;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use common::auth::*;
 use common::*;
-use http::{Method, StatusCode};
+use http::{HeaderMap, Method, StatusCode};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
@@ -231,11 +235,17 @@ async fn login_email_is_case_insensitive_and_malformed_bodies_are_problems() {
     c.db.cleanup().await;
 }
 
+/// The limiter reads `AppState.clock`; a [`ManualClock`] keeps every attempt inside one
+/// window however long the Argon2 checks take on a loaded machine, and moves the window
+/// on only when the test says so.
 #[tokio::test]
 async fn login_is_rate_limited_to_10_per_minute_per_ip() {
-    let Some(c) = setup().await else { return };
+    let Some(mut c) = setup().await else { return };
+    let clock = ManualClock::new();
+    c.state.clock = clock.clone();
+    let app = router(c.state.clone());
     let attempt = |ip: &'static str| {
-        let app = c.app.clone();
+        let app = app.clone();
         async move {
             send(
                 app,
@@ -256,6 +266,7 @@ async fn login_is_rate_limited_to_10_per_minute_per_ip() {
         let (status, _, _) = attempt("203.0.113.7").await;
         assert_eq!(status, StatusCode::UNAUTHORIZED, "attempt {i}");
     }
+    clock.advance(Duration::from_secs(15));
     let (status, headers, body) = attempt("203.0.113.7").await;
     assert_eq!(status, StatusCode::TOO_MANY_REQUESTS, "{body}");
     assert_eq!(slug(&body), "rate-limited");
@@ -264,10 +275,209 @@ async fn login_is_rate_limited_to_10_per_minute_per_ip() {
         .unwrap()
         .parse()
         .unwrap();
-    assert!((1..=60).contains(&retry), "Retry-After {retry}");
+    assert_eq!(retry, 45, "the rest of the 60 s window");
     // Another client is not affected.
     let (status, _, _) = attempt("203.0.113.8").await;
     assert_eq!(status, StatusCode::UNAUTHORIZED);
+    // Once the window has passed, the first client may try again.
+    clock.advance(Duration::from_secs(45));
+    let (status, _, _) = attempt("203.0.113.7").await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    c.db.cleanup().await;
+}
+
+// ---- TOTP second factor (AUTH-1, security audit 2026-10-31) ----------------------------
+
+const TOTP_SECRET: &str = "JBSWY3DPEHPK3PXP";
+
+fn now_unix() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+}
+
+fn current_code() -> String {
+    totp_code(TOTP_SECRET, now_unix()).unwrap()
+}
+
+/// A well-formed code that is not the current one (nor, but for a 1e-6 chance, a
+/// neighbour's).
+fn wrong_code() -> String {
+    format!(
+        "{:06}",
+        (current_code().parse::<u32>().unwrap() + 1) % 1_000_000
+    )
+}
+
+async fn login_from(app: &Router, ip: &str, body: Value) -> (StatusCode, HeaderMap, Value) {
+    send(
+        app.clone(),
+        from_ip(json(Method::POST, "/v1/auth/login", &body, None), ip),
+    )
+    .await
+}
+
+#[tokio::test]
+async fn enrolled_users_need_a_fresh_totp_code_to_log_in() {
+    let Some(c) = setup().await else { return };
+    enrol_totp(&c.state, c.user, TOTP_SECRET).await;
+    let ip = "198.51.100.1";
+
+    // Right password, no code: ask for one; nothing is issued.
+    let (status, _, body) =
+        login_from(&c.app, ip, json!({"email": EMAIL, "password": PASSWORD})).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED, "{body}");
+    assert_eq!(slug(&body), "totp-required");
+    assert!(body.get("access_token").is_none());
+    let (status, _, body) = login_from(
+        &c.app,
+        ip,
+        json!({"email": EMAIL, "password": PASSWORD, "totp_code": " "}),
+    )
+    .await;
+    assert_eq!(slug(&body), "totp-required", "{status} {body}");
+
+    // Wrong password with the right code: the plain 401, and the code is not spent.
+    let (status, _, body) = login_from(
+        &c.app,
+        ip,
+        json!({"email": EMAIL, "password": "wrong password!", "totp_code": current_code()}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    assert_eq!(slug(&body), "unauthorized");
+
+    // Wrong code: its own slug, audited.
+    let (status, _, body) = login_from(
+        &c.app,
+        ip,
+        json!({"email": EMAIL, "password": PASSWORD, "totp_code": wrong_code()}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED, "{body}");
+    assert_eq!(slug(&body), "totp-invalid");
+    assert!(!body.to_string().contains(TOTP_SECRET));
+    assert_eq!(audit_count(&c.db.pool, "auth.login_totp_failed").await, 1);
+    assert_eq!(audit_count(&c.db.pool, "auth.login").await, 0);
+
+    // The right code: a token pair.
+    let code = current_code();
+    let (status, _, body) = login_from(
+        &c.app,
+        ip,
+        json!({"email": EMAIL, "password": PASSWORD, "totp_code": code}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert!(body["access_token"].is_string());
+    assert_eq!(audit_count(&c.db.pool, "auth.login").await, 1);
+
+    // The same code again (replay): refused, it is spent.
+    let (status, _, body) = login_from(
+        &c.app,
+        ip,
+        json!({"email": EMAIL, "password": PASSWORD, "totp_code": code}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED, "{body}");
+    assert_eq!(slug(&body), "totp-invalid");
+    assert_eq!(audit_count(&c.db.pool, "auth.login").await, 1);
+    c.db.cleanup().await;
+}
+
+#[tokio::test]
+async fn users_without_totp_log_in_as_before_and_a_stray_code_is_ignored() {
+    let Some(c) = setup().await else { return };
+    let (status, _, body) = login_from(
+        &c.app,
+        "198.51.100.2",
+        json!({"email": EMAIL, "password": PASSWORD, "totp_code": "000000"}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    c.db.cleanup().await;
+}
+
+/// TOTP guesses are limited per user (10 per minute), not only per IP: spreading them over
+/// many addresses does not buy more. Deterministic through the injected clock.
+#[tokio::test]
+async fn totp_failures_are_rate_limited_per_user() {
+    let Some(mut c) = setup().await else { return };
+    enrol_totp(&c.state, c.user, TOTP_SECRET).await;
+    let clock = ManualClock::new();
+    c.state.clock = clock.clone();
+    let app = router(c.state.clone());
+    for i in 0..10 {
+        let (status, _, body) = login_from(
+            &app,
+            &format!("198.51.100.{}", 10 + i),
+            json!({"email": EMAIL, "password": PASSWORD, "totp_code": wrong_code()}),
+        )
+        .await;
+        assert_eq!(slug(&body), "totp-invalid", "attempt {i}: {status}");
+    }
+    // The eleventh, from yet another IP and with the right code: limited.
+    let (status, headers, body) = login_from(
+        &app,
+        "198.51.100.99",
+        json!({"email": EMAIL, "password": PASSWORD, "totp_code": current_code()}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::TOO_MANY_REQUESTS, "{body}");
+    assert_eq!(headers[http::header::RETRY_AFTER], "60");
+    // Asking for the code (no guess) is not a TOTP attempt.
+    let (_, _, body) = login_from(
+        &app,
+        "198.51.100.98",
+        json!({"email": EMAIL, "password": PASSWORD}),
+    )
+    .await;
+    assert_eq!(slug(&body), "totp-required");
+    clock.advance(Duration::from_secs(60));
+    let (status, _, body) = login_from(
+        &app,
+        "198.51.100.97",
+        json!({"email": EMAIL, "password": PASSWORD, "totp_code": current_code()}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    c.db.cleanup().await;
+}
+
+/// 0016: the seed is stored sealed, never in clear; without the KEK an enrolled user
+/// cannot log in (fail closed, 503), never "not enrolled".
+#[tokio::test]
+async fn totp_seed_is_sealed_at_rest_and_login_fails_closed_without_the_kek() {
+    let Some(c) = setup().await else { return };
+    enrol_totp(&c.state, c.user, TOTP_SECRET).await;
+    let (clear, ct, kek_id): (Option<String>, Option<Vec<u8>>, Option<String>) = sqlx::query_as(
+        "SELECT totp_secret, totp_secret_ct, totp_secret_kek_id FROM users WHERE id = $1",
+    )
+    .bind(c.user)
+    .fetch_one(&c.db.pool)
+    .await
+    .unwrap();
+    assert_eq!(clear, None);
+    let ct = ct.expect("sealed seed");
+    assert!(!ct
+        .windows(TOTP_SECRET.len())
+        .any(|w| w == TOTP_SECRET.as_bytes()));
+    assert_eq!(
+        kek_id.as_deref(),
+        c.state.keyring.as_deref().map(|k| k.kek_id())
+    );
+
+    let mut no_kek = c.state.clone();
+    no_kek.keyring = None;
+    let (status, _, body) = login_from(
+        &router(no_kek),
+        "198.51.100.3",
+        json!({"email": EMAIL, "password": PASSWORD, "totp_code": current_code()}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{body}");
+    assert_eq!(slug(&body), "clinical-crypto-unavailable");
     c.db.cleanup().await;
 }
 

@@ -346,6 +346,38 @@ public actor GazeProcessingActor {
             return .unavailable(reason)
         }
         guard snapshot.isTracked else {
+            // TRK-1: a frame without a tracked face is still a frame. It is buffered as an
+            // untracked sample (invalid, rejected, confidence 0, last valid point, measured
+            // interval) so `validRatio` reflects track loss instead of ignoring it.
+            // Interruptions and failures return above via `unavailableReason` (CAM-2).
+            if isRecording {
+                let untracked = GazeTelemetrySample(
+                    timestampMs: elapsedSec * 1000.0,
+                    videoTimeSec: elapsedSec,
+                    xNorm: lastValidCalibratedPoint.x,
+                    yNorm: lastValidCalibratedPoint.y,
+                    confidence: 0.0,
+                    leftEyeOpenness: 0.0,
+                    rightEyeOpenness: 0.0,
+                    headPitchRad: 0.0,
+                    headYawRad: 0.0,
+                    headRollRad: 0.0,
+                    distanceToScreenCm: 0.0,
+                    isValid: false,
+                    stimulusId: currentStimulusId,
+                    clipMediaTimeSec: clipMediaTimeSec
+                )
+                volatileFrameBuffer.append(GazeFrame(
+                    gaze: untracked,
+                    affect: .neutral,
+                    activeAOINames: [],
+                    aoiDwellMs: measuredIntervalMs(at: elapsedSec),
+                    stimulusEventTag: nil,
+                    qualityVerdict: .rejected,
+                    stimulusId: currentStimulusId,
+                    clipMediaTimeSec: clipMediaTimeSec
+                ))
+            }
             return GazeUIState(
                 currentGazePoint: CGPoint(x: 0.5, y: 0.5),
                 currentRawGazePoint: CGPoint(x: 0.5, y: 0.5),

@@ -39,6 +39,10 @@ public enum ScreeningWizardStep: Equatable {
 public struct GazeScreeningWizardView: View {
     @State private var step: ScreeningWizardStep = .positioning
     @StateObject private var camera = CameraAccessCoordinator()
+    /// CAL-1: one calibration session per wizard run. Every run starts uncalibrated; the
+    /// calibration made in step 2 is bound to this id and the current child, and no stored
+    /// profile from another child or earlier run is ever applied (there is no "skip" path).
+    @State private var calibrationSessionId = UUID().uuidString
 
     public var onOpenHistory: (() -> Void)?
 
@@ -87,6 +91,7 @@ public struct GazeScreeningWizardView: View {
 
             case .calibrating:
                 BubbleCalibrationView(
+                    calibrationBinding: ChildProfileStore.shared.calibrationBinding(sessionId: calibrationSessionId),
                     onClose: nil,
                     onCalibrationComplete: {
                         withAnimation(.easeInOut(duration: 0.3)) { step = .gate }
@@ -125,6 +130,7 @@ public struct GazeScreeningWizardView: View {
                     #if ASD_RESEARCH_CLASSIFIER
                     GazeStimulusScreeningView(
                         playlist: activePlaylist,
+                        calibrationBinding: ChildProfileStore.shared.calibrationBinding(sessionId: calibrationSessionId),
                         onComplete: { summary, frames, classification in
                             withAnimation(.easeInOut(duration: 0.25)) {
                                 step = .summary(summary, frames, classification)
@@ -137,6 +143,7 @@ public struct GazeScreeningWizardView: View {
                     #else
                     GazeStimulusScreeningView(
                         playlist: activePlaylist,
+                        calibrationBinding: ChildProfileStore.shared.calibrationBinding(sessionId: calibrationSessionId),
                         onComplete: { summary, frames in
                             withAnimation(.easeInOut(duration: 0.25)) {
                                 step = .summary(summary, frames)
@@ -190,6 +197,12 @@ public struct GazeScreeningWizardView: View {
             }
         }
         .animation(.easeInOut(duration: 0.3), value: step)
+        // Orientation stays fixed from positioning until the results screen.
+        .captureOrientationLocked()
+        .onChange(of: step) { _, newStep in
+            // A new run (retake, abort, dismiss) never inherits the previous calibration.
+            if newStep == .positioning { calibrationSessionId = UUID().uuidString }
+        }
         .toolbar(step == .stimulus ? .hidden : .visible, for: .tabBar)
     }
 }

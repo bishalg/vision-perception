@@ -4,7 +4,8 @@
 //!
 //! - `asd-backend serve`   HTTP API on `ASD_BIND_ADDR` (never runs migrations);
 //! - `asd-backend worker`  background job loop (job kinds arrive with WP-B.5);
-//! - `asd-backend migrate` applies pending migrations and exits (compose init step);
+//! - `asd-backend migrate` applies pending migrations, then the data back-fills that need
+//!   the KEK (0016: TOTP seeds sealed), and exits (compose init step);
 //! - `asd-backend admin`   operator commands (`create-org`, `create-user`,
 //!   `encrypt-review-notes`), see `asd_backend::admin`.
 //!
@@ -168,8 +169,9 @@ async fn migrate(config: Config) -> Result<(), String> {
         .await
         .map_err(|e| format!("migrate: {e}"))?;
     tracing::info!(applied = ?pending, "migrations up to date");
+    let result = db::backfill(&pool, &config).await;
     pool.close().await;
-    Ok(())
+    result
 }
 
 /// `asd-backend admin ...`: no telemetry (stdout carries only the new id), errors and

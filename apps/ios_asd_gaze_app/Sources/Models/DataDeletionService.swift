@@ -60,7 +60,7 @@ public final class DataDeletionService {
             researchStore: .shared,
             purgeQueues: { ResearchKitSyncService.purgeQueuedUploads() },
             resetCalibration: {
-                GazeCalibrationStore.reset()
+                BoundCalibrationStore.reset()
                 NotificationCenter.default.post(
                     name: GazeSessionController.didUpdateCalibrationNotification,
                     object: nil

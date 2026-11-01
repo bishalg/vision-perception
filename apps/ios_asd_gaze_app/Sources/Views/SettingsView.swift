@@ -15,7 +15,9 @@ public struct SettingsView: View {
     @ObservedObject private var appMode = AppModeStore.shared
     @State private var newConditionTitle: String = ""
     @State private var notificationStatusText: String = "Not determined"
-    @State private var calibrationProfile: GazeCalibrationProfile = GazeCalibrationStore.load()
+    @State private var calibrationProfile: GazeCalibrationProfile = .identity
+    /// CAL-1: the diagnostic calibration check is its own session for the current child.
+    @State private var calibrationCheckSessionId = UUID().uuidString
     @State private var showQuickCalibrate: Bool = false
     @State private var showCameraCheck: Bool = false
     @State private var showOnboardingFlow: Bool = false
@@ -61,18 +63,19 @@ public struct SettingsView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .onAppear {
-                calibrationProfile = GazeCalibrationStore.load()
+                calibrationProfile = BoundCalibrationStore.load(for: calibrationCheckBinding)
                 refreshNotificationStatus()
             }
             .fullScreenCover(isPresented: $showQuickCalibrate) {
                 BubbleCalibrationView(
+                    calibrationBinding: calibrationCheckBinding,
                     onClose: {
                         showQuickCalibrate = false
-                        calibrationProfile = GazeCalibrationStore.load()
+                        calibrationProfile = BoundCalibrationStore.load(for: calibrationCheckBinding)
                     },
                     onCalibrationComplete: {
                         showQuickCalibrate = false
-                        calibrationProfile = GazeCalibrationStore.load()
+                        calibrationProfile = BoundCalibrationStore.load(for: calibrationCheckBinding)
                     }
                 )
             }
@@ -479,8 +482,12 @@ public struct SettingsView: View {
         }
     }
 
+    private var calibrationCheckBinding: CalibrationBinding {
+        ChildProfileStore.shared.calibrationBinding(sessionId: calibrationCheckSessionId)
+    }
+
     private func resetCalibration() {
-        GazeCalibrationStore.reset()
+        BoundCalibrationStore.reset()
         calibrationProfile = .identity
         NotificationCenter.default.post(name: GazeSessionController.didUpdateCalibrationNotification, object: nil)
     }
@@ -654,7 +661,7 @@ public struct SettingsView: View {
 
     private func deleteAllObservationData() {
         let report = DataDeletionService.live().deleteAll(includeCarePlans: false)
-        calibrationProfile = GazeCalibrationStore.load()
+        calibrationProfile = BoundCalibrationStore.load(for: calibrationCheckBinding)
         if report.succeeded {
             // Present after the confirmation dialog finishes dismissing.
             DispatchQueue.main.async { showDeleteCarePlansPrompt = true }

@@ -3516,13 +3516,24 @@
       "type": "string"
     },
     "LoginRequest": {
-      "description": "`POST /v1/auth/login`.",
+      "description": "`POST /v1/auth/login`.\n\nTwo-step for a user with TOTP enrolled (AUTH-1): the first request carries `email` and\n`password` only; when both are right the answer is `401` problem `totp-required`. The\nclient asks for the authenticator code and sends the same request again with\n`totp_code`. A wrong, expired or already used code answers `401` problem `totp-invalid`.\nBoth legs count against the per-IP login limit; requests with a code also count\nagainst a per-user limit (10 per minute, `429` + `Retry-After`).",
       "properties": {
         "email": {
           "type": "string"
         },
         "password": {
           "type": "string"
+        },
+        "totp_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Current RFC 6238 code (6 digits) from the user's authenticator app. Needed only\nwhen the user has TOTP enrolled; ignored otherwise. Each code is accepted once."
         }
       },
       "required": [
@@ -4528,6 +4539,8 @@
         "conflict",
         "participant-withdrawn",
         "internal",
+        "totp-required",
+        "totp-invalid",
         "clinical-crypto-unavailable",
         "patient-ref-disabled",
         "stale-version",

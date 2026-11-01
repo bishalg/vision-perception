@@ -10,9 +10,12 @@
 //! - `POST /v1/norm-runs/{id}/promote` writes the run as a **draft** `normative_baselines`
 //!   config document. It is never published here.
 //!
-//! Queueing, listing and reading need `perm::JobRun`; promoting needs `perm::ConfigWrite`
-//! (it creates a config document). A run or job of another org is a 404. Every mutation
-//! adds one audit row in its own transaction (AUTH-5).
+//! Queueing, listing and reading need `perm::JobRun`. Promoting needs
+//! `perm::ConfigGlobalManage` (superadmin only): config documents have no org, so even a
+//! draft is a global document every tenant's ingest could later read once published, and
+//! creating one follows the same rule as approving and publishing it (security audit
+//! 2026-10-31). A run or job of another org is a 404. Every mutation adds one audit row in
+//! its own transaction (AUTH-5).
 
 use axum::extract::{Path, Query, State};
 use axum::routing::{get, post};
@@ -356,7 +359,7 @@ async fn get_run(
 }
 
 async fn promote_run(
-    auth: Require<perm::ConfigWrite>,
+    auth: Require<perm::ConfigGlobalManage>,
     meta: RequestMeta,
     State(state): State<AppState>,
     Path(id): Path<String>,

@@ -375,8 +375,11 @@ fn aois_json() -> String {
 /// A recorded clip: scanning between AOIs with saccades, blinks and track loss.
 fn play_clip(tw: &mut Twin, rng: &mut Rng, stimulus: &str, seconds: f64, bias: [f64; 2]) {
     let aois = aois_json();
-    tw.handle.set_clip_aois_json(aois.clone()).unwrap();
-    tw.core.set_clip_aois(serde_json::from_str(&aois).unwrap());
+    tw.handle
+        .begin_clip_json(stimulus.to_owned(), aois.clone())
+        .unwrap();
+    tw.core
+        .begin_clip(stimulus, serde_json::from_str(&aois).unwrap());
     tw.set_recording(true);
     let n = (seconds * HZ) as u64;
     let mut target = [0.5, 0.35];
@@ -410,8 +413,8 @@ fn play_clip(tw: &mut Twin, rng: &mut Rng, stimulus: &str, seconds: f64, bias: [
         tw.push(raw);
     }
     tw.set_recording(false);
-    tw.handle.set_clip_aois_json("[]".into()).unwrap();
-    tw.core.set_clip_aois(Vec::new());
+    tw.handle.end_clip();
+    tw.core.end_clip();
     tw.assert_same_state();
 }
 
@@ -625,6 +628,7 @@ fn other_malformed_json_is_an_error() {
     ));
     assert!(is_invalid_json(h.set_clip_aois_json("{}".into())));
     assert!(is_invalid_json(h.set_clip_aois_json("".into())));
+    assert!(is_invalid_json(h.begin_clip_json("c".into(), "{}".into())));
     assert!(is_invalid_json(GazeTelemetryWriterHandle::new(
         0.0,
         Some("[1]".into())
@@ -881,6 +885,35 @@ fn scripted_session_through_the_handle_equals_the_core() {
     assert!(loss["blinkSec"].as_f64().unwrap() > 0.0, "{loss}");
     assert!(loss["trackLossSec"].as_f64().unwrap() > 0.0, "{loss}");
     assert!(tw.handle.valid_ratio() > 0.5 && tw.handle.valid_ratio() < 1.0);
+
+    // QS-3 per-clip values: identical through the handle, the 1.7 keys, in play order.
+    let clips_json = tw.handle.clip_tracking_json().unwrap();
+    assert_eq!(
+        clips_json,
+        serde_json::to_string(&tw.core.clip_tracking()).unwrap()
+    );
+    let clips: Value = serde_json::from_str(&clips_json).unwrap();
+    let clips = clips.as_array().unwrap();
+    assert_eq!(clips.len(), 3);
+    let checks = summary["driftChecks"].as_array().unwrap();
+    for (i, (c, id)) in clips
+        .iter()
+        .zip(["clip-social-1", "clip-nonsocial-2", "clip-social-3"])
+        .enumerate()
+    {
+        assert_eq!(c["clipId"], json!(id));
+        assert_eq!(c["order"], json!(i + 1));
+        assert!(c["meanSampleConfidence"].as_f64().unwrap() > 0.5, "{c}");
+        assert!(c["meanFixationConfidence"].is_number(), "{c}");
+        // Only `face` (social) is role-bearing: 40 x 60 mm, about 5.6° at about 41 cm.
+        let size = c["aoiMinSizeDeg"].as_f64().unwrap();
+        assert!((5.0..6.0).contains(&size), "{c}");
+        // The two clips followed by a check carry its offset; the last clip has none.
+        match checks.get(i) {
+            Some(chk) if i < 2 => assert_eq!(c["nearestCheckOffsetDeg"], chk["offsetDeg"]),
+            _ => assert!(c.get("nearestCheckOffsetDeg").is_none(), "{c}"),
+        }
+    }
 }
 
 #[test]

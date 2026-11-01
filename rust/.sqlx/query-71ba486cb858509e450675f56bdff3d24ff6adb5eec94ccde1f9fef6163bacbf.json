@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE users SET last_totp_step = $2\n               WHERE id = $1 AND (last_totp_step IS NULL OR last_totp_step < $2)\n               RETURNING 1 AS \"one!\"",
+  "query": "UPDATE users SET last_totp_step = $2\n           WHERE id = $1 AND (last_totp_step IS NULL OR last_totp_step < $2)\n           RETURNING 1 AS \"one!\"",
   "describe": {
     "columns": [
       {
@@ -20,5 +20,5 @@
       null
     ]
   },
-  "hash": "9bc97a856cfd25d0f6101554d1e954ee094aea95622913b1ed9056be51896fae"
+  "hash": "71ba486cb858509e450675f56bdff3d24ff6adb5eec94ccde1f9fef6163bacbf"
 }

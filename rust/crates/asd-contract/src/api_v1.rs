@@ -47,10 +47,21 @@ pub struct User {
 }
 
 /// `POST /v1/auth/login`.
+///
+/// Two-step for a user with TOTP enrolled (AUTH-1): the first request carries `email` and
+/// `password` only; when both are right the answer is `401` problem `totp-required`. The
+/// client asks for the authenticator code and sends the same request again with
+/// `totp_code`. A wrong, expired or already used code answers `401` problem `totp-invalid`.
+/// Both legs count against the per-IP login limit; requests with a code also count
+/// against a per-user limit (10 per minute, `429` + `Retry-After`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct LoginRequest {
     pub email: String,
     pub password: String,
+    /// Current RFC 6238 code (6 digits) from the user's authenticator app. Needed only
+    /// when the user has TOTP enrolled; ignored otherwise. Each code is accepted once.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub totp_code: Option<String>,
 }
 
 /// `POST /v1/auth/refresh` and `POST /v1/auth/logout` (`{refresh_token}` in the body).

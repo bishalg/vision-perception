@@ -41,7 +41,9 @@
 		300541B0F4D8FEA1344A8BE8 /* BlendShapeLoggerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DCE094A0CD26066CA5F60F2 /* BlendShapeLoggerTests.swift */; };
 		34A2661BEECE0AE1A177B7D9 /* care_data_and_privacy.feature in Resources */ = {isa = PBXBuildFile; fileRef = D6DCDD823D9C377F697E504E /* care_data_and_privacy.feature */; };
 		35719B322FBE06434A10E9A0 /* PDFKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D055165C8B89ACF21CA75796 /* PDFKit.framework */; };
+		360FF5F344FDEC97895D970C /* CalibrationAccumulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35BACE43EAC9A13A748F82B2 /* CalibrationAccumulator.swift */; };
 		36177A6E5A141007149A2019 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A964440896F4E6DA13B314B1 /* WidgetKit.framework */; };
+		375C12DFA0A4EFA0D838C458 /* CaptureOrientationLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2CA5B09A755FE918F6A7824 /* CaptureOrientationLock.swift */; };
 		3A5CFB73461D25AD01EC1E2F /* GazePositioningStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 869BC9A2A7BE8A3C527D271E /* GazePositioningStepView.swift */; };
 		3AC35CA9B34AB4A91405ADEE /* CareAlertScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00C9B43FF9E89F1CFD20770C /* CareAlertScheduler.swift */; };
 		3C581CEB623A8E80C51BBB61 /* ARKitMoodFusionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38B5C98A8DC049CA9448B7E1 /* ARKitMoodFusionController.swift */; };
@@ -124,6 +126,7 @@
 		A9BFB17FF83C49850FCBA258 /* MCHATSurveyModalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF98BBCFAACCAC600C07B3B9 /* MCHATSurveyModalView.swift */; };
 		AA4820B00FE0D92FC84DA8B9 /* expected-session-v1.6.json in Resources */ = {isa = PBXBuildFile; fileRef = F01C7452E5F5362E5BE057AE /* expected-session-v1.6.json */; };
 		AAE1FF736264C64335C69AB2 /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83F6B3B68EF088EBD5929E3D /* Network.framework */; };
+		AC4CC6B57FFC3C3AE44CEE26 /* CaptureHygieneTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3EC71A2BF7B557E5A4DF6FD /* CaptureHygieneTests.swift */; };
 		AD393B55A4C2535BA600177C /* StimulusDownloadGateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16077B853964E6059FCCE816 /* StimulusDownloadGateView.swift */; };
 		AD5AD4D82E8A3B729618BE68 /* MoodDiaryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 612AFD4BB220098D276A59DE /* MoodDiaryStore.swift */; };
 		ADC701A5C3B2F18660A9C6D6 /* ResearchKitStudyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 941B39E3F663044B60693CA2 /* ResearchKitStudyStore.swift */; };
@@ -239,6 +242,7 @@
 		30843A265B32FE1A7C81CB2B /* SplashScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashScreenView.swift; sourceTree = "<group>"; };
 		3111366AAA094728086AD5E8 /* MainGazeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainGazeScannerView.swift; sourceTree = "<group>"; };
 		319C2C9DF38E48593AFC3E4A /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
+		35BACE43EAC9A13A748F82B2 /* CalibrationAccumulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationAccumulator.swift; sourceTree = "<group>"; };
 		35D6242A2902B10E099D3EDC /* CameraDeniedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraDeniedView.swift; sourceTree = "<group>"; };
 		36AA1BA891D699EB46EC830A /* stim_01_social_peekaboo_8s.mp4 */ = {isa = PBXFileReference; path = stim_01_social_peekaboo_8s.mp4; sourceTree = "<group>"; };
 		37CCAC020A34C51C4280F971 /* GazeSessionRecordVersioningTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeSessionRecordVersioningTests.swift; sourceTree = "<group>"; };
@@ -314,6 +318,7 @@
 		9C2AE415C19877471ACD26E8 /* CoreMotion.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMotion.framework; path = System/Library/Frameworks/CoreMotion.framework; sourceTree = SDKROOT; };
 		A0781428976F4BBF2CC1D5AA /* FHIRBundleBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FHIRBundleBuilderTests.swift; sourceTree = "<group>"; };
 		A0D50DB436426D4B609643B4 /* StimulusPlaylistTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StimulusPlaylistTests.swift; sourceTree = "<group>"; };
+		A2CA5B09A755FE918F6A7824 /* CaptureOrientationLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureOrientationLock.swift; sourceTree = "<group>"; };
 		A551B394852735DA063ECC9E /* CareReminderModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareReminderModels.swift; sourceTree = "<group>"; };
 		A63371C06337F00E97F6D0C9 /* ResearchStudyConsentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResearchStudyConsentView.swift; sourceTree = "<group>"; };
 		A64D36BA92966A704E085F52 /* CaregiverDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaregiverDashboardView.swift; sourceTree = "<group>"; };
@@ -348,6 +353,7 @@
 		DD4FFF01E8DEA4584A9AC139 /* UnsupportedDeviceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnsupportedDeviceView.swift; sourceTree = "<group>"; };
 		DE48FCCCDB5EBCB7A99A2EA7 /* AsdGazeCollector.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AsdGazeCollector.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E2ED4DF9E6F04C2F2E618A22 /* DataDeletionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataDeletionService.swift; sourceTree = "<group>"; };
+		E3EC71A2BF7B557E5A4DF6FD /* CaptureHygieneTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureHygieneTests.swift; sourceTree = "<group>"; };
 		E430E43FC538AE0C5060FCE8 /* ResearchKitStudyModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResearchKitStudyModels.swift; sourceTree = "<group>"; };
 		E5B67CCC538018766DBC2B17 /* GazeTelemetryReviewCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeTelemetryReviewCard.swift; sourceTree = "<group>"; };
 		EAA1CF408568D1370FD4C438 /* DeviceRegistrationServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRegistrationServiceTests.swift; sourceTree = "<group>"; };
@@ -516,6 +522,7 @@
 			isa = PBXGroup;
 			children = (
 				1E01DC03541654B1592941EC /* AppLocalizer.swift */,
+				A2CA5B09A755FE918F6A7824 /* CaptureOrientationLock.swift */,
 				55BEF992E92622FDFF45F7D7 /* LiquidGlassTheme.swift */,
 			);
 			path = UI;
@@ -566,6 +573,7 @@
 				57B7589323D11CE24F631B64 /* AppModeStore.swift */,
 				38B5C98A8DC049CA9448B7E1 /* ARKitMoodFusionController.swift */,
 				DD1DB7F2655A5B1BBC5C5FC7 /* BlendShapeCSVLogger.swift */,
+				35BACE43EAC9A13A748F82B2 /* CalibrationAccumulator.swift */,
 				1F4747195609401C10812B67 /* CameraAccessCoordinator.swift */,
 				1714A4723566AA06FE47B172 /* CaptureEntryGate.swift */,
 				98EE536B2A1BB98FBDC5B10D /* CareAlertPreferences.swift */,
@@ -677,6 +685,7 @@
 				2F2C472FDFEB8914F96DB965 /* BuildConfigurationTests.swift */,
 				5CCEA926704096B0B542EE19 /* CameraAccessCoordinatorTests.swift */,
 				7D37BA69F55378608443170F /* CaptureEntryGateTests.swift */,
+				E3EC71A2BF7B557E5A4DF6FD /* CaptureHygieneTests.swift */,
 				865E4D9CC5A1506E8F3EF59F /* CareKitClinicalStoreTests.swift */,
 				B8F0FFAA4FBEA2BBC44701EC /* CarePlanStoreTests.swift */,
 				C8D063D17414F7406EB0B9E9 /* ClinicalDevelopmentModelsTests.swift */,
@@ -873,9 +882,11 @@
 				2C16EF91E993F15C10F182AD /* BiomarkerRiskStratificationView.swift in Sources */,
 				7BB8455F8D3D954FF67EE105 /* BlendShapeCSVLogger.swift in Sources */,
 				B6B9DF0064AFF850D3948FD5 /* BubbleCalibrationView.swift in Sources */,
+				360FF5F344FDEC97895D970C /* CalibrationAccumulator.swift in Sources */,
 				630B5055C5D20A576696C319 /* CameraAccessCoordinator.swift in Sources */,
 				83F8A9BB4C7A013FFA60AA5F /* CameraDeniedView.swift in Sources */,
 				B65F6BE7EF29EC6F27A67120 /* CaptureEntryGate.swift in Sources */,
+				375C12DFA0A4EFA0D838C458 /* CaptureOrientationLock.swift in Sources */,
 				CCD0DCA8276464A6A59F7215 /* CareAlertPreferences.swift in Sources */,
 				3AC35CA9B34AB4A91405ADEE /* CareAlertScheduler.swift in Sources */,
 				172F76895B2ADF8D0D67596C /* CareKitClinicalStore.swift in Sources */,
@@ -968,6 +979,7 @@
 				FF9B9D577C49AD9593A40EF2 /* BuildConfigurationTests.swift in Sources */,
 				70B51123E6A7E6F30C211BFE /* CameraAccessCoordinatorTests.swift in Sources */,
 				61022557EB3D42B29610BA65 /* CaptureEntryGateTests.swift in Sources */,
+				AC4CC6B57FFC3C3AE44CEE26 /* CaptureHygieneTests.swift in Sources */,
 				998E8B674CEAB8C011E22C38 /* CareKitClinicalStoreTests.swift in Sources */,
 				A8C78DE736D865A0B11F9928 /* CarePlanStoreTests.swift in Sources */,
 				D77FB22C64EBAF6EF23F875F /* ClinicalDevelopmentModelsTests.swift in Sources */,

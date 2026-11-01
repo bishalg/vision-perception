@@ -8,6 +8,17 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { ZodType } from "zod";
+import {
+  ACTOR_TYPES,
+  auditEntrySchema,
+  auditPageSchema,
+  createUserRequestSchema,
+  orgUserPageSchema,
+  orgUserSchema,
+  participantPageSchema,
+  participantSchema,
+  updateUserRequestSchema,
+} from "./admin";
 import { createMockClient, MOCK_ORG_ID } from "./mock";
 import {
   ATTENTION_FLAGS,
@@ -57,6 +68,34 @@ import {
   updateReviewRequestSchema,
   userSchema,
 } from "./types";
+import {
+  DELIVERY_EVENTS,
+  DELIVERY_STATUSES,
+  DELIVERY_TRIGGERS,
+  EXPORT_FORMATS,
+  EXPORT_KINDS,
+  EXPORT_MODES,
+  EXPORT_PURPOSES,
+  EXPORT_STATUSES,
+  INTEGRATION_ENVIRONMENTS,
+  INTEGRATION_KINDS,
+  INTEGRATION_STATUSES,
+  createIntegrationRequestSchema,
+  deliveryPageSchema,
+  deliverySchema,
+  downloadUrlSchema,
+  exportFiltersSchema,
+  exportPageSchema,
+  exportRequestSchema,
+  exportSchema,
+  integrationConfigSchema,
+  integrationPageSchema,
+  integrationSchema,
+  integrationTestResultSchema,
+  putIntegrationSecretRequestSchema,
+  sshPublicKeySchema,
+  updateIntegrationRequestSchema,
+} from "./exports";
 
 interface Def {
   enum?: string[];
@@ -100,6 +139,30 @@ const OBJECT_SCHEMAS: Record<string, ZodType & { shape: Record<string, ZodType &
   DevicePage: devicePageSchema,
   EnrolCodeRequest: enrolCodeRequestSchema,
   EnrolCodeResponse: enrolCodeResponseSchema,
+  Participant: participantSchema,
+  ParticipantPage: participantPageSchema,
+  OrgUser: orgUserSchema,
+  OrgUserPage: orgUserPageSchema,
+  CreateUserRequest: createUserRequestSchema,
+  UpdateUserRequest: updateUserRequestSchema,
+  AuditEntry: auditEntrySchema,
+  AuditPage: auditPageSchema,
+  // WP-I.8 exports and integrations
+  Export: exportSchema,
+  ExportPage: exportPageSchema,
+  ExportFilters: exportFiltersSchema,
+  ExportRequest: exportRequestSchema,
+  DownloadUrl: downloadUrlSchema,
+  Integration: integrationSchema,
+  IntegrationConfig: integrationConfigSchema,
+  IntegrationPage: integrationPageSchema,
+  IntegrationTestResult: integrationTestResultSchema,
+  CreateIntegrationRequest: createIntegrationRequestSchema,
+  UpdateIntegrationRequest: updateIntegrationRequestSchema,
+  PutIntegrationSecretRequest: putIntegrationSecretRequestSchema,
+  SshPublicKey: sshPublicKeySchema,
+  Delivery: deliverySchema,
+  DeliveryPage: deliveryPageSchema,
 } as never;
 
 /**
@@ -112,6 +175,11 @@ const NO_PUBLISHED_EXAMPLES = new Set([
   "EnrolCodeRequest", "SessionTrackingQuality", "SessionCalibration", "SessionValidation",
   "SessionValidationTarget", "SessionDriftCheck", "SessionRecalibration", "SessionTrackingConditions",
   "SessionTrackingConfidence", "SessionTrackingDevice", "SessionTrackingLoss",
+  "Participant", "ParticipantPage", "OrgUser", "OrgUserPage", "CreateUserRequest", "UpdateUserRequest",
+  "AuditEntry", "AuditPage",
+  "ExportPage", "ExportFilters", "ExportRequest", "DownloadUrl", "Integration", "IntegrationConfig", "IntegrationPage",
+  "IntegrationTestResult", "CreateIntegrationRequest", "UpdateIntegrationRequest", "PutIntegrationSecretRequest",
+  "SshPublicKey", "Delivery", "DeliveryPage",
 ]);
 
 describe("api-v1.json contract", () => {
@@ -161,6 +229,22 @@ describe("api-v1.json contract", () => {
     expect([...RECAL_REASONS]).toEqual(defs.RecalReason!.enum);
     expect([...GEOMETRY_SOURCES]).toEqual(defs.GeometrySource!.enum);
     expect([...ORIENTATIONS]).toEqual(defs.Orientation!.enum);
+    expect([...ACTOR_TYPES]).toEqual(defs.ActorType!.enum);
+  });
+
+  it("export and integration enums match the contract (WP-I.8)", () => {
+    const consts = (name: string) => (defs[name] as unknown as { oneOf: { const: string }[] }).oneOf.map((o) => o.const);
+    expect([...EXPORT_FORMATS]).toEqual(defs.ExportFormat!.enum);
+    expect([...EXPORT_KINDS]).toEqual(defs.ExportKind!.enum);
+    expect([...EXPORT_MODES]).toEqual(defs.ExportMode!.enum);
+    expect([...EXPORT_PURPOSES]).toEqual(defs.ExportPurpose!.enum);
+    expect([...EXPORT_STATUSES]).toEqual(defs.ExportStatus!.enum);
+    expect([...DELIVERY_STATUSES]).toEqual(defs.DeliveryStatus!.enum);
+    expect([...DELIVERY_TRIGGERS]).toEqual(defs.DeliveryTrigger!.enum);
+    expect([...DELIVERY_EVENTS]).toEqual(consts("DeliveryEvent"));
+    expect([...INTEGRATION_KINDS]).toEqual(defs.IntegrationKind!.enum);
+    expect([...INTEGRATION_ENVIRONMENTS]).toEqual(defs.IntegrationEnvironment!.enum);
+    expect([...INTEGRATION_STATUSES]).toEqual(defs.IntegrationStatus!.enum);
   });
 
   it("SessionDetail is accepted with and without tracking_quality (1.6 sessions carry null)", () => {
@@ -241,8 +325,13 @@ describe("mock client produces contract-valid data", () => {
     orgSchema.parse(await api.getOrg(MOCK_ORG_ID));
     reviewPageSchema.parse(await api.listReview(MOCK_ORG_ID, { limit: 100 }));
     devicePageSchema.parse(await api.listDevices(MOCK_ORG_ID));
+    participantPageSchema.parse(await api.listParticipants(MOCK_ORG_ID, { limit: 100 }));
+    orgUserPageSchema.parse(await api.listUsers(MOCK_ORG_ID, { limit: 100 }));
+    auditPageSchema.parse(await api.listAudit(MOCK_ORG_ID, { limit: 100 }));
     enrolCodeResponseSchema.parse(await api.createEnrolCode(MOCK_ORG_ID, {}));
     metricsSchema.parse(await api.getMetrics(MOCK_ORG_ID));
+    exportPageSchema.parse(await api.listExports(MOCK_ORG_ID, { limit: 100 }));
+    integrationPageSchema.parse(await api.listIntegrations(MOCK_ORG_ID));
     tokenPairSchema.parse(await api.login("demo@example.org", "demo"));
   });
 

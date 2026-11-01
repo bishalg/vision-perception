@@ -169,4 +169,53 @@ final class GazeProcessingActorTests: XCTestCase {
         XCTAssertEqual(uiState.trackingStage, .searchingFace)
         XCTAssertFalse(uiState.currentQuality.isValid)
     }
+
+    // TRK-1: untracked frames are buffered, so validRatio reflects track loss.
+    func testUntrackedFramesAreBufferedAndLowerValidRatio() async {
+        let actor = GazeProcessingActor()
+        await actor.startSession()
+
+        var transform = matrix_identity_float4x4
+        transform.columns.3 = simd_float4(0.0, 0.0, -0.48, 1.0)
+        let tracked = FaceAnchorSnapshot(
+            isTracked: true,
+            transform: transform,
+            lookAtPoint: simd_float3(0, 0, 0.48),
+            blendShapes: ["eyeBlinkLeft": 0.05, "eyeBlinkRight": 0.05]
+        )
+        let lost = FaceAnchorSnapshot(isTracked: false, transform: transform, lookAtPoint: simd_float3(0, 0, 0))
+
+        var t = 0.0
+        for _ in 0..<60 { _ = await actor.processFaceAnchor(snapshot: tracked, elapsedSec: t); t += 1.0 / 60.0 }
+        for _ in 0..<30 { _ = await actor.processFaceAnchor(snapshot: lost, elapsedSec: t); t += 1.0 / 60.0 }
+
+        let frames = await actor.getVolatileFrames()
+        XCTAssertEqual(frames.count, 90)
+        let untracked = frames.suffix(30)
+        XCTAssertTrue(untracked.allSatisfy { !$0.gaze.isValid && $0.qualityVerdict == .rejected && $0.gaze.confidence == 0 })
+        XCTAssertEqual(untracked.first!.aoiDwellMs, 1000.0 / 60.0, accuracy: 0.01, "measured interval is kept")
+
+        let (summary, buffered) = await actor.finalizeSession()
+        XCTAssertEqual(buffered.count, 90)
+        XCTAssertEqual(summary.totalFrames, 90)
+        XCTAssertEqual(summary.validRatio, 60.0 / 90.0, accuracy: 0.02)
+    }
+
+    func testUntrackedFramesAreNotBufferedWhenNotRecording() async {
+        let actor = GazeProcessingActor()
+        let lost = FaceAnchorSnapshot(isTracked: false, transform: matrix_identity_float4x4, lookAtPoint: simd_float3(0, 0, 0))
+        _ = await actor.processFaceAnchor(snapshot: lost, elapsedSec: 0.0)
+        let count = await actor.getRecordedFramesCount()
+        XCTAssertEqual(count, 0)
+    }
+
+    func testInterruptionStillBuffersNothingForUntrackedFrames() async {
+        let actor = GazeProcessingActor()
+        await actor.startSession()
+        _ = await actor.interruptionBegan(at: 1.0)
+        let lost = FaceAnchorSnapshot(isTracked: false, transform: matrix_identity_float4x4, lookAtPoint: simd_float3(0, 0, 0))
+        _ = await actor.processFaceAnchor(snapshot: lost, elapsedSec: 1.1)
+        let count = await actor.getRecordedFramesCount()
+        XCTAssertEqual(count, 0)
+    }
 }

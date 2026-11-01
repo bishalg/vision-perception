@@ -247,7 +247,7 @@ public final class GazeSessionController: ObservableObject {
         raycaster: ScreenRaycaster = ScreenRaycaster(),
         qualityGate: GazeQualityGate = GazeQualityGate(),
         aoiTracker: StimulusAOITracker = StimulusAOITracker.makeGeoPrefBattery(),
-        calibrationProfile: GazeCalibrationProfile = GazeCalibrationStore.load(),
+        calibrationProfile: GazeCalibrationProfile = .identity,
         subjectAgeEstimator: SubjectAgeEstimator? = nil
     ) {
         self.raycaster = raycaster
@@ -297,10 +297,17 @@ public final class GazeSessionController: ObservableObject {
 
     // MARK: - Calibration
 
-    /// Persists freshly fitted calibration profile.
+    /// Participant and session the calibration of this controller belongs to (CAL-1).
+    /// Without a binding the controller never loads or persists a stored profile.
+    public var calibrationBinding: CalibrationBinding?
+
+    /// Applies a freshly fitted profile and persists it under `calibrationBinding`.
+    /// With no binding the profile is applied in memory only.
     public func applyAndPersist(calibrationProfile profile: GazeCalibrationProfile) {
         calibrationProfile = profile
-        GazeCalibrationStore.save(profile)
+        if let calibrationBinding {
+            BoundCalibrationStore.save(profile, binding: calibrationBinding)
+        }
         sessionBridge.updateCalibration(profile)
         NotificationCenter.default.post(name: GazeSessionController.didUpdateCalibrationNotification, object: nil)
     }
@@ -308,14 +315,16 @@ public final class GazeSessionController: ObservableObject {
     /// Resets calibration profile to identity transform.
     public func resetCalibration() {
         calibrationProfile = .identity
-        GazeCalibrationStore.reset()
+        BoundCalibrationStore.reset()
         sessionBridge.resetCalibration()
         NotificationCenter.default.post(name: GazeSessionController.didUpdateCalibrationNotification, object: nil)
     }
 
-    /// Reloads persisted profile from store.
+    /// Reloads the profile saved for this controller's binding; identity if none (CAL-1).
     public func reloadCalibrationProfile() {
-        calibrationProfile = GazeCalibrationStore.load()
+        // Unbound controllers keep their own in-memory profile and never read the store.
+        guard let calibrationBinding else { return }
+        calibrationProfile = BoundCalibrationStore.load(for: calibrationBinding)
         sessionBridge.updateCalibration(calibrationProfile)
     }
 
@@ -370,7 +379,9 @@ public final class GazeSessionController: ObservableObject {
             self.aoiTracker = battery
         }
         sessionGeneration &+= 1
-        calibrationProfile = GazeCalibrationStore.load()
+        if let calibrationBinding {
+            calibrationProfile = BoundCalibrationStore.load(for: calibrationBinding)
+        }
         captureSource = source
         recordedFrames.removeAll()
         clipStartTime = Date()

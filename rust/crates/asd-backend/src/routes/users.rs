@@ -538,7 +538,7 @@ async fn get_me(
 ) -> AppResult<Json<UserProfile>> {
     let row = sqlx::query!(
         r#"SELECT email, role, org_id, display_name, professional_registration,
-                (totp_secret IS NOT NULL AND btrim(totp_secret) <> '') AS "totp_enrolled!"
+                (totp_secret_ct IS NOT NULL OR totp_secret IS NOT NULL) AS "totp_enrolled!"
          FROM users WHERE id = $1"#,
         principal.user_id
     )
@@ -578,7 +578,7 @@ async fn patch_me(
     let mut tx = state.db.begin().await?;
     let row = sqlx::query!(
         r#"SELECT email, role, org_id, display_name, professional_registration,
-                (totp_secret IS NOT NULL AND btrim(totp_secret) <> '') AS "totp_enrolled!"
+                (totp_secret_ct IS NOT NULL OR totp_secret IS NOT NULL) AS "totp_enrolled!"
          FROM users WHERE id = $1 FOR UPDATE"#,
         principal.user_id
     )

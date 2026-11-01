@@ -109,6 +109,7 @@ public struct GazePositioningStepView: View {
             }
         }
         .task { await startTracking() }
+        .captureOrientationLocked()
         .onDisappear { stopTracking() }
         .cameraScenePhase(camera) { action in
             switch action {
