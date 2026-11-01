@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE integration_destinations\n         SET archived_at = now(), status = 'disabled', updated_at = now()\n         WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fca21230bcd3457d984f9c56891d204febf999e4320eae763162dcc97e851683"
+}

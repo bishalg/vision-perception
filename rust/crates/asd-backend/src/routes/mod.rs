@@ -23,6 +23,7 @@ pub mod orgs;
 pub mod participant_detail;
 pub mod participants;
 pub mod patient_refs;
+pub mod privacy; // WP-B.9
 pub mod review;
 pub mod sessions;
 pub mod users;
@@ -47,6 +48,7 @@ pub fn v1() -> Router<AppState> {
         .merge(clinical_reviews::router()) // WP-C.10
         .merge(exports::router()) // WP-I.6
         .merge(integrations::router()) // WP-I.7
+        .merge(privacy::router()) // WP-B.9
         // WP-B.5: norm aggregation jobs and runs.
         .merge(jobs::router())
         // WP-B.4: config documents, bundles, device bundle delivery.

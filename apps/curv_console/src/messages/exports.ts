@@ -46,6 +46,8 @@ const formats: Record<ExportFormat, string> = {
   fhir_bundle: "FHIR bundle (one session)",
   fhir_ndjson: "FHIR NDJSON",
   hl7v2: "HL7 v2 message (one session)",
+  dataset_jsonl: "Research dataset (JSONL)",
+  dataset_parquet: "Research dataset (Parquet)",
 };
 
 const sharedExportText = {
@@ -278,4 +280,19 @@ export const integrationsText = {
     unavailable: "The test could not be run.",
   },
   deliveries: { title: "Delivery log" },
+  next: "Next page",
+  first: "First page",
+  showing: (n: number, total: number | null | undefined) =>
+    total == null ? `Showing ${n} destinations` : `Showing ${n} of ${total} destinations`,
+  delete: {
+    title: "Delete destination",
+    intro: "Removes this destination from the list and from export requests. Its delivery log is kept. This cannot be undone.",
+    open: "Delete destination",
+    confirm: (name: string) => `Delete "${name}"? Exports can no longer be delivered to it.`,
+    confirmButton: "Yes, delete",
+    cancel: "Cancel",
+    inFlight: "Deliveries to this destination are still pending. Wait until they are delivered or failed, or disable the destination instead.",
+    failed: "Could not delete the destination.",
+    deleted: "Destination deleted.",
+  },
 };

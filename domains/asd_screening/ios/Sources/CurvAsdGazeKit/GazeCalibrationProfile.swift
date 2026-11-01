@@ -4,7 +4,7 @@ import CoreGraphics
 /// Per-user affine correction from raw ARKit `lookAtPoint` raycast estimates to true
 /// screen-normalized coordinates.
 ///
-/// Raw TrueDepth gaze (`ScreenRaycaster.projectGazeToScreen`) is an uncalibrated
+/// Raw TrueDepth gaze (the Rust pipeline's `rawPointNorm`, `asd-core::gaze::raycast`) is an uncalibrated
 /// anatomical estimate: measured error is 3-6 cm on the glass, which is most of a
 /// phone's 7.1 cm width. A single 2D affine map (6 degrees of freedom, fit from the
 /// 5-point calibration in `BubbleCalibrationView`) absorbs the dominant per-user
@@ -38,6 +38,10 @@ public struct GazeCalibrationProfile: Codable, Sendable, Equatable {
     }
 
     /// Applies the affine map and clamps to the valid screen-normalized range.
+    ///
+    /// Capture no longer calls this (WP-G.9): the processing actor hands the profile to the
+    /// Rust pipeline as a `screenAffine` model, which applies it without the clamp (TRK-2).
+    /// Kept for its tests until WP-G.10 moves calibration into the pipeline.
     public func apply(to raw: CGPoint) -> CGPoint {
         let x = a * Double(raw.x) + b * Double(raw.y) + c
         let y = d * Double(raw.x) + e * Double(raw.y) + f

@@ -19,8 +19,9 @@ mod retry;
 mod url_rules;
 
 pub use request::{
-    build_register_request, build_session_request, build_session_request_json, ClientInfo,
-    SyncRequest, REGISTER_PATH, REGISTER_TIMEOUT_SECS, SESSIONS_PATH, SESSION_TIMEOUT_SECS,
+    build_register_request, build_session_request, build_session_request_json,
+    build_session_request_v1_7, ClientInfo, SyncRequest, REGISTER_PATH, REGISTER_TIMEOUT_SECS,
+    SESSIONS_PATH, SESSION_TIMEOUT_SECS,
 };
 pub use response::{
     classify_register_response, classify_response, retry_after_seconds, IngestAck, RegisterOutcome,

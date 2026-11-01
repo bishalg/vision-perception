@@ -91,5 +91,18 @@ export const adminText = {
     after: "After",
     noChange: "-",
     showing: (shown: number) => `${shown} entries shown`,
+    filters: {
+      label: "Filter the audit log",
+      actor: "Actor id",
+      action: "Action (prefix)",
+      actionHint: "For example integration.",
+      targetType: "Target type",
+      targetId: "Target id",
+      from: "From",
+      to: "To",
+      apply: "Apply filters",
+      reset: "Clear filters",
+      emptyFiltered: "No audit entries match these filters.",
+    },
   },
 } as const;

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, org_id, kind, name, config, status, environment, secret_ct,\n                  secret_key_id, secret_fingerprint, ssh_public_key, created_at, updated_at,\n                  last_test_at, last_test_ok, last_test_error\n           FROM integration_destinations WHERE id = $1",
+  "query": "SELECT id, org_id, kind, name, config, status, environment, secret_ct,\n                  secret_key_id, secret_fingerprint, ssh_public_key, created_at, updated_at,\n                  last_test_at, last_test_ok, last_test_error\n           FROM integration_destinations WHERE id = $1 AND archived_at IS NULL",
   "describe": {
     "columns": [
       {
@@ -204,5 +204,5 @@
       true
     ]
   },
-  "hash": "4f8d9ebb7ec38e6c17ed7ae2130f275c5773e94cf0a805e611e5447969708699"
+  "hash": "fb27ea8d8deb3c676cb6f7b416fca9aba8b28f51ec6c6c69bbae2e0421c04d54"
 }

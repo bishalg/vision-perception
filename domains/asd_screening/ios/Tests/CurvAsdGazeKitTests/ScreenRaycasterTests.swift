@@ -4,7 +4,7 @@ import simd
 
 final class ScreenRaycasterTests: XCTestCase {
     func testScreenCenterRaycast() {
-        let raycaster = ScreenRaycaster(
+        let raycaster = LegacyScreenRaycaster(
             screenWidthPoints: 820.0,
             screenHeightPoints: 1180.0,
             screenWidthMeters: 0.20,
@@ -24,7 +24,7 @@ final class ScreenRaycasterTests: XCTestCase {
     }
 
     func testScreenOffscreenClamping() {
-        let raycaster = ScreenRaycaster(
+        let raycaster = LegacyScreenRaycaster(
             screenWidthPoints: 800.0,
             screenHeightPoints: 1000.0,
             screenWidthMeters: 0.20,
@@ -127,7 +127,7 @@ final class ScreenRaycasterTests: XCTestCase {
     }
 
     func testScreenRaycasterAutoDeviceDefaults() {
-        let raycaster = ScreenRaycaster()
+        let raycaster = LegacyScreenRaycaster()
         XCTAssertGreaterThan(raycaster.screenWidthPoints, 300.0)
         XCTAssertGreaterThan(raycaster.screenHeightPoints, 600.0)
         XCTAssertGreaterThan(raycaster.screenWidthMeters, 0.05)
@@ -153,7 +153,7 @@ final class ScreenRaycasterTests: XCTestCase {
     #endif
 
     func test3DCameraSpaceRaycastCenter() {
-        let raycaster = ScreenRaycaster(
+        let raycaster = LegacyScreenRaycaster(
             screenWidthPoints: 393.0,
             screenHeightPoints: 852.0,
             screenWidthMeters: 0.0715,
@@ -179,7 +179,7 @@ final class ScreenRaycasterTests: XCTestCase {
     }
 
     func test3DCameraSpaceRaycastTopLeft() {
-        let raycaster = ScreenRaycaster(
+        let raycaster = LegacyScreenRaycaster(
             screenWidthPoints: 393.0,
             screenHeightPoints: 852.0,
             screenWidthMeters: 0.0715,
@@ -205,7 +205,7 @@ final class ScreenRaycasterTests: XCTestCase {
     }
 
     func testReverseRaycastIsRejectedAsOutOfBounds() {
-        let raycaster = ScreenRaycaster(
+        let raycaster = LegacyScreenRaycaster(
             screenWidthPoints: 393.0,
             screenHeightPoints: 852.0,
             screenWidthMeters: 0.0715,

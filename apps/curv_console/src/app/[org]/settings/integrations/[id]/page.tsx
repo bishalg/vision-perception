@@ -2,14 +2,20 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { DeliveriesTable } from "@/components/exports/DeliveriesTable";
 import { IntegrationForm } from "@/components/exports/IntegrationForm";
-import { SecretPanel, SshKeyPanel, TestPanel } from "@/components/exports/IntegrationPanels";
+import { DeleteIntegrationPanel, SecretPanel, SshKeyPanel, TestPanel } from "@/components/exports/IntegrationPanels";
 import { TestBadge } from "@/components/exports/IntegrationsTable";
 import { authedApi, currentRole } from "@/lib/auth/server";
 import { parseCursor, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { deliveriesText, integrationsText } from "@/messages/exports";
-import { generateSshKeyAction, putSecretAction, testIntegrationAction, updateIntegrationAction } from "../actions";
+import {
+  deleteIntegrationAction,
+  generateSshKeyAction,
+  putSecretAction,
+  testIntegrationAction,
+  updateIntegrationAction,
+} from "../actions";
 
 const t = integrationsText;
 
@@ -66,6 +72,13 @@ export default async function IntegrationDetailPage({
         <SshKeyPanel integration={integration} generate={generateSshKeyAction.bind(null, org, id)} canManage={canManage} />
       ) : null}
       <TestPanel test={testIntegrationAction.bind(null, org, id)} canManage={canManage} />
+      {canManage ? (
+        <DeleteIntegrationPanel
+          name={integration.name}
+          remove={deleteIntegrationAction.bind(null, org, id)}
+          listHref={`/${encodeURIComponent(org)}/settings/integrations`}
+        />
+      ) : null}
       <h2>{t.deliveries.title}</h2>
       <DeliveriesTable
         items={deliveries.items}

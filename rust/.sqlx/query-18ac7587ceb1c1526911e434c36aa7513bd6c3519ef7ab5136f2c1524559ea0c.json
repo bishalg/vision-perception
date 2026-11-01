@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS (\n               SELECT 1 FROM exports e JOIN jobs j ON j.id = e.job_id\n               WHERE e.org_id = $1 AND e.status = 'running' AND j.status = 'running'\n                 AND ($2::timestamptz IS NULL OR e.started_at <= $2)) AS \"x!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "x!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "18ac7587ceb1c1526911e434c36aa7513bd6c3519ef7ab5136f2c1524559ea0c"
+}

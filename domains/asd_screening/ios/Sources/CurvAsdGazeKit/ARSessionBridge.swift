@@ -1,3 +1,4 @@
+import AsdCore
 import Foundation
 import CoreGraphics
 import CoreVideo
@@ -28,13 +29,18 @@ public final class ARSessionBridge: NSObject, Sendable {
             profile: GazeCalibrationProfile,
             captureSource: CaptureSource,
             stimulusId: String?,
-            originTimestamp: TimeInterval
+            originTimestamp: TimeInterval,
+            orientation: GazeOrientation?
         )
         case frame(FaceAnchorSnapshot, timestamp: TimeInterval)
         case simulated(timeSec: Double, target: CGPoint?, clipTimeSec: Double?, stimulusId: String?, clipMediaTimeSec: Double?)
         case calibration(GazeCalibrationProfile)
         case switchClip(battery: StimulusAOITracker, stimulusId: String?, timestamp: TimeInterval?)
         case clipMediaTime(Double)
+        case endClip
+        case orientation(GazeOrientation)
+        /// Runs an actor call in order with the frames (target API, WP-G.9).
+        case perform(@Sendable (GazeProcessingActor) async -> Void)
         case interruptionBegan(TimeInterval)
         case interruptionEnded(TimeInterval)
         case sessionFailed(TimeInterval)
@@ -120,14 +126,16 @@ public final class ARSessionBridge: NSObject, Sendable {
         profile: GazeCalibrationProfile,
         captureSource: CaptureSource,
         stimulusId: String?,
-        originTimestamp: TimeInterval
+        originTimestamp: TimeInterval,
+        orientation: GazeOrientation? = nil
     ) {
         continuation.yield(.start(
             battery: battery,
             profile: profile,
             captureSource: captureSource,
             stimulusId: stimulusId,
-            originTimestamp: originTimestamp
+            originTimestamp: originTimestamp,
+            orientation: orientation
         ))
     }
 
@@ -173,6 +181,30 @@ public final class ARSessionBridge: NSObject, Sendable {
         continuation.yield(.clipMediaTime(timeSec))
     }
 
+    /// Ends the playing clip (QS-3); frames after this do not count until the next clip.
+    public func endStimulusClip() {
+        continuation.yield(.endClip)
+    }
+
+    /// The interface orientation changed (GEO-3).
+    public func updateOrientation(_ orientation: GazeOrientation) {
+        continuation.yield(.orientation(orientation))
+    }
+
+    /// Runs `body` on the actor in order with every input submitted before this call and
+    /// returns its result; `nil` when the pipeline was torn down before it ran.
+    public func perform<T: Sendable>(
+        _ body: @escaping @Sendable (GazeProcessingActor) async -> T
+    ) async -> T? {
+        let (stream, reply) = AsyncStream<T>.makeStream(bufferingPolicy: .bufferingNewest(1))
+        continuation.yield(.perform { actor in
+            reply.yield(await body(actor))
+            reply.finish()
+        })
+        for await value in stream { return value }
+        return nil
+    }
+
     public func interruptionBegan(at timestamp: TimeInterval) {
         continuation.yield(.interruptionBegan(timestamp))
     }
@@ -212,13 +244,14 @@ public final class ARSessionBridge: NSObject, Sendable {
         uiSink: @Sendable (GazeUIState) -> Void
     ) async {
         switch event {
-        case let .start(battery, profile, captureSource, stimulusId, origin):
+        case let .start(battery, profile, captureSource, stimulusId, origin, orientation):
             await actor.startSession(
                 battery: battery,
                 profile: profile,
                 captureSource: captureSource,
                 stimulusId: stimulusId,
-                originTimestamp: origin
+                originTimestamp: origin,
+                orientation: orientation
             )
         case let .frame(snapshot, timestamp):
             uiSink(await actor.processFaceAnchor(snapshot: snapshot, timestamp: timestamp))
@@ -238,6 +271,12 @@ public final class ARSessionBridge: NSObject, Sendable {
             await actor.switchStimulusClip(battery: battery, stimulusId: stimulusId, at: timestamp)
         case let .clipMediaTime(timeSec):
             await actor.updateClipMediaTime(timeSec)
+        case .endClip:
+            await actor.endStimulusClip()
+        case let .orientation(orientation):
+            await actor.setInterfaceOrientation(orientation)
+        case let .perform(body):
+            await body(actor)
         case let .interruptionBegan(timestamp):
             uiSink(await actor.interruptionBegan(at: timestamp))
         case let .interruptionEnded(timestamp):
@@ -345,7 +384,8 @@ extension ARSessionBridge: ARSessionDelegate {
             }
         }
 
-        let snapshot = faceAnchor.map { FaceAnchorSnapshot(faceAnchor: $0) } ?? .untracked
+        // CNF-2: the frame's light estimate travels with the face (recorded, not a factor).
+        let snapshot = faceAnchor.map { FaceAnchorSnapshot(faceAnchor: $0, lightEstimate: frame.lightEstimate) } ?? .untracked
         submit(snapshot, timestamp: frame.timestamp)
     }
 

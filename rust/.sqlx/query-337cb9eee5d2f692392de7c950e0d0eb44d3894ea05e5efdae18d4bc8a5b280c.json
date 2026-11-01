@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE participants\n             SET erased_at = now(), withdrawn_at = coalesce(withdrawn_at, now()),\n                 age_bracket_at_enrol = NULL, language = NULL, consent_version = NULL,\n                 consent_at = NULL, mode = NULL\n             WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "337cb9eee5d2f692392de7c950e0d0eb44d3894ea05e5efdae18d4bc8a5b280c"
+}

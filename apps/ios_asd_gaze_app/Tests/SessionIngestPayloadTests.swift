@@ -3,9 +3,10 @@ import CurvAsdGazeKit
 import Foundation
 import XCTest
 
-/// WP-A.4: the `POST /v1/sessions` body built from a `GazeSessionRecord` matches the
-/// backend contract exported by WP-D.2 (`docs/spec/schemas/asd/session-v1.6.json`) and
-/// the golden `Tests/Fixtures/expected-session-v1.6.json`.
+/// WP-A.4 / WP-G.9 (SCH-2): the `POST /v1/sessions` body built from a `GazeSessionRecord`
+/// matches the session contract 1.7 (`docs/spec/schemas/asd/session-v1.7.json`) and the
+/// golden `Tests/Fixtures/expected-session-v1.7.json` (the 1.6 golden plus `trackingQuality`
+/// and the per-clip tracking keys).
 final class SessionIngestPayloadTests: XCTestCase {
 
     // MARK: - Fixture
@@ -126,7 +127,12 @@ final class SessionIngestPayloadTests: XCTestCase {
             lowConfidence: false,
             hasBaseline: true,
             weight: 0.30
-        )
+        ).withTracking(ClipTracking(
+            meanSampleConfidence: 0.84,
+            meanFixationConfidence: 0.88,
+            nearestCheckOffsetDeg: 1.1,
+            aoiMinSizeDeg: 4.6
+        ))
         let clipB = PerVideoScoreReport(
             stimulusId: "untagged",
             title: "Untagged frames",
@@ -137,7 +143,7 @@ final class SessionIngestPayloadTests: XCTestCase {
             lowConfidence: true,
             hasBaseline: false,
             weight: 0
-        )
+        ).withTracking(ClipTracking(meanSampleConfidence: 0.41))
         return GazeSessionRecord(
             id: "rec-golden-0001",
             sessionId: "SESS-GOLDEN-0001",
@@ -158,9 +164,21 @@ final class SessionIngestPayloadTests: XCTestCase {
             flatAffectScore: 0.12,
             surpriseScoreMean: 0.18,
             perVideoComposite: 0.74,
-            perVideo: [clipA, clipB]
+            perVideo: [clipA, clipB],
+            trackingQuality: goldenTrackingQuality
         )
     }
+
+    /// The QS-1 record of the golden session. The app never builds one: it carries the Rust
+    /// pipeline's document verbatim, so the fixture's own record is the input here.
+    static let goldenTrackingQuality: JSONValue = {
+        // swiftlint:disable:next force_try
+        let data = try! Data(contentsOf: try! FHIRFixtures.url("expected-session-v1.7.json"))
+        let object = try! JSONSerialization.jsonObject(with: data) as! [String: Any]
+        let raw = object["rawPayload"] as! [String: Any]
+        let quality = try! JSONSerialization.data(withJSONObject: raw["trackingQuality"]!)
+        return try! JSONDecoder().decode(JSONValue.self, from: quality)
+    }()
 
     private func encodedObject(_ payload: SessionIngestPayload) throws -> [String: Any] {
         let data = try SessionPayloadCoding.encoder().encode(payload)
@@ -175,7 +193,7 @@ final class SessionIngestPayloadTests: XCTestCase {
         let object = try encodedObject(payload)
 
         let errors = SessionSchemaFile.validate(object, against: schema, root: schema)
-        XCTAssertEqual(errors, [], "payload must validate against docs/spec/schemas/asd/session-v1.6.json")
+        XCTAssertEqual(errors, [], "payload must validate against docs/spec/schemas/asd/session-v1.7.json")
     }
 
     func testPayloadSendsOnlyKeysTheSchemaDeclares() throws {
@@ -207,15 +225,15 @@ final class SessionIngestPayloadTests: XCTestCase {
     func testPayloadMatchesGoldenFile() throws {
         let payload = try SessionIngestPayload(record: Self.goldenRecord(), attentionFlag: .yellow)
         let actual = try SessionPayloadCoding.encoder().encode(payload)
-        let expected = try Data(contentsOf: try FHIRFixtures.url("expected-session-v1.6.json"))
+        let expected = try Data(contentsOf: try FHIRFixtures.url("expected-session-v1.7.json"))
 
         let actualObject = try JSONSerialization.jsonObject(with: actual) as? NSDictionary
         let expectedObject = try JSONSerialization.jsonObject(with: expected) as? NSDictionary
         XCTAssertNotNil(expectedObject)
         if actualObject != expectedObject {
-            let out = FileManager.default.temporaryDirectory.appendingPathComponent("actual-session-v1.6.json")
+            let out = FileManager.default.temporaryDirectory.appendingPathComponent("actual-session-v1.7.json")
             try? actual.write(to: out)
-            XCTFail("payload differs from Tests/Fixtures/expected-session-v1.6.json; actual written to \(out.path)")
+            XCTFail("payload differs from Tests/Fixtures/expected-session-v1.7.json; actual written to \(out.path)")
         }
     }
 
@@ -281,13 +299,13 @@ final class SessionIngestPayloadTests: XCTestCase {
         XCTAssertEqual(object["calibratedDistanceCm"] as? Double, 38.0)
         XCTAssertEqual(object["qualityVerdict"] as? String, "optimal")
         XCTAssertEqual(object["attentionFlag"] as? String, "green")
-        XCTAssertEqual(object["schemaVersion"] as? String, "1.6")
+        XCTAssertEqual(object["schemaVersion"] as? String, "1.7")
     }
 
     func testWireSchemaVersionDropsTheRecordPrefix() {
         XCTAssertEqual(SessionIngestPayload.wireSchemaVersion("v1.6"), "1.6")
         XCTAssertEqual(SessionIngestPayload.wireSchemaVersion("1.6"), "1.6")
-        XCTAssertEqual(SessionIngestPayload.wireSchemaVersion(GazeSessionRecord.currentSchemaVersion), "1.6")
+        XCTAssertEqual(SessionIngestPayload.wireSchemaVersion(GazeSessionRecord.currentSchemaVersion), "1.7")
     }
 
     func testUnmeasuredMetricsAreAbsentKeysNotDefaults() throws {
@@ -343,7 +361,7 @@ final class SessionIngestPayloadTests: XCTestCase {
         let object = try encodedObject(SessionIngestPayload(record: record, attentionFlag: nil))
         let raw = try XCTUnwrap(object["rawPayload"] as? [String: Any])
         XCTAssertEqual(raw["sessionId"] as? String, record.sessionId)
-        XCTAssertEqual(raw["schemaVersion"] as? String, "v1.6")
+        XCTAssertEqual(raw["schemaVersion"] as? String, "v1.7")
         XCTAssertEqual(raw["captureSource"] as? String, "truedepth")
         XCTAssertEqual(raw["startedAt"] as? String, "2026-10-26T07:33:20.000Z")
         XCTAssertNotNil(raw["perVideo"])
@@ -357,6 +375,62 @@ final class SessionIngestPayloadTests: XCTestCase {
         XCTAssertEqual(decoded.attentionFlag, "red")
         XCTAssertEqual(decoded.rawPayload.startedAt, payload.rawPayload.startedAt)
         XCTAssertEqual(decoded.perVideo?.count, 2)
+    }
+
+    // MARK: - 1.7 tracking (SCH-2, QS-1, QS-3, QS-5)
+
+    func testPerClipTrackingIsInDetailsAndRawPayload() throws {
+        let object = try encodedObject(SessionIngestPayload(record: Self.goldenRecord(), attentionFlag: nil))
+        let rows = try XCTUnwrap(object["perVideo"] as? [[String: Any]])
+        let details = try XCTUnwrap(rows[0]["details"] as? [String: Any])
+        XCTAssertEqual(details["meanSampleConfidence"] as? Double, 0.84)
+        XCTAssertEqual(details["aoiMinSizeDeg"] as? Double, 4.6)
+        let second = try XCTUnwrap(rows[1]["details"] as? [String: Any])
+        XCTAssertNil(second["nearestCheckOffsetDeg"], "not measured: absent")
+        let raw = try XCTUnwrap(object["rawPayload"] as? [String: Any])
+        let rawClips = try XCTUnwrap(raw["perVideo"] as? [[String: Any]])
+        XCTAssertEqual(rawClips[0]["meanFixationConfidence"] as? Double, 0.88)
+        XCTAssertNotNil((raw["trackingQuality"] as? [String: Any])?["verdict"])
+    }
+
+    /// QS-5 / acceptance 16: a record built from a session without its own calibration has no
+    /// `calibratedDistanceCm` at all (no constant 35 cm).
+    func testRecordFromSummaryWithoutCalibrationHasNoDistance() throws {
+        let summary = GazeSessionReportSummary.fixture(sessionId: "NO-CAL")
+        let record = GazeSessionRecord(summary: summary, participantToken: "child-NO-CAL")
+        XCTAssertNil(record.calibratedDistanceCm)
+        XCTAssertEqual(record.schemaVersion, "v1.7")
+        let object = try encodedObject(SessionIngestPayload(record: record, attentionFlag: nil))
+        XCTAssertNil(object["calibratedDistanceCm"])
+        XCTAssertNil((object["rawPayload"] as? [String: Any])?["calibratedDistanceCm"])
+        XCTAssertEqual(SessionSchemaFile.validate(object, against: try SessionSchemaFile.load(), root: try SessionSchemaFile.load()), [])
+    }
+
+    /// The summary's pipeline documents reach the record: trackingQuality verbatim, the
+    /// distance from the calibration pose, and each clip's values on its score report.
+    func testRecordFromSummaryCarriesThePipelineDocuments() throws {
+        let quality = try JSONValue(json: Self.goldenTrackingQuality.jsonString())
+        let summary = GazeSessionReportSummary.fixture(
+            sessionId: "WITH-CAL",
+            trackingQuality: quality,
+            clipTracking: [ClipTrackingEntry(clipId: "stim_05_geopref_split_10s", order: 1,
+                                             tracking: ClipTracking(meanSampleConfidence: 0.7))]
+        )
+        let golden = Self.goldenRecord()
+        let record = GazeSessionRecord(
+            summary: summary,
+            participantToken: "child-WITH-CAL",
+            perVideoComposite: golden.perVideoComposite,
+            perVideo: golden.perVideo?.map { r in
+                PerVideoScoreReport(stimulusId: r.stimulusId, title: r.title, category: r.category, rows: r.rows,
+                                    subscore: r.subscore, validSampleRatio: r.validSampleRatio,
+                                    lowConfidence: r.lowConfidence, hasBaseline: r.hasBaseline, weight: r.weight)
+            }
+        )
+        XCTAssertEqual(record.trackingQuality, quality)
+        XCTAssertEqual(record.calibratedDistanceCm, 38, "the fixture's calibration pose distance")
+        XCTAssertEqual(record.perVideo?[0].meanSampleConfidence, 0.7)
+        XCTAssertNil(record.perVideo?[1].meanSampleConfidence)
     }
 
     // MARK: - Refusals (SIM-5)
@@ -391,7 +465,7 @@ enum SessionSchemaFile {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("docs/spec/schemas/asd/session-v1.6.json")
+            .appendingPathComponent("docs/spec/schemas/asd/session-v1.7.json")
     }
 
     static func load() throws -> [String: Any] {

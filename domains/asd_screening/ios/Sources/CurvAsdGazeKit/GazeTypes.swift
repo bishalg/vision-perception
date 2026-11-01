@@ -20,6 +20,12 @@ public struct GazeTelemetrySample: Codable, Sendable, Equatable {
     public let stimulusId: String?
     /// AVPlayer media clock seconds within the active clip (wraps on loop). Nil when unavailable.
     public let clipMediaTimeSec: Double?
+    /// Per-frame track state from the Rust pipeline (TRK-1, SCH-1 `track_state`); `nil` for
+    /// frames the pipeline did not produce (simulated, legacy).
+    public let trackState: FrameTrackState?
+    /// `true` for a sample filled by GAP-1 interpolation (SCH-1 `gap_filled`); such a sample
+    /// is never valid (GAP-2). `nil` when gap filling did not run.
+    public let gapFilled: Bool?
 
     public init(
         timestampMs: Double,
@@ -35,7 +41,9 @@ public struct GazeTelemetrySample: Codable, Sendable, Equatable {
         distanceToScreenCm: Double = 45.0,
         isValid: Bool = true,
         stimulusId: String? = nil,
-        clipMediaTimeSec: Double? = nil
+        clipMediaTimeSec: Double? = nil,
+        trackState: FrameTrackState? = nil,
+        gapFilled: Bool? = nil
     ) {
         self.timestampMs = timestampMs
         self.videoTimeSec = videoTimeSec
@@ -51,6 +59,8 @@ public struct GazeTelemetrySample: Codable, Sendable, Equatable {
         self.isValid = isValid
         self.stimulusId = stimulusId
         self.clipMediaTimeSec = clipMediaTimeSec
+        self.trackState = trackState
+        self.gapFilled = gapFilled
     }
 
     enum CodingKeys: String, CodingKey {
@@ -68,32 +78,8 @@ public struct GazeTelemetrySample: Codable, Sendable, Equatable {
         case isValid = "valid"
         case stimulusId = "stimulus_id"
         case clipMediaTimeSec = "clip_media_time_sec"
-    }
-}
-
-/// Output of projecting TrueDepth 3D ocular transforms onto 2D screen geometry.
-public struct ScreenRaycastResult: Sendable, Equatable {
-    public let screenPoint: CGPoint
-    public let normalizedPoint: CGPoint
-    public let leftEyePoint: CGPoint?
-    public let rightEyePoint: CGPoint?
-    public let distanceCm: Double
-    public let isWithinScreen: Bool
-
-    public init(
-        screenPoint: CGPoint,
-        normalizedPoint: CGPoint,
-        leftEyePoint: CGPoint? = nil,
-        rightEyePoint: CGPoint? = nil,
-        distanceCm: Double,
-        isWithinScreen: Bool
-    ) {
-        self.screenPoint = screenPoint
-        self.normalizedPoint = normalizedPoint
-        self.leftEyePoint = leftEyePoint
-        self.rightEyePoint = rightEyePoint
-        self.distanceCm = distanceCm
-        self.isWithinScreen = isWithinScreen
+        case trackState = "track_state"
+        case gapFilled = "gap_filled"
     }
 }
 

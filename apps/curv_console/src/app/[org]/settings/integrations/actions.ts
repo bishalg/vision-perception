@@ -149,3 +149,14 @@ export async function testIntegrationAction(
     return failure(err);
   }
 }
+
+/** DELETE /v1/integrations/{id}: archives the destination; 409 while deliveries to it are pending or sending. */
+export async function deleteIntegrationAction(orgId: string, id: string): Promise<ActionResult> {
+  try {
+    await (await authedApi()).deleteIntegration(id);
+    touch(orgId);
+    return { ok: true };
+  } catch (err) {
+    return failure(err);
+  }
+}

@@ -28,7 +28,13 @@ export type UiAction =
   | "export.identified"
   | "export.download"
   | "integration.read"
-  | "integration.manage";
+  | "integration.manage"
+  // WP-C.4 global config documents: ConfigRead; ConfigGlobalManage (create/approve/publish/retire) is superadmin only.
+  | "config.read"
+  | "config.manage"
+  // WP-B.9 erasure requests, participant erasure and the retention sweep (ParticipantErase). Unlike the clinical
+  // actions the backend lets the superadmin through (not clinical content), so it is not in NO_SUPERADMIN.
+  | "participant.erase";
 
 const MATRIX: Record<UiAction, readonly Role[]> = {
   "review.write": ["owner", "admin", "clinician", "reviewer"],
@@ -50,6 +56,9 @@ const MATRIX: Record<UiAction, readonly Role[]> = {
   "export.download": ["owner", "admin", "clinician", "researcher"],
   "integration.read": ["owner", "admin"],
   "integration.manage": ["owner", "admin"],
+  "config.read": ["owner", "admin", "clinician", "researcher"],
+  "config.manage": [],
+  "participant.erase": ["owner", "admin"],
 };
 
 /** RBAC-3: the superadmin short-circuit does not apply to clinical content actions. */

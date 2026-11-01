@@ -4,6 +4,8 @@
 //!
 //! - `POST /v1/orgs/{id}/exports` (`ExportDeidentified`; identified mode also needs
 //!   `ExportIdentified`): validates, queues one `export` job, `202` with the [`Export`];
+//! - `POST /v1/jobs/export-dataset` (`ExportDeidentified`, WP-B.9): the same for a
+//!   de-identified research dataset (`dataset_jsonl` / `dataset_parquet`) of the caller's org;
 //! - `GET /v1/orgs/{id}/exports` and `GET /v1/exports/{id}` (`ExportRead`);
 //! - `POST /v1/exports/{id}/download-url` (`ExportRead`, same org, never superadmin):
 //!   audited, valid five minutes, `410 export-expired` after expiry;
@@ -19,9 +21,9 @@ use std::time::Duration;
 
 use asd_contract::clinical::{settings as org_settings, PatientRefMode};
 use asd_contract::export::{
-    Disclosure, DisclosureDelivery, DisclosurePage, DownloadUrl, Export, ExportFormat, ExportMode,
-    ExportPage, ExportRequest, ExportStatus, DOWNLOAD_URL_TTL_SECS, MAX_REASON_CHARS,
-    MIN_REASON_CHARS,
+    DatasetExportRequest, Disclosure, DisclosureDelivery, DisclosurePage, DownloadUrl, Export,
+    ExportFormat, ExportMode, ExportPage, ExportPurpose, ExportRequest, ExportStatus,
+    DOWNLOAD_URL_TTL_SECS, MAX_REASON_CHARS, MIN_REASON_CHARS,
 };
 use asd_contract::problem::{
     CONFLICT, CONSENT_PURPOSE_MISMATCH, EXPORT_EXPIRED, PATIENT_REF_DISABLED,
@@ -39,7 +41,7 @@ use uuid::Uuid;
 
 use crate::app::AppState;
 use crate::audit::AuditEvent;
-use crate::auth::extractors::{ApiJson, RequestMeta, Require};
+use crate::auth::extractors::{ApiJson, RequestMeta, Require, UserPrincipal};
 use crate::auth::rbac::{self, perm, Action};
 use crate::config::BlobMode;
 use crate::error::{AppError, AppResult};
@@ -52,6 +54,7 @@ use crate::routes::participant_detail::participant_org;
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/orgs/{id}/exports", post(create).get(list))
+        .route("/jobs/export-dataset", post(create_dataset)) // WP-B.9
         .route("/exports/{id}", get(read))
         .route("/exports/{id}/download-url", post(download_url))
         .route("/exports/{id}/file", get(file))
@@ -76,9 +79,44 @@ async fn create(
     ApiJson(req): ApiJson<ExportRequest>,
 ) -> AppResult<(StatusCode, Json<Export>)> {
     let org = auth.org();
-    let role = auth.principal.role;
+    let export = create_export(&state, &auth.principal, org, &meta, req).await?;
+    Ok((StatusCode::ACCEPTED, Json(export)))
+}
+
+/// `POST /v1/jobs/export-dataset` (WP-B.9, 02 §4): a de-identified research dataset of the
+/// caller's own org; the same export pipeline as `POST /v1/orgs/{id}/exports`.
+async fn create_dataset(
+    auth: Require<perm::ExportDeidentified>,
+    State(state): State<AppState>,
+    meta: RequestMeta,
+    ApiJson(req): ApiJson<DatasetExportRequest>,
+) -> AppResult<(StatusCode, Json<Export>)> {
+    // Only org users get ExportDeidentified (superadmin never does, RBAC-3).
+    let org = auth.principal.org_id.ok_or(AppError::NotFound)?;
+    let req = ExportRequest {
+        format: req.format.export_format(),
+        mode: ExportMode::Deidentified,
+        purpose: ExportPurpose::Research,
+        filters: req.filters,
+        destination_ids: Vec::new(),
+        reason: req.reason,
+        include_labels: req.include_labels,
+    };
+    let export = create_export(&state, &auth.principal, org, &meta, req).await?;
+    Ok((StatusCode::ACCEPTED, Json(export)))
+}
+
+/// Validates and queues one export of `org` for `principal` (EXJ-1/2), returning it.
+async fn create_export(
+    state: &AppState,
+    principal: &UserPrincipal,
+    org: Uuid,
+    meta: &RequestMeta,
+    req: ExportRequest,
+) -> AppResult<Export> {
+    let role = principal.role;
     if req.mode == ExportMode::Identified {
-        rbac::authorize(&auth.principal, Action::ExportIdentified, Some(org))?;
+        rbac::authorize(principal, Action::ExportIdentified, Some(org))?;
     }
 
     // ---- body validation (every problem at once)
@@ -98,6 +136,15 @@ async fn create(
     }
     if req.format == ExportFormat::Hl7v2 && req.mode == ExportMode::Deidentified {
         errors.push(bad("mode", "hl7v2 exports are identified only (HL7-3)"));
+    }
+    if export_build::is_dataset(req.format) && req.mode != ExportMode::Deidentified {
+        errors.push(bad("mode", "datasets are de-identified only (XC-4)"));
+    }
+    if req.include_labels && !export_build::is_dataset(req.format) {
+        errors.push(bad(
+            "include_labels",
+            "only dataset formats (dataset_jsonl, dataset_parquet) carry labels",
+        ));
     }
     if export_build::single_session(req.format) && req.filters.session_ids.len() != 1 {
         errors.push(bad(
@@ -188,15 +235,15 @@ async fn create(
         KIND_EXPORT,
         Some(org),
         &export_job::params(id),
-        Some(auth.principal.user_id),
+        Some(principal.user_id),
     )
     .await?;
     sqlx::query!(
         r#"INSERT INTO exports
              (id, org_id, format, mode, purpose, filters, reason, destination_ids,
               include_clinical_content, include_mrn, requested_by, job_id, ttl_hours,
-              download_secret)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)"#,
+              download_secret, include_labels)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)"#,
         id,
         org,
         req.format.as_str(),
@@ -207,10 +254,11 @@ async fn create(
         &destinations,
         include_clinical_content,
         include_mrn,
-        auth.principal.user_id,
+        principal.user_id,
         job.id,
         ttl,
         &secret[..],
+        req.include_labels,
     )
     .execute(&mut *tx)
     .await?;
@@ -223,7 +271,7 @@ async fn create(
         asd_contract::export::DeliveryEvent::ExportReady,
     )
     .await?;
-    AuditEvent::user(&auth.principal, "export.create", "export", id)
+    AuditEvent::user(principal, "export.create", "export", id)
         .org(org)
         .after(json!({
             "format": req.format.as_str(),
@@ -234,16 +282,17 @@ async fn create(
             "reason": reason,
             "include_clinical_content": include_clinical_content,
             "include_mrn": include_mrn,
+            "include_labels": req.include_labels,
             "job_id": job.id,
         }))
-        .meta(&meta)
+        .meta(meta)
         .record(&mut tx)
         .await?;
     tx.commit().await?;
     let row = export_build::load_export(&state.db, id)
         .await?
         .ok_or_else(|| AppError::Internal("export vanished after insert".into()))?;
-    Ok((StatusCode::ACCEPTED, Json(row.to_dto())))
+    Ok(row.to_dto())
 }
 
 #[derive(Debug, Default, Deserialize)]

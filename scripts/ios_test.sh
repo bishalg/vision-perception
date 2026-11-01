@@ -42,6 +42,8 @@ KIT_SCRATCH="${DERIVED_DATA}-kit"
 KIT_TSAN_SCRATCH="${DERIVED_DATA}-kit-tsan"
 REL_DD="${DERIVED_DATA}-rel"
 ASD_TARGET="${ASD_CARGO_TARGET_DIR:-${CARGO_TARGET_DIR:-$ROOT/rust/target}}"
+# rust/rust-toolchain.toml is only picked up inside rust/; pin the same channel for cargo calls from the root.
+export RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-$(sed -n 's/^channel *= *"\(.*\)"/\1/p' "$ROOT/rust/rust-toolchain.toml")}"
 ASD_CORE_PROFILE="${ASD_CORE_PROFILE:-debug}"
 
 case "$DERIVED_DATA" in
@@ -105,6 +107,9 @@ run "$ASD_TARGET/debug/asd-cli" schema check
 run "$ASD_TARGET/debug/asd-cli" schema validate \
   "$ROOT/docs/spec/schemas/asd/session-v1.6.json" \
   "$ROOT/$APP_DIR/Tests/Fixtures/expected-session-v1.6.json"
+run "$ASD_TARGET/debug/asd-cli" schema validate \
+  "$ROOT/docs/spec/schemas/asd/session-v1.7.json" \
+  "$ROOT/$APP_DIR/Tests/Fixtures/expected-session-v1.7.json"
 
 step "Static gate: privacy API use"
 run bash scripts/check_privacy_api_use.sh

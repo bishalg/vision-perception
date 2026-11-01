@@ -8,6 +8,7 @@ import {
 import type {
   AdminApi,
   AuditEntry,
+  AuditQuery,
   CreateUserRequest,
   OrgUser,
   Participant,
@@ -29,6 +30,8 @@ export interface MockAdminContext {
     limit?: number,
   ) => { slice: T[]; next_cursor: string | null; total: number };
   uuid: (seed: number) => string;
+  /** Participant id -> withdrawal time, written by the privacy mock when an erasure is filed (WP-B.9). */
+  withdrawn?: Map<string, string>;
 }
 
 function problem(status: number, slug: string, title: string, detail?: string, params?: [string, string][]): ApiError {
@@ -155,6 +158,7 @@ export function createMockAdmin(ctx: MockAdminContext): AdminApi {
         items: slice.map((p): Participant => {
           const item: Participant & { created_at?: string } = { ...p };
           delete item.created_at;
+          item.withdrawn_at ??= ctx.withdrawn?.get(p.id) ?? null;
           return item;
         }),
         next_cursor,
@@ -166,6 +170,10 @@ export function createMockAdmin(ctx: MockAdminContext): AdminApi {
       const { slice, next_cursor } = ctx.page(users, (u) => [createdAt.get(u.id)!, u.id], query.cursor, query.limit);
       // The backend does not count users (total: null).
       return { items: slice.map((u) => ({ ...u })), next_cursor, total: null };
+    },
+    async getUser(org, id) {
+      ctx.ensureOrg(org);
+      return { ...findUser(id) };
     },
     async createUser(org, request: CreateUserRequest) {
       ctx.ensureOrg(org);
@@ -242,9 +250,32 @@ export function createMockAdmin(ctx: MockAdminContext): AdminApi {
       });
       return { ...user };
     },
-    async listAudit(org, query = {}) {
+    async listAudit(org, query: AuditQuery = {}) {
       ctx.ensureOrg(org);
-      const { slice, next_cursor } = ctx.page(audit, (e) => [e.ts, e.id], query.cursor, query.limit);
+      const params: [string, string][] = [];
+      const time = (name: "from" | "to") => {
+        const raw = query[name]?.trim();
+        if (!raw) return null;
+        const t = Date.parse(raw);
+        if (Number.isNaN(t)) params.push([name, "must be an RFC 3339 timestamp"]);
+        return Number.isNaN(t) ? null : t;
+      };
+      const from = time("from");
+      const to = time("to");
+      if (from !== null && to !== null && from > to) params.push(["from", "must not be after to"]);
+      if (params.length) throw problem(400, "validation-failed", "Validation failed", undefined, params);
+      const text = (v: string | undefined) => v?.trim() || undefined;
+      const [actor, action, targetType, targetId] = [query.actor_id, query.action, query.target_type, query.target_id].map(text);
+      const rows = audit.filter(
+        (e) =>
+          (!actor || e.actor_id === actor) &&
+          (!action || e.action.startsWith(action)) &&
+          (!targetType || e.target_type === targetType) &&
+          (!targetId || e.target_id === targetId) &&
+          (from === null || Date.parse(e.ts) >= from) &&
+          (to === null || Date.parse(e.ts) <= to),
+      );
+      const { slice, next_cursor } = ctx.page(rows, (e) => [e.ts, e.id], query.cursor, query.limit);
       return { items: slice.map((e) => ({ ...e })), next_cursor, total: null };
     },
   };

@@ -210,11 +210,16 @@ async fn run(ctx: &JobContext, job: &Job, export_id: Uuid) -> Result<Value, JobE
     let mut included = Vec::with_capacity(selection.included.len());
     let mut gazes = Vec::new();
     let mut app_versions = Vec::new();
+    let mut labels = Vec::new();
     let mut mrn_reads = 0u32;
     for &i in &selection.included {
         let s = &snap.sessions[i];
-        // SIM-5: health-record formats refuse simulated and synthetic captures.
-        if export_build::needs_gaze(row.format) || export_build::needs_mrn(row.format) {
+        // SIM-5: health-record formats refuse simulated and synthetic captures; ML datasets
+        // (WP-B.9) refuse them too, so generated data never reaches a training set.
+        if export_build::needs_gaze(row.format)
+            || export_build::needs_mrn(row.format)
+            || export_build::is_dataset(row.format)
+        {
             let refused = s
                 .gaze
                 .as_ref()
@@ -248,6 +253,7 @@ async fn run(ctx: &JobContext, job: &Job, export_id: Uuid) -> Result<Value, JobE
         }
         gazes.push(s.gaze.clone());
         app_versions.push(s.app_version.clone());
+        labels.push(s.labels.clone());
         included.push((s.participant_id, rec));
     }
 
@@ -278,6 +284,8 @@ async fn run(ctx: &JobContext, job: &Job, export_id: Uuid) -> Result<Value, JobE
         deid_salt: salt,
         generated_at: &requested_at,
         hl7: &hl7,
+        labels: &labels,
+        include_labels: row.include_labels,
     })
     .map_err(|e: RenderError| permanent(e.to_string()))?;
     drop(records);

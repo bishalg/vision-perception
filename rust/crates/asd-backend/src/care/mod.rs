@@ -9,8 +9,8 @@
 //!   counts, a different body is `409 idempotency-key-reused`). A participant who withdrew
 //!   consent gets `409 participant-withdrawn` and nothing is stored.
 //! - [`summary`]: `GET /v1/participants/{token}/summary`, counts computed in SQL.
-//! - [`request_erasure`]: `POST /v1/participants/{token}/erasure` stores the request and
-//!   withdraws consent now; the deletion itself is the WP-B.9 job.
+//! - [`request_erasure`]: `POST /v1/participants/{token}/erasure` stores the request,
+//!   withdraws consent now and queues the WP-B.9 `erasure` job that deletes the data.
 //!
 //! Every mutation appends its [`AuditEvent`] in the same transaction (AUTH-5), and every
 //! query is scoped to the device's org: another org's participant does not exist here.
@@ -327,6 +327,8 @@ pub async fn request_erasure(
     )
     .execute(&mut *tx)
     .await?;
+    // WP-B.9: the erasure job runs it (the worker also re-queues one that is left pending).
+    crate::jobs::erasure::enqueue(&mut tx, org, row.id, None).await?;
     AuditEvent::device(
         &device,
         "participant.erasure_request",

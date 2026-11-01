@@ -30,7 +30,7 @@
 | WP-G.6 | Contract session v1.7 (`trackingQuality`), `ScoringProfile.trackingQuality` params, schema export | 2 | S | done | session-v1.7.json alongside byte-identical 1.6; all 1.7 fields optional; ScoringProfile 1.1.0 with trackingQuality defaults from asd-core; backend/iOS still 1.6 until G.11/G.9 |
 | WP-G.7 | asd-ffi `GazePipelineHandle` (flat per-frame records) | 2 | S | done | `GazePipelineHandle` + `GazeTelemetryWriterHandle` over UniFFI, byte-identical to asd-core on scripted + 36k-frame sessions; host p99 0.002 ms/frame; also fixed `format_scored_at` to match Foundation exactly (35,191 edge values) |
 | WP-G.8 | iOS bench capture build (`ASD_BENCH_CAPTURE`, raw tracking JSONL, 13-point grid) | 2 | I | todo | BEN-2; depends on G.1, G.0 |
-| WP-G.9 | Kit integration: GazeProcessingActor runs the Rust pipeline; session v1.7 writer; per-frame cost measured | 3 | S | todo | PIPE-4, QS-1, SCH-2; depends on G.7, WP-A.11, G.0, G.6 |
+| WP-G.9 | Kit integration: GazeProcessingActor runs the Rust pipeline; session v1.7 writer; per-frame cost measured | 3 | S | done | 2026-11-01: actor pushes every frame through GazePipelineHandle, sessions posted as 1.7 with trackingQuality + per-clip ClipTracking (asd-sync gains the 1.7 request path); Swift raycast/1-Euro moved to test-only legacy refs; push p99 0.026 ms sim (budget 0.2 ms, device number pending). Until G.10 every live session verdict is `unusable` (calibration recorded as skipped). Scoring fallback (socialPreference 0 / flatAffect 1) still present: owner chose session 1.8 with `scoringStatus` + optional score fields |
 | WP-G.10 | App UI: child-friendly calibration, validation step, inter-clip drift checks, re-calibration prompts | 3 | I | todo | CAL-7..9, VAL-1, DRF-1; depends on G.9 |
 | WP-G.11 | Backend accepts 1.6+1.7, tracking columns, `low_tracking_quality` review rule, API fields | 2 | S | done | 1.6 + 1.7 ingest (1.6 upgraded losslessly), migration 0013 tracking columns, `low_tracking_quality` review rule, list filter + detail `tracking_quality`; distance NULL when unmeasured (no more fabricated 35 cm for 1.7). `report.rs` decodes by schema_version (1.7 without calibratedDistanceCm no longer 500s; report builders never read the distance) |
 | WP-G.12 | Console Quality tab tracking section, drift chart, loss bar, tracking filter | 2 | I | done | Quality tab tracking section (verdict, accuracy, calibration, loss bar, drift chart, conditions), Tracking column + filter, 'Not measured' for nulls/1.6; Playwright 16/16. Gap: drift warn/hard lines need thresholds in the API payload |
@@ -42,7 +42,7 @@
 | WP-R.3 | `asd-contract` (session v1.6, config bundle, API DTOs, schemars export, Ed25519 + JCS signing), `asd-sync` protocol logic, `asd-cli schema|bundle`; regenerate `docs/spec/schemas/asd/*.json` | 1 | S | done | CON-2..7, CON-12; GATE-1 tool |
 | WP-R.4 | `asd-core::norms` (port of `tools/asd_norm_aggregator.py`, 11 tests) + `asd-core::synth` (v2.0, ratios) + `asd-cli norms|synth` | 1 | I | done | CORE-8..9; GATE-2/3 tool |
 | WP-R.5 | `asd-ffi` UniFFI crate + `scripts/build_asd_xcframework.sh` (ios, ios-sim, macOS slices) | 1–2 | S | done | UniFFI 0.32, FFI-1 surface + full asd-sync, 28 boundary tests; 3-slice xcframework (arm64 only) verified from SwiftPM on macOS, iOS sim and device build; deny.toml: MPL-2.0 exception `uniffi_pipeline`, RUSTSEC-2026-0374 ignored (bindgen-only) — add to H-12 |
-| WP-R.6 | `asd-wasm` for console sandbox re-score (feeds WP-C.5) | 2 | S | backlog | depends on R.1, R.3 |
+| WP-R.6 | `asd-wasm` for console sandbox re-score (feeds WP-C.5) | 2 | S | done | 2026-11-01: `rescoreSession`, scoring primitives, `validateBaselines`, `contractInfo`; JSON envelopes; native == wasm32 parity on golden vectors; `scripts/build_asd_wasm.sh`. Open: scoring-profile range checks live in asd-backend (move to asd-contract), `lowConfidenceValidRatio` not applied by core scorer, backend-only `unreliable` flag |
 | WP-B.1 | Rust service scaffold: Axum, sqlx migrations for `02 §3` (+ enrol_codes, refresh_tokens, bundle_adoption), blob store trait (S3/memory), tracing redaction, Dockerfile, docker-compose, health | 1 | S | done | replaces the removed FastAPI scaffold; DEP-1/2, OBS-1 |
 | WP-B.2 | Auth: Argon2id login, EdDSA JWT + rotating refresh families, device tokens, enrol codes (`max_uses`, `expires_at`, `device_id` rotation), RBAC matrix, audit rows + grants | 1 | S | done | AUTH-1..5, CON-10/11; depends on B.1, R.3 |
 | WP-B.3 | `POST /v1/sessions` idempotent ingest (ON CONFLICT, body hash), derived flag via `asd-core`, clip rows, blob URLs (presigned/proxy), org-scoped list/detail/clips/metrics/review, `report.pdf` passthrough | 1 | S | done | ING-1..3, CON-13..21; depends on B.1, R.1, R.3 |
@@ -51,12 +51,12 @@
 | WP-B.6 | Care events (`/v1/care/events`), participant summary, erasure request (port of deleted `shims.py` semantics) | 2 | I | done | 3 device routes, migration 0006, per-event + per-batch idempotency, erasure request withdraws consent (deletion in B.9); 14 tests |
 | WP-B.7 | AWS deployment (ECS Fargate, RDS, S3, Secrets, ALB/ACM, WAF, logs) under `aws_infra/asd/` | 3 | S | todo | H-4, H-11 (IaC language) |
 | WP-B.8 | Server-side PDF regeneration + FHIR bundle endpoint (parity with iOS output, golden tests) | 3 | I | done | New `asd-report` crate (FHIR R4 + PDF), byte goldens + iOS bundle parity; `report.pdf` now server-rendered (`?source=device` = uploaded copy); synthetic → 409. Gaps: M-CHAT/CareKit not on server, age bracket never set at ingest, iOS `_ms` shown as % bug |
-| WP-B.9 | Dataset export job (parquet/jsonl + labels), retention sweep, erasure execution | 3 | S | todo | |
+| WP-B.9 | Dataset export job (parquet/jsonl + labels), retention sweep, erasure execution | 3 | S | done | 2026-11-01 (0017): dataset_jsonl/parquet export formats (always de-identified, research purpose), nightly retention sweep (frames blobs only, per 02 §5) with dry run, erasure job with tombstone; participants with signed clinical records are `held` (ADR-0008 Q2 open); console erasure/retention pages |
 | WP-B.10 | FHIR façade + SMART-on-FHIR server validation (only if a clinic partner needs it) | 4 | S | backlog | |
 | WP-C.1 | Console scaffold: Next.js, auth, layout, sessions table/detail, overview KPIs | 1 | S | done | Live mode vs Rust backend, org switcher, overview/sessions, Playwright 11/11 mock + live; 129 unit tests |
 | WP-C.2 | Review queue + devices/enrol QR | 1 | I | done | Review triage (j/k, 1–4), devices revoke, enrol code + QR. Backend gaps: no `GET /v1/orgs`, review items lack session summary |
 | WP-C.3 | Participants list, users/roles, audit page (participant detail/timeline moved to WP-C.14) | 2 | I | done | 2026-11-01; backend gaps: no invite/password reset, no audit filters, users/audit `total: null` |
-| WP-C.4 | Catalog editor (clips, AOI timeline, batteries) | 2 | S | todo | |
+| WP-C.4 | Catalog editor (clips, AOI timeline, batteries) | 2 | S | done | 2026-11-01; backend gaps: catalog body checked for shape + non-empty clips only (no AOI range, time, duplicate-id or battery checks), body errors carry no JSON path, config problem slugs not in ProblemSlug, no media ref/upload, no org-role drafts (ConfigWrite unused) |
 | WP-C.5 | Baselines editor + scoring profile editor + sandbox re-score + bundle publish with approval | 2 | S | todo | |
 | WP-C.6 | Cohorts, norm-runs, exports, model registry | 3 | I | todo | |
 | WP-C.7 | Replay heatmaps, hi/ne strings, superadmin | 4 | I | backlog | |
@@ -93,7 +93,7 @@
 | WP-E.6 | Security/privacy review pack: threat model, data-flow diagram, DPIA-lite, retention policy, AWS BAA | 3 | A + I | todo | |
 | WP-E.7 | App Store submission dry run (`appstore_precheck`, screenshots, age assurance flag) | 4 | I | backlog | |
 
-**Migration rule (2026-10-31 audit):** backend migrations are applied in order and numbers 0007 and 0010–0012 were never used. A new migration must take the next number above the highest existing one (≥0017 today), never a gap, or it will be applied out of order on databases that already ran later migrations.
+**Migration rule (2026-10-31 audit):** backend migrations are applied in order and numbers 0007 and 0010–0012 were never used. A new migration must take the next number above the highest existing one (≥0019 today), never a gap, or it will be applied out of order on databases that already ran later migrations.
 
 **Audit 2026-10-31 (independent backend-security and gaze/contract reviews, fresh-DB gates, live smoke `scripts/live_smoke.sh`).** Fixed: superadmin/admin clinical-role provisioning bypass, global config publish by org roles, export reclaim overwrite, list indexes, ingest 500s, worklist MRN flag, TOTP replay (0015); gaze recalibration after pose shift, replay retries, failed-recal isolation, empty validation (asd-core); 1.7 report decode; console report link; export missing-artifact 410. Open (owner or follow-up):
 - ~~WP-G.3 gap: per-clip ClipTracking producer~~ done 2026-11-01.
@@ -104,6 +104,7 @@
 - Smoke export download + sha256 needs `ASD_BLOB_BACKEND=s3` (MinIO); the memory store is per process.
 - ~~Flaky timing test `tests/auth.rs`~~ done 2026-11-01 (injectable clock).
 - 2026-11-01: login now requires TOTP for enrolled users (`totp-required`/`totp-invalid`, console code step); seeds encrypted under `ASD_DATA_KEK` (0016, backfilled by `asd-backend migrate`); norm-run promote is superadmin-only. Follow-ups: KEK rotation must re-encrypt seeds (no tool yet); drop plaintext `users.totp_secret` column in a later migration; no TOTP enrolment flow yet.
+- 2026-11-01 console gaps closed (0018): GET org user, audit filters, integrations paging, `GET /v1/orgs/{id}/export-destinations` for exporters, `DELETE /v1/integrations/{id}` archives (409 while deliveries in flight).
 
 ## 1. Phase 1 — Demo-ready vertical slice (2026-10-27 → 2026-11-16)
 

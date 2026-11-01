@@ -63,6 +63,8 @@ let package = Package(
             name: "CurvAsdGazeKitTests",
             dependencies: ["CurvAsdGazeKit", "AsdCore"],
             path: "Tests/CurvAsdGazeKitTests",
+            // Read from the source tree by path (GazePipelineParityTests), not bundled.
+            exclude: ["Fixtures"],
             swiftSettings: [
                 .define("ASD_SIMULATION_ENABLED", .when(configuration: .debug)),
                 .define("ASD_RESEARCH_CLASSIFIER", .when(configuration: .debug))

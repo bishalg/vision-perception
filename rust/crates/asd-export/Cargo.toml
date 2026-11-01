@@ -13,11 +13,13 @@ workspace = true
 # XC-1: pure crate (no I/O, no async). `pdf` and `xlsx` are on in the backend; the iOS
 # static library (future FFI use) builds with `--no-default-features`.
 [features]
-default = ["pdf", "xlsx"]
+default = ["pdf", "xlsx", "parquet"]
 # PDF engine (and, from WP-I.5, embedded font data).
 pdf = ["dep:pdf-writer"]
 # XLSX writer (WP-I.2).
 xlsx = ["dep:rust_xlsxwriter"]
+# Parquet ML datasets (WP-B.9).
+parquet = ["dep:parquet"]
 
 [dependencies]
 asd-core.workspace = true
@@ -49,10 +51,15 @@ flate2 = { version = "1", default-features = false, features = ["rust_backend"] 
 pdf-writer = { version = "0.15", optional = true }
 # XLSX-1 (MIT OR Apache-2.0).
 rust_xlsxwriter = { version = "0.102", optional = true, default-features = false }
+# WP-B.9 dataset files (Apache-2.0, Apache Arrow project). No default features: no Arrow,
+# no compression codecs (datasets are written uncompressed), only the low-level writer.
+parquet = { version = "60", optional = true, default-features = false }
 
 [dev-dependencies]
 # Reads the XLSX back in tests (WP-I.2; MIT), so no binary golden is committed.
 calamine = { version = "0.37", default-features = false }
+# Reads the Parquet dataset back in tests (WP-B.9).
+bytes = "1"
 
 [[test]]
 name = "pdf_report"
@@ -61,3 +68,7 @@ required-features = ["pdf"]
 [[test]]
 name = "xlsx"
 required-features = ["xlsx"]
+
+[[test]]
+name = "dataset"
+required-features = ["parquet"]

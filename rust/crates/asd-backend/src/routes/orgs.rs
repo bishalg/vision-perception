@@ -16,9 +16,12 @@ use asd_contract::clinical::{
     settings as keys, CosignPolicy, Paper, PatientRefMode, WorklistScope, MAX_LETTERHEAD_LINES,
     MAX_LETTERHEAD_LINE_CHARS,
 };
-use axum::extract::State;
+use axum::extract::{Query, State};
 use axum::routing::get;
 use axum::{Json, Router};
+use chrono::{DateTime, Utc};
+use http::Uri;
+use serde::Deserialize;
 use serde_json::{json, Map, Value};
 
 use crate::app::AppState;
@@ -482,23 +485,99 @@ async fn patch_org(
     }))
 }
 
+/// Optional filters of `GET /v1/orgs/{id}/audit` (all combine with AND; empty = absent).
+#[derive(Debug, Default, Deserialize)]
+struct AuditFilter {
+    actor_id: Option<String>,
+    /// Matches by prefix: `integration.` lists every integration action.
+    action: Option<String>,
+    target_type: Option<String>,
+    target_id: Option<String>,
+    /// RFC 3339, inclusive.
+    from: Option<String>,
+    /// RFC 3339, inclusive.
+    to: Option<String>,
+}
+
+const MAX_FILTER_CHARS: usize = 200;
+
+fn filter_text(name: &str, raw: Option<&String>) -> AppResult<Option<String>> {
+    let Some(v) = raw.map(|v| v.trim()).filter(|v| !v.is_empty()) else {
+        return Ok(None);
+    };
+    if v.chars().count() > MAX_FILTER_CHARS {
+        return Err(AppError::Validation(vec![InvalidParam {
+            name: name.into(),
+            reason: format!("must be at most {MAX_FILTER_CHARS} characters"),
+        }]));
+    }
+    Ok(Some(v.to_owned()))
+}
+
+fn filter_time(name: &str, raw: Option<&String>) -> AppResult<Option<DateTime<Utc>>> {
+    let Some(v) = raw.map(|v| v.trim()).filter(|v| !v.is_empty()) else {
+        return Ok(None);
+    };
+    DateTime::parse_from_rfc3339(v)
+        .map(|t| Some(t.with_timezone(&Utc)))
+        .map_err(|_| {
+            AppError::Validation(vec![InvalidParam {
+                name: name.into(),
+                reason: "must be an RFC 3339 timestamp".into(),
+            }])
+        })
+}
+
 async fn list_audit(
     State(state): State<AppState>,
     auth: Require<perm::AuditRead>,
     page: ListParams,
+    uri: Uri,
 ) -> AppResult<Json<AuditPage>> {
     let org = auth.org();
+    let Query(filter) = Query::<AuditFilter>::try_from_uri(&uri).map_err(|_| {
+        AppError::Validation(vec![InvalidParam {
+            name: "query".into(),
+            reason: "malformed query string".into(),
+        }])
+    })?;
     let before_id: Option<i64> = page.cursor_i64()?;
     let limit = page.limit;
+    let actor_id = filter_text("actor_id", filter.actor_id.as_ref())?;
+    let action = filter_text("action", filter.action.as_ref())?;
+    let target_type = filter_text("target_type", filter.target_type.as_ref())?;
+    let target_id = filter_text("target_id", filter.target_id.as_ref())?;
+    let from = filter_time("from", filter.from.as_ref())?;
+    let to = filter_time("to", filter.to.as_ref())?;
+    if let (Some(f), Some(t)) = (from, to) {
+        if f > t {
+            return Err(AppError::Validation(vec![InvalidParam {
+                name: "from".into(),
+                reason: "must not be after to".into(),
+            }]));
+        }
+    }
     let rows = sqlx::query!(
         "SELECT id, ts, actor_type, actor_id, org_id, action, target_type, target_id, before, after
          FROM audit_log
          WHERE org_id = $1 AND ($2::bigint IS NULL OR id < $2)
+           AND ($4::text IS NULL OR actor_id = $4)
+           AND ($5::text IS NULL OR starts_with(action, $5))
+           AND ($6::text IS NULL OR target_type = $6)
+           AND ($7::text IS NULL OR target_id = $7)
+           AND ($8::timestamptz IS NULL OR ts >= $8)
+           AND ($9::timestamptz IS NULL OR ts <= $9)
          ORDER BY id DESC
          LIMIT $3",
         org,
         before_id,
-        i64::from(limit) + 1
+        i64::from(limit) + 1,
+        actor_id,
+        action,
+        target_type,
+        target_id,
+        from,
+        to,
     )
     .fetch_all(&state.db)
     .await?;

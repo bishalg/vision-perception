@@ -1,0 +1,83 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT s.id, s.participant_token, s.frames_blob_key, s.report_pdf_key,\n                  s.idempotency_key,\n                  (EXISTS (SELECT 1 FROM clinical_reviews cr\n                           JOIN clinical_review_versions v ON v.review_id = cr.id\n                           WHERE cr.session_id = s.id AND v.status <> 'draft')\n                   OR EXISTS (SELECT 1 FROM clinical_notes n WHERE n.session_id = s.id)\n                   OR EXISTS (SELECT 1 FROM referral_letters l\n                              WHERE l.participant_id = s.participant_id\n                                AND l.status = 'final' AND s.id = ANY(l.session_ids)))\n                  AS \"held!\"\n           FROM sessions s WHERE s.participant_id = $1 ORDER BY s.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "participant_token",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "participant_token"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "frames_blob_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "frames_blob_key"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "report_pdf_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "report_pdf_key"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "idempotency_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "idempotency_key"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "held!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "41ce1e65b3d693f9b4048f9c2ec611180f7e0167218ce26010362fcdcafc43bd"
+}

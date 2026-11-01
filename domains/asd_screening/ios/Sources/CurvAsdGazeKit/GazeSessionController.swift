@@ -1,3 +1,4 @@
+import AsdCore
 import Foundation
 import CoreGraphics
 import CoreVideo
@@ -43,6 +44,12 @@ public struct GazeSessionReportSummary: Codable, Sendable, Equatable {
     public let interruptionCount: Int
     /// Seconds spent interrupted during recording (CAM-2; filled by WP-2.1).
     public let interruptedSec: Double
+    /// The session `trackingQuality` record (QS-1) from the Rust gaze pipeline, carried
+    /// verbatim; `nil` when the pipeline did not run (simulated, or a summary from before
+    /// WP-G.9).
+    public let trackingQuality: JSONValue?
+    /// Per-clip tracking values (QS-3, CNF-3) in play order; `nil` when the pipeline did not run.
+    public let clipTracking: [ClipTrackingEntry]?
 
     public init(
         sessionId: String,
@@ -64,7 +71,9 @@ public struct GazeSessionReportSummary: Codable, Sendable, Equatable {
         qualityVerdict: GazeQualityGate.Verdict,
         subjectAgeSignal: SubjectAgeSignal?,
         interruptionCount: Int,
-        interruptedSec: Double
+        interruptedSec: Double,
+        trackingQuality: JSONValue? = nil,
+        clipTracking: [ClipTrackingEntry]? = nil
     ) {
         self.sessionId = sessionId
         self.captureSource = captureSource
@@ -86,6 +95,8 @@ public struct GazeSessionReportSummary: Codable, Sendable, Equatable {
         self.subjectAgeSignal = subjectAgeSignal
         self.interruptionCount = interruptionCount
         self.interruptedSec = interruptedSec
+        self.trackingQuality = trackingQuality
+        self.clipTracking = clipTracking
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -94,6 +105,7 @@ public struct GazeSessionReportSummary: Codable, Sendable, Equatable {
         case eyeDwellRatio, mouthDwellRatio, firstEyeLatencyMs
         case socialSmileIntensityMean, smileReactivityIndex, flatAffectScore, surpriseScoreMean
         case qualityVerdict, subjectAgeSignal, interruptionCount, interruptedSec
+        case trackingQuality, clipTracking
     }
 
     /// Tolerates summary lines written before provenance and optional metrics existed
@@ -132,6 +144,8 @@ public struct GazeSessionReportSummary: Codable, Sendable, Equatable {
         subjectAgeSignal = try c.decodeIfPresent(SubjectAgeSignal.self, forKey: .subjectAgeSignal)
         interruptionCount = try c.decodeIfPresent(Int.self, forKey: .interruptionCount) ?? 0
         interruptedSec = try c.decodeIfPresent(Double.self, forKey: .interruptedSec) ?? 0
+        trackingQuality = try c.decodeIfPresent(JSONValue.self, forKey: .trackingQuality)
+        clipTracking = try c.decodeIfPresent([ClipTrackingEntry].self, forKey: .clipTracking)
     }
 
 }
@@ -175,7 +189,6 @@ public final class GazeSessionController: ObservableObject {
 
     @Published public private(set) var trackingStage: TrackingStage = .searchingFace
 
-    public let raycaster: ScreenRaycaster
     public let qualityGate: GazeQualityGate
     /// Main-actor copy of the active AOI battery (the actor holds the one used for hit testing).
     public private(set) var aoiTracker: StimulusAOITracker
@@ -244,18 +257,15 @@ public final class GazeSessionController: ObservableObject {
     #endif
 
     public init(
-        raycaster: ScreenRaycaster = ScreenRaycaster(),
         qualityGate: GazeQualityGate = GazeQualityGate(),
         aoiTracker: StimulusAOITracker = StimulusAOITracker.makeGeoPrefBattery(),
         calibrationProfile: GazeCalibrationProfile = .identity,
         subjectAgeEstimator: SubjectAgeEstimator? = nil
     ) {
-        self.raycaster = raycaster
         self.qualityGate = qualityGate
         self.aoiTracker = aoiTracker
         self.calibrationProfile = calibrationProfile
         let actor = GazeProcessingActor(
-            raycaster: raycaster,
             qualityGate: qualityGate,
             aoiTracker: aoiTracker,
             calibrationProfile: calibrationProfile
@@ -395,7 +405,8 @@ public final class GazeSessionController: ObservableObject {
             profile: calibrationProfile,
             captureSource: source,
             stimulusId: stimulusId,
-            originTimestamp: ProcessInfo.processInfo.systemUptime
+            originTimestamp: ProcessInfo.processInfo.systemUptime,
+            orientation: Self.interfaceOrientation()
         )
 
         isRecording = true
@@ -424,6 +435,80 @@ public final class GazeSessionController: ObservableObject {
     public func updateClipMediaTime(_ timeSec: Double) {
         clipMediaTime = timeSec
         sessionBridge.updateClipMediaTime(timeSec)
+    }
+
+    /// Ends the playing clip without starting another (QS-3): call it when the clip stops and
+    /// before the drift check that follows it. `switchStimulusClip` opens the next clip.
+    public func endStimulusClip() {
+        sessionBridge.endStimulusClip()
+    }
+
+    /// The interface orientation changed during capture (GEO-3).
+    public func updateInterfaceOrientation(_ orientation: GazeOrientation) {
+        sessionBridge.updateOrientation(orientation)
+    }
+
+    /// The foreground scene's orientation on iOS; `nil` elsewhere (the pipeline keeps its own).
+    private static func interfaceOrientation() -> GazeOrientation? {
+        #if canImport(UIKit) && !os(watchOS) && !os(visionOS)
+        return GazeDeviceInfo.currentInterfaceOrientation()
+        #else
+        return nil
+        #endif
+    }
+
+    // MARK: - Targets (calibration, validation, drift checks; PIPE-1, for WP-G.10)
+    //
+    // Each call runs on the processing actor in order with the frames already submitted, so
+    // a target window opens exactly at the next frame after the call.
+
+    /// Starts a (re-)calibration in the session pipeline.
+    public func startCalibration(layout: [GazeVec2]? = nil, reason: GazeRecalReason? = nil) async throws {
+        let result: Result<Void, any Error>? = await sessionBridge.perform { actor in
+            do { return .success(try await actor.startCalibration(layout: layout, reason: reason)) } catch { return .failure(error) }
+        }
+        try (result ?? .failure(GazeProcessingActor.TargetError.noPipeline)).get()
+    }
+
+    /// What the calibration UI should show next; `nil` when no calibration is running.
+    public func calibrationStatus() async -> GazeCalibrationStatus? {
+        await sessionBridge.perform { await $0.calibrationStatus() } ?? nil
+    }
+
+    /// Opens a calibration, validation or drift-check window at the next frame.
+    public func beginTarget(kind: GazeTargetKind, at target: GazeVec2) async throws {
+        let result: Result<Void, any Error>? = await sessionBridge.perform { actor in
+            do { return .success(try await actor.beginTarget(kind: kind, at: target)) } catch { return .failure(error) }
+        }
+        try (result ?? .failure(GazeProcessingActor.TargetError.noPipeline)).get()
+    }
+
+    /// Whether the open window has collected its frame time (then call `endTarget`).
+    public func targetComplete() async -> Bool {
+        await sessionBridge.perform { await $0.targetComplete() } ?? false
+    }
+
+    /// Closes the open window and returns its result.
+    public func endTarget() async -> GazeTargetResultRecord? {
+        await sessionBridge.perform { await $0.endTarget() } ?? nil
+    }
+
+    /// Fits, scores and (unless it failed) applies the running calibration.
+    public func finishCalibration() async throws -> GazeCalibrationOutcomeRecord {
+        let result: Result<GazeCalibrationOutcomeRecord, any Error>? = await sessionBridge.perform { actor in
+            do { return .success(try await actor.finishCalibration()) } catch { return .failure(error) }
+        }
+        return try (result ?? .failure(GazeProcessingActor.TargetError.noPipeline)).get()
+    }
+
+    /// Re-calibration advice (CAL-9, VAL-4, DRF-3); act on it only at a clip boundary.
+    public func recalibrationAdvice() async -> GazeRecalAdviceRecord? {
+        await sessionBridge.perform { await $0.recalibrationAdvice() } ?? nil
+    }
+
+    /// Where to show the next drift check target.
+    public func nextCheckTarget() async -> GazeVec2? {
+        await sessionBridge.perform { await $0.nextCheckTarget() } ?? nil
     }
 
     /// Ends the session and returns its summary (CONC-4).

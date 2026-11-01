@@ -49,8 +49,8 @@ use tokio::task::JoinHandle;
 use uuid::Uuid;
 
 use super::{
-    deliver, export, norm_aggregate, Job, JobContext, KIND_DELIVER, KIND_EXPORT,
-    KIND_NORM_AGGREGATE,
+    deliver, erasure, export, norm_aggregate, retention, Job, JobContext, KIND_DELIVER,
+    KIND_ERASURE, KIND_EXPORT, KIND_NORM_AGGREGATE, KIND_RETENTION_SWEEP,
 };
 use crate::error::AppError;
 
@@ -60,10 +60,15 @@ pub const MAX_ATTEMPTS: i32 = 3;
 /// (`asd_contract::export::DELIVERY_BACKOFF_SECS`) before it is `failed`.
 pub const DELIVERY_MAX_ATTEMPTS: i32 = 1 + asd_contract::export::DELIVERY_BACKOFF_SECS.len() as i32;
 
+/// WP-B.9: an erasure waits for running exports (5-minute delays) before it gives up; the
+/// worker re-queues a pending request whose job failed an hour later anyway.
+pub const ERASURE_MAX_ATTEMPTS: i32 = 6;
+
 /// The attempt limit of a job kind.
 pub fn max_attempts(kind: &str) -> i32 {
     match kind {
         KIND_DELIVER => DELIVERY_MAX_ATTEMPTS,
+        KIND_ERASURE => ERASURE_MAX_ATTEMPTS,
         _ => MAX_ATTEMPTS,
     }
 }
@@ -181,7 +186,9 @@ pub async fn execute(pool: &PgPool, job: &Job) -> Result<Outcome, sqlx::Error> {
 pub async fn execute_in(ctx: &JobContext, job: &Job) -> Result<Outcome, sqlx::Error> {
     let result = match job.kind.as_str() {
         KIND_NORM_AGGREGATE => run_in_transaction(&ctx.pool, job).await,
-        KIND_EXPORT | KIND_DELIVER => run_phased(ctx, job).await,
+        KIND_EXPORT | KIND_DELIVER | KIND_ERASURE | KIND_RETENTION_SWEEP => {
+            run_phased(ctx, job).await
+        }
         other => Err(JobError::Permanent(format!("unknown job kind {other:?}"))),
     };
     match result {
@@ -221,6 +228,8 @@ async fn run_phased(ctx: &JobContext, job: &Job) -> Result<(), JobError> {
     let heartbeat = Heartbeat::start(ctx.pool.clone(), job.id, job.attempts, ctx.heartbeat_every);
     let result = match job.kind.as_str() {
         KIND_DELIVER => deliver::execute(ctx, job).await,
+        KIND_ERASURE => erasure::execute(ctx, job).await,
+        KIND_RETENTION_SWEEP => retention::execute(ctx, job).await,
         _ => export::execute(ctx, job).await,
     };
     heartbeat.stop().await;
@@ -409,8 +418,9 @@ pub async fn worker_loop(
     .await;
 }
 
-/// The `asd-backend worker` loop: every minute reclaim orphans and sweep expired export
-/// artifacts (EXJ-4), drain the queue, sleep when idle, stop when `shutdown` resolves
+/// The `asd-backend worker` loop: every minute reclaim orphans, sweep expired export
+/// artifacts (EXJ-4) and queue the nightly retention sweep and pending erasures (WP-B.9),
+/// drain the queue, sleep when idle, stop when `shutdown` resolves
 /// (between jobs; a running job finishes).
 pub async fn worker_loop_in(
     ctx: JobContext,
@@ -433,6 +443,17 @@ pub async fn worker_loop_in(
                     Ok(0) => {}
                     Ok(n) => tracing::info!(expired = n, "expired export artifacts"),
                     Err(e) => tracing::warn!(error = %e, "export expiry sweep failed"),
+                }
+                // WP-B.9: the nightly retention sweep and erasure requests without a job.
+                match retention::schedule_nightly(&ctx.pool).await {
+                    Ok(Some(id)) => tracing::info!(job_id = %id, "queued the retention sweep"),
+                    Ok(None) => {}
+                    Err(e) => tracing::warn!(error = %e, "retention sweep scheduling failed"),
+                }
+                match erasure::schedule_pending(&ctx.pool).await {
+                    Ok(0) => {}
+                    Ok(n) => tracing::info!(queued = n, "queued pending erasure requests"),
+                    Err(e) => tracing::warn!(error = %e, "erasure scheduling failed"),
                 }
             }
             last_reclaim = Some(tokio::time::Instant::now());

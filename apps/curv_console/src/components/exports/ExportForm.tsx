@@ -1,11 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
-import { EXPORT_FORMATS, EXPORT_MODES, EXPORT_PURPOSES, type Integration } from "@/lib/api/exports";
+import { useActionState, useState } from "react";
+import {
+  EXPORT_FORMATS,
+  EXPORT_MODES,
+  EXPORT_PURPOSES,
+  isDatasetFormat,
+  type DeliverableDestination,
+  type ExportFormat,
+} from "@/lib/api/exports";
 import { ATTENTION_FLAGS, QUALITY_VERDICTS } from "@/lib/api/types";
 import { CLINICAL_STATES } from "@/lib/api/clinical";
 import { exportsText } from "@/messages/exports";
+import { privacyText } from "@/messages/privacy";
 import { failureText, type ActionResult } from "./types";
 
 const t = exportsText.create;
@@ -27,18 +35,21 @@ export function ExportForm({
   create: (formData: FormData) => Promise<ActionResult<{ id: string }>>;
   canCreate: boolean;
   canIdentified: boolean;
-  /** Active destinations the caller may list (admins and owners); empty hides the chooser. */
-  destinations: Integration[];
+  /** Active destinations an exporter may pick from (`GET /orgs/{id}/export-destinations`); empty hides the chooser. */
+  destinations: DeliverableDestination[];
   orgId: string;
 }) {
   const [state, action, pending] = useActionState<State, FormData>((_prev, fd) => create(fd), null);
+  const [format, setFormat] = useState<ExportFormat>("csv");
   if (!canCreate) return <p className="muted">{t.readOnly}</p>;
-  const modes = EXPORT_MODES.filter((m) => m !== "identified" || canIdentified);
+  // Datasets (WP-B.9) are always de-identified research exports: the identified mode and the purpose are fixed.
+  const dataset = isDatasetFormat(format);
+  const modes = EXPORT_MODES.filter((m) => (m !== "identified" || canIdentified) && !(dataset && m === "identified"));
   return (
     <form action={action} className="stack panel" aria-label={t.title}>
       <label>
         {t.format}
-        <select name="format" defaultValue="csv">
+        <select name="format" value={format} onChange={(e) => setFormat(e.target.value as ExportFormat)}>
           {EXPORT_FORMATS.filter((f) => f !== "pdf_summary").map((f) => (
             <option key={f} value={f}>{exportsText.formats[f]}</option>
           ))}
@@ -46,21 +57,31 @@ export function ExportForm({
       </label>
       <label>
         {t.purpose}
-        <select name="purpose" defaultValue="research">
-          {EXPORT_PURPOSES.map((p) => (
+        <select name="purpose" key={dataset ? "ds" : "std"} defaultValue="research" disabled={dataset}>
+          {EXPORT_PURPOSES.filter((p) => !dataset || p === "research").map((p) => (
             <option key={p} value={p}>{exportsText.purposes[p]}</option>
           ))}
         </select>
       </label>
       <label>
         {t.mode}
-        <select name="mode" defaultValue="deidentified">
+        <select name="mode" key={dataset ? "ds" : "std"} defaultValue="deidentified" disabled={dataset}>
           {modes.map((m) => (
             <option key={m} value={m}>{exportsText.modes[m]}</option>
           ))}
         </select>
       </label>
       <p className="muted">{t.purposeHint}</p>
+      {dataset ? (
+        <>
+          <p className="muted">{privacyText.dataset.deidentifiedOnly}</p>
+          <label className="check">
+            <input type="checkbox" name="include_labels" defaultChecked />
+            {privacyText.dataset.labels}
+          </label>
+          <p className="muted">{privacyText.dataset.labelsHint}</p>
+        </>
+      ) : null}
       <label>
         {t.reason}
         <textarea name="reason" rows={3} minLength={10} maxLength={500} required />
@@ -123,7 +144,8 @@ export function ExportForm({
           <textarea name="participant_ids" rows={2} autoComplete="off" />
         </label>
       </fieldset>
-      {destinations.length > 0 ? (
+      {destinations.length > 0 && dataset ? <p className="muted">{privacyText.dataset.destinationsOff}</p> : null}
+      {destinations.length > 0 && !dataset ? (
         <fieldset>
           <legend>{t.destinations}</legend>
           {destinations.map((d) => (

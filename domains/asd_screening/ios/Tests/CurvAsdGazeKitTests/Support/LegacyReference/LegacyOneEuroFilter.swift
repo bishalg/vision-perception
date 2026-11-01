@@ -1,3 +1,7 @@
+// Former Swift body of `OneEuroFilter` / `OneEuroFilter2D`, moved here by WP-G.9 (PIPE-3): the
+// 1-Euro filter now runs in the Rust pipeline (`asd-core::gaze::filter`, matched to this code
+// to 1e-12 by the `one_euro_swift_v1` golden). This copy is the reference for one release
+// (OneEuroFilterTests). Do not change its behaviour.
 import Foundation
 import CoreGraphics
 
@@ -17,13 +21,13 @@ import CoreGraphics
 //   dCutoff (Hz):    Cutoff for the velocity estimate itself (avoids derivative noise amplification).
 
 /// One-dimensional 1 Euro Filter for a single scalar signal stream.
-public final class OneEuroFilter: @unchecked Sendable {
-    public var minCutoff: Double
-    public var beta: Double
-    public var dCutoff: Double
+final class LegacyOneEuroFilter: @unchecked Sendable {
+    var minCutoff: Double
+    var beta: Double
+    var dCutoff: Double
 
-    private var xFilt: LowPassFilter
-    private var dxFilt: LowPassFilter
+    private var xFilt: LegacyLowPassFilter
+    private var dxFilt: LegacyLowPassFilter
     private var lastTimestamp: Double?
     private let lock = NSLock()
 
@@ -31,12 +35,12 @@ public final class OneEuroFilter: @unchecked Sendable {
     ///   - minCutoff: Minimum cutoff frequency in Hz. Default 1.2 Hz balances jitter vs responsiveness.
     ///   - beta: Speed coefficient — controls how fast the cutoff rises with velocity. Default 0.015.
     ///   - dCutoff: Cutoff for the derivative (velocity) estimate. Default 1.0 Hz.
-    public init(minCutoff: Double = 1.2, beta: Double = 0.015, dCutoff: Double = 1.0) {
+    init(minCutoff: Double = 1.2, beta: Double = 0.015, dCutoff: Double = 1.0) {
         self.minCutoff = minCutoff
         self.beta = beta
         self.dCutoff = dCutoff
-        self.xFilt = LowPassFilter(alpha: 1.0)
-        self.dxFilt = LowPassFilter(alpha: 1.0)
+        self.xFilt = LegacyLowPassFilter(alpha: 1.0)
+        self.dxFilt = LegacyLowPassFilter(alpha: 1.0)
     }
 
     /// Processes the next raw sample and returns the filtered value.
@@ -44,7 +48,7 @@ public final class OneEuroFilter: @unchecked Sendable {
     ///   - value: The raw noisy signal value.
     ///   - timestamp: Wall-clock timestamp in seconds (e.g. from `CACurrentMediaTime()`).
     /// - Returns: The filtered value.
-    public func filter(value: Double, timestamp: Double) -> Double {
+    func filter(value: Double, timestamp: Double) -> Double {
         lock.lock()
         defer { lock.unlock() }
 
@@ -66,12 +70,12 @@ public final class OneEuroFilter: @unchecked Sendable {
     }
 
     /// Resets the filter state (call when switching to a new tracking session).
-    public func reset() {
+    func reset() {
         lock.lock()
         defer { lock.unlock() }
 
-        xFilt = LowPassFilter(alpha: 1.0)
-        dxFilt = LowPassFilter(alpha: 1.0)
+        xFilt = LegacyLowPassFilter(alpha: 1.0)
+        dxFilt = LegacyLowPassFilter(alpha: 1.0)
         lastTimestamp = nil
     }
 
@@ -87,24 +91,24 @@ public final class OneEuroFilter: @unchecked Sendable {
 
 /// Two-dimensional 1 Euro Filter for screen-coordinate gaze positions.
 /// Filters x and y axes independently with shared parameters.
-public final class OneEuroFilter2D: @unchecked Sendable {
-    private let filterX: OneEuroFilter
-    private let filterY: OneEuroFilter
+final class LegacyOneEuroFilter2D: @unchecked Sendable {
+    private let filterX: LegacyOneEuroFilter
+    private let filterY: LegacyOneEuroFilter
 
     /// - Parameters:
     ///   - minCutoff: Minimum cutoff frequency in Hz. Default 1.2 Hz.
     ///   - beta: Speed coefficient. Default 0.015 — tuned for 60 Hz TrueDepth gaze at 40–50 cm.
     ///   - dCutoff: Derivative cutoff in Hz. Default 1.0 Hz.
-    public init(minCutoff: Double = 1.2, beta: Double = 0.015, dCutoff: Double = 1.0) {
-        self.filterX = OneEuroFilter(minCutoff: minCutoff, beta: beta, dCutoff: dCutoff)
-        self.filterY = OneEuroFilter(minCutoff: minCutoff, beta: beta, dCutoff: dCutoff)
+    init(minCutoff: Double = 1.2, beta: Double = 0.015, dCutoff: Double = 1.0) {
+        self.filterX = LegacyOneEuroFilter(minCutoff: minCutoff, beta: beta, dCutoff: dCutoff)
+        self.filterY = LegacyOneEuroFilter(minCutoff: minCutoff, beta: beta, dCutoff: dCutoff)
     }
 
     /// Filters a raw gaze point and returns the smoothed result.
     /// - Parameters:
     ///   - point: Raw normalized gaze point (x, y in [0, 1]).
     ///   - timestamp: Wall-clock time in seconds (use `CACurrentMediaTime()`).
-    public func filter(point: CGPoint, timestamp: Double) -> CGPoint {
+    func filter(point: CGPoint, timestamp: Double) -> CGPoint {
         CGPoint(
             x: filterX.filter(value: Double(point.x), timestamp: timestamp),
             y: filterY.filter(value: Double(point.y), timestamp: timestamp)
@@ -112,7 +116,7 @@ public final class OneEuroFilter2D: @unchecked Sendable {
     }
 
     /// Resets both axis filters — call at the start of a new ARKit session.
-    public func reset() {
+    func reset() {
         filterX.reset()
         filterY.reset()
     }
@@ -120,8 +124,8 @@ public final class OneEuroFilter2D: @unchecked Sendable {
 
 // MARK: - Internal Low-Pass Filter
 
-/// Simple exponential moving average filter — used internally by `OneEuroFilter`.
-private final class LowPassFilter {
+/// Simple exponential moving average filter — used internally by `LegacyOneEuroFilter`.
+private final class LegacyLowPassFilter {
     private(set) var lastRaw: Double?
     private var lastFiltered: Double?
     private var alpha: Double

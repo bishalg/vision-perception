@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE sessions SET frames_blob_key = NULL, frames_purged_at = now()\n                     WHERE id = ANY($1) AND frames_purged_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "11e3dc2f354bb13ff990e89d599dd2c6048a0b48965d90e79851a42748ce662e"
+}

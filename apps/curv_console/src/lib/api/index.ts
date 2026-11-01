@@ -7,6 +7,8 @@ export * from "./types";
 export * from "./clinical";
 export * from "./admin";
 export * from "./exports";
+export * from "./catalog";
+export * from "./privacy";
 
 export type ApiMode = "mock" | "live";
 

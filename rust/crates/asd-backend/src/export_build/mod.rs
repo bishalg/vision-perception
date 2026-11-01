@@ -20,6 +20,7 @@ use asd_contract::export::{
     DEFAULT_TTL_HOURS, MAX_TTL_HOURS, MIN_TTL_HOURS,
 };
 use asd_contract::session_v1_6::GazeSessionRecord;
+use asd_export::dataset::{self, DatasetLabel, DatasetOptions};
 use asd_export::fhir::clinical::{
     self as fhir_clinical, BundleKind, ClinicalBundleInput, FhirProfile,
 };
@@ -57,6 +58,8 @@ pub struct ExportRow {
     pub destination_ids: Vec<Uuid>,
     pub include_clinical_content: bool,
     pub include_mrn: bool,
+    /// Dataset formats: add the sessions' reviewer labels (WP-B.9).
+    pub include_labels: bool,
     pub requested_by: Option<Uuid>,
     pub job_id: Option<Uuid>,
     /// The job gave up (`jobs.status = failed`) while the row still says queued/running.
@@ -94,7 +97,7 @@ pub async fn load_export(db: &PgPool, id: Uuid) -> AppResult<Option<ExportRow>> 
     let Some(r) = sqlx::query!(
         r#"SELECT e.id, e.org_id, e.kind, e.format, e.mode, e.purpose, e.status, e.filters,
                   e.reason, e.destination_ids, e.include_clinical_content, e.include_mrn,
-                  e.requested_by, e.job_id, e.ttl_hours, e.download_secret, e.blob_key,
+                  e.include_labels, e.requested_by, e.job_id, e.ttl_hours, e.download_secret, e.blob_key,
                   e.file_name, e.content_type, e.sha256, e.byte_size, e.row_count, e.excluded,
                   e.error, e.created_at, e.completed_at, e.expires_at,
                   coalesce(j.status = 'failed', false) AS "job_failed!"
@@ -120,6 +123,7 @@ pub async fn load_export(db: &PgPool, id: Uuid) -> AppResult<Option<ExportRow>> 
         destination_ids: r.destination_ids,
         include_clinical_content: r.include_clinical_content,
         include_mrn: r.include_mrn,
+        include_labels: r.include_labels,
         requested_by: r.requested_by,
         job_id: r.job_id,
         job_failed: r.job_failed,
@@ -198,6 +202,7 @@ impl ExportRow {
             } else {
                 None
             },
+            include_labels: self.include_labels,
         }
     }
 }
@@ -238,6 +243,14 @@ pub fn single_session(format: ExportFormat) -> bool {
 /// Formats that cannot exist without the hospital MRN (HL7-3, EXJ-2).
 pub fn needs_mrn(format: ExportFormat) -> bool {
     format == ExportFormat::Hl7v2
+}
+
+/// ML dataset formats (WP-B.9): de-identified only, labels on request.
+pub fn is_dataset(format: ExportFormat) -> bool {
+    matches!(
+        format,
+        ExportFormat::DatasetJsonl | ExportFormat::DatasetParquet
+    )
 }
 
 /// Formats built from the stored session record (`sessions.summary`).
@@ -374,6 +387,9 @@ pub struct RenderInput<'a> {
     /// RFC 3339; the export's `created_at`, so a re-run renders the same bytes (XC-8).
     pub generated_at: &'a str,
     pub hl7: &'a Hl7Profile,
+    /// Dataset formats: each record's labels (aligned per index) when `include_labels`.
+    pub labels: &'a [Vec<DatasetLabel>],
+    pub include_labels: bool,
 }
 
 const CT_ZIP: &str = "application/zip";
@@ -382,6 +398,9 @@ const CT_FHIR_JSON: &str = "application/fhir+json";
 const CT_FHIR_NDJSON: &str = "application/fhir+ndjson";
 /// HL7 v2 ER7 (pipe-delimited) message.
 const CT_HL7: &str = "application/hl7-v2";
+/// JSON Lines (no registered type; the common spelling).
+const CT_JSONL: &str = "application/jsonl";
+const CT_PARQUET: &str = "application/vnd.apache.parquet";
 
 /// Renders the artifact with the `asd-export` encoder of `input.format`.
 pub fn render(input: &RenderInput<'_>) -> Result<Artifact, RenderError> {
@@ -489,6 +508,27 @@ pub fn render(input: &RenderInput<'_>) -> Result<Artifact, RenderError> {
         ExportFormat::PdfSummary => Err(RenderError::Unsupported(
             format_available(ExportFormat::PdfSummary).expect_err("unavailable"),
         )),
+        ExportFormat::DatasetJsonl | ExportFormat::DatasetParquet => {
+            // The encoders de-identify themselves and refuse an identified watermark.
+            let opts = DatasetOptions {
+                watermark: input.watermark.clone(),
+                deid_salt: input.deid_salt,
+                include_labels: input.include_labels,
+            };
+            if input.format == ExportFormat::DatasetJsonl {
+                Ok(Artifact {
+                    bytes: dataset::encode_jsonl(input.records, input.labels, &opts)?,
+                    file_name: format!("{base}.jsonl"),
+                    content_type: CT_JSONL,
+                })
+            } else {
+                Ok(Artifact {
+                    bytes: dataset::encode_parquet(input.records, input.labels, &opts)?,
+                    file_name: format!("{base}.parquet"),
+                    content_type: CT_PARQUET,
+                })
+            }
+        }
     }
 }
 

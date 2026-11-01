@@ -13,6 +13,7 @@ pub mod config;
 pub mod export;
 mod jcs;
 mod mirror;
+pub mod privacy; // WP-B.9
 pub mod problem;
 pub mod schema;
 pub mod session_v1_6;

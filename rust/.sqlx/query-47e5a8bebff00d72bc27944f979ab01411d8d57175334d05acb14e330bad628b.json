@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT e.id, e.org_id, e.kind, e.format, e.mode, e.purpose, e.status, e.filters,\n                  e.reason, e.destination_ids, e.include_clinical_content, e.include_mrn,\n                  e.requested_by, e.job_id, e.ttl_hours, e.download_secret, e.blob_key,\n                  e.file_name, e.content_type, e.sha256, e.byte_size, e.row_count, e.excluded,\n                  e.error, e.created_at, e.completed_at, e.expires_at,\n                  coalesce(j.status = 'failed', false) AS \"job_failed!\"\n           FROM exports e LEFT JOIN jobs j ON j.id = e.job_id\n           WHERE e.id = $1",
+  "query": "SELECT e.id, e.org_id, e.kind, e.format, e.mode, e.purpose, e.status, e.filters,\n                  e.reason, e.destination_ids, e.include_clinical_content, e.include_mrn,\n                  e.include_labels, e.requested_by, e.job_id, e.ttl_hours, e.download_secret, e.blob_key,\n                  e.file_name, e.content_type, e.sha256, e.byte_size, e.row_count, e.excluded,\n                  e.error, e.created_at, e.completed_at, e.expires_at,\n                  coalesce(j.status = 'failed', false) AS \"job_failed!\"\n           FROM exports e LEFT JOIN jobs j ON j.id = e.job_id\n           WHERE e.id = $1",
   "describe": {
     "columns": [
       {
@@ -137,6 +137,17 @@
       },
       {
         "ordinal": 12,
+        "name": "include_labels",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "include_labels"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
         "name": "requested_by",
         "type_info": "Uuid",
         "origin": {
@@ -147,7 +158,7 @@
         }
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "job_id",
         "type_info": "Uuid",
         "origin": {
@@ -158,7 +169,7 @@
         }
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "ttl_hours",
         "type_info": "Int4",
         "origin": {
@@ -169,7 +180,7 @@
         }
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "download_secret",
         "type_info": "Bytea",
         "origin": {
@@ -180,7 +191,7 @@
         }
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "blob_key",
         "type_info": "Text",
         "origin": {
@@ -191,7 +202,7 @@
         }
       },
       {
-        "ordinal": 17,
+        "ordinal": 18,
         "name": "file_name",
         "type_info": "Text",
         "origin": {
@@ -202,7 +213,7 @@
         }
       },
       {
-        "ordinal": 18,
+        "ordinal": 19,
         "name": "content_type",
         "type_info": "Text",
         "origin": {
@@ -213,7 +224,7 @@
         }
       },
       {
-        "ordinal": 19,
+        "ordinal": 20,
         "name": "sha256",
         "type_info": "Bytea",
         "origin": {
@@ -224,7 +235,7 @@
         }
       },
       {
-        "ordinal": 20,
+        "ordinal": 21,
         "name": "byte_size",
         "type_info": "Int8",
         "origin": {
@@ -235,7 +246,7 @@
         }
       },
       {
-        "ordinal": 21,
+        "ordinal": 22,
         "name": "row_count",
         "type_info": "Int4",
         "origin": {
@@ -246,7 +257,7 @@
         }
       },
       {
-        "ordinal": 22,
+        "ordinal": 23,
         "name": "excluded",
         "type_info": "Jsonb",
         "origin": {
@@ -257,7 +268,7 @@
         }
       },
       {
-        "ordinal": 23,
+        "ordinal": 24,
         "name": "error",
         "type_info": "Text",
         "origin": {
@@ -268,7 +279,7 @@
         }
       },
       {
-        "ordinal": 24,
+        "ordinal": 25,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -279,7 +290,7 @@
         }
       },
       {
-        "ordinal": 25,
+        "ordinal": 26,
         "name": "completed_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -290,7 +301,7 @@
         }
       },
       {
-        "ordinal": 26,
+        "ordinal": 27,
         "name": "expires_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -301,7 +312,7 @@
         }
       },
       {
-        "ordinal": 27,
+        "ordinal": 28,
         "name": "job_failed!",
         "type_info": "Bool",
         "origin": "Expression"
@@ -313,6 +324,7 @@
       ]
     },
     "nullable": [
+      false,
       false,
       false,
       false,
@@ -343,5 +355,5 @@
       null
     ]
   },
-  "hash": "b48799e98cd645ef776b3214481c899b2081cf7ed244bcdb766138c96eb2ed8e"
+  "hash": "47e5a8bebff00d72bc27944f979ab01411d8d57175334d05acb14e330bad628b"
 }

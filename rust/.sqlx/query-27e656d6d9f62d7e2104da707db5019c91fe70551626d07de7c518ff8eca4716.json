@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM clinical_review_versions v USING clinical_reviews cr\n         WHERE v.review_id = cr.id AND cr.session_id = ANY($1) AND v.status = 'draft'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "27e656d6d9f62d7e2104da707db5019c91fe70551626d07de7c518ff8eca4716"
+}

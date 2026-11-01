@@ -1,0 +1,449 @@
+{
+  "frames": 2047,
+  "recordedFrames": 720,
+  "targets": [
+    {
+      "kind": "calibration",
+      "xNorm": 0.5,
+      "yNorm": 0.5,
+      "startedAtSec": 100.5,
+      "endedAtSec": 102.1,
+      "attempt": 1,
+      "outcome": "hit",
+      "validSamples": 69,
+      "totalSamples": 97,
+      "dataLoss": 0.0,
+      "rawMedianNorm": [
+        0.4994915257557578,
+        0.49994055388080555
+      ],
+      "eyePosMmMedian": [
+        32.55059999999883,
+        45.56789939105511,
+        439.99998830258846
+      ]
+    },
+    {
+      "kind": "calibration",
+      "xNorm": 0.12,
+      "yNorm": 0.12,
+      "startedAtSec": 102.4,
+      "endedAtSec": 104.0,
+      "attempt": 1,
+      "outcome": "hit",
+      "validSamples": 67,
+      "totalSamples": 97,
+      "dataLoss": 0.0,
+      "rawMedianNorm": [
+        0.12014614421279939,
+        0.12013446648010861
+      ],
+      "eyePosMmMedian": [
+        32.55059999999883,
+        45.56789939105511,
+        439.99998830258846
+      ]
+    },
+    {
+      "kind": "calibration",
+      "xNorm": 0.88,
+      "yNorm": 0.12,
+      "startedAtSec": 104.316667,
+      "endedAtSec": 105.916667,
+      "attempt": 1,
+      "outcome": "hit",
+      "validSamples": 64,
+      "totalSamples": 97,
+      "dataLoss": 0.0,
+      "rawMedianNorm": [
+        0.8799355310625314,
+        0.12019246485714084
+      ],
+      "eyePosMmMedian": [
+        32.55059999999883,
+        45.56789939105511,
+        439.99998830258846
+      ]
+    },
+    {
+      "kind": "calibration",
+      "xNorm": 0.12,
+      "yNorm": 0.88,
+      "startedAtSec": 106.216667,
+      "endedAtSec": 107.816667,
+      "attempt": 1,
+      "outcome": "hit",
+      "validSamples": 67,
+      "totalSamples": 97,
+      "dataLoss": 0.0,
+      "rawMedianNorm": [
+        0.11820789796855584,
+        0.8795450254759459
+      ],
+      "eyePosMmMedian": [
+        32.55059999999883,
+        45.56789939105511,
+        439.99998830258846
+      ]
+    },
+    {
+      "kind": "calibration",
+      "xNorm": 0.88,
+      "yNorm": 0.88,
+      "startedAtSec": 108.116667,
+      "endedAtSec": 109.716667,
+      "attempt": 1,
+      "outcome": "hit",
+      "validSamples": 71,
+      "totalSamples": 97,
+      "dataLoss": 0.0,
+      "rawMedianNorm": [
+        0.8800960867475895,
+        0.8798545882172738
+      ],
+      "eyePosMmMedian": [
+        32.55059999999883,
+        45.56789939105511,
+        439.99998830258846
+      ]
+    },
+    {
+      "kind": "validation",
+      "xNorm": 0.3,
+      "yNorm": 0.3,
+      "startedAtSec": 111.016667,
+      "endedAtSec": 112.416667,
+      "attempt": 1,
+      "outcome": "hit",
+      "validSamples": 61,
+      "totalSamples": 61,
+      "dataLoss": 0.0,
+      "rawMedianNorm": [
+        0.2991107308618098,
+        0.29993767241771024
+      ],
+      "calibratedMedianNorm": [
+        0.2995299229962754,
+        0.29993123860609405
+      ],
+      "eyePosMmMedian": [
+        32.55059999999883,
+        45.56789939105511,
+        439.99998830258846
+      ],
+      "accuracyDeg": 0.004176695676910346,
+      "offsetDeg": [
+        -0.0039814013222651415,
+        -0.0012631009071545805
+      ],
+      "precisionRmsDeg": 0.007316381387817712,
+      "precisionRmsRawDeg": 0.08504415547102255,
+      "sdDeg": 0.01217515205956372
+    },
+    {
+      "kind": "validation",
+      "xNorm": 0.7,
+      "yNorm": 0.3,
+      "startedAtSec": 112.716667,
+      "endedAtSec": 114.116667,
+      "attempt": 1,
+      "outcome": "hit",
+      "validSamples": 61,
+      "totalSamples": 61,
+      "dataLoss": 0.0,
+      "rawMedianNorm": [
+        0.6996533192970799,
+        0.298900429965392
+      ],
+      "calibratedMedianNorm": [
+        0.6996193492459782,
+        0.298795618009533
+      ],
+      "eyePosMmMedian": [
+        32.55059999999883,
+        45.56789939105511,
+        439.99998830258846
+      ],
+      "accuracyDeg": 0.022358037409427538,
+      "offsetDeg": [
+        -0.0032240016497874563,
+        -0.022123632930604566
+      ],
+      "precisionRmsDeg": 0.008514706237378671,
+      "precisionRmsRawDeg": 0.10521553082712969,
+      "sdDeg": 0.02145435762894498
+    },
+    {
+      "kind": "validation",
+      "xNorm": 0.3,
+      "yNorm": 0.7,
+      "startedAtSec": 114.416667,
+      "endedAtSec": 115.816667,
+      "attempt": 1,
+      "outcome": "hit",
+      "validSamples": 60,
+      "totalSamples": 60,
+      "dataLoss": 0.0,
+      "rawMedianNorm": [
+        0.2999201580169655,
+        0.7004380289176908
+      ],
+      "calibratedMedianNorm": [
+        0.300799157095908,
+        0.7006758513706955
+      ],
+      "eyePosMmMedian": [
+        32.55059999999883,
+        45.56789939105511,
+        439.99998830258846
+      ],
+      "accuracyDeg": 0.013981026389742177,
+      "offsetDeg": [
+        0.006719917708954585,
+        0.012236377739548375
+      ],
+      "precisionRmsDeg": 0.009291583667396087,
+      "precisionRmsRawDeg": 0.09642677294338373,
+      "sdDeg": 0.030211757843958804
+    },
+    {
+      "kind": "validation",
+      "xNorm": 0.7,
+      "yNorm": 0.7,
+      "startedAtSec": 116.116667,
+      "endedAtSec": 117.516667,
+      "attempt": 1,
+      "outcome": "hit",
+      "validSamples": 60,
+      "totalSamples": 60,
+      "dataLoss": 0.0,
+      "rawMedianNorm": [
+        0.7004421048197489,
+        0.6994099949509367
+      ],
+      "calibratedMedianNorm": [
+        0.7008769661928956,
+        0.6995501089194707
+      ],
+      "eyePosMmMedian": [
+        32.55059999999883,
+        45.56789939105511,
+        439.99998830258846
+      ],
+      "accuracyDeg": 0.011007193880993962,
+      "offsetDeg": [
+        0.00737414209292795,
+        -0.008145687432626697
+      ],
+      "precisionRmsDeg": 0.008276417265691728,
+      "precisionRmsRawDeg": 0.09883893565415551,
+      "sdDeg": 0.02058390080834543
+    },
+    {
+      "kind": "driftCheck",
+      "xNorm": 0.5,
+      "yNorm": 0.5,
+      "startedAtSec": 124.316667,
+      "endedAtSec": 125.516667,
+      "attempt": 1,
+      "outcome": "hit",
+      "validSamples": 55,
+      "totalSamples": 55,
+      "dataLoss": 0.0,
+      "rawMedianNorm": [
+        0.50036340669971,
+        0.4999368067420369
+      ],
+      "calibratedMedianNorm": [
+        0.5007818761706045,
+        0.5000029533870172
+      ],
+      "eyePosMmMedian": [
+        32.55059999999883,
+        45.56789939105511,
+        439.99998830258846
+      ],
+      "accuracyDeg": 0.006617778225823164,
+      "offsetDeg": [
+        0.0066175574144513435,
+        0.000054103755959348505
+      ],
+      "precisionRmsDeg": 0.011053536661388964,
+      "precisionRmsRawDeg": 0.11026990186616013,
+      "sdDeg": 0.05363199399356922
+    },
+    {
+      "kind": "driftCheck",
+      "xNorm": 0.3,
+      "yNorm": 0.3,
+      "startedAtSec": 132.316667,
+      "endedAtSec": 133.516667,
+      "attempt": 1,
+      "outcome": "hit",
+      "validSamples": 55,
+      "totalSamples": 55,
+      "dataLoss": 0.0,
+      "rawMedianNorm": [
+        0.2986211321392814,
+        0.2993763081897867
+      ],
+      "calibratedMedianNorm": [
+        0.2990311119928238,
+        0.29936931875089945
+      ],
+      "eyePosMmMedian": [
+        32.55059999999883,
+        45.56789939105511,
+        439.99998830258846
+      ],
+      "accuracyDeg": 0.014195587361548417,
+      "offsetDeg": [
+        -0.00820615245045323,
+        -0.01158517810277107
+      ],
+      "precisionRmsDeg": 0.00953317827759603,
+      "precisionRmsRawDeg": 0.08809853165795109,
+      "sdDeg": 0.04116157041864289
+    }
+  ],
+  "advice": {
+    "action": "none",
+    "reasons": [],
+    "limitReached": false
+  },
+  "summary": {
+    "pipelineVersion": "asd-gaze/1.0.0",
+    "paramsVersion": "1.0.0",
+    "device": {
+      "modelIdentifier": "iPhone17,3",
+      "geometrySource": "table",
+      "orientation": "portrait",
+      "screenWidthMm": 65.1013,
+      "screenHeightMm": 141.1357,
+      "sampleRateHz": 59.99880002400596
+    },
+    "calibration": {
+      "model": "screenAffine",
+      "layoutPoints": 5,
+      "usablePoints": 5,
+      "missingPoints": 0,
+      "residualDeg": 0.0044146060322842375,
+      "looCvDeg": 0.0146871965805501,
+      "conditionNumber": 1.11907953581487,
+      "quality": "good",
+      "pose": {
+        "distanceCm": 44.999998807907104,
+        "yawDeg": 0.0,
+        "pitchDeg": 0.0
+      },
+      "ageSecAtStart": 7.016666999999998,
+      "attempts": 1
+    },
+    "validation": {
+      "complete": true,
+      "targets": [
+        {
+          "xNorm": 0.3,
+          "yNorm": 0.3,
+          "accuracyDeg": 0.004176695676910346,
+          "precisionRmsDeg": 0.007316381387817712,
+          "sdDeg": 0.01217515205956372,
+          "dataLoss": 0.0,
+          "validSamples": 61,
+          "missed": false
+        },
+        {
+          "xNorm": 0.7,
+          "yNorm": 0.3,
+          "accuracyDeg": 0.022358037409427538,
+          "precisionRmsDeg": 0.008514706237378671,
+          "sdDeg": 0.02145435762894498,
+          "dataLoss": 0.0,
+          "validSamples": 61,
+          "missed": false
+        },
+        {
+          "xNorm": 0.3,
+          "yNorm": 0.7,
+          "accuracyDeg": 0.013981026389742177,
+          "precisionRmsDeg": 0.009291583667396087,
+          "sdDeg": 0.030211757843958804,
+          "dataLoss": 0.0,
+          "validSamples": 60,
+          "missed": false
+        },
+        {
+          "xNorm": 0.7,
+          "yNorm": 0.7,
+          "accuracyDeg": 0.011007193880993962,
+          "precisionRmsDeg": 0.008276417265691728,
+          "sdDeg": 0.02058390080834543,
+          "dataLoss": 0.0,
+          "validSamples": 60,
+          "missed": false
+        }
+      ],
+      "accuracyDeg": 0.01249411013536807,
+      "precisionRmsDeg": 0.0083955617515352,
+      "precisionRmsRawDeg": 0.09763285429876961,
+      "dataLoss": 0.0
+    },
+    "driftChecks": [
+      {
+        "atSec": 124.316667,
+        "xNorm": 0.5,
+        "yNorm": 0.5,
+        "offsetDeg": 0.006617778225823164,
+        "driftDeg": 0.006910924473547345,
+        "missed": false
+      },
+      {
+        "atSec": 132.316667,
+        "xNorm": 0.3,
+        "yNorm": 0.3,
+        "offsetDeg": 0.014195587361548417,
+        "driftDeg": 0.012011863046063432,
+        "missed": false
+      }
+    ],
+    "maxDriftDeg": 0.012011863046063432,
+    "recalibrations": [],
+    "conditions": {
+      "distanceCmMedian": 44.999998807907104,
+      "distanceCmIqr": 0.0,
+      "headSpeedDegPerSecP90": 0.0,
+      "ambientIntensityMedian": 400.0
+    },
+    "loss": {
+      "trackLossSec": 1.3000000000000114,
+      "blinkSec": 1.7666660000000007,
+      "offscreenSec": 0.0,
+      "artifactSec": 0.0,
+      "gapFilledSec": 0.0,
+      "longestGapSec": 0.8166670000000238
+    },
+    "confidence": {
+      "meanSample": 1.0,
+      "meanFixation": 1.0,
+      "lowConfidenceSampleRatio": 0.0
+    },
+    "estimatedAccuracyDeg": 0.01249411013536807,
+    "verdict": "fair"
+  },
+  "clips": [
+    {
+      "clipId": "synth_clip_1",
+      "order": 1,
+      "meanSampleConfidence": 1.0,
+      "meanFixationConfidence": 1.0,
+      "nearestCheckOffsetDeg": 0.006617778225823164
+    },
+    {
+      "clipId": "synth_clip_2",
+      "order": 2,
+      "meanSampleConfidence": 1.0,
+      "meanFixationConfidence": 1.0,
+      "nearestCheckOffsetDeg": 0.014195587361548417
+    }
+  ]
+}

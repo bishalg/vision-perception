@@ -16,6 +16,7 @@ use asd_contract::api_v1::{ClipScore, SessionDetail, SessionSummary};
 use asd_contract::clinical::settings as org_settings;
 use asd_contract::export::{ExportMode, MAX_EXPORT_ROWS};
 use asd_core::types::{ExpectationStatus, PerVideoScoreRow};
+use asd_export::dataset::DatasetLabel;
 use asd_export::model::{
     ClinicalReviewSummary, Disposition, ExportRecord, OrgFacts, Paper, PatientRef, ReviewState,
     Signature, SignatureRole,
@@ -61,6 +62,9 @@ pub struct SnapSession {
     pub recommendations: Option<Sealed>,
     /// MRN ciphertext and the assigning authority.
     pub mrn: Option<(Sealed, String)>,
+    /// Reviewer labels (dataset formats with `include_labels` only, WP-B.9), oldest first.
+    /// Who wrote them and when are not read.
+    pub labels: Vec<DatasetLabel>,
 }
 
 /// Everything phase 1 read.
@@ -403,6 +407,25 @@ pub async fn load(
         }
     }
 
+    // ---- reviewer labels (dataset formats asking for them, WP-B.9)
+    let mut labels: HashMap<String, Vec<DatasetLabel>> = HashMap::new();
+    if export.include_labels && super::is_dataset(export.format) {
+        for l in sqlx::query!(
+            r#"SELECT session_id, clip_id, key, value FROM labels
+               WHERE session_id = ANY($1) ORDER BY session_id, created_at, id"#,
+            &ids,
+        )
+        .fetch_all(&mut *tx)
+        .await?
+        {
+            labels.entry(l.session_id).or_default().push(DatasetLabel {
+                clip_id: l.clip_id,
+                key: l.key,
+                value: l.value,
+            });
+        }
+    }
+
     // ---- stored session records (FHIR formats only)
     let mut gazes: HashMap<String, Value> = HashMap::new();
     if want_gaze {
@@ -490,6 +513,7 @@ pub async fn load(
             impression,
             recommendations,
             mrn: mrns.get(&r.participant_id).cloned(),
+            labels: labels.remove(&r.id).unwrap_or_default(),
             participant_id: r.participant_id,
             record,
         });

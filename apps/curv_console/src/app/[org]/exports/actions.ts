@@ -10,6 +10,7 @@ import {
   type ExportFilters,
   type ExportRequest,
 } from "@/lib/api/exports";
+import { isDatasetFormat } from "@/lib/api/exports";
 import { authedApi } from "@/lib/auth/server";
 
 function failure(err: unknown): ActionFailure {
@@ -48,6 +49,22 @@ export async function createExportAction(orgId: string, formData: FormData): Pro
   const format = exportFormatSchema.safeParse(text(formData, "format"));
   const mode = exportModeSchema.safeParse(text(formData, "mode"));
   const purpose = exportPurposeSchema.safeParse(text(formData, "purpose"));
+  // Datasets send no mode or purpose (the disabled selects are not submitted).
+  // WP-B.9: datasets go through the dedicated endpoint (de-identified, research, no destinations).
+  if (format.success && isDatasetFormat(format.data)) {
+    try {
+      const created = await (await authedApi()).createDatasetExport({
+        format: format.data === "dataset_jsonl" ? "jsonl" : "parquet",
+        reason: text(formData, "reason"),
+        filters: filtersFrom(formData),
+        include_labels: formData.get("include_labels") !== null,
+      });
+      revalidatePath(`/${encodeURIComponent(orgId)}/exports`);
+      return { ok: true, id: created.id };
+    } catch (err) {
+      return failure(err);
+    }
+  }
   if (!format.success || !mode.success || !purpose.success) {
     return { ok: false, slug: "validation-failed", status: 400 };
   }

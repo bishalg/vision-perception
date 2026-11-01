@@ -11,10 +11,10 @@ use asd_contract::session_v1_6::SessionIngestRequest;
 use asd_core::types::CaptureSource;
 use asd_sync::{
     backoff_schedule, build_register_request, build_session_request, build_session_request_json,
-    classify_register_response, classify_response, endpoint_url, next_retry_delay,
-    retry_after_seconds, validate_ingest_url, validate_upload_url, ClientInfo, RegisterOutcome,
-    SyncError, SyncOutcome, UrlError, BACKOFF_DELAYS_SECS, MAX_ATTEMPTS, REGISTER_PATH,
-    SESSIONS_PATH,
+    build_session_request_v1_7, classify_register_response, classify_response, endpoint_url,
+    next_retry_delay, retry_after_seconds, validate_ingest_url, validate_upload_url, ClientInfo,
+    RegisterOutcome, SyncError, SyncOutcome, UrlError, BACKOFF_DELAYS_SECS, MAX_ATTEMPTS,
+    REGISTER_PATH, SESSIONS_PATH,
 };
 use serde_json::{json, Value};
 
@@ -124,6 +124,34 @@ fn schema_version_must_be_supported() {
     assert_eq!(
         build_session_request(&p, "t", &client()).unwrap_err(),
         SyncError::UnsupportedSchemaVersion("1.7".into())
+    );
+}
+
+/// SCH-2 (WP-G.9): a 1.7 body goes out as 1.7 with every 1.7 key (trackingQuality, the
+/// per-clip tracking keys), byte-identical to the RFC 8785 form of the Swift document.
+#[test]
+fn schema_1_7_payload_keeps_tracking_quality() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../apps/ios_asd_gaze_app/Tests/Fixtures/expected-session-v1.7.json");
+    let text = std::fs::read_to_string(path).unwrap();
+    let req = build_session_request_json(text.as_bytes(), "t", &client()).unwrap();
+    assert_eq!(header(&req.headers, "X-Schema-Version"), Some("1.7"));
+    let sent: Value = serde_json::from_slice(&req.body).unwrap();
+    let swift: Value = serde_json::from_str(&text).unwrap();
+    assert_eq!(sent, swift, "nothing dropped or added");
+    assert!(sent["rawPayload"]["trackingQuality"]["verdict"].is_string());
+    assert_eq!(
+        sent["perVideo"][0]["details"]["meanSampleConfidence"],
+        json!(0.84)
+    );
+
+    // A 1.7 document labelled 1.6 is decoded as 1.6, and 1.7 typed requests refuse 1.6.
+    let mut v17: asd_contract::session_v1_7::SessionIngestRequest =
+        serde_json::from_str(&text).unwrap();
+    v17.schema_version = "1.6".into();
+    assert_eq!(
+        build_session_request_v1_7(&v17, "t", &client()).unwrap_err(),
+        SyncError::UnsupportedSchemaVersion("1.6".into())
     );
 }
 

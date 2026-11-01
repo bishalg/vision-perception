@@ -6,7 +6,9 @@
 import { z } from "zod";
 import type { AdminApi } from "./admin";
 import type { ExportsApi } from "./exports";
+import type { CatalogApi } from "./catalog";
 import type { ClinicalApi } from "./clinical";
+import type { PrivacyApi } from "./privacy";
 
 /** `SessionAttentionFlag`: the 3 device values plus backend-derived `unreliable` (CON-15). */
 export const ATTENTION_FLAGS = ["green", "yellow", "red", "unreliable"] as const;
@@ -437,7 +439,7 @@ export interface PageQuery {
 
 // ---- client interface -----------------------------------------------------
 
-export interface CurvApi extends ClinicalApi, AdminApi, ExportsApi {
+export interface CurvApi extends ClinicalApi, AdminApi, ExportsApi, CatalogApi, PrivacyApi {
   getOrg(orgId: string): Promise<Org>;
   getMetrics(orgId: string): Promise<Metrics>;
   listSessions(orgId: string, query?: SessionListQuery): Promise<SessionPage>;

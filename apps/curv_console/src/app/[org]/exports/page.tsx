@@ -33,9 +33,9 @@ export default async function ExportsPage({
   const cursor = parseCursor(await searchParams);
   const api = await authedApi();
   const page = await loadOrNotFound(() => api.listExports(org, { cursor, limit: 50 }));
-  // Only owners and admins may list destinations; everyone else exports for download only.
-  const destinations = can(role, "integration.read")
-    ? (await loadOrNotFound(() => api.listIntegrations(org))).items.filter((i) => i.status === "active")
+  // Every exporter role may pick from the active destinations (id, name, kind only; no config or secrets).
+  const destinations = can(role, "export.create")
+    ? (await loadOrNotFound(() => api.listExportDestinations(org))).items.filter((i) => i.status === "active")
     : [];
   const base = `/${encodeURIComponent(org)}/exports`;
   return (

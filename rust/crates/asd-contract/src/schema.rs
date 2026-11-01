@@ -26,7 +26,7 @@ use crate::problem::{InvalidParam, Problem};
 use crate::session_v1_6::{self, SessionIngestRequest, SessionIngestResponse};
 use crate::session_v1_7;
 use crate::signing::canonical_bytes;
-use crate::{api_v1, care, clinical, export};
+use crate::{api_v1, care, clinical, export, privacy};
 
 /// File name of the session ingest schema (1.6, the wire version of current clients).
 pub const SESSION_FILE: &str = "session-v1.6.json";
@@ -245,6 +245,8 @@ pub fn api_v1() -> Value {
         export::ExportKind,
         export::ExportFilters,
         export::ExportRequest,
+        export::DatasetFormat,
+        export::DatasetExportRequest,
         export::Export,
         export::ExportPage,
         export::DownloadUrl,
@@ -263,10 +265,20 @@ pub fn api_v1() -> Value {
         export::PutIntegrationSecretRequest,
         export::Integration,
         export::IntegrationPage,
+        export::DeliverableDestination,
+        export::DeliverableDestinationList,
         export::SshPublicKey,
         export::IntegrationTestResult,
         export::Delivery,
         export::DeliveryPage,
+        privacy::ErasureStatus,
+        privacy::ErasureOutcome,
+        privacy::ErasureRequest,
+        privacy::ErasureRequestPage,
+        privacy::RetentionSweepRequest,
+        privacy::RetentionSweepJob,
+        privacy::RetentionOrgResult,
+        privacy::RetentionSweepResult,
     );
     let mut defs = gen.take_definitions(true);
     defs.insert(

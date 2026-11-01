@@ -180,7 +180,7 @@ final class GazeProcessingActorTests: XCTestCase {
         let tracked = FaceAnchorSnapshot(
             isTracked: true,
             transform: transform,
-            lookAtPoint: simd_float3(0, 0, 0.48),
+            lookAtPoint: simd_float3(0, -0.1, 0.48), // on the glass (straight at the camera is above it)
             blendShapes: ["eyeBlinkLeft": 0.05, "eyeBlinkRight": 0.05]
         )
         let lost = FaceAnchorSnapshot(isTracked: false, transform: transform, lookAtPoint: simd_float3(0, 0, 0))

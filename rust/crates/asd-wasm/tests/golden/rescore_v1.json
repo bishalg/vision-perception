@@ -1,0 +1,428 @@
+{
+  "derivation": "Native asd-wasm::api::rescore_session output for the cases in tests/parity.rs (golden sessions of apps/ios_asd_gaze_app/Tests/Fixtures, asd-core fixture baselines). The wasm build must reproduce it.",
+  "function": "rescore_session",
+  "schema": "asd-golden/1",
+  "vectors": {
+    "v1_6_record_strict_profile_younger_bracket": {
+      "device": {
+        "attentionFlag": null,
+        "compositeScore": 0.74
+      },
+      "flag": {
+        "detail": "A repeat session is worth doing. This is a screening signal, not a diagnosis.",
+        "flag": "yellow",
+        "headline": "Some clips differ from the age reference",
+        "isScreeningSignalOnly": true
+      },
+      "metricSource": "sessionReport",
+      "schemaVersion": "1.6",
+      "score": {
+        "ageBracketId": "12-17",
+        "ageMonths": 14,
+        "baselineSchemaVersion": "1.0.0",
+        "baselineStatus": "provisional-literature-seeded",
+        "compositeScore": 0.8666666666666667,
+        "scoredAtUtc": "",
+        "videos": [
+          {
+            "category": "GeoPref",
+            "hasBaseline": true,
+            "lowConfidence": false,
+            "rows": [
+              {
+                "acceptableLow": 0.55,
+                "biomarker": "social_dwell_ratio",
+                "citation": "Neurotypical toddlers spend >70% of viewing time on the social side (Pierce et al., eLife 2019; Pierce 2011/2016).",
+                "direction": "higherBetter",
+                "expected": 0.7,
+                "imputed": false,
+                "metricKey": "social_dwell_ratio",
+                "observed": 0.62,
+                "score": 0.7333333333333333,
+                "segmentDescription": "Split screen: social actor on the left half, dynamic geometric pattern on the right half.",
+                "segmentId": "social_geo_split",
+                "source": "literature",
+                "status": "monitor"
+              },
+              {
+                "acceptableHigh": 0.6,
+                "biomarker": "geometric_dwell_ratio",
+                "citation": "Geometric fixation >=69% marks the ASD-Geo subtype at 98-99% specificity (Pierce et al., eLife 2019); this band flags above 60% so the 69% rule sits inside the atypical zone.",
+                "direction": "lowerBetter",
+                "expected": 0.3,
+                "imputed": false,
+                "metricKey": "geometric_dwell_ratio",
+                "observed": 0.21,
+                "score": 1.0,
+                "segmentDescription": "Split screen: social actor on the left half, dynamic geometric pattern on the right half.",
+                "segmentId": "social_geo_split",
+                "source": "literature",
+                "status": "onTarget"
+              }
+            ],
+            "stimulusId": "stim_05_geopref_split_10s",
+            "subscore": 0.8666666666666667,
+            "title": "Geometric vs Social Preference",
+            "validSampleRatio": 0.95,
+            "weight": 0.3
+          },
+          {
+            "category": "Unattributed",
+            "hasBaseline": false,
+            "lowConfidence": true,
+            "rows": [],
+            "stimulusId": "untagged",
+            "subscore": 0.0,
+            "title": "untagged",
+            "validSampleRatio": 0.4,
+            "weight": 0.0
+          }
+        ]
+      },
+      "sessionId": "SESS-GOLDEN-0001",
+      "warnings": [
+        "untagged: had no baseline at capture, so the session carries no metrics for it; pass frames to score it"
+      ]
+    },
+    "v1_6_request_default_profile": {
+      "device": {
+        "attentionFlag": "yellow",
+        "compositeScore": 0.74
+      },
+      "flag": {
+        "detail": "Looking time sits in the expected range for this age. This is a screening signal, not a diagnosis.",
+        "flag": "green",
+        "headline": "Looking matches the age reference",
+        "isScreeningSignalOnly": true
+      },
+      "metricSource": "sessionReport",
+      "schemaVersion": "1.6",
+      "score": {
+        "ageBracketId": "24-35",
+        "ageMonths": 28,
+        "baselineSchemaVersion": "1.0.0",
+        "baselineStatus": "provisional-literature-seeded",
+        "compositeScore": 0.8666666666666667,
+        "scoredAtUtc": "2026-11-01T00:00:00Z",
+        "videos": [
+          {
+            "category": "GeoPref",
+            "hasBaseline": true,
+            "lowConfidence": false,
+            "rows": [
+              {
+                "acceptableLow": 0.55,
+                "biomarker": "social_dwell_ratio",
+                "citation": "Neurotypical toddlers spend >70% of viewing time on the social side (Pierce et al., eLife 2019; Pierce 2011/2016).",
+                "direction": "higherBetter",
+                "expected": 0.7,
+                "imputed": false,
+                "metricKey": "social_dwell_ratio",
+                "observed": 0.62,
+                "score": 0.7333333333333333,
+                "segmentDescription": "Split screen: social actor on the left half, dynamic geometric pattern on the right half.",
+                "segmentId": "social_geo_split",
+                "source": "literature",
+                "status": "monitor"
+              },
+              {
+                "acceptableHigh": 0.6,
+                "biomarker": "geometric_dwell_ratio",
+                "citation": "Geometric fixation >=69% marks the ASD-Geo subtype at 98-99% specificity (Pierce et al., eLife 2019); this band flags above 60% so the 69% rule sits inside the atypical zone.",
+                "direction": "lowerBetter",
+                "expected": 0.3,
+                "imputed": false,
+                "metricKey": "geometric_dwell_ratio",
+                "observed": 0.21,
+                "score": 1.0,
+                "segmentDescription": "Split screen: social actor on the left half, dynamic geometric pattern on the right half.",
+                "segmentId": "social_geo_split",
+                "source": "literature",
+                "status": "onTarget"
+              }
+            ],
+            "stimulusId": "stim_05_geopref_split_10s",
+            "subscore": 0.8666666666666667,
+            "title": "Geometric vs Social Preference",
+            "validSampleRatio": 0.95,
+            "weight": 0.3
+          },
+          {
+            "category": "Unattributed",
+            "hasBaseline": false,
+            "lowConfidence": true,
+            "rows": [],
+            "stimulusId": "untagged",
+            "subscore": 0.0,
+            "title": "untagged",
+            "validSampleRatio": 0.4,
+            "weight": 0.0
+          }
+        ]
+      },
+      "sessionId": "SESS-GOLDEN-0001",
+      "warnings": [
+        "untagged: had no baseline at capture, so the session carries no metrics for it; pass frames to score it"
+      ]
+    },
+    "v1_7_record_default_profile": {
+      "device": {
+        "attentionFlag": null,
+        "compositeScore": 0.74
+      },
+      "flag": {
+        "detail": "Looking time sits in the expected range for this age. This is a screening signal, not a diagnosis.",
+        "flag": "green",
+        "headline": "Looking matches the age reference",
+        "isScreeningSignalOnly": true
+      },
+      "metricSource": "sessionReport",
+      "schemaVersion": "1.7",
+      "score": {
+        "ageBracketId": "24-35",
+        "ageMonths": 28,
+        "baselineSchemaVersion": "1.0.0",
+        "baselineStatus": "provisional-literature-seeded",
+        "compositeScore": 0.8666666666666667,
+        "scoredAtUtc": "2026-11-01T00:00:00Z",
+        "videos": [
+          {
+            "category": "GeoPref",
+            "hasBaseline": true,
+            "lowConfidence": false,
+            "rows": [
+              {
+                "acceptableLow": 0.55,
+                "biomarker": "social_dwell_ratio",
+                "citation": "Neurotypical toddlers spend >70% of viewing time on the social side (Pierce et al., eLife 2019; Pierce 2011/2016).",
+                "direction": "higherBetter",
+                "expected": 0.7,
+                "imputed": false,
+                "metricKey": "social_dwell_ratio",
+                "observed": 0.62,
+                "score": 0.7333333333333333,
+                "segmentDescription": "Split screen: social actor on the left half, dynamic geometric pattern on the right half.",
+                "segmentId": "social_geo_split",
+                "source": "literature",
+                "status": "monitor"
+              },
+              {
+                "acceptableHigh": 0.6,
+                "biomarker": "geometric_dwell_ratio",
+                "citation": "Geometric fixation >=69% marks the ASD-Geo subtype at 98-99% specificity (Pierce et al., eLife 2019); this band flags above 60% so the 69% rule sits inside the atypical zone.",
+                "direction": "lowerBetter",
+                "expected": 0.3,
+                "imputed": false,
+                "metricKey": "geometric_dwell_ratio",
+                "observed": 0.21,
+                "score": 1.0,
+                "segmentDescription": "Split screen: social actor on the left half, dynamic geometric pattern on the right half.",
+                "segmentId": "social_geo_split",
+                "source": "literature",
+                "status": "onTarget"
+              }
+            ],
+            "stimulusId": "stim_05_geopref_split_10s",
+            "subscore": 0.8666666666666667,
+            "title": "Geometric vs Social Preference",
+            "validSampleRatio": 0.95,
+            "weight": 0.3
+          },
+          {
+            "category": "Unattributed",
+            "hasBaseline": false,
+            "lowConfidence": true,
+            "rows": [],
+            "stimulusId": "untagged",
+            "subscore": 0.0,
+            "title": "untagged",
+            "validSampleRatio": 0.4,
+            "weight": 0.0
+          }
+        ]
+      },
+      "sessionId": "SESS-GOLDEN-0001",
+      "warnings": [
+        "untagged: had no baseline at capture, so the session carries no metrics for it; pass frames to score it"
+      ]
+    },
+    "v1_7_request_default_profile": {
+      "device": {
+        "attentionFlag": "yellow",
+        "compositeScore": 0.74
+      },
+      "flag": {
+        "detail": "Looking time sits in the expected range for this age. This is a screening signal, not a diagnosis.",
+        "flag": "green",
+        "headline": "Looking matches the age reference",
+        "isScreeningSignalOnly": true
+      },
+      "metricSource": "sessionReport",
+      "schemaVersion": "1.7",
+      "score": {
+        "ageBracketId": "24-35",
+        "ageMonths": 28,
+        "baselineSchemaVersion": "1.0.0",
+        "baselineStatus": "provisional-literature-seeded",
+        "compositeScore": 0.8666666666666667,
+        "scoredAtUtc": "2026-11-01T00:00:00Z",
+        "videos": [
+          {
+            "category": "GeoPref",
+            "hasBaseline": true,
+            "lowConfidence": false,
+            "rows": [
+              {
+                "acceptableLow": 0.55,
+                "biomarker": "social_dwell_ratio",
+                "citation": "Neurotypical toddlers spend >70% of viewing time on the social side (Pierce et al., eLife 2019; Pierce 2011/2016).",
+                "direction": "higherBetter",
+                "expected": 0.7,
+                "imputed": false,
+                "metricKey": "social_dwell_ratio",
+                "observed": 0.62,
+                "score": 0.7333333333333333,
+                "segmentDescription": "Split screen: social actor on the left half, dynamic geometric pattern on the right half.",
+                "segmentId": "social_geo_split",
+                "source": "literature",
+                "status": "monitor"
+              },
+              {
+                "acceptableHigh": 0.6,
+                "biomarker": "geometric_dwell_ratio",
+                "citation": "Geometric fixation >=69% marks the ASD-Geo subtype at 98-99% specificity (Pierce et al., eLife 2019); this band flags above 60% so the 69% rule sits inside the atypical zone.",
+                "direction": "lowerBetter",
+                "expected": 0.3,
+                "imputed": false,
+                "metricKey": "geometric_dwell_ratio",
+                "observed": 0.21,
+                "score": 1.0,
+                "segmentDescription": "Split screen: social actor on the left half, dynamic geometric pattern on the right half.",
+                "segmentId": "social_geo_split",
+                "source": "literature",
+                "status": "onTarget"
+              }
+            ],
+            "stimulusId": "stim_05_geopref_split_10s",
+            "subscore": 0.8666666666666667,
+            "title": "Geometric vs Social Preference",
+            "validSampleRatio": 0.95,
+            "weight": 0.3
+          },
+          {
+            "category": "Unattributed",
+            "hasBaseline": false,
+            "lowConfidence": true,
+            "rows": [],
+            "stimulusId": "untagged",
+            "subscore": 0.0,
+            "title": "untagged",
+            "validSampleRatio": 0.4,
+            "weight": 0.0
+          }
+        ]
+      },
+      "sessionId": "SESS-GOLDEN-0001",
+      "warnings": [
+        "untagged: had no baseline at capture, so the session carries no metrics for it; pass frames to score it"
+      ]
+    },
+    "v1_7_request_with_frames": {
+      "device": {
+        "attentionFlag": "yellow",
+        "compositeScore": 0.74
+      },
+      "flag": {
+        "detail": "Looking time sits in the expected range for this age. This is a screening signal, not a diagnosis.",
+        "flag": "green",
+        "headline": "Looking matches the age reference",
+        "isScreeningSignalOnly": true
+      },
+      "metricSource": "frames",
+      "schemaVersion": "1.7",
+      "score": {
+        "ageBracketId": "12-17",
+        "ageMonths": 14,
+        "baselineSchemaVersion": "1.0.0",
+        "baselineStatus": "provisional-literature-seeded",
+        "compositeScore": 0.9523809523809523,
+        "scoredAtUtc": "",
+        "videos": [
+          {
+            "category": "Joint Attention",
+            "hasBaseline": true,
+            "lowConfidence": false,
+            "rows": [
+              {
+                "acceptableLow": 0.15,
+                "biomarker": "aoi_dwell_ratio",
+                "citation": "Face reference before the cue; developmental interpolation (no numeric anchor in digest set).",
+                "direction": "higherBetter",
+                "expected": 0.35,
+                "imputed": false,
+                "metricKey": "aoi_dwell_ratio::Actor_Face",
+                "observed": 0.6666666666666666,
+                "score": 1.0,
+                "segmentDescription": "Actor faces the camera and looks straight ahead.",
+                "segmentId": "cue_face",
+                "source": "interpolated",
+                "status": "onTarget",
+                "targetAOI": "Actor_Face"
+              },
+              {
+                "acceptableHigh": 1500.0,
+                "biomarker": "first_entry_latency_ms",
+                "citation": "Saccadic latency to gaze-cue target; Curv baseline normalization range 300-800ms (JBI 2022 latency features). Bracket margins interpolated.",
+                "direction": "lowerBetter",
+                "expected": 800.0,
+                "imputed": false,
+                "metricKey": "first_entry_latency_ms::Gaze_Target_Right",
+                "observed": 1000.0,
+                "score": 0.8571428571428571,
+                "segmentDescription": "Actor turns gaze to the right-side target object.",
+                "segmentId": "gaze_follow_right",
+                "source": "literature",
+                "status": "monitor",
+                "targetAOI": "Gaze_Target_Right"
+              },
+              {
+                "acceptableLow": 0.05,
+                "biomarker": "aoi_dwell_ratio",
+                "citation": "Dwell on cued target across the clip; developmental interpolation (target window is ~56% of clip).",
+                "direction": "higherBetter",
+                "expected": 0.15,
+                "imputed": false,
+                "metricKey": "aoi_dwell_ratio::Gaze_Target_Right",
+                "observed": 0.75,
+                "score": 1.0,
+                "segmentDescription": "Actor turns gaze to the right-side target object.",
+                "segmentId": "gaze_follow_right",
+                "source": "interpolated",
+                "status": "onTarget",
+                "targetAOI": "Gaze_Target_Right"
+              }
+            ],
+            "stimulusId": "stim_02_gaze_cue_right_8s",
+            "subscore": 0.9523809523809524,
+            "title": "Joint Attention: Rightward Cue",
+            "validSampleRatio": 0.875,
+            "weight": 0.15
+          },
+          {
+            "category": "Unattributed",
+            "hasBaseline": false,
+            "lowConfidence": false,
+            "rows": [],
+            "stimulusId": "session_untagged",
+            "subscore": 0.0,
+            "title": "session_untagged",
+            "validSampleRatio": 1.0,
+            "weight": 0.0
+          }
+        ]
+      },
+      "sessionId": "SESS-GOLDEN-0001",
+      "warnings": []
+    }
+  }
+}

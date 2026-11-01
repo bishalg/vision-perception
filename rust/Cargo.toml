@@ -8,6 +8,7 @@ members = [
     "crates/asd-backend",
     "crates/asd-cli",
     "crates/asd-export",
+    "crates/asd-wasm",
 ]
 
 [workspace.package]

@@ -2,6 +2,8 @@
 import type { ZodType } from "zod";
 import { createLiveAdmin } from "./admin";
 import { createLiveExports } from "./exports";
+import { createLiveCatalog } from "./catalog";
+import { createLivePrivacy } from "./privacy";
 import { createLiveClinical } from "./clinical";
 import {
   ApiError,
@@ -87,6 +89,8 @@ export function createLiveClient(opts: LiveOptions): CurvApi & AuthApi {
     ...createLiveClinical(request, buildQuery),
     ...createLiveAdmin(request, buildQuery),
     ...createLiveExports(request, buildQuery),
+    ...createLiveCatalog(request, buildQuery),
+    ...createLivePrivacy(request, buildQuery),
     login: (email, password, totpCode) =>
       request("/auth/login", tokenPairSchema, {
         method: "POST",

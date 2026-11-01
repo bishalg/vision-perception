@@ -65,13 +65,13 @@ fn stored<T>(what: &str, v: Option<T>) -> AppResult<T> {
     v.ok_or_else(|| AppError::Internal(format!("stored destination {what} is not in the contract")))
 }
 
-/// One destination by id (any org; callers check the org).
+/// One destination by id (any org; callers check the org). Archived destinations are gone.
 pub async fn load<'e>(db: impl PgExecutor<'e>, id: Uuid) -> AppResult<Option<DestinationRow>> {
     let Some(r) = sqlx::query!(
         r#"SELECT id, org_id, kind, name, config, status, environment, secret_ct,
                   secret_key_id, secret_fingerprint, ssh_public_key, created_at, updated_at,
                   last_test_at, last_test_ok, last_test_error
-           FROM integration_destinations WHERE id = $1"#,
+           FROM integration_destinations WHERE id = $1 AND archived_at IS NULL"#,
         id
     )
     .fetch_optional(db)

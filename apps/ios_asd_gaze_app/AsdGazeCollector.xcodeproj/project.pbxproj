@@ -57,6 +57,7 @@
 		45E033BA69F348A4CCEADABD /* ResearchStudyConsentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A63371C06337F00E97F6D0C9 /* ResearchStudyConsentView.swift */; };
 		46792328556AE4DEDC723185 /* CareKitStore in Frameworks */ = {isa = PBXBuildFile; productRef = EE64E1AB5E49B4DA55A508EA /* CareKitStore */; };
 		488DFFE6E0CC6D0C55DF83DF /* CurvAsdGazeKit in Frameworks */ = {isa = PBXBuildFile; productRef = BA36CB4B4BB59E6796DC72BA /* CurvAsdGazeKit */; };
+		4B8794F815CA81B5B14D4699 /* GazePipelineCostTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BEDEA37416B7B891B7A5B58 /* GazePipelineCostTests.swift */; };
 		4B8E9F7334C2AC49BB3CBF42 /* ClinicalInteroperabilityStandards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7587971C40BCA5A14C0F2135 /* ClinicalInteroperabilityStandards.swift */; };
 		4CEA1A9FB0F24693CEE9A1A3 /* FHIRCareMapperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78A9E3C2DFC154F3B09F38E8 /* FHIRCareMapperTests.swift */; };
 		4D97318B3F0C19A9B0165FD8 /* stim_04_surprise_giftbox_10s.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 47464ADA3137E9AF46BD2852 /* stim_04_surprise_giftbox_10s.mp4 */; };
@@ -315,6 +316,7 @@
 		98EE536B2A1BB98FBDC5B10D /* CareAlertPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareAlertPreferences.swift; sourceTree = "<group>"; };
 		9B8571A70F409315436A3E01 /* GazeReplayHeatmapFullScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazeReplayHeatmapFullScreenView.swift; sourceTree = "<group>"; };
 		9BA364F2B8D921966F273502 /* dashboard_and_guardians.feature */ = {isa = PBXFileReference; path = dashboard_and_guardians.feature; sourceTree = "<group>"; };
+		9BEDEA37416B7B891B7A5B58 /* GazePipelineCostTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GazePipelineCostTests.swift; sourceTree = "<group>"; };
 		9C2AE415C19877471ACD26E8 /* CoreMotion.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMotion.framework; path = System/Library/Frameworks/CoreMotion.framework; sourceTree = SDKROOT; };
 		A0781428976F4BBF2CC1D5AA /* FHIRBundleBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FHIRBundleBuilderTests.swift; sourceTree = "<group>"; };
 		A0D50DB436426D4B609643B4 /* StimulusPlaylistTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StimulusPlaylistTests.swift; sourceTree = "<group>"; };
@@ -696,6 +698,7 @@
 				439D9846928A6D348C3DA218 /* DoctorReportGeneratorTests.swift */,
 				A0781428976F4BBF2CC1D5AA /* FHIRBundleBuilderTests.swift */,
 				78A9E3C2DFC154F3B09F38E8 /* FHIRCareMapperTests.swift */,
+				9BEDEA37416B7B891B7A5B58 /* GazePipelineCostTests.swift */,
 				37CCAC020A34C51C4280F971 /* GazeSessionRecordVersioningTests.swift */,
 				011AFAF6529D0195ADA26BA1 /* LiquidGlassContrastTests.swift */,
 				1ED89FFCA52556C3A2591522 /* MCHATGateTests.swift */,
@@ -990,6 +993,7 @@
 				27355FA13ED6B22D40A3ACD5 /* DoctorReportGeneratorTests.swift in Sources */,
 				0F82A0ED34D9FCF844D1190C /* FHIRBundleBuilderTests.swift in Sources */,
 				4CEA1A9FB0F24693CEE9A1A3 /* FHIRCareMapperTests.swift in Sources */,
+				4B8794F815CA81B5B14D4699 /* GazePipelineCostTests.swift in Sources */,
 				C4CA02A95984D4F6E02C6386 /* GazeSessionRecordVersioningTests.swift in Sources */,
 				413DB3A6C0E953E959A93872 /* LiquidGlassContrastTests.swift in Sources */,
 				A0C2BCA7E77418725071B5BD /* MCHATGateTests.swift in Sources */,

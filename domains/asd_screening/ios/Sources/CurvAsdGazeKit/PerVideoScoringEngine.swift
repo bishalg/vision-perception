@@ -79,6 +79,12 @@ public struct PerVideoScoreReport: Codable, Sendable, Equatable {
     /// False when no baseline profile exists for the clip (untagged frames or unknown id).
     public let hasBaseline: Bool
     public let weight: Double
+    /// QS-3 / CNF-3 per-clip tracking values (schema 1.7), from the Rust gaze pipeline;
+    /// absent when not measured (CON-14). See `PerVideoScoreReport.merging(_:clipTracking:)`.
+    public let meanSampleConfidence: Double?
+    public let meanFixationConfidence: Double?
+    public let nearestCheckOffsetDeg: Double?
+    public let aoiMinSizeDeg: Double?
 
     public init(
         stimulusId: String,
@@ -89,7 +95,11 @@ public struct PerVideoScoreReport: Codable, Sendable, Equatable {
         validSampleRatio: Double,
         lowConfidence: Bool,
         hasBaseline: Bool,
-        weight: Double
+        weight: Double,
+        meanSampleConfidence: Double? = nil,
+        meanFixationConfidence: Double? = nil,
+        nearestCheckOffsetDeg: Double? = nil,
+        aoiMinSizeDeg: Double? = nil
     ) {
         self.stimulusId = stimulusId
         self.title = title
@@ -100,6 +110,10 @@ public struct PerVideoScoreReport: Codable, Sendable, Equatable {
         self.lowConfidence = lowConfidence
         self.hasBaseline = hasBaseline
         self.weight = weight
+        self.meanSampleConfidence = meanSampleConfidence
+        self.meanFixationConfidence = meanFixationConfidence
+        self.nearestCheckOffsetDeg = nearestCheckOffsetDeg
+        self.aoiMinSizeDeg = aoiMinSizeDeg
     }
 }
 

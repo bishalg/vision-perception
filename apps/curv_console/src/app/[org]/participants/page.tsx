@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ParticipantsTable } from "@/components/ParticipantsTable";
-import { authedApi } from "@/lib/auth/server";
+import { authedApi, currentRole } from "@/lib/auth/server";
 import { parseCursor, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
+import { can } from "@/lib/permissions";
 import { adminText } from "@/messages/admin";
+import { requestErasureAction } from "../privacy-actions";
 
 const t = adminText.participants;
 
@@ -26,7 +28,11 @@ export default async function ParticipantsPage({
     <>
       <h1>{t.title}</h1>
       <p className="muted">{t.intro}</p>
-      <ParticipantsTable participants={page.items} />
+      <ParticipantsTable
+        participants={page.items}
+        orgId={org}
+        erase={can(await currentRole(), "participant.erase") ? requestErasureAction.bind(null, org) : undefined}
+      />
       <p className="muted">{t.showing(page.items.length, page.total)}</p>
       <nav className="pagination" aria-label="Pagination">
         {cursor ? <Link href={base}>{adminText.common.first}</Link> : null}

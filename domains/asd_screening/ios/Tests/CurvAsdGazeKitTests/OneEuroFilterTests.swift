@@ -4,7 +4,7 @@ import CoreGraphics
 
 final class OneEuroFilterTests: XCTestCase {
     func testStationarySignalJitterReduction() {
-        let filter = OneEuroFilter(minCutoff: 1.0, beta: 0.01, dCutoff: 1.0)
+        let filter = LegacyOneEuroFilter(minCutoff: 1.0, beta: 0.01, dCutoff: 1.0)
         let trueValue = 0.50
         var filteredValues: [Double] = []
 
@@ -27,7 +27,7 @@ final class OneEuroFilterTests: XCTestCase {
     }
 
     func testFastSaccadeTransitionResponsiveness() {
-        let filter = OneEuroFilter(minCutoff: 1.0, beta: 0.02, dCutoff: 1.0)
+        let filter = LegacyOneEuroFilter(minCutoff: 1.0, beta: 0.02, dCutoff: 1.0)
 
         // Settle at 0.20
         for i in 0..<30 {
@@ -45,7 +45,7 @@ final class OneEuroFilterTests: XCTestCase {
     }
 
     func test2DFilterPointSmoothing() {
-        let filter2D = OneEuroFilter2D(minCutoff: 1.2, beta: 0.015, dCutoff: 1.0)
+        let filter2D = LegacyOneEuroFilter2D(minCutoff: 1.2, beta: 0.015, dCutoff: 1.0)
         let pt = CGPoint(x: 0.35, y: 0.65)
         let filtered = filter2D.filter(point: pt, timestamp: 1.0)
 
@@ -54,7 +54,7 @@ final class OneEuroFilterTests: XCTestCase {
     }
 
     func testFilterReset() {
-        let filter = OneEuroFilter()
+        let filter = LegacyOneEuroFilter()
         _ = filter.filter(value: 100.0, timestamp: 1.0)
         filter.reset()
         // After reset, first sample is taken immediately as base
@@ -63,7 +63,7 @@ final class OneEuroFilterTests: XCTestCase {
     }
 
     func testConcurrentFilterAndResetThreadSafety() {
-        let filter2D = OneEuroFilter2D(minCutoff: 1.2, beta: 0.015, dCutoff: 1.0)
+        let filter2D = LegacyOneEuroFilter2D(minCutoff: 1.2, beta: 0.015, dCutoff: 1.0)
         let queue = DispatchQueue(label: "org.curv.test.concurrent", attributes: .concurrent)
         let group = DispatchGroup()
 

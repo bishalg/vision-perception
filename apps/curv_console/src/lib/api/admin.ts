@@ -93,12 +93,27 @@ export type AuditEntry = z.infer<typeof auditEntrySchema>;
 export const auditPageSchema = z.object({ items: z.array(auditEntrySchema), ...pageFields });
 export type AuditPage = z.infer<typeof auditPageSchema>;
 
+/**
+ * `GET /orgs/{id}/audit` filters (all optional, combined with AND). `action` matches by prefix (`integration.`);
+ * `from`/`to` are inclusive RFC 3339 timestamps.
+ */
+export interface AuditQuery extends PageQuery {
+  actor_id?: string;
+  action?: string;
+  target_type?: string;
+  target_id?: string;
+  from?: string;
+  to?: string;
+}
+
 export interface AdminApi {
   listParticipants(orgId: string, query?: PageQuery): Promise<ParticipantPage>;
   listUsers(orgId: string, query?: PageQuery): Promise<OrgUserPage>;
+  /** `GET /orgs/{id}/users/{user_id}`; 404 for a user of another org. */
+  getUser(orgId: string, userId: string): Promise<OrgUser>;
   createUser(orgId: string, request: CreateUserRequest): Promise<OrgUser>;
   updateUser(orgId: string, userId: string, patch: UpdateUserRequest): Promise<OrgUser>;
-  listAudit(orgId: string, query?: PageQuery): Promise<AuditPage>;
+  listAudit(orgId: string, query?: AuditQuery): Promise<AuditPage>;
 }
 
 export function createLiveAdmin(request: LiveRequest, buildQuery: (q: object) => string): AdminApi {
@@ -107,6 +122,7 @@ export function createLiveAdmin(request: LiveRequest, buildQuery: (q: object) =>
     listParticipants: (orgId, query) =>
       request(`/orgs/${enc(orgId)}/participants${buildQuery(query ?? {})}`, participantPageSchema),
     listUsers: (orgId, query) => request(`/orgs/${enc(orgId)}/users${buildQuery(query ?? {})}`, orgUserPageSchema),
+    getUser: (orgId, userId) => request(`/orgs/${enc(orgId)}/users/${enc(userId)}`, orgUserSchema),
     createUser: (orgId, body) => request(`/orgs/${enc(orgId)}/users`, orgUserSchema, { method: "POST", body }),
     updateUser: (orgId, userId, patch) =>
       request(`/orgs/${enc(orgId)}/users/${enc(userId)}`, orgUserSchema, { method: "PATCH", body: patch }),

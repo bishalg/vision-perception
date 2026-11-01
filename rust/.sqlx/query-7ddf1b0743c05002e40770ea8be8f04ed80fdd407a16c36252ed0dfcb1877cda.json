@@ -1,0 +1,54 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, participant_token, frames_blob_key FROM sessions\n                       WHERE org_id = $1 AND received_at < $2 AND frames_purged_at IS NULL\n                       ORDER BY received_at, id LIMIT $3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "participant_token",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "participant_token"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "frames_blob_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "frames_blob_key"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "7ddf1b0743c05002e40770ea8be8f04ed80fdd407a16c36252ed0dfcb1877cda"
+}

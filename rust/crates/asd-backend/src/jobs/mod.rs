@@ -31,8 +31,10 @@ use crate::crypto::Keyring;
 use crate::error::AppResult;
 
 pub mod deliver; // WP-I.7
+pub mod erasure; // WP-B.9
 pub mod export;
 pub mod norm_aggregate;
+pub mod retention; // WP-B.9
 pub mod runner;
 
 /// `jobs.kind` of a norm aggregation (`POST /v1/jobs/norm-aggregate`).
@@ -41,8 +43,18 @@ pub const KIND_NORM_AGGREGATE: &str = "norm_aggregate";
 pub const KIND_EXPORT: &str = "export";
 /// `jobs.kind` of one delivery of an export to a destination (DLV-1, WP-I.7).
 pub const KIND_DELIVER: &str = "export_deliver";
+/// `jobs.kind` of one erasure request's execution (WP-B.9).
+pub const KIND_ERASURE: &str = "erasure";
+/// `jobs.kind` of a retention sweep, nightly or on request (WP-B.9).
+pub const KIND_RETENTION_SWEEP: &str = "retention_sweep";
 /// Every kind the runner executes.
-pub const KINDS: &[&str] = &[KIND_NORM_AGGREGATE, KIND_EXPORT, KIND_DELIVER];
+pub const KINDS: &[&str] = &[
+    KIND_NORM_AGGREGATE,
+    KIND_EXPORT,
+    KIND_DELIVER,
+    KIND_ERASURE,
+    KIND_RETENTION_SWEEP,
+];
 
 /// How often a running phased job refreshes `jobs.heartbeat_at` by default: well inside
 /// the 15-minute visibility timeout.

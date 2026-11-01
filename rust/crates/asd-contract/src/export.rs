@@ -72,6 +72,8 @@ str_enum!(
     /// `fhir_bundle`: one FHIR R4 clinical report bundle, exactly one session
     /// (`filters.session_ids`); `fhir_ndjson`: one bundle per line, any number of sessions;
     /// `hl7v2`: one ORU^R01 message, exactly one session, identified only (HL7-7).
+    /// `dataset_jsonl`, `dataset_parquet`: de-identified ML datasets, one row per session,
+    /// labels when `include_labels` (WP-B.9; de-identified only).
     ExportFormat {
         Csv => "csv",
         CsvExcel => "csv_excel",
@@ -81,6 +83,8 @@ str_enum!(
         FhirBundle => "fhir_bundle",
         FhirNdjson => "fhir_ndjson",
         Hl7v2 => "hl7v2",
+        DatasetJsonl => "dataset_jsonl",
+        DatasetParquet => "dataset_parquet",
     }
 );
 
@@ -171,6 +175,49 @@ pub struct ExportRequest {
     pub destination_ids: Vec<String>,
     /// 10..500 characters, shown in the audit log.
     pub reason: String,
+    /// Dataset formats only (WP-B.9): add each session's reviewer labels. Ignored by the
+    /// other formats.
+    #[serde(default)]
+    pub include_labels: bool,
+}
+
+str_enum!(
+    /// `POST /v1/jobs/export-dataset` file format (WP-B.9, 02 §4).
+    DatasetFormat {
+        Jsonl => "jsonl",
+        Parquet => "parquet",
+    }
+);
+
+impl DatasetFormat {
+    /// The export format that renders this dataset format.
+    pub const fn export_format(self) -> ExportFormat {
+        match self {
+            Self::Jsonl => ExportFormat::DatasetJsonl,
+            Self::Parquet => ExportFormat::DatasetParquet,
+        }
+    }
+}
+
+/// `POST /v1/jobs/export-dataset` (WP-B.9, 02 §4): a de-identified research dataset of the
+/// caller's org. Same as `POST /v1/orgs/{id}/exports` with `mode = deidentified`,
+/// `purpose = research` (only research-consented sessions) and a dataset format; answers
+/// `202` with the [`Export`], downloaded through `POST /v1/exports/{id}/download-url`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct DatasetExportRequest {
+    pub format: DatasetFormat,
+    #[serde(default)]
+    pub filters: ExportFilters,
+    /// Add each session's reviewer labels (default `true`).
+    #[serde(default = "default_true")]
+    pub include_labels: bool,
+    /// 10..500 characters, shown in the audit log.
+    pub reason: String,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 // ---- resources ---------------------------------------------------------------------------
@@ -209,6 +256,9 @@ pub struct Export {
     pub excluded: BTreeMap<String, u64>,
     /// Short error class when `failed`; never patient data.
     pub error: Option<String>,
+    /// Dataset formats: the artifact carries reviewer labels (WP-B.9).
+    #[serde(default)]
+    pub include_labels: bool,
 }
 
 fn example_export() -> Export {
@@ -237,6 +287,7 @@ fn example_export() -> Export {
         content_type: Some("application/zip".into()),
         excluded: BTreeMap::from([("no_research_consent".into(), 3), ("withdrawn".into(), 1)]),
         error: None,
+        include_labels: false,
     }
 }
 
@@ -498,6 +549,23 @@ pub struct IntegrationPage {
     pub items: Vec<Integration>,
     pub next_cursor: Option<String>,
     pub total: Option<u64>,
+}
+
+/// A destination an exporter may choose (`GET /v1/orgs/{id}/export-destinations`,
+/// `ExportRead`): identity and state only, never config or secrets.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct DeliverableDestination {
+    pub id: String,
+    pub name: String,
+    pub kind: IntegrationKind,
+    pub environment: IntegrationEnvironment,
+    pub status: IntegrationStatus,
+}
+
+/// `GET /v1/orgs/{id}/export-destinations`: the org's active destinations, oldest first.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct DeliverableDestinationList {
+    pub items: Vec<DeliverableDestination>,
 }
 
 /// `POST /v1/integrations/{id}/ssh-key` (INTG-5): generates (or rotates) the destination's

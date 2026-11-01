@@ -890,3 +890,15 @@ pub fn gaze_clip_aois_json(
     );
     encode(&aois, "screen AOIs")
 }
+
+/// QS-5 (WP-G.9): the session's `calibratedDistanceCm` from its `trackingQuality` JSON (QS-1):
+/// the calibration pose distance when a calibration ran in the session, `None` otherwise
+/// (`asd_contract::session_v1_7::calibrated_distance_cm`). The app never writes a constant.
+#[uniffi::export]
+pub fn gaze_calibrated_distance_cm(tracking_quality_json: String) -> Result<Option<f64>, AsdError> {
+    let quality: asd_core::types::tracking::TrackingQuality =
+        decode(&tracking_quality_json, "tracking quality")?;
+    Ok(asd_contract::session_v1_7::calibrated_distance_cm(Some(
+        &quality,
+    )))
+}

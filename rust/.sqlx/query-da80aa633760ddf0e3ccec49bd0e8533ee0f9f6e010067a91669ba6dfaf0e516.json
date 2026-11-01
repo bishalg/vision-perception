@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM clinical_reviews WHERE session_id = ANY($1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "da80aa633760ddf0e3ccec49bd0e8533ee0f9f6e010067a91669ba6dfaf0e516"
+}

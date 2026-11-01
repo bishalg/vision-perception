@@ -30,3 +30,20 @@ test("integrations: add a webhook, set a generated secret once and run the test"
   await page.getByRole("button", { name: "Send test" }).click();
   await expect(page.getByText("The test delivery succeeded.")).toBeVisible();
 });
+
+test("integrations: delete a destination after an in-page confirmation", async ({ page }) => {
+  const org = await loginToOverview(page);
+  await nav(page).getByRole("link", { name: "Integrations" }).click();
+  await page.getByLabel("Name").fill("E2E delete me");
+  await page.getByLabel("Receiver URL (https only)").fill("https://hooks.example.org/e2e-delete");
+  await page.getByRole("button", { name: "Add destination" }).click();
+  await page.getByRole("link", { name: "Open it to set up its credential." }).click();
+  await page.getByRole("button", { name: "Delete destination" }).click();
+  await expect(page.getByText(/Delete "E2E delete me"\?/)).toBeVisible();
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByText(/Delete "E2E delete me"\?/)).toHaveCount(0);
+  await page.getByRole("button", { name: "Delete destination" }).click();
+  await page.getByRole("button", { name: "Yes, delete" }).click();
+  await expect(page).toHaveURL(new RegExp(`/${org}/settings/integrations$`));
+  await expect(page.getByRole("link", { name: "E2E delete me" })).toHaveCount(0);
+});

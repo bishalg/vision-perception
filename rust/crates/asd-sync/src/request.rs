@@ -7,6 +7,7 @@ use asd_contract::api_v1::RegisterDeviceRequest;
 use asd_contract::session_v1_6::{
     SessionIngestRequest, IDEMPOTENCY_KEY_HEADER, SCHEMA_VERSION, SCHEMA_VERSION_HEADER,
 };
+use asd_contract::session_v1_7;
 use asd_contract::signing::canonical_bytes;
 use asd_core::types::CaptureSource;
 
@@ -111,33 +112,91 @@ pub fn build_session_request(
     device_token: &str,
     client: &ClientInfo,
 ) -> Result<SyncRequest, SyncError> {
+    session_request(
+        SessionParts {
+            capture_source: payload.capture_source,
+            legacy_provenance: payload.raw_payload.legacy_provenance,
+            schema_version: &payload.schema_version,
+            supported: SCHEMA_VERSION,
+            started_at: &payload.raw_payload.started_at,
+            ended_at: &payload.raw_payload.ended_at,
+            session_id: &payload.session_id,
+        },
+        || canonical_bytes(payload),
+        device_token,
+        client,
+    )
+}
+
+/// [`build_session_request`] for a schema 1.7 body (SCH-2: the app writes 1.7 from the
+/// build that runs the Rust gaze pipeline, WP-G.9). Same rules; the body is the RFC 8785
+/// form of the 1.7 contract types, so `trackingQuality` and the per-clip tracking keys are
+/// carried, not dropped.
+pub fn build_session_request_v1_7(
+    payload: &session_v1_7::SessionIngestRequest,
+    device_token: &str,
+    client: &ClientInfo,
+) -> Result<SyncRequest, SyncError> {
+    session_request(
+        SessionParts {
+            capture_source: payload.capture_source,
+            legacy_provenance: payload.raw_payload.legacy_provenance,
+            schema_version: &payload.schema_version,
+            supported: session_v1_7::SCHEMA_VERSION,
+            started_at: &payload.raw_payload.started_at,
+            ended_at: &payload.raw_payload.ended_at,
+            session_id: &payload.session_id,
+        },
+        || canonical_bytes(payload),
+        device_token,
+        client,
+    )
+}
+
+/// The fields the request rules read, from either contract version.
+struct SessionParts<'a> {
+    capture_source: CaptureSource,
+    legacy_provenance: Option<bool>,
+    schema_version: &'a str,
+    supported: &'a str,
+    started_at: &'a str,
+    ended_at: &'a str,
+    session_id: &'a str,
+}
+
+fn session_request<E: std::fmt::Display>(
+    parts: SessionParts<'_>,
+    body: impl FnOnce() -> Result<Vec<u8>, E>,
+    device_token: &str,
+    client: &ClientInfo,
+) -> Result<SyncRequest, SyncError> {
     let token = device_token.trim();
     if token.is_empty() {
         return Err(SyncError::NotRegistered);
     }
-    if payload.capture_source == CaptureSource::Simulated {
+    if parts.capture_source == CaptureSource::Simulated {
         return Err(SyncError::SimulatedCapture);
     }
-    if payload.raw_payload.legacy_provenance == Some(true) {
+    if parts.legacy_provenance == Some(true) {
         return Err(SyncError::LegacyProvenance);
     }
-    if payload.schema_version != SCHEMA_VERSION {
+    if parts.schema_version != parts.supported {
         return Err(SyncError::UnsupportedSchemaVersion(
-            payload.schema_version.clone(),
+            parts.schema_version.to_string(),
         ));
     }
     for (field, value) in [
-        ("rawPayload.startedAt", &payload.raw_payload.started_at),
-        ("rawPayload.endedAt", &payload.raw_payload.ended_at),
+        ("rawPayload.startedAt", parts.started_at),
+        ("rawPayload.endedAt", parts.ended_at),
     ] {
         if !is_rfc3339_utc_millis(value) {
             return Err(SyncError::InvalidDate {
                 field,
-                value: value.clone(),
+                value: value.to_string(),
             });
         }
     }
-    let body = canonical_bytes(payload).map_err(|e| SyncError::InvalidPayload(e.to_string()))?;
+    let body = body().map_err(|e| SyncError::InvalidPayload(e.to_string()))?;
     Ok(SyncRequest {
         method: "POST".into(),
         path: SESSIONS_PATH.into(),
@@ -145,8 +204,8 @@ pub fn build_session_request(
             header("Content-Type", JSON),
             header("Accept", JSON),
             header("Authorization", format!("Bearer {token}")),
-            header(IDEMPOTENCY_KEY_HEADER, payload.session_id.clone()),
-            header(SCHEMA_VERSION_HEADER, payload.schema_version.clone()),
+            header(IDEMPOTENCY_KEY_HEADER, parts.session_id.to_string()),
+            header(SCHEMA_VERSION_HEADER, parts.schema_version.to_string()),
             header("User-Agent", client.user_agent()),
         ],
         body,
@@ -155,15 +214,26 @@ pub fn build_session_request(
 }
 
 /// [`build_session_request`] from payload JSON (the FFI entry point): the document is
-/// decoded with the contract types first, so a payload the server would reject with
-/// `validation-failed` never leaves the device.
+/// decoded with the contract types of its `schemaVersion` (`1.6` or `1.7`) first, so a
+/// payload the server would reject with `validation-failed` never leaves the device.
 pub fn build_session_request_json(
     payload_json: &[u8],
     device_token: &str,
     client: &ClientInfo,
 ) -> Result<SyncRequest, SyncError> {
-    let payload: SessionIngestRequest = serde_json::from_slice(payload_json)
-        .map_err(|e| SyncError::InvalidPayload(e.to_string()))?;
+    #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Version {
+        schema_version: Option<String>,
+    }
+    let invalid = |e: serde_json::Error| SyncError::InvalidPayload(e.to_string());
+    let version: Version = serde_json::from_slice(payload_json).map_err(invalid)?;
+    if version.schema_version.as_deref() == Some(session_v1_7::SCHEMA_VERSION) {
+        let payload: session_v1_7::SessionIngestRequest =
+            serde_json::from_slice(payload_json).map_err(invalid)?;
+        return build_session_request_v1_7(&payload, device_token, client);
+    }
+    let payload: SessionIngestRequest = serde_json::from_slice(payload_json).map_err(invalid)?;
     build_session_request(&payload, device_token, client)
 }
 

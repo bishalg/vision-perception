@@ -2,7 +2,9 @@
 import type { Role } from "@/lib/api";
 import { can } from "@/lib/permissions";
 import { adminText } from "@/messages/admin";
+import { catalogText } from "@/messages/catalog";
 import { en } from "@/messages/en";
+import { privacyText } from "@/messages/privacy";
 
 export function navLinks(base: string, role: Role | undefined): { href: string; text: string }[] {
   return [
@@ -19,5 +21,8 @@ export function navLinks(base: string, role: Role | undefined): { href: string; 
       ? [{ href: `${base}/settings/clinical`, text: en.nav.clinicalSettings }]
       : []),
     ...(can(role, "integration.read") ? [{ href: `${base}/settings/integrations`, text: en.nav.integrations }] : []),
+    ...(can(role, "participant.erase") ? [{ href: `${base}/erasure`, text: privacyText.nav.erasure }] : []),
+    ...(can(role, "participant.erase") ? [{ href: `${base}/settings/retention`, text: privacyText.nav.retention }] : []),
+    ...(can(role, "config.read") ? [{ href: `${base}/config/catalog`, text: catalogText.nav }] : []),
   ];
 }

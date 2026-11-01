@@ -26,6 +26,8 @@ import {
 import { createMockAdmin } from "./mock/admin";
 import { createMockClinical } from "./mock/clinical";
 import { createMockExports } from "./mock/exports";
+import { createMockPrivacy } from "./mock/privacy";
+import { createMockCatalog } from "./mock/catalog";
 import { MOCK_TRACKING_CYCLE, mockTrackingQuality } from "./mock/tracking";
 
 /** Real orgs are UUIDs (CON-20); the mock uses a fixed one so URLs look like production. */
@@ -369,19 +371,34 @@ export function createMockClient(): CurvApi & AuthApi {
     if (orgId !== MOCK_ORG_ID) throw notFound("Organisation not found");
   };
 
+  const withdrawn = new Map<string, string>();
+  const exportsApi = createMockExports({ orgId: MOCK_ORG_ID, userId: MOCK_USER_ID, now: MOCK_FIXED_NOW, ensureOrg, page });
+  const admin = createMockAdmin({
+    details,
+    devices,
+    orgId: MOCK_ORG_ID,
+    userId: MOCK_USER_ID,
+    now: MOCK_FIXED_NOW,
+    ensureOrg,
+    page,
+    uuid: (seed) => uuid(rng(seed)),
+    withdrawn,
+  });
+
   return {
     ...createMockClinical({ details, orgId: MOCK_ORG_ID, userId: MOCK_USER_ID, now: MOCK_FIXED_NOW, ensureOrg, page }),
-    ...createMockExports({ orgId: MOCK_ORG_ID, userId: MOCK_USER_ID, now: MOCK_FIXED_NOW, ensureOrg, page }),
-    ...createMockAdmin({
-      details,
-      devices,
+    ...exportsApi,
+    ...createMockPrivacy({
       orgId: MOCK_ORG_ID,
-      userId: MOCK_USER_ID,
       now: MOCK_FIXED_NOW,
       ensureOrg,
       page,
-      uuid: (seed) => uuid(rng(seed)),
+      withdrawn,
+      listParticipants: admin.listParticipants,
+      createExport: exportsApi.createExport,
     }),
+    ...createMockCatalog({ userId: MOCK_USER_ID, now: MOCK_FIXED_NOW, page }),
+    ...admin,
     async login(email, password, totpCode) {
       if (!email || password !== MOCK_PASSWORD) {
         throw unauthorized("Invalid email or password");

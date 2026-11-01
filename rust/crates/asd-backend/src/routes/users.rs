@@ -3,6 +3,7 @@
 //! Org user management (API-2):
 //!
 //! - `GET /v1/orgs/{id}/users` -> `OrgUserPage` (newest first, `cursor`/`limit`);
+//! - `GET /v1/orgs/{id}/users/{user_id}` -> `OrgUser` (`UserRead`; `404` for another org);
 //! - `POST /v1/orgs/{id}/users` `CreateUserRequest` -> `201 OrgUser`;
 //! - `PATCH /v1/orgs/{id}/users/{user_id}` `UpdateUserRequest` -> `200 OrgUser`.
 //!
@@ -31,7 +32,7 @@ use asd_contract::clinical::{
     UpdateProfileRequest, UserProfile, MAX_DISPLAY_NAME_CHARS, MAX_REGISTRATION_CHARS,
 };
 use axum::extract::{Path, State};
-use axum::routing::{get, patch};
+use axum::routing::get;
 use axum::{Json, Router};
 use chrono::{DateTime, Utc};
 use http::StatusCode;
@@ -51,7 +52,7 @@ use crate::problem::InvalidParam;
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/orgs/{id}/users", get(list).post(create))
-        .route("/orgs/{id}/users/{user_id}", patch(update))
+        .route("/orgs/{id}/users/{user_id}", get(read).patch(update))
         .route("/users/me", get(get_me).patch(patch_me))
 }
 
@@ -282,6 +283,36 @@ async fn list(
         next_cursor,
         total: None,
     }))
+}
+
+async fn read(
+    State(state): State<AppState>,
+    auth: Require<perm::UserRead>,
+    Path((_, user_id)): Path<(String, String)>,
+) -> AppResult<Json<OrgUser>> {
+    let org = auth.org();
+    let user_id = Uuid::parse_str(&user_id).map_err(|_| AppError::NotFound)?;
+    let r = sqlx::query!(
+        "SELECT email, role, status, last_login_at, display_name, professional_registration
+         FROM users WHERE id = $1 AND org_id = $2",
+        user_id,
+        org
+    )
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or(AppError::NotFound)?;
+    Ok(Json(org_user(
+        user_id,
+        org,
+        r.email,
+        &r.role,
+        &r.status,
+        r.last_login_at,
+        Profile {
+            display_name: r.display_name,
+            professional_registration: r.professional_registration,
+        },
+    )?))
 }
 
 async fn create(

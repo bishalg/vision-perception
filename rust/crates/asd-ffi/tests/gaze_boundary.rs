@@ -1171,3 +1171,27 @@ fn per_frame_cost_through_the_handle() {
         start.elapsed().as_secs_f64() * 1e3
     );
 }
+
+/// QS-5 through the boundary: no in-session calibration, no distance; a calibration pose
+/// gives its distance; a skipped calibration never does; malformed JSON is an error.
+#[test]
+fn calibrated_distance_comes_from_the_calibration_pose() {
+    let handle = GazePipelineHandle::new(config_json()).unwrap();
+    let summary = handle.summary_json().unwrap();
+    assert_eq!(gaze_calibrated_distance_cm(summary.clone()).unwrap(), None);
+
+    let mut doc: serde_json::Value = serde_json::from_str(&summary).unwrap();
+    doc["calibration"]["quality"] = serde_json::json!("good");
+    doc["calibration"]["pose"] =
+        serde_json::json!({"distanceCm": 41.5, "yawDeg": 0.0, "pitchDeg": 0.0});
+    assert_eq!(
+        gaze_calibrated_distance_cm(doc.to_string()).unwrap(),
+        Some(41.5)
+    );
+    doc["calibration"]["quality"] = serde_json::json!("skipped");
+    assert_eq!(gaze_calibrated_distance_cm(doc.to_string()).unwrap(), None);
+    assert!(matches!(
+        gaze_calibrated_distance_cm("{".into()),
+        Err(AsdError::InvalidJson { .. })
+    ));
+}

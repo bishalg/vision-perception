@@ -13,9 +13,16 @@ const count = z.number().int().min(0).nullable().optional();
 
 export const EXPORT_FORMATS = [
   "csv", "csv_excel", "csv_sheets", "xlsx", "pdf_summary", "fhir_bundle", "fhir_ndjson", "hl7v2",
+  "dataset_jsonl", "dataset_parquet",
 ] as const;
 export const exportFormatSchema = z.enum(EXPORT_FORMATS);
 export type ExportFormat = z.infer<typeof exportFormatSchema>;
+
+/** WP-B.9 de-identified ML datasets: always de-identified, purpose research, optional reviewer labels. */
+export const DATASET_EXPORT_FORMATS = ["dataset_jsonl", "dataset_parquet"] as const;
+export function isDatasetFormat(f: ExportFormat): boolean {
+  return (DATASET_EXPORT_FORMATS as readonly string[]).includes(f);
+}
 
 export const EXPORT_KINDS = ["bulk", "document"] as const;
 export const exportKindSchema = z.enum(EXPORT_KINDS);
@@ -94,6 +101,8 @@ export const exportSchema = z.object({
   requested_by: str,
   row_count: count,
   sha256: str,
+  /** Dataset formats: the artifact carries reviewer labels (WP-B.9). */
+  include_labels: z.boolean().optional(),
 });
 export type Export = z.infer<typeof exportSchema>;
 
@@ -112,6 +121,8 @@ export const exportRequestSchema = z.object({
   reason: z.string(),
   destination_ids: z.array(z.string()).optional(),
   filters: exportFiltersSchema.optional(),
+  /** Dataset formats only (WP-B.9); ignored by the other formats. */
+  include_labels: z.boolean().optional(),
 });
 export type ExportRequest = z.infer<typeof exportRequestSchema>;
 
@@ -162,6 +173,19 @@ export const integrationPageSchema = z.object({
   total: count,
 });
 export type IntegrationPage = z.infer<typeof integrationPageSchema>;
+
+/** `GET /orgs/{id}/export-destinations` item (`ExportRead`): identity and state only, never config or secrets. */
+export const deliverableDestinationSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  kind: integrationKindSchema,
+  environment: integrationEnvironmentSchema,
+  status: integrationStatusSchema,
+});
+export type DeliverableDestination = z.infer<typeof deliverableDestinationSchema>;
+
+export const deliverableDestinationListSchema = z.object({ items: z.array(deliverableDestinationSchema) });
+export type DeliverableDestinationList = z.infer<typeof deliverableDestinationListSchema>;
 
 export const createIntegrationRequestSchema = z.object({
   kind: integrationKindSchema,
@@ -232,7 +256,12 @@ export interface ExportsApi {
   /** Signed URL valid five minutes; absolute (presigned) or relative `/v1/exports/{id}/file?t=` (proxy mode). */
   createExportDownloadUrl(exportId: string): Promise<DownloadUrl>;
   listExportDeliveries(exportId: string, query?: ExportsPageQuery): Promise<DeliveryPage>;
-  listIntegrations(orgId: string): Promise<IntegrationPage>;
+  /** Owners and admins (`IntegrationRead`); newest first, `cursor`/`limit` like every list. */
+  listIntegrations(orgId: string, query?: ExportsPageQuery): Promise<IntegrationPage>;
+  /** Every exporter role (`ExportRead`): the active destinations to pick from, without config or secrets. */
+  listExportDestinations(orgId: string): Promise<DeliverableDestinationList>;
+  /** Owners and admins. Archives the destination; 409 while deliveries to it are pending or sending. */
+  deleteIntegration(integrationId: string): Promise<void>;
   getIntegration(integrationId: string): Promise<Integration>;
   createIntegration(orgId: string, request: CreateIntegrationRequest): Promise<Integration>;
   updateIntegration(integrationId: string, patch: UpdateIntegrationRequest): Promise<Integration>;
@@ -253,7 +282,11 @@ export function createLiveExports(request: LiveRequest, buildQuery: (q: object) 
     createExportDownloadUrl: (id) => request(`/exports/${enc(id)}/download-url`, downloadUrlSchema, { method: "POST" }),
     listExportDeliveries: (id, q) =>
       request(`/exports/${enc(id)}/deliveries${buildQuery(q ?? {})}`, deliveryPageSchema),
-    listIntegrations: (orgId) => request(`/orgs/${enc(orgId)}/integrations`, integrationPageSchema),
+    listIntegrations: (orgId, q) =>
+      request(`/orgs/${enc(orgId)}/integrations${buildQuery(q ?? {})}`, integrationPageSchema),
+    listExportDestinations: (orgId) =>
+      request(`/orgs/${enc(orgId)}/export-destinations`, deliverableDestinationListSchema),
+    deleteIntegration: (id) => request(`/integrations/${enc(id)}`, null, { method: "DELETE" }),
     getIntegration: (id) => request(`/integrations/${enc(id)}`, integrationSchema),
     createIntegration: (orgId, body) =>
       request(`/orgs/${enc(orgId)}/integrations`, integrationSchema, { method: "POST", body }),

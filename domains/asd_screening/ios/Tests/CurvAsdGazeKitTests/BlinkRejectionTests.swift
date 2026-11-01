@@ -74,7 +74,7 @@ final class BlinkRejectionTests: XCTestCase {
         let initialSnapshot = FaceAnchorSnapshot(
             isTracked: true,
             transform: transform,
-            lookAtPoint: simd_float3(0.0, 0.0, 0.48),
+            lookAtPoint: simd_float3(0.0, -0.1, 0.48), // on the glass (straight at the camera is above it)
             leftEyeTransform: matrix_identity_float4x4,
             rightEyeTransform: matrix_identity_float4x4,
             blendShapes: [
@@ -121,7 +121,7 @@ final class BlinkRejectionTests: XCTestCase {
         let steadySnapshot = FaceAnchorSnapshot(
             isTracked: true,
             transform: transform,
-            lookAtPoint: simd_float3(0.0, 0.0, 0.48),
+            lookAtPoint: simd_float3(0.0, -0.1, 0.48), // on the glass (straight at the camera is above it)
             leftEyeTransform: matrix_identity_float4x4,
             rightEyeTransform: matrix_identity_float4x4,
             blendShapes: ["eyeBlinkLeft": 0.02, "eyeBlinkRight": 0.02]
@@ -143,7 +143,7 @@ final class BlinkRejectionTests: XCTestCase {
         let reopenedSnapshot = FaceAnchorSnapshot(
             isTracked: true,
             transform: transform,
-            lookAtPoint: simd_float3(0.0, 0.0, 0.48),
+            lookAtPoint: simd_float3(0.0, -0.1, 0.48), // on the glass (straight at the camera is above it)
             leftEyeTransform: matrix_identity_float4x4,
             rightEyeTransform: matrix_identity_float4x4,
             blendShapes: ["eyeBlinkLeft": 0.05, "eyeBlinkRight": 0.05]
@@ -177,7 +177,7 @@ final class BlinkRejectionTests: XCTestCase {
         let openSnapshot = FaceAnchorSnapshot(
             isTracked: true,
             transform: transform,
-            lookAtPoint: simd_float3(0.0, 0.0, 0.48),
+            lookAtPoint: simd_float3(0.0, -0.1, 0.48), // on the glass (straight at the camera is above it)
             leftEyeTransform: matrix_identity_float4x4,
             rightEyeTransform: matrix_identity_float4x4,
             blendShapes: ["eyeBlinkLeft": 0.02, "eyeBlinkRight": 0.02]

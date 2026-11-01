@@ -142,6 +142,9 @@ export function createMockExports(ctx: MockExportsContext): ExportsApi {
     if (req.format === "hl7v2" && req.mode === "deidentified") {
       params.push({ name: "mode", reason: "hl7v2 exports are identified only (HL7-3)" });
     }
+    if ((req.format === "dataset_jsonl" || req.format === "dataset_parquet") && req.mode === "identified") {
+      params.push({ name: "mode", reason: "dataset exports are de-identified only (WP-B.9)" });
+    }
     if ((req.format === "fhir_bundle" || req.format === "hl7v2") && req.filters?.session_ids?.length !== 1) {
       params.push({ name: "filters.session_ids", reason: `${req.format} holds exactly one session; name it here` });
     }
@@ -189,6 +192,9 @@ export function createMockExports(ctx: MockExportsContext): ExportsApi {
         id: mockUuid(2, seq), created_at: iso(seq * 1000), status: "queued", format: req.format, mode: req.mode,
         purpose: req.purpose, reason: req.reason.trim(), filters: snap(req.filters ?? {}),
         destination_ids: [...new Set(req.destination_ids ?? [])].sort(),
+        ...(req.format === "dataset_jsonl" || req.format === "dataset_parquet"
+          ? { include_labels: req.include_labels ?? false }
+          : {}),
       });
       exportsList.push(created);
       for (const d of created.destination_ids) {
@@ -214,10 +220,26 @@ export function createMockExports(ctx: MockExportsContext): ExportsApi {
       const { slice, next_cursor, total } = ctx.page(rows, key, query?.cursor, query?.limit ?? 20);
       return snap({ items: slice, next_cursor, total });
     },
-    async listIntegrations(org) {
+    async listIntegrations(org, query) {
       ctx.ensureOrg(org);
-      const items = [...integrations.values()].sort((a, b) => a.created_at.localeCompare(b.created_at));
-      return snap({ items, next_cursor: null, total: items.length });
+      const { slice, next_cursor, total } = ctx.page(byKey([...integrations.values()]), key, query?.cursor, query?.limit);
+      return snap({ items: slice, next_cursor, total });
+    },
+    async listExportDestinations(org) {
+      ctx.ensureOrg(org);
+      const items = [...integrations.values()]
+        .filter((i) => i.status === "active" && (i.kind === "webhook" || i.kind === "sftp"))
+        .sort((a, b) => a.created_at.localeCompare(b.created_at))
+        .map(({ id, name, kind, environment, status }) => ({ id, name, kind, environment, status }));
+      return { items };
+    },
+    async deleteIntegration(id) {
+      integrationById(id);
+      const inFlight = deliveries.filter((d) => d.destination_id === id && (d.status === "pending" || d.status === "sending")).length;
+      if (inFlight > 0) {
+        throw problem(409, "conflict", "Conflict", `${inFlight} deliveries to this destination are still pending`);
+      }
+      integrations.delete(id);
     },
     async getIntegration(id) {
       return snap(integrationById(id));

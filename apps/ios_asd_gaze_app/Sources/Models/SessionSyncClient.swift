@@ -3,7 +3,7 @@ import CurvAsdGazeKit
 import Foundation
 import os
 
-// MARK: - Payload (`POST /v1/sessions`, schema `docs/spec/schemas/asd/session-v1.6.json`)
+// MARK: - Payload (`POST /v1/sessions`, schema `docs/spec/schemas/asd/session-v1.7.json`)
 
 public enum SessionPayloadError: Error, Equatable, Sendable {
     /// Simulated sessions are refused by every sink (SIM-5).
@@ -43,6 +43,11 @@ public struct SessionPerVideoRow: Codable, Equatable, Sendable {
         public let hasBaseline: Bool
         public let dwellUnits: String
         public let rows: [PerVideoScoreRow]
+        /// QS-3 per-clip tracking values (1.7); absent keys when not measured (CON-14).
+        public let meanSampleConfidence: Double?
+        public let meanFixationConfidence: Double?
+        public let nearestCheckOffsetDeg: Double?
+        public let aoiMinSizeDeg: Double?
     }
 
     enum CodingKeys: String, CodingKey {
@@ -84,7 +89,11 @@ public struct SessionPerVideoRow: Codable, Equatable, Sendable {
             lowConfidence: report.lowConfidence,
             hasBaseline: report.hasBaseline,
             dwellUnits: "ratio",
-            rows: report.rows
+            rows: report.rows,
+            meanSampleConfidence: report.meanSampleConfidence,
+            meanFixationConfidence: report.meanFixationConfidence,
+            nearestCheckOffsetDeg: report.nearestCheckOffsetDeg,
+            aoiMinSizeDeg: report.aoiMinSizeDeg
         )
     }
 
@@ -119,7 +128,7 @@ public struct SessionIngestPayload: Codable, Equatable, Sendable {
     /// Sent as explicit `null` when unknown: the backend would otherwise
     /// default it to "express_30s".
     public let battery: String?
-    /// Wire form ("1.6"), also sent as `X-Schema-Version`.
+    /// Wire form ("1.7"), also sent as `X-Schema-Version`.
     public let schemaVersion: String
     public let perVideo: [SessionPerVideoRow]?
     public let rawPayload: GazeSessionRecord
@@ -153,7 +162,7 @@ public struct SessionIngestPayload: Codable, Equatable, Sendable {
         rawPayload = record
     }
 
-    /// `"v1.6"` (record) -> `"1.6"` (wire, `02 ADR-B5`).
+    /// `"v1.7"` (record) -> `"1.7"` (wire, `02 ADR-B5`).
     public static func wireSchemaVersion(_ recordVersion: String) -> String {
         recordVersion.hasPrefix("v") || recordVersion.hasPrefix("V")
             ? String(recordVersion.dropFirst())

@@ -144,7 +144,7 @@ final class GazeSessionRecordVersioningTests: XCTestCase {
         )
     }
 
-    // MARK: - SIM-4: provenance and schema v1.6
+    // MARK: - SIM-4: provenance and schema v1.6 / v1.7
 
     private func legacyJSON(
         schemaVersion: String,
@@ -210,10 +210,22 @@ final class GazeSessionRecordVersioningTests: XCTestCase {
         XCTAssertNil(record.legacyProvenance)
     }
 
+    /// v1.7 (QS-5): a record without `calibratedDistanceCm` decodes as unmeasured; a v1.6
+    /// record keeps the distance it was written with.
+    func testV17RecordWithoutDistanceDecodesAndV16KeepsIt() throws {
+        var data = legacyJSON(schemaVersion: "v1.7", zeroRawVideoEnforced: true, extra: ["captureSource": "truedepth"])
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        json.removeValue(forKey: "calibratedDistanceCm")
+        data = try JSONSerialization.data(withJSONObject: json)
+        XCTAssertNil(try JSONDecoder().decode(GazeSessionRecord.self, from: data).calibratedDistanceCm)
+        let v16 = legacyJSON(schemaVersion: "v1.6", zeroRawVideoEnforced: true, extra: ["captureSource": "truedepth"])
+        XCTAssertEqual(try JSONDecoder().decode(GazeSessionRecord.self, from: v16).calibratedDistanceCm, 45.0)
+    }
+
     func testRecordFromSummaryCarriesProvenanceAndAbsentMetrics() throws {
         let summary = GazeSessionReportSummary.fixture(sessionId: "SES-16", captureSource: .simulated)
         let record = GazeSessionRecord(summary: summary, participantToken: "child-SES-16")
-        XCTAssertEqual(record.schemaVersion, "v1.6")
+        XCTAssertEqual(record.schemaVersion, "v1.7")
         XCTAssertEqual(record.schemaVersion, GazeSessionRecord.currentSchemaVersion)
         XCTAssertEqual(record.captureSource, .simulated)
         XCTAssertNil(record.legacyProvenance)

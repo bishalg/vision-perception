@@ -69,6 +69,14 @@ jobs:
       - name: Rust gates
         run: scripts/rust_test.sh
 
+      # WP-R.6: the asd-wasm parity tests again, compiled to wasm32 and run under Node, then
+      # the `--target web` package build the console consumes.
+      - name: asd-wasm (wasm32 parity + web package)
+        run: |
+          cargo install wasm-pack --locked
+          scripts/build_asd_wasm.sh --test
+          scripts/build_asd_wasm.sh
+
   # DEP-1/DEP-2: the image builds, compose comes up, migrations run as the init step and
   # the API reports ready (database, migrations, blob store).
   compose-smoke:

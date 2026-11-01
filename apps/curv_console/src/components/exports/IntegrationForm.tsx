@@ -6,6 +6,7 @@ import {
   DELIVERY_EVENTS,
   DELIVERY_TRIGGERS,
   EXPORT_FORMATS,
+  isDatasetFormat,
   EXPORT_MODES,
   INTEGRATION_ENVIRONMENTS,
   INTEGRATION_STATUSES,
@@ -142,7 +143,7 @@ export function IntegrationForm({
         </>
       )}
       <Select name="trigger" label={t.trigger} values={DELIVERY_TRIGGERS} names={integrationsText.triggers} current={cfg.trigger} unset={t.unset} />
-      <Select name="format" label={t.format} values={EXPORT_FORMATS} names={exportsText.formats} current={cfg.format} unset={t.unset} />
+      <Select name="format" label={t.format} values={EXPORT_FORMATS.filter((f) => !isDatasetFormat(f))} names={exportsText.formats} current={cfg.format} unset={t.unset} />
       <Select name="mode" label={t.mode} values={EXPORT_MODES} names={exportsText.modes} current={cfg.mode} unset={t.unset} />
       <div>
         <button type="submit" disabled={pending}>{existing ? t.save : t.create}</button>

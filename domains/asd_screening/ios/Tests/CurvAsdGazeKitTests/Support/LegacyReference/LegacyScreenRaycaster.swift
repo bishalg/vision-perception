@@ -1,3 +1,7 @@
+// Former Swift body of `ScreenRaycaster` (and `ScreenRaycastResult`), moved here by WP-G.9:
+// the raycast now runs in the Rust pipeline (`asd-core::gaze::raycast`, GEO-5, with the device
+// geometry table instead of the idiom guess and without the clamp, TRK-2). Kept as the
+// reference of the old behaviour for one release (ScreenRaycasterTests). Do not change it.
 import Foundation
 import CoreGraphics
 import simd
@@ -7,14 +11,14 @@ import UIKit
 #endif
 
 /// Mathematical raycaster projecting 3D ocular axes onto 2D device screen geometry.
-public struct ScreenRaycaster: Sendable {
-    public let screenWidthPoints: CGFloat
-    public let screenHeightPoints: CGFloat
-    public let screenWidthMeters: Float
-    public let screenHeightMeters: Float
+struct LegacyScreenRaycaster: Sendable {
+    let screenWidthPoints: CGFloat
+    let screenHeightPoints: CGFloat
+    let screenWidthMeters: Float
+    let screenHeightMeters: Float
 
     /// Default initializer automatically adapting to iPhone vs iPad display dimensions.
-    public init(
+    init(
         screenWidthPoints: CGFloat? = nil,
         screenHeightPoints: CGFloat? = nil,
         screenWidthMeters: Float? = nil,
@@ -47,13 +51,13 @@ public struct ScreenRaycaster: Sendable {
     ///   - lookAtPoint: 3D gaze point relative to face anchor origin in meters.
     ///   - leftEyeTransform: Optional left eye 4x4 transform relative to face anchor.
     ///   - rightEyeTransform: Optional right eye 4x4 transform relative to face anchor.
-    /// - Returns: ScreenRaycastResult with screen points, normalized [0, 1] coordinates, and distance.
-    public func projectGazeToScreen(
+    /// - Returns: LegacyScreenRaycastResult with screen points, normalized [0, 1] coordinates, and distance.
+    func projectGazeToScreen(
         faceTransform: simd_float4x4,
         lookAtPoint: simd_float3,
         leftEyeTransform: simd_float4x4? = nil,
         rightEyeTransform: simd_float4x4? = nil
-    ) -> ScreenRaycastResult {
+    ) -> LegacyScreenRaycastResult {
         // 1. Transform lookAtPoint from face local coordinates into camera coordinate space:
         let pFaceLook = simd_float4(lookAtPoint.x, lookAtPoint.y, lookAtPoint.z, 1.0)
         let pCamLook4 = faceTransform * pFaceLook
@@ -125,7 +129,7 @@ public struct ScreenRaycaster: Sendable {
         )
         let normPoint = CGPoint(x: clampedX, y: clampedY)
 
-        return ScreenRaycastResult(
+        return LegacyScreenRaycastResult(
             screenPoint: screenPoint,
             normalizedPoint: normPoint,
             distanceCm: distCm,
@@ -139,12 +143,12 @@ public struct ScreenRaycaster: Sendable {
     ///   - lookAtPoint: 3D gaze vector in camera/face space [x, y, z] in meters.
     ///   - distanceMeters: Estimated distance from face to camera/screen in meters.
     ///   - eyeOffsetMeters: Optional independent eye offset relative to face center.
-    /// - Returns: ScreenRaycastResult containing physical points and normalized [0, 1] coordinates.
-    public func projectGazeToScreen(
+    /// - Returns: LegacyScreenRaycastResult containing physical points and normalized [0, 1] coordinates.
+    func projectGazeToScreen(
         lookAtPoint: simd_float3,
         distanceMeters: Float,
         eyeOffsetMeters: simd_float3 = simd_float3(0, 0, 0)
-    ) -> ScreenRaycastResult {
+    ) -> LegacyScreenRaycastResult {
         let dist = max(distanceMeters, 0.1) // avoid divide by zero
         let distCm = Double(dist * 100.0)
 
@@ -172,7 +176,7 @@ public struct ScreenRaycaster: Sendable {
         )
         let normPoint = CGPoint(x: clampedX, y: clampedY)
 
-        return ScreenRaycastResult(
+        return LegacyScreenRaycastResult(
             screenPoint: screenPoint,
             normalizedPoint: normPoint,
             distanceCm: distCm,
@@ -180,3 +184,29 @@ public struct ScreenRaycaster: Sendable {
         )
     }
 }
+/// Output of projecting TrueDepth 3D ocular transforms onto 2D screen geometry.
+struct LegacyScreenRaycastResult: Sendable, Equatable {
+    let screenPoint: CGPoint
+    let normalizedPoint: CGPoint
+    let leftEyePoint: CGPoint?
+    let rightEyePoint: CGPoint?
+    let distanceCm: Double
+    let isWithinScreen: Bool
+
+    init(
+        screenPoint: CGPoint,
+        normalizedPoint: CGPoint,
+        leftEyePoint: CGPoint? = nil,
+        rightEyePoint: CGPoint? = nil,
+        distanceCm: Double,
+        isWithinScreen: Bool
+    ) {
+        self.screenPoint = screenPoint
+        self.normalizedPoint = normalizedPoint
+        self.leftEyePoint = leftEyePoint
+        self.rightEyePoint = rightEyePoint
+        self.distanceCm = distanceCm
+        self.isWithinScreen = isWithinScreen
+    }
+}
+

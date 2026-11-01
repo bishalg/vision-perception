@@ -81,6 +81,8 @@ import {
   INTEGRATION_KINDS,
   INTEGRATION_STATUSES,
   createIntegrationRequestSchema,
+  deliverableDestinationListSchema,
+  deliverableDestinationSchema,
   deliveryPageSchema,
   deliverySchema,
   downloadUrlSchema,
@@ -156,6 +158,8 @@ const OBJECT_SCHEMAS: Record<string, ZodType & { shape: Record<string, ZodType &
   Integration: integrationSchema,
   IntegrationConfig: integrationConfigSchema,
   IntegrationPage: integrationPageSchema,
+  DeliverableDestination: deliverableDestinationSchema,
+  DeliverableDestinationList: deliverableDestinationListSchema,
   IntegrationTestResult: integrationTestResultSchema,
   CreateIntegrationRequest: createIntegrationRequestSchema,
   UpdateIntegrationRequest: updateIntegrationRequestSchema,
@@ -179,7 +183,7 @@ const NO_PUBLISHED_EXAMPLES = new Set([
   "AuditEntry", "AuditPage",
   "ExportPage", "ExportFilters", "ExportRequest", "DownloadUrl", "Integration", "IntegrationConfig", "IntegrationPage",
   "IntegrationTestResult", "CreateIntegrationRequest", "UpdateIntegrationRequest", "PutIntegrationSecretRequest",
-  "SshPublicKey", "Delivery", "DeliveryPage",
+  "SshPublicKey", "Delivery", "DeliveryPage", "DeliverableDestination", "DeliverableDestinationList",
 ]);
 
 describe("api-v1.json contract", () => {
@@ -332,6 +336,8 @@ describe("mock client produces contract-valid data", () => {
     metricsSchema.parse(await api.getMetrics(MOCK_ORG_ID));
     exportPageSchema.parse(await api.listExports(MOCK_ORG_ID, { limit: 100 }));
     integrationPageSchema.parse(await api.listIntegrations(MOCK_ORG_ID));
+    deliverableDestinationListSchema.parse(await api.listExportDestinations(MOCK_ORG_ID));
+    orgUserSchema.parse(await api.getUser(MOCK_ORG_ID, (await api.listUsers(MOCK_ORG_ID)).items[0]!.id));
     tokenPairSchema.parse(await api.login("demo@example.org", "demo"));
   });
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useActionState, useState } from "react";
 import type { Integration, IntegrationTestResult, SshPublicKey } from "@/lib/api/exports";
 import { formatDateTime } from "@/lib/format";
@@ -143,6 +144,54 @@ export function TestPanel({
         </div>
       ) : null}
       {state && !state.ok ? <p role="alert" className="error">{t.unavailable} {failureText(state)}</p> : null}
+    </section>
+  );
+}
+
+/**
+ * Delete (archive) the destination. The confirmation is in the page, not a browser dialog. A 409 means deliveries
+ * to it are still in flight; on success the user is taken back to the list.
+ */
+export function DeleteIntegrationPanel({
+  name,
+  remove,
+  listHref,
+}: {
+  name: string;
+  remove: () => Promise<ActionResult>;
+  listHref: string;
+}) {
+  const t = integrationsText.delete;
+  const router = useRouter();
+  const [confirming, setConfirming] = useState(false);
+  const [state, action, pending] = useActionState<ActionResult | null, FormData>(async () => {
+    const result = await remove();
+    if (result.ok) router.push(listHref);
+    return result;
+  }, null);
+  return (
+    <section className="panel stack" aria-label={t.title}>
+      <h2>{t.title}</h2>
+      <p className="muted">{t.intro}</p>
+      {!confirming ? (
+        <div>
+          <button type="button" className="danger" onClick={() => setConfirming(true)}>{t.open}</button>
+        </div>
+      ) : (
+        <form action={action} className="stack">
+          <p role="alertdialog" aria-label={t.title}>{t.confirm(name)}</p>
+          <div className="filter-actions">
+            <button type="submit" className="danger" disabled={pending}>{t.confirmButton}</button>
+            <button type="button" disabled={pending} onClick={() => setConfirming(false)}>{t.cancel}</button>
+          </div>
+        </form>
+      )}
+      {state?.ok ? <p role="status">{t.deleted}</p> : null}
+      {state && !state.ok ? (
+        <p role="alert" className="error">
+          {state.status === 409 ? t.inFlight : `${t.failed} ${failureText(state)}`}
+        </p>
+      ) : null}
     </section>
   );
 }

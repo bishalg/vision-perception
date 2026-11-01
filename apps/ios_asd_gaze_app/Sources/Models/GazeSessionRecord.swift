@@ -5,15 +5,19 @@ import os
 /// High-level session record capturing gaze engagement metrics for caregiver review and export.
 /// Conforms to our Zero Raw Video Recording guarantee: strictly mathematical features and temporal telemetry.
 ///
-/// Schema v1.6 (SIM-4, PLC-1/2, CNS-7):
+/// Schema v1.7 (SIM-4, PLC-1/2, CNS-7, SCH-2):
 /// - `captureSource` is required; simulated records are refused by every sink.
+/// - `trackingQuality` (QS-1) and the per-clip tracking values in `perVideo[]` (QS-3) come
+///   from the Rust gaze pipeline; absent when it did not run.
+/// - `calibratedDistanceCm` is the in-session calibration pose distance (QS-5), absent when
+///   no calibration ran in the session; never a constant.
 /// - `eyeDwellRatio`, `mouthDwellRatio` and `firstEyeLatencyMs` are optional and `nil`
 ///   when not measured; nothing substitutes a default.
 /// - `participantId` is always a pseudonymous token, never the child's name.
 /// - Records decoded from v1.5 and earlier carry `legacyProvenance == true`.
 public struct GazeSessionRecord: Identifiable, Codable, Sendable, Equatable {
     /// Schema written by this build.
-    public static let currentSchemaVersion = "v1.6"
+    public static let currentSchemaVersion = "v1.7"
 
     public let id: String
     public let sessionId: String
@@ -35,7 +39,8 @@ public struct GazeSessionRecord: Identifiable, Codable, Sendable, Equatable {
     public let mouthDwellRatio: Double?
     /// `nil` until a real first-fixation detector exists (PLC-1).
     public let firstEyeLatencyMs: Double?
-    public let calibratedDistanceCm: Double
+    /// QS-5: measured calibration distance; `nil` when no calibration ran in the session.
+    public let calibratedDistanceCm: Double?
     public let qualityVerdict: String
 
     // Facial affect engagement metrics
@@ -56,6 +61,10 @@ public struct GazeSessionRecord: Identifiable, Codable, Sendable, Equatable {
     public let perVideoComposite: Double?
     public let perVideo: [PerVideoScoreReport]?
 
+    /// Session tracking-quality record (QS-1, v1.7), carried verbatim from the Rust pipeline;
+    /// `nil` for records written before v1.7 or when the pipeline did not run.
+    public let trackingQuality: JSONValue?
+
     /// Designated initialiser. Every metric and the capture source are explicit;
     /// test defaults live in the test target (`GazeSessionRecord.fixture`).
     public init(
@@ -71,7 +80,7 @@ public struct GazeSessionRecord: Identifiable, Codable, Sendable, Equatable {
         eyeDwellRatio: Double?,
         mouthDwellRatio: Double?,
         firstEyeLatencyMs: Double?,
-        calibratedDistanceCm: Double,
+        calibratedDistanceCm: Double?,
         qualityVerdict: String,
         socialSmileIntensity: Double,
         smileReactivityIndex: Double,
@@ -82,7 +91,8 @@ public struct GazeSessionRecord: Identifiable, Codable, Sendable, Equatable {
         zeroRawVideoEnforced: Bool = true,
         legacyProvenance: Bool? = nil,
         perVideoComposite: Double? = nil,
-        perVideo: [PerVideoScoreReport]? = nil
+        perVideo: [PerVideoScoreReport]? = nil,
+        trackingQuality: JSONValue? = nil
     ) {
         self.id = id
         self.sessionId = sessionId
@@ -108,16 +118,19 @@ public struct GazeSessionRecord: Identifiable, Codable, Sendable, Equatable {
         self.legacyProvenance = legacyProvenance
         self.perVideoComposite = perVideoComposite
         self.perVideo = perVideo
+        self.trackingQuality = trackingQuality
     }
 
     /// Builds a record from a finished session summary. `participantToken` must be
     /// a pseudonymous token (see `participantToken(enrollment:sessionId:)`), never a
     /// name; the label differs from the stored property on purpose so call sites that
     /// passed a name fail to compile (CNS-7).
+    ///
+    /// v1.7: `trackingQuality` and `calibratedDistanceCm` (QS-5) come from the summary, and
+    /// each score report takes its clip's tracking values (QS-3) by clip id and play order.
     public init(
         summary: GazeSessionReportSummary,
         participantToken: String,
-        calibratedDistanceCm: Double = 35.0,
         notes: String? = nil,
         perVideoComposite: Double? = nil,
         perVideo: [PerVideoScoreReport]? = nil
@@ -136,7 +149,7 @@ public struct GazeSessionRecord: Identifiable, Codable, Sendable, Equatable {
             eyeDwellRatio: summary.eyeDwellRatio,
             mouthDwellRatio: summary.mouthDwellRatio,
             firstEyeLatencyMs: summary.firstEyeLatencyMs,
-            calibratedDistanceCm: calibratedDistanceCm,
+            calibratedDistanceCm: summary.calibratedDistanceCm,
             qualityVerdict: summary.qualityVerdict.rawValue,
             socialSmileIntensity: summary.socialSmileIntensityMean,
             smileReactivityIndex: summary.smileReactivityIndex,
@@ -144,7 +157,10 @@ public struct GazeSessionRecord: Identifiable, Codable, Sendable, Equatable {
             surpriseScoreMean: summary.surpriseScoreMean,
             notes: notes,
             perVideoComposite: perVideoComposite,
-            perVideo: perVideo
+            perVideo: perVideo.map { reports in
+                summary.clipTracking.map { PerVideoScoreReport.merging(reports, clipTracking: $0) } ?? reports
+            },
+            trackingQuality: summary.trackingQuality
         )
     }
 
@@ -166,7 +182,7 @@ public struct GazeSessionRecord: Identifiable, Codable, Sendable, Equatable {
         case calibratedDistanceCm, qualityVerdict
         case socialSmileIntensity, smileReactivityIndex, flatAffectScore, surpriseScoreMean
         case notes, schemaVersion, zeroRawVideoEnforced, legacyProvenance
-        case perVideoComposite, perVideo
+        case perVideoComposite, perVideo, trackingQuality
     }
 
     /// Decodes v1.6 records strictly and older records with an inferred provenance
@@ -210,7 +226,8 @@ public struct GazeSessionRecord: Identifiable, Codable, Sendable, Equatable {
             eyeDwellRatio: try c.decodeIfPresent(Double.self, forKey: .eyeDwellRatio),
             mouthDwellRatio: try c.decodeIfPresent(Double.self, forKey: .mouthDwellRatio),
             firstEyeLatencyMs: try c.decodeIfPresent(Double.self, forKey: .firstEyeLatencyMs),
-            calibratedDistanceCm: try c.decode(Double.self, forKey: .calibratedDistanceCm),
+            // Required up to v1.6; optional from v1.7 (QS-5).
+            calibratedDistanceCm: try c.decodeIfPresent(Double.self, forKey: .calibratedDistanceCm),
             qualityVerdict: try c.decode(String.self, forKey: .qualityVerdict),
             socialSmileIntensity: try c.decode(Double.self, forKey: .socialSmileIntensity),
             smileReactivityIndex: try c.decode(Double.self, forKey: .smileReactivityIndex),
@@ -221,7 +238,8 @@ public struct GazeSessionRecord: Identifiable, Codable, Sendable, Equatable {
             zeroRawVideoEnforced: zeroRawVideoEnforced,
             legacyProvenance: legacyProvenance,
             perVideoComposite: try c.decodeIfPresent(Double.self, forKey: .perVideoComposite),
-            perVideo: try c.decodeIfPresent([PerVideoScoreReport].self, forKey: .perVideo)
+            perVideo: try c.decodeIfPresent([PerVideoScoreReport].self, forKey: .perVideo),
+            trackingQuality: try c.decodeIfPresent(JSONValue.self, forKey: .trackingQuality)
         )
     }
 

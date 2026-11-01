@@ -11,6 +11,8 @@
 //!   letter (WP-I.5);
 //! - [`tabular`]: CSV in three dialects and XLSX (feature `xlsx`) (WP-I.2);
 //! - [`hl7v2`]: HL7 v2.5.1 ORU^R01 (WP-I.4);
+//! - [`dataset`]: de-identified ML datasets, JSON Lines and Parquet (feature `parquet`)
+//!   (WP-B.9);
 //! - [`model`]: the canonical input [`model::ExportRecord`] (XC-3). The backend builds it;
 //!   the crate never queries anything;
 //! - [`deid`], [`policy`], [`watermark`], [`codes`]: de-identification (XC-4), consent
@@ -37,6 +39,7 @@ use asd_core::types::{CaptureSource, GazeQualityVerdict};
 
 pub mod claims;
 pub mod codes;
+pub mod dataset; // WP-B.9
 pub mod deid;
 pub mod fhir;
 pub mod hl7v2;
@@ -124,6 +127,12 @@ pub enum ExportError {
     /// A de-identified export of a record that did not go through `deid::apply` (XC-4).
     #[error("de-identified export of a record that was not de-identified (XC-4)")]
     NotDeidentified,
+    /// ML datasets are de-identified only (WP-B.9, XC-4).
+    #[error("datasets are de-identified only (XC-4)")]
+    DatasetIdentified,
+    /// Inconsistent dataset encoder input (a caller bug, never patient data).
+    #[error("dataset input: {0}")]
+    DatasetInput(&'static str),
 }
 
 /// Why `record`'s gaze Observation cannot be exported, or `None` when it can.

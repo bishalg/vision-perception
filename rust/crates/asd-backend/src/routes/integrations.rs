@@ -3,7 +3,10 @@
 //! Integration settings and the delivery log (INTG-1..5, DLV-5):
 //!
 //! - `GET|POST /v1/orgs/{id}/integrations` (`IntegrationRead` / `IntegrationManage`);
-//! - `GET|PATCH /v1/integrations/{id}`;
+//! - `GET /v1/orgs/{id}/export-destinations` (`ExportRead`): id, name, kind, environment and
+//!   status of the active destinations, no config or secret;
+//! - `GET|PATCH|DELETE /v1/integrations/{id}` (delete archives; `409` while deliveries are
+//!   pending or sending);
 //! - `PUT /v1/integrations/{id}/secret` (webhook): write-only, encrypted (INTG-2);
 //! - `POST /v1/integrations/{id}/ssh-key` (sftp): generate or rotate the Ed25519 key and
 //!   return its public half (INTG-5);
@@ -16,9 +19,10 @@
 //! `organizations.settings` (G3).
 
 use asd_contract::export::{
-    CreateIntegrationRequest, Delivery, DeliveryEvent, DeliveryPage, DeliveryStatus, Integration,
-    IntegrationEnvironment, IntegrationKind, IntegrationPage, IntegrationStatus,
-    IntegrationTestResult, PutIntegrationSecretRequest, SshPublicKey, UpdateIntegrationRequest,
+    CreateIntegrationRequest, DeliverableDestination, DeliverableDestinationList, Delivery,
+    DeliveryEvent, DeliveryPage, DeliveryStatus, Integration, IntegrationEnvironment,
+    IntegrationKind, IntegrationPage, IntegrationStatus, IntegrationTestResult,
+    PutIntegrationSecretRequest, SshPublicKey, UpdateIntegrationRequest,
 };
 use asd_contract::problem::CONFLICT;
 use axum::extract::{Path, Query, State};
@@ -46,7 +50,8 @@ use crate::read::cursor::{self, Cursor};
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/orgs/{id}/integrations", get(list).post(create))
-        .route("/integrations/{id}", get(read).patch(update))
+        .route("/orgs/{id}/export-destinations", get(deliverable))
+        .route("/integrations/{id}", get(read).patch(update).delete(delete))
         .route("/integrations/{id}/secret", put(put_secret))
         .route("/integrations/{id}/ssh-key", post(ssh_key))
         .route("/integrations/{id}/test", post(test))
@@ -122,26 +127,80 @@ fn page_args(q: &PageQuery) -> AppResult<(i64, Option<DateTime<Utc>>, Option<Uui
 async fn list(
     auth: Require<perm::IntegrationRead>,
     State(state): State<AppState>,
+    Query(q): Query<PageQuery>,
 ) -> AppResult<Json<IntegrationPage>> {
     let org = auth.org();
-    let ids: Vec<Uuid> = sqlx::query_scalar!(
-        "SELECT id FROM integration_destinations WHERE org_id = $1 ORDER BY created_at, id",
-        org
+    let (limit, after_at, after_id) = page_args(&q)?;
+    let rows = sqlx::query!(
+        r#"SELECT id, created_at FROM integration_destinations
+           WHERE org_id = $1 AND archived_at IS NULL
+             AND ($2::timestamptz IS NULL OR (created_at, id) < ($2, $3::uuid))
+           ORDER BY created_at DESC, id DESC LIMIT $4"#,
+        org,
+        after_at,
+        after_id,
+        limit + 1,
     )
     .fetch_all(&state.db)
     .await?;
-    let mut items = Vec::with_capacity(ids.len());
-    for id in ids {
-        if let Some(row) = destination::load(&state.db, id).await? {
+    let total: i64 = sqlx::query_scalar!(
+        r#"SELECT count(*) AS "n!" FROM integration_destinations
+           WHERE org_id = $1 AND archived_at IS NULL"#,
+        org
+    )
+    .fetch_one(&state.db)
+    .await?;
+    let take = usize::try_from(limit).unwrap_or(usize::MAX);
+    let has_more = rows.len() > take;
+    let mut items = Vec::with_capacity(take.min(rows.len()));
+    let mut last = None;
+    for r in rows.into_iter().take(take) {
+        last = Some(Cursor::new(r.created_at, r.id.to_string()));
+        if let Some(row) = destination::load(&state.db, r.id).await? {
             items.push(row.to_dto());
         }
     }
-    let total = u64::try_from(items.len()).unwrap_or(u64::MAX);
     Ok(Json(IntegrationPage {
         items,
-        next_cursor: None,
-        total: Some(total),
+        next_cursor: if has_more {
+            last.map(|c| c.encode())
+        } else {
+            None
+        },
+        total: Some(u64::try_from(total).unwrap_or(0)),
     }))
+}
+
+/// The destinations an exporter may pick (`ExportRead`): active, not archived, and no
+/// config or secret (an exporter that cannot read integrations must not learn hosts or paths).
+async fn deliverable(
+    auth: Require<perm::ExportRead>,
+    State(state): State<AppState>,
+) -> AppResult<Json<DeliverableDestinationList>> {
+    let rows = sqlx::query!(
+        r#"SELECT id, name, kind, environment, status FROM integration_destinations
+           WHERE org_id = $1 AND status = 'active' AND archived_at IS NULL
+             AND kind IN ('webhook', 'sftp')
+           ORDER BY created_at, id"#,
+        auth.org()
+    )
+    .fetch_all(&state.db)
+    .await?;
+    let stored = |what: &str| AppError::Internal(format!("unknown {what} in database"));
+    let items = rows
+        .into_iter()
+        .map(|r| {
+            Ok(DeliverableDestination {
+                id: r.id.to_string(),
+                name: r.name,
+                kind: IntegrationKind::parse(&r.kind).ok_or_else(|| stored("kind"))?,
+                environment: IntegrationEnvironment::parse(&r.environment)
+                    .ok_or_else(|| stored("environment"))?,
+                status: IntegrationStatus::parse(&r.status).ok_or_else(|| stored("status"))?,
+            })
+        })
+        .collect::<AppResult<Vec<_>>>()?;
+    Ok(Json(DeliverableDestinationList { items }))
 }
 
 async fn create(
@@ -258,6 +317,68 @@ async fn update(
         .await?;
     tx.commit().await?;
     Ok(Json(reload(&state, row.id).await?))
+}
+
+/// `DELETE /v1/integrations/{id}` (`IntegrationManage`): archives the destination (hidden,
+/// disabled; the delivery log keeps its row). `409` while a delivery to it is pending or
+/// sending.
+async fn delete(
+    auth: Require<perm::IntegrationManage>,
+    State(state): State<AppState>,
+    meta: RequestMeta,
+    Path(raw): Path<String>,
+) -> AppResult<StatusCode> {
+    let row = load_in_org(&state, &raw, |org| auth.ensure_org(org)).await?;
+    let mut tx = state.db.begin().await?;
+    // Serialises with a concurrent delete of the same destination.
+    let locked = sqlx::query_scalar!(
+        "SELECT id FROM integration_destinations
+         WHERE id = $1 AND archived_at IS NULL FOR UPDATE",
+        row.id
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
+    if locked.is_none() {
+        return Err(AppError::NotFound);
+    }
+    let in_flight: i64 = sqlx::query_scalar!(
+        r#"SELECT count(*) AS "n!" FROM export_deliveries
+           WHERE destination_id = $1 AND status IN ('pending', 'sending')"#,
+        row.id
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+    if in_flight > 0 {
+        return Err(AppError::Conflict {
+            slug: CONFLICT,
+            detail: format!(
+                "{in_flight} deliveries to this destination are still pending; disable it, or \
+                 delete it once they are delivered or failed"
+            ),
+        });
+    }
+    sqlx::query!(
+        "UPDATE integration_destinations
+         SET archived_at = now(), status = 'disabled', updated_at = now()
+         WHERE id = $1",
+        row.id
+    )
+    .execute(&mut *tx)
+    .await?;
+    AuditEvent::user(&auth.principal, "integration.delete", "integration", row.id)
+        .org(row.org_id)
+        .before(json!({
+            "kind": row.kind.as_str(),
+            "name": row.name,
+            "environment": row.environment.as_str(),
+            "status": row.status.as_str(),
+            "config": destination::audit_config(&row.config()),
+        }))
+        .meta(&meta)
+        .record(&mut tx)
+        .await?;
+    tx.commit().await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 // ---- secrets -----------------------------------------------------------------------------

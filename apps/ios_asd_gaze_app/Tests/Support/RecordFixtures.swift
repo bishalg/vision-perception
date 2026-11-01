@@ -29,7 +29,9 @@ extension GazeSessionReportSummary {
         qualityVerdict: GazeQualityGate.Verdict = .optimal,
         subjectAgeSignal: SubjectAgeSignal? = nil,
         interruptionCount: Int = 0,
-        interruptedSec: Double = 0.0
+        interruptedSec: Double = 0.0,
+        trackingQuality: JSONValue? = nil,
+        clipTracking: [ClipTrackingEntry]? = nil
     ) -> GazeSessionReportSummary {
         GazeSessionReportSummary(
             sessionId: sessionId,
@@ -51,7 +53,9 @@ extension GazeSessionReportSummary {
             qualityVerdict: qualityVerdict,
             subjectAgeSignal: subjectAgeSignal,
             interruptionCount: interruptionCount,
-            interruptedSec: interruptedSec
+            interruptedSec: interruptedSec,
+            trackingQuality: trackingQuality,
+            clipTracking: clipTracking
         )
     }
 }
