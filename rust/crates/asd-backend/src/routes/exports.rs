@@ -12,28 +12,40 @@
 //! - `GET /v1/exports/{id}/file?t=` (proxy blob mode only): the token is the credential;
 //! - `GET /v1/participants/{id}/disclosures` (`ClinicalContentRead`).
 //!
-//! Request-time order: path org (404) and base role (403), identified role (403), body
-//! validation (400 `validation-failed`), consent purpose (400 `consent-purpose-mismatch`),
-//! MRN mode for HL7 (409 `patient-ref-disabled`).
+//! Request-time order: path org (404) and base role (403), identified role (403), case
+//! role (`CaseShare`, 403), body validation (400 `validation-failed`), consent purpose
+//! (400 `consent-purpose-mismatch`), case consent (400 `case-consent-missing`), case
+//! participant (400 unknown, 409 `participant-withdrawn`), MRN mode for HL7 (409
+//! `patient-ref-disabled`).
+//!
+//! `case_package` (SHR-7, WP-I.13): `case` names exactly one participant (and optionally
+//! some of its sessions); `filters` must be empty, the stored filters are derived from the
+//! case. The recipient is encrypted at rest (`exports.case_recipient_ct`) and never
+//! audited. Share links of a case export live in [`super::share`].
 
 use std::collections::BTreeMap;
 use std::time::Duration;
 
 use asd_contract::clinical::{settings as org_settings, PatientRefMode};
+use asd_contract::emr::{
+    CaseShareRequest, MAX_CASE_RECIPIENT_CHARS, MAX_CONSENT_REFERENCE_CHARS,
+    MIN_CASE_RECIPIENT_CHARS,
+};
 use asd_contract::export::{
     DatasetExportRequest, Disclosure, DisclosureDelivery, DisclosurePage, DownloadUrl, Export,
-    ExportFormat, ExportMode, ExportPage, ExportPurpose, ExportRequest, ExportStatus,
-    DOWNLOAD_URL_TTL_SECS, MAX_REASON_CHARS, MIN_REASON_CHARS,
+    ExportFilters, ExportFormat, ExportMode, ExportPage, ExportPurpose, ExportRequest,
+    ExportStatus, DOWNLOAD_URL_TTL_SECS, MAX_FILTER_IDS, MAX_REASON_CHARS, MIN_REASON_CHARS,
 };
 use asd_contract::problem::{
-    CONFLICT, CONSENT_PURPOSE_MISMATCH, EXPORT_EXPIRED, PATIENT_REF_DISABLED,
+    CASE_CONSENT_MISSING, CONFLICT, CONSENT_PURPOSE_MISMATCH, EXPORT_EXPIRED,
+    PARTICIPANT_WITHDRAWN, PATIENT_REF_DISABLED,
 };
 use axum::body::Body;
 use axum::extract::{Path, Query, State};
 use axum::response::Response;
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use http::{header, HeaderValue, StatusCode};
 use serde::Deserialize;
 use serde_json::json;
@@ -44,6 +56,7 @@ use crate::audit::AuditEvent;
 use crate::auth::extractors::{ApiJson, RequestMeta, Require, UserPrincipal};
 use crate::auth::rbac::{self, perm, Action};
 use crate::config::BlobMode;
+use crate::crypto::ClinicalCrypto;
 use crate::error::{AppError, AppResult};
 use crate::export_build::{self, filters, ExportRow};
 use crate::jobs::{self, export as export_job, KIND_EXPORT};
@@ -107,6 +120,183 @@ async fn create_dataset(
     Ok((StatusCode::ACCEPTED, Json(export)))
 }
 
+/// A `case` after body validation (SHR-7).
+struct ValidCase {
+    participant: Uuid,
+    /// Sorted, deduplicated; empty = every session of the participant.
+    session_ids: Vec<String>,
+    recipient: String,
+    consent_reference: Option<String>,
+    consent_recorded_at: Option<DateTime<Utc>>,
+    include_attachments: bool,
+}
+
+/// Free text of a case field: trimmed, `min..=max` characters, no control characters.
+fn case_text(
+    errors: &mut Vec<InvalidParam>,
+    name: &str,
+    raw: &str,
+    min: usize,
+    max: usize,
+) -> String {
+    let text = raw.trim().to_owned();
+    let n = text.chars().count();
+    if !(min..=max).contains(&n) {
+        errors.push(bad(name, format!("must be {min}..{max} characters")));
+    } else if text.chars().any(char::is_control) {
+        errors.push(bad(name, "must not contain control characters"));
+    }
+    text
+}
+
+/// SHR-7 body rules of a `case_package` request (every problem at once).
+fn validate_case(
+    req: &ExportRequest,
+    case: &CaseShareRequest,
+    errors: &mut Vec<InvalidParam>,
+) -> Option<ValidCase> {
+    let before = errors.len();
+    if req.filters != ExportFilters::default() {
+        errors.push(bad(
+            "filters",
+            "must be empty for case_package; the case names the participant and sessions",
+        ));
+    }
+    if req.mode == ExportMode::Identified
+        && !matches!(
+            req.purpose,
+            ExportPurpose::ClinicalCare | ExportPurpose::PatientRequest
+        )
+    {
+        errors.push(bad(
+            "purpose",
+            "an identified case package is for clinical_care or patient_request only",
+        ));
+    }
+    let participant = Uuid::parse_str(&case.participant_id)
+        .map_err(|_| errors.push(bad("case.participant_id", "must be a UUID")))
+        .ok();
+    if case.session_ids.len() > MAX_FILTER_IDS {
+        errors.push(bad(
+            "case.session_ids",
+            format!("at most {MAX_FILTER_IDS} values"),
+        ));
+    }
+    if case
+        .session_ids
+        .iter()
+        .any(|s| s.trim().is_empty() || s.len() > 200)
+    {
+        errors.push(bad("case.session_ids", "must be session ids"));
+    }
+    let mut session_ids = case.session_ids.clone();
+    session_ids.sort();
+    session_ids.dedup();
+    let recipient = case_text(
+        errors,
+        "case.recipient",
+        &case.recipient,
+        MIN_CASE_RECIPIENT_CHARS,
+        MAX_CASE_RECIPIENT_CHARS,
+    );
+    let consent_reference = match case.consent_reference.as_deref().map(str::trim) {
+        None | Some("") => None,
+        Some(raw) => Some(case_text(
+            errors,
+            "case.consent_reference",
+            raw,
+            1,
+            MAX_CONSENT_REFERENCE_CHARS,
+        )),
+    };
+    let consent_recorded_at = match case.consent_recorded_at.as_deref() {
+        None => None,
+        Some(raw) => match DateTime::parse_from_rfc3339(raw) {
+            Ok(t) if t.with_timezone(&Utc) > Utc::now() + chrono::Duration::minutes(5) => {
+                errors.push(bad("case.consent_recorded_at", "must not be in the future"));
+                None
+            }
+            Ok(t) => Some(t.with_timezone(&Utc)),
+            Err(_) => {
+                errors.push(bad(
+                    "case.consent_recorded_at",
+                    "must be an RFC 3339 timestamp",
+                ));
+                None
+            }
+        },
+    };
+    if case.include_attachments && req.mode != ExportMode::Identified {
+        errors.push(bad(
+            "case.include_attachments",
+            "attachments are shared in identified packages only",
+        ));
+    }
+    if errors.len() > before {
+        return None;
+    }
+    Some(ValidCase {
+        participant: participant?,
+        session_ids,
+        recipient,
+        consent_reference,
+        consent_recorded_at,
+        include_attachments: case.include_attachments,
+    })
+}
+
+/// SHR-7 database rules of a case: the participant is the org's and not withdrawn, the
+/// named sessions are its own, and it has at least one session.
+async fn check_case_rows(state: &AppState, org: Uuid, case: &ValidCase) -> AppResult<()> {
+    let withdrawn: Option<bool> = sqlx::query_scalar!(
+        r#"SELECT withdrawn_at IS NOT NULL AS "withdrawn!" FROM participants
+           WHERE id = $1 AND org_id = $2"#,
+        case.participant,
+        org,
+    )
+    .fetch_optional(&state.db)
+    .await?;
+    match withdrawn {
+        None => {
+            return Err(AppError::Validation(vec![bad(
+                "case.participant_id",
+                "unknown participant",
+            )]))
+        }
+        Some(true) => {
+            return Err(AppError::Conflict {
+                slug: PARTICIPANT_WITHDRAWN,
+                detail: "the participant has withdrawn; their case cannot be shared".into(),
+            })
+        }
+        Some(false) => {}
+    }
+    let found: i64 = sqlx::query_scalar!(
+        r#"SELECT count(*) AS "n!" FROM sessions
+           WHERE org_id = $1 AND participant_id = $2
+             AND (cardinality($3::text[]) = 0 OR id = ANY($3))"#,
+        org,
+        case.participant,
+        &case.session_ids,
+    )
+    .fetch_one(&state.db)
+    .await?;
+    let found = usize::try_from(found).unwrap_or(0);
+    if case.session_ids.is_empty() && found == 0 {
+        return Err(AppError::Validation(vec![bad(
+            "case.participant_id",
+            "the participant has no sessions to share",
+        )]));
+    }
+    if !case.session_ids.is_empty() && found != case.session_ids.len() {
+        return Err(AppError::Validation(vec![bad(
+            "case.session_ids",
+            "every session must be one of the participant's",
+        )]));
+    }
+    Ok(())
+}
+
 /// Validates and queues one export of `org` for `principal` (EXJ-1/2), returning it.
 async fn create_export(
     state: &AppState,
@@ -118,6 +308,11 @@ async fn create_export(
     let role = principal.role;
     if req.mode == ExportMode::Identified {
         rbac::authorize(principal, Action::ExportIdentified, Some(org))?;
+    }
+    let case_package = req.format == ExportFormat::CasePackage;
+    if case_package {
+        // SHR-7: CaseShare on top of the mode's export action.
+        rbac::authorize(principal, Action::CaseShare, Some(org))?;
     }
 
     // ---- body validation (every problem at once)
@@ -174,6 +369,18 @@ async fn create_export(
     if let Err(AppError::Validation(p)) = filters::parse(&req.filters) {
         errors.extend(p);
     }
+    let case = match (&req.case, case_package) {
+        (Some(case), true) => validate_case(&req, case, &mut errors),
+        (None, true) => {
+            errors.push(bad("case", "a case_package export needs a case"));
+            None
+        }
+        (Some(_), false) => {
+            errors.push(bad("case", "only case_package exports carry a case"));
+            None
+        }
+        (None, false) => None,
+    };
     let mut destinations = Vec::with_capacity(req.destination_ids.len());
     for raw in &req.destination_ids {
         match Uuid::parse_str(raw) {
@@ -213,6 +420,39 @@ async fn create_export(
         detail: e.to_string(),
     })?;
 
+    // ---- case package (SHR-7): consent, participant, sessions, sealed recipient
+    let id = Uuid::new_v4();
+    let mut stored_filters = req.filters.clone();
+    let mut sealed_recipient = None;
+    if let Some(case) = &case {
+        if req.mode == ExportMode::Identified
+            && (case.consent_reference.is_none() || case.consent_recorded_at.is_none())
+        {
+            return Err(AppError::BadRequest {
+                slug: CASE_CONSENT_MISSING,
+                detail:
+                    "an identified case package needs consent_reference and consent_recorded_at"
+                        .into(),
+            });
+        }
+        check_case_rows(state, org, case).await?;
+        stored_filters = ExportFilters {
+            participant_ids: vec![case.participant.to_string()],
+            session_ids: case.session_ids.clone(),
+            ..ExportFilters::default()
+        };
+        let crypto = ClinicalCrypto::from_state(state)?;
+        sealed_recipient = Some(
+            crypto
+                .encrypt_str(
+                    org,
+                    &export_build::case_recipient_aad(org, id),
+                    &case.recipient,
+                )
+                .await?,
+        );
+    }
+
     // ---- org settings: MRN mode (MRN-2, EXJ-2) and artifact lifetime (EXJ-4)
     let settings: serde_json::Value =
         sqlx::query_scalar!("SELECT settings FROM organizations WHERE id = $1", org)
@@ -241,10 +481,9 @@ async fn create_export(
     let include_clinical_content = identified && rbac::allows(role, Action::ClinicalContentRead);
     let include_mrn = identified && mrn_mode && rbac::allows(role, Action::PatientRefRead);
 
-    let id = Uuid::new_v4();
     let mut secret = [0u8; 32];
     getrandom::fill(&mut secret).map_err(|e| AppError::Internal(format!("randomness: {e}")))?;
-    let filters_json = serde_json::to_value(&req.filters).expect("plain data");
+    let filters_json = serde_json::to_value(&stored_filters).expect("plain data");
     let mut tx = state.db.begin().await?;
     let job = jobs::enqueue(
         &mut tx,
@@ -258,8 +497,11 @@ async fn create_export(
         r#"INSERT INTO exports
              (id, org_id, format, mode, purpose, filters, reason, destination_ids,
               include_clinical_content, include_mrn, requested_by, job_id, ttl_hours,
-              download_secret, include_labels)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)"#,
+              download_secret, include_labels, case_participant_id, case_recipient_ct,
+              case_recipient_key_id, case_consent_reference, case_consent_recorded_at,
+              case_include_attachments)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
+                   $18, $19, $20, $21)"#,
         id,
         org,
         req.format.as_str(),
@@ -275,6 +517,12 @@ async fn create_export(
         ttl,
         &secret[..],
         req.include_labels,
+        case.as_ref().map(|c| c.participant),
+        sealed_recipient.as_ref().map(|s| s.ciphertext.as_slice()),
+        sealed_recipient.as_ref().map(|s| s.key_id),
+        case.as_ref().and_then(|c| c.consent_reference.as_deref()),
+        case.as_ref().and_then(|c| c.consent_recorded_at),
+        case.as_ref().is_some_and(|c| c.include_attachments),
     )
     .execute(&mut *tx)
     .await?;
@@ -300,6 +548,14 @@ async fn create_export(
             "include_mrn": include_mrn,
             "include_labels": req.include_labels,
             "job_id": job.id,
+            // SHR-7: who and what the case names; never the recipient (encrypted at rest).
+            "case": case.as_ref().map(|c| json!({
+                "participant_id": c.participant,
+                "session_ids": c.session_ids,
+                "consent_reference": c.consent_reference,
+                "consent_recorded_at": c.consent_recorded_at.map(cursor::ts),
+                "include_attachments": c.include_attachments,
+            })),
         }))
         .meta(meta)
         .record(&mut tx)
@@ -417,7 +673,7 @@ fn expired() -> AppError {
 }
 
 /// `410` for an expired artifact, `409` for one not ready (or failed).
-fn ensure_downloadable(row: &ExportRow) -> AppResult<String> {
+pub(crate) fn ensure_downloadable(row: &ExportRow) -> AppResult<String> {
     let past_expiry = row.expires_at.is_some_and(|t| t <= Utc::now());
     match row.effective_status() {
         ExportStatus::Expired => Err(expired()),

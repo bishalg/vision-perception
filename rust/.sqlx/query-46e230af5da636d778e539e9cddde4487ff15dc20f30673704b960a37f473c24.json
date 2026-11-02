@@ -1,0 +1,148 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, org_id, export_id, passcode_hash, created_at, expires_at, max_downloads,\n                  downloads, opens, revoked_at, last_opened_at\n           FROM share_links WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "share_links",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "org_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "share_links",
+            "name": "org_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "export_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "share_links",
+            "name": "export_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "passcode_hash",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "share_links",
+            "name": "passcode_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "share_links",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "expires_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "share_links",
+            "name": "expires_at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "max_downloads",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "share_links",
+            "name": "max_downloads"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "downloads",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "share_links",
+            "name": "downloads"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "opens",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "share_links",
+            "name": "opens"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "revoked_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "share_links",
+            "name": "revoked_at"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "last_opened_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "share_links",
+            "name": "last_opened_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "46e230af5da636d778e539e9cddde4487ff15dc20f30673704b960a37f473c24"
+}

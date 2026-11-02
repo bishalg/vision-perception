@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT e.id, e.org_id, e.kind, e.format, e.mode, e.purpose, e.status, e.filters,\n                  e.reason, e.destination_ids, e.include_clinical_content, e.include_mrn,\n                  e.include_labels, e.requested_by, e.job_id, e.ttl_hours, e.download_secret, e.blob_key,\n                  e.file_name, e.content_type, e.sha256, e.byte_size, e.row_count, e.excluded,\n                  e.error, e.created_at, e.completed_at, e.expires_at,\n                  coalesce(j.status = 'failed', false) AS \"job_failed!\"\n           FROM exports e LEFT JOIN jobs j ON j.id = e.job_id\n           WHERE e.id = $1",
+  "query": "SELECT e.id, e.org_id, e.kind, e.format, e.mode, e.purpose, e.status, e.filters,\n                  e.reason, e.destination_ids, e.include_clinical_content, e.include_mrn,\n                  e.include_labels, e.requested_by, e.job_id, e.ttl_hours, e.download_secret, e.blob_key,\n                  e.file_name, e.content_type, e.sha256, e.byte_size, e.row_count, e.excluded,\n                  e.error, e.created_at, e.completed_at, e.expires_at,\n                  e.case_participant_id, e.case_recipient_ct, e.case_recipient_key_id,\n                  e.case_consent_reference, e.case_consent_recorded_at,\n                  e.case_include_attachments,\n                  (SELECT count(*) FROM share_links s WHERE s.export_id = e.id)\n                      AS \"share_links_n!\",\n                  coalesce(j.status = 'failed', false) AS \"job_failed!\"\n           FROM exports e LEFT JOIN jobs j ON j.id = e.job_id\n           WHERE e.id = $1",
   "describe": {
     "columns": [
       {
@@ -313,6 +313,78 @@
       },
       {
         "ordinal": 28,
+        "name": "case_participant_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "case_participant_id"
+          }
+        }
+      },
+      {
+        "ordinal": 29,
+        "name": "case_recipient_ct",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "case_recipient_ct"
+          }
+        }
+      },
+      {
+        "ordinal": 30,
+        "name": "case_recipient_key_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "case_recipient_key_id"
+          }
+        }
+      },
+      {
+        "ordinal": 31,
+        "name": "case_consent_reference",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "case_consent_reference"
+          }
+        }
+      },
+      {
+        "ordinal": 32,
+        "name": "case_consent_recorded_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "case_consent_recorded_at"
+          }
+        }
+      },
+      {
+        "ordinal": 33,
+        "name": "case_include_attachments",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "exports",
+            "name": "case_include_attachments"
+          }
+        }
+      },
+      {
+        "ordinal": 34,
+        "name": "share_links_n!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 35,
         "name": "job_failed!",
         "type_info": "Bool",
         "origin": "Expression"
@@ -352,8 +424,15 @@
       false,
       true,
       true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      null,
       null
     ]
   },
-  "hash": "47e5a8bebff00d72bc27944f979ab01411d8d57175334d05acb14e330bad628b"
+  "hash": "6610520158e3780158aaf07cd2cb69c1f913874f4db720dfda024f28e6fb85c4"
 }

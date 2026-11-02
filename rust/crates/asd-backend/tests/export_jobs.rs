@@ -3,6 +3,9 @@
 //! The `export` job (EXJ-3, EXJ-4, EXJ-9, XC-4, XC-5): consent filtering with exclusion
 //! counts, de-identified artifacts free of identifiers, idempotent re-runs, the stored
 //! hash, HL7 with the MRN (audited), retry after a blob outage, and the expiry sweep.
+//! WP-I.13: the per-format build step and the shared fenced `finish` (a case package that
+//! loses its claim records nothing; `audit_csv` is accepted by the schema and refused by
+//! the job until WP-B.23).
 //! Needs `DATABASE_URL`.
 
 mod common;
@@ -549,5 +552,103 @@ async fn the_sweep_expires_artifacts_and_keeps_the_accounting() {
         0,
         "re-runnable"
     );
+    c.db.cleanup().await;
+}
+
+/// WP-I.13: the case-package build goes through the same fenced `finish` as every format.
+/// De-identified packages draw a fresh salt per run (XC-4), so two runs differ: the fence
+/// guarantees that exactly one artifact is recorded, the current attempt's.
+#[tokio::test]
+async fn a_reclaimed_case_package_records_one_artifact() {
+    let Some(c) = Ctx::new().await else { return };
+    let (_, clin) = c.token(Role::Clinician).await;
+    let f = c.case_fixture(&clin).await;
+    let (s, made) = c
+        .request_export(
+            &clin,
+            export_support::case::case_body("deidentified", "clinical_care", f.participant),
+        )
+        .await;
+    assert_eq!(s, StatusCode::ACCEPTED, "{made}");
+    let id = uuid(&made["id"]);
+    let pool = &c.db.pool;
+    let (_, nothing) = export_status(&c, id).await;
+
+    let stale = runner::claim_next(pool, "worker-1").await.unwrap().unwrap();
+    let racing = Arc::new(ReclaimDuringUpload {
+        inner: c.state.blobs.clone(),
+        pool: pool.clone(),
+        claimed: tokio::sync::Mutex::new(None),
+    });
+    let mut ctx = c
+        .job_ctx()
+        .with_heartbeat_every(std::time::Duration::from_secs(3600));
+    ctx.blobs = Some(racing.clone());
+    runner::execute_in(&ctx, &stale).await.unwrap();
+    let current = racing
+        .claimed
+        .lock()
+        .await
+        .clone()
+        .expect("attempt 2 claimed");
+    assert_eq!(
+        export_status(&c, id).await.1,
+        nothing,
+        "the stale run recorded"
+    );
+
+    let outcome = runner::execute_in(&c.job_ctx(), &current).await.unwrap();
+    assert_eq!(outcome, runner::Outcome::Succeeded);
+    let (_, done) = c
+        .call(Method::GET, &format!("/v1/exports/{id}"), None, &clin)
+        .await;
+    assert_eq!(done["status"], "succeeded", "{done}");
+    assert_eq!(done["case_participant_id"], f.participant.to_string());
+    let key = |attempt: i32| {
+        format!(
+            "exports/{}/{id}/{attempt}/{}",
+            c.org,
+            done["file_name"].as_str().unwrap()
+        )
+    };
+    assert_eq!(export_status(&c, id).await.1 .0, Some(key(2)));
+    assert!(c.state.blobs.get(&key(1)).await.unwrap().is_none());
+    let bytes = c.artifact(&id.to_string()).await;
+    assert_eq!(done["sha256"], hex(&Sha256::digest(&bytes)));
+    assert_eq!(c.audit_rows("export.complete").await.len(), 1);
+    assert_eq!(c.export_items(&id.to_string()).await.len(), 2);
+    c.db.cleanup().await;
+}
+
+/// Migration 0025 admits `audit_csv` rows; until WP-B.23 adds its build step the job
+/// fails such an export with a reason instead of rendering anything.
+#[tokio::test]
+async fn audit_csv_rows_are_admitted_by_the_schema_and_refused_by_the_job() {
+    let Some(c) = Ctx::new().await else { return };
+    cohort(&c).await;
+    let (_, owner) = c.token(Role::Owner).await;
+    let (s, made) = c
+        .request_export(&owner, body("csv", "deidentified", "quality_improvement"))
+        .await;
+    assert_eq!(s, StatusCode::ACCEPTED, "{made}");
+    let id = uuid(&made["id"]);
+    sqlx::query("UPDATE exports SET format = 'audit_csv' WHERE id = $1")
+        .bind(id)
+        .execute(&c.db.pool)
+        .await
+        .unwrap();
+    c.run_jobs().await;
+    let (_, done) = c
+        .call(Method::GET, &format!("/v1/exports/{id}"), None, &owner)
+        .await;
+    assert_eq!(done["status"], "failed", "{done}");
+    assert!(
+        done["error"]
+            .as_str()
+            .unwrap()
+            .starts_with("unsupported-format: audit_csv"),
+        "{done}"
+    );
+    assert!(c.audit_rows("export.complete").await.is_empty());
     c.db.cleanup().await;
 }

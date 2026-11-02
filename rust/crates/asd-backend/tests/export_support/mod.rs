@@ -5,6 +5,9 @@
 //! context sharing the router's blob store, and a "request then run" helper.
 #![allow(dead_code)]
 
+pub mod case; // WP-I.13: case-package fixtures and the archive search
+pub mod unzip; // WP-I.13: reads the case package's ZIP (no ZIP crate in the backend)
+
 use std::time::Duration;
 
 use asd_backend::jobs::{runner, JobContext};
