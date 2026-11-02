@@ -84,11 +84,46 @@ With compose, run the admin commands in a one-off container, e.g.
 (`-T` so stdin can carry the password). Further users and roles are created by the owner
 through `POST /v1/orgs/{id}/users`.
 
+A user who lost their authenticator app is reset by an operator (AUTH-9): this clears the
+TOTP seed and any pending enrolment, writes audit `user.totp_reset` (`actor: operator`)
+and prints the user id; the user then signs in with the password and enrols again from the
+console. No KEK is needed. No HTTP endpoint changes another user's TOTP.
+
+```bash
+asd-backend admin reset-totp --user "$USER_ID"     # unknown id: exit 2, nothing changed
+```
+
 Rules: an existing e-mail (case-insensitive) is refused and nothing changes, even with
 `--force`; a second superadmin or a second org of the same name needs `--force`; an owner
 needs an existing `--org`, a superadmin takes none; passwords follow the API policy (12+
 characters). Exit codes: `0` ok, `2` usage or invalid input, `3` conflicts with existing
 data, `1` other errors (e.g. database).
+
+## Upgrading (`asd-backend migrate`, KEY-11, KEY-12)
+
+`asd-backend migrate` runs, in order: (a) when migration 0016 is applied and plaintext
+TOTP seeds remain in `users.totp_secret`, it seals them under `ASD_DATA_KEK` **before**
+applying anything (without the KEK it stops, names the variable and applies nothing);
+(b) the pending migrations (a database below 0016 is first taken to 0016 and sealed, so one
+run reaches the end); (c) the same back-fill again (a no-op after 0022). Each migration is
+its own transaction, so after a failure `migrate` can simply be run again once the cause is
+fixed; no manual SQL.
+
+Migration **0022** drops the plaintext columns `users.totp_secret` and `review_items.note`.
+It refuses (and drops nothing) while either still holds a value:
+
+- `plaintext TOTP seeds remain: run "asd-backend migrate" with ASD_DATA_KEK set`: set the
+  KEK and run `migrate` again (only seen without the KEK or when the migrations are applied
+  by another tool, since `migrate` seals the seeds first).
+- `plaintext review notes remain: run "asd-backend admin encrypt-review-notes" with the
+  previous release ...`: that command was removed together with 0022. Before upgrading a
+  deployment that ran WP-C.9 (0008) on existing review notes, run
+  `asd-backend admin encrypt-review-notes` (needs `ASD_DATA_KEK`) with the release you are
+  upgrading from; if the upgrade already stopped at 0022, the new API still serves (it no
+  longer reads the column), so run the old binary's command against the same database and
+  then the new `migrate` again.
+
+`asd-backend admin encrypt-review-notes` no longer exists (exit 2 with this hint).
 
 ## Rotating the data KEK (`ASD_DATA_KEK`, KEY-8..10)
 

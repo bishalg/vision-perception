@@ -665,29 +665,17 @@ async fn confirm_and_disable_attempts_share_the_enrol_limiter() {
 async fn reset_clears_every_totp_column_and_audits() {
     let Some(c) = setup().await else { return };
     enrol_and_confirm(&c).await;
-    // A database where the 0016 back-fill has not run still holds the seed in plaintext
-    // (one form only: `users_totp_secret_one_form`).
-    sqlx::query(
-        "UPDATE users SET totp_secret = 'JBSWY3DPEHPK3PXP', totp_secret_ct = NULL,
-                          totp_secret_kek_id = NULL
-         WHERE id = $1",
-    )
-    .bind(c.user)
-    .execute(&c.db.pool)
-    .await
-    .unwrap();
     assert!(totp::reset(&c.db.pool, c.user).await.unwrap());
     assert!(!totp::reset(&c.db.pool, Uuid::new_v4()).await.unwrap());
-    let plaintext: Option<String> =
-        sqlx::query_scalar("SELECT totp_secret FROM users WHERE id = $1")
-            .bind(c.user)
-            .fetch_one(&c.db.pool)
-            .await
-            .unwrap();
-    assert_eq!(
-        plaintext, None,
-        "reset clears the legacy plaintext seed too"
-    );
+    let cleared: (bool, bool, bool) = sqlx::query_as(
+        "SELECT totp_secret_ct IS NULL, totp_secret_kek_id IS NULL, last_totp_step IS NULL
+         FROM users WHERE id = $1",
+    )
+    .bind(c.user)
+    .fetch_one(&c.db.pool)
+    .await
+    .unwrap();
+    assert_eq!(cleared, (true, true, true));
     let me = me(&c).await;
     assert_eq!(me["totp_enrolled"], false);
     assert_eq!(me["totp_pending"], false);

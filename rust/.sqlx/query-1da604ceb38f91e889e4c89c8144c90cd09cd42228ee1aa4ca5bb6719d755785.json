@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT email, role, org_id, display_name, professional_registration,\n                (totp_secret_ct IS NOT NULL OR totp_secret IS NOT NULL) AS \"totp_enrolled!\",\n                COALESCE(totp_pending_ct IS NOT NULL AND totp_pending_expires_at > now(), false)\n                    AS \"totp_pending!\"\n         FROM users WHERE id = $1 FOR UPDATE",
+  "query": "SELECT email, role, org_id, display_name, professional_registration,\n                (totp_secret_ct IS NOT NULL) AS \"totp_enrolled!\",\n                COALESCE(totp_pending_ct IS NOT NULL AND totp_pending_expires_at > now(), false)\n                    AS \"totp_pending!\"\n         FROM users WHERE id = $1 FOR UPDATE",
   "describe": {
     "columns": [
       {
@@ -86,5 +86,5 @@
       null
     ]
   },
-  "hash": "e226d19245b15ed69685c11fde88f8a6e221d6b7c869930909b1d1b24cd21404"
+  "hash": "1da604ceb38f91e889e4c89c8144c90cd09cd42228ee1aa4ca5bb6719d755785"
 }

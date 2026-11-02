@@ -308,10 +308,164 @@ async fn migration_0015_adds_list_indexes_and_the_totp_step() {
     db.cleanup().await;
 }
 
-/// 0016: TOTP seeds sealed at rest. A database at 0015 with plaintext seeds is migrated,
-/// then `db::backfill` (what `asd-backend migrate` runs next) seals every seed, clears the
-/// plaintext, audits, and the sealed seed still verifies. Without the KEK the back-fill
-/// refuses while a plaintext seed remains; a second run is a no-op.
+/// Highest successfully applied migration version.
+async fn applied_max(pool: &PgPool) -> i64 {
+    sqlx::query_scalar("SELECT max(version) FROM _sqlx_migrations WHERE success")
+        .fetch_one(pool)
+        .await
+        .unwrap()
+}
+
+/// Config with (`true`) or without the test `ASD_DATA_KEK`.
+fn config_with_kek(kek: bool) -> asd_backend::config::Config {
+    let mut config = common::test_config(common::UNREACHABLE_DB_URL);
+    if !kek {
+        config.data_kek = None;
+    }
+    config
+}
+
+async fn plaintext_user(
+    pool: &PgPool,
+    org_id: Option<uuid::Uuid>,
+    email: &str,
+    secret: Option<&str>,
+) -> uuid::Uuid {
+    let role = if org_id.is_some() {
+        "clinician"
+    } else {
+        "superadmin"
+    };
+    sqlx::query_scalar(
+        "INSERT INTO users (org_id, email, pw_hash, role, totp_secret) \
+         VALUES ($1, $2, 'x', $3, $4) RETURNING id",
+    )
+    .bind(org_id)
+    .bind(email)
+    .bind(role)
+    .bind(secret)
+    .fetch_one(pool)
+    .await
+    .unwrap()
+}
+
+/// The sealed seed of `id` opens and its current code verifies.
+async fn assert_seed_verifies(pool: &PgPool, id: uuid::Uuid, want: &str) {
+    let kek = config_with_kek(true).data_kek.expect("test KEK");
+    let keyring = asd_backend::crypto::Keyring::new(kek, pool.clone());
+    let secret = asd_backend::auth::totp::load_secret(pool, Some(&keyring), id)
+        .await
+        .unwrap()
+        .expect("still enrolled");
+    let code = asd_backend::clinical::reauth::totp_code(want, now_unix()).unwrap();
+    assert!(
+        asd_backend::auth::totp::verify_and_spend(pool, id, &secret, &code)
+            .await
+            .unwrap(),
+        "sealed seed of {id} still verifies"
+    );
+}
+
+async fn assert_plaintext_columns_dropped(pool: &PgPool) {
+    assert!(!columns(pool, "users").await.contains("totp_secret"));
+    assert!(!columns(pool, "review_items").await.contains("note"));
+    let index: Option<String> =
+        sqlx::query_scalar("SELECT to_regclass('review_items_plain_note_idx')::text")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+    assert_eq!(index, None, "partial plaintext-note index dropped");
+    let constraints: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM pg_constraint WHERE conname = 'users_totp_secret_one_form'",
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    assert_eq!(constraints, 0, "one-form constraint dropped");
+}
+
+/// KEY-11 / acceptance 19 (fresh database): `asd-backend migrate` applies every migration
+/// in order and 0022 leaves neither plaintext column; the post-migration back-fill is a
+/// no-op once the column is gone.
+#[tokio::test]
+async fn fresh_database_migrates_to_the_end_without_plaintext_columns() {
+    let Some(db) = TestDb::empty().await else {
+        return;
+    };
+    let pool = &db.pool;
+    let applied = db::migrate_with_backfill(pool, &config_with_kek(false))
+        .await
+        .expect("fresh migrate needs no KEK");
+    let all: Vec<i64> = db::MIGRATOR.iter().map(|m| m.version).collect();
+    assert_eq!(applied, all, "every migration, in order");
+    assert!(all.contains(&22));
+    assert!(db::pending_migrations(pool).await.unwrap().is_empty());
+    assert_plaintext_columns_dropped(pool).await;
+    assert_eq!(
+        asd_backend::auth::totp::legacy_secret_count(pool)
+            .await
+            .unwrap(),
+        0
+    );
+    // Re-running is a no-op.
+    assert!(db::migrate_with_backfill(pool, &config_with_kek(false))
+        .await
+        .unwrap()
+        .is_empty());
+    db.cleanup().await;
+}
+
+/// KEY-12 / acceptance 19: a database at 0019 with a plaintext seed. Without the KEK
+/// `migrate` refuses naming the variable and applies nothing; with it the seed is sealed
+/// first, then 0020..0022 apply and the seed still verifies.
+#[tokio::test]
+async fn database_at_0019_with_a_plaintext_seed_is_sealed_before_0022() {
+    let Some(db) = TestDb::empty().await else {
+        return;
+    };
+    let pool = &db.pool;
+    db::MIGRATOR
+        .run_to(19, pool)
+        .await
+        .expect("migrate to 0019");
+    let org = org(pool).await;
+    let user = plaintext_user(pool, Some(org), "u@example.org", Some("JBSWY3DPEHPK3PXP")).await;
+
+    let err = db::migrate_with_backfill(pool, &config_with_kek(false))
+        .await
+        .unwrap_err();
+    assert!(
+        err.contains("1 TOTP seed(s)") && err.contains("ASD_DATA_KEK"),
+        "{err}"
+    );
+    assert_eq!(applied_max(pool).await, 19, "nothing new applied");
+    assert_eq!(
+        asd_backend::auth::totp::legacy_secret_count(pool)
+            .await
+            .unwrap(),
+        1,
+        "the seed is untouched"
+    );
+
+    let applied = db::migrate_with_backfill(pool, &config_with_kek(true))
+        .await
+        .expect("migrate with the KEK");
+    assert_eq!(applied, vec![20, 21, 22]);
+    assert_plaintext_columns_dropped(pool).await;
+    let encrypted: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM audit_log WHERE action = 'user.totp_secret_encrypt'",
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    assert_eq!(encrypted, 1);
+    assert_seed_verifies(pool, user, "JBSWY3DPEHPK3PXP").await;
+    db.cleanup().await;
+}
+
+/// 0016 on a database at 0015 with plaintext seeds: `migrate` applies 0016, seals the
+/// seeds (blank ones are cleared by the SQL) and continues to the end in one run; without
+/// the KEK it stops right after 0016. A second run is a no-op.
 #[tokio::test]
 async fn migration_0016_seals_existing_totp_seeds() {
     let Some(db) = TestDb::empty().await else {
@@ -333,64 +487,39 @@ async fn migration_0016_seals_existing_totp_seeds() {
     .into_iter()
     .enumerate()
     {
-        let role = if org_id.is_some() {
-            "clinician"
-        } else {
-            "superadmin"
-        };
-        let id: uuid::Uuid = sqlx::query_scalar(
-            "INSERT INTO users (org_id, email, pw_hash, role, totp_secret) \
-             VALUES ($1, $2, 'x', $3, $4) RETURNING id",
-        )
-        .bind(org_id)
-        .bind(format!("u{i}@example.org"))
-        .bind(role)
-        .bind(secret)
-        .fetch_one(pool)
-        .await
-        .unwrap();
-        users.push(id);
+        users.push(plaintext_user(pool, org_id, &format!("u{i}@example.org"), secret).await);
     }
 
-    db::MIGRATOR.run(pool).await.expect("migrate to the latest");
-    assert_has(
-        &columns(pool, "users").await,
-        "users",
-        &["totp_secret_ct", "totp_secret_kek_id"],
-    );
-    let blank: Option<String> = sqlx::query_scalar("SELECT totp_secret FROM users WHERE id = $1")
-        .bind(users[2])
-        .fetch_one(pool)
+    // Without the KEK: 0016 applies, then the back-fill refuses; nothing after 0016.
+    let err = db::migrate_with_backfill(pool, &config_with_kek(false))
         .await
-        .unwrap();
-    assert_eq!(blank, None, "blank seeds are cleared by the SQL");
-
-    // Without the KEK: refused while plaintext seeds remain, nothing changed.
-    let mut config = common::test_config(common::UNREACHABLE_DB_URL);
-    let kek = config.data_kek.take().expect("test KEK");
-    let err = db::backfill(pool, &config).await.unwrap_err();
+        .unwrap_err();
     assert!(
         err.contains("2 TOTP seed(s)") && err.contains("ASD_DATA_KEK"),
         "{err}"
     );
+    assert_eq!(applied_max(pool).await, 16);
+    assert_has(
+        &columns(pool, "users").await,
+        "users",
+        &["totp_secret", "totp_secret_ct", "totp_secret_kek_id"],
+    );
     assert_eq!(
         asd_backend::auth::totp::legacy_secret_count(pool)
             .await
             .unwrap(),
-        2
+        2,
+        "blank seeds are cleared by the SQL"
     );
 
-    config.data_kek = Some(kek.clone());
-    db::backfill(pool, &config).await.expect("back-fill");
-    db::backfill(pool, &config)
+    db::migrate_with_backfill(pool, &config_with_kek(true))
         .await
-        .expect("second run is a no-op");
-    assert_eq!(
-        asd_backend::auth::totp::legacy_secret_count(pool)
-            .await
-            .unwrap(),
-        0
-    );
+        .expect("migrate with the KEK");
+    assert!(db::migrate_with_backfill(pool, &config_with_kek(true))
+        .await
+        .expect("second run is a no-op")
+        .is_empty());
+    assert_plaintext_columns_dropped(pool).await;
     let encrypted: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM audit_log WHERE action = 'user.totp_secret_encrypt'",
     )
@@ -398,33 +527,127 @@ async fn migration_0016_seals_existing_totp_seeds() {
     .await
     .unwrap();
     assert_eq!(encrypted, 2);
-
+    assert_seed_verifies(pool, users[0], "JBSWY3DPEHPK3PXP").await;
+    assert_seed_verifies(pool, users[1], "GEZDGNBVGY3TQOJQ").await;
+    let kek = config_with_kek(true).data_kek.unwrap();
     let keyring = asd_backend::crypto::Keyring::new(kek, pool.clone());
-    for (id, want) in [
-        (users[0], Some("JBSWY3DPEHPK3PXP")),
-        (users[1], Some("GEZDGNBVGY3TQOJQ")),
-        (users[2], None),
-        (users[3], None),
-    ] {
-        let secret = asd_backend::auth::totp::load_secret(pool, Some(&keyring), id)
-            .await
-            .unwrap();
-        assert_eq!(secret.is_some(), want.is_some(), "{id}");
-        let Some(secret) = secret else { continue };
-        let code = asd_backend::clinical::reauth::totp_code(want.unwrap(), now_unix()).unwrap();
+    for id in [users[2], users[3]] {
         assert!(
-            asd_backend::auth::totp::verify_and_spend(pool, id, &secret, &code)
+            asd_backend::auth::totp::load_secret(pool, Some(&keyring), id)
                 .await
-                .unwrap(),
-            "sealed seed of {id} still verifies"
+                .unwrap()
+                .is_none()
         );
     }
-    // A row holds one form only.
-    let both = sqlx::query("UPDATE users SET totp_secret = 'JBSWY3DPEHPK3PXP' WHERE id = $1")
-        .bind(users[0])
-        .execute(pool)
-        .await;
-    assert!(both.is_err(), "plaintext next to a ciphertext is refused");
+    db.cleanup().await;
+}
+
+/// KEY-11: applied by another tool (no `migrate` pre-step), 0022 refuses while a
+/// plaintext seed remains, drops nothing, and `asd-backend migrate` then finishes the job
+/// without manual SQL.
+#[tokio::test]
+async fn guard_0022_refuses_plaintext_seeds_and_migrate_recovers() {
+    let Some(db) = TestDb::empty().await else {
+        return;
+    };
+    let pool = &db.pool;
+    db::MIGRATOR
+        .run_to(21, pool)
+        .await
+        .expect("migrate to 0021");
+    let user = plaintext_user(pool, None, "root@example.org", Some("JBSWY3DPEHPK3PXP")).await;
+
+    // Another tool's session: a failed run keeps the migrator's advisory lock until the
+    // session ends, so use (and close) a dedicated connection like a separate process.
+    let mut other = pool.acquire().await.unwrap().detach();
+    let err = db::MIGRATOR.run(&mut other).await.unwrap_err().to_string();
+    sqlx::Connection::close(other).await.ok();
+    assert!(
+        err.contains(
+            r#"plaintext TOTP seeds remain: run "asd-backend migrate" with ASD_DATA_KEK set"#
+        ),
+        "{err}"
+    );
+    assert_eq!(applied_max(pool).await, 21);
+    assert!(columns(pool, "users").await.contains("totp_secret"));
+
+    db::migrate_with_backfill(pool, &config_with_kek(true))
+        .await
+        .expect("migrate recovers");
+    assert_plaintext_columns_dropped(pool).await;
+    assert_seed_verifies(pool, user, "JBSWY3DPEHPK3PXP").await;
+    db.cleanup().await;
+}
+
+/// KEY-11 / acceptance 19: a plaintext review note fails 0022 naming
+/// `encrypt-review-notes`; nothing is dropped. Once the note is sealed (what that command
+/// of the previous release does), `migrate` runs again and succeeds.
+#[tokio::test]
+async fn guard_0022_refuses_plaintext_review_notes_and_migrate_is_rerunnable() {
+    let Some(db) = TestDb::empty().await else {
+        return;
+    };
+    let pool = &db.pool;
+    db::MIGRATOR
+        .run_to(21, pool)
+        .await
+        .expect("migrate to 0021");
+    let o = org(pool).await;
+    let p = participant(pool, o, "child-SESS-GOL").await;
+    insert_session(pool, "S-1", o, p, "truedepth", "green")
+        .await
+        .unwrap();
+    let item: uuid::Uuid = sqlx::query_scalar(
+        "INSERT INTO review_items (org_id, session_id, reason, note) \
+         VALUES ($1, 'S-1', 'manual', 'legacy note') RETURNING id",
+    )
+    .bind(o)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    let err = db::migrate_with_backfill(pool, &config_with_kek(true))
+        .await
+        .unwrap_err();
+    assert!(
+        err.contains("plaintext review notes remain")
+            && err.contains(r#""asd-backend admin encrypt-review-notes""#),
+        "{err}"
+    );
+    assert!(!err.contains("legacy note"), "no note text in the error");
+    assert_eq!(applied_max(pool).await, 21, "0022 rolled back");
+    assert!(columns(pool, "review_items").await.contains("note"));
+
+    // The operator's fix with the previous release: seal the note, empty the column.
+    let kek = config_with_kek(true).data_kek.unwrap();
+    let keyring = asd_backend::crypto::Keyring::new(kek, pool.clone());
+    let aad = asd_backend::crypto::Aad::new("review_items", "note_ct", o, item);
+    let sealed = keyring.encrypt_str(o, &aad, "legacy note").await.unwrap();
+    sqlx::query(
+        "UPDATE review_items SET note_ct = $2, note_key_id = $3, note = NULL WHERE id = $1",
+    )
+    .bind(item)
+    .bind(&sealed.ciphertext)
+    .bind(sealed.key_id)
+    .execute(pool)
+    .await
+    .unwrap();
+
+    let applied = db::migrate_with_backfill(pool, &config_with_kek(true))
+        .await
+        .expect("migrate again");
+    assert_eq!(applied, vec![22]);
+    assert_plaintext_columns_dropped(pool).await;
+    let (ct, key_id): (Vec<u8>, uuid::Uuid) =
+        sqlx::query_as("SELECT note_ct, note_key_id FROM review_items WHERE id = $1")
+            .bind(item)
+            .fetch_one(pool)
+            .await
+            .unwrap();
+    assert_eq!(
+        keyring.decrypt_string(o, &aad, key_id, &ct).await.unwrap(),
+        "legacy note"
+    );
     db.cleanup().await;
 }
 
@@ -584,5 +807,69 @@ async fn deleting_a_session_cascades_to_its_clip_scores() {
         .await
         .unwrap();
     assert_eq!(left, 0);
+    db.cleanup().await;
+}
+
+/// `DATABASE_URL` with its database name replaced by the test database's.
+fn test_db_url(db: &TestDb) -> String {
+    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
+    let (base, query) = match url.split_once('?') {
+        Some((b, q)) => (b.to_owned(), format!("?{q}")),
+        None => (url.clone(), String::new()),
+    };
+    let (server, _) = base.rsplit_once('/').expect("URL has a database path");
+    format!("{server}/{}{query}", db.name)
+}
+
+/// Runs `asd-backend migrate` with only `DATABASE_URL` (and `extra`) in its environment.
+fn run_migrate(db: &TestDb, extra: &[(&str, &str)]) -> std::process::Output {
+    let mut cmd = std::process::Command::new(env!("CARGO_BIN_EXE_asd-backend"));
+    cmd.env_clear()
+        .env("DATABASE_URL", test_db_url(db))
+        .arg("migrate");
+    for (k, v) in extra {
+        cmd.env(k, v);
+    }
+    cmd.output().expect("run asd-backend migrate")
+}
+
+/// KEY-12 through the real binary: `asd-backend migrate` runs the seed pre-step before
+/// any pending migration.
+#[tokio::test]
+async fn migrate_command_seals_seeds_before_pending_migrations() {
+    let Some(db) = TestDb::empty().await else {
+        return;
+    };
+    let pool = &db.pool;
+    db::MIGRATOR
+        .run_to(19, pool)
+        .await
+        .expect("migrate to 0019");
+    let user = plaintext_user(pool, None, "root@example.org", Some("JBSWY3DPEHPK3PXP")).await;
+
+    let out = run_migrate(&db, &[]);
+    let log = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(!out.status.success(), "{log}");
+    assert!(log.contains("ASD_DATA_KEK"), "{log}");
+    assert!(
+        !log.contains("JBSWY3DPEHPK3PXP"),
+        "the seed is never logged"
+    );
+    assert_eq!(applied_max(pool).await, 19, "nothing new applied");
+
+    let out = run_migrate(&db, &[("ASD_DATA_KEK", common::test_data_kek())]);
+    assert!(
+        out.status.success(),
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(applied_max(pool).await, 22);
+    assert_plaintext_columns_dropped(pool).await;
+    assert_seed_verifies(pool, user, "JBSWY3DPEHPK3PXP").await;
     db.cleanup().await;
 }

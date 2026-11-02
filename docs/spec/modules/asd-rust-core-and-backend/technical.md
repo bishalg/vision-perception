@@ -350,19 +350,23 @@ job runner (`jobs/runner.rs`) and the console `proxy.ts`.
   `ASD_DATA_KEK_PREVIOUS=old` on API and worker, restart; (2) `rotate-kek`; (3) check
   `remaining = 0`; (4) remove `PREVIOUS`, restart. A process started with only the new
   KEK before step 3 answers `503` for rows still under the old one, by design.
-- **KEY-11** Migration 0021 begins with a `DO $$` guard that raises
+- **KEY-11** Migration 0022 (renumbered from 0021, which went to the WP-B.12 ingest-hash
+  and housekeeping indexes) begins with a `DO $$` guard that raises
   `plaintext TOTP seeds remain: run "asd-backend migrate" with ASD_DATA_KEK set` or
-  `plaintext review notes remain: run "asd-backend admin encrypt-review-notes"` when the
-  respective column holds a non-NULL value, then drops `users.totp_secret`,
+  `plaintext review notes remain: run "asd-backend admin encrypt-review-notes" with the
+  previous release (before upgrading to a build with migration 0022)` when the
+  respective column holds a non-NULL value (the command is removed in the same package,
+  so it is run with the release being upgraded from), then drops `users.totp_secret`,
   `review_items.note`, index `review_items_plain_note_idx` and constraint
   `users_totp_secret_one_form`. The service code stops referencing either column in the
-  same package (no runtime branch may depend on a column that 0021 removes).
+  same package (no runtime branch may depend on a column that 0022 removes).
 - **KEY-12** `asd-backend migrate` order: (a) if migration 0016 is applied and column
   `users.totp_secret` exists and `legacy_secret_count > 0`: run `encrypt_legacy_secrets`
   (refuse with the existing message when `ASD_DATA_KEK` is unset) **before** applying any
   pending migration; (b) apply pending migrations; (c) the existing post-migration
   back-fill (for databases that just received 0016 in step b). `migrate` must be re-runnable
-  after a failed 0021 guard without manual SQL.
+  after a failed 0022 guard without manual SQL. A database still below 0016 is migrated to
+  0016 and sealed before the rest, so one run reaches the end.
 
 ### Observability (OBS)
 

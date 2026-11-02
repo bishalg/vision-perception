@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT totp_secret_ct, totp_secret_kek_id,\n                  (totp_secret IS NOT NULL) AS \"legacy!\"\n           FROM users WHERE id = $1",
+  "query": "SELECT totp_secret_ct, totp_secret_kek_id FROM users WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -24,12 +24,6 @@
             "name": "totp_secret_kek_id"
           }
         }
-      },
-      {
-        "ordinal": 2,
-        "name": "legacy!",
-        "type_info": "Bool",
-        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -39,9 +33,8 @@
     },
     "nullable": [
       true,
-      true,
-      null
+      true
     ]
   },
-  "hash": "3961a7fa542625c8be483f8250891fc017566d2420c253892030b35697f363a7"
+  "hash": "07247fee15362a060050a821fa8d12be66aa6063b90ae35518b2b36bccaedf6a"
 }

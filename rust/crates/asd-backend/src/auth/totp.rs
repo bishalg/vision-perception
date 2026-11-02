@@ -12,7 +12,10 @@
 //!   `users.last_totp_step` with a compare-and-set (0015), so a code of the same or an
 //!   earlier step never passes again, not even in two concurrent requests;
 //! - the 0016 back-fill of plaintext seeds ([`encrypt_legacy_secrets`]), run by
-//!   `asd-backend migrate`;
+//!   `asd-backend migrate` before pending migrations (KEY-12). Migration 0022 drops
+//!   `users.totp_secret`, so these helpers use runtime queries guarded by an
+//!   `information_schema` check (never a `query!` macro naming the column) and do nothing
+//!   once it is gone;
 //! - self-service enrolment (WP-B.11, AUTH-6..10, migration 0020): [`start_enrolment`]
 //!   stores a *pending* seed (`users.totp_pending_ct`, AAD [`pending_aad`], 10 minutes),
 //!   [`confirm_enrolment`] moves it to `totp_secret_ct` once a code from it matches,
@@ -78,17 +81,16 @@ impl fmt::Debug for TotpSecret {
 
 /// The user's TOTP seed, or `None` when the user has not enrolled.
 ///
-/// Fails closed: a sealed seed without a keyring is `503 clinical-crypto-unavailable`; a
-/// seed still in clear (0016 back-fill not run) is `503` and logged, never "not enrolled".
+/// Fails closed: a sealed seed without a keyring is `503 clinical-crypto-unavailable`,
+/// never "not enrolled". Reads only `totp_secret_ct` (AUTH-10; plaintext seeds are sealed
+/// by `asd-backend migrate` before 0022 drops their column).
 pub async fn load_secret(
     db: &PgPool,
     keyring: Option<&Keyring>,
     user_id: Uuid,
 ) -> AppResult<Option<TotpSecret>> {
     let Some(row) = sqlx::query!(
-        r#"SELECT totp_secret_ct, totp_secret_kek_id,
-                  (totp_secret IS NOT NULL) AS "legacy!"
-           FROM users WHERE id = $1"#,
+        "SELECT totp_secret_ct, totp_secret_kek_id FROM users WHERE id = $1",
         user_id
     )
     .fetch_optional(db)
@@ -102,13 +104,6 @@ pub async fn load_secret(
             let plain = keyring.open_user_secret(&secret_aad(user_id), &kek_id, &ct)?;
             let text = String::from_utf8(plain.to_vec()).map_err(|_| CryptoError::NotUtf8)?;
             Ok(Some(TotpSecret(Zeroizing::new(text))))
-        }
-        _ if row.legacy => {
-            tracing::error!(
-                %user_id,
-                "TOTP seed still stored in clear; run `asd-backend migrate` with ASD_DATA_KEK"
-            );
-            Err(AppError::Unavailable)
         }
         _ => Ok(None),
     }
@@ -137,8 +132,7 @@ pub async fn set_secret(
     };
     let kek_id = sealed.as_ref().map(|_| keyring.kek_id().to_owned());
     sqlx::query!(
-        "UPDATE users SET totp_secret = NULL, totp_secret_ct = $2, totp_secret_kek_id = $3,
-                last_totp_step = NULL
+        "UPDATE users SET totp_secret_ct = $2, totp_secret_kek_id = $3, last_totp_step = NULL
          WHERE id = $1",
         user_id,
         sealed,
@@ -181,9 +175,25 @@ fn unix_now() -> u64 {
         .map_or(0, |d| d.as_secs())
 }
 
-/// Seeds still stored in clear (0016 back-fill pending).
+/// Whether plaintext seeds can exist and be converted: `users.totp_secret` (dropped by
+/// 0022) and `users.totp_secret_ct` (added by 0016) both exist.
+async fn legacy_column_present(db: &PgPool) -> Result<bool, sqlx::Error> {
+    sqlx::query_scalar(
+        "SELECT count(*) = 2 FROM information_schema.columns
+         WHERE table_schema = current_schema() AND table_name = 'users'
+           AND column_name IN ('totp_secret', 'totp_secret_ct')",
+    )
+    .fetch_one(db)
+    .await
+}
+
+/// Seeds still stored in clear (0016 back-fill pending); 0 before 0016 and after 0022.
 pub async fn legacy_secret_count(db: &PgPool) -> Result<i64, sqlx::Error> {
-    sqlx::query_scalar!(r#"SELECT count(*) AS "n!" FROM users WHERE totp_secret IS NOT NULL"#)
+    if !legacy_column_present(db).await? {
+        return Ok(0);
+    }
+    // Runtime query: the column does not exist in the schema `query!` is checked against.
+    sqlx::query_scalar("SELECT count(*) FROM users WHERE totp_secret IS NOT NULL")
         .fetch_one(db)
         .await
 }
@@ -191,21 +201,29 @@ pub async fn legacy_secret_count(db: &PgPool) -> Result<i64, sqlx::Error> {
 /// 0016 back-fill: seals every plaintext `users.totp_secret` into `totp_secret_ct` and
 /// sets `totp_secret = NULL`, in batches (one transaction each, `FOR UPDATE SKIP LOCKED`),
 /// with one `user.totp_secret_encrypt` audit row per user (no secret in it). Idempotent:
-/// a second run finds nothing. Returns the rows converted. A seed that is not valid
-/// base32 is sealed as it is: it never verified before and still does not (fail closed).
+/// a second run finds nothing; before 0016 and after 0022 it does nothing. Returns the
+/// rows converted. A seed that is not valid base32 is sealed as it is: it never verified
+/// before and still does not (fail closed).
 pub async fn encrypt_legacy_secrets(db: &PgPool, keyring: &Keyring) -> AppResult<u64> {
+    use sqlx::Row as _;
+
+    if !legacy_column_present(db).await? {
+        return Ok(0);
+    }
     let mut total = 0u64;
     loop {
         let mut tx = db.begin().await?;
-        let rows = sqlx::query!(
-            r#"SELECT id, org_id, totp_secret AS "totp_secret!"
-               FROM users
-               WHERE totp_secret IS NOT NULL
-               ORDER BY id
-               LIMIT $1
-               FOR UPDATE SKIP LOCKED"#,
-            BACKFILL_BATCH
+        // Runtime queries: the column does not exist in the schema `query!` is checked
+        // against (0022).
+        let rows = sqlx::query(
+            "SELECT id, org_id, totp_secret
+             FROM users
+             WHERE totp_secret IS NOT NULL
+             ORDER BY id
+             LIMIT $1
+             FOR UPDATE SKIP LOCKED",
         )
+        .bind(BACKFILL_BATCH)
         .fetch_all(&mut *tx)
         .await?;
         if rows.is_empty() {
@@ -213,20 +231,22 @@ pub async fn encrypt_legacy_secrets(db: &PgPool, keyring: &Keyring) -> AppResult
             break;
         }
         for r in &rows {
-            let plain = Zeroizing::new(r.totp_secret.trim().to_owned());
-            let sealed = keyring.seal_user_secret(&secret_aad(r.id), plain.as_bytes())?;
-            sqlx::query!(
+            let id: Uuid = r.try_get("id")?;
+            let org_id: Option<Uuid> = r.try_get("org_id")?;
+            let plain = Zeroizing::new(r.try_get::<String, _>("totp_secret")?.trim().to_owned());
+            let sealed = keyring.seal_user_secret(&secret_aad(id), plain.as_bytes())?;
+            sqlx::query(
                 "UPDATE users SET totp_secret_ct = $2, totp_secret_kek_id = $3, totp_secret = NULL
                  WHERE id = $1",
-                r.id,
-                sealed,
-                keyring.kek_id()
             )
+            .bind(id)
+            .bind(sealed)
+            .bind(keyring.kek_id())
             .execute(&mut *tx)
             .await?;
-            let mut event = AuditEvent::system("user.totp_secret_encrypt", "user", r.id)
+            let mut event = AuditEvent::system("user.totp_secret_encrypt", "user", id)
                 .after(json!({"kek_id": keyring.kek_id(), "via": "migrate"}));
-            if let Some(org) = r.org_id {
+            if let Some(org) = org_id {
                 event = event.org(org);
             }
             event.record(&mut tx).await?;
@@ -509,7 +529,7 @@ async fn clear_all(
 ) -> AppResult<Option<Option<Uuid>>> {
     let row = sqlx::query_scalar!(
         "UPDATE users
-         SET totp_secret = NULL, totp_secret_ct = NULL, totp_secret_kek_id = NULL,
+         SET totp_secret_ct = NULL, totp_secret_kek_id = NULL,
              last_totp_step = NULL, totp_pending_ct = NULL, totp_pending_kek_id = NULL, totp_pending_expires_at = NULL
          WHERE id = $1
          RETURNING org_id",

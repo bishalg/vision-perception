@@ -221,7 +221,8 @@ after the wave: R.3 → R.4 adapter swap → `cargo test --workspace` → commit
 
 Batch of nine packages (tracker `04 §7`): WP-B.11..B.15, WP-C.15, WP-C.16, WP-A.13 here,
 WP-G.8 in `docs/spec/modules/asd-gaze-robustness/work-packages.md`. Migration numbers are
-assigned here: **0020** = WP-B.11, **0021** = WP-B.14. Every backend package that adds or
+assigned here: **0020** = WP-B.11, **0022** = WP-B.14 (0021 went to the WP-B.12
+ingest-hash and housekeeping indexes). Every backend package that adds or
 changes a `sqlx::query!` must run `cargo sqlx prepare --workspace` against a live database
 and commit `rust/.sqlx/` (gate `sqlx prepare --check`).
 
@@ -378,7 +379,7 @@ Depends on: B.11 (schema). Parallel with: B.13, B.14.
 #### WP-B.14 Drop plaintext columns, migrate ordering - `S`
 
 Goal: KEY-11, KEY-12, AUTH-9 (`admin reset-totp`); extends B.15's rotation to the pending column.
-Files: `asd-backend/migrations/0021_drop_plaintext_columns.sql`, `src/db.rs`
+Files: `asd-backend/migrations/0022_drop_plaintext_columns.sql`, `src/db.rs`
 (`migrate` pre-step; `backfill` keeps running after migrations for the 0016 case),
 `src/main.rs` (`migrate()` calls the pre-step), `src/auth/totp.rs` (delete the legacy
 branch of `load_secret`; `legacy_secret_count` and `encrypt_legacy_secrets` stay because
@@ -391,7 +392,7 @@ back-fill module it calls, `src/crypto/rotate.rs` (pending seed column), `rust/.
 (drop the back-fill cases), `tests/kek_rotation.rs` (pending seed), `tests/admin.rs` (`reset-totp`).
 Not to touch: 0016 and 0008 SQL files (history), `routes/totp.rs`.
 Tests first: acceptance 19 scenarios (fresh DB; DB at 0019 with a plaintext seed, with
-and without the KEK; DB with a plaintext note); after 0021 `information_schema.columns`
+and without the KEK; DB with a plaintext note); after 0022 `information_schema.columns`
 has neither column; `tests/migrations.rs` still applies every migration on a fresh DB in
 order; rotation re-seals a pending seed.
 Commands: `scripts/rust_test.sh`.
@@ -405,13 +406,13 @@ with C.15 only.
 
 Wave 1: B.11, B.12, B.15, C.16, A.13, G.8 → main session: `cargo sqlx prepare`, regenerate
 `api-v1.json`, full gates, commit. Wave 2: C.15 ∥ B.13 → gates, commit. Wave 3: B.14 →
-gates, commit. The tracker's migration rule becomes "≥0022".
+gates, commit. The tracker's migration rule becomes "≥0023".
 
 ### Traps for implementers (phase 5)
 
 1. `sqlx::query!` is compile-time checked against `rust/.sqlx/`. Any changed query needs
    `cargo sqlx prepare --workspace` against a migrated database before `rust_test.sh`
-   passes; after 0021 nothing may name `users.totp_secret` or `review_items.note` in a
+   passes; after 0022 nothing may name `users.totp_secret` or `review_items.note` in a
    macro query.
 2. `Keyring::open_user_secret` compares `kek_id` to the active key and errors with
    `KeyUnwrap` *before* trying to decrypt; B.15 must change that comparison to a lookup

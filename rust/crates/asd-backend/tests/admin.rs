@@ -505,3 +505,132 @@ async fn invited_users_list_as_invited_cannot_sign_in_and_are_not_set_by_patch()
     assert_eq!(resp["status"], "active");
     db.cleanup().await;
 }
+
+// ---- AUTH-9: `admin reset-totp --user <uuid>` (WP-B.14) ----------------------------------
+
+#[test]
+fn reset_totp_parses_and_rejects_bad_input() {
+    let args = |s: &[&str]| s.iter().map(|a| (*a).to_owned()).collect::<Vec<_>>();
+    let id = Uuid::new_v4();
+    assert_eq!(
+        admin::parse(&args(&["reset-totp", "--user", &id.to_string()])).unwrap(),
+        admin::AdminCommand::ResetTotp { user_id: id }
+    );
+    assert_eq!(
+        admin::parse(&args(&["reset-totp", &format!("--user={id}")])).unwrap(),
+        admin::AdminCommand::ResetTotp { user_id: id }
+    );
+    for bad in [
+        &["reset-totp"][..],
+        &["reset-totp", "--user"],
+        &["reset-totp", "--user", "not-a-uuid"],
+        &["reset-totp", "--user", &id.to_string(), "--force"],
+        // Removed with migration 0022 (KEY-11): run it with the previous release.
+        &["encrypt-review-notes"],
+    ] {
+        assert_eq!(
+            admin::parse(&args(bad)).unwrap_err().exit_code(),
+            2,
+            "{bad:?}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn reset_totp_clears_the_seed_and_the_pending_seed_with_an_operator_audit_row() {
+    let Some(db) = TestDb::migrated().await else {
+        return;
+    };
+    let state = state_with_pool(db.pool.clone());
+    let org = seed_org(&db.pool, "Clinic").await;
+    let user = seed_user(&db.pool, Some(org), Role::Clinician, "c@example.org").await;
+    enrol_totp(&state, user, "JBSWY3DPEHPK3PXP").await;
+    let keyring = state.keyring.as_deref().unwrap();
+    let pending = keyring
+        .seal_user_secret(
+            &asd_backend::auth::totp::pending_aad(user),
+            b"GEZDGNBVGY3TQOJQ",
+        )
+        .unwrap();
+    sqlx::query(
+        "UPDATE users SET last_totp_step = 1, totp_pending_ct = $2, totp_pending_kek_id = $3,
+                totp_pending_expires_at = now() + interval '10 minutes'
+         WHERE id = $1",
+    )
+    .bind(user)
+    .bind(&pending)
+    .bind(keyring.kek_id())
+    .execute(&db.pool)
+    .await
+    .unwrap();
+    // Login needs the code before the reset.
+    let app = router(state.clone());
+    let (_, body) = login(&app, "c@example.org", PASSWORD).await;
+    assert_eq!(slug(&body), "totp-required");
+
+    // No KEK needed: the operator command only clears columns.
+    let out = run_admin(&db, &["reset-totp", "--user", &user.to_string()], "", &[]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    assert_eq!(stdout(&out), user.to_string(), "stdout is the user id");
+
+    let cleared: (bool, bool, bool, bool, bool, bool) = sqlx::query_as(
+        "SELECT totp_secret_ct IS NULL, totp_secret_kek_id IS NULL, last_totp_step IS NULL,
+                totp_pending_ct IS NULL, totp_pending_kek_id IS NULL,
+                totp_pending_expires_at IS NULL
+         FROM users WHERE id = $1",
+    )
+    .bind(user)
+    .fetch_one(&db.pool)
+    .await
+    .unwrap();
+    assert_eq!(cleared, (true, true, true, true, true, true));
+    let rows: Vec<AuditRow> = sqlx::query_as(
+        "SELECT action, actor_type, target_id, org_id, after FROM audit_log \
+         WHERE action = 'user.totp_reset'",
+    )
+    .fetch_all(&db.pool)
+    .await
+    .unwrap();
+    assert_eq!(rows.len(), 1);
+    let (_, actor_type, target, audit_org, after) = &rows[0];
+    assert_eq!(actor_type, "system");
+    assert_eq!(target.as_deref(), Some(user.to_string().as_str()));
+    assert_eq!(*audit_org, Some(org));
+    assert_eq!(after["actor"], "operator");
+    assert!(!after.to_string().contains("JBSWY3DPEHPK3PXP"));
+
+    let (status, body) = login(&app, "c@example.org", PASSWORD).await;
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "password alone signs in again: {body}"
+    );
+    db.cleanup().await;
+}
+
+#[tokio::test]
+async fn reset_totp_of_an_unknown_user_changes_nothing() {
+    let Some(db) = TestDb::migrated().await else {
+        return;
+    };
+    let missing = Uuid::new_v4();
+    let out = run_admin(
+        &db,
+        &["reset-totp", "--user", &missing.to_string()],
+        "",
+        &[],
+    );
+    assert_eq!(out.status.code(), Some(2), "{}", stderr(&out));
+    assert!(
+        stderr(&out).contains(&missing.to_string()),
+        "{}",
+        stderr(&out)
+    );
+    assert!(stdout(&out).is_empty());
+    let audits: i64 = sqlx::query_scalar("SELECT count(*) FROM audit_log")
+        .fetch_one(&db.pool)
+        .await
+        .unwrap();
+    assert_eq!(audits, 0);
+    db.cleanup().await;
+}

@@ -82,7 +82,7 @@ Starting points already in the repo: the target architecture in `docs/spec/modul
 | Check | Reason |
 |---|---|
 | Run both `asd-backend serve` and `asd-backend worker` (`BE/src/main.rs`); at least one worker must have the blob store | The expiry sweep, nightly retention sweep and erasure scheduling run only in a worker with a blob store (`BE/src/jobs/runner.rs`) |
-| Run `asd-backend migrate` with `ASD_DATA_KEK` set, then once `asd-backend admin encrypt-review-notes` | Converts plaintext TOTP seeds and review notes (`BE/src/admin.rs`, `BE/src/auth/totp.rs`) |
+| Before upgrading to a build with migration 0022: `asd-backend admin encrypt-review-notes` with the current release; then `asd-backend migrate` (new build) with `ASD_DATA_KEK` set | Converts plaintext review notes and TOTP seeds, then 0022 drops both plaintext columns (`BE/src/db.rs`, `BE/src/auth/totp.rs`; `rust/README.md` "Upgrading") |
 | More than one API replica | In-memory rate limiters multiply by replica count; WAF rate rules must be the real control (threat model R4) |
 | Clock sync | TOTP and signed links depend on time; use Amazon Time Sync defaults |
 | Container hardening | Image scan in ECR, non-root already (`rust/Dockerfile`), read-only root filesystem, drop capabilities, `cargo deny` in CI (02 section 7) |

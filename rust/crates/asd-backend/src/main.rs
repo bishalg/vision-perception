@@ -4,10 +4,11 @@
 //!
 //! - `asd-backend serve`   HTTP API on `ASD_BIND_ADDR` (never runs migrations);
 //! - `asd-backend worker`  background job loop (job kinds arrive with WP-B.5);
-//! - `asd-backend migrate` applies pending migrations, then the data back-fills that need
-//!   the KEK (0016: TOTP seeds sealed), and exits (compose init step);
-//! - `asd-backend admin`   operator commands (`create-org`, `create-user`,
-//!   `encrypt-review-notes`, `rotate-kek`), see `asd_backend::admin`.
+//! - `asd-backend migrate` seals plaintext TOTP seeds left from 0016 (needs the KEK), then
+//!   applies pending migrations, then re-runs that back-fill, and exits (compose init step;
+//!   KEY-12, [`db::migrate_with_backfill`]);
+//! - `asd-backend admin`   operator commands (`create-org`, `create-user`, `reset-totp`,
+//!   `rotate-kek`), see `asd_backend::admin`.
 //!
 //! Configuration is environment only; see `rust/.env.example`.
 
@@ -22,7 +23,7 @@ const USAGE: &str = "usage: asd-backend <serve|worker|migrate|admin>\n\
   serve    run the HTTP API (GET /health, /health/ready, /v1/...)\n\
   worker   run the background job worker\n\
   migrate  apply pending database migrations and exit\n\
-  admin    create-org / create-user / rotate-kek and other operator commands\n\
+  admin    create-org / create-user / reset-totp / rotate-kek operator commands\n\
            (asd-backend admin --help)\n\
 \n\
 Configuration comes from the environment; see rust/.env.example.";
@@ -184,16 +185,13 @@ async fn migrate(config: Config) -> Result<(), String> {
     let pool = db::connect(&config)
         .await
         .map_err(|e| format!("connect: {e}"))?;
-    let pending = db::pending_migrations(&pool)
-        .await
-        .map_err(|e| format!("read migration state: {e}"))?;
-    db::migrate(&pool)
-        .await
-        .map_err(|e| format!("migrate: {e}"))?;
-    tracing::info!(applied = ?pending, "migrations up to date");
-    let result = db::backfill(&pool, &config).await;
+    // KEY-12: seed pre-step, pending migrations, post-migration back-fill.
+    let result = db::migrate_with_backfill(&pool, &config).await;
+    if let Ok(applied) = &result {
+        tracing::info!(applied = ?applied, "migrations up to date");
+    }
     pool.close().await;
-    result
+    result.map(|_| ())
 }
 
 /// `asd-backend admin ...`: no telemetry (stdout carries only the new id), errors and
@@ -254,11 +252,9 @@ fn admin_main() -> ExitCode {
                     .await
                     .map(|id| id.to_string())
             }
-            admin::AdminCommand::EncryptReviewNotes { batch_size } => {
-                admin::encrypt_review_notes_cli(&pool, &config, *batch_size)
-                    .await
-                    .map(|n| n.to_string())
-            }
+            admin::AdminCommand::ResetTotp { user_id } => admin::reset_totp(&pool, *user_id)
+                .await
+                .map(|id| id.to_string()),
             admin::AdminCommand::RotateKek { batch, dry_run } => {
                 admin::rotate_kek_cli(&pool, &config, *batch, *dry_run).await
             }

@@ -4,18 +4,21 @@
 //!
 //! - `create-org --name <name> --kind home|clinic|research [--retention-months N] [--force]`
 //! - `create-user --email <email> --role owner|superadmin [--org <uuid>] [--force]`
-//! - `encrypt-review-notes [--batch-size N]` (WP-C.9, KEY-7): encrypts every
-//!   `review_items.note` written before migration 0008 into `note_ct`/`note_key_id` with
-//!   the org's data key and sets `note = NULL`. Needs `ASD_DATA_KEK`. Idempotent: a second
-//!   run finds nothing; a row that already has a ciphertext only loses its plaintext copy.
-//!   Prints the number of rows changed. A later migration drops `note` once every
-//!   deployment has run it.
+//! - `reset-totp --user <uuid>` (WP-B.14, AUTH-9): clears the user's TOTP seed, spent step
+//!   and any pending enrolment ([`crate::auth::totp::reset`]) with audit `user.totp_reset`
+//!   (`actor: operator`), so a user who lost the authenticator signs in with the password
+//!   alone and enrols again. No KEK needed. Prints the user id. The only way to change
+//!   another user's TOTP in this phase (no HTTP endpoint).
 //! - `rotate-kek [--batch N] [--dry-run]` (WP-B.15, KEY-9): re-wraps every org data key
 //!   and re-seals every user secret still under a KEK from `ASD_DATA_KEK_PREVIOUS` with
 //!   the active `ASD_DATA_KEK` ([`crate::crypto::rotate`]). Prints
 //!   `{"rewrapped_deks","resealed_users","remaining","dry_run"}` as JSON; exits 3 (after
 //!   printing) while rows remain under a KEK that is not configured. Runbook:
 //!   `rust/README.md`.
+//!
+//! `encrypt-review-notes` (WP-C.9, KEY-7) was removed with migration 0022, which drops
+//! `review_items.note` (WP-B.14, KEY-11): a deployment that still has plaintext notes runs
+//! it with the previous release before upgrading (the 0022 guard refuses otherwise).
 //!
 //! Each prints only the new id on stdout, so scripts can capture it. The password for
 //! `create-user` comes from [`PASSWORD_ENV`] or the first line of stdin, never from argv
@@ -41,7 +44,7 @@ use crate::audit::AuditEvent;
 use crate::auth::{password, rbac};
 use crate::config::Config;
 use crate::crypto::rotate::{self, RotateOptions, RotateReport};
-use crate::crypto::{Aad, Keyring};
+use crate::crypto::Keyring;
 use crate::routes::auth::normalize_email;
 use crate::routes::users::valid_email;
 
@@ -52,15 +55,15 @@ pub const USAGE: &str = "usage: asd-backend admin <command> [options]\n\
 \n\
   create-org  --name <name> --kind home|clinic|research [--retention-months N] [--force]\n\
   create-user --email <email> --role owner|superadmin [--org <org-id>] [--force]\n\
-  encrypt-review-notes [--batch-size N]\n\
+  reset-totp  --user <user-id>\n\
   rotate-kek [--batch N] [--dry-run]\n\
 \n\
 create-user reads the password from ASD_ADMIN_PASSWORD, or else the first line of stdin;\n\
 it is never accepted as an argument. owner needs --org; superadmin has no org.\n\
 --force allows a second superadmin, or a second org with the same name.\n\
 create-org and create-user print the new id on stdout and write an audit row.\n\
-encrypt-review-notes (needs ASD_DATA_KEK) encrypts review notes stored in clear before\n\
-migration 0008 and prints the number of rows changed; running it again is safe.\n\
+reset-totp clears the user's TOTP seed and any pending enrolment (they sign in with the\n\
+password and enrol again), writes an audit row and prints the user id.\n\
 rotate-kek (needs ASD_DATA_KEK=new, ASD_DATA_KEK_PREVIOUS=old) moves every wrapped data key\n\
 and sealed user secret to the new KEK, prints a JSON report and exits 3 while rows remain\n\
 under an unconfigured KEK; running it again is safe. Runbook: rust/README.md.\n\
@@ -86,16 +89,13 @@ pub struct NewUser {
     pub force: bool,
 }
 
-/// Default rows per transaction for `encrypt-review-notes`.
-pub const DEFAULT_NOTE_BATCH: u32 = 500;
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdminCommand {
     CreateOrg(NewOrg),
     CreateUser(NewUser),
-    /// KEY-7 back-fill.
-    EncryptReviewNotes {
-        batch_size: u32,
+    /// AUTH-9 operator TOTP reset.
+    ResetTotp {
+        user_id: Uuid,
     },
     /// KEY-9 KEK rotation.
     RotateKek {
@@ -121,6 +121,8 @@ pub enum AdminError {
     OrgNameTaken { name: String, id: Uuid },
     #[error("organisation {0} does not exist")]
     OrgNotFound(Uuid),
+    #[error("user {0} does not exist; nothing was changed")]
+    UserNotFound(Uuid),
     /// `rotate-kek` finished but rows remain under a KEK that is not configured (or could
     /// not be opened, or were locked). The report is still printed on stdout.
     #[error(
@@ -140,7 +142,7 @@ impl AdminError {
     /// Process exit code for this error (see the module docs).
     pub fn exit_code(&self) -> u8 {
         match self {
-            Self::Usage(_) | Self::Invalid(_) | Self::OrgNotFound(_) => 2,
+            Self::Usage(_) | Self::Invalid(_) | Self::OrgNotFound(_) | Self::UserNotFound(_) => 2,
             Self::EmailTaken { .. }
             | Self::SuperadminExists
             | Self::OrgNameTaken { .. }
@@ -275,23 +277,11 @@ pub fn parse(args: &[String]) -> Result<AdminCommand, AdminError> {
                 force: take_flag(&opts, "--force"),
             }))
         }
-        "encrypt-review-notes" => {
-            let opts = options(rest, &["--batch-size"], &["--force"])?;
-            if take_flag(&opts, "--force") {
-                return Err(usage("encrypt-review-notes takes no --force"));
-            }
-            let batch_size = match take(&opts, "--batch-size") {
-                None => DEFAULT_NOTE_BATCH,
-                Some(v) => match v.parse::<u32>() {
-                    Ok(n) if (1..=10_000).contains(&n) => n,
-                    _ => {
-                        return Err(AdminError::Invalid(
-                            "--batch-size must be an integer from 1 to 10000".into(),
-                        ))
-                    }
-                },
-            };
-            Ok(AdminCommand::EncryptReviewNotes { batch_size })
+        "reset-totp" => {
+            let opts = options(rest, &["--user"], &[])?;
+            let user_id = Uuid::parse_str(required(&opts, "--user")?.trim())
+                .map_err(|_| AdminError::Invalid("--user must be a user id (UUID)".into()))?;
+            Ok(AdminCommand::ResetTotp { user_id })
         }
         "rotate-kek" => {
             let opts = options(rest, &["--batch"], &["--dry-run"])?;
@@ -312,6 +302,10 @@ pub fn parse(args: &[String]) -> Result<AdminCommand, AdminError> {
                 dry_run: take_flag(&opts, "--dry-run"),
             })
         }
+        "encrypt-review-notes" => Err(usage(
+            "encrypt-review-notes was removed with migration 0022 (review_items.note is dropped); \
+             run it with the previous release before upgrading, see rust/README.md",
+        )),
         other => Err(usage(format!("unknown command {other:?}"))),
     }
 }
@@ -504,18 +498,18 @@ pub async fn create_user(
     Ok(id)
 }
 
-/// `encrypt-review-notes` from the CLI: builds the keyring from `ASD_DATA_KEK`.
-pub async fn encrypt_review_notes_cli(
-    pool: &PgPool,
-    config: &Config,
-    batch_size: u32,
-) -> Result<u64, AdminError> {
-    let kek = config.data_kek.clone().ok_or_else(|| {
-        AdminError::Invalid("ASD_DATA_KEK is not set; it is needed to encrypt review notes".into())
-    })?;
-    // Mid-rotation the org's active DEK may still be wrapped under a previous KEK.
-    let keyring = Keyring::with_previous(kek, config.data_kek_previous.clone(), pool.clone());
-    encrypt_review_notes(pool, &keyring, batch_size).await
+/// `reset-totp` (AUTH-9): clears every TOTP column of `user_id` with audit
+/// `user.totp_reset` (`actor: operator`); [`AdminError::UserNotFound`] (exit 2) changes
+/// nothing.
+pub async fn reset_totp(pool: &PgPool, user_id: Uuid) -> Result<Uuid, AdminError> {
+    let found = crate::auth::totp::reset(pool, user_id)
+        .await
+        .map_err(|e| AdminError::Internal(e.to_string()))?;
+    if found {
+        Ok(user_id)
+    } else {
+        Err(AdminError::UserNotFound(user_id))
+    }
 }
 
 /// `rotate-kek` from the CLI (KEY-9): builds the keyring from `ASD_DATA_KEK` (active) and
@@ -550,78 +544,6 @@ pub async fn rotate_kek_cli(
 /// The `rotate-kek` report as one JSON line.
 pub fn report_json(report: &RotateReport) -> Result<String, AdminError> {
     serde_json::to_string(report).map_err(|e| AdminError::Internal(e.to_string()))
-}
-
-/// KEY-7 back-fill: encrypts plaintext `review_items.note` values in batches of
-/// `batch_size` rows (one transaction each, `FOR UPDATE SKIP LOCKED`), empties `note`, and
-/// writes one audit row per org per batch with counts only. Returns the rows changed.
-/// Rows that already carry a ciphertext keep it; only their plaintext copy is cleared.
-pub async fn encrypt_review_notes(
-    pool: &PgPool,
-    keyring: &Keyring,
-    batch_size: u32,
-) -> Result<u64, AdminError> {
-    let mut total = 0u64;
-    loop {
-        let mut tx = pool.begin().await?;
-        let rows = sqlx::query!(
-            r#"SELECT id, org_id, note AS "note!", (note_ct IS NOT NULL) AS "has_ct!"
-               FROM review_items
-               WHERE note IS NOT NULL
-               ORDER BY id
-               LIMIT $1
-               FOR UPDATE SKIP LOCKED"#,
-            i64::from(batch_size)
-        )
-        .fetch_all(&mut *tx)
-        .await?;
-        if rows.is_empty() {
-            tx.rollback().await?;
-            break;
-        }
-        let mut per_org: std::collections::BTreeMap<Uuid, (u64, u64)> =
-            std::collections::BTreeMap::new();
-        for r in &rows {
-            let counts = per_org.entry(r.org_id).or_default();
-            if r.has_ct {
-                sqlx::query!("UPDATE review_items SET note = NULL WHERE id = $1", r.id)
-                    .execute(&mut *tx)
-                    .await?;
-                counts.1 += 1;
-            } else {
-                let aad = Aad::new("review_items", "note_ct", r.org_id, r.id);
-                let sealed = keyring
-                    .encrypt_str(r.org_id, &aad, &r.note)
-                    .await
-                    .map_err(|e| AdminError::Internal(e.to_string()))?;
-                sqlx::query!(
-                    "UPDATE review_items SET note_ct = $2, note_key_id = $3, note = NULL
-                     WHERE id = $1",
-                    r.id,
-                    sealed.ciphertext,
-                    sealed.key_id
-                )
-                .execute(&mut *tx)
-                .await?;
-                counts.0 += 1;
-            }
-        }
-        for (org, (encrypted, cleared)) in per_org {
-            AuditEvent::system("review.note_encrypt", "organization", org)
-                .org(org)
-                .after(json!({
-                    "encrypted": encrypted,
-                    "plaintext_cleared": cleared,
-                    "via": "cli",
-                }))
-                .record(&mut tx)
-                .await
-                .map_err(|e| AdminError::Internal(e.to_string()))?;
-        }
-        tx.commit().await?;
-        total += rows.len() as u64;
-    }
-    Ok(total)
 }
 
 #[cfg(test)]

@@ -571,7 +571,7 @@ async fn get_me(
 ) -> AppResult<Json<UserProfile>> {
     let row = sqlx::query!(
         r#"SELECT email, role, org_id, display_name, professional_registration,
-                (totp_secret_ct IS NOT NULL OR totp_secret IS NOT NULL) AS "totp_enrolled!",
+                (totp_secret_ct IS NOT NULL) AS "totp_enrolled!",
                 COALESCE(totp_pending_ct IS NOT NULL AND totp_pending_expires_at > now(), false)
                     AS "totp_pending!"
          FROM users WHERE id = $1"#,
@@ -614,7 +614,7 @@ async fn patch_me(
     let mut tx = state.db.begin().await?;
     let row = sqlx::query!(
         r#"SELECT email, role, org_id, display_name, professional_registration,
-                (totp_secret_ct IS NOT NULL OR totp_secret IS NOT NULL) AS "totp_enrolled!",
+                (totp_secret_ct IS NOT NULL) AS "totp_enrolled!",
                 COALESCE(totp_pending_ct IS NOT NULL AND totp_pending_expires_at > now(), false)
                     AS "totp_pending!"
          FROM users WHERE id = $1 FOR UPDATE"#,

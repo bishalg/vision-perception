@@ -100,7 +100,12 @@ Two facts the security pack gets wrong, found while reading the code:
    the operator's explicit step, KEY-7); the guard message names it. After 0022 the legacy
    branches in `totp::load_secret`, `legacy_secret_count`, the `OR totp_secret IS NOT NULL`
    in `/users/me`, `db::backfill` and the `encrypt-review-notes` command are deleted, since
-   `sqlx` compile-time checks would fail on the missing columns anyway.
+   `sqlx` compile-time checks would fail on the missing columns anyway. (Amended
+   2026-11-02, WP-B.14: `legacy_secret_count`, `encrypt_legacy_secrets` and `db::backfill`
+   stay, because the pre-step needs them on databases between 0016 and 0022; they use
+   runtime queries behind an `information_schema` check and are no-ops after 0022. The
+   0016 migration added one check constraint naming `totp_secret`,
+   `users_totp_secret_one_form`; that is the one 0022 drops.)
 6. **Housekeeping is one daily phased job, `housekeeping_sweep`, scheduled like the
    retention sweep.** Rules: `idempotency_keys` older than 7 days (ADR-B5), every scope
    except care batch keys (`care:{org}`; amended 2026-11-01: care events need not carry a

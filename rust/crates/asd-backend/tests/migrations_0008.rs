@@ -218,7 +218,8 @@ async fn tables_and_columns_exist() {
             ],
         ),
         ("users", &["display_name", "professional_registration"]),
-        ("review_items", &["note", "note_ct", "note_key_id"]),
+        // `note` itself was dropped by 0022 (WP-B.14).
+        ("review_items", &["note_ct", "note_key_id"]),
     ] {
         let have = columns(f.pool(), table).await;
         for c in cols {

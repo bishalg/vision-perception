@@ -451,14 +451,13 @@ async fn totp_failures_are_rate_limited_per_user() {
 async fn totp_seed_is_sealed_at_rest_and_login_fails_closed_without_the_kek() {
     let Some(c) = setup().await else { return };
     enrol_totp(&c.state, c.user, TOTP_SECRET).await;
-    let (clear, ct, kek_id): (Option<String>, Option<Vec<u8>>, Option<String>) = sqlx::query_as(
-        "SELECT totp_secret, totp_secret_ct, totp_secret_kek_id FROM users WHERE id = $1",
-    )
-    .bind(c.user)
-    .fetch_one(&c.db.pool)
-    .await
-    .unwrap();
-    assert_eq!(clear, None);
+    // The plaintext column itself is gone since 0022 (WP-B.14, `migrations.rs`).
+    let (ct, kek_id): (Option<Vec<u8>>, Option<String>) =
+        sqlx::query_as("SELECT totp_secret_ct, totp_secret_kek_id FROM users WHERE id = $1")
+            .bind(c.user)
+            .fetch_one(&c.db.pool)
+            .await
+            .unwrap();
     let ct = ct.expect("sealed seed");
     assert!(!ct
         .windows(TOTP_SECRET.len())

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE users\n         SET totp_secret = NULL, totp_secret_ct = NULL, totp_secret_kek_id = NULL,\n             last_totp_step = NULL, totp_pending_ct = NULL, totp_pending_kek_id = NULL, totp_pending_expires_at = NULL\n         WHERE id = $1\n         RETURNING org_id",
+  "query": "UPDATE users\n         SET totp_secret_ct = NULL, totp_secret_kek_id = NULL,\n             last_totp_step = NULL, totp_pending_ct = NULL, totp_pending_kek_id = NULL, totp_pending_expires_at = NULL\n         WHERE id = $1\n         RETURNING org_id",
   "describe": {
     "columns": [
       {
@@ -24,5 +24,5 @@
       true
     ]
   },
-  "hash": "bdd707e60a5e00a963e2f07aa6898771ac1ad33d6dc3fc16aab9966b33835ee8"
+  "hash": "6440334587eec2f55424c521327c6c62052f6cf67c468a2425cccb0586a3e5a0"
 }

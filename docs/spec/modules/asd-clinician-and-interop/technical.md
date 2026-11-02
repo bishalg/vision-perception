@@ -120,7 +120,8 @@ WP-I.11, iOS adopting `asd-export` through FFI (future WP-A item).
   (`note_ct`, `note_key_id`) in migration 0008. A migration cannot encrypt (the key is not in
   SQL), so: the API writes only `note_ct` from 0008 on; `asd-backend admin
   encrypt-review-notes` encrypts existing rows and sets `note = NULL` (idempotent); a later
-  migration drops `note` once every deployment has run the command (follow-up, not 0008).
+  migration drops `note` once every deployment has run the command (follow-up, not 0008:
+  done by 0022, WP-B.14, which also removed the command; see `rust/README.md` "Upgrading").
 
 ## 3. Patient reference (MRN) (MRN)
 
