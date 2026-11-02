@@ -39,7 +39,9 @@ pub struct StepUpLimiter(pub RateLimiter<Uuid>);
 
 impl StepUpLimiter {
     pub fn new() -> Arc<Self> {
-        Arc::new(Self(RateLimiter::per_minute(STEP_UP_ATTEMPTS_PER_MINUTE)))
+        Arc::new(Self(
+            RateLimiter::per_minute(STEP_UP_ATTEMPTS_PER_MINUTE).named("login_user"),
+        ))
     }
 }
 

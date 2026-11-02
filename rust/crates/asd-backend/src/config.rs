@@ -68,6 +68,9 @@ pub struct Config {
     /// `https://api.example.org`. Webhook download links in proxy blob mode are absolute
     /// URLs under it; without it such webhooks fail `download-url-unavailable`.
     pub public_base_url: Option<String>,
+    /// `ASD_METRICS_BIND_ADDR` (WP-B.13, OBS-2): where `serve` exposes `GET /metrics` on a
+    /// second listener. `None` (default) = no listener; the API port never serves it.
+    pub metrics_bind_addr: Option<SocketAddr>,
 }
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -190,6 +193,21 @@ impl Config {
                 ));
             }
         }
+        let metrics_bind_addr = match get("ASD_METRICS_BIND_ADDR") {
+            None => None,
+            Some(v) => {
+                let addr: SocketAddr = v
+                    .parse()
+                    .map_err(|e| invalid("ASD_METRICS_BIND_ADDR", format!("`{v}`: {e}")))?;
+                if addr == bind_addr {
+                    return Err(invalid(
+                        "ASD_METRICS_BIND_ADDR",
+                        "must differ from ASD_BIND_ADDR (the API port never serves /metrics)",
+                    ));
+                }
+                Some(addr)
+            }
+        };
         Ok(Self {
             bind_addr,
             database_url,
@@ -207,6 +225,7 @@ impl Config {
             data_kek,
             data_kek_previous,
             public_base_url,
+            metrics_bind_addr,
         })
     }
 }
@@ -244,6 +263,7 @@ impl fmt::Debug for Config {
             .field("data_kek", &self.data_kek)
             .field("data_kek_previous", &self.data_kek_previous)
             .field("public_base_url", &self.public_base_url)
+            .field("metrics_bind_addr", &self.metrics_bind_addr)
             .finish()
     }
 }
@@ -352,6 +372,35 @@ mod tests {
         assert_eq!(c.console_origin, None);
         assert_eq!(c.log_filter, "info");
         assert_eq!(c.request_timeout, Duration::from_secs(30));
+        assert_eq!(c.metrics_bind_addr, None, "no metrics listener by default");
+    }
+
+    #[test]
+    fn metrics_bind_addr_is_parsed_and_must_differ_from_the_api_addr() {
+        let c = cfg(&[
+            ("DATABASE_URL", URL),
+            ("ASD_METRICS_BIND_ADDR", "127.0.0.1:9100"),
+        ])
+        .unwrap();
+        assert_eq!(c.metrics_bind_addr, Some("127.0.0.1:9100".parse().unwrap()));
+        for pairs in [
+            vec![("ASD_METRICS_BIND_ADDR", "nope")],
+            vec![("ASD_METRICS_BIND_ADDR", "0.0.0.0:8000")],
+            vec![
+                ("ASD_BIND_ADDR", "127.0.0.1:9100"),
+                ("ASD_METRICS_BIND_ADDR", "127.0.0.1:9100"),
+            ],
+        ] {
+            let mut all = vec![("DATABASE_URL", URL)];
+            all.extend(pairs);
+            assert!(matches!(
+                cfg(&all).unwrap_err(),
+                ConfigError::Invalid {
+                    name: "ASD_METRICS_BIND_ADDR",
+                    ..
+                }
+            ));
+        }
     }
 
     #[test]

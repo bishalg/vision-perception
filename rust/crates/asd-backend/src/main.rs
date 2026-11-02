@@ -117,6 +117,27 @@ async fn serve(config: Config) -> Result<(), String> {
     let listener = tokio::net::TcpListener::bind(config.bind_addr)
         .await
         .map_err(|e| format!("bind {}: {e}", config.bind_addr))?;
+    // OBS-2: the scrape endpoint lives on its own listener, only when asked for.
+    let metrics_listener = match config.metrics_bind_addr {
+        Some(addr) => Some(
+            tokio::net::TcpListener::bind(addr)
+                .await
+                .map_err(|e| format!("bind metrics {addr}: {e}"))?,
+        ),
+        None => None,
+    };
+    if let Some(listener) = metrics_listener {
+        let scrape = asd_backend::observability::metrics_router(pool.clone());
+        tracing::info!(metrics_addr = ?listener.local_addr().ok(), "metrics listening");
+        tokio::spawn(async move {
+            let served = axum::serve(listener, scrape)
+                .with_graceful_shutdown(shutdown_signal())
+                .await;
+            if let Err(e) = served {
+                tracing::error!(error = %e, "metrics listener stopped");
+            }
+        });
+    }
     let router = app::router(app::AppState::new(pool, blobs, config));
     tracing::info!("api listening");
     // Peer addresses feed the per-IP auth rate limits and audit rows (WP-B.2, AUTH-1).

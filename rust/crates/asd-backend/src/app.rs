@@ -14,6 +14,7 @@ use sqlx::PgPool;
 use tower::ServiceBuilder;
 use tower_http::cors::CorsLayer;
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
+use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
 use tracing::Span;
@@ -70,8 +71,9 @@ pub async fn build_blob_store(config: &Config) -> Arc<dyn BlobStore> {
 const REQUEST_ID: HeaderName = HeaderName::from_static("x-request-id");
 
 /// Builds the full router with its middleware:
-/// request id (set + propagate), PHI-safe request tracing, timeout, optional CORS
-/// restricted to the console origin, and problem+json for 404/405.
+/// HSTS on every response (OBS-4), Prometheus request metrics (OBS-3), request id
+/// (set + propagate), PHI-safe request tracing, timeout, optional CORS restricted to the
+/// console origin, and problem+json for 404/405. `/metrics` is never served here (OBS-2).
 pub fn router(state: AppState) -> Router {
     let timeout = state.config.request_timeout;
     let cors = state.config.console_origin.as_deref().map(cors_layer);
@@ -83,6 +85,13 @@ pub fn router(state: AppState) -> Router {
         .method_not_allowed_fallback(method_not_allowed)
         .layer(
             ServiceBuilder::new()
+                // OBS-4: two years, subdomains, no `preload`; set on 404/405/problem
+                // responses too because the layer wraps the fallbacks.
+                .layer(SetResponseHeaderLayer::overriding(
+                    header::STRICT_TRANSPORT_SECURITY,
+                    HeaderValue::from_static("max-age=63072000; includeSubDomains"),
+                ))
+                .layer(axum::middleware::from_fn(crate::observability::track))
                 .layer(SetRequestIdLayer::new(REQUEST_ID, MakeRequestUuid))
                 .layer(
                     TraceLayer::new_for_http()

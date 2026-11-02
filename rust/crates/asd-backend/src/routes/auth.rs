@@ -55,8 +55,8 @@ pub struct LoginLimiter {
 
 pub fn router() -> Router<AppState> {
     let limiter = Arc::new(LoginLimiter {
-        per_ip: RateLimiter::per_minute(LOGIN_ATTEMPTS_PER_MINUTE),
-        totp_per_user: RateLimiter::per_minute(LOGIN_TOTP_ATTEMPTS_PER_MINUTE),
+        per_ip: RateLimiter::per_minute(LOGIN_ATTEMPTS_PER_MINUTE).named("login_ip"),
+        totp_per_user: RateLimiter::per_minute(LOGIN_TOTP_ATTEMPTS_PER_MINUTE).named("login_user"),
     });
     Router::new()
         .route("/auth/login", post(login))

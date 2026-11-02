@@ -219,6 +219,8 @@ pub struct RateLimiter<K> {
     limit: u32,
     window: Duration,
     hits: Mutex<HashMap<K, (Instant, u32)>>,
+    /// `limiter` label of `auth_rate_limited_total` (OBS-3); `None` = not counted.
+    name: Option<&'static str>,
 }
 
 impl<K: Eq + Hash + Clone> RateLimiter<K> {
@@ -227,7 +229,16 @@ impl<K: Eq + Hash + Clone> RateLimiter<K> {
             limit,
             window,
             hits: Mutex::new(HashMap::new()),
+            name: None,
         }
+    }
+
+    /// Counts every rejection under `auth_rate_limited_total{limiter=name}` (one of
+    /// [`crate::observability::LIMITERS`]).
+    #[must_use]
+    pub fn named(mut self, name: &'static str) -> Self {
+        self.name = Some(name);
+        self
     }
 
     /// `AUTH-1`: 10 per minute.
@@ -251,6 +262,9 @@ impl<K: Eq + Hash + Clone> RateLimiter<K> {
             *entry = (now, 0);
         }
         if entry.1 >= self.limit {
+            if let Some(name) = self.name {
+                crate::observability::rate_limited(name);
+            }
             let left = self.window.saturating_sub(now.duration_since(entry.0));
             return Err(left.as_secs().max(1));
         }

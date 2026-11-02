@@ -51,9 +51,9 @@ pub const SESSION_POSTS_PER_MINUTE: u32 = 60;
 pub struct SessionPostLimiter(pub RateLimiter<Uuid>);
 
 pub fn router() -> Router<AppState> {
-    let limiter = Arc::new(SessionPostLimiter(RateLimiter::per_minute(
-        SESSION_POSTS_PER_MINUTE,
-    )));
+    let limiter = Arc::new(SessionPostLimiter(
+        RateLimiter::per_minute(SESSION_POSTS_PER_MINUTE).named("ingest_device"),
+    ));
     Router::new()
         .route(
             "/sessions",

@@ -20,6 +20,7 @@ pub mod export_build; // WP-I.6
 pub mod ingest;
 pub mod interop; // WP-C.10
 pub mod jobs;
+pub mod observability; // WP-B.13
 pub mod problem;
 pub mod read;
 pub mod report;

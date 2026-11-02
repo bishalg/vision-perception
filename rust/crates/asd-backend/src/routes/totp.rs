@@ -55,9 +55,9 @@ pub const TOTP_REQUESTS_PER_MINUTE: u32 = 5;
 pub struct TotpLimiter(pub RateLimiter<Uuid>);
 
 pub fn router() -> Router<AppState> {
-    let limiter = Arc::new(TotpLimiter(RateLimiter::per_minute(
-        TOTP_REQUESTS_PER_MINUTE,
-    )));
+    let limiter = Arc::new(TotpLimiter(
+        RateLimiter::per_minute(TOTP_REQUESTS_PER_MINUTE).named("totp_user"),
+    ));
     Router::new()
         .route("/users/me/totp/enrol", post(enrol))
         .route("/users/me/totp/confirm", post(confirm))

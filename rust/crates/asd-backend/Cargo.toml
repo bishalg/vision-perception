@@ -60,7 +60,7 @@ sqlx = { version = "0.9", default-features = false, features = [
 ] }
 tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
 tower = "0.5"
-tower-http = { version = "0.6", features = ["cors", "request-id", "timeout", "trace", "util"] }
+tower-http = { version = "0.6", features = ["cors", "request-id", "set-header", "timeout", "trace", "util"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt", "registry", "std"] }
 uuid = { version = "1", features = ["serde", "v4"] }
@@ -95,6 +95,10 @@ http-body-util = "0.1"
 # No default features: `rsa` pulls the `rsa` crate (RUSTSEC-2023-0071); keys are Ed25519.
 russh = { version = "0.65", default-features = false, features = ["aws-lc-rs"] }
 russh-sftp = "3"
+
+# ---- observability (WP-B.13, OBS-2..4): Prometheus text exposition 0.0.4. No default features:
+# the default `protobuf` feature pulls the protobuf crate and is not needed for the text format.
+prometheus = { version = "0.14", default-features = false }
 
 [dev-dependencies]
 # WP-B.5 tests drive norm runs with the deterministic synthetic session generator.

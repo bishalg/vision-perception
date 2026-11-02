@@ -132,6 +132,19 @@ asd-backend admin rotate-kek
 - The configuration refuses a `PREVIOUS` entry equal to `ASD_DATA_KEK`, duplicates, and
   entries that are not base64 of exactly 32 bytes (exit `2`).
 
+## Metrics and HSTS (`ASD_METRICS_BIND_ADDR`, OBS-2..4)
+
+- Set `ASD_METRICS_BIND_ADDR` (for example `127.0.0.1:9100`) on `asd-backend serve` to start a
+  second listener that serves only `GET /metrics` (Prometheus text 0.0.4; no auth, no CORS, not
+  request-logged). Unset means no listener. The API port never serves `/metrics`
+  (`/v1/orgs/{id}/metrics` is the unrelated dashboard). Keep the listener on a private interface.
+- Series: `http_requests_total{route,method,status}`, `http_request_duration_seconds{route,method}`
+  (buckets 5 ms to 10 s), `auth_rate_limited_total{limiter}`, `jobs_rows{kind,status}` (one query,
+  cached 10 s) and `asd_backend_build_info{version,git_sha}` (`git_sha` comes from the
+  `ASD_GIT_SHA` build-time variable, `unknown` otherwise). `route` is the matched path template
+  (`/v1/sessions/{id}`) or `unmatched`; no id, e-mail or token ever becomes a label value.
+- Every API response carries `Strict-Transport-Security: max-age=63072000; includeSubDomains`.
+
 ## Conventions
 
 - Licence `Apache-2.0` on every crate; dependencies must pass `rust/deny.toml`.

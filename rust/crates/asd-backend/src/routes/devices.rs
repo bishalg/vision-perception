@@ -53,9 +53,9 @@ pub const MAX_LABEL_LEN: usize = 200;
 pub struct RegisterLimiter(pub RateLimiter<Option<IpAddr>>);
 
 pub fn router() -> Router<AppState> {
-    let limiter = Arc::new(RegisterLimiter(RateLimiter::per_minute(
-        REGISTER_ATTEMPTS_PER_MINUTE,
-    )));
+    let limiter = Arc::new(RegisterLimiter(
+        RateLimiter::per_minute(REGISTER_ATTEMPTS_PER_MINUTE).named("register_ip"),
+    ));
     Router::new()
         .route("/devices/register", post(register))
         .route("/devices/{id}/revoke", post(revoke))
