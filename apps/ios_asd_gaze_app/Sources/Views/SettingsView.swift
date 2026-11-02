@@ -752,7 +752,7 @@ public struct SettingsView: View {
     #if ASD_DEMO_TOOLS
     private var demoToolsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            GlassSectionHeader(title: "Demo & Diagnostics", icon: "wrench.and.screwdriver.fill")
+            GlassSectionHeader(title: "Demo & Support Tools", icon: "wrench.and.screwdriver.fill")
             Button {
                 showDemoToolsView = true
             } label: {

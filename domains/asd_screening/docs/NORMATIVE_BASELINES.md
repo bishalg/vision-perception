@@ -103,7 +103,7 @@ clips **that ran and have baseline profiles**. Clips below the 0.60 valid-sample
 `lowConfidence` (scores shown, flagged as indicative only). Untagged frames group under
 `session_untagged` and are excluded from the composite.
 
-The existing session-level `BiomarkerClassificationEngine` (and its CoreML hook) is **unchanged**;
+The existing session-level `EngagementClassificationEngine` (and its CoreML hook) is **unchanged**;
 the matrix composite displays alongside it by design until validated.
 
 ## 5. Literature anchors used (v1.0.0)

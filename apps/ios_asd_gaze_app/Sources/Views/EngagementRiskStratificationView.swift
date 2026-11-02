@@ -8,14 +8,14 @@ import CurvAsdGazeKit
 /// Debug-only research view (ADR-0004 decision 3, CLM-3). The whole file is compiled out of
 /// Release builds, where `AttentionFlag` is the only interpretation layer a parent sees.
 /// Shows the experimental classifier output with its feature matrix for developers.
-public struct BiomarkerRiskStratificationDetailSection: View {
+public struct EngagementRiskStratificationDetailSection: View {
     public let summary: GazeSessionReportSummary
-    public let classification: BiomarkerClassificationResult?
+    public let classification: EngagementClassificationResult?
     public let recordedFrames: [GazeFrame]
 
     public init(
         summary: GazeSessionReportSummary,
-        classification: BiomarkerClassificationResult? = nil,
+        classification: EngagementClassificationResult? = nil,
         recordedFrames: [GazeFrame] = []
     ) {
         self.summary = summary
@@ -25,7 +25,7 @@ public struct BiomarkerRiskStratificationDetailSection: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            let result = classification ?? BiomarkerClassificationEngine.shared.classifySync(summary: summary)
+            let result = classification ?? EngagementClassificationEngine.shared.classifySync(summary: summary)
             let strat = result.riskStratification
             let stratColor: Color = {
                 switch strat {
@@ -83,7 +83,7 @@ public struct BiomarkerRiskStratificationDetailSection: View {
     // MARK: - Primary Summary Card
 
     private func primarySummaryCard(
-        result: BiomarkerClassificationResult,
+        result: EngagementClassificationResult,
         strat: RiskStratification,
         stratColor: Color
     ) -> some View {

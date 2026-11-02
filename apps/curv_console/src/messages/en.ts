@@ -284,5 +284,6 @@ export const en = {
     title: "Something went wrong",
     notFound: "Not found",
     retry: "Try again",
+    securityLink: "Go to account security",
   },
 } as const;

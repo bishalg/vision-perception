@@ -5,6 +5,7 @@
  * sent to the backend and never logged, cached or stored by the console. The seed goes back to the browser once,
  * for display.
  */
+import { revalidatePath } from "next/cache";
 import { ApiError } from "@/lib/api";
 import { authedApi } from "@/lib/auth/server";
 import type { TotpFailure, TotpResult } from "@/components/security/types";
@@ -31,6 +32,8 @@ export async function enrolTotpAction(formData: FormData): Promise<TotpResult<{ 
 export async function confirmTotpAction(formData: FormData): Promise<TotpResult<{ totp_enrolled: boolean }>> {
   try {
     const res = await (await authedApi()).confirmTotp(code(formData));
+    // The nudge and the required-state panel come from `GET /users/me`: render them again.
+    revalidatePath("/", "layout");
     return { ok: true, totp_enrolled: res.totp_enrolled };
   } catch (err) {
     return failure(err);
@@ -42,6 +45,7 @@ export async function disableTotpAction(formData: FormData): Promise<TotpResult<
   try {
     const totpCode = code(formData);
     const res = await (await authedApi()).disableTotp(field(formData, "password"), totpCode || undefined);
+    revalidatePath("/", "layout");
     return { ok: true, totp_enrolled: res.totp_enrolled };
   } catch (err) {
     return failure(err);

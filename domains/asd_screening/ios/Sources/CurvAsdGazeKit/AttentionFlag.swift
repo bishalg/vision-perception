@@ -61,7 +61,7 @@ public enum AttentionFlagAlgorithm {
             return AttentionFlagAssessment(
                 flag: .yellow,
                 headline: "Flag not available",
-                detail: "This result could not be read. Run the session again. This is a screening signal, not a diagnosis."
+                detail: "This result could not be read. Run the session again. This is not a diagnosis."
             )
         }
     }

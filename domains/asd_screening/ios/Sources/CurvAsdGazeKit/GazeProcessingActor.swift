@@ -1084,12 +1084,12 @@ extension GazeSessionReportSummary {
         // preference are recomputed above from timestamps (its dwell assumes 60 fps).
         // SCH-5: no valid sample, or a core refusal, makes the session unscorable; its five
         // score values are absent, never 0 (CON-14). Ratios and latency stay nil (PLC-1/2).
-        let biomarkers: SessionBiomarkerAggregator.Aggregates?
+        let biomarkers: SessionEngagementAggregator.Aggregates?
         let unscorableReason: UnscorableReason?
         if validFrames.isEmpty {
             biomarkers = nil
             unscorableReason = .insufficientValidGaze
-        } else if let measured = try? SessionBiomarkerAggregator.aggregate(validFrames: validFrames, durationSec: durationSec) {
+        } else if let measured = try? SessionEngagementAggregator.aggregate(validFrames: validFrames, durationSec: durationSec) {
             biomarkers = measured
             unscorableReason = nil
         } else {

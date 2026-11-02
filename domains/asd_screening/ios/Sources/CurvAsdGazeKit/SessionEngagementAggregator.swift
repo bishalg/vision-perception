@@ -101,7 +101,7 @@ public enum AOIRole {
 /// The reduction lives in the Rust core (`asd-core::aggregate`, CORE-6); this type keeps the
 /// public Swift API (FFI-3). The core uses the built-in role sets, which cover every role
 /// the bundled catalog assigns (guarded by an asd-core test and `LegacyParityTests`).
-public enum SessionBiomarkerAggregator {
+public enum SessionEngagementAggregator {
     public struct Aggregates: Equatable, Sendable, Decodable {
         public let socialDwellSec: Double
         public let geometricDwellSec: Double

@@ -226,7 +226,7 @@ graph TD
     A[TrueDepth ARFaceAnchor @ 60 Hz] --> B[ScreenRaycaster: 3D gaze → screen]
     B --> C[GazeProcessingActor: OneEuro + I-VT]
     C --> D[StimulusAOITracker: Dynamic AOI dwell]
-    D --> E[BiomarkerClassificationEngine: ANE inference]
+    D --> E[EngagementClassificationEngine: ANE inference]
     E --> F[SessionVaultManager: AES-GCM-256]
     F --> G[FHIRInteroperabilityMapper: R4 Obs/QR/DocRef]
     G --> H[SmartOnFhirAuthService: PKCE OAuth]

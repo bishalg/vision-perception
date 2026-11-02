@@ -11,7 +11,7 @@ public struct GazeSessionResultView: View {
     public let summary: GazeSessionReportSummary
     public let recordedFrames: [GazeFrame]
     #if ASD_RESEARCH_CLASSIFIER
-    public let classification: BiomarkerClassificationResult?
+    public let classification: EngagementClassificationResult?
     #endif
     public let onDismiss: () -> Void
     public let onRetake: () -> Void
@@ -35,7 +35,7 @@ public struct GazeSessionResultView: View {
     public init(
         summary: GazeSessionReportSummary,
         recordedFrames: [GazeFrame],
-        classification: BiomarkerClassificationResult? = nil,
+        classification: EngagementClassificationResult? = nil,
         onDismiss: @escaping () -> Void,
         onRetake: @escaping () -> Void
     ) {
@@ -147,16 +147,16 @@ public struct GazeSessionResultView: View {
                     .accessibilityLabel("Share Report")
                 }
             }
-            .navigationDestination(for: BiomarkerDetailType.self) { detailType in
+            .navigationDestination(for: EngagementDetailType.self) { detailType in
                 #if ASD_RESEARCH_CLASSIFIER
-                BiomarkerDetailView(
+                EngagementDetailView(
                     type: detailType,
                     summary: summary,
                     classification: classification,
                     recordedFrames: recordedFrames
                 )
                 #else
-                BiomarkerDetailView(
+                EngagementDetailView(
                     type: detailType,
                     summary: summary,
                     recordedFrames: recordedFrames
@@ -322,7 +322,7 @@ public struct GazeSessionResultView: View {
     }
 
     private var socialPreferenceCard: some View {
-        NavigationLink(value: BiomarkerDetailType.socialPreference) {
+        NavigationLink(value: EngagementDetailType.socialPreference) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     HStack(spacing: 6) {
@@ -398,7 +398,7 @@ public struct GazeSessionResultView: View {
 
     #if ASD_RESEARCH_CLASSIFIER
     private var mlClassificationCard: some View {
-        let result = classification ?? BiomarkerClassificationEngine.shared.classifySync(summary: summary)
+        let result = classification ?? EngagementClassificationEngine.shared.classifySync(summary: summary)
         let stratColor: Color = {
             switch result.riskStratification {
             case .typical: return LiquidGlass.emeraldMint
@@ -407,7 +407,7 @@ public struct GazeSessionResultView: View {
             }
         }()
 
-        return NavigationLink(value: BiomarkerDetailType.mlClassification) {
+        return NavigationLink(value: EngagementDetailType.mlClassification) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     HStack(spacing: 6) {
@@ -495,7 +495,7 @@ public struct GazeSessionResultView: View {
     // MARK: - Facial Affect Card (Drillable)
 
     private var facialAffectMetricsCard: some View {
-        NavigationLink(value: BiomarkerDetailType.facialAffect) {
+        NavigationLink(value: EngagementDetailType.facialAffect) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     HStack(spacing: 6) {
@@ -527,7 +527,7 @@ public struct GazeSessionResultView: View {
     // MARK: - Quality & ResearchKit Card (Drillable)
 
     private var qualityAndContractCard: some View {
-        NavigationLink(value: BiomarkerDetailType.dataQuality) {
+        NavigationLink(value: EngagementDetailType.dataQuality) {
             HStack(spacing: 14) {
                 Image(systemName: "checkmark.seal.fill")
                     .foregroundColor(LiquidGlass.emeraldMint)
@@ -660,7 +660,7 @@ public struct GazeSessionResultView: View {
     #if DEBUG
     private func prepareShareExport() {
         #if ASD_RESEARCH_CLASSIFIER
-        let result = classification ?? BiomarkerClassificationEngine.shared.classifySync(summary: summary)
+        let result = classification ?? EngagementClassificationEngine.shared.classifySync(summary: summary)
         let rk = SessionVaultManager.makeResearchKitJson(
             report: summary,
             classification: result,

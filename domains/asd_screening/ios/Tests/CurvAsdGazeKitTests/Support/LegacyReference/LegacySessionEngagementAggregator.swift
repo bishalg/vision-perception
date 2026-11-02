@@ -1,11 +1,11 @@
-// Former Swift body of `SessionBiomarkerAggregator` at dev@3718ea6, moved here by WP-A.11 (FFI-3).
+// Former Swift body of `SessionEngagementAggregator` at dev@3718ea6, moved here by WP-A.11 (FFI-3).
 // The production type now delegates to the Rust core; this copy is the parity oracle for
 // one release (GoldenParityTests, LegacyParityTests). Do not change its behaviour.
 @testable import CurvAsdGazeKit
 import Foundation
 
-enum LegacySessionBiomarkerAggregator {
-    typealias Aggregates = SessionBiomarkerAggregator.Aggregates
+enum LegacySessionEngagementAggregator {
+    typealias Aggregates = SessionEngagementAggregator.Aggregates
 
     static let frameIntervalSec: Double = 1.0 / 60.0
 

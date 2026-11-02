@@ -48,7 +48,7 @@ Depends on: R.0.
 
 Goal: CORE-5, CORE-6. Files: `asd-core/src/{metrics,aggregate}.rs`,
 `asd-core/tests/golden_{metrics,aggregate}.rs`, `asd-core/tests/golden/{metrics,aggregate}/*.json`.
-Golden inputs from `PerVideoMetricsTests.swift`, `SessionBiomarkerAggregatorTests.swift`
+Golden inputs from `PerVideoMetricsTests.swift`, `SessionEngagementAggregatorTests.swift`
 and `Support/SummaryFixture.swift`. Traps: group order = first appearance (not sorted);
 `dt <= 0` closes a fixation run and restarts; `observedDurationSec` prefers max
 `clipMediaTimeSec > 0`. Depends on: R.0.

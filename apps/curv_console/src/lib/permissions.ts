@@ -2,7 +2,7 @@
  * Which controls to show for a role. Mirrors the backend RBAC matrix (`asd-backend auth::rbac::MATRIX`) only to
  * hide buttons the user cannot use; the backend is the authority and answers 403/404 regardless.
  */
-import type { Role } from "@/lib/api";
+import type { Role, UserProfile } from "@/lib/api";
 
 export type UiAction =
   | "review.write"
@@ -119,11 +119,10 @@ export function canEditUserRole(actor: Role | undefined, target: Role): boolean 
 }
 
 /**
- * ADR-0009 (O-10 recommendation): roles that should have two-step sign-in. Mandatory TOTP is an owner decision
- * still open, so the console only nudges; `totp_enrolled` comes from `GET /users/me` (unknown -> no nudge).
+ * ADR-0010 d7: the backend decides which roles must use two-step sign-in and reports it as `totp_enforcement` on
+ * `GET /users/me` (`grace` before the deadline, `required` after). The nudge shows for both until enrolled; an
+ * older backend without the field parses as `not_required` (no nudge) and an unknown profile shows nothing.
  */
-export const TOTP_NUDGE_ROLES: readonly Role[] = ["owner", "admin", "clinician", "superadmin"];
-
-export function shouldNudgeTotp(role: Role | undefined, totpEnrolled: boolean | null | undefined): boolean {
-  return !!role && TOTP_NUDGE_ROLES.includes(role) && totpEnrolled === false;
+export function shouldNudgeTotp(profile: Pick<UserProfile, "totp_enforcement" | "totp_enrolled"> | null | undefined): boolean {
+  return !!profile && profile.totp_enforcement !== "not_required" && profile.totp_enrolled === false;
 }

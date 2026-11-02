@@ -639,7 +639,7 @@ public final class GazeSessionController: ObservableObject {
         participantToken: String,
         stimulusBattery: String = "GeoPref_v1",
         vault: SessionVaultManager = SessionVaultManager(),
-        classification: BiomarkerClassificationResult?
+        classification: EngagementClassificationResult?
     ) async throws -> (summary: GazeSessionReportSummary, vaultURL: URL) {
         let started = captureSource != nil && isRecording
         let summary = await stopSession()

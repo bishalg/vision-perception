@@ -78,4 +78,17 @@ describe("proxy refresh", () => {
     expect(res.headers.get("x-middleware-request-content-security-policy")).toBe(csp);
     expect(res.headers.get("x-middleware-request-x-nonce")).toBe(nonceOf(csp));
   });
+
+  it("forwards the request pathname as x-pathname (WP-C.17: the org layout's enforcement redirect reads it)", async () => {
+    refresh.mockResolvedValue({
+      access_token: "a", refresh_token: "r", expires_in: 900,
+      user: { id: "u", email: "e@x", role: "admin", org_id: "org-1" },
+    });
+    const res = await proxy(req("/org-1/sessions", { [REFRESH_COOKIE]: "old-refresh" }));
+    expect(res.headers.get("x-middleware-override-headers")?.split(",")).toContain("x-pathname");
+    expect(res.headers.get("x-middleware-request-x-pathname")).toBe("/org-1/sessions");
+    // The plain pass-through (valid access cookie) forwards it too.
+    const plain = await proxy(req("/org-1/overview", { [ACCESS_COOKIE]: "tok" }));
+    expect(plain.headers.get("x-middleware-request-x-pathname")).toBe("/org-1/overview");
+  });
 });

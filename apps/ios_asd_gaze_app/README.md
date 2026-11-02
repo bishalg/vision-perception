@@ -117,9 +117,9 @@ apps/ios_asd_gaze_app/
 │       ├── GazeScreeningWizardView.swift
 │       ├── GazeSessionResultView.swift
 │       ├── GazeReplayHeatmapFullScreenView.swift
-│       ├── BiomarkerDetailViews.swift
-│       ├── BiomarkerAffectAndQualityViews.swift
-│       ├── BiomarkerRiskStratificationView.swift
+│       ├── EngagementDetailViews.swift
+│       ├── EngagementAffectAndQualityViews.swift
+│       ├── EngagementRiskStratificationView.swift
 │       ├── CaregiverDashboardView.swift
 │       └── CareKitDashboardModals.swift
 └── Tests/                              # 55 tests: playlist integrity, CareKit,

@@ -10,6 +10,8 @@ export interface MockTotpContext {
   password: string;
   code: string;
   now: () => number;
+  /** Start state (default false). */
+  enrolled?: boolean;
 }
 
 /** A fixed synthetic seed (RFC 4648 base32, 32 characters): mock only, never a real account's secret. */
@@ -24,7 +26,7 @@ function problem(status: number, slug: string, title: string, detail: string): A
 export type MockTotp = TotpApi & { status(): { totp_enrolled: boolean; totp_pending: boolean } };
 
 export function createMockTotp(ctx: MockTotpContext): MockTotp {
-  let enrolled = false;
+  let enrolled = ctx.enrolled ?? false;
   let pendingUntil: number | null = null;
 
   const checkPassword = (password: string) => {

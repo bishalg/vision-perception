@@ -1,9 +1,9 @@
 import SwiftUI
 import CurvAsdGazeKit
 
-// MARK: - Biomarker Detail Type
+// MARK: - Engagement Detail Type
 
-public enum BiomarkerDetailType: String, Identifiable, Hashable, CaseIterable {
+public enum EngagementDetailType: String, Identifiable, Hashable, CaseIterable {
     case socialPreference = "Social Visual Preference (GeoPref)"
     #if ASD_RESEARCH_CLASSIFIER
     case mlClassification = "Experimental Classifier (Debug Only)"
@@ -47,24 +47,24 @@ public enum BiomarkerDetailType: String, Identifiable, Hashable, CaseIterable {
     }
 }
 
-// MARK: - Dedicated Biomarker Detail View (Apple Health Style)
+// MARK: - Dedicated Engagement Detail View (Apple Health Style)
 
 /// Dedicated full-page measurement detail view styled after the Apple Health design language.
 /// Features a continuous progress graph line across the 30-second timeline, metric grids,
 /// and plain-language explanations of each measurement. It reports measurements only.
-public struct BiomarkerDetailView: View {
-    public let type: BiomarkerDetailType
+public struct EngagementDetailView: View {
+    public let type: EngagementDetailType
     public let summary: GazeSessionReportSummary
     #if ASD_RESEARCH_CLASSIFIER
-    public let classification: BiomarkerClassificationResult?
+    public let classification: EngagementClassificationResult?
     #endif
     public let recordedFrames: [GazeFrame]
 
     #if ASD_RESEARCH_CLASSIFIER
     public init(
-        type: BiomarkerDetailType,
+        type: EngagementDetailType,
         summary: GazeSessionReportSummary,
-        classification: BiomarkerClassificationResult? = nil,
+        classification: EngagementClassificationResult? = nil,
         recordedFrames: [GazeFrame] = []
     ) {
         self.type = type
@@ -74,7 +74,7 @@ public struct BiomarkerDetailView: View {
     }
     #else
     public init(
-        type: BiomarkerDetailType,
+        type: EngagementDetailType,
         summary: GazeSessionReportSummary,
         recordedFrames: [GazeFrame] = []
     ) {
@@ -458,7 +458,7 @@ public struct BiomarkerDetailView: View {
             }
             .glassCard(cornerRadius: 16, padding: 14)
 
-            // Multi-Variate Biomarker Matrix
+            // Multi-Variate Engagement Matrix
             GlassSectionHeader(title: "Social Attention Measurements", icon: "square.grid.2x2")
 
             VStack(spacing: 10) {
@@ -555,7 +555,7 @@ public struct BiomarkerDetailView: View {
 
     #if ASD_RESEARCH_CLASSIFIER
     private var mlClassificationContent: some View {
-        BiomarkerRiskStratificationDetailSection(
+        EngagementRiskStratificationDetailSection(
             summary: summary,
             classification: classification,
             recordedFrames: recordedFrames
@@ -566,13 +566,13 @@ public struct BiomarkerDetailView: View {
     // MARK: - 3. Facial Affect Breakdown
 
     private var facialAffectContent: some View {
-        BiomarkerFacialAffectDetailSection(summary: summary)
+        EngagementFacialAffectDetailSection(summary: summary)
     }
 
     // MARK: - 4. Data Quality Breakdown
 
     private var dataQualityContent: some View {
-        BiomarkerDataQualityDetailSection(summary: summary)
+        EngagementDataQualityDetailSection(summary: summary)
     }
 
 
@@ -682,4 +682,4 @@ public struct BiomarkerDetailView: View {
 }
 
 // Backward-compatibility alias
-public typealias BiomarkerDetailSheet = BiomarkerDetailView
+public typealias EngagementDetailSheet = EngagementDetailView

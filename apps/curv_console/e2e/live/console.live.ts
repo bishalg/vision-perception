@@ -27,6 +27,10 @@ test("clinician: login -> sessions list -> 1.7 detail (Quality, Report) -> workl
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(new RegExp(`/${org}/overview$`), { timeout: 120_000 });
 
+  // WP-C.17 (AUTH-12): a clinician without two-step sign-in is in grace; login set the deadline, shown on the nudge.
+  // The past-deadline `required` path needs an aged database row, so the Rust tests (totp_policy.rs) cover it.
+  await expect(page.getByTestId("totp-nudge")).toContainText(/Set it up by .+\d/);
+
   // Sessions list holds the ingested 1.7 session; open it.
   await page.goto(`/${org}/sessions`);
   await expect(page.getByRole("heading", { name: "Sessions", level: 1 })).toBeVisible();

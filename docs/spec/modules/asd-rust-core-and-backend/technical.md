@@ -15,7 +15,7 @@ WASM later) and Kotlin (later). In scope: the `rust/` workspace, the backend ser
 Swift integration of the scoring core, the replacement of the Python CI gates, local and
 AWS deployment shape. Out of scope (deliberately): porting real-time gaze filtering and
 calibration (`OneEuroFilter`, `ScreenRaycaster`, `GazeCalibrationProfile`), the Debug-only
-`BiomarkerClassificationEngine`, CoreML age estimation, the C++ core, FHIR façade
+`EngagementClassificationEngine`, CoreML age estimation, the C++ core, FHIR façade
 (WP-B.10), server PDF generation (WP-B.8, later phase), Android bindings (WP-A.12).
 
 ## Verified current state this spec builds on
@@ -23,7 +23,7 @@ calibration (`OneEuroFilter`, `ScreenRaycaster`, `GazeCalibrationProfile`), the 
 | # | Finding | Evidence |
 | --- | --- | --- |
 | F1 | Scoring maths exists only in Swift: status bands and piecewise score (`evaluate`, `piecewise`), composite weighting, bracket clamping, latency imputation at clip duration. | `domains/asd_screening/ios/Sources/CurvAsdGazeKit/PerVideoScoringEngine.swift` |
-| F2 | Metric extraction (AOI dwell ratios, first-entry latency, GeoPref preference, eye/mouth share, I-VT fixations with 5.0 units/s threshold and 80 ms minimum, affect means, smile reactivity with 500 ms baseline, `flatAffect = 1 - expressivity*50`) is Swift only. | `PerVideoMetrics.swift`, `SessionBiomarkerAggregator.swift` |
+| F2 | Metric extraction (AOI dwell ratios, first-entry latency, GeoPref preference, eye/mouth share, I-VT fixations with 5.0 units/s threshold and 80 ms minimum, affect means, smile reactivity with 500 ms baseline, `flatAffect = 1 - expressivity*50`) is Swift only. | `PerVideoMetrics.swift`, `SessionEngagementAggregator.swift` |
 | F3 | Traffic-light flag thresholds 0.65/0.35, low-confidence share 0.50, atypical share 0.40; iOS flag has 3 values, console expects 4 (`unreliable`). | `AttentionFlag.swift`; `apps/curv_console/src/lib/api/types.ts:7` |
 | F4 | iOS ingest payload is camelCase at top level and inside `rawPayload`, snake_case inside `perVideo` rows; dwell values are ratios (`details.dwellUnits = "ratio"`); unmeasured metrics are absent keys; `attentionFlag`/`battery` are explicit `null` when unknown. | `apps/ios_asd_gaze_app/Sources/Models/SessionSyncClient.swift` |
 | F5 | The Python synth generator and the parity script emit dwell values in seconds, status `offTarget` and `captureSource: "synthetic"`, none of which the iOS kit or the console accept. | `tools/asd_synth/generator.py:62-86`; `scripts/check_session_schema_parity.py:62-76` |
@@ -152,7 +152,7 @@ the golden vectors to 1e-9 for floats and exactly for strings and enums.
   fallback interval; dt ≤ 0 closes the run). The `AOIRole` name sets MUST be data in the
   catalog `roles` first and the hard-coded sets second (same precedence as Swift).
 - **CORE-6** `aggregate::session(valid_frames, duration_sec)` =
-  `SessionBiomarkerAggregator.aggregate` (`None` latency when no person/eye hit, never a
+  `SessionEngagementAggregator.aggregate` (`None` latency when no person/eye hit, never a
   default).
 - **CORE-7** `quality::evaluate_sample(sample, gate) -> Evaluation` = `GazeQualityGate.evaluateSample`
   including the reason strings (they are shown in the UI).
@@ -187,7 +187,7 @@ the golden vectors to 1e-9 for floats and exactly for strings and enums.
   Output is never committed (WS-4). `scripts/ios_test.sh` calls it first.
 - **FFI-3** `domains/asd_screening/ios/Package.swift` adds `binaryTarget(name: "AsdCoreFFI", path: ...)`
   and a wrapper target; `PerVideoScoringEngine.score`, `AttentionFlagAlgorithm.assess`,
-  `PerVideoMetricsExtractor.extract`, `SessionBiomarkerAggregator.aggregate`,
+  `PerVideoMetricsExtractor.extract`, `SessionEngagementAggregator.aggregate`,
   `GazeQualityGate.evaluateSample`, `NormativeBaselineLibrary.validate` keep their public
   signatures and delegate to Rust. The former Swift bodies move to
   `Tests/CurvAsdGazeKitTests/Support/LegacyReference/` as the parity oracle for one release.

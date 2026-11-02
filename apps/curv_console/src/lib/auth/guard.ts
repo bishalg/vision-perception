@@ -21,3 +21,20 @@ export function safeNextPath(next: string | null | undefined): string | null {
   if (next.startsWith("/login")) return null;
   return next;
 }
+
+/**
+ * WP-C.17 (AUTH-13): where the org layout sends a user whose role requires two-step sign-in and who is past the
+ * deadline (`totp_enforcement === "required"`): the account security page, the only place they can still act.
+ * Returns null when no redirect applies, including on that page and below it (no loop). `pathname` is the
+ * `x-pathname` request header set by proxy.ts (null when absent: redirect, the backend would refuse the page anyway).
+ */
+export function enforcementRedirect(
+  profile: { totp_enforcement?: "not_required" | "grace" | "required" } | null | undefined,
+  pathname: string | null,
+  org: string,
+): string | null {
+  if (profile?.totp_enforcement !== "required") return null;
+  const security = `/${encodeURIComponent(org)}/settings/security`;
+  if (pathname !== null && (pathname === security || pathname.startsWith(`${security}/`))) return null;
+  return `${security}?required=1`;
+}

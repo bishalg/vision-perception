@@ -213,7 +213,7 @@ final class GoldenParityTests: XCTestCase {
     func testSessionAggregateMatchesGolden() throws {
         for v in try vectors("aggregate", "session") {
             let input = try dict(v.input)
-            let aggregates = try SessionBiomarkerAggregator.aggregate(
+            let aggregates = try SessionEngagementAggregator.aggregate(
                 coreFrames: try frames(input["validFrames"]),
                 durationSec: try XCTUnwrap(input["durationSec"] as? Double)
             )
@@ -228,7 +228,7 @@ final class GoldenParityTests: XCTestCase {
     }
 
     /// Absent keys for unmeasured values, as the core and the vectors write them.
-    static func json(_ a: SessionBiomarkerAggregator.Aggregates) -> [String: Any] {
+    static func json(_ a: SessionEngagementAggregator.Aggregates) -> [String: Any] {
         var out: [String: Any] = [
             "socialDwellSec": a.socialDwellSec,
             "geometricDwellSec": a.geometricDwellSec,

@@ -12,7 +12,7 @@ public enum ExecutionDevice: String, Codable, Sendable, Equatable {
     case appleNeuralEngine = "Apple Neural Engine (ANE)"
     case gpu = "Apple Metal GPU"
     case cpu = "CPU"
-    case fallbackHeuristic = "Rule-Based Clinical Baseline"
+    case fallbackHeuristic = "Rule-Based Clinical Baseline" // claims-ok: Debug-only research classifier, compiled out of Release (CLM-3)
 }
 
 #if ASD_RESEARCH_CLASSIFIER
@@ -31,8 +31,8 @@ public enum RiskStratification: String, Codable, Sendable, Equatable {
     }
 }
 
-/// Comprehensive inference outcome from the ASD Biomarker Classifier.
-public struct BiomarkerClassificationResult: Codable, Sendable, Equatable {
+/// Comprehensive inference outcome from the ASD Engagement Classifier.
+public struct EngagementClassificationResult: Codable, Sendable, Equatable {
     public let riskScore: Double
     public let confidence: Double
     public let riskStratification: RiskStratification
@@ -68,8 +68,8 @@ public struct BiomarkerClassificationResult: Codable, Sendable, Equatable {
 /// If a compiled CoreML model (`.mlmodelc`) is present, it executes with `computeUnits = .all`.
 /// Otherwise it falls back to a deterministic rule-based heuristic (`.fallbackHeuristic`)
 /// whose weights are informed by GeoPref and oculomotor literature but are not validated.
-public final class BiomarkerClassificationEngine: @unchecked Sendable {
-    public static let shared = BiomarkerClassificationEngine()
+public final class EngagementClassificationEngine: @unchecked Sendable {
+    public static let shared = EngagementClassificationEngine()
 
     #if canImport(CoreML)
     private var mlModel: MLModel?
@@ -92,12 +92,12 @@ public final class BiomarkerClassificationEngine: @unchecked Sendable {
     #endif
 
     /// Classifies clinical session summary asynchronously.
-    public func classify(summary: GazeSessionReportSummary) async -> BiomarkerClassificationResult {
+    public func classify(summary: GazeSessionReportSummary) async -> EngagementClassificationResult {
         return classifySync(summary: summary)
     }
 
     /// Synchronous classification entry point.
-    public func classifySync(summary: GazeSessionReportSummary) -> BiomarkerClassificationResult {
+    public func classifySync(summary: GazeSessionReportSummary) -> EngagementClassificationResult {
         let startTime = CFAbsoluteTimeGetCurrent()
 
         #if canImport(CoreML)
@@ -115,7 +115,7 @@ public final class BiomarkerClassificationEngine: @unchecked Sendable {
         model: MLModel,
         summary: GazeSessionReportSummary,
         startTime: CFAbsoluteTime
-    ) -> BiomarkerClassificationResult? {
+    ) -> EngagementClassificationResult? {
         var featureDictionary: [String: Double] = ["validRatio": summary.validRatio]
         // An unscorable session (SCH-5) has no score features at all.
         if let value = summary.socialPreferenceScore { featureDictionary["socialPreferenceScore"] = value }
@@ -150,11 +150,11 @@ public final class BiomarkerClassificationEngine: @unchecked Sendable {
             stratification = .elevatedRisk
         }
 
-        return BiomarkerClassificationResult(
+        return EngagementClassificationResult(
             riskScore: max(0.0, min(1.0, riskScore)),
             confidence: max(0.0, min(1.0, confidence)),
             riskStratification: stratification,
-            primaryContributingFeature: "CoreML ANE Multi-Biomarker Synthesis",
+            primaryContributingFeature: "CoreML ANE Multi-Metric Synthesis",
             featureImportances: [
                 "socialPreference": 0.40,
                 "eyeDwell": 0.25,
@@ -178,7 +178,7 @@ public final class BiomarkerClassificationEngine: @unchecked Sendable {
     private func runClinicalBaselineInference(
         summary: GazeSessionReportSummary,
         startTime: CFAbsoluteTime
-    ) -> BiomarkerClassificationResult {
+    ) -> EngagementClassificationResult {
         struct Term {
             let key: String
             let label: String
@@ -255,7 +255,7 @@ public final class BiomarkerClassificationEngine: @unchecked Sendable {
         let confidence = max(0.70, min(0.98, summary.validRatio * 0.98))
         let latencyMs = (CFAbsoluteTimeGetCurrent() - startTime) * 1000.0
 
-        return BiomarkerClassificationResult(
+        return EngagementClassificationResult(
             riskScore: max(0.01, min(0.99, riskScore)),
             confidence: confidence,
             riskStratification: stratification,

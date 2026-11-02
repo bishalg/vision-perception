@@ -317,13 +317,13 @@ public enum MCHATSurveyEngine {
 
         if total <= 2 {
             risk = .low
-            rec = "Low developmental risk score. Continue monitoring milestones during routine pediatric well-child checks."
+            rec = "Low developmental risk score. Continue monitoring milestones during routine pediatric well-child checks." // claims-ok: M-CHAT-R/F official wording
         } else if total <= 7 {
             risk = .medium
-            rec = "Medium risk (3–7). Complete the official M-CHAT-R Follow-Up interview before referral; do not treat this score as a diagnosis."
+            rec = "Medium risk (3–7). Complete the official M-CHAT-R Follow-Up interview before referral; do not treat this score as a diagnosis." // claims-ok: M-CHAT-R/F official wording
         } else {
             risk = .high
-            rec = "High risk (8–20). Seek prompt clinical evaluation with a pediatrician or developmental specialist. This score is a screening result, not a diagnosis."
+            rec = "High risk (8–20). Seek prompt clinical evaluation with a pediatrician or developmental specialist. This score is a screening result, not a diagnosis." // claims-ok: M-CHAT-R/F official wording
         }
 
         return MCHATScoreResult(
@@ -418,7 +418,7 @@ public struct ORKActiveStepResult: Sendable, Codable, Equatable {
         )
     }
 
-    /// Regulatory eCOA / Digital Biomarker classification.
+    /// Regulatory eCOA / Digital Engagement classification.
     public var outcomeType: ClinicalOutcomeAssessmentType { .digitalBiomarker }
 
     /// Standard LOINC panel coding.

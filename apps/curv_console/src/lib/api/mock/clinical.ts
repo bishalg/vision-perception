@@ -59,6 +59,7 @@ export function createMockClinical(ctx: MockClinicalContext): ClinicalApi {
     email: "demo@example.org",
     role: "clinician" as const,
     org_id: orgId,
+    totp_enforcement: "not_required" as const,
     display_name: "Dr. Demo Clinician" as string | null,
     professional_registration: "NMC 00000" as string | null,
   };

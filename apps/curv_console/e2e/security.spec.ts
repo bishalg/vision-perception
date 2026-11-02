@@ -1,5 +1,5 @@
 /** WP-C.15 TOTP enrolment (mock mode: password "demo", the mock accepts code 123456). */
-import { expect, test, LIVE, loginToOverview } from "./helpers";
+import { expect, test, LIVE, MOCK_ORG_ID, login, loginToOverview } from "./helpers";
 
 test.skip(LIVE, "the mock backend's fixed TOTP code");
 
@@ -47,4 +47,49 @@ test("enrol -> confirm -> enrolled, then turn off", async ({ page }) => {
   await off.getByLabel("Code from your authenticator app").fill(CODE);
   await off.getByRole("button", { name: "Turn off" }).click();
   await expect(off.getByRole("alert")).toContainText("not on");
+});
+
+test.describe("mandatory two-step sign-in (WP-C.17, acceptance 26)", () => {
+  test("grace: the overview nudge shows the deadline and nothing is locked", async ({ page }) => {
+    await login(page, "grace@example.org");
+    await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+    await expect(page.getByTestId("totp-nudge")).toContainText(/Set it up by .*2026/);
+    // Grace never locks the user out.
+    await page.goto(`/${MOCK_ORG_ID}/sessions`);
+    await expect(page.getByRole("heading", { name: "Sessions", level: 1 })).toBeVisible();
+  });
+
+  test("a viewer never sees the nudge", async ({ page }) => {
+    await login(page, "viewer@example.org");
+    await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+    await expect(page.getByRole("heading", { name: "Overview", level: 1 })).toBeVisible();
+    await expect(page.getByTestId("totp-nudge")).toHaveCount(0);
+  });
+
+  test("required: redirected to the security page, enrols, then the overview renders", async ({ page }) => {
+    await login(page, "required@example.org");
+    const security = new RegExp(`/${MOCK_ORG_ID}/settings/security\\?required=1$`);
+    await expect(page).toHaveURL(security);
+    await expect(page.getByTestId("totp-required")).toContainText("Your role requires two-step sign-in");
+
+    // Every other page redirects back (the mock answers 403 totp-enrolment-required for it).
+    for (const path of ["overview", "sessions"]) {
+      await page.goto(`/${MOCK_ORG_ID}/${path}`);
+      await expect(page).toHaveURL(security);
+    }
+
+    const setup = page.getByRole("region", { name: "Set up two-step sign-in" });
+    await setup.getByLabel("Current password").fill("demo");
+    await setup.getByRole("button", { name: "Get a key" }).click();
+    await expect(setup.getByTestId("totp-secret")).toHaveText(/^[A-Z2-7]{32}$/);
+    await setup.getByLabel("Code from your authenticator app").fill(CODE);
+    await setup.getByRole("button", { name: "Confirm" }).click();
+    await expect(page.getByRole("status")).toHaveText(/Two-step sign-in is on/);
+    await expect(page.getByTestId("totp-required")).toHaveCount(0);
+
+    await page.goto(`/${MOCK_ORG_ID}/overview`);
+    await expect(page).toHaveURL(new RegExp(`/${MOCK_ORG_ID}/overview$`));
+    await expect(page.getByRole("heading", { name: "Overview", level: 1 })).toBeVisible();
+    await expect(page.getByTestId("totp-nudge")).toHaveCount(0);
+  });
 });

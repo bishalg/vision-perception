@@ -111,7 +111,7 @@ run xcodebuild build \
   CODE_SIGNING_ALLOWED=NO
 
 step "Static gate: claims and secrets"
-run python3 scripts/check_asd_claims.py --swift --secrets
+run python3 scripts/check_asd_claims.py --swift --prose --secrets
 
 step "Static gate: JSON schema contract (Rust asd-cli, GATE-1)"
 run cargo build --quiet --manifest-path "$ROOT/rust/Cargo.toml" -p asd-cli --target-dir "$ASD_TARGET"

@@ -67,7 +67,7 @@ uses the image's default iPhone.
 | SIM-7 | generated Info.plist requires neither `arkit` nor `front-facing-camera`; on a simulator (no TrueDepth) Gaze, Quick Calibrate and Camera Check show the gate with no camera prompt (Maestro flow 03) | app `BuildConfigurationTests.swift` (new, reads `Bundle.main.infoDictionary`) |
 | PLC-1, PLC-2 | summary from a session with zero face hits has `nil` dwell ratios and `nil` latency | kit `GazeSessionTests.swift` |
 | PLC-3 | FHIR Observation and OMOP rows omit absent metrics | app `ClinicalInteroperabilityTests.swift` |
-| PLC-4 | baseline inference with `nil` latency re-normalises weights; `primaryContributingFeature` lacks "CoreML" when heuristic | kit `BiomarkerClassificationEngineTests.swift` |
+| PLC-4 | baseline inference with `nil` latency re-normalises weights; `primaryContributingFeature` lacks "CoreML" when heuristic | kit `EngagementClassificationEngineTests.swift` |
 | PLC-5 | 30 fps synthetic timestamps produce duration from timestamps, dwell capped at 100 ms | kit `GazeProcessingActorTests.swift` |
 | CLM-1, CLM-2, CI-5 | denylist script fails on seeded fixture, passes on repo | `scripts/check_asd_claims.py` with self-test `--selftest` |
 | CLM-4 | `MCHATRiskLevel.displayName` strings; raw values unchanged | app `ResearchKitStudyTests.swift` |

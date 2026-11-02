@@ -1,7 +1,7 @@
 import XCTest
 @testable import CurvAsdGazeKit
 
-final class BiomarkerDetailModelTests: XCTestCase {
+final class EngagementDetailModelTests: XCTestCase {
 
     // MARK: - 1. Clinical Social Attention (GeoPref) Math & Boundary Verification
 
@@ -36,12 +36,12 @@ final class BiomarkerDetailModelTests: XCTestCase {
         XCTAssertEqual(equalDwell, 0.0, accuracy: 0.001)
     }
 
-    // MARK: - 2. Biomarker Classification Engine Stress & Boundary Tests
+    // MARK: - 2. Engagement Classification Engine Stress & Boundary Tests
 
     #if ASD_RESEARCH_CLASSIFIER
 
     func testClassificationEngineZeroValidFramesSafety() {
-        let engine = BiomarkerClassificationEngine.shared
+        let engine = EngagementClassificationEngine.shared
 
         let zeroReport = GazeSessionReportSummary.fixture(
             sessionId: "ZERO001",
@@ -72,7 +72,7 @@ final class BiomarkerDetailModelTests: XCTestCase {
     }
 
     func testClassificationEngineLatencyMonotonicity() {
-        let engine = BiomarkerClassificationEngine.shared
+        let engine = EngagementClassificationEngine.shared
 
         // Base report with typical features
         func makeReport(latency: Double) -> GazeSessionReportSummary {
@@ -105,7 +105,7 @@ final class BiomarkerDetailModelTests: XCTestCase {
     }
 
     func testClassificationEngineEyeDwellMonotonicity() {
-        let engine = BiomarkerClassificationEngine.shared
+        let engine = EngagementClassificationEngine.shared
 
         func makeReport(eyeRatio: Double) -> GazeSessionReportSummary {
             GazeSessionReportSummary.fixture(
@@ -138,7 +138,7 @@ final class BiomarkerDetailModelTests: XCTestCase {
 
     #endif
 
-    // MARK: - 3. Session Controller Biomarker Output Integrity
+    // MARK: - 3. Session Controller Engagement Output Integrity
 
     @MainActor
     func testSessionControllerEmptySessionProducesSafeReport() async {

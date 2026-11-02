@@ -251,7 +251,7 @@ Map each video → its content (time-coded segments) → expected-behavior basel
 
 ### W5c — On-Device Subject Age Check (assistive, not verification) + App Store Age-Assurance Flag (2026-10-05)
 - [x] Research verdict: exact age verification of 1–5 yr olds is NOT achievable with public models (young-child overestimation ≫ 12/18/24/36/48 mo bracket granularity); adult-vs-toddler separation IS reliable → shipped design is a coarse 4-band assistive signal (`FacialAgeBand`: toddler/preschool/child/teenAdult)
-- [x] Kit `Inference/AgeBandEstimationEngine.swift` — CoreML classifier wrapper mirroring BiomarkerClassificationEngine optional-model pattern (ANE, inert without model, bundle + Application Support discovery)
+- [x] Kit `Inference/AgeBandEstimationEngine.swift` — CoreML classifier wrapper mirroring EngagementClassificationEngine optional-model pattern (ANE, inert without model, bundle + Application Support discovery)
 - [x] Kit `Inference/FaceCropExtractor.swift` — pure crop-rect math + CoreImage extraction (224×224 BGRA, upright rotation, head-and-shoulders margin from projected face radius, centered fallback)
 - [x] Kit `Inference/SubjectAgeEstimator.swift` — quality-gated (pose/distance/eyes, GazeQualityGate-aligned) ≤5 Hz inference over a 2.5 s rolling window → `SubjectAgeSignal` (modal band, agreement, confidence, isStable; ties break toward younger)
 - [x] `GazeSessionController`: ARFrame delegate consumes `capturedImage` synchronously on the ARKit queue (never retained); `subjectAgeSignal` published; `GazeSessionReportSummary.subjectAgeSignal` (additive, decode-safe) feeds age-normalized scoring later (ML_ROADMAP §3)

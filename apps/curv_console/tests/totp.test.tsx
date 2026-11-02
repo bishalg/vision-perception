@@ -3,10 +3,21 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createLiveClient } from "@/lib/api/live";
-import { createMockClient, MOCK_PASSWORD, MOCK_TOTP_CODE } from "@/lib/api/mock";
+import {
+  createMockClient,
+  MOCK_ORG_ID,
+  MOCK_PASSWORD,
+  MOCK_TOTP_CODE,
+  MOCK_TOTP_GRACE_BY,
+  MOCK_TOTP_GRACE_EMAIL,
+  MOCK_TOTP_REQUIRED_EMAIL,
+} from "@/lib/api/mock";
 import { MOCK_TOTP_SECRET } from "@/lib/api/mock/totp";
 import { TotpPanel, type TotpActions } from "@/components/security/TotpPanel";
 import { TotpNudge } from "@/components/security/TotpNudge";
+import { RequiredPanel } from "@/components/security/RequiredPanel";
+import { formatDateTime } from "@/lib/format";
+import { userProfileSchema, type UserProfile } from "@/lib/api/clinical";
 import { navLinks } from "@/lib/nav";
 import { shouldNudgeTotp } from "@/lib/permissions";
 import { ROLES } from "@/lib/api";
@@ -68,19 +79,95 @@ describe("mock TOTP", () => {
   });
 });
 
-describe("TOTP nudge", () => {
-  it("nudges owner, admin, clinician and superadmin only when totp_enrolled is false", () => {
-    const nudged = ROLES.filter((r) => shouldNudgeTotp(r, false));
-    expect(nudged.sort()).toEqual(["admin", "clinician", "owner", "superadmin"]);
-    expect(shouldNudgeTotp("admin", true)).toBe(false);
-    expect(shouldNudgeTotp("admin", null)).toBe(false);
-    expect(shouldNudgeTotp("admin", undefined)).toBe(false);
-    expect(shouldNudgeTotp(undefined, false)).toBe(false);
+describe("TOTP nudge (WP-C.17: driven by totp_enforcement, not a role list)", () => {
+  const profile = (over: Partial<UserProfile>): UserProfile => userProfileSchema.parse({ id: "u", email: "e@x", role: "admin", ...over });
+
+  it("shouldNudgeTotp: grace or required and not enrolled only", () => {
+    expect(shouldNudgeTotp(profile({ totp_enforcement: "grace", totp_enrolled: false }))).toBe(true);
+    expect(shouldNudgeTotp(profile({ totp_enforcement: "required", totp_enrolled: false }))).toBe(true);
+    expect(shouldNudgeTotp(profile({ totp_enforcement: "grace", totp_enrolled: true }))).toBe(false);
+    expect(shouldNudgeTotp(profile({ totp_enforcement: "not_required", totp_enrolled: false }))).toBe(false);
+    expect(shouldNudgeTotp(null)).toBe(false);
+    expect(shouldNudgeTotp(undefined)).toBe(false);
+  });
+
+  it("an older backend without the new fields still parses and shows no nudge (zod default not_required)", () => {
+    const old = profile({ totp_enrolled: false });
+    expect(old.totp_enforcement).toBe("not_required");
+    expect(shouldNudgeTotp(old)).toBe(false);
+    const { container } = render(<TotpNudge org="o" profile={old} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("a viewer never sees the nudge, whatever totp_required_by says", () => {
+    const viewer = profile({ role: "viewer", totp_enforcement: "not_required", totp_required_by: "2026-11-15T12:00:00Z", totp_enrolled: false });
+    expect(shouldNudgeTotp(viewer)).toBe(false);
+    const { container } = render(<TotpNudge org="o" profile={viewer} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("renders nothing for not_required and when enrolled", () => {
+    const a = render(<TotpNudge org="o" profile={profile({ totp_enforcement: "not_required", totp_enrolled: false })} />);
+    expect(a.container).toBeEmptyDOMElement();
+    const b = render(<TotpNudge org="o" profile={profile({ totp_enforcement: "grace", totp_enrolled: true })} />);
+    expect(b.container).toBeEmptyDOMElement();
+  });
+
+  it("grace without a date shows the plain text", () => {
+    render(<TotpNudge org="o" profile={profile({ totp_enforcement: "grace", totp_enrolled: false, totp_required_by: null })} />);
+    const note = screen.getByTestId("totp-nudge");
+    expect(note).toHaveTextContent("Turn on two-step sign-in to protect your account.");
+    expect(note).not.toHaveTextContent(/ by /);
+  });
+
+  it("grace with a date shows 'by <date>'", () => {
+    render(<TotpNudge org="o" profile={profile({ totp_enforcement: "grace", totp_enrolled: false, totp_required_by: "2026-11-15T12:00:00Z" })} />);
+    expect(screen.getByTestId("totp-nudge")).toHaveTextContent(`by ${formatDateTime("2026-11-15T12:00:00Z")}`);
   });
 
   it("links to the security page", () => {
-    render(<TotpNudge org="o 1" role="owner" totpEnrolled={false} />);
+    render(<TotpNudge org="o 1" profile={profile({ totp_enforcement: "grace", totp_enrolled: false })} />);
     expect(screen.getByRole("link", { name: "Set it up" })).toHaveAttribute("href", "/o%201/settings/security");
+  });
+});
+
+describe("required-state panel", () => {
+  it("explains that the role requires two-step sign-in", () => {
+    render(<RequiredPanel />);
+    expect(screen.getByTestId("totp-required")).toHaveTextContent("Your role requires two-step sign-in");
+    expect(screen.getByRole("heading", { name: "Your role requires two-step sign-in" })).toBeInTheDocument();
+  });
+});
+
+describe("mock mandatory TOTP (WP-C.17)", () => {
+  const token = (email: string) => `mock-access.${btoa(email)}`;
+
+  it("the required user is `required` until the mock enrolment completes; lists answer 403 totp-enrolment-required", async () => {
+    const base = createMockClient();
+    const api = base.forToken(token(MOCK_TOTP_REQUIRED_EMAIL));
+    expect(await api.getMyProfile()).toMatchObject({ totp_enforcement: "required", totp_enrolled: false });
+    expect((await api.getMyProfile()).totp_required_by).toBeTruthy();
+    await expect(api.listSessions(MOCK_ORG_ID)).rejects.toMatchObject({ status: 403, slug: "totp-enrolment-required" });
+    await expect(api.getMetrics(MOCK_ORG_ID)).rejects.toMatchObject({ status: 403, slug: "totp-enrolment-required" });
+    // The exempt routes still work.
+    expect((await api.getOrg(MOCK_ORG_ID)).id).toBe(MOCK_ORG_ID);
+    await api.enrolTotp(MOCK_PASSWORD);
+    await api.confirmTotp(MOCK_TOTP_CODE);
+    expect(await api.getMyProfile()).toMatchObject({ totp_enforcement: "not_required", totp_enrolled: true });
+    expect((await api.getMetrics(MOCK_ORG_ID)).sessions_7d).toBeGreaterThanOrEqual(0);
+    // Another user is unaffected by that enrolment.
+    expect(await base.forToken(token("demo@example.org")).getMyProfile()).toMatchObject({ totp_enrolled: false });
+  });
+
+  it("the grace user has a fixed deadline and keeps full access", async () => {
+    const api = createMockClient().forToken(token(MOCK_TOTP_GRACE_EMAIL));
+    expect(await api.getMyProfile()).toMatchObject({ totp_enforcement: "grace", totp_required_by: MOCK_TOTP_GRACE_BY });
+    expect((await api.listSessions(MOCK_ORG_ID)).items.length).toBeGreaterThan(0);
+  });
+
+  it("other mock users are not_required", async () => {
+    const api = createMockClient().forToken(token("viewer@example.org"));
+    expect(await api.getMyProfile()).toMatchObject({ totp_enforcement: "not_required" });
   });
 });
 

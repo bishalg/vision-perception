@@ -178,8 +178,8 @@ final class LegacyParityTests: XCTestCase {
         for seed in Self.seeds {
             let valid = session(seed: seed).filter { $0.gaze.isValid && $0.qualityVerdict != .rejected }
             for subset in [valid, Array(valid.prefix(1)), [], valid.filter { !$0.activeAOINames.isEmpty }] {
-                let rust = try SessionBiomarkerAggregator.aggregate(validFrames: subset, durationSec: 10)
-                let swift = LegacySessionBiomarkerAggregator.aggregate(validFrames: subset, durationSec: 10)
+                let rust = try SessionEngagementAggregator.aggregate(validFrames: subset, durationSec: 10)
+                let swift = LegacySessionEngagementAggregator.aggregate(validFrames: subset, durationSec: 10)
                 Golden.assertClose(GoldenParityTests.json(rust), GoldenParityTests.json(swift), "aggregate seed \(seed) n=\(subset.count)")
             }
         }

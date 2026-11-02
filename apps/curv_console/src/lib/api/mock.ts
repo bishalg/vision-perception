@@ -26,6 +26,7 @@ import {
 } from "./types";
 import { createMockAdmin } from "./mock/admin";
 import { createMockClinical } from "./mock/clinical";
+import type { UserProfile } from "./clinical";
 import { createMockExports } from "./mock/exports";
 import { createMockPrivacy } from "./mock/privacy";
 import { createMockParticipant } from "./mock/participant";
@@ -39,6 +40,16 @@ export const MOCK_PASSWORD = "demo";
 /** Mock user with TOTP enrolled: login needs `MOCK_TOTP_CODE` after the password (like the backend's two-step flow). */
 export const MOCK_TOTP_EMAIL = "totp@example.org";
 export const MOCK_TOTP_CODE = "123456";
+/**
+ * WP-C.17 (mandatory TOTP): a user whose enrolment deadline has passed (`totp_enforcement` `required`: every route
+ * except profile, org shell and enrolment answers `403 totp-enrolment-required`) until the mock enrolment completes,
+ * and one still in grace with a fixed deadline. Both are admins (the email's local part picks the role: `required`
+ * and `grace` are not role names). Mock enrolment state is per user, so one test's enrolment never leaks into another.
+ */
+export const MOCK_TOTP_REQUIRED_EMAIL = "required@example.org";
+export const MOCK_TOTP_GRACE_EMAIL = "grace@example.org";
+export const MOCK_TOTP_GRACE_BY = "2026-11-15T12:00:00Z";
+const MOCK_TOTP_REQUIRED_BY = "2026-10-25T12:00:00Z";
 export const MOCK_FIXED_NOW = Date.parse("2026-11-01T12:00:00Z");
 const DEFAULT_LIMIT = 20;
 
@@ -450,7 +461,24 @@ function page<T>(rows: T[], key: (row: T) => [string, string], cursor: string | 
   return { slice, next_cursor: more && last ? encodeCursor(...key(last)) : null, total: rows.length };
 }
 
-export function createMockClient(): CurvApi & AuthApi {
+/** Routes a `required` user may still use (profile, org shell, enrolment) and the auth calls; the rest answer 403. */
+const ENROLMENT_ONLY_EXEMPT = new Set([
+  "getMyProfile", "getOrg", "enrolTotp", "confirmTotp", "login", "refresh", "logout", "forToken",
+]);
+
+function enrolmentRequired(): ApiError {
+  return new ApiError(403, {
+    type: `${PROBLEM_BASE}totp-enrolment-required`,
+    title: "Forbidden",
+    status: 403,
+    detail: "two-step sign-in must be set up before using this route",
+  });
+}
+
+/** The mock client; `forToken` returns the view for the user an access token (`mock-access.<base64 email>`) names. */
+export type MockClient = CurvApi & AuthApi & { forToken(accessToken?: string): CurvApi & AuthApi };
+
+export function createMockClient(): MockClient {
   const { details, clips } = buildFixtures();
   const reviews = buildReviewItems(details);
   const devices = buildDevices(details);
@@ -475,16 +503,29 @@ export function createMockClient(): CurvApi & AuthApi {
 
   const clinical = createMockClinical({ details, orgId: MOCK_ORG_ID, userId: MOCK_USER_ID, now: MOCK_FIXED_NOW, ensureOrg, page });
   // Real clock: the pending seed expires 10 minutes after enrol, like the backend.
-  const totp = createMockTotp({ password: MOCK_PASSWORD, code: MOCK_TOTP_CODE, now: () => Date.now() });
+  const totps = new Map<string, ReturnType<typeof createMockTotp>>();
+  const totpFor = (email: string) => {
+    let t = totps.get(email);
+    if (!t) totps.set(email, (t = createMockTotp({ password: MOCK_PASSWORD, code: MOCK_TOTP_CODE, now: () => Date.now() })));
+    return t;
+  };
+  const DEFAULT_EMAIL = "demo@example.org";
 
-  return {
+  /** The profile fields of the mandatory-TOTP policy for this user, from the shared per-user enrolment state. */
+  const enforcementFor = (email: string): Pick<UserProfile, "totp_enforcement" | "totp_required_by"> => {
+    const local = email.toLowerCase();
+    const enrolled = totpFor(email).status().totp_enrolled;
+    if (local === MOCK_TOTP_REQUIRED_EMAIL) {
+      return { totp_enforcement: enrolled ? "not_required" : "required", totp_required_by: MOCK_TOTP_REQUIRED_BY };
+    }
+    if (local === MOCK_TOTP_GRACE_EMAIL) {
+      return { totp_enforcement: enrolled ? "not_required" : "grace", totp_required_by: MOCK_TOTP_GRACE_BY };
+    }
+    return { totp_enforcement: "not_required", totp_required_by: null };
+  };
+
+  const base: Omit<CurvApi & AuthApi, "getMyProfile" | "enrolTotp" | "confirmTotp" | "disableTotp"> = {
     ...clinical,
-    async getMyProfile() {
-      return { ...(await clinical.getMyProfile()), ...totp.status() };
-    },
-    enrolTotp: totp.enrolTotp,
-    confirmTotp: totp.confirmTotp,
-    disableTotp: totp.disableTotp,
     ...exportsApi,
     ...createMockParticipant({
       details,
@@ -642,4 +683,45 @@ export function createMockClient(): CurvApi & AuthApi {
       };
     },
   };
+
+  /** The client as seen by `email`: own enrolment state and profile; a `required` user is limited to enrolment. */
+  const view = (email: string): CurvApi & AuthApi => {
+    const totp = totpFor(email);
+    const user = {
+      ...base,
+      async getMyProfile() {
+        return { ...(await clinical.getMyProfile()), ...totp.status(), ...enforcementFor(email) };
+      },
+      enrolTotp: totp.enrolTotp,
+      confirmTotp: totp.confirmTotp,
+      disableTotp: totp.disableTotp,
+    } as CurvApi & AuthApi;
+    // Past the deadline the backend answers every other route 403 (AUTH-13): the e2e must see that, not just the
+    // redirect. Checked per call, so a user that enrols mid-session is released at once.
+    return Object.fromEntries(
+      Object.entries(user as unknown as Record<string, unknown>).map(([name, fn]) => [
+        name,
+        typeof fn === "function" && !ENROLMENT_ONLY_EXEMPT.has(name)
+          ? (...args: unknown[]) => {
+              if (enforcementFor(email).totp_enforcement === "required") return Promise.reject(enrolmentRequired());
+              return (fn as (...a: unknown[]) => unknown)(...args);
+            }
+          : fn,
+      ]),
+    ) as unknown as CurvApi & AuthApi;
+  };
+
+  return Object.assign(view(DEFAULT_EMAIL), {
+    forToken(accessToken?: string) {
+      const prefix = "mock-access.";
+      if (accessToken?.startsWith(prefix)) {
+        try {
+          return view(atob(accessToken.slice(prefix.length)).toLowerCase());
+        } catch {
+          // fall through to the default user
+        }
+      }
+      return view(DEFAULT_EMAIL);
+    },
+  });
 }

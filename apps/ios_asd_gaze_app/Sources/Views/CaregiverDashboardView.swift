@@ -552,7 +552,7 @@ public struct CaregiverDashboardView: View {
 
                     Spacer()
 
-                    Label(task.category.rawValue, systemImage: task.category.systemIcon)
+                    Label(task.category.displayName, systemImage: task.category.systemIcon)
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(LiquidGlass.celestialTeal)
                         .padding(.horizontal, 6)

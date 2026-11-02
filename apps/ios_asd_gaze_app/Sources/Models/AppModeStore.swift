@@ -41,9 +41,9 @@ public enum AppMode: String, Codable, CaseIterable, Sendable, Identifiable {
     public var tagline: String {
         switch self {
         case .parentHome:
-            return "Track your child's development at home with guided screenings and daily care reminders."
+            return "Track your child's development at home with guided gaze observations and daily care reminders."
         case .clinic:
-            return "Screen multiple children on a shared device with clinical reporting and exports."
+            return "Observe multiple children on a shared device with professional reports and exports."
         }
     }
 
@@ -51,15 +51,15 @@ public enum AppMode: String, Codable, CaseIterable, Sendable, Identifiable {
         switch self {
         case .parentHome:
             return [
-                "Guided 30–60 second gaze screenings at home",
+                "Guided 30–60 second gaze observations at home",
                 "Daily care tasks, reminders, and mood diary",
                 "Shareable pediatrician PDF after each session",
                 "Optional normative data contribution"
             ]
         case .clinic:
             return [
-                "Multi-child screening on one shared device",
-                "Clinical PDF, FHIR, and ResearchKit exports",
+                "Multi-child observation on one shared device",
+                "Professional PDF, FHIR, and ResearchKit exports",
                 "De-identified participant codes by default",
                 "Role-based access controls (rolling out)"
             ]

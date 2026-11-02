@@ -2,7 +2,7 @@
 //!
 //! CORE-5: per-clip metric extraction, a 1:1 port of `PerVideoMetricsExtractor`,
 //! `PerVideoMetricKey` and `AOIRole` (`PerVideoMetrics.swift`, `SessionBiomarkerAggregator.swift`
-//! at 9655fcc). The Swift bodies are the oracle; the golden vectors in
+//! at 9655fcc; the aggregator is now `SessionEngagementAggregator`). The Swift bodies are the oracle; the golden vectors in
 //! `tests/golden/metrics/` were produced by running them.
 //!
 //! Parity notes:

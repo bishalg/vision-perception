@@ -6,10 +6,18 @@ import SwiftUI
 
 /// Categories of developmental care plan interventions.
 public enum CareTaskCategory: String, Codable, CaseIterable, Sendable {
-    case observation = "Gaze Screening"
+    case observation = "Gaze Screening" // claims-ok: persisted raw value; UI shows displayName
     case attention = "Joint Attention"
     case language = "Name & Social"
     case play = "Reciprocal Play"
+
+    /// Parent-facing label. The raw value is persisted and stays unchanged.
+    public var displayName: String {
+        switch self {
+        case .observation: return "Gaze Observation"
+        case .attention, .language, .play: return rawValue
+        }
+    }
 
     public var systemIcon: String {
         switch self {

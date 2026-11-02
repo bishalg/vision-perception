@@ -158,7 +158,7 @@ public struct CareKitExportModalView: View {
         VStack(alignment: .leading, spacing: 8) {
             GlassSectionHeader(title: "Compliance & Security", icon: "checkmark.seal.fill")
             VStack(alignment: .leading, spacing: 8) {
-                privacyBullet(icon: "shield.lefthalf.filled", color: LiquidGlass.emeraldMint, title: "HIPAA & GDPR Standards", text: "Pediatric de-identification replaces direct IDs with anonymized tokens.")
+                privacyBullet(icon: "shield.lefthalf.filled", color: LiquidGlass.emeraldMint, title: "Privacy-First Design", text: "Pediatric de-identification replaces direct IDs with anonymized tokens.")
                 GlassDivider()
                 privacyBullet(icon: "key.fill", color: LiquidGlass.celestialTeal, title: "AES-256 On-Device Vault", text: "Encrypted with keys managed by Apple Secure Enclave.")
                 GlassDivider()
@@ -190,7 +190,7 @@ public struct CareKitExportModalView: View {
             VStack(spacing: 10) {
                 ShareLink(
                     item: store.exportClinicalCareKitJSON(),
-                    preview: SharePreview("ASD Gaze Clinical Report", image: Image(systemName: "doc.text.fill"))
+                    preview: SharePreview("ASD Gaze Observation Report", image: Image(systemName: "doc.text.fill"))
                 ) {
                     HStack {
                         Spacer()

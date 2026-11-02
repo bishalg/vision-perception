@@ -37,7 +37,7 @@ public struct GazeStimulusScreeningView: View {
 
     // Callbacks
     #if ASD_RESEARCH_CLASSIFIER
-    public let onComplete: (GazeSessionReportSummary, [GazeFrame], BiomarkerClassificationResult?) -> Void
+    public let onComplete: (GazeSessionReportSummary, [GazeFrame], EngagementClassificationResult?) -> Void
     #else
     public let onComplete: (GazeSessionReportSummary, [GazeFrame]) -> Void
     #endif
@@ -58,7 +58,7 @@ public struct GazeStimulusScreeningView: View {
         playlist: [StimulusPlaylistItem] = StimulusPlaylistBattery.standard30s,
         proceduralMode: ProceduralStimulusMode? = nil,
         controller: GazeSessionController? = nil,
-        onComplete: @escaping (GazeSessionReportSummary, [GazeFrame], BiomarkerClassificationResult?) -> Void,
+        onComplete: @escaping (GazeSessionReportSummary, [GazeFrame], EngagementClassificationResult?) -> Void,
         onAbort: @escaping () -> Void
     ) {
         let resolved = playlist.isEmpty ? StimulusPlaylistBattery.standard30s : playlist
@@ -74,14 +74,14 @@ public struct GazeStimulusScreeningView: View {
         videoName: String = "stim_05_geopref_split_10s",
         proceduralMode: ProceduralStimulusMode? = nil,
         controller: GazeSessionController? = nil,
-        onComplete: @escaping (GazeSessionReportSummary, [GazeFrame], BiomarkerClassificationResult?) -> Void,
+        onComplete: @escaping (GazeSessionReportSummary, [GazeFrame], EngagementClassificationResult?) -> Void,
         onAbort: @escaping () -> Void
     ) {
         self.playlist = [
             StimulusPlaylistItem(
                 videoName: videoName,
                 title: videoName.replacingOccurrences(of: "_", with: " ").capitalized,
-                category: "Clinical Stimulus",
+                category: "Stimulus Clip",
                 targetDurationSec: 30.0
             )
         ]
@@ -119,7 +119,7 @@ public struct GazeStimulusScreeningView: View {
             StimulusPlaylistItem(
                 videoName: videoName,
                 title: videoName.replacingOccurrences(of: "_", with: " ").capitalized,
-                category: "Clinical Stimulus",
+                category: "Stimulus Clip",
                 targetDurationSec: 30.0
             )
         ]
@@ -342,7 +342,7 @@ public struct GazeStimulusScreeningView: View {
                     .font(.system(size: 26))
             }
 
-            // Emotion Labels and Real-Time Biomarker Meters
+            // Emotion Labels and Real-Time Engagement Meters
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 6) {
                     Text(controller.currentAffect.dominantEmotion.rawValue)
@@ -724,7 +724,7 @@ public struct GazeStimulusScreeningView: View {
         let summary = await controller.stopSession()
         let frames = controller.recordedFrames
         #if ASD_RESEARCH_CLASSIFIER
-        let classification = BiomarkerClassificationEngine.shared.classifySync(summary: summary)
+        let classification = EngagementClassificationEngine.shared.classifySync(summary: summary)
         #endif
         let activeBatteryName = proceduralMode?.rawValue ?? (playlist.count > 1 ? "MultiClipBattery_\(playlist.count)Clips" : (currentClip?.videoName ?? "SingleClip"))
 

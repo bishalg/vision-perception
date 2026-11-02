@@ -2,9 +2,9 @@ import XCTest
 @testable import CurvAsdGazeKit
 
 #if ASD_RESEARCH_CLASSIFIER
-final class BiomarkerClassificationEngineTests: XCTestCase {
+final class EngagementClassificationEngineTests: XCTestCase {
     func testTypicalProfileProducesTypicalStratification() {
-        let engine = BiomarkerClassificationEngine.shared
+        let engine = EngagementClassificationEngine.shared
 
         // Typical toddler: 78% social preference, strong eye dwell (34%), low flat affect, high smile reactivity
         let typicalReport = GazeSessionReportSummary.fixture(
@@ -35,7 +35,7 @@ final class BiomarkerClassificationEngineTests: XCTestCase {
     }
 
     func testAtypicalProfileProducesElevatedRiskStratification() {
-        let engine = BiomarkerClassificationEngine.shared
+        let engine = EngagementClassificationEngine.shared
 
         // Atypical visual attention: negative social preference (geometric focus -0.65),
         // reduced eye fixation (0.06), prolonged saccade latency (680ms), elevated flat affect (0.58)
@@ -67,7 +67,7 @@ final class BiomarkerClassificationEngineTests: XCTestCase {
     }
 
     func testBorderlineProfileProducesMonitoringRecommendation() {
-        let engine = BiomarkerClassificationEngine.shared
+        let engine = EngagementClassificationEngine.shared
 
         // Borderline profile: 50% split (0.0 score), moderate eye dwell (0.19), 520ms latency
         let borderlineReport = GazeSessionReportSummary.fixture(
@@ -97,7 +97,7 @@ final class BiomarkerClassificationEngineTests: XCTestCase {
     }
 
     func testAsyncClassificationInvocation() async {
-        let engine = BiomarkerClassificationEngine()
+        let engine = EngagementClassificationEngine()
         let report = GazeSessionReportSummary.fixture(
             sessionId: "ASYNC001",
             durationSec: 30.0,
@@ -116,7 +116,7 @@ final class BiomarkerClassificationEngineTests: XCTestCase {
 
     // PLC-4
     func testNilLatencyRenormalises() throws {
-        let engine = BiomarkerClassificationEngine()
+        let engine = EngagementClassificationEngine()
 
         // Every present metric at its maximum-risk extreme; latency absent. With the
         // latency weight (0.14) dropped and the rest re-normalised, the contributions
@@ -143,7 +143,7 @@ final class BiomarkerClassificationEngineTests: XCTestCase {
     }
 
     func testNilEyeDwellAndLatencyRenormalises() {
-        let engine = BiomarkerClassificationEngine()
+        let engine = EngagementClassificationEngine()
         let report = GazeSessionReportSummary.fixture(
             socialPreferenceScore: 0.2,
             eyeDwellRatio: nil,
@@ -159,7 +159,7 @@ final class BiomarkerClassificationEngineTests: XCTestCase {
     }
 
     func testHeuristicFeatureLabelsNeverClaimCoreML() {
-        let engine = BiomarkerClassificationEngine()
+        let engine = EngagementClassificationEngine()
         for social in stride(from: -1.0, through: 1.0, by: 0.5) {
             let report = GazeSessionReportSummary.fixture(
                 socialPreferenceScore: social,
@@ -184,7 +184,7 @@ final class BiomarkerClassificationEngineTests: XCTestCase {
             geometricDwellSec: 13.0
         )
 
-        let classification = BiomarkerClassificationResult(
+        let classification = EngagementClassificationResult(
             riskScore: 0.22,
             confidence: 0.95,
             riskStratification: .typical,

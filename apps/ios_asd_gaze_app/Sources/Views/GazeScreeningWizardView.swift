@@ -11,7 +11,7 @@ public enum ScreeningWizardStep: Equatable, Sendable {
     case calibrating
     case stimulus
     #if ASD_RESEARCH_CLASSIFIER
-    case summary(GazeSessionReportSummary, [GazeFrame], BiomarkerClassificationResult?)
+    case summary(GazeSessionReportSummary, [GazeFrame], EngagementClassificationResult?)
     #else
     case summary(GazeSessionReportSummary, [GazeFrame])
     #endif
@@ -49,7 +49,7 @@ public enum ScreeningWizardStep: Equatable, Sendable {
 ///   Step 2 → `StimulusDownloadGateView` (stimuli on the device)
 ///   Step 3 → `BubbleCalibrationView` (calibration + validation in the capture session)
 ///   Step 4 → `GazeStimulusScreeningView` (clips with drift checks, same capture session)
-///   Result → `GazeSessionResultView` (Biomarker Report & CareKit Sync)
+///   Result → `GazeSessionResultView` (Engagement Report & CareKit Sync)
 public struct GazeScreeningWizardView: View {
     @State private var step: ScreeningWizardStep = .positioning
     @StateObject private var camera = CameraAccessCoordinator()

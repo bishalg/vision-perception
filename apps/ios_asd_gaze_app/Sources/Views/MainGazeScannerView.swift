@@ -36,7 +36,7 @@ public struct MainGazeScannerView: View {
     @State private var cartoonBlink: Bool = false
     @State private var cartoonBounce: CGFloat = 0.0
     #if ASD_RESEARCH_CLASSIFIER
-    @State private var presentedReport: (summary: GazeSessionReportSummary, frames: [GazeFrame], classification: BiomarkerClassificationResult)?
+    @State private var presentedReport: (summary: GazeSessionReportSummary, frames: [GazeFrame], classification: EngagementClassificationResult)?
     #else
     @State private var presentedReport: (summary: GazeSessionReportSummary, frames: [GazeFrame])?
     #endif
@@ -767,7 +767,7 @@ public struct MainGazeScannerView: View {
 
         #if ASD_RESEARCH_CLASSIFIER
         // 1. Research builds only (CLM-3): heuristic classifier.
-        let classification = BiomarkerClassificationEngine.shared.classifySync(summary: summary)
+        let classification = EngagementClassificationEngine.shared.classifySync(summary: summary)
         #endif
 
         if recordedSource != nil {

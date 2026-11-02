@@ -1,7 +1,7 @@
 //! owner: WP-R.2
 //!
 //! CORE-6: session-level biomarker reduction, a 1:1 port of
-//! `SessionBiomarkerAggregator.aggregate` (`SessionBiomarkerAggregator.swift` at 9655fcc).
+//! `SessionBiomarkerAggregator.aggregate` (`SessionBiomarkerAggregator.swift` at 9655fcc; now `SessionEngagementAggregator`).
 //! The golden vectors in `tests/golden/aggregate/` were produced by running the Swift body.
 //!
 //! - One frame counts at most once per role, so nested boxes (face + eyes) do not double-count.

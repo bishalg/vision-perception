@@ -19,6 +19,7 @@ import {
   participantSchema,
   updateUserRequestSchema,
 } from "./admin";
+import { userProfileSchema } from "./clinical";
 import { createMockClient, MOCK_ORG_ID } from "./mock";
 import {
   ATTENTION_FLAGS,
@@ -184,6 +185,8 @@ const OBJECT_SCHEMAS: Record<string, ZodType & { shape: Record<string, ZodType &
   TotpConfirmRequest: totpConfirmRequestSchema,
   TotpDisableRequest: totpDisableRequestSchema,
   TotpStatus: totpStatusSchema,
+  // WP-C.17 mandatory TOTP (AUTH-11..13)
+  UserProfile: userProfileSchema,
 } as never;
 
 /**
@@ -202,9 +205,22 @@ const NO_PUBLISHED_EXAMPLES = new Set([
   "IntegrationTestResult", "CreateIntegrationRequest", "UpdateIntegrationRequest", "PutIntegrationSecretRequest",
   "SshPublicKey", "Delivery", "DeliveryPage", "DeliverableDestination", "DeliverableDestinationList",
   "TotpEnrolRequest", "TotpEnrolResponse", "TotpConfirmRequest", "TotpDisableRequest", "TotpStatus",
+  "UserProfile",
 ]);
 
 describe("api-v1.json contract", () => {
+  it("UserProfile: totp_enforcement matches TotpEnforcement and defaults to not_required (older backends)", () => {
+    expect(defs.TotpEnforcement!.enum).toEqual(["not_required", "grace", "required"]);
+    const base = { id: "u", email: "e@x", role: "admin" };
+    expect(userProfileSchema.parse(base).totp_enforcement).toBe("not_required");
+    expect(userProfileSchema.parse({ ...base, totp_enforcement: "required", totp_required_by: "2026-11-01T00:00:00Z" })).toMatchObject({
+      totp_enforcement: "required",
+      totp_required_by: "2026-11-01T00:00:00Z",
+    });
+    expect(userProfileSchema.safeParse({ ...base, totp_enforcement: "bogus" }).success).toBe(false);
+    expect(PROBLEM_SLUGS).toContain("totp-enrolment-required");
+  });
+
   it("is a generated document with $defs", () => {
     expect(Object.keys(defs).length).toBeGreaterThan(20);
   });

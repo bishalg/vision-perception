@@ -156,7 +156,7 @@ public final class ResearchKitStudyStore: @unchecked Sendable {
         return researchQueue.sync {
             let profile = fetchEnrollmentDirect()
             guard profile.isConsented else {
-                Self.logger.warning("Screening completed but ResearchKit study participation is not consented; skipping study write")
+                Self.logger.warning("Observation completed but ResearchKit study participation is not consented; skipping study write")
                 Self.dispatch(completion, value: nil)
                 return nil
             }

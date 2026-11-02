@@ -33,6 +33,7 @@ function withCsp(request: NextRequest, respond: (headers: Headers) => NextRespon
   const csp = buildCsp(nonce, process.env.NODE_ENV === "development");
   const headers = new Headers(request.headers);
   headers.set("x-nonce", nonce);
+  headers.set("x-pathname", request.nextUrl.pathname);
   headers.set("Content-Security-Policy", csp);
   const response = respond(headers);
   response.headers.set("Content-Security-Policy", csp);

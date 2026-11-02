@@ -171,9 +171,9 @@ enum AsdCoreBridge {
         try decode([PerVideoMetricSet].self, from: extractMetricsJson(framesJson: encode(frames)))
     }
 
-    static func aggregateSession(_ frames: [CoreFrame], durationSec: Double) throws -> SessionBiomarkerAggregator.Aggregates {
+    static func aggregateSession(_ frames: [CoreFrame], durationSec: Double) throws -> SessionEngagementAggregator.Aggregates {
         let json = try aggregateSessionJson(framesJson: encode(frames), durationSec: durationSec)
-        return try decode(SessionBiomarkerAggregator.Aggregates.self, from: json)
+        return try decode(SessionEngagementAggregator.Aggregates.self, from: json)
     }
 
     static func evaluateQuality(_ sample: GazeTelemetrySample, gateJSON: String) throws -> GazeQualityGate.Evaluation {

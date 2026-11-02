@@ -157,7 +157,7 @@ export const userProfileSchema = z.object({
   /** True while a TOTP enrolment waits for its confirming code (AUTH-10); login ignores it. */
   totp_pending: z.boolean().nullable().optional(),
   /** Mandatory-TOTP state for the role (AUTH-11); older backends omit it (= `not_required`). */
-  totp_enforcement: z.enum(["not_required", "grace", "required"]).optional(),
+  totp_enforcement: z.enum(["not_required", "grace", "required"]).default("not_required"),
   /** RFC 3339 enrolment deadline (AUTH-12); `null` until first set. */
   totp_required_by: str,
   email: z.string(),

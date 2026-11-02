@@ -5,6 +5,8 @@ const errors: Record<string, string> = {
   "totp-invalid": "That code is not correct or was already used. Wait for the next code and try again.",
   "totp-required": "Enter a code from your authenticator app.",
   "totp-already-enrolled": "Two-step sign-in is already on. Turn it off first to set up a new authenticator.",
+  "totp-enrolment-required":
+    "Your role requires two-step sign-in. Set it up on the account security page to continue.",
   "totp-enrolment-expired": "The setup expired. Start again to get a new key.",
   "totp-not-enrolled": "Two-step sign-in is not on for your account.",
   "clinical-crypto-unavailable": "The server cannot store authenticator keys right now. Contact your administrator.",
@@ -24,15 +26,20 @@ export function securityErrorMessage(slug: string | null, status: number): strin
 export const securityText = {
   nav: "Account security",
   nudge: {
-    text: "Your role can see or change sensitive data. Turn on two-step sign-in to protect your account.",
+    text: "Your role requires two-step sign-in. Turn on two-step sign-in to protect your account.",
+    deadline: (date: string) => `Set it up by ${date}.`,
     link: "Set it up",
+  },
+  required: {
+    title: "Your role requires two-step sign-in",
+    intro: "The time to set it up has passed. Set up two-step sign-in below to continue; other pages stay locked until you do.",
   },
   status: {
     pending: "A setup was started and is waiting for a code. Get a new key below to start again.",
   },
   title: "Account security",
   intro:
-    "Two-step sign-in asks for a code from an authenticator app after your password. Owners, admins and clinicians should turn it on.",
+    "Two-step sign-in asks for a code from an authenticator app after your password. Some roles must turn it on.",
   enrol: {
     title: "Set up two-step sign-in",
     intro: "Confirm your password to get a new key for your authenticator app.",

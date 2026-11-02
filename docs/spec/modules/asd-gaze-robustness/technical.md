@@ -386,7 +386,7 @@ start with `apps/` or `rust/`.
     has no score or affect component, only a note. 1.6 and 1.7 behaviour is unchanged.
   - Rollout: `asd-sync` builds 1.8 requests (`build_session_request_v1_8`, and the JSON
     entry point by `schemaVersion`); the iOS writer moves to 1.8 in a follow-up and
-    stops writing placeholder scores in `SessionBiomarkerAggregator`.
+    stops writing placeholder scores in `SessionEngagementAggregator`.
 
 ## 9. Scoring coupling (SCR) - opt-in, owner-approved (WP-G.13)
 

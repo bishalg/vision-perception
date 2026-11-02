@@ -527,7 +527,7 @@ extension DoctorReportInput {
                         .dictionary([
                             "system": .string("http://hl7.org/fhir/us/core/CodeSystem/us-core-documentreference-category"),
                             "code": .string("clinical-note"),
-                            "display": .string("Clinical Note")
+                            "display": .string("Clinical Note") // claims-ok: official US Core DocumentReference category display
                         ])
                     ])
                 ])

@@ -19,10 +19,11 @@ export function apiMode(env: Record<string, string | undefined> = process.env): 
   return env.CURV_API_MODE === "live" ? "live" : "mock";
 }
 
-let mockSingleton: (CurvApi & AuthApi) | undefined;
+let mockSingleton: ReturnType<typeof createMockClient> | undefined;
 
 export function getApi(accessToken?: string, env: Record<string, string | undefined> = process.env): CurvApi & AuthApi {
-  if (apiMode(env) === "mock") return (mockSingleton ??= createMockClient());
+  // The mock keeps one state for the process; the token only picks which mock user it answers for (WP-C.17).
+  if (apiMode(env) === "mock") return (mockSingleton ??= createMockClient()).forToken(accessToken);
   const baseUrl = env.CURV_API_BASE_URL;
   if (!baseUrl) throw new Error("CURV_API_BASE_URL is required when CURV_API_MODE=live");
   return createLiveClient({ baseUrl, accessToken });

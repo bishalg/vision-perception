@@ -285,10 +285,10 @@ Sources/
 ### C. CoreML Biomarker Classification Engine on Apple Neural Engine (ANE)
 - **Challenge**: Raw statistical dwell times must be translated into actionable clinical risk stratification for pediatricians and ResearchKit/CareKit records.
 - **Solution**:
-  - `CurvAsdGazeKit/Inference/BiomarkerClassificationEngine.swift` synthesizes multi-modal biomarkers (`socialPreferenceScore`, `eyeDwellRatio`, `firstEyeLatencyMs`, `flatAffectScore`, `smileReactivityIndex`).
+  - `CurvAsdGazeKit/Inference/EngagementClassificationEngine.swift` synthesizes multi-modal biomarkers (`socialPreferenceScore`, `eyeDwellRatio`, `firstEyeLatencyMs`, `flatAffectScore`, `smileReactivityIndex`).
   - Targets CoreML with `MLModelConfiguration.computeUnits = .all`, prioritizing the Apple Neural Engine (ANE) for sub-2ms on-device inference.
   - Incorporates a deterministic clinical baseline fallback (calibrated against Pierce et al. GeoPref & Jones & Klin saccade latency literature) for test environments and uncompiled deployments.
-  - Produces structured `BiomarkerClassificationResult` (`.typical`, `.monitor`, `.elevatedRisk`) embedded in ResearchKit/CareKit schemas and rendered in `GazeSessionResultView`.
+  - Produces structured `EngagementClassificationResult` (`.typical`, `.monitor`, `.elevatedRisk`) embedded in ResearchKit/CareKit schemas and rendered in `GazeSessionResultView`.
 
 ### D. Per-Stimulus Expected-vs-Recorded Matrix (schema v1.5, 2026-09)
 - **Challenge**: Session-wide aggregates blur which video elicited which response, and expectations were age-blind static strings baked into views.

@@ -188,7 +188,7 @@ Clips: GeoPref split-screen, peekaboo, name calling, rhyme play, slapstick humor
 │  ├── ScreenRaycaster        →  3D gaze → screen AOIs       │
 │  ├── GazeProcessingActor    →  OneEuro filter, I-VT fix/sac │
 │  ├── StimulusAOITracker     →  Dynamic AOI dwell scoring   │
-│  ├── BiomarkerClassificationEngine → ANE inference         │
+│  ├── EngagementClassificationEngine → ANE inference         │
 │  ├── SessionVaultManager    →  AES-GCM-256 encrypted store │
 │  ├── CarePlanStore          →  CareKit tasks/diary/meds    │
 │  ├── ResearchKitStudyStore  →  ORKTaskResult + consent     │

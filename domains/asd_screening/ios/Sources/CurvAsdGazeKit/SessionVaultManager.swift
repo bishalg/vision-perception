@@ -128,7 +128,7 @@ public struct SessionVaultManager: Sendable {
         header: SessionHeader,
         frames: [GazeFrame],
         report: GazeSessionReportSummary,
-        classification: BiomarkerClassificationResult?,
+        classification: EngagementClassificationResult?,
         perVideoScore: PerVideoSessionScore? = nil,
         collectionMetadata: NormCollectionMetadata? = nil
     ) throws -> URL {
@@ -225,7 +225,7 @@ public struct SessionVaultManager: Sendable {
         header: SessionHeader,
         frames: [GazeFrame],
         report: GazeSessionReportSummary,
-        classification: BiomarkerClassificationResult?,
+        classification: EngagementClassificationResult?,
         perVideoScore: PerVideoSessionScore? = nil,
         collectionMetadata: NormCollectionMetadata? = nil
     ) async throws -> URL {
@@ -269,7 +269,7 @@ public struct SessionVaultManager: Sendable {
     /// Research builds only (CLM-3): ResearchKit JSON with a `classification` block.
     public static func makeResearchKitJson(
         report: GazeSessionReportSummary,
-        classification: BiomarkerClassificationResult?,
+        classification: EngagementClassificationResult?,
         perVideoScore: PerVideoSessionScore? = nil,
         collection: [String: Any]? = nil
     ) -> [String: Any] {
@@ -365,7 +365,7 @@ public struct SessionVaultManager: Sendable {
     /// Research builds only (CLM-3): CareKit JSON with classifier outcome fields.
     public static func makeCareKitJson(
         report: GazeSessionReportSummary,
-        classification: BiomarkerClassificationResult?
+        classification: EngagementClassificationResult?
     ) -> [String: Any] {
         var outcome: [String: Any] = [:]
         if let cl = classification {
@@ -394,7 +394,7 @@ public struct SessionVaultManager: Sendable {
         outcome.merge(extraOutcome) { _, new in new }
         return [
             "identifier": "OCKCarePlanActivity",
-            "title": "Pediatric Visual Attention Screening",
+            "title": "Pediatric Visual Attention Observation",
             "sessionId": report.sessionId,
             "status": "completed",
             "outcome": outcome

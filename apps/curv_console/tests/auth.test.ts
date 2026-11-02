@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decideGuard, safeNextPath } from "@/lib/auth/guard";
+import { decideGuard, enforcementRedirect, safeNextPath } from "@/lib/auth/guard";
 import { ACCESS_COOKIE, ORG_COOKIE, REFRESH_COOKIE, ROLE_COOKIE, SESSION_COOKIE_NAMES, readRole, sessionCookies } from "@/lib/auth/cookies";
 
 describe("guard", () => {
@@ -51,5 +51,33 @@ describe("session cookies", () => {
     const root = { ...pair, user: { ...pair.user, role: "superadmin" as const, org_id: null } };
     const names = sessionCookies(root, true).map((c) => c.name);
     expect(names).toEqual([ACCESS_COOKIE, REFRESH_COOKIE, ROLE_COOKIE]);
+  });
+});
+
+describe("enforcementRedirect (WP-C.17, AUTH-13)", () => {
+  const org = "o";
+  const redirectTo = "/o/settings/security?required=1";
+  const cases: [string, "not_required" | "grace" | "required" | undefined, string | null, string | null][] = [
+    ["not_required never redirects", "not_required", "/o/overview", null],
+    ["grace never redirects", "grace", "/o/overview", null],
+    ["unknown profile (older backend or failed read) never redirects", undefined, "/o/overview", null],
+    ["required on overview", "required", "/o/overview", redirectTo],
+    ["required on sessions", "required", "/o/sessions", redirectTo],
+    ["required on the security page: no loop", "required", "/o/settings/security", null],
+    ["required below the security page", "required", "/o/settings/security/", null],
+    ["required with no pathname header goes to security", "required", null, redirectTo],
+    ["a look-alike path is not the security page", "required", "/o/settings/security-x", redirectTo],
+    ["another org's security page is not exempt", "required", "/p/settings/security", redirectTo],
+  ];
+  for (const [name, enforcement, pathname, expected] of cases) {
+    it(name, () => {
+      expect(enforcementRedirect(enforcement === undefined ? null : { totp_enforcement: enforcement }, pathname, org)).toBe(expected);
+    });
+  }
+
+  it("encodes the org id", () => {
+    expect(enforcementRedirect({ totp_enforcement: "required" }, "/a%20b/overview", "a b")).toBe(
+      "/a%20b/settings/security?required=1",
+    );
   });
 });

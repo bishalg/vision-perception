@@ -88,7 +88,7 @@ final class AsdCoreBridgeTests: XCTestCase {
             activeAOINames: ["Eye_Region"]
         )
         XCTAssertEqual(PerVideoMetricsExtractor.extract(from: [frame]), [])
-        XCTAssertThrowsError(try SessionBiomarkerAggregator.aggregate(validFrames: [frame], durationSec: 1))
+        XCTAssertThrowsError(try SessionEngagementAggregator.aggregate(validFrames: [frame], durationSec: 1))
 
         let second = GazeFrame(
             gaze: GazeTelemetrySample(timestampMs: 16, xNorm: .infinity, yNorm: 0.5, confidence: 1),

@@ -547,7 +547,7 @@ public final class CarePlanStore: ObservableObject {
         [
             CarePlanTask(
                 id: "task_gaze_screen",
-                title: "Daily Social Gaze Screening",
+                title: "Daily Social Gaze Observation",
                 subtitle: "60-second TrueDepth eye-tracking stimulus observation",
                 icon: "eyes",
                 category: .observation,

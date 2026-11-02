@@ -105,7 +105,7 @@ public protocol AgeBandInferring: Sendable {
 
 /// CoreML inference engine mapping a 224×224 face crop to a coarse `FacialAgeBand`.
 ///
-/// Mirrors the `BiomarkerClassificationEngine` optional-model pattern: when no
+/// Mirrors the `EngagementClassificationEngine` optional-model pattern: when no
 /// compiled model (`.mlmodelc`) is present the engine is inert (`estimate` returns
 /// nil, `isModelAvailable` is false) and the whole subject-age pipeline degrades to
 /// a no-op instead of fabricating age data.

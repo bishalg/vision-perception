@@ -32,6 +32,6 @@ public struct ClinicalTermTooltip: View {
             .frame(maxWidth: 280)
             .presentationCompactAdaptation(.popover)
         }
-        .accessibilityHint("Shows clinical explanation")
+        .accessibilityHint("Shows a plain-language explanation")
     }
 }

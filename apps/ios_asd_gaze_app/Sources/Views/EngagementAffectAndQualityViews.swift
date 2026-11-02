@@ -5,7 +5,7 @@ import CurvAsdGazeKit
 
 /// Apple Health-style detail section for facial expression while watching.
 /// Shows smile intensity, smile reactivity, surprise, and flat expression measurements.
-public struct BiomarkerFacialAffectDetailSection: View {
+public struct EngagementFacialAffectDetailSection: View {
     public let summary: GazeSessionReportSummary
 
     public init(summary: GazeSessionReportSummary) {
@@ -166,7 +166,7 @@ public struct BiomarkerFacialAffectDetailSection: View {
 /// Apple Health-style detail section for recording quality.
 /// Shows the share of usable gaze samples and how blinks are handled. It displays only values
 /// measured in the session; nothing here is a fixed or placeholder reading.
-public struct BiomarkerDataQualityDetailSection: View {
+public struct EngagementDataQualityDetailSection: View {
     public let summary: GazeSessionReportSummary
 
     public init(summary: GazeSessionReportSummary) {

@@ -143,7 +143,7 @@ public enum ClinicalMilestoneCatalog {
                 item("Social looking preferred over repeating patterns",
                      look: "During screen play, looks more at faces than spinning geometric clips when both are available.",
                      prompt: "Sit together for a short face-to-face song, then a brief pattern video; notice looking.",
-                     consult: "Marked preference for repeating visual patterns with little social looking — discuss screening.")
+                     consult: "Marked preference for repeating visual patterns with little social looking — mention it to your pediatrician.")
             ]
         case (.months30, .socialEmotional):
             return [

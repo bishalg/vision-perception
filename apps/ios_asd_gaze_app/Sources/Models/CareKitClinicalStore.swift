@@ -258,7 +258,7 @@ public final class CareKitClinicalStore: @unchecked Sendable {
         completion: (@Sendable () -> Void)?
     ) {
         guard captureSource != .simulated else {
-            Self.logger.info("Ignoring simulated screening session for CareKit")
+            Self.logger.info("Ignoring simulated observation session for CareKit")
             Self.dispatch(completion)
             return
         }
