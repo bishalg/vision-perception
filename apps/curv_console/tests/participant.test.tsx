@@ -486,6 +486,35 @@ describe("tabs, table and messages", () => {
     expect(parseWorkspaceTab("zzz")).toBe("timeline");
   });
 
+  it("WP-C.18: Visits and Files are workspace tabs", () => {
+    expect(parseWorkspaceTab("visits")).toBe("visits");
+    expect(parseWorkspaceTab("attachments", ["timeline", "visits"])).toBe("timeline");
+    render(<ParticipantTabs basePath="/o/participants/p1" active="visits" tabs={["timeline", "visits", "attachments"]} />);
+    expect(screen.getAllByRole("link").map((a) => a.textContent)).toEqual(["Timeline", "Visits", "Files"]);
+    expect(screen.getByRole("link", { name: "Files" })).toHaveAttribute("href", "/o/participants/p1?tab=attachments");
+  });
+
+  it("WP-C.18: the timeline links visit and file entries to their tabs, never shows their free text", () => {
+    render(
+      <Timeline
+        entries={[
+          entry({ kind: "encounter", id: "e1", session_id: null, summary: { encounter_kind: "phone_call", status: "open", reason: "hidden words" } }),
+          entry({ kind: "attachment", id: "a1", session_id: null, summary: { attachment_kind: "report", file_name: "r.pdf", byte_size: 4096 } }),
+        ]}
+        kinds={[]}
+        basePath="/o/participants/p1"
+        orgPath="/o"
+        nextCursor={null}
+        hasCursor={false}
+      />,
+    );
+    expect(screen.getByText(/Phone call \(open\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Report, r\.pdf, 4 KB/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open visits" })).toHaveAttribute("href", "/o/participants/p1?tab=visits");
+    expect(screen.getByRole("link", { name: "Open files" })).toHaveAttribute("href", "/o/participants/p1?tab=attachments");
+    expect(document.body.textContent).not.toContain("hidden words");
+  });
+
   it("renders only the permitted tabs and marks the active one", () => {
     render(<ParticipantTabs basePath="/o/participants/p1" active="print" tabs={["timeline", "print"]} />);
     expect(screen.getAllByRole("link").map((a) => a.textContent)).toEqual(["Timeline", "Print summary"]);

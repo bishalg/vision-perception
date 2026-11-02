@@ -28,12 +28,20 @@ export function describeEntry(e: TimelineEntry): string {
       return t.letter(str("letter_kind"), s.status);
     case "care_event":
       return t.care(str("care_kind") || "event");
-    // REC-5 headers (wave 2 step 0 placeholders; WP-C.18 renders kind, date, clinician and status).
+    // REC-5 headers: visit kind and status (the clinician is the "By" column), file kind, name and size. Never the
+    // visit summary or reason. Key names are tolerated in both spellings until the backend's are fixed in the contract.
     case "encounter":
-      return t.kinds.encounter;
-    case "attachment":
-      return t.kinds.attachment;
+      return t.encounter(str("encounter_kind") || str("kind"), s.status);
+    case "attachment": {
+      const size = typeof s.byte_size === "number" ? s.byte_size : typeof s.size === "number" ? s.size : null;
+      return t.attachment(str("attachment_kind") || str("kind"), str("file_name") || str("name"), size);
+    }
   }
+}
+
+/** The workspace tab an entry opens, for kinds that have one. */
+function entryTab(kind: TimelineKind): "visits" | "attachments" | null {
+  return kind === "encounter" ? "visits" : kind === "attachment" ? "attachments" : null;
 }
 
 function flagOf(e: TimelineEntry) {
@@ -130,6 +138,10 @@ export function Timeline({
                     {flagOf(e) ? <FlagBadge flag={flagOf(e)!} /> : describeEntry(e)}{" "}
                     {e.kind === "session" ? (
                       <Link href={`${orgPath}/sessions/${encodeURIComponent(e.id)}`}>{t.openSession}</Link>
+                    ) : entryTab(e.kind) ? (
+                      <Link href={`${basePath}?tab=${entryTab(e.kind)}`}>
+                        {entryTab(e.kind) === "visits" ? t.openVisits : t.openFiles}
+                      </Link>
                     ) : null}
                   </td>
                   <td data-label={t.cols.by}>{e.actor_display_name ?? "-"}</td>

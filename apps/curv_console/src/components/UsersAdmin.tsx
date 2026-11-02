@@ -1,13 +1,14 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
-import type { OrgUser, Role } from "@/lib/api";
+import { useActionState, useEffect, useRef, useState, useTransition, type FormEvent } from "react";
+import { MAX_TOTP_RESET_REASON_CHARS, MIN_TOTP_RESET_REASON_CHARS, type OrgUser, type Role } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
-import { canEditUserRole } from "@/lib/permissions";
+import { can, canEditUserRole } from "@/lib/permissions";
 import { adminText } from "@/messages/admin";
 
 const t = adminText.users;
 const c = t.cols;
+const tr = t.totpReset;
 
 export type UserActionResult =
   | { ok: true; email: string }
@@ -15,6 +16,110 @@ export type UserActionResult =
 
 export type UserAction = (formData: FormData) => Promise<UserActionResult>;
 export type UpdateUserFn = (userId: string, formData: FormData) => Promise<UserActionResult>;
+
+/** Result of the TRS-1 reset action: a slug and status, never the submitted password, code or reason. */
+export type TotpResetResult = { ok: true } | { ok: false; slug: string | null; status: number; retryAfter?: number };
+export type ResetTotpFn = (userId: string, formData: FormData) => Promise<TotpResetResult>;
+
+export function totpResetErrorText(r: Extract<TotpResetResult, { ok: false }>): string {
+  if (r.slug && tr.errors[r.slug]) return tr.errors[r.slug]!;
+  if (r.status === 429) return tr.errors["rate-limited"]!;
+  if (r.status === 403) return tr.errors.forbidden!;
+  if (r.status === 404) return tr.errors["not-found"]!;
+  if (r.status === 0) return tr.errors.unavailable!;
+  return `${tr.failed} (status ${r.status})`;
+}
+
+/**
+ * TRS-3 step-up dialog (UI-3). Like the sign dialog, the password and code inputs are uncontrolled: they live only in
+ * the DOM, are read into a `FormData` at submit, and the form is reset before the request is awaited, so neither value
+ * ever enters React state. The sentence that the user must enrol again is always shown.
+ */
+export function TotpResetDialog({
+  user,
+  reset,
+  onDone,
+  onClose,
+}: {
+  user: OrgUser;
+  reset: ResetTotpFn;
+  onDone: () => void;
+  onClose: () => void;
+}) {
+  const [pending, setPending] = useState(false);
+  const [failure, setFailure] = useState<Extract<TotpResetResult, { ok: false }> | null>(null);
+  const first = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => first.current?.focus(), []);
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    // Keep the reason on screen if the password was wrong; only the secrets leave the DOM now.
+    for (const name of ["password", "totp_code"]) {
+      const el = form.elements.namedItem(name);
+      if (el instanceof HTMLInputElement) el.value = "";
+    }
+    setPending(true);
+    setFailure(null);
+    let result: TotpResetResult;
+    try {
+      result = await reset(user.id, data);
+    } catch {
+      result = { ok: false, slug: null, status: 0 };
+    }
+    setPending(false);
+    if (result.ok) onDone();
+    else setFailure(result);
+  }
+
+  return (
+    <div className="dialog-backdrop">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`totp-reset-${user.id}`}
+        className="dialog panel"
+        onKeyDown={(e) => {
+          if (e.key === "Escape" && !pending) onClose();
+        }}
+      >
+        <h2 id={`totp-reset-${user.id}`}>{tr.title(user.email)}</h2>
+        <p>{tr.intro}</p>
+        <form onSubmit={onSubmit} autoComplete="off" className="stack">
+          <label>
+            {tr.reason}
+            <textarea
+              ref={first}
+              name="reason"
+              rows={2}
+              required
+              minLength={MIN_TOTP_RESET_REASON_CHARS}
+              maxLength={MAX_TOTP_RESET_REASON_CHARS}
+            />
+          </label>
+          <p className="muted">{tr.reasonHelp(MIN_TOTP_RESET_REASON_CHARS, MAX_TOTP_RESET_REASON_CHARS)}</p>
+          <label>
+            {tr.password}
+            <input name="password" type="password" autoComplete="current-password" required />
+          </label>
+          <label>
+            {tr.totp}
+            <input name="totp_code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={8} />
+          </label>
+          <p className="muted">{tr.secretNote}</p>
+          {failure ? (
+            <p role="alert" className="error">{tr.failed} {totpResetErrorText(failure)}</p>
+          ) : null}
+          <div className="dialog-actions">
+            <button type="submit" disabled={pending}>{pending ? tr.submitting : tr.submit}</button>
+            <button type="button" className="secondary" onClick={onClose} disabled={pending}>{tr.cancel}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 function errorText(r: Extract<UserActionResult, { ok: false }>): string {
   const base = (r.slug && t.errors[r.slug]) || (r.status === 0 ? t.errors.unavailable : null);
@@ -62,6 +167,7 @@ function Row({
   roles,
   update,
   showActions,
+  resetTotp,
 }: {
   user: OrgUser;
   isSelf: boolean;
@@ -69,8 +175,12 @@ function Row({
   roles: Role[];
   update: UpdateUserFn;
   showActions: boolean;
+  /** Present when the actor may reset this user's two-step sign-in (not self, not a higher rank). */
+  resetTotp?: ResetTotpFn;
 }) {
   const [editing, setEditing] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetDone, setResetDone] = useState(false);
   return (
     <tr>
       <td data-label={c.user}>
@@ -92,7 +202,21 @@ function Row({
             <EditRow user={user} roles={roles} update={update} onDone={() => setEditing(false)} />
           ) : (
             <button type="button" className="secondary" onClick={() => setEditing(true)}>{t.edit}</button>
-          )}
+          )}{" "}
+          {resetTotp && !editing ? (
+            <button type="button" className="secondary" aria-label={tr.buttonLabel(user.email)} onClick={() => { setResetDone(false); setResetting(true); }}>
+              {tr.button}
+            </button>
+          ) : null}
+          {resetting && resetTotp ? (
+            <TotpResetDialog
+              user={user}
+              reset={resetTotp}
+              onDone={() => { setResetting(false); setResetDone(true); }}
+              onClose={() => setResetting(false)}
+            />
+          ) : null}
+          {resetDone ? <p role="status">{tr.done(user.email)}</p> : null}
         </td>
       ) : null}
     </tr>
@@ -107,6 +231,7 @@ export function UsersTable({
   actor,
   roles,
   update,
+  resetTotp,
 }: {
   users: OrgUser[];
   selfId: string | null;
@@ -114,8 +239,13 @@ export function UsersTable({
   actor: Role | undefined;
   roles: Role[];
   update: UpdateUserFn;
+  /** TRS-3: the reset action, passed only to `user.totp_reset` roles. */
+  resetTotp?: ResetTotpFn;
 }) {
   if (users.length === 0) return <p className="muted">{t.empty}</p>;
+  // Same rank rule as editing: never yourself, never a role above yours (the backend answers totp-reset-forbidden).
+  const mayReset = (u: OrgUser) =>
+    Boolean(resetTotp) && can(actor, "user.totp_reset") && u.id !== selfId && canEditUserRole(actor, u.role);
   return (
     <div className="table-wrap">
       <table className="data responsive">
@@ -140,6 +270,7 @@ export function UsersTable({
               roles={roles}
               update={update}
               showActions={canManage}
+              resetTotp={mayReset(u) ? resetTotp : undefined}
             />
           ))}
         </tbody>

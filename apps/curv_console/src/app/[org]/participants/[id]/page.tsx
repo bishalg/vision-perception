@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import "@/components/participant/participant.css";
+import { AttachmentsPanel } from "@/components/participant/AttachmentsPanel";
 import { Disclosures } from "@/components/participant/Disclosures";
+import { EncountersPanel } from "@/components/participant/EncountersPanel";
 import { MrnPanel } from "@/components/participant/MrnPanel";
 import { NotesPanel } from "@/components/participant/NotesPanel";
 import { ParticipantHeader } from "@/components/participant/ParticipantHeader";
@@ -17,7 +19,14 @@ import { loadOrNotFound, requestTime } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { participantText, type WorkspaceTab } from "@/messages/participant";
 import {
+  attachmentUploadedAction,
+  createAttachmentAction,
+  createEncounterAction,
   createNoteAction,
+  deleteAttachmentAction,
+  encounterSessionAction,
+  encounterStateAction,
+  updateEncounterAction,
   revealMrnAction,
   saveMrnAction,
   searchMrnAction,
@@ -57,8 +66,11 @@ export default async function ParticipantWorkspacePage({
   const participant = await loadOrNotFound(() => api.getParticipant(id));
   if (participant.org_id !== org) notFound();
 
+  const canFiles = canContent || can(role, "attachment.write");
   const tabs: WorkspaceTab[] = [
     "timeline",
+    "visits",
+    ...(canFiles ? (["attachments"] as const) : []),
     ...(canContent ? (["notes"] as const) : []),
     ...(canMrn ? (["mrn"] as const) : []),
     ...(canContent ? (["letters", "disclosures"] as const) : []),
@@ -80,6 +92,11 @@ export default async function ParticipantWorkspacePage({
     </>
   );
 
+  async function sessionChoices() {
+    const page = await loadOrNotFound(() => api.listSessions(org, { participant_id: id, limit: 100 }));
+    return page.items.map((s) => ({ id: s.id, label: formatDateTime(s.started_at) }));
+  }
+
   async function panel() {
     switch (tab) {
       case "timeline": {
@@ -99,6 +116,64 @@ export default async function ParticipantWorkspacePage({
             orgPath={orgPath}
             nextCursor={page.next_cursor}
             hasCursor={Boolean(cursor)}
+          />
+        );
+      }
+      case "visits": {
+        const [page, sessions] = await Promise.all([
+          loadOrNotFound(() => api.listEncounters(id, { cursor, limit: 25 })),
+          sessionChoices(),
+        ]);
+        const active = !participant.withdrawn_at;
+        return (
+          <>
+            <EncountersPanel
+              encounters={page.items}
+              sessions={sessions}
+              canWrite={can(role, "encounter.write") && active}
+              canSummary={can(role, "note.write") && active}
+              canContent={canContent}
+              // REC-4: owner or clinician reopen a closed visit (the backend answers 409 otherwise).
+              canReopen={role === "owner" || role === "clinician"}
+              actions={{
+                create: createEncounterAction.bind(null, org, id),
+                update: updateEncounterAction.bind(null, org, id),
+                state: encounterStateAction.bind(null, org, id),
+                session: encounterSessionAction.bind(null, org, id),
+              }}
+              now={requestTime()}
+              orgPath={orgPath}
+            />
+            <nav className="pagination" aria-label="Visit pages">
+              {cursor ? <Link href={`${basePath}?tab=visits`}>{t.visits.newest}</Link> : null}
+              {page.next_cursor ? (
+                <Link rel="next" href={`${basePath}?tab=visits&cursor=${encodeURIComponent(page.next_cursor)}`}>
+                  {t.visits.older}
+                </Link>
+              ) : null}
+            </nav>
+          </>
+        );
+      }
+      case "attachments": {
+        const [rows, visits] = await Promise.all([
+          loadOrNotFound(() => api.listParticipantAttachments(id)),
+          loadOrNotFound(() => api.listEncounters(id, { limit: 50 })),
+        ]);
+        return (
+          <AttachmentsPanel
+            rows={rows}
+            canRead={canContent}
+            canWrite={can(role, "attachment.write") && !participant.withdrawn_at}
+            actions={{
+              create: createAttachmentAction.bind(null, org, id),
+              remove: deleteAttachmentAction.bind(null, org, id),
+              uploaded: attachmentUploadedAction.bind(null, org, id),
+            }}
+            visits={visits.items.map((v) => ({
+              id: v.id,
+              label: `${t.visits.kinds[v.kind]}, ${formatDateTime(v.occurred_at)}`,
+            }))}
           />
         );
       }

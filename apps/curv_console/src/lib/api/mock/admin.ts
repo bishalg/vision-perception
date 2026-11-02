@@ -5,15 +5,25 @@ import {
   type Device,
   type SessionDetail,
 } from "../types";
-import type {
-  AdminApi,
-  AuditEntry,
-  AuditQuery,
-  CreateUserRequest,
-  OrgUser,
-  Participant,
-  UpdateUserRequest,
+import {
+  MAX_TOTP_RESET_REASON_CHARS,
+  MIN_TOTP_RESET_REASON_CHARS,
+  type AdminApi,
+  type AuditEntry,
+  type AuditQuery,
+  type CreateUserRequest,
+  type OrgUser,
+  type Participant,
+  type UpdateUserRequest,
 } from "../admin";
+import { registerMockRecordStore } from "./emr";
+
+/** The mock caller's step-up password; equals `MOCK_PASSWORD` in `mock.ts` (checked by tests/totp-reset.test.tsx). */
+export const MOCK_STEP_UP_PASSWORD = "demo";
+
+const RANK: Record<OrgUser["role"], number> = {
+  superadmin: 3, owner: 2, admin: 1, clinician: 0, researcher: 0, reviewer: 0, viewer: 0,
+};
 
 export interface MockAdminContext {
   details: SessionDetail[];
@@ -150,7 +160,7 @@ export function createMockAdmin(ctx: MockAdminContext): AdminApi {
     return u;
   };
 
-  return {
+  const api: AdminApi = {
     async listParticipants(org, query = {}) {
       ctx.ensureOrg(org);
       const { slice, next_cursor, total } = ctx.page(participants, (p) => [p.created_at, p.id], query.cursor, query.limit);
@@ -278,5 +288,48 @@ export function createMockAdmin(ctx: MockAdminContext): AdminApi {
       const { slice, next_cursor } = ctx.page(rows, (e) => [e.ts, e.id], query.cursor, query.limit);
       return { items: slice.map((e) => ({ ...e })), next_cursor, total: null };
     },
+    async resetUserTotp(org, id, request) {
+      ctx.ensureOrg(org);
+      const target = findUser(id);
+      // The mock caller is the admin `userId`: like the backend, yourself and higher ranks are refused first.
+      const caller = findUser(userId);
+      if (id === userId || RANK[target.role] > RANK[caller.role]) {
+        throw problem(403, "totp-reset-forbidden", "Forbidden", "you cannot reset this user's two-step sign-in");
+      }
+      const reason = request.reason.trim();
+      if ([...reason].length < MIN_TOTP_RESET_REASON_CHARS || [...reason].length > MAX_TOTP_RESET_REASON_CHARS) {
+        throw problem(400, "validation-failed", "Validation failed", undefined, [
+          ["reason", `must be ${MIN_TOTP_RESET_REASON_CHARS} to ${MAX_TOTP_RESET_REASON_CHARS} characters`],
+        ]);
+      }
+      if (request.password !== MOCK_STEP_UP_PASSWORD) {
+        record({
+          actor_type: "user",
+          actor_id: userId,
+          action: "user.totp_reset_failed",
+          target_type: "user",
+          target_id: id,
+          before: null,
+          after: null,
+        });
+        throw problem(401, "reauthentication-failed", "Re-authentication failed");
+      }
+      record({
+        actor_type: "user",
+        actor_id: userId,
+        action: "user.totp_reset_by_admin",
+        target_type: "user",
+        target_id: id,
+        before: null,
+        after: { reason },
+      });
+    },
   };
+
+  // WP-C.18: the record mock (participant create, encounters, attachments) shares this participant list.
+  registerMockRecordStore(
+    { orgId, userId, now, details: ctx.details, participants, page: ctx.page, encounters: [], attachments: [], seeded: false },
+    api.listParticipants,
+  );
+  return api;
 }
