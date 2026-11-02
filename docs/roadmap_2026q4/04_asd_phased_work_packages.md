@@ -115,7 +115,7 @@
 | WP-D.4 | Synthetic session generator shared by seed script and tests | 1 | I | done (to be replaced) | `tools/asd_synth` v1.0 emits seconds/`offTarget`/`synthetic` which iOS and console reject (CON-13); superseded by WP-R.4 (v2.0) + WP-D.7 |
 | WP-D.7 | Replace Python CI gates with Rust: `ios.yml`/`ios_test.sh` use `asd-cli schema check`; delete `check_session_schema_parity.py`, `asd_norm_aggregator.py`, `asd_synth/`, `asd_research_server.py` and their tests; README updates | 1 | I | done | GATE-1..4; depends on R.3, R.4 |
 | WP-D.8 | Port `scripts/check_asd_claims.py` to `asd-cli claims check` (metadata limits, denylist incl. Devanagari, Swift UI + prose literals, secrets, selftest), single call site in `ios_test.sh` | 6+ | I | backlog | ADR-0010 d4 / ADR-0009 Q5: do it the next time the scanner needs a structural change; about one day; regex dialect re-verified by the selftest |
-| WP-D.9 | Tauri 2 desktop shell `apps/curv_desktop/` loading the clinic server's console URL in remote mode (no bundled console: every route is dynamic since WP-C.16) | 7 | I | todo | ADR-0011 D10 (desktop = console in a browser/PWA; Tauri only when a binary is needed); the owner may be running it in a separate session, no commits on `dev` as of 2026-11-02 |
+| WP-D.9 | Tauri 2 desktop shell `apps/curv_desktop/` loading the clinic server's console URL in remote mode (no bundled console: every route is dynamic since WP-C.16) | 7 | I | done | ADR-0011 D10 (desktop = console in a browser/PWA; Tauri only when a binary is needed); 2026-11-02: `apps/curv_desktop/` (remote mode, URL policy in `src/policy.rs`) landed in 17fbf42 from a separate session; its gates were not re-run by the wave-1 integration |
 | WP-D.5 | ML roadmap refresh: what an attention classifier would need (n, labels, validation plan) — doc only | 3 | A | backlog | |
 | WP-D.6 | Decide/Link C++ `AsdBiomarkerPack` into kit via xcframework, or retire the claim | 4 | A | backlog | low value |
 | WP-E.1 | Pitch/deck re-base to non-diagnostic reality; aspirational section | 1 | I | done | Re-based to observation diary, 6 metrics, 2027 aspirational roadmap |
@@ -125,7 +125,7 @@
 | WP-E.5 | Native hi/ne review of store text | 3 | owner | todo | |
 | WP-E.6 | Security/privacy review pack: threat model, data-flow diagram, DPIA-lite, retention policy, AWS BAA | 3 | A + I | done | 2026-11-01: `docs/security/` (threat model, data flow, DPIA-lite, retention policy, AWS BAA checklist); owner decisions O-1..O-15 open |
 | WP-E.7 | App Store submission dry run (`appstore_precheck`, screenshots, age assurance flag) | 4 | I | backlog | |
-| WP-E.8 | HIPAA / Privacy Act 2018 administrative pack (docs only): risk analysis, policies, emergency-access procedure, BAA/DPA templates for US recipients, breach process, cross-border consent design, threat-model rows for share links, DPIA update | 7 | A + owner | blocked | ADR-0011 D9; needs O-2, O-6, O-11, O-12, O-15; phase 7 wave 3; drafts may be started in a separate owner session before the decisions (no commits on `dev` as of 2026-11-02) |
+| WP-E.8 | HIPAA / Privacy Act 2018 administrative pack (docs only): risk analysis, policies, emergency-access procedure, BAA/DPA templates for US recipients, breach process, cross-border consent design, threat-model rows for share links, DPIA update | 7 | A + owner | drafts | ADR-0011 D9; 2026-11-02: drafts landed in 55c1cb2 (`docs/security/hipaa-safeguards.md`, `policies/`, `templates/`); final versions still need O-2, O-6, O-11, O-12, O-15 |
 
 **Migration rule (2026-10-31 audit):** backend migrations are applied in order and numbers 0007 and 0010–0012 were never used. A new migration must take the next number above the highest existing one (≥0024 once WP-B.16 lands: 0020 is WP-B.11 pending TOTP, 0021 is ingest `request_hash` + housekeeping indexes, 0022 is WP-B.14 plaintext-column drop, 0023 is reserved for WP-B.16 `users.totp_required_by`), never a gap, or it will be applied out of order on databases that already ran later migrations. **2026-11-02 (verified: highest existing is 0023):** phase 7 reserves **0024** WP-B.19 (EMR-lite tables), **0025** WP-I.13 (share links, case-share columns), **0026** WP-B.21 (identity); wave 1 adds no migration; anything else takes ≥0027.
 
@@ -388,7 +388,7 @@ new participant on the server today (WP-A.16a fixes it).
 | WP-B.21 | Participant identity `local_record` (0026) | S | I | 3 | blocked: ADR-0011 Q3 |
 | WP-C.20 | Console identity panel + name search | I | S | 3 | blocked with B.21 |
 | WP-A.16b | iOS clinic mode: scan participant QR | I | S | 3 | after B.19 |
-| WP-E.8 | HIPAA / Privacy Act administrative pack (docs) | A + owner | I | 3 | blocked: O-2, O-6, O-11, O-12, O-15 |
+| WP-E.8 | HIPAA / Privacy Act administrative pack (docs) | A + owner | I | 3 | drafts landed; final blocked: O-2, O-6, O-11, O-12, O-15 |
 
 Parallel groups: **wave 1** = {B.17, R.7, I.12, B.18, B.22, B.20, A.12, A.15, A.16a, C.21}
 (ten packages, none waits on an owner decision; `rust/README.md` is the one deliberately
