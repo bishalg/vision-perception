@@ -18,6 +18,7 @@ referenced from the module specs rather than duplicated.
 | ASD Rust core and backend | [technical.md](modules/asd-rust-core-and-backend/technical.md) | [acceptance.md](modules/asd-rust-core-and-backend/acceptance.md) | [qa-validation.md](modules/asd-rust-core-and-backend/qa-validation.md) | [non-technical.md](modules/asd-rust-core-and-backend/non-technical.md) | [work-packages.md](modules/asd-rust-core-and-backend/work-packages.md) |
 | ASD gaze-tracking robustness | [technical.md](modules/asd-gaze-robustness/technical.md) | [acceptance.md](modules/asd-gaze-robustness/acceptance.md) | (tests per WP) | — | [work-packages.md](modules/asd-gaze-robustness/work-packages.md) |
 | ASD clinician workspace and interop | [technical.md](modules/asd-clinician-and-interop/technical.md) | [acceptance.md](modules/asd-clinician-and-interop/acceptance.md) | [qa-validation.md](modules/asd-clinician-and-interop/qa-validation.md) | [non-technical.md](modules/asd-clinician-and-interop/non-technical.md) | [work-packages.md](modules/asd-clinician-and-interop/work-packages.md) |
+| ASD EMR-lite record, share-a-case, clinic deployment | [technical.md](modules/asd-emr-lite-and-sharing/technical.md) | [acceptance.md](modules/asd-emr-lite-and-sharing/acceptance.md) | (tests per WP) | `docs/product/VISION.md` | [work-packages.md](modules/asd-emr-lite-and-sharing/work-packages.md) |
 
 ## Architecture decision records
 
@@ -33,6 +34,7 @@ referenced from the module specs rather than duplicated.
 | [ADR-0008](adr/ADR-0008-clinician-workspace-and-interop.md) | Clinician workspace inside the console and one Rust export bridge to hospital systems | Proposed (2026-10-31) |
 | [ADR-0009](adr/ADR-0009-phase5-security-operations.md) | Phase 5 security operations: TOTP enrolment, KEK rotation, plaintext column drop, metrics exposure, console CSP/HSTS, housekeeping | Proposed (2026-11-01) |
 | [ADR-0010](adr/ADR-0010-phase6-swift6-renames-mandatory-totp.md) | Phase 6: Swift 6 language mode, `Biomarker*` → `Engagement*` renames with a wider claims gate, mandatory TOTP per role | Proposed (2026-11-02) |
+| [ADR-0011](adr/ADR-0011-emr-lite-share-a-case-and-deployment.md) | Vision-driven scope: EMR-lite record, share-a-case export, HIPAA-safeguard mapping, multi-OS Rust core, one-command deployment (defers the hospital half of ADR-0008) | Proposed (2026-11-02) |
 
 ## Rules
 

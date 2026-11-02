@@ -1,6 +1,8 @@
 # 01 — ASD Gaze App: Product Reality and 3-Week Demo Plan
 
 > Target demo window: **2026-11-10 → 2026-11-17**. Audience assumed: clinicians / partners / investors, not App Review.
+>
+> **2026-11-02 (vision, ADR-0011):** the product is a low-friction helping hand for clinics with no record system (`docs/product/VISION.md`): the app collects, the console is the clinic's record (EMR-lite), one consented package shares a case with a doctor or researcher abroad, and one command deploys the server. Where this file says "EHR", "hospital" or "AWS" (§4 step 5, the pitch rows on Epic/Cerner), read: share-a-case export and a one-server deployment; hospital feeds are deferred. The demo storyline gains one beat after step 4: "the front desk opens the child's record, adds today's visit, and shares the case" (WP-C.18/C.19, after the demo window). The participant continuity gap (one new participant per clinic session, WP-A.16a) is fixed before any clinic pilot.
 
 ## 1. What the app actually is today (Release build)
 

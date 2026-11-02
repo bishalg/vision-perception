@@ -1,5 +1,10 @@
 # Product Vision & Core Design Principles
 
+> Scope: the palm and flood products. The ASD gaze product's vision (EMR-lite for clinics
+> with no record system, share-a-case, offline-first, one-command deployment) is in
+> `docs/product/VISION.md` (2026-11-02) and is governed by ADR-0004 (non-diagnostic) and
+> ADR-0011, not by the "prediction / result" rule below.
+
 > **One-line goal:** the user buys a **prediction / result**, never a detection.
 > CV lines are plumbing. Palm lines exist to produce a **Samudrika reading**;
 > river lines exist to produce a **flood alert + forecast**. If a screen shows
