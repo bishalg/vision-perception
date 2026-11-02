@@ -14,6 +14,7 @@
 //! - **screen-normalised space**: the oriented frame divided by its width and height, so
 //!   x, y in [0,1] cover the full display. Points are never clamped in the stored path.
 
+pub mod android_log;
 pub mod aoi_space;
 pub mod calibration;
 pub mod clip;
@@ -22,6 +23,7 @@ pub mod drift;
 pub mod filter;
 pub mod gapfill;
 pub mod geometry;
+pub mod mediapipe;
 pub mod pipeline;
 pub mod raw_log;
 pub mod raycast;

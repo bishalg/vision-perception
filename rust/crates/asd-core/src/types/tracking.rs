@@ -111,11 +111,21 @@ pub enum CameraOffsetSource {
 
 /// Which native front-end produced the raw samples (PLT-3: the axis convention is a
 /// documented constant per source; see `gaze::raycast::CAMERA_AXES`).
+///
+/// Only the raw log header (REP-1) carries it; no session or API schema does. Every source
+/// writes `face_transform` / `look_at` in the `CAMERA_AXES` convention: non-ARKit sources
+/// are converted in Rust before they reach the pipeline (`gaze::mediapipe`, WP-R.8).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum TrackingSource {
     #[default]
     ArkitFace,
+    /// MediaPipe Face Landmarker on an Android front camera, converted by
+    /// `gaze::mediapipe::convert_frame` (`asd-cli gaze convert-android`).
+    MediapipeFace,
+    /// ARCore Augmented Faces (head pose only, no eye data). Recognised so such a log
+    /// header parses; there is no converter, because head pose alone is not gaze.
+    ArcoreFace,
 }
 
 /// The kind of on-screen target (calibration, validation and drift checks share the target

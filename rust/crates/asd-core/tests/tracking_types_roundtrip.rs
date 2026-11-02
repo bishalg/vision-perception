@@ -157,6 +157,8 @@ fn enums_use_spec_spellings() {
         "orientationChanged"
     );
     assert_eq!(s(json!(TrackingSource::ArkitFace)), "arkitFace");
+    assert_eq!(s(json!(TrackingSource::MediapipeFace)), "mediapipeFace");
+    assert_eq!(s(json!(TrackingSource::ArcoreFace)), "arcoreFace");
 }
 
 #[test]

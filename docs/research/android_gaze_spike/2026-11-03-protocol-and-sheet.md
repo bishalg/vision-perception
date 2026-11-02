@@ -18,10 +18,11 @@ Spec: `docs/spec/modules/asd-emr-lite-and-sharing/technical.md` AND-4,
 | Detected-frame ratio | yes | `live.detectedRatio` (MediaPipe: face + 10 iris landmarks; ARCore: tracked face) |
 | CPU / thermal | yes | `live.processCpuCores`, `thermalStart`/`thermalEnd` (`thermalStatus` 0 none .. 3 severe .. 6 shutdown) |
 | `asd-cli gaze replay --check` | yes | the `.jsonl` raw log (encoded by Rust; verified on the emulator, 22 targets, exit 0) |
-| Accuracy in degrees (median, p90), pipeline valid-frame ratio | **no, binding gap** | needs a Rust package that turns MediaPipe/ARCore landmarks into `face_transform` + `look_at` (README "Binding gap"); then the sidecar `.landmarks.jsonl` is converted and replayed, with no new volunteer sessions |
+| Accuracy in degrees (median, p90), pipeline valid-frame ratio | **MediaPipe: yes, after conversion** (WP-R.8); ARCore: no (no eye data) | `asd-cli gaze convert-android` turns the raw log + `.landmarks.jsonl` + `.meta.json` into a replayable `mediapipeFace` log (section 5); no new volunteer sessions needed |
 
-So run the volunteer sessions now; fill the accuracy columns when the Rust converter
-lands (a separate work package, as WP-A.14 requires for any Rust change).
+Run the volunteer sessions, then convert and replay the MediaPipe logs (section 5). ARCore
+runs give fps, detected ratio and thermal only; their accuracy cells stay `n/a (no eye
+data)`.
 
 ## 1. Devices
 
@@ -112,18 +113,44 @@ jq -r '[.rawLog, .capture.backend, .capture.delegate // "-", .condition, .distan
 # Log identity for the sheet (never the log itself):
 shasum -a 256 /Volumes/<encrypted>/asd-spike/<device>/spike_logs/*[0-9].jsonl
 
-# Accuracy, after the Rust converter exists (binding gap): convert, then replay.
-#   asd-cli gaze convert-android <base>.landmarks.jsonl ...   (name to be decided by that package)
-cargo run -q --manifest-path rust/Cargo.toml -p asd-cli -- gaze replay <converted>.jsonl --model angularAffine \
+# Accuracy (MediaPipe runs only): convert with the device's caliper measurements
+# (section 1: active area W x H mm, camera centre X,Y mm from the active area's top-left,
+# portrait, y down, negative = above the glass), then replay. Converted logs are still
+# biometric data: write them next to the originals on the encrypted disk.
+D=/Volumes/<encrypted>/asd-spike/<device>/spike_logs
+mkdir -p "$D/converted"
+for f in "$D"/*mediapipe*[0-9].jsonl; do
+  b="${f%.jsonl}"
+  cargo run -q --manifest-path rust/Cargo.toml -p asd-cli -- gaze convert-android \
+    "$f" "$b.landmarks.jsonl" --meta "$b.meta.json" \
+    --screen-mm <W>,<H> --camera-offset-mm <X>,<Y> \
+    -o "$D/converted/$(basename "$f")" > "$D/converted/$(basename "$b").convert.json"
+done
+cargo run -q --manifest-path rust/Cargo.toml -p asd-cli -- gaze replay "$D/converted/<run>.jsonl" --model angularAffine \
   | jq '{acc: .summary.validation.accuracyDeg, prec: .summary.validation.precisionRmsDeg,
          loss: .summary.validation.dataLoss, targets: [.targets[] | select(.kind=="validation") | .accuracyDeg]}'
-cargo run -q --manifest-path rust/Cargo.toml -p asd-cli -- gaze bench-report --logs <dir-of-converted-logs> --models all
+cargo run -q --manifest-path rust/Cargo.toml -p asd-cli -- gaze bench-report --logs "$D/converted" --models all
 ```
 
+Before trusting the numbers, check each `.convert.json` (the conversion summary):
+`intrinsicsSource` should be `lensIntrinsicCalibration` (else `focalLength`; if it says
+`mediapipeVirtualCamera`, distances rest on MediaPipe's guess, note it in the sheet);
+`medianDistanceCm` should be within about 10 % of the ruler distance (`metaDistanceCm`)
+and `medianInterocularMm` about 55-70 for adults. Values far off mean a MediaPipe
+convention the converter assumes (column-major matrix in cm, 63-degree vertical field of
+view, image up = `+y`, unmirrored image) does not hold on that device: stop and report it,
+do not fill the sheet. `issues` counts frames without gaze (`eyesClosed`, `missingIris`,
+`extremeHeadPose`, `irisOffEyeball`, `noFace`, `unmatched`). Without `--screen-mm` and
+`--camera-offset-mm` the converter falls back to the OEM dpi and a guessed camera
+position and the verdict is capped at `fair`: always pass the measurements for the sheet.
+
 Accuracy per cell = median and p90 over all hit `grid13` validation targets of all
-baseline runs of that device x back-end (pool targets, not run medians). Today, a full
-`gaze replay` of a spike log runs but every target is `missed` and the verdict is
-`unusable`; that is the binding gap, not a tracking result.
+baseline runs of that device x back-end (pool targets, not run medians), from the
+**converted** logs. A replay of an unconverted spike log has every target `missed` (no
+gaze geometry): that is the missing conversion, not a tracking result. Expected limit:
+at 50 cm with the 640 x 480 analysis image, one pixel of iris-centre error is about 5
+degrees of eye rotation, so per-frame noise is large and window medians carry the
+accuracy (WP-R.8 spec).
 
 ## 6. AND-4 sheet (fill in)
 
