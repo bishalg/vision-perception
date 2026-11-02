@@ -210,6 +210,42 @@
       ],
       "type": "string"
     },
+    "AttachmentPage": {
+      "description": "`GET /v1/participants/{id}/attachments` (REC-6, WP-B.19). `total` is the\nparticipant's live attachment count when the server computes it.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/Attachment"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
     "AttachmentUpload": {
       "description": "`201` answer to `POST /v1/participants/{id}/attachments` (REC-7).",
       "properties": {

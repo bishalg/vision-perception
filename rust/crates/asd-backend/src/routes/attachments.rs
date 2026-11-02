@@ -25,8 +25,8 @@
 //! [`load_content`] is the one decrypting reader; the case package (WP-I.13b) uses it too.
 
 use asd_contract::emr::{
-    sanitize_file_name, Attachment, AttachmentKind, AttachmentMediaType, AttachmentUpload,
-    CreateAttachmentRequest, UploadTarget, MAX_ATTACHMENT_BYTES,
+    sanitize_file_name, Attachment, AttachmentKind, AttachmentMediaType, AttachmentPage,
+    AttachmentUpload, CreateAttachmentRequest, UploadTarget, MAX_ATTACHMENT_BYTES,
 };
 use asd_contract::problem::{ATTACHMENT_TOO_LARGE, ATTACHMENT_TYPE_NOT_ALLOWED, CONFLICT};
 use axum::body::Bytes;
@@ -37,7 +37,6 @@ use axum::routing::{get, post, put};
 use axum::{Json, Router};
 use chrono::{DateTime, Utc};
 use http::{header, HeaderMap, HeaderValue, StatusCode};
-use serde::Serialize;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use sqlx::PgPool;
@@ -485,15 +484,6 @@ async fn download(
 }
 
 // ---- GET /participants/{id}/attachments ------------------------------------------------------
-
-/// `GET /v1/participants/{id}/attachments`: the shape of the other `*Page` types.
-/// `asd-contract::emr` has no `AttachmentPage` yet (reported to the main session).
-#[derive(Debug, Serialize)]
-pub struct AttachmentPage {
-    pub items: Vec<Attachment>,
-    pub next_cursor: Option<String>,
-    pub total: Option<u64>,
-}
 
 async fn list(
     auth: Require<perm::ParticipantRead>,

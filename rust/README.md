@@ -302,6 +302,48 @@ scripts (only `DATABASE_URL`, plus `ASD_DATA_KEK` for `verify`):
   (`kek_id` is the fingerprint, never the key). Exits 3 when any data key cannot be
   unwrapped (the key card does not match this database), 2 without `ASD_DATA_KEK`.
 
+## Emergency password reset (WP-B.24, server shell only)
+
+`asd-backend admin reset-password --user <uuid>` sets a new password for an active user, revokes all
+their refresh tokens and writes audit `user.password_reset`. It prints a generated 20-character
+temporary password once on stdout; with `ASD_ADMIN_PASSWORD` set it uses that value instead and prints
+the user id, so the owner can type their own. It does not change two-step sign-in (use `reset-totp`),
+access tokens already issued stay valid up to 15 minutes, and there is no forced change at next
+sign-in yet. Use it with a second person present (`docs/security/policies/emergency-access.md`).
+
+## EMR-lite record (WP-B.19, REC-1..8)
+
+Migration 0024 adds `encounters` and `attachments`. Encounter summaries are encrypted with the org
+data key (AAD `encounters:summary_ct:{org}:{id}`); attachment bytes are encrypted before they reach the
+blob store (AAD `attachments:blob:{org}:{id}`, key `attachments/{org}/{participant}/{id}`).
+
+- `POST /v1/orgs/{id}/participants` (token + QR payload), `POST /v1/orgs/{id}/participants/search`
+- `/v1/participants/{id}/encounters`, `/v1/encounters/{id}` (PATCH with `If-Match`),
+  `/v1/encounters/{id}/sessions`
+- `GET /v1/orgs/{id}/follow-ups`
+- `/v1/participants/{id}/attachments`, `PUT /v1/attachments/{id}/content` (at most 10 MiB, optional
+  `Content-Digest: sha-256=:<b64>:`, type checked by magic number, written once),
+  `GET`/`DELETE /v1/attachments/{id}`
+
+Reads of summaries and attachments are audited (`encounter.read`, `attachment.read`). Erasure deletes
+attachments, their blobs and encounters unless the participant is held (a signed note or an encounter
+with a clinician summary holds it).
+
+## Share a case (WP-I.13, SHR-7..9)
+
+`POST /v1/orgs/{id}/exports` with `format: case_package` and `case {participant_id, session_ids?,
+recipient, consent_reference?, consent_recorded_at?, include_attachments}` queues a ZIP of one
+participant's case (identified needs consent; research is de-identified and consent-filtered). On a
+ready case export, `POST /v1/exports/{id}/share-link {expires_in_days? (1..7, default 3),
+max_downloads? (1..5, default 1)}` returns the link and a 12-character passcode once;
+`GET /v1/exports/{id}/share-links` lists links; `DELETE /v1/share-links/{id}` revokes.
+
+Public, no bearer: `POST /v1/share/{id}/open {passcode}` returns a 5-minute download token, then
+`GET /v1/share/{id}/file?t=`. Limits: 10 opens per link and 30 per IP per hour (per process).
+Responses are `no-store`, `noindex` and `no-referrer`; open, failed open and download are audited with
+the client IP. Passcodes are Argon2id-hashed and never logged. Links never outlive the artifact
+(EXJ-4). Migration 0025.
+
 ## Conventions
 
 - Licence `Apache-2.0` on every crate; dependencies must pass `rust/deny.toml`.

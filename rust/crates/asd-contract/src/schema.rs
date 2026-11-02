@@ -335,6 +335,7 @@ pub fn api_v1() -> Value {
         crate::emr::CreateShareLinkRequest,
         crate::emr::CreatedShareLink,
         crate::emr::ShareLinkPage,
+        crate::emr::AttachmentPage,
         crate::emr::ShareLinkOpenRequest,
         crate::emr::ShareLinkOpenResponse,
     );

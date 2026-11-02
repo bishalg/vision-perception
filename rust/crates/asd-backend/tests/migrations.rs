@@ -49,6 +49,7 @@ const TABLES: &[&str] = &[
     "review_items",
     "session_clip_scores",
     "sessions",
+    "share_links", // WP-I.13
     "stimulus_assets",
     "users",
 ];

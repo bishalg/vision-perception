@@ -484,6 +484,17 @@ pub struct ShareLinkPage {
     pub next_cursor: Option<String>,
 }
 
+/// `GET /v1/participants/{id}/attachments` (REC-6, WP-B.19). `total` is the
+/// participant's live attachment count when the server computes it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct AttachmentPage {
+    pub items: Vec<Attachment>,
+    #[serde(default)]
+    pub next_cursor: Option<String>,
+    #[serde(default)]
+    pub total: Option<u64>,
+}
+
 /// `POST /v1/share/{link_id}/open` (SHR-9, public). Wrong passcode: `401
 /// share-passcode-invalid`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
