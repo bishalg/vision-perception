@@ -209,6 +209,7 @@ async fn create(
 async fn one(
     auth: Require<perm::ClinicalContentRead>,
     crypto: ClinicalCrypto,
+    meta: RequestMeta,
     State(state): State<AppState>,
     Path(raw_id): Path<String>,
 ) -> AppResult<Json<ClinicalNote>> {
@@ -216,12 +217,24 @@ async fn one(
     let row = note_by_id(&state.db, id).await?.ok_or(AppError::NotFound)?;
     auth.ensure_org(row.org_id)?;
     let org = row.org_id;
+    crate::audit::record_read(
+        &state.db,
+        &auth.principal,
+        &meta,
+        org,
+        "note.read",
+        "clinical_note",
+        &id.to_string(),
+        None,
+    )
+    .await?;
     Ok(Json(row.into_note(&crypto, org).await?))
 }
 
 async fn list(
     auth: Require<perm::ClinicalContentRead>,
     crypto: ClinicalCrypto,
+    meta: RequestMeta,
     State(state): State<AppState>,
     Path(raw_id): Path<String>,
     query: Result<Query<PageQuery>, QueryRejection>,
@@ -267,6 +280,19 @@ async fn list(
 
     let limit = usize::try_from(limit).unwrap_or(usize::MAX);
     let has_more = rows.len() > limit;
+    // HIP-1: one row per page naming the note ids (no text), before any body is decrypted.
+    let ids: Vec<String> = rows.iter().take(limit).map(|r| r.id.to_string()).collect();
+    crate::audit::record_read(
+        &state.db,
+        &auth.principal,
+        &meta,
+        org,
+        "note.read",
+        "participant",
+        &participant.to_string(),
+        Some(serde_json::json!({ "note_ids": ids })),
+    )
+    .await?;
     let mut last = None;
     let mut items = Vec::with_capacity(rows.len().min(limit));
     for row in rows.into_iter().take(limit) {

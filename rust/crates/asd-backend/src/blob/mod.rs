@@ -32,6 +32,65 @@ pub const MAX_LARGE_BLOB_BYTES: usize = 500 * 1024 * 1024;
 /// Longest pre-signed GET a caller may ask for (EXJ-5 uses 5 minutes, webhooks 15).
 pub const MAX_PRESIGN_GET_TTL: Duration = Duration::from_secs(15 * 60);
 
+/// SYNC-6 / HIP-4 (RFC 9530): verifies a request's `Content-Digest` against `body`.
+///
+/// Absent header: accepted (older apps send none). Present: it must carry a
+/// `sha-256=:<base64>:` member (other algorithms are ignored) that matches the SHA-256 of
+/// `body`. A malformed header or one without `sha-256` is `400 validation-failed`; a
+/// well-formed digest that does not match is `400 digest-mismatch`. Shared by the proxy
+/// blob PUT and REC-7 attachments.
+pub fn verify_content_digest(
+    headers: &http::HeaderMap,
+    body: &[u8],
+) -> Result<(), crate::error::AppError> {
+    use crate::error::AppError;
+    use base64::Engine as _;
+    use sha2::{Digest, Sha256};
+
+    let values: Vec<&http::HeaderValue> = headers.get_all("content-digest").iter().collect();
+    if values.is_empty() {
+        return Ok(());
+    }
+    let malformed = || {
+        AppError::Validation(vec![crate::problem::InvalidParam {
+            name: "Content-Digest".into(),
+            reason: "must be sha-256=:<base64>: (RFC 9530)".into(),
+        }])
+    };
+    let mut claimed: Option<Vec<u8>> = None;
+    for value in values {
+        let text = value.to_str().map_err(|_| malformed())?;
+        for member in text.split(',') {
+            let Some((alg, rest)) = member.trim().split_once('=') else {
+                return Err(malformed());
+            };
+            if !alg.eq_ignore_ascii_case("sha-256") {
+                continue;
+            }
+            let b64 = rest
+                .strip_prefix(':')
+                .and_then(|r| r.strip_suffix(':'))
+                .ok_or_else(malformed)?;
+            let raw = base64::engine::general_purpose::STANDARD
+                .decode(b64)
+                .map_err(|_| malformed())?;
+            if raw.len() != 32 || claimed.replace(raw).is_some() {
+                return Err(malformed());
+            }
+        }
+    }
+    let claimed = claimed.ok_or_else(malformed)?;
+    let actual = Sha256::digest(body);
+    if actual.as_slice() == claimed.as_slice() {
+        Ok(())
+    } else {
+        Err(AppError::BadRequest {
+            slug: asd_contract::problem::DIGEST_MISMATCH,
+            detail: "Content-Digest does not match the request body".into(),
+        })
+    }
+}
+
 /// An absolute upload URL the device PUTs to directly (CON-18 `presigned` mode).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PresignedPut {
@@ -188,6 +247,48 @@ pub(crate) fn check_size(len: usize) -> Result<(), BlobError> {
 
 #[cfg(test)]
 mod tests {
+    fn headers(v: Option<&str>) -> http::HeaderMap {
+        let mut h = http::HeaderMap::new();
+        if let Some(v) = v {
+            h.insert("content-digest", http::HeaderValue::from_str(v).unwrap());
+        }
+        h
+    }
+
+    #[test]
+    fn content_digest_rules() {
+        // sha-256 of "abc", base64.
+        let good = "sha-256=:ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa0=:";
+        assert!(verify_content_digest(&headers(None), b"abc").is_ok());
+        assert!(verify_content_digest(&headers(Some(good)), b"abc").is_ok());
+        assert!(
+            verify_content_digest(&headers(Some(&format!("sha-512=:AA==:, {good}"))), b"abc")
+                .is_ok()
+        );
+        assert!(matches!(
+            verify_content_digest(&headers(Some(good)), b"abd"),
+            Err(crate::error::AppError::BadRequest {
+                slug: asd_contract::problem::DIGEST_MISMATCH,
+                ..
+            })
+        ));
+        for bad in [
+            "sha-512=:AA==:",
+            "sha-256=ungW",
+            "sha-256=:AA==:",
+            "x",
+            "sha-256=:!!:",
+        ] {
+            assert!(
+                matches!(
+                    verify_content_digest(&headers(Some(bad)), b"abc"),
+                    Err(crate::error::AppError::Validation(_))
+                ),
+                "{bad}"
+            );
+        }
+    }
+
     use super::*;
 
     #[test]

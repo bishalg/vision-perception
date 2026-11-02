@@ -112,6 +112,11 @@ const ROUTES: &[Route] = &[
         success: StatusCode::OK,
     },
     Route {
+        name: "POST /orgs/{id}/users/{user_id}/totp/reset",
+        allowed: MANAGERS,
+        success: StatusCode::NO_CONTENT,
+    },
+    Route {
         name: "GET /orgs/{id}/devices",
         allowed: DEVICE_STAFF,
         success: StatusCode::OK,
@@ -159,6 +164,16 @@ async fn request_for(c: &Ctx, route: &Route, org: Uuid) -> (Method, String, Opti
                 Method::PATCH,
                 format!("/v1/orgs/{org}/users/{target}"),
                 Some(json!({"role": "reviewer"})),
+            )
+        }
+        "POST /orgs/{id}/users/{user_id}/totp/reset" => {
+            // WP-B.17: a viewer target (below every manager's rank), caller's step-up.
+            let email = format!("totp-{}@example.org", Uuid::new_v4().simple());
+            let target = seed_user(&c.db.pool, Some(org), Role::Viewer, &email).await;
+            (
+                Method::POST,
+                format!("/v1/orgs/{org}/users/{target}/totp/reset"),
+                Some(json!({"password": PASSWORD, "reason": "lost authenticator phone"})),
             )
         }
         "GET /orgs/{id}/devices" => (Method::GET, format!("/v1/orgs/{org}/devices"), None),
@@ -261,6 +276,14 @@ fn matrix_table_covers_every_action_and_superadmin_has_all_but_clinical_content(
         assert!(
             rbac::MATRIX.iter().any(|(a, _)| a == action),
             "{action:?} has no row in MATRIX"
+        );
+    }
+    // WP-B.17 (TRS-1, REC-8): owner and admin only.
+    for role in ORG_ROLES {
+        assert_eq!(
+            rbac::allows(role, Action::UserTotpReset),
+            matches!(role, Role::Owner | Role::Admin),
+            "{role:?}"
         );
     }
     for role in ORG_ROLES {

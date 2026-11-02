@@ -485,6 +485,7 @@ struct FileQuery {
 /// another blob mode is `404`. The query string is never logged (OBS-1).
 async fn file(
     State(state): State<AppState>,
+    meta: RequestMeta,
     Path(raw): Path<String>,
     Query(q): Query<FileQuery>,
 ) -> AppResult<Response> {
@@ -503,6 +504,18 @@ async fn file(
     )
     .ok_or(AppError::Forbidden)?;
     let key = ensure_downloadable(&row)?;
+    // HIP-1: the bearer is the signed token, not a user, so the row is a system actor
+    // (id of the export only). Not best-effort: no row, no bytes.
+    let mut tx = state.db.begin().await?;
+    AuditEvent::system("export.file_served", "export", row.id)
+        .org(row.org_id)
+        .meta(&meta)
+        .record(&mut tx)
+        .await
+        .map_err(|e| AppError::Internal(format!("read audit failed: {e}")))?;
+    tx.commit()
+        .await
+        .map_err(|e| AppError::Internal(format!("read audit failed: {e}")))?;
     // `ensure_downloadable` already refused an expired export, so a missing artifact here is
     // a server fault (lost blob, or a worker on a separate in-memory store), not "expired".
     let blob = state.blobs.get(&key).await?.ok_or_else(|| {
@@ -532,11 +545,23 @@ async fn file(
 
 async fn disclosures(
     auth: Require<perm::ClinicalContentRead>,
+    meta: RequestMeta,
     State(state): State<AppState>,
     Path(raw): Path<String>,
 ) -> AppResult<Json<DisclosurePage>> {
     let (participant, org) = participant_org(&state.db, &raw).await?;
     auth.ensure_org(org)?;
+    crate::audit::record_read(
+        &state.db,
+        &auth.principal,
+        &meta,
+        org,
+        "disclosures.read",
+        "participant",
+        &participant.to_string(),
+        None,
+    )
+    .await?;
     let rows = sqlx::query!(
         r#"SELECT e.id, array_agg(i.session_id ORDER BY i.session_id) AS "session_ids!"
            FROM exports e JOIN export_items i ON i.export_id = e.id

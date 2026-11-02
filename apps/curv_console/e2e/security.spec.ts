@@ -93,3 +93,38 @@ test.describe("mandatory two-step sign-in (WP-C.17, acceptance 26)", () => {
     await expect(page.getByTestId("totp-nudge")).toHaveCount(0);
   });
 });
+
+test.describe("automatic logoff (WP-C.21, acceptance 23)", () => {
+  test.skip(LIVE, "needs to rewrite the console's stamp cookies");
+
+  async function stamp(page: import("@playwright/test").Page, name: string, ageMs: number) {
+    const url = new URL(page.url()).origin;
+    await page.context().addCookies([{ name, value: String(Date.now() - ageMs), url, httpOnly: true, sameSite: "Lax" }]);
+  }
+
+  test("idle for 31 minutes: the next page load lands on /login?reason=idle", async ({ page }) => {
+    const org = await loginToOverview(page);
+    await stamp(page, "curv_last_seen", 31 * 60_000);
+    await page.goto(`/${org}/sessions`);
+    await expect(page).toHaveURL(/\/login\?reason=idle/);
+    await expect(page.getByTestId("logoff-reason")).toContainText("idle for 30 minutes");
+    // The auth cookies are gone: a protected page now needs a fresh login.
+    await page.goto(`/${org}/overview`);
+    await expect(page).toHaveURL(/\/login/);
+  });
+
+  test("an active session older than 12 hours lands on /login?reason=expired", async ({ page }) => {
+    const org = await loginToOverview(page);
+    await stamp(page, "curv_login_at", 13 * 3_600_000);
+    await page.goto(`/${org}/sessions`);
+    await expect(page).toHaveURL(/\/login\?reason=expired/);
+    await expect(page.getByTestId("logoff-reason")).toContainText("12-hour limit");
+  });
+
+  test("a recent session is untouched", async ({ page }) => {
+    const org = await loginToOverview(page);
+    await stamp(page, "curv_last_seen", 5 * 60_000);
+    await page.goto(`/${org}/sessions`);
+    await expect(page.getByRole("heading", { name: "Sessions", level: 1 })).toBeVisible();
+  });
+});

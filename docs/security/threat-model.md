@@ -44,7 +44,7 @@ Actors: parent or clinic staff using the iOS app; console users (owner, admin, c
 | B2 API to stores | SQL, S3 calls | app-level encryption of clinical columns; DB and S3 credentials from the environment (`BE/src/config.rs`) |
 | B4 worker to third parties | webhook POST, SFTP upload | SSRF guard with pinned DNS answers, https only, pinned SFTP host key (`BE/src/interop/netguard.rs`, `BE/src/interop/sftp.rs`) |
 
-Transport security (TLS termination, HSTS) is **not** done by the application: neither `BE/src/app.rs` nor `CON/next.config.ts` sets HSTS. It is expected from the proxy (Cloudflare Tunnel today, ALB in WP-B.7, **NOT IMPLEMENTED**). The iOS app refuses non-https and IP-literal hosts (`IOS/Models/ResearchStudyConfiguration.swift`).
+Transport security: the API (WP-B.13, OBS-4) and the console (WP-C.16, CSP-2) set HSTS themselves; TLS is terminated by Caddy in the clinic stack `deploy/clinic-server/` (WP-B.18, DPL-3: Let's Encrypt, Caddy's internal CA, or Cloudflare Tunnel), with Postgres and MinIO unpublished. The iOS app refuses non-https and IP-literal hosts (`IOS/Models/ResearchStudyConfiguration.swift`).
 
 ## 3. Existing mitigations (reference list)
 
@@ -174,8 +174,8 @@ Likelihood and impact are the author's judgement on the current code, for owner 
 | F7 | CSP, HSTS and idle timeout in the console | R7 | WP-C follow-up |
 | F8 | Minimum cell size for research exports | R8 | WP-I follow-up |
 | F9 | Audit log export to write-once storage; retention rule | R9 | WP-B.7 |
-| F10 | Run the API as `asd_app` (not the owner role) in every non-test deployment | audit integrity | WP-B.7 |
-| F11 | Confirm `ASD_TRUST_PROXY_HEADERS` per environment; add a startup warning when off behind a known proxy | R4 | WP-B.7 |
+| F10 | Run the API as `asd_app` (not the owner role) in every non-test deployment | audit integrity | Done by WP-B.18: `deploy/clinic-server/` runs `api` and `worker` as `asd_app` (`install.sh` sets its password after the first migration; `test/compose_smoke.sh` checks the API log line) |
+| F11 | Confirm `ASD_TRUST_PROXY_HEADERS` per environment; add a startup warning when off behind a known proxy | R4 | Done by WP-B.18 for the clinic stack: `ASD_TRUST_PROXY_HEADERS=true` behind Caddy, which strips a client-sent `Cf-Connecting-Ip` outside tunnel mode (the startup warning is not built) |
 | F12 | Pen-test or external review before any clinical pilot | all | owner |
 
 ## 7. Owner decisions raised by this document

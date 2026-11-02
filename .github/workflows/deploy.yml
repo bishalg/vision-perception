@@ -1,0 +1,51 @@
+# owner: WP-B.18 (DPL-9)
+# Clinic-server stack smoke test: builds the backend, console and backup images and runs
+# deploy/clinic-server/test/compose_smoke.sh (install, console + API through Caddy, ingest,
+# clinical note, backup, restore drill PASS/FAIL, restore, upgrade no-op, status).
+name: deploy
+
+on:
+  push:
+    branches: [dev, main]
+    paths:
+      - "deploy/**"
+      - "rust/Dockerfile"
+      - "apps/curv_console/Dockerfile"
+      - "apps/curv_console/next.config.ts"
+      - ".github/workflows/deploy.yml"
+  pull_request:
+    paths:
+      - "deploy/**"
+      - "rust/Dockerfile"
+      - "apps/curv_console/Dockerfile"
+      - "apps/curv_console/next.config.ts"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compose-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint the scripts (shellcheck) and the compose file
+        run: |
+          shellcheck -x deploy/clinic-server/*.sh deploy/clinic-server/test/*.sh
+          docker compose --project-directory deploy/clinic-server -f deploy/clinic-server/docker-compose.yml \
+            --env-file deploy/clinic-server/.env.example --profile backup --profile tunnel config -q
+
+      # The console image carries the Rust core for the browser (public/asd-wasm).
+      - name: Build the asd-wasm package for the console image
+        run: |
+          rustup show active-toolchain || rustup toolchain install stable --profile minimal
+          curl -sSf https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
+          scripts/build_asd_wasm.sh
+          node apps/curv_console/scripts/prepare-asd-wasm.mjs
+
+      - name: Compose smoke test
+        run: bash deploy/clinic-server/test/compose_smoke.sh

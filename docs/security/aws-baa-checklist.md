@@ -1,5 +1,7 @@
 # AWS deployment and BAA checklist (requirements for WP-B.7)
 
+**2026-11-02:** the clinic server stack in `deploy/clinic-server/` (WP-B.18, ADR-0011 D8) is the default deployment; this checklist applies only if the stack is ever hosted on AWS.
+
 **STATUS: NOT IMPLEMENTED.** WP-B.7 is `todo` in `docs/roadmap_2026q4/04_asd_phased_work_packages.md`. Nothing in this file describes a running AWS environment. It lists what WP-B.7 must deliver and what the owner must decide or sign, so the deployment can later be called "BAA-ready". The product must not be described as HIPAA-compliant until a BAA is signed and an external security review exists (`docs/roadmap_2026q4/02_asd_backend_architecture.md` ADR-B8).
 
 Path shorthand: **BE/** = `rust/crates/asd-backend/`.
@@ -28,7 +30,7 @@ Starting points already in the repo: the target architecture in `docs/spec/modul
 ## 3. Network and transport
 
 - [ ] VPC with private subnets for ECS tasks and RDS; no public IP on RDS or tasks; only the ALB is public.
-- [ ] ALB with ACM certificate, TLS 1.2 minimum (prefer a TLS 1.3 policy); HTTP redirected to HTTPS. The app sets no HSTS (`BE/src/app.rs`, `apps/curv_console/next.config.ts`), so add it at the ALB or in a follow-up code change.
+- [ ] ALB with ACM certificate, TLS 1.2 minimum (prefer a TLS 1.3 policy); HTTP redirected to HTTPS. The API (WP-B.13, OBS-4) and the console (WP-C.16, CSP-2) set HSTS themselves; the ALB need not add it.
 - [ ] iOS requires https and a DNS host (`apps/ios_asd_gaze_app/Sources/Models/ResearchStudyConfiguration.swift`): the public API needs a real DNS name.
 - [ ] `ASD_TRUST_PROXY_HEADERS=true` in AWS (client IP from the last `X-Forwarded-For` hop) so rate limits and audit IPs are the client's, not the ALB's (`BE/src/auth/mod.rs`). Verify the ALB is the only path to the task, otherwise the header can be forged.
 - [ ] Console origin set exactly: `ASD_CONSOLE_ORIGIN=https://<console host>` (`BE/src/config.rs`); `ASD_PUBLIC_BASE_URL` set for webhook download links.

@@ -12,6 +12,7 @@ pub mod care;
 pub mod catalog_checks; // WP-C.4
 pub mod clinical;
 pub mod config;
+pub mod emr; // WP-R.7
 pub mod export;
 mod jcs;
 mod mirror;

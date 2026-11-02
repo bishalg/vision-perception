@@ -714,6 +714,37 @@ public enum Localizer {
             "en": "Medical conditions",
             "ne": "चिकित्सा अवस्थाहरू",
             "hi": "चिकित्सा स्थितियाँ"
+        ],
+        // SYNC-8 clinic upload status line (counts only).
+        "sync_status_waiting": [
+            "en": "%d waiting",
+            "ne": "%d पर्खाइमा",
+            "hi": "%d प्रतीक्षा में"
+        ],
+        "sync_status_uploading": [
+            "en": "%d uploading",
+            "ne": "%d अपलोड हुँदै",
+            "hi": "%d अपलोड हो रहे"
+        ],
+        "sync_status_attention": [
+            "en": "%d need attention",
+            "ne": "%d लाई ध्यान चाहिन्छ",
+            "hi": "%d पर ध्यान चाहिए"
+        ],
+        "sync_status_last_synced": [
+            "en": "last synced %@",
+            "ne": "पछिल्लो सिङ्क %@",
+            "hi": "अंतिम सिंक %@"
+        ],
+        "sync_status_never": [
+            "en": "not synced yet",
+            "ne": "अझै सिङ्क भएको छैन",
+            "hi": "अभी सिंक नहीं हुआ"
+        ],
+        "sync_status_retry": [
+            "en": "Retry",
+            "ne": "फेरि प्रयास",
+            "hi": "फिर से प्रयास"
         ]
     ]
 

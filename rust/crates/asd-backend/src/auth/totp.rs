@@ -20,7 +20,12 @@
 //!   stores a *pending* seed (`users.totp_pending_ct`, AAD [`pending_aad`], 10 minutes),
 //!   [`confirm_enrolment`] moves it to `totp_secret_ct` once a code from it matches,
 //!   [`disable`] and [`reset`] clear everything. [`load_secret`] never reads the pending
-//!   columns, so a pending seed affects neither login nor step-up.
+//!   columns, so a pending seed affects neither login nor step-up;
+//! - resets by someone else (TRS-2, WP-B.17): [`reset_for_user`] clears every TOTP column
+//!   and revokes the user's refresh-token families, in the caller's transaction. It is the
+//!   one implementation behind the org-admin route (`POST /v1/orgs/{id}/users/{uid}/totp/
+//!   reset`) and the operator command (`admin reset-totp`, through [`reset`]), so the two
+//!   cannot drift. `totp_required_by` is never touched (ADR-0010 trap 15: no new grace).
 //!
 //! Seeds and codes are never logged or put into an error.
 
@@ -503,12 +508,11 @@ pub async fn disable(
     Ok(DisableOutcome::Disabled)
 }
 
-/// AUTH-9 (operator `admin reset-totp`, wired by WP-B.14): clears the seed, the spent step
-/// and any pending seed, with audit `user.totp_reset` (`actor: operator`). `false` when no
-/// such user exists.
+/// AUTH-9 (operator `admin reset-totp`, wired by WP-B.14): [`reset_for_user`] with audit
+/// `user.totp_reset` (`actor: operator`). `false` when no such user exists.
 pub async fn reset(db: &PgPool, user_id: Uuid) -> AppResult<bool> {
     let mut tx = db.begin().await?;
-    let Some(org_id) = clear_all(&mut tx, user_id).await? else {
+    let Some(org_id) = reset_for_user(&mut tx, user_id).await? else {
         tx.rollback().await?;
         return Ok(false);
     };
@@ -520,6 +524,22 @@ pub async fn reset(db: &PgPool, user_id: Uuid) -> AppResult<bool> {
     event.record(&mut tx).await?;
     tx.commit().await?;
     Ok(true)
+}
+
+/// TRS-2: clears the seed, the spent step and any pending seed of `user_id`, and revokes
+/// every refresh-token family of the user (their next refresh fails; access tokens run out
+/// within their 15 minutes), in the caller's transaction. `totp_required_by` stays as it
+/// is. The caller writes the audit row. `Some(org_id)` when the user exists, `None` (and
+/// nothing changed) otherwise.
+pub async fn reset_for_user(
+    conn: &mut sqlx::PgConnection,
+    user_id: Uuid,
+) -> AppResult<Option<Option<Uuid>>> {
+    let Some(org_id) = clear_all(&mut *conn, user_id).await? else {
+        return Ok(None);
+    };
+    crate::auth::refresh::revoke_user(conn, user_id).await?;
+    Ok(Some(org_id))
 }
 
 /// Clears every TOTP column of the user; `Some(org_id)` when the user exists.

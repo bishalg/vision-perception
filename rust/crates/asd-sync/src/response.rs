@@ -4,6 +4,7 @@
 //! `ResearchKitSyncService.processSession`, `retryAfterSeconds`).
 
 use asd_contract::api_v1::RegisterDeviceResponse;
+use asd_contract::problem;
 use serde::Deserialize;
 
 /// Upper bound on an honoured `Retry-After`: a hostile or broken server must not park the
@@ -71,6 +72,40 @@ pub fn classify_response(status: u16, headers: &[(String, String)], body: &[u8])
     }
 }
 
+/// Classifies the answer to `POST /v1/sessions` (and a blob `PUT`) reading the `409` body
+/// (SYNC-7). Every other status is classified exactly as [`classify_response`] does.
+///
+/// A `409` is classified on the problem slug first (`type` ends in `/<slug>`, RFC 7807):
+/// `idempotency-key-reused` or `participant-withdrawn` -> `Fatal` (quarantine: the item is
+/// kept for inspection, never deleted). Otherwise a body with `duplicate: true` and, by
+/// default, any other body (empty, not JSON, another slug, as older servers send) ->
+/// `Duplicate` (a replay of a globally unique session id: delivered, CON-17).
+pub fn classify_response_with_body(
+    status: u16,
+    headers: &[(String, String)],
+    body: &[u8],
+) -> SyncOutcome {
+    if status != 409 {
+        return classify_response(status, headers, body);
+    }
+    let slug = serde_json::from_slice::<serde_json::Value>(body)
+        .ok()
+        .and_then(|v| v.get("type")?.as_str().map(|t| problem_slug(t).to_owned()));
+    match slug.as_deref() {
+        Some(problem::IDEMPOTENCY_KEY_REUSED | problem::PARTICIPANT_WITHDRAWN) => {
+            SyncOutcome::Fatal { status }
+        }
+        // `{duplicate: true}` and the default (older servers) are the same answer.
+        _ => SyncOutcome::Duplicate,
+    }
+}
+
+/// The slug of a problem `type` URI: the text after the last `/` (the whole value when it
+/// has none), so both `https://schemas.curv.org/asd/problems/<slug>` and a bare slug match.
+fn problem_slug(type_uri: &str) -> &str {
+    type_uri.trim().rsplit('/').next().unwrap_or_default()
+}
+
 /// Classification of a registration answer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RegisterOutcome {
@@ -92,5 +127,169 @@ pub fn classify_register_response(status: u16, body: &[u8]) -> RegisterOutcome {
             RegisterOutcome::Registered(r)
         }
         _ => RegisterOutcome::Invalid,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn problem_body(slug: &str) -> Vec<u8> {
+        serde_json::to_vec(&json!({
+            "type": format!("{}{slug}", problem::TYPE_PREFIX),
+            "title": "Conflict",
+            "status": 409,
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn sync7_409_slugs_are_fatal_and_replays_are_duplicates() {
+        for slug in [
+            problem::IDEMPOTENCY_KEY_REUSED,
+            problem::PARTICIPANT_WITHDRAWN,
+        ] {
+            assert_eq!(
+                classify_response_with_body(409, &[], &problem_body(slug)),
+                SyncOutcome::Fatal { status: 409 },
+                "{slug}"
+            );
+        }
+        let replay = serde_json::to_vec(&json!({"duplicate": true, "sessionId": "S-1"})).unwrap();
+        assert_eq!(
+            classify_response_with_body(409, &[], &replay),
+            SyncOutcome::Duplicate
+        );
+        // Older servers: no body, or a body that is not a problem.
+        for body in [
+            &b""[..],
+            b"{}",
+            b"conflict",
+            b"[]",
+            b"null",
+            b"{\"duplicate\":false}",
+        ] {
+            assert_eq!(
+                classify_response_with_body(409, &[], body),
+                SyncOutcome::Duplicate
+            );
+        }
+        // Another slug (or `about:blank`) is the default: a replay.
+        assert_eq!(
+            classify_response_with_body(409, &[], &problem_body(problem::CONFLICT)),
+            SyncOutcome::Duplicate
+        );
+        let blank = serde_json::to_vec(&json!({"type": "about:blank", "status": 409})).unwrap();
+        assert_eq!(
+            classify_response_with_body(409, &[], &blank),
+            SyncOutcome::Duplicate
+        );
+        // The slug wins over `duplicate: true`.
+        let both = serde_json::to_vec(&json!({
+            "type": format!("{}{}", problem::TYPE_PREFIX, problem::PARTICIPANT_WITHDRAWN),
+            "duplicate": true,
+        }))
+        .unwrap();
+        assert_eq!(
+            classify_response_with_body(409, &[], &both),
+            SyncOutcome::Fatal { status: 409 }
+        );
+        // A bare slug in `type` is read the same way.
+        let bare = serde_json::to_vec(&json!({"type": "participant-withdrawn"})).unwrap();
+        assert_eq!(
+            classify_response_with_body(409, &[], &bare),
+            SyncOutcome::Fatal { status: 409 }
+        );
+        // The old function is unchanged: every 409 is a duplicate.
+        assert_eq!(
+            classify_response(409, &[], &problem_body(problem::PARTICIPANT_WITHDRAWN)),
+            SyncOutcome::Duplicate
+        );
+    }
+
+    /// Deterministic xorshift so the property test needs no extra crate.
+    struct Rng(u64);
+    impl Rng {
+        fn next(&mut self) -> u64 {
+            self.0 ^= self.0 << 13;
+            self.0 ^= self.0 >> 7;
+            self.0 ^= self.0 << 17;
+            self.0
+        }
+        fn pick<'a, T>(&mut self, items: &'a [T]) -> &'a T {
+            &items[(self.next() % items.len() as u64) as usize]
+        }
+    }
+
+    /// Property: for any status other than 409 the new classifier equals the old one; for
+    /// 409 the outcome is only ever `Duplicate` or `Fatal { 409 }`, and it is `Fatal`
+    /// exactly when the body is a JSON object whose string `type` ends in a fatal slug,
+    /// whatever `duplicate` says.
+    #[test]
+    fn sync7_property_matches_the_rule_for_generated_bodies() {
+        let slugs = [
+            problem::IDEMPOTENCY_KEY_REUSED,
+            problem::PARTICIPANT_WITHDRAWN,
+            problem::CONFLICT,
+            problem::VALIDATION_FAILED,
+            "",
+        ];
+        let prefixes = [problem::TYPE_PREFIX, "", "urn:x/", " "];
+        let headers = vec![("Retry-After".to_owned(), "7".to_owned())];
+        let mut rng = Rng(0x9E37_79B9_7F4A_7C15);
+        for _ in 0..5000 {
+            let mut map = serde_json::Map::new();
+            let slug = *rng.pick(&slugs);
+            let has_type = !rng.next().is_multiple_of(3);
+            if has_type {
+                map.insert(
+                    "type".into(),
+                    json!(format!("{}{slug}", rng.pick(&prefixes))),
+                );
+            }
+            let duplicate = match rng.next() % 4 {
+                0 => Some(json!(true)),
+                1 => Some(json!(false)),
+                2 => Some(json!("true")),
+                _ => None,
+            };
+            if let Some(d) = &duplicate {
+                map.insert("duplicate".into(), d.clone());
+            }
+            if rng.next().is_multiple_of(2) {
+                map.insert("detail".into(), json!("x"));
+            }
+            let body = match rng.next() % 6 {
+                0 => Vec::new(),
+                1 => b"not json".to_vec(),
+                _ => serde_json::to_vec(&serde_json::Value::Object(map.clone())).unwrap(),
+            };
+            let status = *rng.pick(&[
+                200u16, 201, 400, 401, 403, 404, 408, 409, 409, 409, 429, 500, 503,
+            ]);
+            let got = classify_response_with_body(status, &headers, &body);
+            if status != 409 {
+                assert_eq!(got, classify_response(status, &headers, &body));
+                continue;
+            }
+            let parsed: Option<serde_json::Value> = serde_json::from_slice(&body).ok();
+            let expected_fatal = match parsed.as_ref().and_then(|v| v.as_object()) {
+                Some(obj) => match obj.get("type").and_then(|t| t.as_str()) {
+                    Some(t) => {
+                        let s = t.trim().rsplit('/').next().unwrap_or("");
+                        s == problem::IDEMPOTENCY_KEY_REUSED || s == problem::PARTICIPANT_WITHDRAWN
+                    }
+                    None => false,
+                },
+                None => false,
+            };
+            let expected = if expected_fatal {
+                SyncOutcome::Fatal { status: 409 }
+            } else {
+                SyncOutcome::Duplicate
+            };
+            assert_eq!(got, expected, "body {}", String::from_utf8_lossy(&body));
+        }
     }
 }

@@ -30,7 +30,7 @@ use uuid::Uuid;
 
 use crate::app::AppState;
 use crate::audit::AuditEvent;
-use crate::auth::extractors::{DevicePrincipal, RequestMeta, Require};
+use crate::auth::extractors::{DevicePrincipal, RequestMeta, Require, UserPrincipal};
 use crate::auth::rbac::perm;
 use crate::auth::RateLimiter;
 use crate::config::BlobMode;
@@ -138,6 +138,7 @@ async fn list(
 
 async fn detail(
     auth: Require<perm::SessionRead>,
+    meta: RequestMeta,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> AppResult<Json<SessionDetail>> {
@@ -146,6 +147,7 @@ async fn detail(
         .await?
         .ok_or(AppError::NotFound)?;
     auth.ensure_org(org)?;
+    read_audit(&state, &auth.principal, &meta, org, &id, "detail").await?;
     Ok(Json(detail))
 }
 
@@ -157,12 +159,37 @@ async fn session_org(state: &AppState, id: &str) -> AppResult<Uuid> {
         .ok_or(AppError::NotFound)
 }
 
+/// HIP-1: `session.read` with `after: {"part": ...}`, before the body is built.
+async fn read_audit(
+    state: &AppState,
+    principal: &UserPrincipal,
+    meta: &RequestMeta,
+    org: Uuid,
+    id: &str,
+    part: &'static str,
+) -> AppResult<()> {
+    crate::audit::record_read(
+        &state.db,
+        principal,
+        meta,
+        org,
+        "session.read",
+        "session",
+        id,
+        Some(serde_json::json!({ "part": part })),
+    )
+    .await
+}
+
 async fn clips(
     auth: Require<perm::SessionRead>,
+    meta: RequestMeta,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> AppResult<Json<ClipList>> {
-    auth.ensure_org(session_org(&state, &id).await?)?;
+    let org = session_org(&state, &id).await?;
+    auth.ensure_org(org)?;
+    read_audit(&state, &auth.principal, &meta, org, &id, "clips").await?;
     Ok(Json(read::clips::list(&state.db, &id).await?))
 }
 
@@ -188,6 +215,7 @@ fn private_body(bytes: impl Into<Body>, content_type: &'static str) -> Response 
 /// PDF the device uploaded (404 until it exists). 409 for a synthetic session.
 async fn report_pdf(
     auth: Require<perm::SessionRead>,
+    meta: RequestMeta,
     State(state): State<AppState>,
     Path(id): Path<String>,
     query: Result<Query<ReportQuery>, QueryRejection>,
@@ -198,6 +226,7 @@ async fn report_pdf(
                 .await?
                 .ok_or(AppError::NotFound)?;
             auth.ensure_org(src.org_id)?;
+            read_audit(&state, &auth.principal, &meta, src.org_id, &id, "report").await?;
             crate::report::render_pdf(&src)?.into()
         }
         Some("device") => {
@@ -205,6 +234,7 @@ async fn report_pdf(
                 .await?
                 .ok_or(AppError::NotFound)?;
             auth.ensure_org(org)?;
+            read_audit(&state, &auth.principal, &meta, org, &id, "report").await?;
             let blob = state.blobs.get(&key).await?.ok_or(AppError::NotFound)?;
             blob.bytes.into()
         }
@@ -227,6 +257,7 @@ async fn report_pdf(
 /// synthetic session.
 async fn fhir_bundle(
     auth: Require<perm::SessionRead>,
+    meta: RequestMeta,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> AppResult<Response> {
@@ -234,6 +265,7 @@ async fn fhir_bundle(
         .await?
         .ok_or(AppError::NotFound)?;
     auth.ensure_org(src.org_id)?;
+    read_audit(&state, &auth.principal, &meta, src.org_id, &id, "fhir").await?;
     let bundle = crate::report::fhir_bundle(&src)?;
     let bytes = serde_json::to_vec(&bundle)
         .map_err(|e| AppError::Internal(format!("bundle encode: {e}")))?;

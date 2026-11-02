@@ -19,6 +19,10 @@ path = "src/main.rs"
 asd-core = { workspace = true, features = ["synth"] }
 asd-contract = { workspace = true, features = ["validate"] }
 asd-sync.workspace = true
+# `case-package-v1.json` (WP-I.12, SHR-2): the manifest type lives in asd-export. No
+# default features: the schema does not depend on the PDF, XLSX or Parquet writers. A path
+# dependency because `workspace = true` cannot turn default features off (edition 2021).
+asd-export = { path = "../asd-export", default-features = false }
 serde_json.workspace = true
 # SHA-256 of bench logs in `gaze bench-report` (BEN-8, WP-G.5).
 sha2.workspace = true

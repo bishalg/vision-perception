@@ -3,6 +3,7 @@ import { HSTS, sendHsts } from "./src/lib/csp";
 
 const config: NextConfig = {
   reactStrictMode: true,
+  output: "standalone",
   poweredByHeader: false,
   // No next/image usage; keeps the optional LGPL libvips binary (via sharp) unused. See README "Licences".
   images: { unoptimized: true },

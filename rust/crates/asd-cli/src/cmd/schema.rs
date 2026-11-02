@@ -4,10 +4,14 @@
 //!
 //! The default directory is `docs/spec/schemas/asd/` of the checkout the binary was built
 //! from, so `cargo run -p asd-cli -- schema check` works from any working directory.
+//!
+//! Besides the `asd-contract` documents, `export` and `check` handle
+//! `case-package-v1.json`, the case package manifest of `asd-export` (WP-I.12, SHR-2).
 
 use std::path::{Path, PathBuf};
 
 use asd_contract::schema;
+use asd_export::case_package;
 use serde_json::Value;
 
 const USAGE: &str = "\
@@ -58,8 +62,40 @@ fn dir_flag(args: &[String], flag: &str) -> Result<PathBuf, String> {
     }
 }
 
+/// `asd-contract` documents plus the case package manifest schema.
+fn export_all(dir: &Path) -> std::io::Result<Vec<PathBuf>> {
+    let mut paths = schema::export_all(dir)?;
+    let path = dir.join(case_package::SCHEMA_FILE);
+    std::fs::write(&path, schema::render(&case_package::manifest_schema()))?;
+    paths.push(path);
+    Ok(paths)
+}
+
+/// `schema::check` plus the case package manifest schema (compared as JSON values, so
+/// formatting never counts as drift).
+fn check_all(dir: &Path) -> Result<(), Vec<String>> {
+    let mut drift: Vec<String> = match schema::check(dir) {
+        Ok(()) => Vec::new(),
+        Err(d) => d.iter().map(ToString::to_string).collect(),
+    };
+    let file = case_package::SCHEMA_FILE;
+    match std::fs::read_to_string(dir.join(file)) {
+        Err(_) => drift.push(format!("{file}: missing")),
+        Ok(text) => match serde_json::from_str::<Value>(&text) {
+            Err(e) => drift.push(format!("{file}: not JSON ({e})")),
+            Ok(v) if v == case_package::manifest_schema() => {}
+            Ok(_) => drift.push(format!("{file}: differs from the Rust contract types")),
+        },
+    }
+    if drift.is_empty() {
+        Ok(())
+    } else {
+        Err(drift)
+    }
+}
+
 fn export(dir: &Path) -> i32 {
-    match schema::export_all(dir) {
+    match export_all(dir) {
         Ok(paths) => {
             for p in paths {
                 println!("wrote {}", p.display());
@@ -74,7 +110,7 @@ fn export(dir: &Path) -> i32 {
 }
 
 fn check(dir: &Path) -> i32 {
-    match schema::check(dir) {
+    match check_all(dir) {
         Ok(()) => {
             println!(
                 "OK: schemas in {} match the Rust contract types",
@@ -176,6 +212,27 @@ mod tests {
         assert_eq!(run(&s(&["check", "--dir", out])), 1);
 
         std::fs::remove_file(dir.join(schema::API_FILE)).unwrap();
+        assert_eq!(run(&s(&["check", "--dir", out])), 1);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn case_package_schema_is_exported_and_checked() {
+        // WP-I.12: export writes it, check fails on an edit or a missing file.
+        let dir = scratch("case-package");
+        let out = dir.to_str().unwrap();
+        assert_eq!(run(&s(&["export", "--out", out])), 0);
+        let path = dir.join(case_package::SCHEMA_FILE);
+        let v: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(v["$id"], case_package::SCHEMA_ID);
+        assert_eq!(run(&s(&["check", "--dir", out])), 0);
+
+        let mut edited = v.clone();
+        edited["properties"]["package_id"]["type"] = Value::String("integer".into());
+        std::fs::write(&path, schema::render(&edited)).unwrap();
+        assert_eq!(run(&s(&["check", "--dir", out])), 1);
+
+        std::fs::remove_file(&path).unwrap();
         assert_eq!(run(&s(&["check", "--dir", out])), 1);
         let _ = std::fs::remove_dir_all(&dir);
     }

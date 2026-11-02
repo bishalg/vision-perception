@@ -18,6 +18,7 @@ final class DataDeletionServiceTests: XCTestCase {
     private var historyStore: GazeSessionHistoryStore!
     private var syncService: ResearchKitSyncService!
     private var calibrationResets = 0
+    private var profileStore: ChildProfileStore!
     private var carePlanDeletes = 0
 
     private static let historyKey = "org.curv.asd.gaze_session_history"
@@ -37,6 +38,7 @@ final class DataDeletionServiceTests: XCTestCase {
         }
         calibrationResets = 0
         carePlanDeletes = 0
+        profileStore = ChildProfileStore(userDefaults: defaults)
 
         let box = DeletionSyncBox()
         researchStore = ResearchKitStudyStore(
@@ -59,6 +61,7 @@ final class DataDeletionServiceTests: XCTestCase {
         try? FileManager.default.removeItem(at: root)
         defaults.removePersistentDomain(forName: suiteName)
         syncService = nil
+        profileStore = nil
         historyStore = nil
         researchStore = nil
         defaults = nil
@@ -67,6 +70,7 @@ final class DataDeletionServiceTests: XCTestCase {
 
     func testDeleteAllEmptiesEveryObservationStore() throws {
         seedEverything()
+        let tokenBefore = profileStore.participantToken()
 
         let service = makeService()
         let report = service.deleteAll(includeCarePlans: false)
@@ -80,6 +84,9 @@ final class DataDeletionServiceTests: XCTestCase {
         XCTAssertTrue(historyStore.records.isEmpty)
         XCTAssertNil(defaults.data(forKey: Self.historyKey))
         XCTAssertEqual(calibrationResets, 1)
+        // REC-11: the participant token goes with the data; the next session is a new participant.
+        XCTAssertEqual(profileStore.profile.participantToken, "")
+        XCTAssertNotEqual(profileStore.participantToken(), tokenBefore)
 
         let enrollment = researchStore.fetchEnrollment()
         XCTAssertFalse(enrollment.isConsented)
@@ -173,6 +180,7 @@ final class DataDeletionServiceTests: XCTestCase {
             researchStore: researchStore,
             purgeQueues: { [syncService] in syncService?.purgeAllQueued() },
             resetCalibration: { [weak self] in self?.calibrationResets += 1 },
+            forgetParticipantToken: { [profileStore] in profileStore?.forgetParticipantToken() },
             deleteCarePlans: { [weak self] in self?.carePlanDeletes += 1 }
         )
     }

@@ -150,6 +150,8 @@ async fn upload(
     if owner.withdrawn {
         return Err(participant_withdrawn());
     }
+    // SYNC-6 / HIP-4: reject a corrupted upload before anything is stored.
+    crate::blob::verify_content_digest(&headers, &body)?;
     let token = owner.participant_token;
 
     // Store first, outside a transaction (no connection held during a 50 MB upload); a

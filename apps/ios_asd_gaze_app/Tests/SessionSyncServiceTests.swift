@@ -1,4 +1,5 @@
 @testable import AsdGazeCollector
+import CryptoKit
 import CurvAsdGazeKit
 import Foundation
 import XCTest
@@ -405,6 +406,24 @@ final class SessionSyncServiceTests: XCTestCase {
         XCTAssertTrue(queuedFiles("Quarantine").isEmpty)
     }
 
+    /// SYNC-7: the backend's `409 participant-withdrawn` problem is not a replay.
+    @MainActor
+    func testParticipantWithdrawnConflictIsQuarantinedNotDelivered() {
+        consent()
+        registerToken()
+        let service = makeService()
+        service.enqueueSession(record("SESS-WDRN"))
+        route([Self.sessionsPath: { request in
+            (httpResponse(request, 409, headers: ["Content-Type": "application/problem+json"]),
+             jsonData(["type": "https://schemas.curv.org/asd/problems/participant-withdrawn", "title": "Conflict", "status": 409]))
+        }])
+
+        XCTAssertFalse(sync(service))
+        XCTAssertEqual(service.pendingQueueCount, 0)
+        XCTAssertEqual(queuedFiles("Quarantine").count, 1, "kept for inspection")
+        XCTAssertEqual(service.quarantineCount, 1)
+    }
+
     // MARK: - Backoff, quarantine, dead letter
 
     @MainActor
@@ -516,6 +535,9 @@ final class SessionSyncServiceTests: XCTestCase {
         XCTAssertEqual(put.url.absoluteString, presigned)
         XCTAssertEqual(put.body, Data("CIPHERTEXT".utf8))
         XCTAssertEqual(put.headers["Content-Type"], "application/octet-stream")
+        // SYNC-6: RFC 9530 digest over exactly the bytes sent.
+        let digest = Data(SHA256.hash(data: Data("CIPHERTEXT".utf8))).base64EncodedString()
+        XCTAssertEqual(put.headers["Content-Digest"], "sha-256=:\(digest):")
         XCTAssertNil(put.headers["Authorization"], "the device token never goes to a blob host")
         XCTAssertEqual(service.pendingQueueCount, 0)
     }

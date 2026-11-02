@@ -4,7 +4,8 @@
 //! OkHttp); everything they decide about a request or a response comes from here:
 //! - [`build_session_request`]: method, path, headers and body bytes of `POST /v1/sessions`;
 //! - [`build_register_request`]: `POST /v1/devices/register` (CON-10, CON-11);
-//! - [`classify_response`] / [`classify_register_response`]: what an HTTP answer means;
+//! - [`classify_response`] / [`classify_response_with_body`] (reads the `409` problem slug,
+//!   SYNC-7) / [`classify_register_response`]: what an HTTP answer means;
 //! - [`validate_upload_url`] / [`validate_ingest_url`] / [`endpoint_url`]: the https and
 //!   DNS-host rules of F7 and whether a bearer may be attached;
 //! - [`backoff_schedule`] / [`next_retry_delay`]: the retry schedule;
@@ -33,8 +34,8 @@ pub use request::{
     REGISTER_TIMEOUT_SECS, SESSIONS_PATH, SESSION_TIMEOUT_SECS,
 };
 pub use response::{
-    classify_register_response, classify_response, retry_after_seconds, IngestAck, RegisterOutcome,
-    SyncOutcome, MAX_RETRY_AFTER_SECS,
+    classify_register_response, classify_response, classify_response_with_body,
+    retry_after_seconds, IngestAck, RegisterOutcome, SyncOutcome, MAX_RETRY_AFTER_SECS,
 };
 pub use retry::{backoff_schedule, next_retry_delay, BACKOFF_DELAYS_SECS, MAX_ATTEMPTS};
 pub use url_rules::{

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO erasure_requests (org_id, participant_id, requested_by_type, requested_by)\n         VALUES ($1, $2, 'user', $3) RETURNING id",
+  "query": "INSERT INTO erasure_requests (org_id, participant_id, requested_by_type, requested_by,\n                                       scope)\n         VALUES ($1, $2, $3, $4, $5) RETURNING id",
   "describe": {
     "columns": [
       {
@@ -19,12 +19,14 @@
       "Left": [
         "Uuid",
         "Uuid",
-        "Uuid"
+        "Text",
+        "Uuid",
+        "Text"
       ]
     },
     "nullable": [
       false
     ]
   },
-  "hash": "c11e307d067c4f350eefd11b50eaaf2f9fb399f1d7f131ccf8f7bba3621ecce8"
+  "hash": "c21811421707d2725263d16213226a7058b6837f1938ee613497423112b38881"
 }

@@ -1,0 +1,11 @@
+# owner: WP-B.18 (DPL-6) - nightly at 02:30 local time
+[Unit]
+Description=Clinic server nightly encrypted backup (02:30)
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+Persistent=true
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target

@@ -63,3 +63,9 @@ export const securityText = {
     done: "Two-step sign-in is off.",
   },
 } as const;
+
+/** HIP-2 automatic logoff banners on /login (`?reason=idle|expired`). */
+export const logoffText = {
+  idle: "You were signed out because the console was idle for 30 minutes. Sign in again to continue.",
+  expired: "Your session reached its 12-hour limit. Sign in again to continue.",
+} as const;

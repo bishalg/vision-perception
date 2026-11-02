@@ -776,7 +776,7 @@ public struct MainGazeScannerView: View {
             // The history store ignores simulated sessions (SIM-5).
             let participantToken = GazeSessionRecord.participantToken(
                 enrollment: ResearchKitStudyStore.shared.fetchEnrollment(),
-                sessionId: summary.sessionId
+                profileToken: ChildProfileStore.shared.participantToken()
             )
             // ING-3: norm-collection consent only through the gate (research consent, opt-in,
             // live capture); WP-A.5: the configuration that ran the session.

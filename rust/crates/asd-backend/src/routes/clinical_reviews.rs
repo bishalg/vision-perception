@@ -121,6 +121,7 @@ async fn claim(
 
 async fn get_by_session(
     auth: Require<perm::WorklistRead>,
+    meta: RequestMeta,
     State(state): State<AppState>,
     Path(session_id): Path<String>,
 ) -> AppResult<Response> {
@@ -128,11 +129,34 @@ async fn get_by_session(
         .await?
         .ok_or(AppError::NotFound)?;
     auth.ensure_org(row.org_id)?;
+    audit_review_read(&state, &auth.principal, &meta, row.org_id, row.id).await?;
     reply(&state, &auth.principal, StatusCode::OK, row.id).await
+}
+
+/// HIP-1: `clinical_review.read`, before the review is built.
+async fn audit_review_read(
+    state: &AppState,
+    principal: &UserPrincipal,
+    meta: &RequestMeta,
+    org: Uuid,
+    id: Uuid,
+) -> AppResult<()> {
+    crate::audit::record_read(
+        &state.db,
+        principal,
+        meta,
+        org,
+        "clinical_review.read",
+        "clinical_review",
+        &id.to_string(),
+        None,
+    )
+    .await
 }
 
 async fn get_one(
     auth: Require<perm::WorklistRead>,
+    meta: RequestMeta,
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> AppResult<Response> {
@@ -141,6 +165,7 @@ async fn get_one(
         .await?
         .ok_or(AppError::NotFound)?;
     auth.ensure_org(row.org_id)?;
+    audit_review_read(&state, &auth.principal, &meta, row.org_id, id).await?;
     reply(&state, &auth.principal, StatusCode::OK, id).await
 }
 

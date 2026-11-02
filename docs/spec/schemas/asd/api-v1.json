@@ -119,6 +119,113 @@
       ],
       "type": "object"
     },
+    "Attachment": {
+      "description": "One attachment's metadata (REC-6). The bytes are read with `GET /v1/attachments/{id}`\n(`ClinicalContentRead`, REC-7).",
+      "properties": {
+        "byte_size": {
+          "description": "1..10 485 760.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "encounter_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "file_name": {
+          "description": "Sanitised to `[A-Za-z0-9._-]`, ≤ 120 characters (`sanitize_file_name`).",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/AttachmentKind"
+        },
+        "media_type": {
+          "$ref": "#/$defs/AttachmentMediaType"
+        },
+        "participant_id": {
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Hex SHA-256 of the plaintext; `null` until the content is uploaded (REC-7)."
+        },
+        "uploaded_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "participant_id",
+        "kind",
+        "file_name",
+        "media_type",
+        "byte_size",
+        "created_at"
+      ],
+      "type": "object"
+    },
+    "AttachmentKind": {
+      "description": "REC-6: `attachments.kind`.",
+      "enum": [
+        "paper_form",
+        "referral",
+        "report",
+        "photo_of_document",
+        "other"
+      ],
+      "type": "string"
+    },
+    "AttachmentMediaType": {
+      "description": "REC-6: the only accepted media types; anything else is `400\nattachment-type-not-allowed`.",
+      "enum": [
+        "application/pdf",
+        "image/jpeg",
+        "image/png"
+      ],
+      "type": "string"
+    },
+    "AttachmentUpload": {
+      "description": "`201` answer to `POST /v1/participants/{id}/attachments` (REC-7).",
+      "properties": {
+        "attachment": {
+          "$ref": "#/$defs/Attachment"
+        },
+        "upload": {
+          "$ref": "#/$defs/UploadTarget"
+        }
+      },
+      "required": [
+        "attachment",
+        "upload"
+      ],
+      "type": "object"
+    },
     "AttentionFlag": {
       "enum": [
         "green",
@@ -577,6 +684,57 @@
         "checkin_count",
         "completion_rate_percent",
         "recent_moods"
+      ],
+      "type": "object"
+    },
+    "CaseShareRequest": {
+      "description": "`ExportRequest.case` for `format: case_package` (SHR-7): one participant per package.\nIdentified mode needs `consent_reference` and `consent_recorded_at`, else `400\ncase-consent-missing`.",
+      "properties": {
+        "consent_recorded_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "consent_reference": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "≤ 200 characters, clear (an identifier such as a consent form number)."
+        },
+        "include_attachments": {
+          "default": false,
+          "description": "Identified mode only.",
+          "type": "boolean"
+        },
+        "participant_id": {
+          "type": "string"
+        },
+        "recipient": {
+          "description": "10..200 characters; encrypted at rest.",
+          "type": "string"
+        },
+        "session_ids": {
+          "description": "Sessions to include; empty means all of the participant's sessions.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "participant_id",
+        "recipient"
       ],
       "type": "object"
     },
@@ -1593,6 +1751,43 @@
       ],
       "type": "string"
     },
+    "CreateAttachmentRequest": {
+      "description": "`POST /v1/participants/{id}/attachments` (REC-7, `AttachmentWrite`): metadata first,\nthen the bytes with `PUT` to `AttachmentUpload.upload.url`.",
+      "properties": {
+        "byte_size": {
+          "description": "1..10 485 760, else `400 attachment-too-large`.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "encounter_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "file_name": {
+          "description": "Sanitised by the server; ≤ 120 characters after sanitising.",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/AttachmentKind"
+        },
+        "media_type": {
+          "$ref": "#/$defs/AttachmentMediaType"
+        }
+      },
+      "required": [
+        "kind",
+        "file_name",
+        "media_type",
+        "byte_size"
+      ],
+      "type": "object"
+    },
     "CreateClinicalNoteRequest": {
       "description": "`POST /v1/participants/{id}/notes`.",
       "properties": {
@@ -1647,6 +1842,73 @@
       "required": [
         "version",
         "body"
+      ],
+      "type": "object"
+    },
+    "CreateEncounterRequest": {
+      "description": "`POST /v1/participants/{id}/encounters` (REC-4). `summary` needs `ClinicalNoteWrite`,\nelse `400 encounter-summary-forbidden`.",
+      "properties": {
+        "clinician_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "follow_up_due_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "$ref": "#/$defs/EncounterKind"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "≤ 200 characters."
+        },
+        "session_ids": {
+          "description": "Sessions of the same participant to link on create.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "≤ 8 000 characters."
+        }
+      },
+      "required": [
+        "kind",
+        "occurred_at"
       ],
       "type": "object"
     },
@@ -1710,6 +1972,54 @@
       ],
       "type": "object"
     },
+    "CreateParticipantRequest": {
+      "description": "`POST /v1/orgs/{id}/participants` (REC-1, `ParticipantCreate`). The token is minted by\nthe server (`participant_token_from_uuid`), never supplied; `mode` is always `clinic`.",
+      "properties": {
+        "age_bracket_at_enrol": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "consent_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "consent_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The consent the clinic recorded on paper or in the app."
+        },
+        "language": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
     "CreateReviewRequest": {
       "description": "`POST /v1/orgs/{id}/review` (manual enqueue).",
       "properties": {
@@ -1730,6 +2040,35 @@
       "required": [
         "session_id"
       ],
+      "type": "object"
+    },
+    "CreateShareLinkRequest": {
+      "description": "`POST /v1/exports/{id}/share-link` (SHR-8, `ShareLinkManage`).",
+      "properties": {
+        "expires_in_days": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "1..7; default 3 (`SHARE_LINK_DEFAULT_DAYS`)."
+        },
+        "max_downloads": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "1..5; default 1 (`SHARE_LINK_DEFAULT_DOWNLOADS`)."
+        }
+      },
       "type": "object"
     },
     "CreateUserRequest": {
@@ -1771,6 +2110,103 @@
         "email",
         "role",
         "password"
+      ],
+      "type": "object"
+    },
+    "CreatedParticipant": {
+      "description": "`201` answer to `POST /v1/orgs/{id}/participants` (REC-1): the `Participant` keys plus\n`qr_payload` (`asd://participant/<token>?org=<org_id>`, see `qr_payload`).",
+      "properties": {
+        "age_bracket_at_enrol": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "has_patient_ref": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Whether a hospital MRN is on file (MRN-5/6). Absent for a caller without\n`PatientRefRead`; the MRN itself is never in this type."
+        },
+        "id": {
+          "type": "string"
+        },
+        "language": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_session_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "org_id": {
+          "type": "string"
+        },
+        "participant_token": {
+          "type": "string"
+        },
+        "qr_payload": {
+          "type": "string"
+        },
+        "session_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "withdrawn_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "org_id",
+        "participant_token",
+        "session_count",
+        "qr_payload"
+      ],
+      "type": "object"
+    },
+    "CreatedShareLink": {
+      "description": "`201` answer to `POST /v1/exports/{id}/share-link` (SHR-8). The passcode is returned\nthis once and never stored or returned again.",
+      "properties": {
+        "link": {
+          "$ref": "#/$defs/ShareLink"
+        },
+        "passcode": {
+          "description": "12 characters from `[A-HJ-NP-Z2-9]`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "link",
+        "passcode"
       ],
       "type": "object"
     },
@@ -2331,6 +2767,189 @@
       "description": "Units of the `dwell_*` columns. Ratios of valid clip samples, never seconds (CON-13).",
       "enum": [
         "ratio"
+      ],
+      "type": "string"
+    },
+    "Encounter": {
+      "description": "REC-4: one encounter. `kind`, `reason` and `summary` are staff input, never pre-filled\nfrom the attention flag or a score (REC-10).",
+      "properties": {
+        "clinician_display_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "REC-5: the clinician's display name, for the timeline header."
+        },
+        "clinician_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "follow_up_done_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "follow_up_due_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "has_summary": {
+          "description": "Whether a summary exists, for callers that may not read it (REC-4).",
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/EncounterKind"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "participant_id": {
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "≤ 200 characters, clear text (REC-3)."
+        },
+        "row_version": {
+          "description": "`If-Match: \"<row_version>\"` on `PATCH` (REC-4, SIGN-3).",
+          "type": "integer"
+        },
+        "session_ids": {
+          "default": [],
+          "description": "Linked sessions of the same participant (REC-4).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "status": {
+          "$ref": "#/$defs/EncounterStatus"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "≤ 8 000 characters. Absent without `ClinicalContentRead` (REC-4)."
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "participant_id",
+        "kind",
+        "occurred_at",
+        "has_summary",
+        "status",
+        "row_version",
+        "created_at"
+      ],
+      "type": "object"
+    },
+    "EncounterKind": {
+      "description": "REC-3: `encounters.kind`.",
+      "enum": [
+        "screening_visit",
+        "follow_up_visit",
+        "phone_call",
+        "home_visit",
+        "other"
+      ],
+      "type": "string"
+    },
+    "EncounterPage": {
+      "description": "`GET /v1/participants/{id}/encounters` (REC-4), newest `occurred_at` first.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/Encounter"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "EncounterStatus": {
+      "description": "REC-3: `encounters.status`. A `closed` encounter accepts only `follow_up_done_at`;\n`owner` or `clinician` may reopen it (REC-4, `409 encounter-closed` otherwise).",
+      "enum": [
+        "open",
+        "closed"
       ],
       "type": "string"
     },
@@ -3097,6 +3716,106 @@
       ],
       "type": "object"
     },
+    "FollowUp": {
+      "description": "One open follow-up (REC-4: `GET /v1/orgs/{id}/follow-ups?due_before=&assigned=`): an\nencounter with `follow_up_due_at` set and `follow_up_done_at` unset. No summary.",
+      "properties": {
+        "clinician_display_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "clinician_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "encounter_id": {
+          "type": "string"
+        },
+        "follow_up_due_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/EncounterKind"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "participant_id": {
+          "type": "string"
+        },
+        "participant_token": {
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "encounter_id",
+        "participant_id",
+        "participant_token",
+        "kind",
+        "occurred_at",
+        "follow_up_due_at"
+      ],
+      "type": "object"
+    },
+    "FollowUpPage": {
+      "description": "`GET /v1/orgs/{id}/follow-ups`, earliest due first.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/FollowUp"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
     "GapFillParams": {
       "properties": {
         "lossIntervalCapMs": {
@@ -3834,6 +4553,18 @@
       ],
       "type": "string"
     },
+    "LinkSessionRequest": {
+      "description": "`POST /v1/encounters/{id}/sessions` (REC-4): link a session of the same participant.",
+      "properties": {
+        "session_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id"
+      ],
+      "type": "object"
+    },
     "LoginRequest": {
       "description": "`POST /v1/auth/login`.\n\nTwo-step for a user with TOTP enrolled (AUTH-1): the first request carries `email` and\n`password` only; when both are right the answer is `401` problem `totp-required`. The\nclient asks for the authenticator code and sends the same request again with\n`totp_code`. A wrong, expired or already used code answers `401` problem `totp-invalid`.\nBoth legs count against the per-IP login limit; requests with a code also count\nagainst a per-user limit (10 per minute, `429` + `Retry-After`).",
       "properties": {
@@ -4541,6 +5272,64 @@
       ],
       "type": "object"
     },
+    "ParticipantIdentity": {
+      "description": "Wave-3 participant identity (REC-9). Type only: no route stores or returns it before\nwave 3, and `identity-disabled` answers any attempt. The keys are frozen now; do not\nrename them.",
+      "properties": {
+        "birth_year_month": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`YYYY-MM`."
+        },
+        "family_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "given_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "guardian_phone": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sex": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`female | male | other | unknown`."
+        }
+      },
+      "type": "object"
+    },
     "ParticipantPage": {
       "description": "`GET /v1/orgs/{id}/participants`.\nCursor-paginated list envelope: `cursor` is opaque, `limit <= 100`.",
       "properties": {
@@ -4574,6 +5363,223 @@
       },
       "required": [
         "items"
+      ],
+      "type": "object"
+    },
+    "ParticipantSearchPage": {
+      "description": "`POST /v1/orgs/{id}/participants/search` answer.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ParticipantSearchRow"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "ParticipantSearchRequest": {
+      "description": "`POST /v1/orgs/{id}/participants/search` (REC-2, `ParticipantRead`). Every filter is\noptional; `mrn` needs `PatientRefRead` and is sent in the body only (MRN-4). Identity\nfields are not searchable before wave 3.",
+      "properties": {
+        "age_bracket": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "has_open_follow_up": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_seen_from": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_seen_to": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mrn": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "token_prefix": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "ParticipantSearchRow": {
+      "description": "One search result (REC-2): the `Participant` keys plus the record counters. REC-2's\n`sessions_n` and `last_session_at` are `Participant.session_count` and\n`Participant.last_session_at`.",
+      "properties": {
+        "age_bracket_at_enrol": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "has_patient_ref": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Whether a hospital MRN is on file (MRN-5/6). Absent for a caller without\n`PatientRefRead`; the MRN itself is never in this type."
+        },
+        "id": {
+          "type": "string"
+        },
+        "language": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_session_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "next_follow_up_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "open_encounters_n": {
+          "default": 0,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "org_id": {
+          "type": "string"
+        },
+        "participant_token": {
+          "type": "string"
+        },
+        "session_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "withdrawn_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "org_id",
+        "participant_token",
+        "session_count"
       ],
       "type": "object"
     },
@@ -4877,12 +5883,23 @@
         "consent-purpose-mismatch",
         "host-key-mismatch",
         "clinical-role-not-assignable",
+        "totp-reset-forbidden",
         "four-eyes-required",
         "invalid-transition",
         "config-version-exists",
         "config-invalid",
         "config-not-published",
-        "bundle-signing-unavailable"
+        "bundle-signing-unavailable",
+        "encounter-closed",
+        "encounter-summary-forbidden",
+        "attachment-too-large",
+        "attachment-type-not-allowed",
+        "digest-mismatch",
+        "share-link-expired",
+        "share-link-exhausted",
+        "share-passcode-invalid",
+        "case-consent-missing",
+        "identity-disabled"
       ],
       "type": "string"
     },
@@ -7822,6 +8839,144 @@
       ],
       "type": "object"
     },
+    "ShareLink": {
+      "description": "One share link (SHR-8), as listed. Never carries the passcode (see `CreatedShareLink`).",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "downloads": {
+          "default": 0,
+          "type": "integer"
+        },
+        "expires_at": {
+          "description": "≤ `created_at` + 7 days.",
+          "format": "date-time",
+          "type": "string"
+        },
+        "export_id": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "last_opened_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "max_downloads": {
+          "description": "1..5.",
+          "type": "integer"
+        },
+        "opens": {
+          "default": 0,
+          "type": "integer"
+        },
+        "revoked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "url": {
+          "description": "The public console page `/share/<id>`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "export_id",
+        "url",
+        "expires_at",
+        "max_downloads",
+        "created_at"
+      ],
+      "type": "object"
+    },
+    "ShareLinkOpenRequest": {
+      "description": "`POST /v1/share/{link_id}/open` (SHR-9, public). Wrong passcode: `401\nshare-passcode-invalid`.",
+      "properties": {
+        "passcode": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "passcode"
+      ],
+      "type": "object"
+    },
+    "ShareLinkOpenResponse": {
+      "description": "`200` answer to `POST /v1/share/{link_id}/open` (SHR-9). `download_token` is used once\nas `GET /v1/share/{link_id}/file?t=<download_token>` within 5 minutes.",
+      "properties": {
+        "bytes": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "download_token": {
+          "type": "string"
+        },
+        "downloads_left": {
+          "type": "integer"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "export_id": {
+          "type": "string"
+        },
+        "file_name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "export_id",
+        "file_name",
+        "bytes",
+        "expires_at",
+        "downloads_left",
+        "download_token"
+      ],
+      "type": "object"
+    },
+    "ShareLinkPage": {
+      "description": "`GET /v1/exports/{id}/share-links`.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ShareLink"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
     "SignRequest": {
       "description": "Step-up signing body (SIGN-5), used by sign, cosign and letter finalize. The password\nis verified and dropped; it is never stored or logged.",
       "properties": {
@@ -8289,6 +9444,35 @@
       },
       "type": "object"
     },
+    "TotpResetRequest": {
+      "description": "`POST /v1/orgs/{id}/users/{user_id}/totp/reset` (`UserTotpReset`: owner, admin): the\ncaller's step-up (SIGN-5: password, plus a code when the caller has TOTP) and why. The\npassword and code are verified and dropped; the reason goes into the audit row.\nAnswers `204`; the target signs in with the password alone and enrols again.",
+      "properties": {
+        "password": {
+          "description": "The caller's password.",
+          "type": "string"
+        },
+        "reason": {
+          "description": "10..200 characters, stored in the audit row.",
+          "type": "string"
+        },
+        "totp_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Required when the caller has TOTP enrolled."
+        }
+      },
+      "required": [
+        "password",
+        "reason"
+      ],
+      "type": "object"
+    },
     "TotpStatus": {
       "description": "Result of `confirm` and `DELETE`.",
       "properties": {
@@ -8666,6 +9850,96 @@
       },
       "type": "object"
     },
+    "UpdateEncounterRequest": {
+      "description": "`PATCH /v1/encounters/{id}` with `If-Match: \"<row_version>\"` (REC-4). Absent fields\nstay unchanged. A `closed` encounter accepts only `follow_up_done_at`, and `status:\nopen` from `owner` or `clinician`.",
+      "properties": {
+        "clinician_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "follow_up_done_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "follow_up_due_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EncounterKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "occurred_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EncounterStatus"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Needs `ClinicalNoteWrite` (REC-4)."
+        }
+      },
+      "type": "object"
+    },
     "UpdateIntegrationRequest": {
       "additionalProperties": false,
       "description": "`PATCH /v1/integrations/{id}` (`IntegrationManage`). `config` replaces the whole config.",
@@ -8868,6 +10142,23 @@
           ]
         }
       },
+      "type": "object"
+    },
+    "UploadTarget": {
+      "description": "Where to send the bytes (REC-7). Proxy mode only: `PUT /v1/attachments/{id}/content`\nunder the user bearer, with an optional `Content-Digest: sha-256=:<base64>:` (RFC 9530;\n`400 digest-mismatch`).",
+      "properties": {
+        "method": {
+          "description": "Always `PUT`.",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "method",
+        "url"
+      ],
       "type": "object"
     },
     "User": {

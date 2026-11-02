@@ -13,6 +13,7 @@
 //! - [`hl7v2`]: HL7 v2.5.1 ORU^R01 (WP-I.4);
 //! - [`dataset`]: de-identified ML datasets, JSON Lines and Parquet (feature `parquet`)
 //!   (WP-B.9);
+//! - [`case_package`]: the "share a case" ZIP of one participant (SHR-1..6, WP-I.12);
 //! - [`model`]: the canonical input [`model::ExportRecord`] (XC-3). The backend builds it;
 //!   the crate never queries anything;
 //! - [`deid`], [`policy`], [`watermark`], [`codes`]: de-identification (XC-4), consent
@@ -43,6 +44,7 @@ use asd_contract::session_v1_8::{ScoringStatus, UnscorableReason, SCORE_FIELDS};
 use asd_core::types::{CaptureSource, GazeQualityVerdict};
 use serde_json::Value;
 
+pub mod case_package; // WP-I.12
 pub mod claims;
 pub mod codes;
 pub mod dataset; // WP-B.9
@@ -139,6 +141,10 @@ pub enum ExportError {
     /// Inconsistent dataset encoder input (a caller bug, never patient data).
     #[error("dataset input: {0}")]
     DatasetInput(&'static str),
+    /// Inconsistent case package input (a caller bug, never patient data) or a failure of
+    /// the ZIP writer (WP-I.12, SHR-1).
+    #[error("case package: {0}")]
+    CasePackage(String),
 }
 
 /// Why `record`'s gaze Observation cannot be exported, or `None` when it can.

@@ -1,0 +1,311 @@
+{
+  "$defs": {
+    "AbsentFile": {
+      "description": "An entry this build did not produce.",
+      "properties": {
+        "media_type": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "media_type",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "ConsentInfo": {
+      "description": "The consent an identified package relies on (SHR-7).",
+      "properties": {
+        "recorded_at": {
+          "description": "RFC 3339 time the consent was recorded.",
+          "type": "string"
+        },
+        "recorded_by_display": {
+          "description": "Display name of the staff member who recorded it.",
+          "type": "string"
+        },
+        "reference": {
+          "description": "An identifier of the consent, such as a form number.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reference",
+        "recorded_at",
+        "recorded_by_display"
+      ],
+      "type": "object"
+    },
+    "DateRange": {
+      "description": "First and last session: `YYYY-MM-DD` in the org time zone (identified) or `YYYY-MM`\nUTC (de-identified, XC-4).",
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "type": "object"
+    },
+    "FileEntry": {
+      "description": "One entry of the archive.",
+      "properties": {
+        "bytes": {
+          "description": "Uncompressed size.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "media_type": {
+          "type": "string"
+        },
+        "path": {
+          "description": "Path inside the ZIP.",
+          "type": "string"
+        },
+        "sha256": {
+          "description": "Lower-case hex SHA-256 of the uncompressed bytes.",
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "media_type",
+        "bytes",
+        "sha256"
+      ],
+      "type": "object"
+    },
+    "Generator": {
+      "description": "The software that rendered the package.",
+      "properties": {
+        "crate": {
+          "description": "`asd-export`.",
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "crate",
+        "version"
+      ],
+      "type": "object"
+    },
+    "ModeSchema": {
+      "description": "Schema of [`Mode`] (the policy enum carries no `JsonSchema`; same wire names).",
+      "enum": [
+        "identified",
+        "deidentified"
+      ],
+      "type": "string"
+    },
+    "MrnInfo": {
+      "description": "A hospital MRN. `Debug` never prints the value.",
+      "properties": {
+        "authority": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "authority",
+        "value"
+      ],
+      "type": "object"
+    },
+    "OrgInfo": {
+      "description": "The sending clinic.",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "timezone": {
+          "description": "IANA time zone of the org.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "timezone"
+      ],
+      "type": "object"
+    },
+    "ParticipantInfo": {
+      "anyOf": [
+        {
+          "properties": {
+            "pseudonym": {
+              "description": "`P-` pseudonym, stable within this package only (XC-4).",
+              "type": "string"
+            }
+          },
+          "required": [
+            "pseudonym"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "mrn": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/MrnInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "token": {
+              "description": "The participant token.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "token"
+          ],
+          "type": "object"
+        }
+      ],
+      "description": "The participant: a pseudonym (de-identified) or the token and, when given, the MRN."
+    },
+    "PurposeSchema": {
+      "description": "Schema of [`Purpose`] (same wire names).",
+      "enum": [
+        "clinical_care",
+        "research",
+        "quality_improvement",
+        "patient_request"
+      ],
+      "type": "string"
+    },
+    "Recipient": {
+      "description": "Who the package is for.",
+      "properties": {
+        "label": {
+          "description": "Identified: the free text the sender entered. De-identified:\n`de-identified recipient`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.curv.org/asd/case-package-v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "manifest.json of an ASD case package (share a case, SHR-1..6). Lists every other file of the ZIP with its size and SHA-256.",
+  "properties": {
+    "absent": {
+      "default": [],
+      "description": "Entries this build could not produce (the PDF without the `pdf` feature).",
+      "items": {
+        "$ref": "#/$defs/AbsentFile"
+      },
+      "type": "array"
+    },
+    "consent": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ConsentInfo"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Identified packages only: the consent the sharing relies on."
+    },
+    "created_at": {
+      "description": "RFC 3339 UTC time the package was rendered.",
+      "type": "string"
+    },
+    "date_range": {
+      "$ref": "#/$defs/DateRange"
+    },
+    "files": {
+      "description": "Every entry of the archive except `manifest.json`, in archive order.",
+      "items": {
+        "$ref": "#/$defs/FileEntry"
+      },
+      "type": "array"
+    },
+    "generator": {
+      "$ref": "#/$defs/Generator"
+    },
+    "mode": {
+      "$ref": "#/$defs/ModeSchema"
+    },
+    "not_diagnostic": {
+      "const": true,
+      "description": "Always `true`: this is not a diagnostic tool (ADR-0004).",
+      "type": "boolean"
+    },
+    "org": {
+      "$ref": "#/$defs/OrgInfo"
+    },
+    "package_id": {
+      "description": "The export id (`exports.id`).",
+      "type": "string"
+    },
+    "participant": {
+      "$ref": "#/$defs/ParticipantInfo"
+    },
+    "purpose": {
+      "$ref": "#/$defs/PurposeSchema"
+    },
+    "recipient": {
+      "$ref": "#/$defs/Recipient"
+    },
+    "schema": {
+      "const": "case-package/1.0",
+      "description": "Always `case-package/1.0`.",
+      "type": "string"
+    },
+    "sessions_n": {
+      "description": "Number of sessions in the package.",
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "watermark": {
+      "description": "The XC-6 watermark line.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "package_id",
+    "created_at",
+    "generator",
+    "org",
+    "mode",
+    "purpose",
+    "recipient",
+    "participant",
+    "sessions_n",
+    "date_range",
+    "files",
+    "watermark",
+    "not_diagnostic"
+  ],
+  "title": "CasePackageManifest",
+  "type": "object"
+}

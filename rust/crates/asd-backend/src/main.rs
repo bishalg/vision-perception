@@ -8,7 +8,7 @@
 //!   applies pending migrations, then re-runs that back-fill, and exits (compose init step;
 //!   KEY-12, [`db::migrate_with_backfill`]);
 //! - `asd-backend admin`   operator commands (`create-org`, `create-user`, `reset-totp`,
-//!   `rotate-kek`), see `asd_backend::admin`.
+//!   `rotate-kek`, `erasure-ledger`, `requeue-erasure`, `verify`), see `asd_backend::admin`.
 //!
 //! Configuration is environment only; see `rust/.env.example`.
 
@@ -258,6 +258,11 @@ fn admin_main() -> ExitCode {
             admin::AdminCommand::RotateKek { batch, dry_run } => {
                 admin::rotate_kek_cli(&pool, &config, *batch, *dry_run).await
             }
+            admin::AdminCommand::ErasureLedger => admin::erasure_ledger(&pool).await,
+            admin::AdminCommand::RequeueErasure { ledger } => {
+                admin::requeue_erasure_cli(&pool, ledger).await
+            }
+            admin::AdminCommand::Verify => admin::verify(&pool, &config).await,
             admin::AdminCommand::Help => unreachable!("handled above"),
         };
         pool.close().await;
@@ -265,7 +270,10 @@ fn admin_main() -> ExitCode {
     });
     match result {
         Ok(id) => {
-            println!("{id}");
+            // An empty erasure ledger prints nothing (not a blank line).
+            if !id.is_empty() {
+                println!("{id}");
+            }
             ExitCode::SUCCESS
         }
         Err(e) => admin_failed(&e),

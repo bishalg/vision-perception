@@ -1,0 +1,10 @@
+# owner: WP-B.18 (DPL-8) - 03:30 on the first Sunday of every month
+[Unit]
+Description=Clinic server monthly restore drill (first Sunday, 03:30)
+
+[Timer]
+OnCalendar=Sun *-*-01..07 03:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

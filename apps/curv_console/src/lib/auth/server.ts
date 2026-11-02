@@ -12,12 +12,15 @@ import {
   cookieSecure,
   readRole,
   sessionCookies,
+  stampCookies,
 } from "./cookies";
 import type { TokenPair } from "@/lib/api";
 
 export async function writeSession(pair: TokenPair): Promise<void> {
   const jar = await cookies();
-  const specs = sessionCookies(pair, cookieSecure());
+  const secure = cookieSecure();
+  const now = Date.now();
+  const specs = [...sessionCookies(pair, secure), ...stampCookies(secure, now, now)];
   for (const c of specs) jar.set(c.name, c.value, c.options);
   // A superadmin (no org) must not inherit an earlier user's org cookie.
   if (!specs.some((c) => c.name === ORG_COOKIE)) jar.delete(ORG_COOKIE);

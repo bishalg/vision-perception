@@ -202,7 +202,7 @@ final class FHIRBundleBuilderTests: XCTestCase {
     func testChildNameNeverAppearsInBundle() throws {
         let childName = "Aarav Sharma"
         let summary = GazeSessionReportSummary.fixture(sessionId: "SESS-NAME-001")
-        let token = GazeSessionRecord.participantToken(enrollment: nil, sessionId: summary.sessionId)
+        let token = GazeSessionRecord.participantToken(enrollment: nil, profileToken: "child-5e55a0aa0000000000aa")
         let record = GazeSessionRecord(summary: summary, participantToken: token)
         let bundle = FHIRBundleBuilder.bundle(
             for: record, mchat: Self.goldenMCHAT(), extraResources: [],
@@ -211,7 +211,7 @@ final class FHIRBundleBuilderTests: XCTestCase {
         let text = try json(bundle)
         XCTAssertFalse(text.contains("Aarav"))
         XCTAssertFalse(text.contains(childName))
-        XCTAssertTrue(text.contains("child-SESS-NAM"))
+        XCTAssertTrue(text.contains("child-5e55a0aa0000000000aa"))
         for observation in resources(bundle, type: "Observation") {
             XCTAssertEqual(reference(observation["subject"]), FHIRBundleBuilder.patientReference(for: FHIRSubject(record: record, ageMonths: 30)))
             XCTAssertTrue(reference(observation["subject"])?.hasPrefix("urn:uuid:") ?? false, "no bare Patient/<id>")

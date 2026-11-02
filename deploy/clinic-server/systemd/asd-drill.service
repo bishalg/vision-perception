@@ -1,0 +1,10 @@
+# owner: WP-B.18 (DPL-8) - installed by install.sh into /etc/systemd/system
+[Unit]
+Description=Clinic server monthly restore drill
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+Environment=ASD_ENV_FILE=@ASD_ENV_FILE@
+ExecStart=@ASD_DIR@/restore-drill.sh

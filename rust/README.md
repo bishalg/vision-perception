@@ -47,8 +47,36 @@ also links x86_64. Documents cross the boundary as JSON in the Swift `Codable` f
 (ADR-0006 §4); every fallible call throws `AsdError` (`InvalidJson`, `InvalidArgument`,
 `NotRegistered`, `UploadRefused`, `InvalidUrl`). Bindings settings: `crates/asd-ffi/uniffi.toml`.
 
-Android (WP-A.12, not wired yet): `cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -o <jniLibs>
-build -p asd-ffi --release`, then `uniffi-bindgen generate --library <lib> --language kotlin`.
+Android: see the next section.
+
+## Android build (asd-ffi, AND-1..3)
+
+```bash
+scripts/build_asd_android.sh              # .so files, Kotlin bindings and the AAR
+scripts/build_asd_android.sh --test       # ... plus the JVM golden parity test
+scripts/build_asd_android.sh --host --test  # no NDK: host library, bindings, JVM test only
+```
+
+Needs `cargo-ndk` (`cargo install cargo-ndk --locked`), the Android NDK r27+
+(`ANDROID_NDK_HOME`, or the newest under `$ANDROID_HOME/ndk`), the SDK (`ANDROID_HOME`),
+JDK 17 and Gradle 8.14+ (`gradle` on `PATH` or `GRADLE=`). The same `asd-ffi` crate
+(crate type `cdylib`) is built with `cargo ndk --platform 26` for `arm64-v8a`,
+`armeabi-v7a` and `x86_64`; the Kotlin bindings come from the crate's `uniffi-bindgen`
+(`--language kotlin`, library mode, package `org.curv.asd.core` from
+`crates/asd-ffi/uniffi.toml`). Output, git-ignored:
+
+- `build/asd/android/jniLibs/<abi>/libasd_ffi.so`;
+- `build/asd/android/kotlin/org/curv/asd/core/asd_core.kt`: the Kotlin API (`coreVersion()`,
+  `scoreSessionJson(...)`, `syncBuildSessionRequestJson(...)`, ...); fallible calls throw
+  `AsdException` (`InvalidJson`, `InvalidArgument`, ...);
+- `build/asd/android/host/libasd_ffi.{dylib,so}`: the host library for the JVM test;
+- `apps/android_asd_core/core/build/outputs/aar/core-release.aar`: the AAR
+  `org.curv.asd:core` (minSdk 26, depends on `net.java.dev.jna:jna:5.17.0@aar`).
+
+`apps/android_asd_core/` packages the bindings and holds no logic. Its JVM test
+(`GoldenParityTest`) runs the asd-core golden vectors through JNA and checks the
+`expected-session-v1.8.json` request body byte for byte against its JCS golden. CI: the
+`android-bindings` job in `.github/workflows/rust.yml`.
 
 ## First run (fresh database)
 
@@ -204,6 +232,75 @@ asd-backend admin rotate-kek
   `ASD_GIT_SHA` build-time variable, `unknown` otherwise). `route` is the matched path template
   (`/v1/sessions/{id}`) or `unmatched`; no id, e-mail or token ever becomes a label value.
 - Every API response carries `Strict-Transport-Security: max-age=63072000; includeSubDomains`.
+
+## What is audited (HIP-1, HIP-4)
+
+Every mutation writes one `audit_log` row in its own transaction. Since phase 7 every **read** of
+clinical content or participant detail does too, through `audit::record_read`, before the response
+body is built. The write is never best-effort: if the row cannot be written the request answers
+`500` and no data is sent. `after` holds ids or a part name only, never clinical text.
+
+| Endpoint | `action` | `target_type` / `target_id` | `after` |
+|---|---|---|---|
+| `GET /v1/sessions/{id}`, `/clips`, `/report.pdf`, `/fhir` | `session.read` | `session` / session id | `{"part":"detail"\|"clips"\|"report"\|"fhir"}` |
+| `GET /v1/sessions/{id}/raw` | `session.raw_read` | `session` / session id | none |
+| `GET /v1/participants/{id}` | `participant.read` | `participant` / participant id | none |
+| `GET /v1/participants/{id}/timeline` | `participant.timeline_read` | `participant` / participant id | none |
+| `GET /v1/sessions/{id}/clinical-review`, `GET /v1/clinical-reviews/{id}` | `clinical_review.read` | `clinical_review` / review id | none |
+| `GET /v1/notes/{id}` | `note.read` | `clinical_note` / note id | none |
+| `GET /v1/participants/{id}/notes` (one row per page) | `note.read` | `participant` / participant id | `{"note_ids":[...]}` |
+| `GET /v1/participants/{id}/disclosures` | `disclosures.read` | `participant` / participant id | none |
+| `GET /v1/orgs/{id}/worklist` (one row per page) | `worklist.read` | `organization` / org id | `{"session_ids":[...]}` |
+| `GET /v1/exports/{id}/file` (proxy mode; actor `system`, the signed token is the credential) | `export.file_served` | `export` / export id | none |
+
+Session, participant and export list endpoints carry no clinical text and are not audited per row.
+A superadmin's reads of the data it may see are audited the same way (org = the resource's org).
+
+Blob uploads (`PUT /v1/sessions/{id}/blobs/{kind}`) verify an RFC 9530 `Content-Digest:
+sha-256=:<base64>:` when sent (`blob::verify_content_digest`): a mismatch is `400 digest-mismatch`
+and nothing is stored, a malformed header or one without `sha-256` is `400 validation-failed`, an
+absent header is accepted (older apps).
+
+## Resetting a user's two-step sign-in from the console (TRS-1, TRS-2, WP-B.17)
+
+When a user loses their authenticator, an `owner` or `admin` of the org resets it with
+`POST /v1/orgs/{id}/users/{user_id}/totp/reset`, body `{"password", "totp_code"?, "reason"}`:
+the caller's own password (and current code when the caller has TOTP), plus a reason of
+10..200 characters. It answers `204`; in one transaction the target's TOTP seed, spent step
+and any pending enrolment are cleared and every refresh token of the target is revoked (the
+next refresh fails; the current access token runs out within 15 minutes). The target then
+signs in with the password alone and enrols again; `totp_required_by` is not changed, so a
+passed deadline still sends them straight to enrolment. Audit: `user.totp_reset_by_admin`
+with the target id and the reason; a wrong password is `401 reauthentication-failed`,
+audited as `user.totp_reset_failed`, and changes nothing. An `admin` cannot reset an
+`owner`, and nobody resets themselves (`DELETE /v1/users/me/totp`): `403
+totp-reset-forbidden`. A superadmin, or an org with no owner/admin able to sign in, still
+uses the operator command `asd-backend admin reset-totp --user <uuid>`, which runs the same
+reset (`auth::totp::reset_for_user`) and now also revokes the user's refresh tokens.
+
+## Restore helpers (DPL-6..8, WP-B.22)
+
+Three `asd-backend admin` commands used by the clinic-server backup, restore and drill
+scripts (only `DATABASE_URL`, plus `ASD_DATA_KEK` for `verify`):
+
+- `erasure-ledger` prints one JSON line per erasure request,
+  `{"participant_id","org_id","requested_at","status"}` (ids only, oldest first; nothing
+  when there are none). `backup.sh` appends it to `erasure-ledger.jsonl`, so erasures are
+  known even if the database is restored from an older dump.
+- `requeue-erasure --ledger <file>` replays that file after a restore: for every distinct
+  participant in it whose restored row is not erased (`erased_at IS NULL`), the open
+  pending request gets a job (unless one is queued or running) or a new request is filed
+  (`requested_by_type = system`) and queued, with audit `participant.erasure_requeued`
+  (`via: cli`). Erased participants are skipped; held requests (clinical record) are left
+  held; ids not in the database are printed on stderr and listed in the report, and do not
+  fail the run; a malformed line exits 2 before anything changes. Prints
+  `{"entries","participants","requeued","already_erased","in_progress","held","unknown"}`.
+  It only queues: the worker must be running to erase, so wait for the jobs before
+  comparing counts. Running it twice is safe.
+- `verify` runs `SELECT 1` against every table and unwraps every `org_data_keys` row with
+  `ASD_DATA_KEK` (and `ASD_DATA_KEK_PREVIOUS`); prints `{"tables","data_keys","kek_id"}`
+  (`kek_id` is the fingerprint, never the key). Exits 3 when any data key cannot be
+  unwrapped (the key card does not match this database), 2 without `ASD_DATA_KEK`.
 
 ## Conventions
 

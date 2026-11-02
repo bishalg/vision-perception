@@ -181,6 +181,7 @@ version = "0.1.0"
 dependencies = [
  "asd-contract",
  "asd-core",
+ "asd-export",
  "asd-sync",
  "getrandom 0.4.3",
  "serde_json",
@@ -202,6 +203,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "thiserror",
+ "uuid",
 ]
 
 [[package]]
@@ -232,6 +234,7 @@ dependencies = [
  "parquet",
  "pdf-writer",
  "rust_xlsxwriter",
+ "schemars",
  "serde",
  "serde_json",
  "sha1_smol",

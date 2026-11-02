@@ -1,4 +1,5 @@
 import AsdCore
+import CryptoKit
 import CurvAsdGazeKit
 import Foundation
 import os
@@ -353,8 +354,10 @@ public struct SessionSyncClient: Sendable {
     }
 
     /// Posts one session. A 401/403 re-registers once while `mayReRegister` is
-    /// true (the caller owns that budget per flush) and retries; a 409 is an
-    /// idempotent replay and counts as accepted.
+    /// true (the caller owns that budget per flush) and retries. A 409 is an idempotent
+    /// replay and counts as accepted, unless its problem slug is `participant-withdrawn`
+    /// or `idempotency-key-reused` (SYNC-7): then it throws `.http(409)` and the queue
+    /// quarantines the item.
     public func postSession(_ payload: SessionIngestPayload, mayReRegister: inout Bool) async throws -> SessionIngestResponse {
         guard var credential = registration.currentCredential() else { throw SessionSyncError.notRegistered }
         var (status, outcome) = try await send(makeSessionRequest(payload, token: credential.deviceToken))
@@ -412,18 +415,21 @@ public struct SessionSyncClient: Sendable {
         (try? syncValidateUploadUrl(url: url.absoluteString, apiBase: apiBaseURL.absoluteString))?.attachBearer ?? false
     }
 
-    /// PUTs one blob. The bearer is attached only for the API host.
-    public func upload(_ data: Data, to url: URL, contentType: String) async throws {
-        var request = URLRequest(url: url)
-        request.httpMethod = "PUT"
-        request.timeoutInterval = 60
-        request.setValue(contentType, forHTTPHeaderField: SyncHeader.contentType)
-        request.setValue(clientInfo.userAgent, forHTTPHeaderField: SyncHeader.userAgent)
+    /// PUTs one blob from its (encrypted) queue file, streamed by the transport (a
+    /// background session in the app, SYNC-5), with `Content-Digest` over exactly the bytes
+    /// sent (SYNC-6, trap 5). The bearer is attached only for the API host.
+    public func uploadFile(_ file: URL, to url: URL, contentType: String) async throws {
+        let digest = try Self.contentDigest(of: file)
+        var headers = [
+            SyncHeader.contentType: contentType,
+            SyncHeader.userAgent: clientInfo.userAgent,
+            SyncHeader.contentDigest: digest
+        ]
         if isAPIHost(url), let credential = registration.currentCredential() {
-            request.setValue("Bearer \(credential.deviceToken)", forHTTPHeaderField: SyncHeader.authorization)
+            headers[SyncHeader.authorization] = "Bearer \(credential.deviceToken)"
         }
-        request.httpBody = data
-        let (status, outcome) = try await send(request)
+        let (data, response) = try await transport.uploadFile(file, to: url, headers: headers)
+        let (status, outcome) = classify(data, response)
         switch outcome {
         case .accepted:
             return
@@ -434,9 +440,26 @@ public struct SessionSyncClient: Sendable {
         }
     }
 
+    /// `Content-Digest: sha-256=:<base64>:` (RFC 9530) of a file, hashed in 64 KiB chunks
+    /// so a large frames file is never read into memory at once.
+    public static func contentDigest(of file: URL) throws -> String {
+        let handle = try FileHandle(forReadingFrom: file)
+        defer { try? handle.close() }
+        var hasher = SHA256()
+        while let chunk = try handle.read(upToCount: 64 * 1024), !chunk.isEmpty {
+            hasher.update(data: chunk)
+        }
+        return "sha-256=:\(Data(hasher.finalize()).base64EncodedString()):"
+    }
+
     /// Sends a request and lets asd-sync classify the answer.
     private func send(_ request: URLRequest) async throws -> (status: Int, outcome: AsdSyncOutcome) {
         let (data, response) = try await transport.send(request)
+        return classify(data, response)
+    }
+
+    /// asd-sync's classification, reading the 409 problem slug (SYNC-7).
+    private func classify(_ data: Data, _ response: HTTPURLResponse) -> (status: Int, outcome: AsdSyncOutcome) {
         let headers = response.allHeaderFields.compactMap { name, value -> AsdHttpHeader? in
             guard let name = name as? String else { return nil }
             return AsdHttpHeader(name: name, value: "\(value)")
@@ -444,7 +467,7 @@ public struct SessionSyncClient: Sendable {
         let status = response.statusCode
         // HTTP statuses are three digits; anything else is not an answer asd-sync can accept.
         let wire = UInt16(exactly: status) ?? 0
-        return (status, syncClassifyResponse(status: wire, headers: headers, body: data))
+        return (status, syncClassifyResponseWithBody(status: wire, headers: headers, body: data))
     }
 }
 

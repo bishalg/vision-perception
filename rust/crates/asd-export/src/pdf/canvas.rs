@@ -224,8 +224,52 @@ impl Canvas {
     }
 }
 
+/// Wraps several canvases into one multi-page US Letter PDF (the case package summary,
+/// WP-I.12). Same fonts and page box as [`Canvas::finish`], which stays the one-page form
+/// so the diary bytes do not change. No dates and no document id: deterministic.
+pub(crate) fn finish_pages(pages: Vec<Canvas>, title: &str) -> Vec<u8> {
+    let catalog = Ref::new(1);
+    let tree = Ref::new(2);
+    let regular = Ref::new(3);
+    let bold = Ref::new(4);
+    let info = Ref::new(5);
+    let refs: Vec<(Ref, Ref)> = (0..pages.len())
+        .map(|i| {
+            let base = 6 + 2 * i32::try_from(i).expect("page count fits i32");
+            (Ref::new(base), Ref::new(base + 1))
+        })
+        .collect();
+
+    let mut pdf = Pdf::new();
+    pdf.catalog(catalog).pages(tree);
+    pdf.pages(tree)
+        .kids(refs.iter().map(|(page, _)| *page))
+        .count(i32::try_from(refs.len()).expect("page count fits i32"));
+    for ((page, contents), canvas) in refs.iter().zip(pages) {
+        {
+            let mut p = pdf.page(*page);
+            p.parent(tree)
+                .media_box(Rect::new(0.0, 0.0, PAGE_WIDTH, PAGE_HEIGHT))
+                .contents(*contents);
+            p.resources()
+                .fonts()
+                .pair(Font::Regular.resource(), regular)
+                .pair(Font::Bold.resource(), bold);
+        }
+        pdf.stream(*contents, &canvas.content.finish());
+    }
+    pdf.type1_font(regular)
+        .base_font(Name(b"Helvetica"))
+        .encoding_predefined(Name(b"WinAnsiEncoding"));
+    pdf.type1_font(bold)
+        .base_font(Name(b"Helvetica-Bold"))
+        .encoding_predefined(Name(b"WinAnsiEncoding"));
+    pdf.document_info(info).title(TextStr(title));
+    pdf.finish()
+}
+
 /// Greedy word wrap; a single word wider than the line is kept whole on its own line.
-fn wrap(text: &str, width: f32, font: Font, size: f32) -> Vec<String> {
+pub(crate) fn wrap(text: &str, width: f32, font: Font, size: f32) -> Vec<String> {
     let mut lines = Vec::new();
     let mut current = String::new();
     for word in text.split_whitespace() {

@@ -62,6 +62,8 @@ pub enum Action {
     ExportIdentified,
     IntegrationRead,
     IntegrationManage,
+    /// WP-B.17 (TRS-1, REC-8): clear another org user's TOTP so they enrol again.
+    UserTotpReset,
 }
 
 impl Action {
@@ -99,6 +101,7 @@ impl Action {
         Action::ExportIdentified,
         Action::IntegrationRead,
         Action::IntegrationManage,
+        Action::UserTotpReset,
     ];
 
     /// Actions that change nothing.
@@ -185,6 +188,8 @@ pub const MATRIX: &[(Action, &[Role])] = &[
     (Action::ExportIdentified, &[Owner, Clinician]),
     (Action::IntegrationRead, &[Owner, Admin]),
     (Action::IntegrationManage, &[Owner, Admin]),
+    // WP-B.17, TRS-1: an admin never resets an owner (checked in the route by rank).
+    (Action::UserTotpReset, &[Owner, Admin]),
 ];
 
 /// True when `role` may perform `action` (in its own org). `superadmin` may do everything
@@ -327,6 +332,7 @@ pub mod perm {
         ExportIdentified,
         IntegrationRead,
         IntegrationManage,
+        UserTotpReset,
     );
 }
 

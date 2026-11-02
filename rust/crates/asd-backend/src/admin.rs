@@ -5,16 +5,32 @@
 //! - `create-org --name <name> --kind home|clinic|research [--retention-months N] [--force]`
 //! - `create-user --email <email> --role owner|superadmin [--org <uuid>] [--force]`
 //! - `reset-totp --user <uuid>` (WP-B.14, AUTH-9): clears the user's TOTP seed, spent step
-//!   and any pending enrolment ([`crate::auth::totp::reset`]) with audit `user.totp_reset`
+//!   and any pending enrolment and revokes their refresh tokens
+//!   ([`crate::auth::totp::reset_for_user`], the function the org-admin route of WP-B.17
+//!   uses too, through [`crate::auth::totp::reset`]) with audit `user.totp_reset`
 //!   (`actor: operator`), so a user who lost the authenticator signs in with the password
-//!   alone and enrols again. No KEK needed. Prints the user id. The only way to change
-//!   another user's TOTP in this phase (no HTTP endpoint).
+//!   alone and enrols again. No KEK needed. Prints the user id. For a superadmin, or when
+//!   no owner/admin of the org can sign in; otherwise `POST /v1/orgs/{id}/users/{uid}/
+//!   totp/reset`.
 //! - `rotate-kek [--batch N] [--dry-run]` (WP-B.15, KEY-9): re-wraps every org data key
 //!   and re-seals every user secret still under a KEK from `ASD_DATA_KEK_PREVIOUS` with
 //!   the active `ASD_DATA_KEK` ([`crate::crypto::rotate`]). Prints
 //!   `{"rewrapped_deks","resealed_users","remaining","dry_run"}` as JSON; exits 3 (after
 //!   printing) while rows remain under a KEK that is not configured. Runbook:
 //!   `rust/README.md`.
+//! - `erasure-ledger` (WP-B.22, DPL-6): prints one JSON line per `erasure_requests` row,
+//!   `{participant_id, org_id, requested_at, status}` (oldest first; ids only, no tokens),
+//!   which `backup.sh` appends to `erasure-ledger.jsonl` outside the database dump.
+//! - `requeue-erasure --ledger <file>` (WP-B.22, DPL-7): after a restore, every ledger
+//!   participant whose restored row is not erased gets an erasure job
+//!   ([`crate::jobs::erasure::requeue`], audit `participant.erasure_requeued`, `via: cli`);
+//!   erased ones are skipped, unknown ids are reported (stderr and the report), not fatal.
+//!   Prints `{"entries","participants","requeued","already_erased","in_progress","held",
+//!   "unknown"}`. The worker does the erasing (trap 21).
+//! - `verify` (WP-B.22, DPL-8): `SELECT 1` from every table and unwraps every
+//!   `org_data_keys` row with `ASD_DATA_KEK` (plus `ASD_DATA_KEK_PREVIOUS`); prints
+//!   `{"tables","data_keys","kek_id"}` (a fingerprint, never key material) or exits 3 when
+//!   a data key cannot be unwrapped (the key card does not match the database).
 //!
 //! `encrypt-review-notes` (WP-C.9, KEY-7) was removed with migration 0022, which drops
 //! `review_items.note` (WP-B.14, KEY-11): a deployment that still has plaintext notes runs
@@ -57,6 +73,9 @@ pub const USAGE: &str = "usage: asd-backend admin <command> [options]\n\
   create-user --email <email> --role owner|superadmin [--org <org-id>] [--force]\n\
   reset-totp  --user <user-id>\n\
   rotate-kek [--batch N] [--dry-run]\n\
+  erasure-ledger\n\
+  requeue-erasure --ledger <file>\n\
+  verify\n\
 \n\
 create-user reads the password from ASD_ADMIN_PASSWORD, or else the first line of stdin;\n\
 it is never accepted as an argument. owner needs --org; superadmin has no org.\n\
@@ -67,6 +86,10 @@ password and enrol again), writes an audit row and prints the user id.\n\
 rotate-kek (needs ASD_DATA_KEK=new, ASD_DATA_KEK_PREVIOUS=old) moves every wrapped data key\n\
 and sealed user secret to the new KEK, prints a JSON report and exits 3 while rows remain\n\
 under an unconfigured KEK; running it again is safe. Runbook: rust/README.md.\n\
+erasure-ledger prints one JSON line per erasure request (for backups); requeue-erasure replays\n\
+such a file after a restore (queues an erasure job for every listed participant that is not\n\
+erased) and prints a JSON report; verify checks every table and unwraps every org data key\n\
+with ASD_DATA_KEK, exiting 3 when the KEK does not match.\n\
 Exit codes: 0 ok, 2 usage/invalid input, 3 conflicts with existing data, 1 other errors.";
 
 /// A new organisation.
@@ -102,6 +125,14 @@ pub enum AdminCommand {
         batch: u32,
         dry_run: bool,
     },
+    /// DPL-6 erasure ledger (WP-B.22).
+    ErasureLedger,
+    /// DPL-7 ledger replay after a restore (WP-B.22).
+    RequeueErasure {
+        ledger: std::path::PathBuf,
+    },
+    /// DPL-8 restore check (WP-B.22).
+    Verify,
     Help,
 }
 
@@ -132,6 +163,9 @@ pub enum AdminError {
         .0.remaining
     )]
     RotationIncomplete(RotateReport),
+    /// `verify`: the database is unreadable with the configured KEK (exit 3).
+    #[error("verify failed: {0}")]
+    VerifyFailed(String),
     #[error("database: {0}")]
     Database(#[from] sqlx::Error),
     #[error("{0}")]
@@ -146,7 +180,8 @@ impl AdminError {
             Self::EmailTaken { .. }
             | Self::SuperadminExists
             | Self::OrgNameTaken { .. }
-            | Self::RotationIncomplete(_) => 3,
+            | Self::RotationIncomplete(_)
+            | Self::VerifyFailed(_) => 3,
             Self::Database(_) | Self::Internal(_) => 1,
         }
     }
@@ -306,6 +341,24 @@ pub fn parse(args: &[String]) -> Result<AdminCommand, AdminError> {
             "encrypt-review-notes was removed with migration 0022 (review_items.note is dropped); \
              run it with the previous release before upgrading, see rust/README.md",
         )),
+        "erasure-ledger" => {
+            options(rest, &[], &[])?;
+            Ok(AdminCommand::ErasureLedger)
+        }
+        "requeue-erasure" => {
+            let opts = options(rest, &["--ledger"], &[])?;
+            let ledger = required(&opts, "--ledger")?;
+            if ledger.trim().is_empty() {
+                return Err(AdminError::Invalid("--ledger must name a file".into()));
+            }
+            Ok(AdminCommand::RequeueErasure {
+                ledger: ledger.into(),
+            })
+        }
+        "verify" => {
+            options(rest, &[], &[])?;
+            Ok(AdminCommand::Verify)
+        }
         other => Err(usage(format!("unknown command {other:?}"))),
     }
 }
@@ -498,9 +551,9 @@ pub async fn create_user(
     Ok(id)
 }
 
-/// `reset-totp` (AUTH-9): clears every TOTP column of `user_id` with audit
-/// `user.totp_reset` (`actor: operator`); [`AdminError::UserNotFound`] (exit 2) changes
-/// nothing.
+/// `reset-totp` (AUTH-9): clears every TOTP column of `user_id` and revokes its refresh
+/// tokens ([`crate::auth::totp::reset_for_user`]) with audit `user.totp_reset`
+/// (`actor: operator`); [`AdminError::UserNotFound`] (exit 2) changes nothing.
 pub async fn reset_totp(pool: &PgPool, user_id: Uuid) -> Result<Uuid, AdminError> {
     let found = crate::auth::totp::reset(pool, user_id)
         .await
@@ -544,6 +597,183 @@ pub async fn rotate_kek_cli(
 /// The `rotate-kek` report as one JSON line.
 pub fn report_json(report: &RotateReport) -> Result<String, AdminError> {
     serde_json::to_string(report).map_err(|e| AdminError::Internal(e.to_string()))
+}
+
+// ---- restore helpers (WP-B.22, DPL-6..8) -------------------------------------------------
+
+/// One line of the erasure ledger (`erasure-ledger`, read back by `requeue-erasure`).
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct LedgerEntry {
+    pub participant_id: Uuid,
+    pub org_id: Uuid,
+    /// RFC 3339.
+    pub requested_at: String,
+    /// `pending`, `completed` or `held` at the time of the backup.
+    pub status: String,
+}
+
+/// `erasure-ledger`: one JSON line per `erasure_requests` row, oldest first (empty string
+/// when there is none).
+pub async fn erasure_ledger(pool: &PgPool) -> Result<String, AdminError> {
+    let rows = sqlx::query!(
+        "SELECT participant_id, org_id, requested_at, status
+         FROM erasure_requests ORDER BY requested_at, id"
+    )
+    .fetch_all(pool)
+    .await?;
+    let mut lines = Vec::with_capacity(rows.len());
+    for r in rows {
+        let entry = LedgerEntry {
+            participant_id: r.participant_id,
+            org_id: r.org_id,
+            requested_at: r
+                .requested_at
+                .to_rfc3339_opts(chrono::SecondsFormat::Micros, true),
+            status: r.status,
+        };
+        lines.push(serde_json::to_string(&entry).map_err(|e| AdminError::Internal(e.to_string()))?);
+    }
+    Ok(lines.join("\n"))
+}
+
+/// Parses a ledger file: one [`LedgerEntry`] per non-blank line. A malformed line is an
+/// error (exit 2) before anything is changed.
+pub fn parse_ledger(text: &str) -> Result<Vec<LedgerEntry>, AdminError> {
+    text.lines()
+        .enumerate()
+        .filter(|(_, l)| !l.trim().is_empty())
+        .map(|(i, l)| {
+            serde_json::from_str::<LedgerEntry>(l).map_err(|e| {
+                AdminError::Invalid(format!("ledger line {} is not a ledger entry: {e}", i + 1))
+            })
+        })
+        .collect()
+}
+
+/// What `requeue-erasure` did (printed as one JSON line).
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize)]
+pub struct RequeueReport {
+    /// Ledger lines read.
+    pub entries: usize,
+    /// Distinct `(org, participant)` pairs among them.
+    pub participants: usize,
+    pub requeued: usize,
+    pub already_erased: usize,
+    pub in_progress: usize,
+    pub held: usize,
+    /// Participant ids not in this database (or not in the ledger's org).
+    pub unknown: Vec<Uuid>,
+}
+
+/// `requeue-erasure --ledger <file>`: [`crate::jobs::erasure::requeue`] for every distinct
+/// participant of the ledger (a nightly ledger repeats rows). Unknown ids are reported on
+/// stderr and in the report, not fatal.
+pub async fn requeue_erasure(
+    pool: &PgPool,
+    ledger: &std::path::Path,
+) -> Result<RequeueReport, AdminError> {
+    use crate::jobs::erasure::{requeue, Requeued};
+
+    let text = std::fs::read_to_string(ledger).map_err(|e| {
+        AdminError::Invalid(format!("cannot read ledger {}: {e}", ledger.display()))
+    })?;
+    let entries = parse_ledger(&text)?;
+    let mut seen = std::collections::BTreeSet::new();
+    let mut report = RequeueReport {
+        entries: entries.len(),
+        ..RequeueReport::default()
+    };
+    for e in &entries {
+        if !seen.insert((e.org_id, e.participant_id)) {
+            continue;
+        }
+        let outcome = requeue(pool, e.org_id, e.participant_id)
+            .await
+            .map_err(|err| AdminError::Internal(err.to_string()))?;
+        match outcome {
+            Requeued::Queued { .. } => report.requeued += 1,
+            Requeued::AlreadyErased => report.already_erased += 1,
+            Requeued::InProgress { .. } => report.in_progress += 1,
+            Requeued::Held { .. } => report.held += 1,
+            Requeued::Unknown => {
+                eprintln!(
+                    "asd-backend admin: participant {} of org {} is not in this database; skipped",
+                    e.participant_id, e.org_id
+                );
+                report.unknown.push(e.participant_id);
+            }
+        }
+    }
+    report.participants = seen.len();
+    Ok(report)
+}
+
+/// `requeue-erasure` from the CLI: the report as one JSON line.
+pub async fn requeue_erasure_cli(
+    pool: &PgPool,
+    ledger: &std::path::Path,
+) -> Result<String, AdminError> {
+    let report = requeue_erasure(pool, ledger).await?;
+    serde_json::to_string(&report).map_err(|e| AdminError::Internal(e.to_string()))
+}
+
+/// `verify`: every table answers `SELECT 1`, and every `org_data_keys` row unwraps with
+/// the configured KEK(s). Prints counts and the active KEK fingerprint, never key material.
+/// [`AdminError::VerifyFailed`] (exit 3) when a data key does not unwrap.
+pub async fn verify(pool: &PgPool, config: &Config) -> Result<String, AdminError> {
+    use sqlx::Row as _;
+
+    let kek = config.data_kek.clone().ok_or_else(|| {
+        AdminError::Invalid(
+            "ASD_DATA_KEK is not set; verify checks that the key card's KEK opens the data keys"
+                .into(),
+        )
+    })?;
+    let tables: Vec<String> = sqlx::query_scalar(
+        "SELECT quote_ident(table_name)::text FROM information_schema.tables
+         WHERE table_schema = current_schema() AND table_type = 'BASE TABLE'
+         ORDER BY table_name",
+    )
+    .fetch_all(pool)
+    .await?;
+    for table in &tables {
+        // `table` comes from `quote_ident`, so it is a single quoted identifier.
+        sqlx::query(sqlx::AssertSqlSafe(format!(
+            "SELECT 1 FROM {table} LIMIT 1"
+        )))
+        .fetch_optional(pool)
+        .await?;
+    }
+    let keyring = Keyring::with_previous(kek, config.data_kek_previous.clone(), pool.clone());
+    let keys = sqlx::query("SELECT key_id, org_id, wrapped_dek, kek_id FROM org_data_keys")
+        .fetch_all(pool)
+        .await?;
+    let mut failed = 0usize;
+    for row in &keys {
+        let key_id: Uuid = row.try_get("key_id")?;
+        let org: Uuid = row.try_get("org_id")?;
+        let wrapped: Vec<u8> = row.try_get("wrapped_dek")?;
+        let kek_id: String = row.try_get("kek_id")?;
+        // Re-wrapping in memory proves the unwrap; nothing is written.
+        if keyring.rewrap_dek(org, key_id, &wrapped, &kek_id).is_err() {
+            failed += 1;
+        }
+    }
+    if failed > 0 {
+        return Err(AdminError::VerifyFailed(format!(
+            "{failed} of {} org data key(s) cannot be unwrapped with ASD_DATA_KEK \
+             (fingerprint {}) or ASD_DATA_KEK_PREVIOUS: the key card does not match this \
+             database",
+            keys.len(),
+            keyring.kek_id()
+        )));
+    }
+    serde_json::to_string(&json!({
+        "tables": tables.len(),
+        "data_keys": keys.len(),
+        "kek_id": keyring.kek_id(),
+    }))
+    .map_err(|e| AdminError::Internal(e.to_string()))
 }
 
 #[cfg(test)]
@@ -702,6 +932,47 @@ mod tests {
         let err = read_password(None, &mut short).unwrap_err();
         assert_eq!(err.exit_code(), 2);
         assert!(!err.to_string().contains("short\n"));
+    }
+
+    #[test]
+    fn parses_restore_helpers() {
+        assert_eq!(
+            parse(&args(&["erasure-ledger"])).unwrap(),
+            AdminCommand::ErasureLedger
+        );
+        assert_eq!(parse(&args(&["verify"])).unwrap(), AdminCommand::Verify);
+        assert_eq!(
+            parse(&args(&["requeue-erasure", "--ledger", "/tmp/l.jsonl"])).unwrap(),
+            AdminCommand::RequeueErasure {
+                ledger: "/tmp/l.jsonl".into()
+            }
+        );
+        for bad in [
+            &["requeue-erasure"][..],
+            &["requeue-erasure", "--ledger"],
+            &["requeue-erasure", "--ledger", " "],
+            &["erasure-ledger", "--force"],
+            &["verify", "--batch", "3"],
+        ] {
+            assert_eq!(parse(&args(bad)).unwrap_err().exit_code(), 2, "{bad:?}");
+        }
+        assert_eq!(AdminError::VerifyFailed("x".into()).exit_code(), 3);
+    }
+
+    #[test]
+    fn ledger_lines_round_trip_and_bad_lines_are_refused() {
+        let entry = LedgerEntry {
+            participant_id: Uuid::new_v4(),
+            org_id: Uuid::new_v4(),
+            requested_at: "2026-11-02T10:00:00.000000Z".into(),
+            status: "completed".into(),
+        };
+        let line = serde_json::to_string(&entry).unwrap();
+        let text = format!("{line}\n\n{line}\n");
+        assert_eq!(parse_ledger(&text).unwrap(), vec![entry.clone(), entry]);
+        let err = parse_ledger("{\"participant_id\":\"nope\"}").unwrap_err();
+        assert_eq!(err.exit_code(), 2);
+        assert!(err.to_string().contains("line 1"), "{err}");
     }
 
     #[test]

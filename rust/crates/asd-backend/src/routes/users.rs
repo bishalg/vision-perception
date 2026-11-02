@@ -28,16 +28,29 @@
 //! Mandatory TOTP (AUTH-12, WP-B.16): `create` in a required role and a role change into
 //! one set `totp_required_by` when it is NULL; `GET/PATCH /v1/users/me` report
 //! `totp_enforcement` and `totp_required_by` ([`crate::auth::totp_policy`]).
+//!
+//! Org-admin TOTP reset (TRS-1, TRS-2, WP-B.17): `POST /v1/orgs/{id}/users/{user_id}/totp/
+//! reset` [`TotpResetRequest`] -> `204` (`UserTotpReset`: owner, admin). Another org's user
+//! is a 404; a target above the caller's rank (an admin on an owner) or the caller itself
+//! is `403 totp-reset-forbidden`. The caller re-authenticates (SIGN-5 step-up through
+//! [`crate::clinical::reauth::step_up`]; a failure is `401 reauthentication-failed`,
+//! audited as `user.totp_reset_failed`, nothing changed). Then, in one transaction,
+//! [`crate::auth::totp::reset_for_user`] clears the target's TOTP columns and revokes its
+//! refresh-token families, and `user.totp_reset_by_admin` is audited with the target id and
+//! the reason only. `totp_required_by` is not touched (no new grace period).
 
 use asd_contract::api_v1::{
     CreateUserRequest, OrgUser, OrgUserPage, Role, UpdateUserRequest, UserStatus,
 };
+use std::sync::Arc;
+
 use asd_contract::clinical::{
-    UpdateProfileRequest, UserProfile, MAX_DISPLAY_NAME_CHARS, MAX_REGISTRATION_CHARS,
+    TotpResetRequest, UpdateProfileRequest, UserProfile, MAX_DISPLAY_NAME_CHARS,
+    MAX_REGISTRATION_CHARS, MAX_TOTP_RESET_REASON_CHARS, MIN_TOTP_RESET_REASON_CHARS,
 };
 use axum::extract::{Path, State};
-use axum::routing::get;
-use axum::{Json, Router};
+use axum::routing::{get, post};
+use axum::{Extension, Json, Router};
 use chrono::{DateTime, Utc};
 use http::StatusCode;
 use serde_json::{json, Value};
@@ -49,7 +62,8 @@ use crate::app::AppState;
 use crate::audit::AuditEvent;
 use crate::auth::extractors::{ApiJson, RequestMeta, Require, UserPrincipal};
 use crate::auth::rbac::{self, perm};
-use crate::auth::{password, refresh, totp_policy};
+use crate::auth::{password, refresh, totp, totp_policy};
+use crate::clinical::reauth::{step_up, StepUpError, StepUpLimiter};
 use crate::error::{AppError, AppResult};
 use crate::problem::InvalidParam;
 
@@ -58,6 +72,8 @@ pub fn router() -> Router<AppState> {
         .route("/orgs/{id}/users", get(list).post(create))
         .route("/orgs/{id}/users/{user_id}", get(read).patch(update))
         .route("/users/me", get(get_me).patch(patch_me))
+        .route("/orgs/{id}/users/{user_id}/totp/reset", post(reset_totp))
+        .layer(Extension(StepUpLimiter::new()))
 }
 
 pub const MAX_EMAIL_LEN: usize = 254;
@@ -555,6 +571,97 @@ async fn update(
         target.last_login_at,
         new_profile,
     )?))
+}
+
+/// `403 totp-reset-forbidden` (TRS-1).
+fn totp_reset_forbidden(detail: &str) -> AppError {
+    AppError::ForbiddenWith {
+        slug: asd_contract::problem::TOTP_RESET_FORBIDDEN,
+        detail: detail.into(),
+    }
+}
+
+/// `POST /v1/orgs/{id}/users/{user_id}/totp/reset` (TRS-1, TRS-2; see the module docs).
+async fn reset_totp(
+    State(state): State<AppState>,
+    auth: Require<perm::UserTotpReset>,
+    Extension(limiter): Extension<Arc<StepUpLimiter>>,
+    Path((_, user_id)): Path<(String, String)>,
+    meta: RequestMeta,
+    ApiJson(req): ApiJson<TotpResetRequest>,
+) -> AppResult<StatusCode> {
+    let org = auth.org();
+    let user_id = Uuid::parse_str(&user_id).map_err(|_| AppError::NotFound)?;
+    let reason = req.reason.trim();
+    let chars = reason.chars().count();
+    if !(MIN_TOTP_RESET_REASON_CHARS..=MAX_TOTP_RESET_REASON_CHARS).contains(&chars)
+        || reason.chars().any(char::is_control)
+    {
+        return Err(AppError::Validation(vec![InvalidParam {
+            name: "reason".into(),
+            reason: format!(
+                "must be {MIN_TOTP_RESET_REASON_CHARS} to {MAX_TOTP_RESET_REASON_CHARS} \
+                 characters without line breaks"
+            ),
+        }]));
+    }
+    let target_role = sqlx::query_scalar!(
+        "SELECT role FROM users WHERE id = $1 AND org_id = $2",
+        user_id,
+        org
+    )
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or(AppError::NotFound)?;
+    let target_role = rbac::role_from_str(&target_role)
+        .ok_or_else(|| AppError::Internal("unknown role in database".into()))?;
+    if user_id == auth.principal.user_id {
+        return Err(totp_reset_forbidden(
+            "you cannot reset your own two-step sign-in here; use DELETE /v1/users/me/totp",
+        ));
+    }
+    if !rbac::can_assign(auth.principal.role, target_role) {
+        return Err(totp_reset_forbidden(
+            "this user's role is above yours; an owner of the organisation must reset it",
+        ));
+    }
+
+    match step_up(
+        &state,
+        &limiter,
+        auth.principal.user_id,
+        &req.password,
+        req.totp_code.as_deref(),
+    )
+    .await
+    {
+        Ok(()) => {}
+        Err(StepUpError::Failed) => {
+            let mut tx = state.db.begin().await?;
+            AuditEvent::user(&auth.principal, "user.totp_reset_failed", "user", user_id)
+                .org(org)
+                .after(json!({"target_id": user_id, "reason": "reauthentication-failed"}))
+                .meta(&meta)
+                .record(&mut tx)
+                .await?;
+            tx.commit().await?;
+            return Err(StepUpError::Failed.into());
+        }
+        Err(e) => return Err(e.into()),
+    }
+
+    let mut tx = state.db.begin().await?;
+    totp::reset_for_user(&mut tx, user_id)
+        .await?
+        .ok_or(AppError::NotFound)?;
+    AuditEvent::user(&auth.principal, "user.totp_reset_by_admin", "user", user_id)
+        .org(org)
+        .after(json!({"target_id": user_id, "reason": reason}))
+        .meta(&meta)
+        .record(&mut tx)
+        .await?;
+    tx.commit().await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// The one `UserProfile` builder (`get_me` and `patch_me`, trap 8): the enforcement state

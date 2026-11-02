@@ -22,6 +22,19 @@ final class StubSyncTransport: SyncTransport, @unchecked Sendable {
         let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: "HTTP/1.1", headerFields: headers)!
         return (body, response)
     }
+
+    /// The file's bytes become the request body, so handlers see uploads like any PUT.
+    func uploadFile(_ file: URL, to url: URL, headers: [String: String]) async throws -> (Data, HTTPURLResponse) {
+        try await send(Self.uploadRequest(file, to: url, headers: headers))
+    }
+
+    static func uploadRequest(_ file: URL, to url: URL, headers: [String: String]) throws -> URLRequest {
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
+        request.httpBody = try Data(contentsOf: file)
+        return request
+    }
 }
 
 /// Process-memory credential store; the Keychain store has its own test.

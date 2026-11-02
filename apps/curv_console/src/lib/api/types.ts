@@ -546,6 +546,8 @@ export const PROBLEM_SLUGS = [
   "host-key-mismatch",
   // Security audit (RBAC-3): a non-clinical actor cannot create or promote a clinical-role user.
   "clinical-role-not-assignable",
+  // TRS-1 (WP-B.17): an admin cannot reset an owner's or their own two-step sign-in.
+  "totp-reset-forbidden",
   // Config documents (CFG-1): lifecycle, four-eyes, bundle composition.
   "four-eyes-required",
   "invalid-transition",
@@ -553,6 +555,17 @@ export const PROBLEM_SLUGS = [
   "config-invalid",
   "config-not-published",
   "bundle-signing-unavailable",
+  // Phase 7 EMR-lite and share-a-case (WP-R.7, ADR-0011).
+  "encounter-closed",
+  "encounter-summary-forbidden",
+  "attachment-too-large",
+  "attachment-type-not-allowed",
+  "digest-mismatch",
+  "share-link-expired",
+  "share-link-exhausted",
+  "share-passcode-invalid",
+  "case-consent-missing",
+  "identity-disabled",
 ] as const;
 export type ProblemSlug = (typeof PROBLEM_SLUGS)[number];
 

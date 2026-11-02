@@ -10,6 +10,7 @@ struct AsdGazeApp: App {
     @State private var showMoodDiaryFromSuggestion: Bool = false
     @ObservedObject private var moodFusion = ARKitMoodFusionController.shared
     @ObservedObject private var appMode = AppModeStore.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         // WP-A.5: the scoring configuration of this launch (a verified delivered bundle, else
@@ -54,6 +55,9 @@ struct AsdGazeApp: App {
             // System controls (toggles, links, nav buttons) use the AA brand teal, not iOS blue.
             .tint(LiquidGlass.celestialTeal)
             .task {
+                // SYNC-2/SYNC-4: flush the upload queue at launch (after `installAtLaunch`);
+                // until the first network report the state is unknown and that report flushes.
+                ResearchKitSyncService.shared?.flushAtLaunch()
                 CareKitClinicalStore.shared.seedTasks(
                     CarePlanStore.shared.tasks,
                     medications: CarePlanStore.shared.medications
@@ -65,6 +69,12 @@ struct AsdGazeApp: App {
                 // CNS-2: training-data logger exists only in ML data-export builds.
                 BlendShapeCSVLogger.shared.startListening()
                 #endif
+            }
+            .onChange(of: scenePhase) { _, phase in
+                // SYNC-2: back in the foreground, send what was queued meanwhile.
+                if phase == .active {
+                    ResearchKitSyncService.shared?.requestFlush(.foreground)
+                }
             }
         }
     }
@@ -124,3 +134,25 @@ struct AsdGazeApp: App {
         }
     }
 }
+
+#if canImport(UIKit)
+extension AppOrientationDelegate {
+    /// SYNC-5: the system relaunches the app when background blob uploads finish. Wiring
+    /// the sync service first means finished uploads mark their blob done in the queue;
+    /// the system's completion handler runs once the session has delivered its events.
+    @MainActor
+    func application(
+        _ application: UIApplication,
+        handleEventsForBackgroundURLSession identifier: String,
+        completionHandler: @escaping () -> Void
+    ) {
+        _ = ResearchKitSyncService.shared
+        if !BackgroundBlobUploader.handleEventsForBackgroundURLSession(
+            identifier: identifier,
+            completionHandler: completionHandler
+        ) {
+            completionHandler()
+        }
+    }
+}
+#endif

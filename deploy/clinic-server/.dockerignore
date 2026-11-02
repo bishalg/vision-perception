@@ -1,0 +1,6 @@
+# owner: WP-B.18 - build context of backup.Dockerfile. Secrets never enter an image.
+.env
+.env.*
+!.env.example
+test/
+*.md

@@ -22,6 +22,7 @@ public struct CaregiverDashboardView: View {
     @State private var showingMCHAT = false
     @State private var showingDiaryEditor = false
     @State private var showingMoodDiary = false
+    @ObservedObject private var appMode = AppModeStore.shared
 
     /// Mean social-preference of the stored week (0–1), nil when no data yet.
     private var trendAverage: Double? {
@@ -64,6 +65,14 @@ public struct CaregiverDashboardView: View {
                 if !isAdvisoryDismissed {
                     Section {
                         clinicalAdvisoryBanner
+                    }
+                }
+
+                // SYNC-8: clinic mode shows where the upload queue stands (counts only).
+                if appMode.mode == .clinic, let researchSync = ResearchKitSyncService.shared,
+                   researchSync.isSessionSyncEnabled {
+                    Section {
+                        ClinicSyncStatusLine(syncService: researchSync)
                     }
                 }
 
@@ -1044,3 +1053,50 @@ public struct CaregiverDashboardView: View {
 
 /// HIG grouped dashboard entry point.
 public typealias DashboardView = CaregiverDashboardView
+
+/// SYNC-8: "n waiting · n uploading · n need attention · last synced <time>" for the
+/// clinic dashboard, with a one-tap retry while something needs attention (SYNC-4). No
+/// participant tokens or session ids appear here.
+struct ClinicSyncStatusLine: View {
+    @ObservedObject var syncService: ResearchKitSyncService
+
+    static func text(for summary: SyncStatusSummary, now: Date = Date(), lang: AppLocale? = nil) -> String {
+        var parts = [
+            String(format: Localizer.tr("sync_status_waiting", lang: lang), summary.waiting),
+            String(format: Localizer.tr("sync_status_uploading", lang: lang), summary.uploading)
+        ]
+        if summary.needsAttention > 0 {
+            parts.append(String(format: Localizer.tr("sync_status_attention", lang: lang), summary.needsAttention))
+        }
+        if let last = summary.lastSyncedAt {
+            let formatter = RelativeDateTimeFormatter()
+            formatter.dateTimeStyle = .named
+            formatter.locale = Locale(identifier: (lang ?? AppLocale.current).rawValue)
+            parts.append(String(format: Localizer.tr("sync_status_last_synced", lang: lang), formatter.localizedString(for: last, relativeTo: now)))
+        } else {
+            parts.append(Localizer.tr("sync_status_never", lang: lang))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    var body: some View {
+        let summary = syncService.statusSummary
+        HStack(spacing: 8) {
+            Image(systemName: summary.needsAttention > 0 ? "exclamationmark.icloud" : "icloud.and.arrow.up")
+                .foregroundStyle(summary.needsAttention > 0 ? LiquidGlass.warmAmber : LiquidGlass.celestialTeal)
+                .accessibilityHidden(true)
+            Text(Self.text(for: summary))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+            if syncService.deadLetterCount > 0 {
+                Button(Localizer.tr("sync_status_retry")) {
+                    syncService.retryDeadLetterItems()
+                    syncService.requestFlush(.foreground)
+                }
+                .font(.footnote.weight(.semibold))
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+}

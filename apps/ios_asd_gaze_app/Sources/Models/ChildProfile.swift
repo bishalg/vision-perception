@@ -98,6 +98,11 @@ public struct ChildProfile: Codable, Sendable, Equatable {
     /// Caregiver-entered conditions (not a screening diagnosis).
     public var medicalConditions: [MedicalCondition]
     public var allergies: String
+    /// Pseudonymous participant token of this child on the server (REC-11): `child-` plus
+    /// 20 lowercase hex characters of a fresh UUID. Empty until `ChildProfileStore`
+    /// mints it on first use (also for a profile saved before the field existed); every
+    /// session of the profile then carries the same token. Never derived from a name.
+    public var participantToken: String
 
     public init(
         childName: String = "",
@@ -108,7 +113,8 @@ public struct ChildProfile: Codable, Sendable, Equatable {
         consentTimestamp: Date? = nil,
         biologicalSexForNormativeBaseline: SexParameterForClinicalUse = .unknown,
         medicalConditions: [MedicalCondition] = [],
-        allergies: String = ""
+        allergies: String = "",
+        participantToken: String = ""
     ) {
         self.childName = childName
         self.ageBracket = ageBracket
@@ -119,6 +125,7 @@ public struct ChildProfile: Codable, Sendable, Equatable {
         self.biologicalSexForNormativeBaseline = biologicalSexForNormativeBaseline
         self.medicalConditions = medicalConditions
         self.allergies = allergies
+        self.participantToken = participantToken
     }
 
     public init(from decoder: Decoder) throws {
@@ -132,8 +139,17 @@ public struct ChildProfile: Codable, Sendable, Equatable {
             consentTimestamp: try? container.decode(Date.self, forKey: .consentTimestamp),
             biologicalSexForNormativeBaseline: (try? container.decode(SexParameterForClinicalUse.self, forKey: .biologicalSexForNormativeBaseline)) ?? .unknown,
             medicalConditions: (try? container.decode([MedicalCondition].self, forKey: .medicalConditions)) ?? [],
-            allergies: (try? container.decode(String.self, forKey: .allergies)) ?? ""
+            allergies: (try? container.decode(String.self, forKey: .allergies)) ?? "",
+            // Profiles saved before REC-11 have no token: the store mints one on first use.
+            participantToken: (try? container.decode(String.self, forKey: .participantToken)) ?? ""
         )
+    }
+
+    /// A fresh participant token: `child-` + the first 20 lowercase hex digits of a random
+    /// UUID (the same shape the backend mints for a console-created participant, REC-1).
+    public static func mintParticipantToken() -> String {
+        let hex = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
+        return "child-\(hex.prefix(20))"
     }
 
     public static let defaultProfile = ChildProfile(
@@ -162,11 +178,15 @@ public final class ChildProfileStore: ObservableObject {
 
     @Published public var profile: ChildProfile {
         didSet {
-            save()
-            // CAL-1: a different child is a different calibration subject.
+            // CAL-1 / REC-11: a different child is a different calibration subject and a
+            // different participant; the next session mints a new token.
             if oldValue.childName != profile.childName {
                 rotateCalibrationSubjectKey()
+                if oldValue.participantToken == profile.participantToken {
+                    profile.participantToken = ""
+                }
             }
+            save()
         }
     }
 
@@ -206,6 +226,23 @@ public final class ChildProfileStore: ObservableObject {
         self.profile = .defaultProfile
         userDefaults.removeObject(forKey: Self.storageKey)
         rotateCalibrationSubjectKey()
+    }
+
+    /// The participant token of the current child profile (REC-11), minted and persisted
+    /// on first use. Every session of the profile uses it; a research enrolment id still
+    /// takes precedence (`GazeSessionRecord.participantToken(enrollment:profileToken:)`).
+    public func participantToken() -> String {
+        if profile.participantToken.isEmpty {
+            profile.participantToken = ChildProfile.mintParticipantToken()
+        }
+        return profile.participantToken
+    }
+
+    /// Forgets the participant token (CNS-6 "delete all observation data"): sessions after
+    /// the deletion belong to a new participant on the server.
+    public func forgetParticipantToken() {
+        guard !profile.participantToken.isEmpty else { return }
+        profile.participantToken = ""
     }
 
     private func rotateCalibrationSubjectKey() {

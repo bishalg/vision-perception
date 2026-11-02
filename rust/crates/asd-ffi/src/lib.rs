@@ -590,6 +590,34 @@ pub fn sync_classify_response(
     }
 }
 
+/// Classifies the answer to `POST /v1/sessions` or a blob `PUT`, reading the `409` problem
+/// slug (SYNC-7): `idempotency-key-reused` / `participant-withdrawn` -> `Fatal` (quarantine),
+/// `{duplicate: true}` or no problem body -> `Duplicate`. `sync_classify_response` (every
+/// `409` = `Duplicate`) stays for one release.
+#[uniffi::export]
+pub fn sync_classify_response_with_body(
+    status: u16,
+    headers: Vec<AsdHttpHeader>,
+    body: Vec<u8>,
+) -> AsdSyncOutcome {
+    let headers: Vec<(String, String)> = headers.into_iter().map(|h| (h.name, h.value)).collect();
+    match asd_sync::classify_response_with_body(status, &headers, &body) {
+        SyncOutcome::Accepted(a) => AsdSyncOutcome::Accepted {
+            ack: AsdIngestAck {
+                session_id: a.session_id,
+                status: a.status,
+                duplicate: a.duplicate,
+                frames_upload_url: a.frames_upload_url,
+                report_upload_url: a.report_upload_url,
+            },
+        },
+        SyncOutcome::Duplicate => AsdSyncOutcome::Duplicate,
+        SyncOutcome::Reauthenticate => AsdSyncOutcome::Reauthenticate,
+        SyncOutcome::RetryAfter(seconds) => AsdSyncOutcome::RetryAfter { seconds },
+        SyncOutcome::Fatal { status } => AsdSyncOutcome::Fatal { status },
+    }
+}
+
 /// Classifies the answer to `POST /v1/devices/register`.
 #[uniffi::export]
 pub fn sync_classify_register_response(status: u16, body: Vec<u8>) -> AsdRegisterOutcome {

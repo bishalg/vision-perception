@@ -234,6 +234,10 @@ apps/**/.vite/
 .env.*
 *.env
 
+# Clinic server (WP-B.18): the real settings file is secret; the example is committed.
+deploy/clinic-server/.env
+!deploy/clinic-server/.env.example
+
 # Dataset directories (ignore flood binaries, permit metadata)
 data/flood_nepal_2026/*
 !data/flood_nepal_2026/metadata.json

@@ -742,7 +742,7 @@ public struct GazeStimulusScreeningView: View {
         if recordedSource != nil {
             let participantToken = GazeSessionRecord.participantToken(
                 enrollment: ResearchKitStudyStore.shared.fetchEnrollment(),
-                sessionId: summary.sessionId
+                profileToken: ChildProfileStore.shared.participantToken()
             )
             // Norm-collection contribution: only for consented + opted-in live TrueDepth sessions.
             let collectionMetadata = NormCollectionGate.collectionMetadata(

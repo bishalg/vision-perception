@@ -11,8 +11,10 @@ publish.workspace = true
 workspace = true
 
 [lib]
-# `lib` for the Rust tests, `staticlib` for the Apple xcframework and Android (FFI-2).
-crate-type = ["lib", "staticlib"]
+# `lib` for the Rust tests, `staticlib` for the Apple xcframework (FFI-2), `cdylib` for
+# Android (`libasd_ffi.so`, loaded by JNA) and the host library of the Kotlin JVM tests
+# (AND-1, scripts/build_asd_android.sh).
+crate-type = ["lib", "staticlib", "cdylib"]
 
 [[bin]]
 # `cargo run -p asd-ffi --features cli --bin uniffi-bindgen -- generate ...`

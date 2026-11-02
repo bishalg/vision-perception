@@ -1,6 +1,13 @@
 name: rust
 
 on:
+  # WP-A.15: run by hand for the SYNC-10 field harness (`field-sync` job, input `field_test`).
+  workflow_dispatch:
+    inputs:
+      field_test:
+        description: "Run the SYNC-10 field sync harness (toxiproxy, ASD_FIELD_TEST=1)"
+        type: boolean
+        default: false
   push:
     branches: [dev, main]
     paths:
@@ -8,12 +15,16 @@ on:
       - "scripts/rust_test.sh"
       - "docs/spec/schemas/asd/**"
       - ".github/workflows/rust.yml"
+      - "apps/android_asd_core/**"
+      - "scripts/build_asd_android.sh"
   pull_request:
     paths:
       - "rust/**"
       - "scripts/rust_test.sh"
       - "docs/spec/schemas/asd/**"
       - ".github/workflows/rust.yml"
+      - "apps/android_asd_core/**"
+      - "scripts/build_asd_android.sh"
 
 concurrency:
   group: rust-${{ github.ref }}
@@ -104,3 +115,68 @@ jobs:
       - name: Tear down
         if: always()
         run: docker compose -f rust/docker-compose.yml down -v
+
+  # AND-3 (WP-A.12): the Kotlin bindings from the same UniFFI definitions. Builds
+  # libasd_ffi.so for arm64-v8a / armeabi-v7a / x86_64 with cargo ndk, the AAR, and runs the
+  # JVM golden parity test against the host library. Required for asd-ffi changes.
+  android-bindings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      ASD_NDK_VERSION: "27.1.12297006"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain (rust/rust-toolchain.toml)
+        working-directory: rust
+        run: |
+          rustup show active-toolchain || rustup toolchain install stable --profile minimal
+          rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+          cargo --version
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+          key: android
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install the NDK and cargo-ndk
+        run: |
+          sdkmanager --install "ndk;${ASD_NDK_VERSION}" "platforms;android-36"
+          echo "ANDROID_NDK_HOME=${ANDROID_HOME}/ndk/${ASD_NDK_VERSION}" >> "$GITHUB_ENV"
+          cargo install cargo-ndk --locked
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14.3"
+
+      - name: Android bindings, AAR and golden parity test
+        run: scripts/build_asd_android.sh --test
+
+      - name: Upload the AAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: asd-core-aar
+          path: apps/android_asd_core/core/build/outputs/aar/core-release.aar
+          if-no-files-found: error
+
+  # WP-A.15 / SYNC-10: the compose stack behind toxiproxy, 50 synthetic sessions posted 3x
+  # each plus 50 proxy-mode blob PUTs with Content-Digest. Manual only: run the workflow by
+  # hand with `field_test` ticked (or set the repository variable ASD_FIELD_TEST=1).
+  field-sync:
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.field_test) || vars.ASD_FIELD_TEST == '1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ASD_FIELD_TEST: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Field sync harness (toxiproxy)
+        run: scripts/field_sync_test.sh

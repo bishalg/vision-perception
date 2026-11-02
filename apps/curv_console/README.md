@@ -29,6 +29,15 @@ review queue, 5 devices). The email's local part picks the role, to try role-gat
 no devices), `clinician@x` (no revoke), `superadmin@x` (no home org: lands on the org picker). Anything else is `admin`.
 Mock state (triage, revokes) lives in server memory and resets on restart.
 
+### Automatic logoff (WP-C.21, HIP-2)
+
+`src/proxy.ts` signs a user out on a document load after 30 minutes without one (idle) or 12 hours after sign-in
+(absolute); both are constants in `src/lib/auth/session-policy.ts`. Two httpOnly cookies carry the stamps:
+`curv_login_at` (set at sign-in only) and `curv_last_seen` (refreshed on any non-prefetch authenticated request that is
+still within policy, enforced on document loads only). Past either limit the auth cookies are cleared and the user lands on `/login?reason=idle|expired`. A
+session without stamps (signed in before this policy) is treated as expired. The refresh and role/org cookies live
+at most 12 hours. The backend is unchanged.
+
 ### Live mode
 
 ```bash

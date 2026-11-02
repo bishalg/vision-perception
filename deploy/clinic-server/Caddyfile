@@ -1,0 +1,57 @@
+# owner: WP-B.18 (DPL-3)
+#
+# TLS for the clinic server. DOMAIN, ADMIN_EMAIL and TLS_MODE come from .env (compose
+# passes them in). TLS_MODE picks one snippet below:
+#   letsencrypt  public certificate (HTTP-01 on ports 80/443; the server must be reachable)
+#   internal     Caddy's own CA; install its root certificate on every iPad (README.md)
+#   tunnel       Cloudflare terminates TLS; cloudflared reaches Caddy on http://caddy:80
+# HSTS is set by the API and the console themselves (OBS-4, C.16), not here.
+{
+	email {$ADMIN_EMAIL}
+	# Caddy runs in a container; it must not try to install its CA into the container.
+	skip_install_trust
+	servers {
+		# Only cloudflared (tunnel mode) sits in front of Caddy, on the private network.
+		trusted_proxies static private_ranges
+	}
+}
+
+(tls_letsencrypt) {
+	tls {$ADMIN_EMAIL} {
+		protocols tls1.2 tls1.3
+	}
+	# Nothing in front of Caddy: a client-supplied Cloudflare header is a spoof.
+	request_header -Cf-Connecting-Ip
+}
+
+(tls_internal) {
+	tls internal {
+		protocols tls1.2 tls1.3
+	}
+	request_header -Cf-Connecting-Ip
+}
+
+(tls_tunnel) {
+	# TLS ends at Cloudflare; cloudflared adds Cf-Connecting-Ip, which the API trusts.
+}
+
+(common) {
+	# No access log: signed download URLs carry tokens in the query string.
+	encode zstd gzip
+}
+
+{$SITE_SCHEME}{$DOMAIN} {
+	import tls_{$TLS_MODE}
+	import common
+	reverse_proxy console:3000
+}
+
+{$SITE_SCHEME}api.{$DOMAIN} {
+	import tls_{$TLS_MODE}
+	import common
+	# Session uploads (frames, PDFs) are up to tens of MB.
+	request_body {
+		max_size 200MB
+	}
+	reverse_proxy api:8000
+}

@@ -21,11 +21,11 @@ use std::net::IpAddr;
 
 use asd_contract::api_v1::ActorType;
 use serde_json::Value;
-use sqlx::PgConnection;
+use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
 use crate::auth::extractors::{DevicePrincipal, RequestMeta, UserPrincipal};
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
 
 pub fn actor_type_str(t: ActorType) -> &'static str {
     match t {
@@ -177,6 +177,37 @@ impl AuditEvent {
         .await?;
         Ok(id)
     }
+}
+
+/// HIP-1: one `audit_log` row for a read of clinical content or participant detail, written
+/// in its own short transaction **before** the handler builds the body. A failure is
+/// returned as a 500 (never `let _ =`): no audit row, no data. Keep `after` tiny
+/// (`{"part":"clips"}`, ids only); never put clinical text or PHI in it (same redaction
+/// rules as [`AuditEvent`]). `org` is the resource's org (a superadmin has none of its own).
+#[allow(clippy::too_many_arguments)]
+pub async fn record_read(
+    pool: &PgPool,
+    principal: &UserPrincipal,
+    meta: &RequestMeta,
+    org: Uuid,
+    action: &'static str,
+    target_type: &'static str,
+    target_id: &str,
+    after: Option<Value>,
+) -> AppResult<()> {
+    let mut event = AuditEvent::user(principal, action, target_type, target_id)
+        .org(org)
+        .meta(meta);
+    event.after = after;
+    let result = async {
+        let mut tx = pool.begin().await?;
+        event.record(&mut tx).await?;
+        tx.commit().await?;
+        Ok::<(), AppError>(())
+    }
+    .await;
+    // Any failure (including a pool timeout) is a 500: the read must not proceed.
+    result.map_err(|e| AppError::Internal(format!("read audit failed: {e}")))
 }
 
 #[cfg(test)]

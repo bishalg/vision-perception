@@ -305,3 +305,78 @@ async fn presigned_report_is_served_once_the_device_put_it() {
     assert_eq!(bytes, b"%PDF");
     f.db.cleanup().await;
 }
+
+fn digest_of(bytes: &[u8]) -> String {
+    use base64::Engine as _;
+    use sha2::{Digest, Sha256};
+    let b64 = base64::engine::general_purpose::STANDARD.encode(Sha256::digest(bytes));
+    format!("sha-256=:{b64}:")
+}
+
+async fn put_with_digest(f: &Fixture, body: &[u8], digest: Option<&str>) -> (StatusCode, Vec<u8>) {
+    let mut req = put(
+        Some(&f.dev()),
+        "/v1/sessions/SESS-GOLDEN-0001/blobs/frames",
+        "application/octet-stream",
+        body.to_vec(),
+    );
+    if let Some(d) = digest {
+        req.headers_mut()
+            .insert("content-digest", http::HeaderValue::from_str(d).unwrap());
+    }
+    let (status, _, bytes) = send_raw(f.router.clone(), req).await;
+    (status, bytes)
+}
+
+async fn frames_key_set(f: &Fixture) -> bool {
+    let key: Option<String> = sqlx::query_scalar("SELECT frames_blob_key FROM sessions")
+        .fetch_one(&f.db.pool)
+        .await
+        .unwrap();
+    key.is_some()
+}
+
+#[tokio::test]
+async fn content_digest_is_verified_when_present() {
+    let Some(f) = Fixture::new(BlobMode::Proxy).await else {
+        return;
+    };
+    ingest_ok(&f.router, &f.dev(), &golden()).await;
+    let data = b"encrypted-frames";
+
+    // Wrong digest: 400 digest-mismatch, nothing stored, no key set.
+    let wrong = digest_of(b"something else");
+    let (status, body) = put_with_digest(&f, data, Some(&wrong)).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(problem_slug(&body), "digest-mismatch");
+    assert!(!frames_key_set(&f).await);
+
+    // Malformed or not sha-256: 400 validation-failed.
+    for bad in [
+        "sha-512=:AAAA:",
+        "sha-256=AAAA",
+        "sha-256=:not base64!:",
+        "junk",
+    ] {
+        let (status, body) = put_with_digest(&f, data, Some(bad)).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{bad}");
+        let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(problem_slug(&body), "validation-failed", "{bad}");
+        assert!(!frames_key_set(&f).await, "{bad}");
+    }
+
+    // Correct digest (alone or beside another algorithm): 204.
+    let ok = digest_of(data);
+    let (status, _) = put_with_digest(&f, data, Some(&ok)).await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    assert!(frames_key_set(&f).await);
+    let both = format!("sha-512=:AAAA:, {ok}");
+    let (status, _) = put_with_digest(&f, data, Some(&both)).await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+
+    // Absent (older apps): 204.
+    let (status, _) = put_with_digest(&f, b"other bytes", None).await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    f.db.cleanup().await;
+}

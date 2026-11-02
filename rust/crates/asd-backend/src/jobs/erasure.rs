@@ -43,6 +43,16 @@
 //! record phase is fenced by `jobs.attempts` like the export job. A session that arrives
 //! between the phases (an in-flight upload) makes the run retry rather than leave a blob
 //! behind.
+//!
+//! ## Filing and replaying (WP-B.22)
+//!
+//! [`enqueue_erasure`] files a request for a participant (one open request per participant:
+//! an open one is returned instead), withdraws consent and queues the job, in the caller's
+//! transaction; `POST /v1/orgs/{id}/participants/{pid}/erasure` uses it. [`requeue`] is the
+//! restore-time replay (`asd-backend admin requeue-erasure --ledger`, DPL-7): a participant
+//! already erased is skipped; otherwise its open pending request gets a job (unless one is
+//! queued or running) or a new request is filed, with audit `participant.erasure_requeued`
+//! (`via: cli`). The job does the erasing, never the replay itself (trap 21).
 
 use std::collections::BTreeSet;
 use std::time::Duration;
@@ -56,7 +66,7 @@ use super::runner::JobError;
 use super::{Job, JobContext, KIND_ERASURE};
 use crate::audit::AuditEvent;
 use crate::blob::{BlobError, BlobStore};
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
 use crate::ingest::idempotency;
 use crate::routes::blobs::BlobKind;
 
@@ -88,6 +98,160 @@ pub async fn enqueue(
     .execute(&mut *conn)
     .await?;
     Ok(job.id)
+}
+
+/// Who files an erasure request (`erasure_requests.requested_by_type`, `requested_by`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Actor {
+    /// An org user through the console.
+    User(Uuid),
+    /// The service itself (restore replay); `requested_by` is NULL.
+    System,
+}
+
+impl Actor {
+    fn columns(self) -> (&'static str, Option<Uuid>) {
+        match self {
+            Self::User(id) => ("user", Some(id)),
+            Self::System => ("system", None),
+        }
+    }
+}
+
+/// What [`enqueue_erasure`] did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Filed {
+    /// A new request with its queued job.
+    New { request_id: Uuid, job_id: Uuid },
+    /// The participant already has an open request (pending or held); nothing changed.
+    Open { request_id: Uuid },
+}
+
+/// Files an erasure request for `participant` of `org` in the caller's transaction: locks
+/// the participant row (serialising concurrent requests), returns the open request if one
+/// exists, otherwise inserts the request, withdraws consent now and queues the job. The
+/// caller writes the audit row. `None` when the participant is not in `org`.
+pub async fn enqueue_erasure(
+    conn: &mut PgConnection,
+    org: Uuid,
+    participant: Uuid,
+    requested_by: Actor,
+    scope: &str,
+) -> AppResult<Option<Filed>> {
+    let found = sqlx::query_scalar!(
+        "SELECT id FROM participants WHERE id = $1 AND org_id = $2 FOR UPDATE",
+        participant,
+        org,
+    )
+    .fetch_optional(&mut *conn)
+    .await?;
+    if found.is_none() {
+        return Ok(None);
+    }
+    if let Some(request_id) = sqlx::query_scalar!(
+        "SELECT id FROM erasure_requests WHERE participant_id = $1 AND completed_at IS NULL",
+        participant,
+    )
+    .fetch_optional(&mut *conn)
+    .await?
+    {
+        return Ok(Some(Filed::Open { request_id }));
+    }
+    let (by_type, by) = requested_by.columns();
+    let request_id = sqlx::query_scalar!(
+        "INSERT INTO erasure_requests (org_id, participant_id, requested_by_type, requested_by,
+                                       scope)
+         VALUES ($1, $2, $3, $4, $5) RETURNING id",
+        org,
+        participant,
+        by_type,
+        by,
+        scope,
+    )
+    .fetch_one(&mut *conn)
+    .await?;
+    sqlx::query!(
+        "UPDATE participants SET withdrawn_at = coalesce(withdrawn_at, now()) WHERE id = $1",
+        participant,
+    )
+    .execute(&mut *conn)
+    .await?;
+    let created_by = match requested_by {
+        Actor::User(id) => Some(id),
+        Actor::System => None,
+    };
+    let job_id = enqueue(conn, org, request_id, created_by).await?;
+    Ok(Some(Filed::New { request_id, job_id }))
+}
+
+/// What [`requeue`] did for one participant.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Requeued {
+    /// A job was queued (for the open pending request, or a new request); audited.
+    Queued { request_id: Uuid, job_id: Uuid },
+    /// `erased_at` is set: nothing to do.
+    AlreadyErased,
+    /// The open pending request has a queued or running job already.
+    InProgress { request_id: Uuid },
+    /// The open request is held (clinical record): the job would hold it again.
+    Held { request_id: Uuid },
+    /// No such participant in that org.
+    Unknown,
+}
+
+/// Restore replay for one ledger entry (see the module docs), in its own transaction.
+pub async fn requeue(pool: &sqlx::PgPool, org: Uuid, participant: Uuid) -> AppResult<Requeued> {
+    let mut tx = pool.begin().await?;
+    let Some(erased_at) = sqlx::query_scalar!(
+        "SELECT erased_at FROM participants WHERE id = $1 AND org_id = $2 FOR UPDATE",
+        participant,
+        org,
+    )
+    .fetch_optional(&mut *tx)
+    .await?
+    else {
+        return Ok(Requeued::Unknown);
+    };
+    if erased_at.is_some() {
+        return Ok(Requeued::AlreadyErased);
+    }
+    let open = sqlx::query!(
+        r#"SELECT r.id, r.status, j.status AS "job_status?"
+           FROM erasure_requests r LEFT JOIN jobs j ON j.id = r.job_id
+           WHERE r.participant_id = $1 AND r.completed_at IS NULL"#,
+        participant,
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
+    let (request_id, job_id, new_request) = match open {
+        Some(r) if r.status == ErasureStatus::Held.as_str() => {
+            return Ok(Requeued::Held { request_id: r.id });
+        }
+        Some(r) if matches!(r.job_status.as_deref(), Some("queued" | "running")) => {
+            return Ok(Requeued::InProgress { request_id: r.id });
+        }
+        Some(r) => (r.id, enqueue(&mut tx, org, r.id, None).await?, false),
+        None => match enqueue_erasure(&mut tx, org, participant, Actor::System, "all").await? {
+            Some(Filed::New { request_id, job_id }) => (request_id, job_id, true),
+            _ => {
+                return Err(AppError::Internal(
+                    "erasure request appeared while the participant was locked".into(),
+                ))
+            }
+        },
+    };
+    AuditEvent::system("participant.erasure_requeued", "participant", participant)
+        .org(org)
+        .after(json!({
+            "erasure_request_id": request_id,
+            "job_id": job_id,
+            "new_request": new_request,
+            "via": "cli",
+        }))
+        .record(&mut tx)
+        .await?;
+    tx.commit().await?;
+    Ok(Requeued::Queued { request_id, job_id })
 }
 
 fn permanent(m: impl Into<String>) -> JobError {

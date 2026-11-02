@@ -7,7 +7,8 @@ import os
 ///
 /// `deleteAll(includeCarePlans:)` empties the vault, session history, research
 /// upload queues, the `BlendShapeML` directory if a data-export build left one,
-/// the `BenchLogs` directory if a bench-capture build left one, the calibration profile, M-CHAT results and study enrollment. CareKit care
+/// the `BenchLogs` directory if a bench-capture build left one, the calibration profile, M-CHAT results, study enrollment
+/// and the child profile's participant token (REC-11: later sessions are a new participant). CareKit care
 /// plans are the parent's own notes, not telemetry: they are deleted only when
 /// the caller passes `includeCarePlans: true` after a separate confirmation.
 @MainActor
@@ -31,6 +32,7 @@ public final class DataDeletionService {
     private let researchStore: ResearchKitStudyStore
     private let purgeQueues: @MainActor () -> Void
     private let resetCalibration: @MainActor () -> Void
+    private let forgetParticipantToken: @MainActor () -> Void
     private let deleteCarePlansAction: @MainActor () -> Void
 
     public init(
@@ -41,6 +43,7 @@ public final class DataDeletionService {
         researchStore: ResearchKitStudyStore,
         purgeQueues: @escaping @MainActor () -> Void,
         resetCalibration: @escaping @MainActor () -> Void,
+        forgetParticipantToken: @escaping @MainActor () -> Void,
         deleteCarePlans: @escaping @MainActor () -> Void,
         fileManager: FileManager = .default
     ) {
@@ -51,6 +54,7 @@ public final class DataDeletionService {
         self.researchStore = researchStore
         self.purgeQueues = purgeQueues
         self.resetCalibration = resetCalibration
+        self.forgetParticipantToken = forgetParticipantToken
         self.deleteCarePlansAction = deleteCarePlans
         self.fileManager = fileManager
     }
@@ -71,6 +75,7 @@ public final class DataDeletionService {
                     object: nil
                 )
             },
+            forgetParticipantToken: { ChildProfileStore.shared.forgetParticipantToken() },
             deleteCarePlans: { CarePlanStore.shared.deleteAllCarePlanData() }
         )
     }
@@ -110,6 +115,7 @@ public final class DataDeletionService {
             report.failures.append("bench logs")
         }
         resetCalibration()
+        forgetParticipantToken()
 
         if includeCarePlans {
             deleteCarePlans()

@@ -21,7 +21,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::app::AppState;
-use crate::auth::extractors::Require;
+use crate::auth::extractors::{RequestMeta, Require};
 use crate::auth::rbac::{self, perm, Action};
 use crate::error::{AppError, AppResult};
 use crate::problem::InvalidParam;
@@ -101,11 +101,23 @@ pub(crate) async fn participant_org(db: &PgPool, raw_id: &str) -> AppResult<(Uui
 
 async fn detail(
     auth: Require<perm::ParticipantRead>,
+    meta: RequestMeta,
     State(state): State<AppState>,
     Path(raw_id): Path<String>,
 ) -> AppResult<Json<Participant>> {
     let (id, org) = participant_org(&state.db, &raw_id).await?;
     auth.ensure_org(org)?;
+    crate::audit::record_read(
+        &state.db,
+        &auth.principal,
+        &meta,
+        org,
+        "participant.read",
+        "participant",
+        &id.to_string(),
+        None,
+    )
+    .await?;
     let show_ref = rbac::allows(auth.principal.role, Action::PatientRefRead);
     let r = sqlx::query!(
         r#"SELECT p.id, p.org_id, p.token, p.age_bracket_at_enrol, p.language, p.withdrawn_at,
@@ -136,6 +148,7 @@ async fn detail(
 
 async fn timeline_page(
     auth: Require<perm::ParticipantRead>,
+    meta: RequestMeta,
     State(state): State<AppState>,
     Path(raw_id): Path<String>,
     query: Result<Query<Vec<(String, String)>>, QueryRejection>,
@@ -143,6 +156,17 @@ async fn timeline_page(
     let (id, org) = participant_org(&state.db, &raw_id).await?;
     auth.ensure_org(org)?;
     let (filters, limit, after) = timeline_query(query)?;
+    crate::audit::record_read(
+        &state.db,
+        &auth.principal,
+        &meta,
+        org,
+        "participant.timeline_read",
+        "participant",
+        &id.to_string(),
+        None,
+    )
+    .await?;
     Ok(Json(
         timeline::page(&state.db, org, id, &filters, after.as_ref(), limit).await?,
     ))

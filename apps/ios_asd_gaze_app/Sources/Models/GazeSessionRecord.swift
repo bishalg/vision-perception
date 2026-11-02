@@ -162,7 +162,7 @@ public struct GazeSessionRecord: Identifiable, Codable, Sendable, Equatable {
     }
 
     /// Builds a record from a finished session summary. `participantToken` must be
-    /// a pseudonymous token (see `participantToken(enrollment:sessionId:)`), never a
+    /// a pseudonymous token (see `participantToken(enrollment:profileToken:)`), never a
     /// name; the label differs from the stored property on purpose so call sites that
     /// passed a name fail to compile (CNS-7).
     ///
@@ -209,14 +209,15 @@ public struct GazeSessionRecord: Identifiable, Codable, Sendable, Equatable {
         )
     }
 
-    /// The pseudonymous participant token for a session (CNS-7): the study
-    /// participant id when the family is enrolled and consented, otherwise
-    /// `child-<first 8 characters of the session id>`.
-    public static func participantToken(enrollment: ResearchStudyEnrollment?, sessionId: String) -> String {
+    /// The pseudonymous participant token for a session (CNS-7, REC-11): the study
+    /// participant id when the family is enrolled and consented, otherwise the child
+    /// profile's stable token (`ChildProfileStore.participantToken()`), so every session
+    /// of one child lands on one participant. Never derived from the session id.
+    public static func participantToken(enrollment: ResearchStudyEnrollment?, profileToken: String) -> String {
         if let enrollment, enrollment.isConsented, !enrollment.participantId.isEmpty {
             return enrollment.participantId
         }
-        return "child-\(sessionId.prefix(8))"
+        return profileToken
     }
 
     // MARK: Codable

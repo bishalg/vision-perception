@@ -358,35 +358,112 @@ final class GazeSessionRecordVersioningTests: XCTestCase {
 
     func testParticipantTokenUsesEnrollmentIdOnlyWhenConsented() {
         var enrollment = ResearchStudyEnrollment(participantId: "STUDY-ASD-ABC123")
+        let profileToken = "child-0123456789abcdef0123"
         XCTAssertEqual(
-            GazeSessionRecord.participantToken(enrollment: enrollment, sessionId: "1234567890ABCDEF"),
-            "child-12345678"
+            GazeSessionRecord.participantToken(enrollment: enrollment, profileToken: profileToken),
+            profileToken
         )
         enrollment.isConsented = true
         XCTAssertEqual(
-            GazeSessionRecord.participantToken(enrollment: enrollment, sessionId: "1234567890ABCDEF"),
+            GazeSessionRecord.participantToken(enrollment: enrollment, profileToken: profileToken),
             "STUDY-ASD-ABC123"
         )
         XCTAssertEqual(
-            GazeSessionRecord.participantToken(enrollment: nil, sessionId: "ABCD"),
-            "child-ABCD"
+            GazeSessionRecord.participantToken(enrollment: nil, profileToken: profileToken),
+            profileToken
         )
+    }
+
+    // MARK: - REC-11: one stable token per child profile
+
+    @MainActor
+    func testMintedProfileTokenHasServerShapeAndIsPersisted() throws {
+        let (defaults, suite) = Self.freshDefaults()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = ChildProfileStore(userDefaults: defaults)
+        let token = store.participantToken()
+        XCTAssertNotNil(token.range(of: "^child-[0-9a-f]{20}$", options: .regularExpression), token)
+        XCTAssertEqual(store.participantToken(), token, "minted once, then reused")
+        XCTAssertEqual(ChildProfileStore(userDefaults: defaults).participantToken(), token, "persisted with the profile")
+    }
+
+    @MainActor
+    func testProfileSavedWithoutTokenDecodesAndMintsOnFirstUse() throws {
+        let (defaults, suite) = Self.freshDefaults()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        // A profile as saved by a build before REC-11: no `participantToken` key.
+        let legacy: [String: Any] = [
+            "childName": "Legacy Child", "ageBracket": "24–35 mo", "preferredLanguage": "en",
+            "sessionDurationSec": 30, "hasConsentedPIA": true,
+            "biologicalSexForNormativeBaseline": "U", "medicalConditions": [], "allergies": ""
+        ]
+        defaults.set(try JSONSerialization.data(withJSONObject: legacy), forKey: ChildProfileStore.storageKey)
+
+        let store = ChildProfileStore(userDefaults: defaults)
+        XCTAssertEqual(store.profile.childName, "Legacy Child", "old profile still decodes")
+        XCTAssertEqual(store.profile.participantToken, "")
+        let token = store.participantToken()
+        XCTAssertTrue(token.hasPrefix("child-"))
+        let saved = try XCTUnwrap(defaults.data(forKey: ChildProfileStore.storageKey))
+        XCTAssertEqual(try JSONDecoder().decode(ChildProfile.self, from: saved).participantToken, token)
+    }
+
+    @MainActor
+    func testTwoSessionsOfOneProfileShareTheTokenAndTwoProfilesDiffer() {
+        let (defaults, suite) = Self.freshDefaults()
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = ChildProfileStore(userDefaults: defaults)
+        let first = GazeSessionRecord(
+            summary: .fixture(sessionId: "SESS-AAAA-0001"),
+            participantToken: GazeSessionRecord.participantToken(enrollment: nil, profileToken: store.participantToken())
+        )
+        let second = GazeSessionRecord(
+            summary: .fixture(sessionId: "SESS-BBBB-0002"),
+            participantToken: GazeSessionRecord.participantToken(enrollment: nil, profileToken: store.participantToken())
+        )
+        XCTAssertEqual(first.participantId, second.participantId)
+        XCTAssertFalse(first.participantId.contains("SESS"), "never derived from the session id")
+
+        // Another child (a reset, or a different name) is another participant.
+        var renamed = store.profile
+        renamed.childName = "Another Child"
+        store.profile = renamed
+        let renamedToken = store.participantToken()
+        XCTAssertNotEqual(renamedToken, first.participantId)
+        store.reset()
+        let resetToken = store.participantToken()
+        XCTAssertNotEqual(resetToken, renamedToken)
+        XCTAssertNotEqual(resetToken, first.participantId)
+
+        // Editing anything else keeps the token.
+        var edited = store.profile
+        edited.allergies = "none"
+        store.profile = edited
+        XCTAssertEqual(store.participantToken(), resetToken)
+
+        let otherStore = ChildProfileStore(userDefaults: Self.freshDefaults().0)
+        XCTAssertNotEqual(otherStore.participantToken(), resetToken)
+    }
+
+    private static func freshDefaults() -> (UserDefaults, String) {
+        let suite = "REC11_\(UUID().uuidString)"
+        return (UserDefaults(suiteName: suite)!, suite)
     }
 
     func testRecordBuiltWithTokenNeverContainsChildName() throws {
         let childName = "Aarav Sharma"
         let summary = GazeSessionReportSummary.fixture(sessionId: "SESS-NAME-001")
-        let token = GazeSessionRecord.participantToken(enrollment: nil, sessionId: summary.sessionId)
+        let token = GazeSessionRecord.participantToken(enrollment: nil, profileToken: "child-5e55a0aa0000000000aa")
         let record = GazeSessionRecord(summary: summary, participantToken: token)
 
         let json = String(data: try JSONEncoder().encode(record), encoding: .utf8) ?? ""
         XCTAssertFalse(json.contains(childName))
         XCTAssertFalse(json.contains("Aarav"))
-        XCTAssertEqual(record.participantId, "child-SESS-NAM")
+        XCTAssertEqual(record.participantId, "child-5e55a0aa0000000000aa")
 
         let fhir = try XCTUnwrap(record.toFHIRObservation())
         let fhirJSON = String(data: try JSONEncoder().encode(fhir), encoding: .utf8) ?? ""
         XCTAssertFalse(fhirJSON.contains("Aarav"))
-        XCTAssertTrue(fhirJSON.contains("Patient\\/child-SESS-NAM") || fhirJSON.contains("Patient/child-SESS-NAM"))
+        XCTAssertTrue(fhirJSON.contains("Patient\\/child-5e55a0aa0000000000aa") || fhirJSON.contains("Patient/child-5e55a0aa0000000000aa"))
     }
 }

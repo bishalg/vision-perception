@@ -492,6 +492,28 @@ pub struct AmendClinicalReviewRequest {
     pub reason: String,
 }
 
+// ---- org-admin TOTP reset (TRS-1, WP-B.17) -----------------------------------------------
+
+/// Shortest `TotpResetRequest.reason`, in characters.
+pub const MIN_TOTP_RESET_REASON_CHARS: usize = 10;
+/// Longest `TotpResetRequest.reason`, in characters.
+pub const MAX_TOTP_RESET_REASON_CHARS: usize = 200;
+
+/// `POST /v1/orgs/{id}/users/{user_id}/totp/reset` (`UserTotpReset`: owner, admin): the
+/// caller's step-up (SIGN-5: password, plus a code when the caller has TOTP) and why. The
+/// password and code are verified and dropped; the reason goes into the audit row.
+/// Answers `204`; the target signs in with the password alone and enrols again.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct TotpResetRequest {
+    /// The caller's password.
+    pub password: String,
+    /// Required when the caller has TOTP enrolled.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub totp_code: Option<String>,
+    /// 10..200 characters, stored in the audit row.
+    pub reason: String,
+}
+
 // ---- patient reference (MRN-1..6) --------------------------------------------------------
 
 /// `GET /v1/participants/{id}/patient-ref` (`PatientRefRead`; every read is audited).

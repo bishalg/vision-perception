@@ -1,0 +1,11 @@
+# Gradle and IDE state
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+
+# Outputs of scripts/build_asd_android.sh never live here, but keep copies out of git too:
+# native libraries and the generated UniFFI Kotlin bindings.
+jniLibs/
+**/org/curv/asd/core/asd_core.kt

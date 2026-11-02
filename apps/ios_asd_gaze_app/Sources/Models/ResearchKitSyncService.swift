@@ -1,3 +1,4 @@
+import AsdCore
 import Combine
 import CryptoKit
 import CurvAsdGazeKit
@@ -30,22 +31,66 @@ public enum ResearchSyncState: Sendable, Equatable {
     }
 }
 
-/// Transient-failure schedule for the research upload queue.
-/// Delays are 1s, 2s, 4s, 8s, then 60s. The next failure after that moves the payload to the dead-letter folder.
+/// Transient-failure schedule for the research upload queue (SYNC-3). The numbers live
+/// in Rust (`asd-sync::retry`, through `AsdCore`); this type only adapts them to Swift
+/// types. The failure after the last delay moves the payload to the dead-letter folder.
 public enum ResearchSyncRetryPolicy {
-    public static let delays: [TimeInterval] = [1, 2, 4, 8, 60]
-    /// Failures tolerated before a payload is stuck. One past the last delay.
-    public static let maxAttempts = delays.count + 1
+    /// Failures tolerated before a payload is dead-lettered (`syncMaxAttempts()`).
+    public static var maxAttempts: Int { Int(syncMaxAttempts()) }
 
-    public static func delay(afterAttempt attempt: Int) -> TimeInterval {
-        let index = min(max(attempt - 1, 0), delays.count - 1)
-        return delays[index]
+    /// The schedule after the 1st, 2nd, ... failure (`syncBackoffSchedule`).
+    public static var delays: [TimeInterval] {
+        (1..<maxAttempts).map { TimeInterval(syncBackoffSchedule(attempt: UInt32($0))) }
     }
+
+    /// Wait after failed attempt `attempt` (1-based): the schedule, or the server's
+    /// `Retry-After` when longer (`syncNextRetryDelay`).
+    public static func delay(afterAttempt attempt: Int, retryAfter: TimeInterval? = nil) -> TimeInterval {
+        syncNextRetryDelay(attempt: UInt32(clamping: max(attempt, 0)), retryAfterSecs: retryAfter)
+    }
+
+    /// Automatic dead-letter recycles (on reconnect and at launch) before an item stays
+    /// dead-lettered until someone taps retry (SYNC-4).
+    public static let maxDeadLetterCycles = 3
 }
 
+/// Retry state beside each queue file (`<name>.syncmeta`), kept with the file when it is
+/// dead-lettered so the recycle count survives (SYNC-4).
 private struct ResearchSyncFileMeta: Codable {
     var attemptCount: Int
     var nextAttemptAt: TimeInterval
+    /// Times the item came back from the dead-letter folder automatically; absent in
+    /// metadata written before SYNC-4.
+    var deadLetterCycles: Int?
+}
+
+/// What the clinic dashboard shows about the upload queue (SYNC-8). Counts only: no
+/// participant tokens or session ids.
+public struct SyncStatusSummary: Equatable, Sendable {
+    /// Queued and not yet accepted by the server.
+    public let waiting: Int
+    /// Accepted by the server, encrypted files still uploading.
+    public let uploading: Int
+    /// Dead-lettered or quarantined: someone has to look (one-tap retry for dead letters).
+    public let needsAttention: Int
+    public let lastSyncedAt: Date?
+
+    public init(waiting: Int, uploading: Int, needsAttention: Int, lastSyncedAt: Date?) {
+        self.waiting = waiting
+        self.uploading = uploading
+        self.needsAttention = needsAttention
+        self.lastSyncedAt = lastSyncedAt
+    }
+}
+
+/// Why a flush was asked for (SYNC-2); logged, and `.manual` bypasses nothing.
+public enum SyncFlushTrigger: String, Sendable {
+    case enqueue, launch, foreground, reconnect, timer, registration, backgroundUpload
+}
+
+/// The decoded stage of a queue file, without the payload (for the status counts).
+private struct QueuedSessionStageProbe: Decodable {
+    let stage: QueuedSessionUpload.Stage
 }
 
 /// Where this device stands with the `/v1` API (WP-A.4).
@@ -139,6 +184,8 @@ private enum QueueItemOutcome {
     case transient(retryAfter: TimeInterval?)
     /// Not attempted or refused for auth: stays queued, no retry budget spent.
     case held
+    /// The device has no network path: stop the flush, no retry budget spent.
+    case offline
 }
 
 /// Offline-first background synchronization client for a configured research
@@ -152,8 +199,19 @@ private enum QueueItemOutcome {
 @MainActor
 public final class ResearchKitSyncService: ObservableObject {
     /// `nil` in the default build: there is no research study at launch (H7).
-    public static let shared: ResearchKitSyncService? = ResearchStudyConfiguration.current.map {
-        ResearchKitSyncService(configuration: $0)
+    /// Blob uploads go through the process's one background session (SYNC-5); uploads
+    /// that finish after a relaunch mark their blob done here.
+    public static let shared: ResearchKitSyncService? = ResearchStudyConfiguration.current.map { configuration in
+        let uploader = BackgroundBlobUploader.shared
+        let service = ResearchKitSyncService(
+            configuration: configuration,
+            transport: URLSessionSyncTransport(session: .shared, backgroundUploader: uploader)
+        )
+        // `shared` lives for the whole process, so the handler may hold it.
+        uploader.setOrphanHandler { path, status in
+            Task { @MainActor in service.backgroundUploadFinished(filePath: path, status: status) }
+        }
+        return service
     }
 
     private static let logger = Logger(subsystem: "com.visionperception.asd", category: "ResearchKitSyncService")
@@ -162,7 +220,14 @@ public final class ResearchKitSyncService: ObservableObject {
     @Published public private(set) var pendingQueueCount: Int = 0
     @Published public private(set) var deadLetterCount: Int = 0
     @Published public private(set) var lastSyncedAt: Date?
-    @Published public private(set) var isOnline: Bool = true
+    /// Quarantined payloads (refused by the server; kept for inspection, manual only).
+    @Published public private(set) var quarantineCount: Int = 0
+    /// Queued sessions whose POST was accepted and whose blobs are still uploading.
+    @Published public private(set) var uploadingCount: Int = 0
+    /// `nil` until the first network path report (trap 13): starting `true` skipped the
+    /// launch flush, starting `false` would block it until the monitor reports. The first
+    /// `.satisfied` report counts as a reconnect and flushes.
+    @Published public private(set) var isOnline: Bool?
     /// Device-plane registration for `/v1/sessions` (WP-A.4).
     @Published public private(set) var deviceRegistration: DeviceRegistrationStatus = .unavailable
 
@@ -199,6 +264,13 @@ public final class ResearchKitSyncService: ObservableObject {
     /// Bumped on every purge so a flush that outlives its cancellation never
     /// writes retry metadata or moves files back into a purged queue.
     private var queueGeneration = 0
+    /// A trigger arrived while a flush was running: run once more when it ends (SYNC-2).
+    private var flushRequestedDuringSync = false
+    /// Wakes when the earliest `nextAttemptAt` passes while online (SYNC-2).
+    private var retryTimer: Task<Void, Never>?
+    private let retrySleep: @Sendable (TimeInterval) async throws -> Void
+    /// Queue file names in stage `.uploadBlobs` (SYNC-8 "uploading").
+    private var uploadingFileNames: Set<String> = []
 
     /// Application Support (not Documents) so the queue is not user-visible and
     /// can be excluded from backup (CNS-4).
@@ -242,12 +314,14 @@ public final class ResearchKitSyncService: ObservableObject {
         credentialStore: DeviceCredentialStore = KeychainDeviceCredentialStore(),
         clientInfo: SyncClientInfo? = nil,
         blobRoot: URL? = nil,
-        transport: SyncTransport? = nil
+        transport: SyncTransport? = nil,
+        retrySleep: @escaping @Sendable (TimeInterval) async throws -> Void = { try await Task.sleep(for: .seconds($0)) }
     ) {
         self.configuration = configuration
         self.store = store
         self.session = session
         self.now = now
+        self.retrySleep = retrySleep
         self.blobRoot = (blobRoot ?? URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)).resolvingSymlinksInPath()
         if let apiBaseURL = configuration.apiBaseURL {
             let info = clientInfo ?? .current
@@ -284,6 +358,7 @@ public final class ResearchKitSyncService: ObservableObject {
             self.pathMonitor = nil
         }
         prepareProtectedDirectory(self.queueDirectory)
+        uploadingFileNames = Set(probeUploadingFiles())
         updatePendingCount()
         refreshRegistrationStatus(authFailed: false)
 
@@ -299,19 +374,113 @@ public final class ResearchKitSyncService: ObservableObject {
 
     deinit {
         pathMonitor?.cancel()
+        retryTimer?.cancel()
     }
 
-    /// Internal handler when network connectivity transitions
+    /// Network path report (`NWPathMonitor`, or a test double). The first `.satisfied`
+    /// report and every offline -> online change count as a reconnect: dead letters are
+    /// recycled (SYNC-4) and the queue flushes (SYNC-2).
     public func handlePathUpdate(status: NWPath.Status) {
         let wasOnline = isOnline
-        isOnline = (status == .satisfied)
-        Self.logger.info("Network path status changed to \(self.isOnline ? "online" : "offline", privacy: .public)")
-
-        // If we transitioned from offline to online and have pending items, trigger background flush
-        if !wasOnline && isOnline && pendingQueueCount > 0 && !syncState.isSyncing {
-            Self.logger.info("Auto-triggering flush of \(self.pendingQueueCount) queued research study bundles on network reconnect")
-            syncNow(forceBundleCompile: false)
+        let online = status == .satisfied
+        isOnline = online
+        guard wasOnline != online else { return }
+        Self.logger.info("Network path is \(online ? "online" : "offline", privacy: .public)")
+        guard online else {
+            retryTimer?.cancel()
+            retryTimer = nil
+            return
         }
+        recycleDeadLetters()
+        requestFlush(.reconnect)
+    }
+
+    // MARK: - Flush triggers (SYNC-2)
+
+    /// Launch (after `installAtLaunch`): recycles dead letters (SYNC-4) and flushes when
+    /// the network is known to be up; while the state is unknown, the first path report
+    /// flushes instead.
+    public func flushAtLaunch() {
+        recycleDeadLetters()
+        requestFlush(.launch)
+    }
+
+    /// Schedules a flush of the queue when it can do anything: online, research consent
+    /// active, something queued. A trigger during a running flush runs one more flush
+    /// after it. Manual `syncNow` is unaffected by these conditions.
+    public func requestFlush(_ trigger: SyncFlushTrigger) {
+        guard isOnline == true else { return }
+        guard store.fetchEnrollment().isConsented else { return }
+        updatePendingCount()
+        guard pendingQueueCount > 0 else { return }
+        if syncState.isSyncing {
+            flushRequestedDuringSync = true
+            return
+        }
+        Self.logger.info("Flushing \(self.pendingQueueCount) queued upload(s) (\(trigger.rawValue, privacy: .public))")
+        syncNow(forceBundleCompile: false)
+    }
+
+    /// The retry timer's body: flushes when the earliest deferred item is due, otherwise
+    /// re-arms. Internal so the field scenarios can drive it on a virtual clock.
+    func fireRetryTimerIfDue() {
+        guard let due = earliestRetryAt() else { return }
+        if due <= now().timeIntervalSince1970 {
+            requestFlush(.timer)
+        } else {
+            scheduleRetryTimer()
+        }
+    }
+
+    /// When the timer will flush next (`nil`: nothing deferred or not online).
+    var nextRetryAt: Date? {
+        guard isOnline == true, let due = earliestRetryAt() else { return nil }
+        return Date(timeIntervalSince1970: due)
+    }
+
+    /// Waits until no flush is running (chained flushes included). For tests.
+    func waitUntilIdle() async {
+        while let task = syncTask {
+            await task.value
+        }
+    }
+
+    private func scheduleRetryTimer() {
+        retryTimer?.cancel()
+        retryTimer = nil
+        guard isOnline == true, let due = earliestRetryAt() else { return }
+        let delay = max(due - now().timeIntervalSince1970, 0)
+        let sleep = retrySleep
+        retryTimer = Task { [weak self] in
+            do {
+                try await sleep(delay)
+            } catch {
+                return
+            }
+            self?.fireRetryTimerIfDue()
+        }
+    }
+
+    /// Earliest `nextAttemptAt` of a queued item that has failed before.
+    private func earliestRetryAt() -> TimeInterval? {
+        let files = (try? fileManager.contentsOfDirectory(at: queueDirectory, includingPropertiesForKeys: nil)) ?? []
+        return files
+            .filter { $0.pathExtension == "json" }
+            .map { loadMeta(for: $0) }
+            .filter { $0.attemptCount > 0 }
+            .map(\.nextAttemptAt)
+            .min()
+    }
+
+    /// The clinic dashboard's line (SYNC-8).
+    public var statusSummary: SyncStatusSummary {
+        let uploading = min(uploadingCount, pendingQueueCount)
+        return SyncStatusSummary(
+            waiting: pendingQueueCount - uploading,
+            uploading: uploading,
+            needsAttention: deadLetterCount + quarantineCount,
+            lastSyncedAt: lastSyncedAt
+        )
     }
 
     // MARK: - Queue Management
@@ -382,7 +551,9 @@ public final class ResearchKitSyncService: ObservableObject {
             try SessionPayloadCoding.encoder().encode(item).write(to: fileURL, options: Self.writeOptions)
             // A fresh enqueue starts a fresh retry budget.
             try? fileManager.removeItem(at: metaURL(for: fileURL))
+            uploadingFileNames.remove(fileURL.lastPathComponent)
             updatePendingCount()
+            requestFlush(.enqueue)
             return true
         } catch {
             Self.logger.error("Failed to queue session: \(error.localizedDescription, privacy: .public)")
@@ -402,6 +573,7 @@ public final class ResearchKitSyncService: ObservableObject {
             throw error
         }
         if pendingQueueCount > 0 && !syncState.isSyncing {
+            Self.logger.info("Flushing after registration")
             syncNow(forceBundleCompile: false)
         }
     }
@@ -436,9 +608,30 @@ public final class ResearchKitSyncService: ObservableObject {
     /// Update the count of pending transmissions in the sandbox queue.
     public func updatePendingCount() {
         let contents = (try? fileManager.contentsOfDirectory(at: queueDirectory, includingPropertiesForKeys: nil)) ?? []
-        pendingQueueCount = contents.filter { $0.pathExtension == "json" }.count
+        let queued = contents.filter { $0.pathExtension == "json" }
+        pendingQueueCount = queued.count
+        uploadingFileNames.formIntersection(queued.map(\.lastPathComponent))
+        uploadingCount = uploadingFileNames.count
         let stuck = (try? fileManager.contentsOfDirectory(at: deadLetterDirectory, includingPropertiesForKeys: nil)) ?? []
         deadLetterCount = stuck.filter { $0.pathExtension == "json" }.count
+        let quarantined = (try? fileManager.contentsOfDirectory(
+            at: queueDirectory.appendingPathComponent(Self.quarantineFolder, isDirectory: true),
+            includingPropertiesForKeys: nil
+        )) ?? []
+        quarantineCount = quarantined.filter { $0.pathExtension == "json" }.count
+    }
+
+    /// Queue files in stage `.uploadBlobs`, read once at launch.
+    private func probeUploadingFiles() -> [String] {
+        let contents = (try? fileManager.contentsOfDirectory(at: queueDirectory, includingPropertiesForKeys: nil)) ?? []
+        return contents
+            .filter { $0.pathExtension == "json" && QueuedSessionUpload.isSessionFile($0) }
+            .filter { file in
+                guard let data = try? Data(contentsOf: file),
+                      let probe = try? JSONDecoder().decode(QueuedSessionStageProbe.self, from: data) else { return false }
+                return probe.stage == .uploadBlobs
+            }
+            .map(\.lastPathComponent)
     }
 
     /// Deletes every queued, dead-lettered and quarantined payload and cancels
@@ -448,6 +641,10 @@ public final class ResearchKitSyncService: ObservableObject {
         queueGeneration += 1
         syncTask?.cancel()
         syncTask = nil
+        retryTimer?.cancel()
+        retryTimer = nil
+        flushRequestedDuringSync = false
+        uploadingFileNames.removeAll()
 
         let contents = (try? fileManager.contentsOfDirectory(at: queueDirectory, includingPropertiesForKeys: nil)) ?? []
         for item in contents {
@@ -462,16 +659,66 @@ public final class ResearchKitSyncService: ObservableObject {
         Self.logger.info("Purged research upload queue, dead-letter and quarantine folders")
     }
 
-    /// Move stuck payloads back onto the live queue so the next transmit can try them again.
+    /// Move stuck payloads back onto the live queue so the next transmit can try them
+    /// again (the one-tap retry). The recycle count is kept.
     public func retryDeadLetterItems() {
         let stuck = (try? fileManager.contentsOfDirectory(at: deadLetterDirectory, includingPropertiesForKeys: nil)) ?? []
         for file in stuck where file.pathExtension == "json" {
-            let dest = queueDirectory.appendingPathComponent(file.lastPathComponent)
-            try? fileManager.removeItem(at: dest)
-            try? fileManager.removeItem(at: metaURL(for: dest))
-            try? fileManager.moveItem(at: file, to: dest)
+            restoreFromDeadLetter(file, cycles: loadMeta(for: file).deadLetterCycles ?? 0)
         }
         updatePendingCount()
+    }
+
+    /// SYNC-4: on reconnect and at launch, every dead-lettered item that has been
+    /// recycled fewer than `maxDeadLetterCycles` times goes back to the queue once with a
+    /// fresh attempt budget; the others stay until someone taps retry.
+    public func recycleDeadLetters() {
+        let stuck = (try? fileManager.contentsOfDirectory(at: deadLetterDirectory, includingPropertiesForKeys: nil)) ?? []
+        var recycled = 0
+        for file in stuck where file.pathExtension == "json" {
+            let cycles = loadMeta(for: file).deadLetterCycles ?? 0
+            guard cycles < ResearchSyncRetryPolicy.maxDeadLetterCycles else { continue }
+            restoreFromDeadLetter(file, cycles: cycles + 1)
+            recycled += 1
+        }
+        if recycled > 0 {
+            Self.logger.info("Recycled \(recycled) dead-lettered upload(s)")
+        }
+        updatePendingCount()
+    }
+
+    private func restoreFromDeadLetter(_ file: URL, cycles: Int) {
+        let dest = queueDirectory.appendingPathComponent(file.lastPathComponent)
+        try? fileManager.removeItem(at: dest)
+        try? fileManager.removeItem(at: metaURL(for: dest))
+        do {
+            try fileManager.moveItem(at: file, to: dest)
+        } catch {
+            Self.logger.error("Failed to restore \(file.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            return
+        }
+        try? fileManager.removeItem(at: metaURL(for: file))
+        saveMeta(ResearchSyncFileMeta(attemptCount: 0, nextAttemptAt: 0, deadLetterCycles: cycles), for: dest)
+    }
+
+    /// A background blob upload finished in a process that was not waiting for it (the
+    /// app was relaunched, SYNC-5): mark that blob done so the next flush neither re-sends
+    /// it nor the POST.
+    func backgroundUploadFinished(filePath: String, status: Int) {
+        guard (200...299).contains(status) else { return }
+        let files = (try? fileManager.contentsOfDirectory(at: queueDirectory, includingPropertiesForKeys: nil)) ?? []
+        for file in files where file.pathExtension == "json" && QueuedSessionUpload.isSessionFile(file) {
+            guard let data = try? Data(contentsOf: file),
+                  var item = try? SessionPayloadCoding.decoder().decode(QueuedSessionUpload.self, from: data),
+                  let index = item.blobs.firstIndex(where: {
+                      !$0.done && blobFileURL($0).standardizedFileURL.path == filePath
+                  }) else { continue }
+            item.blobs[index].done = true
+            persist(item, to: file, generation: queueGeneration)
+            Self.logger.info("Marked a background-uploaded blob done for \(item.sessionId, privacy: .public)")
+            break
+        }
+        requestFlush(.backgroundUpload)
     }
 
     // MARK: - Synchronization Dispatcher
@@ -507,10 +754,19 @@ public final class ResearchKitSyncService: ObservableObject {
         Self.logger.info("Starting research upload to \(self.serverURL.host ?? "?", privacy: .public)")
 
         let generation = queueGeneration
+        flushRequestedDuringSync = false
+        retryTimer?.cancel()
+        retryTimer = nil
         syncTask = Task {
-            defer { if generation == queueGeneration { syncTask = nil } }
+            defer {
+                if generation == queueGeneration {
+                    syncTask = nil
+                    flushEnded()
+                }
+            }
             let files = (try? fileManager.contentsOfDirectory(at: queueDirectory, includingPropertiesForKeys: nil)) ?? []
-            let jsonFiles = files.filter { $0.pathExtension == "json" }
+            // Name order: deterministic, and the oldest study bundles are not starved.
+            let jsonFiles = files.filter { $0.pathExtension == "json" }.sorted { $0.lastPathComponent < $1.lastPathComponent }
             let startedAt = now()
             var successCount = 0
             var transientFailures = 0
@@ -518,11 +774,17 @@ public final class ResearchKitSyncService: ObservableObject {
             var deadLettered = 0
             var lastReceipt = "RCPT-\(UUID().uuidString.prefix(6))"
             var authHeld = false
+            var wentOffline = false
             // One re-registration per flush, not per item (WP-A.4).
             var mayReRegister = true
 
             for file in jsonFiles {
                 guard generation == queueGeneration, !Task.isCancelled else { break }
+                // Offline mid-flush: stop instead of spending every item's retry budget.
+                guard isOnline != false else {
+                    wentOffline = true
+                    break
+                }
                 let meta = loadMeta(for: file)
                 if meta.attemptCount > 0 && meta.nextAttemptAt > startedAt.timeIntervalSince1970 {
                     deferredCount += 1
@@ -549,6 +811,7 @@ public final class ResearchKitSyncService: ObservableObject {
                     lastReceipt = receipt
                     try? fileManager.removeItem(at: file)
                     try? fileManager.removeItem(at: metaURL(for: file))
+                    uploadingFileNames.remove(file.lastPathComponent)
                     successCount += 1
                 case .quarantine(let code):
                     // 4xx status codes indicate permanent payload/client errors.
@@ -558,24 +821,30 @@ public final class ResearchKitSyncService: ObservableObject {
                 case .held:
                     authHeld = true
                     Self.logger.info("Held \(file.lastPathComponent, privacy: .public): device enrolment needed")
+                case .offline:
+                    wentOffline = true
+                    Self.logger.info("No network path; flush stopped at \(file.lastPathComponent, privacy: .public)")
                 case .transient(let retryAfter):
                     Self.logger.error("Transmission failed for \(file.lastPathComponent, privacy: .public)")
                     let nextCount = meta.attemptCount + 1
                     if nextCount >= ResearchSyncRetryPolicy.maxAttempts {
-                        moveAside(file, folderName: Self.deadLetterFolder)
+                        moveAside(file, folderName: Self.deadLetterFolder, keepingCycles: meta.deadLetterCycles)
                         deadLettered += 1
                         Self.logger.warning("Dead-lettered \(file.lastPathComponent, privacy: .public) after \(nextCount) attempts")
                     } else {
-                        let delay = max(ResearchSyncRetryPolicy.delay(afterAttempt: nextCount), retryAfter ?? 0)
+                        // SYNC-3: the schedule and the Retry-After rule come from asd-sync.
+                        let delay = ResearchSyncRetryPolicy.delay(afterAttempt: nextCount, retryAfter: retryAfter)
                         let updated = ResearchSyncFileMeta(
                             attemptCount: nextCount,
-                            nextAttemptAt: now().timeIntervalSince1970 + delay
+                            nextAttemptAt: now().timeIntervalSince1970 + delay,
+                            deadLetterCycles: meta.deadLetterCycles
                         )
                         saveMeta(updated, for: file)
                         transientFailures += 1
                         Self.logger.info("Scheduled retry \(nextCount) for \(file.lastPathComponent, privacy: .public) in \(delay, privacy: .public)s")
                     }
                 }
+                if wentOffline { break }
             }
 
             guard generation == queueGeneration else {
@@ -595,6 +864,9 @@ public final class ResearchKitSyncService: ObservableObject {
             } else if authHeld {
                 syncState = .failed(reason: "Device enrolment needed. Data safely queued.")
                 completion?(false)
+            } else if wentOffline {
+                syncState = .failed(reason: "Offline. Data safely queued.")
+                completion?(false)
             } else if deadLettered > 0 && pendingQueueCount == 0 {
                 syncState = .failed(reason: "Stuck items need a manual retry. Data safely queued.")
                 completion?(false)
@@ -604,6 +876,16 @@ public final class ResearchKitSyncService: ObservableObject {
                 completion?(false)
             }
         }
+    }
+
+    /// End of a flush: run the one that was asked for meanwhile, else arm the timer.
+    private func flushEnded() {
+        if flushRequestedDuringSync {
+            flushRequestedDuringSync = false
+            requestFlush(.timer)
+            if syncState.isSyncing { return }
+        }
+        scheduleRetryTimer()
     }
 
     private var deadLetterDirectory: URL {
@@ -617,7 +899,7 @@ public final class ResearchKitSyncService: ObservableObject {
     private func loadMeta(for file: URL) -> ResearchSyncFileMeta {
         guard let data = try? Data(contentsOf: metaURL(for: file)),
               let meta = try? JSONDecoder().decode(ResearchSyncFileMeta.self, from: data) else {
-            return ResearchSyncFileMeta(attemptCount: 0, nextAttemptAt: 0)
+            return ResearchSyncFileMeta(attemptCount: 0, nextAttemptAt: 0, deadLetterCycles: nil)
         }
         return meta
     }
@@ -627,13 +909,20 @@ public final class ResearchKitSyncService: ObservableObject {
         try? data.write(to: metaURL(for: file), options: Self.writeOptions)
     }
 
-    private func moveAside(_ file: URL, folderName: String) {
+    /// Moves a queue file into `folderName`. A dead-lettered file keeps its recycle count
+    /// in metadata beside it (SYNC-4); a quarantined one keeps none.
+    private func moveAside(_ file: URL, folderName: String, keepingCycles cycles: Int?? = .none) {
         let dir = queueDirectory.appendingPathComponent(folderName, isDirectory: true)
         prepareProtectedDirectory(dir)
         let dest = dir.appendingPathComponent(file.lastPathComponent)
         try? fileManager.removeItem(at: dest)
+        try? fileManager.removeItem(at: metaURL(for: dest))
         try? fileManager.moveItem(at: file, to: dest)
         try? fileManager.removeItem(at: metaURL(for: file))
+        uploadingFileNames.remove(file.lastPathComponent)
+        if case .some(let kept) = cycles {
+            saveMeta(ResearchSyncFileMeta(attemptCount: 0, nextAttemptAt: 0, deadLetterCycles: kept ?? 0), for: dest)
+        }
     }
 
     /// Creates `dir` with queue file protection and marks it excluded from
@@ -747,6 +1036,8 @@ public final class ResearchKitSyncService: ObservableObject {
                 guard item.hasPendingUploads else { return .delivered(receipt: item.sessionId) }
                 item.stage = .uploadBlobs
                 persist(item, to: file, generation: generation)
+                uploadingFileNames.insert(file.lastPathComponent)
+                uploadingCount = uploadingFileNames.count
             }
 
             for index in item.blobs.indices where !item.blobs[index].done {
@@ -763,15 +1054,16 @@ public final class ResearchKitSyncService: ObservableObject {
                     persist(item, to: file, generation: generation)
                     continue
                 }
-                // Throws while the device is locked (complete protection): transient.
-                let bytes = try Data(contentsOf: source)
+                // Streamed from the encrypted file (background session in the app, SYNC-5);
+                // opening it throws while the device is locked (complete protection): transient.
                 do {
-                    try await client.upload(bytes, to: target, contentType: item.blobs[index].kind.contentType)
+                    try await client.uploadFile(source, to: target, contentType: item.blobs[index].kind.contentType)
                 } catch SessionSyncError.http(let status, _) where [401, 403, 404, 410].contains(status) {
                     // Expired or refused signature: re-post for fresh URLs next time.
                     guard generation == queueGeneration else { return .held }
                     item.resetForFreshUploadURLs()
                     persist(item, to: file, generation: generation)
+                    uploadingFileNames.remove(file.lastPathComponent)
                     return .transient(retryAfter: nil)
                 }
                 guard generation == queueGeneration else { return .held }
@@ -798,10 +1090,15 @@ public final class ResearchKitSyncService: ObservableObject {
                 }
                 return .quarantine(code: status)
             }
+        } catch let error as URLError where Self.offlineCodes.contains(error.code) {
+            return .offline
         } catch {
             return .transient(retryAfter: nil)
         }
     }
+
+    /// Transport errors that mean "no network path", not "this request failed".
+    private static let offlineCodes: Set<URLError.Code> = [.notConnectedToInternet, .dataNotAllowed, .internationalRoamingOff]
 
     /// Writes upload progress back to the queue file, unless a purge happened.
     private func persist(_ item: QueuedSessionUpload, to file: URL, generation: Int) {

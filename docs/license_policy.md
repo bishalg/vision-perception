@@ -114,6 +114,14 @@ Each vendored dependency must include a `PROVENANCE.md` containing:
 - **Modifications Log**: An explicit list of all changes, patches, or optimizations made to the upstream code.
 - **Review Date & Approver**: Who validated the license and code safety.
 
+### 4.3. Approved Non-Rust Runtime Dependencies of Shipped Artifacts
+Rust crates are checked by `cargo deny` (`rust/deny.toml`). Runtime dependencies that ship
+inside a non-Rust artifact are listed here:
+
+| Dependency | Version | License used | Where | Note |
+|------------|---------|--------------|-------|------|
+| JNA (`net.java.dev.jna:jna`) | 5.17.0 (`@aar`) | Apache-2.0 (dual-licensed LGPL-2.1-or-later / Apache-2.0; taken under Apache-2.0) | Gradle dependency of the AAR `org.curv.asd:core` (`apps/android_asd_core/`, WP-A.12) | Unmodified binary from Maven Central; the UniFFI Kotlin bindings call `libasd_ffi.so` through it. |
+
 ---
 
 ## 5. Rules for Copying, Adapting, and Implementing Algorithms

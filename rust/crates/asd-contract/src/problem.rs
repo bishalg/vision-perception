@@ -88,6 +88,9 @@ pub const HOST_KEY_MISMATCH: &str = "host-key-mismatch";
 /// user, or promote one, into a role holding clinical-content actions it lacks: it would
 /// choose or know that user's password (RBAC-3, ADR-0008 D2). An owner provisions it.
 pub const CLINICAL_ROLE_NOT_ASSIGNABLE: &str = "clinical-role-not-assignable";
+/// 403: an org-admin TOTP reset (TRS-1) above the caller's rank (an admin on an owner), or
+/// on the caller itself (`DELETE /v1/users/me/totp` is the self-service path).
+pub const TOTP_RESET_FORBIDDEN: &str = "totp-reset-forbidden";
 
 // ---- config documents (WP-B.4, CFG-1) ----------------------------------------------------
 
@@ -103,6 +106,32 @@ pub const CONFIG_INVALID: &str = "config-invalid";
 pub const CONFIG_NOT_PUBLISHED: &str = "config-not-published";
 /// 503: no bundle signing key is configured.
 pub const BUNDLE_SIGNING_UNAVAILABLE: &str = "bundle-signing-unavailable";
+
+// ---- EMR-lite record and share a case (REC-9, WP-R.7) ------------------------------------
+
+/// 409: the encounter is `closed`; only `follow_up_done_at` or a reopen by `owner` or
+/// `clinician` is accepted (REC-4).
+pub const ENCOUNTER_CLOSED: &str = "encounter-closed";
+/// 400: an encounter `summary` without `ClinicalNoteWrite` (REC-4).
+pub const ENCOUNTER_SUMMARY_FORBIDDEN: &str = "encounter-summary-forbidden";
+/// 400: attachment larger than 10 MiB, or empty (REC-6, REC-7).
+pub const ATTACHMENT_TOO_LARGE: &str = "attachment-too-large";
+/// 400: attachment media type other than PDF, JPEG or PNG (REC-6).
+pub const ATTACHMENT_TYPE_NOT_ALLOWED: &str = "attachment-type-not-allowed";
+/// 400: `Content-Digest` (RFC 9530) does not match the uploaded bytes (REC-7, SYNC).
+pub const DIGEST_MISMATCH: &str = "digest-mismatch";
+/// The share link existed and expired (SHR-9); unknown and revoked links answer a plain
+/// `404 not-found` so the endpoint does not confirm ids.
+pub const SHARE_LINK_EXPIRED: &str = "share-link-expired";
+/// 410: the share link's `max_downloads` are used up (SHR-9).
+pub const SHARE_LINK_EXHAUSTED: &str = "share-link-exhausted";
+/// 401: wrong share-link passcode (SHR-9).
+pub const SHARE_PASSCODE_INVALID: &str = "share-passcode-invalid";
+/// 400: an identified case package without `consent_reference` and
+/// `consent_recorded_at` (SHR-7).
+pub const CASE_CONSENT_MISSING: &str = "case-consent-missing";
+/// Participant identity fields are not enabled before wave 3 (REC-9).
+pub const IDENTITY_DISABLED: &str = "identity-disabled";
 
 /// Every slug above, published as `$defs/ProblemSlug` in `api-v1.json` so clients can
 /// check their spelling. Route-specific slugs (e.g. `email-taken`, `last-owner`) are
@@ -139,12 +168,23 @@ pub const SLUGS: &[&str] = &[
     CONSENT_PURPOSE_MISMATCH,
     HOST_KEY_MISMATCH,
     CLINICAL_ROLE_NOT_ASSIGNABLE,
+    TOTP_RESET_FORBIDDEN,
     FOUR_EYES_REQUIRED,
     INVALID_TRANSITION,
     CONFIG_VERSION_EXISTS,
     CONFIG_INVALID,
     CONFIG_NOT_PUBLISHED,
     BUNDLE_SIGNING_UNAVAILABLE,
+    ENCOUNTER_CLOSED,
+    ENCOUNTER_SUMMARY_FORBIDDEN,
+    ATTACHMENT_TOO_LARGE,
+    ATTACHMENT_TYPE_NOT_ALLOWED,
+    DIGEST_MISMATCH,
+    SHARE_LINK_EXPIRED,
+    SHARE_LINK_EXHAUSTED,
+    SHARE_PASSCODE_INVALID,
+    CASE_CONSENT_MISSING,
+    IDENTITY_DISABLED,
 ];
 
 /// Full `type` URI for a slug.

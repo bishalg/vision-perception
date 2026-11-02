@@ -184,42 +184,24 @@ async fn request(
     let org = auth.org();
     let participant = Uuid::parse_str(&raw).map_err(|_| AppError::NotFound)?;
     let mut tx = state.db.begin().await?;
-    // The row lock serialises concurrent requests for one participant (as the device route).
-    sqlx::query_scalar!(
-        "SELECT id FROM participants WHERE id = $1 AND org_id = $2 FOR UPDATE",
-        participant,
+    // Locks the participant row (serialises concurrent requests, as the device route).
+    let filed = erasure::enqueue_erasure(
+        &mut tx,
         org,
+        participant,
+        erasure::Actor::User(auth.principal.user_id),
+        "all",
     )
-    .fetch_optional(&mut *tx)
     .await?
     .ok_or(AppError::NotFound)?;
-    let open = sqlx::query_scalar!(
-        "SELECT id FROM erasure_requests WHERE participant_id = $1 AND completed_at IS NULL",
-        participant,
-    )
-    .fetch_optional(&mut *tx)
-    .await?;
-    if let Some(open) = open {
-        let row = load(&mut tx, open).await?;
-        tx.rollback().await?;
-        return Ok((StatusCode::OK, Json(row.dto(true)?)));
-    }
-    let id = sqlx::query_scalar!(
-        "INSERT INTO erasure_requests (org_id, participant_id, requested_by_type, requested_by)
-         VALUES ($1, $2, 'user', $3) RETURNING id",
-        org,
-        participant,
-        auth.principal.user_id,
-    )
-    .fetch_one(&mut *tx)
-    .await?;
-    sqlx::query!(
-        "UPDATE participants SET withdrawn_at = coalesce(withdrawn_at, now()) WHERE id = $1",
-        participant,
-    )
-    .execute(&mut *tx)
-    .await?;
-    let job = erasure::enqueue(&mut tx, org, id, Some(auth.principal.user_id)).await?;
+    let (id, job) = match filed {
+        erasure::Filed::Open { request_id } => {
+            let row = load(&mut tx, request_id).await?;
+            tx.rollback().await?;
+            return Ok((StatusCode::OK, Json(row.dto(true)?)));
+        }
+        erasure::Filed::New { request_id, job_id } => (request_id, job_id),
+    };
     AuditEvent::user(
         &auth.principal,
         "participant.erasure_request",

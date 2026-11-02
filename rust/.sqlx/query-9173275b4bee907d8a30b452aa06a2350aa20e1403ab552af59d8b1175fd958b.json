@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT erased_at FROM participants WHERE id = $1 AND org_id = $2 FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "erased_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "participants",
+            "name": "erased_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "9173275b4bee907d8a30b452aa06a2350aa20e1403ab552af59d8b1175fd958b"
+}

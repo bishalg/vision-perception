@@ -10,3 +10,13 @@ ffi_module_filename = "asd_coreFFI"
 [bindings.kotlin]
 # WP-A.12 (Android, cargo-ndk) consumes the same definitions.
 package_name = "org.curv.asd.core"
+
+[bindings.kotlin.rename]
+# `AsdError` variants carry a field `message`, which collides with `Throwable.message` in
+# the generated `AsdException` (Kotlin compile error). Kotlin only: the field is `detail`;
+# `AsdException.message` still returns the text. The Rust surface is unchanged.
+"AsdError.InvalidJson.message" = "detail"
+"AsdError.InvalidArgument.message" = "detail"
+"AsdError.NotRegistered.message" = "detail"
+"AsdError.UploadRefused.message" = "detail"
+"AsdError.InvalidUrl.message" = "detail"

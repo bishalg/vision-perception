@@ -54,8 +54,13 @@ rust_xlsxwriter = { version = "0.102", optional = true, default-features = false
 # WP-B.9 dataset files (Apache-2.0, Apache Arrow project). No default features: no Arrow,
 # no compression codecs (datasets are written uncompressed), only the low-level writer.
 parquet = { version = "60", optional = true, default-features = false }
+# `case-package-v1.json`, the case package manifest schema (WP-I.12, SHR-2); the version
+# asd-contract already uses (MIT).
+schemars = "1"
 
 [dev-dependencies]
+# JSON Schema validation of the case package manifest (WP-I.12).
+asd-contract = { workspace = true, features = ["validate"] }
 # Reads the XLSX back in tests (WP-I.2; MIT), so no binary golden is committed.
 calamine = { version = "0.37", default-features = false }
 # Reads the Parquet dataset back in tests (WP-B.9).
@@ -63,6 +68,10 @@ bytes = "1"
 
 [[test]]
 name = "pdf_report"
+required-features = ["pdf"]
+
+[[test]]
+name = "not_scored"
 required-features = ["pdf"]
 
 [[test]]

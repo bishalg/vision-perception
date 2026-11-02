@@ -25,7 +25,7 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use crate::app::AppState;
-use crate::auth::extractors::Require;
+use crate::auth::extractors::{RequestMeta, Require};
 use crate::auth::rbac::{self, perm, Action};
 use crate::clinical::review::parse_state;
 use crate::clinical::{cosign_required, ClinicalSettings, FLAGGED};
@@ -154,6 +154,7 @@ impl WorklistQuery {
 
 async fn list(
     auth: Require<perm::WorklistRead>,
+    meta: RequestMeta,
     State(state): State<AppState>,
     query: Result<Query<WorklistQuery>, QueryRejection>,
 ) -> AppResult<Json<WorklistPage>> {
@@ -254,6 +255,19 @@ async fn list(
 
     let limit = usize::try_from(f.limit).unwrap_or(usize::MAX);
     let has_more = rows.len() > limit;
+    // HIP-1: the worklist shows dispositions, so one `worklist.read` row per page.
+    let session_ids: Vec<&str> = rows.iter().take(limit).map(|r| r.id.as_str()).collect();
+    crate::audit::record_read(
+        &state.db,
+        &auth.principal,
+        &meta,
+        org,
+        "worklist.read",
+        "organization",
+        &org.to_string(),
+        Some(serde_json::json!({ "session_ids": session_ids })),
+    )
+    .await?;
     let mut items = Vec::with_capacity(rows.len().min(limit));
     let mut last = None;
     for r in rows.into_iter().take(limit) {

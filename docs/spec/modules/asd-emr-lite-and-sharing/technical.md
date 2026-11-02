@@ -437,12 +437,13 @@ wave 3, REC-9 only sketches the contract), hospital integrations (deferred), PDF
   share-link download). List endpoints (sessions, participants, worklist) are **not**
   audited per row (they carry no clinical text); the worklist is audited once per page
   as `worklist.read` because it shows dispositions.
-- **HIP-2** Automatic logoff (console): idle timeout `CURV_IDLE_TIMEOUT_MIN` (constant
-  30; owner O-10) and absolute session length `CURV_SESSION_MAX_HOURS` (constant 12)
+- **HIP-2** Automatic logoff (console): idle timeout `IDLE_TIMEOUT_MIN` (named constant
+  30; owner O-10) and absolute session length `SESSION_MAX_HOURS` (named constant 12), both in `lib/auth/session-policy.ts`,
   enforced in `proxy.ts` from two cookies set at login (`curv_last_seen`, `curv_login_at`,
   `httpOnly`, same flags as the auth cookies): a request past either limit clears the auth
   cookies and redirects to `/login?reason=idle|expired`; `curv_last_seen` is refreshed on
-  every document request. The refresh cookie's `max-age` becomes `min(backend TTL,
+  any non-prefetch authenticated request (document, RSC navigation, server action) while the
+  session is within policy, and the redirect is enforced on document loads only. The refresh cookie's `max-age` becomes `min(backend TTL,
   CURV_SESSION_MAX_HOURS)` (the 7-day comment in `cookies.ts:11` is corrected to the real
   30-day backend TTL). The backend is unchanged; a 15-minute access token already limits
   API use after the cookies are gone.

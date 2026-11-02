@@ -277,11 +277,14 @@ final class ResearchKitSyncServiceTests: XCTestCase {
         let sig = ORKConsentSignature(guardianFullName: "Consented Parent", signatureToken: "SIG-SYNC-NET")
         researchStore.saveConsent(signature: sig, participantId: "STUDY-SYNC-NET")
 
+        // No live path monitor: its first "online" report would start a reconnect flush
+        // (SYNC-2) and race the assertions below.
         let service = ResearchKitSyncService(
             configuration: Self.studyConfig,
             store: researchStore,
             queueDirectory: tempQueueDir,
-            session: mockSession
+            session: mockSession,
+            startMonitoring: false
         )
 
         service.enqueueStudyPayload(bundle: ["study": "CURV-ASD", "retryMe": true])
@@ -338,12 +341,12 @@ final class ResearchKitSyncServiceTests: XCTestCase {
 
         // 1. Transition to offline
         service.handlePathUpdate(status: .unsatisfied)
-        XCTAssertFalse(service.isOnline)
+        XCTAssertEqual(service.isOnline, false)
         XCTAssertEqual(service.pendingQueueCount, 1)
 
         // 2. Transition to online -> triggers auto-sync
         service.handlePathUpdate(status: .satisfied)
-        XCTAssertTrue(service.isOnline)
+        XCTAssertEqual(service.isOnline, true)
 
         // Wait for background Task to finish and queue to drain
         var drained = false
