@@ -51,6 +51,12 @@ the `Release` configuration from `project.yml` (no `ASD_SIMULATION_ENABLED`,
 26. `git grep` for the previously committed phone number, personal email addresses and demo password returns nothing in the working tree; `fastlane/metadata/review_information/` is ignored. (CI-4)
 27. `age_suitability_url.txt` and the other URLs resolve to the publishing organisation's domain. (CI-5)
 
+### Phase 6 (ADR-0010): Swift 6, renames, wider claims gate
+
+28. `scripts/ios_test.sh` passes with `// swift-tools-version: 6.0` in the kit and `SWIFT_VERSION: "6.0"` in `project.yml`: kit tests, kit TSan, the warnings-as-errors kit build (no `-strict-concurrency` flag on the command line and no "language mode was overridden" warning in the log), app tests on the simulator, unsigned Release and DemoRelease builds, and both release-symbol gates. `git grep -n "unchecked Sendable" apps/ios_asd_gaze_app/Sources domains/asd_screening/ios/Sources` returns nothing new compared with `03d84a3`; every `nonisolated(unsafe)` in `Sources/**` is on a `let` and has a comment. (CONC-5, CI-3)
+29. Adding `let banner = "Clinically validated biomarker panel"` to a model file in the kit (no `Text(` on the line) makes `python3 scripts/check_asd_claims.py --swift` exit 1 naming the kit file and line with rules `clin-valid` and `biomarker`; adding `let key = "biomarkerKey"` does not; `--selftest` reports the new seeded prose-literal failures as detected. (CLM-7)
+30. After WP-A.7b, `git grep -n "Biomarker" -- 'apps/ios_asd_gaze_app/Sources/**/*.swift' 'apps/ios_asd_gaze_app/Tests/**/*.swift' 'domains/asd_screening/ios/Sources/**/*.swift' 'domains/asd_screening/ios/Tests/**/*.swift'` matches only the persisted raw value `"DigitalBiomarker"` and the JSON key lines in `SessionVaultManager.swift`; `asd-cli schema check` and `schema validate` on the four `expected-session-v1.*.json` fixtures pass unchanged; `GoldenParityTests` and `LegacyParityTests` pass; `normative_baselines.json` is byte-identical to `03d84a3`. (CLM-8)
+
 ## Success criteria
 
 - All scenarios above pass on an iPhone with TrueDepth (iOS 18+) for the device

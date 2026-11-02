@@ -32,6 +32,7 @@ referenced from the module specs rather than duplicated.
 | [ADR-0007](adr/ADR-0007-gaze-tracking-robustness.md) | Gaze-tracking maths in Rust, per-session accuracy in degrees, bench-decided calibration model | Proposed (2026-10-31) |
 | [ADR-0008](adr/ADR-0008-clinician-workspace-and-interop.md) | Clinician workspace inside the console and one Rust export bridge to hospital systems | Proposed (2026-10-31) |
 | [ADR-0009](adr/ADR-0009-phase5-security-operations.md) | Phase 5 security operations: TOTP enrolment, KEK rotation, plaintext column drop, metrics exposure, console CSP/HSTS, housekeeping | Proposed (2026-11-01) |
+| [ADR-0010](adr/ADR-0010-phase6-swift6-renames-mandatory-totp.md) | Phase 6: Swift 6 language mode, `Biomarker*` → `Engagement*` renames with a wider claims gate, mandatory TOTP per role | Proposed (2026-11-02) |
 
 ## Rules
 

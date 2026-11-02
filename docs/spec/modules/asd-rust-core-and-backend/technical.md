@@ -448,6 +448,46 @@ job runner (`jobs/runner.rs`) and the console `proxy.ts`.
   Swift; `GazeSessionController` passes the active configuration's profile JSON to the
   actor. `ScoringCouplingParams` ride along unused until WP-G.13 (H-G2 gates G.13 only).
 
+## 9. Phase 6 mandatory TOTP per role (AUTH-11..14)
+
+Added 2026-11-02 (ADR-0010 d5–d7, owner decision O-10 with recommended defaults). Builds
+on `auth/extractors.rs::UserPrincipal`, `routes/auth.rs::login`, `routes/users.rs` and the
+phase 5 enrolment routes. No iOS surface: devices authenticate with `dvc_` tokens.
+
+- **AUTH-11** `asd-contract::auth_policy` defines `TOTP_REQUIRED_ROLES: &[Role] = [Owner,
+  Admin, Clinician, Superadmin]`, `TOTP_GRACE_DAYS: i64 = 14` (both owner-decided
+  constants, not environment), and `enum TotpEnforcement { NotRequired, Grace, Required }`
+  (serde `snake_case`, in `api-v1.json`). `asd-backend::auth::totp_policy::evaluate(role,
+  totp_enrolled, totp_required_by: Option<DateTime<Utc>>, now) -> TotpEnforcement` is pure:
+  `NotRequired` when the role is not listed or `totp_enrolled`; `Grace` when
+  `totp_required_by` is `None` or `> now`; `Required` otherwise. Migration **0023** adds
+  `users.totp_required_by timestamptz` (nullable, no back-fill, no constraint).
+- **AUTH-12** `totp_required_by` is set to `now() + TOTP_GRACE_DAYS` exactly when it is
+  NULL and the user is in a required role without TOTP: (a) in `login`, in the same
+  transaction as `last_login_at` (the `auth.login` audit `after` JSON then carries
+  `totp_required_by`); (b) in `POST /v1/orgs/{id}/users` when the new role is required;
+  (c) in `PATCH /v1/orgs/{id}/users/{uid}` when the role changes to a required one. It is
+  never moved, cleared on enrolment or reset, or touched when a role stops being
+  required. `GET /v1/users/me` (`UserProfile`) gains `totp_enforcement: TotpEnforcement`
+  and `totp_required_by: Option<String>` (RFC 3339).
+- **AUTH-13** When `evaluate` yields `Required`, `UserPrincipal::from_request_parts`
+  (which already reads the `users` row; it adds `totp_secret_ct IS NOT NULL` and
+  `totp_required_by` to that one query) answers `403` problem `totp-enrolment-required`
+  (new slug, `detail` names the deadline date) for every route whose `MatchedPath`
+  template is not one of: `GET /v1/users/me`, `POST /v1/users/me/totp/enrol`, `POST
+  /v1/users/me/totp/confirm`, `GET /v1/orgs/{id}`. The check runs before RBAC and before
+  the cached principal is stored, so `Require<P>` inherits it. `POST /v1/auth/login`
+  succeeds as today for such a user (no second factor exists) and writes audit
+  `auth.login_totp_enrolment_required` (`after: {totp_required_by}`); `POST
+  /v1/auth/logout` and `/refresh` (no bearer) are unaffected. Device-plane routes
+  (`DevicePrincipal`) are unaffected. The evaluation is per request, so the request after
+  a successful `confirm` is unrestricted with the same access token.
+- **AUTH-14** `DELETE /v1/users/me/totp` (AUTH-8) and `admin reset-totp` (AUTH-9) stay
+  available for required roles; after either, the next request is `Required` again if
+  the deadline has passed (replace-authenticator flow, no operator involvement). Clinical
+  step-up (SIGN-5) is unchanged: a `Required` user cannot reach a sign route at all
+  (AUTH-13), and a `Grace` user without TOTP signs with the password alone as today.
+
 ## Public Rust API sketch (load-bearing names only)
 
 ```rust
