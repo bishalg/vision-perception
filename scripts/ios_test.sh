@@ -4,7 +4,7 @@
 # Usage: scripts/ios_test.sh [--dry-run] [-h|--help]
 #
 # Steps: Rust core xcframework (FFI-2), kit tests (incl. GoldenParityTests), kit TSAN,
-# kit strict-concurrency build, xcodegen, app tests on an iPhone simulator, unsigned
+# kit warnings-as-errors build (Swift 6 language mode), xcodegen, app tests on an iPhone simulator, unsigned
 # Release and DemoRelease builds, then static gates (claims, schema, privacy API audit,
 # Release and DemoRelease symbols).
 #
@@ -73,9 +73,9 @@ run swift test --package-path "$KIT_DIR" --scratch-path "$KIT_SCRATCH"
 step "Kit tests (ThreadSanitizer)"
 run swift test --package-path "$KIT_DIR" --scratch-path "$KIT_TSAN_SCRATCH" --sanitize=thread
 
-step "Kit strict concurrency, warnings as errors"
+step "Kit Swift 6 mode, warnings as errors"
 run swift build --package-path "$KIT_DIR" --scratch-path "$KIT_SCRATCH" \
-  -Xswiftc -strict-concurrency=complete -Xswiftc -warnings-as-errors
+  -Xswiftc -warnings-as-errors
 
 cd "$ROOT"
 

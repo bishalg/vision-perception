@@ -450,7 +450,7 @@ async fn database_at_0019_with_a_plaintext_seed_is_sealed_before_0022() {
     let applied = db::migrate_with_backfill(pool, &config_with_kek(true))
         .await
         .expect("migrate with the KEK");
-    assert_eq!(applied, vec![20, 21, 22]);
+    assert_eq!(applied, vec![20, 21, 22, 23]);
     assert_plaintext_columns_dropped(pool).await;
     let encrypted: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM audit_log WHERE action = 'user.totp_secret_encrypt'",
@@ -636,7 +636,7 @@ async fn guard_0022_refuses_plaintext_review_notes_and_migrate_is_rerunnable() {
     let applied = db::migrate_with_backfill(pool, &config_with_kek(true))
         .await
         .expect("migrate again");
-    assert_eq!(applied, vec![22]);
+    assert_eq!(applied, vec![22, 23]);
     assert_plaintext_columns_dropped(pool).await;
     let (ct, key_id): (Vec<u8>, uuid::Uuid) =
         sqlx::query_as("SELECT note_ct, note_key_id FROM review_items WHERE id = $1")
@@ -868,7 +868,7 @@ async fn migrate_command_seals_seeds_before_pending_migrations() {
         String::from_utf8_lossy(&out.stdout),
         String::from_utf8_lossy(&out.stderr)
     );
-    assert_eq!(applied_max(pool).await, 22);
+    assert_eq!(applied_max(pool).await, 23);
     assert_plaintext_columns_dropped(pool).await;
     assert_seed_verifies(pool, user, "JBSWY3DPEHPK3PXP").await;
     db.cleanup().await;

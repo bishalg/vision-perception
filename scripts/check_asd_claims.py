@@ -6,7 +6,11 @@ is docs/spec/modules/asd-gaze-app-store-readiness/claims-denylist.md.
 
 Usage:
   scripts/check_asd_claims.py             scan store metadata (all locales, iOS + Android)
-  scripts/check_asd_claims.py --swift     also scan user-facing Swift string literals (CLM-2)
+  scripts/check_asd_claims.py --swift     also scan user-facing Swift string literals (CLM-2), app and kit
+  scripts/check_asd_claims.py --swift --prose
+                                          also check every prose literal (whitespace, >= 12 chars)
+                                          on any non-comment line (CLM-7); off by default until
+                                          scripts/ios_test.sh adopts it (WP-A.7b)
   scripts/check_asd_claims.py --secrets   scan fastlane for committed personal identifiers (CI-4)
   scripts/check_asd_claims.py --selftest  prove the checks fail on seeded violations
 
@@ -28,6 +32,8 @@ APP = REPO / "apps" / "ios_asd_gaze_app"
 METADATA = APP / "fastlane" / "metadata"
 FASTLANE = APP / "fastlane"
 SWIFT_SOURCES = APP / "Sources"
+KIT_SOURCES = REPO / "domains" / "asd_screening" / "ios" / "Sources" / "CurvAsdGazeKit"
+SWIFT_ROOTS = [SWIFT_SOURCES, KIT_SOURCES]
 
 # --------------------------------------------------------------------------- limits
 # Mirrored from the `validate_metadata` lane in fastlane/Fastfile (iOS) and Google Play.
@@ -205,22 +211,54 @@ _UI_CALL = re.compile(r"\b(Text|Label|String\(format:|NSLocalizedString|Button|n
 _SKIP_LINE = re.compile(r"^\s*(//|///|\*)")
 
 
-def check_swift(root: Path) -> list[Finding]:
+PROSE_MIN_LEN = 12
+NOISY_RULES = {"test", "astro-fusion", "study", "ane-facs"}
+
+
+def _is_prose(lit: str) -> bool:
+    """A prose literal has whitespace and is long enough; identifiers and JSON keys never match."""
+    return len(lit) >= PROSE_MIN_LEN and re.search(r"\s", lit) is not None
+
+
+def _code_part(line: str) -> str:
+    """The line without a trailing `//` comment (a `//` inside a string literal is kept)."""
+    in_str = False
+    i = 0
+    while i < len(line):
+        c = line[i]
+        if in_str and c == "\\":
+            i += 2
+            continue
+        if c == '"':
+            in_str = not in_str
+        elif not in_str and line.startswith("//", i):
+            return line[:i]
+        i += 1
+    return line
+
+
+def check_swift(roots: Path | list[Path], prose: bool = False) -> list[Finding]:
+    """CLM-2 (UI-call literals) and, with prose=True, CLM-7 (prose literals on every code line)."""
+    if isinstance(roots, Path):
+        roots = [roots]
     out: list[Finding] = []
-    for f in sorted(root.rglob("*.swift")):
-        for n, line in enumerate(f.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
-            if _SKIP_LINE.match(line) or "claims-ok:" in line:
-                continue
-            code = line.split("//")[0] if "//" in line and '"' not in line.split("//")[0][-1:] else line
-            if not _UI_CALL.search(code):
-                continue
-            for lit in _LITERAL.findall(code):
-                if len(lit) < 4:
+    for root in roots:
+        for f in sorted(root.rglob("*.swift")):
+            for n, line in enumerate(f.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+                if _SKIP_LINE.match(line) or "claims-ok:" in line:
                     continue
-                for fd in check_text(f"{f.name}:{n}", "ui", lit):
-                    # "test" and URL-ish rules are noisy in code literals
-                    if fd.rule not in {"test", "astro-fusion", "study", "ane-facs"}:
-                        out.append(fd)
+                code = _code_part(line)
+                is_ui = bool(_UI_CALL.search(code))
+                for lit in _LITERAL.findall(code):
+                    if is_ui:
+                        if len(lit) < 4:
+                            continue
+                    elif not (prose and _is_prose(lit)):
+                        continue
+                    for fd in check_text(f"{f.name}:{n}", "ui", lit):
+                        # "test" and URL-ish rules are noisy in code literals
+                        if fd.rule not in NOISY_RULES:
+                            out.append(fd)
     return out
 
 
@@ -350,6 +388,41 @@ def selftest() -> int:
             if rule not in {f.rule for f in check_swift(d)}:
                 failures.append(f"{label}: expected {rule!r}")
 
+        # CLM-7 prose literals: off by default, on with prose=True
+        pr = tmp / "prose-ok"
+        _write_tree(pr, {
+            "ok.swift": (
+                'let key = "biomarkerKey"\n'
+                'let raw = "DigitalBiomarker"\n'
+                'let banner = "Clinically validated biomarker panel" // claims-ok: M-CHAT-R/F official wording\n'
+                '// let banner = "Clinically validated biomarker panel"\n'
+                '/// Returns "High risk, seek clinical evaluation" text.\n'
+                'let url = "https://example.org/a" // "clinical evaluation of this"\n'
+                'let t = "a test of the new layout"\n'
+            ),
+        })
+        if check_swift([pr], prose=True):
+            failures.append("prose good fixture should pass: " + "; ".join(map(str, check_swift([pr], prose=True))))
+        prose_bad = [
+            ("prose clin-valid", 'let banner = "Clinically validated biomarker panel"', {"clin-valid", "biomarker"}),
+            ("prose clinical", 'rec = "High risk (8\u201320). Seek prompt clinical evaluation."', {"clinical"}),
+            ("prose screening", 'description = "Autism screening at home"', {"screening"}),
+            ("prose risk-score", 'label = "Your risk score"', {"risk-score"}),
+        ]
+        for label, line, rules in prose_bad:
+            d = tmp / "prose-bad"
+            if d.exists():
+                shutil.rmtree(d)
+            _write_tree(d, {"v.swift": line + "\n"})
+            if check_swift([d]):
+                failures.append(f"{label}: must not be reported without prose mode")
+            got = {f.rule for f in check_swift([d], prose=True)}
+            if not rules <= got:
+                failures.append(f"{label}: expected {sorted(rules)}, got {sorted(got)}")
+        # kit path is part of the default roots
+        if KIT_SOURCES not in SWIFT_ROOTS:
+            failures.append("KIT_SOURCES missing from SWIFT_ROOTS (CLM-7)")
+
         # secrets
         fl = tmp / "fastlane"
         _write_tree(fl, {"Appfile": 'app_identifier ENV["APP_IDENTIFIER"]\napple_id ENV["APPLE_ID"]\n'})
@@ -376,7 +449,7 @@ def selftest() -> int:
         for f in failures:
             print("  -", f)
         return 1
-    print(f"selftest ok: {len(BAD)} metadata, 3 swift, 5 secrets seeded failures all detected")
+    print(f"selftest ok: {len(BAD)} metadata, 3 swift, 4 prose, 5 secrets seeded failures all detected")
     return 0
 
 
@@ -385,11 +458,16 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--selftest", action="store_true", help="run seeded-failure self test and exit")
     ap.add_argument("--secrets", action="store_true", help="scan fastlane for personal identifiers and secrets")
-    ap.add_argument("--swift", action="store_true", help="also scan user-facing Swift string literals")
+    ap.add_argument("--swift", action="store_true", help="also scan user-facing Swift string literals (app and kit)")
+    ap.add_argument("--prose", action="store_true",
+                    help="with --swift: also check every prose literal on any non-comment line (CLM-7)")
     args = ap.parse_args()
 
     if args.selftest:
         return selftest()
+
+    if args.prose and not args.swift:
+        ap.error("--prose requires --swift")
 
     findings: list[Finding] = []
     if args.secrets:
@@ -397,7 +475,7 @@ def main() -> int:
     else:
         findings += check_metadata(METADATA)
         if args.swift:
-            findings += check_swift(SWIFT_SOURCES)
+            findings += check_swift(SWIFT_ROOTS, prose=args.prose)
 
     for f in findings:
         print(f)

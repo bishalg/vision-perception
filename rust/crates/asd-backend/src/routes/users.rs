@@ -24,6 +24,10 @@
 //! `professional_registration` (<= 60, e.g. "NMC 12345") on create and update (by
 //! `UserManage`), and by the user through `GET/PATCH /v1/users/me` (any signed-in user,
 //! profile fields only). Staff data, stored in clear; `""` clears a field.
+//!
+//! Mandatory TOTP (AUTH-12, WP-B.16): `create` in a required role and a role change into
+//! one set `totp_required_by` when it is NULL; `GET/PATCH /v1/users/me` report
+//! `totp_enforcement` and `totp_required_by` ([`crate::auth::totp_policy`]).
 
 use asd_contract::api_v1::{
     CreateUserRequest, OrgUser, OrgUserPage, Role, UpdateUserRequest, UserStatus,
@@ -45,7 +49,7 @@ use crate::app::AppState;
 use crate::audit::AuditEvent;
 use crate::auth::extractors::{ApiJson, RequestMeta, Require, UserPrincipal};
 use crate::auth::rbac::{self, perm};
-use crate::auth::{password, refresh};
+use crate::auth::{password, refresh, totp_policy};
 use crate::error::{AppError, AppResult};
 use crate::problem::InvalidParam;
 
@@ -355,11 +359,14 @@ async fn create(
 
     let pw_hash = password::hash_blocking(req.password).await?;
     let role = rbac::role_as_str(req.role);
+    // AUTH-12 (b): a new user has no TOTP, so a required role starts its grace now.
+    let totp_required_by = totp_policy::needs_deadline(req.role, false, None)
+        .then(|| totp_policy::deadline_from(Utc::now()));
     let mut tx = state.db.begin().await?;
     let row = sqlx::query!(
         "INSERT INTO users (org_id, email, pw_hash, role, status, display_name,
-                            professional_registration)
-         VALUES ($1, $2, $3, $4, 'active', $5, $6)
+                            professional_registration, totp_required_by)
+         VALUES ($1, $2, $3, $4, 'active', $5, $6, $7)
          ON CONFLICT ((lower(email))) DO NOTHING
          RETURNING id, email, role, status, last_login_at, display_name,
                    professional_registration",
@@ -368,7 +375,8 @@ async fn create(
         pw_hash,
         role,
         profile.display_name,
-        profile.professional_registration
+        profile.professional_registration,
+        totp_required_by
     )
     .fetch_optional(&mut *tx)
     .await?
@@ -442,8 +450,9 @@ async fn update(
         .await?
         .ok_or(AppError::NotFound)?;
     let target = sqlx::query!(
-        "SELECT email, role, status, last_login_at, display_name, professional_registration
-         FROM users WHERE id = $1 AND org_id = $2 FOR UPDATE",
+        r#"SELECT email, role, status, last_login_at, display_name, professional_registration,
+                  (totp_secret_ct IS NOT NULL) AS "totp_enrolled!", totp_required_by
+           FROM users WHERE id = $1 AND org_id = $2 FOR UPDATE"#,
         user_id,
         org
     )
@@ -499,16 +508,23 @@ async fn update(
     let new_profile = profile_patch.apply(&current_profile);
     let (profile_before, profile_after) = profile_diff(&current_profile, &new_profile);
     let access_changed = role_str != target.role || new_status != target.status;
+    // AUTH-12 (c): a role change into a required role starts the grace period once (never
+    // moved; a role change out of it leaves the value in place).
+    let totp_required_by = (new_role != current_role
+        && totp_policy::needs_deadline(new_role, target.totp_enrolled, target.totp_required_by))
+    .then(|| totp_policy::deadline_from(Utc::now()));
     if access_changed || !profile_after.is_empty() {
         sqlx::query!(
             "UPDATE users SET role = $2, status = $3, display_name = $4,
-                              professional_registration = $5
+                              professional_registration = $5,
+                              totp_required_by = COALESCE(totp_required_by, $6)
              WHERE id = $1",
             user_id,
             role_str,
             new_status,
             new_profile.display_name,
-            new_profile.professional_registration
+            new_profile.professional_registration,
+            totp_required_by
         )
         .execute(&mut *tx)
         .await?;
@@ -541,23 +557,35 @@ async fn update(
     )?))
 }
 
+/// The one `UserProfile` builder (`get_me` and `patch_me`, trap 8): the enforcement state
+/// is computed here so both answers agree (AUTH-11, AUTH-12).
+#[allow(clippy::too_many_arguments)]
 fn user_profile(
     id: Uuid,
     totp_enrolled: bool,
     totp_pending: bool,
+    totp_required_by: Option<DateTime<Utc>>,
     email: String,
     role: &str,
     org_id: Option<Uuid>,
     profile: Profile,
 ) -> AppResult<UserProfile> {
+    let role_value = rbac::role_from_str(role)
+        .ok_or_else(|| AppError::Internal(format!("unknown role in database: {role}")))?;
     Ok(UserProfile {
         id: id.to_string(),
         user_id: Some(id.to_string()),
         totp_enrolled: Some(totp_enrolled),
         totp_pending: Some(totp_pending),
+        totp_enforcement: totp_policy::evaluate(
+            role_value,
+            totp_enrolled,
+            totp_required_by,
+            Utc::now(),
+        ),
+        totp_required_by: totp_required_by.map(rfc3339),
         email,
-        role: rbac::role_from_str(role)
-            .ok_or_else(|| AppError::Internal(format!("unknown role in database: {role}")))?,
+        role: role_value,
         org_id: org_id.map(|o| o.to_string()),
         display_name: profile.display_name,
         professional_registration: profile.professional_registration,
@@ -573,7 +601,8 @@ async fn get_me(
         r#"SELECT email, role, org_id, display_name, professional_registration,
                 (totp_secret_ct IS NOT NULL) AS "totp_enrolled!",
                 COALESCE(totp_pending_ct IS NOT NULL AND totp_pending_expires_at > now(), false)
-                    AS "totp_pending!"
+                    AS "totp_pending!",
+                totp_required_by
          FROM users WHERE id = $1"#,
         principal.user_id
     )
@@ -584,6 +613,7 @@ async fn get_me(
         principal.user_id,
         row.totp_enrolled,
         row.totp_pending,
+        row.totp_required_by,
         row.email,
         &row.role,
         row.org_id,
@@ -616,7 +646,8 @@ async fn patch_me(
         r#"SELECT email, role, org_id, display_name, professional_registration,
                 (totp_secret_ct IS NOT NULL) AS "totp_enrolled!",
                 COALESCE(totp_pending_ct IS NOT NULL AND totp_pending_expires_at > now(), false)
-                    AS "totp_pending!"
+                    AS "totp_pending!",
+                totp_required_by
          FROM users WHERE id = $1 FOR UPDATE"#,
         principal.user_id
     )
@@ -650,6 +681,7 @@ async fn patch_me(
         principal.user_id,
         row.totp_enrolled,
         row.totp_pending,
+        row.totp_required_by,
         row.email,
         &row.role,
         row.org_id,

@@ -11,15 +11,15 @@ final class CaptureHygieneTests: XCTestCase {
     private var suiteName: String!
     private var defaults: UserDefaults!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         suiteName = "CaptureHygieneTests_\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: suiteName)!
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         defaults.removePersistentDomain(forName: suiteName)
-        super.tearDown()
+        try await super.tearDown()
     }
 
     // CAL-3 (no fabricated target point, one re-show) is decided by the Rust pipeline since

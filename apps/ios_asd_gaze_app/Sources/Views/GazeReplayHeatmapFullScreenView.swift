@@ -198,7 +198,7 @@ public struct GazeReplayHeatmapFullScreenView: View {
                 }
             }
         }
-        .onChange(of: clipFilter) { _ in
+        .onChange(of: clipFilter) { _, _ in
             // Reset playback into the newly selected clip's frame range.
             currentFrameIndex = 0
         }

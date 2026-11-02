@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, org_id, email, pw_hash, role, status FROM users WHERE lower(email) = $1",
+  "query": "SELECT id, org_id, email, pw_hash, role, status,\n                  (totp_secret_ct IS NOT NULL) AS \"totp_enrolled!\", totp_required_by\n           FROM users WHERE lower(email) = $1",
   "describe": {
     "columns": [
       {
@@ -68,6 +68,23 @@
             "name": "status"
           }
         }
+      },
+      {
+        "ordinal": 6,
+        "name": "totp_enrolled!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "totp_required_by",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "totp_required_by"
+          }
+        }
       }
     ],
     "parameters": {
@@ -81,8 +98,10 @@
       false,
       false,
       false,
-      false
+      false,
+      null,
+      true
     ]
   },
-  "hash": "a0a9fbfb4bc1649a300e396ad74b4e746516fd183a05e52baf773ef1aa0a03ce"
+  "hash": "8aa70eb42b44176a1b7280021f007caee2fe8f6b2bd1b66ea8bd4e763c1247dd"
 }

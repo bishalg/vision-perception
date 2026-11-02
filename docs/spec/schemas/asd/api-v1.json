@@ -4864,6 +4864,7 @@
         "totp-already-enrolled",
         "totp-enrolment-expired",
         "totp-not-enrolled",
+        "totp-enrolment-required",
         "clinical-crypto-unavailable",
         "patient-ref-disabled",
         "stale-version",
@@ -8225,6 +8226,15 @@
       ],
       "type": "object"
     },
+    "TotpEnforcement": {
+      "description": "The caller's TOTP enforcement state (`UserProfile.totp_enforcement`, AUTH-11).\n\n- `not_required`: the role is not in the required list, or TOTP is enrolled;\n- `grace`: required, not enrolled, and the deadline is unset or still ahead (the\n  console shows a nudge with the date);\n- `required`: the deadline has passed; every route except reading the profile, the\n  org shell and the enrolment routes answers `403 totp-enrolment-required`.\n\nOlder backends do not send the field; clients default it to `not_required`.",
+      "enum": [
+        "not_required",
+        "grace",
+        "required"
+      ],
+      "type": "string"
+    },
     "TotpEnrolRequest": {
       "additionalProperties": false,
       "description": "`POST /v1/users/me/totp/enrol` (any signed-in console user, 5 requests per minute per\nuser across the three TOTP routes). Answers `200 TotpEnrolResponse`; `401`\n`invalid-credentials` for a wrong password, `409 totp-already-enrolled`, `503\nclinical-crypto-unavailable` when the server has no data KEK. A second call replaces\nthe pending seed.",
@@ -8260,6 +8270,23 @@
         "otpauth_url",
         "expires_at"
       ],
+      "type": "object"
+    },
+    "TotpPolicy": {
+      "description": "Mandatory two-step sign-in policy (AUTH-11): users in `required_roles` without TOTP must enrol within `grace_days` of the first time they are seen; `UserProfile.totp_enforcement` reports the state. Owner-decided constants, not settings.",
+      "properties": {
+        "grace_days": {
+          "const": 14
+        },
+        "required_roles": {
+          "const": [
+            "owner",
+            "admin",
+            "clinician",
+            "superadmin"
+          ]
+        }
+      },
       "type": "object"
     },
     "TotpStatus": {
@@ -8925,6 +8952,11 @@
         "role": {
           "$ref": "#/$defs/Role"
         },
+        "totp_enforcement": {
+          "$ref": "#/$defs/TotpEnforcement",
+          "default": "not_required",
+          "description": "Mandatory two-step sign-in state for the caller's role (AUTH-11). Absent from older\nbackends, hence the `not_required` default."
+        },
         "totp_enrolled": {
           "anyOf": [
             {
@@ -8946,6 +8978,17 @@
             }
           ],
           "description": "True while a TOTP enrolment waits for its confirming code and has not expired\n(AUTH-10). Login and step-up ignore a pending seed."
+        },
+        "totp_required_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "RFC 3339 deadline for enrolling TOTP (AUTH-12), set the first time a user in a\nrequired role without TOTP is seen and never moved; `null` until then. Returned as\nstored, also when the current role no longer needs TOTP (`totp_enforcement` decides)."
         },
         "user_id": {
           "anyOf": [

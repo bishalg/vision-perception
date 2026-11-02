@@ -144,15 +144,15 @@ final class CarePlanStoreTests: XCTestCase {
         )
 
         let fetched = expectation(description: "fetch tasks")
-        var remaining: [OCKTask] = []
+        let remaining = Box<[OCKTask]>([])
         var query = OCKTaskQuery(dateInterval: DateInterval(start: .distantPast, end: Date().addingTimeInterval(86_400 * 365)))
         query.excludesTasksWithNoEvents = false
         ockStore.fetchTasks(query: query, callbackQueue: .main) { result in
-            remaining = (try? result.get()) ?? []
+            remaining.value = (try? result.get()) ?? []
             fetched.fulfill()
         }
         wait(for: [fetched], timeout: 5.0)
-        XCTAssertTrue(remaining.isEmpty, "the CareKit mirror must be emptied too")
+        XCTAssertTrue(remaining.value.isEmpty, "the CareKit mirror must be emptied too")
     }
 
     @MainActor

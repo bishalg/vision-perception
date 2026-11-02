@@ -2,7 +2,7 @@
 
 The source of truth is `scripts/check_asd_claims.py`. If this page and the script disagree, the script wins; update this page in the same change.
 
-Run: `python3 scripts/check_asd_claims.py` (metadata), `--swift` (also user-facing Swift string literals, CLM-2), `--secrets` (CI-4), `--selftest` (seeded failures).
+Run: `python3 scripts/check_asd_claims.py` (metadata), `--swift` (also user-facing Swift string literals, CLM-2; scans the app and the kit), `--swift --prose` (also prose literals, CLM-7), `--secrets` (CI-4), `--selftest` (seeded failures).
 
 ## Forbidden in every store text field (all locales, iOS and Android)
 
@@ -43,6 +43,14 @@ Allowed only inside a sentence that negates it ("does not diagnose", "not a diag
 ## Swift sources (`--swift`)
 
 String literals on lines that call `Text(`, `Label(`, `String(format:`, `NSLocalizedString`, `Button`, `Localizer`, `.draw` etc. are checked against the global list (except test, study, ane-facs, astro-fusion). Comments and identifiers are exempt. A line with `// claims-ok: <reason>` is exempt (official M-CHAT-R/F vocabulary only).
+
+Roots scanned: `apps/ios_asd_gaze_app/Sources` and `domains/asd_screening/ios/Sources/CurvAsdGazeKit` (`SWIFT_ROOTS` in the script).
+
+### Prose-literal mode (`--swift --prose`, CLM-7)
+
+Off by default; `scripts/ios_test.sh` adopts it in WP-A.7b together with the clean-up of the findings. When on, every non-comment line without `claims-ok:` is checked, not only UI calls: each string literal that contains whitespace and is at least 12 characters long (a *prose literal*) runs through the same denylist, minus the noisy rules `test`, `astro-fusion`, `study`, `ane-facs`. Trailing `//` comments, `//`, `///` and `*` lines are skipped.
+
+Identifier exemption: literals without whitespace (JSON keys, raw values such as `"DigitalBiomarker"`, `"biomarkerKey"`) are never reported, by construction. Known limit: the body of a `"""` multi-line literal is not scanned (lines without quotes); reword such copy by hand or move it to a single-line literal.
 
 ## Secrets (`--secrets`)
 

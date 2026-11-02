@@ -22,8 +22,8 @@ final class DataDeletionServiceTests: XCTestCase {
 
     private static let historyKey = "org.curv.asd.gaze_session_history"
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         suiteName = "DataDeletionServiceTests_\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: suiteName)!
         root = FileManager.default.temporaryDirectory
@@ -55,14 +55,14 @@ final class DataDeletionServiceTests: XCTestCase {
         historyStore = GazeSessionHistoryStore(defaults: defaults)
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         try? FileManager.default.removeItem(at: root)
         defaults.removePersistentDomain(forName: suiteName)
         syncService = nil
         historyStore = nil
         researchStore = nil
         defaults = nil
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testDeleteAllEmptiesEveryObservationStore() throws {

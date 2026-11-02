@@ -1,21 +1,10 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO users (org_id, email, pw_hash, role, status, display_name,\n                            professional_registration)\n         VALUES ($1, $2, $3, $4, 'active', $5, $6)\n         ON CONFLICT ((lower(email))) DO NOTHING\n         RETURNING id, email, role, status, last_login_at, display_name,\n                   professional_registration",
+  "query": "SELECT email, role, status, last_login_at, display_name, professional_registration,\n                  (totp_secret_ct IS NOT NULL) AS \"totp_enrolled!\", totp_required_by\n           FROM users WHERE id = $1 AND org_id = $2 FOR UPDATE",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id",
-        "type_info": "Uuid",
-        "origin": {
-          "Table": {
-            "table": "users",
-            "name": "id"
-          }
-        }
-      },
-      {
-        "ordinal": 1,
         "name": "email",
         "type_info": "Text",
         "origin": {
@@ -26,7 +15,7 @@
         }
       },
       {
-        "ordinal": 2,
+        "ordinal": 1,
         "name": "role",
         "type_info": "Text",
         "origin": {
@@ -37,7 +26,7 @@
         }
       },
       {
-        "ordinal": 3,
+        "ordinal": 2,
         "name": "status",
         "type_info": "Text",
         "origin": {
@@ -48,7 +37,7 @@
         }
       },
       {
-        "ordinal": 4,
+        "ordinal": 3,
         "name": "last_login_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -59,7 +48,7 @@
         }
       },
       {
-        "ordinal": 5,
+        "ordinal": 4,
         "name": "display_name",
         "type_info": "Text",
         "origin": {
@@ -70,7 +59,7 @@
         }
       },
       {
-        "ordinal": 6,
+        "ordinal": 5,
         "name": "professional_registration",
         "type_info": "Text",
         "origin": {
@@ -79,27 +68,41 @@
             "name": "professional_registration"
           }
         }
+      },
+      {
+        "ordinal": 6,
+        "name": "totp_enrolled!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "totp_required_by",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "totp_required_by"
+          }
+        }
       }
     ],
     "parameters": {
       "Left": [
         "Uuid",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
       false,
       false,
       false,
-      false,
       true,
       true,
+      true,
+      null,
       true
     ]
   },
-  "hash": "07e8aafa939aa37cc3f8d0a9f9f651787d8661d04b2b6cca53f87277a8f1fda6"
+  "hash": "1589597864f961df92d6731ff9f10885a2098bbc365f2d1233be26672af1c176"
 }

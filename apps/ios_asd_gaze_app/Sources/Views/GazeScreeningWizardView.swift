@@ -4,7 +4,7 @@ import CurvAsdGazeKit
 
 // MARK: - Wizard Step Enum
 
-public enum ScreeningWizardStep: Equatable {
+public enum ScreeningWizardStep: Equatable, Sendable {
     case positioning
     case gate
     /// Calibration and its validation (CAL-7 .. CAL-9, VAL-1) in the run's capture session.

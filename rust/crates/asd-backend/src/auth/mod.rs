@@ -31,6 +31,7 @@ pub mod password;
 pub mod rbac;
 pub mod refresh;
 pub mod totp;
+pub mod totp_policy; // WP-B.16
 
 /// Auth settings, part of [`crate::config::Config`]. `Debug` never prints key material.
 #[derive(Clone, PartialEq, Default)]

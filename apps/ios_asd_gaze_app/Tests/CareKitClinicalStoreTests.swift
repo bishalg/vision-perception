@@ -111,13 +111,13 @@ final class CareKitClinicalStoreTests: XCTestCase {
         var found = false
         for _ in 0..<40 {
             let exp = expectation(description: "fetch")
-            var fetched: [OCKTask] = []
+            let fetched = Box<[OCKTask]>([])
             store.fetchTasks(query: OCKTaskQuery(for: Date()), callbackQueue: .main) { result in
-                fetched = (try? result.get()) ?? []
+                fetched.value = (try? result.get()) ?? []
                 exp.fulfill()
             }
             wait(for: [exp], timeout: 2.0)
-            if fetched.contains(where: { $0.id == "ock_task_gaze_screen" }) {
+            if fetched.value.contains(where: { $0.id == "ock_task_gaze_screen" }) {
                 found = true
                 break
             }
@@ -136,13 +136,13 @@ final class CareKitClinicalStoreTests: XCTestCase {
         var found = false
         for _ in 0..<40 {
             let exp = expectation(description: "fetch all")
-            var ids: [String] = []
+            let ids = Box<[String]>([])
             store.fetchTasks(callbackQueue: .main) { result in
-                ids = (try? result.get().map(\.id)) ?? []
+                ids.value = (try? result.get().map(\.id)) ?? []
                 exp.fulfill()
             }
             wait(for: [exp], timeout: 2.0)
-            if ids.contains("ock_caregiver_diary") && ids.contains("ock_med_med_vitamin_d") {
+            if ids.value.contains("ock_caregiver_diary") && ids.value.contains("ock_med_med_vitamin_d") {
                 found = true
                 break
             }
@@ -159,14 +159,14 @@ final class CareKitClinicalStoreTests: XCTestCase {
         var found = false
         for _ in 0..<60 {
             let exp = expectation(description: "fetch diary outcome")
-            var valueCount = 0
+            let valueCount = Box<Int>(0)
             store.fetchOutcomes(query: OCKOutcomeQuery(for: Date()), callbackQueue: .main) { result in
                 let outcomes = (try? result.get()) ?? []
-                valueCount = outcomes.reduce(0) { $0 + $1.values.count }
+                valueCount.value = outcomes.reduce(0) { $0 + $1.values.count }
                 exp.fulfill()
             }
             wait(for: [exp], timeout: 2.0)
-            if valueCount == 5 {
+            if valueCount.value == 5 {
                 found = true
                 break
             }
@@ -183,32 +183,32 @@ final class CareKitClinicalStoreTests: XCTestCase {
         )
         med.dosesTakenToday = [true]
         recorder.recordMedicationTaken(med, doseIndex: 0, markedAt: Date())
-        var count = 0
+        let count = Box<Int>(0)
         for _ in 0..<60 {
             let exp = expectation(description: "fetch med outcome")
             store.fetchOutcomes(query: OCKOutcomeQuery(for: Date()), callbackQueue: .main) { result in
-                count = (try? result.get().count) ?? 0
+                count.value = (try? result.get().count) ?? 0
                 exp.fulfill()
             }
             wait(for: [exp], timeout: 2.0)
-            if count == 1 { break }
+            if count.value == 1 { break }
         }
-        XCTAssertEqual(count, 1)
+        XCTAssertEqual(count.value, 1)
 
         // Same dose toggled off: the outcome must be removed (no duplicate).
         med.dosesTakenToday = [false]
         recorder.recordMedicationTaken(med, doseIndex: 0, markedAt: Date())
-        var cleared = -1
+        let cleared = Box<Int>(-1)
         for _ in 0..<60 {
             let exp = expectation(description: "fetch cleared med outcome")
             store.fetchOutcomes(query: OCKOutcomeQuery(for: Date()), callbackQueue: .main) { result in
-                cleared = (try? result.get().count) ?? -1
+                cleared.value = (try? result.get().count) ?? -1
                 exp.fulfill()
             }
             wait(for: [exp], timeout: 2.0)
-            if cleared == 0 { break }
+            if cleared.value == 0 { break }
         }
-        XCTAssertEqual(cleared, 0, "toggling a dose off must delete its outcome")
+        XCTAssertEqual(cleared.value, 0, "toggling a dose off must delete its outcome")
     }
 
     // MARK: - Audit-driven regression (cumulative occurrence, merge seeding, upserts)
@@ -229,21 +229,21 @@ final class CareKitClinicalStoreTests: XCTestCase {
         recorder.recordMedicationTaken(med, doseIndex: 1, markedAt: Date())
 
         // Twice-daily for 3 full days + today's 08:00 dose = occurrence 7 for 20:00 today.
-        var index = -1
-        var count = 0
+        let index = Box<Int>(-1)
+        let count = Box<Int>(0)
         for _ in 0..<60 {
             let exp = expectation(description: "fetch cumulative med outcome")
             store.fetchOutcomes(query: OCKOutcomeQuery(for: Date()), callbackQueue: .main) { result in
                 let outcomes = (try? result.get()) ?? []
-                count = outcomes.count
-                index = outcomes.first?.taskOccurrenceIndex ?? -1
+                count.value = outcomes.count
+                index.value = outcomes.first?.taskOccurrenceIndex ?? -1
                 exp.fulfill()
             }
             wait(for: [exp], timeout: 2.0)
-            if count == 1 { break }
+            if count.value == 1 { break }
         }
-        XCTAssertEqual(count, 1)
-        XCTAssertEqual(index, 7, "evening dose three days after seeding must use cumulative occurrence 7")
+        XCTAssertEqual(count.value, 1)
+        XCTAssertEqual(index.value, 7, "evening dose three days after seeding must use cumulative occurrence 7")
     }
 
     /// A record that arrives before any full seed must not lock the store into
@@ -264,14 +264,14 @@ final class CareKitClinicalStoreTests: XCTestCase {
         var found = false
         for _ in 0..<60 {
             let exp = expectation(description: "fetch merged tasks")
-            var ids: [String] = []
+            let ids = Box<[String]>([])
             store.fetchTasks(callbackQueue: .main) { result in
-                ids = (try? result.get().map(\.id)) ?? []
+                ids.value = (try? result.get().map(\.id)) ?? []
                 exp.fulfill()
             }
             wait(for: [exp], timeout: 2.0)
-            if ids.contains("ock_task_gaze_screen") && ids.contains("ock_caregiver_diary")
-                && ids.contains("ock_med_med_vitamin_d") {
+            if ids.value.contains("ock_task_gaze_screen") && ids.value.contains("ock_caregiver_diary")
+                && ids.value.contains("ock_med_med_vitamin_d") {
                 found = true
                 break
             }
@@ -293,20 +293,20 @@ final class CareKitClinicalStoreTests: XCTestCase {
         }
         wait(for: [first, second], timeout: 15.0)
         let exp = expectation(description: "fetch single diary outcome")
-        var count = -1
-        var valueCount = 0
+        let count = Box<Int>(-1)
+        let valueCount = Box<Int>(0)
         store.fetchOutcomes(query: OCKOutcomeQuery(for: Date()), callbackQueue: .main) { result in
             let outcomes = (try? result.get()) ?? []
-            count = outcomes.count
-            valueCount = outcomes.reduce(0) { $0 + $1.values.count }
+            count.value = outcomes.count
+            valueCount.value = outcomes.reduce(0) { $0 + $1.values.count }
             exp.fulfill()
         }
         wait(for: [exp], timeout: 5.0)
-        XCTAssertEqual(count, 1, "concurrent diary writes must upsert into one outcome")
+        XCTAssertEqual(count.value, 1, "concurrent diary writes must upsert into one outcome")
         // Assert against the live schema (mood, eye contact, joint attention, notes,
         // sensory load) so adding another diary field doesn't stale this test again.
         XCTAssertEqual(
-            valueCount,
+            valueCount.value,
             CareKitClinicalStore.diaryOutcomeValues(from: DailyDiaryEntry(notes: "first")).count
         )
     }
@@ -330,17 +330,17 @@ final class CareKitClinicalStoreTests: XCTestCase {
         recorder.recordTaskCompletion(offTask, knownTasks: [offTask]) { offDone.fulfill() }
         wait(for: [offDone], timeout: 10.0)
         let exp = expectation(description: "fetch toggled outcome")
-        var count = -1
-        var completed = true
+        let count = Box<Int>(-1)
+        let completed = Box<Bool>(true)
         store.fetchOutcomes(query: OCKOutcomeQuery(for: Date()), callbackQueue: .main) { result in
             let outcomes = (try? result.get()) ?? []
-            count = outcomes.count
-            completed = outcomes.first?.values.compactMap(\.booleanValue).first ?? true
+            count.value = outcomes.count
+            completed.value = outcomes.first?.values.compactMap(\.booleanValue).first ?? true
             exp.fulfill()
         }
         wait(for: [exp], timeout: 5.0)
-        XCTAssertEqual(count, 1, "toggle on/off must not duplicate the occurrence outcome")
-        XCTAssertFalse(completed, "latest toggle state (off) must win")
+        XCTAssertEqual(count.value, 1, "toggle on/off must not duplicate the occurrence outcome")
+        XCTAssertFalse(completed.value, "latest toggle state (off) must win")
     }
 
     /// Daily care plan task completion 4 days after schedule start must land on
@@ -360,14 +360,14 @@ final class CareKitClinicalStoreTests: XCTestCase {
         wait(for: [done], timeout: 10.0)
 
         let exp = expectation(description: "fetch cumulative task outcome")
-        var occurrence = -1
+        let occurrence = Box<Int>(-1)
         store.fetchOutcomes(query: OCKOutcomeQuery(for: Date()), callbackQueue: .main) { result in
             let outcomes = (try? result.get()) ?? []
-            occurrence = outcomes.first?.taskOccurrenceIndex ?? -1
+            occurrence.value = outcomes.first?.taskOccurrenceIndex ?? -1
             exp.fulfill()
         }
         wait(for: [exp], timeout: 5.0)
-        XCTAssertEqual(occurrence, 4, "completion 4 days after seed must use cumulative occurrence 4")
+        XCTAssertEqual(occurrence.value, 4, "completion 4 days after seed must use cumulative occurrence 4")
     }
 
     /// Screening outcome with social score and valid frames must record correctly.
@@ -385,19 +385,19 @@ final class CareKitClinicalStoreTests: XCTestCase {
         wait(for: [done], timeout: 10.0)
 
         let exp = expectation(description: "fetch screening outcome")
-        var valueCount = 0
-        var doubles: [Double] = []
+        let valueCount = Box<Int>(0)
+        let doubles = Box<[Double]>([])
         store.fetchOutcomes(query: OCKOutcomeQuery(for: Date()), callbackQueue: .main) { result in
             let outcomes = (try? result.get()) ?? []
             let values = outcomes.first?.values ?? []
-            valueCount = values.count
-            doubles = values.compactMap(\.doubleValue)
+            valueCount.value = values.count
+            doubles.value = values.compactMap(\.doubleValue)
             exp.fulfill()
         }
         wait(for: [exp], timeout: 5.0)
-        XCTAssertEqual(valueCount, 3, "screening outcome must persist social score, frame %, and date")
-        XCTAssertTrue(doubles.contains(where: { abs($0 - 0.72) < 1e-6 }), "outcome must contain social score 0.72")
-        XCTAssertTrue(doubles.contains(where: { abs($0 - 96.0) < 1e-6 }), "outcome must contain valid frame % 96.0")
+        XCTAssertEqual(valueCount.value, 3, "screening outcome must persist social score, frame %, and date")
+        XCTAssertTrue(doubles.value.contains(where: { abs($0 - 0.72) < 1e-6 }), "outcome must contain social score 0.72")
+        XCTAssertTrue(doubles.value.contains(where: { abs($0 - 96.0) < 1e-6 }), "outcome must contain valid frame % 96.0")
     }
 
     /// SIM-5: a simulated session never becomes a CareKit outcome.
@@ -430,44 +430,44 @@ final class CareKitClinicalStoreTests: XCTestCase {
         XCTAssertFalse(fetchOutcomes(store).isEmpty)
 
         let deleted = expectation(description: "all records deleted")
-        var succeeded = false
+        let succeeded = Box<Bool>(false)
         recorder.deleteAllRecords { ok in
-            succeeded = ok
+            succeeded.value = ok
             deleted.fulfill()
         }
         wait(for: [deleted], timeout: 10.0)
 
-        XCTAssertTrue(succeeded)
+        XCTAssertTrue(succeeded.value)
         XCTAssertTrue(fetchTasks(store).isEmpty, "every CareKit task must be gone")
         XCTAssertTrue(fetchOutcomes(store).isEmpty, "every CareKit outcome must be gone")
     }
 
     private func fetchOutcomes(_ store: OCKStore) -> [OCKOutcome] {
         let exp = expectation(description: "fetch outcomes")
-        var outcomes: [OCKOutcome] = []
+        let outcomes = Box<[OCKOutcome]>([])
         store.fetchOutcomes(query: OCKOutcomeQuery(dateInterval: DateInterval(
             start: .distantPast, end: Date().addingTimeInterval(86_400 * 365)
         )), callbackQueue: .main) { result in
-            outcomes = (try? result.get()) ?? []
+            outcomes.value = (try? result.get()) ?? []
             exp.fulfill()
         }
         wait(for: [exp], timeout: 5.0)
-        return outcomes
+        return outcomes.value
     }
 
     private func fetchTasks(_ store: OCKStore) -> [OCKTask] {
         let exp = expectation(description: "fetch tasks")
-        var tasks: [OCKTask] = []
+        let tasks = Box<[OCKTask]>([])
         var query = OCKTaskQuery(dateInterval: DateInterval(
             start: .distantPast, end: Date().addingTimeInterval(86_400 * 365)
         ))
         query.excludesTasksWithNoEvents = false
         store.fetchTasks(query: query, callbackQueue: .main) { result in
-            tasks = (try? result.get()) ?? []
+            tasks.value = (try? result.get()) ?? []
             exp.fulfill()
         }
         wait(for: [exp], timeout: 5.0)
-        return tasks
+        return tasks.value
     }
 
     /// Concurrent diary, task completion, and medication writes must serialize safely.
@@ -495,21 +495,22 @@ final class CareKitClinicalStoreTests: XCTestCase {
             completed.isCompleted = true
             recorder.recordTaskCompletion(completed, knownTasks: [task]) { taskDone.fulfill() }
         }
+        let takenMed = med
         DispatchQueue.global().async {
-            recorder.recordMedicationTaken(med, doseIndex: 0) { medDone.fulfill() }
+            recorder.recordMedicationTaken(takenMed, doseIndex: 0) { medDone.fulfill() }
         }
 
         wait(for: [diaryDone, taskDone, medDone], timeout: 15.0)
 
         let exp = expectation(description: "fetch all outcomes")
-        var outcomeCount = 0
+        let outcomeCount = Box<Int>(0)
         store.fetchOutcomes(query: OCKOutcomeQuery(for: Date()), callbackQueue: .main) { result in
             let outcomes = (try? result.get()) ?? []
-            outcomeCount = outcomes.count
+            outcomeCount.value = outcomes.count
             exp.fulfill()
         }
         wait(for: [exp], timeout: 5.0)
-        XCTAssertEqual(outcomeCount, 3, "diary, task, and med outcomes must all settle concurrently")
+        XCTAssertEqual(outcomeCount.value, 3, "diary, task, and med outcomes must all settle concurrently")
     }
 
     /// Seeding medications first and care plan tasks second merges all tasks properly.
@@ -528,13 +529,13 @@ final class CareKitClinicalStoreTests: XCTestCase {
         var found = false
         for _ in 0..<40 {
             let exp = expectation(description: "fetch merged")
-            var ids: [String] = []
+            let ids = Box<[String]>([])
             store.fetchTasks(callbackQueue: .main) { result in
-                ids = (try? result.get().map(\.id)) ?? []
+                ids.value = (try? result.get().map(\.id)) ?? []
                 exp.fulfill()
             }
             wait(for: [exp], timeout: 2.0)
-            if ids.contains("ock_med_med_multi") && ids.contains("ock_task_gaze_screen") && ids.contains("ock_caregiver_diary") {
+            if ids.value.contains("ock_med_med_multi") && ids.value.contains("ock_task_gaze_screen") && ids.value.contains("ock_caregiver_diary") {
                 found = true
                 break
             }
@@ -563,22 +564,22 @@ final class CareKitClinicalStoreTests: XCTestCase {
         var foundUpdated = false
         for _ in 0..<40 {
             let exp = expectation(description: "fetch replaced")
-            var title = ""
-            var eventCount = 0
+            let title = Box<String>("")
+            let eventCount = Box<Int>(0)
             // Dated query — a default query would also return stale pre-update
             // versions (CareKit only resolves tips when an interval is given).
             store.fetchTasks(query: OCKTaskQuery(for: Date()), callbackQueue: .main) { result in
                 let tasks = (try? result.get()) ?? []
                 if let task = tasks.first(where: { $0.id == "ock_med_med_replace" }) {
-                    title = task.title ?? ""
+                    title.value = task.title ?? ""
                     let start = Calendar.current.startOfDay(for: Date())
                     let end = Calendar.current.date(byAdding: .day, value: 1, to: start)!
-                    eventCount = task.schedule.events(from: start, to: end).count
+                    eventCount.value = task.schedule.events(from: start, to: end).count
                 }
                 exp.fulfill()
             }
             wait(for: [exp], timeout: 2.0)
-            if title == "Iron drops" && eventCount == 2 {
+            if title.value == "Iron drops" && eventCount.value == 2 {
                 foundUpdated = true
                 break
             }
@@ -592,13 +593,13 @@ final class CareKitClinicalStoreTests: XCTestCase {
         var gone = false
         for _ in 0..<40 {
             let exp = expectation(description: "fetch deleted")
-            var ids: [String] = []
+            let ids = Box<[String]>([])
             store.fetchTasks(query: OCKTaskQuery(for: Date()), callbackQueue: .main) { result in
-                ids = (try? result.get().map(\.id)) ?? []
+                ids.value = (try? result.get().map(\.id)) ?? []
                 exp.fulfill()
             }
             wait(for: [exp], timeout: 2.0)
-            if !ids.contains("ock_med_med_replace") {
+            if !ids.value.contains("ock_med_med_replace") {
                 gone = true
                 break
             }

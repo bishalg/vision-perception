@@ -10,6 +10,17 @@ import simd
 /// and thread-safe, so the order in which callers submit is the order in which
 /// the actor sees them. These tests are deterministic and run under TSAN.
 final class ConcurrencyOrderingTests: XCTestCase {
+    // MARK: - Sendability
+
+    /// CONC-5: compile-time pin; a lost `Sendable` conformance or a move to
+    /// `@unchecked` workarounds elsewhere fails to build here.
+    func testBridgeAndActorAreSendable() {
+        let actor = GazeProcessingActor()
+        let bridge = ARSessionBridge(processingActor: actor)
+        let _: any Sendable = bridge
+        let _: any Sendable = actor
+    }
+
     // MARK: - Fixtures
 
     /// Tracked face at 48 cm looking left of centre: lands only in GeoPref `Social_Actor`.

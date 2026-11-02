@@ -5,6 +5,7 @@ import XCTest
 /// `front-facing-camera` filters no iOS 18 device, and face tracking is gated at
 /// runtime (`CaptureEntryGate`). Apple does not allow tightening
 /// `UIRequiredDeviceCapabilities` after the first release, so this is pinned here.
+@MainActor
 final class BuildConfigurationTests: XCTestCase {
     func testNoRequiredDeviceCapabilitiesBlockVisionPro() throws {
         let info = try XCTUnwrap(Bundle.main.infoDictionary)

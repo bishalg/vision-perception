@@ -7,6 +7,7 @@
 //! default so the mobile library does not link a validator.
 
 pub mod api_v1;
+pub mod auth_policy; // WP-B.16
 pub mod care;
 pub mod catalog_checks; // WP-C.4
 pub mod clinical;

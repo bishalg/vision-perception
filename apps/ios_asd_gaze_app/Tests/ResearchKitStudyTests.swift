@@ -107,8 +107,9 @@ final class ResearchKitStudyTests: XCTestCase {
 
         // Revoke
         let revokeExp = expectation(description: "consent revoked")
+        let store = researchStore!
         researchStore.revokeConsent {
-            let updated = self.researchStore.fetchEnrollment()
+            let updated = store.fetchEnrollment()
             XCTAssertFalse(updated.isConsented)
             XCTAssertNil(updated.consentSignature)
             XCTAssertEqual(updated.participantId, "STUDY-ASD-P001", "participant token preserved")

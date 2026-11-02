@@ -28,8 +28,11 @@ public final class ARKitMoodFusionController: ObservableObject {
                 object: nil,
                 queue: .main
             ) { [weak self] note in
+                // `Notification` is not `Sendable`: read its Sendable payload here and send
+                // only that to the main actor (Swift 6 region isolation, CONC-5).
+                let payload = Self.blendShapePayload(from: note)
                 Task { @MainActor in
-                    self?.handleBlendShapeNote(note)
+                    self?.handleBlendShapePayload(payload)
                 }
             }
         )
@@ -99,12 +102,21 @@ public final class ARKitMoodFusionController: ObservableObject {
         }
     }
 
-    private func handleBlendShapeNote(_ note: Notification) {
+    /// The affect sample and recording flag of a blend-shape notification; `nil` when the
+    /// notification carries no affect sample.
+    private nonisolated static func blendShapePayload(
+        from note: Notification
+    ) -> (affect: FacialAffectMetrics, isRecording: Bool)? {
         guard let affect = note.userInfo?[GazeSessionController.affectUserInfoKey] as? FacialAffectMetrics else {
-            return
+            return nil
         }
         let recording = (note.userInfo?[GazeSessionController.isRecordingUserInfoKey] as? Bool) ?? false
-        ingestFrame(at: Date(), affect: affect, isRecording: recording)
+        return (affect, recording)
+    }
+
+    private func handleBlendShapePayload(_ payload: (affect: FacialAffectMetrics, isRecording: Bool)?) {
+        guard let payload else { return }
+        ingestFrame(at: Date(), affect: payload.affect, isRecording: payload.isRecording)
     }
 
     private func handleSessionStop() {

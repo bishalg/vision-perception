@@ -99,6 +99,31 @@ needs an existing `--org`, a superadmin takes none; passwords follow the API pol
 characters). Exit codes: `0` ok, `2` usage or invalid input, `3` conflicts with existing
 data, `1` other errors (e.g. database).
 
+## Mandatory two-step sign-in (AUTH-11..14, ADR-0010)
+
+Users in the roles `owner`, `admin`, `clinician` and `superadmin` must enrol a TOTP
+authenticator (`POST /v1/users/me/totp/enrol`, then `confirm`). Both the role list and the
+14-day grace period are owner decisions held as constants in
+`asd-contract::auth_policy` (`TOTP_REQUIRED_ROLES`, `TOTP_GRACE_DAYS`), not settings.
+
+- **Grace.** `users.totp_required_by` (migration 0023) is set to now + 14 days the first
+  time such a user without TOTP is seen: at login, when an owner creates them, or when
+  their role changes into a required one. There is no back-fill: existing users start
+  their 14 days at their first login after the upgrade. The deadline is never moved,
+  cleared, or extended. `GET /v1/users/me` reports `totp_enforcement` (`not_required`,
+  `grace`, `required`) and `totp_required_by`; the console nudges with the date.
+- **After the deadline.** Login still succeeds (audit `auth.login_totp_enrolment_required`),
+  but every user-plane route except `GET /v1/users/me`, `POST /v1/users/me/totp/enrol`,
+  `POST /v1/users/me/totp/confirm` and `GET /v1/orgs/{id}` answers `403
+  totp-enrolment-required`. The request after a successful `confirm` is unrestricted with
+  the same access token. Device tokens are unaffected.
+- **Replacing an authenticator.** `DELETE /v1/users/me/totp` (password and code) and
+  `asd-backend admin reset-totp` both remove the seed; if the deadline has passed, the
+  user is restricted to enrolment again at their next request. `reset-totp` does **not**
+  touch `totp_required_by`, so it is not a way to grant a new grace period.
+- Moving a user out of a required role makes them `not_required` at once; the stored
+  deadline stays and applies again if they are moved back.
+
 ## Upgrading (`asd-backend migrate`, KEY-11, KEY-12)
 
 `asd-backend migrate` runs, in order: (a) when migration 0016 is applied and plaintext

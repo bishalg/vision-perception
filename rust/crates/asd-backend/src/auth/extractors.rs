@@ -4,7 +4,10 @@
 //!
 //! - [`UserPrincipal`]: `Authorization: Bearer <JWT>` (user plane). The token proves who
 //!   the caller is; the role, org and status are re-read from `users` on every request, so
-//!   a disabled or demoted user loses access at once rather than after 15 minutes.
+//!   a disabled or demoted user loses access at once rather than after 15 minutes. The
+//!   same read evaluates the mandatory-TOTP policy ([`super::totp_policy`], AUTH-13): a
+//!   user whose enrolment deadline has passed gets `403 totp-enrolment-required` on every
+//!   route but the four enrolment-path templates.
 //! - [`Require<P>`]: a `UserPrincipal` authorised for [`Permission`] `P` by the matrix in
 //!   [`super::rbac`]. On `/v1/orgs/{id}/...` routes the org in the path is checked first
 //!   (another org: 404), then the role (403). On other routes only the role is checked here
@@ -19,10 +22,12 @@ use std::marker::PhantomData;
 use std::net::{IpAddr, SocketAddr};
 
 use asd_contract::api_v1::Role;
+use asd_contract::auth_policy::TotpEnforcement;
 use axum::extract::rejection::JsonRejection;
 use axum::extract::{
     ConnectInfo, FromRequest, FromRequestParts, MatchedPath, RawPathParams, Request,
 };
+use chrono::Utc;
 use http::request::Parts;
 use http::HeaderMap;
 use serde::de::DeserializeOwned;
@@ -30,6 +35,7 @@ use uuid::Uuid;
 
 use super::device_token;
 use super::rbac::{self, Permission};
+use super::totp_policy;
 use crate::app::AppState;
 use crate::error::{AppError, AppResult};
 use crate::problem::InvalidParam;
@@ -85,7 +91,9 @@ impl FromRequestParts<AppState> for UserPrincipal {
         let claims = keys.verify(token).ok_or(AppError::Unauthorized)?;
         let user_id = Uuid::parse_str(&claims.sub).map_err(|_| AppError::Unauthorized)?;
         let row = sqlx::query!(
-            "SELECT org_id, role, status FROM users WHERE id = $1",
+            r#"SELECT org_id, role, status, (totp_secret_ct IS NOT NULL) AS "enrolled!",
+                      totp_required_by
+               FROM users WHERE id = $1"#,
             user_id
         )
         .fetch_optional(&state.db)
@@ -95,6 +103,19 @@ impl FromRequestParts<AppState> for UserPrincipal {
             return Err(AppError::Unauthorized);
         }
         let role = rbac::role_from_str(&row.role).ok_or(AppError::Unauthorized)?;
+        // AUTH-13: before the principal is cached, so `Require<P>` and any second
+        // extraction inherit the answer (trap 1).
+        if totp_policy::evaluate(role, row.enrolled, row.totp_required_by, Utc::now())
+            == TotpEnforcement::Required
+        {
+            let template = parts
+                .extensions
+                .get::<MatchedPath>()
+                .map(MatchedPath::as_str);
+            if !totp_policy::is_exempt_route(&parts.method, template) {
+                return Err(totp_policy::enrolment_required(row.totp_required_by));
+            }
+        }
         let principal = UserPrincipal {
             user_id,
             org_id: row.org_id,

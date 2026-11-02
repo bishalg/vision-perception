@@ -1,10 +1,17 @@
 @testable import AsdGazeCollector
 import CurvAsdGazeKit
 import Foundation
+import os
 import XCTest
 
 final class MockURLProtocol: URLProtocol, @unchecked Sendable {
-    static var requestHandler: (@Sendable (URLRequest) throws -> (HTTPURLResponse, Data))?
+    typealias Handler = @Sendable (URLRequest) throws -> (HTTPURLResponse, Data)
+    private static let handlerLock = OSAllocatedUnfairLock<Handler?>(initialState: nil)
+
+    static var requestHandler: Handler? {
+        get { handlerLock.withLock { $0 } }
+        set { handlerLock.withLock { $0 = newValue } }
+    }
 
     override class func canInit(with request: URLRequest) -> Bool {
         true

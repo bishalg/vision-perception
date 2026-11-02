@@ -13,6 +13,10 @@
 //!   carrying a code for an enrolled user also count against a per-user limit (10 per
 //!   minute), so spreading guesses over many IPs does not help. The code is checked and
 //!   spent by [`crate::auth::totp`], the same path as the SIGN-5 step-up.
+//!   Mandatory TOTP (AUTH-12, AUTH-13): the first login of a user in a required role
+//!   without TOTP sets `users.totp_required_by` (the `auth.login` audit `after` then carries
+//!   it); once that deadline has passed the login still succeeds and is additionally
+//!   audited as `auth.login_totp_enrolment_required` ([`crate::auth::totp_policy`]).
 //! - `POST /v1/auth/refresh` `{refresh_token}` -> `200 TokenPair` with a rotated refresh
 //!   token; reuse of a rotated-out token revokes the family and answers `401`.
 //! - `POST /v1/auth/logout` `{refresh_token}` -> `204`, revoking the token's family.
@@ -21,10 +25,12 @@ use std::net::IpAddr;
 use std::sync::Arc;
 
 use asd_contract::api_v1::{LoginRequest, RefreshRequest, Role, TokenPair, User};
+use asd_contract::auth_policy::TotpEnforcement;
 use asd_contract::problem::{TOTP_INVALID, TOTP_REQUIRED};
 use axum::extract::State;
 use axum::routing::post;
 use axum::{Extension, Json, Router};
+use chrono::Utc;
 use http::StatusCode;
 use serde_json::json;
 use uuid::Uuid;
@@ -35,9 +41,10 @@ use crate::audit::AuditEvent;
 use crate::auth::extractors::{ApiJson, RequestMeta};
 use crate::auth::jwt::{JwtKeys, ACCESS_TOKEN_TTL_SECS};
 use crate::auth::refresh::{self, Rotation};
-use crate::auth::{password, rbac, totp, RateLimiter};
+use crate::auth::{password, rbac, totp, totp_policy, RateLimiter};
 use crate::error::{AppError, AppResult};
 use crate::problem::InvalidParam;
+use crate::routes::orgs::listing::rfc3339;
 
 /// AUTH-1: login attempts per client IP per minute.
 pub const LOGIN_ATTEMPTS_PER_MINUTE: u32 = 10;
@@ -125,7 +132,9 @@ async fn login(
     }
 
     let row = sqlx::query!(
-        "SELECT id, org_id, email, pw_hash, role, status FROM users WHERE lower(email) = $1",
+        r#"SELECT id, org_id, email, pw_hash, role, status,
+                  (totp_secret_ct IS NOT NULL) AS "totp_enrolled!", totp_required_by
+           FROM users WHERE lower(email) = $1"#,
         email
     )
     .fetch_optional(&state.db)
@@ -148,13 +157,53 @@ async fn login(
     )
     .execute(&mut *tx)
     .await?;
+    // AUTH-12: first sight of a required user without TOTP starts the grace period. One
+    // conditional UPDATE on the row already read (trap 5); `RETURNING` gives the stored
+    // (microsecond) value so the audit row and `/users/me` show the same timestamp.
+    let now = Utc::now();
+    let mut required_by = user.totp_required_by;
+    let mut set_now = None;
+    if totp_policy::needs_deadline(role, user.totp_enrolled, required_by) {
+        set_now = sqlx::query_scalar!(
+            "UPDATE users SET totp_required_by = $2
+             WHERE id = $1 AND totp_required_by IS NULL
+             RETURNING totp_required_by",
+            user.id,
+            totp_policy::deadline_from(now)
+        )
+        .fetch_optional(&mut *tx)
+        .await?
+        .flatten();
+        required_by = required_by.or(set_now);
+    }
     let family = Uuid::new_v4();
     let refresh_token = refresh::issue(&mut tx, user.id, family).await?;
+    let mut after = json!({"refresh_family": family});
+    if let Some(deadline) = set_now {
+        after["totp_required_by"] = json!(rfc3339(deadline));
+    }
     AuditEvent::user_id(user.id, user.org_id, "auth.login", "user", user.id)
-        .after(json!({"refresh_family": family}))
+        .after(after)
         .meta(&meta)
         .record(&mut tx)
         .await?;
+    // AUTH-13: the login succeeds (there is no second factor to ask for), but the user can
+    // only enrol until they do.
+    if totp_policy::evaluate(role, user.totp_enrolled, required_by, now)
+        == TotpEnforcement::Required
+    {
+        AuditEvent::user_id(
+            user.id,
+            user.org_id,
+            "auth.login_totp_enrolment_required",
+            "user",
+            user.id,
+        )
+        .after(json!({"totp_required_by": required_by.map(rfc3339)}))
+        .meta(&meta)
+        .record(&mut tx)
+        .await?;
+    }
     tx.commit().await?;
     Ok(Json(token_pair(
         keys,

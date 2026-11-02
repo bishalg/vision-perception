@@ -53,6 +53,11 @@ pub const TOTP_ALREADY_ENROLLED: &str = "totp-already-enrolled";
 pub const TOTP_ENROLMENT_EXPIRED: &str = "totp-enrolment-expired";
 /// 404 from `DELETE /v1/users/me/totp`: the caller has no TOTP to disable (AUTH-8).
 pub const TOTP_NOT_ENROLLED: &str = "totp-not-enrolled";
+/// 403 from any user-plane route except `GET /v1/users/me`, `POST
+/// /v1/users/me/totp/enrol`, `POST /v1/users/me/totp/confirm` and `GET /v1/orgs/{id}`:
+/// the caller's role requires TOTP and the enrolment deadline has passed; enrol first
+/// (AUTH-13). `detail` names the deadline.
+pub const TOTP_ENROLMENT_REQUIRED: &str = "totp-enrolment-required";
 
 // ---- clinician workspace and interop (CTR-2, WP-C.9) ------------------------------------
 
@@ -121,6 +126,7 @@ pub const SLUGS: &[&str] = &[
     TOTP_ALREADY_ENROLLED,
     TOTP_ENROLMENT_EXPIRED,
     TOTP_NOT_ENROLLED,
+    TOTP_ENROLMENT_REQUIRED,
     CLINICAL_CRYPTO_UNAVAILABLE,
     PATIENT_REF_DISABLED,
     STALE_VERSION,

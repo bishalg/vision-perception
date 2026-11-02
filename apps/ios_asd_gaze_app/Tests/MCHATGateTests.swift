@@ -5,6 +5,7 @@ import XCTest
 /// `MCHAT_LICENSED=1` (xcodegen) which defines `ASD_MCHAT_LICENSED`. The default
 /// build must say so honestly and must not offer the questionnaire, while stored
 /// results remain readable.
+@MainActor
 final class MCHATGateTests: XCTestCase {
     #if ASD_MCHAT_LICENSED
     func testLicensedBuildOffersQuestionnaire() {

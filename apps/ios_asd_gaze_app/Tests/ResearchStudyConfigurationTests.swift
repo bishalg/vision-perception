@@ -5,14 +5,14 @@ import XCTest
 /// Info.plist carries a complete `ASDResearchStudy` dictionary with an https
 /// ingest URL. Anything else fails closed (`nil`).
 final class ResearchStudyConfigurationTests: XCTestCase {
-    private static let validDictionary: [String: Any] = [
+    private static var validDictionary: [String: Any] { [
         "ingestURL": "https://ingest.example.org/api/v1/research/ingest",
         "studyIdentifier": "EXAMPLE-STUDY-1",
         "irbProtocolId": "ETHICS-REF-42",
         "institution": "Example University",
         "principalInvestigator": "Example Investigator",
         "consentVersion": "2027.1"
-    ]
+    ] }
 
     private static func info(_ study: [String: Any]?) -> [String: Any] {
         var info: [String: Any] = ["CFBundleIdentifier": "org.example.test"]

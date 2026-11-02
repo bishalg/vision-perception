@@ -531,6 +531,7 @@ export const PROBLEM_SLUGS = [
   "totp-already-enrolled",
   "totp-enrolment-expired",
   "totp-not-enrolled",
+  "totp-enrolment-required",
   // WP-C.9 (clinician workspace + interop, ADR-0008)
   "clinical-crypto-unavailable",
   "patient-ref-disabled",

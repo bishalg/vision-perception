@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::api_v1::{MetricRow, Role, SessionAttentionFlag, SessionSummary};
+use crate::auth_policy::TotpEnforcement;
 
 // ---- limits and fixed text ---------------------------------------------------------------
 
@@ -316,6 +317,15 @@ pub struct UserProfile {
     /// (AUTH-10). Login and step-up ignore a pending seed.
     #[serde(default)]
     pub totp_pending: Option<bool>,
+    /// Mandatory two-step sign-in state for the caller's role (AUTH-11). Absent from older
+    /// backends, hence the `not_required` default.
+    #[serde(default)]
+    pub totp_enforcement: TotpEnforcement,
+    /// RFC 3339 deadline for enrolling TOTP (AUTH-12), set the first time a user in a
+    /// required role without TOTP is seen and never moved; `null` until then. Returned as
+    /// stored, also when the current role no longer needs TOTP (`totp_enforcement` decides).
+    #[serde(default)]
+    pub totp_required_by: Option<String>,
     pub email: String,
     pub role: Role,
     /// `null` only for `superadmin`.

@@ -14,13 +14,14 @@ import os
 // PLC-3: a metric that was not measured (`nil`) is omitted; nothing substitutes a default.
 
 public enum FHIRInteroperabilityMapper {
-    private static let isoFormatter = ISO8601DateFormatter()
     private static let logger = Logger(subsystem: "com.visionperception.asd", category: "FHIRInteroperabilityMapper")
 
     /// Local code system tagging records whose capture source was inferred on decode (SIM-4).
     public static let provenanceTagSystem = FHIRNamespaces.recordProvenanceCodeSystem
 
-    static func timestamp(_ date: Date) -> String { isoFormatter.string(from: date) }
+    /// A fresh formatter per call: `ISO8601DateFormatter` is not `Sendable`, so a shared
+    /// static instance is not allowed in Swift 6 mode (CONC-5). Exports are a cold path.
+    static func timestamp(_ date: Date) -> String { ISO8601DateFormatter().string(from: date) }
 
     // MARK: - Status and refusal (FHIR-2, SIM-5)
 

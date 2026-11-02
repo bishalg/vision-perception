@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT org_id, role, status FROM users WHERE id = $1",
+  "query": "SELECT org_id, role, status, (totp_secret_ct IS NOT NULL) AS \"enrolled!\",\n                      totp_required_by\n               FROM users WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -35,6 +35,23 @@
             "name": "status"
           }
         }
+      },
+      {
+        "ordinal": 3,
+        "name": "enrolled!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "totp_required_by",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "totp_required_by"
+          }
+        }
       }
     ],
     "parameters": {
@@ -45,8 +62,10 @@
     "nullable": [
       true,
       false,
-      false
+      false,
+      null,
+      true
     ]
   },
-  "hash": "7be4d6499ace21d2ab4abf938716f9ee655ae41827f73a7f7d717bc8809db2b6"
+  "hash": "e395125f7d58835d341e70a86ef0c1b485779ccbcbb884d1451d38125be196e8"
 }

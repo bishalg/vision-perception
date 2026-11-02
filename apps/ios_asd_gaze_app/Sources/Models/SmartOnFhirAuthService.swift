@@ -398,7 +398,8 @@ public enum SmartAuthError: LocalizedError {
 
 // MARK: - Keychain Wrapper (minimal)
 
-private final class KeychainWrapper {
+// Sendable: no stored state; every call goes straight to the thread-safe Keychain API.
+private final class KeychainWrapper: Sendable {
     static let standard = KeychainWrapper()
 
     subscript(_ key: String) -> String? {

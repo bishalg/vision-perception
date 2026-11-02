@@ -27,7 +27,7 @@ use crate::session_v1_6::{self, SessionIngestRequest, SessionIngestResponse};
 use crate::session_v1_7;
 use crate::session_v1_8;
 use crate::signing::canonical_bytes;
-use crate::{api_v1, care, clinical, export, privacy};
+use crate::{api_v1, auth_policy, care, clinical, export, privacy};
 
 /// File name of the session ingest schema (1.6, the wire version of current clients).
 pub const SESSION_FILE: &str = "session-v1.6.json";
@@ -183,6 +183,7 @@ pub fn api_v1() -> Value {
         api_v1::TokenPair,
         api_v1::User,
         api_v1::Role,
+        auth_policy::TotpEnforcement,
         api_v1::RegisterDeviceRequest,
         api_v1::RegisterDeviceResponse,
         api_v1::EnrolCodeRequest,
@@ -316,6 +317,20 @@ pub fn api_v1() -> Value {
                             their own (e.g. `email-taken`, `last-owner`).",
             "type": "string",
             "enum": crate::problem::SLUGS,
+        }),
+    );
+    defs.insert(
+        "TotpPolicy".into(),
+        json!({
+            "description": "Mandatory two-step sign-in policy (AUTH-11): users in \
+                            `required_roles` without TOTP must enrol within `grace_days` of \
+                            the first time they are seen; `UserProfile.totp_enforcement` \
+                            reports the state. Owner-decided constants, not settings.",
+            "type": "object",
+            "properties": {
+                "required_roles": {"const": auth_policy::TOTP_REQUIRED_ROLES},
+                "grace_days": {"const": auth_policy::TOTP_GRACE_DAYS},
+            },
         }),
     );
     let mut value = json!({

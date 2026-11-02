@@ -20,8 +20,8 @@ public final class DataDeletionService {
 
     private static let logger = Logger(subsystem: "com.visionperception.asd", category: "DataDeletionService")
 
-    static let blendShapeFolder = "BlendShapeML"
-    static let benchLogFolder = "BenchLogs"
+    nonisolated static let blendShapeFolder = "BlendShapeML"
+    nonisolated static let benchLogFolder = "BenchLogs"
 
     private let fileManager: FileManager
     private let vaultDirectory: URL

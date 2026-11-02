@@ -171,6 +171,7 @@
 		D82425DDC100FD9DCA6AC6D0 /* expected-bundle.json in Resources */ = {isa = PBXBuildFile; fileRef = 21DA1A68B03A496ABAFEF2CB /* expected-bundle.json */; };
 		DC4351CFF8331089EF4C22B0 /* CareActivityKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5A2D8651F7A4E443540B6140 /* CareActivityKit */; };
 		DE3A65E17734FDF035297800 /* SubjectAgeQuickCheckCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 760938E707B2DC30599A6886 /* SubjectAgeQuickCheckCard.swift */; };
+		DF39F45D3181BB9A7A0C512D /* Box.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE930D78B7F757D8BEF6BCFC /* Box.swift */; };
 		DF51B7CF0492F80200F9BBFA /* stim_07_cartoon_slapstick_penguin_8s.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 1D2872BCDCFE9D5F5FF11CAA /* stim_07_cartoon_slapstick_penguin_8s.mp4 */; };
 		E06EBE7828B8F7C724BCA478 /* MainGazeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3111366AAA094728086AD5E8 /* MainGazeScannerView.swift */; };
 		E6631BC51E8AD808DC34E2B9 /* UnsupportedDeviceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD4FFF01E8DEA4584A9AC139 /* UnsupportedDeviceView.swift */; };
@@ -365,6 +366,7 @@
 		B7A896A387DF4F1E3DDD84DB /* SyncTestDoubles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncTestDoubles.swift; sourceTree = "<group>"; };
 		B8F0FFAA4FBEA2BBC44701EC /* CarePlanStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarePlanStoreTests.swift; sourceTree = "<group>"; };
 		BBED732DAB0236044946C9E7 /* SmartOnFhirAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartOnFhirAuthService.swift; sourceTree = "<group>"; };
+		BE930D78B7F757D8BEF6BCFC /* Box.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Box.swift; sourceTree = "<group>"; };
 		BFF20B6639768C9A0E7E78FB /* CareKitClinicalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CareKitClinicalStore.swift; sourceTree = "<group>"; };
 		C037DB1ADE1C9FC6EB59A746 /* BenchLogWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenchLogWriter.swift; sourceTree = "<group>"; };
 		C3E3BB45987178EE02CE3BF0 /* onboarding.feature */ = {isa = PBXFileReference; path = onboarding.feature; sourceTree = "<group>"; };
@@ -545,6 +547,7 @@
 		203DA60AB3B190D1EB11E852 /* Support */ = {
 			isa = PBXGroup;
 			children = (
+				BE930D78B7F757D8BEF6BCFC /* Box.swift */,
 				0E16F3699FDFF30D2E93F75C /* RecordFixtures.swift */,
 				B7A896A387DF4F1E3DDD84DB /* SyncTestDoubles.swift */,
 			);
@@ -851,7 +854,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1500;
+				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					5A339C8E397001A08FBAA7AE = {
 						DevelopmentTeam = 6J3WY94J6T;
@@ -1049,6 +1052,7 @@
 				F6910970A2B6EA6D62EA018B /* AppModeStoreTests.swift in Sources */,
 				C79D75D3CAAD90E441D213AF /* BenchLogWriterTests.swift in Sources */,
 				300541B0F4D8FEA1344A8BE8 /* BlendShapeLoggerTests.swift in Sources */,
+				DF39F45D3181BB9A7A0C512D /* Box.swift in Sources */,
 				FF9B9D577C49AD9593A40EF2 /* BuildConfigurationTests.swift in Sources */,
 				70B51123E6A7E6F30C211BFE /* CameraAccessCoordinatorTests.swift in Sources */,
 				61022557EB3D42B29610BA65 /* CaptureEntryGateTests.swift in Sources */,
@@ -1155,7 +1159,6 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "$(WIDGET_IDENTIFIER:default=$(APP_IDENTIFIER:default=com.open-spectrum.eye-gaze).carewidget)";
 				PRODUCT_NAME = AsdGazeCareWidget;
 				SDKROOT = iphoneos;
-				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -1180,7 +1183,6 @@
 				PRODUCT_NAME = AsdGazeCareWidget;
 				PROVISIONING_PROFILE_SPECIFIER = "Eye Gaze Widget AppStore";
 				SDKROOT = iphoneos;
-				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -1256,7 +1258,7 @@
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 5.9;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = DemoRelease;
@@ -1279,7 +1281,6 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "$(WIDGET_IDENTIFIER:default=$(APP_IDENTIFIER:default=com.open-spectrum.eye-gaze).carewidget)";
 				PRODUCT_NAME = AsdGazeCareWidget;
 				SDKROOT = iphoneos;
-				SWIFT_VERSION = 5.9;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = DemoRelease;
@@ -1363,7 +1364,7 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 5.9;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -1518,7 +1519,7 @@
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 5.9;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;

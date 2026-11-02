@@ -232,7 +232,7 @@ public final class ResearchKitStudyStore: @unchecked Sendable {
                 results: dict
             )
 
-            var taskResult = ORKTaskResult(
+            let taskResult = ORKTaskResult(
                 participantId: profile.participantId,
                 startDate: score.completionDate,
                 endDate: score.completionDate,
@@ -358,7 +358,7 @@ public final class ResearchKitStudyStore: @unchecked Sendable {
         return surveys
     }
 
-    private static func dispatch<T>(_ completion: (@Sendable (T) -> Void)?, value: T) {
+    private static func dispatch<T: Sendable>(_ completion: (@Sendable (T) -> Void)?, value: T) {
         guard let completion else { return }
         DispatchQueue.main.async {
             completion(value)

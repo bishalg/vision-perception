@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE users SET totp_required_by = $2\n             WHERE id = $1 AND totp_required_by IS NULL\n             RETURNING totp_required_by",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "totp_required_by",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "totp_required_by"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "e363ee4b4c80368171cd88f1a68fa94e65b78190a5c0c0c9c4e16de3a2645f34"
+}

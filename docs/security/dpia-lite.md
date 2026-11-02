@@ -144,7 +144,7 @@ Likelihood (L) and severity (S): Low, Medium, High. Author's assessment for owne
 | O-7 | Hosting region and data residency per market | `aws-baa-checklist.md` |
 | O-8 | Whether HIPAA applies (US customers) and signing the AWS BAA; H-4 and H-11 in the tracker | `aws-baa-checklist.md` |
 | O-9 | KEK custody (KMS design), rotation cadence, backup of the KEK | `threat-model.md` R1 |
-| O-10 | Mandatory TOTP for which roles; console idle timeout and session length | `threat-model.md` R2, R7 |
+| O-10 | Mandatory TOTP for which roles; console idle timeout and session length. TOTP part implemented, owner to confirm (WP-B.16, ADR-0010): required for `owner`, `admin`, `clinician`, `superadmin` after a 14-day grace period from first sight (constants in `asd-contract::auth_policy`). Idle timeout and session length still open | `threat-model.md` R2, R7; `rust/crates/asd-contract/src/auth_policy.rs` |
 | O-11 | Privacy contact or DPO, breach notification process and timelines | not covered by code |
 | O-12 | Backup retention and how erased data is handled in restores | `retention-policy.md` |
 | O-13 | Whether the app should upload `frames.jsonl.enc` at all, given no one can decrypt it | section 4 |
