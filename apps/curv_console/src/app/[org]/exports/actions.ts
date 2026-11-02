@@ -11,6 +11,7 @@ import {
   type ExportRequest,
 } from "@/lib/api/exports";
 import { isDatasetFormat } from "@/lib/api/exports";
+import { SHARE_LINK_DAY_CHOICES, SHARE_LINK_DOWNLOAD_CHOICES, type CreatedShareLink } from "@/lib/api/share";
 import { authedApi } from "@/lib/auth/server";
 
 function failure(err: unknown): ActionFailure {
@@ -81,6 +82,43 @@ export async function createExportAction(orgId: string, formData: FormData): Pro
     const created = await (await authedApi()).createExport(orgId, request);
     revalidatePath(`/${encodeURIComponent(orgId)}/exports`);
     return { ok: true, id: created.id };
+  } catch (err) {
+    return failure(err);
+  }
+}
+
+const intIn = (fd: FormData, k: string, choices: readonly number[]): number | undefined => {
+  const n = Number.parseInt(text(fd, k), 10);
+  return choices.includes(n) ? n : undefined;
+};
+
+/**
+ * WP-C.19 (SHR-8): `POST /v1/exports/{id}/share-link`. The passcode in the answer goes to the panel that shows it
+ * once; it is not logged or revalidated into page data (the list route never returns it).
+ */
+export async function createShareLinkAction(
+  orgId: string,
+  exportId: string,
+  formData: FormData,
+): Promise<ActionResult<{ created: CreatedShareLink }>> {
+  try {
+    const created = await (await authedApi()).createShareLink(exportId, {
+      expires_in_days: intIn(formData, "expires_in_days", SHARE_LINK_DAY_CHOICES) ?? null,
+      max_downloads: intIn(formData, "max_downloads", SHARE_LINK_DOWNLOAD_CHOICES) ?? null,
+    });
+    revalidatePath(`/${encodeURIComponent(orgId)}/exports/${encodeURIComponent(exportId)}`);
+    return { ok: true, created };
+  } catch (err) {
+    return failure(err);
+  }
+}
+
+/** WP-C.19 (SHR-8): `DELETE /v1/share-links/{id}`. */
+export async function revokeShareLinkAction(orgId: string, exportId: string, linkId: string): Promise<ActionResult> {
+  try {
+    await (await authedApi()).revokeShareLink(linkId);
+    revalidatePath(`/${encodeURIComponent(orgId)}/exports/${encodeURIComponent(exportId)}`);
+    return { ok: true };
   } catch (err) {
     return failure(err);
   }

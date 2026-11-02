@@ -1,14 +1,23 @@
+import { caseSessionsAction, createCaseShareAction } from "@/app/[org]/participants/[id]/share-actions";
 import type { Participant } from "@/lib/api/admin";
+import { currentRole } from "@/lib/auth/server";
 import { formatDateTime } from "@/lib/format";
+import { can } from "@/lib/permissions";
 import { participantText } from "@/messages/participant";
+import { ShareCaseDialog } from "./ShareCaseDialog";
 
 const t = participantText.header;
 
 /**
  * Token, age bracket, withdrawn state and, for roles that may see it, whether an MRN is on file. The MRN itself is
  * never in the page data: it is decrypted (and audited) only when the MRN tab's "Show MRN" is pressed.
+ *
+ * WP-C.19 (SHR-10): the "Share case" action, for roles with `case.share` on a participant who has not withdrawn. The
+ * header reads the role itself so the workspace page passes only the participant.
  */
-export function ParticipantHeader({ participant: p }: { participant: Participant }) {
+export async function ParticipantHeader({ participant: p }: { participant: Participant }) {
+  const role = await currentRole();
+  const canShare = can(role, "case.share") && !p.withdrawn_at;
   return (
     <header className="participant-header">
       <h1>
@@ -42,6 +51,14 @@ export function ParticipantHeader({ participant: p }: { participant: Participant
           </div>
         ) : null}
       </dl>
+      {canShare ? (
+        <ShareCaseDialog
+          canIdentified={can(role, "export.identified")}
+          create={createCaseShareAction.bind(null, p.org_id, p.id)}
+          loadSessions={caseSessionsAction.bind(null, p.org_id, p.id)}
+          exportsHref={`/${encodeURIComponent(p.org_id)}/exports`}
+        />
+      ) : null}
     </header>
   );
 }

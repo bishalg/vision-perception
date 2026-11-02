@@ -2,13 +2,30 @@
 
 export type GuardDecision = "allow" | "redirect-login" | "refresh" | "redirect-home";
 
+/** Sign-in pages: open without a session, and a signed-in user is sent home from them. */
 const PUBLIC_PATHS = ["/login"];
 
+/**
+ * WP-C.19 (SHR-9): pages and routes for recipients without an account (the public share page and its download
+ * route). Open to everyone, signed in or not: no auth guard, no `redirect-home` (a clinician opening a link they were
+ * sent stays on it), no HIP-2 verdict or `curv_last_seen` refresh (they are public paths for proxy.ts).
+ */
+const ANONYMOUS_PATHS = ["/share", "/api/share"];
+
+const under = (pathname: string, prefixes: readonly string[]) =>
+  prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+
+export function isAnonymousPath(pathname: string): boolean {
+  return under(pathname, ANONYMOUS_PATHS);
+}
+
+/** Paths reachable without a session: the sign-in pages and the anonymous share paths. */
 export function isPublicPath(pathname: string): boolean {
-  return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  return under(pathname, PUBLIC_PATHS) || isAnonymousPath(pathname);
 }
 
 export function decideGuard(pathname: string, hasAccess: boolean, hasRefresh: boolean): GuardDecision {
+  if (isAnonymousPath(pathname)) return "allow";
   if (isPublicPath(pathname)) return hasAccess ? "redirect-home" : "allow";
   if (hasAccess) return "allow";
   return hasRefresh ? "refresh" : "redirect-login";
