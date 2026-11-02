@@ -1,4 +1,5 @@
-//! owner: WP-I.6; WP-I.7 (queues the export's deliveries on success, fails them on failure)
+//! owner: WP-I.6; WP-I.7 (queues the export's deliveries on success, fails them on failure);
+//! WP-I.13 (per-format build step, shared `finish`, `case_package`)
 //!
 //! The `export` job (EXJ-3), a phased handler (G5, trap 3):
 //!
@@ -7,9 +8,15 @@
 //! 2. **Render and upload**, no transaction open: the consent policy
 //!    (`asd_export::policy::select`, XC-5) picks the sessions, only theirs are decrypted,
 //!    the `asd-export` encoder renders (de-identifying when the mode says so, XC-4), and
-//!    the artifact goes to `exports/{org}/{export}/{file}` with `put_object_large`.
+//!    the artifact goes to `exports/{org}/{export}/{attempt}/{file}` with
+//!    `put_object_large`.
 //! 3. **Record**: one transaction replaces the export's `export_items`, stores hash, size,
 //!    counts and expiry, and appends the audit rows.
+//!
+//! Phase 1 and phase 2 up to the rendered artifact are the format's **build step**
+//! (`build_sessions` for the session formats, `build_case` for `case_package`; WP-B.23
+//! adds `audit_csv` as one more arm of `run`); the upload and phase 3 are one shared,
+//! fenced `finish`.
 //!
 //! Every phase is idempotent: the blob key is deterministic (a re-run overwrites), items
 //! are replaced, and a job whose export already succeeded returns the stored result
@@ -22,9 +29,11 @@
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-use asd_contract::export::{ExportStatus, MAX_ARTIFACT_BYTES, MAX_EXPORT_ROWS};
+use asd_contract::export::{
+    ExportFormat, ExportMode, ExportStatus, MAX_ARTIFACT_BYTES, MAX_EXPORT_ROWS,
+};
 use asd_export::export_refusal;
-use asd_export::model::{ExportRecord, Mrn};
+use asd_export::model::{ExportRecord, Mrn, NoteText};
 use asd_export::policy::{self, ExclusionReason};
 use asd_export::watermark::Watermark;
 use bytes::Bytes;
@@ -35,10 +44,10 @@ use uuid::Uuid;
 use super::runner::JobError;
 use super::{Job, JobContext};
 use crate::audit::AuditEvent;
-use crate::blob::BlobError;
+use crate::blob::{BlobError, BlobStore};
 use crate::crypto::Aad;
-use crate::export_build::record::{self, Sealed};
-use crate::export_build::{self, filters, ExportRow, RenderError, RenderInput};
+use crate::export_build::record::{self, Sealed, Snapshot};
+use crate::export_build::{self, case, filters, Artifact, ExportRow, RenderError, RenderInput};
 use crate::read::cursor;
 
 /// `exports.excluded` key for sessions the format refuses (simulated or synthetic capture,
@@ -176,26 +185,89 @@ async fn run(ctx: &JobContext, job: &Job, export_id: Uuid) -> Result<Value, JobE
         return Err(permanent("job was reclaimed while running"));
     }
 
-    // ---- phase 1: one snapshot
-    let snap = record::load(
-        &ctx.pool,
-        &row,
-        &parsed,
-        export_build::needs_gaze(row.format),
-    )
-    .await?;
+    // ---- the format's build step: phase 1 and phase 2 up to the rendered artifact
+    let built = match row.format {
+        ExportFormat::CasePackage => build_case(ctx, &row, &parsed).await?,
+        // WP-B.23 adds the audit log build here; `format_available` refuses it until then.
+        ExportFormat::AuditCsv => {
+            return Err(permanent(
+                RenderError::Unsupported("audit_csv has no build step yet (WP-B.23)").to_string(),
+            ))
+        }
+        ExportFormat::Csv
+        | ExportFormat::CsvExcel
+        | ExportFormat::CsvSheets
+        | ExportFormat::Xlsx
+        | ExportFormat::PdfSummary
+        | ExportFormat::FhirBundle
+        | ExportFormat::FhirNdjson
+        | ExportFormat::Hl7v2
+        | ExportFormat::DatasetJsonl
+        | ExportFormat::DatasetParquet => build_sessions(ctx, &row, &parsed).await?,
+    };
+
+    // ---- upload and phase 3, shared by every format
+    finish(ctx, job, &row, blobs.as_ref(), built).await
+}
+
+/// What a format's build step hands to [`finish`].
+struct Built {
+    artifact: Artifact,
+    /// `(participant, session id)` of every included session (`export_items`, EXJ-6).
+    items: Vec<(Uuid, String)>,
+    /// `exports.excluded`: sessions left out, by reason.
+    excluded: BTreeMap<String, u64>,
+    /// Decrypted MRNs (MRN-5 audit).
+    mrn_reads: u32,
+    /// The artifact lifetime (EXJ-4).
+    ttl: i32,
+}
+
+/// The snapshot's sessions after the consent policy and the capture-source rule, with
+/// what the requester could read decrypted.
+struct Selected {
+    included: Vec<(Uuid, ExportRecord)>,
+    gazes: Vec<Option<Value>>,
+    app_versions: Vec<Option<String>>,
+    labels: Vec<Vec<asd_export::dataset::DatasetLabel>>,
+    excluded: BTreeMap<String, u64>,
+    mrn_reads: u32,
+}
+
+/// Formats that refuse simulated and synthetic captures (SIM-5): health-record formats,
+/// case packages, and ML datasets (WP-B.9), so generated data never reaches a training set.
+fn refuses_generated_captures(format: ExportFormat) -> bool {
+    export_build::needs_gaze(format)
+        || export_build::needs_mrn(format)
+        || export_build::is_dataset(format)
+        || format == ExportFormat::CasePackage
+}
+
+/// Phase 1 for every session-based format: one snapshot of the sessions `filters` select.
+async fn snapshot(
+    ctx: &JobContext,
+    row: &ExportRow,
+    filters: &filters::ParsedFilters,
+    want_gaze: bool,
+) -> Result<Snapshot, JobError> {
+    let snap = record::load(&ctx.pool, row, filters, want_gaze).await?;
     if snap.sessions.len() > MAX_EXPORT_ROWS {
         return Err(permanent(format!(
             "export-too-large: more than {MAX_EXPORT_ROWS} sessions match; narrow the filters"
         )));
     }
+    Ok(snap)
+}
 
-    // ---- phase 2: consent policy, decrypt, render, upload (no transaction open)
+/// Phase 2 up to the render: consent policy (XC-5), capture source (SIM-5), decryption of
+/// the kept sessions only.
+async fn select(ctx: &JobContext, row: &ExportRow, snap: &Snapshot) -> Result<Selected, JobError> {
     let mode = export_build::policy_mode(row.mode);
     let purpose = export_build::policy_purpose(row.purpose);
     let records: Vec<ExportRecord> = snap.sessions.iter().map(|s| s.record.clone()).collect();
     let selection = policy::select(&records, purpose, mode)
         .map_err(|e| permanent(format!("consent-purpose-mismatch: {e}")))?;
+    drop(records);
     let mut excluded: BTreeMap<String, u64> = selection
         .excluded
         .iter()
@@ -214,12 +286,7 @@ async fn run(ctx: &JobContext, job: &Job, export_id: Uuid) -> Result<Value, JobE
     let mut mrn_reads = 0u32;
     for &i in &selection.included {
         let s = &snap.sessions[i];
-        // SIM-5: health-record formats refuse simulated and synthetic captures; ML datasets
-        // (WP-B.9) refuse them too, so generated data never reaches a training set.
-        if export_build::needs_gaze(row.format)
-            || export_build::needs_mrn(row.format)
-            || export_build::is_dataset(row.format)
-        {
+        if refuses_generated_captures(row.format) {
             let refused = s
                 .gaze
                 .as_ref()
@@ -256,39 +323,191 @@ async fn run(ctx: &JobContext, job: &Job, export_id: Uuid) -> Result<Value, JobE
         labels.push(s.labels.clone());
         included.push((s.participant_id, rec));
     }
+    Ok(Selected {
+        included,
+        gazes,
+        app_versions,
+        labels,
+        excluded,
+        mrn_reads,
+    })
+}
 
-    let requested_at = cursor::ts(row.created_at);
-    let watermark = Watermark {
-        export_id: export_id.to_string(),
+fn watermark(row: &ExportRow, snap: &Snapshot) -> Watermark {
+    Watermark {
+        export_id: row.id.to_string(),
         requested_by_display: snap.requested_by_display.clone(),
-        requested_at_utc: requested_at.clone(),
-        mode,
-        purpose,
+        requested_at_utc: cursor::ts(row.created_at),
+        mode: export_build::policy_mode(row.mode),
+        purpose: export_build::policy_purpose(row.purpose),
         org_name: snap.org.name.clone(),
-    };
+    }
+}
+
+/// XC-4: a fresh salt per run, dropped when the build returns (never stored).
+fn fresh_salt() -> Result<[u8; asd_export::deid::SALT_LEN], JobError> {
+    let mut salt = [0u8; asd_export::deid::SALT_LEN];
+    getrandom::fill(&mut salt).map_err(|e| JobError::Transient(format!("randomness: {e}")))?;
+    Ok(salt)
+}
+
+fn ttl_of(row: &ExportRow, snap: &Snapshot) -> i32 {
+    snap.ttl_hours.map_or(row.ttl_hours, |h| {
+        export_build::ttl_hours(Some(i64::from(h)))
+    })
+}
+
+fn items_of(included: &[(Uuid, ExportRecord)]) -> Vec<(Uuid, String)> {
+    included
+        .iter()
+        .map(|(p, r)| (*p, r.session.summary.id.clone()))
+        .collect()
+}
+
+/// The session formats (CSV, XLSX, FHIR, HL7, datasets): one artifact over the sessions the
+/// filters select, through [`export_build::render`].
+async fn build_sessions(
+    ctx: &JobContext,
+    row: &ExportRow,
+    filters: &filters::ParsedFilters,
+) -> Result<Built, JobError> {
+    let snap = snapshot(ctx, row, filters, export_build::needs_gaze(row.format)).await?;
+    let selected = select(ctx, row, &snap).await?;
+    let requested_at = cursor::ts(row.created_at);
+    let watermark = watermark(row, &snap);
     let hl7 = export_build::hl7_profile(
         snap.hl7.as_ref().map(|(c, _)| c),
         snap.hl7.as_ref().is_some_and(|(_, test)| *test),
         &snap.org.name,
     );
-    // XC-4: a fresh salt per run, dropped when this function returns (never stored).
-    let mut salt = [0u8; asd_export::deid::SALT_LEN];
-    getrandom::fill(&mut salt).map_err(|e| JobError::Transient(format!("randomness: {e}")))?;
-    let records: Vec<ExportRecord> = included.iter().map(|(_, r)| r.clone()).collect();
+    let records: Vec<ExportRecord> = selected.included.iter().map(|(_, r)| r.clone()).collect();
     let artifact = export_build::render(&RenderInput {
         format: row.format,
         records: &records,
-        gazes: &gazes,
-        app_versions: &app_versions,
+        gazes: &selected.gazes,
+        app_versions: &selected.app_versions,
         watermark: &watermark,
-        deid_salt: salt,
+        deid_salt: fresh_salt()?,
         generated_at: &requested_at,
         hl7: &hl7,
-        labels: &labels,
+        labels: &selected.labels,
         include_labels: row.include_labels,
     })
     .map_err(|e: RenderError| permanent(e.to_string()))?;
-    drop(records);
+    Ok(Built {
+        artifact,
+        items: items_of(&selected.included),
+        excluded: selected.excluded,
+        mrn_reads: selected.mrn_reads,
+        ttl: ttl_of(row, &snap),
+    })
+}
+
+/// `case_package` (SHR-1..7): one participant's sessions (the stored filters name the
+/// participant and, optionally, the sessions), their notes when the requester could read
+/// them, the recipient and the consent, through [`export_build::case`].
+async fn build_case(
+    ctx: &JobContext,
+    row: &ExportRow,
+    filters: &filters::ParsedFilters,
+) -> Result<Built, JobError> {
+    let participant = row
+        .case_participant_id
+        .ok_or_else(|| permanent("invalid stored case: no participant"))?;
+    if filters.participant_ids != [participant] {
+        return Err(permanent(
+            "invalid stored case: the filters name another participant",
+        ));
+    }
+    let sealed_recipient = row
+        .case_recipient
+        .as_ref()
+        .ok_or_else(|| permanent("invalid stored case: no recipient"))?;
+    let snap = snapshot(ctx, row, filters, true).await?;
+    let selected = select(ctx, row, &snap).await?;
+
+    let mut records: Vec<ExportRecord> = selected.included.iter().map(|(_, r)| r.clone()).collect();
+    if row.mode == ExportMode::Identified && row.include_clinical_content {
+        let session_ids: Vec<String> = records
+            .iter()
+            .map(|r| r.session.summary.id.clone())
+            .collect();
+        let sealed = case::load_notes(&ctx.pool, row.org_id, participant, &session_ids).await?;
+        let mut notes = Vec::with_capacity(sealed.len());
+        for n in sealed {
+            notes.push((
+                n.session_id,
+                NoteText {
+                    created_at: n.created_at,
+                    author_display_name: n.author_display_name,
+                    body: open(ctx, row.org_id, &n.body).await?,
+                },
+            ));
+        }
+        case::attach_notes(&mut records, notes);
+    }
+    let recipient = open(
+        ctx,
+        row.org_id,
+        &Sealed {
+            table: "exports",
+            column: "case_recipient_ct",
+            row_id: row.id,
+            key_id: sealed_recipient.key_id,
+            ciphertext: sealed_recipient.ciphertext.clone(),
+        },
+    )
+    .await?;
+    let sessions = records
+        .into_iter()
+        .zip(selected.gazes.iter().cloned())
+        .zip(selected.app_versions.iter().cloned())
+        .map(|((record, gaze), app_version)| case::IncludedSession {
+            record,
+            gaze,
+            app_version,
+        })
+        .collect();
+    let input = case::package_input(
+        case::CaseFacts {
+            watermark: watermark(row, &snap),
+            created_at: cursor::ts(row.created_at),
+            deid_salt: fresh_salt()?,
+            recipient,
+            consent: case::consent(row, &snap.requested_by_display),
+        },
+        sessions,
+    )
+    .map_err(|e| permanent(e.to_string()))?;
+    let artifact = case::render(&input).map_err(|e| permanent(e.to_string()))?;
+    Ok(Built {
+        artifact,
+        items: items_of(&selected.included),
+        excluded: selected.excluded,
+        mrn_reads: selected.mrn_reads,
+        ttl: ttl_of(row, &snap),
+    })
+}
+
+/// The shared end of every export: uploads the artifact under this attempt's key, then,
+/// in one transaction fenced on the job attempt, replaces `export_items`, marks the export
+/// `succeeded`, audits `export.complete` (and the MRN read, MRN-5) and queues the export's
+/// deliveries (DLV-1).
+async fn finish(
+    ctx: &JobContext,
+    job: &Job,
+    row: &ExportRow,
+    blobs: &dyn BlobStore,
+    built: Built,
+) -> Result<Value, JobError> {
+    let export_id = row.id;
+    let Built {
+        artifact,
+        items,
+        excluded,
+        mrn_reads,
+        ttl,
+    } = built;
     if artifact.bytes.len() > MAX_ARTIFACT_BYTES {
         return Err(permanent(format!(
             "export-too-large: {} bytes exceed {MAX_ARTIFACT_BYTES}",
@@ -303,16 +522,9 @@ async fn run(ctx: &JobContext, job: &Job, export_id: Uuid) -> Result<Value, JobE
         .await
         .map_err(|e| blob_error(e, job.attempts))?;
 
-    // ---- phase 3: record
-    let participants: Vec<Uuid> = included.iter().map(|(p, _)| *p).collect();
-    let sessions: Vec<String> = included
-        .iter()
-        .map(|(_, r)| r.session.summary.id.clone())
-        .collect();
+    let participants: Vec<Uuid> = items.iter().map(|(p, _)| *p).collect();
+    let sessions: Vec<String> = items.into_iter().map(|(_, s)| s).collect();
     let row_count = i32::try_from(sessions.len()).expect("capped at 200 000");
-    let ttl = snap.ttl_hours.map_or(row.ttl_hours, |h| {
-        export_build::ttl_hours(Some(i64::from(h)))
-    });
     let excluded_json = serde_json::to_value(&excluded).expect("string keys");
     let mut tx = ctx.pool.begin().await?;
     // Fence: this attempt must still own the job. The row lock holds off `reclaim_stale`

@@ -7,9 +7,11 @@
 //!
 //! Every format, de-identification and consent rule lives in `asd-export` (ADR-0008 D6/D7,
 //! CLAUDE.md): this module only loads inputs ([`record`]), maps enums and calls encoders.
-//! Formats plug in as one match arm of [`render`]; `pdf_summary` (WP-I.5) is refused up
-//! front with a clear reason until its encoder exists.
+//! Session formats plug in as one match arm of [`render`]; `case_package` (WP-I.13) builds
+//! its own input in [`case`]. `pdf_summary` (WP-I.5) and `audit_csv` (WP-B.23) are refused
+//! up front with a clear reason until their encoders exist.
 
+pub mod case;
 pub mod filters;
 pub mod record;
 
@@ -77,6 +79,35 @@ pub struct ExportRow {
     pub created_at: DateTime<Utc>,
     pub completed_at: Option<DateTime<Utc>>,
     pub expires_at: Option<DateTime<Utc>>,
+    /// `case_package` (SHR-7): the participant of the case.
+    pub case_participant_id: Option<Uuid>,
+    /// `case_package`: the recipient text, sealed (`exports.case_recipient_ct`).
+    pub case_recipient: Option<SealedColumn>,
+    /// `case_package`, identified: the consent the package relies on.
+    pub case_consent_reference: Option<String>,
+    pub case_consent_recorded_at: Option<DateTime<Utc>>,
+    /// `case_package`, identified: add the participant's attachments (WP-I.13b).
+    pub case_include_attachments: bool,
+    /// Share links created for this export (SHR-8), revoked ones included.
+    pub share_links_n: i64,
+}
+
+/// A ciphertext and the data key that sealed it, as stored in `<col>_ct` / `<col>_key_id`.
+#[derive(Clone)]
+pub struct SealedColumn {
+    pub ciphertext: Vec<u8>,
+    pub key_id: Uuid,
+}
+
+impl std::fmt::Debug for SealedColumn {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "SealedColumn({} bytes)", self.ciphertext.len())
+    }
+}
+
+/// AAD of `exports.case_recipient_ct` (KEY-1): bound to the export row.
+pub fn case_recipient_aad(org: Uuid, export: Uuid) -> crate::crypto::Aad {
+    crate::crypto::Aad::new("exports", "case_recipient_ct", org, export)
 }
 
 impl std::fmt::Debug for ExportRow {
@@ -100,6 +131,11 @@ pub async fn load_export(db: &PgPool, id: Uuid) -> AppResult<Option<ExportRow>> 
                   e.include_labels, e.requested_by, e.job_id, e.ttl_hours, e.download_secret, e.blob_key,
                   e.file_name, e.content_type, e.sha256, e.byte_size, e.row_count, e.excluded,
                   e.error, e.created_at, e.completed_at, e.expires_at,
+                  e.case_participant_id, e.case_recipient_ct, e.case_recipient_key_id,
+                  e.case_consent_reference, e.case_consent_recorded_at,
+                  e.case_include_attachments,
+                  (SELECT count(*) FROM share_links s WHERE s.export_id = e.id)
+                      AS "share_links_n!",
                   coalesce(j.status = 'failed', false) AS "job_failed!"
            FROM exports e LEFT JOIN jobs j ON j.id = e.job_id
            WHERE e.id = $1"#,
@@ -140,6 +176,15 @@ pub async fn load_export(db: &PgPool, id: Uuid) -> AppResult<Option<ExportRow>> 
         created_at: r.created_at,
         completed_at: r.completed_at,
         expires_at: r.expires_at,
+        case_participant_id: r.case_participant_id,
+        case_recipient: match (r.case_recipient_ct, r.case_recipient_key_id) {
+            (Some(ciphertext), Some(key_id)) => Some(SealedColumn { ciphertext, key_id }),
+            _ => None,
+        },
+        case_consent_reference: r.case_consent_reference,
+        case_consent_recorded_at: r.case_consent_recorded_at,
+        case_include_attachments: r.case_include_attachments,
+        share_links_n: r.share_links_n,
     }))
 }
 
@@ -203,9 +248,8 @@ impl ExportRow {
                 None
             },
             include_labels: self.include_labels,
-            // Case packages (SHR-7, SHR-8) fill these with WP-I.13.
-            case_participant_id: None,
-            share_links_n: 0,
+            case_participant_id: self.case_participant_id.map(|p| p.to_string()),
+            share_links_n: u32::try_from(self.share_links_n).unwrap_or(u32::MAX),
         }
     }
 }
@@ -234,9 +278,6 @@ pub fn format_available(format: ExportFormat) -> Result<(), &'static str> {
         ExportFormat::PdfSummary => Err(
             "pdf_summary is not available yet: the PDF/A clinical summary encoder ships with WP-I.5",
         ),
-        ExportFormat::CasePackage => {
-            Err("case_package is not available yet: case sharing ships with WP-I.13")
-        }
         ExportFormat::AuditCsv => {
             Err("audit_csv is not available yet: the audit log export ships with WP-B.23")
         }
@@ -514,9 +555,13 @@ pub fn render(input: &RenderInput<'_>) -> Result<Artifact, RenderError> {
                 content_type: CT_HL7,
             })
         }
-        ExportFormat::PdfSummary | ExportFormat::CasePackage | ExportFormat::AuditCsv => Err(
-            RenderError::Unsupported(format_available(input.format).expect_err("unavailable")),
-        ),
+        ExportFormat::PdfSummary | ExportFormat::AuditCsv => Err(RenderError::Unsupported(
+            format_available(input.format).expect_err("unavailable"),
+        )),
+        // One participant's case, built from its own input (`case::render`, SHR-1).
+        ExportFormat::CasePackage => Err(RenderError::Unsupported(
+            "case_package renders through export_build::case, not the session dispatch",
+        )),
         ExportFormat::DatasetJsonl | ExportFormat::DatasetParquet => {
             // The encoders de-identify themselves and refuse an identified watermark.
             let opts = DatasetOptions {
@@ -633,17 +678,11 @@ mod tests {
         assert!(format_available(ExportFormat::PdfSummary)
             .unwrap_err()
             .contains("WP-I.5"));
-        assert!(format_available(ExportFormat::CasePackage)
-            .unwrap_err()
-            .contains("WP-I.13"));
+        assert!(format_available(ExportFormat::CasePackage).is_ok());
         assert!(format_available(ExportFormat::AuditCsv)
             .unwrap_err()
             .contains("WP-B.23"));
-        let unavailable = [
-            ExportFormat::PdfSummary,
-            ExportFormat::CasePackage,
-            ExportFormat::AuditCsv,
-        ];
+        let unavailable = [ExportFormat::PdfSummary, ExportFormat::AuditCsv];
         for f in ExportFormat::ALL
             .iter()
             .filter(|f| !unavailable.contains(f))

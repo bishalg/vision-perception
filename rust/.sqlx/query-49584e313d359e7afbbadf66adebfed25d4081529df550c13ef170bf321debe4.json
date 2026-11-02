@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE share_links SET downloads = downloads + 1\n         WHERE id = $1 AND revoked_at IS NULL AND expires_at > now()\n           AND downloads < max_downloads\n         RETURNING downloads",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "downloads",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "share_links",
+            "name": "downloads"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "49584e313d359e7afbbadf66adebfed25d4081529df550c13ef170bf321debe4"
+}
