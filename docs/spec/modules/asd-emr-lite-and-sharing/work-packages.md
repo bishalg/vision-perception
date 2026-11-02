@@ -810,6 +810,49 @@ Commands: `scripts/build_asd_android.sh`, `cargo run -p asd-cli -- gaze replay -
 <log>`.
 Depends on: A.12. Parallel with: everything in wave 2.
 
+### WP-R.8 Rust converter: Android MediaPipe landmarks to gaze-pipeline inputs - `S` - size S
+
+Goal: close the WP-A.14 binding gap (spike `README.md` gaps 1-3) so the AND-4 accuracy
+columns can be filled from the logs already recorded, without new volunteer sessions. All
+maths in Rust (project `CLAUDE.md`, ADR-0007 D1).
+Model (documented in `gaze/mediapipe.rs`): head pose from MediaPipe's facial
+transformation matrix (MediaPipe metric frame to the `CAMERA_AXES` frame by
+`S = diag(-1, 1, 1)`, cm to m, depth rescaled from MediaPipe's 63-degree virtual camera to
+the real intrinsics); eyeball centre = eye-corner midpoint (corners back-projected with
+MediaPipe's relative depth) 8 mm behind along the face's forward axis; iris-centre camera
+ray intersected with a 10.4 mm sphere gives each eye's direction; `look_at` = mean of the
+eyes' screen-plane hits in the face frame (correct for vergence and one closed eye). Limit:
+at 50 cm and a 640 x 480 analysis image one pixel of iris error is about 5.5 degrees of eye
+rotation; the affine calibration absorbs the model's constant gain and offset, not iris
+jitter.
+Files: new `rust/crates/asd-core/src/gaze/mediapipe.rs` (per-frame
+`convert_frame`, `CameraIntrinsics` incl. Camera2 mapping, `EyeModel`, forward model
+`synth` behind `cfg(test)` / feature `synth`), new `gaze/android_log.rs` (sidecar + meta
+merge, header geometry), `gaze/mod.rs`; `types/tracking.rs` (`TrackingSource` gains
+`mediapipeFace` and `arcoreFace`: raw log header only, no published schema changes);
+`asd-cli/src/cmd/gaze.rs` (`gaze convert-android LOG LANDMARKS [--meta FILE]
+[--screen-mm W,H] [--camera-offset-mm X,Y] [--intrinsics FX,FY,CX,CY] -o OUT`), `main.rs`
+usage. Screen geometry comes from the flags (`measured`, `geometrySource: table`) or the
+meta's OEM dpi (`spec`, camera offset assumed top centre, `idiomDefault`, verdict capped at
+`fair`), written into the header's `geometry`, which replay already uses.
+Not touched: `asd-ffi` (a later package exports `convert_frame` to Kotlin), `apps/**`,
+backend, console.
+Tests: `mediapipe.rs` unit tests (known head pose x distance x target recovered to < 0.01
+degree through the pipeline raycast; real vs virtual intrinsics; row-major matrix; iris
+order; missing iris, one/both eyes closed, extreme pose, iris off the eyeball, bad matrix
+and landmarks; Camera2 intrinsics rotation/crop; the 1-pixel sensitivity); `android_log.rs`
+unit tests (matching, issue counts, meta intrinsics and dpi geometry, ARCore / format /
+landscape / already-converted refusals); `asd-cli/tests/gaze_convert_android.rs` end to end
+on the committed synthetic fixture `asd-cli/tests/fixtures/android_mediapipe/synthetic.*`
+(no person's data): convert, `replay --check`, replay validation accuracy < 0.5 degree.
+Commands: `cargo test -p asd-core -p asd-cli`, `cargo clippy --all-targets -- -D warnings`,
+`scripts/build_asd_wasm.sh --test`, `asd-cli schema check`.
+Needs a device: the assumed MediaPipe conventions (column-major matrix in cm, 63-degree
+vertical FOV, image up = `+y`, unmirrored image) and the eye constants; check with the
+summary's `medianDistanceCm` against the ruler distance and `medianInterocularMm` (~60-65)
+on the first real recording.
+Depends on: A.14 (log format). Parallel with: everything.
+
 ### WP-B.23 Audit log export (`audit_csv`) - `I` - size S - wave 2b
 
 Goal: HIP-3, REC-8's `AuditExport`.

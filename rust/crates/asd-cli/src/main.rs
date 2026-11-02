@@ -25,6 +25,7 @@ commands:
   gaze synth --scenario NAME|all --seed N --out FILE|DIR|-
   gaze replay FILE [--check] [--model KIND]
   gaze bench-report --logs DIR [--models all|KIND,...]
+  gaze convert-android LOG LANDMARKS [--meta FILE] [--screen-mm W,H] [--camera-offset-mm X,Y] -o OUT
 
 `asd-cli <command> --help` shows the options of one command.";
 

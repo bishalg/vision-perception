@@ -8,6 +8,8 @@
 //! gaze synth --list
 //! gaze replay FILE [--check] [--model KIND] [--glasses true|false]
 //! gaze bench-report --logs DIR [--models all|KIND,KIND]
+//! gaze convert-android LOG LANDMARKS [--meta FILE] [--screen-mm W,H] [--camera-offset-mm X,Y]
+//!                      [--intrinsics FX,FY,CX,CY] -o OUT
 //! ```
 //!
 //! `replay` prints the replay report (target results, advice, `trackingQuality`) as JSON;
@@ -16,13 +18,17 @@
 //! each calibration model and prints accuracy, precision and loss per device x condition x
 //! model, ranks the models, and reports how strongly ambient light tracks the error (CNF-2).
 //! Bench logs are biometric data and never committed (BEN-8): the report lists each log by
-//! its SHA-256 only.
+//! its SHA-256 only. `convert-android` (WP-R.8) turns a WP-A.14 spike recording (raw log +
+//! MediaPipe landmarks sidecar + optional meta) into a replayable `mediapipeFace` log
+//! (`asd_core::gaze::android_log`) and prints the conversion summary as JSON.
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use asd_core::gaze::android_log::{convert_android_log, ConvertOptions};
+use asd_core::gaze::mediapipe::CameraIntrinsics;
 use asd_core::gaze::raw_log::{self, RawLog};
 use asd_core::gaze::replay::{check_schedule, replay, ReplayOptions};
 use asd_core::synth_tracking::{generate_with, Scenario, SCENARIOS};
@@ -36,6 +42,8 @@ usage:
   asd-cli gaze synth --list
   asd-cli gaze replay FILE [--check] [--model KIND] [--glasses true|false]
   asd-cli gaze bench-report --logs DIR [--models all|KIND,KIND,...]
+  asd-cli gaze convert-android LOG LANDMARKS [--meta FILE] [--screen-mm W,H]
+          [--camera-offset-mm X,Y] [--intrinsics FX,FY,CX,CY] -o OUT
 
 KIND is one of screenAffine, angularAffine, screenHomography, screenPoly2.";
 
@@ -54,6 +62,7 @@ pub fn run(args: &[String]) -> i32 {
         Some("synth") => synth(rest),
         Some("replay") => replay_cmd(rest),
         Some("bench-report") => bench_cmd(rest),
+        Some("convert-android") => convert_android_cmd(rest),
         Some("-h" | "--help" | "help") => {
             println!("{USAGE}");
             0
@@ -260,6 +269,124 @@ fn replay_cmd(args: &[String]) -> i32 {
             eprintln!("error: {file}: {e}");
             1
         }
+    }
+}
+
+// ------------------------------------------------------------------------------------------
+// gaze convert-android
+// ------------------------------------------------------------------------------------------
+
+/// `A,B,...` with exactly `N` finite numbers.
+fn parse_numbers<const N: usize>(flag: &str, s: &str) -> Result<[f64; N], String> {
+    let parts: Vec<&str> = s.split(',').map(str::trim).collect();
+    let mut out = [0.0; N];
+    if parts.len() != N {
+        return Err(format!("{flag} takes {N} comma-separated numbers"));
+    }
+    for (o, p) in out.iter_mut().zip(parts) {
+        *o = p
+            .parse::<f64>()
+            .ok()
+            .filter(|v| v.is_finite())
+            .ok_or_else(|| format!("{flag}: `{p}` is not a number"))?;
+    }
+    Ok(out)
+}
+
+fn convert_android_cmd(args: &[String]) -> i32 {
+    let mut files: Vec<String> = Vec::new();
+    let (mut meta, mut out) = (None::<String>, None::<String>);
+    let mut opts = ConvertOptions::default();
+    let mut it = args.iter();
+    while let Some(arg) = it.next() {
+        match arg.as_str() {
+            "--meta" | "-o" | "--out" | "--screen-mm" | "--camera-offset-mm" | "--intrinsics" => {
+                let Some(value) = it.next() else {
+                    return usage_error(&format!("{arg} needs a value"));
+                };
+                let parsed = match arg.as_str() {
+                    "--meta" => {
+                        meta = Some(value.clone());
+                        Ok(())
+                    }
+                    "-o" | "--out" => {
+                        out = Some(value.clone());
+                        Ok(())
+                    }
+                    "--screen-mm" => parse_numbers::<2>(arg, value).map(|v| {
+                        opts.screen_mm = Some(v);
+                    }),
+                    "--camera-offset-mm" => parse_numbers::<2>(arg, value).map(|v| {
+                        opts.camera_offset_mm = Some(v);
+                    }),
+                    _ => parse_numbers::<4>(arg, value).map(|v| {
+                        opts.intrinsics = Some(CameraIntrinsics {
+                            fx: v[0],
+                            fy: v[1],
+                            cx: v[2],
+                            cy: v[3],
+                        });
+                    }),
+                };
+                if let Err(e) = parsed {
+                    return usage_error(&e);
+                }
+            }
+            a if a.starts_with('-') => return usage_error(&format!("unexpected argument {a}")),
+            a => files.push(a.to_string()),
+        }
+    }
+    let [log_path, landmarks_path] = files.as_slice() else {
+        return usage_error("gaze convert-android needs a raw LOG and a LANDMARKS file");
+    };
+    let Some(out) = out else {
+        return usage_error("gaze convert-android needs -o OUT");
+    };
+    let read =
+        |path: &str| fs::read_to_string(path).map_err(|e| format!("cannot read {path}: {e}"));
+    let (log_text, sidecar) = match (read(log_path), read(landmarks_path)) {
+        (Ok(a), Ok(b)) => (a, b),
+        (Err(e), _) | (_, Err(e)) => return usage_error(&e),
+    };
+    let meta: Option<Value> = match meta {
+        None => None,
+        Some(path) => match read(&path)
+            .and_then(|t| serde_json::from_str(&t).map_err(|e| format!("{path}: not JSON: {e}")))
+        {
+            Ok(v) => Some(v),
+            Err(e) => return usage_error(&e),
+        },
+    };
+    let log = match raw_log::parse(&log_text) {
+        Ok(l) => l,
+        Err(e) => {
+            eprintln!("error: {log_path}: {e}");
+            return 1;
+        }
+    };
+    let (converted, summary) = match convert_android_log(&log, &sidecar, meta.as_ref(), &opts) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("error: {e}");
+            return 1;
+        }
+    };
+    let text = match raw_log::to_jsonl(&converted) {
+        Ok(t) => t,
+        Err(e) => return usage_error(&e.to_string()),
+    };
+    if let Err(e) = fs::write(&out, text) {
+        return usage_error(&format!("cannot write {out}: {e}"));
+    }
+    for w in &summary.warnings {
+        eprintln!("warning: {w}");
+    }
+    match serde_json::to_string_pretty(&summary) {
+        Ok(s) => {
+            println!("{s}");
+            0
+        }
+        Err(e) => usage_error(&e.to_string()),
     }
 }
 
