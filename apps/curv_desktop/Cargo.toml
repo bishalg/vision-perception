@@ -1,0 +1,33 @@
+[package]
+name = "curv-desktop"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+description = "Curv Console desktop shell (Tauri 2, remote mode): loads the clinic server's console URL"
+publish = false
+
+# Own Cargo project, deliberately outside the rust/ workspace (WP-D.9). The empty
+# table stops Cargo from ever adopting a parent workspace.
+[workspace]
+
+[lib]
+name = "curv_desktop_lib"
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# No `devtools` feature: the inspector exists only in debug builds.
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+url = "2"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

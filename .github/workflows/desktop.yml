@@ -1,0 +1,104 @@
+name: desktop
+
+# WP-D.9: Tauri 2 desktop shell (apps/curv_desktop), remote mode. Unsigned builds for
+# macOS, Windows and Linux; the bundles are uploaded as workflow artifacts.
+on:
+  workflow_dispatch:
+  push:
+    branches: [dev, main]
+    paths:
+      - "apps/curv_desktop/**"
+      - ".github/workflows/desktop.yml"
+  pull_request:
+    paths:
+      - "apps/curv_desktop/**"
+      - ".github/workflows/desktop.yml"
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+defaults:
+  run:
+    shell: bash
+    working-directory: apps/curv_desktop
+
+jobs:
+  deny:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      # Picks up apps/curv_desktop/deny.toml (next to the manifest).
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: apps/curv_desktop/Cargo.toml
+          command: check
+
+  build:
+    name: build (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macos
+            os: macos-latest
+            bundles: app,dmg
+          - name: windows
+            os: windows-latest
+            bundles: msi,nsis
+          - name: linux
+            os: ubuntu-22.04
+            bundles: deb,rpm,appimage
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux system libraries (WebKitGTK 4.1)
+        if: runner.os == 'Linux'
+        working-directory: .
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
+            librsvg2-dev libxdo-dev libssl-dev patchelf build-essential file
+
+      - name: Install toolchain (apps/curv_desktop/rust-toolchain.toml)
+        run: |
+          rustup show active-toolchain || rustup toolchain install stable --profile minimal -c rustfmt -c clippy
+          cargo --version
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/curv_desktop
+          key: ${{ matrix.name }}
+
+      - name: Format
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets --locked -- -D warnings
+
+      - name: Unit tests (URL validation, navigation allow-list)
+        run: cargo test --locked
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2" --locked
+
+      # No signing identities are configured, so every bundle is unsigned.
+      - name: Build bundles (unsigned)
+        run: cargo tauri build --ci --bundles ${{ matrix.bundles }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: curv-desktop-${{ matrix.name }}
+          path: apps/curv_desktop/target/release/bundle/
+          if-no-files-found: error
+          retention-days: 14

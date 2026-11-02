@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "setup",
+  "description": "The bundled local setup page may save the clinic server URL. Nothing else. No capability has a `remote` section, so the remote console gets no IPC access at all.",
+  "local": true,
+  "windows": ["setup"],
+  "permissions": ["allow-set-server-url"]
+}

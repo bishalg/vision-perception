@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Curv Console: clinic server</title>
+    <link rel="stylesheet" href="setup.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Connect to your clinic server</h1>
+      <p>Enter the address of the Curv Console on your clinic server. Ask your administrator if you do not know it.</p>
+      <form id="setup-form" novalidate>
+        <label for="server-url">Server address</label>
+        <input id="server-url" name="server-url" type="url" inputmode="url" autocomplete="url"
+               spellcheck="false" placeholder="https://clinic.example.org" required />
+        <p class="hint">Must start with https://. Plain http:// works only for localhost.</p>
+        <p id="error" class="error" role="alert" hidden></p>
+        <button id="save" type="submit">Connect</button>
+      </form>
+    </main>
+    <script src="setup.js"></script>
+  </body>
+</html>

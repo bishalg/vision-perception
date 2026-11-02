@@ -1,0 +1,56 @@
+# cargo-deny policy for the desktop shell. Same allow-list as rust/deny.toml, which
+# mirrors docs/license_policy.md.
+[graph]
+all-features = true
+
+[licenses]
+version = 2
+confidence-threshold = 0.9
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "MIT",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "CC0-1.0",
+    "BSL-1.0",
+    "Unicode-3.0",
+]
+exceptions = [
+    # MPL-2.0 (file-level copyleft, yellow list): unmodified crates.io sources pulled in
+    # by tauri-utils (dom_query, HTML/CSP processing of the bundled setup page) and by
+    # dirs-sys (option-ext). Same treatment as UniFFI in rust/deny.toml.
+    { allow = ["MPL-2.0"], crate = "cssparser" },
+    { allow = ["MPL-2.0"], crate = "cssparser-macros" },
+    { allow = ["MPL-2.0"], crate = "dtoa-short" },
+    { allow = ["MPL-2.0"], crate = "selectors" },
+    { allow = ["MPL-2.0"], crate = "option-ext" },
+]
+
+[licenses.private]
+# curv-desktop itself (publish = false) has no SPDX licence.
+ignore = true
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[advisories]
+version = 2
+yanked = "deny"
+# Unmaintained notices only (no vulnerabilities), all in Linux-only transitive deps of
+# Tauri; no fixed version is reachable until upstream moves (gtk-rs 0.18 -> newer, zbus 6).
+ignore = [
+    { id = "RUSTSEC-2024-0370", reason = "proc-macro-error via glib-macros (gtk 0.18, Linux, build-time)" },
+    { id = "RUSTSEC-2026-0370", reason = "zvariant via zbus 5 (tauri-plugin-opener, Linux)" },
+    { id = "RUSTSEC-2026-0371", reason = "zbus_names via zbus 5 (tauri-plugin-opener, Linux)" },
+    { id = "RUSTSEC-2026-0372", reason = "zvariant_derive via zbus 5 (tauri-plugin-opener, Linux)" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
