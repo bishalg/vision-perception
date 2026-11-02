@@ -106,6 +106,23 @@ export interface AuditQuery extends PageQuery {
   to?: string;
 }
 
+// ---- two-step sign-in reset (TRS-1, WP-B.17) ---------------------------------
+
+/** TRS-1: the reset reason is 10..200 characters and goes into the audit row. */
+export const MIN_TOTP_RESET_REASON_CHARS = 10;
+export const MAX_TOTP_RESET_REASON_CHARS = 200;
+
+/**
+ * `POST /orgs/{id}/users/{user_id}/totp/reset`: the caller's step-up (password, plus a code when the caller has TOTP)
+ * and the reason. The password and code are verified and dropped by the backend; the console never stores them.
+ */
+export const totpResetRequestSchema = z.object({
+  password: z.string(),
+  totp_code: str,
+  reason: z.string(),
+});
+export type TotpResetRequest = z.infer<typeof totpResetRequestSchema>;
+
 export interface AdminApi {
   listParticipants(orgId: string, query?: PageQuery): Promise<ParticipantPage>;
   listUsers(orgId: string, query?: PageQuery): Promise<OrgUserPage>;
@@ -114,6 +131,11 @@ export interface AdminApi {
   createUser(orgId: string, request: CreateUserRequest): Promise<OrgUser>;
   updateUser(orgId: string, userId: string, patch: UpdateUserRequest): Promise<OrgUser>;
   listAudit(orgId: string, query?: AuditQuery): Promise<AuditPage>;
+  /**
+   * TRS-1 (`UserTotpReset`: owner, admin). `204`; `403 totp-reset-forbidden` for yourself or a higher-ranked target,
+   * `401 reauthentication-failed` for a wrong password or code, `429` from the shared step-up limiter.
+   */
+  resetUserTotp(orgId: string, userId: string, request: TotpResetRequest): Promise<void>;
 }
 
 export function createLiveAdmin(request: LiveRequest, buildQuery: (q: object) => string): AdminApi {
@@ -127,5 +149,7 @@ export function createLiveAdmin(request: LiveRequest, buildQuery: (q: object) =>
     updateUser: (orgId, userId, patch) =>
       request(`/orgs/${enc(orgId)}/users/${enc(userId)}`, orgUserSchema, { method: "PATCH", body: patch }),
     listAudit: (orgId, query) => request(`/orgs/${enc(orgId)}/audit${buildQuery(query ?? {})}`, auditPageSchema),
+    resetUserTotp: (orgId, userId, body) =>
+      request(`/orgs/${enc(orgId)}/users/${enc(userId)}/totp/reset`, null, { method: "POST", body }),
   };
 }

@@ -1,8 +1,22 @@
-/** User-visible strings for the participant workspace (WP-C.14). en only; imported where used. */
+/**
+ * User-visible strings for the participant workspace (WP-C.14) and the record workspace (WP-C.18: visits,
+ * attachments, follow-ups, search, new participant). en only for now; every string lives here (no literals in
+ * components) so a Nepali file can mirror this one. Wording is for clinic staff: short sentences, plain words, and
+ * nothing that reads as a diagnosis (ADR-0004).
+ */
 import type { NoteKind, TimelineKind } from "@/lib/api/participant";
+import type { AttachmentKind, EncounterKind, EncounterStatus } from "@/lib/api/emr";
+
+const MIB = 1_048_576;
 
 const errors: Record<string, string> = {
   "validation-failed": "Some fields were rejected.",
+  "encounter-closed": "This visit is closed. Reopen it first to change it.",
+  "encounter-summary-forbidden": "Your role cannot write a visit summary. Leave the summary empty.",
+  "stale-version": "Someone else changed this visit while you were editing. Reload the page and try again.",
+  "attachment-too-large": "The file is too large. The limit is 10 MB.",
+  "attachment-type-not-allowed": "This file type is not accepted. Use a PDF, JPEG or PNG file.",
+  "digest-mismatch": "The file was damaged on the way to the server. Try the upload again.",
   forbidden: "Your role cannot do this.",
   "not-found": "Not found.",
   conflict: "That patient reference is already linked to another participant.",
@@ -24,8 +38,37 @@ export function participantErrorMessage(slug: string | null, status: number): st
   return errors.fallback!;
 }
 
-export const TAB_IDS = ["timeline", "notes", "mrn", "letters", "disclosures", "print"] as const;
+export const TAB_IDS = ["timeline", "visits", "attachments", "notes", "mrn", "letters", "disclosures", "print"] as const;
 export type WorkspaceTab = (typeof TAB_IDS)[number];
+
+const encounterKinds = {
+  screening_visit: "Observation visit",
+  follow_up_visit: "Follow-up visit",
+  phone_call: "Phone call",
+  home_visit: "Home visit",
+  other: "Other",
+} satisfies Record<EncounterKind, string>;
+
+const attachmentKinds = {
+  paper_form: "Paper form",
+  referral: "Referral letter",
+  report: "Report",
+  photo_of_document: "Photo of a document",
+  other: "Other",
+} satisfies Record<AttachmentKind, string>;
+
+/**
+ * Age groups offered when creating or searching: the values the iOS app records (`AgeBracket` raw values), so a
+ * search by age group matches sessions from the app. Shown as written.
+ */
+export const AGE_GROUPS = ["12–17 mo", "18–23 mo", "24–35 mo", "36–47 mo", "48–60 mo"] as const;
+
+/** "1.2 MB", "340 KB": sizes for people, not bytes. */
+export function formatFileSize(bytes: number | null | undefined): string {
+  if (bytes == null) return "-";
+  if (bytes >= MIB) return `${(bytes / MIB).toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
 
 export const participantText = {
   title: "Participant",
@@ -46,6 +89,8 @@ export const participantText = {
   tabsLabel: "Participant sections",
   tabs: {
     timeline: "Timeline",
+    visits: "Visits",
+    attachments: "Files",
     notes: "Notes",
     mrn: "MRN",
     letters: "Letters",
@@ -54,7 +99,7 @@ export const participantText = {
   } satisfies Record<WorkspaceTab, string>,
   timeline: {
     title: "Timeline",
-    intro: "Sessions, clinical reviews, notes, letters and care events, newest first. Entries show headers only.",
+    intro: "Sessions, visits, files, clinical reviews, notes, letters and care events, newest first. Entries show headers only.",
     filterLegend: "Show",
     apply: "Apply filter",
     clear: "Show all",
@@ -81,6 +126,164 @@ export const participantText = {
     letter: (kind: string, status: unknown) =>
       `${kind === "referral" ? "Referral" : "Summary"} letter${typeof status === "string" ? ` (${status})` : ""}`,
     care: (k: string) => `Care event: ${k.replace(/_/g, " ")}`,
+    encounter: (kind: string, status: unknown) =>
+      `${encounterKinds[kind as EncounterKind] ?? "Visit"}${status === "closed" ? " (closed)" : status === "open" ? " (open)" : ""}`,
+    attachment: (kind: string, name: string, size: number | null) =>
+      [attachmentKinds[kind as AttachmentKind] ?? "File", name, size != null ? formatFileSize(size) : ""].filter(Boolean).join(", "),
+    openVisits: "Open visits",
+    openFiles: "Open files",
+  },
+  visits: {
+    title: "Visits",
+    intro: "Each visit, call or home visit with this participant, newest first.",
+    empty: "No visits recorded yet.",
+    add: "Add a visit",
+    addTitle: "New visit",
+    editTitle: "Change visit",
+    kind: "Type of visit",
+    kinds: encounterKinds,
+    statuses: { open: "Open", closed: "Closed" } satisfies Record<EncounterStatus, string>,
+    date: "Date of visit",
+    reason: "Reason for the visit (short)",
+    reasonHelp: (n: number) => `A few words, up to ${n} characters. Do not write clinical findings here.`,
+    summary: "Visit summary",
+    summaryHelp: (n: number) => `What happened at the visit, up to ${n.toLocaleString("en-US")} characters. Kept encrypted.`,
+    summaryHidden: "A summary is on file. Your role cannot read it.",
+    summaryNoWrite: "Only clinicians write visit summaries.",
+    followUp: "Follow up by (optional)",
+    followUpHelp: "Pick a date to put this visit on the follow-ups list.",
+    sessions: "Sessions from this visit",
+    noSessions: "This participant has no sessions yet.",
+    linked: "Sessions",
+    noneLinked: "No sessions linked.",
+    linkSession: "Link a session",
+    chooseSession: "Choose a session",
+    link: "Link",
+    unlink: "Remove",
+    unlinkLabel: (when: string) => `Remove session ${when} from this visit`,
+    by: "Staff",
+    dueBy: "Follow up by",
+    done: "Follow-up done",
+    markDone: "Mark follow-up done",
+    overdue: "Overdue",
+    save: "Save visit",
+    saving: "Saving…",
+    saved: "Visit saved.",
+    failed: "The visit was not saved.",
+    edit: "Change",
+    close: "Close visit",
+    reopen: "Reopen visit",
+    cancel: "Cancel",
+    reload: "Reload page",
+    readOnly: "Your role can view visits but not add them.",
+    older: "Older visits",
+    newest: "Newest visits",
+  },
+  attachments: {
+    title: "Files",
+    intro: "Scanned paper forms, referral letters and other documents for this participant. Files are encrypted.",
+    empty: "No files yet.",
+    uploadTitle: "Add a file",
+    file: "Choose a file (PDF, JPEG or PNG, up to 10 MB)",
+    kind: "What is this file?",
+    kinds: attachmentKinds,
+    visit: "From visit (optional)",
+    noVisit: "Not linked to a visit",
+    upload: "Upload file",
+    uploading: "Uploading…",
+    uploaded: "File uploaded.",
+    failed: "The file was not uploaded.",
+    tooLarge: "The file is too large. The limit is 10 MB.",
+    badType: "This file type is not accepted. Use a PDF, JPEG or PNG file.",
+    empty_file: "The file is empty.",
+    cols: { name: "File", kind: "Type", size: "Size", when: "Added", by: "Added by", actions: "Actions" },
+    download: "Download",
+    downloadLabel: (name: string) => `Download ${name}`,
+    noDownload: "Your role cannot open files.",
+    remove: "Remove",
+    removeLabel: (name: string) => `Remove ${name}`,
+    confirmRemove: (name: string) => `Remove ${name}? It will no longer be available.`,
+    confirmRemoveButton: "Yes, remove",
+    removed: "File removed.",
+    cancel: "Cancel",
+    readOnly: "Your role cannot add files.",
+    unnamed: "File",
+  },
+  followUps: {
+    title: "Follow-ups",
+    intro: "Visits that need a follow-up, earliest due first. Mark one done when the follow-up has happened.",
+    empty: "No follow-ups are due.",
+    emptyFiltered: "No follow-ups match this filter.",
+    filterLabel: "Show follow-ups",
+    show: "Show",
+    all: "All open",
+    overdue: "Overdue",
+    week: "Due in the next 7 days",
+    mine: "Only mine",
+    apply: "Show",
+    cols: { due: "Follow up by", participant: "Participant", visit: "Visit", reason: "Reason", staff: "Staff", actions: "Actions" },
+    overdueBadge: "Overdue",
+    todayBadge: "Due today",
+    markDone: "Mark done",
+    markDoneLabel: (token: string) => `Mark follow-up for ${token} done`,
+    done: "Done.",
+    failed: "Could not mark this follow-up done.",
+    open: "Open record",
+    older: "More",
+    first: "First page",
+  },
+  create: {
+    button: "New participant",
+    title: "New participant",
+    intro: "The system makes a participant code and a QR code. No name is stored.",
+    age: "Age group (optional)",
+    ageNone: "Not recorded",
+    language: "Language (optional)",
+    languageNone: "Not recorded",
+    languages: { en: "English", ne: "Nepali" } as Record<string, string>,
+    consentVersion: "Consent form version (optional)",
+    consentDate: "Consent signed on (optional)",
+    consentHelp: "Fill in only if the family signed the consent form on paper today or earlier.",
+    submit: "Create participant",
+    creating: "Creating…",
+    failed: "The participant was not created.",
+    doneTitle: "Participant created",
+    code: "Participant code",
+    qrLabel: (token: string) => `QR code for participant ${token}`,
+    qrHelp: "Scan this QR code with the clinic iPad to start a session for this participant, or write the code on the paper file.",
+    print: "Print",
+    open: "Open record",
+    another: "Create another",
+    close: "Close",
+  },
+  search: {
+    title: "Find a participant",
+    intro: "Fill in one or more fields. The search is sent as a form and is not kept in the address bar.",
+    token: "Participant code (start of it)",
+    tokenHelp: "For example child-3f",
+    age: "Age group",
+    any: "Any",
+    lastSeenFrom: "Last session from",
+    lastSeenTo: "Last session to",
+    openFollowUp: "Only participants with a follow-up due",
+    mrn: "Hospital record number (MRN)",
+    submit: "Search",
+    searching: "Searching…",
+    clear: "Clear",
+    results: (n: number, total: number | null | undefined) =>
+      total == null || total === n ? `${n} found` : `${n} of ${total} found`,
+    none: "No participant matches.",
+    more: "Show more",
+    failed: "The search failed.",
+    cols: {
+      token: "Participant",
+      age: "Age group",
+      sessions: "Sessions",
+      lastSession: "Last session",
+      openVisits: "Open visits",
+      nextFollowUp: "Next follow-up",
+      status: "Status",
+    },
   },
   notes: {
     title: "Clinical notes",

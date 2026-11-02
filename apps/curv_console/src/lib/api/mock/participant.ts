@@ -17,6 +17,7 @@ import {
   TIMELINE_KINDS,
 } from "../participant";
 import { ApiError, PROBLEM_BASE, type PageQuery, type SessionDetail } from "../types";
+import { mockRecordTimeline } from "./emr";
 
 export interface MockParticipantContext {
   details: SessionDetail[];
@@ -58,8 +59,8 @@ export function createMockParticipant(ctx: MockParticipantContext): ParticipantA
   let seq = 0;
   const newId = () => `a11ce000-0000-4000-8000-${String(++seq).padStart(12, "0")}`;
 
-  async function all(): Promise<Participant[]> {
-    if (participants) return participants;
+  async function all(refresh = false): Promise<Participant[]> {
+    if (participants && !refresh) return participants;
     const rows: Participant[] = [];
     let cursor: string | undefined;
     do {
@@ -68,7 +69,8 @@ export function createMockParticipant(ctx: MockParticipantContext): ParticipantA
       cursor = page.next_cursor ?? undefined;
     } while (cursor);
     participants = rows;
-    seed(rows);
+    // Seeds go to the session fixtures by position; participants created later (WP-C.18, no sessions) never shift them.
+    seed(rows.filter((p) => sessionsOf(p.id).length > 0 && !notes.has(p.id)));
     return rows;
   }
 
@@ -133,7 +135,8 @@ export function createMockParticipant(ctx: MockParticipantContext): ParticipantA
   }
 
   async function find(id: string): Promise<Participant> {
-    const p = (await all()).find((x) => x.id === id);
+    // A miss re-reads the list once: the participant may have been created after the first read (WP-C.18).
+    const p = (await all()).find((x) => x.id === id) ?? (await all(true)).find((x) => x.id === id);
     if (!p) throw problem(404, "not-found", "Not found");
     return p;
   }
@@ -211,6 +214,8 @@ export function createMockParticipant(ctx: MockParticipantContext): ParticipantA
           });
         }
       }
+      // REC-5 visit and attachment headers from the record mock (WP-C.18).
+      entries.push(...mockRecordTimeline(ctx.listParticipants, id));
       for (const k of query.kind ?? []) {
         if (!(TIMELINE_KINDS as readonly string[]).includes(k)) throw invalid("kind", "must be a timeline entry kind");
       }

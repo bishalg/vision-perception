@@ -13,6 +13,8 @@ export function navLinks(base: string, role: Role | undefined): { href: string; 
     { href: `${base}/overview`, text: en.nav.overview },
     { href: `${base}/sessions`, text: en.nav.sessions },
     { href: `${base}/participants`, text: adminText.nav.participants },
+    // WP-C.18: open follow-ups for the staff who record visits (REC-4).
+    ...(can(role, "encounter.write") ? [{ href: `${base}/follow-ups`, text: adminText.nav.followUps }] : []),
     { href: `${base}/review`, text: en.nav.review },
     ...(can(role, "worklist.read") ? [{ href: `${base}/worklist`, text: en.nav.worklist }] : []),
     ...(can(role, "device.read") ? [{ href: `${base}/devices`, text: en.nav.devices }] : []),

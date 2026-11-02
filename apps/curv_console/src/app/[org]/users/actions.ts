@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { ApiError, roleSchema, userStatusSchema } from "@/lib/api";
 import { authedApi, currentRole } from "@/lib/auth/server";
 import { can } from "@/lib/permissions";
-import type { UserActionResult } from "@/components/UsersAdmin";
+import type { TotpResetResult, UserActionResult } from "@/components/UsersAdmin";
 
 function failure(err: unknown): UserActionResult {
   if (err instanceof ApiError) {
@@ -37,6 +37,30 @@ export async function createUserAction(orgId: string, formData: FormData): Promi
     return { ok: true, email: user.email };
   } catch (err) {
     return failure(err);
+  }
+}
+
+/**
+ * POST /v1/orgs/{id}/users/{user_id}/totp/reset (TRS-1, UI-3). The caller's password and code arrive in this
+ * `FormData` only, are sent once and never returned, logged or stored; the result carries a slug, not the input.
+ */
+export async function resetTotpAction(orgId: string, userId: string, formData: FormData): Promise<TotpResetResult> {
+  if (!can(await currentRole(), "user.totp_reset")) return { ok: false, slug: "forbidden", status: 403 };
+  const code = text(formData, "totp_code");
+  try {
+    await (await authedApi()).resetUserTotp(orgId, userId, {
+      // Passwords are not trimmed: they are exactly what the actor typed.
+      password: String(formData.get("password") ?? ""),
+      ...(code ? { totp_code: code } : {}),
+      reason: text(formData, "reason"),
+    });
+    revalidatePath(`/${encodeURIComponent(orgId)}/users`);
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof ApiError) {
+      return { ok: false, slug: err.slug, status: err.status, ...(err.retryAfter != null ? { retryAfter: err.retryAfter } : {}) };
+    }
+    return { ok: false, slug: null, status: 0 };
   }
 }
 

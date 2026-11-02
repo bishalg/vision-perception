@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import "@/components/participant/participant.css";
+import { CreateParticipantDialog } from "@/components/participant/CreateParticipantDialog";
+import { ParticipantSearch } from "@/components/participant/ParticipantSearch";
 import { ParticipantsTable } from "@/components/ParticipantsTable";
 import { authedApi, currentRole } from "@/lib/auth/server";
 import { parseCursor, toSearch } from "@/lib/listQuery";
@@ -7,9 +10,11 @@ import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { adminText } from "@/messages/admin";
 import { requestErasureAction } from "../privacy-actions";
+import { createParticipantAction, searchParticipantsAction } from "./actions";
 
 const t = adminText.participants;
 
+// No token or search value in the title (UI-4).
 export const metadata: Metadata = { title: t.title };
 
 export default async function ParticipantsPage({
@@ -22,16 +27,25 @@ export default async function ParticipantsPage({
   const { org } = await params;
   const cursor = parseCursor(await searchParams);
   const api = await authedApi();
+  const role = await currentRole();
   const page = await loadOrNotFound(() => api.listParticipants(org, { cursor, limit: 50 }));
-  const base = `/${encodeURIComponent(org)}/participants`;
+  const orgPath = `/${encodeURIComponent(org)}`;
+  const base = `${orgPath}/participants`;
   return (
     <>
-      <h1>{t.title}</h1>
+      <div className="filter-actions">
+        <h1>{t.title}</h1>
+        {can(role, "participant.create") ? (
+          <CreateParticipantDialog create={createParticipantAction.bind(null, org)} orgPath={orgPath} />
+        ) : null}
+      </div>
       <p className="muted">{t.intro}</p>
+      <ParticipantSearch search={searchParticipantsAction.bind(null, org)} canMrn={can(role, "patientref.read")} orgPath={orgPath} />
+      <h2>{t.allTitle}</h2>
       <ParticipantsTable
         participants={page.items}
         orgId={org}
-        erase={can(await currentRole(), "participant.erase") ? requestErasureAction.bind(null, org) : undefined}
+        erase={can(role, "participant.erase") ? requestErasureAction.bind(null, org) : undefined}
       />
       <p className="muted">{t.showing(page.items.length, page.total)}</p>
       <nav className="pagination" aria-label="Pagination">

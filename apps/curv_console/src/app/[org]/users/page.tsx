@@ -6,7 +6,7 @@ import { parseCursor, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { assignableRoles, can } from "@/lib/permissions";
 import { adminText } from "@/messages/admin";
-import { createUserAction, updateUserAction } from "./actions";
+import { createUserAction, resetTotpAction, updateUserAction } from "./actions";
 
 const t = adminText.users;
 
@@ -49,6 +49,7 @@ export default async function UsersPage({
         actor={role}
         roles={roles}
         update={updateUserAction.bind(null, org)}
+        resetTotp={can(role, "user.totp_reset") ? resetTotpAction.bind(null, org) : undefined}
       />
       <nav className="pagination" aria-label="Pagination">
         {cursor ? <Link href={base}>{adminText.common.first}</Link> : null}

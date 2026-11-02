@@ -2,11 +2,12 @@
 import type { Role, UserStatus } from "@/lib/api";
 
 export const adminText = {
-  nav: { participants: "Participants", users: "Users", audit: "Audit log" },
+  nav: { participants: "Participants", followUps: "Follow-ups", users: "Users", audit: "Audit log" },
   common: { next: "Next page", first: "First page", none: "-", denied: "Your role cannot view this page." },
   participants: {
     title: "Participants",
     intro: "Pseudonymous participants of this organisation. No names or dates of birth are stored.",
+    allTitle: "All participants",
     cols: {
       token: "Participant",
       age: "Age bracket",
@@ -79,6 +80,32 @@ export const adminText = {
       unavailable: "The server is unavailable. Try again shortly.",
     } as Record<string, string>,
     updateFailed: "Could not save the change.",
+    totpReset: {
+      button: "Reset two-step sign-in",
+      buttonLabel: (email: string) => `Reset two-step sign-in for ${email}`,
+      title: (email: string) => `Reset two-step sign-in for ${email}`,
+      intro:
+        "Use this when the user has lost their phone or authenticator app. Their authenticator is removed and they are signed out. They will have to set up two-step sign-in again the next time they sign in.",
+      reason: "Why are you resetting it?",
+      reasonHelp: (min: number, max: number) => `${min} to ${max} characters, for example "Lost phone, confirmed in person". Saved in the audit log.`,
+      password: "Your password",
+      totp: "Your authenticator code (if you use one)",
+      secretNote: "Your password and code are checked once and not stored.",
+      submit: "Reset two-step sign-in",
+      submitting: "Resetting…",
+      cancel: "Cancel",
+      done: (email: string) => `Two-step sign-in was reset for ${email}. They will set it up again at their next sign-in.`,
+      failed: "The reset was not done.",
+      errors: {
+        "totp-reset-forbidden": "You cannot reset this user: it is your own account or a higher role than yours.",
+        "reauthentication-failed": "Your password or authenticator code was not accepted. Nothing was changed.",
+        "rate-limited": "Too many attempts. Wait a minute and try again.",
+        "validation-failed": "Write a reason of 10 to 200 characters.",
+        forbidden: "Your role cannot reset two-step sign-in.",
+        "not-found": "This user was not found.",
+        unavailable: "The server is unavailable. Try again shortly.",
+      } as Record<string, string>,
+    },
   },
   audit: {
     title: "Audit log",
