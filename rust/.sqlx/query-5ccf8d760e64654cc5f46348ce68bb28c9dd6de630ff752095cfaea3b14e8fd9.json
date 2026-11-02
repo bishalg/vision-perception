@@ -1,0 +1,137 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH f AS (\n             SELECT e.id, e.participant_id, p.token, e.kind, e.occurred_at,\n                    e.follow_up_due_at AS due, e.clinician_id, u.display_name AS clinician_name,\n                    e.reason\n             FROM encounters e\n             JOIN participants p ON p.id = e.participant_id\n             LEFT JOIN users u ON u.id = e.clinician_id\n             WHERE e.org_id = $1 AND e.follow_up_due_at IS NOT NULL\n               AND e.follow_up_done_at IS NULL\n               AND ($2::timestamptz IS NULL OR e.follow_up_due_at <= $2)\n               AND (NOT $3::bool OR e.clinician_id IS NULL)\n               AND ($4::uuid IS NULL OR e.clinician_id = $4)\n           )\n           SELECT id AS \"id!\", participant_id AS \"participant_id!\", token AS \"token!\",\n                  kind AS \"kind!\", occurred_at AS \"occurred_at!\", due AS \"due!\", clinician_id,\n                  clinician_name, reason, (SELECT count(*) FROM f) AS \"total!\"\n           FROM f\n           WHERE ($5::timestamptz IS NULL OR (due, id) > ($5, $6::uuid))\n           ORDER BY due, id\n           LIMIT $7",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "encounters",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "participant_id!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "encounters",
+            "name": "participant_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "token!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "participants",
+            "name": "token"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "kind!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "encounters",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "occurred_at!",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "encounters",
+            "name": "occurred_at"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "due!",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "encounters",
+            "name": "follow_up_due_at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "clinician_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "encounters",
+            "name": "clinician_id"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "clinician_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "display_name"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "encounters",
+            "name": "reason"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "total!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "Bool",
+        "Uuid",
+        "Timestamptz",
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "5ccf8d760e64654cc5f46348ce68bb28c9dd6de630ff752095cfaea3b14e8fd9"
+}

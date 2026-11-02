@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE attachments\n         SET sha256 = $2, blob_key = $3, dek_key_id = $4, byte_size = $5, content_at = now()\n         WHERE id = $1 AND sha256 IS NULL AND deleted_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bytea",
+        "Text",
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "32ffd948d335962fe787025f855cb9fd753894cdefa813ed0a5f4cee15df0707"
+}

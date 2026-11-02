@@ -1,0 +1,33 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO participants\n             (org_id, token, age_bracket_at_enrol, language, consent_version, consent_at, mode)\n         VALUES ($1, $2, $3, $4, $5, $6, 'clinic')\n         ON CONFLICT (org_id, token) DO UPDATE SET\n             age_bracket_at_enrol = coalesce(participants.age_bracket_at_enrol,\n                                             EXCLUDED.age_bracket_at_enrol),\n             language = coalesce(participants.language, EXCLUDED.language),\n             consent_version = coalesce(participants.consent_version, EXCLUDED.consent_version),\n             consent_at = coalesce(participants.consent_at, EXCLUDED.consent_at),\n             mode = coalesce(participants.mode, EXCLUDED.mode)\n         RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "participants",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f3a48b6d119cfc557365ff249496866ccd9d4bfb2eba97d2805e76b64ae5b4aa"
+}

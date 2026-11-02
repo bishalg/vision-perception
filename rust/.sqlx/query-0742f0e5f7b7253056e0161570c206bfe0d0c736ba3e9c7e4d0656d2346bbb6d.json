@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT DISTINCT assigning_authority FROM patient_refs WHERE org_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "assigning_authority",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "patient_refs",
+            "name": "assigning_authority"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0742f0e5f7b7253056e0161570c206bfe0d0c736ba3e9c7e4d0656d2346bbb6d"
+}

@@ -1,19 +1,24 @@
 //! owner: WP-C.11
 //!
-//! CW-3 participant timeline: one newest-first stream over five tables, paged by an opaque
+//! CW-3 participant timeline: one newest-first stream over seven tables, paged by an opaque
 //! cursor over `(at, key)`.
 //!
-//! - `session`: a stored session, at `started_at`; summary `{attention_flag}`.
+//! - `session`: a stored session, at `started_at`; summary `{attention_flag, encounter_id}`
+//!   (`encounter_id` is `null` when the session documents no encounter, REC-5).
 //! - `clinical_review`: the review opening (at `created_at`, summary `{event: "opened",
 //!   state}`) and each signature (summary `{event: "signed" | "cosigned", version_no}`).
 //! - `note` and `letter`: headers only (kind, status, author, time). The `_ct` columns are
 //!   not selected, so a body cannot reach this stream.
 //! - `care_event`: the kind and time; the payload is device free text and is not included.
+//! - `encounter` (WP-B.19, REC-5): at `occurred_at`; actor = the encounter's clinician;
+//!   summary `{encounter_kind, status}`. `summary_ct` is not selected.
+//! - `attachment` (WP-B.19, REC-5): at `created_at`; actor = the uploader; summary
+//!   `{attachment_kind, file_name, byte_size}`. Deleted attachments are left out.
 //!
-//! Filters (`kind` any of the five, `from`/`to` inclusive on `at`) apply before the page is
+//! Filters (`kind` any of the seven, `from`/`to` inclusive on `at`) apply before the page is
 //! cut, so the cursor continues inside the filtered stream.
 //!
-//! `key` is `"{kind}:{id}"`, unique across the five tables, and sorts with `COLLATE "C"`,
+//! `key` is `"{kind}:{id}"`, unique across the seven tables, and sorts with `COLLATE "C"`,
 //! so rows on one instant have a fixed order and the cursor never skips or repeats one.
 
 use asd_contract::clinical::{TimelineEntry, TimelineEntryKind, TimelinePage};
@@ -53,7 +58,7 @@ impl TimelineFilters {
                             None => errors.push(InvalidParam {
                                 name: "kind".into(),
                                 reason:
-                                    "must be session, clinical_review, note, letter or care_event"
+                                    "must be session, clinical_review, note, letter, care_event, encounter or attachment"
                                         .into(),
                             }),
                         }
@@ -105,7 +110,8 @@ pub async fn page(
         r#"WITH t AS (
              SELECT 'session' AS kind, s.id AS id, s.started_at AS at, s.id AS session_id,
                     NULL::uuid AS actor_id, NULL::text AS actor_name,
-                    jsonb_build_object('attention_flag', s.attention_flag) AS summary
+                    jsonb_build_object('attention_flag', s.attention_flag,
+                                       'encounter_id', s.encounter_id) AS summary
              FROM sessions s
              WHERE s.participant_id = $1 AND s.org_id = $2
            UNION ALL
@@ -147,6 +153,21 @@ pub async fn page(
                     jsonb_build_object('care_kind', c.kind)
              FROM care_events c
              WHERE c.participant_id = $1 AND c.org_id = $2
+           UNION ALL
+             SELECT 'encounter', e.id::text, e.occurred_at, NULL::text,
+                    e.clinician_id, u.display_name,
+                    jsonb_build_object('encounter_kind', e.kind, 'status', e.status)
+             FROM encounters e
+             LEFT JOIN users u ON u.id = e.clinician_id
+             WHERE e.participant_id = $1 AND e.org_id = $2
+           UNION ALL
+             SELECT 'attachment', a.id::text, a.created_at, NULL::text,
+                    a.uploaded_by, u.display_name,
+                    jsonb_build_object('attachment_kind', a.kind, 'file_name', a.file_name,
+                                       'byte_size', a.byte_size)
+             FROM attachments a
+             LEFT JOIN users u ON u.id = a.uploaded_by
+             WHERE a.participant_id = $1 AND a.org_id = $2 AND a.deleted_at IS NULL
          ), k AS (
              SELECT t.*, (t.kind || ':' || t.id) COLLATE "C" AS key FROM t
          )
