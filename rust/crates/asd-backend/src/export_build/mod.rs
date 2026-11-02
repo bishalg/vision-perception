@@ -203,6 +203,9 @@ impl ExportRow {
                 None
             },
             include_labels: self.include_labels,
+            // Case packages (SHR-7, SHR-8) fill these with WP-I.13.
+            case_participant_id: None,
+            share_links_n: 0,
         }
     }
 }
@@ -231,6 +234,12 @@ pub fn format_available(format: ExportFormat) -> Result<(), &'static str> {
         ExportFormat::PdfSummary => Err(
             "pdf_summary is not available yet: the PDF/A clinical summary encoder ships with WP-I.5",
         ),
+        ExportFormat::CasePackage => {
+            Err("case_package is not available yet: case sharing ships with WP-I.13")
+        }
+        ExportFormat::AuditCsv => {
+            Err("audit_csv is not available yet: the audit log export ships with WP-B.23")
+        }
         _ => Ok(()),
     }
 }
@@ -505,9 +514,9 @@ pub fn render(input: &RenderInput<'_>) -> Result<Artifact, RenderError> {
                 content_type: CT_HL7,
             })
         }
-        ExportFormat::PdfSummary => Err(RenderError::Unsupported(
-            format_available(ExportFormat::PdfSummary).expect_err("unavailable"),
-        )),
+        ExportFormat::PdfSummary | ExportFormat::CasePackage | ExportFormat::AuditCsv => Err(
+            RenderError::Unsupported(format_available(input.format).expect_err("unavailable")),
+        ),
         ExportFormat::DatasetJsonl | ExportFormat::DatasetParquet => {
             // The encoders de-identify themselves and refuse an identified watermark.
             let opts = DatasetOptions {
@@ -620,13 +629,24 @@ mod tests {
     }
 
     #[test]
-    fn pdf_summary_is_refused_with_a_reason() {
+    fn unavailable_formats_are_refused_with_a_reason() {
         assert!(format_available(ExportFormat::PdfSummary)
             .unwrap_err()
             .contains("WP-I.5"));
+        assert!(format_available(ExportFormat::CasePackage)
+            .unwrap_err()
+            .contains("WP-I.13"));
+        assert!(format_available(ExportFormat::AuditCsv)
+            .unwrap_err()
+            .contains("WP-B.23"));
+        let unavailable = [
+            ExportFormat::PdfSummary,
+            ExportFormat::CasePackage,
+            ExportFormat::AuditCsv,
+        ];
         for f in ExportFormat::ALL
             .iter()
-            .filter(|f| **f != ExportFormat::PdfSummary)
+            .filter(|f| !unavailable.contains(f))
         {
             assert!(format_available(*f).is_ok());
         }

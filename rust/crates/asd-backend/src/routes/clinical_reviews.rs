@@ -41,7 +41,8 @@ use crate::problem::InvalidParam;
 use crate::routes::review::json_or_problem;
 use crate::routes::sessions::path_uuid;
 
-pub fn router() -> Router<AppState> {
+/// `step_up_limiter` is shared with [`super::users::router`] (built once in [`super::v1`]).
+pub fn router(step_up_limiter: Arc<StepUpLimiter>) -> Router<AppState> {
     Router::new()
         .route(
             "/sessions/{id}/clinical-review",
@@ -51,7 +52,7 @@ pub fn router() -> Router<AppState> {
         .route("/clinical-reviews/{id}/sign", post(sign_review))
         .route("/clinical-reviews/{id}/cosign", post(cosign_review))
         .route("/clinical-reviews/{id}/amend", post(amend_review))
-        .layer(Extension(StepUpLimiter::new()))
+        .layer(Extension(step_up_limiter))
 }
 
 fn respond(status: StatusCode, review: ClinicalReview) -> Response {

@@ -80,6 +80,10 @@ fn rbac3_superadmin_is_denied_every_clinical_content_action() {
         Action::ExportDeidentified,
         Action::ExportIdentified,
         Action::IntegrationManage,
+        // REC-8 (phase 7): attachments, case sharing and share links are clinical content.
+        Action::AttachmentWrite,
+        Action::CaseShare,
+        Action::ShareLinkManage,
     ];
     assert_eq!(CLINICAL_CONTENT_ACTIONS.len(), expected.len());
     for action in expected {

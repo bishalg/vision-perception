@@ -52,15 +52,73 @@ function withCsp(request: NextRequest, respond: (headers: Headers) => NextRespon
   return response;
 }
 
-/** A browser document load (address bar, reload, link): not an RSC / prefetch / fetch / server-action request. */
-function isDocumentRequest(request: NextRequest): boolean {
-  return request.headers.get("sec-fetch-dest") === "document" && !request.headers.has("rsc");
-}
-
-/** Next's link prefetch: an idle open tab must not keep itself alive through these. */
+/**
+ * A prefetch the browser labels as such (`Purpose` / `Sec-Purpose`). Next strips its own router headers (`RSC`,
+ * `Next-Router-Prefetch`, `Next-Router-Segment-Prefetch`) and the `_rsc` query from the request the proxy sees, so
+ * the App Router's own prefetches are indistinguishable from navigations here.
+ */
 function isPrefetch(request: NextRequest): boolean {
   const h = request.headers;
   return h.has("next-router-prefetch") || h.get("purpose") === "prefetch" || h.get("sec-purpose")?.startsWith("prefetch") === true;
+}
+
+/** A server action call (`POST` with the `Next-Action` header, which Next leaves visible to the proxy). */
+function isServerAction(request: NextRequest): boolean {
+  return request.headers.has("next-action");
+}
+
+/**
+ * HIP-2: remembers why the session ended for a few minutes, so a request that arrives after the cookies are gone (a
+ * second tab, a router prefetch that ended the session before the click) still lands on `/login?reason=...`.
+ */
+const LOGOFF_REASON_COOKIE = "curv_logoff_reason";
+const LOGOFF_REASON_MAX_AGE_SEC = 300;
+
+function loginUrl(request: NextRequest, reason: string | undefined): URL {
+  const { pathname, search } = request.nextUrl;
+  const url = new URL("/login", request.url);
+  if (reason) url.searchParams.set("reason", reason);
+  if (pathname !== "/") url.searchParams.set("next", pathname + search);
+  return url;
+}
+
+/**
+ * HIP-2: ends an idle or expired session on any non-prefetch request. Nothing is refreshed or revived: the session
+ * cookies are cleared and the client lands on `/login?reason=...` (wave 1 defect 1):
+ * - server actions: Next's action-redirect protocol (`x-action-redirect`, empty body); the router navigates to the
+ *   login page instead of running the action;
+ * - route handlers (`/api/...`, fetched or downloaded by the page): `401` problem JSON;
+ * - everything else (document loads, RSC navigations and router prefetches): a 307 to the login page, which the
+ *   browser or the App Router's `fetch` follows.
+ */
+function endSession(request: NextRequest, verdict: "idle" | "expired"): NextResponse {
+  const url = loginUrl(request, verdict);
+  const target = url.pathname + url.search;
+  let response: NextResponse;
+  if (isServerAction(request)) {
+    response = withCsp(request, () =>
+      new NextResponse(null, { status: 200, headers: { "x-action-redirect": `${target};replace`, "content-type": "text/plain" } }),
+    );
+  } else if (request.nextUrl.pathname.startsWith("/api/")) {
+    response = withCsp(request, () =>
+      NextResponse.json(
+        { type: "about:blank", title: "Signed out", status: 401, detail: `session ${verdict}`, login: target },
+        { status: 401, headers: { "content-type": "application/problem+json" } },
+      ),
+    );
+  } else {
+    response = withCsp(request, () => NextResponse.redirect(url));
+  }
+  response.headers.set("Cache-Control", "no-store");
+  for (const name of SESSION_COOKIE_NAMES) response.cookies.delete(name);
+  response.cookies.set(LOGOFF_REASON_COOKIE, verdict, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: cookieSecure(),
+    path: "/",
+    maxAge: LOGOFF_REASON_MAX_AGE_SEC,
+  });
+  return response;
 }
 
 /**
@@ -80,8 +138,9 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
   const decision = decideGuard(pathname, hasAccess, Boolean(refreshToken));
 
-  // HIP-2 automatic logoff. The verdict is computed for every signed-in, non-public request; only document loads
-  // are redirected (clearing the cookies, with the CSP and a `reason` banner on /login).
+  // HIP-2 automatic logoff. The verdict is computed for every signed-in, non-public request. An idle or expired
+  // session never proceeds and never mints tokens: every request ends it (cookies cleared, the client lands on
+  // /login?reason=...), except a browser-labelled prefetch, which gets an empty 204 (nothing rendered or refreshed).
   let active = false;
   if ((hasAccess || refreshToken) && !isPublicPath(pathname)) {
     const verdict = evaluate(
@@ -90,22 +149,25 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       Date.now(),
     );
     active = verdict === "ok";
-    if (verdict !== "ok" && isDocumentRequest(request)) {
-      const url = new URL("/login", request.url);
-      url.searchParams.set("reason", verdict);
-      if (pathname !== "/") url.searchParams.set("next", pathname + request.nextUrl.search);
-      const response = withCsp(request, () => NextResponse.redirect(url));
-      for (const name of SESSION_COOKIE_NAMES) response.cookies.delete(name);
-      return response;
+    if (verdict !== "ok") {
+      if (isPrefetch(request)) {
+        const response = withCsp(request, () => new NextResponse(null, { status: 204 }));
+        response.headers.set("Cache-Control", "no-store");
+        return response;
+      }
+      return endSession(request, verdict);
     }
   }
 
   if (decision === "redirect-home") return withCsp(request, () => NextResponse.redirect(new URL("/", request.url)));
 
   if (decision === "redirect-login") {
-    const url = new URL("/login", request.url);
-    if (pathname !== "/") url.searchParams.set("next", pathname + request.nextUrl.search);
-    return withCsp(request, () => NextResponse.redirect(url));
+    // A session ended by HIP-2 moments ago keeps its reason (see LOGOFF_REASON_COOKIE).
+    const ended = request.cookies.get(LOGOFF_REASON_COOKIE)?.value;
+    const reason = ended === "idle" || ended === "expired" ? ended : undefined;
+    const response = withCsp(request, () => NextResponse.redirect(loginUrl(request, reason)));
+    if (ended !== undefined) response.cookies.delete(LOGOFF_REASON_COOKIE);
+    return response;
   }
 
   if (decision === "refresh" && refreshToken) {

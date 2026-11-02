@@ -32,6 +32,7 @@
 
 use std::io::Write as _;
 
+use asd_contract::emr::sanitize_file_name;
 use asd_contract::session_v1_6::GazeSessionRecord;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -218,25 +219,6 @@ pub(crate) fn hex(bytes: &[u8]) -> String {
         let _ = write!(s, "{b:02x}");
         s
     })
-}
-
-/// `[A-Za-z0-9._-]`, anything else `_`; never empty.
-fn sanitise_file_name(name: &str) -> String {
-    let out: String = name
-        .chars()
-        .map(|c| {
-            if c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-') {
-                c
-            } else {
-                '_'
-            }
-        })
-        .collect();
-    if out.is_empty() {
-        "file".to_owned()
-    } else {
-        out
-    }
 }
 
 fn utc(field: &'static str, rfc3339: &str) -> Result<chrono::DateTime<chrono::Utc>, ExportError> {
@@ -488,8 +470,8 @@ pub fn build_with_manifest(
                 format!(
                     "{}{}-{}",
                     paths::ATTACHMENTS,
-                    sanitise_file_name(&a.id),
-                    sanitise_file_name(&a.file_name)
+                    sanitize_file_name(&a.id),
+                    sanitize_file_name(&a.file_name)
                 ),
                 media_type,
                 a.bytes.clone(),

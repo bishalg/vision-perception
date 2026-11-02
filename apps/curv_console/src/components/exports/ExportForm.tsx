@@ -7,6 +7,7 @@ import {
   EXPORT_MODES,
   EXPORT_PURPOSES,
   isDatasetFormat,
+  isDedicatedFormat,
   type DeliverableDestination,
   type ExportFormat,
 } from "@/lib/api/exports";
@@ -50,7 +51,7 @@ export function ExportForm({
       <label>
         {t.format}
         <select name="format" value={format} onChange={(e) => setFormat(e.target.value as ExportFormat)}>
-          {EXPORT_FORMATS.filter((f) => f !== "pdf_summary").map((f) => (
+          {EXPORT_FORMATS.filter((f) => f !== "pdf_summary" && !isDedicatedFormat(f)).map((f) => (
             <option key={f} value={f}>{exportsText.formats[f]}</option>
           ))}
         </select>

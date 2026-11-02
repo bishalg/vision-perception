@@ -41,7 +41,17 @@ export type UiAction =
   // `clinical.content`. The MRN actions are clinical content: never for the superadmin (RBAC-3).
   | "note.write"
   | "patientref.read"
-  | "patientref.write";
+  | "patientref.write"
+  // Phase 7 REC-8 (ParticipantCreate, EncounterWrite, AttachmentWrite, CaseShare, ShareLinkManage, AuditExport,
+  // UserTotpReset). Attachments, case sharing and share links are clinical content: never for the superadmin (RBAC-3);
+  // it keeps participant create, encounter write (no summaries) and the audit export, as admin does.
+  | "participant.create"
+  | "encounter.write"
+  | "attachment.write"
+  | "case.share"
+  | "sharelink.manage"
+  | "audit.export"
+  | "user.totp_reset";
 
 const MATRIX: Record<UiAction, readonly Role[]> = {
   "review.write": ["owner", "admin", "clinician", "reviewer"],
@@ -70,6 +80,13 @@ const MATRIX: Record<UiAction, readonly Role[]> = {
   "note.write": ["clinician"],
   "patientref.read": ["owner", "admin", "clinician"],
   "patientref.write": ["owner", "admin", "clinician"],
+  "participant.create": ["owner", "admin", "clinician"],
+  "encounter.write": ["owner", "admin", "clinician"],
+  "attachment.write": ["owner", "admin", "clinician"],
+  "case.share": ["owner", "clinician"],
+  "sharelink.manage": ["owner", "clinician"],
+  "audit.export": ["owner", "admin"],
+  "user.totp_reset": ["owner", "admin"],
 };
 
 /** RBAC-3: the superadmin short-circuit does not apply to clinical content actions. */
@@ -85,6 +102,9 @@ const NO_SUPERADMIN: readonly UiAction[] = [
   "note.write",
   "patientref.read",
   "patientref.write",
+  "attachment.write",
+  "case.share",
+  "sharelink.manage",
 ];
 
 export function can(role: Role | undefined, action: UiAction): boolean {

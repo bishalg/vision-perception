@@ -813,3 +813,71 @@ async fn concurrent_sign_attempts_produce_one_signature() {
     assert_eq!(r["state"], "final");
     ctx.cleanup().await;
 }
+
+/// Wave 1 defect 3: one SIGN-5 step-up limiter for every re-authenticating route. Failed
+/// signing attempts spend the same per-user budget as the TOTP reset route (a password
+/// guesser gets one budget, not one per router). The user changes role in between (the
+/// two routes need different roles), as a promoted or demoted account would.
+#[tokio::test]
+async fn step_up_budget_is_shared_between_signing_and_totp_reset() {
+    let Some(ctx) = setup().await else { return };
+    let review = draft_ready(&ctx, "S-LIMIT", "red").await;
+    let hash = review["content_hash"].as_str().unwrap();
+    let id = review["id"].as_str().unwrap();
+    for i in 0..reauth_limit() {
+        let (status, _, body) = post_action(
+            &ctx,
+            &ctx.clin_a.token,
+            id,
+            "sign",
+            &sign_body(hash, "wrong password!!", None),
+        )
+        .await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED, "attempt {i}: {body}");
+    }
+
+    // Same user, now an admin: the TOTP reset's step-up is already over the limit.
+    sqlx::query("UPDATE users SET role = 'admin' WHERE id = $1")
+        .bind(ctx.clin_a.id)
+        .execute(ctx.pool())
+        .await
+        .unwrap();
+    let admin_token = common::auth::access_token(
+        &ctx.state,
+        ctx.clin_a.id,
+        Some(ctx.org),
+        asd_contract::api_v1::Role::Admin,
+    );
+    let (status, headers, body) = call(
+        &ctx,
+        request(
+            http::Method::POST,
+            &format!("/v1/orgs/{}/users/{}/totp/reset", ctx.org, ctx.viewer.id),
+            Some(&json!({"password": PASSWORD, "reason": "lost authenticator phone"})),
+            Some(&admin_token),
+            &[],
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::TOO_MANY_REQUESTS, "{body}");
+    assert!(headers.contains_key(http::header::RETRY_AFTER));
+
+    // A different user still has a full budget on the same route.
+    let (status, _, body) = call(
+        &ctx,
+        request(
+            http::Method::POST,
+            &format!("/v1/orgs/{}/users/{}/totp/reset", ctx.org, ctx.viewer.id),
+            Some(&json!({"password": PASSWORD, "reason": "lost authenticator phone"})),
+            Some(&ctx.admin.token),
+            &[],
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NO_CONTENT, "{body}");
+    ctx.cleanup().await;
+}
+
+fn reauth_limit() -> u32 {
+    asd_backend::clinical::reauth::STEP_UP_ATTEMPTS_PER_MINUTE
+}

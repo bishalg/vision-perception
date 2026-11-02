@@ -101,6 +101,7 @@ async fn create_dataset(
         destination_ids: Vec::new(),
         reason: req.reason,
         include_labels: req.include_labels,
+        case: None,
     };
     let export = create_export(&state, &auth.principal, org, &meta, req).await?;
     Ok((StatusCode::ACCEPTED, Json(export)))
@@ -154,6 +155,21 @@ async fn create_export(
                 req.format.as_str()
             ),
         ));
+    }
+    // HIP-3: the audit-log filters belong to `audit_csv` (WP-B.23) only.
+    if req.format != ExportFormat::AuditCsv {
+        if req.filters.actor_id.is_some() {
+            errors.push(bad(
+                "filters.actor_id",
+                "only audit_csv exports filter by actor",
+            ));
+        }
+        if req.filters.action_prefix.is_some() {
+            errors.push(bad(
+                "filters.action_prefix",
+                "only audit_csv exports filter by action",
+            ));
+        }
     }
     if let Err(AppError::Validation(p)) = filters::parse(&req.filters) {
         errors.extend(p);
@@ -496,7 +512,7 @@ async fn file(
         .await?
         .ok_or(AppError::NotFound)?;
     let token = q.t.as_deref().ok_or(AppError::Forbidden)?;
-    export_build::verify_download_token(
+    let requester = export_build::verify_download_token(
         &row.download_secret,
         row.id,
         token,
@@ -504,15 +520,21 @@ async fn file(
     )
     .ok_or(AppError::Forbidden)?;
     let key = ensure_downloadable(&row)?;
-    // HIP-1: the bearer is the signed token, not a user, so the row is a system actor
-    // (id of the export only). Not best-effort: no row, no bytes.
+    // HIP-1: the bearer is the signed token, which binds the user who asked for the
+    // download URL (EXJ-5), so the row names that user (164.528 disclosure record). Not
+    // best-effort: no row, no bytes.
     let mut tx = state.db.begin().await?;
-    AuditEvent::system("export.file_served", "export", row.id)
-        .org(row.org_id)
-        .meta(&meta)
-        .record(&mut tx)
-        .await
-        .map_err(|e| AppError::Internal(format!("read audit failed: {e}")))?;
+    AuditEvent::user_id(
+        requester,
+        Some(row.org_id),
+        "export.file_served",
+        "export",
+        row.id,
+    )
+    .meta(&meta)
+    .record(&mut tx)
+    .await
+    .map_err(|e| AppError::Internal(format!("read audit failed: {e}")))?;
     tx.commit()
         .await
         .map_err(|e| AppError::Internal(format!("read audit failed: {e}")))?;

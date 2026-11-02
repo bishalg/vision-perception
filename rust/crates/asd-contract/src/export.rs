@@ -74,6 +74,8 @@ str_enum!(
     /// `hl7v2`: one ORU^R01 message, exactly one session, identified only (HL7-7).
     /// `dataset_jsonl`, `dataset_parquet`: de-identified ML datasets, one row per session,
     /// labels when `include_labels` (WP-B.9; de-identified only).
+    /// `case_package`: one participant's case as a ZIP (SHR-1..7, `ExportRequest.case`);
+    /// `audit_csv`: the org's audit log as canonical CSV (HIP-3, `AuditExport`).
     ExportFormat {
         Csv => "csv",
         CsvExcel => "csv_excel",
@@ -85,6 +87,8 @@ str_enum!(
         Hl7v2 => "hl7v2",
         DatasetJsonl => "dataset_jsonl",
         DatasetParquet => "dataset_parquet",
+        CasePackage => "case_package",
+        AuditCsv => "audit_csv",
     }
 );
 
@@ -159,6 +163,13 @@ pub struct ExportFilters {
     /// clinical review.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub clinical_state: Vec<String>,
+    /// `audit_csv` only (HIP-3): rows of this acting user (UUID). Refused on other formats.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub actor_id: Option<String>,
+    /// `audit_csv` only (HIP-3): rows whose `action` starts with this prefix (e.g.
+    /// `export.`). Refused on other formats.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub action_prefix: Option<String>,
 }
 
 /// `POST /v1/orgs/{id}/exports` (EXJ-1). Answers `202` with the [`Export`].
@@ -179,6 +190,9 @@ pub struct ExportRequest {
     /// other formats.
     #[serde(default)]
     pub include_labels: bool,
+    /// `case_package` only (SHR-7): the participant, recipient and consent of the case.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub case: Option<crate::emr::CaseShareRequest>,
 }
 
 str_enum!(
@@ -259,6 +273,12 @@ pub struct Export {
     /// Dataset formats: the artifact carries reviewer labels (WP-B.9).
     #[serde(default)]
     pub include_labels: bool,
+    /// `case_package`: the participant of the case (SHR-7).
+    #[serde(default)]
+    pub case_participant_id: Option<String>,
+    /// `case_package`: share links created for this export (SHR-8), revoked included.
+    #[serde(default)]
+    pub share_links_n: u32,
 }
 
 fn example_export() -> Export {
@@ -288,6 +308,8 @@ fn example_export() -> Export {
         excluded: BTreeMap::from([("no_research_consent".into(), 3), ("withdrawn".into(), 1)]),
         error: None,
         include_labels: false,
+        case_participant_id: None,
+        share_links_n: 0,
     }
 }
 

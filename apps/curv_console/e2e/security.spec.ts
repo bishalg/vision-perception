@@ -113,6 +113,38 @@ test.describe("automatic logoff (WP-C.21, acceptance 23)", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
+  test("an idle tab's client-side navigation lands on /login?reason=idle (wave 1 defect 1)", async ({ page }) => {
+    const org = await loginToOverview(page);
+    // Prove the click below is a client-side (RSC) navigation: a full load would reset this marker.
+    await page.evaluate(() => ((window as unknown as { __spa: boolean }).__spa = true));
+    const nav = page.getByRole("navigation", { name: "Main navigation" });
+    await nav.getByRole("link", { name: "Sessions" }).click();
+    await expect(page).toHaveURL(new RegExp(`/${org}/sessions`));
+    expect(await page.evaluate(() => (window as unknown as { __spa?: boolean }).__spa)).toBe(true);
+
+    await stamp(page, "curv_last_seen", 31 * 60_000);
+    await nav.getByRole("link", { name: "Overview" }).click();
+    await expect(page).toHaveURL(/\/login\?reason=idle/);
+    await expect(page.getByTestId("logoff-reason")).toContainText("idle for 30 minutes");
+    const names = (await page.context().cookies()).map((c) => c.name);
+    expect(names).not.toContain("curv_access");
+    expect(names).not.toContain("curv_refresh");
+    await page.goto(`/${org}/overview`);
+    await expect(page).toHaveURL(/\/login/);
+  });
+
+  test("an idle tab's server action does not run and lands on /login?reason=idle", async ({ page }) => {
+    const org = await loginToOverview(page);
+    await page.goto(`/${org}/settings/security`);
+    const setup = page.getByRole("region", { name: "Set up two-step sign-in" });
+    await setup.getByLabel("Current password").fill("demo");
+    await stamp(page, "curv_last_seen", 31 * 60_000);
+    await setup.getByRole("button", { name: "Get a key" }).click();
+    await expect(page).toHaveURL(/\/login\?reason=idle/);
+    await expect(page.getByTestId("logoff-reason")).toContainText("idle for 30 minutes");
+    await expect(page.getByTestId("totp-secret")).toHaveCount(0);
+  });
+
   test("an active session older than 12 hours lands on /login?reason=expired", async ({ page }) => {
     const org = await loginToOverview(page);
     await stamp(page, "curv_login_at", 13 * 3_600_000);

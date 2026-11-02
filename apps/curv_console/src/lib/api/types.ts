@@ -12,6 +12,8 @@ import type { ClinicalApi } from "./clinical";
 import type { PrivacyApi } from "./privacy";
 import type { ParticipantApi } from "./participant";
 import type { TotpApi } from "./totp";
+import type { EmrApi } from "./emr";
+import type { ShareApi } from "./share";
 
 /** `SessionAttentionFlag`: the 3 device values plus backend-derived `unreliable` (CON-15). */
 export const ATTENTION_FLAGS = ["green", "yellow", "red", "unreliable"] as const;
@@ -475,7 +477,16 @@ export interface PageQuery {
 // ---- client interface -----------------------------------------------------
 
 export interface CurvApi
-  extends ClinicalApi, AdminApi, ExportsApi, CatalogApi, BundlesApi, PrivacyApi, ParticipantApi, TotpApi {
+  extends ClinicalApi,
+    AdminApi,
+    ExportsApi,
+    CatalogApi,
+    BundlesApi,
+    PrivacyApi,
+    ParticipantApi,
+    TotpApi,
+    EmrApi,
+    ShareApi {
   getOrg(orgId: string): Promise<Org>;
   getMetrics(orgId: string): Promise<Metrics>;
   listSessions(orgId: string, query?: SessionListQuery): Promise<SessionPage>;

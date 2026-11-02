@@ -67,13 +67,16 @@ use crate::clinical::reauth::{step_up, StepUpError, StepUpLimiter};
 use crate::error::{AppError, AppResult};
 use crate::problem::InvalidParam;
 
-pub fn router() -> Router<AppState> {
+/// `step_up_limiter` is the one instance shared with [`super::clinical_reviews::router`]
+/// (built in [`super::v1`]), so a password guesser has one budget per user, not one per
+/// router.
+pub fn router(step_up_limiter: Arc<StepUpLimiter>) -> Router<AppState> {
     Router::new()
         .route("/orgs/{id}/users", get(list).post(create))
         .route("/orgs/{id}/users/{user_id}", get(read).patch(update))
         .route("/users/me", get(get_me).patch(patch_me))
         .route("/orgs/{id}/users/{user_id}/totp/reset", post(reset_totp))
-        .layer(Extension(StepUpLimiter::new()))
+        .layer(Extension(step_up_limiter))
 }
 
 pub const MAX_EMAIL_LEN: usize = 254;

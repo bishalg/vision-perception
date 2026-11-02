@@ -68,6 +68,10 @@ pub struct ErasureOutcome {
     pub clinical_drafts_deleted: u64,
     /// The MRN mapping was deleted.
     pub patient_ref_deleted: bool,
+    /// Attachments deleted with their blobs (REC-7). Absent in outcomes recorded before
+    /// EMR-lite.
+    #[serde(default)]
+    pub attachments_deleted: u64,
 }
 
 /// One erasure request.

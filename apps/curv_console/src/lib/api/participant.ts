@@ -23,7 +23,9 @@ export const NOTE_KINDS = ["general", "correction"] as const;
 export const noteKindSchema = z.enum(NOTE_KINDS);
 export type NoteKind = z.infer<typeof noteKindSchema>;
 
-export const TIMELINE_KINDS = ["session", "clinical_review", "note", "letter", "care_event"] as const;
+export const TIMELINE_KINDS = [
+  "session", "clinical_review", "note", "letter", "care_event", "encounter", "attachment",
+] as const;
 export const timelineKindSchema = z.enum(TIMELINE_KINDS);
 export type TimelineKind = z.infer<typeof timelineKindSchema>;
 

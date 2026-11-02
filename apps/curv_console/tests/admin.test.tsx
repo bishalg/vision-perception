@@ -30,6 +30,19 @@ describe("admin permissions and navigation", () => {
     expect(hrefs("owner")).toEqual(expect.arrayContaining(["/o/users", "/o/audit"]));
   });
 
+  it("mirrors the REC-8 rows of the backend matrix (phase 7)", () => {
+    const allowed = (a: Parameters<typeof can>[1]) => ROLES.filter((r) => can(r, a)).sort();
+    for (const a of ["participant.create", "encounter.write"] as const) {
+      expect(allowed(a)).toEqual(["admin", "clinician", "owner", "superadmin"]);
+    }
+    // Attachments are clinical content: never the superadmin (RBAC-3).
+    expect(allowed("attachment.write")).toEqual(["admin", "clinician", "owner"]);
+    for (const a of ["case.share", "sharelink.manage"] as const) expect(allowed(a)).toEqual(["clinician", "owner"]);
+    for (const a of ["audit.export", "user.totp_reset"] as const) {
+      expect(allowed(a)).toEqual(["admin", "owner", "superadmin"]);
+    }
+  });
+
   it("mirrors can_assign and can_provision: admin grants no owner or clinician; nobody grants superadmin", () => {
     expect(assignableRoles("owner")).toContain("clinician");
     expect(assignableRoles("admin")).not.toContain("clinician");

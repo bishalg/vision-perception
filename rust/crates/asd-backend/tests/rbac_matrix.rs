@@ -286,6 +286,55 @@ fn matrix_table_covers_every_action_and_superadmin_has_all_but_clinical_content(
             "{role:?}"
         );
     }
+    // REC-8 (phase 7 wave 2 step 0): the EMR-lite and share-a-case rows. The routes come
+    // with WP-B.19 / WP-I.13 / WP-B.23 and test these rows over HTTP.
+    let rec8: &[(Action, &[Role], bool)] = &[
+        // (action, org roles allowed, superadmin allowed)
+        (
+            Action::ParticipantCreate,
+            &[Role::Owner, Role::Admin, Role::Clinician],
+            true,
+        ),
+        (
+            Action::EncounterWrite,
+            &[Role::Owner, Role::Admin, Role::Clinician],
+            true,
+        ),
+        (
+            Action::AttachmentWrite,
+            &[Role::Owner, Role::Admin, Role::Clinician],
+            false,
+        ),
+        (Action::CaseShare, &[Role::Owner, Role::Clinician], false),
+        (
+            Action::ShareLinkManage,
+            &[Role::Owner, Role::Clinician],
+            false,
+        ),
+        (Action::AuditExport, &[Role::Owner, Role::Admin], true),
+    ];
+    for (action, allowed, superadmin) in rec8 {
+        for role in ORG_ROLES {
+            assert_eq!(
+                rbac::allows(role, *action),
+                allowed.contains(&role),
+                "{role:?} {action:?}"
+            );
+        }
+        assert_eq!(
+            rbac::allows(Role::Superadmin, *action),
+            *superadmin,
+            "superadmin {action:?}"
+        );
+        assert_eq!(
+            rbac::CLINICAL_CONTENT_ACTIONS.contains(action),
+            !*superadmin,
+            "{action:?} clinical carve-out"
+        );
+    }
+    // Attachment reads are clinical content (REC-7): superadmin and admin never read them.
+    assert!(!rbac::allows(Role::Superadmin, Action::ClinicalContentRead));
+    assert!(!rbac::allows(Role::Admin, Action::ClinicalContentRead));
     for role in ORG_ROLES {
         assert!(rbac::allows(role, Action::OrgRead), "{role:?}");
         assert!(rbac::allows(role, Action::SessionRead), "{role:?}");

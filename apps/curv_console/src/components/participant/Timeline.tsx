@@ -28,6 +28,11 @@ export function describeEntry(e: TimelineEntry): string {
       return t.letter(str("letter_kind"), s.status);
     case "care_event":
       return t.care(str("care_kind") || "event");
+    // REC-5 headers (wave 2 step 0 placeholders; WP-C.18 renders kind, date, clinician and status).
+    case "encounter":
+      return t.kinds.encounter;
+    case "attachment":
+      return t.kinds.attachment;
   }
 }
 

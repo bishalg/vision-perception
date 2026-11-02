@@ -12,6 +12,8 @@ export * from "./config";
 export * from "./privacy";
 export * from "./participant";
 export * from "./totp";
+export * from "./emr";
+export * from "./share";
 
 export type ApiMode = "mock" | "live";
 

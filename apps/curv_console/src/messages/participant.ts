@@ -72,6 +72,8 @@ export const participantText = {
       note: "Note",
       letter: "Letter",
       care_event: "Care event",
+      encounter: "Visit",
+      attachment: "Attachment",
     } satisfies Record<TimelineKind, string>,
     flag: (f: string) => `Attention flag ${f}`,
     review: (state: string, v: unknown) => `Review ${state.replace(/_/g, " ")}${typeof v === "number" ? `, version ${v}` : ""}`,

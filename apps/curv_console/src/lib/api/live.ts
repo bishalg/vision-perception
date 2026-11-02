@@ -8,6 +8,8 @@ import { createLivePrivacy } from "./privacy";
 import { createLiveClinical } from "./clinical";
 import { createLiveParticipant } from "./participant";
 import { createLiveTotp } from "./totp";
+import { createLiveEmr } from "./emr";
+import { createLiveShare } from "./share";
 import {
   ApiError,
   clipListSchema,
@@ -98,6 +100,8 @@ export function createLiveClient(opts: LiveOptions): CurvApi & AuthApi {
     ...createLiveBundles(request, buildQuery),
     ...createLivePrivacy(request, buildQuery),
     ...createLiveTotp(request),
+    ...createLiveEmr(request, buildQuery),
+    ...createLiveShare(request, buildQuery),
     login: (email, password, totpCode) =>
       request("/auth/login", tokenPairSchema, {
         method: "POST",

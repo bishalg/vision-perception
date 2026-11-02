@@ -64,6 +64,19 @@ pub enum Action {
     IntegrationManage,
     /// WP-B.17 (TRS-1, REC-8): clear another org user's TOTP so they enrol again.
     UserTotpReset,
+    // ---- REC-8 (phase 7 wave 2 step 0): EMR-lite record and share-a-case
+    /// REC-1: create a participant record (server-minted token, QR).
+    ParticipantCreate,
+    /// REC-4: create, edit and link encounters; the summary also needs `ClinicalNoteWrite`.
+    EncounterWrite,
+    /// REC-7: upload and delete attachments (reading them is `ClinicalContentRead`).
+    AttachmentWrite,
+    /// SHR-7: request a case package (with `ExportIdentified` / `ExportDeidentified`).
+    CaseShare,
+    /// SHR-8: create, list and revoke share links of an export.
+    ShareLinkManage,
+    /// HIP-3: export the org's audit log (`audit_csv`).
+    AuditExport,
 }
 
 impl Action {
@@ -102,6 +115,12 @@ impl Action {
         Action::IntegrationRead,
         Action::IntegrationManage,
         Action::UserTotpReset,
+        Action::ParticipantCreate,
+        Action::EncounterWrite,
+        Action::AttachmentWrite,
+        Action::CaseShare,
+        Action::ShareLinkManage,
+        Action::AuditExport,
     ];
 
     /// Actions that change nothing.
@@ -128,7 +147,8 @@ impl Action {
 
 /// RBAC-3: actions `superadmin` never gets. Reading or writing clinical content, the MRN,
 /// any export of clinic data (de-identified included) and managing a clinic's integrations.
-/// There is no break-glass path in v1.
+/// REC-8 adds attachments (clinical documents), case sharing and share links. There is no
+/// break-glass path in v1.
 pub const CLINICAL_CONTENT_ACTIONS: &[Action] = &[
     Action::ClinicalReviewWrite,
     Action::ClinicalSign,
@@ -141,6 +161,9 @@ pub const CLINICAL_CONTENT_ACTIONS: &[Action] = &[
     Action::ExportDeidentified,
     Action::ExportIdentified,
     Action::IntegrationManage,
+    Action::AttachmentWrite,
+    Action::CaseShare,
+    Action::ShareLinkManage,
 ];
 
 use Role::{Admin, Clinician, Owner, Researcher, Reviewer, Viewer};
@@ -190,6 +213,15 @@ pub const MATRIX: &[(Action, &[Role])] = &[
     (Action::IntegrationManage, &[Owner, Admin]),
     // WP-B.17, TRS-1: an admin never resets an owner (checked in the route by rank).
     (Action::UserTotpReset, &[Owner, Admin]),
+    // REC-8. Front desk (admin) creates records, visits and uploads paper forms; the
+    // encounter summary still needs `ClinicalNoteWrite` and reading an attachment
+    // `ClinicalContentRead` (REC-4, REC-7). Sharing a case is clinical (owner, clinician).
+    (Action::ParticipantCreate, &[Owner, Admin, Clinician]),
+    (Action::EncounterWrite, &[Owner, Admin, Clinician]),
+    (Action::AttachmentWrite, &[Owner, Admin, Clinician]),
+    (Action::CaseShare, &[Owner, Clinician]),
+    (Action::ShareLinkManage, &[Owner, Clinician]),
+    (Action::AuditExport, &[Owner, Admin]),
 ];
 
 /// True when `role` may perform `action` (in its own org). `superadmin` may do everything
@@ -333,6 +365,12 @@ pub mod perm {
         IntegrationRead,
         IntegrationManage,
         UserTotpReset,
+        ParticipantCreate,
+        EncounterWrite,
+        AttachmentWrite,
+        CaseShare,
+        ShareLinkManage,
+        AuditExport,
     );
 }
 

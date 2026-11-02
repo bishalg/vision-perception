@@ -48,6 +48,8 @@ const formats: Record<ExportFormat, string> = {
   hl7v2: "HL7 v2 message (one session)",
   dataset_jsonl: "Research dataset (JSONL)",
   dataset_parquet: "Research dataset (Parquet)",
+  case_package: "Case package (ZIP)",
+  audit_csv: "Audit log (CSV)",
 };
 
 const sharedExportText = {

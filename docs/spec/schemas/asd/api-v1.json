@@ -3030,6 +3030,12 @@
     "ErasureOutcome": {
       "description": "What one erasure removed (`erasure_requests.outcome`). Counts only, never identifiers.",
       "properties": {
+        "attachments_deleted": {
+          "default": 0,
+          "description": "Attachments deleted with their blobs (REC-7). Absent in outcomes recorded before\nEMR-lite.",
+          "minimum": 0,
+          "type": "integer"
+        },
         "care_events_deleted": {
           "minimum": 0,
           "type": "integer"
@@ -3254,6 +3260,7 @@
       "examples": [
         {
           "byte_size": 18204,
+          "case_participant_id": null,
           "completed_at": "2026-10-31T09:00:04.000Z",
           "content_type": "application/zip",
           "created_at": "2026-10-31T09:00:00.000Z",
@@ -3279,6 +3286,7 @@
           "requested_by": "8d2c1b0a-9f8e-4d7c-b6a5-4e3d2c1b0a9f",
           "row_count": 42,
           "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+          "share_links_n": 0,
           "status": "succeeded"
         }
       ],
@@ -3293,6 +3301,17 @@
               "type": "null"
             }
           ]
+        },
+        "case_participant_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`case_package`: the participant of the case (SHR-7)."
         },
         "completed_at": {
           "anyOf": [
@@ -3428,6 +3447,12 @@
           ],
           "description": "Hex SHA-256 of the artifact."
         },
+        "share_links_n": {
+          "default": 0,
+          "description": "`case_package`: share links created for this export (SHR-8), revoked included.",
+          "minimum": 0,
+          "type": "integer"
+        },
         "status": {
           "$ref": "#/$defs/ExportStatus"
         }
@@ -3452,6 +3477,28 @@
       "additionalProperties": false,
       "description": "EXJ-1 filters: the session-list filters plus id and clinical-state lists. Every field\nis optional; an empty filter selects every session of the org.",
       "properties": {
+        "action_prefix": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`audit_csv` only (HIP-3): rows whose `action` starts with this prefix (e.g.\n`export.`). Refused on other formats."
+        },
+        "actor_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`audit_csv` only (HIP-3): rows of this acting user (UUID). Refused on other formats."
+        },
         "bundle_version": {
           "anyOf": [
             {
@@ -3540,7 +3587,7 @@
       "type": "object"
     },
     "ExportFormat": {
-      "description": "EXJ-1 artifact format. `csv`, `csv_excel`, `csv_sheets`: ZIP of the four tables\nplus `manifest.json` in the three CSV dialects (CSV-1, CSV-3); `xlsx`: one workbook\n(XLSX-1); `pdf_summary`: PDF/A clinical summary (WP-I.5, not available yet);\n`fhir_bundle`: one FHIR R4 clinical report bundle, exactly one session\n(`filters.session_ids`); `fhir_ndjson`: one bundle per line, any number of sessions;\n`hl7v2`: one ORU^R01 message, exactly one session, identified only (HL7-7).\n`dataset_jsonl`, `dataset_parquet`: de-identified ML datasets, one row per session,\nlabels when `include_labels` (WP-B.9; de-identified only).",
+      "description": "EXJ-1 artifact format. `csv`, `csv_excel`, `csv_sheets`: ZIP of the four tables\nplus `manifest.json` in the three CSV dialects (CSV-1, CSV-3); `xlsx`: one workbook\n(XLSX-1); `pdf_summary`: PDF/A clinical summary (WP-I.5, not available yet);\n`fhir_bundle`: one FHIR R4 clinical report bundle, exactly one session\n(`filters.session_ids`); `fhir_ndjson`: one bundle per line, any number of sessions;\n`hl7v2`: one ORU^R01 message, exactly one session, identified only (HL7-7).\n`dataset_jsonl`, `dataset_parquet`: de-identified ML datasets, one row per session,\nlabels when `include_labels` (WP-B.9; de-identified only).\n`case_package`: one participant's case as a ZIP (SHR-1..7, `ExportRequest.case`);\n`audit_csv`: the org's audit log as canonical CSV (HIP-3, `AuditExport`).",
       "enum": [
         "csv",
         "csv_excel",
@@ -3551,7 +3598,9 @@
         "fhir_ndjson",
         "hl7v2",
         "dataset_jsonl",
-        "dataset_parquet"
+        "dataset_parquet",
+        "case_package",
+        "audit_csv"
       ],
       "type": "string"
     },
@@ -3621,6 +3670,17 @@
       "additionalProperties": false,
       "description": "`POST /v1/orgs/{id}/exports` (EXJ-1). Answers `202` with the [`Export`].",
       "properties": {
+        "case": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CaseShareRequest"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`case_package` only (SHR-7): the participant, recipient and consent of the case."
+        },
         "destination_ids": {
           "default": [],
           "description": "Delivery destinations (WP-I.7); empty = download only.",
@@ -9269,13 +9329,15 @@
       "type": "object"
     },
     "TimelineEntryKind": {
-      "description": "CW-3 timeline entry kinds.",
+      "description": "CW-3 timeline entry kinds; `encounter` and `attachment` are REC-5 (headers only).",
       "enum": [
         "session",
         "clinical_review",
         "note",
         "letter",
-        "care_event"
+        "care_event",
+        "encounter",
+        "attachment"
       ],
       "type": "string"
     },

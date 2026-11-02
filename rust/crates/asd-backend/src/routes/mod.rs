@@ -6,14 +6,18 @@
 use axum::Router;
 
 use crate::app::AppState;
+use crate::clinical::reauth::StepUpLimiter;
 
+pub mod attachments; // WP-B.19 (stub from wave 2 step 0)
 pub mod auth;
 pub mod blobs;
 pub mod care;
 pub mod clinical_reviews; // WP-C.10
 pub mod config;
 pub mod devices;
+pub mod encounters; // WP-B.19 (stub from wave 2 step 0)
 pub mod exports; // WP-I.6
+pub mod follow_ups; // WP-B.19 (stub from wave 2 step 0)
 pub mod health;
 pub mod integrations; // WP-I.7
 pub mod jobs;
@@ -26,6 +30,7 @@ pub mod patient_refs;
 pub mod privacy; // WP-B.9
 pub mod review;
 pub mod sessions;
+pub mod share; // WP-I.13 (stub from wave 2 step 0)
 pub mod totp; // WP-B.11
 pub mod users;
 pub mod worklist; // WP-C.10
@@ -34,6 +39,9 @@ pub mod worklist; // WP-C.10
 /// `Router::new().nest("/v1", Router::new().merge(auth::router()).merge(sessions::router()))`.
 /// Use full route templates (`/sessions/{id}`) so request logs show the template (OBS-1).
 pub fn v1() -> Router<AppState> {
+    // One SIGN-5 step-up limiter for every route that re-authenticates (sign, cosign,
+    // amend, TOTP reset): failures on one consume the budget of the others.
+    let step_up_limiter = StepUpLimiter::new();
     let api = Router::new()
         // WP-B.3: session ingest, blob uploads, console reads, review queue.
         .merge(sessions::router())
@@ -46,10 +54,16 @@ pub fn v1() -> Router<AppState> {
         .merge(patient_refs::router()) // WP-C.11
         .merge(notes::router()) // WP-C.11
         .merge(worklist::router()) // WP-C.10
-        .merge(clinical_reviews::router()) // WP-C.10
+        .merge(clinical_reviews::router(step_up_limiter.clone())) // WP-C.10
         .merge(exports::router()) // WP-I.6
         .merge(integrations::router()) // WP-I.7
         .merge(privacy::router()) // WP-B.9
+        // Phase 7 wave 2 (stubs from step 0, filled by their packages): EMR-lite record
+        // (WP-B.19) and share-a-case links, public routes included (WP-I.13).
+        .merge(encounters::router())
+        .merge(attachments::router())
+        .merge(follow_ups::router())
+        .merge(share::router())
         // WP-B.5: norm aggregation jobs and runs.
         .merge(jobs::router())
         // WP-B.4: config documents, bundles, device bundle delivery.
@@ -57,7 +71,7 @@ pub fn v1() -> Router<AppState> {
         // WP-B.2: auth, orgs, users, devices (org-scoped routes use `/orgs/{id}/...`).
         .merge(auth::router())
         .merge(orgs::router())
-        .merge(users::router())
+        .merge(users::router(step_up_limiter))
         .merge(totp::router()) // WP-B.11
         .merge(devices::router());
     Router::new().nest("/v1", api)

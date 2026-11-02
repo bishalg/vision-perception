@@ -13,7 +13,7 @@ const count = z.number().int().min(0).nullable().optional();
 
 export const EXPORT_FORMATS = [
   "csv", "csv_excel", "csv_sheets", "xlsx", "pdf_summary", "fhir_bundle", "fhir_ndjson", "hl7v2",
-  "dataset_jsonl", "dataset_parquet",
+  "dataset_jsonl", "dataset_parquet", "case_package", "audit_csv",
 ] as const;
 export const exportFormatSchema = z.enum(EXPORT_FORMATS);
 export type ExportFormat = z.infer<typeof exportFormatSchema>;
@@ -22,6 +22,15 @@ export type ExportFormat = z.infer<typeof exportFormatSchema>;
 export const DATASET_EXPORT_FORMATS = ["dataset_jsonl", "dataset_parquet"] as const;
 export function isDatasetFormat(f: ExportFormat): boolean {
   return (DATASET_EXPORT_FORMATS as readonly string[]).includes(f);
+}
+
+/**
+ * Formats with their own request flow, never offered in the generic export form or as a destination format:
+ * `case_package` (share a case, SHR-7, one participant) and `audit_csv` (the audit page, HIP-3).
+ */
+export const DEDICATED_EXPORT_FORMATS = ["case_package", "audit_csv"] as const;
+export function isDedicatedFormat(f: ExportFormat): boolean {
+  return (DEDICATED_EXPORT_FORMATS as readonly string[]).includes(f);
 }
 
 export const EXPORT_KINDS = ["bulk", "document"] as const;
@@ -74,6 +83,10 @@ export const exportFiltersSchema = z.object({
   reviewed: z.boolean().nullable().optional(),
   session_ids: z.array(z.string()).optional(),
   to: str,
+  /** `audit_csv` only (HIP-3): the acting user's id. */
+  actor_id: str,
+  /** `audit_csv` only (HIP-3): rows whose action starts with this prefix. */
+  action_prefix: str,
 });
 export type ExportFilters = z.infer<typeof exportFiltersSchema>;
 
@@ -103,8 +116,25 @@ export const exportSchema = z.object({
   sha256: str,
   /** Dataset formats: the artifact carries reviewer labels (WP-B.9). */
   include_labels: z.boolean().optional(),
+  /** `case_package`: the participant of the case (SHR-7). */
+  case_participant_id: str,
+  /** `case_package`: share links created for this export (SHR-8). Absent from older backends. */
+  share_links_n: z.number().int().min(0).optional(),
 });
 export type Export = z.infer<typeof exportSchema>;
+
+/** `ExportRequest.case` for `case_package` (SHR-7, `asd_contract::emr::CaseShareRequest`). */
+export const caseShareRequestSchema = z.object({
+  participant_id: z.string(),
+  session_ids: z.array(z.string()).optional(),
+  /** 10..200 characters; encrypted at rest. */
+  recipient: z.string(),
+  consent_reference: str,
+  consent_recorded_at: str,
+  /** Identified mode only. */
+  include_attachments: z.boolean().optional(),
+});
+export type CaseShareRequest = z.infer<typeof caseShareRequestSchema>;
 
 export const exportPageSchema = z.object({
   items: z.array(exportSchema),
@@ -123,6 +153,8 @@ export const exportRequestSchema = z.object({
   filters: exportFiltersSchema.optional(),
   /** Dataset formats only (WP-B.9); ignored by the other formats. */
   include_labels: z.boolean().optional(),
+  /** `case_package` only (SHR-7). */
+  case: caseShareRequestSchema.optional(),
 });
 export type ExportRequest = z.infer<typeof exportRequestSchema>;
 

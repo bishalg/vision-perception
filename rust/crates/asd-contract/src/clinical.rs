@@ -198,13 +198,15 @@ str_enum!(
 );
 
 str_enum!(
-    /// CW-3 timeline entry kinds.
+    /// CW-3 timeline entry kinds; `encounter` and `attachment` are REC-5 (headers only).
     TimelineEntryKind {
         Session => "session",
         ClinicalReview => "clinical_review",
         Note => "note",
         Letter => "letter",
         CareEvent => "care_event",
+        Encounter => "encounter",
+        Attachment => "attachment",
     }
 );
 

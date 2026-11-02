@@ -219,7 +219,7 @@ async fn note_reads_single_and_per_page() {
 async fn export_file_served_is_audited() {
     let Some(s) = seed().await else { return };
     let c = &s.c;
-    let (_, researcher) = c.token(Role::Researcher).await;
+    let (researcher_id, researcher) = c.token(Role::Researcher).await;
     let done = c
         .export_and_run(&researcher, body("csv", "deidentified", "research"))
         .await;
@@ -246,7 +246,9 @@ async fn export_file_served_is_audited() {
     let (st, _, _) = raw(c.app.clone(), common::get(link)).await;
     assert_eq!(st, StatusCode::OK);
     let r = one_row(c, "export.file_served", "export", &export).await;
-    assert_eq!(r["actor_type"], "system");
+    // The requester bound into the download token, not `system` (wave 1 defect 2).
+    assert_eq!(r["actor_type"], "user");
+    assert_eq!(r["actor_id"], researcher_id.to_string());
     assert!(!c.audit_dump().await.contains("?t="));
     s.c.db.cleanup().await;
 }

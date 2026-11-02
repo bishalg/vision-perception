@@ -32,6 +32,8 @@ import { createMockPrivacy } from "./mock/privacy";
 import { createMockParticipant } from "./mock/participant";
 import { createMockCatalog } from "./mock/catalog";
 import { createMockTotp } from "./mock/totp";
+import { createMockEmr } from "./mock/emr";
+import { createMockShare } from "./mock/share";
 import { MOCK_TRACKING_CYCLE, mockTrackingQuality } from "./mock/tracking";
 
 /** Real orgs are UUIDs (CON-20); the mock uses a fixed one so URLs look like production. */
@@ -545,6 +547,9 @@ export function createMockClient(): MockClient {
       createExport: exportsApi.createExport,
     }),
     ...createMockCatalog({ userId: MOCK_USER_ID, now: MOCK_FIXED_NOW, page }),
+    // Wave 2 step 0 stubs: WP-C.18 (EMR-lite record) and WP-C.19 (share links) fill them.
+    ...createMockEmr({ orgId: MOCK_ORG_ID, userId: MOCK_USER_ID, now: MOCK_FIXED_NOW }),
+    ...createMockShare({ orgId: MOCK_ORG_ID, userId: MOCK_USER_ID, now: MOCK_FIXED_NOW }),
     ...admin,
     async login(email, password, totpCode) {
       if (!email || password !== MOCK_PASSWORD) {

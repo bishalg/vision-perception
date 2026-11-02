@@ -30,6 +30,8 @@ export const erasureOutcomeSchema = z.object({
   export_artifacts_deleted: count,
   clinical_drafts_deleted: count,
   patient_ref_deleted: z.boolean(),
+  /** REC-7: attachments deleted with their blobs (absent from outcomes recorded before EMR-lite). */
+  attachments_deleted: count.optional(),
 });
 export type ErasureOutcome = z.infer<typeof erasureOutcomeSchema>;
 
