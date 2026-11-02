@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO encounters\n             (id, org_id, participant_id, kind, occurred_at, clinician_id, reason, summary_ct,\n              summary_key_id, follow_up_due_at, created_by)\n         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Timestamptz",
+        "Uuid",
+        "Text",
+        "Bytea",
+        "Uuid",
+        "Timestamptz",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0b78831e1151fe05b7e03f730bbae271ec5f6938937c971d59414eaa2e43877b"
+}

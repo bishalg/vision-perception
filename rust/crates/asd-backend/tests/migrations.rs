@@ -15,6 +15,8 @@ use common::TestDb;
 use sqlx::PgPool;
 
 const TABLES: &[&str] = &[
+    // WP-B.19 (0024_emr_lite.sql).
+    "attachments",
     "audit_log",
     "bundle_adoption",
     "care_events",
@@ -26,6 +28,7 @@ const TABLES: &[&str] = &[
     "config_bundles",
     "config_documents",
     "devices",
+    "encounters", // WP-B.19
     "enrol_codes",
     "erasure_requests",
     // WP-I.6 (0009_exports.sql).
@@ -308,6 +311,15 @@ async fn migration_0015_adds_list_indexes_and_the_totp_step() {
     db.cleanup().await;
 }
 
+/// The newest embedded migration, so a later package's migration does not break these tests.
+fn latest() -> i64 {
+    db::MIGRATOR
+        .iter()
+        .map(|m| m.version)
+        .max()
+        .expect("migrations are embedded")
+}
+
 /// Highest successfully applied migration version.
 async fn applied_max(pool: &PgPool) -> i64 {
     sqlx::query_scalar("SELECT max(version) FROM _sqlx_migrations WHERE success")
@@ -450,7 +462,7 @@ async fn database_at_0019_with_a_plaintext_seed_is_sealed_before_0022() {
     let applied = db::migrate_with_backfill(pool, &config_with_kek(true))
         .await
         .expect("migrate with the KEK");
-    assert_eq!(applied, vec![20, 21, 22, 23]);
+    assert_eq!(applied, (20..=latest()).collect::<Vec<i64>>());
     assert_plaintext_columns_dropped(pool).await;
     let encrypted: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM audit_log WHERE action = 'user.totp_secret_encrypt'",
@@ -636,7 +648,7 @@ async fn guard_0022_refuses_plaintext_review_notes_and_migrate_is_rerunnable() {
     let applied = db::migrate_with_backfill(pool, &config_with_kek(true))
         .await
         .expect("migrate again");
-    assert_eq!(applied, vec![22, 23]);
+    assert_eq!(applied, (22..=latest()).collect::<Vec<i64>>());
     assert_plaintext_columns_dropped(pool).await;
     let (ct, key_id): (Vec<u8>, uuid::Uuid) =
         sqlx::query_as("SELECT note_ct, note_key_id FROM review_items WHERE id = $1")
@@ -868,7 +880,7 @@ async fn migrate_command_seals_seeds_before_pending_migrations() {
         String::from_utf8_lossy(&out.stdout),
         String::from_utf8_lossy(&out.stderr)
     );
-    assert_eq!(applied_max(pool).await, 23);
+    assert_eq!(applied_max(pool).await, latest());
     assert_plaintext_columns_dropped(pool).await;
     assert_seed_verifies(pool, user, "JBSWY3DPEHPK3PXP").await;
     db.cleanup().await;

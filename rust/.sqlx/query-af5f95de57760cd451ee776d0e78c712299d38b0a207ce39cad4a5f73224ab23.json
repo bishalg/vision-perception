@@ -1,0 +1,151 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH m AS (\n             SELECT p.id, p.org_id, p.token, p.age_bracket_at_enrol, p.language, p.withdrawn_at,\n                    p.created_at, s.n AS session_count, s.last_at AS last_session_at,\n                    EXISTS (SELECT 1 FROM patient_refs r WHERE r.participant_id = p.id)\n                        AS has_patient_ref,\n                    (SELECT count(*) FROM encounters e\n                     WHERE e.participant_id = p.id AND e.status = 'open') AS open_encounters_n,\n                    (SELECT min(e.follow_up_due_at) FROM encounters e\n                     WHERE e.participant_id = p.id AND e.follow_up_due_at IS NOT NULL\n                       AND e.follow_up_done_at IS NULL) AS next_follow_up_at\n             FROM participants p\n             CROSS JOIN LATERAL (\n                 SELECT count(*) AS n, max(x.started_at) AS last_at\n                 FROM sessions x WHERE x.participant_id = p.id) s\n             WHERE p.org_id = $1\n               AND ($5::text IS NULL OR starts_with(p.token, $5))\n               AND ($6::text IS NULL OR p.age_bracket_at_enrol = $6)\n               AND ($7::timestamptz IS NULL OR s.last_at >= $7)\n               AND ($8::timestamptz IS NULL OR s.last_at <= $8)\n               AND ($9::uuid[] IS NULL OR p.id = ANY($9))\n           )\n           SELECT id AS \"id!\", org_id AS \"org_id!\", token AS \"token!\", age_bracket_at_enrol,\n                  language, withdrawn_at, created_at AS \"created_at!\",\n                  session_count AS \"session_count!\", last_session_at,\n                  has_patient_ref AS \"has_patient_ref!\", open_encounters_n AS \"open_encounters_n!\",\n                  next_follow_up_at,\n                  (SELECT count(*) FROM m\n                   WHERE $10::bool IS NULL OR (m.next_follow_up_at IS NOT NULL) = $10)\n                      AS \"total!\"\n           FROM m\n           WHERE ($10::bool IS NULL OR (next_follow_up_at IS NOT NULL) = $10)\n             AND ($2::timestamptz IS NULL OR (created_at, id::text) < ($2, $3::text))\n           ORDER BY created_at DESC, id::text DESC\n           LIMIT $4",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "participants",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "org_id!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "participants",
+            "name": "org_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "token!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "participants",
+            "name": "token"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "age_bracket_at_enrol",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "participants",
+            "name": "age_bracket_at_enrol"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "language",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "participants",
+            "name": "language"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "withdrawn_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "participants",
+            "name": "withdrawn_at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at!",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "participants",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "session_count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
+        "name": "last_session_at",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 9,
+        "name": "has_patient_ref!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 10,
+        "name": "open_encounters_n!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 11,
+        "name": "next_follow_up_at",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 12,
+        "name": "total!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "Text",
+        "Int8",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "UuidArray",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "af5f95de57760cd451ee776d0e78c712299d38b0a207ce39cad4a5f73224ab23"
+}

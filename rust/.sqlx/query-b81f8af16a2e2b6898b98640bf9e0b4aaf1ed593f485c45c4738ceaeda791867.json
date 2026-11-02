@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE encounters SET\n             kind = $2, occurred_at = $3, clinician_id = $4, reason = $5, summary_ct = $6,\n             summary_key_id = $7, status = $8, follow_up_due_at = $9, follow_up_done_at = $10,\n             row_version = row_version + 1, updated_at = now()\n         WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Timestamptz",
+        "Uuid",
+        "Text",
+        "Bytea",
+        "Uuid",
+        "Text",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b81f8af16a2e2b6898b98640bf9e0b4aaf1ed593f485c45c4738ceaeda791867"
+}

@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT (EXISTS (SELECT 1 FROM clinical_notes WHERE participant_id = $1)\n                       OR EXISTS (SELECT 1 FROM encounters\n                                  WHERE participant_id = $1 AND summary_ct IS NOT NULL)\n                       OR EXISTS (SELECT 1 FROM referral_letters\n                                  WHERE participant_id = $1 AND status = 'final')) AS \"x!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "x!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "6aa91849b8b39b24d4b23568e56becfbad3d3febc1e45ddc4cb4c226e06ccc65"
+}

@@ -1,0 +1,219 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT e.id, e.org_id, e.participant_id, e.kind, e.occurred_at, e.clinician_id,\n                  u.display_name AS \"clinician_name?\", e.reason, e.summary_ct, e.summary_key_id,\n                  e.status, e.follow_up_due_at, e.follow_up_done_at, e.row_version, e.created_at,\n                  e.updated_at,\n                  ARRAY(SELECT s.id FROM sessions s WHERE s.encounter_id = e.id\n                        ORDER BY s.started_at, s.id) AS \"session_ids!\"\n           FROM encounters e LEFT JOIN users u ON u.id = e.clinician_id\n           WHERE e.participant_id = $1 AND e.org_id = $2\n             AND ($3::timestamptz IS NULL OR (e.occurred_at, e.id) < ($3, $4::uuid))\n           ORDER BY e.occurred_at DESC, e.id DESC\n           LIMIT $5",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "encounters",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "org_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "encounters",
+            "name": "org_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "participant_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "encounters",
+            "name": "participant_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "encounters",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "occurred_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "encounters",
+            "name": "occurred_at"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "clinician_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "encounters",
+            "name": "clinician_id"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "clinician_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "display_name"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "encounters",
+            "name": "reason"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "summary_ct",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "encounters",
+            "name": "summary_ct"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "summary_key_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "encounters",
+            "name": "summary_key_id"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "encounters",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "follow_up_due_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "encounters",
+            "name": "follow_up_due_at"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "follow_up_done_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "encounters",
+            "name": "follow_up_done_at"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "row_version",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "encounters",
+            "name": "row_version"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "encounters",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "encounters",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "session_ids!",
+        "type_info": "TextArray",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Timestamptz",
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "2e28b61016173b80ed92545e8687f419334ee9fd4f794af417beeeced56a2a86"
+}

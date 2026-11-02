@@ -144,6 +144,38 @@ fn sensitive_named_fields_are_dropped() {
     assert_eq!(fields["session_id"], "SESS-GOLDEN-0001");
 }
 
+/// WP-B.19 (REC-3, KEY-6): the encounter summary (`summary`, ends-with like `impression`)
+/// and reason (`encounter_reason`) are dropped (so is anything ending in `summary`, e.g.
+/// `has_summary`); a plain `reason` (error causes) and `summary_len` stay.
+#[test]
+fn encounter_summary_and_reason_fields_are_dropped() {
+    let cap = capture(|| async {
+        tracing::info!(
+            summary = "SECRET-SUMMARY calm child",
+            encounter_summary = "SECRET-SUMMARY-2",
+            encounterSummary = "SECRET-SUMMARY-3",
+            encounter_reason = "SECRET-REASON",
+            reason = "blob store unavailable",
+            summary_len = 42,
+            "encounter saved"
+        );
+    });
+    let text = cap.text();
+    assert!(!text.contains("SECRET-"), "encounter text leaked: {text}");
+    let line = &cap.lines()[0];
+    let fields = line["fields"].as_object().unwrap();
+    for dropped in [
+        "summary",
+        "encounter_summary",
+        "encounterSummary",
+        "encounter_reason",
+    ] {
+        assert!(!fields.contains_key(dropped), "`{dropped}` kept: {line}");
+    }
+    assert_eq!(fields["reason"], "blob store unavailable");
+    assert_eq!(fields["summary_len"], 42);
+}
+
 #[test]
 fn emails_and_child_tokens_in_free_text_are_masked() {
     let cap = capture(|| async {

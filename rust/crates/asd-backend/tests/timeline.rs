@@ -2,8 +2,8 @@
 //!
 //! Participant detail and timeline (CW-3): `GET /v1/participants/{id}`, and the merged,
 //! newest-first, cursor-paged stream of sessions, clinical reviews and signatures, note
-//! and letter headers and care events. Bodies never appear in it. Needs `DATABASE_URL`;
-//! skipped otherwise.
+//! and letter headers and care events, plus (WP-B.19, REC-5) encounter and attachment
+//! headers. Bodies never appear in it. Needs `DATABASE_URL`; skipped otherwise.
 
 mod common;
 mod participant_support;
@@ -352,6 +352,99 @@ async fn cursor_is_stable_across_pages_with_equal_timestamps() {
             &format!("/v1/participants/{p}/timeline?limit=101"),
             None,
             &clin,
+        )
+        .await;
+    assert_eq!(s, StatusCode::BAD_REQUEST);
+    c.db.cleanup().await;
+}
+
+/// WP-B.19 (REC-5): encounter and attachment headers join the stream; sessions carry
+/// `encounter_id`; the encounter summary never appears; deleted attachments are left out;
+/// both kinds filter.
+#[tokio::test]
+async fn encounter_and_attachment_headers_join_the_timeline() {
+    let Some(c) = Ctx::new().await else { return };
+    let p = c.participant(c.org, "P-1").await;
+    let (author, clin) = c.token(Role::Clinician).await;
+    sqlx::query("UPDATE users SET display_name = 'Dr. Sita Rai' WHERE id = $1")
+        .bind(author)
+        .execute(&c.db.pool)
+        .await
+        .unwrap();
+    c.session(c.org, p, "S-1", "2026-10-01T10:00:00Z").await;
+    let (s, enc) = c
+        .call(
+            Method::POST,
+            &format!("/v1/participants/{p}/encounters"),
+            Some(serde_json::json!({
+                "kind": "home_visit", "occurred_at": "2026-10-02T10:00:00Z",
+                "clinician_id": author.to_string(), "summary": "SECRET-ENCOUNTER-TEXT",
+                "session_ids": ["S-1"],
+            })),
+            &clin,
+        )
+        .await;
+    assert_eq!(s, StatusCode::CREATED, "{enc}");
+    let mut att_ids = Vec::new();
+    for name in ["scan-1.pdf", "scan-2.pdf"] {
+        let (s, made) = c
+            .call(
+                Method::POST,
+                &format!("/v1/participants/{p}/attachments"),
+                Some(serde_json::json!({"kind": "referral", "file_name": name,
+                                        "media_type": "application/pdf", "byte_size": 1234})),
+                &clin,
+            )
+            .await;
+        assert_eq!(s, StatusCode::CREATED, "{made}");
+        att_ids.push(made["attachment"]["id"].as_str().unwrap().to_owned());
+    }
+    let (s, _) = c
+        .call(
+            Method::DELETE,
+            &format!("/v1/attachments/{}", att_ids[1]),
+            None,
+            &clin,
+        )
+        .await;
+    assert_eq!(s, StatusCode::NO_CONTENT);
+
+    let (_, viewer) = c.token(Role::Viewer).await;
+    let page = timeline(&c, p, "", &viewer).await;
+    let kinds: Vec<TimelineEntryKind> = page.items.iter().map(|e| e.kind).collect();
+    assert_eq!(
+        kinds,
+        vec![
+            TimelineEntryKind::Attachment,
+            TimelineEntryKind::Encounter,
+            TimelineEntryKind::Session,
+        ]
+    );
+    let att = &page.items[0];
+    assert_eq!(att.id, att_ids[0]);
+    assert_eq!(att.summary["attachment_kind"], "referral");
+    assert_eq!(att.summary["file_name"], "scan-1.pdf");
+    assert_eq!(att.summary["byte_size"], 1234);
+    assert_eq!(att.actor_id.as_deref(), Some(author.to_string().as_str()));
+    let e = &page.items[1];
+    assert_eq!(e.id, enc["id"].as_str().unwrap());
+    assert_eq!(e.summary["encounter_kind"], "home_visit");
+    assert_eq!(e.summary["status"], "open");
+    assert_eq!(e.actor_display_name.as_deref(), Some("Dr. Sita Rai"));
+    assert_eq!(e.summary.len(), 2, "header only: {:?}", e.summary);
+    assert_eq!(page.items[2].summary["encounter_id"], enc["id"]);
+    assert!(!serde_json::to_string(&page)
+        .unwrap()
+        .contains("SECRET-ENCOUNTER"));
+
+    let only = timeline(&c, p, "?kind=encounter,attachment", &viewer).await;
+    assert_eq!(only.items.len(), 2);
+    let (s, _) = c
+        .call(
+            Method::GET,
+            &format!("/v1/participants/{p}/timeline?kind=visit"),
+            None,
+            &viewer,
         )
         .await;
     assert_eq!(s, StatusCode::BAD_REQUEST);

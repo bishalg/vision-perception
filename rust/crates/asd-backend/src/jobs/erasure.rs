@@ -1,4 +1,4 @@
-//! owner: WP-B.9
+//! owner: WP-B.9 (attachments and encounters: WP-B.19)
 //!
 //! The `erasure` job: executes one `erasure_requests` row (ADR-B8 right to erasure; the
 //! request is filed by the device, WP-B.6, or an org admin, `routes::privacy`). A phased
@@ -15,15 +15,18 @@
 //! - the artifact of every unexpired export that included the participant (EXJ-8); the
 //!   export becomes `expired`, its pending deliveries fail (`export-unavailable`), and
 //!   `export_items` stay (accounting of disclosures, EXJ-6);
-//! - the MRN mapping (`patient_refs`), unless the participant is held.
+//! - the MRN mapping (`patient_refs`), unless the participant is held;
+//! - (WP-B.19, REC-7) every attachment with its encrypted blob, and every encounter,
+//!   unless the participant is held (the hold rule as for notes).
 //!
 //! ## Clinical records: held, not erased (ADR-0008 Q2 is open)
 //!
 //! Signed clinical content is immutable by design (SIGN-7, NOTE-1, NOTE-3 triggers) and
 //! medical-record retention rules may outlive an erasure request. Until the owner decides
-//! ADR-0008 Q2, a participant with a signed or superseded review version, any clinical note
-//! or a finalised letter is **held**: those records, the sessions they document and the MRN
-//! mapping stay; everything else above is erased; the request ends `held`
+//! ADR-0008 Q2, a participant with a signed or superseded review version, any clinical note,
+//! an encounter with a clinician's summary (REC-3, the same kind of record as a note) or a
+//! finalised letter is **held**: those records, the sessions they document, the MRN
+//! mapping, the encounters and the attachments stay; everything else above is erased; the request ends `held`
 //! (`hold_reason = clinical_record`, `completed_at` NULL, so a second request is refused as
 //! a duplicate). Notes are not crypto-shredded: the DEK is per org (KEY-5), so shredding
 //! one participant's notes is not possible without the per-record keys Q2 would decide.
@@ -68,6 +71,7 @@ use crate::audit::AuditEvent;
 use crate::blob::{BlobError, BlobStore};
 use crate::error::{AppError, AppResult};
 use crate::ingest::idempotency;
+use crate::routes::attachments;
 use crate::routes::blobs::BlobKind;
 
 /// Job params of an erasure.
@@ -408,6 +412,8 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
     let participant_held = sessions.iter().any(|s| s.held)
         || sqlx::query_scalar!(
             r#"SELECT (EXISTS (SELECT 1 FROM clinical_notes WHERE participant_id = $1)
+                       OR EXISTS (SELECT 1 FROM encounters
+                                  WHERE participant_id = $1 AND summary_ct IS NOT NULL)
                        OR EXISTS (SELECT 1 FROM referral_letters
                                   WHERE participant_id = $1 AND status = 'final')) AS "x!""#,
             participant
@@ -422,6 +428,27 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
     )
     .fetch_all(pool)
     .await?;
+    // REC-7: attachment blobs (deleted rows too; deleting an absent key succeeds). A row
+    // without content may still get one before phase 3: its key is the computed one.
+    let attachment_rows = sqlx::query!(
+        "SELECT id, blob_key FROM attachments WHERE participant_id = $1 ORDER BY id",
+        participant
+    )
+    .fetch_all(pool)
+    .await?;
+    let attachment_keys: Vec<String> = attachment_rows
+        .iter()
+        .map(|a| {
+            a.blob_key
+                .clone()
+                .unwrap_or_else(|| attachments::blob_key(org, participant, a.id))
+        })
+        .collect();
+    let attachments_with_content: BTreeSet<Uuid> = attachment_rows
+        .iter()
+        .filter(|a| a.blob_key.is_some())
+        .map(|a| a.id)
+        .collect();
 
     // ---- phase 2: blobs (no transaction open)
     let mut outcome = ErasureOutcome::default();
@@ -432,6 +459,9 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
         if let Some(key) = &e.blob_key {
             delete_blobs(&*blobs, std::slice::from_ref(key), job.attempts).await?;
         }
+    }
+    if !participant_held {
+        delete_blobs(&*blobs, &attachment_keys, job.attempts).await?;
     }
 
     // ---- phase 3: rows, tombstone, audit (one transaction)
@@ -490,6 +520,24 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
         return Err(JobError::Transient(
             "sessions changed during erasure; retrying".into(),
         ));
+    }
+    // Likewise an attachment whose content arrived after phase 2 (REC-7).
+    if !participant_held {
+        let stored: Vec<Uuid> = sqlx::query_scalar!(
+            "SELECT id FROM attachments WHERE participant_id = $1 AND blob_key IS NOT NULL",
+            participant
+        )
+        .fetch_all(&mut *tx)
+        .await?;
+        if stored
+            .iter()
+            .any(|id| !attachments_with_content.contains(id))
+        {
+            tx.rollback().await?;
+            return Err(JobError::Transient(
+                "attachments changed during erasure; retrying".into(),
+            ));
+        }
     }
 
     // EXJ-8: unexpired artifacts that included the participant.
@@ -569,6 +617,22 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
         .await?;
         ErasureStatus::Held
     } else {
+        // REC-7: the attachments (their blobs went in phase 2), then the encounters; every
+        // session is gone by now and a participant with notes is held, so nothing still
+        // points at an encounter.
+        outcome.attachments_deleted = sqlx::query!(
+            "DELETE FROM attachments WHERE participant_id = $1",
+            participant
+        )
+        .execute(&mut *tx)
+        .await?
+        .rows_affected();
+        sqlx::query!(
+            "DELETE FROM encounters WHERE participant_id = $1",
+            participant
+        )
+        .execute(&mut *tx)
+        .await?;
         outcome.patient_ref_deleted = sqlx::query!(
             "DELETE FROM patient_refs WHERE participant_id = $1",
             participant

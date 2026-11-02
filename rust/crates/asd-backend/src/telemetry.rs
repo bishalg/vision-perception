@@ -76,6 +76,10 @@ fn is_clinical_field(n: &str) -> bool {
             "body",
             "recipient",
             "amendreason",
+            // WP-B.19 (REC-3): the encounter summary (`summary`, `encounter_summary`) and
+            // reason (`encounter_reason`; a bare `reason` stays, it names error causes).
+            "summary",
+            "encounterreason",
         ]
         .iter()
         .any(|f| n.ends_with(f))

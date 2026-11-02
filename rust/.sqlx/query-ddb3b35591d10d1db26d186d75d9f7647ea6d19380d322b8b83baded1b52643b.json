@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE sessions SET encounter_id = NULL WHERE id = $1 AND encounter_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ddb3b35591d10d1db26d186d75d9f7647ea6d19380d322b8b83baded1b52643b"
+}
