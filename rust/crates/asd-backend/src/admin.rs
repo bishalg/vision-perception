@@ -12,6 +12,13 @@
 //!   alone and enrols again. No KEK needed. Prints the user id. For a superadmin, or when
 //!   no owner/admin of the org can sign in; otherwise `POST /v1/orgs/{id}/users/{uid}/
 //!   totp/reset`.
+//! - `reset-password --user <uuid>` (WP-B.24, 164.312(a)(2)(ii) emergency access): server
+//!   shell only. For an **active** user sets a new Argon2id hash, revokes every refresh
+//!   token (same transaction) and audits `user.password_reset` (`actor: operator`,
+//!   `generated`; never the password or hash). TOTP is not touched (`reset-totp` is
+//!   separate). The password is a generated temporary one printed once on stdout, or the
+//!   value of `ASD_ADMIN_PASSWORD` (then not echoed). There is no forced change at the
+//!   next sign-in (no mechanism exists yet).
 //! - `rotate-kek [--batch N] [--dry-run]` (WP-B.15, KEY-9): re-wraps every org data key
 //!   and re-seals every user secret still under a KEK from `ASD_DATA_KEK_PREVIOUS` with
 //!   the active `ASD_DATA_KEK` ([`crate::crypto::rotate`]). Prints
@@ -72,6 +79,7 @@ pub const USAGE: &str = "usage: asd-backend admin <command> [options]\n\
   create-org  --name <name> --kind home|clinic|research [--retention-months N] [--force]\n\
   create-user --email <email> --role owner|superadmin [--org <org-id>] [--force]\n\
   reset-totp  --user <user-id>\n\
+  reset-password --user <user-id>\n\
   rotate-kek [--batch N] [--dry-run]\n\
   erasure-ledger\n\
   requeue-erasure --ledger <file>\n\
@@ -83,6 +91,11 @@ it is never accepted as an argument. owner needs --org; superadmin has no org.\n
 create-org and create-user print the new id on stdout and write an audit row.\n\
 reset-totp clears the user's TOTP seed and any pending enrolment (they sign in with the\n\
 password and enrol again), writes an audit row and prints the user id.\n\
+reset-password (active users only; server shell, emergency access) sets a new password and\n\
+revokes the user's refresh tokens; TOTP is untouched. It prints a generated temporary password\n\
+once on stdout, or, if ASD_ADMIN_PASSWORD is set, uses that and prints the user id. Hand the\n\
+password over in person. Access tokens already issued stay valid up to 15 minutes; there is\n\
+no forced change at next sign-in. Writes audit user.password_reset (no secret).\n\
 rotate-kek (needs ASD_DATA_KEK=new, ASD_DATA_KEK_PREVIOUS=old) moves every wrapped data key\n\
 and sealed user secret to the new KEK, prints a JSON report and exits 3 while rows remain\n\
 under an unconfigured KEK; running it again is safe. Runbook: rust/README.md.\n\
@@ -118,6 +131,10 @@ pub enum AdminCommand {
     CreateUser(NewUser),
     /// AUTH-9 operator TOTP reset.
     ResetTotp {
+        user_id: Uuid,
+    },
+    /// WP-B.24 operator password reset (emergency access).
+    ResetPassword {
         user_id: Uuid,
     },
     /// KEY-9 KEK rotation.
@@ -317,6 +334,12 @@ pub fn parse(args: &[String]) -> Result<AdminCommand, AdminError> {
             let user_id = Uuid::parse_str(required(&opts, "--user")?.trim())
                 .map_err(|_| AdminError::Invalid("--user must be a user id (UUID)".into()))?;
             Ok(AdminCommand::ResetTotp { user_id })
+        }
+        "reset-password" => {
+            let opts = options(rest, &["--user"], &[])?;
+            let user_id = Uuid::parse_str(required(&opts, "--user")?.trim())
+                .map_err(|_| AdminError::Invalid("--user must be a user id (UUID)".into()))?;
+            Ok(AdminCommand::ResetPassword { user_id })
         }
         "rotate-kek" => {
             let opts = options(rest, &["--batch"], &["--dry-run"])?;
@@ -565,6 +588,86 @@ pub async fn reset_totp(pool: &PgPool, user_id: Uuid) -> Result<Uuid, AdminError
     }
 }
 
+/// Length of a generated temporary password.
+pub const TEMP_PASSWORD_LEN: usize = 20;
+
+/// A temporary password: [`TEMP_PASSWORD_LEN`] characters of
+/// `asd_contract::emr::SHARE_PASSCODE_ALPHABET` (32 symbols, so `byte & 31` is unbiased).
+pub fn generate_temp_password() -> Result<String, AdminError> {
+    let alphabet = asd_contract::emr::SHARE_PASSCODE_ALPHABET;
+    let mut bytes = [0u8; TEMP_PASSWORD_LEN];
+    getrandom::fill(&mut bytes).map_err(|e| AdminError::Internal(format!("randomness: {e}")))?;
+    Ok(bytes
+        .iter()
+        .map(|b| char::from(alphabet[usize::from(b & 31)]))
+        .collect())
+}
+
+/// `reset-password` (WP-B.24): sets a new Argon2id hash for an active user, revokes every
+/// refresh token and audits `user.password_reset` (no secret), in one transaction. TOTP is
+/// untouched. `supplied` (from `ASD_ADMIN_PASSWORD`) is checked with the API policy;
+/// otherwise a temporary password is generated. Returns the password now in effect (the
+/// caller prints it only when it was generated). Unknown, `disabled` or `invited` users
+/// are exit 2 and nothing changes.
+pub async fn reset_password(
+    pool: &PgPool,
+    user_id: Uuid,
+    supplied: Option<String>,
+) -> Result<String, AdminError> {
+    let generated = supplied.is_none();
+    let new_password = match supplied {
+        Some(p) => {
+            password::validate_new(&p)
+                .map_err(|e| AdminError::Invalid(format!("password {}", e.reason)))?;
+            p
+        }
+        None => generate_temp_password()?,
+    };
+    let pw_hash = password::hash_blocking(new_password.clone())
+        .await
+        .map_err(|e| AdminError::Internal(e.to_string()))?;
+
+    let mut tx = pool.begin().await?;
+    let row = sqlx::query!(
+        "SELECT org_id, role, status FROM users WHERE id = $1 FOR UPDATE",
+        user_id
+    )
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or(AdminError::UserNotFound(user_id))?;
+    if row.status != "active" {
+        return Err(AdminError::Invalid(format!(
+            "user {user_id} is {}, not active; nothing was changed",
+            row.status
+        )));
+    }
+    sqlx::query!(
+        "UPDATE users SET pw_hash = $2 WHERE id = $1",
+        user_id,
+        pw_hash
+    )
+    .execute(&mut *tx)
+    .await?;
+    crate::auth::refresh::revoke_user(&mut tx, user_id)
+        .await
+        .map_err(|e| AdminError::Internal(e.to_string()))?;
+    let mut event = AuditEvent::system("user.password_reset", "user", user_id).after(json!({
+        "actor": "operator",
+        "via": "cli",
+        "role": row.role,
+        "generated": generated,
+    }));
+    if let Some(org) = row.org_id {
+        event = event.org(org);
+    }
+    event
+        .record(&mut tx)
+        .await
+        .map_err(|e| AdminError::Internal(e.to_string()))?;
+    tx.commit().await?;
+    Ok(new_password)
+}
+
 /// `rotate-kek` from the CLI (KEY-9): builds the keyring from `ASD_DATA_KEK` (active) and
 /// `ASD_DATA_KEK_PREVIOUS`, runs [`rotate::rotate_kek`] and returns the JSON report.
 /// [`AdminError::RotationIncomplete`] (exit 3) carries the report when rows remain.
@@ -782,6 +885,37 @@ mod tests {
 
     fn args(s: &[&str]) -> Vec<String> {
         s.iter().map(|a| (*a).to_owned()).collect()
+    }
+
+    #[test]
+    fn parses_reset_password() {
+        let id = Uuid::new_v4();
+        assert_eq!(
+            parse(&args(&["reset-password", "--user", &id.to_string()])).unwrap(),
+            AdminCommand::ResetPassword { user_id: id }
+        );
+        assert!(parse(&args(&["reset-password"])).is_err());
+        assert!(parse(&args(&["reset-password", "--user", "nope"])).is_err());
+        assert!(parse(&args(&[
+            "reset-password",
+            "--user",
+            &id.to_string(),
+            "--password",
+            "x"
+        ]))
+        .is_err());
+    }
+
+    #[test]
+    fn temp_password_has_length_and_alphabet() {
+        let a = generate_temp_password().unwrap();
+        let b = generate_temp_password().unwrap();
+        assert_eq!(a.len(), TEMP_PASSWORD_LEN);
+        assert_ne!(a, b);
+        assert!(a
+            .bytes()
+            .all(|c| asd_contract::emr::SHARE_PASSCODE_ALPHABET.contains(&c)));
+        assert!(password::validate_new(&a).is_ok());
     }
 
     #[test]

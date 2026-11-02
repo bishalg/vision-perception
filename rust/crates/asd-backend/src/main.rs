@@ -7,7 +7,7 @@
 //! - `asd-backend migrate` seals plaintext TOTP seeds left from 0016 (needs the KEK), then
 //!   applies pending migrations, then re-runs that back-fill, and exits (compose init step;
 //!   KEY-12, [`db::migrate_with_backfill`]);
-//! - `asd-backend admin`   operator commands (`create-org`, `create-user`, `reset-totp`,
+//! - `asd-backend admin`   operator commands (`create-org`, `create-user`, `reset-totp`, `reset-password`,
 //!   `rotate-kek`, `erasure-ledger`, `requeue-erasure`, `verify`), see `asd_backend::admin`.
 //!
 //! Configuration is environment only; see `rust/.env.example`.
@@ -23,7 +23,7 @@ const USAGE: &str = "usage: asd-backend <serve|worker|migrate|admin>\n\
   serve    run the HTTP API (GET /health, /health/ready, /v1/...)\n\
   worker   run the background job worker\n\
   migrate  apply pending database migrations and exit\n\
-  admin    create-org / create-user / reset-totp / rotate-kek operator commands\n\
+  admin    create-org / create-user / reset-totp / reset-password / rotate-kek operator commands\n\
            (asd-backend admin --help)\n\
 \n\
 Configuration comes from the environment; see rust/.env.example.";
@@ -255,6 +255,25 @@ fn admin_main() -> ExitCode {
             admin::AdminCommand::ResetTotp { user_id } => admin::reset_totp(&pool, *user_id)
                 .await
                 .map(|id| id.to_string()),
+            admin::AdminCommand::ResetPassword { user_id } => {
+                let supplied = std::env::var(admin::PASSWORD_ENV).ok();
+                let generated = supplied.is_none();
+                admin::reset_password(&pool, *user_id, supplied)
+                    .await
+                    .map(|pw| {
+                        eprintln!(
+                            "asd-backend admin: password reset for {user_id}. Hand it over in \
+                             person. Access tokens already issued stay valid for up to 15 \
+                             minutes; there is no forced change at next sign-in, so the owner \
+                             should treat this password as temporary. TOTP was not changed."
+                        );
+                        if generated {
+                            pw
+                        } else {
+                            user_id.to_string()
+                        }
+                    })
+            }
             admin::AdminCommand::RotateKek { batch, dry_run } => {
                 admin::rotate_kek_cli(&pool, &config, *batch, *dry_run).await
             }

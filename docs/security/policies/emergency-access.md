@@ -20,7 +20,7 @@ The vendor cannot open clinical content, even in an emergency (ADR-0008 D2; `sup
 | The only owner lost the phone | Server helper runs `asd-backend admin reset-totp --user <id>` on the server; this is audited as an operator action. Record who ran it and why |
 | A clinician is away and a child needs urgent care | The treating clinician with an account looks it up. If none is available the owner may view under their own login. Do not share anyone's login. Write the reason in the clinic's own emergency log |
 | Console down but records are needed | Restore per `contingency-and-backup.md`; meanwhile the child's family or the last paper note |
-| Password forgotten by the only owner | An `owner` password reset is a server task by the server helper using the documented admin command; the owner proves identity to the PSO and the event is logged. [Confirm the exact command with engineering before relying on this] |
+| Password forgotten by the only owner | Server helper runs `asd-backend admin reset-password --user <id>` on the server, with a second person (the PSO or another trusted person) present, after the owner has proved identity to the PSO. It prints a temporary password once (or the owner types their own into `ASD_ADMIN_PASSWORD` at the keyboard); hand it over in person and have the owner choose a new one at once. All their sessions end; the two-step authenticator is not changed (use `reset-totp` too if it is lost). The event is audited as `user.password_reset`. Record who ran it and why |
 | Lost KEK/key card and no copy | Clinical text and TOTP seeds cannot be recovered; scores and records without encrypted fields remain. This is why two copies exist |
 
 ## After any emergency use
