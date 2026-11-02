@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { DeliveriesTable } from "@/components/exports/DeliveriesTable";
 import { DownloadForm, ExportStatusBadge, excludedSummary } from "@/components/exports/ExportsTable";
+import { ShareLinkPanel } from "@/components/exports/ShareLinkPanel";
 import { authedApi, currentRole } from "@/lib/auth/server";
 import { formatDateTime } from "@/lib/format";
 import { parseCursor, toSearch } from "@/lib/listQuery";
-import { loadOrNotFound } from "@/lib/loaders";
+import { loadOrNotFound, requestTime } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { deliveriesText, exportsText } from "@/messages/exports";
+import { createShareLinkAction, revokeShareLinkAction } from "../actions";
 
 const t = exportsText;
 const d = t.detail;
@@ -36,6 +38,11 @@ export default async function ExportDetailPage({
   const api = await authedApi();
   const e = await loadOrNotFound(() => api.getExport(id));
   const deliveries = await loadOrNotFound(() => api.listExportDeliveries(id, { cursor, limit: 50 }));
+  // SHR-8: the links of a case package, for roles that manage them (others get 403 from the backend).
+  const shareLinks =
+    e.format === "case_package" && can(role, "sharelink.manage")
+      ? await loadOrNotFound(() => api.listShareLinks(id, { limit: 100 }))
+      : null;
   const base = `/${encodeURIComponent(org)}/exports/${encodeURIComponent(id)}`;
   const filters = Object.entries(e.filters).filter(([, v]) => v != null && !(Array.isArray(v) && v.length === 0));
   return (
@@ -70,8 +77,23 @@ export default async function ExportDetailPage({
           <dd>{excludedSummary(e.excluded)}</dd>
           <dt className="kpi-label">{t.cols.expires}</dt>
           <dd>{e.expires_at ? formatDateTime(e.expires_at) : "-"}</dd>
-          <dt className="kpi-label">{d.filters}</dt>
-          <dd>{filters.length === 0 ? d.noFilters : filters.map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : String(v)}`).join("; ")}</dd>
+          {e.format === "case_package" ? (
+            e.case_participant_id ? (
+              <>
+                <dt className="kpi-label">{d.participant}</dt>
+                <dd>
+                  <Link href={`/${encodeURIComponent(org)}/participants/${encodeURIComponent(e.case_participant_id)}`}>
+                    {d.openParticipant}
+                  </Link>
+                </dd>
+              </>
+            ) : null
+          ) : (
+            <>
+              <dt className="kpi-label">{d.filters}</dt>
+              <dd>{filters.length === 0 ? d.noFilters : filters.map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : String(v)}`).join("; ")}</dd>
+            </>
+          )}
           {e.file_name ? (
             <>
               <dt className="kpi-label">{d.file}</dt>
@@ -92,6 +114,16 @@ export default async function ExportDetailPage({
           </>
         ) : null}
       </section>
+      {e.format === "case_package" ? (
+        <ShareLinkPanel
+          links={shareLinks?.items ?? []}
+          ready={e.status === "succeeded"}
+          canManage={can(role, "sharelink.manage")}
+          now={requestTime()}
+          create={createShareLinkAction.bind(null, org, e.id)}
+          revoke={revokeShareLinkAction.bind(null, org, e.id)}
+        />
+      ) : null}
       <h2>{d.deliveries}</h2>
       {deliveries.items.length === 0 ? (
         <p className="muted">{d.noDeliveries}</p>

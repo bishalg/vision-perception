@@ -19,6 +19,10 @@ const errors: Record<string, string> = {
   "export-expired": "The export has expired. Request a new one.",
   "export-too-large": "The export is too large. Narrow the filters.",
   "host-key-mismatch": "The server's host key does not match the pinned fingerprint.",
+  "case-consent-missing": "An identified case package needs the consent reference and the date consent was recorded.",
+  "participant-withdrawn": "This participant has withdrawn. Their case cannot be shared.",
+  "share-link-expired": "This share link has expired.",
+  "share-link-exhausted": "This share link has reached its download limit.",
   "clinical-crypto-unavailable": "Secret storage is not configured on the server.",
   conflict: "That action is not possible in the current state.",
   forbidden: "Your role cannot do this.",
@@ -147,6 +151,8 @@ export const exportsText = {
     reason: "Reason",
     filters: "Filters",
     noFilters: "None (every session of the organisation)",
+    participant: "Participant",
+    openParticipant: "Open the participant",
     file: "File",
     size: "Size",
     sha256: "SHA-256",
@@ -298,3 +304,122 @@ export const integrationsText = {
     deleted: "Destination deleted.",
   },
 };
+
+/** WP-C.19 (SHR-10): the "Share case" dialog on the participant workspace. */
+export const shareCaseText = {
+  open: "Share case",
+  title: "Share this case",
+  intro:
+    "Creates one case package (a ZIP with the sessions, a FHIR bundle and a summary) as an export. Once it is ready, create a share link for the recipient on the export page.",
+  mode: "Mode",
+  modeHint: "De-identified packages carry pseudonyms only. Identified packages carry the participant token and need recorded consent.",
+  purpose: "Purpose",
+  purposeHint: "Research uses only sessions whose participant consented to research.",
+  recipient: "Recipient (name and organisation, 10 to 200 characters)",
+  recipientHint: "Kept encrypted on the server and printed in the package's manifest.",
+  reason: "Reason (10 to 500 characters, kept in the audit log)",
+  consentReference: "Consent reference (for example the consent form number)",
+  consentDate: "Date consent was recorded",
+  consentHint: "Required for an identified package.",
+  attachments: "Include attachments",
+  sessions: "Sessions",
+  sessionsAll: "All of this participant's sessions",
+  sessionsPick: "Choose sessions",
+  sessionsLoading: "Loading sessions...",
+  sessionsNone: "No sessions to choose from.",
+  sessionsFailed: "Could not load the sessions.",
+  noRecall:
+    "Once the recipient has downloaded the package it cannot be recalled. Erasing the participant later revokes open links and deletes unexpired files only.",
+  submit: "Create case package",
+  submitting: "Creating...",
+  cancel: "Cancel",
+  close: "Close",
+  created: "Case package requested.",
+  view: "Open the export to share it",
+  failed: "The case package was not created.",
+};
+
+/** WP-C.19 (SHR-8, SHR-10): share links of a case-package export, on the export detail page. */
+export const shareLinksText = {
+  title: "Share links",
+  intro:
+    "A share link lets one recipient without a console account download this package after entering a passcode. Every open and download is recorded with the recipient's IP address.",
+  denied: "Your role cannot create or revoke share links.",
+  notReady: "Share links can be created once the package is ready.",
+  expires: "Link valid for",
+  days: (n: number) => (n === 1 ? "1 day" : `${n} days`),
+  downloads: "Downloads allowed",
+  create: "Create share link",
+  creating: "Creating...",
+  createdTitle: "Share link created",
+  url: "Link",
+  passcode: "Passcode",
+  copy: "Copy",
+  copied: "Copied",
+  copyFailed: "Copy failed: select the text and copy it by hand.",
+  once: "The passcode is shown only now and cannot be recovered. Copy it before you close this box.",
+  otherChannel: "Send the passcode by another channel than the link (for example the link by e-mail and the passcode by phone or text message).",
+  done: "I have copied it, close",
+  failed: "The share link was not created.",
+  empty: "No share links yet.",
+  cols: {
+    created: "Created",
+    state: "State",
+    downloads: "Downloads",
+    opens: "Opens",
+    lastOpened: "Last opened",
+    expires: "Expires",
+    actions: "Actions",
+  },
+  states: { active: "Active", revoked: "Revoked", expired: "Expired", exhausted: "Used up" } as Record<string, string>,
+  revoke: "Revoke",
+  revokeConfirm: "Revoke this link? The recipient can no longer open it. Downloads already made cannot be recalled.",
+  revokeYes: "Yes, revoke",
+  cancel: "Cancel",
+  revokeFailed: "The link was not revoked.",
+  revoked: "Link revoked.",
+};
+
+/** WP-C.19 (SHR-9, SHR-10): the public `/share/[id]` page a recipient opens. No organisation or case detail on it. */
+export const sharePageText = {
+  title: "Shared file",
+  heading: "Download a shared file",
+  intro: "A clinic shared a file with you through this link. Enter the passcode you received separately to download it.",
+  passcode: "Passcode",
+  passcodeHint: "12 letters and digits, as you received it.",
+  open: "Continue",
+  opening: "Checking...",
+  file: "File",
+  size: "Size",
+  expires: "Link valid until",
+  downloadsLeft: "Downloads left",
+  download: "Download",
+  downloadHint: "The download button works for five minutes. After that, enter the passcode again.",
+  started: "The download has started. To download again, enter the passcode again.",
+  again: "Enter the passcode again",
+  notice:
+    "This file may contain health information. Store it securely and use it only for the purpose it was shared for. Do not try to re-identify a de-identified package.",
+  errors: {
+    "share-passcode-invalid": "The passcode is not correct. Check it and try again.",
+    "share-link-expired": "This link has expired. Ask the clinic for a new one.",
+    "share-link-exhausted": "This link has reached its download limit. Ask the clinic for a new one.",
+    "export-expired": "The shared file is no longer available. Ask the clinic to share it again.",
+    gone: "This link does not exist or has been withdrawn.",
+    token: "The download button has expired. Enter the passcode again.",
+    "rate-limited": "Too many attempts. Wait a while and try again.",
+    fallback: "Something went wrong. Try again later.",
+  } as Record<string, string>,
+  retryAfter: (s: number) => (s >= 120 ? `Try again in about ${Math.ceil(s / 60)} minutes.` : `Try again in ${s} seconds.`),
+};
+
+/**
+ * The public page's error key for a backend answer: the slug when it is one the recipient may see, else one generic
+ * key per status. Unknown and revoked links are both `404` (`gone`); the page reveals nothing beyond that.
+ */
+export function shareErrorKey(slug: string | null, status: number): string {
+  if (slug && Object.hasOwn(sharePageText.errors, slug)) return slug;
+  if (status === 404) return "gone";
+  if (status === 401 || status === 403) return "token";
+  if (status === 429) return "rate-limited";
+  return "fallback";
+}

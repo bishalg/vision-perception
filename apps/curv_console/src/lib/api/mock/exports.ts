@@ -40,6 +40,25 @@ function problem(status: number, slug: string, title: string, detail?: string, p
 
 const notFound = (what: string) => problem(404, "not-found", "Not found", `${what} not found`);
 
+/** The seeded ready case package (WP-C.19): its share links are seeded by `mock/share.ts`. */
+export const MOCK_CASE_EXPORT_ID = "e20c0de0-0000-4000-8000-000000000005";
+
+/** What the mock share links (`mock/share.ts`) read and update of the exports held here. */
+export interface MockExportStore {
+  find(id: string): Export | undefined;
+  update(id: string, patch: Partial<Export>): void;
+}
+
+/**
+ * Hand-off to `createMockShare`: `createMockClient` (mock.ts, not owned by WP-C.19) builds the exports mock and then,
+ * synchronously in the same call, the share mock without passing this store, so the share mock takes the store
+ * built last. `MockShareContext.exports` takes precedence when mock.ts passes it explicitly.
+ */
+let latestStore: MockExportStore | null = null;
+export function latestMockExportStore(): MockExportStore | null {
+  return latestStore;
+}
+
 function mockUuid(kind: number, n: number): string {
   return `e${kind}0c0de0-0000-4000-8000-${String(n).padStart(12, "0")}`;
 }
@@ -104,6 +123,14 @@ export function createMockExports(ctx: MockExportsContext): ExportsApi {
       status: "expired", format: "csv_excel", row_count: 12, byte_size: 9000, file_name: "export-4-csv.zip",
       content_type: "application/zip", completed_at: iso(-4 * 86_400_000 + 4000), expires_at: iso(-86_400_000),
     }),
+    base(5, {
+      id: MOCK_CASE_EXPORT_ID, format: "case_package", mode: "identified", purpose: "clinical_care",
+      reason: "Second opinion requested by the family", row_count: 3, byte_size: 48_211,
+      content_type: "application/zip", file_name: "case-package-e20c0de0.zip",
+      sha256: "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+      completed_at: iso(-5 * 86_400_000 + 9000), expires_at: iso(6 * 86_400_000),
+      case_participant_id: "c0c0c0c0-0000-4000-8000-000000000001", share_links_n: 4,
+    }),
   ];
   const deliveries: Delivery[] = [
     {
@@ -134,8 +161,26 @@ export function createMockExports(ctx: MockExportsContext): ExportsApi {
     return i;
   };
 
-  function validateExport(req: ExportRequest): void {
+  /** SHR-7 request rules, as the backend states them (the backend is the authority). */
+  function caseParams(req: ExportRequest): { name: string; reason: string }[] {
     const params: { name: string; reason: string }[] = [];
+    if (req.format !== "case_package") {
+      if (req.case) params.push({ name: "case", reason: "only for case_package exports" });
+      return params;
+    }
+    const c = req.case;
+    if (!c) return [{ name: "case", reason: "is required for case_package exports" }];
+    if (!c.participant_id) params.push({ name: "case.participant_id", reason: "is required" });
+    const recipient = c.recipient.trim();
+    if (recipient.length < 10 || recipient.length > 200) params.push({ name: "case.recipient", reason: "must be 10..200 characters" });
+    if ((c.consent_reference ?? "").length > 200) params.push({ name: "case.consent_reference", reason: "must be at most 200 characters" });
+    const filters = Object.values(req.filters ?? {}).filter((v) => v != null && !(Array.isArray(v) && v.length === 0));
+    if (filters.length) params.push({ name: "filters", reason: "must be empty for case_package (the case names the participant)" });
+    return params;
+  }
+
+  function validateExport(req: ExportRequest): void {
+    const params: { name: string; reason: string }[] = caseParams(req);
     const reason = req.reason.trim();
     if (reason.length < 10 || reason.length > 500) params.push({ name: "reason", reason: "must be 10..500 characters" });
     if (req.format === "pdf_summary") params.push({ name: "format", reason: "pdf_summary is not available yet" });
@@ -156,6 +201,9 @@ export function createMockExports(ctx: MockExportsContext): ExportsApi {
     if (req.mode === "identified" && (req.purpose === "research" || req.purpose === "quality_improvement")) {
       throw problem(400, "consent-purpose-mismatch", "Consent purpose mismatch", "identified exports are not allowed for this purpose");
     }
+    if (req.format === "case_package" && req.mode === "identified" && (!req.case?.consent_reference?.trim() || !req.case.consent_recorded_at)) {
+      throw problem(400, "case-consent-missing", "Consent missing", "an identified case package needs the consent reference and date");
+    }
   }
 
   function validateConfig(kind: Integration["kind"], c: IntegrationConfig): { name: string; reason: string }[] {
@@ -173,6 +221,14 @@ export function createMockExports(ctx: MockExportsContext): ExportsApi {
     const n = name.trim();
     if (n.length < 1 || n.length > 120) params.push({ name: "name", reason: "must be 1..120 characters" });
     return n;
+  };
+
+  latestStore = {
+    find: (id) => exportsList.find((x) => x.id === id),
+    update: (id, patch) => {
+      const e = exportsList.find((x) => x.id === id);
+      if (e) Object.assign(e, patch);
+    },
   };
 
   return {
@@ -196,6 +252,16 @@ export function createMockExports(ctx: MockExportsContext): ExportsApi {
           ? { include_labels: req.include_labels ?? false }
           : {}),
       });
+      if (req.format === "case_package" && req.case) {
+        // Synthetic: the mock "builds" a case package at once so the share-link flow can be tried end to end.
+        Object.assign(created, {
+          status: "succeeded", case_participant_id: req.case.participant_id, share_links_n: 0,
+          row_count: req.case.session_ids?.length || 3, byte_size: 40_960, content_type: "application/zip",
+          file_name: `case-package-${created.id.slice(0, 8)}.zip`,
+          sha256: "fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9",
+          completed_at: created.created_at, expires_at: iso(7 * 86_400_000),
+        } satisfies Partial<Export>);
+      }
       exportsList.push(created);
       for (const d of created.destination_ids) {
         const dest = integrations.get(d)!;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decideGuard, enforcementRedirect, safeNextPath } from "@/lib/auth/guard";
+import { decideGuard, enforcementRedirect, isAnonymousPath, isPublicPath, safeNextPath } from "@/lib/auth/guard";
 import { ACCESS_COOKIE, ORG_COOKIE, REFRESH_COOKIE, ROLE_COOKIE, SESSION_COOKIE_NAMES, readRole, sessionCookies } from "@/lib/auth/cookies";
 
 describe("guard", () => {
@@ -13,6 +13,28 @@ describe("guard", () => {
   it("allows authenticated users and bounces them off /login", () => {
     expect(decideGuard("/org/overview", true, true)).toBe("allow");
     expect(decideGuard("/login", true, true)).toBe("redirect-home");
+  });
+});
+
+describe("guard: anonymous share paths (WP-C.19, SHR-9)", () => {
+  const paths = ["/share", "/share/5a5e0000-0000-4000-8000-000000000001", "/api/share/x", "/share/x?e=gone"];
+  it.each(paths)("%s is allowed with or without a session, never redirect-home or refresh", (path) => {
+    const p = path.split("?")[0]!;
+    for (const [access, refresh] of [[false, false], [true, true], [true, false], [false, true]] as const) {
+      expect(decideGuard(p, access, refresh)).toBe("allow");
+    }
+    expect(isAnonymousPath(p)).toBe(true);
+    // Public for proxy.ts: no HIP-2 verdict, no `curv_last_seen` refresh.
+    expect(isPublicPath(p)).toBe(true);
+  });
+  it.each(["/shared", "/sharex/y", "/api/shares", "/api/export/x", "/o/share/x", "/loginx"])("%s is not anonymous", (p) => {
+    expect(isAnonymousPath(p)).toBe(false);
+  });
+  it("the sign-in page keeps its rules", () => {
+    expect(isAnonymousPath("/login")).toBe(false);
+    expect(isPublicPath("/login")).toBe(true);
+    expect(decideGuard("/login", true, true)).toBe("redirect-home");
+    expect(decideGuard("/api/export/x", false, false)).toBe("redirect-login");
   });
 });
 
