@@ -14,7 +14,9 @@ Rules that apply to every package here:
   `##` section at the end and touches no other line; the main session merges.
 - Migration numbers are fixed here: **0024** WP-B.19, **0025** WP-I.13, **0026** WP-B.21.
   Wave 1 adds none. A package that adds or changes a `sqlx::query!` runs `cargo sqlx
-  prepare --workspace` against a migrated database before reporting.
+  prepare --workspace` against a migrated database before reporting. **Wave 2 exception
+  (2026-11-03):** wave 2 packages do not run `prepare` or edit `rust/README.md`; see "Wave 2
+  amendments after wave 1".
 - Backend tests use the existing `tests/common` helpers and `sqlx::test`; console tests
   run in mock mode first and add a live e2e only when the backend route exists.
 - A package reports: files changed, test output, what was skipped and why, and any
@@ -304,122 +306,493 @@ R.7 `$defs`, B.17 DTO and slug; case-package-v1.json from I.12); resolve the two
 --test`; `scripts/build_asd_android.sh --test`; `scripts/ios_test.sh`; console gates;
 `bash deploy/clinic-server/test/compose_smoke.sh` (CI); commit. Then update the tracker.
 
-## Wave 2 (after wave 1 is integrated; parallel, file-disjoint)
+## Wave 2 (after wave 1 is integrated; step 0, then 2a in parallel, then 2b)
+
+### Wave 2 amendments after wave 1 (2026-11-03)
+
+The wave 2 packages below were designed before wave 1 was built. This subsection records
+every seam where the wave 1 code (uncommitted integration tree of 2026-11-03) differs from
+what the original wave 2 text assumed; the package texts after it are already corrected.
+Line numbers are against that tree and drift; search for the named item.
+
+**What wave 1 actually provides (the seams wave 2 builds on)**
+
+- R.7 `asd-contract/src/emr.rs`: every id and timestamp is a `String` (UUID / RFC 3339),
+  not `Uuid`/`DateTime` (`Encounter.id`, `participant_id`, `occurred_at`, ...), matching
+  `api_v1`. Routes parse with `Uuid::parse_str(..).map_err(|_| NotFound)` as today.
+  `parse_qr_payload` (`emr.rs:558`) returns `Result<(Uuid, String), QrParseError>` (not
+  `ParseError`; variants `Scheme, Host, Token, MissingOrg, DuplicateOrg, Org, Fragment`,
+  `emr.rs:537`); it is a `thiserror` enum, **not** a UniFFI type. `ParticipantSearchRow`
+  (`emr.rs:345`) and `CreatedParticipant` (`emr.rs:384`) **flatten** `api_v1::Participant`
+  (`#[serde(flatten)]`; REC-2's `sessions_n` is `Participant.session_count`). Share links:
+  `CreatedShareLink { link: ShareLink, passcode }` (`emr.rs:473`, the full `ShareLink`, not
+  a 4-field subset); `ShareLink` carries `url`, `downloads`, `opens`, `revoked_at`,
+  `last_opened_at`. `CreateShareLinkRequest` (`emr.rs:461`) defaults are already the
+  owner-recommended **72 h / 1 download** (`SHARE_LINK_DEFAULT_DAYS = 3`, `emr.rs:39`;
+  `SHARE_LINK_DEFAULT_DOWNLOADS = 1`, `emr.rs:45`; max 7 days / 5 downloads); nothing to
+  change. Also present: `participant_token_from_uuid`, `is_participant_token`,
+  `qr_payload`, `sanitize_file_name` (`emr.rs:597`), the `MAX_*` limits and passcode
+  alphabet constants. Use them; do not re-declare limits in the backend or console.
+- R.7 `problem.rs`: all REC-9 slugs exist (`ENCOUNTER_CLOSED` ... `IDENTITY_DISABLED`) and
+  are in `SLUGS`; console `PROBLEM_SLUGS` (`types.ts`) already lists them. No wave 2 package
+  needs a new slug; `STALE_VERSION`, `EXPORT_EXPIRED`, `RATE_LIMITED`,
+  `PARTICIPANT_WITHDRAWN` already exist. `SHARE_LINK_EXPIRED` has no status in its doc
+  comment: **I.13 answers `410 share-link-expired`** (same family as `410
+  share-link-exhausted` and `410 export-expired`); unknown and revoked stay a plain `404`.
+- R.7 did **not** add the REC-5 timeline kinds: `clinical::TimelineEntryKind`
+  (`clinical.rs:202`) has no `encounter` / `attachment`, and console `TIMELINE_KINDS`
+  (`lib/api/participant.ts:26`) matches it. Nor did it touch `asd-contract::export`
+  (`ExportFormat` at `export.rs:77`, `ExportRequest` at `export.rs:167` with
+  `deny_unknown_fields`, `ExportFilters` with `deny_unknown_fields`, `Export` at
+  `export.rs:228`) or `privacy::ErasureOutcome` (`privacy.rs:57`). Step 0 adds these.
+- I.12 `asd-export/src/case_package/`: the crate has its **own** input types,
+  `CasePackageInput` (`mod.rs:189`), `CaseSession { record: ExportRecord, gaze:
+  GazeSessionRecord, device: FhirDevice }`, `CaseEncounter`, `CaseAttachment { bytes }`,
+  `CaseConsent { reference, recorded_at, recorded_by_display }` and its own
+  `EncounterKind` / `AttachmentKind` enums (`mod.rs:90`, `mod.rs:146`), plus `build` /
+  `build_with_manifest` (`mod.rs:440`). The backend maps rows → `CasePackageInput`; it
+  does not pass `asd_contract::emr` types in. `recorded_by_display` is the requester's
+  display name (not in `CaseShareRequest`); `created_at` must be the export row's
+  `created_at`, not `now()`, so a retry renders the same bytes.
+- Determinism caveat: the export job draws a **fresh de-identification salt per run**
+  (`jobs/export.rs:276`, XC-4: never stored). So "same export id → same sha256" holds for
+  identified packages only; for de-identified ones the attempt fence guarantees one
+  recorded artifact. I.13's idempotency test is amended accordingly.
+- B.20 `audit.rs:188`: `record_read(pool: &PgPool, principal: &UserPrincipal, meta:
+  &RequestMeta, org: Uuid, action: &'static str, target_type: &'static str, target_id:
+  &str, after: Option<Value>) -> AppResult<()>` (own transaction, failure = 500). Token-
+  or passcode-authenticated reads have no `UserPrincipal`: `export.file_served`
+  (`routes/exports.rs:510`) writes `AuditEvent::system(..).org(..).meta(&meta)` in its own
+  transaction and maps a failure to 500. Share-link `open` / `open_failed` / `download`
+  use exactly that pattern (system actor, `meta` carries the IP).
+- B.20 `blob/mod.rs:42`: `pub fn verify_content_digest(headers: &http::HeaderMap, body:
+  &[u8]) -> Result<(), AppError>`; absent → ok, malformed or no `sha-256` member → `400
+  validation-failed`, mismatch → `400 digest-mismatch`. RFC 9530 form with colons
+  (`sha-256=:<base64>:`); REC-7's text without colons is wrong, the helper is right.
+- B.17: route `POST /v1/orgs/{id}/users/{user_id}/totp/reset` (`users.rs:75`; path param
+  `{user_id}`, not `{uid}`), body `clinical::TotpResetRequest { password, totp_code?,
+  reason (10..200) }`, answers `204`; `403 totp-reset-forbidden` (self, or a target above
+  the caller's rank), `401 reauthentication-failed` (audited `user.totp_reset_failed`),
+  `429` with `Retry-After` from the step-up limiter. `rbac::Action::UserTotpReset`
+  (`rbac.rs:66`, matrix `rbac.rs:192`: owner, admin) exists; `auth::totp::reset_for_user(conn,
+  user_id)` (`totp.rs:534`) clears TOTP and revokes refresh families.
+- B.22 `jobs/erasure.rs`: `enqueue_erasure(conn, org, participant, requested_by: Actor,
+  scope)` (`erasure.rs:134`), `Actor::{User(Uuid), System}` (`erasure.rs:105`), `requeue`
+  (`erasure.rs:203`). The phase-1 export query matches exports through `export_items`
+  only, `e.kind = 'bulk' AND e.status = 'succeeded'` (`erasure.rs:420`); a case package
+  with zero included sessions has no `export_items` row and would be missed (fixed in
+  I.13b by also matching `exports.case_participant_id`).
+- Migrations: highest is **0023** (`0023_totp_required_by.sql`); wave 1 added none.
+  0024 (B.19) and 0025 (I.13) stand. `exports.format` has a CHECK
+  (`exports_format_check`, last rewritten in `0017_privacy_jobs.sql:11`): a new format is
+  a migration, not just an enum variant. 0025 rewrites it for **both** `case_package` and
+  `audit_csv`, so B.23 needs no migration.
+- Export pipeline: format dispatch is the exhaustive `match` in
+  `export_build::render` (`export_build/mod.rs`, ~l. 400-535) plus `format_available`
+  (`mod.rs:229`); `jobs/export.rs::run` (`export.rs:142`) is one session-based pipeline
+  (snapshot → policy → render → upload → fenced record). A new `ExportFormat` variant
+  breaks the build until those matches gain an arm, and the struct literal
+  `ExportRequest { .. }` in `routes/exports.rs:96` breaks when `ExportRequest` gains a
+  field. The original "`jobs/export.rs` match arm" seam did not exist.
+- Router: every `/v1` router is merged in `routes/mod.rs:39-62`; auth is by extractor, not
+  by a layer, so "public" means the handlers take no `UserPrincipal`. A router-scoped
+  layer is the existing pattern for per-router state (`users.rs:76`,
+  `.layer(Extension(StepUpLimiter::new()))`); public share routes need no `app.rs` edit.
+  `Config.console_origin` (`ASD_CONSOLE_ORIGIN`, `config.rs:51`) is the base for
+  `ShareLink.url`; when unset, `url` is the relative `/share/<id>`.
+- No password-change mechanism exists: no `password_must_change` column, no
+  self-service `POST /users/me/password`, and `UpdateUserRequest` carries no password.
+  This shapes WP-B.24 below.
+- Console: the API registers per domain in **four shared files**: `lib/api/types.ts`
+  (`CurvApi extends ...`, `types.ts:477`), `lib/api/index.ts` (`export *`),
+  `lib/api/live.ts` (spread `createLiveX(request, buildQuery)`) and `lib/api/mock.ts`
+  (spread `createMockX(..)` inside `createMockClient`, per-user view through `forToken`,
+  `mock.ts:715`; new mock methods are wrapped by the enrolment-required gate unless
+  added to `ENROLMENT_ONLY_EXEMPT`). `lib/permissions.ts` (`UiAction`, `MATRIX`,
+  `NO_SUPERADMIN`) is one file. Nav entries live in `lib/nav.ts`, not
+  `components/NavLinks.tsx`. `EXPORT_FORMATS` (`lib/api/exports.ts:14`) must equal
+  `$defs.ExportFormat.enum` (`contract.test.ts:277`, `privacy.contract.test.ts:72`) and
+  feeds `ExportForm.tsx:53` and `IntegrationForm.tsx:146` option lists, and
+  `exportsText.formats` is keyed by it. The participant workspace is
+  `app/[org]/participants/[id]/page.tsx` (tab list and panels) with `actions.ts`;
+  `ParticipantHeader` takes only `participant`.
+- Console guard: `lib/auth/guard.ts:5` `PUBLIC_PATHS = ["/login"]`, and `decideGuard`
+  sends a signed-in user on a public path to `/` (`redirect-home`). `/share/...` is
+  therefore **not** public today, and simply adding it to `PUBLIC_PATHS` would bounce
+  signed-in staff who open a share link. C.19 must edit `guard.ts` (originally forbidden).
+- Console C.21: `proxy.ts` sets `x-pathname` and the CSP per request; the HIP-2 verdict
+  (`session-policy.ts` `evaluate`) is computed for non-public paths, the redirect happens on
+  document loads only (`Sec-Fetch-Dest: document` without `RSC`), and `curv_last_seen` is
+  refreshed on every authenticated non-prefetch request (technical.md HIP-2 was amended to
+  this; trap 25 below is updated). Server actions have Next's default 1 MB body limit
+  (`next.config.ts` sets no `serverActions.bodySizeLimit`): a 10 MiB attachment upload
+  must go through a route handler, as `app/api/report/[id]/route.ts` and
+  `app/api/export/[id]/route.ts` do for downloads.
+
+**Corrections per package**
+
+- **All wave 2 Rust packages.** Do not run `cargo sqlx prepare` and do not commit
+  `rust/.sqlx/`, `Cargo.lock`, `api-v1.json` or `rust/README.md`: three backend packages
+  run in parallel, and `prepare --workspace` rewrites the whole directory. Build and test
+  against a migrated `DATABASE_URL` (`SQLX_OFFLINE=false`); put the README section text in
+  the report. The main session runs `prepare`, regenerates the schema and pastes README
+  sections at integration. Run B.19, I.13 and B.24 with `isolation: "worktree"` (they
+  share the `asd-backend` crate, so a half-written file in one breaks the others'
+  `cargo test` in a shared tree); C.18 and C.19 likewise for the console.
+- **Step 0 (new, before 2a).** Everything two 2a packages would both edit, done once, alone:
+  RBAC actions, contract additions, router and console registration stubs. See below.
+- **WP-B.19.** `rbac.rs`, `tests/rbac_matrix.rs` and `routes/mod.rs` move to step 0
+  (it fills the stub files step 0 creates). Search rows reuse the `routes/participants.rs`
+  list row builder so `has_patient_ref` rules match, and serialise `ParticipantSearchRow`
+  (flattened). Create mints `participant_token_from_uuid(Uuid::new_v4())` and answers
+  `CreatedParticipant { participant, qr_payload: qr_payload(org, &token) }` (`201`).
+  Attachment `PUT …/content` calls `crate::blob::verify_content_digest(&headers, &body)`
+  over the **plaintext** body before encrypting. Read audits through
+  `audit::record_read` (`encounter.read` when a summary is returned, `attachment.read`,
+  `participant.search` per page with ids). Timeline kinds come from step 0. Erasure: B.19
+  owns `jobs/erasure.rs` alone in 2a; I.13's share-link hunk moves to I.13b (2b).
+- **WP-I.13.** `asd-contract/src/export.rs` moves to step 0 (I.13 edits no contract file).
+  The "`jobs/export.rs` match arm" becomes a refactor: I.13 splits `run` into a per-format
+  build step and one shared fenced `finish` (upload, `export_items`, status, `export.complete`
+  audit, deliveries) so B.23 adds one arm in 2b. The case input builder is a new
+  `export_build/case.rs` (not `record.rs`), mapping rows → `asd_export::case_package::
+  CasePackageInput`. Share routes live in `routes/share.rs` (stub from step 0) as one
+  router: the authenticated `DELETE /share-links/{id}` plus a nested public sub-router
+  with its own `no-store` + `X-Robots-Tag` layers and an `Extension` rate limiter; no
+  `app.rs` edit. Migration 0025 also rewrites `exports_format_check` for `case_package`
+  and `audit_csv`. Share-link audits use `AuditEvent::system(..).meta(&meta)` like
+  `export.file_served`; the download writes `share_link.download` (target `share_link`,
+  `after: {export_id}`) in the same transaction as the counter update, before streaming.
+  Expired link → `410 share-link-expired`. `ShareLink.url` from `console_origin`.
+  Idempotency test: identified mode only (salt caveat above). Loading encounters and
+  attachments (B.19's 0024 tables) and the `jobs/erasure.rs` hunk (SHR-11) move to
+  **I.13b** in 2b.
+- **WP-C.18.** Registration in `types.ts` / `index.ts` / `live.ts` / `mock.ts` and the new
+  `UiAction`s in `permissions.ts` move to step 0; C.18 fills `lib/api/emr.ts` and
+  `lib/api/mock/emr.ts` (stubs from step 0). Nav is `lib/nav.ts`, not `NavLinks.tsx`. Adds
+  the workspace page and its `actions.ts` (tabs and panels), and route handlers
+  `app/api/attachments/[id]/route.ts` (GET download, `no-store`) and
+  `app/api/attachments/[id]/content/route.ts` (PUT upload; server actions cap bodies at
+  1 MB). TOTP reset calls `POST /orgs/{id}/users/{user_id}/totp/reset` through a new
+  method in `lib/api/admin.ts` (+ `mock/admin.ts`). `Content-Digest` with colons.
+- **WP-C.19.** May edit `lib/auth/guard.ts` (anonymous paths `/share/` and `/api/share/`:
+  no auth guard, no `redirect-home`, no HIP-2 logoff) and `tests/auth.test.ts`; `proxy.ts`
+  stays untouched if the guard change suffices. Owns `lib/api/exports.ts` +
+  `mock/exports.ts` (case request, new `Export` fields), `ExportForm.tsx` and the exports
+  detail page. `X-Robots-Tag` and `no-store` for `/share/:path*` and `/api/share/:path*`
+  go in `next.config.ts` `headers()` (C.19 owns that file in wave 2) plus `robots:
+  noindex` page metadata. Strings in `messages/exports.ts` only (C.18 owns
+  `messages/participant.ts`); `ParticipantHeader.tsx` reads the role itself
+  (`currentRole()`) so `page.tsx` (C.18's) is not edited; the share server action goes in
+  a new `app/[org]/participants/[id]/share-actions.ts`.
+- **WP-B.23.** Moves to **2b** (after I.13 and C.18 are integrated): it edits
+  `jobs/export.rs`, `export_build/mod.rs`, `routes/exports.rs` (I.13's in 2a) and
+  `messages/admin.ts` (C.18's in 2a). No contract or migration edit: `ExportFormat::
+  AuditCsv` and the audit filter fields come from step 0, the CHECK from 0025. Request
+  shape pinned: `format: audit_csv`, `mode: deidentified`, `purpose:
+  quality_improvement` (anything else `400 validation-failed`), filters `from`, `to`,
+  `actor_id`, `action_prefix` only; `AuditExport` checked in addition to the route's
+  `ExportDeidentified` extractor (researcher → 403).
+- **WP-B.24 (new).** Emergency password reset from the server shell; 2a, alone on
+  `admin.rs` / `main.rs`.
+- **Wave 3.** B.21 must also edit `asd-export::case_package` (the input has no identity
+  field) and `asd-contract::emr::ParticipantSearchRequest` (no name field; frozen only
+  until wave 3), and builds on `export_build/case.rs`. C.20 edits C.18's workspace
+  `page.tsx` and search page. A.16b wraps `parse_qr_payload` in `asd-ffi` with a UniFFI
+  record/error (QrParseError is not exportable as is) and passes the scanned token as the
+  `profileToken:` argument of A.16a's `participantToken(enrollment:profileToken:)`.
+
+**Wave 1 items that look like defects (fix before 2a; owner: main session)**
+
+1. HIP-2 is not enforced on client-side navigation: `proxy.ts:86-101` computes `idle` /
+   `expired` but only redirects document loads; an RSC navigation or server action from
+   an idle tab still passes (`decision` `allow`, or `refresh` mints new tokens), so an idle
+   tab keeps showing PHI until a full reload. Fix: when the verdict is not `ok` on a
+   non-document request, clear the auth cookies and answer a redirect to
+   `/login?reason=...` (Next follows middleware redirects on RSC fetches) or `401` for
+   server actions; add proxy tests. C.19's anonymous paths touch the same decision, so
+   fix this first.
+2. `export.file_served` is attributed to `system` (`routes/exports.rs:497-517`) although
+   `verify_download_token` returns the requesting user's id: use
+   `AuditEvent::user_id(user, Some(row.org_id), ..)`. Small; improves the 164.528
+   disclosure record.
+3. Two independent step-up limiters (`users.rs:76`, `clinical_reviews.rs:54`, each
+   `StepUpLimiter::new()`): a password guesser gets one budget per router. Share one
+   instance (e.g. built once in `routes::v1()` and layered on both routers).
+4. Minor, one-source rule: `case_package::sanitise_file_name` (`case_package/mod.rs:224`)
+   differs from `asd_contract::emr::sanitize_file_name` (no leading-dot strip, no
+   120-character cut). Harmless inside `attachments/<id>-<name>`, but call the contract
+   function.
+
+### Wave 2 step 0: seam commit - main session (or one `implementer`, alone) - size S
+
+Goal: make every file that two wave 2 packages would both edit exist in its final shape,
+so 2a is file-disjoint. No behaviour beyond compiling placeholders.
+Files (Rust): `asd-backend/src/auth/rbac.rs` (actions `ParticipantCreate`,
+`EncounterWrite`, `AttachmentWrite`, `CaseShare`, `ShareLinkManage`, `AuditExport` in
+`Action`, `Action::ALL`, `MATRIX` per REC-8 and the `perm` markers; `AttachmentWrite`,
+`CaseShare`, `ShareLinkManage` join `CLINICAL_CONTENT_ACTIONS`), `tests/rbac_matrix.rs`
+(the rows, incl. superadmin denials), `routes/mod.rs` (`pub mod` + `.merge(..)` for
+`encounters`, `attachments`, `follow_ups`, `share`) with four stub files each
+`pub fn router() -> Router<AppState> { Router::new() }` (owned afterwards by B.19 / I.13),
+`asd-contract/src/clinical.rs` (`TimelineEntryKind::{Encounter => "encounter", Attachment
+=> "attachment"}`), `asd-contract/src/privacy.rs` (`ErasureOutcome.attachments_deleted:
+u64`, `#[serde(default)]`), `asd-contract/src/export.rs` (`ExportFormat::{CasePackage =>
+"case_package", AuditCsv => "audit_csv"}`; `ExportRequest.case:
+Option<emr::CaseShareRequest>` `#[serde(default, skip_serializing_if)]`;
+`ExportFilters.actor_id`, `action_prefix: Option<String>`; `Export.case_participant_id:
+Option<String>` and `share_links_n: u32`, both `#[serde(default)]`; the example),
+`asd-backend/src/export_build/mod.rs` (`format_available` refuses both new formats with
+"not available yet" so the API answers `400` until their package lands; `render` arms
+`Unsupported`; `ExportRow::dto` fills the two new `Export` fields with `None` / `0`),
+`routes/exports.rs` (the `ExportRequest` literal gains `case: None`; a non-`audit_csv`
+request with `actor_id` / `action_prefix` → `400 validation-failed`), any other match the
+compiler names (report each). Files (console): `src/lib/permissions.ts` (`participant.create`,
+`encounter.write`, `attachment.write`, `case.share`, `sharelink.manage`, `audit.export`,
+`user.totp_reset` with the REC-8 roles; the clinical ones in `NO_SUPERADMIN`),
+`src/lib/api/{emr,share}.ts` and `src/lib/api/mock/{emr,share}.ts` stubs (empty `EmrApi`,
+`ShareApi` interfaces and factories), their registration in `lib/api/types.ts`
+(`CurvApi extends`), `index.ts`, `live.ts`, `mock.ts`, `lib/api/exports.ts`
+(`EXPORT_FORMATS` gains both values; `ExportForm.tsx` and `IntegrationForm.tsx` filter them
+out of the generic option lists; `messages/exports.ts` names), `lib/api/participant.ts`
+(`TIMELINE_KINDS`) with `messages/participant.ts` labels and, only if typecheck demands it,
+a placeholder arm in `components/participant/Timeline.tsx`, `lib/api/privacy.ts`
+(`attachments_deleted` optional).
+Not to touch: anything a 2a package owns beyond the stub bodies.
+Also: fix defects 1-3 above (and 4 if cheap), then `cargo run -p asd-cli -- schema export`
+so 2a starts from an `api-v1.json` that has the new `$defs` and enum values.
+Gates: `scripts/rust_test.sh`, `cargo sqlx prepare --workspace`, `scripts/build_asd_wasm.sh
+--test`, console `npm test`, `npm run typecheck`, `npm run lint`, `CURV_API_MODE=mock npm
+run build`; commit before 2a starts.
 
 ### WP-B.19 EMR-lite backend: participants create, encounters, attachments, follow-ups, search - `S` - size I
 
 Goal: REC-1..8, REC-10 (acceptance 1–5), migration **0024**.
 Files: `asd-backend/migrations/0024_emr_lite.sql` (REC-3, REC-6, `sessions.encounter_id`,
-`clinical_notes.encounter_id`, indexes), `asd-backend/src/auth/rbac.rs` (REC-8 actions;
-`CLINICAL_CONTENT_ACTIONS` gains the attachment and share actions), new
-`asd-backend/src/routes/{encounters,attachments,follow_ups}.rs`, `routes/participants.rs`
-(`POST /orgs/{id}/participants`, `POST …/participants/search`), `routes/mod.rs` (merge
-lines), `src/read/timeline.rs` (REC-5 entry kinds), `src/crypto/mod.rs` only if a
-streaming AEAD helper for ≤ 10 MiB bytes is missing (one function; AAD rule unchanged),
-`src/jobs/erasure.rs` (delete attachments + blobs; hold rule), `rust/.sqlx/` (regenerated
-by the package), `asd-backend/tests/{emr_participants,encounters,attachments,follow_ups,
-participant_search}.rs` (new), `tests/rbac_matrix.rs` (rows), `tests/timeline.rs` (kinds).
-Not to touch: `asd-contract` (R.7 defined the types; a missing field goes in the report
-and is added by the main session), `routes/exports.rs`, `jobs/export.rs` (I.13),
-`routes/users.rs`, `auth/totp*.rs`.
-Tests first: acceptance 1–5 as integration tests; RBAC matrix per role for every new
-action incl. superadmin denials; AAD mismatch on `summary_ct` (copy ciphertext between
-rows) → 500 on read, no plaintext in logs; attachment bytes in the blob store are not the
-uploaded bytes and decrypt to them; `digest-mismatch` through B.20's helper; erasure
-removes attachments and blobs; timeline shows headers only; `participant.read` audit
-rows from B.20 still fire; `log_redaction.rs` extended with `summary`/`reason` patterns
-(`summary` ends-with rule, like `impression`).
-Commands: `scripts/rust_test.sh`, `cargo sqlx prepare --workspace`, `cargo run -p asd-cli
--- schema check`.
-Depends on: R.7, B.20 (helper). Parallel with: I.13, C.21 (if late), A.14, B.23.
+`clinical_notes.encounter_id`, indexes, `asd_app` grants on the new tables),
+`asd-backend/src/routes/{encounters,attachments,follow_ups}.rs` (stubs from step 0; B.19
+fills them), `routes/participants.rs` (`POST /orgs/{id}/participants` → `201
+CreatedParticipant`, token from `participant_token_from_uuid(Uuid::new_v4())`, insert with
+the ingest shape `ON CONFLICT (org_id, token)`; `POST …/participants/search` →
+`ParticipantSearchPage`, rows built by the existing list row builder + the two counters),
+`src/read/timeline.rs` (REC-5 entries for the step-0 kinds; session entries carry
+`encounter_id` in their `summary` header map), `src/crypto/mod.rs` only if a helper for
+≤ 10 MiB bytes is missing (one function; AAD rule unchanged), `src/jobs/erasure.rs`
+(sole owner in 2a: delete attachments + blobs, hold rule as for notes,
+`ErasureOutcome.attachments_deleted`), `asd-backend/tests/{emr_participants,encounters,
+attachments,follow_ups,participant_search}.rs` (new), `tests/timeline.rs` (kinds),
+`tests/log_redaction.rs` (`summary`/`reason` patterns).
+Seams to use: `asd_contract::emr` types and limits (ids are `String`; parse to `Uuid` or
+`404`); `crate::blob::verify_content_digest(&headers, &body)` on the plaintext body of
+`PUT /attachments/{id}/content` before encrypting; `crate::audit::record_read(&state.db,
+&auth.principal, &meta, org, action, target_type, &id, after)` for `attachment.read`,
+`encounter.read` (when a summary is returned) and `participant.search` (one row per page,
+ids in `after`); `Require<perm::ParticipantCreate>` etc. from step 0. `UploadTarget.url` is
+the API-relative path `/v1/attachments/{id}/content`. Expose one `pub(crate)` function in
+`routes/attachments.rs` that loads and decrypts an attachment's bytes for a given org and
+id (the `GET` handler uses it; I.13b calls it for case packages).
+Not to touch: `asd-contract` (a missing field goes in the report), `auth/rbac.rs`,
+`routes/mod.rs`, `tests/rbac_matrix.rs` (step 0), `routes/exports.rs`, `jobs/export.rs`,
+`export_build/**`, `routes/share.rs` (I.13), `routes/users.rs`, `auth/totp*.rs`,
+`admin.rs`, `main.rs` (B.24), `rust/.sqlx/`, `rust/README.md` (text in the report).
+Tests first: acceptance 1–5 as integration tests; per-role checks for every new route incl.
+superadmin denials (attachment write and read); AAD mismatch on `summary_ct` (copy
+ciphertext between rows) → 500 on read, no plaintext in logs; attachment bytes in the blob
+store are not the uploaded bytes and decrypt to them; `digest-mismatch` and malformed
+digest through the helper; a create for a token a device already posted links, never 409;
+erasure removes attachments and blobs (held participant keeps them); timeline shows headers
+only; B.20's `participant.read` rows still fire; `log_redaction.rs` extended with
+`summary`/`reason` patterns (`summary` ends-with rule, like `impression`).
+Commands: `scripts/rust_test.sh` (UTF-8 Postgres, `SQLX_OFFLINE=false`), `cargo run -p
+asd-cli -- schema check`. Isolation: worktree.
+Depends on: step 0. Parallel with: I.13, B.24, C.18, C.19, A.14.
 
 ### WP-I.13 Case-package export format and share links (backend) - `S` - size I
 
-Goal: SHR-7..9, SHR-11, HIP-8, HIP-9 (acceptance 6, 7, 9, 10 backend parts), migration
-**0025**.
-Files: `asd-backend/migrations/0025_case_share.sql` (SHR-7 columns on `exports`, SHR-8
-`share_links`), `asd-contract/src/export.rs` (`ExportFormat::case_package`, `case:
-Option<CaseShareRequest>` on `ExportRequest`, `Export` gains `case_participant_id`,
-`share_links_n`), `asd-backend/src/jobs/export.rs` (the `case_package` match arm:
-snapshot every session of the participant (filtered), encounters, notes if
-`ClinicalContentRead`, attachments if asked; render through `asd-export::case_package`;
-one `export_items` row per session), `src/export_build/record.rs` (the case input
-builder), `src/routes/exports.rs` (request validation for `case`; `POST
-/exports/{id}/share-link`, `GET /exports/{id}/share-links`), new `src/routes/share.rs`
-(`DELETE /share-links/{id}`, public `POST /share/{id}/open`, `GET /share/{id}/file`,
-rate limits, audit with IP; mounted **outside** the authenticated router), `src/app.rs`
-(mount the public router; `no-store` + `X-Robots-Tag` layer on it), `src/jobs/erasure.rs`
-(SHR-11: revoke links; B.19 edits the same file for attachments: I.13 adds a separate
-function called from the existing export-expiry block, B.19 adds its own; the main
-session merges the two additive hunks), `rust/.sqlx/`, `asd-backend/tests/{case_package_export,share_links}.rs`
-(new), `tests/export_jobs.rs` (dispatch arm), `tests/rbac_matrix.rs` (`CaseShare`,
-`ShareLinkManage` rows if B.19 has not added them; coordinate: B.19 adds the actions,
-I.13 uses them, so I.13 starts after B.19's rbac commit or stubs with `ExportIdentified`
-until integration and says so).
-Not to touch: `asd-export` (consume it), `routes/participants.rs`, `routes/encounters.rs`,
-the console.
+Goal: SHR-7..9, HIP-8, HIP-9 (acceptance 6, 7, 9, 10 backend parts), migration **0025**.
+SHR-11 is I.13b in 2b.
+Files: `asd-backend/migrations/0025_case_share.sql` (SHR-7 columns on `exports`:
+`case_recipient_ct`, `case_consent_reference`, `case_consent_recorded_at`,
+`case_participant_id`; SHR-8 `share_links`; drop and re-add `exports_format_check` with
+`case_package` **and** `audit_csv`; `asd_app` grants), `asd-backend/src/jobs/export.rs`
+(split `run` into a per-format build step and one shared fenced `finish(..)` that uploads,
+rewrites `export_items`, sets the row `succeeded`, audits `export.complete` and queues
+deliveries; the `case_package` build: snapshot every session of the participant (or the
+listed ones), policy-filtered, notes if the requester holds `ClinicalContentRead`
+(encounters and attachments: I.13b); leave an `AuditCsv` arm
+returning `Unsupported` for B.23), `src/export_build/mod.rs` (`ExportRow` + `load_export`
+gain the case columns; `dto()` fills `case_participant_id` and `share_links_n`;
+`format_available` admits `case_package`), new `src/export_build/case.rs` (rows →
+`asd_export::case_package::CasePackageInput`: `CaseSession` from the existing
+`record::load` snapshot, empty encounter and attachment lists until I.13b, `CaseConsent.recorded_by_display` = requester display name,
+`created_at` = the export row's `created_at`), `src/routes/exports.rs` (`case` validation
+per SHR-7: exactly one participant, `filters` empty, identified needs `CaseShare` +
+`ExportIdentified` + consent fields else `400 case-consent-missing`, de-identified needs
+`CaseShare` + `ExportDeidentified`, withdrawn → `409`; `POST /exports/{id}/share-link`,
+`GET /exports/{id}/share-links`), `src/routes/share.rs` (stub from step 0: `DELETE
+/share-links/{id}` plus a nested public sub-router for `POST /share/{id}/open` and `GET
+/share/{id}/file` with its own `no-store` and `X-Robots-Tag: noindex` layers and an
+`Extension` rate limiter keyed by link and by IP), `asd-backend/tests/{case_package_export,
+share_links}.rs` (new), `tests/export_jobs.rs` (dispatch and `finish` refactor),
+`tests/export_support/` (a forbidden-string helper reused from I.12's list).
+Seams to use: `asd_contract::emr::{CaseShareRequest, ShareLink, CreateShareLinkRequest,
+CreatedShareLink, ShareLinkPage, ShareLinkOpenRequest, ShareLinkOpenResponse}` and the
+`SHARE_*` constants (defaults 72 h / 1 download); `ShareLink.url` = `console_origin` +
+`/share/<id>` (relative when unset); passcode hashed with the AUTH-1 Argon2id params;
+`download_token` HMAC as EXJ-5; share audits `share_link.create`, `.revoke`, `.open`,
+`.open_failed`, `.download` with `AuditEvent::system(..).org(..).meta(&meta)` (IP) for the
+public ones, in the request's transaction, failure = 500, never best-effort; expired →
+`410 share-link-expired`, exhausted → `410 share-link-exhausted`, unknown or revoked →
+`404`, export gone → `410 export-expired`.
+Not to touch: `asd-export` (consume it), `asd-contract` (step 0 did it), `auth/rbac.rs`,
+`routes/mod.rs`, `app.rs`, `routes/participants.rs`, `routes/encounters.rs`,
+`routes/attachments.rs`, `jobs/erasure.rs` (B.19 in 2a; I.13b in 2b), `admin.rs`,
+`main.rs`, the console, `rust/.sqlx/`, `rust/README.md`.
 Tests first: validation table (identified without consent → 400; researcher identified →
 403; research purpose → de-identified only and consent-filtered; withdrawn → 409; two
-participants → 400); job idempotent (same export id → same sha256); de-identified archive
-grep (reuse I.12's forbidden-string list through a shared test helper file under
-`tests/export_support/`); share link: create returns the passcode once; open with wrong
-passcode 401 + audit `open_failed` with IP; right passcode → download token; download
-decrements atomically under 10 concurrent requests (exactly `max_downloads` succeed);
-revoked/unknown/expired → 404 or 410 per SHR-9; rate limit 11th open → 429; erasure
-revokes; `export.file_served` audit for the share download (B.20's action name).
-Commands: `scripts/rust_test.sh`, `cargo sqlx prepare --workspace`, `cargo run -p asd-cli
--- schema check`.
-Depends on: R.7, I.12, B.20. Parallel with: B.19, A.14, B.23.
+participants → 400; non-empty `filters` → 400); identified job idempotent (same export id →
+same sha256 on a forced retry); de-identified: one recorded artifact after a reclaim, and
+the archive greps clean (shared helper); share link: create returns the passcode once and
+the list never does; wrong passcode 401 + `share_link.open_failed` with IP; right passcode
+→ download token; download decrements atomically under 10 concurrent requests (exactly
+`max_downloads` succeed); revoked/unknown → 404, expired → 410; 11th open per link → 429
+with `Retry-After`; public responses carry `no-store` and `X-Robots-Tag`; the passcode and
+token never reach logs (`log_redaction` style assertion in the new test file).
+Commands: `scripts/rust_test.sh` (`SQLX_OFFLINE=false`), `cargo run -p asd-cli -- schema
+check`. Isolation: worktree.
+Encounters and attachments are **not** loaded in 2a: their tables are B.19's 0024, which
+does not exist in I.13's worktree, and `sqlx::query!` would not compile. In 2a,
+`export_build/case.rs` passes `encounters: vec![]`, `attachments: vec![]` and
+`CaseShareRequest.include_attachments` is accepted but has no effect yet (say so in the
+report); I.13b adds both.
+Depends on: step 0, I.12, B.20. Parallel with: B.19, B.24, C.18, C.19, A.14.
+
+### WP-I.13b Case package completion: encounters, attachments, erasure (SHR-1, SHR-11) - `I` - size S - wave 2b
+
+Same tracker row as I.13 (continue the I.13 agent). Files: `src/export_build/case.rs`
+(load the participant's encounters, summaries only with `ClinicalContentRead`, and, for
+identified packages with `include_attachments`, decrypt the attachments through B.19's
+helper; map onto `CaseEncounter` / `CaseAttachment`), `src/jobs/erasure.rs` (phase 1 also
+matches `exports.case_participant_id = participant`, so a case package with no included
+session is still expired; phase 3 revokes the share links of every export it expires,
+audit `share_link.revoke` with `reason: erasure`), `tests/case_package_export.rs`
+(encounters and attachments present in identified, absent in de-identified),
+`tests/share_links.rs` (erasure case). Depends on: 2a integrated. Parallel with: B.23.
+
+### WP-B.24 `asd-backend admin reset-password` (emergency access) - `I` - size S
+
+Goal: 164.312(a)(2)(ii) emergency access for a clinic whose only owner lost the password
+(`docs/security/policies/emergency-access.md`, row "Password forgotten by the only owner").
+Server shell only: no HTTP route, no console change, nothing a vendor can call remotely.
+Behaviour: `asd-backend admin reset-password --user <uuid>` sets a new Argon2id hash
+(`auth::password::hash_blocking`) for an **active** user (`disabled` or `invited` → exit 2,
+nothing changed; unknown → exit 2 `UserNotFound`), revokes every refresh-token family
+(`auth::refresh::revoke_user`, same transaction), writes audit `user.password_reset`
+(`AuditEvent::system`, `after: {"actor": "operator", "via": "cli", "role": ..,
+"generated": true|false}`, org of the user; never the password or hash) and does **not**
+touch TOTP (a user who also lost the authenticator needs `reset-totp` as well, audited
+separately). Password source: by default a generated temporary password (20 characters from
+`asd_contract::emr::SHARE_PASSCODE_ALPHABET`, `getrandom`), printed once on stdout and
+nowhere else (not logged, not in the audit row); if `ASD_ADMIN_PASSWORD` is set, that
+value is used instead (checked with `password::validate_new`), so the owner can type their
+own at the server keyboard and the helper never learns it. Stderr says: hand it over in
+person, access tokens already issued stay valid up to 15 minutes, and there is no forced
+change at next sign-in.
+Forced change: **no mechanism exists** (no `password_must_change` column, no
+self-service password route, `UpdateUserRequest` has no password). B.24 does not invent
+one; the gap (a temporary password stays valid until the next reset) goes in the report
+as a proposed follow-up (`POST /v1/users/me/password` + a must-change flag gating
+everything but that route, one migration), for the owner to schedule.
+Files: `asd-backend/src/admin.rs` (`AdminCommand::ResetPassword { user_id }`, parse arm
+next to `reset-totp`, `USAGE` line, `reset_password(pool, user_id, supplied:
+Option<String>) -> Result<String, AdminError>`, unit tests for parsing and the generator
+alphabet/length), `asd-backend/src/main.rs` (dispatch arm; read `ASD_ADMIN_PASSWORD` for
+this command only, no stdin prompt), new `asd-backend/tests/admin_password.rs`,
+`docs/security/policies/emergency-access.md` (that one table row: replace the "[Confirm
+the exact command ...]" note with the command and the two-person rule; nothing else).
+README section text in the report.
+Not to touch: `auth/password.rs`, `auth/refresh.rs`, `auth/totp.rs` (call them),
+`routes/**`, migrations, every other `admin.rs` subcommand.
+Tests first: generated password logs in (`POST /auth/login`) and the old one fails; old
+refresh token → 401; TOTP columns and `totp_required_by` unchanged (an enrolled user still
+gets `totp-required`); audit row present with no password or hash anywhere in it;
+`ASD_ADMIN_PASSWORD` too short → exit 2, nothing changed; disabled user → exit 2; unknown
+id → exit 2; `tests/admin.rs` and `tests/admin_restore.rs` still pass.
+Commands: `scripts/rust_test.sh`, `cargo clippy -p asd-backend`. Isolation: worktree.
+Depends on: nothing in wave 2. Parallel with: everything in 2a. Must not run beside any
+package that edits `admin.rs` or `main.rs` (none in wave 2; B.22 and B.17 are merged).
 
 ### WP-C.18 Console: record workspace (visits, attachments, follow-ups, search, create participant, TOTP reset) - `I` - size I
 
 Goal: REC-1..7 console side, TRS-3 (acceptance 1–5, 12 UI).
-Files: `src/lib/api/emr.ts` + `src/lib/api/mock/emr.ts` (zod from `api-v1.json`, UI-5
-rule), `src/lib/api/emr.contract.test.ts`, `src/components/participant/{EncountersPanel,
-EncounterForm,AttachmentsPanel,AttachmentUpload}.tsx`, `src/components/participant/ParticipantTabs.tsx`
-(Visits and Attachments tabs), `src/components/participant/Timeline.tsx` (new entry
-kinds), new `src/app/[org]/follow-ups/page.tsx`, `src/app/[org]/participants/page.tsx`
-(search form: POST server action, UI-4), new `src/components/participant/CreateParticipantDialog.tsx`
-(shows token + QR via the existing `QrCode.tsx`), `src/components/UsersAdmin.tsx` +
-`src/app/[org]/users/actions.ts` (TRS-3 reset dialog with step-up, UI-3),
-`src/components/NavLinks.tsx` (Follow-ups entry by role), `src/messages/{participant,admin}.ts`,
-`tests/{emr,participant}.test.tsx`, `e2e/participant.spec.ts` (mock: create, encounter,
-attachment, follow-up, search) and `e2e/live/*` where the backend exists.
-Not to touch: `src/proxy.ts`, `lib/auth/**`, `lib/csp.ts`, exports components (C.19),
-`src/app/share/**` (C.19), any Rust file.
+Files: `src/lib/api/emr.ts` + `src/lib/api/mock/emr.ts` (stubs from step 0; zod from
+`api-v1.json`, UI-5 rule; flattened `ParticipantSearchRow` / `CreatedParticipant` as
+`participantSchema.extend(..)`), `src/lib/api/emr.contract.test.ts`,
+`src/lib/api/admin.ts` + `mock/admin.ts` (`resetUserTotp(orgId, userId, {password,
+totp_code?, reason})` → `POST /orgs/{id}/users/{user_id}/totp/reset`, 204),
+`src/components/participant/{EncountersPanel,EncounterForm,AttachmentsPanel,
+AttachmentUpload,CreateParticipantDialog}.tsx` (new; the dialog shows token + QR via
+`QrCode.tsx`), `ParticipantTabs.tsx`, `Timeline.tsx` (new entry kinds),
+`src/app/[org]/participants/[id]/{page,actions}.tsx` (Visits and Attachments tabs and
+panels), `src/app/[org]/participants/page.tsx` (search form: POST server action, UI-4;
+create button), new `src/app/[org]/follow-ups/page.tsx`, new route handlers
+`src/app/api/attachments/[id]/route.ts` (GET, streams with `no-store`) and
+`src/app/api/attachments/[id]/content/route.ts` (PUT; forwards the body and
+`Content-Digest`, refuses > 10 MiB), `src/components/UsersAdmin.tsx` +
+`src/app/[org]/users/actions.ts` (TRS-3 reset dialog with step-up, UI-3), `src/lib/nav.ts`
+(Follow-ups entry by role), `src/messages/{participant,admin}.ts`,
+`tests/{emr,participant,totp-reset}.test.tsx`, `e2e/participant.spec.ts` (mock: create,
+encounter, attachment, follow-up, search, reset) and `e2e/live/*` where the backend exists.
+Not to touch: `src/proxy.ts`, `lib/auth/**`, `lib/csp.ts`, `lib/permissions.ts`,
+`lib/api/{types,index,live,mock}.ts` (step 0), `lib/api/exports.ts`, exports components,
+`ParticipantHeader.tsx`, `src/app/share/**`, `next.config.ts` (C.19), any Rust file.
 Tests first: zod vs `api-v1.json` contract test; admin sees no summary field and gets the
 400 mapped to a message; clinician sees it; follow-ups page sorts by due date; attachment
-upload computes `Content-Digest` in the browser (SubtleCrypto) and refuses > 10 MiB
-client-side with the same message the API gives; no token, summary or note in URLs or
-page titles; CSP listener silent; the TOTP reset dialog never keeps the password in
-React state (same pattern as the sign dialog test).
+upload computes `Content-Digest: sha-256=:<base64>:` in the browser (SubtleCrypto) and
+refuses > 10 MiB client-side with the same message the API gives; no token, summary or
+note in URLs or page titles; CSP listener silent; the TOTP reset dialog never keeps the
+password in React state (same pattern as the sign dialog test), maps
+`totp-reset-forbidden` and `reauthentication-failed`; the reset button is hidden for self
+and for targets above the caller's rank (`canEditUserRole`).
 Commands: `npm test`, `npm run lint`, `npm run typecheck`, `CURV_API_MODE=mock npm run
-build`, `npm run e2e`.
-Depends on: B.19 (and B.17's DTO for the reset). Parallel with: C.19, A.14, B.23.
+build`, `npm run e2e`. Isolation: worktree.
+Depends on: step 0 (mock-first; live e2e after B.19 is integrated). Parallel with: B.19,
+I.13, B.24, C.19, A.14.
 
 ### WP-C.19 Console: share-a-case dialog, share links, public `/share/[id]` page - `I` - size S
 
 Goal: SHR-10, HIP-9 (acceptance 6, 7, 9, 10 UI).
-Files: `src/components/exports/ExportForm.tsx` (the `case_package` branch is **not**
-added here; the case flow has its own dialog), new `src/components/participant/ShareCaseDialog.tsx`,
-`src/components/participant/ParticipantHeader.tsx` (the "Share case" action), new
+Files: `src/lib/api/share.ts` + `src/lib/api/mock/share.ts` (stubs from step 0),
+`src/lib/api/share.contract.test.ts`, `src/lib/api/exports.ts` + `mock/exports.ts`
+(`case` on `exportRequestSchema`, `case_participant_id` and `share_links_n` on
+`exportSchema`, mock case exports), new `src/components/participant/ShareCaseDialog.tsx`,
+`src/components/participant/ParticipantHeader.tsx` (the "Share case" action; reads the role
+with `currentRole()` itself), new `src/app/[org]/participants/[id]/share-actions.ts`, new
 `src/components/exports/ShareLinkPanel.tsx` (create, list, revoke; passcode shown once),
-`src/app/[org]/exports/[id]/page.tsx` (mount the panel for `case_package` exports), new
-`src/app/share/[id]/{page,actions}.tsx` (public; passcode form as a server action; download
-through a route handler `src/app/api/share/[id]/route.ts` that streams from the backend,
-UI-2), `src/lib/api/share.ts` + `src/lib/api/mock/share.ts`, `src/lib/api/share.contract.test.ts`,
-`src/messages/exports.ts`, `tests/share.test.tsx`, `e2e/share.spec.ts` (mock: dialog,
-link, public page happy path, wrong passcode, exhausted, revoked), `src/proxy.ts` is
-**not** edited: verify the public route is already outside the auth guard (login is), and
-if it is not, report it; the main session decides.
-Not to touch: participant workspace files of C.18 except `ParticipantHeader.tsx` (C.18
-does not edit it), `lib/auth/**`, any Rust file.
+`src/components/exports/ExportForm.tsx` (only if step 0's filter needs a touch; no case
+branch), `src/app/[org]/exports/[id]/page.tsx` (mount the panel for `case_package`),
+`src/app/[org]/exports/actions.ts` (share-link actions), new
+`src/app/share/[id]/{page,actions}.tsx` (public; passcode form as a server action),
+new `src/app/api/share/[id]/route.ts` (streams the file from the backend, UI-2),
+`src/lib/auth/guard.ts` (anonymous paths `/share/` and `/api/share/`: `decideGuard`
+answers `allow` with or without cookies, never `redirect-home`; `isPublicPath` true so
+the HIP-2 block skips them), `tests/auth.test.ts` (guard cases), `next.config.ts`
+(`headers()` entry for `/share/:path*` and `/api/share/:path*`: `Cache-Control: no-store`,
+`X-Robots-Tag: noindex, nofollow`), `src/messages/exports.ts`, `tests/share.test.tsx`,
+`e2e/share.spec.ts` (mock: dialog, link, public page happy path, wrong passcode,
+exhausted, expired, revoked; a signed-in user can open `/share/x` without a redirect).
+Not to touch: `src/proxy.ts` (if the guard change is not enough, report it), C.18's files
+(`page.tsx` and `actions.ts` of the workspace, `ParticipantTabs.tsx`,
+`messages/participant.ts`), `lib/permissions.ts` and the four registration files (step
+0), `lib/auth/{cookies,session-policy,server}.ts`, any Rust file.
 Tests first: the dialog refuses identified without a consent reference client-side with
 the API's message; the passcode is rendered once and not stored in state after close;
-`/share/[id]` sends `no-store` and `X-Robots-Tag: noindex`; CSP listener silent on the
-public page; the download handler never logs the token.
-Commands: as C.18.
-Depends on: I.13. Parallel with: C.18, A.14, B.23.
+`/share/[id]` and the download route send `no-store` and `X-Robots-Tag: noindex`; CSP
+listener silent on the public page; the download handler never logs the token; the public
+page sets no auth or HIP-2 cookies.
+Commands: as C.18. Isolation: worktree.
+Depends on: step 0 (mock-first; live e2e after I.13 is integrated). Parallel with: B.19,
+I.13, B.24, C.18, A.14.
 
 ### WP-A.14 Android front-camera gaze feasibility spike - `S` - size I (owner-facing)
 
@@ -437,29 +810,84 @@ Commands: `scripts/build_asd_android.sh`, `cargo run -p asd-cli -- gaze replay -
 <log>`.
 Depends on: A.12. Parallel with: everything in wave 2.
 
-### WP-B.23 Audit log export (`audit_csv`) - `I` - size S
+### WP-B.23 Audit log export (`audit_csv`) - `I` - size S - wave 2b
 
 Goal: HIP-3, REC-8's `AuditExport`.
-Files: `asd-contract/src/export.rs` (`ExportFormat::audit_csv`; I.13 edits the same enum:
-B.23 starts after I.13's contract commit or appends its variant at integration),
-`asd-backend/src/jobs/export.rs` (match arm), `src/export_build/audit.rs` (new: the row
-query with the EXJ filters subset), `asd-export/src/tabular/audit.rs` (new: the column
-set, canonical CSV through the existing encoder; no `before`/`after` payload columns beyond
-ids and hashes), `asd-backend/tests/audit_export.rs`, `asd-export/tests/audit_csv.rs`,
-`apps/curv_console/src/app/[org]/audit/page.tsx` (an "Export CSV" button that submits the
-export; one component), `src/messages/admin.ts`.
-Not to touch: `routes/orgs.rs` (`list_audit` unchanged), `audit.rs`.
-Tests first: owner/admin only; researcher 403; filters applied; formula escaping; the
-download is audited like any export; the exported file contains no clinical text.
-Commands: `scripts/rust_test.sh`, console gates.
-Depends on: I.13 (enum), B.20 (actions exist). Parallel with: B.19, C.18, C.19, A.14.
+Request shape (pinned): `POST /v1/orgs/{id}/exports` with `format: audit_csv`, `mode:
+deidentified`, `purpose: quality_improvement` (any other mode or purpose → `400
+validation-failed`), `filters` limited to `from`, `to`, `actor_id`, `action_prefix`
+(step 0 added the last two), `reason` as every export. `AuditExport` is authorised in
+addition to the route's `ExportDeidentified`.
+Files: `asd-backend/src/jobs/export.rs` (the `AuditCsv` build arm in I.13's per-format
+step; no `export_items` rows, `row_count` = audit rows), `src/export_build/mod.rs`
+(`format_available` admits it; `pub mod audit;`), new `src/export_build/audit.rs` (the row
+query with the filters), `src/routes/exports.rs` (the request rules above),
+`asd-export/src/tabular/audit.rs` (new: the column set, canonical CSV through the existing
+encoder and formula escaping; ids and hashes only, no `before`/`after` payload columns)
+and `asd-export/src/tabular/mod.rs` (`pub mod audit;`), `asd-backend/tests/audit_export.rs`,
+`asd-export/tests/audit_csv.rs`, console: `src/app/[org]/audit/page.tsx` (an "Export CSV"
+control shown with `can(role, "audit.export")`), new `src/app/[org]/audit/actions.ts`
+(submits through the existing `createExport`), `src/messages/admin.ts`.
+Not to touch: `asd-contract` (step 0), migrations (0025 has the CHECK), `routes/orgs.rs`
+(`list_audit` unchanged), `audit.rs`, `jobs/erasure.rs` (I.13b).
+Tests first: owner/admin only; researcher 403; superadmin 403; wrong mode or purpose 400;
+filters applied; formula escaping; the download is audited like any export; the file
+contains no clinical text and no `before`/`after` payloads.
+Commands: `scripts/rust_test.sh`, `cargo test -p asd-export`, console gates.
+Depends on: 2a integrated (I.13's dispatch and 0025, C.18's `messages/admin.ts`).
+Parallel with: I.13b.
+
+### Wave 2 parallel grouping and file ownership (final)
+
+Order: **step 0** (alone, committed) → **2a**: B.19, I.13, B.24, C.18, C.19, A.14 in
+parallel (backend and console packages in worktrees) → integration → **2b**: B.23, I.13b
+in parallel → integration.
+
+Write-sets (new files marked +):
+
+| Package | Write-set |
+|---|---|
+| step 0 | `auth/rbac.rs`, `tests/rbac_matrix.rs`, `routes/mod.rs`, + stubs `routes/{encounters,attachments,follow_ups,share}.rs`, `asd-contract/src/{export,clinical,privacy}.rs`, `export_build/mod.rs` (placeholders), `routes/exports.rs` (literal + filter rule), defect fixes (`proxy.ts`, `routes/exports.rs` file audit, `users.rs`/`clinical_reviews.rs` limiter), console `lib/permissions.ts`, `lib/api/{types,index,live,mock,exports,participant,privacy}.ts`, + stubs `lib/api/{emr,share}.ts`, `lib/api/mock/{emr,share}.ts`, `ExportForm.tsx`, `IntegrationForm.tsx`, `messages/{exports,participant}.ts`, `Timeline.tsx` (only if needed), `api-v1.json`, `.sqlx/` |
+| B.19 | + `migrations/0024_emr_lite.sql`, `routes/{encounters,attachments,follow_ups}.rs` (fill), `routes/participants.rs`, `read/timeline.rs`, `crypto/mod.rs` (if needed), `jobs/erasure.rs`, + `tests/{emr_participants,encounters,attachments,follow_ups,participant_search}.rs`, `tests/timeline.rs`, `tests/log_redaction.rs` |
+| I.13 | + `migrations/0025_case_share.sql`, `jobs/export.rs`, `export_build/mod.rs`, + `export_build/case.rs`, `routes/exports.rs`, `routes/share.rs` (fill), + `tests/{case_package_export,share_links}.rs`, `tests/export_jobs.rs`, `tests/export_support/*` |
+| B.24 | `admin.rs`, `main.rs`, + `tests/admin_password.rs`, `docs/security/policies/emergency-access.md` (one row) |
+| C.18 | `lib/api/{emr,admin}.ts`, `lib/api/mock/{emr,admin}.ts`, + `emr.contract.test.ts`, + `components/participant/{EncountersPanel,EncounterForm,AttachmentsPanel,AttachmentUpload,CreateParticipantDialog}.tsx`, `ParticipantTabs.tsx`, `Timeline.tsx`, `app/[org]/participants/[id]/{page,actions}.tsx`, `app/[org]/participants/page.tsx`, + `app/[org]/follow-ups/page.tsx`, + `app/api/attachments/[id]/route.ts`, + `app/api/attachments/[id]/content/route.ts`, `UsersAdmin.tsx`, `app/[org]/users/actions.ts`, `lib/nav.ts`, `messages/{participant,admin}.ts`, `tests/participant.test.tsx`, + `tests/{emr,totp-reset}.test.tsx`, `e2e/participant.spec.ts`, `e2e/live/*` (new files only) |
+| C.19 | `lib/api/{share,exports}.ts`, `lib/api/mock/{share,exports}.ts`, + `share.contract.test.ts`, + `ShareCaseDialog.tsx`, `ParticipantHeader.tsx`, + `app/[org]/participants/[id]/share-actions.ts`, + `components/exports/ShareLinkPanel.tsx`, `ExportForm.tsx` (if needed), `app/[org]/exports/[id]/page.tsx`, `app/[org]/exports/actions.ts`, + `app/share/[id]/{page,actions}.tsx`, + `app/api/share/[id]/route.ts`, `lib/auth/guard.ts`, `tests/auth.test.ts`, `next.config.ts`, `messages/exports.ts`, + `tests/share.test.tsx`, + `e2e/share.spec.ts` |
+| A.14 | + `apps/android_asd_gaze_spike/**`, + `docs/research/android_gaze_spike/*` |
+| B.23 (2b) | `jobs/export.rs`, `export_build/mod.rs`, + `export_build/audit.rs`, `routes/exports.rs`, + `asd-export/src/tabular/audit.rs`, `asd-export/src/tabular/mod.rs`, + `tests/audit_export.rs`, + `asd-export/tests/audit_csv.rs`, `app/[org]/audit/page.tsx`, + `app/[org]/audit/actions.ts`, `messages/admin.ts` |
+| I.13b (2b) | `export_build/case.rs`, `jobs/erasure.rs`, `tests/{case_package_export,share_links}.rs` |
+
+Shared files and their single owner per phase (nobody else edits them in that phase):
+
+| File | Step 0 | 2a | 2b |
+|---|---|---|---|
+| `asd-contract/src/problem.rs` | none needed | nobody (a missing slug → report; main session adds) | nobody |
+| `asd-contract/src/schema.rs` | step 0 only if a new type is registered (none planned) | nobody | nobody |
+| `asd-contract/src/{export,clinical,privacy}.rs` | step 0 | nobody | nobody |
+| `asd-contract/src/emr.rs` | nobody (frozen) | nobody | nobody |
+| `auth/rbac.rs`, `tests/rbac_matrix.rs` | step 0 | nobody | nobody |
+| `routes/mod.rs` | step 0 | nobody | nobody |
+| `app.rs` | nobody | nobody | nobody |
+| `admin.rs`, `main.rs` | nobody | B.24 | nobody |
+| `jobs/erasure.rs` | nobody | B.19 | I.13b |
+| `jobs/export.rs`, `export_build/mod.rs`, `routes/exports.rs` | step 0 (placeholders) | I.13 | B.23 |
+| `rust/Cargo.lock`, `rust/.sqlx/`, `docs/spec/schemas/asd/api-v1.json`, `rust/README.md` | main session | main session (packages report text, add no crate without asking) | main session |
+| console `lib/api/{types,index,live,mock}.ts`, `lib/permissions.ts` | step 0 | nobody | nobody |
+| console `lib/api/exports.ts` + `mock/exports.ts`, `messages/exports.ts` | step 0 | C.19 | nobody (B.23 uses `createExport` as is) |
+| console `lib/api/admin.ts` + `mock/admin.ts` | nobody | C.18 | nobody |
+| console `messages/admin.ts` | nobody | C.18 | B.23 |
+| console `messages/participant.ts`, `Timeline.tsx` | step 0 | C.18 | nobody |
+| console `lib/auth/guard.ts`, `next.config.ts` | `proxy.ts` defect fix only | C.19 | nobody |
+| console `e2e/helpers.ts`, `package-lock.json` | nobody | nobody (local helpers in the spec file) | nobody |
 
 ### Integration after wave 2 (main session)
 
-`cargo sqlx prepare`, regenerate `api-v1.json`, merge the `jobs/erasure.rs` and
-`export.rs` enum hunks, all gates, the migration rule becomes "≥0026", commit; run the
-acceptance scenarios 1–12 against `deploy/clinic-server/` once and record the result in
-the tracker.
+After 2a: merge the worktrees, `cargo sqlx prepare --workspace`, `cargo run -p asd-cli --
+schema export` (api-v1.json), paste the README sections, all gates (Rust, WASM, console,
+iOS unaffected), run the C.18 / C.19 live e2e against the merged backend, commit; then 2b
+and the same again. The migration rule becomes "≥0026". Run the acceptance scenarios 1–12
+against `deploy/clinic-server/` once and record the result in the tracker (including the
+B.24 drill: reset an owner's password on the smoke stack and sign in).
 
 ## Wave 3 (after owner decisions; file-disjoint)
 
@@ -474,20 +902,37 @@ normalised name through `name_bidx` (REC-2), erasure clears the row, de-id never
 it, the case package identified mode includes it only with `PatientRefRead`.
 Files: `migrations/0026_identity.sql`, `routes/identity.rs` (new), `routes/participants.rs`
 (search branch), `crypto/blind_index.rs` (name normaliser: NFKC, casefold, collapse
-spaces), `jobs/erasure.rs`, `export_build/record.rs`, tests. Depends on: B.19, I.13.
+spaces), `jobs/erasure.rs`, `export_build/case.rs` (I.13's case input builder, not
+`record.rs`), `asd-export/src/case_package/**` (amended 2026-11-03: `CasePackageInput` has
+no identity field; add an optional identity block rendered in identified mode only and
+never in de-identified output, with goldens), `asd-contract/src/emr.rs`
+(`ParticipantSearchRequest` gains the name field; `ParticipantIdentity` keys stay frozen)
+and `schema.rs` if a new type is registered, `api-v1.json` regenerated by the main session,
+tests. Depends on: B.19, I.13, I.13b.
 
 ### WP-C.20 Console identity fields and name search - `I` - size S - blocked with B.21
 
 Files: `src/components/participant/IdentityPanel.tsx` (new), `ParticipantTabs.tsx`,
 participants search form (name field only when the org mode is `local_record`),
-messages, tests, e2e. Rules UI-4 (no names in URLs, titles or logs). Depends on: B.21, C.18.
+messages, tests, e2e. Rules UI-4 (no names in URLs, titles or logs). Amended 2026-11-03:
+the tab list and panels live in C.18's `app/[org]/participants/[id]/page.tsx` and the
+search form in `app/[org]/participants/page.tsx` (C.20 edits both); the zod row type is
+in C.18's `lib/api/emr.ts`. Depends on: B.21, C.18.
 
 ### WP-A.16b iOS: scan the participant QR in clinic mode - `I` - size S - after B.19
 
 Goal: REC-12. Files: a `ParticipantPicker` view (QR scan with `DataScannerViewController`
 or `AVCaptureMetadataOutput`, recent list from the history store), the clinic-mode entry
 of the capture flow, `asd-ffi` exposes `parse_qr_payload` (R.7) and the Swift side calls
-it (no Swift parser), tests with fixture payloads. Not to touch: sync files. Depends on:
+it (no Swift parser), tests with fixture payloads. Amended 2026-11-03: `parse_qr_payload`
+returns `Result<(Uuid, String), QrParseError>` and `QrParseError` is a `thiserror` enum,
+not a UniFFI type: add a `#[uniffi::export]` wrapper in `asd-ffi/src/lib.rs` returning a
+`uniffi::Record` `{org_id: String, token: String}` or a `uniffi::Error` mirroring the seven
+variants (no change in `asd-contract`), rebuild the xcframework, and refuse a payload whose
+`org_id` is not the device's org. The scanned token reaches the session as the `profileToken:` argument of A.16a's
+`GazeSessionRecord.participantToken(enrollment:profileToken:)` (`GazeSessionRecord.swift:216`;
+a consented research enrolment still wins there); it does not overwrite the stored
+`ChildProfile.participantToken`. Not to touch: sync files. Depends on:
 A.16a, B.19 (QR payload is R.7's, so the view can be built against it earlier).
 
 ### WP-E.8 HIPAA / Privacy Act administrative and legal pack - `A` + owner - size I - docs only
@@ -584,6 +1029,9 @@ todo on owner Q3 and improves the case PDF when it lands.
     Kotlin bindings' expectations (`jna` 5.13+, `@aar` classifier).
 24. **Spike discipline (A.14)**: adult volunteers only, no child data, logs not committed;
     the sheet names devices by model, not by who owns them.
-25. **Idle timeout cookies**: refresh `curv_last_seen` on document loads only
-    (`Sec-Fetch-Dest: document`, as C.17 did for the redirect), or the RSC prefetches keep
-    a tab "active" forever.
+25. **Idle timeout cookies** (amended 2026-11-03 to match C.21 and technical.md HIP-2):
+    refresh `curv_last_seen` on every authenticated request except prefetches
+    (`Next-Router-Prefetch`, `Purpose`/`Sec-Purpose: prefetch`), or prefetches keep a tab
+    "active" forever; never refresh an idle or expired session. The verdict must also stop
+    non-document requests (RSC navigations, server actions) of an idle or expired session,
+    not only document loads (wave 1 defect 1).
