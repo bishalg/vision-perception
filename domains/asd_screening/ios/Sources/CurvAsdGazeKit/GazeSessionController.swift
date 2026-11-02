@@ -290,6 +290,8 @@ public final class GazeSessionController: ObservableObject {
     /// overwrite the newer session's published state.
     private var sessionGeneration: UInt64 = 0
     private let mailbox = PipelineMailbox()
+    /// The configuration this controller's pipelines were built from (captured at creation).
+    public let scoringConfiguration: ScoringConfiguration
     private var calibrationObserver: NotificationObserverToken?
 
     #if canImport(ARKit) && !os(macOS)
@@ -305,12 +307,20 @@ public final class GazeSessionController: ObservableObject {
     /// `scoringProfileJSON`: the delivered `ScoringProfile` the session pipelines are built
     /// from (CFG-3); defaults to the active configuration's (read once). `qualityGate` is
     /// derived from it by the processing actor, never passed separately.
+    ///
+    /// `scoringConfiguration` is captured once here (default: the active one) and is what
+    /// the pipeline profile, the recorded `bundleVersion` and finalize-time scoring all use,
+    /// so a configuration installed mid-session never splits them. `scoringProfileJSON`
+    /// overrides only the pipeline's profile (tests).
     public init(
-        scoringProfileJSON: String = ScoringConfiguration.active.scoringProfileJSON,
+        scoringConfiguration: ScoringConfiguration = ScoringConfiguration.active,
+        scoringProfileJSON: String? = nil,
         aoiTracker: StimulusAOITracker = StimulusAOITracker.makeGeoPrefBattery(),
         calibrationProfile: GazeCalibrationProfile = .identity,
         subjectAgeEstimator: SubjectAgeEstimator? = nil
     ) {
+        self.scoringConfiguration = scoringConfiguration
+        let scoringProfileJSON = scoringProfileJSON ?? scoringConfiguration.scoringProfileJSON
         self.aoiTracker = aoiTracker
         self.calibrationProfile = calibrationProfile
         let actor = GazeProcessingActor(

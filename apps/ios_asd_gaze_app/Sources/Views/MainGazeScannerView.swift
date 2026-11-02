@@ -783,7 +783,7 @@ public struct MainGazeScannerView: View {
             let sessionRecord = GazeSessionRecord(
                 summary: summary,
                 participantToken: participantToken,
-                bundleVersion: ScoringConfiguration.active.bundleVersion,
+                bundleVersion: controller.scoringConfiguration.bundleVersion,
                 normCollection: NormCollectionConsent(metadata: NormCollectionGate.collectionMetadata(
                     enrollment: ResearchKitStudyStore.shared.fetchEnrollment(),
                     childAgeMonths: ChildProfileStore.shared.profile.ageBracket.midpointMonths,

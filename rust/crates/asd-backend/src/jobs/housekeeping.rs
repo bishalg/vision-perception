@@ -4,9 +4,12 @@
 //! deletes rows nothing reads any more, in batches of [`BATCH`] so no statement holds a
 //! long lock:
 //!
-//! - `idempotency_keys` older than 7 days (every scope). A post after the sweep is still
-//!   answered from the `sessions` row (HK-4): a replay of the same body is `200`, a
-//!   different body (`sessions.request_hash`, 0021) `409`;
+//! - `idempotency_keys` older than 7 days, except care batch keys (scope `care:{org}`,
+//!   [`CARE_SCOPE_PATTERN`]). Session keys can go: a post after the sweep is still answered
+//!   from the `sessions` row (HK-4), a replay of the same body is `200`, a different body
+//!   (`sessions.request_hash`, 0021) `409`. Care batches have no such backstop: an event's
+//!   own `idempotency_key` is optional, so the batch key is the only thing that recognises a
+//!   batch an offline device retries weeks later, and it is kept for good (HK-2);
 //! - `refresh_tokens` expired more than a day ago;
 //! - `enrol_codes` revoked or expired more than 90 days ago **and** referenced by no
 //!   device: rotation (CON-11) accepts expired codes on purpose, so a code a device
@@ -18,10 +21,14 @@
 //!   three pending columns are set to NULL (the user row stays). Confirm refuses them
 //!   anyway; clearing them keeps sealed seeds from lingering under an old KEK.
 //!
-//! `dry_run` counts what would go and deletes nothing. Every manual run, and every
-//! scheduled run that deleted something, writes one `housekeeping.sweep` (or
-//! `housekeeping.sweep_dry_run`) audit row with org NULL and the counts. The worker
-//! queues one scheduled run per day ([`schedule_daily`]).
+//! `dry_run` counts what would go and deletes nothing. Every manual run, every scheduled
+//! run that deleted something, and every retried attempt (`attempts > 1`) writes one
+//! `housekeeping.sweep` (or `housekeeping.sweep_dry_run`) audit row with org NULL, the
+//! counts and the attempt number (HK-3). Deletes commit batch by batch before the audit
+//! row is written, so an attempt that fails at the audit insert has deleted rows it could
+//! not report; its retry finds nothing left to delete and still audits, which records that
+//! the earlier attempt's deletions happened (their counts are lost with that attempt). The
+//! worker queues one scheduled run per day ([`schedule_daily`]).
 
 use asd_contract::api_v1::HousekeepingResult;
 use serde_json::{json, Value};
@@ -38,6 +45,10 @@ const BATCH: i64 = 5000;
 /// Advisory-lock key serialising the daily scheduling across workers. Distinct from the
 /// retention sweep's `0x0B09_5EED`, or the two daily jobs would block each other.
 const SCHEDULE_LOCK: i64 = 0x0B09_5EEE;
+
+/// `LIKE` pattern of the care batch-key scope (`care:{org}`, set by `crate::care::ingest`),
+/// which the sweep never deletes (HK-2).
+pub const CARE_SCOPE_PATTERN: &str = "care:%";
 
 /// Job params of a sweep. `scheduled` marks the daily run.
 pub fn params(dry_run: bool, scheduled: bool) -> Value {
@@ -99,7 +110,7 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
     };
     let result = serde_json::to_value(counts.result(dry_run))
         .map_err(|e| JobError::Permanent(format!("housekeeping result: {e}")))?;
-    if !scheduled || counts.total() > 0 {
+    if !scheduled || counts.total() > 0 || job.attempts > 1 {
         let action = if dry_run {
             "housekeeping.sweep_dry_run"
         } else {
@@ -111,6 +122,7 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
                 let mut after = result.clone();
                 after["job_id"] = json!(job.id);
                 after["scheduled"] = json!(scheduled);
+                after["attempt"] = json!(job.attempts);
                 after
             })
             .record(&mut tx)
@@ -125,7 +137,8 @@ async fn count_eligible(pool: &PgPool) -> Result<Counts, sqlx::Error> {
         idempotency_keys: count(
             sqlx::query_scalar!(
                 r#"SELECT count(*) AS "n!" FROM idempotency_keys
-                   WHERE created_at < now() - interval '7 days'"#
+                   WHERE created_at < now() - interval '7 days' AND scope NOT LIKE $1"#,
+                CARE_SCOPE_PATTERN,
             )
             .fetch_one(pool)
             .await?,
@@ -178,8 +191,10 @@ async fn sweep(pool: &PgPool) -> Result<Counts, sqlx::Error> {
         let n = sqlx::query!(
             "DELETE FROM idempotency_keys WHERE ctid IN (
                  SELECT ctid FROM idempotency_keys
-                 WHERE created_at < now() - interval '7 days' LIMIT $1)",
+                 WHERE created_at < now() - interval '7 days' AND scope NOT LIKE $2
+                 LIMIT $1)",
             BATCH,
+            CARE_SCOPE_PATTERN,
         )
         .execute(pool)
         .await?

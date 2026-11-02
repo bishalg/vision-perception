@@ -6,7 +6,9 @@
 //!   each event is stored once per `idempotency_key` (`UNIQUE (org_id, idempotency_key)`),
 //!   and an optional `X-Idempotency-Key` makes the whole batch replayable (insert-first
 //!   claim as in session ingest, scope `care:{org}`; same key and body replays the stored
-//!   counts, a different body is `409 idempotency-key-reused`). A participant who withdrew
+//!   counts, a different body is `409 idempotency-key-reused`). The housekeeping sweep never
+//!   deletes `care:` keys (HK-2): per-event keys are optional, so the batch key is the only
+//!   replay guard for a batch an offline device retries late. A participant who withdrew
 //!   consent gets `409 participant-withdrawn` and nothing is stored.
 //! - [`summary`]: `GET /v1/participants/{token}/summary`, counts computed in SQL.
 //! - [`request_erasure`]: `POST /v1/participants/{token}/erasure` stores the request,

@@ -121,6 +121,19 @@ final class ScoringConfigurationTests: XCTestCase {
         XCTAssertNotEqual(deliveredFlag, .green)
     }
 
+    @MainActor
+    func testControllerKeepsTheConfigurationItWasCreatedWith() throws {
+        let delivered = try accept("bundle-valid.json").get()
+        ScoringConfiguration.install(delivered)
+        defer { ScoringConfiguration.install(.bundled) }
+        let controller = GazeSessionController()
+        ScoringConfiguration.install(.bundled)
+        XCTAssertNil(ScoringConfiguration.active.bundleVersion)
+        XCTAssertEqual(controller.scoringConfiguration.bundleVersion, "2026.11.01-2")
+        XCTAssertEqual(controller.scoringConfiguration.scoringProfileJSON, delivered.scoringProfileJSON)
+        XCTAssertEqual(controller.scoringConfiguration.catalog, delivered.catalog)
+    }
+
     func testInstallSwitchesTheActiveConfigurationAndCatalog() throws {
         let delivered = try accept("bundle-valid.json").get()
         defer { ScoringConfiguration.install(.bundled) }

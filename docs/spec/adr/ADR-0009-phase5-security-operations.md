@@ -102,7 +102,10 @@ Two facts the security pack gets wrong, found while reading the code:
    in `/users/me`, `db::backfill` and the `encrypt-review-notes` command are deleted, since
    `sqlx` compile-time checks would fail on the missing columns anyway.
 6. **Housekeeping is one daily phased job, `housekeeping_sweep`, scheduled like the
-   retention sweep.** Rules: `idempotency_keys` older than 7 days (ADR-B5, every scope);
+   retention sweep.** Rules: `idempotency_keys` older than 7 days (ADR-B5), every scope
+   except care batch keys (`care:{org}`; amended 2026-11-01: care events need not carry a
+   per-event key, so the batch key is their only replay guard and has no `sessions`-style
+   primary-key backstop, so it is kept);
    `refresh_tokens` expired more than 1 day ago (rotated-out rows stay until their own
    expiry so family-reuse detection keeps working for the token's lifetime); `enrol_codes`
    expired or revoked more than 90 days ago (the maximum lifetime) **and** not referenced by
@@ -110,7 +113,8 @@ Two facts the security pack gets wrong, found while reading the code:
    code must stay); `jobs` in a final state with `finished_at` older than 30 days **and**
    not referenced by `norm_runs`, `exports`, `export_deliveries` or `erasure_requests`.
    Batched deletes, counts in the job result, one `housekeeping.sweep` audit row (org NULL)
-   per run that deleted anything, `dry_run` param. The 30-day job retention is a constant,
+   per run that deleted anything and per retried attempt (a retry may follow deletions
+   whose audit insert failed), `dry_run` param. The 30-day job retention is a constant,
    flagged for the owner, not a setting.
 7. **Prometheus metrics are served on a separate listener, never on the API router.**
    `ASD_METRICS_BIND_ADDR` (unset = off) binds a second Axum router with only `GET /metrics`

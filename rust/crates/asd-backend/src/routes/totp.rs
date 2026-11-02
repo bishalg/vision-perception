@@ -17,7 +17,8 @@
 //!
 //! The three routes share one limiter: 5 requests per user per minute (`429`). Passwords,
 //! seeds and codes are never logged; the code field is named `totp_code`, which the log
-//! formatter redacts (OBS-1). The seed is in clear only in the enrol response. Storage and
+//! formatter redacts (OBS-1). The seed is in clear only in the enrol response; every
+//! response of these routes is `Cache-Control: private, no-store`. Storage and
 //! the state machine are in [`crate::auth::totp`].
 
 use std::sync::Arc;
@@ -32,7 +33,7 @@ use axum::extract::State;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, post};
 use axum::{Extension, Json, Router};
-use http::StatusCode;
+use http::{header, HeaderValue, StatusCode};
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
@@ -62,6 +63,17 @@ pub fn router() -> Router<AppState> {
         .route("/users/me/totp/confirm", post(confirm))
         .route("/users/me/totp", delete(disable))
         .layer(Extension(limiter))
+        .layer(axum::middleware::map_response(no_store))
+}
+
+/// Every TOTP response is `Cache-Control: private, no-store`: the enrol body carries the
+/// seed in clear, and confirm/disable answer the same way for consistency.
+async fn no_store(mut response: Response) -> Response {
+    response.headers_mut().insert(
+        header::CACHE_CONTROL,
+        HeaderValue::from_static("private, no-store"),
+    );
+    response
 }
 
 fn limit(state: &AppState, limiter: &TotpLimiter, user_id: Uuid) -> AppResult<()> {

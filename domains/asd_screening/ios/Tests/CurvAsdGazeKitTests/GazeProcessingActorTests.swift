@@ -4,6 +4,25 @@ import simd
 @testable import CurvAsdGazeKit
 
 final class GazeProcessingActorTests: XCTestCase {
+    func testRejectedProfileFallsBackToBundledPipeline() async {
+        let actor = GazeProcessingActor(scoringProfileJSON: "{\"not\": \"a scoring profile\"}")
+        let fellBack = await actor.isUsingBundledProfileFallback
+        XCTAssertTrue(fellBack)
+        let config = await actor.pipelineConfigJSON()
+        XCTAssertNotNil(config, "a pipeline exists from the bundled default profile")
+        await actor.startSession()
+        let stillFellBack = await actor.isUsingBundledProfileFallback
+        XCTAssertTrue(stillFellBack)
+        let configAfterStart = await actor.pipelineConfigJSON()
+        XCTAssertNotNil(configAfterStart)
+    }
+
+    func testAcceptedProfileDoesNotFallBack() async {
+        let actor = GazeProcessingActor()
+        let fellBack = await actor.isUsingBundledProfileFallback
+        XCTAssertFalse(fellBack)
+    }
+
     func testActorInitializationAndCalibrationUpdate() async {
         let actor = GazeProcessingActor()
         let initialProfile = await actor.calibrationProfile

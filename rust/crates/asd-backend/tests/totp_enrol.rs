@@ -2,26 +2,21 @@
 //!
 //! AUTH-6..8 and AUTH-10 (ADR-0009, acceptance 17): self-service TOTP enrolment under
 //! `/v1/users/me/totp`, through the real router. Needs `DATABASE_URL` (skipped otherwise)
-//! except the tests marked "no database".
+//! except the tests marked "no database". The OBS-1 log check is in `totp_enrol_logs.rs`,
+//! its own binary, because it installs a thread-scoped subscriber.
 
 mod common;
-
-use std::io::Write;
-use std::sync::{Arc, Mutex};
 
 use asd_backend::app::AppState;
 use asd_backend::auth::totp;
 use asd_backend::auth::ManualClock;
 use asd_backend::clinical::reauth::{self, totp_code, StepUpLimiter};
-use asd_backend::telemetry::RedactingJsonLayer;
 use asd_contract::api_v1::Role;
 use axum::Router;
 use common::auth::*;
 use common::*;
 use http::{Method, StatusCode};
 use serde_json::{json, Value};
-use tracing_subscriber::fmt::MakeWriter;
-use tracing_subscriber::layer::SubscriberExt;
 use uuid::Uuid;
 
 const EMAIL: &str = "Clinician+totp@Example.org";
@@ -134,6 +129,16 @@ async fn me(c: &Ctx) -> Value {
     body
 }
 
+/// The code of the step the user last spent (`users.last_totp_step`).
+async fn spent_code(c: &Ctx, secret: &str) -> String {
+    let step: i64 = sqlx::query_scalar("SELECT last_totp_step FROM users WHERE id = $1")
+        .bind(c.user)
+        .fetch_one(&c.db.pool)
+        .await
+        .unwrap();
+    totp_code(secret, u64::try_from(step).unwrap() * 30).unwrap()
+}
+
 /// Enrols and confirms; returns the seed.
 async fn enrol_and_confirm(c: &Ctx) -> String {
     let (status, body) = enrol(c).await;
@@ -203,6 +208,77 @@ async fn enrol_then_confirm_makes_login_need_a_code() {
     let me = me(&c).await;
     assert_eq!(me["totp_enrolled"], true);
     assert_eq!(me["totp_pending"], false);
+    c.db.cleanup().await;
+}
+
+#[tokio::test]
+async fn login_replaying_the_confirming_code_is_totp_invalid() {
+    let Some(c) = setup().await else { return };
+    let (status, body) = enrol(&c).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let secret = body["secret"].as_str().unwrap().to_owned();
+    let code = code_for(&secret);
+    let (status, body) = confirm(&c, &code).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    // Exactly the code that confirmed: its step is spent (or, past a boundary, it is out of
+    // the skew window); either way it never signs in.
+    let (status, body) = login(&c.app, Some(&code)).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED, "{body}");
+    assert_eq!(slug(&body), "totp-invalid");
+    assert_eq!(audit_count(&c.db.pool, "auth.login_totp_failed").await, 1);
+    c.db.cleanup().await;
+}
+
+#[tokio::test]
+async fn totp_responses_are_not_cacheable() {
+    let Some(c) = setup().await else { return };
+    let no_store = |h: &http::HeaderMap| {
+        h.get(http::header::CACHE_CONTROL)
+            .and_then(|v| v.to_str().ok())
+            .map(str::to_owned)
+    };
+    let (status, headers, body) = send(
+        c.app.clone(),
+        json(
+            Method::POST,
+            ENROL,
+            &json!({"password": PASSWORD}),
+            Some(&c.bearer),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(
+        no_store(&headers).as_deref(),
+        Some("private, no-store"),
+        "the seed is in this body"
+    );
+    let secret = body["secret"].as_str().unwrap().to_owned();
+    let (status, headers, body) = send(
+        c.app.clone(),
+        json(
+            Method::POST,
+            CONFIRM,
+            &json!({"totp_code": code_for(&secret)}),
+            Some(&c.bearer),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(no_store(&headers).as_deref(), Some("private, no-store"));
+    let next = totp_code(&secret, now_unix() + 30).unwrap();
+    let (status, headers, body) = send(
+        c.app.clone(),
+        json(
+            Method::DELETE,
+            TOTP,
+            &json!({"password": PASSWORD, "totp_code": next}),
+            Some(&c.bearer),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(no_store(&headers).as_deref(), Some("private, no-store"));
     c.db.cleanup().await;
 }
 
@@ -406,12 +482,14 @@ async fn disable_needs_password_and_code() {
 async fn disable_with_a_spent_code_is_401() {
     let Some(c) = setup().await else { return };
     let secret = enrol_and_confirm(&c).await;
-    // The confirm spent the current step.
+    // The code of the step confirm spent, read back rather than recomputed from the clock
+    // so a 30 s boundary between the two calls cannot turn it into a fresh code.
+    let spent = spent_code(&c, &secret).await;
     let (status, body) = call(
         &c.app,
         Method::DELETE,
         TOTP,
-        json!({"password": PASSWORD, "totp_code": code_for(&secret)}),
+        json!({"password": PASSWORD, "totp_code": spent}),
         &c.bearer,
     )
     .await;
@@ -708,90 +786,4 @@ fn new_secrets_are_random_base32_of_20_bytes() {
     assert_ne!(*a, *b);
     assert_eq!(a.len(), 32);
     assert!(totp_code(&a, 0).is_some(), "valid base32");
-}
-
-// ---- OBS-1: neither the seed nor a code reaches the log --------------------------------
-
-#[derive(Clone, Default)]
-struct Capture(Arc<Mutex<Vec<u8>>>);
-
-struct CaptureWriter(Arc<Mutex<Vec<u8>>>);
-
-impl Write for CaptureWriter {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.0.lock().unwrap().extend_from_slice(buf);
-        Ok(buf.len())
-    }
-    fn flush(&mut self) -> std::io::Result<()> {
-        Ok(())
-    }
-}
-
-impl<'a> MakeWriter<'a> for Capture {
-    type Writer = CaptureWriter;
-    fn make_writer(&'a self) -> Self::Writer {
-        CaptureWriter(self.0.clone())
-    }
-}
-
-#[test]
-fn logs_contain_neither_the_seed_nor_the_code() {
-    let cap = Capture::default();
-    let seen: Arc<Mutex<Vec<String>>> = Arc::default();
-    let seen_in = seen.clone();
-    let subscriber = tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new("trace"))
-        .with(RedactingJsonLayer::new(cap.clone()));
-    tracing::subscriber::with_default(subscriber, || {
-        tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async move {
-                let Some(c) = setup().await else { return };
-                let (_, body) = enrol(&c).await;
-                let secret = body["secret"].as_str().unwrap().to_owned();
-                let wrong = wrong_code_for(&secret);
-                confirm(&c, &wrong).await;
-                let code = code_for(&secret);
-                let (status, _) = confirm(&c, &code).await;
-                assert_eq!(status, StatusCode::OK);
-                let next = totp_code(&secret, now_unix() + 30).unwrap();
-                let (status, _) = call(
-                    &c.app,
-                    Method::DELETE,
-                    TOTP,
-                    json!({"password": PASSWORD, "totp_code": next}),
-                    &c.bearer,
-                )
-                .await;
-                assert_eq!(status, StatusCode::OK);
-                seen_in.lock().unwrap().extend([secret, wrong, code, next]);
-                c.db.cleanup().await;
-            });
-    });
-    let needles = seen.lock().unwrap().clone();
-    if needles.is_empty() {
-        return; // skipped: no database
-    }
-    let text = String::from_utf8(cap.0.lock().unwrap().clone()).unwrap();
-    assert!(
-        !text.is_empty(),
-        "nothing was logged; the test would be vacuous"
-    );
-    let (seed, codes) = (&needles[0], &needles[1..]);
-    for needle in [seed.as_str(), PASSWORD] {
-        assert!(!text.contains(needle), "`{needle}` leaked into the log");
-    }
-    // Six-digit codes: compare whole digit runs, so a timestamp's digits do not match.
-    let runs: Vec<&str> = text
-        .split(|ch: char| !ch.is_ascii_digit())
-        .filter(|r| !r.is_empty())
-        .collect();
-    for code in codes {
-        assert!(
-            !runs.contains(&code.as_str()),
-            "code `{code}` leaked into the log"
-        );
-    }
 }

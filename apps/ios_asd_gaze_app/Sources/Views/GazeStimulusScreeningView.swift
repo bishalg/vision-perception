@@ -728,11 +728,11 @@ public struct GazeStimulusScreeningView: View {
         #endif
         let activeBatteryName = proceduralMode?.rawValue ?? (playlist.count > 1 ? "MultiClipBattery_\(playlist.count)Clips" : (currentClip?.videoName ?? "SingleClip"))
 
-        // Per-stimulus expected-vs-recorded scoring against the active configuration's
+        // Per-stimulus expected-vs-recorded scoring against the configuration the session's pipeline was built with (captured once by the controller)
         // baselines and ScoringProfile (WP-A.5: a verified delivered bundle, else the bundled one).
         // Extraction is linear over frames and runs once here; the result view reuses the tagged frames.
         let childAgeMonths = ChildProfileStore.shared.profile.ageBracket.midpointMonths
-        let scoringConfiguration = ScoringConfiguration.active
+        let scoringConfiguration = controller.scoringConfiguration
         let perVideoScore: PerVideoSessionScore? = PerVideoScoringEngine.score(
             metricSets: PerVideoMetricsExtractor.extract(from: frames),
             configuration: scoringConfiguration,

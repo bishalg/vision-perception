@@ -192,6 +192,9 @@ public actor GazeProcessingActor {
     /// The session's pipeline (live sessions; also a fresh one before any start so frames are
     /// never dropped silently). `nil` only when the config could not be built.
     private var pipeline: GazePipelineHandle?
+    /// `true` when Rust rejected the delivered profile and the current pipeline was built from
+    /// the bundled default profile instead (the delivered one is reported, never silent).
+    public private(set) var isUsingBundledProfileFallback: Bool = false
     private var telemetryWriter: GazeTelemetryWriterHandle?
     /// Processed frames parallel to `volatileFrameBuffer` (live frames only), for gap filling
     /// at finalize (GAP-1).
@@ -246,12 +249,13 @@ public actor GazeProcessingActor {
         self.calibrationProfile = calibrationProfile
         self.deviceModelIdentifier = deviceModelIdentifier
         self.orientation = orientation
-        let (pipeline, writer, gateJSON) = Self.makePipeline(
+        let (pipeline, writer, gateJSON, fellBack) = Self.makePipelineWithFallback(
             modelIdentifier: deviceModelIdentifier,
             orientation: orientation,
             scoringProfileJSON: scoringProfileJSON,
             profile: calibrationProfile
         )
+        self.isUsingBundledProfileFallback = fellBack
         self.pipeline = pipeline
         self.telemetryWriter = writer
         // When Rust cannot build a config there is no pipeline either; synthetic frames then
@@ -260,6 +264,27 @@ public actor GazeProcessingActor {
         self.qualityGate = gateJSON.flatMap(GazeQualityGate.init(coreGateJSON:))
             ?? GazeQualityGate(scoringProfileJSON: scoringProfileJSON)
             ?? GazeQualityGate()
+    }
+
+    /// `makePipeline` with the delivered profile; when Rust rejects it, once more with the
+    /// bundled default profile so the session still records. Both failures are reported.
+    private static func makePipelineWithFallback(
+        modelIdentifier: String,
+        orientation: GazeOrientation,
+        scoringProfileJSON: String,
+        profile: GazeCalibrationProfile
+    ) -> (GazePipelineHandle?, GazeTelemetryWriterHandle?, String?, Bool) {
+        let first = makePipeline(
+            modelIdentifier: modelIdentifier, orientation: orientation,
+            scoringProfileJSON: scoringProfileJSON, profile: profile)
+        if first.0 != nil { return (first.0, first.1, first.2, false) }
+        let fallback = AsdCoreBridge.defaultScoringProfileJSON
+        guard scoringProfileJSON != fallback else { return (nil, nil, nil, false) }
+        AsdCoreBridge.logger.error("gaze pipeline: delivered scoring profile rejected, retrying with the bundled default")
+        let second = makePipeline(
+            modelIdentifier: modelIdentifier, orientation: orientation,
+            scoringProfileJSON: fallback, profile: profile)
+        return (second.0, second.1, second.2, second.0 != nil)
     }
 
     /// A fresh pipeline and frames-file writer (session clock origin 0: the actor pushes
@@ -350,7 +375,7 @@ public actor GazeProcessingActor {
         self.lastDrawnRawPoint = CGPoint(x: 0.5, y: 0.5)
         self.lastDistanceCm = 48.0
         if captureSource == .trueDepth {
-            (pipeline, telemetryWriter, _) = Self.makePipeline(
+            (pipeline, telemetryWriter, _, isUsingBundledProfileFallback) = Self.makePipelineWithFallback(
                 modelIdentifier: deviceModelIdentifier,
                 orientation: self.orientation,
                 scoringProfileJSON: scoringProfileJSON,

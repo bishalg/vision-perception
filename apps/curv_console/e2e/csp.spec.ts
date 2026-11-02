@@ -42,12 +42,15 @@ test("negative: un-nonced inline script code is blocked and the listener reports
   // context would be trusted through 'strict-dynamic', so it would not prove anything).
   await page.evaluate(() => {
     const div = document.createElement("div");
-    div.innerHTML = '<img src="data:," onerror="window.__injected = true">';
+    div.innerHTML = '<img src="/csp-negative-test-missing.png" onerror="window.__injected = true">';
     document.body.appendChild(div);
   });
   await expect.poll(() => cspViolations.length).toBeGreaterThan(0);
   expect(await page.evaluate(() => (window as unknown as { __injected?: boolean }).__injected)).toBeUndefined();
-  cspViolations.length = 0; // expected: drain so the fixture's final check passes
+  // Exactly the violation this test provoked (the inline handler is a `script-src-attr` violation); remove
+  // only it so the fixture's final check still fails on any unrelated violation.
+  expect(cspViolations).toEqual([expect.stringMatching(/^script-src-attr blocked inline /)]);
+  cspViolations.splice(0, 1);
 });
 
 test.describe("mock pages", () => {

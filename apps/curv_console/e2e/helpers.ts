@@ -25,6 +25,11 @@ export const test = base.extend<{ cspViolations: string[] }>({
       });
     });
     await provide(page);
+    // Violation events reach `cspViolations` asynchronously through the exposed binding: let a late one land
+    // before the `cspViolations` fixture asserts (this teardown runs first, while the page is still open).
+    if (!page.isClosed()) {
+      await page.evaluate(() => new Promise((r) => setTimeout(r, 50))).catch(() => undefined);
+    }
   },
 });
 export { expect };

@@ -389,16 +389,25 @@ job runner (`jobs/runner.rs`) and the console `proxy.ts`.
   `{dry_run, scheduled}`; `POST /v1/jobs/housekeeping` (superadmin only) queues a manual
   run with `dry_run` optional.
 - **HK-2** Rules, each a batched `DELETE ... WHERE ctid IN (SELECT ctid ... LIMIT 5000)`
-  loop: `idempotency_keys.created_at < now() - 7 days` (every scope);
+  loop: `idempotency_keys.created_at < now() - 7 days` except `scope LIKE 'care:%'`
+  (care batch keys, `care:{org}`, are never swept: per-event `idempotency_key` is optional,
+  so the batch key is the only replay guard for a batch an offline device retries after
+  7 days; session keys can go because the `sessions` primary key and `request_hash`
+  back them, HK-4; decided 2026-11-01 after the phase 5 audit);
   `refresh_tokens.expires_at < now() - 1 day`; `enrol_codes` with
   `coalesce(revoked_at, expires_at) < now() - 90 days` and `NOT EXISTS (devices.enrol_code_id = id)`;
   `jobs` with `status IN ('succeeded','failed','cancelled')`, `finished_at < now() - 30 days`
   and no referencing row in `norm_runs`, `exports`, `export_deliveries`, `erasure_requests`.
 - **HK-3** The job result is `{idempotency_keys, refresh_tokens, enrol_codes, jobs, dry_run}`
-  counts; a run that deleted anything (or any manual run) writes one `housekeeping.sweep`
-  (or `housekeeping.sweep_dry_run`) audit row with org NULL and the counts.
+  counts; a run that deleted anything, any manual run, and any retried attempt
+  (`attempts > 1`) writes one `housekeeping.sweep` (or `housekeeping.sweep_dry_run`) audit
+  row with org NULL, the counts and `attempt`. Deletes commit batch by batch before the
+  audit insert, so a retry after a failed audit insert deletes nothing yet still audits,
+  recording that the earlier attempt's (uncounted) deletions happened.
 - **HK-4** Re-posting a session whose idempotency key was swept returns `200 duplicate:true`
-  (the `sessions` primary key still catches it), not `500` and not a second row.
+  (the `sessions` primary key still catches it), not `500` and not a second row. Re-posting
+  a care batch whose `X-Idempotency-Key` is older than 7 days still returns `200
+  duplicate:true` and stores nothing, because that key was kept (HK-2).
 - **HK-5** A device whose enrol code expired 91 days ago and that is still enrolled can
   still rotate its token with that code (`status: "rotated"`) after a sweep.
 

@@ -529,3 +529,93 @@ async fn sweep_clears_expired_pending_totp_enrolments_and_keeps_live_ones() {
     assert_eq!(audit[0]["after"]["totp_pending"], 1);
     db.cleanup().await;
 }
+
+/// Care batches have no primary-key backstop: their events may carry no per-event key, so
+/// the `care:{org}` batch key is the only thing that recognises a replay. The sweep keeps
+/// it (HK-2) while still sweeping other scopes.
+#[tokio::test]
+async fn care_batch_keys_survive_the_sweep_and_a_late_replay_stores_nothing() {
+    let Some((db, org)) = setup().await else {
+        return;
+    };
+    let pool = &db.pool;
+    let (_, superadmin) = seed_user(pool, None, "superadmin").await;
+    let (_, device) = seed_device(pool, org).await;
+    let body = json!({
+        "participant_token": "P-HK-CARE",
+        "events": [
+            {"kind": "task", "payload": {"task_id": "a"}},
+            {"kind": "task", "payload": {"task_id": "b"}}
+        ]
+    });
+    let post = || {
+        let mut req = json_req(Method::POST, "/v1/care/events", &body, Some(&device));
+        req.headers_mut()
+            .insert("x-idempotency-key", "care-batch-1".parse().unwrap());
+        common::send(common::router(state(pool.clone())), req)
+    };
+    let (status, _, first) = post().await;
+    assert_eq!(status, StatusCode::CREATED, "{first}");
+    assert_eq!(first["accepted"], 2);
+    sqlx::query(
+        "INSERT INTO idempotency_keys (scope, key, request_hash, created_at)
+         VALUES ('sessions:x', 'other-old', sha256('x'::bytea), now())",
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+    sqlx::query("UPDATE idempotency_keys SET created_at = now() - interval '8 days'")
+        .execute(pool)
+        .await
+        .unwrap();
+
+    let dry = queue_and_run(pool, &superadmin, json!({"dry_run": true})).await;
+    assert_eq!(
+        dry["idempotency_keys"], 1,
+        "the dry run counts the same rule"
+    );
+    let result = queue_and_run(pool, &superadmin, json!({})).await;
+    assert_eq!(result["idempotency_keys"], 1, "only the non-care key goes");
+    assert!(key_exists(pool, "care-batch-1").await);
+    assert!(!key_exists(pool, "other-old").await);
+
+    let (status, _, again) = post().await;
+    assert_eq!(status, StatusCode::OK, "{again}");
+    assert_eq!(again["duplicate"], true);
+    let events: i64 = sqlx::query_scalar("SELECT count(*) FROM care_events")
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    assert_eq!(events, 2, "the replayed batch inserted nothing");
+    db.cleanup().await;
+}
+
+/// A retried attempt may follow one that deleted rows and then failed to write its audit
+/// row; its own counts are then 0, yet it must audit (HK-3).
+#[tokio::test]
+async fn a_retried_scheduled_run_audits_even_when_it_deleted_nothing() {
+    let Some((db, _)) = setup().await else { return };
+    let pool = &db.pool;
+    // As left by a failed first attempt: queued again, one attempt spent.
+    let id: Uuid = sqlx::query_scalar(
+        "INSERT INTO jobs (kind, params, attempts) VALUES ($1, $2, 1) RETURNING id",
+    )
+    .bind(KIND_HOUSEKEEPING)
+    .bind(housekeeping::params(false, true))
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    assert_eq!(runner::run_pending(pool, "hk-test").await.unwrap(), 1);
+    let (status, attempts): (String, i32) =
+        sqlx::query_as("SELECT status, attempts FROM jobs WHERE id = $1")
+            .bind(id)
+            .fetch_one(pool)
+            .await
+            .unwrap();
+    assert_eq!((status.as_str(), attempts), ("succeeded", 2));
+    let audit = audit_rows(pool, "housekeeping.sweep").await;
+    assert_eq!(audit.len(), 1, "{audit:?}");
+    assert_eq!(audit[0]["after"]["idempotency_keys"], 0);
+    assert_eq!(audit[0]["after"]["attempt"], 2);
+    db.cleanup().await;
+}
