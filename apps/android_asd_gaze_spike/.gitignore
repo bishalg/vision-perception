@@ -1,0 +1,17 @@
+# Gradle and IDE state
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+
+# Raw tracking logs are biometric data from volunteers (ADR-0007 D13, BEN-8): never commit.
+# `adb pull` them into logs/ (ignored) or, better, outside the repository.
+logs/
+*.jsonl
+*.landmarks.jsonl
+*.meta.json
+*.targets.json
+
+# The MediaPipe model is downloaded at build time (app/build.gradle.kts), never committed.
+*.task

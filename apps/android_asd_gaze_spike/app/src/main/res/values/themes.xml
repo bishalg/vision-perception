@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="SpikeTheme" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+
+    <!-- Display-cutout mode and immersive bars are set in RunActivity (API-dependent). -->
+    <style name="SpikeTheme.Fullscreen">
+        <item name="android:windowFullscreen">true</item>
+    </style>
+</resources>
