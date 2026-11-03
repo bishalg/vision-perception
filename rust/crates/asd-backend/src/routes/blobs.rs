@@ -29,12 +29,18 @@ use crate::problem::InvalidParam;
 
 pub const FRAMES_CONTENT_TYPE: &str = "application/octet-stream";
 pub const REPORT_CONTENT_TYPE: &str = "application/pdf";
+/// RFL-3: the research frame log is JSON Lines (`asd-raw-tracking/1`).
+pub const RESEARCH_FRAMES_CONTENT_TYPE: &str = "application/x-ndjson";
 
-/// The two blobs a session may carry.
+/// The blobs a session may carry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BlobKind {
     Frames,
     Report,
+    /// RFL-3 (phase 8 step 0: variant and key only). Accepted only by the sealed proxy
+    /// upload WP-X.2 adds; [`BlobKind::parse`] does not return it, so the plain upload below
+    /// never stores one.
+    ResearchFrames,
 }
 
 impl BlobKind {
@@ -50,6 +56,7 @@ impl BlobKind {
         match self {
             Self::Frames => FRAMES_CONTENT_TYPE,
             Self::Report => REPORT_CONTENT_TYPE,
+            Self::ResearchFrames => RESEARCH_FRAMES_CONTENT_TYPE,
         }
     }
 
@@ -60,6 +67,9 @@ impl BlobKind {
                 format!("sessions/{org}/{participant_token}/{session_id}/frames.jsonl.enc")
             }
             Self::Report => format!("reports/{org}/{participant_token}/{session_id}/report.pdf"),
+            Self::ResearchFrames => {
+                format!("sessions/{org}/{participant_token}/{session_id}/research.jsonl.sealed")
+            }
         }
     }
 
@@ -67,6 +77,7 @@ impl BlobKind {
         match self {
             Self::Frames => "frames",
             Self::Report => "report",
+            Self::ResearchFrames => "research_frames",
         }
     }
 }
@@ -178,6 +189,8 @@ async fn upload(
             .execute(&mut *tx)
             .await?;
         }
+        // Never parsed here (see `BlobKind::ResearchFrames`); WP-X.2 owns its upload.
+        BlobKind::ResearchFrames => return Err(AppError::NotFound),
     }
     AuditEvent::device(&device, "session.blob_upload", "session", &session_id)
         .after(serde_json::json!({"blob": kind.path_segment()}))
@@ -208,5 +221,17 @@ mod tests {
         assert!(crate::blob::validate_key(&f).is_ok());
         assert!(crate::blob::validate_key(&r).is_ok());
         assert_eq!(BlobKind::parse("video"), None);
+        // RFL-3: the research log key; the plain upload does not accept the kind.
+        let k = BlobKind::ResearchFrames.key(org, "child-1", "S-1");
+        assert_eq!(
+            k,
+            "sessions/00000000-0000-0000-0000-000000000000/child-1/S-1/research.jsonl.sealed"
+        );
+        assert!(crate::blob::validate_key(&k).is_ok());
+        assert_eq!(BlobKind::parse("research_frames"), None);
+        assert_eq!(
+            BlobKind::ResearchFrames.content_type(),
+            "application/x-ndjson"
+        );
     }
 }

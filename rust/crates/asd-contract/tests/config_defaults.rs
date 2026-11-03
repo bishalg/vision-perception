@@ -8,7 +8,8 @@
 use std::path::PathBuf;
 
 use asd_contract::config::{
-    ConfigBundle, FlagThresholds, QualityGateParams, ScoringProfile, TrackingQualityParams,
+    AoiParams, ConfigBundle, FlagThresholds, IvtUnit, MetricsParams, NormsParams,
+    QualityGateParams, ReviewParams, ScoringProfile, TrackingQualityParams,
     SCORING_PROFILE_SCHEMA_VERSION,
 };
 use asd_contract::schema;
@@ -105,7 +106,7 @@ fn default_scoring_profile_literal_values() {
     assert_eq!(
         ScoringProfile::default(),
         ScoringProfile {
-            schema_version: "1.1.0".into(),
+            schema_version: "1.2.0".into(),
             flag: FlagThresholds {
                 green_floor: 0.65,
                 yellow_floor: 0.35,
@@ -122,6 +123,28 @@ fn default_scoring_profile_literal_values() {
                 blink_threshold: 0.45,
             },
             tracking_quality: asd_core::types::tracking::TrackingQualityParams::default(),
+            // PRM-7 (1.2.0): today's asd-core and backend constants.
+            metrics: MetricsParams {
+                ivt_velocity_units_per_sec: 5.0,
+                ivt_velocity_deg_per_sec: 30.0,
+                ivt_unit: IvtUnit::Norm,
+                min_fixation_duration_sec: 0.08,
+                fallback_frame_interval_sec: 1.0 / 60.0,
+                smile_reactivity_window_sec: 0.5,
+                flat_affect_gain: 50.0,
+            },
+            aoi: AoiParams {
+                margin_norm: 0.0,
+                dwell_cap_ms: 100,
+            },
+            age_bands: asd_core::norms::default_age_brackets(),
+            norms: NormsParams {
+                min_n: 12,
+                include_imputed: false,
+            },
+            review: ReviewParams {
+                low_quality_valid_ratio: 0.80,
+            },
         }
     );
 }
@@ -133,7 +156,7 @@ fn scoring_profile_is_camel_case() {
     assert_eq!(
         v,
         json!({
-            "schemaVersion": "1.1.0",
+            "schemaVersion": "1.2.0",
             "flag": {
                 "greenFloor": 0.65,
                 "yellowFloor": 0.35,
@@ -149,7 +172,26 @@ fn scoring_profile_is_camel_case() {
                 "minConfidence": 0.5,
                 "blinkThreshold": 0.45
             },
-            "trackingQuality": tracking
+            "trackingQuality": tracking,
+            "metrics": {
+                "ivtVelocityUnitsPerSec": 5.0,
+                "ivtVelocityDegPerSec": 30.0,
+                "ivtUnit": "norm",
+                "minFixationDurationSec": 0.08,
+                "fallbackFrameIntervalSec": 1.0 / 60.0,
+                "smileReactivityWindowSec": 0.5,
+                "flatAffectGain": 50.0
+            },
+            "aoi": {"marginNorm": 0.0, "dwellCapMs": 100},
+            "ageBands": [
+                {"id": "12-17", "minMonths": 12, "maxMonths": 17},
+                {"id": "18-23", "minMonths": 18, "maxMonths": 23},
+                {"id": "24-35", "minMonths": 24, "maxMonths": 35},
+                {"id": "36-47", "minMonths": 36, "maxMonths": 47},
+                {"id": "48-60", "minMonths": 48, "maxMonths": 60}
+            ],
+            "norms": {"minN": 12, "includeImputed": false},
+            "review": {"lowQualityValidRatio": 0.8}
         })
     );
     let back: ScoringProfile = serde_json::from_value(v).unwrap();
@@ -245,9 +287,10 @@ fn bundled_catalog_and_baselines_validate_against_their_schema_definitions() {
 // ---- SCH-3 (WP-G.6): `ScoringProfile.trackingQuality` ------------------------------------
 
 #[test]
-fn scoring_profile_schema_version_is_1_1_0() {
-    assert_eq!(SCORING_PROFILE_SCHEMA_VERSION, "1.1.0");
-    assert_eq!(ScoringProfile::default().schema_version, "1.1.0");
+fn scoring_profile_schema_version_is_1_2_0() {
+    // 1.1.0 added trackingQuality (SCH-3); 1.2.0 the registry sections (PRM-7, WP-X.0).
+    assert_eq!(SCORING_PROFILE_SCHEMA_VERSION, "1.2.0");
+    assert_eq!(ScoringProfile::default().schema_version, "1.2.0");
 }
 
 #[test]

@@ -137,6 +137,11 @@ fn header(input: GazeRawLogHeaderInput) -> RawLogHeader {
             .condition
             .map(|c| BenchCondition::from(c).as_str().to_owned()),
         ground_truth: None,
+        clips: Vec::new(),
+        bundle_version: None,
+        profile_version: None,
+        session_id: None,
+        participant_token: None,
     }
 }
 
@@ -169,8 +174,19 @@ fn sample(record: RawSampleRecord) -> Result<RawTrackingSample, AsdError> {
             message: "t_sec must be finite".to_owned(),
         });
     }
-    let s = RawTrackingSample::try_from(record)?;
+    canonical(RawTrackingSample::try_from(record)?)
+}
+
+/// The module-doc rules applied to a decoded sample (shared by the bench and research
+/// writers). `t_sec` was checked by the caller.
+fn canonical(s: RawTrackingSample) -> Result<RawTrackingSample, AsdError> {
     let tracked = s.face_tracked;
+    // RFL-1: affect values are model outputs (doubles): kept as given when finite.
+    let affect = s.affect.clone().map(|a| asd_core::types::GazeFrameAffect {
+        social_smile_intensity: finite(a.social_smile_intensity),
+        expressivity_index: finite(a.expressivity_index),
+        surprise_score: finite(a.surprise_score),
+    });
     Ok(RawTrackingSample {
         face_transform: finite_array(s.face_transform).filter(|_| tracked),
         look_at: finite_array(s.look_at).filter(|_| tracked),
@@ -182,8 +198,50 @@ fn sample(record: RawSampleRecord) -> Result<RawTrackingSample, AsdError> {
         ambient_color_temp: finite(s.ambient_color_temp),
         light_direction: finite_array(s.light_direction),
         clip_media_time_sec: finite(s.clip_media_time_sec),
+        affect,
         ..s
     })
+}
+
+/// RFL-1: one line of the research frame log (`research.jsonl`, RFL-2) from a
+/// `RawTrackingSample` JSON object (snake_case, PIPE-2, with the frame's `affect` on recorded
+/// frames). The same canonical form as [`gaze_raw_log_line`]; a non-finite `t_sec` or a
+/// malformed object is refused. The kit never formats a line itself.
+#[uniffi::export]
+pub fn gaze_research_log_sample_line(sample_json: String) -> Result<String, AsdError> {
+    let s: RawTrackingSample = serde_json::from_str(&sample_json)
+        .map_err(|e| crate::invalid_json("research log sample", e))?;
+    if !s.t_sec.is_finite() {
+        return Err(AsdError::InvalidArgument {
+            message: "t_sec must be finite".to_owned(),
+        });
+    }
+    encode(&canonical(s)?, "research log sample")
+}
+
+/// RFL-1: the header line of a research frame log from a `RawLogHeader` JSON object
+/// (camelCase), written at session end when the clips and their AOIs are known. `format`
+/// must be `asd-raw-tracking/1` and `sessionId` present (the backend checks it against the
+/// upload path, RFL-3).
+#[uniffi::export]
+pub fn gaze_research_log_header_line(header_json: String) -> Result<String, AsdError> {
+    let header: RawLogHeader = serde_json::from_str(&header_json)
+        .map_err(|e| crate::invalid_json("research log header", e))?;
+    if header.format != RAW_LOG_FORMAT {
+        return Err(AsdError::InvalidArgument {
+            message: format!("format must be {RAW_LOG_FORMAT}"),
+        });
+    }
+    if header
+        .session_id
+        .as_deref()
+        .is_none_or(|s| s.trim().is_empty())
+    {
+        return Err(AsdError::InvalidArgument {
+            message: "sessionId is required in a research log header".to_owned(),
+        });
+    }
+    encode(&header, "research log header")
 }
 
 /// BEN-4 conditions in spec order, for the bench screen's picker.

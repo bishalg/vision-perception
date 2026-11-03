@@ -588,6 +588,11 @@ mod tests {
             app_version: Some("spike".into()),
             condition: None,
             ground_truth: None,
+            clips: Vec::new(),
+            bundle_version: None,
+            profile_version: None,
+            session_id: None,
+            participant_token: None,
         }
     }
 
@@ -607,6 +612,7 @@ mod tests {
             orientation: Orientation::Portrait,
             clip_media_time_sec: None,
             stimulus_id: None,
+            affect: None,
         }
     }
 

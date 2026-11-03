@@ -16,9 +16,11 @@ pub mod emr; // WP-R.7
 pub mod export;
 mod jcs;
 mod mirror;
+pub mod params; // WP-X.0 (PRM-1..4)
 pub mod privacy; // WP-B.9
 pub mod problem;
 pub mod profile_checks; // WP-C.5
+pub mod research; // WP-X.0 (EXP, COH, RUN, GOV-6 DTOs)
 pub mod schema;
 pub mod session_v1_6;
 pub mod session_v1_7;

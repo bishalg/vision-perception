@@ -13,6 +13,11 @@
 //! `trackingQuality` (SCH-3) is checked by asd-core `TrackingQualityParams::validate`; its
 //! problems appear here under `trackingQuality.` (WP-A.13). The device runs the same checks
 //! before it accepts a delivered bundle (`asd_sync::accept_bundle`).
+//!
+//! WP-X.0 (PRM-3): the parameter registry (`crate::params`) holds the per-member kind and
+//! range of every knob; [`profile_problems`] runs it first and then these rules.
+//! [`scoring_profile_problems`] stays the cross-field rule set `params::validate` appends
+//! (and the answer of the callers not yet moved to the registry).
 
 use serde::Serialize;
 
@@ -109,6 +114,20 @@ pub fn scoring_profile_problems(p: &ScoringProfile) -> Vec<ProfileProblem> {
         }));
     }
     problems
+}
+
+/// Every problem of a typed profile: the parameter registry first (kind, range, PRM-3), then
+/// the cross-field rules of [`scoring_profile_problems`] for members the registry did not
+/// already refuse. The same answer as `params::validate` on the serialised profile; callers
+/// moving off [`scoring_profile_problems`] use this (WP-X.0).
+pub fn profile_problems(p: &ScoringProfile) -> Vec<ProfileProblem> {
+    match serde_json::to_value(p) {
+        Ok(body) => crate::params::validate(crate::params::DocumentKind::ScoringProfile, &body),
+        Err(e) => vec![ProfileProblem::new(
+            "",
+            format!("profile does not serialise: {e}"),
+        )],
+    }
 }
 
 /// [`scoring_profile_problems`] as messages only (the backend's `invalid_params` reasons).

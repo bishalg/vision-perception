@@ -6,6 +6,7 @@ import { catalogText } from "@/messages/catalog";
 import { configText } from "@/messages/config";
 import { en } from "@/messages/en";
 import { privacyText } from "@/messages/privacy";
+import { researchText } from "@/messages/research";
 import { securityText } from "@/messages/security";
 
 export function navLinks(base: string, role: Role | undefined): { href: string; text: string }[] {
@@ -36,6 +37,8 @@ export function navLinks(base: string, role: Role | undefined): { href: string; 
           { href: `${base}/config/bundles`, text: configText.nav.bundles },
         ]
       : []),
+    // Phase 8 RUI-1: the research area (pages from WP-X.5 / WP-X.7) for everyone who reads analysis results.
+    ...(can(role, "analysis.read") ? [{ href: `${base}/research`, text: researchText.nav }] : []),
     // WP-C.15: every signed-in user manages their own second factor.
     { href: `${base}/settings/security`, text: securityText.nav },
   ];

@@ -711,6 +711,7 @@ pub fn generate_with(spec: &Spec, label: &str, seed: u64) -> RawLog {
             orientation: spec.orientation,
             clip_media_time_sec: clip.map(|(_, c)| r6(t - c.start)),
             stimulus_id: clip.map(|(k, _)| format!("synth_clip_{}", k + 1)),
+            affect: None,
         };
         let starved = plan.starved.is_some_and(|(a, b)| t >= a && t <= b);
         if !fl.lost && !starved {
@@ -794,6 +795,11 @@ pub fn generate_with(spec: &Spec, label: &str, seed: u64) -> RawLog {
             "swayDeg": spec.sway_deg,
             "ambientLux": spec.ambient_lux,
         })),
+        clips: Vec::new(),
+        bundle_version: None,
+        profile_version: None,
+        session_id: None,
+        participant_token: None,
     };
     RawLog { header, samples }
 }

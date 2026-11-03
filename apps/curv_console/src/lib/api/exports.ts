@@ -13,7 +13,7 @@ const count = z.number().int().min(0).nullable().optional();
 
 export const EXPORT_FORMATS = [
   "csv", "csv_excel", "csv_sheets", "xlsx", "pdf_summary", "fhir_bundle", "fhir_ndjson", "hl7v2",
-  "dataset_jsonl", "dataset_parquet", "case_package", "audit_csv",
+  "dataset_jsonl", "dataset_parquet", "case_package", "audit_csv", "analysis_results",
 ] as const;
 export const exportFormatSchema = z.enum(EXPORT_FORMATS);
 export type ExportFormat = z.infer<typeof exportFormatSchema>;
@@ -26,9 +26,10 @@ export function isDatasetFormat(f: ExportFormat): boolean {
 
 /**
  * Formats with their own request flow, never offered in the generic export form or as a destination format:
- * `case_package` (share a case, SHR-7, one participant) and `audit_csv` (the audit page, HIP-3).
+ * `case_package` (share a case, SHR-7, one participant), `audit_csv` (the audit page, HIP-3) and
+ * `analysis_results` (an analysis run's "Export…" action, RUN-7; available with WP-X.8).
  */
-export const DEDICATED_EXPORT_FORMATS = ["case_package", "audit_csv"] as const;
+export const DEDICATED_EXPORT_FORMATS = ["case_package", "audit_csv", "analysis_results"] as const;
 export function isDedicatedFormat(f: ExportFormat): boolean {
   return (DEDICATED_EXPORT_FORMATS as readonly string[]).includes(f);
 }
@@ -136,6 +137,16 @@ export const caseShareRequestSchema = z.object({
 });
 export type CaseShareRequest = z.infer<typeof caseShareRequestSchema>;
 
+/** RUN-7 (`AnalysisExport`): which table of an analysis run, in which encoding (`parquet` for `sessions` only). */
+export const ANALYSIS_LAYOUTS = ["aggregates", "sessions"] as const;
+export const ANALYSIS_ENCODINGS = ["jsonl", "csv", "parquet"] as const;
+export const analysisExportSchema = z.object({
+  run_id: z.string(),
+  layout: z.enum(ANALYSIS_LAYOUTS),
+  encoding: z.enum(ANALYSIS_ENCODINGS),
+});
+export type AnalysisExport = z.infer<typeof analysisExportSchema>;
+
 export const exportPageSchema = z.object({
   items: z.array(exportSchema),
   next_cursor: z.string().nullable().optional(),
@@ -155,6 +166,8 @@ export const exportRequestSchema = z.object({
   include_labels: z.boolean().optional(),
   /** `case_package` only (SHR-7). */
   case: caseShareRequestSchema.optional(),
+  /** `analysis_results` only (RUN-7): the run and table. */
+  analysis: analysisExportSchema.optional(),
 });
 export type ExportRequest = z.infer<typeof exportRequestSchema>;
 

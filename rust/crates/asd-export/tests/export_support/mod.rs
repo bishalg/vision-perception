@@ -85,6 +85,7 @@ pub fn golden_session() -> (SessionDetail, Vec<ClipScore>) {
         affect: None,
         report_pdf_available: Some(false),
         tracking_quality: None,
+        research_frames: None,
     };
     let clips = req
         .per_video

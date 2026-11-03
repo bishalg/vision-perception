@@ -54,6 +54,7 @@ const formats: Record<ExportFormat, string> = {
   dataset_parquet: "Research dataset (Parquet)",
   case_package: "Case package (ZIP)",
   audit_csv: "Audit log (CSV)",
+  analysis_results: "Analysis results (not available yet)",
 };
 
 const sharedExportText = {

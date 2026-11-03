@@ -453,6 +453,8 @@ pub async fn detail(
             affect,
             report_pdf_available,
             tracking_quality,
+            // RFL-6: filled by WP-X.2 from the 0026 columns.
+            research_frames: None,
         },
     )))
 }
@@ -487,6 +489,8 @@ pub async fn raw(db: &PgPool, id: &str) -> AppResult<Option<(Uuid, SessionRaw)>>
             raw_payload: payload,
             frames_available: r.frames_available,
             frames_purged: r.frames_purged,
+            // RFL-6: filled by WP-X.2 from the 0026 columns.
+            research_frames: None,
         },
     )))
 }

@@ -77,6 +77,17 @@ pub enum Action {
     ShareLinkManage,
     /// HIP-3: export the org's audit log (`audit_csv`).
     AuditExport,
+    // ---- GOV-1 (phase 8 step 0, WP-X.0): researcher toolkit
+    /// Read experiments, cohorts, cohort previews and analysis runs.
+    AnalysisRead,
+    /// Queue, cancel and re-run analysis runs (spends the clinic's CPU).
+    AnalysisRun,
+    /// Create and edit experiments and cohorts.
+    ExperimentWrite,
+    /// Promote an experiment to a draft config document (GOV-2).
+    ExperimentPromote,
+    /// Read a session's research frame log (RFL-4; raw biometric-adjacent samples).
+    FramesRead,
 }
 
 impl Action {
@@ -121,6 +132,11 @@ impl Action {
         Action::CaseShare,
         Action::ShareLinkManage,
         Action::AuditExport,
+        Action::AnalysisRead,
+        Action::AnalysisRun,
+        Action::ExperimentWrite,
+        Action::ExperimentPromote,
+        Action::FramesRead,
     ];
 
     /// Actions that change nothing.
@@ -141,6 +157,8 @@ impl Action {
                 | Action::PatientRefRead
                 | Action::ExportRead
                 | Action::IntegrationRead
+                | Action::AnalysisRead
+                | Action::FramesRead
         )
     }
 }
@@ -165,6 +183,22 @@ pub const CLINICAL_CONTENT_ACTIONS: &[Action] = &[
     Action::CaseShare,
     Action::ShareLinkManage,
 ];
+
+/// GOV-1: research actions `superadmin` never gets either. The vendor neither spends a
+/// clinic's CPU on analysis runs, nor edits or promotes its experiments, nor reads its
+/// research frame logs. Kept apart from [`CLINICAL_CONTENT_ACTIONS`] because that list also
+/// drives [`can_provision`] (who may create which role), which these actions do not change.
+pub const VENDOR_EXCLUDED_RESEARCH_ACTIONS: &[Action] = &[
+    Action::AnalysisRun,
+    Action::ExperimentWrite,
+    Action::ExperimentPromote,
+    Action::FramesRead,
+];
+
+/// Whether `superadmin` is refused `action` (RBAC-3 and GOV-1).
+pub fn superadmin_denied(action: Action) -> bool {
+    CLINICAL_CONTENT_ACTIONS.contains(&action) || VENDOR_EXCLUDED_RESEARCH_ACTIONS.contains(&action)
+}
 
 use Role::{Admin, Clinician, Owner, Researcher, Reviewer, Viewer};
 
@@ -222,13 +256,21 @@ pub const MATRIX: &[(Action, &[Role])] = &[
     (Action::CaseShare, &[Owner, Clinician]),
     (Action::ShareLinkManage, &[Owner, Clinician]),
     (Action::AuditExport, &[Owner, Admin]),
+    // GOV-1 (WP-X.0). Reading results is open to the clinic's staff who see sessions;
+    // running, editing, promoting and reading raw frames is the researcher's (and owner's).
+    (Action::AnalysisRead, &[Owner, Admin, Clinician, Researcher]),
+    (Action::AnalysisRun, &[Owner, Researcher]),
+    (Action::ExperimentWrite, &[Owner, Researcher]),
+    (Action::ExperimentPromote, &[Owner, Researcher]),
+    (Action::FramesRead, &[Owner, Researcher]),
 ];
 
 /// True when `role` may perform `action` (in its own org). `superadmin` may do everything
-/// but [`CLINICAL_CONTENT_ACTIONS`] (RBAC-3).
+/// but [`CLINICAL_CONTENT_ACTIONS`] (RBAC-3) and [`VENDOR_EXCLUDED_RESEARCH_ACTIONS`]
+/// (GOV-1).
 pub fn allows(role: Role, action: Action) -> bool {
     if role == Role::Superadmin {
-        return !CLINICAL_CONTENT_ACTIONS.contains(&action);
+        return !superadmin_denied(action);
     }
     MATRIX
         .iter()
@@ -371,6 +413,11 @@ pub mod perm {
         CaseShare,
         ShareLinkManage,
         AuditExport,
+        AnalysisRead,
+        AnalysisRun,
+        ExperimentWrite,
+        ExperimentPromote,
+        FramesRead,
     );
 }
 

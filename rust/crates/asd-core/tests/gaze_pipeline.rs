@@ -143,6 +143,7 @@ fn frame(t: f64, f: &M4, target: [f64; 2], bias: [f64; 2], eye: Eye) -> RawTrack
         orientation: Orientation::Portrait,
         clip_media_time_sec: None,
         stimulus_id: None,
+        affect: None,
     };
     if let Eye::NoFace = eye {
         return s;

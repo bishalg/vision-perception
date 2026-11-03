@@ -103,6 +103,11 @@ export const jobViewSchema = z.object({
   error: str,
   created_at: z.string().optional(),
   finished_at: str,
+  /** RUN-8 (`JobProgress`): `{done, total, phase}` while running; absent before WP-X.3. */
+  progress: z
+    .object({ done: z.number().int().min(0), total: z.number().int().min(0), phase: z.string() })
+    .nullable()
+    .optional(),
 });
 export type JobView = z.infer<typeof jobViewSchema>;
 

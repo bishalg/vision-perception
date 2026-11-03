@@ -76,6 +76,8 @@ str_enum!(
     /// labels when `include_labels` (WP-B.9; de-identified only).
     /// `case_package`: one participant's case as a ZIP (SHR-1..7, `ExportRequest.case`);
     /// `audit_csv`: the org's audit log as canonical CSV (HIP-3, `AuditExport`).
+    /// `analysis_results`: the aggregates or per-session rows of an analysis run
+    /// (`ExportRequest.analysis`, RUN-7; de-identified, research or quality improvement).
     ExportFormat {
         Csv => "csv",
         CsvExcel => "csv_excel",
@@ -89,8 +91,35 @@ str_enum!(
         DatasetParquet => "dataset_parquet",
         CasePackage => "case_package",
         AuditCsv => "audit_csv",
+        AnalysisResults => "analysis_results",
     }
 );
+
+str_enum!(
+    /// RUN-7: which table of an analysis run an `analysis_results` export carries.
+    AnalysisLayout {
+        Aggregates => "aggregates",
+        Sessions => "sessions",
+    }
+);
+
+str_enum!(
+    /// RUN-7: file encoding of an `analysis_results` export (`parquet` for `sessions` only).
+    AnalysisEncoding {
+        Jsonl => "jsonl",
+        Csv => "csv",
+        Parquet => "parquet",
+    }
+);
+
+/// `analysis_results` only (RUN-7): the run and the table to export.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct AnalysisExport {
+    pub run_id: String,
+    pub layout: AnalysisLayout,
+    pub encoding: AnalysisEncoding,
+}
 
 str_enum!(
     /// EXJ-1: identified (token, MRN and clinical text where the requester may read them) or
@@ -193,6 +222,9 @@ pub struct ExportRequest {
     /// `case_package` only (SHR-7): the participant, recipient and consent of the case.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub case: Option<crate::emr::CaseShareRequest>,
+    /// `analysis_results` only (RUN-7): the run and layout.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub analysis: Option<AnalysisExport>,
 }
 
 str_enum!(

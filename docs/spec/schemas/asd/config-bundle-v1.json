@@ -55,6 +55,23 @@
       ],
       "type": "object"
     },
+    "AoiParams": {
+      "description": "AOI hit-test parameters (PRM-7).",
+      "properties": {
+        "dwellCapMs": {
+          "default": 100,
+          "description": "Longest interval one frame contributes to a dwell sum, milliseconds.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "marginNorm": {
+          "default": 0.0,
+          "description": "Grows (positive) or shrinks (negative) every AOI box, normalised screen units.",
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
     "Area": {
       "properties": {
         "endSec": {
@@ -457,6 +474,21 @@
       },
       "type": "object"
     },
+    "IvtUnit": {
+      "description": "Unit of the I-VT velocity threshold (`metrics.ivtUnit`).",
+      "oneOf": [
+        {
+          "const": "norm",
+          "description": "Normalised viewport units per second (`metrics.ivtVelocityUnitsPerSec`): today's rule.",
+          "type": "string"
+        },
+        {
+          "const": "deg",
+          "description": "Degrees of visual angle per second (`metrics.ivtVelocityDegPerSec`, SCR-3; owner gate\nH-G2).",
+          "type": "string"
+        }
+      ]
+    },
     "Membership": {
       "properties": {
         "id": {
@@ -470,6 +502,46 @@
         "id",
         "order"
       ],
+      "type": "object"
+    },
+    "MetricsParams": {
+      "description": "Fixation and affect extraction parameters (PRM-7). Defaults are the asd-core constants.",
+      "properties": {
+        "fallbackFrameIntervalSec": {
+          "default": 0.016666666666666666,
+          "description": "Frame interval assumed where timestamps do not give one (60 Hz).",
+          "type": "number"
+        },
+        "flatAffectGain": {
+          "default": 50.0,
+          "description": "Gain of the flat-affect score (`1 - mean expressivity x gain`, clamped to [0, 1]).",
+          "type": "number"
+        },
+        "ivtUnit": {
+          "$ref": "#/$defs/IvtUnit",
+          "default": "norm"
+        },
+        "ivtVelocityDegPerSec": {
+          "default": 30.0,
+          "description": "I-VT threshold in degrees per second (`ivtUnit = deg`).",
+          "type": "number"
+        },
+        "ivtVelocityUnitsPerSec": {
+          "default": 5.0,
+          "description": "I-VT threshold in normalised viewport units per second (`ivtUnit = norm`).",
+          "type": "number"
+        },
+        "minFixationDurationSec": {
+          "default": 0.08,
+          "description": "Shortest fixation counted, seconds.",
+          "type": "number"
+        },
+        "smileReactivityWindowSec": {
+          "default": 0.5,
+          "description": "Window after a clip onset in which a smile counts as reactive, seconds.",
+          "type": "number"
+        }
+      },
       "type": "object"
     },
     "NormativeBaselineSet": {
@@ -662,6 +734,23 @@
       ],
       "type": "object"
     },
+    "NormsParams": {
+      "description": "Norm aggregation parameters (PRM-7, AGE-2).",
+      "properties": {
+        "includeImputed": {
+          "default": false,
+          "description": "Whether rows flagged `imputed` enter the distributions.",
+          "type": "boolean"
+        },
+        "minN": {
+          "default": 12,
+          "description": "Fewest observations a norm cell (and an analysis band, AGE-3) needs.",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
     "QualityGateParams": {
       "description": "Per-sample quality gate parameters (`GazeQualityGate.init` defaults).",
       "properties": {
@@ -725,6 +814,16 @@
       },
       "type": "object"
     },
+    "ReviewParams": {
+      "description": "Backend review rules (INV-1 backend rows): the valid-frame ratio below which a session is\nqueued for review as low quality (`auto_review`), also the norm job's session floor.",
+      "properties": {
+        "lowQualityValidRatio": {
+          "default": 0.8,
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
     "ScoringCouplingParams": {
       "properties": {
         "aoiResolutionFactor": {
@@ -746,6 +845,37 @@
       "description": "Scoring parameters delivered in the bundle (`scoring_profile` config document).",
       "examples": [
         {
+          "ageBands": [
+            {
+              "id": "12-17",
+              "maxMonths": 17,
+              "minMonths": 12
+            },
+            {
+              "id": "18-23",
+              "maxMonths": 23,
+              "minMonths": 18
+            },
+            {
+              "id": "24-35",
+              "maxMonths": 35,
+              "minMonths": 24
+            },
+            {
+              "id": "36-47",
+              "maxMonths": 47,
+              "minMonths": 36
+            },
+            {
+              "id": "48-60",
+              "maxMonths": 60,
+              "minMonths": 48
+            }
+          ],
+          "aoi": {
+            "dwellCapMs": 100,
+            "marginNorm": 0.0
+          },
           "flag": {
             "atypicalShareForRed": 0.4,
             "greenFloor": 0.65,
@@ -753,6 +883,19 @@
             "yellowFloor": 0.35
           },
           "lowConfidenceValidRatio": 0.6,
+          "metrics": {
+            "fallbackFrameIntervalSec": 0.016666666666666666,
+            "flatAffectGain": 50.0,
+            "ivtUnit": "norm",
+            "ivtVelocityDegPerSec": 30.0,
+            "ivtVelocityUnitsPerSec": 5.0,
+            "minFixationDurationSec": 0.08,
+            "smileReactivityWindowSec": 0.5
+          },
+          "norms": {
+            "includeImputed": false,
+            "minN": 12
+          },
           "qualityGate": {
             "blinkThreshold": 0.45,
             "maxDistanceCm": 65.0,
@@ -761,7 +904,10 @@
             "minConfidence": 0.5,
             "minDistanceCm": 35.0
           },
-          "schemaVersion": "1.1.0",
+          "review": {
+            "lowQualityValidRatio": 0.8
+          },
+          "schemaVersion": "1.2.0",
           "trackingQuality": {
             "calibration": {
               "autoSelect": false,
@@ -1005,6 +1151,48 @@
         }
       ],
       "properties": {
+        "ageBands": {
+          "default": [
+            {
+              "id": "12-17",
+              "maxMonths": 17,
+              "minMonths": 12
+            },
+            {
+              "id": "18-23",
+              "maxMonths": 23,
+              "minMonths": 18
+            },
+            {
+              "id": "24-35",
+              "maxMonths": 35,
+              "minMonths": 24
+            },
+            {
+              "id": "36-47",
+              "maxMonths": 47,
+              "minMonths": 36
+            },
+            {
+              "id": "48-60",
+              "maxMonths": 60,
+              "minMonths": 48
+            }
+          ],
+          "description": "Age bands of norms and analysis (PRM-7, AGE-2): contiguous, ascending, 1..=12 bands,\nmonths 0..=240. Absent before 1.2.0: the five `asd_core::norms` brackets.",
+          "items": {
+            "$ref": "#/$defs/AgeBracket"
+          },
+          "type": "array"
+        },
+        "aoi": {
+          "$ref": "#/$defs/AoiParams",
+          "default": {
+            "dwellCapMs": 100,
+            "marginNorm": 0.0
+          },
+          "description": "AOI hit testing (PRM-7, 1.2.0)."
+        },
         "flag": {
           "$ref": "#/$defs/FlagThresholds"
         },
@@ -1012,8 +1200,36 @@
           "description": "Clips below this valid-sample ratio are low-confidence.",
           "type": "number"
         },
+        "metrics": {
+          "$ref": "#/$defs/MetricsParams",
+          "default": {
+            "fallbackFrameIntervalSec": 0.016666666666666666,
+            "flatAffectGain": 50.0,
+            "ivtUnit": "norm",
+            "ivtVelocityDegPerSec": 30.0,
+            "ivtVelocityUnitsPerSec": 5.0,
+            "minFixationDurationSec": 0.08,
+            "smileReactivityWindowSec": 0.5
+          },
+          "description": "Fixation and affect extraction (PRM-7, 1.2.0). Absent before 1.2.0: today's constants."
+        },
+        "norms": {
+          "$ref": "#/$defs/NormsParams",
+          "default": {
+            "includeImputed": false,
+            "minN": 12
+          },
+          "description": "Norm aggregation (PRM-7, AGE-2)."
+        },
         "qualityGate": {
           "$ref": "#/$defs/QualityGateParams"
+        },
+        "review": {
+          "$ref": "#/$defs/ReviewParams",
+          "default": {
+            "lowQualityValidRatio": 0.8
+          },
+          "description": "Backend review rules (INV-1 backend rows, 1.2.0)."
         },
         "schemaVersion": {
           "type": "string"

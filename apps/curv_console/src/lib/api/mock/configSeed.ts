@@ -95,7 +95,7 @@ export function mockBaselineSet(strict = false): NormativeBaselineSet {
 /** Same values as the Rust `ScoringProfile::default()` (no `trackingQuality`: it decodes to the core defaults). */
 export function mockScoringProfile(strict = false): ScoringProfile {
   return {
-    schemaVersion: "1.1.0",
+    schemaVersion: "1.2.0",
     flag: {
       greenFloor: strict ? 0.75 : 0.65,
       yellowFloor: strict ? 0.45 : 0.35,
@@ -111,5 +111,25 @@ export function mockScoringProfile(strict = false): ScoringProfile {
       minConfidence: 0.5,
       blinkThreshold: 0.45,
     },
+    // Profile 1.2.0 sections (PRM-7): the Rust defaults, today's constants.
+    metrics: {
+      ivtVelocityUnitsPerSec: 5,
+      ivtVelocityDegPerSec: 30,
+      ivtUnit: "norm",
+      minFixationDurationSec: 0.08,
+      fallbackFrameIntervalSec: 1 / 60,
+      smileReactivityWindowSec: 0.5,
+      flatAffectGain: 50,
+    },
+    aoi: { marginNorm: 0, dwellCapMs: 100 },
+    ageBands: [
+      { id: "12-17", minMonths: 12, maxMonths: 17 },
+      { id: "18-23", minMonths: 18, maxMonths: 23 },
+      { id: "24-35", minMonths: 24, maxMonths: 35 },
+      { id: "36-47", minMonths: 36, maxMonths: 47 },
+      { id: "48-60", minMonths: 48, maxMonths: 60 },
+    ],
+    norms: { minN: 12, includeImputed: false },
+    review: { lowQualityValidRatio: 0.8 },
   };
 }

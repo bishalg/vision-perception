@@ -10,6 +10,7 @@ import { createLiveParticipant } from "./participant";
 import { createLiveTotp } from "./totp";
 import { createLiveEmr } from "./emr";
 import { createLiveShare } from "./share";
+import { createLiveResearch } from "./research";
 import {
   ApiError,
   clipListSchema,
@@ -102,6 +103,7 @@ export function createLiveClient(opts: LiveOptions): CurvApi & AuthApi {
     ...createLiveTotp(request),
     ...createLiveEmr(request, buildQuery),
     ...createLiveShare(request, buildQuery),
+    ...createLiveResearch(request, buildQuery),
     login: (email, password, totpCode) =>
       request("/auth/login", tokenPairSchema, {
         method: "POST",

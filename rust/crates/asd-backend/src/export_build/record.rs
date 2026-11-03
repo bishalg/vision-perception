@@ -483,6 +483,8 @@ pub async fn load(
             // The full tracking record is not exported yet (WP-G.11 exposes it on the detail
             // API only); exports carry the verdict and accuracy on the summary.
             tracking_quality: None,
+            // The research frame log is never exported (PRV-5).
+            research_frames: None,
         };
         let consent = ConsentFacts {
             withdrawn: r.withdrawn,

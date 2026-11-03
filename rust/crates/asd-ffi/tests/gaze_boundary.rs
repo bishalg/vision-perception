@@ -147,6 +147,7 @@ fn frame(t: f64, f: &M4, target: [f64; 2], bias: [f64; 2], eye: Eye) -> RawTrack
         orientation: Orientation::Portrait,
         clip_media_time_sec: None,
         stimulus_id: None,
+        affect: None,
     };
     if eye == Eye::NoFace {
         return s;
@@ -445,6 +446,7 @@ fn full_raw() -> RawTrackingSample {
         orientation: Orientation::LandscapeRight,
         clip_media_time_sec: Some(3.25),
         stimulus_id: Some("clip-7".into()),
+        affect: None,
     }
 }
 
@@ -483,6 +485,7 @@ fn raw_record_round_trips_every_field() {
         orientation: Orientation::Portrait,
         clip_media_time_sec: None,
         stimulus_id: None,
+        affect: None,
     };
     assert_eq!(
         RawTrackingSample::try_from(RawSampleRecord::from(bare.clone())).unwrap(),

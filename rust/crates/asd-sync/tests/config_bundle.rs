@@ -185,7 +185,16 @@ fn test_key_ids_are_stable() {
 fn valid_bundle_is_accepted_with_its_documents() {
     let b = accept_bundle(read(VALID).as_bytes(), &ring(), &policy(None, None)).unwrap();
     assert_eq!(b.bundle_version, "2026.11.01-2");
-    assert_eq!(b.scoring_profile, delivered_profile());
+    // The committed fixtures were signed before phase 8: a 1.1.0 profile that decodes with
+    // the 1.2.0 defaults (PRM-7, acceptance 2), so only its version differs.
+    assert_eq!(b.scoring_profile.schema_version, "1.1.0");
+    assert_eq!(
+        b.scoring_profile,
+        ScoringProfile {
+            schema_version: "1.1.0".into(),
+            ..delivered_profile()
+        }
+    );
     assert!(!b.catalog.clips.is_empty());
 }
 

@@ -12,10 +12,13 @@ const USAGE: &str = "\
 usage: asd-cli <command> [args]
 
 commands:
-  schema export [--out DIR]           write session-v1.6.json, config-bundle-v1.json, api-v1.json
+  schema export [--out DIR]           write the session, config-bundle, api-v1 and
+                                      param-registry-v1 documents
   schema check [--dir DIR]            fail when the committed schemas differ from the Rust types
   schema validate SCHEMA FILE...      validate JSON documents against a schema file
-  schema print session|config-bundle|api
+  schema print session|config-bundle|api|param-registry
+  params list [--stage S] [--reprocess R]   the parameter registry as a table
+  params check FILE                   validate a scoring profile against the registry
   bundle keygen [--out FILE]          new Ed25519 bundle signing key (PKCS#8 PEM)
   bundle compose ...                  unsigned bundle from catalog, baselines and profile
   bundle sign --in FILE --key FILE    sign a bundle (CON-6)
@@ -37,6 +40,7 @@ fn main() -> ExitCode {
         Some("bundle") => cmd::bundle::run(rest),
         Some("synth") => cmd::synth::run(rest),
         Some("norms") => cmd::norms::run(rest),
+        Some("params") => cmd::params::run(rest),
         Some("gaze") => cmd::gaze::run(rest),
         Some("-h" | "--help" | "help") => {
             println!("{USAGE}");

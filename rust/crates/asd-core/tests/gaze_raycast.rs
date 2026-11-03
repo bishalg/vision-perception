@@ -415,6 +415,7 @@ fn sample(face: Option<M4>, look_at: Option<[f64; 3]>) -> RawTrackingSample {
         orientation: Orientation::Portrait,
         clip_media_time_sec: None,
         stimulus_id: None,
+        affect: None,
     }
 }
 
