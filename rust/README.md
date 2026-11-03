@@ -362,6 +362,29 @@ export format. Job kind `analysis_run` and the `/experiments`, `/cohorts`, `/ana
 `/orgs/{id}/config/effective` routes are mounted and answer `501 not-implemented` until WP-X.2/X.3.
 `ASD_ANALYSIS_*` settings arrive with WP-X.3.
 
+**WP-X.1.** `asd_core::analysis` holds the core twins of the 1.2.0 profile sections
+(`AnalysisProfile`, which decodes from any `ScoringProfile` body) and of the run summary types,
+`evaluate` (score/frames/auto, RPX-2/3), `Aggregator` (exact quantiles, seeded bootstrap CIs, RUN-4)
+and `suppress` (PRV-1). `asd_core::gaze::reprocess` replays a research frame log with a profile's
+gate, tracking, metrics and AOI sections and builds frames the way the device does (RPX-1).
+`metrics::extract_with` reads every `metrics.*` knob; `extract`/`extract_with_roles` keep their
+signatures and the goldens are byte-identical. The contract↔core JSON parity is tested in
+`asd-core/tests/analysis.rs` (asd-contract is a dev-dependency of asd-core).
+
+**WP-X.2** fills `routes/research.rs`. Experiments are an org's draft `ScoringProfile`, validated by
+`params::validate` and edited with `If-Match`. Promote files a draft config document whose notes
+start with `experiment:<id> run:<run>`; publishing a human-authored scoring profile or baselines
+candidate then needs a succeeded `analysis_runs` row over its body hash (or its version), else
+`409 config-unanalysed`. Cohorts are saved `CohortDefinition`s; the preview is one SQL count,
+research consent and withdrawal are always applied, and small-cell suppression uses
+`settings.research.small_cell_k` (default 12, 5..=50). `GET /orgs/{id}/config/effective` returns
+the org's bundle, else the global published documents, else the bundled defaults. The research
+frame log is uploaded through the proxy only (`PUT /sessions/{id}/blobs/research_frames`, digest
+required), sealed under the org data key (16-byte key id + AES-GCM), read by owners and researchers
+with a `session.frames_read` audit row, purged on `research_frames_retention_months` (falling back
+to `retention_months`), and deleted by erasure. Ingest stores `age_months` and takes its review and
+flag thresholds from the published profile. `POST /v1/config/{kind}` (draft) now needs `ConfigWrite`.
+
 ## Conventions
 
 - Licence `Apache-2.0` on every crate; dependencies must pass `rust/deny.toml`.
