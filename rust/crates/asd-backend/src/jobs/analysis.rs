@@ -27,6 +27,16 @@
 //! 4. **Record**: `summary` (PRV-1 applied with the org's `small_cell_k`), counts,
 //!    `finished_at`, and the system audit `analysis.run_complete` (counts, no values).
 //!
+//! Kinds (WP-X.9): `cohort_rescore` is the above. `param_sweep` (SWP-1..3) evaluates the
+//! draft side once per cell of the sweep grid ([`SweepGrid`]: the experiment profile with the
+//! axes' values, the published value always a cell) off the async workers, checks cancel and
+//! the deadline before every session, and adds `summary.sweep`; its rows, RUN-4 blocks and
+//! blob compare the published profile with the grid cell nearest the experiment's values.
+//! `age_profile` (AGE-1) is a cohort re-score that also adds `summary.age_profile`: per band
+//! and expectation, shares on-target / monitor / atypical and the percentile of the expected
+//! value under the published baselines and the experiment's (draft) baselines. The summary is
+//! built and capped (`ASD_ANALYSIS_MAX_SUMMARY_KIB`, RUN-4) before anything is stored.
+//!
 //! A cancelled run ends `cancelled` with nothing stored (the blob is written only after the
 //! last check); the deadline fails it `budget_exceeded`. GOV-5: this module only reads
 //! sessions, participants, organizations and config documents, and writes `analysis_runs`,
@@ -37,10 +47,14 @@ use std::time::Instant;
 
 use asd_contract::api_v1::{ConfigDocumentKind, ScoringStatus};
 use asd_contract::params::{self, Reprocess};
-use asd_contract::research::{CohortDefinition, LevelRequest as WireLevel};
+use std::sync::Arc;
+
+use asd_contract::research::{CohortDefinition, LevelRequest as WireLevel, RunKind};
+use asd_core::analysis::sweep::param_value;
 use asd_core::analysis::{
-    changed_params, evaluate, suppress, AggregatorOptions, AnalysisProfile, Evaluation, Level,
-    LevelRequest, ResearchInput, RowSide, SessionInput,
+    changed_params, evaluate, suppress, AgeProfileAggregator, AgeProfileBaselines,
+    AggregatorOptions, AnalysisProfile, Evaluation, Level, LevelRequest, ResearchInput, RowSide,
+    SessionInput, SweepAggregator, SweepAxis, SweepGrid,
 };
 use asd_core::analysis::{Aggregator, SessionRow};
 use asd_core::gaze::raw_log;
@@ -493,6 +507,8 @@ fn permanent(what: &str) -> impl Fn(serde_json::Error) -> JobError + '_ {
 struct Inputs {
     published: AnalysisProfile,
     published_baselines: NormativeBaselineSet,
+    /// The published baselines version read at job time (the `age_profile` block names it).
+    published_baselines_version: String,
     draft: AnalysisProfile,
     draft_baselines: NormativeBaselineSet,
     catalog: StimulusCatalog,
@@ -526,7 +542,7 @@ async fn load_inputs(
     .await?;
     let published: AnalysisProfile =
         serde_json::from_value(published_body).map_err(permanent("published profile"))?;
-    let (_, published_baselines_body) =
+    let (published_baselines_version, published_baselines_body) =
         published_document(conn, ConfigDocumentKind::NormativeBaselines).await?;
     let published_baselines: NormativeBaselineSet =
         serde_json::from_value(published_baselines_body)
@@ -558,6 +574,7 @@ async fn load_inputs(
     Ok(Inputs {
         published,
         published_baselines,
+        published_baselines_version,
         draft,
         draft_baselines,
         catalog,
@@ -572,6 +589,92 @@ pub fn applies(r: Reprocess, level: Level) -> bool {
         Reprocess::Metrics | Reprocess::Frames => level == Level::Frames,
         Reprocess::CaptureOnly => false,
     }
+}
+
+/// The grid of a `param_sweep` run and every cell's profile (SWP-1..3).
+struct SweepPlan {
+    grid: SweepGrid,
+    profiles: Arc<Vec<AnalysisProfile>>,
+}
+
+/// The core axes of a wire sweep.
+pub fn core_axes(sweep: &asd_contract::research::SweepSpec) -> Vec<SweepAxis> {
+    sweep
+        .axes
+        .iter()
+        .map(|a| SweepAxis {
+            param_id: a.param_id.clone(),
+            from: a.from,
+            to: a.to,
+            step: a.step,
+        })
+        .collect()
+}
+
+/// The sweep grid of `axes` between the published and the experiment profile (SWP-2: the
+/// published value is always a cell). `Err` names the first id the core cannot read.
+pub fn sweep_grid(
+    axes: &[SweepAxis],
+    published: &AnalysisProfile,
+    draft: &AnalysisProfile,
+) -> Result<SweepGrid, String> {
+    let value = |p: &AnalysisProfile, id: &str| {
+        param_value(p, id).ok_or_else(|| format!("{id} is not a number the analysis core reads"))
+    };
+    let published_values = axes
+        .iter()
+        .map(|a| value(published, &a.param_id))
+        .collect::<Result<Vec<_>, _>>()?;
+    let draft_values = axes
+        .iter()
+        .map(|a| value(draft, &a.param_id))
+        .collect::<Result<Vec<_>, _>>()?;
+    SweepGrid::new(axes, &published_values, &draft_values).map_err(|e| e.to_string())
+}
+
+fn sweep_plan(
+    def: &asd_contract::research::AnalysisDefinition,
+    inputs: &Inputs,
+) -> Result<Option<SweepPlan>, JobError> {
+    if def.kind != RunKind::ParamSweep {
+        return Ok(None);
+    }
+    let sweep = def
+        .sweep
+        .as_ref()
+        .ok_or_else(|| JobError::Permanent("a param_sweep run without a sweep".into()))?;
+    let grid = sweep_grid(&core_axes(sweep), &inputs.published, &inputs.draft)
+        .map_err(JobError::Permanent)?;
+    let profiles = grid
+        .profiles(&inputs.draft)
+        .map_err(|e| JobError::Permanent(format!("sweep profile: {e}")))?;
+    Ok(Some(SweepPlan {
+        grid,
+        profiles: Arc::new(profiles),
+    }))
+}
+
+/// One session under the published profile and every sweep cell (CPU only; run off the async
+/// workers). Returns the published evaluation, each cell's row side and the nearest cell's
+/// evaluation.
+fn evaluate_cells(
+    input: &SessionInput,
+    inputs: &Inputs,
+    profiles: &[AnalysisProfile],
+    nearest: usize,
+    level: LevelRequest,
+) -> (Evaluation, Vec<RowSide>, Option<Evaluation>) {
+    let published = evaluate(input, &inputs.published, &inputs.published_baselines, level);
+    let mut sides = Vec::with_capacity(profiles.len());
+    let mut near = None;
+    for (i, profile) in profiles.iter().enumerate() {
+        let e = evaluate(input, profile, &inputs.draft_baselines, level);
+        sides.push(RowSide::from_evaluation(&e));
+        if i == nearest {
+            near = Some(e);
+        }
+    }
+    (published, sides, near)
 }
 
 async fn stop_requested(ctx: &JobContext, deadline: Instant) -> Result<(), JobError> {
@@ -631,7 +734,7 @@ async fn execute(ctx: &JobContext, job: &Job, run_id: Uuid) -> Result<Value, Job
     sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
         .execute(&mut *tx)
         .await?;
-    let inputs = load_inputs(&mut tx, &run, &run.definition).await?;
+    let inputs = Arc::new(load_inputs(&mut tx, &run, &run.definition).await?);
     let members = membership(
         &mut tx,
         org,
@@ -663,11 +766,13 @@ async fn execute(ctx: &JobContext, job: &Job, run_id: Uuid) -> Result<Value, Job
     )
     .execute(&ctx.pool)
     .await?;
+    let sweep = sweep_plan(&def, &inputs)?;
+    let cells = sweep.as_ref().map_or(1, |s| s.grid.cells.len() as u64);
     if let Err(b) = check_budget(
         limits,
         members.score_n(),
         members.frames_n(),
-        1,
+        cells,
         def.sweep.is_some(),
     ) {
         return Err(JobError::Permanent(format!("{}: {}", b.slug, b.detail)));
@@ -680,6 +785,24 @@ async fn execute(ctx: &JobContext, job: &Job, run_id: Uuid) -> Result<Value, Job
         ..AggregatorOptions::default()
     };
     options.metrics.retain(|m| !m.is_empty());
+    let mut sweep_agg = sweep
+        .as_ref()
+        .map(|s| SweepAggregator::new(&s.grid, &options.metrics));
+    let mut age_agg = (def.kind == RunKind::AgeProfile).then(|| {
+        AgeProfileAggregator::new(
+            &inputs.draft.age_bands,
+            inputs.draft.norms.include_imputed,
+            options.clone(),
+        )
+    });
+    // The rows' draft side: the experiment profile, or a sweep's nearest cell (SWP-3).
+    let changed: Vec<(String, Reprocess)> = match &sweep {
+        Some(s) => changed_params(&s.profiles[s.grid.nearest_cell], &inputs.published)
+            .into_iter()
+            .filter_map(|id| params::spec(&id).map(|spec| (id, spec.reprocess)))
+            .collect(),
+        None => inputs.changed.clone(),
+    };
     let mut agg = Aggregator::new(&inputs.draft.age_bands, options);
     let mut excluded = members.excluded.clone();
     let mut rows: Vec<u8> = Vec::new();
@@ -705,6 +828,11 @@ async fn execute(ctx: &JobContext, job: &Job, run_id: Uuid) -> Result<Value, Job
         .map(|r| (r.id, (r.summary, r.valid_frame_ratio)))
         .collect();
         for member in page {
+            if sweep.is_some() {
+                // A session costs one evaluation per cell: check and report per session.
+                stop_requested(ctx, deadline).await?;
+                ctx.progress(done, total, "evaluate").await?;
+            }
             done += 1;
             let Some((summary, valid)) = stored.get(&member.id) else {
                 *excluded.entry(reasons::SESSION_GONE.into()).or_insert(0) += 1;
@@ -731,15 +859,42 @@ async fn execute(ctx: &JobContext, job: &Job, run_id: Uuid) -> Result<Value, Job
                 Level::Frames => LevelRequest::Frames,
                 Level::Score => LevelRequest::Score,
             };
-            let published = evaluate(
-                &input,
-                &inputs.published,
-                &inputs.published_baselines,
-                level,
-            );
-            let draft = evaluate(&input, &inputs.draft, &inputs.draft_baselines, level);
-            let row = session_row(member, &published, &draft, &inputs.changed);
+            let (published, draft) = match (&sweep, sweep_agg.as_mut()) {
+                (Some(plan), Some(cells_agg)) => {
+                    let (shared, profiles, nearest) = (
+                        inputs.clone(),
+                        plan.profiles.clone(),
+                        plan.grid.nearest_cell,
+                    );
+                    let (published, sides, near) = tokio::task::spawn_blocking(move || {
+                        evaluate_cells(&input, &shared, &profiles, nearest, level)
+                    })
+                    .await
+                    .map_err(|e| JobError::Transient(format!("sweep evaluation: {e}")))?;
+                    let published_side = RowSide::from_evaluation(&published);
+                    for (i, side) in sides.iter().enumerate() {
+                        cells_agg.push(i, &published_side, side);
+                    }
+                    let near = near.ok_or_else(|| {
+                        JobError::Permanent("the sweep has no nearest cell".into())
+                    })?;
+                    (published, near)
+                }
+                _ => (
+                    evaluate(
+                        &input,
+                        &inputs.published,
+                        &inputs.published_baselines,
+                        level,
+                    ),
+                    evaluate(&input, &inputs.draft, &inputs.draft_baselines, level),
+                ),
+            };
+            let row = session_row(member, &published, &draft, &changed);
             agg.push(&row);
+            if let Some(a) = age_agg.as_mut() {
+                a.push(member.age_months.map(i64::from), &published, &draft);
+            }
             append_row(&mut rows, member, &row)?;
             if rows.len() > limits.max_result_bytes {
                 return Err(JobError::Permanent(
@@ -754,7 +909,36 @@ async fn execute(ctx: &JobContext, job: &Job, run_id: Uuid) -> Result<Value, Job
         }
     }
 
-    // (3) Seal and store, after the last cancel check.
+    // (3) The summary (PRV-1 applied, RUN-4 cap) before anything is stored.
+    let mut summary = agg.finish(run.seed as u64);
+    summary.includes_synthetic = members.includes_synthetic;
+    summary.sweep = sweep_agg.map(|a| a.finish());
+    if let Some(a) = age_agg {
+        let block = a.finish(
+            AgeProfileBaselines {
+                published: inputs.published_baselines_version.clone(),
+                draft: run.baselines_version.clone(),
+            },
+            inputs.draft.norms.min_n,
+            run.seed as u64,
+        );
+        summary.age_profile = Some(serde_json::to_value(&block).map_err(permanent("age profile"))?);
+    }
+    let k = org_small_cell_k(&ctx.pool, org).await?;
+    suppress(&mut summary, k);
+    let summary_json = serde_json::to_value(&summary).map_err(permanent("summary"))?;
+    let summary_bytes = serde_json::to_vec(&summary_json)
+        .map_err(permanent("summary"))?
+        .len();
+    if summary_bytes > limits.max_summary_bytes {
+        return Err(JobError::Permanent(format!(
+            "{}: the summary is {summary_bytes} bytes; at most {} (ASD_ANALYSIS_MAX_SUMMARY_KIB)",
+            asd_contract::problem::RESULT_TOO_LARGE,
+            limits.max_summary_bytes
+        )));
+    }
+
+    // (4) Seal and store, after the last cancel check.
     stop_requested(ctx, deadline).await?;
     ctx.progress(done, total, "seal").await?;
     let sealed = seal_result(keyring, org, run_id, &rows).await?;
@@ -771,13 +955,8 @@ async fn execute(ctx: &JobContext, job: &Job, run_id: Uuid) -> Result<Value, Job
         .await
         .map_err(|e| JobError::Transient(format!("storing the analysis result: {e}")))?;
 
-    // (4) Summary and record.
-    let mut summary = agg.finish(run.seed as u64);
-    summary.includes_synthetic = members.includes_synthetic;
-    let k = org_small_cell_k(&ctx.pool, org).await?;
-    suppress(&mut summary, k);
+    // (5) Record.
     let counts = summary.counts.clone();
-    let summary_json = serde_json::to_value(&summary).map_err(permanent("summary"))?;
     let excluded_json = serde_json::to_value(&counts.excluded).map_err(permanent("excluded"))?;
     let progress = json!({"done": done, "total": total, "phase": "done"});
     let drift = previous.map(|old| {

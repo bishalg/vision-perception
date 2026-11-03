@@ -9,10 +9,15 @@
 //! - a band (and `overall`) with `n < k` is `suppressed`, its `n` and flag rates `null`;
 //! - flag counts and transition cells with `0 < n < k` become `null` (zero stays zero) and
 //!   are counted in `counts.suppressed_cells`;
-//! - a sweep cell with `n < k` keeps only its `values`.
+//! - a sweep cell with `n < k` keeps only its `values`; in a kept cell a
+//!   `changed_vs_published` count with `0 < n < k` becomes `null` and is counted (WP-X.9);
+//! - the `age_profile` block (WP-X.9) is suppressed per band and per cell with
+//!   `max(k, norms.minN)` ([`super::age_profile::suppress_age_profile`]); a block that does
+//!   not decode is dropped rather than stored unchecked.
 //!
 //! Idempotent: suppressing twice with the same `k` changes nothing the second time.
 
+use super::age_profile::{suppress_age_profile, AgeProfileSummary};
 use super::aggregate::{BandSummary, Dist, FlagCounts, RunSummary, Transition, MIN_N_FOR_DECILES};
 
 /// Applies PRV-1 to `summary` in place and records `k` in `small_cell_k`.
@@ -46,8 +51,20 @@ pub fn suppress(summary: &mut RunSummary, k: u32) {
                     .into_iter()
                     .map(|m| (m, Default::default()))
                     .collect();
+            } else if cell.changed_vs_published.is_some_and(|n| small(n, k)) {
+                cell.changed_vs_published = None;
+                cells += 1;
             }
         }
+    }
+
+    if let Some(raw) = summary.age_profile.take() {
+        summary.age_profile = serde_json::from_value::<AgeProfileSummary>(raw)
+            .ok()
+            .and_then(|mut a| {
+                suppress_age_profile(&mut a, k);
+                serde_json::to_value(&a).ok()
+            });
     }
 
     summary.counts.suppressed_cells += cells;

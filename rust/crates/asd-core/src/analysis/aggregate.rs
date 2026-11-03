@@ -168,6 +168,9 @@ pub struct SweepCell {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct SweepSummary {
     pub axes: Vec<SweepAxis>,
+    /// The published profile's value per axis (the marked cell, SWP-2; WP-X.9).
+    #[serde(default)]
+    pub published_values: Vec<f64>,
     pub cells: Vec<SweepCell>,
 }
 

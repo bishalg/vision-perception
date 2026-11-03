@@ -119,6 +119,19 @@ test("research workbench: registry form, preview cards and SVG charts load under
   await expect(page.getByTestId("sweep-curve")).toBeVisible();
 });
 
+test("research runs: the 625-cell sweep heatmaps and the age tables render under the policy", async ({ page }) => {
+  await login(page, "researcher@example.org");
+  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  const org = new URL(page.url()).pathname.split("/")[1]!;
+  // Seeded in mock/research.ts (WP-X.9): a two-axis param_sweep run and an age_profile run.
+  await expectStrictDocument(await page.goto(`/${org}/research/runs/a0000000-0000-4000-8000-000000000004`));
+  await expectHydrated(page);
+  await expect(page.getByTestId("sweep-cell")).toHaveCount(1250);
+  await expectStrictDocument(await page.goto(`/${org}/research/runs/a0000000-0000-4000-8000-000000000005`));
+  await expectHydrated(page);
+  await expect(page.getByTestId("age-row").first()).toBeVisible();
+});
+
 test("unmatched URL: 404 page is rendered per request, nonced and hydrated", async ({ page }) => {
   const org = await loginToOverview(page);
   for (const path of [`/${org}/no-such-page`, `/${org}/sessions/x/y/z`]) {
