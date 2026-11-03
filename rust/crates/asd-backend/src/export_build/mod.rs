@@ -12,6 +12,7 @@
 //! up front with a clear reason until its encoder exists. `audit_csv` (WP-B.23) builds in
 //! [`audit`] and the export job.
 
+pub mod analysis;
 pub mod audit;
 pub mod case;
 pub mod filters;
@@ -226,8 +227,10 @@ impl ExportRow {
             mode: self.mode,
             purpose: self.purpose,
             status: self.effective_status(),
-            filters: serde_json::from_value::<ExportFilters>(self.filters.clone())
-                .unwrap_or_default(),
+            filters: serde_json::from_value::<ExportFilters>(
+                analysis::split_filters(&self.filters).0,
+            )
+            .unwrap_or_default(),
             reason: self.reason.clone(),
             destination_ids: self.destination_ids.iter().map(Uuid::to_string).collect(),
             requested_by: self.requested_by.map(|u| u.to_string()),
@@ -279,9 +282,6 @@ pub fn format_available(format: ExportFormat) -> Result<(), &'static str> {
     match format {
         ExportFormat::PdfSummary => Err(
             "pdf_summary is not available yet: the PDF/A clinical summary encoder ships with WP-I.5",
-        ),
-        ExportFormat::AnalysisResults => Err(
-            "analysis_results is not available yet: the analysis run export ships with WP-X.8",
         ),
         _ => Ok(()),
     }
@@ -557,8 +557,12 @@ pub fn render(input: &RenderInput<'_>) -> Result<Artifact, RenderError> {
                 content_type: CT_HL7,
             })
         }
-        ExportFormat::PdfSummary | ExportFormat::AnalysisResults => Err(RenderError::Unsupported(
+        ExportFormat::PdfSummary => Err(RenderError::Unsupported(
             format_available(input.format).expect_err("unavailable"),
+        )),
+        // An analysis run has no session records; the job builds it through `analysis`.
+        ExportFormat::AnalysisResults => Err(RenderError::Unsupported(
+            "analysis_results renders through the export job's analysis build, not the session dispatch",
         )),
         // The audit log has no session records; the job builds it through `audit`.
         ExportFormat::AuditCsv => Err(RenderError::Unsupported(
@@ -686,10 +690,8 @@ mod tests {
             .contains("WP-I.5"));
         assert!(format_available(ExportFormat::CasePackage).is_ok());
         assert!(format_available(ExportFormat::AuditCsv).is_ok());
-        assert!(format_available(ExportFormat::AnalysisResults)
-            .unwrap_err()
-            .contains("WP-X.8"));
-        let unavailable = [ExportFormat::PdfSummary, ExportFormat::AnalysisResults];
+        assert!(format_available(ExportFormat::AnalysisResults).is_ok());
+        let unavailable = [ExportFormat::PdfSummary];
         for f in ExportFormat::ALL
             .iter()
             .filter(|f| !unavailable.contains(f))

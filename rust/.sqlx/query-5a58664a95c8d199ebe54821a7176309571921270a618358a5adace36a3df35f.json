@@ -1,0 +1,257 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT kind, status, definition_hash, cohort_hash, membership_hash, profile_hash,\n                  published_profile_version, baselines_version, catalog_version, bundle_version,\n                  core_version, contract_version, pipeline_version, registry_version, seed,\n                  level_requested, sessions_n, summary, result_blob_key, finished_at\n           FROM analysis_runs WHERE id = $1 AND org_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "definition_hash",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "definition_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "cohort_hash",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "cohort_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "membership_hash",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "membership_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "profile_hash",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "profile_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "published_profile_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "published_profile_version"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "baselines_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "baselines_version"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "catalog_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "catalog_version"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "bundle_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "bundle_version"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "core_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "core_version"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "contract_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "contract_version"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "pipeline_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "pipeline_version"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "registry_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "registry_version"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "seed",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "seed"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "level_requested",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "level_requested"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "sessions_n",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "sessions_n"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "summary",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "summary"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "result_blob_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "result_blob_key"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "finished_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "finished_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "5a58664a95c8d199ebe54821a7176309571921270a618358a5adace36a3df35f"
+}

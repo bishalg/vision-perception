@@ -325,6 +325,65 @@ async fn check_case_rows(
     Ok(())
 }
 
+/// RUN-7 body rules of an `analysis_results` request; returns the run id when valid.
+fn validate_analysis(req: &ExportRequest, errors: &mut Vec<InvalidParam>) -> Option<Uuid> {
+    use asd_contract::export::{AnalysisEncoding, AnalysisLayout};
+    if req.format != ExportFormat::AnalysisResults {
+        if req.analysis.is_some() {
+            errors.push(bad(
+                "analysis",
+                "only analysis_results exports carry an analysis block",
+            ));
+        }
+        return None;
+    }
+    let before = errors.len();
+    if req.mode != ExportMode::Deidentified {
+        errors.push(bad(
+            "mode",
+            "analysis results are de-identified only (XC-4)",
+        ));
+    }
+    if !matches!(
+        req.purpose,
+        ExportPurpose::Research | ExportPurpose::QualityImprovement
+    ) {
+        errors.push(bad(
+            "purpose",
+            "analysis results are for research or quality_improvement only",
+        ));
+    }
+    if req.filters != ExportFilters::default() {
+        errors.push(bad("filters", "must be empty for analysis_results"));
+    }
+    if req.include_labels {
+        errors.push(bad("include_labels", "analysis results carry no labels"));
+    }
+    if req.case.is_some() {
+        errors.push(bad("case", "only case_package exports carry a case"));
+    }
+    let Some(a) = &req.analysis else {
+        errors.push(bad(
+            "analysis",
+            "an analysis_results export needs an analysis block",
+        ));
+        return None;
+    };
+    if a.encoding == AnalysisEncoding::Parquet && a.layout != AnalysisLayout::Sessions {
+        errors.push(bad(
+            "analysis.encoding",
+            "parquet is for the sessions layout only",
+        ));
+    }
+    let run = Uuid::parse_str(&a.run_id)
+        .map_err(|_| errors.push(bad("analysis.run_id", "must be a UUID")))
+        .ok();
+    if errors.len() > before {
+        return None;
+    }
+    run
+}
+
 /// Validates and queues one export of `org` for `principal` (EXJ-1/2), returning it.
 async fn create_export(
     state: &AppState,
@@ -346,6 +405,11 @@ async fn create_export(
     if req.format == ExportFormat::AuditCsv {
         // HIP-3: AuditExport (owner, admin) on top of the route's ExportDeidentified.
         rbac::authorize(principal, Action::AuditExport, Some(org))?;
+    }
+
+    if req.format == ExportFormat::AnalysisResults {
+        // RUN-7: reading a run's results needs the same right as the run page.
+        rbac::authorize(principal, Action::AnalysisRead, Some(org))?;
     }
 
     // ---- body validation (every problem at once)
@@ -407,6 +471,7 @@ async fn create_export(
             req.destination_ids.len(),
         ));
     }
+    let analysis_run = validate_analysis(&req, &mut errors);
     if let Err(AppError::Validation(p)) = filters::parse(&req.filters) {
         errors.extend(p);
     }
@@ -460,6 +525,11 @@ async fn create_export(
         slug: CONSENT_PURPOSE_MISMATCH,
         detail: e.to_string(),
     })?;
+
+    // ---- analysis run (RUN-7): the run is the org's (404 otherwise) and has succeeded
+    if let Some(run) = analysis_run {
+        export_build::analysis::load_run(&state.db, org, run).await?;
+    }
 
     // ---- case package (SHR-7): consent, participant, sessions, sealed recipient
     let id = Uuid::new_v4();
@@ -529,7 +599,11 @@ async fn create_export(
 
     let mut secret = [0u8; 32];
     getrandom::fill(&mut secret).map_err(|e| AppError::Internal(format!("randomness: {e}")))?;
-    let filters_json = serde_json::to_value(&stored_filters).expect("plain data");
+    let mut filters_json = serde_json::to_value(&stored_filters).expect("plain data");
+    if let Some(analysis) = &req.analysis {
+        // The block has no column of its own (see `export_build::analysis`).
+        filters_json = export_build::analysis::join_filters(filters_json, analysis);
+    }
     let mut tx = state.db.begin().await?;
     let job = jobs::enqueue(
         &mut tx,
