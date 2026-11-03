@@ -61,6 +61,17 @@ final class GazePipelineCostTests: XCTestCase {
     /// `swift test --sanitize=thread` links the TSan runtime.
     static let underThreadSanitizer: Bool = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "__tsan_init") != nil
 
+    /// One-minute load average of the host (0 when unavailable).
+    static var loadAverage: Double {
+        var load = [Double](repeating: 0, count: 1)
+        return getloadavg(&load, 1) == 1 ? load[0] : 0
+    }
+
+    /// More runnable work than cores: tail latencies measure the scheduler, not the code.
+    static var hostIsOversubscribed: Bool {
+        loadAverage > Double(ProcessInfo.processInfo.activeProcessorCount)
+    }
+
     static func nowMs() -> Double {
         Double(DispatchTime.now().uptimeNanoseconds) / 1_000_000
     }
@@ -101,8 +112,18 @@ final class GazePipelineCostTests: XCTestCase {
         // Regression guard only: the host is faster than any supported device, so a host p99
         // above the device budget means something is badly wrong (debug or release core).
         // ThreadSanitizer slows the Swift half of the call several times; there it only reports.
+        // The median catches a real slowdown on any host. The p99 is decided by scheduler
+        // stalls when the host is oversubscribed (load above the core count: 100-200 ms
+        // pauses were seen at load ~70 while p50 stayed 0.02 ms), so it is only enforced on a
+        // quiet host.
         if !Self.underThreadSanitizer {
-            XCTAssertLessThan(push.p99, Self.budgetMs, "host p99 of push exceeds the device budget")
+            XCTAssertLessThan(push.p50, Self.budgetMs, "host p50 of push exceeds the device budget")
+            if Self.hostIsOversubscribed {
+                print(String(format: "PIPE-4 p99 not enforced: host load %.1f on %d cores",
+                             Self.loadAverage, ProcessInfo.processInfo.activeProcessorCount))
+            } else {
+                XCTAssertLessThan(push.p99, Self.budgetMs, "host p99 of push exceeds the device budget")
+            }
         }
     }
 
