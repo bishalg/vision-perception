@@ -200,6 +200,7 @@ pub fn api_v1() -> Value {
         api_v1::ParticipantPage,
         api_v1::SessionAttentionFlag,
         api_v1::SessionSummary,
+        api_v1::SessionListItem,
         api_v1::SessionDetail,
         api_v1::SessionPage,
         api_v1::MetricRow,

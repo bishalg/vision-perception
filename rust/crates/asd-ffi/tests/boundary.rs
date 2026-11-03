@@ -517,6 +517,7 @@ fn classify_response_covers_every_outcome() {
     let body = br#"{"sessionId":"s1","status":"accepted","duplicate":true,"frames_upload_url":"https://x.example/f"}"#;
     match sync_classify_response(200, vec![], body.to_vec()) {
         AsdSyncOutcome::Accepted { ack } => {
+            assert_eq!(ack.research_frames_upload_url, None);
             assert_eq!(ack.session_id.as_deref(), Some("s1"));
             assert_eq!(ack.status.as_deref(), Some("accepted"));
             assert_eq!(ack.duplicate, Some(true));
@@ -527,6 +528,19 @@ fn classify_response_covers_every_outcome() {
             assert_eq!(ack.report_upload_url, None);
         }
         other => panic!("{other:?}"),
+    }
+    let research = br#"{"sessionId":"s1","research_frames_upload_url":"/v1/sessions/s1/blobs/research_frames"}"#;
+    for outcome in [
+        sync_classify_response(201, vec![], research.to_vec()),
+        sync_classify_response_with_body(201, vec![], research.to_vec()),
+    ] {
+        match outcome {
+            AsdSyncOutcome::Accepted { ack } => assert_eq!(
+                ack.research_frames_upload_url.as_deref(),
+                Some("/v1/sessions/s1/blobs/research_frames")
+            ),
+            other => panic!("{other:?}"),
+        }
     }
     // A garbage 2xx body is still accepted.
     assert!(matches!(

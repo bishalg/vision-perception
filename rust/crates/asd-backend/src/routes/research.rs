@@ -1031,7 +1031,7 @@ async fn create_cohort(
     .map_err(|e| {
         if is_unique(&e, "cohorts_org_name_key") {
             conflict(
-                slugs::CONFLICT,
+                slugs::COHORT_NAME_EXISTS,
                 "a cohort of this org already has this name",
             )
         } else {
@@ -1158,7 +1158,7 @@ async fn patch_cohort(
     .map_err(|e| {
         if is_unique(&e, "cohorts_org_name_key") {
             conflict(
-                slugs::CONFLICT,
+                slugs::COHORT_NAME_EXISTS,
                 "a cohort of this org already has this name",
             )
         } else {

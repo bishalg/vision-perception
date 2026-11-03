@@ -258,6 +258,10 @@ pub struct Org {
     /// write and filtered here). Present on `GET /v1/orgs/{id}`; absent in `GET /v1/orgs`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub settings: Option<BTreeMap<String, Value>>,
+    /// RFL-5: retention horizon of the research frame log, `1..=240` months. Omitted when
+    /// the org follows `retention_months`. Present on `GET`/`PATCH /v1/orgs/{id}`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub research_frames_retention_months: Option<u32>,
 }
 
 /// `PATCH /v1/orgs/{id}`; absent members are unchanged.
@@ -270,6 +274,16 @@ pub struct OrgPatch {
     /// Merged into `organizations.settings` (e.g. `audit_rate`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub settings: Option<BTreeMap<String, Value>>,
+    /// RFL-5, `1..=240` months (validated by the route like `retention_months`). Absent =
+    /// unchanged (`None`), `null` = follow `retention_months` (`Some(None)`), a number = the
+    /// log's own horizon.
+    #[serde(
+        default,
+        deserialize_with = "crate::session_v1_6::explicit_null",
+        skip_serializing_if = "Option::is_none"
+    )]
+    #[schemars(with = "Option<u32>")]
+    pub research_frames_retention_months: Option<Option<u32>>,
 }
 
 /// User account status. `invited` accounts exist but cannot sign in yet; only `active`
@@ -584,10 +598,24 @@ macro_rules! page {
     };
 }
 
+/// `GET /v1/orgs/{id}/sessions` item: the [`SessionSummary`] plus list-only flags. The
+/// summary members are flattened, so a list item is a superset of a summary.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[schemars(example = example_session_list_item())]
+pub struct SessionListItem {
+    #[serde(flatten)]
+    pub summary: SessionSummary,
+    /// A research frame log is stored for the session (RFL-6; same test as
+    /// `SessionDetail.research_frames.available` and the list's `frames=available`), so a
+    /// client can offer frame-level views without reading each session.
+    #[serde(default)]
+    pub research_frames_available: bool,
+}
+
 page!(
     /// `GET /v1/orgs/{id}/sessions`.
     SessionPage,
-    SessionSummary
+    SessionListItem
 );
 page!(
     /// `GET /v1/orgs/{id}/devices`.
@@ -915,6 +943,14 @@ fn example_org() -> Org {
         kind: OrgKind::Clinic,
         retention_months: Some(24),
         settings: None,
+        research_frames_retention_months: None,
+    }
+}
+
+fn example_session_list_item() -> SessionListItem {
+    SessionListItem {
+        summary: example_session_summary(),
+        research_frames_available: true,
     }
 }
 

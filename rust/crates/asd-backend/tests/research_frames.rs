@@ -56,6 +56,12 @@ async fn upload_rules_ack_and_detail() {
         ack["research_frames_upload_url"],
         "/v1/sessions/S-RES/blobs/research_frames"
     );
+    let typed: asd_contract::session_v1_6::SessionIngestResponse =
+        serde_json::from_value(ack.clone()).unwrap();
+    assert_eq!(
+        typed.research_frames_upload_url.as_deref(),
+        Some("/v1/sessions/S-RES/blobs/research_frames")
+    );
     assert_eq!(ack["frames_upload_url"], "/v1/sessions/S-RES/blobs/frames");
     let ack = ingest(&c, &device, &consented_session("S-NOC", false)).await;
     assert!(ack.get("research_frames_upload_url").is_none(), "{ack}");
@@ -220,6 +226,24 @@ async fn upload_rules_ack_and_detail() {
     };
     assert_eq!(list("frames=available").await, ["S-RES"]);
     assert_eq!(list("frames=none").await, ["S-NOC"]);
+    // Each list item carries the same test as `research_frames_available` (typed).
+    let (s, b) = c
+        .call(
+            Method::GET,
+            &format!("/v1/orgs/{}/sessions", c.org),
+            None,
+            &owner,
+        )
+        .await;
+    assert_eq!(s, StatusCode::OK, "{b}");
+    let page: asd_contract::api_v1::SessionPage = serde_json::from_value(b).unwrap();
+    let mut flags: Vec<_> = page
+        .items
+        .iter()
+        .map(|i| (i.summary.id.as_str(), i.research_frames_available))
+        .collect();
+    flags.sort();
+    assert_eq!(flags, [("S-NOC", false), ("S-RES", true)]);
     let (s, _) = c
         .call(
             Method::GET,
@@ -357,6 +381,8 @@ async fn read_is_for_owner_and_researcher_audited_and_purged_by_retention() {
         .call(Method::GET, &format!("/v1/orgs/{}", c.org), None, &owner)
         .await;
     assert_eq!(got["research_frames_retention_months"], 1);
+    let typed: asd_contract::api_v1::Org = serde_json::from_value(got).unwrap();
+    assert_eq!(typed.research_frames_retention_months, Some(1));
     let update = c.audit_rows("org.update").await;
     assert_eq!(
         update.last().unwrap()["after"]["research_frames_retention_months"],
@@ -404,10 +430,9 @@ async fn read_is_for_owner_and_researcher_audited_and_purged_by_retention() {
         )
         .await;
     assert_eq!(done["status"], "succeeded", "{done}");
-    assert_eq!(
-        done["result"]["orgs"][0]["research_frames_purged"], 1,
-        "{done}"
-    );
+    let result: asd_contract::privacy::RetentionSweepResult =
+        serde_json::from_value(done["result"].clone()).unwrap();
+    assert_eq!(result.orgs[0].research_frames_purged, 1, "{done}");
     // The session's own frames horizon (24 months) is untouched.
     assert_eq!(done["result"]["orgs"][0]["frames_purged"], 0, "{done}");
     assert!(c.state.blobs.get(&key).await.unwrap().is_none());

@@ -9,6 +9,7 @@ mod common;
 mod research_support;
 
 use asd_contract::api_v1::Role;
+use asd_contract::problem;
 use http::{Method, StatusCode};
 use research_support::*;
 use serde_json::{json, Value};
@@ -334,6 +335,11 @@ async fn cohort_crud_audits_and_rbac() {
         )
         .await;
     assert_eq!(s, StatusCode::CONFLICT, "{b}");
+    assert_eq!(
+        b["type"],
+        problem::type_uri(problem::COHORT_NAME_EXISTS),
+        "{b}"
+    );
     for bearer in [&clinician, &root] {
         let (s, _) = c
             .call(
@@ -388,5 +394,30 @@ async fn cohort_crud_audits_and_rbac() {
     assert_eq!(c.audit_rows("cohort.create").await.len(), 1);
     assert_eq!(c.audit_rows("cohort.update").await.len(), 1);
     assert_eq!(c.audit_rows("cohort.archive").await.len(), 1);
+
+    // Renaming another cohort onto a taken name (archived ones included) is the same 409.
+    let (s, other) = c
+        .call(
+            Method::POST,
+            &uri,
+            Some(json!({"name": "other", "definition": {}})),
+            &researcher,
+        )
+        .await;
+    assert_eq!(s, StatusCode::CREATED, "{other}");
+    let (s, b) = c
+        .call(
+            Method::PATCH,
+            &format!("/v1/cohorts/{}", other["id"].as_str().unwrap()),
+            Some(json!({"name": "24-47 months, good/fair"})),
+            &researcher,
+        )
+        .await;
+    assert_eq!(s, StatusCode::CONFLICT, "{b}");
+    assert_eq!(
+        b["type"],
+        problem::type_uri(problem::COHORT_NAME_EXISTS),
+        "{b}"
+    );
     c.db.cleanup().await;
 }

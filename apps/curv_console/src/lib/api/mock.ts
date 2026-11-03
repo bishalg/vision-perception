@@ -21,6 +21,7 @@ import {
   type SessionDetail,
   type SessionListQuery,
   type SessionRaw,
+  type SessionListItem,
   type SessionSummary,
   type TokenPair,
 } from "./types";
@@ -299,6 +300,10 @@ export function mockSessionRaw(d: SessionDetail, clipRows: ClipScore[]): Session
     frames_available: false,
     frames_purged: false,
   };
+}
+
+function toListItem(d: SessionDetail): SessionListItem {
+  return { ...toSummary(d), research_frames_available: d.research_frames?.available ?? false };
 }
 
 function toSummary(d: SessionDetail): SessionSummary {
@@ -617,7 +622,7 @@ export function createMockClient(): MockClient {
       });
       // `details` is ordered newest first, which is the backend's `(started_at, id)` descending order.
       const { slice, next_cursor, total } = page(filtered, (d) => [d.started_at, d.id], query.cursor, query.limit);
-      return { items: slice.map(toSummary), next_cursor, total };
+      return { items: slice.map(toListItem), next_cursor, total };
     },
     async getSession(sessionId) {
       const found = details.find((d) => d.id === sessionId);

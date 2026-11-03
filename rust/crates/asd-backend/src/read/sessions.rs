@@ -19,13 +19,14 @@
 //!
 //! Research frame log (WP-X.2, RFL-6): the detail and `GET /v1/sessions/{id}/raw` carry
 //! `research_frames: {available, purged, bytes}`; the list takes `frames=available|none`
-//! ([`parse_frames`], kept outside [`SessionQuery`] so the export filters stay as they are).
+//! ([`parse_frames`], kept outside [`SessionQuery`] so the export filters stay as they are)
+//! and each list item carries `research_frames_available` (same test, same query).
 
 use std::collections::BTreeMap;
 
 use asd_contract::api_v1::{
-    ResearchFramesState, SessionAttentionFlag, SessionDetail, SessionPage, SessionRaw,
-    SessionSummary, SessionTrackingQuality,
+    ResearchFramesState, SessionAttentionFlag, SessionDetail, SessionListItem, SessionPage,
+    SessionRaw, SessionSummary, SessionTrackingQuality,
 };
 use asd_contract::session_v1_7::TrackingQuality;
 use asd_contract::session_v1_8::{ScoringStatus, UnscorableReason};
@@ -299,7 +300,8 @@ pub async fn list(db: &PgPool, org: Uuid, f: &SessionFilters) -> AppResult<Sessi
                   s.unscorable_reason,
                   EXISTS (SELECT 1 FROM review_items r
                           WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed'))
-                      AS "reviewed!"
+                      AS "reviewed!",
+                  s.research_frames_blob_key IS NOT NULL AS "research_available!"
            FROM sessions s
            WHERE s.org_id = $1
              AND ($2::text IS NULL OR s.attention_flag = $2)
@@ -367,8 +369,8 @@ pub async fn list(db: &PgPool, org: Uuid, f: &SessionFilters) -> AppResult<Sessi
     let mut last = None;
     for r in rows.into_iter().take(limit) {
         last = Some(Cursor::new(r.started_at, r.id.clone()));
-        items.push(
-            SummaryColumns {
+        items.push(SessionListItem {
+            summary: SummaryColumns {
                 id: r.id,
                 participant_id: r.participant_id,
                 participant_token: r.participant_token,
@@ -389,7 +391,8 @@ pub async fn list(db: &PgPool, org: Uuid, f: &SessionFilters) -> AppResult<Sessi
                 unscorable_reason: r.unscorable_reason,
             }
             .into_dto()?,
-        );
+            research_frames_available: r.research_available,
+        });
     }
     Ok(SessionPage {
         items,

@@ -25,6 +25,10 @@ pub struct IngestAck {
     pub frames_upload_url: Option<String>,
     #[serde(default)]
     pub report_upload_url: Option<String>,
+    /// RFL-3: where to `PUT` the research frame log; absent unless the server offers it
+    /// (proxy blob mode, research-consented session).
+    #[serde(default)]
+    pub research_frames_upload_url: Option<String>,
 }
 
 /// Classification of a session post.

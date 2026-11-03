@@ -144,6 +144,9 @@ pub struct RetentionOrgResult {
     pub cutoff: String,
     /// Sessions whose frames blob was (or, in a dry run, would be) deleted.
     pub frames_purged: u64,
+    /// Sessions whose research frame log was (or, in a dry run, would be) deleted (RFL-5).
+    #[serde(default)]
+    pub research_frames_purged: u64,
 }
 
 /// `jobs.result` of a `retention_sweep` job.

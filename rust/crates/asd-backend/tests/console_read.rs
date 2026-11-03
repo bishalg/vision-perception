@@ -160,7 +160,9 @@ async fn session_list_is_newest_first_and_decodes_as_the_contract_page() {
     assert_eq!(body["total"], 5);
     assert_eq!(body["next_cursor"], Value::Null);
     let page: SessionPage = serde_json::from_value(body.clone()).unwrap();
-    let first = &page.items[0];
+    assert!(!page.items[0].research_frames_available);
+    assert_eq!(body["items"][0]["research_frames_available"], false);
+    let first = &page.items[0].summary;
     // CON-20: participant_id is the participants UUID; the token is carried too.
     assert!(Uuid::parse_str(&first.participant_id).is_ok());
     assert_eq!(first.participant_token, "child-SESS-GOL");
@@ -558,7 +560,14 @@ async fn session_list_carries_and_filters_by_tracking_verdict() {
     let (status, body) = f.list("").await;
     assert_eq!(status, StatusCode::OK, "{body}");
     let page: SessionPage = serde_json::from_value(body.clone()).unwrap();
-    let by_id = |id: &str| page.items.iter().find(|s| s.id == id).unwrap().clone();
+    let by_id = |id: &str| {
+        page.items
+            .iter()
+            .find(|s| s.summary.id == id)
+            .unwrap()
+            .summary
+            .clone()
+    };
     assert_eq!(
         by_id("T-GOOD").tracking_verdict,
         Some(TrackingVerdict::Good)

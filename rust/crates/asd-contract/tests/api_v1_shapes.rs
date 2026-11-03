@@ -6,8 +6,9 @@
 //! same examples).
 
 use asd_contract::api_v1::{
-    ClipList, ClipScore, LoginRequest, MetricRow, RegisterDeviceRequest, RegisterDeviceResponse,
-    RegistrationStatus, Role, SessionAttentionFlag, SessionPage, SessionSummary, TokenPair, User,
+    ClipList, ClipScore, LoginRequest, MetricRow, Org, OrgPatch, RegisterDeviceRequest,
+    RegisterDeviceResponse, RegistrationStatus, Role, SessionAttentionFlag, SessionListItem,
+    SessionPage, SessionSummary, TokenPair, User,
 };
 use asd_contract::problem::{self, Problem};
 use asd_contract::schema;
@@ -73,6 +74,7 @@ fn ingest_response_uses_the_keys_ios_decodes() {
         duplicate: false,
         frames_upload_url: Some("/v1/sessions/S1/blobs/frames".into()),
         report_upload_url: None,
+        research_frames_upload_url: None,
     };
     let v = serde_json::to_value(&r).unwrap();
     assert_eq!(
@@ -249,6 +251,7 @@ fn api_schema_declares_every_dto() {
         "SessionSummary",
         "SessionDetail",
         "SessionPage",
+        "SessionListItem",
         "ClipScore",
         "ClipList",
         "MetricRow",
@@ -439,4 +442,76 @@ fn housekeeping_dtos_are_exported() {
         )
         .is_err()
     );
+}
+
+#[test]
+fn ingest_response_carries_the_research_frames_url_only_when_offered() {
+    let mut r: SessionIngestResponse = serde_json::from_value(json!({
+        "sessionId": "S1", "status": "accepted", "duplicate": false,
+        "frames_upload_url": null, "report_upload_url": null
+    }))
+    .unwrap();
+    assert_eq!(r.research_frames_upload_url, None);
+    assert!(serde_json::to_value(&r)
+        .unwrap()
+        .get("research_frames_upload_url")
+        .is_none());
+    r.research_frames_upload_url = Some("/v1/sessions/S1/blobs/research_frames".into());
+    let v = serde_json::to_value(&r).unwrap();
+    assert_eq!(
+        v["research_frames_upload_url"],
+        "/v1/sessions/S1/blobs/research_frames"
+    );
+    assert_eq!(
+        serde_json::from_value::<SessionIngestResponse>(v).unwrap(),
+        r
+    );
+}
+
+#[test]
+fn org_patch_research_retention_is_tri_state() {
+    let absent: OrgPatch = serde_json::from_value(json!({})).unwrap();
+    assert_eq!(absent.research_frames_retention_months, None);
+    let null: OrgPatch =
+        serde_json::from_value(json!({"research_frames_retention_months": null})).unwrap();
+    assert_eq!(null.research_frames_retention_months, Some(None));
+    let six: OrgPatch =
+        serde_json::from_value(json!({"research_frames_retention_months": 6})).unwrap();
+    assert_eq!(six.research_frames_retention_months, Some(Some(6)));
+    assert_eq!(
+        serde_json::to_value(&null).unwrap(),
+        json!({"research_frames_retention_months": null})
+    );
+    let org: Org = serde_json::from_value(json!({
+        "id": "o", "name": "n", "kind": "research", "research_frames_retention_months": 3
+    }))
+    .unwrap();
+    assert_eq!(org.research_frames_retention_months, Some(3));
+}
+
+#[test]
+fn session_list_item_flattens_the_summary_and_defaults_the_frames_flag() {
+    let api = schema::api_v1();
+    let example = &api["$defs"]["SessionSummary"]["examples"][0];
+    let item: SessionListItem = serde_json::from_value(example.clone()).unwrap();
+    assert!(!item.research_frames_available);
+    let mut v = serde_json::to_value(&item).unwrap();
+    assert_eq!(v["research_frames_available"], false);
+    v.as_object_mut()
+        .unwrap()
+        .remove("research_frames_available");
+    assert_eq!(&v, example);
+}
+
+#[test]
+fn retention_org_result_defaults_the_research_members() {
+    use asd_contract::privacy::RetentionOrgResult;
+    let r: RetentionOrgResult = serde_json::from_value(json!({
+        "org_id": "o", "retention_months": 24, "cutoff": "2026-01-01T00:00:00Z",
+        "frames_purged": 2
+    }))
+    .unwrap();
+    assert_eq!(r.research_frames_purged, 0);
+    let v = serde_json::to_value(&r).unwrap();
+    assert_eq!(v["research_frames_purged"], 0);
 }

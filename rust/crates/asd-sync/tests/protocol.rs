@@ -12,9 +12,10 @@ use asd_core::types::CaptureSource;
 use asd_sync::{
     backoff_schedule, build_register_request, build_session_request, build_session_request_json,
     build_session_request_v1_7, build_session_request_v1_8, classify_register_response,
-    classify_response, endpoint_url, next_retry_delay, retry_after_seconds, validate_ingest_url,
-    validate_upload_url, ClientInfo, RegisterOutcome, SyncError, SyncOutcome, UrlError,
-    BACKOFF_DELAYS_SECS, MAX_ATTEMPTS, REGISTER_PATH, SESSIONS_PATH,
+    classify_response, classify_response_with_body, endpoint_url, next_retry_delay,
+    retry_after_seconds, validate_ingest_url, validate_upload_url, ClientInfo, RegisterOutcome,
+    SyncError, SyncOutcome, UrlError, BACKOFF_DELAYS_SECS, MAX_ATTEMPTS, REGISTER_PATH,
+    SESSIONS_PATH,
 };
 use serde_json::{json, Value};
 
@@ -458,7 +459,22 @@ fn success_is_accepted_and_reads_upload_urls() {
             );
             assert_eq!(ack.report_upload_url, None);
             assert_eq!(ack.duplicate, Some(false));
+            assert_eq!(ack.research_frames_upload_url, None);
         }
+        other => panic!("{other:?}"),
+    }
+}
+
+#[test]
+fn success_reads_the_research_frames_upload_url() {
+    let body = json!({"sessionId": "S1", "status": "accepted", "duplicate": false,
+                      "frames_upload_url": null, "report_upload_url": null,
+                      "research_frames_upload_url": "/v1/sessions/S1/blobs/research_frames"});
+    match classify_response_with_body(201, &[], &serde_json::to_vec(&body).unwrap()) {
+        SyncOutcome::Accepted(ack) => assert_eq!(
+            ack.research_frames_upload_url.as_deref(),
+            Some("/v1/sessions/S1/blobs/research_frames")
+        ),
         other => panic!("{other:?}"),
     }
 }
