@@ -266,11 +266,13 @@ async fn matrix_superadmin_reaches_every_org() {
 #[test]
 fn matrix_table_covers_every_action_and_superadmin_has_all_but_clinical_content() {
     // No database: the single table in auth/rbac.rs. Superadmin has every action except
-    // the clinical-content carve-out (RBAC-3, WP-C.9; covered in rbac_clinical.rs).
+    // the clinical-content carve-out (RBAC-3, WP-C.9; covered in rbac_clinical.rs) and the
+    // research carve-out (GOV-1, WP-X.0).
     for action in Action::ALL {
         assert_eq!(
             rbac::allows(Role::Superadmin, *action),
-            !rbac::CLINICAL_CONTENT_ACTIONS.contains(action),
+            !rbac::CLINICAL_CONTENT_ACTIONS.contains(action)
+                && !rbac::VENDOR_EXCLUDED_RESEARCH_ACTIONS.contains(action),
             "{action:?}"
         );
         assert!(
@@ -332,6 +334,52 @@ fn matrix_table_covers_every_action_and_superadmin_has_all_but_clinical_content(
             "{action:?} clinical carve-out"
         );
     }
+    // GOV-1 (phase 8 step 0): the researcher toolkit rows. The routes come with WP-X.2 /
+    // WP-X.3 and test these rows over HTTP; tests/research_stubs.rs checks the stubs.
+    let gov1: &[(Action, &[Role], bool)] = &[
+        (
+            Action::AnalysisRead,
+            &[Role::Owner, Role::Admin, Role::Clinician, Role::Researcher],
+            true,
+        ),
+        (Action::AnalysisRun, &[Role::Owner, Role::Researcher], false),
+        (
+            Action::ExperimentWrite,
+            &[Role::Owner, Role::Researcher],
+            false,
+        ),
+        (
+            Action::ExperimentPromote,
+            &[Role::Owner, Role::Researcher],
+            false,
+        ),
+        (Action::FramesRead, &[Role::Owner, Role::Researcher], false),
+    ];
+    for (action, allowed, superadmin) in gov1 {
+        for role in ORG_ROLES {
+            assert_eq!(
+                rbac::allows(role, *action),
+                allowed.contains(&role),
+                "{role:?} {action:?}"
+            );
+        }
+        assert_eq!(
+            rbac::allows(Role::Superadmin, *action),
+            *superadmin,
+            "superadmin {action:?}"
+        );
+        // Not clinical content: they do not change who may provision which role.
+        assert!(
+            !rbac::CLINICAL_CONTENT_ACTIONS.contains(action),
+            "{action:?}"
+        );
+        assert_eq!(
+            rbac::VENDOR_EXCLUDED_RESEARCH_ACTIONS.contains(action),
+            !*superadmin,
+            "{action:?} vendor carve-out"
+        );
+    }
+    assert!(Action::AnalysisRead.is_read_only() && Action::FramesRead.is_read_only());
     // Attachment reads are clinical content (REC-7): superadmin and admin never read them.
     assert!(!rbac::allows(Role::Superadmin, Action::ClinicalContentRead));
     assert!(!rbac::allows(Role::Admin, Action::ClinicalContentRead));

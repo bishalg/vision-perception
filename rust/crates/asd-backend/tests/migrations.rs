@@ -15,6 +15,7 @@ use common::TestDb;
 use sqlx::PgPool;
 
 const TABLES: &[&str] = &[
+    "analysis_runs", // WP-X.0 (0026_research_toolkit.sql)
     // WP-B.19 (0024_emr_lite.sql).
     "attachments",
     "audit_log",
@@ -25,12 +26,14 @@ const TABLES: &[&str] = &[
     "clinical_review_versions",
     "clinical_reviews",
     "clinical_signatures",
+    "cohorts", // WP-X.0
     "config_bundles",
     "config_documents",
     "devices",
     "encounters", // WP-B.19
     "enrol_codes",
     "erasure_requests",
+    "experiments", // WP-X.0
     // WP-I.6 (0009_exports.sql).
     "export_deliveries",
     "export_items",

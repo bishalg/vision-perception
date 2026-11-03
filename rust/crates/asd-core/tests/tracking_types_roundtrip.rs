@@ -82,6 +82,7 @@ fn full_sample() -> RawTrackingSample {
         orientation: Orientation::LandscapeLeft,
         clip_media_time_sec: Some(3.25),
         stimulus_id: Some("stim_05".into()),
+        affect: None,
     }
 }
 
@@ -101,6 +102,7 @@ fn lost_sample() -> RawTrackingSample {
         orientation: Orientation::Portrait,
         clip_media_time_sec: None,
         stimulus_id: None,
+        affect: None,
     }
 }
 
@@ -670,6 +672,11 @@ fn header() -> RawLogHeader {
         app_version: Some("1.0 (1)".into()),
         condition: Some("baseline".into()),
         ground_truth: Some(json!({ "bias_deg": [1.0, -0.5] })),
+        clips: Vec::new(),
+        bundle_version: None,
+        profile_version: None,
+        session_id: None,
+        participant_token: None,
     }
 }
 

@@ -133,6 +133,41 @@ pub const CASE_CONSENT_MISSING: &str = "case-consent-missing";
 /// Participant identity fields are not enabled before wave 3 (REC-9).
 pub const IDENTITY_DISABLED: &str = "identity-disabled";
 
+// ---- researcher toolkit (ADR-0012, WP-X.0) -----------------------------------------------
+
+/// 409: another experiment of the org has that name (EXP-2).
+pub const EXPERIMENT_NAME_EXISTS: &str = "experiment-name-exists";
+/// 409: the experiment was already promoted (GOV-2).
+pub const EXPERIMENT_PROMOTED: &str = "experiment-promoted";
+/// 409: the experiment has never been run on a cohort, so it cannot be promoted (GOV-2).
+pub const EXPERIMENT_NO_RUN: &str = "experiment-no-run";
+/// 400: the cohort selects no session.
+pub const COHORT_EMPTY: &str = "cohort-empty";
+/// 400: the cohort exceeds `ASD_ANALYSIS_MAX_SESSIONS` / `_MAX_FRAME_SESSIONS` (RUN-9).
+pub const COHORT_TOO_LARGE: &str = "cohort-too-large";
+/// 400: the sweep exceeds its cell or evaluation budget (SWP-2).
+pub const SWEEP_TOO_LARGE: &str = "sweep-too-large";
+/// 429: the org has as many queued or running analysis runs as allowed (RUN-9).
+pub const ANALYSIS_QUOTA_EXCEEDED: &str = "analysis-quota-exceeded";
+/// 400: `level: frames` was requested and no cohort session has a research log (RPX-3).
+pub const ANALYSIS_LEVEL_UNAVAILABLE: &str = "analysis-level-unavailable";
+/// 404: the session has no research frame log (RFL-4).
+pub const FRAMES_NOT_AVAILABLE: &str = "frames-not-available";
+/// 410: the retention sweep deleted the research frame log (RFL-4, RFL-5).
+pub const FRAMES_PURGED: &str = "frames-purged";
+/// 409: the session has no research consent; its frame log is refused (RFL-3).
+pub const RESEARCH_CONSENT_REQUIRED: &str = "research-consent-required";
+/// 400: the upload needs a `Content-Digest` header (RFL-3).
+pub const DIGEST_REQUIRED: &str = "digest-required";
+/// 409: no succeeded analysis run covers the candidate's body; it cannot be published (GOV-3).
+pub const CONFIG_UNANALYSED: &str = "config-unanalysed";
+/// 409: the job already finished; there is nothing to cancel (RUN-8).
+pub const JOB_FINISHED: &str = "job-finished";
+/// Run failure reason: the sealed per-session result exceeds 64 MiB (RUN-3).
+pub const RESULT_TOO_LARGE: &str = "result-too-large";
+/// 501: the route exists but its package has not shipped yet (phase 8 step 0 stubs).
+pub const NOT_IMPLEMENTED: &str = "not-implemented";
+
 /// Every slug above, published as `$defs/ProblemSlug` in `api-v1.json` so clients can
 /// check their spelling. Route-specific slugs (e.g. `email-taken`, `last-owner`) are
 /// documented with their route and are not listed here.
@@ -185,6 +220,22 @@ pub const SLUGS: &[&str] = &[
     SHARE_PASSCODE_INVALID,
     CASE_CONSENT_MISSING,
     IDENTITY_DISABLED,
+    EXPERIMENT_NAME_EXISTS,
+    EXPERIMENT_PROMOTED,
+    EXPERIMENT_NO_RUN,
+    COHORT_EMPTY,
+    COHORT_TOO_LARGE,
+    SWEEP_TOO_LARGE,
+    ANALYSIS_QUOTA_EXCEEDED,
+    ANALYSIS_LEVEL_UNAVAILABLE,
+    FRAMES_NOT_AVAILABLE,
+    FRAMES_PURGED,
+    RESEARCH_CONSENT_REQUIRED,
+    DIGEST_REQUIRED,
+    CONFIG_UNANALYSED,
+    JOB_FINISHED,
+    RESULT_TOO_LARGE,
+    NOT_IMPLEMENTED,
 ];
 
 /// Full `type` URI for a slug.

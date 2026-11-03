@@ -199,6 +199,10 @@ async fn run(ctx: &JobContext, job: &Job, export_id: Uuid) -> Result<Value, JobE
         | ExportFormat::Hl7v2
         | ExportFormat::DatasetJsonl
         | ExportFormat::DatasetParquet => build_sessions(ctx, &row, &parsed).await?,
+        // Refused at request time until WP-X.8 adds its build arm (`format_available`).
+        ExportFormat::AnalysisResults => {
+            return Err(permanent("analysis_results is not available yet (WP-X.8)"))
+        }
     };
 
     // ---- upload and phase 3, shared by every format

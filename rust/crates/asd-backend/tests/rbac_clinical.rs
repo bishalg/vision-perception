@@ -109,8 +109,11 @@ fn rbac3_superadmin_is_denied_every_clinical_content_action() {
 
 #[test]
 fn superadmin_keeps_every_non_clinical_action() {
+    // Besides clinical content, the vendor is refused the research actions of GOV-1
+    // (`rbac::VENDOR_EXCLUDED_RESEARCH_ACTIONS`, WP-X.0).
     for action in Action::ALL {
-        let want = !CLINICAL_CONTENT_ACTIONS.contains(action);
+        let want = !CLINICAL_CONTENT_ACTIONS.contains(action)
+            && !rbac::VENDOR_EXCLUDED_RESEARCH_ACTIONS.contains(action);
         assert_eq!(rbac::allows(Role::Superadmin, *action), want, "{action:?}");
     }
 }

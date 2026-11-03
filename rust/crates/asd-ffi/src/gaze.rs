@@ -331,6 +331,7 @@ impl TryFrom<RawSampleRecord> for RawTrackingSample {
             orientation: r.orientation.into(),
             clip_media_time_sec: r.clip_media_time_sec,
             stimulus_id: r.stimulus_id,
+            affect: None,
         })
     }
 }

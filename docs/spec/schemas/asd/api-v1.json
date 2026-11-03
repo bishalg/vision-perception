@@ -77,6 +77,558 @@
       ],
       "type": "object"
     },
+    "AnalysisDefinition": {
+      "description": "The snapshot a run is computed from (`analysis_runs.definition`, RUN-1);\n`definition_hash = sha256(JCS(definition))`.",
+      "properties": {
+        "baselines_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cohort": {
+          "$ref": "#/$defs/CohortDefinition"
+        },
+        "kind": {
+          "$ref": "#/$defs/RunKind"
+        },
+        "level": {
+          "$ref": "#/$defs/LevelRequest"
+        },
+        "options": {
+          "$ref": "#/$defs/RunOptions"
+        },
+        "profile": {
+          "$ref": "#/$defs/ScoringProfile",
+          "description": "The experiment profile at enqueue time."
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "sweep": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SweepSpec"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "cohort",
+        "profile",
+        "level",
+        "options",
+        "seed"
+      ],
+      "type": "object"
+    },
+    "AnalysisEncoding": {
+      "description": "RUN-7: file encoding of an `analysis_results` export (`parquet` for `sessions` only).",
+      "enum": [
+        "jsonl",
+        "csv",
+        "parquet"
+      ],
+      "type": "string"
+    },
+    "AnalysisExport": {
+      "additionalProperties": false,
+      "description": "`analysis_results` only (RUN-7): the run and the table to export.",
+      "properties": {
+        "encoding": {
+          "$ref": "#/$defs/AnalysisEncoding"
+        },
+        "layout": {
+          "$ref": "#/$defs/AnalysisLayout"
+        },
+        "run_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "layout",
+        "encoding"
+      ],
+      "type": "object"
+    },
+    "AnalysisLayout": {
+      "description": "RUN-7: which table of an analysis run an `analysis_results` export carries.",
+      "enum": [
+        "aggregates",
+        "sessions"
+      ],
+      "type": "string"
+    },
+    "AnalysisRun": {
+      "description": "`GET /v1/analysis-runs/{id}` (`AnalysisRead`): every RUN-1 column but the result blob\nkey. The reproducibility fields (RUN-5) are set before the job starts.",
+      "properties": {
+        "baselines_version": {
+          "type": "string"
+        },
+        "bundle_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "catalog_version": {
+          "type": "string"
+        },
+        "cohort_hash": {
+          "type": "string"
+        },
+        "cohort_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "contract_version": {
+          "type": "string"
+        },
+        "core_version": {
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "created_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "definition": {
+          "$ref": "#/$defs/AnalysisDefinition"
+        },
+        "definition_hash": {
+          "type": "string"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "excluded": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "experiment_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "job_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "$ref": "#/$defs/RunKind"
+        },
+        "level_requested": {
+          "$ref": "#/$defs/LevelRequest"
+        },
+        "membership_drift": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MembershipDrift"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Set on a re-run once it finished (RUN-2)."
+        },
+        "membership_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "org_id": {
+          "type": "string"
+        },
+        "pipeline_version": {
+          "type": "string"
+        },
+        "profile_hash": {
+          "type": "string"
+        },
+        "progress": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JobProgress"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "published_profile_version": {
+          "type": "string"
+        },
+        "registry_version": {
+          "type": "string"
+        },
+        "result_bytes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "sessions_frames_n": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sessions_n": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sessions_score_n": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RunSummary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "org_id",
+        "kind",
+        "status",
+        "definition",
+        "definition_hash",
+        "cohort_hash",
+        "profile_hash",
+        "published_profile_version",
+        "baselines_version",
+        "catalog_version",
+        "core_version",
+        "contract_version",
+        "pipeline_version",
+        "registry_version",
+        "seed",
+        "level_requested",
+        "created_at"
+      ],
+      "type": "object"
+    },
+    "AnalysisRunPage": {
+      "description": "`GET /v1/orgs/{id}/analysis-runs`.\nCursor-paginated list envelope: `cursor` is opaque, `limit <= 100`.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/AnalysisRun"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "AnalysisRunRequest": {
+      "additionalProperties": false,
+      "description": "`POST /v1/orgs/{id}/analysis-runs` (`AnalysisRun`; RUN-2). Exactly one of `cohort_id`\nand `cohort`. Answers `202 AnalysisRun`.",
+      "properties": {
+        "cohort": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CohortDefinition"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cohort_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "experiment_id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/RunKind"
+        },
+        "level": {
+          "$ref": "#/$defs/LevelRequest",
+          "default": "auto"
+        },
+        "options": {
+          "$ref": "#/$defs/RunOptions",
+          "default": {
+            "bootstrap": true,
+            "metrics": []
+          }
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Bootstrap seed; the server draws one when absent and stores it (RUN-5)."
+        },
+        "sweep": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SweepSpec"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "experiment_id"
+      ],
+      "type": "object"
+    },
+    "AnalysisSessionPage": {
+      "description": "`GET /v1/analysis-runs/{id}/sessions`.\nCursor-paginated list envelope: `cursor` is opaque, `limit <= 100`.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/AnalysisSessionRow"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "AnalysisSessionRow": {
+      "description": "`GET /v1/analysis-runs/{id}/sessions` item (RUN-3, PRV-2): no token, MRN, name or device\nmodel.",
+      "properties": {
+        "age_band": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "age_months": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "delta": {
+          "$ref": "#/$defs/SessionDelta"
+        },
+        "device_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "draft": {
+          "$ref": "#/$defs/SessionSide"
+        },
+        "level": {
+          "$ref": "#/$defs/Level"
+        },
+        "published": {
+          "$ref": "#/$defs/SessionSide"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "warnings": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "session_id",
+        "level",
+        "published",
+        "draft",
+        "delta"
+      ],
+      "type": "object"
+    },
+    "AoiParams": {
+      "description": "AOI hit-test parameters (PRM-7).",
+      "properties": {
+        "dwellCapMs": {
+          "default": 100,
+          "description": "Longest interval one frame contributes to a dwell sum, milliseconds.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "marginNorm": {
+          "default": 0.0,
+          "description": "Grows (positive) or shrinks (negative) every AOI box, normalised screen units.",
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
     "Area": {
       "properties": {
         "endSec": {
@@ -370,6 +922,50 @@
       },
       "required": [
         "items"
+      ],
+      "type": "object"
+    },
+    "BandSummary": {
+      "description": "RUN-4 per-band (and `overall`) block.",
+      "properties": {
+        "band": {
+          "description": "Band id, or `overall`.",
+          "type": "string"
+        },
+        "composite": {
+          "$ref": "#/$defs/DistComparison"
+        },
+        "flag_rate": {
+          "$ref": "#/$defs/FlagRateComparison"
+        },
+        "metrics": {
+          "additionalProperties": {
+            "$ref": "#/$defs/DistComparison"
+          },
+          "description": "Metric key -> distributions.",
+          "type": "object"
+        },
+        "n": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "suppressed": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "band",
+        "metrics",
+        "composite",
+        "flag_rate"
       ],
       "type": "object"
     },
@@ -1544,6 +2140,298 @@
       ],
       "type": "object"
     },
+    "Cohort": {
+      "description": "A saved cohort (COH-2).",
+      "properties": {
+        "archived_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "created_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "definition": {
+          "$ref": "#/$defs/CohortDefinition"
+        },
+        "definition_hash": {
+          "description": "sha256 of the RFC 8785 form of `definition`, hex.",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "org_id": {
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "org_id",
+        "name",
+        "definition",
+        "definition_hash",
+        "created_at",
+        "updated_at"
+      ],
+      "type": "object"
+    },
+    "CohortBandCount": {
+      "description": "One age band of a cohort preview; counts are `null` when suppressed (PRV-1, AGE-3).",
+      "properties": {
+        "band": {
+          "type": "string"
+        },
+        "frames_n": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Sessions of the band with a research frame log."
+        },
+        "n": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "suppressed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "band",
+        "suppressed"
+      ],
+      "type": "object"
+    },
+    "CohortDefinition": {
+      "additionalProperties": false,
+      "description": "Which sessions a run reads (COH-1). Research consent, \"not withdrawn\" and\n`capture_source = truedepth` are always applied and cannot be expressed here. Every list\nempty = no restriction. `cohort_hash = sha256(JCS(definition))`.",
+      "properties": {
+        "age_bands": {
+          "default": [],
+          "description": "Band ids of the experiment profile's `ageBands`.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "device_ids": {
+          "default": [],
+          "description": "Device ids (\"site\").",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`received_at` lower bound, `YYYY-MM-DD` (start of day, UTC)."
+        },
+        "include_synthetic": {
+          "default": false,
+          "description": "Synthetic sessions too; honoured only with `ASD_ALLOW_SYNTHETIC`, flagged in results.",
+          "type": "boolean"
+        },
+        "min_valid_ratio": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "quality_verdicts": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/GazeQualityVerdict"
+          },
+          "type": "array"
+        },
+        "require_frames": {
+          "default": false,
+          "description": "Only sessions with a research frame log.",
+          "type": "boolean"
+        },
+        "scoring_status": {
+          "default": [],
+          "description": "Empty = `scored` only.",
+          "items": {
+            "$ref": "#/$defs/ScoringStatus"
+          },
+          "type": "array"
+        },
+        "sex": {
+          "default": [],
+          "description": "Applied only once sessions carry sex (ADR-0012 Q8).",
+          "items": {
+            "$ref": "#/$defs/Sex"
+          },
+          "type": "array"
+        },
+        "to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`received_at` upper bound, `YYYY-MM-DD` (end of day, UTC)."
+        },
+        "tracking_verdicts": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/TrackingVerdict"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "CohortExclusions": {
+      "description": "Sessions left out of a cohort, by reason (COH-2).",
+      "properties": {
+        "no_age": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "no_consent": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "quality": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unscorable": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "withdrawn": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "no_consent",
+        "withdrawn",
+        "unscorable",
+        "no_age",
+        "quality"
+      ],
+      "type": "object"
+    },
+    "CohortPage": {
+      "description": "`GET /v1/orgs/{id}/cohorts`.\nCursor-paginated list envelope: `cursor` is opaque, `limit <= 100`.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/Cohort"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "CohortPreview": {
+      "description": "`POST /v1/orgs/{id}/cohorts/preview` (`AnalysisRead`; body: a [`CohortDefinition`]).",
+      "properties": {
+        "by_age_band": {
+          "items": {
+            "$ref": "#/$defs/CohortBandCount"
+          },
+          "type": "array"
+        },
+        "by_level": {
+          "$ref": "#/$defs/LevelCounts"
+        },
+        "excluded": {
+          "$ref": "#/$defs/CohortExclusions"
+        },
+        "n": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`null` when the whole cohort is below `small_cell_k`."
+        },
+        "small_cell_k": {
+          "description": "The org's suppression threshold applied to this answer (PRV-1).",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "by_age_band",
+        "by_level",
+        "excluded",
+        "small_cell_k"
+      ],
+      "type": "object"
+    },
     "ConfidenceParams": {
       "properties": {
         "distanceComfortMaxCm": {
@@ -1857,6 +2745,23 @@
       ],
       "type": "object"
     },
+    "CreateCohortRequest": {
+      "additionalProperties": false,
+      "description": "`POST /v1/orgs/{id}/cohorts` (`ExperimentWrite`).",
+      "properties": {
+        "definition": {
+          "$ref": "#/$defs/CohortDefinition"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "definition"
+      ],
+      "type": "object"
+    },
     "CreateConfigDocumentRequest": {
       "description": "`POST /v1/config/{kind}` (creates a `draft`).",
       "properties": {
@@ -1945,6 +2850,50 @@
       "required": [
         "kind",
         "occurred_at"
+      ],
+      "type": "object"
+    },
+    "CreateExperimentRequest": {
+      "additionalProperties": false,
+      "description": "`POST /v1/orgs/{id}/experiments` (`ExperimentWrite`). Starts from the published profile\nunless `from_experiment_id` or `from_version` names another (at most one of them).",
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "from_experiment_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "from_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A `scoring_profile` config document version."
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
       ],
       "type": "object"
     },
@@ -2718,6 +3667,146 @@
       ],
       "type": "string"
     },
+    "Dist": {
+      "description": "A distribution summary (RUN-4). With `suppressed: true` every other field is `null`\n(PRV-1); `p10`/`p90` are `null` below [`MIN_N_FOR_DECILES`].",
+      "properties": {
+        "ci95_mean": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Bootstrap 95 % CI of the mean (seeded, RUN-5)."
+        },
+        "hist": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Hist"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "iqr": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`[q1, q3]`."
+        },
+        "mean": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "median": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "n": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "p10": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "p90": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sd": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "suppressed": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "DistComparison": {
+      "description": "Published, draft and draft-minus-published distributions of one quantity.",
+      "properties": {
+        "delta": {
+          "$ref": "#/$defs/Dist"
+        },
+        "draft": {
+          "$ref": "#/$defs/Dist"
+        },
+        "published": {
+          "$ref": "#/$defs/Dist"
+        }
+      },
+      "required": [
+        "published",
+        "draft",
+        "delta"
+      ],
+      "type": "object"
+    },
+    "DocumentKind": {
+      "description": "The config document a parameter lives in. Only the scoring profile carries knobs today.",
+      "enum": [
+        "scoring_profile"
+      ],
+      "type": "string"
+    },
     "DownloadUrl": {
       "description": "`POST /v1/exports/{id}/download-url` (EXJ-5): a pre-signed GET (absolute) or a relative\n`/v1/exports/{id}/file?t=...` (proxy blob mode), valid five minutes.",
       "properties": {
@@ -2805,6 +3894,71 @@
         "ratio"
       ],
       "type": "string"
+    },
+    "EffectiveConfig": {
+      "description": "`GET /v1/orgs/{id}/config/effective` (`ConfigRead`, GOV-6): what the org's devices and\nthe console render from (INV-2).",
+      "properties": {
+        "bundle_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "normative_baselines": {
+          "$ref": "#/$defs/EffectiveDocument"
+        },
+        "scoring_profile": {
+          "$ref": "#/$defs/EffectiveDocument"
+        },
+        "source": {
+          "$ref": "#/$defs/EffectiveSource"
+        },
+        "stimulus_catalog": {
+          "$ref": "#/$defs/EffectiveDocument"
+        }
+      },
+      "required": [
+        "source",
+        "scoring_profile",
+        "normative_baselines",
+        "stimulus_catalog"
+      ],
+      "type": "object"
+    },
+    "EffectiveDocument": {
+      "description": "One published document of the effective configuration.",
+      "properties": {
+        "body": {
+          "description": "The `ScoringProfile`, `NormativeBaselineSet` or `StimulusCatalog` body."
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "body"
+      ],
+      "type": "object"
+    },
+    "EffectiveSource": {
+      "description": "Where the effective configuration came from.",
+      "oneOf": [
+        {
+          "const": "org_bundle",
+          "description": "The org's own signed bundle.",
+          "type": "string"
+        },
+        {
+          "const": "global",
+          "description": "The global published documents.",
+          "type": "string"
+        }
+      ]
     },
     "Encounter": {
       "description": "REC-4: one encounter. `kind`, `reason` and `summary` are staff input, never pre-filled\nfrom the attention flag or a score (REC-10).",
@@ -3291,6 +4445,147 @@
       ],
       "type": "string"
     },
+    "Experiment": {
+      "description": "A named draft scoring profile of an org (EXP-1).",
+      "properties": {
+        "base_profile_version": {
+          "description": "The published profile version the experiment started from.",
+          "type": "string"
+        },
+        "baselines_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Baselines version (published or draft) the experiment scores against; `null` = the\npublished one."
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "created_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "last_run_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "description": "1..80 characters, unique in the org.",
+          "type": "string"
+        },
+        "org_id": {
+          "type": "string"
+        },
+        "profile": {
+          "$ref": "#/$defs/ScoringProfile",
+          "description": "The full draft profile (schema 1.2.0)."
+        },
+        "profile_hash": {
+          "description": "sha256 of the RFC 8785 form of `profile`, hex.",
+          "type": "string"
+        },
+        "promoted_config_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The draft config document created by promote (GOV-2)."
+        },
+        "row_version": {
+          "description": "Optimistic concurrency: send `If-Match: \"<row_version>\"` with `PATCH`.",
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/$defs/ExperimentStatus"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "org_id",
+        "name",
+        "status",
+        "base_profile_version",
+        "profile",
+        "profile_hash",
+        "row_version",
+        "created_at",
+        "updated_at"
+      ],
+      "type": "object"
+    },
+    "ExperimentPage": {
+      "description": "`GET /v1/orgs/{id}/experiments`.\nCursor-paginated list envelope: `cursor` is opaque, `limit <= 100`.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/Experiment"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "ExperimentStatus": {
+      "description": "`experiments.status`.",
+      "enum": [
+        "draft",
+        "archived",
+        "promoted"
+      ],
+      "type": "string"
+    },
     "Export": {
       "description": "An export (EXJ-1..4). Never carries clinical content: counts, hashes and the request.",
       "examples": [
@@ -3623,7 +4918,7 @@
       "type": "object"
     },
     "ExportFormat": {
-      "description": "EXJ-1 artifact format. `csv`, `csv_excel`, `csv_sheets`: ZIP of the four tables\nplus `manifest.json` in the three CSV dialects (CSV-1, CSV-3); `xlsx`: one workbook\n(XLSX-1); `pdf_summary`: PDF/A clinical summary (WP-I.5, not available yet);\n`fhir_bundle`: one FHIR R4 clinical report bundle, exactly one session\n(`filters.session_ids`); `fhir_ndjson`: one bundle per line, any number of sessions;\n`hl7v2`: one ORU^R01 message, exactly one session, identified only (HL7-7).\n`dataset_jsonl`, `dataset_parquet`: de-identified ML datasets, one row per session,\nlabels when `include_labels` (WP-B.9; de-identified only).\n`case_package`: one participant's case as a ZIP (SHR-1..7, `ExportRequest.case`);\n`audit_csv`: the org's audit log as canonical CSV (HIP-3, `AuditExport`).",
+      "description": "EXJ-1 artifact format. `csv`, `csv_excel`, `csv_sheets`: ZIP of the four tables\nplus `manifest.json` in the three CSV dialects (CSV-1, CSV-3); `xlsx`: one workbook\n(XLSX-1); `pdf_summary`: PDF/A clinical summary (WP-I.5, not available yet);\n`fhir_bundle`: one FHIR R4 clinical report bundle, exactly one session\n(`filters.session_ids`); `fhir_ndjson`: one bundle per line, any number of sessions;\n`hl7v2`: one ORU^R01 message, exactly one session, identified only (HL7-7).\n`dataset_jsonl`, `dataset_parquet`: de-identified ML datasets, one row per session,\nlabels when `include_labels` (WP-B.9; de-identified only).\n`case_package`: one participant's case as a ZIP (SHR-1..7, `ExportRequest.case`);\n`audit_csv`: the org's audit log as canonical CSV (HIP-3, `AuditExport`).\n`analysis_results`: the aggregates or per-session rows of an analysis run\n(`ExportRequest.analysis`, RUN-7; de-identified, research or quality improvement).",
       "enum": [
         "csv",
         "csv_excel",
@@ -3636,7 +4931,8 @@
         "dataset_jsonl",
         "dataset_parquet",
         "case_package",
-        "audit_csv"
+        "audit_csv",
+        "analysis_results"
       ],
       "type": "string"
     },
@@ -3706,6 +5002,17 @@
       "additionalProperties": false,
       "description": "`POST /v1/orgs/{id}/exports` (EXJ-1). Answers `202` with the [`Export`].",
       "properties": {
+        "analysis": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AnalysisExport"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`analysis_results` only (RUN-7): the run and layout."
+        },
         "case": {
           "anyOf": [
             {
@@ -3782,6 +5089,150 @@
           "type": "number"
         }
       },
+      "type": "object"
+    },
+    "FlagCounts": {
+      "description": "Flag counts; `null` when suppressed.",
+      "properties": {
+        "green": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "red": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unreliable": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "yellow": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "FlagRateComparison": {
+      "description": "Flag rates of one band, published and draft.",
+      "properties": {
+        "draft": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FlagRates"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "published": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FlagRates"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "FlagRates": {
+      "description": "Flag shares in `[0, 1]`; the whole object is `null` for a suppressed band.",
+      "properties": {
+        "green": {
+          "type": "number"
+        },
+        "red": {
+          "type": "number"
+        },
+        "unreliable": {
+          "type": "number"
+        },
+        "yellow": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "green",
+        "yellow",
+        "red",
+        "unreliable"
+      ],
+      "type": "object"
+    },
+    "FlagSummary": {
+      "description": "RUN-4 `flags`.",
+      "properties": {
+        "draft": {
+          "$ref": "#/$defs/FlagCounts"
+        },
+        "published": {
+          "$ref": "#/$defs/FlagCounts"
+        },
+        "transitions": {
+          "items": {
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "anyOf": [
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            ],
+            "type": "array"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "published",
+        "draft",
+        "transitions"
+      ],
       "type": "object"
     },
     "FlagThresholds": {
@@ -4120,6 +5571,29 @@
       },
       "required": [
         "status"
+      ],
+      "type": "object"
+    },
+    "Hist": {
+      "description": "Histogram of a distribution: `counts[i]` values in `[edges[i], edges[i + 1])`.",
+      "properties": {
+        "counts": {
+          "items": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "edges": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "edges",
+        "counts"
       ],
       "type": "object"
     },
@@ -4529,6 +6003,44 @@
       ],
       "type": "object"
     },
+    "IvtUnit": {
+      "description": "Unit of the I-VT velocity threshold (`metrics.ivtUnit`).",
+      "oneOf": [
+        {
+          "const": "norm",
+          "description": "Normalised viewport units per second (`metrics.ivtVelocityUnitsPerSec`): today's rule.",
+          "type": "string"
+        },
+        {
+          "const": "deg",
+          "description": "Degrees of visual angle per second (`metrics.ivtVelocityDegPerSec`, SCR-3; owner gate\nH-G2).",
+          "type": "string"
+        }
+      ]
+    },
+    "JobProgress": {
+      "description": "Progress of a running job (RUN-8): `jobs.progress`, written with the heartbeat.",
+      "properties": {
+        "done": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "phase": {
+          "description": "Handler-defined phase name, e.g. `membership`, `evaluate`, `upload`.",
+          "type": "string"
+        },
+        "total": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "done",
+        "total",
+        "phase"
+      ],
+      "type": "object"
+    },
     "LabelInput": {
       "description": "A human annotation attached by a reviewer.",
       "properties": {
@@ -4649,6 +6161,41 @@
       ],
       "type": "string"
     },
+    "Level": {
+      "description": "The level a session was actually evaluated at.",
+      "enum": [
+        "score",
+        "frames"
+      ],
+      "type": "string"
+    },
+    "LevelCounts": {
+      "description": "Sessions by the level a run would evaluate them at (RPX-3).",
+      "properties": {
+        "frames": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "score": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "frames",
+        "score"
+      ],
+      "type": "object"
+    },
+    "LevelRequest": {
+      "description": "Requested evaluation level (RPX-3): `auto` = frames where a research log exists.",
+      "enum": [
+        "auto",
+        "score",
+        "frames"
+      ],
+      "type": "string"
+    },
     "LinkSessionRequest": {
       "description": "`POST /v1/encounters/{id}/sessions` (REC-4): link a session of the same participant.",
       "properties": {
@@ -4688,6 +6235,32 @@
       ],
       "type": "object"
     },
+    "MeanMedian": {
+      "description": "Mean and median of one quantity in a sweep cell.",
+      "properties": {
+        "mean": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "median": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
     "Membership": {
       "properties": {
         "id": {
@@ -4700,6 +6273,24 @@
       "required": [
         "id",
         "order"
+      ],
+      "type": "object"
+    },
+    "MembershipDrift": {
+      "description": "Sessions added and removed between a run and its re-run (RUN-2, RUN-6).",
+      "properties": {
+        "added": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "removed": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "added",
+        "removed"
       ],
       "type": "object"
     },
@@ -4890,6 +6481,46 @@
       ],
       "type": "object"
     },
+    "MetricsParams": {
+      "description": "Fixation and affect extraction parameters (PRM-7). Defaults are the asd-core constants.",
+      "properties": {
+        "fallbackFrameIntervalSec": {
+          "default": 0.016666666666666666,
+          "description": "Frame interval assumed where timestamps do not give one (60 Hz).",
+          "type": "number"
+        },
+        "flatAffectGain": {
+          "default": 50.0,
+          "description": "Gain of the flat-affect score (`1 - mean expressivity x gain`, clamped to [0, 1]).",
+          "type": "number"
+        },
+        "ivtUnit": {
+          "$ref": "#/$defs/IvtUnit",
+          "default": "norm"
+        },
+        "ivtVelocityDegPerSec": {
+          "default": 30.0,
+          "description": "I-VT threshold in degrees per second (`ivtUnit = deg`).",
+          "type": "number"
+        },
+        "ivtVelocityUnitsPerSec": {
+          "default": 5.0,
+          "description": "I-VT threshold in normalised viewport units per second (`ivtUnit = norm`).",
+          "type": "number"
+        },
+        "minFixationDurationSec": {
+          "default": 0.08,
+          "description": "Shortest fixation counted, seconds.",
+          "type": "number"
+        },
+        "smileReactivityWindowSec": {
+          "default": 0.5,
+          "description": "Window after a clip onset in which a smile counts as reactive, seconds.",
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
     "NormativeBaselineSet": {
       "properties": {
         "ageBrackets": {
@@ -5078,6 +6709,23 @@
         "weight",
         "segments"
       ],
+      "type": "object"
+    },
+    "NormsParams": {
+      "description": "Norm aggregation parameters (PRM-7, AGE-2).",
+      "properties": {
+        "includeImputed": {
+          "default": false,
+          "description": "Whether rows flagged `imputed` enter the distributions.",
+          "type": "boolean"
+        },
+        "minN": {
+          "default": 12,
+          "description": "Fewest observations a norm cell (and an analysis band, AGE-3) needs.",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
       "type": "object"
     },
     "Org": {
@@ -5291,6 +6939,226 @@
         "letter"
       ],
       "type": "string"
+    },
+    "ParamKind": {
+      "description": "Value type and allowed range (PRM-1). `AgeBands` is the one structured kind: the profile's\n`ageBands` list (contiguous, ascending, inclusive month bounds).",
+      "oneOf": [
+        {
+          "properties": {
+            "max": {
+              "type": "number"
+            },
+            "min": {
+              "type": "number"
+            },
+            "step": {
+              "type": "number"
+            },
+            "type": {
+              "const": "number",
+              "type": "string"
+            },
+            "unit": {
+              "$ref": "#/$defs/Unit"
+            }
+          },
+          "required": [
+            "type",
+            "min",
+            "max",
+            "step",
+            "unit"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "max": {
+              "type": "integer"
+            },
+            "min": {
+              "type": "integer"
+            },
+            "type": {
+              "const": "integer",
+              "type": "string"
+            },
+            "unit": {
+              "$ref": "#/$defs/Unit"
+            }
+          },
+          "required": [
+            "type",
+            "min",
+            "max",
+            "unit"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "bool",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "enum",
+              "type": "string"
+            },
+            "values": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "type",
+            "values"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "Screen-normalised `[x, y]` points, each coordinate in `[0, 1]`.",
+          "properties": {
+            "maxPoints": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "minPoints": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": {
+              "const": "point_list",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "minPoints",
+            "maxPoints"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "`[{id, minMonths, maxMonths}]`: ids unique, bands contiguous and ascending.",
+          "properties": {
+            "maxBands": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxMonths": {
+              "type": "integer"
+            },
+            "minBands": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "minMonths": {
+              "type": "integer"
+            },
+            "type": {
+              "const": "age_bands",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "minBands",
+            "maxBands",
+            "minMonths",
+            "maxMonths"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ParamRegistry": {
+      "description": "The exported registry document (`param-registry-v1.json`, PRM-4).",
+      "properties": {
+        "params": {
+          "items": {
+            "$ref": "#/$defs/ParamSpec"
+          },
+          "type": "array"
+        },
+        "registryVersion": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "registryVersion",
+        "params"
+      ],
+      "type": "object"
+    },
+    "ParamSpec": {
+      "description": "One registry row (PRM-1).",
+      "properties": {
+        "default": {
+          "description": "The value in `ScoringProfile::default()`."
+        },
+        "document": {
+          "$ref": "#/$defs/DocumentKind"
+        },
+        "helpKey": {
+          "description": "`param.<id>.help`.",
+          "type": "string"
+        },
+        "id": {
+          "description": "camelCase dotted wire path in the document.",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ParamKind"
+        },
+        "labelKey": {
+          "description": "`param.<id>.label` (PRM-5).",
+          "type": "string"
+        },
+        "ownerGate": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Owner decision fencing the knob for clinical use (e.g. `H-G2`); analysis may still\nvary it (ADR-0012 open question 9)."
+        },
+        "reprocess": {
+          "$ref": "#/$defs/Reprocess"
+        },
+        "since": {
+          "description": "Profile schema version that introduced the parameter.",
+          "type": "string"
+        },
+        "stage": {
+          "$ref": "#/$defs/Stage"
+        }
+      },
+      "required": [
+        "id",
+        "document",
+        "kind",
+        "default",
+        "stage",
+        "reprocess",
+        "labelKey",
+        "helpKey",
+        "since"
+      ],
+      "type": "object"
     },
     "Participant": {
       "description": "`GET /v1/orgs/{id}/participants` item. `id` is `participants.id` (CON-20).",
@@ -5995,9 +7863,52 @@
         "share-link-exhausted",
         "share-passcode-invalid",
         "case-consent-missing",
-        "identity-disabled"
+        "identity-disabled",
+        "experiment-name-exists",
+        "experiment-promoted",
+        "experiment-no-run",
+        "cohort-empty",
+        "cohort-too-large",
+        "sweep-too-large",
+        "analysis-quota-exceeded",
+        "analysis-level-unavailable",
+        "frames-not-available",
+        "frames-purged",
+        "research-consent-required",
+        "digest-required",
+        "config-unanalysed",
+        "job-finished",
+        "result-too-large",
+        "not-implemented"
       ],
       "type": "string"
+    },
+    "PromoteExperimentRequest": {
+      "additionalProperties": false,
+      "description": "`POST /v1/experiments/{id}/promote` (`ExperimentPromote`, GOV-2): creates a **draft**\nconfig document of `kind` (`scoring_profile` or `normative_baselines`).",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/ConfigDocumentKind"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "version"
+      ],
+      "type": "object"
     },
     "PutIntegrationSecretRequest": {
       "additionalProperties": false,
@@ -6057,6 +7968,42 @@
         "maxPitchRad",
         "minConfidence",
         "blinkThreshold"
+      ],
+      "type": "object"
+    },
+    "QualitySummary": {
+      "description": "RUN-4 `quality`.",
+      "properties": {
+        "transitions": {
+          "items": {
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "anyOf": [
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            ],
+            "type": "array"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "transitions"
       ],
       "type": "object"
     },
@@ -6350,6 +8297,61 @@
       ],
       "type": "string"
     },
+    "Reprocess": {
+      "description": "What a changed value needs before it shows in a result (RPX-3).",
+      "oneOf": [
+        {
+          "const": "score",
+          "description": "Re-scoring the stored per-clip rows is enough.",
+          "type": "string"
+        },
+        {
+          "const": "metrics",
+          "description": "Metrics must be re-extracted from frames.",
+          "type": "string"
+        },
+        {
+          "const": "frames",
+          "description": "The raw samples must be replayed (research frame log).",
+          "type": "string"
+        },
+        {
+          "const": "capture_only",
+          "description": "Only a new capture can show it (device behaviour during the session).",
+          "type": "string"
+        }
+      ]
+    },
+    "ResearchFramesState": {
+      "description": "Whether a session's research frame log (RFL-1, RFL-3) is stored (RFL-6).",
+      "properties": {
+        "available": {
+          "description": "A sealed log is stored and can be read with `GET /v1/sessions/{id}/research-frames`.",
+          "type": "boolean"
+        },
+        "bytes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Size of the uploaded log, bytes."
+        },
+        "purged": {
+          "description": "The retention sweep deleted the log (RFL-5).",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "available",
+        "purged"
+      ],
+      "type": "object"
+    },
     "RetentionOrgResult": {
       "description": "One org in a [`RetentionSweepResult`].",
       "properties": {
@@ -6551,6 +8553,16 @@
       ],
       "type": "object"
     },
+    "ReviewParams": {
+      "description": "Backend review rules (INV-1 backend rows): the valid-frame ratio below which a session is\nqueued for review as low quality (`auto_review`), also the norm job's session floor.",
+      "properties": {
+        "lowQualityValidRatio": {
+          "default": 0.8,
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
     "ReviewReason": {
       "description": "Why a session entered the review queue.",
       "enum": [
@@ -6621,6 +8633,143 @@
       ],
       "type": "string"
     },
+    "RunCounts": {
+      "description": "RUN-4 `counts`.",
+      "properties": {
+        "by_level": {
+          "$ref": "#/$defs/LevelCounts"
+        },
+        "excluded": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "description": "Reason -> sessions left out (`no_frame_log`, `no_age`, ...).",
+          "type": "object"
+        },
+        "params_not_applied": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "description": "Registry id -> sessions where the knob could not be applied at their level (RPX-3).",
+          "type": "object"
+        },
+        "sessions": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "suppressed_cells": {
+          "default": 0,
+          "description": "Transition cells suppressed by PRV-1.",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sessions",
+        "by_level",
+        "excluded",
+        "params_not_applied"
+      ],
+      "type": "object"
+    },
+    "RunKind": {
+      "description": "`analysis_runs.kind`.",
+      "enum": [
+        "cohort_rescore",
+        "param_sweep",
+        "age_profile"
+      ],
+      "type": "string"
+    },
+    "RunOptions": {
+      "additionalProperties": false,
+      "description": "RUN-2 options.",
+      "properties": {
+        "bootstrap": {
+          "default": true,
+          "description": "Bootstrap 95 % CIs of means (default `true`).",
+          "type": "boolean"
+        },
+        "metrics": {
+          "default": [],
+          "description": "Metric keys to summarise; empty = the 15 metric keys and the composite.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "RunStatus": {
+      "description": "`analysis_runs.status` (the job's lifecycle).",
+      "enum": [
+        "queued",
+        "running",
+        "succeeded",
+        "failed",
+        "cancelled"
+      ],
+      "type": "string"
+    },
+    "RunSummary": {
+      "description": "`analysis_runs.summary` (RUN-4, ≤ 1 MiB), PRV-1 applied before it is stored.",
+      "properties": {
+        "age_profile": {
+          "description": "`age_profile` runs only (AGE-1, phase B: shape owned by WP-X.9)."
+        },
+        "by_age_band": {
+          "items": {
+            "$ref": "#/$defs/BandSummary"
+          },
+          "type": "array"
+        },
+        "counts": {
+          "$ref": "#/$defs/RunCounts"
+        },
+        "flags": {
+          "$ref": "#/$defs/FlagSummary"
+        },
+        "includes_synthetic": {
+          "default": false,
+          "description": "Synthetic sessions were included (`include_synthetic`, COH-1).",
+          "type": "boolean"
+        },
+        "overall": {
+          "$ref": "#/$defs/BandSummary"
+        },
+        "quality": {
+          "$ref": "#/$defs/QualitySummary"
+        },
+        "small_cell_k": {
+          "description": "The small-cell threshold the summary was suppressed with.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "sweep": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SweepSummary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`param_sweep` runs only (SWP-3)."
+        }
+      },
+      "required": [
+        "counts",
+        "flags",
+        "quality",
+        "by_age_band",
+        "overall",
+        "small_cell_k"
+      ],
+      "type": "object"
+    },
     "ScoringCouplingParams": {
       "properties": {
         "aoiResolutionFactor": {
@@ -6642,6 +8791,37 @@
       "description": "Scoring parameters delivered in the bundle (`scoring_profile` config document).",
       "examples": [
         {
+          "ageBands": [
+            {
+              "id": "12-17",
+              "maxMonths": 17,
+              "minMonths": 12
+            },
+            {
+              "id": "18-23",
+              "maxMonths": 23,
+              "minMonths": 18
+            },
+            {
+              "id": "24-35",
+              "maxMonths": 35,
+              "minMonths": 24
+            },
+            {
+              "id": "36-47",
+              "maxMonths": 47,
+              "minMonths": 36
+            },
+            {
+              "id": "48-60",
+              "maxMonths": 60,
+              "minMonths": 48
+            }
+          ],
+          "aoi": {
+            "dwellCapMs": 100,
+            "marginNorm": 0.0
+          },
           "flag": {
             "atypicalShareForRed": 0.4,
             "greenFloor": 0.65,
@@ -6649,6 +8829,19 @@
             "yellowFloor": 0.35
           },
           "lowConfidenceValidRatio": 0.6,
+          "metrics": {
+            "fallbackFrameIntervalSec": 0.016666666666666666,
+            "flatAffectGain": 50.0,
+            "ivtUnit": "norm",
+            "ivtVelocityDegPerSec": 30.0,
+            "ivtVelocityUnitsPerSec": 5.0,
+            "minFixationDurationSec": 0.08,
+            "smileReactivityWindowSec": 0.5
+          },
+          "norms": {
+            "includeImputed": false,
+            "minN": 12
+          },
           "qualityGate": {
             "blinkThreshold": 0.45,
             "maxDistanceCm": 65.0,
@@ -6657,7 +8850,10 @@
             "minConfidence": 0.5,
             "minDistanceCm": 35.0
           },
-          "schemaVersion": "1.1.0",
+          "review": {
+            "lowQualityValidRatio": 0.8
+          },
+          "schemaVersion": "1.2.0",
           "trackingQuality": {
             "calibration": {
               "autoSelect": false,
@@ -6901,6 +9097,48 @@
         }
       ],
       "properties": {
+        "ageBands": {
+          "default": [
+            {
+              "id": "12-17",
+              "maxMonths": 17,
+              "minMonths": 12
+            },
+            {
+              "id": "18-23",
+              "maxMonths": 23,
+              "minMonths": 18
+            },
+            {
+              "id": "24-35",
+              "maxMonths": 35,
+              "minMonths": 24
+            },
+            {
+              "id": "36-47",
+              "maxMonths": 47,
+              "minMonths": 36
+            },
+            {
+              "id": "48-60",
+              "maxMonths": 60,
+              "minMonths": 48
+            }
+          ],
+          "description": "Age bands of norms and analysis (PRM-7, AGE-2): contiguous, ascending, 1..=12 bands,\nmonths 0..=240. Absent before 1.2.0: the five `asd_core::norms` brackets.",
+          "items": {
+            "$ref": "#/$defs/AgeBracket"
+          },
+          "type": "array"
+        },
+        "aoi": {
+          "$ref": "#/$defs/AoiParams",
+          "default": {
+            "dwellCapMs": 100,
+            "marginNorm": 0.0
+          },
+          "description": "AOI hit testing (PRM-7, 1.2.0)."
+        },
         "flag": {
           "$ref": "#/$defs/FlagThresholds"
         },
@@ -6908,8 +9146,36 @@
           "description": "Clips below this valid-sample ratio are low-confidence.",
           "type": "number"
         },
+        "metrics": {
+          "$ref": "#/$defs/MetricsParams",
+          "default": {
+            "fallbackFrameIntervalSec": 0.016666666666666666,
+            "flatAffectGain": 50.0,
+            "ivtUnit": "norm",
+            "ivtVelocityDegPerSec": 30.0,
+            "ivtVelocityUnitsPerSec": 5.0,
+            "minFixationDurationSec": 0.08,
+            "smileReactivityWindowSec": 0.5
+          },
+          "description": "Fixation and affect extraction (PRM-7, 1.2.0). Absent before 1.2.0: today's constants."
+        },
+        "norms": {
+          "$ref": "#/$defs/NormsParams",
+          "default": {
+            "includeImputed": false,
+            "minN": 12
+          },
+          "description": "Norm aggregation (PRM-7, AGE-2)."
+        },
         "qualityGate": {
           "$ref": "#/$defs/QualityGateParams"
+        },
+        "review": {
+          "$ref": "#/$defs/ReviewParams",
+          "default": {
+            "lowQualityValidRatio": 0.8
+          },
+          "description": "Backend review rules (INV-1 backend rows, 1.2.0)."
         },
         "schemaVersion": {
           "type": "string"
@@ -7297,6 +9563,38 @@
       ],
       "type": "object"
     },
+    "SessionDelta": {
+      "description": "Draft minus published of a per-session row.",
+      "properties": {
+        "composite": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metrics": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "metrics"
+      ],
+      "type": "object"
+    },
     "SessionDetail": {
       "description": "`GET /v1/sessions/{id}`: the summary plus stored measurements.",
       "examples": [
@@ -7325,6 +9623,11 @@
           "participant_token": "child-SESS-GOL",
           "quality_verdict": "optimal",
           "report_pdf_available": false,
+          "research_frames": {
+            "available": false,
+            "bytes": null,
+            "purged": false
+          },
           "reviewed": false,
           "schema_version": "1.6",
           "scoring_status": null,
@@ -7361,6 +9664,11 @@
           "participant_token": "child-SESS-GOL",
           "quality_verdict": "optimal",
           "report_pdf_available": false,
+          "research_frames": {
+            "available": false,
+            "bytes": null,
+            "purged": false
+          },
           "reviewed": false,
           "schema_version": "1.7",
           "scoring_status": null,
@@ -7482,6 +9790,11 @@
           "participant_token": "child-SESS-GOL",
           "quality_verdict": "optimal",
           "report_pdf_available": false,
+          "research_frames": {
+            "available": false,
+            "bytes": null,
+            "purged": false
+          },
           "reviewed": false,
           "schema_version": "1.8",
           "scoring_status": "unscorable",
@@ -7748,6 +10061,17 @@
               "type": "null"
             }
           ]
+        },
+        "research_frames": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ResearchFramesState"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The research frame log of the session (RFL-6). Omitted (not `null`) when unknown, so\nthe export record built from this type keeps its bytes (PRV-5: never exported)."
         },
         "reviewed": {
           "anyOf": [
@@ -8306,6 +10630,17 @@
         "raw_payload": {
           "description": "The stored `GazeSessionRecord` (camelCase, `v1.x` record form), without `notes`."
         },
+        "research_frames": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ResearchFramesState"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The research frame log (RFL-6). Omitted (not `null`) when unknown."
+        },
         "schema_version": {
           "description": "Wire form of the stored record (`1.6`, `1.7`, `1.8`).",
           "type": "string"
@@ -8341,6 +10676,59 @@
         "at_sec",
         "reason",
         "new_quality"
+      ],
+      "type": "object"
+    },
+    "SessionSide": {
+      "description": "One side (published or draft) of a per-session result row (RUN-3).",
+      "properties": {
+        "composite": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "flag": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SessionAttentionFlag"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metrics": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": "Metric key -> value.",
+          "type": "object"
+        },
+        "quality_status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "metrics"
       ],
       "type": "object"
     },
@@ -8935,6 +11323,16 @@
       ],
       "type": "object"
     },
+    "Sex": {
+      "description": "Sex of the participant as a session may one day carry it (ADR-0012 Q8: session schema 1.9).\nNo session carries it yet, so a non-empty `CohortDefinition.sex` selects nothing extra and\nis reported, never fabricated.",
+      "enum": [
+        "female",
+        "male",
+        "other",
+        "unknown"
+      ],
+      "type": "string"
+    },
     "ShareLink": {
       "description": "One share link (SHR-8), as listed. Never carries the passcode (see `CreatedShareLink`).",
       "properties": {
@@ -9260,6 +11658,20 @@
       ],
       "type": "object"
     },
+    "Stage": {
+      "description": "Pipeline stage a parameter belongs to (groups and ordering in the UI).",
+      "enum": [
+        "capture",
+        "preprocess",
+        "fixation",
+        "metrics",
+        "scoring",
+        "flag",
+        "norms",
+        "display"
+      ],
+      "type": "string"
+    },
     "StimulusCatalog": {
       "properties": {
         "agePacks": {
@@ -9303,6 +11715,144 @@
         "fallbackLanguage",
         "agePacks",
         "clips"
+      ],
+      "type": "object"
+    },
+    "SweepAxis": {
+      "additionalProperties": false,
+      "description": "One sweep axis (SWP-1): a Number or Integer registry id, `from <= to`, at most\n[`MAX_SWEEP_STEPS`] steps, values inside the registry range.",
+      "properties": {
+        "from": {
+          "type": "number"
+        },
+        "param_id": {
+          "type": "string"
+        },
+        "step": {
+          "type": "number"
+        },
+        "to": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "param_id",
+        "from",
+        "to",
+        "step"
+      ],
+      "type": "object"
+    },
+    "SweepCell": {
+      "description": "One grid cell of a sweep (SWP-3).",
+      "properties": {
+        "changed_vs_published": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Sessions whose flag differs from the published profile's."
+        },
+        "composite": {
+          "$ref": "#/$defs/MeanMedian"
+        },
+        "flag_rate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FlagRates"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metrics": {
+          "additionalProperties": {
+            "$ref": "#/$defs/MeanMedian"
+          },
+          "type": "object"
+        },
+        "n": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "quality_rate": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": "Quality status -> share.",
+          "type": "object"
+        },
+        "values": {
+          "description": "One value per axis.",
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "values",
+        "quality_rate",
+        "metrics",
+        "composite"
+      ],
+      "type": "object"
+    },
+    "SweepSpec": {
+      "additionalProperties": false,
+      "description": "A parameter sweep (SWP-1, phase B): 1..=2 axes over the experiment profile.",
+      "properties": {
+        "axes": {
+          "items": {
+            "$ref": "#/$defs/SweepAxis"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "axes"
+      ],
+      "type": "object"
+    },
+    "SweepSummary": {
+      "description": "SWP-3 `summary.sweep`.",
+      "properties": {
+        "axes": {
+          "items": {
+            "$ref": "#/$defs/SweepAxis"
+          },
+          "type": "array"
+        },
+        "cells": {
+          "items": {
+            "$ref": "#/$defs/SweepCell"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "axes",
+        "cells"
       ],
       "type": "object"
     },
@@ -9890,6 +12440,27 @@
       ],
       "type": "string"
     },
+    "Unit": {
+      "description": "Display unit of a numeric parameter.",
+      "enum": [
+        "none",
+        "ratio",
+        "percent",
+        "seconds",
+        "millis",
+        "cm",
+        "mm",
+        "deg",
+        "deg_per_sec",
+        "rad",
+        "hz",
+        "norm_units",
+        "norm_units_per_sec",
+        "months",
+        "count"
+      ],
+      "type": "string"
+    },
     "UnscorableReason": {
       "description": "Why a session is `unscorable` (optional; absent when the device does not know).",
       "enum": [
@@ -9936,6 +12507,43 @@
           ]
         },
         "recommendations": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "UpdateCohortRequest": {
+      "additionalProperties": false,
+      "description": "`PATCH /v1/cohorts/{id}` (`ExperimentWrite`); `archived: true` archives it.",
+      "properties": {
+        "archived": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "definition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CohortDefinition"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
           "anyOf": [
             {
               "type": "string"
@@ -10034,6 +12642,53 @@
             }
           ],
           "description": "Needs `ClinicalNoteWrite` (REC-4)."
+        }
+      },
+      "type": "object"
+    },
+    "UpdateExperimentRequest": {
+      "additionalProperties": false,
+      "description": "`PATCH /v1/experiments/{id}` (`ExperimentWrite`, `If-Match`). `profile` is a whole\n`ScoringProfile` document, validated by the parameter registry (PRM-3; `400\nconfig-invalid` with `field_problems`).",
+      "properties": {
+        "baselines_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "profile": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScoringProfile"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "type": "object"

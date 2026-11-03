@@ -447,6 +447,31 @@ pub struct SessionDetail {
     /// (app version before tracking quality) or without a record (SCH-4).
     #[serde(default)]
     pub tracking_quality: Option<SessionTrackingQuality>,
+    /// The research frame log of the session (RFL-6). Omitted (not `null`) when unknown, so
+    /// the export record built from this type keeps its bytes (PRV-5: never exported).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub research_frames: Option<ResearchFramesState>,
+}
+
+/// Whether a session's research frame log (RFL-1, RFL-3) is stored (RFL-6).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct ResearchFramesState {
+    /// A sealed log is stored and can be read with `GET /v1/sessions/{id}/research-frames`.
+    pub available: bool,
+    /// The retention sweep deleted the log (RFL-5).
+    pub purged: bool,
+    /// Size of the uploaded log, bytes.
+    #[serde(default)]
+    pub bytes: Option<u64>,
+}
+
+/// Progress of a running job (RUN-8): `jobs.progress`, written with the heartbeat.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct JobProgress {
+    pub done: u64,
+    pub total: u64,
+    /// Handler-defined phase name, e.g. `membership`, `evaluate`, `upload`.
+    pub phase: String,
 }
 
 /// One scored expected-vs-recorded cell of a clip (CON-19).
@@ -541,6 +566,9 @@ pub struct SessionRaw {
     pub frames_available: bool,
     /// The retention sweep deleted the frames blob.
     pub frames_purged: bool,
+    /// The research frame log (RFL-6). Omitted (not `null`) when unknown.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub research_frames: Option<ResearchFramesState>,
 }
 
 macro_rules! page {
@@ -932,6 +960,7 @@ fn example_session_detail() -> SessionDetail {
         ])),
         report_pdf_available: Some(false),
         tracking_quality: None,
+        research_frames: Some(ResearchFramesState::default()),
     }
 }
 

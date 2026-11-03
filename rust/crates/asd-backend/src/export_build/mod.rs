@@ -280,6 +280,9 @@ pub fn format_available(format: ExportFormat) -> Result<(), &'static str> {
         ExportFormat::PdfSummary => Err(
             "pdf_summary is not available yet: the PDF/A clinical summary encoder ships with WP-I.5",
         ),
+        ExportFormat::AnalysisResults => Err(
+            "analysis_results is not available yet: the analysis run export ships with WP-X.8",
+        ),
         _ => Ok(()),
     }
 }
@@ -554,7 +557,7 @@ pub fn render(input: &RenderInput<'_>) -> Result<Artifact, RenderError> {
                 content_type: CT_HL7,
             })
         }
-        ExportFormat::PdfSummary => Err(RenderError::Unsupported(
+        ExportFormat::PdfSummary | ExportFormat::AnalysisResults => Err(RenderError::Unsupported(
             format_available(input.format).expect_err("unavailable"),
         )),
         // The audit log has no session records; the job builds it through `audit`.
@@ -683,7 +686,10 @@ mod tests {
             .contains("WP-I.5"));
         assert!(format_available(ExportFormat::CasePackage).is_ok());
         assert!(format_available(ExportFormat::AuditCsv).is_ok());
-        let unavailable = [ExportFormat::PdfSummary];
+        assert!(format_available(ExportFormat::AnalysisResults)
+            .unwrap_err()
+            .contains("WP-X.8"));
+        let unavailable = [ExportFormat::PdfSummary, ExportFormat::AnalysisResults];
         for f in ExportFormat::ALL
             .iter()
             .filter(|f| !unavailable.contains(f))

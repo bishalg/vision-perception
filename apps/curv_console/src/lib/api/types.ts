@@ -14,6 +14,7 @@ import type { ParticipantApi } from "./participant";
 import type { TotpApi } from "./totp";
 import type { EmrApi } from "./emr";
 import type { ShareApi } from "./share";
+import type { ResearchApi } from "./research";
 
 /** `SessionAttentionFlag`: the 3 device values plus backend-derived `unreliable` (CON-15). */
 export const ATTENTION_FLAGS = ["green", "yellow", "red", "unreliable"] as const;
@@ -247,6 +248,14 @@ export const sessionSummarySchema = z.object({
 });
 export type SessionSummary = z.infer<typeof sessionSummarySchema>;
 
+/** `ResearchFramesState` (RFL-6): whether a sealed research frame log is stored for the session. */
+export const researchFramesStateSchema = z.object({
+  available: z.boolean(),
+  purged: z.boolean(),
+  bytes: z.number().int().min(0).nullable().optional(),
+});
+export type ResearchFramesState = z.infer<typeof researchFramesStateSchema>;
+
 export const sessionDetailSchema = sessionSummarySchema.extend({
   org_id: z.string(),
   age_pack: str,
@@ -261,6 +270,8 @@ export const sessionDetailSchema = sessionSummarySchema.extend({
   affect: z.record(z.string(), z.unknown()).nullable().optional(),
   report_pdf_available: z.boolean().nullable().optional(),
   tracking_quality: sessionTrackingQualitySchema.nullable().optional(),
+  /** RFL-6: the session's research frame log; absent from a backend before WP-X.2. */
+  research_frames: researchFramesStateSchema.nullable().optional(),
 });
 export type SessionDetail = z.infer<typeof sessionDetailSchema>;
 
@@ -322,6 +333,8 @@ export const sessionRawSchema = z.object({
   /** A frames blob exists; it is encrypted on the device and the API does not serve it. */
   frames_available: z.boolean(),
   frames_purged: z.boolean(),
+  /** RFL-6: the research frame log, which the API does serve (`GET /sessions/{id}/research-frames`). */
+  research_frames: researchFramesStateSchema.nullable().optional(),
 });
 export type SessionRaw = z.infer<typeof sessionRawSchema>;
 
@@ -486,7 +499,8 @@ export interface CurvApi
     ParticipantApi,
     TotpApi,
     EmrApi,
-    ShareApi {
+    ShareApi,
+    ResearchApi {
   getOrg(orgId: string): Promise<Org>;
   getMetrics(orgId: string): Promise<Metrics>;
   listSessions(orgId: string, query?: SessionListQuery): Promise<SessionPage>;
@@ -577,6 +591,23 @@ export const PROBLEM_SLUGS = [
   "share-passcode-invalid",
   "case-consent-missing",
   "identity-disabled",
+  // Phase 8 researcher toolkit (ADR-0012, WP-X.0).
+  "experiment-name-exists",
+  "experiment-promoted",
+  "experiment-no-run",
+  "cohort-empty",
+  "cohort-too-large",
+  "sweep-too-large",
+  "analysis-quota-exceeded",
+  "analysis-level-unavailable",
+  "frames-not-available",
+  "frames-purged",
+  "research-consent-required",
+  "digest-required",
+  "config-unanalysed",
+  "job-finished",
+  "result-too-large",
+  "not-implemented",
 ] as const;
 export type ProblemSlug = (typeof PROBLEM_SLUGS)[number];
 

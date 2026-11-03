@@ -19,9 +19,10 @@ usage:
   asd-cli schema export [--out DIR]
   asd-cli schema check [--dir DIR]
   asd-cli schema validate SCHEMA FILE...
-  asd-cli schema print session|config-bundle|api
+  asd-cli schema print session|config-bundle|api|param-registry
 
-DIR defaults to docs/spec/schemas/asd/ of this checkout.";
+DIR defaults to docs/spec/schemas/asd/ of this checkout. `export` and `check` include the
+parameter registry (param-registry-v1.json, PRM-4).";
 
 /// `docs/spec/schemas/asd` of the checkout this binary was built from.
 pub fn default_dir() -> PathBuf {
@@ -171,6 +172,7 @@ fn print(which: &str) -> i32 {
         "session" => schema::session_v1_6(),
         "config-bundle" => schema::config_bundle_v1(),
         "api" => schema::api_v1(),
+        "param-registry" => asd_contract::params::registry_json(),
         other => return usage_error(&format!("unknown schema `{other}`")),
     };
     print!("{}", schema::render(&value));
@@ -234,6 +236,23 @@ mod tests {
 
         std::fs::remove_file(&path).unwrap();
         assert_eq!(run(&s(&["check", "--dir", out])), 1);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn param_registry_is_exported_and_checked() {
+        // PRM-4 (WP-X.0): export writes it, check fails on an edit.
+        let dir = scratch("param-registry");
+        let out = dir.to_str().unwrap();
+        assert_eq!(run(&s(&["export", "--out", out])), 0);
+        let path = dir.join(asd_contract::params::PARAM_REGISTRY_FILE);
+        let mut v: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(v["$id"], asd_contract::params::PARAM_REGISTRY_ID);
+        assert_eq!(run(&s(&["check", "--dir", out])), 0);
+        v["params"][0]["kind"]["max"] = Value::from(2.0);
+        std::fs::write(&path, schema::render(&v)).unwrap();
+        assert_eq!(run(&s(&["check", "--dir", out])), 1);
+        assert_eq!(run(&s(&["print", "param-registry"])), 0);
         let _ = std::fs::remove_dir_all(&dir);
     }
 

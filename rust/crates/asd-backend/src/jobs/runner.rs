@@ -49,8 +49,8 @@ use tokio::task::JoinHandle;
 use uuid::Uuid;
 
 use super::{
-    deliver, erasure, export, housekeeping, norm_aggregate, retention, Job, JobContext,
-    KIND_DELIVER, KIND_ERASURE, KIND_EXPORT, KIND_HOUSEKEEPING, KIND_NORM_AGGREGATE,
+    analysis, deliver, erasure, export, housekeeping, norm_aggregate, retention, Job, JobContext,
+    KIND_ANALYSIS, KIND_DELIVER, KIND_ERASURE, KIND_EXPORT, KIND_HOUSEKEEPING, KIND_NORM_AGGREGATE,
     KIND_RETENTION_SWEEP,
 };
 use crate::error::AppError;
@@ -187,9 +187,8 @@ pub async fn execute(pool: &PgPool, job: &Job) -> Result<Outcome, sqlx::Error> {
 pub async fn execute_in(ctx: &JobContext, job: &Job) -> Result<Outcome, sqlx::Error> {
     let result = match job.kind.as_str() {
         KIND_NORM_AGGREGATE => run_in_transaction(&ctx.pool, job).await,
-        KIND_EXPORT | KIND_DELIVER | KIND_ERASURE | KIND_RETENTION_SWEEP | KIND_HOUSEKEEPING => {
-            run_phased(ctx, job).await
-        }
+        KIND_EXPORT | KIND_DELIVER | KIND_ERASURE | KIND_RETENTION_SWEEP | KIND_HOUSEKEEPING
+        | KIND_ANALYSIS => run_phased(ctx, job).await,
         other => Err(JobError::Permanent(format!("unknown job kind {other:?}"))),
     };
     match result {
@@ -227,11 +226,15 @@ async fn run_in_transaction(pool: &PgPool, job: &Job) -> Result<(), JobError> {
 
 async fn run_phased(ctx: &JobContext, job: &Job) -> Result<(), JobError> {
     let heartbeat = Heartbeat::start(ctx.pool.clone(), job.id, job.attempts, ctx.heartbeat_every);
+    // RUN-8: handlers report progress and check cancellation through the bound context.
+    let bound = ctx.for_job(job);
+    let ctx = &bound;
     let result = match job.kind.as_str() {
         KIND_DELIVER => deliver::execute(ctx, job).await,
         KIND_ERASURE => erasure::execute(ctx, job).await,
         KIND_RETENTION_SWEEP => retention::execute(ctx, job).await,
         KIND_HOUSEKEEPING => housekeeping::execute(ctx, job).await,
+        KIND_ANALYSIS => analysis::run_analysis(ctx, job).await,
         _ => export::execute(ctx, job).await,
     };
     heartbeat.stop().await;

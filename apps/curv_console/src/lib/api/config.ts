@@ -96,6 +96,13 @@ export const scoringProfileSchema = z.object({
   qualityGate: qualityGateParamsSchema,
   /** Gaze-robustness thresholds (SCH-3); absent in a 1.0.0 profile. Edited as JSON; Rust checks it on decode. */
   trackingQuality: z.record(z.string(), z.unknown()).optional(),
+  // Profile 1.2.0 (PRM-7, WP-X.0): absent before 1.2.0 (the Rust decoder fills today's constants). Opaque here; the
+  // registry form (WP-X.5) edits them and the Rust registry validates them.
+  metrics: z.record(z.string(), z.unknown()).optional(),
+  aoi: z.record(z.string(), z.unknown()).optional(),
+  ageBands: z.array(z.object({ id: z.string(), minMonths: z.number().int(), maxMonths: z.number().int() })).optional(),
+  norms: z.record(z.string(), z.unknown()).optional(),
+  review: z.record(z.string(), z.unknown()).optional(),
 });
 export type ScoringProfile = z.infer<typeof scoringProfileSchema>;
 

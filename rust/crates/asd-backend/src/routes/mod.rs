@@ -3,11 +3,28 @@
 //! HTTP routes. `health` sits at the root (CON-22); everything else lives under `/v1`
 //! and is registered in [`v1`] by the package that owns the route module.
 
+use axum::response::{IntoResponse, Response};
 use axum::Router;
+use http::StatusCode;
 
 use crate::app::AppState;
+use crate::auth::extractors::Require;
+use crate::auth::rbac::Permission;
 use crate::clinical::reauth::StepUpLimiter;
+use crate::problem::Problem;
 
+/// Handler of a mounted route whose package has not shipped yet (phase 8 step 0 stubs):
+/// RBAC for `P` runs first (401, 403, 404 as the real route), then `501 not-implemented`.
+pub(crate) async fn not_implemented<P: Permission>(_auth: Require<P>) -> Response {
+    Problem::new(
+        StatusCode::NOT_IMPLEMENTED,
+        asd_contract::problem::NOT_IMPLEMENTED,
+    )
+    .with_detail("this route is not implemented yet")
+    .into_response()
+}
+
+pub mod analysis_runs; // WP-X.3 (stub from phase 8 step 0)
 pub mod attachments; // WP-B.19 (stub from wave 2 step 0)
 pub mod auth;
 pub mod blobs;
@@ -28,6 +45,7 @@ pub mod participant_detail;
 pub mod participants;
 pub mod patient_refs;
 pub mod privacy; // WP-B.9
+pub mod research; // WP-X.2 (stub from phase 8 step 0)
 pub mod review;
 pub mod sessions;
 pub mod share; // WP-I.13 (stub from wave 2 step 0)
@@ -64,6 +82,10 @@ pub fn v1() -> Router<AppState> {
         .merge(attachments::router())
         .merge(follow_ups::router())
         .merge(share::router())
+        // Phase 8 step 0 stubs (501 until filled): researcher toolkit experiments, cohorts
+        // and effective config (WP-X.2), analysis runs (WP-X.3).
+        .merge(research::router())
+        .merge(analysis_runs::router())
         // WP-B.5: norm aggregation jobs and runs.
         .merge(jobs::router())
         // WP-B.4: config documents, bundles, device bundle delivery.

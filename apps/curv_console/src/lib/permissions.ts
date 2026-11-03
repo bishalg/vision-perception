@@ -51,7 +51,14 @@ export type UiAction =
   | "case.share"
   | "sharelink.manage"
   | "audit.export"
-  | "user.totp_reset";
+  | "user.totp_reset"
+  // Phase 8 GOV-1 (AnalysisRead, AnalysisRun, ExperimentWrite, ExperimentPromote, FramesRead). The superadmin reads
+  // results but never runs, edits, promotes or reads research frames (`VENDOR_EXCLUDED_RESEARCH_ACTIONS`).
+  | "analysis.read"
+  | "analysis.run"
+  | "experiment.write"
+  | "experiment.promote"
+  | "frames.read";
 
 const MATRIX: Record<UiAction, readonly Role[]> = {
   "review.write": ["owner", "admin", "clinician", "reviewer"],
@@ -87,9 +94,14 @@ const MATRIX: Record<UiAction, readonly Role[]> = {
   "sharelink.manage": ["owner", "clinician"],
   "audit.export": ["owner", "admin"],
   "user.totp_reset": ["owner", "admin"],
+  "analysis.read": ["owner", "admin", "clinician", "researcher"],
+  "analysis.run": ["owner", "researcher"],
+  "experiment.write": ["owner", "researcher"],
+  "experiment.promote": ["owner", "researcher"],
+  "frames.read": ["owner", "researcher"],
 };
 
-/** RBAC-3: the superadmin short-circuit does not apply to clinical content actions. */
+/** RBAC-3 and GOV-1: the superadmin short-circuit does not apply to clinical content or the research write actions. */
 const NO_SUPERADMIN: readonly UiAction[] = [
   "clinical.write",
   "clinical.sign",
@@ -105,6 +117,10 @@ const NO_SUPERADMIN: readonly UiAction[] = [
   "attachment.write",
   "case.share",
   "sharelink.manage",
+  "analysis.run",
+  "experiment.write",
+  "experiment.promote",
+  "frames.read",
 ];
 
 export function can(role: Role | undefined, action: UiAction): boolean {

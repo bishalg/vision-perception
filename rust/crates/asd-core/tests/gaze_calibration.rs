@@ -201,6 +201,7 @@ fn synth_frame(face: &M4, target: [f64; 2], err: EyeError, t_sec: f64) -> RawTra
         orientation: Orientation::Portrait,
         clip_media_time_sec: None,
         stimulus_id: None,
+        affect: None,
     }
 }
 

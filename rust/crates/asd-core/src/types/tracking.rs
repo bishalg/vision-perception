@@ -16,6 +16,9 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::gaze::aoi_space::ScreenAoi;
+use crate::types::GazeFrameAffect;
+
 /// `format` value of the raw log header line (REP-1).
 pub const RAW_LOG_FORMAT: &str = "asd-raw-tracking/1";
 
@@ -304,6 +307,28 @@ pub struct RawTrackingSample {
     pub clip_media_time_sec: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stimulus_id: Option<String>,
+    /// Research frame log only (RFL-1): the facial-affect values of this frame, present on
+    /// recorded (stimulus) frames. Absent in bench and synthetic logs; `replay` ignores it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub affect: Option<GazeFrameAffect>,
+}
+
+/// One clip of a research frame log (RFL-1): the screen-space AOIs the device hit-tested
+/// against, after aspect-fill mapping, so reprocessing uses exactly those boxes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RawLogClip {
+    pub clip_id: String,
+    /// Position of the clip in the battery (0-based).
+    pub order: u32,
+    /// Stimulus catalog version the clip came from; used to map AOIs when `aois` is empty.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub catalog_version: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub aois: Vec<ScreenAoi>,
+    /// Width / height of the video as played.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub video_aspect: Option<f64>,
 }
 
 /// A target shown during a recorded log (bench schedule, REP-1).
@@ -396,6 +421,22 @@ pub struct RawLogHeader {
     /// Synthetic logs only (TV-1): the generator's ground truth; shape owned by the generator.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ground_truth: Option<Value>,
+    // ---- research frame log additions (RFL-1, WP-X.0); absent in bench and synthetic logs
+    /// The clips of the session with the AOIs the device used.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub clips: Vec<RawLogClip>,
+    /// Config bundle the session ran with.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bundle_version: Option<String>,
+    /// Scoring profile version of that bundle.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub profile_version: Option<String>,
+    /// The session the log belongs to (checked against the upload path, RFL-3).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<String>,
+    /// Pseudonymous participant token. Never in a de-identified export (PRV-5).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub participant_token: Option<String>,
 }
 
 // ------------------------------------------------------------------------------------------

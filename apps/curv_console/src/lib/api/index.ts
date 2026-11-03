@@ -14,6 +14,7 @@ export * from "./participant";
 export * from "./totp";
 export * from "./emr";
 export * from "./share";
+export * from "./research";
 
 export type ApiMode = "mock" | "live";
 

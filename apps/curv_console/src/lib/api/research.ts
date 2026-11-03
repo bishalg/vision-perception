@@ -1,0 +1,446 @@
+/**
+ * Researcher toolkit (ADR-0012, phase 8; WP-X.0 step 0): zod schemas for the `asd_contract::research` and
+ * `asd_contract::params` DTOs of `docs/spec/schemas/asd/api-v1.json`, the `ResearchApi` interface and its live HTTP
+ * implementation. `research.contract.test.ts` guards the drift. The console computes nothing here: profiles are
+ * opaque documents handed to the Rust core (asd-wasm), distributions arrive suppressed (PRV-1) and are drawn as given.
+ *
+ * Routes answer `501 not-implemented` until WP-X.2 (experiments, cohorts, effective config) and WP-X.3 (runs) land;
+ * the mock (`mock/research.ts`) covers every state meanwhile (RUI-7).
+ */
+import { z } from "@/lib/zod";
+import type { LiveRequest } from "./clinical";
+
+const str = z.string().nullable().optional();
+const count = z.number().int().min(0);
+const optCount = count.nullable().optional();
+const optNum = z.number().nullable().optional();
+const pair = z.tuple([z.number(), z.number()]);
+/** A whole `ScoringProfile` document (camelCase), opaque here: validated and evaluated by the Rust core. */
+const profileSchema = z.record(z.string(), z.unknown());
+
+// ---- parameter registry (PRM-1, param-registry-v1.json) --------------------------------------------------------
+
+export const PARAM_STAGES = ["capture", "preprocess", "fixation", "metrics", "scoring", "flag", "norms", "display"] as const;
+export const REPROCESS_LEVELS = ["score", "metrics", "frames", "capture_only"] as const;
+export const PARAM_UNITS = [
+  "none", "ratio", "percent", "seconds", "millis", "cm", "mm", "deg", "deg_per_sec", "rad", "hz", "norm_units",
+  "norm_units_per_sec", "months", "count",
+] as const;
+const unitSchema = z.enum(PARAM_UNITS);
+
+export const paramKindSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("number"), min: z.number(), max: z.number(), step: z.number(), unit: unitSchema }),
+  z.object({ type: z.literal("integer"), min: z.number().int(), max: z.number().int(), unit: unitSchema }),
+  z.object({ type: z.literal("bool") }),
+  z.object({ type: z.literal("enum"), values: z.array(z.string()) }),
+  z.object({ type: z.literal("point_list"), minPoints: count, maxPoints: count }),
+  z.object({
+    type: z.literal("age_bands"),
+    minBands: count,
+    maxBands: count,
+    minMonths: z.number().int(),
+    maxMonths: z.number().int(),
+  }),
+]);
+export type ParamKind = z.infer<typeof paramKindSchema>;
+
+/** One registry row. Labels are message keys (`param.<id>.label` / `.help`), resolved in `messages/research.ts`. */
+export const paramSpecSchema = z.object({
+  id: z.string(),
+  document: z.literal("scoring_profile"),
+  kind: paramKindSchema,
+  default: z.unknown(),
+  stage: z.enum(PARAM_STAGES),
+  reprocess: z.enum(REPROCESS_LEVELS),
+  labelKey: z.string(),
+  helpKey: z.string(),
+  since: z.string(),
+  ownerGate: str,
+});
+export type ParamSpec = z.infer<typeof paramSpecSchema>;
+
+export const paramRegistrySchema = z.object({ registryVersion: z.string(), params: z.array(paramSpecSchema) });
+export type ParamRegistry = z.infer<typeof paramRegistrySchema>;
+
+// ---- experiments (EXP-1, EXP-2, GOV-2) --------------------------------------------------------------------------
+
+export const EXPERIMENT_STATUSES = ["draft", "archived", "promoted"] as const;
+export const experimentStatusSchema = z.enum(EXPERIMENT_STATUSES);
+export type ExperimentStatus = z.infer<typeof experimentStatusSchema>;
+
+export const experimentSchema = z.object({
+  id: z.string(),
+  org_id: z.string(),
+  name: z.string(),
+  description: str,
+  status: experimentStatusSchema,
+  base_profile_version: z.string(),
+  profile: profileSchema,
+  profile_hash: z.string(),
+  baselines_version: str,
+  promoted_config_version: str,
+  last_run_id: str,
+  /** Send as `If-Match: "<row_version>"` with `updateExperiment`. */
+  row_version: z.number().int(),
+  created_by: str,
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+export type Experiment = z.infer<typeof experimentSchema>;
+
+export const experimentPageSchema = z.object({ items: z.array(experimentSchema), next_cursor: z.string().nullable().optional() });
+export type ExperimentPage = z.infer<typeof experimentPageSchema>;
+
+export const createExperimentRequestSchema = z.object({
+  name: z.string(),
+  description: str,
+  from_experiment_id: str,
+  from_version: str,
+});
+export type CreateExperimentRequest = z.infer<typeof createExperimentRequestSchema>;
+
+export const updateExperimentRequestSchema = z.object({
+  name: str,
+  description: str,
+  profile: profileSchema.nullable().optional(),
+  baselines_version: str,
+});
+export type UpdateExperimentRequest = z.infer<typeof updateExperimentRequestSchema>;
+
+export const promoteExperimentRequestSchema = z.object({
+  kind: z.enum(["stimulus_catalog", "normative_baselines", "scoring_profile"]),
+  version: z.string(),
+  notes: str,
+});
+export type PromoteExperimentRequest = z.infer<typeof promoteExperimentRequestSchema>;
+
+// ---- cohorts (COH-1..3) ---------------------------------------------------------------------------------------
+
+export const SEXES = ["female", "male", "other", "unknown"] as const;
+
+export const cohortDefinitionSchema = z.object({
+  age_bands: z.array(z.string()).optional(),
+  /** Applied only once sessions carry sex (ADR-0012 Q8); never fabricated. */
+  sex: z.array(z.enum(SEXES)).optional(),
+  device_ids: z.array(z.string()).optional(),
+  from: str,
+  to: str,
+  quality_verdicts: z.array(z.string()).optional(),
+  tracking_verdicts: z.array(z.string()).optional(),
+  min_valid_ratio: optNum,
+  scoring_status: z.array(z.string()).optional(),
+  require_frames: z.boolean().optional(),
+  include_synthetic: z.boolean().optional(),
+});
+export type CohortDefinition = z.infer<typeof cohortDefinitionSchema>;
+
+export const cohortSchema = z.object({
+  id: z.string(),
+  org_id: z.string(),
+  name: z.string(),
+  definition: cohortDefinitionSchema,
+  definition_hash: z.string(),
+  created_by: str,
+  created_at: z.string(),
+  updated_at: z.string(),
+  archived_at: str,
+});
+export type Cohort = z.infer<typeof cohortSchema>;
+
+export const cohortPageSchema = z.object({ items: z.array(cohortSchema), next_cursor: z.string().nullable().optional() });
+export type CohortPage = z.infer<typeof cohortPageSchema>;
+
+export const createCohortRequestSchema = z.object({ name: z.string(), definition: cohortDefinitionSchema });
+export type CreateCohortRequest = z.infer<typeof createCohortRequestSchema>;
+
+export const updateCohortRequestSchema = z.object({
+  name: str,
+  definition: cohortDefinitionSchema.nullable().optional(),
+  archived: z.boolean().nullable().optional(),
+});
+export type UpdateCohortRequest = z.infer<typeof updateCohortRequestSchema>;
+
+const levelCountsSchema = z.object({ frames: count, score: count });
+
+/** COH-2 preview. Suppressed counts (PRV-1, below `small_cell_k`) are `null`, never zero. */
+export const cohortPreviewSchema = z.object({
+  n: optCount,
+  by_age_band: z.array(
+    z.object({ band: z.string(), n: optCount, frames_n: optCount, suppressed: z.boolean() }),
+  ),
+  by_level: levelCountsSchema,
+  excluded: z.object({ no_consent: count, withdrawn: count, unscorable: count, no_age: count, quality: count }),
+  small_cell_k: count,
+});
+export type CohortPreview = z.infer<typeof cohortPreviewSchema>;
+
+// ---- analysis runs (RUN-1..9, SWP-1..3) -----------------------------------------------------------------------
+
+export const RUN_KINDS = ["cohort_rescore", "param_sweep", "age_profile"] as const;
+export const RUN_STATUSES = ["queued", "running", "succeeded", "failed", "cancelled"] as const;
+export const LEVEL_REQUESTS = ["auto", "score", "frames"] as const;
+export const LEVELS = ["score", "frames"] as const;
+export const runStatusSchema = z.enum(RUN_STATUSES);
+export type RunStatus = z.infer<typeof runStatusSchema>;
+
+export function isRunFinished(status: RunStatus): boolean {
+  return status === "succeeded" || status === "failed" || status === "cancelled";
+}
+
+export const sweepAxisSchema = z.object({ param_id: z.string(), from: z.number(), to: z.number(), step: z.number() });
+export const sweepSpecSchema = z.object({ axes: z.array(sweepAxisSchema) });
+export type SweepSpec = z.infer<typeof sweepSpecSchema>;
+
+export const runOptionsSchema = z.object({ metrics: z.array(z.string()).optional(), bootstrap: z.boolean().optional() });
+
+export const analysisRunRequestSchema = z.object({
+  kind: z.enum(RUN_KINDS),
+  experiment_id: z.string(),
+  cohort_id: str,
+  cohort: cohortDefinitionSchema.nullable().optional(),
+  sweep: sweepSpecSchema.nullable().optional(),
+  level: z.enum(LEVEL_REQUESTS).optional(),
+  seed: z.number().int().nullable().optional(),
+  options: runOptionsSchema.optional(),
+});
+export type AnalysisRunRequest = z.infer<typeof analysisRunRequestSchema>;
+
+export const analysisDefinitionSchema = z.object({
+  kind: z.enum(RUN_KINDS),
+  cohort: cohortDefinitionSchema,
+  profile: profileSchema,
+  baselines_version: str,
+  sweep: sweepSpecSchema.nullable().optional(),
+  level: z.enum(LEVEL_REQUESTS),
+  options: runOptionsSchema,
+  seed: z.number().int(),
+});
+
+/** RUN-4 distribution. `suppressed: true` means every number is `null` (show "n < k", never 0). */
+export const distSchema = z.object({
+  n: optCount,
+  suppressed: z.boolean().optional(),
+  mean: optNum,
+  sd: optNum,
+  median: optNum,
+  iqr: pair.nullable().optional(),
+  p10: optNum,
+  p90: optNum,
+  ci95_mean: pair.nullable().optional(),
+  hist: z.object({ edges: z.array(z.number()), counts: z.array(count) }).nullable().optional(),
+});
+export type Dist = z.infer<typeof distSchema>;
+
+const distComparisonSchema = z.object({ published: distSchema, draft: distSchema, delta: distSchema });
+const flagCountsSchema = z.object({ green: optCount, yellow: optCount, red: optCount, unreliable: optCount });
+const flagRatesSchema = z.object({ green: z.number(), yellow: z.number(), red: z.number(), unreliable: z.number() });
+/** `[from, to, n]`; `n` is null when PRV-1 suppressed the cell. */
+const transitionSchema = z.tuple([z.string(), z.string(), count.nullable()]);
+const meanMedianSchema = z.object({ mean: optNum, median: optNum });
+
+export const bandSummarySchema = z.object({
+  band: z.string(),
+  n: optCount,
+  suppressed: z.boolean().optional(),
+  metrics: z.record(z.string(), distComparisonSchema),
+  composite: distComparisonSchema,
+  flag_rate: z.object({ published: flagRatesSchema.nullable().optional(), draft: flagRatesSchema.nullable().optional() }),
+});
+export type BandSummary = z.infer<typeof bandSummarySchema>;
+
+export const runSummarySchema = z.object({
+  counts: z.object({
+    sessions: count,
+    by_level: levelCountsSchema,
+    excluded: z.record(z.string(), count),
+    params_not_applied: z.record(z.string(), count),
+    suppressed_cells: count.optional(),
+  }),
+  flags: z.object({ published: flagCountsSchema, draft: flagCountsSchema, transitions: z.array(transitionSchema) }),
+  quality: z.object({ transitions: z.array(transitionSchema) }),
+  by_age_band: z.array(bandSummarySchema),
+  overall: bandSummarySchema,
+  sweep: z
+    .object({
+      axes: z.array(sweepAxisSchema),
+      cells: z.array(
+        z.object({
+          values: z.array(z.number()),
+          n: optCount,
+          flag_rate: flagRatesSchema.nullable().optional(),
+          quality_rate: z.record(z.string(), z.number().nullable()),
+          metrics: z.record(z.string(), meanMedianSchema),
+          composite: meanMedianSchema,
+          changed_vs_published: optCount,
+        }),
+      ),
+    })
+    .nullable()
+    .optional(),
+  age_profile: z.unknown().optional(),
+  small_cell_k: count,
+  includes_synthetic: z.boolean().optional(),
+});
+export type RunSummary = z.infer<typeof runSummarySchema>;
+
+export const jobProgressSchema = z.object({ done: count, total: count, phase: z.string() });
+export type JobProgress = z.infer<typeof jobProgressSchema>;
+
+export const analysisRunSchema = z.object({
+  id: z.string(),
+  org_id: z.string(),
+  kind: z.enum(RUN_KINDS),
+  status: runStatusSchema,
+  experiment_id: str,
+  cohort_id: str,
+  definition: analysisDefinitionSchema,
+  // RUN-5 provenance: every field is shown, copyable, on the run page.
+  definition_hash: z.string(),
+  cohort_hash: z.string(),
+  membership_hash: str,
+  profile_hash: z.string(),
+  published_profile_version: z.string(),
+  baselines_version: z.string(),
+  catalog_version: z.string(),
+  bundle_version: str,
+  core_version: z.string(),
+  contract_version: z.string(),
+  pipeline_version: z.string(),
+  registry_version: z.string(),
+  seed: z.number().int(),
+  level_requested: z.enum(LEVEL_REQUESTS),
+  sessions_n: optCount,
+  sessions_frames_n: optCount,
+  sessions_score_n: optCount,
+  excluded: z.record(z.string(), count).nullable().optional(),
+  summary: runSummarySchema.nullable().optional(),
+  result_bytes: optCount,
+  progress: jobProgressSchema.nullable().optional(),
+  job_id: str,
+  /** Failure reason, e.g. `budget_exceeded` or `result-too-large`. */
+  error: str,
+  membership_drift: z.object({ added: count, removed: count }).nullable().optional(),
+  created_by: str,
+  created_at: z.string(),
+  started_at: str,
+  finished_at: str,
+});
+export type AnalysisRun = z.infer<typeof analysisRunSchema>;
+
+export const analysisRunPageSchema = z.object({ items: z.array(analysisRunSchema), next_cursor: z.string().nullable().optional() });
+export type AnalysisRunPage = z.infer<typeof analysisRunPageSchema>;
+
+const sessionSideSchema = z.object({
+  composite: optNum,
+  flag: z.enum(["green", "yellow", "red", "unreliable"]).nullable().optional(),
+  quality_status: str,
+  metrics: z.record(z.string(), z.number().nullable()),
+});
+
+/** RUN-3 per-session row (PRV-2: no token, MRN, name or device model). */
+export const analysisSessionRowSchema = z.object({
+  session_id: z.string(),
+  level: z.enum(LEVELS),
+  age_months: z.number().int().nullable(),
+  age_band: z.string().nullable(),
+  device_id: z.string().nullable(),
+  published: sessionSideSchema,
+  draft: sessionSideSchema,
+  delta: z.object({ composite: optNum, metrics: z.record(z.string(), z.number().nullable()) }),
+  warnings: z.array(z.string()).optional(),
+});
+export type AnalysisSessionRow = z.infer<typeof analysisSessionRowSchema>;
+
+export const analysisSessionPageSchema = z.object({
+  items: z.array(analysisSessionRowSchema),
+  next_cursor: z.string().nullable().optional(),
+});
+export type AnalysisSessionPage = z.infer<typeof analysisSessionPageSchema>;
+
+// ---- effective configuration (GOV-6) ------------------------------------------------------------------------------
+
+const effectiveDocumentSchema = z.object({ version: z.string(), body: z.unknown() });
+export const effectiveConfigSchema = z.object({
+  source: z.enum(["org_bundle", "global"]),
+  bundle_version: str,
+  scoring_profile: effectiveDocumentSchema,
+  normative_baselines: effectiveDocumentSchema,
+  stimulus_catalog: effectiveDocumentSchema,
+});
+export type EffectiveConfig = z.infer<typeof effectiveConfigSchema>;
+
+// ---- client -------------------------------------------------------------------------------------------------------
+
+export interface ResearchListQuery {
+  cursor?: string;
+  limit?: number;
+  status?: string;
+}
+
+export interface AnalysisRunListQuery extends ResearchListQuery {
+  kind?: string;
+  experiment_id?: string;
+}
+
+export interface ResearchApi {
+  /** `GET /v1/orgs/{id}/experiments` (`AnalysisRead`). */
+  listExperiments(orgId: string, query?: ResearchListQuery): Promise<ExperimentPage>;
+  /** `POST /v1/orgs/{id}/experiments` (`ExperimentWrite`); `409 experiment-name-exists`. */
+  createExperiment(orgId: string, request: CreateExperimentRequest): Promise<Experiment>;
+  getExperiment(experimentId: string): Promise<Experiment>;
+  /** `PATCH /v1/experiments/{id}` with `If-Match`; `412 stale-version`, `400 config-invalid`. */
+  updateExperiment(experimentId: string, rowVersion: number, request: UpdateExperimentRequest): Promise<Experiment>;
+  archiveExperiment(experimentId: string): Promise<Experiment>;
+  /** `POST /v1/experiments/{id}/promote` (`ExperimentPromote`); `409 experiment-no-run | experiment-promoted`. */
+  promoteExperiment(experimentId: string, request: PromoteExperimentRequest): Promise<Experiment>;
+  listCohorts(orgId: string, query?: ResearchListQuery): Promise<CohortPage>;
+  createCohort(orgId: string, request: CreateCohortRequest): Promise<Cohort>;
+  getCohort(cohortId: string): Promise<Cohort>;
+  updateCohort(cohortId: string, request: UpdateCohortRequest): Promise<Cohort>;
+  /** `POST /v1/orgs/{id}/cohorts/preview` (`AnalysisRead`): counts only, suppressed below `small_cell_k`. */
+  previewCohort(orgId: string, definition: CohortDefinition): Promise<CohortPreview>;
+  listAnalysisRuns(orgId: string, query?: AnalysisRunListQuery): Promise<AnalysisRunPage>;
+  /** `POST /v1/orgs/{id}/analysis-runs` (`AnalysisRun`) → `202`; `429 analysis-quota-exceeded`, `400 *-too-large`. */
+  createAnalysisRun(orgId: string, request: AnalysisRunRequest): Promise<AnalysisRun>;
+  getAnalysisRun(runId: string): Promise<AnalysisRun>;
+  listAnalysisRunSessions(runId: string, query?: ResearchListQuery): Promise<AnalysisSessionPage>;
+  cancelAnalysisRun(runId: string): Promise<AnalysisRun>;
+  rerunAnalysisRun(runId: string): Promise<AnalysisRun>;
+  /** `GET /v1/orgs/{id}/config/effective` (`ConfigRead`, GOV-6). */
+  getEffectiveConfig(orgId: string): Promise<EffectiveConfig>;
+}
+
+export function createLiveResearch(request: LiveRequest, buildQuery: (q: object) => string): ResearchApi {
+  const enc = encodeURIComponent;
+  return {
+    listExperiments: (orgId, q) =>
+      request(`/orgs/${enc(orgId)}/experiments${buildQuery(q ?? {})}`, experimentPageSchema),
+    createExperiment: (orgId, body) =>
+      request(`/orgs/${enc(orgId)}/experiments`, experimentSchema, { method: "POST", body }),
+    getExperiment: (id) => request(`/experiments/${enc(id)}`, experimentSchema),
+    updateExperiment: (id, rowVersion, body) =>
+      request(`/experiments/${enc(id)}`, experimentSchema, {
+        method: "PATCH",
+        body,
+        headers: { "If-Match": `"${rowVersion}"` },
+      }),
+    archiveExperiment: (id) => request(`/experiments/${enc(id)}/archive`, experimentSchema, { method: "POST", body: {} }),
+    promoteExperiment: (id, body) => request(`/experiments/${enc(id)}/promote`, experimentSchema, { method: "POST", body }),
+    listCohorts: (orgId, q) => request(`/orgs/${enc(orgId)}/cohorts${buildQuery(q ?? {})}`, cohortPageSchema),
+    createCohort: (orgId, body) => request(`/orgs/${enc(orgId)}/cohorts`, cohortSchema, { method: "POST", body }),
+    getCohort: (id) => request(`/cohorts/${enc(id)}`, cohortSchema),
+    updateCohort: (id, body) => request(`/cohorts/${enc(id)}`, cohortSchema, { method: "PATCH", body }),
+    previewCohort: (orgId, body) =>
+      request(`/orgs/${enc(orgId)}/cohorts/preview`, cohortPreviewSchema, { method: "POST", body }),
+    listAnalysisRuns: (orgId, q) =>
+      request(`/orgs/${enc(orgId)}/analysis-runs${buildQuery(q ?? {})}`, analysisRunPageSchema),
+    createAnalysisRun: (orgId, body) =>
+      request(`/orgs/${enc(orgId)}/analysis-runs`, analysisRunSchema, { method: "POST", body }),
+    getAnalysisRun: (id) => request(`/analysis-runs/${enc(id)}`, analysisRunSchema),
+    listAnalysisRunSessions: (id, q) =>
+      request(`/analysis-runs/${enc(id)}/sessions${buildQuery(q ?? {})}`, analysisSessionPageSchema),
+    cancelAnalysisRun: (id) => request(`/analysis-runs/${enc(id)}/cancel`, analysisRunSchema, { method: "POST", body: {} }),
+    rerunAnalysisRun: (id) => request(`/analysis-runs/${enc(id)}/rerun`, analysisRunSchema, { method: "POST", body: {} }),
+    getEffectiveConfig: (orgId) => request(`/orgs/${enc(orgId)}/config/effective`, effectiveConfigSchema),
+  };
+}

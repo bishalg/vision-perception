@@ -6,7 +6,9 @@
 //! so a slow aggregation cannot hold a request open.
 //!
 //! Lifecycle: `queued -> running -> succeeded | failed` (`cancelled` is reserved for a
-//! later cancel endpoint). A job that fails transiently goes back to `queued` until
+//! later cancel endpoint). RUN-8 (WP-X.0): `jobs.progress` and `jobs.cancel_requested_at`
+//! are written and read through [`JobContext::progress`] / [`JobContext::cancelled`]; the
+//! cancel route and the `cancelled` outcome come with WP-X.3. A job that fails transiently goes back to `queued` until
 //! [`runner::MAX_ATTEMPTS`] is reached; a job whose params can never succeed fails at once.
 
 //!
@@ -28,8 +30,10 @@ use crate::app::AppState;
 use crate::blob::BlobStore;
 use crate::config::Config;
 use crate::crypto::Keyring;
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
+use asd_contract::api_v1::JobProgress;
 
+pub mod analysis; // WP-X.3 (stub from phase 8 step 0)
 pub mod deliver; // WP-I.7
 pub mod erasure; // WP-B.9
 pub mod export;
@@ -50,6 +54,8 @@ pub const KIND_ERASURE: &str = "erasure";
 pub const KIND_RETENTION_SWEEP: &str = "retention_sweep";
 /// `jobs.kind` of the daily housekeeping sweep (WP-B.12).
 pub const KIND_HOUSEKEEPING: &str = "housekeeping_sweep";
+/// `jobs.kind` of an analysis run (`POST /v1/orgs/{id}/analysis-runs`, RUN-3; WP-X.3).
+pub const KIND_ANALYSIS: &str = "analysis_run";
 /// Every kind the runner executes.
 pub const KINDS: &[&str] = &[
     KIND_NORM_AGGREGATE,
@@ -58,6 +64,7 @@ pub const KINDS: &[&str] = &[
     KIND_ERASURE,
     KIND_RETENTION_SWEEP,
     KIND_HOUSEKEEPING,
+    KIND_ANALYSIS,
 ];
 
 /// How often a running phased job refreshes `jobs.heartbeat_at` by default: well inside
@@ -75,6 +82,9 @@ pub struct JobContext {
     pub config: Option<Arc<Config>>,
     /// Heartbeat period of phased jobs (tests shorten it).
     pub heartbeat_every: Duration,
+    /// `(id, attempts)` of the job this context runs, set by the runner for phased handlers
+    /// ([`JobContext::for_job`]); `None` in a context not yet bound to a job.
+    pub current: Option<(Uuid, i32)>,
 }
 
 impl JobContext {
@@ -86,6 +96,7 @@ impl JobContext {
             keyring: None,
             config: None,
             heartbeat_every: DEFAULT_HEARTBEAT_EVERY,
+            current: None,
         }
     }
 
@@ -97,12 +108,63 @@ impl JobContext {
             keyring: state.keyring.clone(),
             config: Some(state.config.clone()),
             heartbeat_every: DEFAULT_HEARTBEAT_EVERY,
+            current: None,
         }
     }
 
     pub fn with_heartbeat_every(mut self, every: Duration) -> Self {
         self.heartbeat_every = every;
         self
+    }
+
+    /// This context bound to `job` (for [`progress`](Self::progress) and
+    /// [`cancelled`](Self::cancelled)).
+    pub fn for_job(&self, job: &Job) -> Self {
+        Self {
+            current: Some((job.id, job.attempts)),
+            ..self.clone()
+        }
+    }
+
+    fn current_job(&self) -> AppResult<(Uuid, i32)> {
+        self.current
+            .ok_or_else(|| AppError::Internal("job context is not bound to a job".into()))
+    }
+
+    /// RUN-8: records `{done, total, phase}` in `jobs.progress` and refreshes the heartbeat.
+    /// Fenced by `attempts` like the heartbeat: a reclaimed run writes nothing (and gets
+    /// `Ok`, since the runner's own fence reports the reclaim).
+    pub async fn progress(&self, done: u64, total: u64, phase: &str) -> AppResult<()> {
+        let (id, attempts) = self.current_job()?;
+        let progress = serde_json::to_value(JobProgress {
+            done,
+            total,
+            phase: phase.to_owned(),
+        })
+        .map_err(|e| AppError::Internal(format!("job progress: {e}")))?;
+        sqlx::query!(
+            "UPDATE jobs SET progress = $2, heartbeat_at = now()
+             WHERE id = $1 AND status = 'running' AND attempts = $3",
+            id,
+            progress,
+            attempts,
+        )
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    /// RUN-8: whether `POST /v1/jobs/{id}/cancel` asked this job to stop. Handlers check it
+    /// between pages; a vanished job counts as cancelled.
+    pub async fn cancelled(&self) -> AppResult<bool> {
+        let (id, _) = self.current_job()?;
+        let requested = sqlx::query_scalar!(
+            r#"SELECT cancel_requested_at IS NOT NULL AS "requested!" FROM jobs WHERE id = $1"#,
+            id,
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+        Ok(requested.unwrap_or(true))
     }
 }
 

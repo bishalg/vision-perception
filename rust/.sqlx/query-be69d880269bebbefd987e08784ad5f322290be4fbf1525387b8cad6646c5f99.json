@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE jobs SET progress = $2, heartbeat_at = now()\n             WHERE id = $1 AND status = 'running' AND attempts = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Jsonb",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "be69d880269bebbefd987e08784ad5f322290be4fbf1525387b8cad6646c5f99"
+}

@@ -225,6 +225,7 @@ fn generate() -> (String, String, String) {
             orientation: Orientation::Portrait,
             clip_media_time_sec: clip_time,
             stimulus_id: clip_time.map(|_| "spike-free-view".to_string()),
+            affect: None,
         });
         lines.push(sidecar_line(t, has_face.then_some(&f), blink));
     }
@@ -246,6 +247,11 @@ fn generate() -> (String, String, String) {
                 "screenMm": SCREEN_MM, "cameraOffsetMm": CAMERA_MM,
                 "intrinsics": camera(), "fps": FPS
             })),
+            clips: Vec::new(),
+            bundle_version: None,
+            profile_version: None,
+            session_id: None,
+            participant_token: None,
         },
         samples,
     };

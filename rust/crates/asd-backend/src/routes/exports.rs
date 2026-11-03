@@ -119,6 +119,7 @@ async fn create_dataset(
         reason: req.reason,
         include_labels: req.include_labels,
         case: None,
+        analysis: None,
     };
     let export = create_export(&state, &auth.principal, org, &meta, req).await?;
     Ok((StatusCode::ACCEPTED, Json(export)))
