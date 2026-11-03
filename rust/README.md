@@ -377,6 +377,13 @@ RUN-7 columns) or `sessions` (JSONL, CSV ZIP or Parquet with `curv.*` footer met
 `provenance` block equals the run record. The research frame log has no encoder (PRV-5). The
 request's `analysis` block is stored in `exports.filters.analysis` until the contract gains a field.
 
+**WP-X.0b (contract catch-up)** types the X.2/X.6 additions: `SessionIngestResponse` /
+`asd_sync::IngestAck` / `AsdIngestAck.research_frames_upload_url`, `Org` / `OrgPatch.
+research_frames_retention_months` (patch: absent = unchanged, `null` = follow `retention_months`,
+1..=240 = own horizon), `RetentionOrgResult.research_frames_purged`, slug `cohort-name-exists`, and
+`SessionPage.items` as `SessionListItem` (summary + `research_frames_available`, one extra column in
+the list query). The iOS raw-ack read stays until the xcframework is rebuilt.
+
 **WP-X.1.** `asd_core::analysis` holds the core twins of the 1.2.0 profile sections
 (`AnalysisProfile`, which decodes from any `ScoringProfile` body) and of the run summary types,
 `evaluate` (score/frames/auto, RPX-2/3), `Aggregator` (exact quantiles, seeded bootstrap CIs, RUN-4)
