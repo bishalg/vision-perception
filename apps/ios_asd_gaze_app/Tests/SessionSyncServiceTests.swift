@@ -767,6 +767,31 @@ final class SessionSyncServiceTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: logFile.path), "plain content is not kept")
     }
 
+    /// WP-X.6b: the typed `AsdIngestAck` carries the URL; an explicit JSON null reads as none.
+    @MainActor
+    func testTypedAckWithNullResearchURLOffersNoUpload() {
+        consent()
+        registerToken()
+        let service = makeService()
+        let logFile = writeResearchLog()
+        service.enqueueSession(researchRecord(), framesFile: writeBlob("session_SESS-0001.jsonl.enc"))
+        route([
+            Self.sessionsPath: { request in
+                let body: [String: Any] = [
+                    "sessionId": "SESS-0001", "status": "ingested", "duplicate": false,
+                    "frames_upload_url": "/v1/sessions/SESS-0001/blobs/frames",
+                    "research_frames_upload_url": NSNull()
+                ]
+                return (httpResponse(request, 200, headers: ["Content-Type": "application/json"]), jsonData(body))
+            },
+            "/v1/sessions/SESS-0001/blobs/frames": Self.ok
+        ])
+
+        XCTAssertTrue(sync(service))
+        XCTAssertTrue(log.entries(path: Self.researchPath).isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: logFile.path))
+    }
+
     @MainActor
     func testResearchLogWithoutNormCollectionConsentIsDeletedAtEnqueue() {
         consent()

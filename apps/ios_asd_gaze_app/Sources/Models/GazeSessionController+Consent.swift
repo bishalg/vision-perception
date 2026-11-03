@@ -40,6 +40,10 @@ public extension GazeSessionController {
             directory: SessionVaultManager().vaultDirectory,
             participantToken: GazeSessionRecord.participantToken(enrollment: enrollment, profileToken: profileToken),
             bundleVersion: scoringConfiguration.bundleVersion,
+            // A delivered bundle carries the catalog and the scoring profile as one signed unit
+            // (no separate versions), so its version names both; bundled default: nil.
+            profileVersion: scoringConfiguration.bundleVersion,
+            catalogVersion: scoringConfiguration.bundleVersion,
             appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
         )
     }

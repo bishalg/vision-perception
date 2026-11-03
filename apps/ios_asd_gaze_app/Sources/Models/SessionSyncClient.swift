@@ -279,8 +279,8 @@ public struct SessionIngestResponse: Decodable, Equatable, Sendable {
     public let duplicate: Bool?
     public let framesUploadURL: String?
     public let reportUploadURL: String?
-    /// RFL-3: offered only in proxy blob mode and for a research-consented session. The
-    /// asd-sync ack does not carry it yet, so it is read from the same body here.
+    /// RFL-3: offered only in proxy blob mode and for a research-consented session. Read from the
+    /// typed asd-sync `AsdIngestAck`.
     public let researchFramesUploadURL: String?
 
     public init(
@@ -372,7 +372,7 @@ public struct SessionSyncClient: Sendable {
     /// quarantines the item.
     public func postSession(_ payload: SessionIngestPayload, mayReRegister: inout Bool) async throws -> SessionIngestResponse {
         guard var credential = registration.currentCredential() else { throw SessionSyncError.notRegistered }
-        var (status, outcome, body) = try await send(makeSessionRequest(payload, token: credential.deviceToken))
+        var (status, outcome, _) = try await send(makeSessionRequest(payload, token: credential.deviceToken))
 
         if case .reauthenticate = outcome {
             guard mayReRegister else {
@@ -386,7 +386,7 @@ public struct SessionSyncClient: Sendable {
             } catch is DeviceRegistrationError {
                 throw SessionSyncError.unauthorized
             }
-            (status, outcome, body) = try await send(makeSessionRequest(payload, token: credential.deviceToken))
+            (status, outcome, _) = try await send(makeSessionRequest(payload, token: credential.deviceToken))
             if case .reauthenticate = outcome {
                 registration.clear()
                 throw SessionSyncError.unauthorized
@@ -402,7 +402,7 @@ public struct SessionSyncClient: Sendable {
                 duplicate: ack.duplicate,
                 framesUploadURL: ack.framesUploadUrl,
                 reportUploadURL: ack.reportUploadUrl,
-                researchFramesUploadURL: Self.researchFramesUploadURL(in: body)
+                researchFramesUploadURL: ack.researchFramesUploadUrl
             )
         case .duplicate:
             return SessionIngestResponse(sessionId: payload.sessionId, status: "duplicate", duplicate: true, framesUploadURL: nil, reportUploadURL: nil)
@@ -470,15 +470,6 @@ public struct SessionSyncClient: Sendable {
         let (data, response) = try await transport.send(request)
         let (status, outcome) = classify(data, response)
         return (status, outcome, data)
-    }
-
-    /// `research_frames_upload_url` of an accepted ack body, if any (a sparse body has none).
-    private static func researchFramesUploadURL(in body: Data) -> String? {
-        struct Ack: Decodable {
-            let researchFramesUploadUrl: String?
-            enum CodingKeys: String, CodingKey { case researchFramesUploadUrl = "research_frames_upload_url" }
-        }
-        return (try? JSONDecoder().decode(Ack.self, from: body))?.researchFramesUploadUrl
     }
 
     /// asd-sync's classification, reading the 409 problem slug (SYNC-7).
