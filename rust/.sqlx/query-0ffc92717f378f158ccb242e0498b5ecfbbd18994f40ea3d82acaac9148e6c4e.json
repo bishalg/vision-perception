@@ -1,0 +1,111 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT s.id, s.age_months, s.device_id,\n                  s.capture_source = 'synthetic' AS \"synthetic!\",\n                  s.research_frames_blob_key, s.research_frames_bytes,\n                  s.research_frames_sha256,\n                  s.research_frames_purged_at IS NOT NULL AS \"purged!\"\n           FROM sessions s JOIN participants p ON p.id = s.participant_id\n           WHERE s.org_id = $1\n             AND ($2::timestamptz IS NULL OR s.received_at >= $2)\n             AND ($3::timestamptz IS NULL OR s.received_at <= $3)\n             AND (cardinality($4::uuid[]) = 0 OR s.device_id = ANY($4))\n             AND (s.capture_source = 'truedepth'\n                  OR ($5::bool AND s.capture_source = 'synthetic'))\n             AND (NOT $6::bool OR s.research_frames_blob_key IS NOT NULL)\n             AND COALESCE(s.summary -> 'normCollection' -> 'consented' = 'true'::jsonb, false)\n             AND p.withdrawn_at IS NULL\n             AND COALESCE(s.scoring_status, 'scored') = ANY($7::text[])\n             AND (cardinality($8::text[]) = 0 OR s.quality_verdict = ANY($8::text[]))\n             AND (cardinality($9::text[]) = 0 OR s.tracking_verdict = ANY($9::text[]))\n             AND ($10::float8 IS NULL OR s.valid_frame_ratio >= $10)\n           ORDER BY s.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "age_months",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "age_months"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "device_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "device_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "synthetic!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "research_frames_blob_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "research_frames_blob_key"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "research_frames_bytes",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "research_frames_bytes"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "research_frames_sha256",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "research_frames_sha256"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "purged!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "Timestamptz",
+        "UuidArray",
+        "Bool",
+        "Bool",
+        "TextArray",
+        "TextArray",
+        "TextArray",
+        "Float8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      null,
+      true,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "0ffc92717f378f158ccb242e0498b5ecfbbd18994f40ea3d82acaac9148e6c4e"
+}

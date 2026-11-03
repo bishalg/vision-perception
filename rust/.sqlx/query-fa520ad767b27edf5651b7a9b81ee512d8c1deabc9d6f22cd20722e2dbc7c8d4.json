@@ -1,0 +1,456 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT r.id, r.org_id, r.kind, r.status, r.experiment_id, r.cohort_id, r.definition,\n                  r.definition_hash, r.cohort_hash, r.membership_hash, r.profile_hash,\n                  r.published_profile_version, r.baselines_version, r.catalog_version,\n                  r.bundle_version, r.core_version, r.contract_version, r.pipeline_version,\n                  r.registry_version, r.seed, r.level_requested, r.sessions_n,\n                  r.sessions_frames_n, r.sessions_score_n, r.excluded, NULL::jsonb AS summary,\n                  r.result_blob_key, r.result_bytes, r.progress, r.job_id, r.error,\n                  r.created_by, r.created_at, r.started_at, r.finished_at,\n                  j.progress AS \"job_progress?\", j.result -> 'membership_drift' AS \"drift?\"\n           FROM analysis_runs r LEFT JOIN jobs j ON j.id = r.job_id\n           WHERE r.org_id = $1\n             AND ($2::text IS NULL OR r.kind = $2)\n             AND ($3::text IS NULL OR r.status = $3)\n             AND ($4::uuid IS NULL OR r.experiment_id = $4)\n             AND ($5::timestamptz IS NULL OR (r.created_at, r.id) < ($5, $6::uuid))\n           ORDER BY r.created_at DESC, r.id DESC\n           LIMIT $7",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "org_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "org_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "experiment_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "experiment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "cohort_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "cohort_id"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "definition",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "definition"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "definition_hash",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "definition_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "cohort_hash",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "cohort_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "membership_hash",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "membership_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "profile_hash",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "profile_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "published_profile_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "published_profile_version"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "baselines_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "baselines_version"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "catalog_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "catalog_version"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "bundle_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "bundle_version"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "core_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "core_version"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "contract_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "contract_version"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "pipeline_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "pipeline_version"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "registry_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "registry_version"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "seed",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "seed"
+          }
+        }
+      },
+      {
+        "ordinal": 20,
+        "name": "level_requested",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "level_requested"
+          }
+        }
+      },
+      {
+        "ordinal": 21,
+        "name": "sessions_n",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "sessions_n"
+          }
+        }
+      },
+      {
+        "ordinal": 22,
+        "name": "sessions_frames_n",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "sessions_frames_n"
+          }
+        }
+      },
+      {
+        "ordinal": 23,
+        "name": "sessions_score_n",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "sessions_score_n"
+          }
+        }
+      },
+      {
+        "ordinal": 24,
+        "name": "excluded",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "excluded"
+          }
+        }
+      },
+      {
+        "ordinal": 25,
+        "name": "summary",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 26,
+        "name": "result_blob_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "result_blob_key"
+          }
+        }
+      },
+      {
+        "ordinal": 27,
+        "name": "result_bytes",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "result_bytes"
+          }
+        }
+      },
+      {
+        "ordinal": 28,
+        "name": "progress",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "progress"
+          }
+        }
+      },
+      {
+        "ordinal": 29,
+        "name": "job_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "job_id"
+          }
+        }
+      },
+      {
+        "ordinal": 30,
+        "name": "error",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "error"
+          }
+        }
+      },
+      {
+        "ordinal": 31,
+        "name": "created_by",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "created_by"
+          }
+        }
+      },
+      {
+        "ordinal": 32,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 33,
+        "name": "started_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "started_at"
+          }
+        }
+      },
+      {
+        "ordinal": 34,
+        "name": "finished_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "finished_at"
+          }
+        }
+      },
+      {
+        "ordinal": 35,
+        "name": "job_progress?",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "jobs",
+            "name": "progress"
+          }
+        }
+      },
+      {
+        "ordinal": 36,
+        "name": "drift?",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Uuid",
+        "Timestamptz",
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      null,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "fa520ad767b27edf5651b7a9b81ee512d8c1deabc9d6f22cd20722e2dbc7c8d4"
+}

@@ -3,28 +3,12 @@
 //! HTTP routes. `health` sits at the root (CON-22); everything else lives under `/v1`
 //! and is registered in [`v1`] by the package that owns the route module.
 
-use axum::response::{IntoResponse, Response};
 use axum::Router;
-use http::StatusCode;
 
 use crate::app::AppState;
-use crate::auth::extractors::Require;
-use crate::auth::rbac::Permission;
 use crate::clinical::reauth::StepUpLimiter;
-use crate::problem::Problem;
 
-/// Handler of a mounted route whose package has not shipped yet (phase 8 step 0 stubs):
-/// RBAC for `P` runs first (401, 403, 404 as the real route), then `501 not-implemented`.
-pub(crate) async fn not_implemented<P: Permission>(_auth: Require<P>) -> Response {
-    Problem::new(
-        StatusCode::NOT_IMPLEMENTED,
-        asd_contract::problem::NOT_IMPLEMENTED,
-    )
-    .with_detail("this route is not implemented yet")
-    .into_response()
-}
-
-pub mod analysis_runs; // WP-X.3 (stub from phase 8 step 0)
+pub mod analysis_runs; // WP-X.3
 pub mod attachments; // WP-B.19 (stub from wave 2 step 0)
 pub mod auth;
 pub mod blobs;

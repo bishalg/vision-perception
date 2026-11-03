@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE analysis_runs\n         SET status = $2, error = $3,\n             finished_at = CASE WHEN $2 = 'queued' THEN NULL ELSE now() END\n         WHERE id = $1 AND status IN ('queued', 'running')\n         RETURNING org_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "org_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "org_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "b9fb6215fd9509b0336432aac2d61cc0fe5a36a74fe1f30ab0a54ce72385a5e4"
+}

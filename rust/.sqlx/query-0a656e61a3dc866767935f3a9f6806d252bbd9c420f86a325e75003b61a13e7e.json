@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE analysis_runs SET status = 'cancelled', finished_at = now()\n             WHERE job_id = $1 AND status IN ('queued', 'running')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0a656e61a3dc866767935f3a9f6806d252bbd9c420f86a325e75003b61a13e7e"
+}

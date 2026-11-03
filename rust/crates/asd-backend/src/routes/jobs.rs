@@ -4,7 +4,12 @@
 //!
 //! - `POST /v1/jobs/norm-aggregate` `{min_n=12, include_imputed=false, source_filter}` queues
 //!   a job and answers `202` with it; the worker (`asd-backend worker`) runs it;
-//! - `GET /v1/jobs/{id}` the job (status, `result.norm_run_id` once it succeeded);
+//! - `GET /v1/jobs/{id}` the job (status, `result.norm_run_id` once it succeeded, RUN-8
+//!   `progress` `{done, total, phase}` while a handler reports it);
+//! - `POST /v1/jobs/{id}/cancel` (RUN-8, WP-X.3): a queued job ends `cancelled` at once (an
+//!   analysis run with it); a running one gets `cancel_requested_at` and stops where its
+//!   handler checks (`analysis_run` between pages); a finished one is `409 job-finished`.
+//!   Audit `job.cancel`;
 //! - `GET /v1/norm-runs` (cursor list, newest first) and `GET /v1/norm-runs/{id}` (with the
 //!   candidate `cells`);
 //! - `POST /v1/norm-runs/{id}/promote` writes the run as a **draft** `normative_baselines`
@@ -45,6 +50,7 @@ pub fn router() -> Router<AppState> {
         .route("/jobs/norm-aggregate", post(enqueue_norm_aggregate))
         .route("/jobs/housekeeping", post(enqueue_housekeeping))
         .route("/jobs/{id}", get(get_job))
+        .route("/jobs/{id}/cancel", post(cancel_job))
         .route("/norm-runs", get(list_runs))
         .route("/norm-runs/{id}", get(get_run))
         .route("/norm-runs/{id}/promote", post(promote_run))
@@ -66,6 +72,8 @@ pub struct JobView {
     pub started_at: Option<String>,
     pub finished_at: Option<String>,
     pub error: Option<String>,
+    /// RUN-8 `{done, total, phase}`; filled by `GET /v1/jobs/{id}` and the cancel route.
+    pub progress: Option<Value>,
 }
 
 impl From<Job> for JobView {
@@ -83,6 +91,7 @@ impl From<Job> for JobView {
             started_at: j.started_at.map(cursor::ts),
             finished_at: j.finished_at.map(cursor::ts),
             error: j.error,
+            progress: None,
         }
     }
 }
@@ -229,7 +238,69 @@ async fn get_job(
     if !norm_aggregate::run_visible(&auth.principal, job.org_id) {
         return Err(AppError::NotFound);
     }
-    Ok(Json(job.into()))
+    let mut view = JobView::from(job);
+    view.progress = job_progress(&mut conn, id).await?;
+    Ok(Json(view))
+}
+
+async fn job_progress(conn: &mut sqlx::PgConnection, id: Uuid) -> AppResult<Option<Value>> {
+    Ok(
+        sqlx::query_scalar!("SELECT progress FROM jobs WHERE id = $1", id)
+            .fetch_optional(&mut *conn)
+            .await?
+            .flatten(),
+    )
+}
+
+/// `POST /v1/jobs/{id}/cancel` (RUN-8): see the module docs.
+async fn cancel_job(
+    auth: Require<perm::JobRun>,
+    meta: RequestMeta,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> AppResult<(StatusCode, Json<JobView>)> {
+    let id = path_uuid(&id)?;
+    let mut tx = state.db.begin().await?;
+    let row = sqlx::query!(
+        "SELECT org_id, status, kind FROM jobs WHERE id = $1 FOR UPDATE",
+        id
+    )
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or(AppError::NotFound)?;
+    if !norm_aggregate::run_visible(&auth.principal, row.org_id) {
+        return Err(AppError::NotFound);
+    }
+    if !matches!(row.status.as_str(), "queued" | "running") {
+        return Err(AppError::Conflict {
+            slug: asd_contract::problem::JOB_FINISHED,
+            detail: format!("the job is {}; there is nothing to cancel", row.status),
+        });
+    }
+    let at_once = crate::routes::analysis_runs::cancel_job(&mut tx, id).await?;
+    if at_once && row.kind == jobs::KIND_ANALYSIS {
+        sqlx::query!(
+            "UPDATE analysis_runs SET status = 'cancelled', finished_at = now()
+             WHERE job_id = $1 AND status IN ('queued', 'running')",
+            id
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
+    let mut audit = AuditEvent::user(&auth.principal, "job.cancel", "job", id)
+        .before(json!({"status": row.status, "kind": row.kind}))
+        .after(json!({"outcome": if at_once { "cancelled" } else { "cancel_requested" }}))
+        .meta(&meta);
+    if let Some(org) = row.org_id {
+        audit = audit.org(org);
+    }
+    audit.record(&mut tx).await?;
+    tx.commit().await?;
+    let mut conn = state.db.acquire().await?;
+    let job = jobs::get(&mut conn, id).await?.ok_or(AppError::NotFound)?;
+    let mut view = JobView::from(job);
+    view.progress = job_progress(&mut conn, id).await?;
+    Ok((StatusCode::ACCEPTED, Json(view)))
 }
 
 // ---- runs ------------------------------------------------------------------------------

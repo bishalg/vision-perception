@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT j.result -> 'membership' AS \"m\"\n               FROM analysis_runs r JOIN jobs j ON j.id = r.job_id\n               WHERE r.id = $1 AND r.org_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "m",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "c56c30b3f026ae6f54457b66186d351fff2eb73996bdc97a81235c4fcab3abee"
+}

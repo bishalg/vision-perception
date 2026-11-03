@@ -5,10 +5,10 @@
 //! ([`norm_aggregate`] is the first). The API only ever *enqueues* a job; it never runs one,
 //! so a slow aggregation cannot hold a request open.
 //!
-//! Lifecycle: `queued -> running -> succeeded | failed` (`cancelled` is reserved for a
-//! later cancel endpoint). RUN-8 (WP-X.0): `jobs.progress` and `jobs.cancel_requested_at`
-//! are written and read through [`JobContext::progress`] / [`JobContext::cancelled`]; the
-//! cancel route and the `cancelled` outcome come with WP-X.3. A job that fails transiently goes back to `queued` until
+//! Lifecycle: `queued -> running -> succeeded | failed | cancelled`. RUN-8 (WP-X.0):
+//! `jobs.progress` and `jobs.cancel_requested_at` are written and read through
+//! [`JobContext::progress`] / [`JobContext::cancelled`]; `POST /v1/jobs/{id}/cancel` and the
+//! `cancelled` outcome ([`runner::JobError::Cancelled`]) came with WP-X.3. A job that fails transiently goes back to `queued` until
 //! [`runner::MAX_ATTEMPTS`] is reached; a job whose params can never succeed fails at once.
 
 //!
@@ -18,6 +18,7 @@
 //! `jobs.heartbeat_at` while they run. Queued jobs wait for `jobs.run_after` (delayed
 //! retry, [`runner::JobError::RetryAfter`]).
 
+use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -85,6 +86,9 @@ pub struct JobContext {
     /// `(id, attempts)` of the job this context runs, set by the runner for phased handlers
     /// ([`JobContext::for_job`]); `None` in a context not yet bound to a job.
     pub current: Option<(Uuid, i32)>,
+    /// `analysis_run` jobs running under this worker context (RUN-9: one at a time per
+    /// worker; clones share the counter, see `runner::claim_next_in`).
+    pub analysis_slots: Arc<AtomicUsize>,
 }
 
 impl JobContext {
@@ -97,6 +101,7 @@ impl JobContext {
             config: None,
             heartbeat_every: DEFAULT_HEARTBEAT_EVERY,
             current: None,
+            analysis_slots: Arc::default(),
         }
     }
 
@@ -109,6 +114,7 @@ impl JobContext {
             config: Some(state.config.clone()),
             heartbeat_every: DEFAULT_HEARTBEAT_EVERY,
             current: None,
+            analysis_slots: Arc::default(),
         }
     }
 

@@ -2,8 +2,9 @@
 //!
 //! RUN-8 seams (phase 8 step 0): `JobContext::progress` writes `jobs.progress` with the
 //! heartbeat, fenced by `attempts`; `JobContext::cancelled` reads
-//! `jobs.cancel_requested_at`; the `analysis_run` kind is routed by the runner and fails
-//! permanently until WP-X.3. Needs `DATABASE_URL`; skipped otherwise.
+//! `jobs.cancel_requested_at`; the `analysis_run` kind is routed by the runner (WP-X.3 fills
+//! it; `analysis_runs.rs` tests the job) and fails permanently without a run. Needs
+//! `DATABASE_URL`; skipped otherwise.
 
 mod common;
 
@@ -67,7 +68,7 @@ async fn progress_is_written_and_cancel_is_read() {
 }
 
 #[tokio::test]
-async fn analysis_run_is_a_known_kind_that_fails_until_implemented() {
+async fn analysis_run_is_a_known_kind_that_fails_without_a_run() {
     let Some(db) = TestDb::migrated().await else {
         return;
     };
@@ -87,7 +88,10 @@ async fn analysis_run_is_a_known_kind_that_fails_until_implemented() {
             .await
             .unwrap();
     assert_eq!(status, "failed");
-    assert_eq!(error.as_deref(), Some("not implemented"));
+    assert_eq!(
+        error.as_deref(),
+        Some("analysis job params: missing run_id")
+    );
     assert_eq!(attempts, 1, "permanent: no retry");
     db.cleanup().await;
 }

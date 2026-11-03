@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE analysis_runs SET status = 'cancelled', finished_at = now()\n                     WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e5d5be1e647c155200527b4c95b3ad7c0febfed9ad2c59c05c4995489b7dfb58"
+}

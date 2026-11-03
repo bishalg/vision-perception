@@ -1,5 +1,6 @@
 //! owner: WP-B.5 (claim, execute, record); WP-I.6 (`run_after`, heartbeat, phased handlers);
-//! WP-I.7 (`export_deliver` arm, per-kind attempt limits)
+//! WP-I.7 (`export_deliver` arm, per-kind attempt limits); WP-X.3 (`cancelled` outcome, the
+//! analysis claim rules)
 //!
 //! The job runner: claim, execute, record. `asd-backend worker` runs [`worker_loop_in`];
 //! tests call [`run_pending`] / [`run_pending_in`] to drain the queue deterministically.
@@ -38,8 +39,18 @@
 //! A worker that dies mid-job leaves a `running` row; [`reclaim_stale`] returns it to the
 //! queue (or fails it at the attempt limit) once it has been silent longer than the
 //! visibility timeout. Handlers are therefore re-runnable.
+//!
+//! ## Cancellation and analysis runs (RUN-8, RUN-9; WP-X.3)
+//!
+//! A handler that saw `jobs.cancel_requested_at` ([`JobContext::cancelled`]) returns
+//! [`JobError::Cancelled`]: the job ends `cancelled` (no retry). Only `analysis_run` claims
+//! are restricted, nothing changes for the other kinds: [`claim_next_in`] skips an
+//! `analysis_run` while its worker context already runs one (one at a time per worker) or
+//! while its org already has `ASD_ANALYSIS_MAX_RUNNING_PER_ORG` analysis jobs running.
 
 use std::future::Future;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 use serde_json::Value;
@@ -80,6 +91,22 @@ pub const DEFAULT_POLL_INTERVAL: Duration = Duration::from_secs(2);
 const RECLAIM_EVERY: Duration = Duration::from_secs(60);
 const MAX_ERROR_LEN: usize = 500;
 
+/// Counts one running analysis of a worker context while alive (RUN-9).
+struct AnalysisSlot(Arc<AtomicUsize>);
+
+impl AnalysisSlot {
+    fn take(slots: &Arc<AtomicUsize>) -> Self {
+        slots.fetch_add(1, Ordering::SeqCst);
+        Self(slots.clone())
+    }
+}
+
+impl Drop for AnalysisSlot {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::SeqCst);
+    }
+}
+
 /// Why a handler failed.
 #[derive(Debug)]
 pub enum JobError {
@@ -89,12 +116,17 @@ pub enum JobError {
     Transient(String),
     /// Worth retrying, but not before the delay.
     RetryAfter(String, Duration),
+    /// The job saw its cancel request and stopped (RUN-8): `cancelled`, no retry.
+    Cancelled(String),
 }
 
 impl JobError {
     pub fn message(&self) -> &str {
         match self {
-            Self::Permanent(m) | Self::Transient(m) | Self::RetryAfter(m, _) => m,
+            Self::Permanent(m)
+            | Self::Transient(m)
+            | Self::RetryAfter(m, _)
+            | Self::Cancelled(m) => m,
         }
     }
 
@@ -107,7 +139,7 @@ impl JobError {
     /// Whether the runner gives up after this error on attempt `attempts` of a `kind` job.
     pub fn is_final_for(&self, kind: &str, attempts: i32) -> bool {
         match self {
-            Self::Permanent(_) => true,
+            Self::Permanent(_) | Self::Cancelled(_) => true,
             Self::Transient(_) | Self::RetryAfter(..) => attempts >= max_attempts(kind),
         }
     }
@@ -140,15 +172,44 @@ pub enum Outcome {
     Succeeded,
     Retrying,
     Failed,
+    /// Stopped on request (RUN-8).
+    Cancelled,
 }
 
-/// Claims the oldest queued job that is due, or `None` when none is.
+/// Claims the oldest queued job that is due, or `None` when none is (default analysis
+/// limits; see [`claim_next_in`]).
 pub async fn claim_next(pool: &PgPool, worker: &str) -> Result<Option<Job>, sqlx::Error> {
+    let limit = crate::config::AnalysisLimits::default().max_running_per_org;
+    claim_with(pool, worker, false, limit).await
+}
+
+/// [`claim_next`] with the context's `ASD_ANALYSIS_MAX_RUNNING_PER_ORG`.
+pub async fn claim_next_in(ctx: &JobContext, worker: &str) -> Result<Option<Job>, sqlx::Error> {
+    let limit = ctx.config.as_ref().map_or_else(
+        || crate::config::AnalysisLimits::default().max_running_per_org,
+        |c| c.analysis.max_running_per_org,
+    );
+    let busy = ctx.analysis_slots.load(Ordering::SeqCst) > 0;
+    claim_with(&ctx.pool, worker, busy, limit).await
+}
+
+async fn claim_with(
+    pool: &PgPool,
+    worker: &str,
+    busy: bool,
+    max_running_per_org: u32,
+) -> Result<Option<Job>, sqlx::Error> {
+    let max_running = i64::from(max_running_per_org);
     let r = sqlx::query!(
         r#"WITH next AS (
-               SELECT id FROM jobs
-               WHERE status = 'queued' AND run_after <= now()
-               ORDER BY created_at, id
+               SELECT q.id FROM jobs q
+               WHERE q.status = 'queued' AND q.run_after <= now()
+                 AND (q.kind <> $2
+                      OR (NOT $3::bool
+                          AND (SELECT count(*) FROM jobs r
+                               WHERE r.kind = $2 AND r.status = 'running'
+                                 AND r.org_id IS NOT DISTINCT FROM q.org_id) < $4))
+               ORDER BY q.created_at, q.id
                FOR UPDATE SKIP LOCKED
                LIMIT 1)
            UPDATE jobs j
@@ -159,6 +220,9 @@ pub async fn claim_next(pool: &PgPool, worker: &str) -> Result<Option<Job>, sqlx
            RETURNING j.id, j.kind, j.status, j.params, j.result, j.attempts, j.org_id,
                      j.created_by, j.created_at, j.started_at, j.finished_at, j.error"#,
         worker,
+        KIND_ANALYSIS,
+        busy,
+        max_running,
     )
     .fetch_optional(pool)
     .await?;
@@ -229,6 +293,7 @@ async fn run_phased(ctx: &JobContext, job: &Job) -> Result<(), JobError> {
     // RUN-8: handlers report progress and check cancellation through the bound context.
     let bound = ctx.for_job(job);
     let ctx = &bound;
+    let _slot = (job.kind == KIND_ANALYSIS).then(|| AnalysisSlot::take(&ctx.analysis_slots));
     let result = match job.kind.as_str() {
         KIND_DELIVER => deliver::execute(ctx, job).await,
         KIND_ERASURE => erasure::execute(ctx, job).await,
@@ -264,6 +329,22 @@ async fn mark_succeeded(pool: &PgPool, job: &Job, result: &Value) -> Result<(), 
 }
 
 async fn record_failure(pool: &PgPool, job: &Job, error: JobError) -> Result<Outcome, sqlx::Error> {
+    if let JobError::Cancelled(message) = &error {
+        let message: String = message.chars().take(MAX_ERROR_LEN).collect();
+        tracing::info!(job_id = %job.id, kind = %job.kind, "job cancelled");
+        sqlx::query!(
+            "UPDATE jobs
+             SET status = 'cancelled', error = $2, locked_by = NULL, heartbeat_at = NULL,
+                 finished_at = now()
+             WHERE id = $1 AND status = 'running' AND attempts = $3",
+            job.id,
+            message,
+            job.attempts,
+        )
+        .execute(pool)
+        .await?;
+        return Ok(Outcome::Cancelled);
+    }
     let retry = !error.is_final_for(&job.kind, job.attempts);
     let delay = match &error {
         JobError::RetryAfter(_, d) => d.as_secs_f64(),
@@ -360,7 +441,7 @@ pub async fn run_one_in(
     ctx: &JobContext,
     worker: &str,
 ) -> Result<Option<(Uuid, Outcome)>, sqlx::Error> {
-    let Some(job) = claim_next(&ctx.pool, worker).await? else {
+    let Some(job) = claim_next_in(ctx, worker).await? else {
         return Ok(None);
     };
     let outcome = execute_in(ctx, &job).await?;

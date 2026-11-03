@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "WITH next AS (\n               SELECT id FROM jobs\n               WHERE status = 'queued' AND run_after <= now()\n               ORDER BY created_at, id\n               FOR UPDATE SKIP LOCKED\n               LIMIT 1)\n           UPDATE jobs j\n           SET status = 'running', started_at = now(), finished_at = NULL,\n               heartbeat_at = NULL, attempts = j.attempts + 1, locked_by = $1, error = NULL\n           FROM next\n           WHERE j.id = next.id\n           RETURNING j.id, j.kind, j.status, j.params, j.result, j.attempts, j.org_id,\n                     j.created_by, j.created_at, j.started_at, j.finished_at, j.error",
+  "query": "WITH next AS (\n               SELECT q.id FROM jobs q\n               WHERE q.status = 'queued' AND q.run_after <= now()\n                 AND (q.kind <> $2\n                      OR (NOT $3::bool\n                          AND (SELECT count(*) FROM jobs r\n                               WHERE r.kind = $2 AND r.status = 'running'\n                                 AND r.org_id IS NOT DISTINCT FROM q.org_id) < $4))\n               ORDER BY q.created_at, q.id\n               FOR UPDATE SKIP LOCKED\n               LIMIT 1)\n           UPDATE jobs j\n           SET status = 'running', started_at = now(), finished_at = NULL,\n               heartbeat_at = NULL, attempts = j.attempts + 1, locked_by = $1, error = NULL\n           FROM next\n           WHERE j.id = next.id\n           RETURNING j.id, j.kind, j.status, j.params, j.result, j.attempts, j.org_id,\n                     j.created_by, j.created_at, j.started_at, j.finished_at, j.error",
   "describe": {
     "columns": [
       {
@@ -138,7 +138,10 @@
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Text",
+        "Text",
+        "Bool",
+        "Int8"
       ]
     },
     "nullable": [
@@ -156,5 +159,5 @@
       true
     ]
   },
-  "hash": "01b0fcba4878c3cdb9c110b12fff16d93ddc81b00abe1ffb84650cef3def0d13"
+  "hash": "969b31a370c9c393ca804b74ae61491067f02c0bf5d191ef364bb503132b6324"
 }

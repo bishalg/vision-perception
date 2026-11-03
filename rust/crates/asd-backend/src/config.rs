@@ -71,6 +71,106 @@ pub struct Config {
     /// `ASD_METRICS_BIND_ADDR` (WP-B.13, OBS-2): where `serve` exposes `GET /metrics` on a
     /// second listener. `None` (default) = no listener; the API port never serves it.
     pub metrics_bind_addr: Option<SocketAddr>,
+    /// `ASD_ANALYSIS_*` (WP-X.3, RUN-9): researcher-toolkit run limits.
+    pub analysis: AnalysisLimits,
+}
+
+/// RUN-9 resource limits of analysis runs (ADR-0012 decision 6 and open question 7: env
+/// knobs so a bigger box can raise them). Every value is at least 1.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AnalysisLimits {
+    /// `ASD_ANALYSIS_MAX_RUNNING_PER_ORG` (1): runs of one org a worker claims at once.
+    pub max_running_per_org: u32,
+    /// `ASD_ANALYSIS_MAX_QUEUED_PER_ORG` (5): queued runs of one org (`429
+    /// analysis-quota-exceeded` beyond).
+    pub max_queued_per_org: u32,
+    /// `ASD_ANALYSIS_MAX_SESSIONS` (2000): sessions of one run (`400 cohort-too-large`).
+    pub max_sessions: u32,
+    /// `ASD_ANALYSIS_MAX_FRAME_SESSIONS` (500): sessions evaluated at `frames` level.
+    pub max_frame_sessions: u32,
+    /// `ASD_ANALYSIS_MAX_EVALUATIONS` (200000): sessions x sweep cells at `score` level.
+    pub max_evaluations: u64,
+    /// `ASD_ANALYSIS_MAX_FRAME_EVALUATIONS` (20000): the same at `frames` level.
+    pub max_frame_evaluations: u64,
+    /// `ASD_ANALYSIS_MAX_MINUTES` (30): wall clock of one run; then `failed: budget_exceeded`.
+    pub max_duration: Duration,
+    /// `ASD_ANALYSIS_MAX_RESULT_MIB` (64): the sealed per-session result blob.
+    pub max_result_bytes: usize,
+    /// `ASD_ANALYSIS_PAGE_SIZE` (200): sessions per page (heartbeat, progress, cancel check).
+    pub page_size: u32,
+}
+
+impl Default for AnalysisLimits {
+    fn default() -> Self {
+        Self {
+            max_running_per_org: 1,
+            max_queued_per_org: 5,
+            max_sessions: 2000,
+            max_frame_sessions: 500,
+            max_evaluations: 200_000,
+            max_frame_evaluations: 20_000,
+            max_duration: Duration::from_secs(30 * 60),
+            max_result_bytes: 64 * 1024 * 1024,
+            page_size: 200,
+        }
+    }
+}
+
+impl AnalysisLimits {
+    fn from_lookup<G>(get: &G) -> Result<Self, ConfigError>
+    where
+        G: Fn(&str) -> Option<String>,
+    {
+        let d = Self::default();
+        let minutes = positive(
+            get,
+            "ASD_ANALYSIS_MAX_MINUTES",
+            d.max_duration.as_secs() / 60,
+        )?;
+        let mib = positive(
+            get,
+            "ASD_ANALYSIS_MAX_RESULT_MIB",
+            (d.max_result_bytes / (1024 * 1024)) as u64,
+        )?;
+        let small = |name: &'static str, default: u32| -> Result<u32, ConfigError> {
+            let v = positive(get, name, u64::from(default))?;
+            u32::try_from(v).map_err(|_| invalid(name, "is too large"))
+        };
+        Ok(Self {
+            max_running_per_org: small("ASD_ANALYSIS_MAX_RUNNING_PER_ORG", d.max_running_per_org)?,
+            max_queued_per_org: small("ASD_ANALYSIS_MAX_QUEUED_PER_ORG", d.max_queued_per_org)?,
+            max_sessions: small("ASD_ANALYSIS_MAX_SESSIONS", d.max_sessions)?,
+            max_frame_sessions: small("ASD_ANALYSIS_MAX_FRAME_SESSIONS", d.max_frame_sessions)?,
+            max_evaluations: positive(get, "ASD_ANALYSIS_MAX_EVALUATIONS", d.max_evaluations)?,
+            max_frame_evaluations: positive(
+                get,
+                "ASD_ANALYSIS_MAX_FRAME_EVALUATIONS",
+                d.max_frame_evaluations,
+            )?,
+            max_duration: Duration::from_secs(
+                minutes
+                    .checked_mul(60)
+                    .ok_or_else(|| invalid("ASD_ANALYSIS_MAX_MINUTES", "is too large"))?,
+            ),
+            max_result_bytes: usize::try_from(mib)
+                .ok()
+                .and_then(|m| m.checked_mul(1024 * 1024))
+                .ok_or_else(|| invalid("ASD_ANALYSIS_MAX_RESULT_MIB", "is too large"))?,
+            page_size: small("ASD_ANALYSIS_PAGE_SIZE", d.page_size)?,
+        })
+    }
+}
+
+/// A whole number of at least 1.
+fn positive<G>(get: &G, name: &'static str, default: u64) -> Result<u64, ConfigError>
+where
+    G: Fn(&str) -> Option<String>,
+{
+    let v = parse_or(get, name, default)?;
+    if v == 0 {
+        return Err(invalid(name, "must be at least 1"));
+    }
+    Ok(v)
 }
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
@@ -208,6 +308,7 @@ impl Config {
                 Some(addr)
             }
         };
+        let analysis = AnalysisLimits::from_lookup(&get)?;
         Ok(Self {
             bind_addr,
             database_url,
@@ -226,6 +327,7 @@ impl Config {
             data_kek_previous,
             public_base_url,
             metrics_bind_addr,
+            analysis,
         })
     }
 }
@@ -264,6 +366,7 @@ impl fmt::Debug for Config {
             .field("data_kek_previous", &self.data_kek_previous)
             .field("public_base_url", &self.public_base_url)
             .field("metrics_bind_addr", &self.metrics_bind_addr)
+            .field("analysis", &self.analysis)
             .finish()
     }
 }
@@ -400,6 +503,66 @@ mod tests {
                     ..
                 }
             ));
+        }
+    }
+
+    #[test]
+    fn analysis_limits_default_to_the_adr_values_and_are_read() {
+        let c = cfg(&[("DATABASE_URL", URL)]).unwrap();
+        let a = &c.analysis;
+        assert_eq!(a.max_running_per_org, 1);
+        assert_eq!(a.max_queued_per_org, 5);
+        assert_eq!(a.max_sessions, 2000);
+        assert_eq!(a.max_frame_sessions, 500);
+        assert_eq!(a.max_evaluations, 200_000);
+        assert_eq!(a.max_frame_evaluations, 20_000);
+        assert_eq!(a.max_duration, Duration::from_secs(30 * 60));
+        assert_eq!(a.max_result_bytes, 64 * 1024 * 1024);
+        assert_eq!(a.page_size, 200);
+
+        let c = cfg(&[
+            ("DATABASE_URL", URL),
+            ("ASD_ANALYSIS_MAX_RUNNING_PER_ORG", "2"),
+            ("ASD_ANALYSIS_MAX_QUEUED_PER_ORG", "9"),
+            ("ASD_ANALYSIS_MAX_SESSIONS", "5000"),
+            ("ASD_ANALYSIS_MAX_FRAME_SESSIONS", "800"),
+            ("ASD_ANALYSIS_MAX_EVALUATIONS", "400000"),
+            ("ASD_ANALYSIS_MAX_FRAME_EVALUATIONS", "40000"),
+            ("ASD_ANALYSIS_MAX_MINUTES", "90"),
+            ("ASD_ANALYSIS_MAX_RESULT_MIB", "128"),
+            ("ASD_ANALYSIS_PAGE_SIZE", "50"),
+        ])
+        .unwrap();
+        let a = &c.analysis;
+        assert_eq!(
+            (a.max_running_per_org, a.max_queued_per_org, a.page_size),
+            (2, 9, 50)
+        );
+        assert_eq!((a.max_sessions, a.max_frame_sessions), (5000, 800));
+        assert_eq!(
+            (a.max_evaluations, a.max_frame_evaluations),
+            (400_000, 40_000)
+        );
+        assert_eq!(a.max_duration, Duration::from_secs(90 * 60));
+        assert_eq!(a.max_result_bytes, 128 * 1024 * 1024);
+
+        for name in [
+            "ASD_ANALYSIS_MAX_RUNNING_PER_ORG",
+            "ASD_ANALYSIS_MAX_QUEUED_PER_ORG",
+            "ASD_ANALYSIS_MAX_SESSIONS",
+            "ASD_ANALYSIS_MAX_FRAME_SESSIONS",
+            "ASD_ANALYSIS_MAX_EVALUATIONS",
+            "ASD_ANALYSIS_MAX_FRAME_EVALUATIONS",
+            "ASD_ANALYSIS_MAX_MINUTES",
+            "ASD_ANALYSIS_MAX_RESULT_MIB",
+            "ASD_ANALYSIS_PAGE_SIZE",
+        ] {
+            for bad in ["0", "-1", "lots"] {
+                match cfg(&[("DATABASE_URL", URL), (name, bad)]).unwrap_err() {
+                    ConfigError::Invalid { name: n, .. } => assert_eq!(n, name, "{bad}"),
+                    other => panic!("{name}={bad}: {other:?}"),
+                }
+            }
         }
     }
 

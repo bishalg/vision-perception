@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE analysis_runs\n         SET status = 'succeeded', summary = $2, sessions_n = $3, sessions_frames_n = $4,\n             sessions_score_n = $5, excluded = $6, result_blob_key = $7, result_bytes = $8,\n             progress = $9, finished_at = now(), error = NULL\n         WHERE id = $1 AND status = 'running'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Jsonb",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Jsonb",
+        "Text",
+        "Int4",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d4003f23274a55764ccfe2df37d8296f6526fdb853a33eacc26ce0ff98330904"
+}
