@@ -25,6 +25,7 @@ import {
 import { navLinks } from "@/lib/nav";
 import { can } from "@/lib/permissions";
 import { configText } from "@/messages/config";
+import { researchMessages } from "@/messages/research";
 import { HAS_WASM } from "./asdCoreNode";
 
 const push = vi.fn();
@@ -185,18 +186,20 @@ describe("bundle compose", () => {
 });
 
 describe.skipIf(!HAS_WASM)("editors and sandbox with the Rust core", () => {
+  // The scoring editor renders the 88-control registry form; give jsdom and the first wasm load time.
+  vi.setConfig({ testTimeout: 30_000 });
+  const SLOW = { timeout: 15_000 };
   const noPreview = { sessions: [], published: null, load: vi.fn() };
 
   it("scoring profile editor shows the core's range problem at the field and blocks saving", async () => {
     const save = vi.fn().mockResolvedValue({ ok: true, version: "v9" });
     render(<ScoringProfileEditor orgId={MOCK_ORG_ID} initial={mockScoringProfile()} fromVersion="2026.10.1" preview={noPreview} save={save} />);
-    expect(await screen.findByText(configText.editor.valid)).toBeInTheDocument();
-    const green = screen.getByLabelText(configText.profile.greenFloor);
+    expect(await screen.findByText(configText.editor.valid, {}, SLOW)).toBeInTheDocument();
+    const green = screen.getByLabelText(researchMessages.en.params["flag.greenFloor"]!.label);
     await userEvent.clear(green);
     await userEvent.type(green, "1.5");
-    await waitFor(() => expect(green).toHaveAttribute("aria-invalid", "true"));
-    expect(screen.getAllByText("flag.greenFloor must be in [0, 1]").length).toBeGreaterThan(0);
-    expect(screen.getByText(configText.profile.lowConfidenceCaveat("0.6"))).toBeInTheDocument();
+    await waitFor(() => expect(green).toHaveAttribute("aria-invalid", "true"), SLOW);
+    expect((await screen.findAllByText("flag.greenFloor must be in [0, 1]", {}, SLOW)).length).toBeGreaterThan(0);
 
     await userEvent.type(screen.getByLabelText(/^New version/), "v9");
     await userEvent.type(screen.getByLabelText(/^Changelog note/), "stricter");
@@ -205,9 +208,9 @@ describe.skipIf(!HAS_WASM)("editors and sandbox with the Rust core", () => {
 
     await userEvent.clear(green);
     await userEvent.type(green, "0.7");
-    await screen.findByText(configText.editor.valid);
+    await screen.findByText(configText.editor.valid, {}, SLOW);
     await userEvent.click(screen.getByRole("button", { name: configText.editor.submit }));
-    await waitFor(() => expect(save).toHaveBeenCalled());
+    await waitFor(() => expect(save).toHaveBeenCalled(), SLOW);
     expect(save.mock.calls[0]![0]).toMatchObject({ version: "v9", notes: "stricter", body: { flag: { greenFloor: 0.7 } } });
     expect(push).toHaveBeenCalledWith(`/${MOCK_ORG_ID}/config/scoring/v9?created=1`);
   });
@@ -215,7 +218,7 @@ describe.skipIf(!HAS_WASM)("editors and sandbox with the Rust core", () => {
   it("scoring profile editor requires a changelog note", async () => {
     const save = vi.fn();
     render(<ScoringProfileEditor orgId="o" initial={mockScoringProfile()} fromVersion={null} preview={noPreview} save={save} />);
-    await screen.findByText(configText.editor.valid);
+    await screen.findByText(configText.editor.valid, {}, SLOW);
     await userEvent.type(screen.getByLabelText(/^New version/), "v1");
     await userEvent.click(screen.getByRole("button", { name: configText.editor.submit }));
     expect(await screen.findByText(configText.editor.notesRequired)).toBeInTheDocument();

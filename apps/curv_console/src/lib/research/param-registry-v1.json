@@ -1,0 +1,1650 @@
+{
+  "$id": "https://schemas.curv.org/asd/param-registry-v1.json",
+  "params": [
+    {
+      "default": 0.65,
+      "document": "scoring_profile",
+      "helpKey": "param.flag.greenFloor.help",
+      "id": "flag.greenFloor",
+      "kind": {
+        "max": 1.0,
+        "min": 0.0,
+        "step": 0.01,
+        "type": "number",
+        "unit": "ratio"
+      },
+      "labelKey": "param.flag.greenFloor.label",
+      "reprocess": "score",
+      "since": "1.0.0",
+      "stage": "flag"
+    },
+    {
+      "default": 0.35,
+      "document": "scoring_profile",
+      "helpKey": "param.flag.yellowFloor.help",
+      "id": "flag.yellowFloor",
+      "kind": {
+        "max": 1.0,
+        "min": 0.0,
+        "step": 0.01,
+        "type": "number",
+        "unit": "ratio"
+      },
+      "labelKey": "param.flag.yellowFloor.label",
+      "reprocess": "score",
+      "since": "1.0.0",
+      "stage": "flag"
+    },
+    {
+      "default": 0.5,
+      "document": "scoring_profile",
+      "helpKey": "param.flag.lowConfidenceShare.help",
+      "id": "flag.lowConfidenceShare",
+      "kind": {
+        "max": 1.0,
+        "min": 0.0,
+        "step": 0.01,
+        "type": "number",
+        "unit": "ratio"
+      },
+      "labelKey": "param.flag.lowConfidenceShare.label",
+      "reprocess": "score",
+      "since": "1.0.0",
+      "stage": "flag"
+    },
+    {
+      "default": 0.4,
+      "document": "scoring_profile",
+      "helpKey": "param.flag.atypicalShareForRed.help",
+      "id": "flag.atypicalShareForRed",
+      "kind": {
+        "max": 1.0,
+        "min": 0.0,
+        "step": 0.01,
+        "type": "number",
+        "unit": "ratio"
+      },
+      "labelKey": "param.flag.atypicalShareForRed.label",
+      "reprocess": "score",
+      "since": "1.0.0",
+      "stage": "flag"
+    },
+    {
+      "default": 0.6,
+      "document": "scoring_profile",
+      "helpKey": "param.lowConfidenceValidRatio.help",
+      "id": "lowConfidenceValidRatio",
+      "kind": {
+        "max": 1.0,
+        "min": 0.0,
+        "step": 0.01,
+        "type": "number",
+        "unit": "ratio"
+      },
+      "labelKey": "param.lowConfidenceValidRatio.label",
+      "reprocess": "score",
+      "since": "1.0.0",
+      "stage": "scoring"
+    },
+    {
+      "default": 35.0,
+      "document": "scoring_profile",
+      "helpKey": "param.qualityGate.minDistanceCm.help",
+      "id": "qualityGate.minDistanceCm",
+      "kind": {
+        "max": 150.0,
+        "min": 10.0,
+        "step": 1.0,
+        "type": "number",
+        "unit": "cm"
+      },
+      "labelKey": "param.qualityGate.minDistanceCm.label",
+      "reprocess": "frames",
+      "since": "1.0.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 65.0,
+      "document": "scoring_profile",
+      "helpKey": "param.qualityGate.maxDistanceCm.help",
+      "id": "qualityGate.maxDistanceCm",
+      "kind": {
+        "max": 150.0,
+        "min": 10.0,
+        "step": 1.0,
+        "type": "number",
+        "unit": "cm"
+      },
+      "labelKey": "param.qualityGate.maxDistanceCm.label",
+      "reprocess": "frames",
+      "since": "1.0.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 0.61,
+      "document": "scoring_profile",
+      "helpKey": "param.qualityGate.maxYawRad.help",
+      "id": "qualityGate.maxYawRad",
+      "kind": {
+        "max": 1.57,
+        "min": 0.05,
+        "step": 0.01,
+        "type": "number",
+        "unit": "rad"
+      },
+      "labelKey": "param.qualityGate.maxYawRad.label",
+      "reprocess": "frames",
+      "since": "1.0.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 0.52,
+      "document": "scoring_profile",
+      "helpKey": "param.qualityGate.maxPitchRad.help",
+      "id": "qualityGate.maxPitchRad",
+      "kind": {
+        "max": 1.57,
+        "min": 0.05,
+        "step": 0.01,
+        "type": "number",
+        "unit": "rad"
+      },
+      "labelKey": "param.qualityGate.maxPitchRad.label",
+      "reprocess": "frames",
+      "since": "1.0.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 0.5,
+      "document": "scoring_profile",
+      "helpKey": "param.qualityGate.minConfidence.help",
+      "id": "qualityGate.minConfidence",
+      "kind": {
+        "max": 1.0,
+        "min": 0.0,
+        "step": 0.01,
+        "type": "number",
+        "unit": "ratio"
+      },
+      "labelKey": "param.qualityGate.minConfidence.label",
+      "reprocess": "frames",
+      "since": "1.0.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 0.45,
+      "document": "scoring_profile",
+      "helpKey": "param.qualityGate.blinkThreshold.help",
+      "id": "qualityGate.blinkThreshold",
+      "kind": {
+        "max": 1.0,
+        "min": 0.0,
+        "step": 0.01,
+        "type": "number",
+        "unit": "ratio"
+      },
+      "labelKey": "param.qualityGate.blinkThreshold.label",
+      "reprocess": "frames",
+      "since": "1.0.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": true,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.provisional.help",
+      "id": "trackingQuality.provisional",
+      "kind": {
+        "type": "bool"
+      },
+      "labelKey": "param.trackingQuality.provisional.label",
+      "reprocess": "score",
+      "since": "1.1.0",
+      "stage": "display"
+    },
+    {
+      "default": 400.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.calibration.settleMs.help",
+      "id": "trackingQuality.calibration.settleMs",
+      "kind": {
+        "max": 5000.0,
+        "min": 0.0,
+        "step": 10.0,
+        "type": "number",
+        "unit": "millis"
+      },
+      "labelKey": "param.trackingQuality.calibration.settleMs.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 1200.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.calibration.collectMs.help",
+      "id": "trackingQuality.calibration.collectMs",
+      "kind": {
+        "max": 10000.0,
+        "min": 100.0,
+        "step": 10.0,
+        "type": "number",
+        "unit": "millis"
+      },
+      "labelKey": "param.trackingQuality.calibration.collectMs.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 4000.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.calibration.maxTargetWaitMs.help",
+      "id": "trackingQuality.calibration.maxTargetWaitMs",
+      "kind": {
+        "max": 30000.0,
+        "min": 0.0,
+        "step": 100.0,
+        "type": "number",
+        "unit": "millis"
+      },
+      "labelKey": "param.trackingQuality.calibration.maxTargetWaitMs.label",
+      "reprocess": "capture_only",
+      "since": "1.1.0",
+      "stage": "capture"
+    },
+    {
+      "default": 20,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.calibration.minSamplesPerTarget.help",
+      "id": "trackingQuality.calibration.minSamplesPerTarget",
+      "kind": {
+        "max": 600,
+        "min": 1,
+        "type": "integer",
+        "unit": "count"
+      },
+      "labelKey": "param.trackingQuality.calibration.minSamplesPerTarget.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 1,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.calibration.maxRetriesPerTarget.help",
+      "id": "trackingQuality.calibration.maxRetriesPerTarget",
+      "kind": {
+        "max": 5,
+        "min": 0,
+        "type": "integer",
+        "unit": "count"
+      },
+      "labelKey": "param.trackingQuality.calibration.maxRetriesPerTarget.label",
+      "reprocess": "capture_only",
+      "since": "1.1.0",
+      "stage": "capture"
+    },
+    {
+      "default": 3.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.calibration.madRejectK.help",
+      "id": "trackingQuality.calibration.madRejectK",
+      "kind": {
+        "max": 10.0,
+        "min": 0.5,
+        "step": 0.1,
+        "type": "number",
+        "unit": "none"
+      },
+      "labelKey": "param.trackingQuality.calibration.madRejectK.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": "screenAffine",
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.calibration.defaultModel.help",
+      "id": "trackingQuality.calibration.defaultModel",
+      "kind": {
+        "type": "enum",
+        "values": [
+          "screenAffine",
+          "angularAffine",
+          "screenHomography",
+          "screenPoly2"
+        ]
+      },
+      "labelKey": "param.trackingQuality.calibration.defaultModel.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": false,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.calibration.autoSelect.help",
+      "id": "trackingQuality.calibration.autoSelect",
+      "kind": {
+        "type": "bool"
+      },
+      "labelKey": "param.trackingQuality.calibration.autoSelect.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 0.3,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.calibration.minImprovementDeg.help",
+      "id": "trackingQuality.calibration.minImprovementDeg",
+      "kind": {
+        "max": 5.0,
+        "min": 0.0,
+        "step": 0.05,
+        "type": "number",
+        "unit": "deg"
+      },
+      "labelKey": "param.trackingQuality.calibration.minImprovementDeg.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 2,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.calibration.eligibilityMarginPoints.help",
+      "id": "trackingQuality.calibration.eligibilityMarginPoints",
+      "kind": {
+        "max": 10,
+        "min": 0,
+        "type": "integer",
+        "unit": "count"
+      },
+      "labelKey": "param.trackingQuality.calibration.eligibilityMarginPoints.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 2.5,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.calibration.bands.goodMaxDeg.help",
+      "id": "trackingQuality.calibration.bands.goodMaxDeg",
+      "kind": {
+        "max": 20.0,
+        "min": 0.1,
+        "step": 0.1,
+        "type": "number",
+        "unit": "deg"
+      },
+      "labelKey": "param.trackingQuality.calibration.bands.goodMaxDeg.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 3.5,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.calibration.bands.fairMaxDeg.help",
+      "id": "trackingQuality.calibration.bands.fairMaxDeg",
+      "kind": {
+        "max": 20.0,
+        "min": 0.1,
+        "step": 0.1,
+        "type": "number",
+        "unit": "deg"
+      },
+      "labelKey": "param.trackingQuality.calibration.bands.fairMaxDeg.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 5.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.calibration.bands.poorMaxDeg.help",
+      "id": "trackingQuality.calibration.bands.poorMaxDeg",
+      "kind": {
+        "max": 20.0,
+        "min": 0.1,
+        "step": 0.1,
+        "type": "number",
+        "unit": "deg"
+      },
+      "labelKey": "param.trackingQuality.calibration.bands.poorMaxDeg.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 4,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.calibration.minUsablePoints.help",
+      "id": "trackingQuality.calibration.minUsablePoints",
+      "kind": {
+        "max": 20,
+        "min": 1,
+        "type": "integer",
+        "unit": "count"
+      },
+      "labelKey": "param.trackingQuality.calibration.minUsablePoints.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 1000000.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.calibration.maxConditionNumber.help",
+      "id": "trackingQuality.calibration.maxConditionNumber",
+      "kind": {
+        "max": 1000000000000.0,
+        "min": 1.0,
+        "step": 1.0,
+        "type": "number",
+        "unit": "none"
+      },
+      "labelKey": "param.trackingQuality.calibration.maxConditionNumber.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": [
+        [
+          0.5,
+          0.5
+        ],
+        [
+          0.12,
+          0.12
+        ],
+        [
+          0.88,
+          0.12
+        ],
+        [
+          0.12,
+          0.88
+        ],
+        [
+          0.88,
+          0.88
+        ]
+      ],
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.calibration.layout5.help",
+      "id": "trackingQuality.calibration.layout5",
+      "kind": {
+        "maxPoints": 25,
+        "minPoints": 1,
+        "type": "point_list"
+      },
+      "labelKey": "param.trackingQuality.calibration.layout5.label",
+      "reprocess": "capture_only",
+      "since": "1.1.0",
+      "stage": "capture"
+    },
+    {
+      "default": [
+        [
+          0.5,
+          0.5
+        ],
+        [
+          0.12,
+          0.12
+        ],
+        [
+          0.88,
+          0.12
+        ],
+        [
+          0.12,
+          0.88
+        ],
+        [
+          0.88,
+          0.88
+        ],
+        [
+          0.5,
+          0.12
+        ],
+        [
+          0.12,
+          0.5
+        ],
+        [
+          0.88,
+          0.5
+        ],
+        [
+          0.5,
+          0.88
+        ]
+      ],
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.calibration.layout9.help",
+      "id": "trackingQuality.calibration.layout9",
+      "kind": {
+        "maxPoints": 25,
+        "minPoints": 1,
+        "type": "point_list"
+      },
+      "labelKey": "param.trackingQuality.calibration.layout9.label",
+      "reprocess": "capture_only",
+      "since": "1.1.0",
+      "stage": "capture"
+    },
+    {
+      "default": 20.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.recalibration.poseShiftDistancePct.help",
+      "id": "trackingQuality.recalibration.poseShiftDistancePct",
+      "kind": {
+        "max": 100.0,
+        "min": 1.0,
+        "step": 1.0,
+        "type": "number",
+        "unit": "percent"
+      },
+      "labelKey": "param.trackingQuality.recalibration.poseShiftDistancePct.label",
+      "reprocess": "capture_only",
+      "since": "1.1.0",
+      "stage": "capture"
+    },
+    {
+      "default": 15.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.recalibration.poseShiftAngleDeg.help",
+      "id": "trackingQuality.recalibration.poseShiftAngleDeg",
+      "kind": {
+        "max": 90.0,
+        "min": 1.0,
+        "step": 1.0,
+        "type": "number",
+        "unit": "deg"
+      },
+      "labelKey": "param.trackingQuality.recalibration.poseShiftAngleDeg.label",
+      "reprocess": "capture_only",
+      "since": "1.1.0",
+      "stage": "capture"
+    },
+    {
+      "default": 3.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.recalibration.poseWindowSec.help",
+      "id": "trackingQuality.recalibration.poseWindowSec",
+      "kind": {
+        "max": 30.0,
+        "min": 0.5,
+        "step": 0.5,
+        "type": "number",
+        "unit": "seconds"
+      },
+      "labelKey": "param.trackingQuality.recalibration.poseWindowSec.label",
+      "reprocess": "capture_only",
+      "since": "1.1.0",
+      "stage": "capture"
+    },
+    {
+      "default": 600.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.recalibration.maxCalibrationAgeSec.help",
+      "id": "trackingQuality.recalibration.maxCalibrationAgeSec",
+      "kind": {
+        "max": 7200.0,
+        "min": 30.0,
+        "step": 10.0,
+        "type": "number",
+        "unit": "seconds"
+      },
+      "labelKey": "param.trackingQuality.recalibration.maxCalibrationAgeSec.label",
+      "reprocess": "capture_only",
+      "since": "1.1.0",
+      "stage": "capture"
+    },
+    {
+      "default": 2,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.recalibration.maxRecalibrationsPerSession.help",
+      "id": "trackingQuality.recalibration.maxRecalibrationsPerSession",
+      "kind": {
+        "max": 10,
+        "min": 0,
+        "type": "integer",
+        "unit": "count"
+      },
+      "labelKey": "param.trackingQuality.recalibration.maxRecalibrationsPerSession.label",
+      "reprocess": "capture_only",
+      "since": "1.1.0",
+      "stage": "capture"
+    },
+    {
+      "default": 1,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.recalibration.maxRecalibrationsInBattery.help",
+      "id": "trackingQuality.recalibration.maxRecalibrationsInBattery",
+      "kind": {
+        "max": 10,
+        "min": 0,
+        "type": "integer",
+        "unit": "count"
+      },
+      "labelKey": "param.trackingQuality.recalibration.maxRecalibrationsInBattery.label",
+      "reprocess": "capture_only",
+      "since": "1.1.0",
+      "stage": "capture"
+    },
+    {
+      "default": [
+        [
+          0.3,
+          0.3
+        ],
+        [
+          0.7,
+          0.3
+        ],
+        [
+          0.3,
+          0.7
+        ],
+        [
+          0.7,
+          0.7
+        ]
+      ],
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.validation.layout.help",
+      "id": "trackingQuality.validation.layout",
+      "kind": {
+        "maxPoints": 25,
+        "minPoints": 1,
+        "type": "point_list"
+      },
+      "labelKey": "param.trackingQuality.validation.layout.label",
+      "reprocess": "capture_only",
+      "since": "1.1.0",
+      "stage": "capture"
+    },
+    {
+      "default": 400.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.validation.settleMs.help",
+      "id": "trackingQuality.validation.settleMs",
+      "kind": {
+        "max": 5000.0,
+        "min": 0.0,
+        "step": 10.0,
+        "type": "number",
+        "unit": "millis"
+      },
+      "labelKey": "param.trackingQuality.validation.settleMs.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 1000.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.validation.collectMs.help",
+      "id": "trackingQuality.validation.collectMs",
+      "kind": {
+        "max": 10000.0,
+        "min": 100.0,
+        "step": 10.0,
+        "type": "number",
+        "unit": "millis"
+      },
+      "labelKey": "param.trackingQuality.validation.collectMs.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 12,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.validation.minSamplesPerTarget.help",
+      "id": "trackingQuality.validation.minSamplesPerTarget",
+      "kind": {
+        "max": 600,
+        "min": 1,
+        "type": "integer",
+        "unit": "count"
+      },
+      "labelKey": "param.trackingQuality.validation.minSamplesPerTarget.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 3,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.validation.minTargetsHit.help",
+      "id": "trackingQuality.validation.minTargetsHit",
+      "kind": {
+        "max": 25,
+        "min": 1,
+        "type": "integer",
+        "unit": "count"
+      },
+      "labelKey": "param.trackingQuality.validation.minTargetsHit.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 3.5,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.validation.warnAccuracyDeg.help",
+      "id": "trackingQuality.validation.warnAccuracyDeg",
+      "kind": {
+        "max": 20.0,
+        "min": 0.1,
+        "step": 0.1,
+        "type": "number",
+        "unit": "deg"
+      },
+      "labelKey": "param.trackingQuality.validation.warnAccuracyDeg.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 5.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.validation.maxAccuracyDeg.help",
+      "id": "trackingQuality.validation.maxAccuracyDeg",
+      "kind": {
+        "max": 20.0,
+        "min": 0.1,
+        "step": 0.1,
+        "type": "number",
+        "unit": "deg"
+      },
+      "labelKey": "param.trackingQuality.validation.maxAccuracyDeg.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": [
+        [
+          0.1,
+          0.1
+        ],
+        [
+          0.5,
+          0.1
+        ],
+        [
+          0.9,
+          0.1
+        ],
+        [
+          0.1,
+          0.5
+        ],
+        [
+          0.5,
+          0.5
+        ],
+        [
+          0.9,
+          0.5
+        ],
+        [
+          0.1,
+          0.9
+        ],
+        [
+          0.5,
+          0.9
+        ],
+        [
+          0.9,
+          0.9
+        ],
+        [
+          0.3,
+          0.3
+        ],
+        [
+          0.7,
+          0.3
+        ],
+        [
+          0.3,
+          0.7
+        ],
+        [
+          0.7,
+          0.7
+        ]
+      ],
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.validation.benchLayout13.help",
+      "id": "trackingQuality.validation.benchLayout13",
+      "kind": {
+        "maxPoints": 25,
+        "minPoints": 1,
+        "type": "point_list"
+      },
+      "labelKey": "param.trackingQuality.validation.benchLayout13.label",
+      "reprocess": "capture_only",
+      "since": "1.1.0",
+      "stage": "capture"
+    },
+    {
+      "default": [
+        [
+          0.5,
+          0.5
+        ],
+        [
+          0.3,
+          0.3
+        ],
+        [
+          0.7,
+          0.3
+        ],
+        [
+          0.3,
+          0.7
+        ],
+        [
+          0.7,
+          0.7
+        ]
+      ],
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.drift.checkLayout.help",
+      "id": "trackingQuality.drift.checkLayout",
+      "kind": {
+        "maxPoints": 25,
+        "minPoints": 1,
+        "type": "point_list"
+      },
+      "labelKey": "param.trackingQuality.drift.checkLayout.label",
+      "reprocess": "capture_only",
+      "since": "1.1.0",
+      "stage": "capture"
+    },
+    {
+      "default": 300.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.drift.settleMs.help",
+      "id": "trackingQuality.drift.settleMs",
+      "kind": {
+        "max": 5000.0,
+        "min": 0.0,
+        "step": 10.0,
+        "type": "number",
+        "unit": "millis"
+      },
+      "labelKey": "param.trackingQuality.drift.settleMs.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 900.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.drift.collectMs.help",
+      "id": "trackingQuality.drift.collectMs",
+      "kind": {
+        "max": 10000.0,
+        "min": 100.0,
+        "step": 10.0,
+        "type": "number",
+        "unit": "millis"
+      },
+      "labelKey": "param.trackingQuality.drift.collectMs.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 10,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.drift.minSamples.help",
+      "id": "trackingQuality.drift.minSamples",
+      "kind": {
+        "max": 600,
+        "min": 1,
+        "type": "integer",
+        "unit": "count"
+      },
+      "labelKey": "param.trackingQuality.drift.minSamples.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 1.5,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.drift.warnDeg.help",
+      "id": "trackingQuality.drift.warnDeg",
+      "kind": {
+        "max": 20.0,
+        "min": 0.1,
+        "step": 0.1,
+        "type": "number",
+        "unit": "deg"
+      },
+      "labelKey": "param.trackingQuality.drift.warnDeg.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 2,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.drift.warnConsecutive.help",
+      "id": "trackingQuality.drift.warnConsecutive",
+      "kind": {
+        "max": 10,
+        "min": 1,
+        "type": "integer",
+        "unit": "count"
+      },
+      "labelKey": "param.trackingQuality.drift.warnConsecutive.label",
+      "reprocess": "capture_only",
+      "since": "1.1.0",
+      "stage": "capture"
+    },
+    {
+      "default": 3.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.drift.hardDeg.help",
+      "id": "trackingQuality.drift.hardDeg",
+      "kind": {
+        "max": 20.0,
+        "min": 0.1,
+        "step": 0.1,
+        "type": "number",
+        "unit": "deg"
+      },
+      "labelKey": "param.trackingQuality.drift.hardDeg.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 50.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.trackState.blinkRecoveryMs.help",
+      "id": "trackingQuality.trackState.blinkRecoveryMs",
+      "kind": {
+        "max": 1000.0,
+        "min": 0.0,
+        "step": 10.0,
+        "type": "number",
+        "unit": "millis"
+      },
+      "labelKey": "param.trackingQuality.trackState.blinkRecoveryMs.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 1000.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.trackState.maxEyeSpeedDegPerSec.help",
+      "id": "trackingQuality.trackState.maxEyeSpeedDegPerSec",
+      "kind": {
+        "max": 5000.0,
+        "min": 10.0,
+        "step": 10.0,
+        "type": "number",
+        "unit": "deg_per_sec"
+      },
+      "labelKey": "param.trackingQuality.trackState.maxEyeSpeedDegPerSec.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 0.02,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.trackState.offscreenMarginNorm.help",
+      "id": "trackingQuality.trackState.offscreenMarginNorm",
+      "kind": {
+        "max": 0.5,
+        "min": 0.0,
+        "step": 0.005,
+        "type": "number",
+        "unit": "norm_units"
+      },
+      "labelKey": "param.trackingQuality.trackState.offscreenMarginNorm.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 0.7,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.confidence.eyeOpennessComfort.help",
+      "id": "trackingQuality.confidence.eyeOpennessComfort",
+      "kind": {
+        "max": 1.0,
+        "min": 0.0,
+        "step": 0.01,
+        "type": "number",
+        "unit": "ratio"
+      },
+      "labelKey": "param.trackingQuality.confidence.eyeOpennessComfort.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 0.6,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.confidence.poseComfortFraction.help",
+      "id": "trackingQuality.confidence.poseComfortFraction",
+      "kind": {
+        "max": 1.0,
+        "min": 0.0,
+        "step": 0.01,
+        "type": "number",
+        "unit": "ratio"
+      },
+      "labelKey": "param.trackingQuality.confidence.poseComfortFraction.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 40.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.confidence.distanceComfortMinCm.help",
+      "id": "trackingQuality.confidence.distanceComfortMinCm",
+      "kind": {
+        "max": 150.0,
+        "min": 10.0,
+        "step": 1.0,
+        "type": "number",
+        "unit": "cm"
+      },
+      "labelKey": "param.trackingQuality.confidence.distanceComfortMinCm.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 60.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.confidence.distanceComfortMaxCm.help",
+      "id": "trackingQuality.confidence.distanceComfortMaxCm",
+      "kind": {
+        "max": 150.0,
+        "min": 10.0,
+        "step": 1.0,
+        "type": "number",
+        "unit": "cm"
+      },
+      "labelKey": "param.trackingQuality.confidence.distanceComfortMaxCm.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 30.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.confidence.headSpeedComfortDegPerSec.help",
+      "id": "trackingQuality.confidence.headSpeedComfortDegPerSec",
+      "kind": {
+        "max": 1000.0,
+        "min": 1.0,
+        "step": 1.0,
+        "type": "number",
+        "unit": "deg_per_sec"
+      },
+      "labelKey": "param.trackingQuality.confidence.headSpeedComfortDegPerSec.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 120.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.confidence.maxHeadSpeedDegPerSec.help",
+      "id": "trackingQuality.confidence.maxHeadSpeedDegPerSec",
+      "kind": {
+        "max": 1000.0,
+        "min": 1.0,
+        "step": 1.0,
+        "type": "number",
+        "unit": "deg_per_sec"
+      },
+      "labelKey": "param.trackingQuality.confidence.maxHeadSpeedDegPerSec.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 10.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.confidence.poseShiftComfortPct.help",
+      "id": "trackingQuality.confidence.poseShiftComfortPct",
+      "kind": {
+        "max": 100.0,
+        "min": 0.0,
+        "step": 1.0,
+        "type": "number",
+        "unit": "percent"
+      },
+      "labelKey": "param.trackingQuality.confidence.poseShiftComfortPct.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 75.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.gapFill.maxMs.help",
+      "id": "trackingQuality.gapFill.maxMs",
+      "kind": {
+        "max": 1000.0,
+        "min": 0.0,
+        "step": 5.0,
+        "type": "number",
+        "unit": "millis"
+      },
+      "labelKey": "param.trackingQuality.gapFill.maxMs.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 1.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.gapFill.maxDeg.help",
+      "id": "trackingQuality.gapFill.maxDeg",
+      "kind": {
+        "max": 20.0,
+        "min": 0.0,
+        "step": 0.1,
+        "type": "number",
+        "unit": "deg"
+      },
+      "labelKey": "param.trackingQuality.gapFill.maxDeg.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 100.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.gapFill.lossIntervalCapMs.help",
+      "id": "trackingQuality.gapFill.lossIntervalCapMs",
+      "kind": {
+        "max": 1000.0,
+        "min": 1.0,
+        "step": 5.0,
+        "type": "number",
+        "unit": "millis"
+      },
+      "labelKey": "param.trackingQuality.gapFill.lossIntervalCapMs.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 1.2,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.filter.minCutoffHz.help",
+      "id": "trackingQuality.filter.minCutoffHz",
+      "kind": {
+        "max": 30.0,
+        "min": 0.01,
+        "step": 0.01,
+        "type": "number",
+        "unit": "hz"
+      },
+      "labelKey": "param.trackingQuality.filter.minCutoffHz.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 0.015,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.filter.beta.help",
+      "id": "trackingQuality.filter.beta",
+      "kind": {
+        "max": 1.0,
+        "min": 0.0,
+        "step": 0.001,
+        "type": "number",
+        "unit": "none"
+      },
+      "labelKey": "param.trackingQuality.filter.beta.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 1.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.filter.dCutoffHz.help",
+      "id": "trackingQuality.filter.dCutoffHz",
+      "kind": {
+        "max": 30.0,
+        "min": 0.01,
+        "step": 0.01,
+        "type": "number",
+        "unit": "hz"
+      },
+      "labelKey": "param.trackingQuality.filter.dCutoffHz.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "preprocess"
+    },
+    {
+      "default": 2.5,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.verdict.accuracyBands.goodMaxDeg.help",
+      "id": "trackingQuality.verdict.accuracyBands.goodMaxDeg",
+      "kind": {
+        "max": 20.0,
+        "min": 0.1,
+        "step": 0.1,
+        "type": "number",
+        "unit": "deg"
+      },
+      "labelKey": "param.trackingQuality.verdict.accuracyBands.goodMaxDeg.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "metrics"
+    },
+    {
+      "default": 3.5,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.verdict.accuracyBands.fairMaxDeg.help",
+      "id": "trackingQuality.verdict.accuracyBands.fairMaxDeg",
+      "kind": {
+        "max": 20.0,
+        "min": 0.1,
+        "step": 0.1,
+        "type": "number",
+        "unit": "deg"
+      },
+      "labelKey": "param.trackingQuality.verdict.accuracyBands.fairMaxDeg.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "metrics"
+    },
+    {
+      "default": 5.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.verdict.accuracyBands.poorMaxDeg.help",
+      "id": "trackingQuality.verdict.accuracyBands.poorMaxDeg",
+      "kind": {
+        "max": 20.0,
+        "min": 0.1,
+        "step": 0.1,
+        "type": "number",
+        "unit": "deg"
+      },
+      "labelKey": "param.trackingQuality.verdict.accuracyBands.poorMaxDeg.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "metrics"
+    },
+    {
+      "default": 0.5,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.verdict.unusableBelowValidRatio.help",
+      "id": "trackingQuality.verdict.unusableBelowValidRatio",
+      "kind": {
+        "max": 1.0,
+        "min": 0.0,
+        "step": 0.01,
+        "type": "number",
+        "unit": "ratio"
+      },
+      "labelKey": "param.trackingQuality.verdict.unusableBelowValidRatio.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "metrics"
+    },
+    {
+      "default": 0.4,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.verdict.poorAboveDataLoss.help",
+      "id": "trackingQuality.verdict.poorAboveDataLoss",
+      "kind": {
+        "max": 1.0,
+        "min": 0.0,
+        "step": 0.01,
+        "type": "number",
+        "unit": "ratio"
+      },
+      "labelKey": "param.trackingQuality.verdict.poorAboveDataLoss.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "metrics"
+    },
+    {
+      "default": 0.2,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.verdict.fairAboveDataLoss.help",
+      "id": "trackingQuality.verdict.fairAboveDataLoss",
+      "kind": {
+        "max": 1.0,
+        "min": 0.0,
+        "step": 0.01,
+        "type": "number",
+        "unit": "ratio"
+      },
+      "labelKey": "param.trackingQuality.verdict.fairAboveDataLoss.label",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "metrics"
+    },
+    {
+      "default": 5.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.scoring.maxAccuracyDegForScoring.help",
+      "id": "trackingQuality.scoring.maxAccuracyDegForScoring",
+      "kind": {
+        "max": 20.0,
+        "min": 0.1,
+        "step": 0.1,
+        "type": "number",
+        "unit": "deg"
+      },
+      "labelKey": "param.trackingQuality.scoring.maxAccuracyDegForScoring.label",
+      "ownerGate": "H-G2",
+      "reprocess": "score",
+      "since": "1.1.0",
+      "stage": "scoring"
+    },
+    {
+      "default": 2.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.scoring.aoiResolutionFactor.help",
+      "id": "trackingQuality.scoring.aoiResolutionFactor",
+      "kind": {
+        "max": 10.0,
+        "min": 0.1,
+        "step": 0.1,
+        "type": "number",
+        "unit": "none"
+      },
+      "labelKey": "param.trackingQuality.scoring.aoiResolutionFactor.label",
+      "ownerGate": "H-G2",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "scoring"
+    },
+    {
+      "default": 30.0,
+      "document": "scoring_profile",
+      "helpKey": "param.trackingQuality.scoring.ivtVelocityDegPerSec.help",
+      "id": "trackingQuality.scoring.ivtVelocityDegPerSec",
+      "kind": {
+        "max": 1000.0,
+        "min": 1.0,
+        "step": 1.0,
+        "type": "number",
+        "unit": "deg_per_sec"
+      },
+      "labelKey": "param.trackingQuality.scoring.ivtVelocityDegPerSec.label",
+      "ownerGate": "H-G2",
+      "reprocess": "frames",
+      "since": "1.1.0",
+      "stage": "fixation"
+    },
+    {
+      "default": 5.0,
+      "document": "scoring_profile",
+      "helpKey": "param.metrics.ivtVelocityUnitsPerSec.help",
+      "id": "metrics.ivtVelocityUnitsPerSec",
+      "kind": {
+        "max": 50.0,
+        "min": 0.5,
+        "step": 0.1,
+        "type": "number",
+        "unit": "norm_units_per_sec"
+      },
+      "labelKey": "param.metrics.ivtVelocityUnitsPerSec.label",
+      "reprocess": "frames",
+      "since": "1.2.0",
+      "stage": "fixation"
+    },
+    {
+      "default": 30.0,
+      "document": "scoring_profile",
+      "helpKey": "param.metrics.ivtVelocityDegPerSec.help",
+      "id": "metrics.ivtVelocityDegPerSec",
+      "kind": {
+        "max": 1000.0,
+        "min": 1.0,
+        "step": 1.0,
+        "type": "number",
+        "unit": "deg_per_sec"
+      },
+      "labelKey": "param.metrics.ivtVelocityDegPerSec.label",
+      "ownerGate": "H-G2",
+      "reprocess": "frames",
+      "since": "1.2.0",
+      "stage": "fixation"
+    },
+    {
+      "default": "norm",
+      "document": "scoring_profile",
+      "helpKey": "param.metrics.ivtUnit.help",
+      "id": "metrics.ivtUnit",
+      "kind": {
+        "type": "enum",
+        "values": [
+          "norm",
+          "deg"
+        ]
+      },
+      "labelKey": "param.metrics.ivtUnit.label",
+      "ownerGate": "H-G2",
+      "reprocess": "frames",
+      "since": "1.2.0",
+      "stage": "fixation"
+    },
+    {
+      "default": 0.08,
+      "document": "scoring_profile",
+      "helpKey": "param.metrics.minFixationDurationSec.help",
+      "id": "metrics.minFixationDurationSec",
+      "kind": {
+        "max": 1.0,
+        "min": 0.02,
+        "step": 0.01,
+        "type": "number",
+        "unit": "seconds"
+      },
+      "labelKey": "param.metrics.minFixationDurationSec.label",
+      "reprocess": "frames",
+      "since": "1.2.0",
+      "stage": "fixation"
+    },
+    {
+      "default": 0.016666666666666666,
+      "document": "scoring_profile",
+      "helpKey": "param.metrics.fallbackFrameIntervalSec.help",
+      "id": "metrics.fallbackFrameIntervalSec",
+      "kind": {
+        "max": 0.1,
+        "min": 0.001,
+        "step": 0.001,
+        "type": "number",
+        "unit": "seconds"
+      },
+      "labelKey": "param.metrics.fallbackFrameIntervalSec.label",
+      "reprocess": "frames",
+      "since": "1.2.0",
+      "stage": "metrics"
+    },
+    {
+      "default": 0.5,
+      "document": "scoring_profile",
+      "helpKey": "param.metrics.smileReactivityWindowSec.help",
+      "id": "metrics.smileReactivityWindowSec",
+      "kind": {
+        "max": 5.0,
+        "min": 0.1,
+        "step": 0.1,
+        "type": "number",
+        "unit": "seconds"
+      },
+      "labelKey": "param.metrics.smileReactivityWindowSec.label",
+      "reprocess": "frames",
+      "since": "1.2.0",
+      "stage": "metrics"
+    },
+    {
+      "default": 50.0,
+      "document": "scoring_profile",
+      "helpKey": "param.metrics.flatAffectGain.help",
+      "id": "metrics.flatAffectGain",
+      "kind": {
+        "max": 500.0,
+        "min": 1.0,
+        "step": 1.0,
+        "type": "number",
+        "unit": "none"
+      },
+      "labelKey": "param.metrics.flatAffectGain.label",
+      "reprocess": "frames",
+      "since": "1.2.0",
+      "stage": "metrics"
+    },
+    {
+      "default": 0.0,
+      "document": "scoring_profile",
+      "helpKey": "param.aoi.marginNorm.help",
+      "id": "aoi.marginNorm",
+      "kind": {
+        "max": 0.1,
+        "min": -0.1,
+        "step": 0.005,
+        "type": "number",
+        "unit": "norm_units"
+      },
+      "labelKey": "param.aoi.marginNorm.label",
+      "reprocess": "frames",
+      "since": "1.2.0",
+      "stage": "metrics"
+    },
+    {
+      "default": 100,
+      "document": "scoring_profile",
+      "helpKey": "param.aoi.dwellCapMs.help",
+      "id": "aoi.dwellCapMs",
+      "kind": {
+        "max": 1000,
+        "min": 16,
+        "type": "integer",
+        "unit": "millis"
+      },
+      "labelKey": "param.aoi.dwellCapMs.label",
+      "reprocess": "frames",
+      "since": "1.2.0",
+      "stage": "metrics"
+    },
+    {
+      "default": [
+        {
+          "id": "12-17",
+          "maxMonths": 17,
+          "minMonths": 12
+        },
+        {
+          "id": "18-23",
+          "maxMonths": 23,
+          "minMonths": 18
+        },
+        {
+          "id": "24-35",
+          "maxMonths": 35,
+          "minMonths": 24
+        },
+        {
+          "id": "36-47",
+          "maxMonths": 47,
+          "minMonths": 36
+        },
+        {
+          "id": "48-60",
+          "maxMonths": 60,
+          "minMonths": 48
+        }
+      ],
+      "document": "scoring_profile",
+      "helpKey": "param.ageBands.help",
+      "id": "ageBands",
+      "kind": {
+        "maxBands": 12,
+        "maxMonths": 240,
+        "minBands": 1,
+        "minMonths": 0,
+        "type": "age_bands"
+      },
+      "labelKey": "param.ageBands.label",
+      "reprocess": "score",
+      "since": "1.2.0",
+      "stage": "norms"
+    },
+    {
+      "default": 12,
+      "document": "scoring_profile",
+      "helpKey": "param.norms.minN.help",
+      "id": "norms.minN",
+      "kind": {
+        "max": 100000,
+        "min": 5,
+        "type": "integer",
+        "unit": "count"
+      },
+      "labelKey": "param.norms.minN.label",
+      "reprocess": "score",
+      "since": "1.2.0",
+      "stage": "norms"
+    },
+    {
+      "default": false,
+      "document": "scoring_profile",
+      "helpKey": "param.norms.includeImputed.help",
+      "id": "norms.includeImputed",
+      "kind": {
+        "type": "bool"
+      },
+      "labelKey": "param.norms.includeImputed.label",
+      "reprocess": "score",
+      "since": "1.2.0",
+      "stage": "norms"
+    },
+    {
+      "default": 0.8,
+      "document": "scoring_profile",
+      "helpKey": "param.review.lowQualityValidRatio.help",
+      "id": "review.lowQualityValidRatio",
+      "kind": {
+        "max": 1.0,
+        "min": 0.0,
+        "step": 0.01,
+        "type": "number",
+        "unit": "ratio"
+      },
+      "labelKey": "param.review.lowQualityValidRatio.label",
+      "reprocess": "score",
+      "since": "1.2.0",
+      "stage": "display"
+    }
+  ],
+  "registryVersion": "1.0.0"
+}
