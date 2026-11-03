@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE sessions\n         SET research_frames_blob_key = NULL, research_frames_bytes = NULL,\n             research_frames_sha256 = NULL, research_frames_purged_at = now()\n         WHERE id = ANY($1) AND research_frames_blob_key IS NOT NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "824f80ca2ad7aa950882fe25a89bc17fdf48f0e28183bcb8d72f18c36b0b2b27"
+}

@@ -16,12 +16,16 @@
 //! `social_preference` and no `affect`.
 //!
 //! `reviewed` = the session has a review item a human closed (`done` or `dismissed`).
+//!
+//! Research frame log (WP-X.2, RFL-6): the detail and `GET /v1/sessions/{id}/raw` carry
+//! `research_frames: {available, purged, bytes}`; the list takes `frames=available|none`
+//! ([`parse_frames`], kept outside [`SessionQuery`] so the export filters stay as they are).
 
 use std::collections::BTreeMap;
 
 use asd_contract::api_v1::{
-    SessionAttentionFlag, SessionDetail, SessionPage, SessionRaw, SessionSummary,
-    SessionTrackingQuality,
+    ResearchFramesState, SessionAttentionFlag, SessionDetail, SessionPage, SessionRaw,
+    SessionSummary, SessionTrackingQuality,
 };
 use asd_contract::session_v1_7::TrackingQuality;
 use asd_contract::session_v1_8::{ScoringStatus, UnscorableReason};
@@ -65,8 +69,32 @@ pub struct SessionFilters {
     pub tracking: Option<String>,
     /// Only this participant's sessions (a participant of another org matches nothing).
     pub participant_id: Option<Uuid>,
+    /// RFL-6: `Some(true)` = with a stored research frame log, `Some(false)` = without.
+    pub frames: Option<bool>,
     pub cursor: Option<Cursor>,
     pub limit: i64,
+}
+
+/// `frames=available|none` of the session list (RFL-6).
+pub fn parse_frames(raw: Option<&str>) -> AppResult<Option<bool>> {
+    match raw.filter(|s| !s.is_empty()) {
+        None => Ok(None),
+        Some("available") => Ok(Some(true)),
+        Some("none") => Ok(Some(false)),
+        Some(_) => Err(AppError::Validation(vec![bad(
+            "frames",
+            "must be available or none",
+        )])),
+    }
+}
+
+/// `research_frames` of a session from its 0026 columns (RFL-6).
+fn research_frames_state(available: bool, purged: bool, bytes: Option<i64>) -> ResearchFramesState {
+    ResearchFramesState {
+        available,
+        purged: purged && !available,
+        bytes: bytes.and_then(|b| u64::try_from(b).ok()),
+    }
 }
 
 fn bad(name: &str, reason: &str) -> InvalidParam {
@@ -169,6 +197,7 @@ impl SessionQuery {
             reviewed,
             tracking,
             participant_id,
+            frames: None,
             cursor,
             limit,
         })
@@ -284,6 +313,7 @@ pub async fn list(db: &PgPool, org: Uuid, f: &SessionFilters) -> AppResult<Sessi
              AND ($8::timestamptz IS NULL OR (s.started_at, s.id) < ($8, $9::text))
              AND ($11::text IS NULL OR s.tracking_verdict = $11)
              AND ($12::uuid IS NULL OR s.participant_id = $12)
+             AND ($13::bool IS NULL OR (s.research_frames_blob_key IS NOT NULL) = $13)
            ORDER BY s.started_at DESC, s.id DESC
            LIMIT $10"#,
         org,
@@ -298,6 +328,7 @@ pub async fn list(db: &PgPool, org: Uuid, f: &SessionFilters) -> AppResult<Sessi
         f.limit + 1,
         f.tracking,
         f.participant_id,
+        f.frames,
     )
     .fetch_all(db)
     .await?;
@@ -314,7 +345,8 @@ pub async fn list(db: &PgPool, org: Uuid, f: &SessionFilters) -> AppResult<Sessi
                      SELECT 1 FROM review_items r
                      WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed')) = $7)
              AND ($8::text IS NULL OR s.tracking_verdict = $8)
-             AND ($9::uuid IS NULL OR s.participant_id = $9)"#,
+             AND ($9::uuid IS NULL OR s.participant_id = $9)
+             AND ($10::bool IS NULL OR (s.research_frames_blob_key IS NOT NULL) = $10)"#,
         org,
         f.flag,
         f.quality,
@@ -324,6 +356,7 @@ pub async fn list(db: &PgPool, org: Uuid, f: &SessionFilters) -> AppResult<Sessi
         f.reviewed,
         f.tracking,
         f.participant_id,
+        f.frames,
     )
     .fetch_one(db)
     .await?;
@@ -388,6 +421,9 @@ pub async fn detail(
                   s.scoring_status, s.unscorable_reason,
                   CASE WHEN s.tracking_verdict IS NOT NULL
                        THEN s.summary -> 'trackingQuality' END AS tracking_quality,
+                  s.research_frames_blob_key IS NOT NULL AS "research_available!",
+                  s.research_frames_purged_at IS NOT NULL AS "research_purged!",
+                  s.research_frames_bytes,
                   EXISTS (SELECT 1 FROM review_items r
                           WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed'))
                       AS "reviewed!"
@@ -453,8 +489,11 @@ pub async fn detail(
             affect,
             report_pdf_available,
             tracking_quality,
-            // RFL-6: filled by WP-X.2 from the 0026 columns.
-            research_frames: None,
+            research_frames: Some(research_frames_state(
+                r.research_available,
+                r.research_purged,
+                r.research_frames_bytes,
+            )),
         },
     )))
 }
@@ -465,7 +504,10 @@ pub async fn raw(db: &PgPool, id: &str) -> AppResult<Option<(Uuid, SessionRaw)>>
     let Some(r) = sqlx::query!(
         r#"SELECT org_id, participant_token, schema_version, summary,
                   frames_blob_key IS NOT NULL AS "frames_available!",
-                  frames_purged_at IS NOT NULL AS "frames_purged!"
+                  frames_purged_at IS NOT NULL AS "frames_purged!",
+                  research_frames_blob_key IS NOT NULL AS "research_available!",
+                  research_frames_purged_at IS NOT NULL AS "research_purged!",
+                  research_frames_bytes
            FROM sessions WHERE id = $1"#,
         id,
     )
@@ -489,8 +531,11 @@ pub async fn raw(db: &PgPool, id: &str) -> AppResult<Option<(Uuid, SessionRaw)>>
             raw_payload: payload,
             frames_available: r.frames_available,
             frames_purged: r.frames_purged,
-            // RFL-6: filled by WP-X.2 from the 0026 columns.
-            research_frames: None,
+            research_frames: Some(research_frames_state(
+                r.research_available,
+                r.research_purged,
+                r.research_frames_bytes,
+            )),
         },
     )))
 }

@@ -19,6 +19,12 @@
 //! Schema 1.8 (WP-G.12, SCH-5): `scoring_status` / `unscorable_reason` are stored as sent; an
 //! `unscorable` session stores no social preference and no affect, its flag is
 //! `unreliable`, and the `unscorable` review item is opened in the same transaction.
+//!
+//! Researcher toolkit (WP-X.2): `sessions.age_months` is set from `rawPayload.ageMonths`
+//! (COH-3); the flag floor, flag thresholds, tracking re-check and review threshold are read
+//! from the published scoring profile (INV-1, defaults when none is published); the ack of a
+//! research-consented session carries `research_frames_upload_url` in proxy blob mode only
+//! (RFL-3).
 
 pub mod auto_review;
 pub mod derive;
@@ -55,6 +61,41 @@ pub fn flag_str(flag: SessionAttentionFlag) -> &'static str {
 pub struct Ingested {
     pub status: StatusCode,
     pub response: SessionIngestResponse,
+    /// RFL-3: where to `PUT` the research frame log; see [`research_frames_upload_url`].
+    pub research_frames_upload_url: Option<String>,
+}
+
+impl Ingested {
+    /// The body the device gets.
+    pub fn ack(self) -> IngestAck {
+        IngestAck {
+            response: self.response,
+            research_frames_upload_url: self.research_frames_upload_url,
+        }
+    }
+}
+
+/// The ingest acknowledgement: the contract `SessionIngestResponse` plus, additively,
+/// `research_frames_upload_url` (RFL-3). The idempotency store keeps the contract part only,
+/// so a replay recomputes the URL like the other upload URLs (CON-17).
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+pub struct IngestAck {
+    #[serde(flatten)]
+    pub response: SessionIngestResponse,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub research_frames_upload_url: Option<String>,
+}
+
+/// RFL-3: the relative proxy URL of the sealed research-log upload, offered only in proxy
+/// blob mode (a pre-signed PUT would bypass the server's encryption) and only for a
+/// research-consented session (`rawPayload.normCollection.consented`), the only kind the
+/// route accepts.
+pub fn research_frames_upload_url(
+    state: &AppState,
+    req: &asd_contract::session_v1_8::SessionIngestRequest,
+) -> Option<String> {
+    (state.config.blob_mode == crate::config::BlobMode::Proxy && derive::norm_consented(req))
+        .then(|| format!("/v1/sessions/{}/blobs/research_frames", req.session_id))
 }
 
 /// Runs ING-1..3 for a request that already passed [`validate::validate`].
@@ -92,10 +133,14 @@ pub async fn ingest(
             return Ok(Ingested {
                 status: StatusCode::OK,
                 response,
+                research_frames_upload_url: research_frames_upload_url(state, req),
             });
         }
         Claim::New => {}
     }
+    // INV-1: every number the rules below read comes from the published scoring profile
+    // (the defaults when none is published).
+    let profile = auto_review::published_profile(&mut tx).await?;
 
     let participant_id = sqlx::query_scalar!(
         "INSERT INTO participants (org_id, token) VALUES ($1, $2)
@@ -107,7 +152,7 @@ pub async fn ingest(
     .fetch_one(&mut *tx)
     .await?;
 
-    let flag = derive::attention_flag(req);
+    let flag = derive::attention_flag(req, &profile);
     let battery = req.battery.clone().flatten();
     let tracking = derive::tracking_columns(req);
     let (scoring_status, unscorable_reason) = derive::scoring_columns(req);
@@ -120,10 +165,10 @@ pub async fn ingest(
                composite_confidence, attention_flag, summary, idempotency_key,
                tracking_verdict, tracking_accuracy_deg, calibration_quality,
                calibration_model, tracking_pipeline_version, device_model, scoring_status,
-               unscorable_reason, request_hash)
+               unscorable_reason, request_hash, age_months)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
                    $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
-                   $31, $32, $33, $34)
+                   $31, $32, $33, $34, $35)
            ON CONFLICT DO NOTHING
            RETURNING 1 AS "one!: i32""#,
         req.session_id,
@@ -160,6 +205,7 @@ pub async fn ingest(
         scoring_status,
         unscorable_reason,
         &v.request_hash[..],
+        derive::age_months(req),
     )
     .fetch_optional(&mut *tx)
     .await?;
@@ -183,6 +229,7 @@ pub async fn ingest(
                     frames_upload_url: frames,
                     report_upload_url: report,
                 },
+                research_frames_upload_url: research_frames_upload_url(state, req),
             });
         }
         return Err(AppError::Conflict {
@@ -223,15 +270,11 @@ pub async fn ingest(
     let settings = sqlx::query_scalar!("SELECT settings FROM organizations WHERE id = $1", org)
         .fetch_one(&mut *tx)
         .await?;
-    // Thresholds are read only for a session that has a tracking record (never for 1.6).
-    let tracking_quality = req.raw_payload.tracking_quality.as_ref();
-    let low_tracking = match tracking_quality {
-        Some(_) => auto_review::low_tracking_quality(
-            tracking_quality,
-            &auto_review::tracking_params(&mut tx).await?,
-        ),
-        None => false,
-    };
+    // A 1.6 session has no tracking record, so it never gets `low_tracking_quality`.
+    let low_tracking = auto_review::low_tracking_quality(
+        req.raw_payload.tracking_quality.as_ref(),
+        &profile.tracking_quality,
+    );
     let reasons = auto_review::reasons(
         &req.session_id,
         req.valid_ratio,
@@ -239,7 +282,7 @@ pub async fn ingest(
         req.is_unscorable(),
         flag,
         derive::norm_consented(req),
-        auto_review::audit_rate(&settings),
+        &auto_review::Rules::new(&profile, &settings),
     );
     auto_review::insert(&mut tx, org, &req.session_id, &reasons).await?;
 
@@ -269,6 +312,7 @@ pub async fn ingest(
     Ok(Ingested {
         status: StatusCode::CREATED,
         response,
+        research_frames_upload_url: research_frames_upload_url(state, req),
     })
 }
 

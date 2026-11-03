@@ -4,7 +4,7 @@
 //!
 //! | Step     | From                       | Who (RBAC)           | Four-eyes rule                             |
 //! |----------|----------------------------|----------------------|--------------------------------------------|
-//! | create   | -                          | `ConfigGlobalManage` | -                                          |
+//! | create   | -                          | `ConfigWrite`        | -                                          |
 //! | approve  | `draft`                    | `ConfigGlobalManage` | approver != author                         |
 //! | publish  | `candidate`                | `ConfigGlobalManage` | publisher != author; seeded: != approver   |
 //! | retire   | draft, candidate, published| `ConfigGlobalManage` | -                                          |
@@ -14,7 +14,17 @@
 //! superadmin only, and the four-eyes rule holds between two distinct superadmins
 //! (security audit finding 2). Org owners and admins compose their own org's bundles
 //! (`ConfigPublish`); a norm run is promoted to a *draft* with `ConfigGlobalManage`
-//! (`routes::jobs`): creating a global document is superadmin only too.
+//! (`routes::jobs`).
+//!
+//! WP-X.2 (GOV-2, GOV-3): the draft step takes `ConfigWrite` (owner, admin, researcher), so a
+//! researcher can file the draft an experiment promotes; a draft changes nothing until a
+//! superadmin approves and another publishes it. Publishing a `scoring_profile` or
+//! `normative_baselines` candidate with a human author needs evidence: a `succeeded`
+//! `analysis_runs` row whose `profile_hash` is the candidate body's hash ([`body_hash`]) or,
+//! for baselines, whose `baselines_version` is the candidate's version; otherwise `409
+//! config-unanalysed`. Seeded documents (`created_by IS NULL`) are exempt. Scoring profiles
+//! are validated by the parameter registry (`asd_contract::params::validate`, PRM-3), the
+//! same function wasm and the device run.
 //!
 //! Publishing retires the previously published document of the same kind in the same
 //! transaction (one published document per kind, enforced by a partial unique index in
@@ -23,6 +33,7 @@
 
 use asd_contract::api_v1::{ConfigDocument, ConfigDocumentKind, ConfigDocumentStatus};
 use asd_contract::config::ScoringProfile;
+use asd_contract::params;
 use asd_core::types::{NormativeBaselineSet, StimulusCatalog};
 use chrono::{DateTime, Utc};
 use serde_json::{json, Value};
@@ -112,7 +123,10 @@ pub fn validate_version(version: &str) -> Result<(), InvalidParam> {
 /// live in asd-contract (`profile_checks`) so the console editor runs the same ones via
 /// asd-wasm; the backend reports their messages.
 pub fn scoring_profile_problems(p: &ScoringProfile) -> Vec<String> {
-    asd_contract::profile_checks::scoring_profile_problem_messages(p)
+    asd_contract::profile_checks::profile_problems(p)
+        .into_iter()
+        .map(|p| p.message)
+        .collect()
 }
 
 /// The body must decode as the kind's contract type (and pass its own checks), so a
@@ -123,7 +137,14 @@ pub fn validate_body(kind: ConfigDocumentKind, body: &Value) -> Result<(), Vec<I
     let decode_err = |e: serde_json::Error| vec![param("body", e.to_string())];
     let at = |ps: Vec<asd_contract::profile_checks::ProfileProblem>| -> Vec<InvalidParam> {
         ps.into_iter()
-            .map(|p| param(&format!("body.{}", p.path), p.message))
+            .map(|p| {
+                let name = if p.path.is_empty() {
+                    "body".to_owned()
+                } else {
+                    format!("body.{}", p.path)
+                };
+                param(&name, p.message)
+            })
             .collect()
     };
     let problems = match kind {
@@ -140,8 +161,8 @@ pub fn validate_body(kind: ConfigDocumentKind, body: &Value) -> Result<(), Vec<I
                 .collect()
         }
         ConfigDocumentKind::ScoringProfile => {
-            let p: ScoringProfile = serde_json::from_value(body.clone()).map_err(decode_err)?;
-            at(asd_contract::profile_checks::scoring_profile_problems(&p))
+            let _: ScoringProfile = serde_json::from_value(body.clone()).map_err(decode_err)?;
+            at(params::validate(params::DocumentKind::ScoringProfile, body))
         }
     };
     if problems.is_empty() {
@@ -149,6 +170,46 @@ pub fn validate_body(kind: ConfigDocumentKind, body: &Value) -> Result<(), Vec<I
     } else {
         Err(problems)
     }
+}
+
+/// sha256 of the RFC 8785 form of a document body: `experiments.profile_hash`,
+/// `analysis_runs.profile_hash` and the GOV-3 evidence check.
+pub fn body_hash(body: &Value) -> Vec<u8> {
+    use sha2::{Digest, Sha256};
+    let bytes = asd_contract::signing::canonical_bytes(body).unwrap_or_default();
+    Sha256::digest(bytes).to_vec()
+}
+
+/// The latest published global `scoring_profile` as `(version, profile)`; `None` when none
+/// is published or the stored body does not decode (logged, never fails the caller).
+pub async fn published_scoring_profile(
+    conn: &mut PgConnection,
+) -> Result<Option<(String, ScoringProfile)>, AppError> {
+    let row = sqlx::query!(
+        "SELECT version, body FROM config_documents
+         WHERE kind = 'scoring_profile' AND status = 'published'
+         ORDER BY published_at DESC LIMIT 1"
+    )
+    .fetch_optional(&mut *conn)
+    .await?;
+    Ok(row.and_then(|r| match serde_json::from_value::<ScoringProfile>(r.body) {
+        Ok(p) => Some((r.version, p)),
+        Err(e) => {
+            tracing::warn!(error = %e, "published scoring profile does not decode; defaults used");
+            None
+        }
+    }))
+}
+
+/// The profile every backend rule reads its numbers from (INV-1 backend rows): the published
+/// one, else the documented fallback `ScoringProfile::default()` (today's constants).
+pub async fn effective_scoring_profile(
+    conn: &mut PgConnection,
+) -> Result<ScoringProfile, AppError> {
+    Ok(published_scoring_profile(conn)
+        .await?
+        .map(|(_, p)| p)
+        .unwrap_or_default())
 }
 
 /// Which lifecycle step a four-eyes check is for.
@@ -383,6 +444,7 @@ pub async fn publish(
         before.approved_by,
     )
     .map_err(ConfigApiError::FourEyes)?;
+    ensure_analysed(conn, kind, &before).await?;
     let retired = sqlx::query_scalar!(
         "UPDATE config_documents SET status = 'retired'
          WHERE kind = $1 AND status = 'published'
@@ -412,6 +474,51 @@ pub async fn publish(
         .record(conn)
         .await?;
     Ok(row)
+}
+
+/// GOV-3: a human-authored `scoring_profile` or `normative_baselines` candidate is published
+/// only with the evidence of a finished analysis run over it (see the module docs).
+async fn ensure_analysed(
+    conn: &mut PgConnection,
+    kind: ConfigDocumentKind,
+    doc: &DocRow,
+) -> ConfigApiResult<()> {
+    if doc.created_by.is_none() {
+        return Ok(());
+    }
+    let analysed = match kind {
+        ConfigDocumentKind::StimulusCatalog => return Ok(()),
+        ConfigDocumentKind::ScoringProfile => {
+            sqlx::query_scalar!(
+                r#"SELECT EXISTS (SELECT 1 FROM analysis_runs
+                                  WHERE status = 'succeeded' AND profile_hash = $1) AS "x!""#,
+                body_hash(&doc.body),
+            )
+            .fetch_one(&mut *conn)
+            .await?
+        }
+        ConfigDocumentKind::NormativeBaselines => {
+            sqlx::query_scalar!(
+                r#"SELECT EXISTS (SELECT 1 FROM analysis_runs
+                                  WHERE status = 'succeeded' AND baselines_version = $1) AS "x!""#,
+                doc.version,
+            )
+            .fetch_one(&mut *conn)
+            .await?
+        }
+    };
+    if analysed {
+        Ok(())
+    } else {
+        Err(conflict(
+            asd_contract::problem::CONFIG_UNANALYSED,
+            format!(
+                "no finished analysis run covers {} version `{}`; run it on a cohort first",
+                kind_str(kind),
+                doc.version
+            ),
+        ))
+    }
 }
 
 /// Any state except `retired` -> `retired`. Bundles already composed keep serving.
@@ -540,6 +647,37 @@ mod tests {
         // A shape failure names the whole body.
         let err = validate_body(ConfigDocumentKind::StimulusCatalog, &json!({})).unwrap_err();
         assert_eq!(err[0].name, "body");
+    }
+
+    /// PRM-3 (WP-X.2): scoring profiles go through the parameter registry: a 1.2.0 knob out
+    /// of range and an unknown key under a registered section are refused with their paths;
+    /// a 1.1.0 body (no 1.2.0 sections) is still valid.
+    #[test]
+    fn scoring_profiles_are_checked_by_the_registry() {
+        let mut p = serde_json::to_value(ScoringProfile::default()).unwrap();
+        p["metrics"]["ivtVelocityUnitsPerSec"] = json!(100.0);
+        p["aoi"]["colour"] = json!("red");
+        let err = validate_body(ConfigDocumentKind::ScoringProfile, &p).unwrap_err();
+        let names: Vec<&str> = err.iter().map(|p| p.name.as_str()).collect();
+        assert_eq!(
+            names,
+            ["body.metrics.ivtVelocityUnitsPerSec", "body.aoi.colour"]
+        );
+        let mut old = serde_json::to_value(ScoringProfile::default()).unwrap();
+        for k in ["metrics", "aoi", "ageBands", "norms", "review"] {
+            old.as_object_mut().unwrap().remove(k);
+        }
+        old["schemaVersion"] = json!("1.1.0");
+        assert!(validate_body(ConfigDocumentKind::ScoringProfile, &old).is_ok());
+    }
+
+    #[test]
+    fn body_hash_is_of_the_canonical_form() {
+        let a: Value = serde_json::from_str(r#"{"b": 1, "a": [1.0, "x"]}"#).unwrap();
+        let b: Value = serde_json::from_str(r#"{"a": [1, "x"], "b": 1.0}"#).unwrap();
+        assert_eq!(body_hash(&a), body_hash(&b));
+        assert_eq!(body_hash(&a).len(), 32);
+        assert_ne!(body_hash(&a), body_hash(&json!({"a": 2})));
     }
 
     #[test]

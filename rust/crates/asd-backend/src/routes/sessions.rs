@@ -9,6 +9,12 @@
 //! or 404 until one exists), `GET /v1/sessions/{id}/fhir` (FHIR R4 bundle, WP-B.8) and
 //! `GET /v1/sessions/{id}/raw` (the stored `rawPayload` for the console sandbox).
 //!
+//! Researcher toolkit (WP-X.2, RFL-4): `GET /v1/sessions/{id}/research-frames`
+//! (`FramesRead`: owner, researcher; never the vendor) streams the decrypted research frame
+//! log (`application/x-ndjson`, `no-store`) after one `session.frames_read` audit row (HIP-1,
+//! fail closed); `404 frames-not-available` when none was uploaded, `410 frames-purged` after
+//! the retention sweep or an erasure removed it.
+//!
 //! Auth (WP-B.2): the device plane takes a [`DevicePrincipal`] (`dvc_` bearer) and is
 //! limited to [`SESSION_POSTS_PER_MINUTE`] per device (AUTH-3, `429` + `Retry-After`); the
 //! console routes take `Require<perm::SessionRead>` and 404 another org's session (AUTH-4).
@@ -16,9 +22,7 @@
 use std::sync::Arc;
 
 use asd_contract::api_v1::{ClipList, SessionDetail, SessionPage, SessionRaw};
-use asd_contract::session_v1_6::{
-    SessionIngestResponse, IDEMPOTENCY_KEY_HEADER, SCHEMA_VERSION_HEADER,
-};
+use asd_contract::session_v1_6::{IDEMPOTENCY_KEY_HEADER, SCHEMA_VERSION_HEADER};
 use axum::body::{Body, Bytes};
 use axum::extract::rejection::{BytesRejection, QueryRejection};
 use axum::extract::{DefaultBodyLimit, Path, Query, State};
@@ -65,6 +69,7 @@ pub fn router() -> Router<AppState> {
         .route("/sessions/{id}/report.pdf", get(report_pdf))
         .route("/sessions/{id}/fhir", get(fhir_bundle))
         .route("/sessions/{id}/raw", get(raw))
+        .route("/sessions/{id}/research-frames", get(research_frames))
         .layer(Extension(limiter))
 }
 
@@ -109,7 +114,7 @@ async fn create(
     meta: RequestMeta,
     headers: HeaderMap,
     body: Result<Bytes, BytesRejection>,
-) -> AppResult<(StatusCode, Json<SessionIngestResponse>)> {
+) -> AppResult<(StatusCode, Json<ingest::IngestAck>)> {
     // Every authenticated attempt counts, valid or not.
     limiter
         .0
@@ -123,16 +128,27 @@ async fn create(
         state.config.allow_synthetic,
     )?;
     let done = ingest::ingest(&state, device, &meta, validated).await?;
-    Ok((done.status, Json(done.response)))
+    Ok((done.status, Json(done.ack())))
+}
+
+/// The list's query: the shared session filters plus `frames` (RFL-6).
+#[derive(Debug, Default, serde::Deserialize)]
+struct ListQuery {
+    #[serde(flatten)]
+    filters: SessionQuery,
+    frames: Option<String>,
 }
 
 async fn list(
     auth: Require<perm::SessionRead>,
     State(state): State<AppState>,
-    query: Result<Query<SessionQuery>, QueryRejection>,
+    query: Result<Query<ListQuery>, QueryRejection>,
 ) -> AppResult<Json<SessionPage>> {
     let org = auth.org();
-    let filters = query_or_problem(query)?.parse()?;
+    let q = query_or_problem(query)?;
+    let frames = read::sessions::parse_frames(q.frames.as_deref())?;
+    let mut filters = q.filters.parse()?;
+    filters.frames = frames;
     Ok(Json(read::sessions::list(&state.db, org, &filters).await?))
 }
 
@@ -297,4 +313,37 @@ async fn raw(
     let bytes = serde_json::to_vec::<SessionRaw>(&body)
         .map_err(|e| AppError::Internal(format!("raw encode: {e}")))?;
     Ok(private_body(bytes, "application/json"))
+}
+
+/// `GET /v1/sessions/{id}/research-frames` (RFL-4, see the module docs).
+async fn research_frames(
+    auth: Require<perm::FramesRead>,
+    meta: RequestMeta,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> AppResult<Response> {
+    let row = crate::routes::blobs::research_log_row(&state.db, &id)
+        .await?
+        .ok_or(AppError::NotFound)?;
+    auth.ensure_org(row.org_id)?;
+    let crypto = crate::crypto::ClinicalCrypto::from_state(&state)?;
+    if let Some(problem) = row.unavailable_problem() {
+        return Ok(problem.into_response());
+    }
+    crate::audit::record_read(
+        &state.db,
+        &auth.principal,
+        &meta,
+        row.org_id,
+        "session.frames_read",
+        "session",
+        &id,
+        Some(serde_json::json!({ "bytes": row.bytes })),
+    )
+    .await?;
+    let bytes = crate::routes::blobs::read_research_log(&*state.blobs, &crypto, &row).await?;
+    Ok(private_body(
+        bytes,
+        crate::routes::blobs::RESEARCH_FRAMES_CONTENT_TYPE,
+    ))
 }

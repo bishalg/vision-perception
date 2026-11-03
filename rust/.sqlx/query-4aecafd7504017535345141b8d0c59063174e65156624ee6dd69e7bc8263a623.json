@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT s.id, s.participant_id, s.participant_token, s.started_at, s.duration_sec,\n                  s.battery, s.capture_source, s.quality_verdict, s.attention_flag,\n                  s.composite_score, s.composite_confidence, s.bundle_version, s.device_id,\n                  s.tracking_verdict, s.tracking_accuracy_deg, s.scoring_status,\n                  s.unscorable_reason,\n                  EXISTS (SELECT 1 FROM review_items r\n                          WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed'))\n                      AS \"reviewed!\"\n           FROM sessions s\n           WHERE s.org_id = $1\n             AND ($2::text IS NULL OR s.attention_flag = $2)\n             AND ($3::text IS NULL OR s.quality_verdict = $3)\n             AND ($4::timestamptz IS NULL OR s.started_at >= $4)\n             AND ($5::timestamptz IS NULL OR s.started_at <= $5)\n             AND ($6::text IS NULL OR s.bundle_version = $6)\n             AND ($7::bool IS NULL OR EXISTS (\n                     SELECT 1 FROM review_items r\n                     WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed')) = $7)\n             AND ($8::timestamptz IS NULL OR (s.started_at, s.id) < ($8, $9::text))\n             AND ($11::text IS NULL OR s.tracking_verdict = $11)\n             AND ($12::uuid IS NULL OR s.participant_id = $12)\n           ORDER BY s.started_at DESC, s.id DESC\n           LIMIT $10",
+  "query": "SELECT s.id, s.participant_id, s.participant_token, s.started_at, s.duration_sec,\n                  s.battery, s.capture_source, s.quality_verdict, s.attention_flag,\n                  s.composite_score, s.composite_confidence, s.bundle_version, s.device_id,\n                  s.tracking_verdict, s.tracking_accuracy_deg, s.scoring_status,\n                  s.unscorable_reason,\n                  EXISTS (SELECT 1 FROM review_items r\n                          WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed'))\n                      AS \"reviewed!\"\n           FROM sessions s\n           WHERE s.org_id = $1\n             AND ($2::text IS NULL OR s.attention_flag = $2)\n             AND ($3::text IS NULL OR s.quality_verdict = $3)\n             AND ($4::timestamptz IS NULL OR s.started_at >= $4)\n             AND ($5::timestamptz IS NULL OR s.started_at <= $5)\n             AND ($6::text IS NULL OR s.bundle_version = $6)\n             AND ($7::bool IS NULL OR EXISTS (\n                     SELECT 1 FROM review_items r\n                     WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed')) = $7)\n             AND ($8::timestamptz IS NULL OR (s.started_at, s.id) < ($8, $9::text))\n             AND ($11::text IS NULL OR s.tracking_verdict = $11)\n             AND ($12::uuid IS NULL OR s.participant_id = $12)\n             AND ($13::bool IS NULL OR (s.research_frames_blob_key IS NOT NULL) = $13)\n           ORDER BY s.started_at DESC, s.id DESC\n           LIMIT $10",
   "describe": {
     "columns": [
       {
@@ -210,7 +210,8 @@
         "Text",
         "Int8",
         "Text",
-        "Uuid"
+        "Uuid",
+        "Bool"
       ]
     },
     "nullable": [
@@ -234,5 +235,5 @@
       null
     ]
   },
-  "hash": "4443c60e8dba8b2e4000e678f14ea0bdfb87f9c7f24fcc96ead6b5d265bc07fd"
+  "hash": "4aecafd7504017535345141b8d0c59063174e65156624ee6dd69e7bc8263a623"
 }

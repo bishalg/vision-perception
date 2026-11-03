@@ -1,10 +1,21 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT name, kind, retention_months, settings FROM organizations WHERE id = $1 FOR UPDATE",
+  "query": "SELECT id, name, kind, retention_months, settings, research_frames_retention_months\n         FROM organizations WHERE id = $1",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "organizations",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
         "name": "name",
         "type_info": "Text",
         "origin": {
@@ -15,7 +26,7 @@
         }
       },
       {
-        "ordinal": 1,
+        "ordinal": 2,
         "name": "kind",
         "type_info": "Text",
         "origin": {
@@ -26,7 +37,7 @@
         }
       },
       {
-        "ordinal": 2,
+        "ordinal": 3,
         "name": "retention_months",
         "type_info": "Int4",
         "origin": {
@@ -37,13 +48,24 @@
         }
       },
       {
-        "ordinal": 3,
+        "ordinal": 4,
         "name": "settings",
         "type_info": "Jsonb",
         "origin": {
           "Table": {
             "table": "organizations",
             "name": "settings"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "research_frames_retention_months",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "organizations",
+            "name": "research_frames_retention_months"
           }
         }
       }
@@ -57,8 +79,10 @@
       false,
       false,
       false,
-      false
+      false,
+      false,
+      true
     ]
   },
-  "hash": "4dc632c1d1cedefa32e9c3ca2d4426e65a071ab461f612d6c24a40a013a2d653"
+  "hash": "ea064185bec0f154a24de9272538afe2086d5d31bf03c15298cc9568a0ba2d7c"
 }

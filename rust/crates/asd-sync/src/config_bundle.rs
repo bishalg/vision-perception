@@ -157,9 +157,13 @@ pub fn accept_bundle(
             return Err(BundleRejection::Expired(bundle.signed_at));
         }
     }
-    // WP-A.13: the same value rules as backend publish; a bundle that passes the signature
-    // but not these never configures the pipeline.
-    let problems = profile_checks::scoring_profile_problem_messages(&bundle.scoring_profile);
+    // WP-A.13 / PRM-3 (WP-X.2): the same value rules as backend publish, registry first (kind,
+    // range, unknown keys), then the cross-field rules; a bundle that passes the signature but
+    // not these never configures the pipeline.
+    let problems: Vec<String> = profile_checks::profile_problems(&bundle.scoring_profile)
+        .into_iter()
+        .map(|p| p.message)
+        .collect();
     if !problems.is_empty() {
         return Err(BundleRejection::InvalidProfile(problems.join("; ")));
     }

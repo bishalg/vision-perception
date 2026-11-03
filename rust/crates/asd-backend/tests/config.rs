@@ -136,7 +136,7 @@ impl Ctx {
         let (s, b) = self
             .post(
                 &format!("/v1/config/{kind}"),
-                &json!({"version": version, "body": body, "notes": "test"}),
+                &json!({"version": version, "body": body.clone(), "notes": "test"}),
                 author,
             )
             .await;
@@ -145,10 +145,35 @@ impl Ctx {
             .post_empty(&format!("/v1/config/{kind}/{version}/approve"), approver)
             .await;
         assert_eq!(s, StatusCode::OK, "{b}");
+        self.analysed(kind, version, &body).await;
         let (s, b) = self
             .post_empty(&format!("/v1/config/{kind}/{version}/publish"), publisher)
             .await;
         assert_eq!(s, StatusCode::OK, "{b}");
+    }
+
+    /// GOV-3 (WP-X.2): the evidence publish needs, a finished analysis run over the body
+    /// (scoring profile) or the version (baselines), inserted with SQL.
+    async fn analysed(&self, kind: &str, version: &str, body: &Value) {
+        sqlx::query(
+            "INSERT INTO analysis_runs
+               (org_id, kind, status, definition, definition_hash, cohort_hash, profile_hash,
+                published_profile_version, baselines_version, catalog_version, core_version,
+                contract_version, pipeline_version, registry_version, seed, level_requested)
+             VALUES ($1, 'cohort_rescore', 'succeeded', '{}', $2, $2, $3, 'p', $4, 'c', '0',
+                     '0', '0', '1.0.0', 1, 'auto')",
+        )
+        .bind(self.org)
+        .bind(vec![0u8; 32])
+        .bind(if kind == "scoring_profile" {
+            asd_backend::config_docs::lifecycle::body_hash(body)
+        } else {
+            vec![0u8; 32]
+        })
+        .bind(version)
+        .execute(&self.db.pool)
+        .await
+        .unwrap();
     }
 
     /// Publishes catalog, baselines and scoring profile `v` (root authors, root2 approves
@@ -204,13 +229,20 @@ async fn document_routes_need_a_user_and_the_matrix_role() {
     let (s, b) = c.get("/v1/config/scoring_profile", &c.clinician).await;
     assert_eq!(s, StatusCode::OK, "{b}");
 
-    // The documents are global (no org): create, approve, publish and retire are for
-    // superadmins only. No org role, owner and admin included, may change what every
-    // tenant's ingest reads (security audit finding 2).
-    for token in [&c.admin, &c.admin2, &c.researcher, &c.clinician, &c.viewer] {
+    // The documents are global (no org): approve, publish and retire are for superadmins
+    // only. No org role, owner and admin included, may change what every tenant's ingest
+    // reads (security audit finding 2). Filing a draft is `ConfigWrite` (owner, admin,
+    // researcher; GOV-2, WP-X.2): a draft changes nothing until two superadmins act.
+    for token in [&c.clinician, &c.viewer] {
         let (s, b) = c.post("/v1/config/scoring_profile", &create, token).await;
         assert_eq!(s, StatusCode::FORBIDDEN, "{b}");
         assert_eq!(slug(&b), "forbidden");
+    }
+    for (i, token) in [&c.admin, &c.admin2, &c.researcher].into_iter().enumerate() {
+        let draft = json!({"version": format!("org-draft-{i}"), "body": profile()});
+        let (s, b) = c.post("/v1/config/scoring_profile", &draft, token).await;
+        assert_eq!(s, StatusCode::CREATED, "{b}");
+        assert_eq!(b["status"], "draft");
     }
     let (s, b) = c.post("/v1/config/scoring_profile", &create, &c.root).await;
     assert_eq!(s, StatusCode::CREATED, "{b}");
@@ -399,7 +431,9 @@ async fn lifecycle_is_draft_approve_publish_with_four_eyes() {
         .await;
     assert_eq!(s, StatusCode::FORBIDDEN, "{b}");
     assert_eq!(slug(&b), "four-eyes-required");
-    // A third superadmin publishes: author and approver are both someone else.
+    // A third superadmin publishes: author and approver are both someone else (with the
+    // GOV-3 evidence of a finished analysis run over the body).
+    c.analysed("scoring_profile", "p1", &profile()).await;
     let (s, b) = c
         .post_empty("/v1/config/scoring_profile/p1/publish", &c.root3)
         .await;

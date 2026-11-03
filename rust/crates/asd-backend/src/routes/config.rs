@@ -9,8 +9,9 @@
 //!
 //! User plane (bearer = JWT, `auth::rbac` matrix):
 //! - `GET  /v1/config/{kind}?status=&cursor=&limit=` (`ConfigRead`) -> `ConfigDocumentPage`
-//! - `POST /v1/config/{kind}` (`ConfigGlobalManage`: superadmin only, the documents are
-//!   global) `CreateConfigDocumentRequest` -> 201 draft
+//! - `POST /v1/config/{kind}` (`ConfigWrite`: owner, admin, researcher and superadmin, GOV-2;
+//!   a draft changes nothing until two superadmins approve and publish it)
+//!   `CreateConfigDocumentRequest` -> 201 draft
 //! - `GET  /v1/config/{kind}/{version}` (`ConfigRead`) -> `ConfigDocument`
 //! - `POST /v1/config/{kind}/{version}/approve|publish|retire` (`ConfigGlobalManage`) ->
 //!   `ConfigDocument` (four-eyes rule, see `config_docs::lifecycle`)
@@ -173,7 +174,7 @@ async fn list_documents(
 }
 
 async fn create_document(
-    auth: Require<perm::ConfigGlobalManage>,
+    auth: Require<perm::ConfigWrite>,
     meta: RequestMeta,
     State(state): State<AppState>,
     Path(raw_kind): Path<String>,

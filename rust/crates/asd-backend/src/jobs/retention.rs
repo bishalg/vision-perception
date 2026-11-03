@@ -18,13 +18,20 @@
 //!
 //! Re-runnable: blob deletes of absent keys succeed, and a session is marked only after its
 //! blob delete succeeded.
+//!
+//! Research frame logs (WP-X.2, RFL-5) have their own horizon:
+//! `organizations.research_frames_retention_months`, or `retention_months` when it is NULL
+//! (ADR-0012 Q1). A log past it is deleted, `research_frames_blob_key`/`_bytes`/`_sha256`
+//! cleared and `research_frames_purged_at` set (the read route then answers `410
+//! frames-purged`). Each org result carries `research_frames_purged` next to
+//! `frames_purged` (the member is added to the stored JSON; the contract type follows).
 
 use asd_contract::privacy::{RetentionOrgResult, RetentionSweepResult};
 use serde_json::{json, Value};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use super::erasure::{delete_blobs, session_blob_keys};
+use super::erasure::{delete_blobs, research_blob_keys, session_blob_keys};
 use super::runner::JobError;
 use super::{Job, JobContext, KIND_RETENTION_SWEEP};
 use crate::audit::AuditEvent;
@@ -65,7 +72,12 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
     let pool = &ctx.pool;
     let orgs = sqlx::query!(
         r#"SELECT id, retention_months,
-                  now() - make_interval(months => retention_months) AS "cutoff!"
+                  now() - make_interval(months => retention_months) AS "cutoff!",
+                  coalesce(research_frames_retention_months, retention_months)
+                      AS "research_months!",
+                  now() - make_interval(months => coalesce(research_frames_retention_months,
+                                                           retention_months))
+                      AS "research_cutoff!"
            FROM organizations WHERE ($1::uuid IS NULL OR id = $1) ORDER BY id"#,
         job.org_id,
     )
@@ -73,7 +85,18 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
     .await?;
 
     let mut results = Vec::with_capacity(orgs.len());
+    let mut research_counts = Vec::with_capacity(orgs.len());
     for org in orgs {
+        let research_purged = purge_research_logs(
+            pool,
+            blobs.as_deref(),
+            org.id,
+            org.research_cutoff,
+            dry_run,
+            job.attempts,
+        )
+        .await?;
+        research_counts.push(research_purged);
         let purged = if dry_run {
             let n = sqlx::query_scalar!(
                 r#"SELECT count(*) AS "n!" FROM sessions
@@ -130,7 +153,7 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
             cutoff: cursor::ts(org.cutoff),
             frames_purged: purged,
         };
-        if !scheduled || purged > 0 {
+        if !scheduled || purged > 0 || research_purged > 0 {
             let action = if dry_run {
                 "retention.sweep_dry_run"
             } else {
@@ -146,6 +169,8 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
                     "retention_months": org.retention_months,
                     "cutoff": result.cutoff,
                     "frames_purged": purged,
+                    "research_frames_retention_months": org.research_months,
+                    "research_frames_purged": research_purged,
                 }))
                 .record(&mut tx)
                 .await?;
@@ -153,11 +178,79 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
         }
         results.push(result);
     }
-    Ok(serde_json::to_value(RetentionSweepResult {
+    let mut value = serde_json::to_value(RetentionSweepResult {
         dry_run,
         orgs: results,
     })
-    .expect("plain data"))
+    .expect("plain data");
+    // RFL-5: `research_frames_purged` per org (additive; see the module docs).
+    if let Some(orgs) = value.get_mut("orgs").and_then(Value::as_array_mut) {
+        for (entry, n) in orgs.iter_mut().zip(research_counts) {
+            entry["research_frames_purged"] = json!(n);
+        }
+    }
+    Ok(value)
+}
+
+/// RFL-5: deletes (or, in a dry run, counts) the research logs of `org`'s sessions received
+/// before `cutoff`. The blob goes first, the row is marked after (re-runnable).
+async fn purge_research_logs(
+    pool: &PgPool,
+    blobs: Option<&dyn crate::blob::BlobStore>,
+    org: Uuid,
+    cutoff: chrono::DateTime<chrono::Utc>,
+    dry_run: bool,
+    attempts: i32,
+) -> Result<u64, JobError> {
+    if dry_run {
+        let n = sqlx::query_scalar!(
+            r#"SELECT count(*) AS "n!" FROM sessions
+               WHERE org_id = $1 AND received_at < $2 AND research_frames_blob_key IS NOT NULL"#,
+            org,
+            cutoff,
+        )
+        .fetch_one(pool)
+        .await?;
+        return Ok(u64::try_from(n).unwrap_or(0));
+    }
+    let blobs = blobs.ok_or_else(|| permanent("this worker has no blob store"))?;
+    let mut purged = 0u64;
+    loop {
+        let batch = sqlx::query!(
+            r#"SELECT id, participant_token, research_frames_blob_key AS "key!"
+               FROM sessions
+               WHERE org_id = $1 AND received_at < $2 AND research_frames_blob_key IS NOT NULL
+               ORDER BY received_at, id LIMIT $3"#,
+            org,
+            cutoff,
+            BATCH,
+        )
+        .fetch_all(pool)
+        .await?;
+        if batch.is_empty() {
+            break;
+        }
+        for s in &batch {
+            delete_blobs(
+                blobs,
+                &research_blob_keys(org, &s.participant_token, &s.id, Some(&s.key)),
+                attempts,
+            )
+            .await?;
+        }
+        let ids: Vec<String> = batch.into_iter().map(|s| s.id).collect();
+        purged += sqlx::query!(
+            "UPDATE sessions
+             SET research_frames_blob_key = NULL, research_frames_bytes = NULL,
+                 research_frames_sha256 = NULL, research_frames_purged_at = now()
+             WHERE id = ANY($1) AND research_frames_blob_key IS NOT NULL",
+            &ids,
+        )
+        .execute(pool)
+        .await?
+        .rows_affected();
+    }
+    Ok(purged)
 }
 
 /// Queues the nightly sweep (every org, not a dry run) unless one was queued in the last

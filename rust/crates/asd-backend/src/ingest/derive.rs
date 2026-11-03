@@ -6,6 +6,7 @@
 //! requests as `scored`); nothing is defaulted: unknown stays `None`.
 
 use asd_contract::api_v1::{MetricRow, SessionAttentionFlag};
+use asd_contract::config::ScoringProfile;
 use asd_contract::session_v1_6;
 use asd_contract::session_v1_8::{self, SessionIngestRequest, SessionPerVideoRow};
 use asd_core::flag::{assess, FlagThresholds};
@@ -14,8 +15,30 @@ use asd_core::types::{
 };
 use serde_json::{json, Value};
 
-/// Below this session `validRatio` a missing flag is stored `unreliable` (CON-15).
+/// Below this session `validRatio` a missing flag is stored `unreliable` (CON-15): the
+/// documented fallback of `lowConfidenceValidRatio` when no profile is published (INV-1).
 pub const MIN_VALID_RATIO_FOR_FLAG: f64 = 0.60;
+
+/// The profile's flag thresholds as `asd-core` takes them.
+pub fn flag_thresholds(profile: &ScoringProfile) -> FlagThresholds {
+    FlagThresholds {
+        green_floor: profile.flag.green_floor,
+        yellow_floor: profile.flag.yellow_floor,
+        low_confidence_share: profile.flag.low_confidence_share,
+        atypical_share_for_red: profile.flag.atypical_share_for_red,
+    }
+}
+
+/// `rawPayload.ageMonths` as a whole number of months in `0..=240` (COH-3,
+/// `sessions.age_months`); anything else (absent, fractional, negative, absurd) is `None`, as
+/// in the 0026 back-fill.
+pub fn age_months(req: &SessionIngestRequest) -> Option<i32> {
+    let v = req.raw_payload.extra.get("ageMonths")?;
+    let n = v
+        .as_i64()
+        .or_else(|| v.as_f64().filter(|f| f.fract() == 0.0).map(|f| f as i64))?;
+    (0..=240).contains(&n).then_some(n as i32)
+}
 
 fn from_device(flag: AttentionFlag) -> SessionAttentionFlag {
     match flag {
@@ -27,10 +50,14 @@ fn from_device(flag: AttentionFlag) -> SessionAttentionFlag {
 
 /// Stored `attention_flag` (CON-15). A device flag is kept as sent. Without one (`null` or
 /// absent) the server runs `asd-core::flag::assess` over `rawPayload.perVideo` when
-/// `validRatio >= 0.60` and at least one clip was scored against a baseline; otherwise the
-/// session is `unreliable`. Thresholds are the bundled `ScoringProfile` defaults (F3).
+/// `validRatio >= profile.lowConfidenceValidRatio` and at least one clip was scored against a
+/// baseline; otherwise the session is `unreliable`. Thresholds are the `flag` section of
+/// `profile`: the published scoring profile, or the defaults when none is published (INV-1).
 /// An `unscorable` 1.8 session (which carries no device flag, SCH-5) is always `unreliable`.
-pub fn attention_flag(req: &SessionIngestRequest) -> SessionAttentionFlag {
+pub fn attention_flag(
+    req: &SessionIngestRequest,
+    profile: &ScoringProfile,
+) -> SessionAttentionFlag {
     if req.is_unscorable() {
         return SessionAttentionFlag::Unreliable;
     }
@@ -41,7 +68,9 @@ pub fn attention_flag(req: &SessionIngestRequest) -> SessionAttentionFlag {
         return SessionAttentionFlag::Unreliable;
     };
     let videos: Vec<PerVideoScoreReport> = videos.iter().map(|v| v.report.clone()).collect();
-    if req.valid_ratio < MIN_VALID_RATIO_FOR_FLAG || !videos.iter().any(|v| v.has_baseline) {
+    if req.valid_ratio < profile.low_confidence_valid_ratio
+        || !videos.iter().any(|v| v.has_baseline)
+    {
         return SessionAttentionFlag::Unreliable;
     }
     let composite = req
@@ -57,7 +86,7 @@ pub fn attention_flag(req: &SessionIngestRequest) -> SessionAttentionFlag {
         baseline_schema_version: String::new(),
         scored_at_utc: String::new(),
     };
-    from_device(assess(&score, &FlagThresholds::default()).flag)
+    from_device(assess(&score, &flag_thresholds(profile)).flag)
 }
 
 /// `Σ weight·subscore / Σ weight` over clips with a baseline, `0` when none (CORE-3), for
@@ -382,18 +411,57 @@ mod tests {
 
     #[test]
     fn device_flag_is_kept_and_missing_flag_is_derived() {
+        let p = ScoringProfile::default();
         let mut req = golden_1_6();
-        assert_eq!(attention_flag(&req), SessionAttentionFlag::Yellow);
+        assert_eq!(attention_flag(&req, &p), SessionAttentionFlag::Yellow);
         req.attention_flag = Some(None);
-        assert_eq!(attention_flag(&req), SessionAttentionFlag::Green);
+        assert_eq!(attention_flag(&req, &p), SessionAttentionFlag::Green);
         // Without perVideoComposite the weighted composite (0.74) is used.
         req.raw_payload.per_video_composite = None;
-        assert_eq!(attention_flag(&req), SessionAttentionFlag::Green);
+        assert_eq!(attention_flag(&req, &p), SessionAttentionFlag::Green);
         req.attention_flag = None;
         req.valid_ratio = 0.59;
-        assert_eq!(attention_flag(&req), SessionAttentionFlag::Unreliable);
+        assert_eq!(attention_flag(&req, &p), SessionAttentionFlag::Unreliable);
         req.valid_ratio = 0.60;
-        assert_eq!(attention_flag(&req), SessionAttentionFlag::Green);
+        assert_eq!(attention_flag(&req, &p), SessionAttentionFlag::Green);
+    }
+
+    /// INV-1: the floor and the flag thresholds come from the profile; the defaults are
+    /// today's constants.
+    #[test]
+    fn derived_flag_reads_the_profile() {
+        let mut p = ScoringProfile::default();
+        assert_eq!(p.low_confidence_valid_ratio, MIN_VALID_RATIO_FOR_FLAG);
+        assert_eq!(flag_thresholds(&p), FlagThresholds::default());
+        let mut req = golden_1_6();
+        req.attention_flag = None;
+        req.valid_ratio = 0.70;
+        assert_eq!(attention_flag(&req, &p), SessionAttentionFlag::Green);
+        p.low_confidence_valid_ratio = 0.75;
+        assert_eq!(attention_flag(&req, &p), SessionAttentionFlag::Unreliable);
+        p.low_confidence_valid_ratio = 0.60;
+        // Composite 0.74: green under the default floor 0.65, yellow under 0.80.
+        p.flag.green_floor = 0.80;
+        assert_eq!(attention_flag(&req, &p), SessionAttentionFlag::Yellow);
+    }
+
+    #[test]
+    fn age_months_is_a_whole_number_in_range() {
+        let mut req = golden_1_6();
+        assert_eq!(age_months(&req), None);
+        for (v, want) in [
+            (json!(30), Some(30)),
+            (json!(30.0), Some(30)),
+            (json!(0), Some(0)),
+            (json!(240), Some(240)),
+            (json!(30.5), None),
+            (json!(-1), None),
+            (json!(241), None),
+            (json!("30"), None),
+        ] {
+            req.raw_payload.extra.insert("ageMonths".into(), v.clone());
+            assert_eq!(age_months(&req), want, "{v}");
+        }
     }
 }
 
@@ -431,8 +499,9 @@ mod tracking_tests {
         );
         assert_eq!(social_preference(&unscorable), None);
         assert_eq!(affect(&unscorable), None);
+        let p = ScoringProfile::default();
         assert_eq!(
-            attention_flag(&unscorable),
+            attention_flag(&unscorable, &p),
             SessionAttentionFlag::Unreliable
         );
         assert_eq!(
@@ -444,7 +513,7 @@ mod tracking_tests {
         let mut scored_1_8 = scored.clone();
         scored_1_8.schema_version = "1.8".into();
         assert_eq!(scoring_columns(&scored_1_8), (Some("scored"), None));
-        assert_eq!(attention_flag(&scored_1_8), attention_flag(&scored));
+        assert_eq!(attention_flag(&scored_1_8, &p), attention_flag(&scored, &p));
     }
 
     #[test]

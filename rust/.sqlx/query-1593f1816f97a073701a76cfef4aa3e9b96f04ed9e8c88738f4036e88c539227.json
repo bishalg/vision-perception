@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE sessions\n         SET research_frames_blob_key = $2, research_frames_bytes = $3,\n             research_frames_sha256 = $4, research_frames_purged_at = NULL\n         WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8",
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1593f1816f97a073701a76cfef4aa3e9b96f04ed9e8c88738f4036e88c539227"
+}

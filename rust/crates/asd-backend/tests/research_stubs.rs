@@ -1,10 +1,12 @@
 //! owner: WP-X.0
 //!
-//! Phase 8 step 0: the researcher toolkit routes (`routes/research.rs`, WP-X.2, and
-//! `routes/analysis_runs.rs`, WP-X.3) are mounted with their GOV-1 permission and answer
-//! `501 not-implemented` to an allowed role; other roles get 403, another org's path 404,
-//! no bearer 401, and the vendor (`superadmin`) is refused the research write and run
-//! actions. Needs `DATABASE_URL`; skipped otherwise.
+//! Phase 8 step 0: the researcher toolkit routes still stubbed (`routes/analysis_runs.rs`,
+//! WP-X.3) are mounted with their GOV-1 permission and answer `501 not-implemented` to an
+//! allowed role; other roles get 403, another org's path 404, no bearer 401, and the vendor
+//! (`superadmin`) is refused the run actions. WP-X.2 filled `routes/research.rs` and the
+//! sealed research-log upload; their RBAC and behaviour are tested in `experiments.rs`,
+//! `cohorts.rs`, `config_effective.rs` and `research_frames.rs`. Needs `DATABASE_URL`;
+//! skipped otherwise.
 
 mod common;
 
@@ -27,50 +29,6 @@ const ORG_ROLES: [Role; 6] = [
 
 /// `(method, path with {org} / {id}, action)`.
 const STUBS: &[(Method, &str, Action)] = &[
-    (
-        Method::POST,
-        "/v1/orgs/{org}/experiments",
-        Action::ExperimentWrite,
-    ),
-    (
-        Method::GET,
-        "/v1/orgs/{org}/experiments",
-        Action::AnalysisRead,
-    ),
-    (Method::GET, "/v1/experiments/{id}", Action::AnalysisRead),
-    (
-        Method::PATCH,
-        "/v1/experiments/{id}",
-        Action::ExperimentWrite,
-    ),
-    (
-        Method::POST,
-        "/v1/experiments/{id}/archive",
-        Action::ExperimentWrite,
-    ),
-    (
-        Method::POST,
-        "/v1/experiments/{id}/promote",
-        Action::ExperimentPromote,
-    ),
-    (
-        Method::POST,
-        "/v1/orgs/{org}/cohorts",
-        Action::ExperimentWrite,
-    ),
-    (Method::GET, "/v1/orgs/{org}/cohorts", Action::AnalysisRead),
-    (
-        Method::POST,
-        "/v1/orgs/{org}/cohorts/preview",
-        Action::AnalysisRead,
-    ),
-    (Method::GET, "/v1/cohorts/{id}", Action::AnalysisRead),
-    (Method::PATCH, "/v1/cohorts/{id}", Action::ExperimentWrite),
-    (
-        Method::GET,
-        "/v1/orgs/{org}/config/effective",
-        Action::ConfigRead,
-    ),
     (
         Method::POST,
         "/v1/orgs/{org}/analysis-runs",
@@ -191,8 +149,8 @@ async fn every_stub_is_mounted_behind_its_permission_and_answers_501() {
 
 #[tokio::test]
 async fn the_plain_blob_upload_does_not_take_a_research_log() {
-    // RFL-3: research logs are only accepted by the sealed route WP-X.2 adds; the existing
-    // proxy upload answers 404 for the kind (it never stores an unsealed log).
+    // RFL-3: research logs reach only the sealed route (WP-X.2), whose rules start with the
+    // required digest; the plain proxy upload, which stores bytes as sent, never sees them.
     let Some(db) = TestDb::migrated().await else {
         return;
     };
@@ -212,7 +170,8 @@ async fn the_plain_blob_upload_does_not_take_a_research_log() {
         .header(http::header::CONTENT_TYPE, "application/x-ndjson")
         .body(axum::body::Body::from("{}\n"))
         .unwrap();
-    let (status, _, _) = send(app, req).await;
-    assert_eq!(status, StatusCode::NOT_FOUND);
+    let (status, _, body) = send(app, req).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
+    assert_eq!(slug(&body), "digest-required");
     db.cleanup().await;
 }
