@@ -263,6 +263,8 @@ export const runSummarySchema = z.object({
   sweep: z
     .object({
       axes: z.array(sweepAxisSchema),
+      /** The published profile's value per axis: always a cell (the last one when off the grid, SWP-2). */
+      published_values: z.array(z.number()).optional(),
       cells: z.array(
         z.object({
           values: z.array(z.number()),
@@ -277,6 +279,7 @@ export const runSummarySchema = z.object({
     })
     .nullable()
     .optional(),
+  /** AGE-1 block (`Value` in the contract); read with `parseAgeProfile` from `lib/research/age-profile`. */
   age_profile: z.unknown().optional(),
   small_cell_k: count,
   includes_synthetic: z.boolean().optional(),

@@ -453,11 +453,17 @@ async fn quota_budget_and_validation_refusals() {
     let (s, b) = create_run(&c, sweep.clone(), &researcher).await;
     assert_eq!(s, StatusCode::BAD_REQUEST, "{b}");
     assert_eq!(slug(&b), "sweep-too-large");
-    // A sweep inside the budget is phase B (WP-X.9).
+    // WP-X.9: a sweep only with param_sweep, and param_sweep only with a sweep.
     sweep["sweep"]["axes"][0]["step"] = json!(0.05);
+    sweep["kind"] = json!("cohort_rescore");
+    let (s, b) = create_run(&c, sweep.clone(), &researcher).await;
+    assert_eq!(s, StatusCode::BAD_REQUEST, "{b}");
+    assert_eq!(b["invalid_params"][0]["name"], "sweep", "{b}");
+    sweep["kind"] = json!("param_sweep");
+    sweep.as_object_mut().unwrap().remove("sweep");
     let (s, b) = create_run(&c, sweep, &researcher).await;
     assert_eq!(s, StatusCode::BAD_REQUEST, "{b}");
-    assert_eq!(b["invalid_params"][0]["name"], "kind", "{b}");
+    assert_eq!(b["invalid_params"][0]["name"], "sweep", "{b}");
     // Request shape.
     let mut both = body(&exp_id, "score", small.clone());
     both["cohort_id"] = json!(Uuid::new_v4());

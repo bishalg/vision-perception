@@ -1,7 +1,8 @@
 /**
- * Mock researcher toolkit (RUI-7, WP-X.0 step 0). Synthetic data only. Seeds two experiments, two cohorts and three
- * analysis runs (one running with progress, one succeeded with a suppressed band, one failed `budget_exceeded`) so
- * the research pages and Playwright cover every state without a backend. It mimics the answers the UI surfaces
+ * Mock researcher toolkit (RUI-7, WP-X.0 step 0). Synthetic data only. Seeds two experiments, two cohorts and five
+ * analysis runs (one running with progress, one succeeded with a suppressed band, one failed `budget_exceeded`, and
+ * from WP-X.9 a succeeded two-axis `param_sweep` of 625 grid cells plus the off-grid published cell, and a succeeded
+ * `age_profile` with a suppressed band) so the research pages and Playwright cover every state without a backend. It mimics the answers the UI surfaces
  * (`409 experiment-name-exists | experiment-no-run | experiment-promoted`, `412 stale-version`, `404`); the real rules,
  * evaluation, suppression and audit live in the Rust backend and core.
  */
@@ -34,6 +35,8 @@ export const MOCK_RESEARCH_IDS = {
   runRunning: "a0000000-0000-4000-8000-000000000001",
   runSucceeded: "a0000000-0000-4000-8000-000000000002",
   runFailed: "a0000000-0000-4000-8000-000000000003",
+  runSweep: "a0000000-0000-4000-8000-000000000004",
+  runAgeProfile: "a0000000-0000-4000-8000-000000000005",
 } as const;
 
 const SMALL_CELL_K = 12;
@@ -129,6 +132,68 @@ function succeededSummary(): RunSummary {
   };
 }
 
+/** Synthetic sweep axes of the seeded `param_sweep` run (25 x 25 cells). */
+const SWEEP_AXES = [
+  { param_id: "flag.greenFloor", from: 0.4, to: 0.88, step: 0.02 },
+  { param_id: "flag.yellowFloor", from: 0.1, to: 0.58, step: 0.02 },
+];
+const SWEEP_STEPS = 25;
+const SWEEP_PUBLISHED = [0.65, 0.35];
+
+/** A synthetic sweep cell; the first two values of each axis together are hidden (n < k) to show suppression. */
+function sweepCell(values: number[], i: number, j: number): NonNullable<RunSummary["sweep"]>["cells"][number] {
+  if (i < 2 && j < 2) {
+    return { values, n: null, flag_rate: null, quality_rate: { good: null, low_quality: null, low_tracking_quality: null, unreliable: null }, metrics: {}, composite: { mean: null, median: null }, changed_vs_published: null };
+  }
+  const [g, y] = values as [number, number];
+  const green = Math.max(0, Math.min(1, 1.05 - g));
+  const red = Math.max(0, Math.min(1 - green, y * 0.4));
+  return {
+    values, n: 37,
+    flag_rate: { green, yellow: Math.max(0, 1 - green - red - 0.05), red, unreliable: 0.05 },
+    quality_rate: { good: 0.8, low_quality: 0.1, low_tracking_quality: 0.05, unreliable: 0.05 },
+    metrics: {}, composite: { mean: 0.6 + (i - j) * 0.002, median: 0.61 + (i - j) * 0.002 },
+    changed_vs_published: i === 12 && j === 12 ? 0 : 12 + ((i + j) % 9),
+  };
+}
+
+function sweepSummary(): RunSummary {
+  const axisValues = (a: (typeof SWEEP_AXES)[number]) =>
+    Array.from({ length: SWEEP_STEPS }, (_, i) => Number((a.from + i * a.step).toFixed(2)));
+  const [xs, ys] = [axisValues(SWEEP_AXES[0]!), axisValues(SWEEP_AXES[1]!)];
+  const cells = xs.flatMap((x, i) => ys.map((y, j) => sweepCell([x, y], i, j)));
+  cells.push(sweepCell([...SWEEP_PUBLISHED], 12, 12));
+  return { ...succeededSummary(), sweep: { axes: SWEEP_AXES, published_values: SWEEP_PUBLISHED, cells } };
+}
+
+function ageSide(n: number | null, onTarget: number, median: number): Record<string, unknown> {
+  if (n === null) {
+    return { n: null, suppressed: true, dist: suppressed(), range: { expected: 0.38, acceptable_low: 0.25, acceptable_high: 0.5 }, shares: null, expected_percentile: null };
+  }
+  return {
+    n, suppressed: false, dist: dist(n, median), range: { expected: 0.38, acceptable_low: 0.25, acceptable_high: 0.5 },
+    shares: { on_target: onTarget, monitor: Number((0.8 - onTarget).toFixed(2)), atypical: 0.2 }, expected_percentile: 55,
+  };
+}
+
+function ageProfileSummary(): RunSummary {
+  const expectation = (n: number | null, draftOnTarget: number) => ({
+    stimulus_id: "mock_clip", segment_id: "full", biomarker: "eye_dwell_ratio", target_aoi: null,
+    metric_key: "eye_dwell_ratio", direction: "higherBetter",
+    published: ageSide(n, 0.5, 0.36), draft: ageSide(n, draftOnTarget, 0.36),
+  });
+  return {
+    ...succeededSummary(),
+    age_profile: {
+      baselines: { published: "2026.10.0", draft: "2026.11.0-draft" }, min_n: SMALL_CELL_K, suppression_threshold: SMALL_CELL_K,
+      bands: [
+        { band: "24-35", min_months: 24, max_months: 35, n: 30, suppressed: false, expectations: [expectation(30, 0.3)] },
+        { band: "36-47", min_months: 36, max_months: 47, n: null, suppressed: true, expectations: [expectation(null, 0)] },
+      ],
+    },
+  };
+}
+
 const DEFINITION: CohortDefinition = { age_bands: ["24-35", "36-47"], tracking_verdicts: ["good", "fair"], from: "2025-11-01" };
 
 export function createMockResearch(ctx: MockResearchContext): ResearchApi {
@@ -190,6 +255,25 @@ export function createMockResearch(ctx: MockResearchContext): ResearchApi {
   runs.set(MOCK_RESEARCH_IDS.runFailed, run(MOCK_RESEARCH_IDS.runFailed, {
     status: "failed", experiment_id: MOCK_RESEARCH_IDS.experimentPromoted, cohort_id: MOCK_RESEARCH_IDS.cohortAll,
     level_requested: "frames", error: "budget_exceeded", created_at: iso(-300), started_at: iso(-299), finished_at: iso(-269),
+  }));
+  runs.set(MOCK_RESEARCH_IDS.runSweep, run(MOCK_RESEARCH_IDS.runSweep, {
+    kind: "param_sweep", status: "succeeded", membership_hash: HASH("f"), sessions_n: 37, sessions_frames_n: 0,
+    sessions_score_n: 37, level_requested: "score", excluded: { no_age: 2 }, summary: sweepSummary(), result_bytes: 18_432,
+    definition: {
+      kind: "param_sweep", cohort: DEFINITION, profile: profile(4), baselines_version: null,
+      sweep: { axes: SWEEP_AXES }, level: "score", options: { metrics: [], bootstrap: true }, seed: 42,
+    },
+    progress: { done: 37, total: 37, phase: "done" }, created_at: iso(-90), started_at: iso(-89), finished_at: iso(-80),
+  }));
+  runs.set(MOCK_RESEARCH_IDS.runAgeProfile, run(MOCK_RESEARCH_IDS.runAgeProfile, {
+    kind: "age_profile", status: "succeeded", membership_hash: HASH("f"), sessions_n: 37, sessions_frames_n: 10,
+    sessions_score_n: 27, baselines_version: "2026.11.0-draft", excluded: { no_age: 2 }, summary: ageProfileSummary(),
+    definition: {
+      kind: "age_profile", cohort: DEFINITION, profile: profile(5), baselines_version: "2026.11.0-draft",
+      sweep: null, level: "auto", options: { metrics: [], bootstrap: true }, seed: 42,
+    },
+    result_bytes: 18_432, progress: { done: 37, total: 37, phase: "done" }, created_at: iso(-100), started_at: iso(-99),
+    finished_at: iso(-95),
   }));
   const sessionRows = (): AnalysisSessionRow[] => Array.from({ length: 37 }, (_, i): AnalysisSessionRow => {
     const composite = 0.45 + (i % 10) * 0.04;

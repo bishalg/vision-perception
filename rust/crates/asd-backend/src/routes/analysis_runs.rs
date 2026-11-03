@@ -29,21 +29,29 @@
 //!   `rerun_of`.
 //!
 //! A run of another org is a 404. The vendor (`superadmin`) reads runs but never runs one
-//! (GOV-1). `param_sweep` and `age_profile` runs are phase B (WP-X.9): their sweep budget
-//! (SWP-1, SWP-2) is checked here, then they are refused as not yet available.
+//! (GOV-1). Phase B (WP-X.9): a `param_sweep` run needs a `sweep` and no other kind takes one.
+//! SWP-1: 1..=2 distinct axes, each a Number or Integer registry id the analysis core reads,
+//! `from <= to` inside the registry range, a step no finer than the registry's (whole numbers
+//! for an Integer), at most 24 steps; a `score`-level knob sweeps at any level, a `metrics` or
+//! `frames` knob only at `level: frames`, a `capture_only` knob never. Owner-gated knobs
+//! (`H-G2`) are sweepable (ADR-0012 Q9). SWP-2: at most 625 grid cells; the evaluations
+//! (sessions x cells, the published cell included) within `ASD_ANALYSIS_MAX_*EVALUATIONS`; the
+//! sweep block's size estimate within `ASD_ANALYSIS_MAX_SUMMARY_KIB`; else `400
+//! sweep-too-large`, before anything is queued.
 
 use std::collections::BTreeSet;
 
 use asd_contract::api_v1::{ConfigDocumentKind, JobProgress};
 use asd_contract::config::ScoringProfile;
-use asd_contract::params::{self, DocumentKind, ParamKind};
+use asd_contract::params::{self, DocumentKind, ParamKind, Reprocess};
 use asd_contract::problem as slugs;
 use asd_contract::research::{
     AnalysisDefinition, AnalysisRun, AnalysisRunPage, AnalysisRunRequest, AnalysisSessionPage,
     AnalysisSessionRow, CohortDefinition, LevelRequest, MembershipDrift, RunKind, RunOptions,
     RunStatus, RunSummary, SweepSpec, MAX_SWEEP_AXES, MAX_SWEEP_CELLS, MAX_SWEEP_STEPS,
 };
-use asd_core::analysis::AnalysisProfile;
+use asd_core::analysis::sweep::{axis_steps, grid_cells, param_value, worst_case_bytes};
+use asd_core::analysis::{AnalysisProfile, SweepAxis as CoreAxis};
 use asd_core::metrics::PerVideoMetricKey;
 use axum::extract::rejection::QueryRejection;
 use axum::extract::{Path, Query, State};
@@ -294,34 +302,69 @@ struct Plan {
     rerun_of: Option<Uuid>,
 }
 
-/// SWP-1 / SWP-2 shape and cell count of a sweep; `None` for no sweep (one cell).
-fn sweep_cells(sweep: Option<&SweepSpec>) -> RResult<u64> {
-    let Some(sweep) = sweep else { return Ok(1) };
+/// Integer-valued (a whole number that `i64` holds exactly).
+fn whole(v: f64) -> bool {
+    v.fract() == 0.0 && v.abs() < (1u64 << 53) as f64
+}
+
+/// SWP-1 / SWP-2 shape of a sweep against the registry, the level and the experiment profile
+/// (module docs). Returns the core axes; the published cell and the budget are checked once
+/// the published profile is read.
+fn check_sweep(
+    sweep: &SweepSpec,
+    level: LevelRequest,
+    draft: &AnalysisProfile,
+) -> RResult<Vec<CoreAxis>> {
     if sweep.axes.is_empty() || sweep.axes.len() > MAX_SWEEP_AXES {
         return Err(validation(vec![invalid(
             "sweep.axes",
             format!("must have 1 to {MAX_SWEEP_AXES} axes"),
         )]));
     }
-    let mut cells: u64 = 1;
+    let ids: BTreeSet<&str> = sweep.axes.iter().map(|a| a.param_id.as_str()).collect();
+    if ids.len() != sweep.axes.len() {
+        return Err(validation(vec![invalid(
+            "sweep.axes",
+            "each axis sweeps a different parameter",
+        )]));
+    }
+    let mut axes = Vec::with_capacity(sweep.axes.len());
     for (i, axis) in sweep.axes.iter().enumerate() {
         let name = format!("sweep.axes[{i}]");
-        let spec = params::spec(&axis.param_id).ok_or_else(|| {
-            validation(vec![invalid(
-                &format!("{name}.param_id"),
-                "not a parameter registry id",
-            )])
-        })?;
-        let (min, max) = match &spec.kind {
-            ParamKind::Number { min, max, .. } => (*min, *max),
-            ParamKind::Integer { min, max, .. } => (*min as f64, *max as f64),
+        let id_name = format!("{name}.param_id");
+        let spec = params::spec(&axis.param_id)
+            .ok_or_else(|| validation(vec![invalid(&id_name, "not a parameter registry id")]))?;
+        let (min, max, min_step, integer) = match &spec.kind {
+            ParamKind::Number { min, max, step, .. } => (*min, *max, *step, false),
+            ParamKind::Integer { min, max, .. } => (*min as f64, *max as f64, 1.0, true),
             _ => {
                 return Err(validation(vec![invalid(
-                    &format!("{name}.param_id"),
+                    &id_name,
                     "must be a number or integer parameter",
                 )]))
             }
         };
+        match spec.reprocess {
+            Reprocess::CaptureOnly => {
+                return Err(validation(vec![invalid(
+                    &id_name,
+                    "only a new capture shows this parameter; it cannot be swept",
+                )]))
+            }
+            Reprocess::Metrics | Reprocess::Frames if level != LevelRequest::Frames => {
+                return Err(validation(vec![invalid(
+                    &id_name,
+                    "this parameter needs the research frame log: sweep it at level frames",
+                )]))
+            }
+            _ => {}
+        }
+        if param_value(draft, &axis.param_id).is_none() {
+            return Err(validation(vec![invalid(
+                &id_name,
+                "the analysis core does not read this parameter",
+            )]));
+        }
         let finite = axis.from.is_finite() && axis.to.is_finite() && axis.step.is_finite();
         if !finite || axis.step <= 0.0 || axis.from > axis.to {
             return Err(validation(vec![invalid(
@@ -335,22 +378,43 @@ fn sweep_cells(sweep: Option<&SweepSpec>) -> RResult<u64> {
                 format!("values must be inside [{min}, {max}]"),
             )]));
         }
-        let steps = ((axis.to - axis.from) / axis.step + 1e-9).floor();
-        if steps > f64::from(MAX_SWEEP_STEPS) {
+        if integer && !(whole(axis.from) && whole(axis.to) && whole(axis.step)) {
+            return Err(validation(vec![invalid(
+                &name,
+                "an integer parameter takes whole from, to and step",
+            )]));
+        }
+        // The registry step is the finest meaningful change (relative tolerance for decimals).
+        if axis.step < min_step * (1.0 - 1e-9) {
+            return Err(validation(vec![invalid(
+                &format!("{name}.step"),
+                format!("must be at least the registry step {min_step}"),
+            )]));
+        }
+        let core = CoreAxis {
+            param_id: axis.param_id.clone(),
+            from: axis.from,
+            to: axis.to,
+            step: axis.step,
+        };
+        let steps =
+            axis_steps(&core).map_err(|e| validation(vec![invalid(&name, e.to_string())]))?;
+        if steps > u64::from(MAX_SWEEP_STEPS) {
             return Err(bad_request(
                 slugs::SWEEP_TOO_LARGE,
                 format!("{name} has {steps} steps; at most {MAX_SWEEP_STEPS} per axis"),
             ));
         }
-        cells = cells.saturating_mul(steps as u64 + 1);
+        axes.push(core);
     }
+    let cells = grid_cells(&axes).map_err(|e| validation(vec![invalid("sweep", e.to_string())]))?;
     if cells > u64::from(MAX_SWEEP_CELLS) {
         return Err(bad_request(
             slugs::SWEEP_TOO_LARGE,
             format!("{cells} cells; a sweep has at most {MAX_SWEEP_CELLS}"),
         ));
     }
-    Ok(cells)
+    Ok(axes)
 }
 
 fn check_options(options: &RunOptions) -> RResult<()> {
@@ -481,21 +545,24 @@ async fn enqueue(
 ) -> RResult<Uuid> {
     let limits = &state.config.analysis;
     let def = &plan.definition;
-    let cells = sweep_cells(def.sweep.as_ref())?;
-    if def.kind != RunKind::CohortRescore {
-        return Err(validation(vec![invalid(
-            "kind",
-            "param_sweep and age_profile runs are not available yet (phase B, WP-X.9)",
-        )]));
-    }
-    if def.sweep.is_some() {
-        return Err(validation(vec![invalid(
-            "sweep",
-            "only param_sweep runs take a sweep",
-        )]));
-    }
     let draft: AnalysisProfile = serde_json::from_value(plan.profile_body.clone())
         .map_err(|e| AppError::Internal(format!("experiment profile: {e}")))?;
+    let axes = match (def.kind, &def.sweep) {
+        (RunKind::ParamSweep, Some(sweep)) => Some(check_sweep(sweep, def.level, &draft)?),
+        (RunKind::ParamSweep, None) => {
+            return Err(validation(vec![invalid(
+                "sweep",
+                "a param_sweep run needs a sweep",
+            )]))
+        }
+        (_, Some(_)) => {
+            return Err(validation(vec![invalid(
+                "sweep",
+                "only param_sweep runs take a sweep",
+            )]))
+        }
+        (_, None) => None,
+    };
     let known: BTreeSet<&str> = draft.age_bands.iter().map(|b| b.id.as_str()).collect();
     let bad_bands: Vec<InvalidParam> = def
         .cohort
@@ -545,6 +612,32 @@ async fn enqueue(
             "no session of the cohort has a research frame log; use level auto or score",
         ));
     }
+    // SWP-2: the grid with the published cell is what the job evaluates.
+    let (published_version, published_body) =
+        job::published_document(&mut tx, ConfigDocumentKind::ScoringProfile).await?;
+    let cells = match &axes {
+        Some(axes) => {
+            let published: AnalysisProfile = serde_json::from_value(published_body)
+                .map_err(|e| AppError::Internal(format!("published profile: {e}")))?;
+            let grid = job::sweep_grid(axes, &published, &draft)
+                .map_err(|e| validation(vec![invalid("sweep", e)]))?;
+            let estimate = worst_case_bytes(axes.len(), grid.cells.len(), &def.options.metrics);
+            if estimate > limits.max_summary_bytes {
+                return Err(bad_request(
+                    slugs::SWEEP_TOO_LARGE,
+                    format!(
+                        "{} cells x {} metrics would need about {estimate} summary bytes; at \
+                         most {} (ASD_ANALYSIS_MAX_SUMMARY_KIB): choose fewer metrics or cells",
+                        grid.cells.len(),
+                        def.options.metrics.len(),
+                        limits.max_summary_bytes
+                    ),
+                ));
+            }
+            grid.cells.len() as u64
+        }
+        None => 1,
+    };
     check_budget(
         limits,
         members.score_n(),
@@ -575,8 +668,6 @@ async fn enqueue(
     }
 
     // RUN-5: every version before the job starts.
-    let (published_version, _) =
-        job::published_document(&mut tx, ConfigDocumentKind::ScoringProfile).await?;
     let baselines_version = match &def.baselines_version {
         Some(v) => {
             if job::document(&mut tx, ConfigDocumentKind::NormativeBaselines, v)

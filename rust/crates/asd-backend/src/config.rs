@@ -98,6 +98,10 @@ pub struct AnalysisLimits {
     pub max_result_bytes: usize,
     /// `ASD_ANALYSIS_PAGE_SIZE` (200): sessions per page (heartbeat, progress, cancel check).
     pub page_size: u32,
+    /// `ASD_ANALYSIS_MAX_SUMMARY_KIB` (1024): the stored `summary` JSON (RUN-4, WP-X.9); a
+    /// sweep whose estimate is larger is refused `400 sweep-too-large`, a run whose summary
+    /// is larger fails `result-too-large`.
+    pub max_summary_bytes: usize,
 }
 
 impl Default for AnalysisLimits {
@@ -112,6 +116,7 @@ impl Default for AnalysisLimits {
             max_duration: Duration::from_secs(30 * 60),
             max_result_bytes: 64 * 1024 * 1024,
             page_size: 200,
+            max_summary_bytes: 1024 * 1024,
         }
     }
 }
@@ -131,6 +136,11 @@ impl AnalysisLimits {
             get,
             "ASD_ANALYSIS_MAX_RESULT_MIB",
             (d.max_result_bytes / (1024 * 1024)) as u64,
+        )?;
+        let kib = positive(
+            get,
+            "ASD_ANALYSIS_MAX_SUMMARY_KIB",
+            (d.max_summary_bytes / 1024) as u64,
         )?;
         let small = |name: &'static str, default: u32| -> Result<u32, ConfigError> {
             let v = positive(get, name, u64::from(default))?;
@@ -157,6 +167,10 @@ impl AnalysisLimits {
                 .and_then(|m| m.checked_mul(1024 * 1024))
                 .ok_or_else(|| invalid("ASD_ANALYSIS_MAX_RESULT_MIB", "is too large"))?,
             page_size: small("ASD_ANALYSIS_PAGE_SIZE", d.page_size)?,
+            max_summary_bytes: usize::try_from(kib)
+                .ok()
+                .and_then(|k| k.checked_mul(1024))
+                .ok_or_else(|| invalid("ASD_ANALYSIS_MAX_SUMMARY_KIB", "is too large"))?,
         })
     }
 }
@@ -519,6 +533,7 @@ mod tests {
         assert_eq!(a.max_duration, Duration::from_secs(30 * 60));
         assert_eq!(a.max_result_bytes, 64 * 1024 * 1024);
         assert_eq!(a.page_size, 200);
+        assert_eq!(a.max_summary_bytes, 1024 * 1024);
 
         let c = cfg(&[
             ("DATABASE_URL", URL),
@@ -531,6 +546,7 @@ mod tests {
             ("ASD_ANALYSIS_MAX_MINUTES", "90"),
             ("ASD_ANALYSIS_MAX_RESULT_MIB", "128"),
             ("ASD_ANALYSIS_PAGE_SIZE", "50"),
+            ("ASD_ANALYSIS_MAX_SUMMARY_KIB", "2048"),
         ])
         .unwrap();
         let a = &c.analysis;
@@ -545,6 +561,7 @@ mod tests {
         );
         assert_eq!(a.max_duration, Duration::from_secs(90 * 60));
         assert_eq!(a.max_result_bytes, 128 * 1024 * 1024);
+        assert_eq!(a.max_summary_bytes, 2048 * 1024);
 
         for name in [
             "ASD_ANALYSIS_MAX_RUNNING_PER_ORG",
@@ -556,6 +573,7 @@ mod tests {
             "ASD_ANALYSIS_MAX_MINUTES",
             "ASD_ANALYSIS_MAX_RESULT_MIB",
             "ASD_ANALYSIS_PAGE_SIZE",
+            "ASD_ANALYSIS_MAX_SUMMARY_KIB",
         ] {
             for bad in ["0", "-1", "lots"] {
                 match cfg(&[("DATABASE_URL", URL), (name, bad)]).unwrap_err() {

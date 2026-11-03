@@ -5,7 +5,9 @@
 //! - [`profile`]: the 1.2.0 `ScoringProfile` sections the core reads, as core types (PRM-7..9);
 //! - [`evaluate()`]: one session at `score` or `frames` level with a profile (RPX-2, RPX-3);
 //! - [`aggregate`]: per-band distributions of a run, bootstrap CIs (RUN-4);
-//! - [`suppress()`]: small-cell suppression of a run summary (PRV-1).
+//! - [`suppress()`]: small-cell suppression of a run summary (PRV-1);
+//! - [`sweep`]: parameter-sweep grids and per-cell aggregation (SWP-1..3, WP-X.9);
+//! - [`age_profile`]: per-band shares against the baseline ranges (AGE-1, WP-X.9).
 //!
 //! Why the core has its own copies of contract shapes: `asd-contract` depends on `asd-core`,
 //! so the core cannot name `asd_contract::config::ScoringProfile` or
@@ -17,13 +19,19 @@
 //! Everything here is pure and deterministic (RPX-6, RUN-5): no clock, no I/O, and the only
 //! randomness is the seeded bootstrap of [`aggregate`].
 
+pub mod age_profile;
 pub mod aggregate;
 pub mod evaluate;
 pub mod profile;
 pub mod suppress;
+pub mod sweep;
 
 use serde::{Deserialize, Serialize};
 
+pub use age_profile::{
+    AgeProfileAggregator, AgeProfileBand, AgeProfileBaselines, AgeProfileExpectation,
+    AgeProfileSide, AgeProfileSummary, BaselineRange, StatusShares,
+};
 pub use aggregate::{
     dist, Aggregator, AggregatorOptions, BandSummary, Dist, DistComparison, FlagCounts,
     FlagRateComparison, FlagRates, FlagSummary, Hist, LevelCounts, MeanMedian, QualitySummary,
@@ -39,6 +47,7 @@ pub use profile::{
     ReviewParams,
 };
 pub use suppress::suppress;
+pub use sweep::{SweepAggregator, SweepError, SweepGrid};
 
 /// Requested evaluation level (RPX-3; `asd_contract::research::LevelRequest`).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]

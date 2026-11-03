@@ -12073,6 +12073,14 @@
             "$ref": "#/$defs/SweepCell"
           },
           "type": "array"
+        },
+        "published_values": {
+          "default": [],
+          "description": "The published profile's value per axis: the cell the console marks. It is always a\ncell; when it is off the grid it is the last one (SWP-2).",
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
         }
       },
       "required": [

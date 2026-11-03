@@ -302,6 +302,59 @@ export interface ResearchMessages {
     interval: string;
     noData: string;
   };
+  /** WP-X.9: the sweep and age-profile sections of a run page (SWP-3, AGE-1). */
+  analysis: {
+    sweepTitle: string;
+    sweepIntro: (cells: number) => string;
+    axis: (index: number, label: string, id: string) => string;
+    publishedValue: (values: string) => string;
+    publishedMarker: string;
+    publishedOutline: string;
+    offGrid: (values: string) => string;
+    compositeMean: string;
+    greenShare: string;
+    metricMean: (id: string) => string;
+    heatmap: (quantity: string, x: string, y: string) => string;
+    heatLegend: (low: string, high: string) => string;
+    heatSuppressed: (k: number) => string;
+    cellTitle: (values: string, n: string, value: string) => string;
+    tableTitle: string;
+    showTable: string;
+    cols: {
+      values: string;
+      n: string;
+      green: string;
+      yellow: string;
+      red: string;
+      unreliable: string;
+      compositeMean: string;
+      compositeMedian: string;
+      changed: string;
+    };
+    publishedRow: string;
+    ageTitle: string;
+    ageIntro: string;
+    baselines: (published: string, draft: string) => string;
+    threshold: (t: number) => string;
+    bandTitle: (band: string, from: number, to: number) => string;
+    ageCaption: (band: string) => string;
+    ageCols: {
+      expectation: string;
+      n: string;
+      median: string;
+      range: string;
+      publishedShares: string;
+      draftShares: string;
+      publishedPercentile: string;
+      draftPercentile: string;
+    };
+    expectation: (stimulus: string, segment: string, metric: string) => string;
+    shares: (onTarget: string, monitor: string, atypical: string) => string;
+    range: (low: string, high: string, expected: string) => string;
+    noRange: string;
+    noExpectations: string;
+    unreadable: string;
+  };
   /** Server-action failures, by problem slug; `fallback` otherwise. */
   errors: Record<string, string>;
   params: Record<string, ParamText>;
@@ -648,6 +701,60 @@ const en: ResearchMessages = {
     deltaBars: (label) => `Change in ${label} by age band`,
     interval: "95% interval of the mean",
     noData: "No data.",
+  },
+  analysis: {
+    sweepTitle: "Parameter sweep",
+    sweepIntro: (cells) =>
+      `${cells} cells. Each cell re-scores the cohort with the experiment profile at these values; the published profile is the reference.`,
+    axis: (index, label, id) => `Axis ${index}: ${label} (${id})`,
+    publishedValue: (values) => `Published value: ${values}`,
+    publishedMarker: "Published value",
+    publishedOutline: "Outlined: the published value.",
+    offGrid: (values) => `The published value ${values} is outside the grid: it is listed in the table, not drawn in the grid.`,
+    compositeMean: "Mean composite",
+    greenShare: "Share labelled green",
+    metricMean: (id) => `Mean ${id}`,
+    heatmap: (quantity, x, y) => `${quantity} by ${x} and ${y}`,
+    heatLegend: (low, high) => `Lighter: ${low}. Darker: ${high}.`,
+    heatSuppressed: (k) => `Grey: n < ${k} (hidden).`,
+    cellTitle: (values, n, value) => `${values}: n ${n}, ${value}`,
+    tableTitle: "Sweep cells",
+    showTable: "Show every cell as a table",
+    cols: {
+      values: "Values",
+      n: "Sessions",
+      green: "Green",
+      yellow: "Yellow",
+      red: "Red",
+      unreliable: "Unreliable",
+      compositeMean: "Composite mean",
+      compositeMedian: "Composite median",
+      changed: "Label changed vs published",
+    },
+    publishedRow: "published",
+    ageTitle: "Age profile",
+    ageIntro:
+      "Per age band and expected response: how the cohort's values fall against the baseline range, under the published baselines and under the experiment's baselines.",
+    baselines: (published, draft) => `Published baselines ${published}; experiment baselines ${draft}.`,
+    threshold: (t) => `Cells with fewer than ${t} sessions are hidden (the larger of the small-cell threshold and the profile's minimum n).`,
+    bandTitle: (band, from, to) => `Age band ${band} (${from}-${to} months)`,
+    ageCaption: (band) => `Expected responses, age band ${band}`,
+    ageCols: {
+      expectation: "Expected response",
+      n: "Sessions",
+      median: "Median [IQR]",
+      range: "Baseline range",
+      publishedShares: "Published baselines",
+      draftShares: "Experiment baselines",
+      publishedPercentile: "Expected value percentile (published)",
+      draftPercentile: "Expected value percentile (experiment)",
+    },
+    expectation: (stimulus, segment, metric) => `${stimulus} / ${segment} / ${metric}`,
+    shares: (onTarget, monitor, atypical) => `${onTarget} on target, ${monitor} monitor, ${atypical} atypical`,
+    range: (low, high, expected) => `${low} to ${high} (expected ${expected})`,
+    noRange: "Differs within the band",
+    noExpectations: "No scored expected responses in this band.",
+    unreadable: "The age profile of this run could not be read.",
   },
   errors: {
     "experiment-name-exists": "An experiment with this name already exists.",
@@ -1104,6 +1211,61 @@ const ne: ResearchMessages = {
     deltaBars: (label) => `उमेर समूह अनुसार ${label} मा परिवर्तन`,
     interval: "औसतको ९५% अन्तराल",
     noData: "डाटा छैन।",
+  },
+  // ne: draft (WP-X.9; WP-L.3 reviews)
+  analysis: {
+    sweepTitle: "प्यारामिटर स्वीप",
+    sweepIntro: (cells) =>
+      `${cells} कक्ष। प्रत्येक कक्षले यी मानहरूमा प्रयोग प्रोफाइलसहित कोहोर्टलाई पुनः स्कोर गर्छ; प्रकाशित प्रोफाइल सन्दर्भ हो।`,
+    axis: (index, label, id) => `अक्ष ${index}: ${label} (${id})`,
+    publishedValue: (values) => `प्रकाशित मान: ${values}`,
+    publishedMarker: "प्रकाशित मान",
+    publishedOutline: "रेखाले घेरिएको: प्रकाशित मान।",
+    offGrid: (values) => `प्रकाशित मान ${values} ग्रिडबाहिर छ: यो तालिकामा छ, ग्रिडमा कोरिएको छैन।`,
+    compositeMean: "कम्पोजिटको औसत",
+    greenShare: "हरियो लेबलको अंश",
+    metricMean: (id) => `${id} को औसत`,
+    heatmap: (quantity, x, y) => `${x} र ${y} अनुसार ${quantity}`,
+    heatLegend: (low, high) => `हल्का: ${low}। गाढा: ${high}।`,
+    heatSuppressed: (k) => `खरानी: n < ${k} (लुकाइएको)।`,
+    cellTitle: (values, n, value) => `${values}: n ${n}, ${value}`,
+    tableTitle: "स्वीप कक्षहरू",
+    showTable: "सबै कक्ष तालिकामा देखाउनुहोस्",
+    cols: {
+      values: "मान",
+      n: "सत्र",
+      green: "हरियो",
+      yellow: "पहेँलो",
+      red: "रातो",
+      unreliable: "अविश्वसनीय",
+      compositeMean: "कम्पोजिट औसत",
+      compositeMedian: "कम्पोजिट मध्यिका",
+      changed: "प्रकाशितको तुलनामा लेबल फेरिएको",
+    },
+    publishedRow: "प्रकाशित",
+    ageTitle: "उमेर प्रोफाइल",
+    ageIntro:
+      "प्रत्येक उमेर समूह र अपेक्षित प्रतिक्रियाका लागि: कोहोर्टका मान आधार दायराको तुलनामा कहाँ पर्छन्, प्रकाशित आधाररेखा र प्रयोगको आधाररेखा अन्तर्गत।",
+    baselines: (published, draft) => `प्रकाशित आधाररेखा ${published}; प्रयोगको आधाररेखा ${draft}।`,
+    threshold: (t) => `${t} भन्दा कम सत्र भएका कक्ष लुकाइन्छन् (सानो-कक्ष सीमा र प्रोफाइलको न्यूनतम n मध्ये ठूलो)।`,
+    bandTitle: (band, from, to) => `उमेर समूह ${band} (${from}-${to} महिना)`,
+    ageCaption: (band) => `अपेक्षित प्रतिक्रियाहरू, उमेर समूह ${band}`,
+    ageCols: {
+      expectation: "अपेक्षित प्रतिक्रिया",
+      n: "सत्र",
+      median: "मध्यिका [IQR]",
+      range: "आधार दायरा",
+      publishedShares: "प्रकाशित आधाररेखा",
+      draftShares: "प्रयोगको आधाररेखा",
+      publishedPercentile: "अपेक्षित मानको प्रतिशतक (प्रकाशित)",
+      draftPercentile: "अपेक्षित मानको प्रतिशतक (प्रयोग)",
+    },
+    expectation: (stimulus, segment, metric) => `${stimulus} / ${segment} / ${metric}`,
+    shares: (onTarget, monitor, atypical) => `${onTarget} लक्ष्यमा, ${monitor} निगरानी, ${atypical} असामान्य`,
+    range: (low, high, expected) => `${low} देखि ${high} (अपेक्षित ${expected})`,
+    noRange: "समूहभित्र फरक छ",
+    noExpectations: "यो समूहमा स्कोर गरिएका अपेक्षित प्रतिक्रिया छैनन्।",
+    unreadable: "यो रनको उमेर प्रोफाइल पढ्न सकिएन।",
   },
   errors: {
     "experiment-name-exists": "यो नामको प्रयोग पहिले नै छ।",

@@ -65,3 +65,16 @@
 .provenance dd { margin: 0; display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; word-break: break-all; }
 .statusRow { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
 .progress { width: 12rem; }
+
+/* WP-X.9 sweep heatmap and age tables: a one-hue sequential scale in six CSS steps (no inline styles under the CSP). */
+.heatmap { width: 100%; max-width: 560px; height: auto; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+.heat0 { fill: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+.heat1 { fill: color-mix(in srgb, var(--accent) 28%, var(--surface)); }
+.heat2 { fill: color-mix(in srgb, var(--accent) 44%, var(--surface)); }
+.heat3 { fill: color-mix(in srgb, var(--accent) 60%, var(--surface)); }
+.heat4 { fill: color-mix(in srgb, var(--accent) 78%, var(--surface)); }
+.heat5 { fill: var(--accent); }
+.heatSuppressed { fill: color-mix(in srgb, var(--grey) 35%, var(--surface)); }
+.heatPublished { fill: none; stroke: var(--text); stroke-width: 2; }
+.heatLegend { display: flex; flex-wrap: wrap; gap: .75rem; font-size: .8rem; color: var(--muted); }
+.ageTable td, .ageTable th { white-space: normal; }

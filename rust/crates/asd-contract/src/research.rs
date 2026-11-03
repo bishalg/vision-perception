@@ -524,6 +524,10 @@ pub struct SweepCell {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct SweepSummary {
     pub axes: Vec<SweepAxis>,
+    /// The published profile's value per axis: the cell the console marks. It is always a
+    /// cell; when it is off the grid it is the last one (SWP-2).
+    #[serde(default)]
+    pub published_values: Vec<f64>,
     pub cells: Vec<SweepCell>,
 }
 

@@ -213,3 +213,35 @@ test("the Quality tab draws the drift warn and hard lines from the effective pro
   await expect(page.getByTestId("drift-warn")).toContainText("Warn 1.5°");
   await expect(page.getByTestId("drift-hard")).toContainText("Hard limit 3°");
 });
+
+/** WP-X.9: the sweep and age-profile sections of the seeded phase-B runs (SWP-3, AGE-1, AGE-3; `mock/research.ts`). */
+const SWEEP_RUN = "a0000000-0000-4000-8000-000000000004";
+const AGE_RUN = "a0000000-0000-4000-8000-000000000005";
+
+test("a two-axis sweep run draws all 625 grid cells in each heatmap and lists the off-grid published value", async ({ page }) => {
+  await researcher(page);
+  const org = new URL(page.url()).pathname.split("/")[1]!;
+  await page.goto(`/${org}/research/runs/${SWEEP_RUN}`);
+  const panel = page.getByRole("region", { name: "Parameter sweep" });
+  await expect(panel).toContainText("626 cells");
+  await expect(panel.getByTestId("sweep-heatmap")).toHaveCount(2);
+  await expect(panel.getByTestId("sweep-cell")).toHaveCount(1250);
+  await expect(panel).toContainText("The published value 0.65, 0.35 is outside the grid");
+  await panel.getByText("Show every cell as a table").click();
+  const table = panel.getByRole("table", { name: "Sweep cells" });
+  await expect(table.getByRole("row")).toHaveCount(627);
+  await expect(table.locator("tr[data-published]")).toContainText("(published)");
+  await expect(table).toContainText("n < 12");
+});
+
+test("an age-profile run shows the shares under both baselines and hides the small band", async ({ page }) => {
+  await researcher(page);
+  const org = new URL(page.url()).pathname.split("/")[1]!;
+  await page.goto(`/${org}/research/runs/${AGE_RUN}`);
+  const section = page.getByRole("region", { name: "Age profile" });
+  await expect(section).toContainText("Published baselines 2026.10.0; experiment baselines 2026.11.0-draft.");
+  const shown = section.getByRole("region", { name: "Age band 24-35 (24-35 months)" });
+  await expect(shown.getByTestId("age-row")).toContainText("50% on target, 30% monitor, 20% atypical");
+  await expect(shown.getByTestId("age-row")).toContainText("30% on target, 50% monitor, 20% atypical");
+  await expect(section.getByRole("region", { name: "Age band 36-47 (36-47 months)" }).getByTestId("age-band-suppressed")).toHaveText("n < 12");
+});
