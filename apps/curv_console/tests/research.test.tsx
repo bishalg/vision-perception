@@ -487,7 +487,7 @@ describe("Workbench", () => {
     expect(await within(dialog).findByText(en.run.bandRow("36-47", en.suppressedCell(preview.small_cell_k)))).toBeInTheDocument();
     await userEvent.type(within(dialog).getByLabelText(en.run.seed), "7");
     await userEvent.click(within(dialog).getByRole("button", { name: en.run.submit }));
-    await waitFor(() => expect(a.runOnCohort).toHaveBeenCalledWith({ experiment_id: MOCK_RESEARCH_IDS.experimentDraft, cohort_id: MOCK_RESEARCH_IDS.cohortToddlers, level: "auto", seed: 7 }));
+    await waitFor(() => expect(a.runOnCohort).toHaveBeenCalledWith({ kind: "cohort_rescore", experiment_id: MOCK_RESEARCH_IDS.experimentDraft, cohort_id: MOCK_RESEARCH_IDS.cohortToddlers, level: "auto", seed: 7 }));
     await waitFor(() => expect(push).toHaveBeenCalledWith(`/${MOCK_ORG_ID}/research/runs/r1`));
   });
 

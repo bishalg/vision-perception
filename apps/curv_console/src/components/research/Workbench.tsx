@@ -11,7 +11,7 @@ import { researchText, type ResearchMessages } from "@/messages/research";
 import { ExperimentHeader } from "./ExperimentHeader";
 import { PreviewPanel } from "./PreviewPanel";
 import { RegistryForm } from "./RegistryForm";
-import { RunDialog } from "./RunDialog";
+import { RunDialog, type RunStartInput } from "./RunDialog";
 import type { PickerSession } from "./SessionPicker";
 import r from "./research.module.css";
 
@@ -19,7 +19,7 @@ export interface WorkbenchActions {
   update: (rowVersion: number, input: { name: string; description: string | null; profile: ProfileDoc }) => Promise<ResearchResult<{ rowVersion: number; profileHash: string }>>;
   promote: (input: { version: string; notes: string }) => Promise<ResearchResult<{ version: string }>>;
   previewCohort: (definition: Cohort["definition"]) => Promise<ResearchResult<{ preview: CohortPreview }>>;
-  runOnCohort: (input: { experiment_id: string; cohort_id: string; level: string; seed?: number }) => Promise<ResearchResult<{ runId: string }>>;
+  runOnCohort: (input: RunStartInput) => Promise<ResearchResult<{ runId: string }>>;
   loadRecords: (ids: string[]) => Promise<ResearchResult<{ records: PreviewRecord[] }>>;
   loadFrames: (id: string) => Promise<ResearchResult<{ jsonl: string }>>;
 }
@@ -140,6 +140,8 @@ export function Workbench({
           dirty={dirty}
           previewCohort={actions.previewCohort}
           runOnCohort={actions.runOnCohort}
+          registry={registry}
+          publishedProfile={publishedProfile}
           onClose={() => setRunning(false)}
           text={text}
         />

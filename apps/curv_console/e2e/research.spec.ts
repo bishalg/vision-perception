@@ -234,6 +234,26 @@ test("a two-axis sweep run draws all 625 grid cells in each heatmap and lists th
   await expect(table).toContainText("n < 12");
 });
 
+test("the run dialog starts a parameter sweep from its axis editor and lands on the run page (WP-X.9b)", async ({ page }) => {
+  await researcher(page);
+  await newExperiment(page, `E2E sweep run ${Date.now()}`);
+  await page.getByRole("button", { name: "Run on cohort" }).click();
+  const dialog = page.getByRole("dialog", { name: "Run on cohort" });
+  await dialog.getByRole("combobox", { name: /^Cohort/ }).selectOption({ index: 1 });
+  await dialog.getByRole("combobox", { name: /^Analysis/ }).selectOption("param_sweep");
+  const axis = dialog.getByRole("group", { name: "Axis 1" });
+  await axis.getByLabel("Parameter").selectOption("flag.greenFloor");
+  await axis.getByLabel("From", { exact: true }).fill("0.5");
+  await axis.getByLabel("To", { exact: true }).fill("0.8");
+  await axis.getByLabel("Step", { exact: true }).fill("0.1");
+  // 0.5, 0.6, 0.7, 0.8 plus the published 0.65.
+  await expect(dialog.getByRole("status").filter({ hasText: "cells" })).toContainText("5 cells");
+  await expect(axis.getByText("The published value 0.65 is always included.")).toBeVisible();
+  await dialog.getByRole("checkbox", { name: "eye_dwell_ratio" }).check();
+  await dialog.getByRole("button", { name: "Start run" }).click();
+  await expect(page).toHaveURL(/\/research\/runs\/[^/]+$/, { timeout: 45_000 });
+});
+
 test("an age-profile run shows the shares under both baselines and hides the small band", async ({ page }) => {
   await researcher(page);
   const org = new URL(page.url()).pathname.split("/")[1]!;

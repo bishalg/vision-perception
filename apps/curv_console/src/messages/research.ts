@@ -358,6 +358,40 @@ export interface ResearchMessages {
   /** Server-action failures, by problem slug; `fallback` otherwise. */
   errors: Record<string, string>;
   params: Record<string, ParamText>;
+  /** WP-X.9b: the kind picker and the sweep axis editor of the run dialog (RUI-5, SWP-1). */
+  runSetup: {
+    kind: string;
+    kinds: Record<(typeof RUN_KINDS)[number], string>;
+    ageNote: string;
+    axes: string;
+    axis: (n: number) => string;
+    knob: string;
+    from: string;
+    to: string;
+    step: string;
+    addAxis: string;
+    removeAxis: string;
+    framesOnly: string;
+    noKnobs: string;
+    published: (value: string) => string;
+    cells: (n: number, max: number) => string;
+    cellsUnknown: string;
+    metrics: string;
+    metricsHint: string;
+    problems: {
+      param: string;
+      level: string;
+      range: string;
+      step: string;
+      bounds: (min: number, max: number) => string;
+      whole: string;
+      fine: (step: number) => string;
+      tooMany: (steps: number, max: number) => string;
+      axes: string;
+      sameKnob: string;
+      cells: (n: number, max: number) => string;
+    };
+  };
 }
 
 const en: ResearchMessages = {
@@ -865,6 +899,39 @@ const en: ResearchMessages = {
     "norms.includeImputed": { label: "Include imputed norms", help: "Include norm cells that were filled by interpolation." },
     "review.lowQualityValidRatio": { label: "Low-quality valid ratio", help: "Sessions with a valid-sample ratio below this value are queued for quality review." },
     // <registry:en:end>
+  },
+  runSetup: {
+    kind: "Analysis",
+    kinds: { cohort_rescore: "Cohort re-score (published vs draft)", param_sweep: "Parameter sweep", age_profile: "Age profile" },
+    ageNote: "Compares this experiment's baselines with the published ones for each age band.",
+    axes: "Sweep axes",
+    axis: (n) => `Axis ${n}`,
+    knob: "Parameter",
+    from: "From",
+    to: "To",
+    step: "Step",
+    addAxis: "Add a second axis",
+    removeAxis: "Remove axis",
+    framesOnly: "Parameters of the metrics and frames stages can be chosen only at level “Frames”.",
+    noKnobs: "No parameter can be swept at this level.",
+    published: (v) => `The published value ${v} is always included.`,
+    cells: (n, max) => `${n} cells (at most ${max})`,
+    cellsUnknown: "The cell count shows once the axes are valid.",
+    metrics: "Metrics to summarise per cell",
+    metricsHint: "Optional; with none chosen only the composite and the flag rates are summarised.",
+    problems: {
+      param: "This parameter cannot be swept.",
+      level: "This parameter needs level “Frames”.",
+      range: "From must not exceed To; both must be numbers.",
+      step: "Step must be a number above zero.",
+      bounds: (min, max) => `Values must lie between ${min} and ${max}.`,
+      whole: "For a whole-number parameter, From, To and Step must be whole numbers.",
+      fine: (step) => `Step must be at least ${step}.`,
+      tooMany: (steps, max) => `${steps} steps; at most ${max} per axis.`,
+      axes: "One or two axes are needed.",
+      sameKnob: "Each axis must sweep a different parameter.",
+      cells: (n, max) => `${n} cells; at most ${max}.`,
+    },
   },
 };
 
@@ -1376,6 +1443,39 @@ const ne: ResearchMessages = {
     "norms.includeImputed": { label: "इम्प्युट गरिएका मानक समावेश", help: "इन्टरपोलेसनले भरिएका मानक कक्ष समावेश गर्छ।" },
     "review.lowQualityValidRatio": { label: "कम-गुणस्तर वैध अनुपात", help: "वैध नमुना अनुपात यसभन्दा कम भएका सत्र गुणस्तर समीक्षामा पठाइन्छन्।" },
     // <registry:ne:end>
+  },
+  runSetup: {
+    kind: "विश्लेषणको प्रकार", // ne: draft
+    kinds: { cohort_rescore: "कोहोर्ट पुनः-स्कोर (प्रकाशित बनाम मस्यौदा)", param_sweep: "प्यारामिटर स्वीप", age_profile: "उमेर प्रोफाइल" }, // ne: draft
+    ageNote: "यसले प्रयोगका मानकलाई प्रत्येक उमेर समूहमा प्रकाशित मानकसँग तुलना गर्छ।", // ne: draft
+    axes: "स्वीप अक्ष", // ne: draft
+    axis: (n) => `अक्ष ${n}`, // ne: draft
+    knob: "प्यारामिटर", // ne: draft
+    from: "देखि", // ne: draft
+    to: "सम्म", // ne: draft
+    step: "चरण", // ne: draft
+    addAxis: "दोस्रो अक्ष थप्नुहोस्", // ne: draft
+    removeAxis: "अक्ष हटाउनुहोस्", // ne: draft
+    framesOnly: "मेट्रिक्स र फ्रेम चरणका प्यारामिटर स्तर “फ्रेम” हुँदा मात्र चयन गर्न मिल्छ।", // ne: draft
+    noKnobs: "यो स्तरमा स्वीप गर्न मिल्ने प्यारामिटर छैन।", // ne: draft
+    published: (v) => `प्रकाशित मान ${v} सधैं समावेश हुन्छ।`, // ne: draft
+    cells: (n, max) => `${n} कक्ष (बढीमा ${max})`, // ne: draft
+    cellsUnknown: "अक्षहरू मिलेपछि कक्ष संख्या देखिन्छ।", // ne: draft
+    metrics: "प्रति कक्ष सारांशका मेट्रिक्स", // ne: draft
+    metricsHint: "वैकल्पिक; कुनै नचुनेमा कम्पोजिट र फ्लागको दर मात्र देखिन्छ।", // ne: draft
+    problems: {
+      param: "यो प्यारामिटर स्वीप गर्न मिल्दैन।", // ne: draft
+      level: "यो प्यारामिटरलाई स्तर “फ्रेम” चाहिन्छ।", // ne: draft
+      range: "“देखि” “सम्म” भन्दा बढी हुनु हुँदैन; दुवै संख्या हुनुपर्छ।", // ne: draft
+      step: "चरण शून्यभन्दा ठुलो संख्या हुनुपर्छ।", // ne: draft
+      bounds: (min, max) => `मान ${min} र ${max} बीच हुनुपर्छ।`, // ne: draft
+      whole: "पूर्णाङ्क प्यारामिटरमा देखि, सम्म र चरण पूर्ण संख्या हुनुपर्छ।", // ne: draft
+      fine: (step) => `चरण कम्तीमा ${step} हुनुपर्छ।`, // ne: draft
+      tooMany: (steps, max) => `${steps} चरण छन्; प्रति अक्ष बढीमा ${max}।`, // ne: draft
+      axes: "एक वा दुई अक्ष चाहिन्छ।", // ne: draft
+      sameKnob: "प्रत्येक अक्षले फरक प्यारामिटर स्वीप गर्नुपर्छ।", // ne: draft
+      cells: (n, max) => `${n} कक्ष छन्; बढीमा ${max}।`, // ne: draft
+    },
   },
 };
 
