@@ -24,7 +24,7 @@
 //! (ADR-0012 Q1). A log past it is deleted, `research_frames_blob_key`/`_bytes`/`_sha256`
 //! cleared and `research_frames_purged_at` set (the read route then answers `410
 //! frames-purged`). Each org result carries `research_frames_purged` next to
-//! `frames_purged` (the member is added to the stored JSON; the contract type follows).
+//! `frames_purged` (`RetentionOrgResult.research_frames_purged`).
 
 use asd_contract::privacy::{RetentionOrgResult, RetentionSweepResult};
 use serde_json::{json, Value};
@@ -85,7 +85,6 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
     .await?;
 
     let mut results = Vec::with_capacity(orgs.len());
-    let mut research_counts = Vec::with_capacity(orgs.len());
     for org in orgs {
         let research_purged = purge_research_logs(
             pool,
@@ -96,7 +95,6 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
             job.attempts,
         )
         .await?;
-        research_counts.push(research_purged);
         let purged = if dry_run {
             let n = sqlx::query_scalar!(
                 r#"SELECT count(*) AS "n!" FROM sessions
@@ -152,6 +150,7 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
             retention_months: org.retention_months,
             cutoff: cursor::ts(org.cutoff),
             frames_purged: purged,
+            research_frames_purged: research_purged,
         };
         if !scheduled || purged > 0 || research_purged > 0 {
             let action = if dry_run {
@@ -178,18 +177,11 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
         }
         results.push(result);
     }
-    let mut value = serde_json::to_value(RetentionSweepResult {
+    Ok(serde_json::to_value(RetentionSweepResult {
         dry_run,
         orgs: results,
     })
-    .expect("plain data");
-    // RFL-5: `research_frames_purged` per org (additive; see the module docs).
-    if let Some(orgs) = value.get_mut("orgs").and_then(Value::as_array_mut) {
-        for (entry, n) in orgs.iter_mut().zip(research_counts) {
-            entry["research_frames_purged"] = json!(n);
-        }
-    }
-    Ok(value)
+    .expect("plain data"))
 }
 
 /// RFL-5: deletes (or, in a dry run, counts) the research logs of `org`'s sessions received

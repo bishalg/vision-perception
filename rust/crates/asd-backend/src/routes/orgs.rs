@@ -13,9 +13,8 @@
 //!
 //! Researcher toolkit (WP-X.2): `settings.research.small_cell_k` is an integer in `5..=50`
 //! (PRV-1; absent = 12), and `research_frames_retention_months` (RFL-5; `1..=240`, `null` =
-//! follow `retention_months`) is read and patched next to `retention_months`. That member is
-//! added to the `Org` body here ([`OrgView`], [`OrgPatchBody`]) until the contract type has
-//! it.
+//! follow `retention_months`) is read and patched next to `retention_months`
+//! (`Org`/`OrgPatch.research_frames_retention_months`).
 
 use asd_contract::api_v1::{AuditEntry, AuditPage, Org, OrgKind, OrgPage, OrgPatch};
 use asd_contract::clinical::{
@@ -29,7 +28,7 @@ use axum::{Json, Router};
 use chrono::{DateTime, Utc};
 use http::Uri;
 use serde::Deserialize;
-use serde::{Deserializer, Serialize};
+
 use serde_json::{json, Map, Value};
 
 use crate::app::AppState;
@@ -235,32 +234,6 @@ fn small_cell_k(v: &Value) -> Result<(), &'static str> {
     }
 }
 
-/// `GET`/`PATCH /v1/orgs/{id}` body: the contract `Org` plus
-/// `research_frames_retention_months` (RFL-5; omitted when NULL).
-#[derive(Debug, Clone, PartialEq, Serialize)]
-pub struct OrgView {
-    #[serde(flatten)]
-    pub org: Org,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub research_frames_retention_months: Option<u32>,
-}
-
-/// `PATCH /v1/orgs/{id}` body: the contract `OrgPatch` plus
-/// `research_frames_retention_months` (absent = unchanged, `null` = follow
-/// `retention_months`, a number = its own horizon).
-#[derive(Debug, Clone, Default, Deserialize)]
-pub struct OrgPatchBody {
-    #[serde(flatten)]
-    pub patch: OrgPatch,
-    #[serde(default, deserialize_with = "present")]
-    pub research_frames_retention_months: Option<Option<u32>>,
-}
-
-/// A present member, `null` included, is `Some(..)`; an absent one stays `None`.
-fn present<'de, D: Deserializer<'de>>(d: D) -> Result<Option<Option<u32>>, D::Error> {
-    Option::<u32>::deserialize(d).map(Some)
-}
-
 /// Validation errors for a settings patch (empty = valid).
 pub fn settings_errors(settings: &std::collections::BTreeMap<String, Value>) -> Vec<InvalidParam> {
     let mut errors = Vec::new();
@@ -345,7 +318,7 @@ pub fn settings_errors(settings: &std::collections::BTreeMap<String, Value>) -> 
 async fn get_org(
     State(state): State<AppState>,
     auth: Require<perm::OrgRead>,
-) -> AppResult<Json<OrgView>> {
+) -> AppResult<Json<Org>> {
     let org = auth.org();
     let row = sqlx::query!(
         "SELECT id, name, kind, retention_months, settings, research_frames_retention_months
@@ -355,14 +328,12 @@ async fn get_org(
     .fetch_optional(&state.db)
     .await?
     .ok_or(AppError::NotFound)?;
-    Ok(Json(OrgView {
-        org: Org {
-            id: row.id.to_string(),
-            name: row.name,
-            kind: org_kind(&row.kind)?,
-            retention_months: u32::try_from(row.retention_months).ok(),
-            settings: Some(public_settings(&row.settings)),
-        },
+    Ok(Json(Org {
+        id: row.id.to_string(),
+        name: row.name,
+        kind: org_kind(&row.kind)?,
+        retention_months: u32::try_from(row.retention_months).ok(),
+        settings: Some(public_settings(&row.settings)),
         research_frames_retention_months: row
             .research_frames_retention_months
             .and_then(|m| u32::try_from(m).ok()),
@@ -435,6 +406,7 @@ async fn list_orgs(
                 kind: org_kind(&r.kind)?,
                 retention_months: u32::try_from(r.retention_months).ok(),
                 settings: None,
+                research_frames_retention_months: None,
             })
         })
         .collect::<AppResult<Vec<_>>>()?;
@@ -445,10 +417,9 @@ async fn list_orgs(
     }))
 }
 
-fn validate_patch(body: &OrgPatchBody) -> AppResult<Option<String>> {
-    let patch = &body.patch;
+fn validate_patch(patch: &OrgPatch) -> AppResult<Option<String>> {
     let mut errors = Vec::new();
-    if let Some(Some(r)) = body.research_frames_retention_months {
+    if let Some(Some(r)) = patch.research_frames_retention_months {
         if r == 0 || r > MAX_RETENTION_MONTHS {
             errors.push(InvalidParam {
                 name: "research_frames_retention_months".into(),
@@ -487,11 +458,10 @@ async fn patch_org(
     State(state): State<AppState>,
     auth: Require<perm::OrgUpdate>,
     meta: RequestMeta,
-    ApiJson(body): ApiJson<OrgPatchBody>,
-) -> AppResult<Json<OrgView>> {
+    ApiJson(patch): ApiJson<OrgPatch>,
+) -> AppResult<Json<Org>> {
     let org = auth.org();
-    let name = validate_patch(&body)?;
-    let patch = &body.patch;
+    let name = validate_patch(&patch)?;
     let mut tx = state.db.begin().await?;
     let current = sqlx::query!(
         "SELECT name, kind, retention_months, settings, research_frames_retention_months
@@ -501,7 +471,7 @@ async fn patch_org(
     .fetch_optional(&mut *tx)
     .await?
     .ok_or(AppError::NotFound)?;
-    let new_research_retention = match body.research_frames_retention_months {
+    let new_research_retention = match patch.research_frames_retention_months {
         Some(m) => m
             .map(i32::try_from)
             .transpose()
@@ -559,14 +529,12 @@ async fn patch_org(
             .await?;
     }
     tx.commit().await?;
-    Ok(Json(OrgView {
-        org: Org {
-            id: org.to_string(),
-            name: new_name,
-            kind: org_kind(&current.kind)?,
-            retention_months: u32::try_from(new_retention).ok(),
-            settings: Some(public_settings(&new_settings)),
-        },
+    Ok(Json(Org {
+        id: org.to_string(),
+        name: new_name,
+        kind: org_kind(&current.kind)?,
+        retention_months: u32::try_from(new_retention).ok(),
+        settings: Some(public_settings(&new_settings)),
         research_frames_retention_months: new_research_retention
             .and_then(|m| u32::try_from(m).ok()),
     }))

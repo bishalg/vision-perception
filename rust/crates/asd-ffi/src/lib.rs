@@ -489,6 +489,21 @@ pub struct AsdIngestAck {
     pub duplicate: Option<bool>,
     pub frames_upload_url: Option<String>,
     pub report_upload_url: Option<String>,
+    /// RFL-3: where to `PUT` the research frame log, when offered.
+    pub research_frames_upload_url: Option<String>,
+}
+
+impl From<asd_sync::IngestAck> for AsdIngestAck {
+    fn from(a: asd_sync::IngestAck) -> Self {
+        Self {
+            session_id: a.session_id,
+            status: a.status,
+            duplicate: a.duplicate,
+            frames_upload_url: a.frames_upload_url,
+            report_upload_url: a.report_upload_url,
+            research_frames_upload_url: a.research_frames_upload_url,
+        }
+    }
 }
 
 /// What the answer to `POST /v1/sessions` means.
@@ -574,15 +589,7 @@ pub fn sync_classify_response(
 ) -> AsdSyncOutcome {
     let headers: Vec<(String, String)> = headers.into_iter().map(|h| (h.name, h.value)).collect();
     match asd_sync::classify_response(status, &headers, &body) {
-        SyncOutcome::Accepted(a) => AsdSyncOutcome::Accepted {
-            ack: AsdIngestAck {
-                session_id: a.session_id,
-                status: a.status,
-                duplicate: a.duplicate,
-                frames_upload_url: a.frames_upload_url,
-                report_upload_url: a.report_upload_url,
-            },
-        },
+        SyncOutcome::Accepted(a) => AsdSyncOutcome::Accepted { ack: a.into() },
         SyncOutcome::Duplicate => AsdSyncOutcome::Duplicate,
         SyncOutcome::Reauthenticate => AsdSyncOutcome::Reauthenticate,
         SyncOutcome::RetryAfter(seconds) => AsdSyncOutcome::RetryAfter { seconds },
@@ -602,15 +609,7 @@ pub fn sync_classify_response_with_body(
 ) -> AsdSyncOutcome {
     let headers: Vec<(String, String)> = headers.into_iter().map(|h| (h.name, h.value)).collect();
     match asd_sync::classify_response_with_body(status, &headers, &body) {
-        SyncOutcome::Accepted(a) => AsdSyncOutcome::Accepted {
-            ack: AsdIngestAck {
-                session_id: a.session_id,
-                status: a.status,
-                duplicate: a.duplicate,
-                frames_upload_url: a.frames_upload_url,
-                report_upload_url: a.report_upload_url,
-            },
-        },
+        SyncOutcome::Accepted(a) => AsdSyncOutcome::Accepted { ack: a.into() },
         SyncOutcome::Duplicate => AsdSyncOutcome::Duplicate,
         SyncOutcome::Reauthenticate => AsdSyncOutcome::Reauthenticate,
         SyncOutcome::RetryAfter(seconds) => AsdSyncOutcome::RetryAfter { seconds },

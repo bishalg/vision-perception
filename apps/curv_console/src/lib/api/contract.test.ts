@@ -68,6 +68,7 @@ import {
   sessionDetailSchema,
   sessionPageSchema,
   sessionSummarySchema,
+  sessionListItemSchema,
   tokenPairSchema,
   updateReviewRequestSchema,
   userSchema,
@@ -129,6 +130,7 @@ const OBJECT_SCHEMAS: Record<string, ZodType & { shape: Record<string, ZodType &
   Org: orgSchema,
   Metrics: metricsSchema,
   SessionSummary: sessionSummarySchema,
+  SessionListItem: sessionListItemSchema,
   SessionDetail: sessionDetailSchema,
   SessionTrackingQuality: sessionTrackingQualitySchema,
   SessionCalibration: sessionCalibrationSchema,
@@ -247,6 +249,23 @@ describe("api-v1.json contract", () => {
     const items = defs.SessionSummary!.examples!;
     expect(sessionPageSchema.parse({ items, next_cursor: null, total: items.length }).items).toHaveLength(items.length);
     expect(sessionPageSchema.parse({ items: [] }).next_cursor).toBeUndefined();
+  });
+
+  it("phase 8 catch-up (WP-X.0b): list frames flag, org research retention, cohort-name-exists", () => {
+    const [summary] = defs.SessionSummary!.examples!;
+    // An older server sends no flag: the list item defaults it.
+    expect(sessionListItemSchema.parse(summary).research_frames_available).toBe(false);
+    expect(sessionPageSchema.parse({ items: [{ ...(summary as object), research_frames_available: true }] }).items[0]!
+      .research_frames_available).toBe(true);
+    expect(defs.SessionListItem!.properties).toHaveProperty("research_frames_available");
+    expect(defs.SessionPage!.properties!.items).toBeDefined();
+    const org = { id: "o", name: "n", kind: "research" };
+    expect(orgSchema.parse(org).research_frames_retention_months).toBeUndefined();
+    expect(orgSchema.parse({ ...org, research_frames_retention_months: 6 }).research_frames_retention_months).toBe(6);
+    expect(orgSchema.safeParse({ ...org, research_frames_retention_months: 0 }).success).toBe(false);
+    expect(defs.Org!.properties).toHaveProperty("research_frames_retention_months");
+    expect(defs.OrgPatch!.properties).toHaveProperty("research_frames_retention_months");
+    expect(PROBLEM_SLUGS).toContain("cohort-name-exists");
   });
 
   it("enums match the contract", () => {

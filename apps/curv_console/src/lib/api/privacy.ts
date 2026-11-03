@@ -81,6 +81,8 @@ export const retentionOrgResultSchema = z.object({
   retention_months: z.number().int(),
   cutoff: z.string(),
   frames_purged: count,
+  /** RFL-5: research frame logs deleted (or, dry run, that would be); 0 from older servers. */
+  research_frames_purged: count.default(0),
 });
 export type RetentionOrgResult = z.infer<typeof retentionOrgResultSchema>;
 

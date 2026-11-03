@@ -235,6 +235,12 @@ pub struct SessionIngestResponse {
     pub duplicate: bool,
     pub frames_upload_url: Option<String>,
     pub report_upload_url: Option<String>,
+    /// RFL-3: where to `PUT` the research frame log (relative proxy path
+    /// `/v1/sessions/{id}/blobs/research_frames`). Offered only in proxy blob mode and only
+    /// for a research-consented session; omitted otherwise. Not part of the stored
+    /// idempotency body: a replay recomputes it like the other upload URLs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub research_frames_upload_url: Option<String>,
 }
 
 fn example_ingest_response() -> SessionIngestResponse {
@@ -244,5 +250,6 @@ fn example_ingest_response() -> SessionIngestResponse {
         duplicate: false,
         frames_upload_url: Some("/v1/sessions/SESS-GOLDEN-0001/blobs/frames".into()),
         report_upload_url: None,
+        research_frames_upload_url: None,
     }
 }

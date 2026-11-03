@@ -141,6 +141,8 @@ pub const EXPERIMENT_NAME_EXISTS: &str = "experiment-name-exists";
 pub const EXPERIMENT_PROMOTED: &str = "experiment-promoted";
 /// 409: the experiment has never been run on a cohort, so it cannot be promoted (GOV-2).
 pub const EXPERIMENT_NO_RUN: &str = "experiment-no-run";
+/// 409: the org already has a cohort with this name.
+pub const COHORT_NAME_EXISTS: &str = "cohort-name-exists";
 /// 400: the cohort selects no session.
 pub const COHORT_EMPTY: &str = "cohort-empty";
 /// 400: the cohort exceeds `ASD_ANALYSIS_MAX_SESSIONS` / `_MAX_FRAME_SESSIONS` (RUN-9).
@@ -223,6 +225,7 @@ pub const SLUGS: &[&str] = &[
     EXPERIMENT_NAME_EXISTS,
     EXPERIMENT_PROMOTED,
     EXPERIMENT_NO_RUN,
+    COHORT_NAME_EXISTS,
     COHORT_EMPTY,
     COHORT_TOO_LARGE,
     SWEEP_TOO_LARGE,

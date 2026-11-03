@@ -139,7 +139,7 @@ export function createMockPrivacy(ctx: MockPrivacyContext): PrivacyApi {
       else if (j.view.status !== "succeeded") {
         const result: RetentionSweepResult = {
           dry_run: j.dryRun,
-          orgs: [{ org_id: ctx.orgId, retention_months: 24, cutoff: iso(-730 * DAY), frames_purged: purgeable }],
+          orgs: [{ org_id: ctx.orgId, retention_months: 24, cutoff: iso(-730 * DAY), frames_purged: purgeable, research_frames_purged: 0 }],
         };
         if (!j.dryRun) purgeable = 0;
         j.view = { ...j.view, status: "succeeded", result, finished_at: iso(5_000) };

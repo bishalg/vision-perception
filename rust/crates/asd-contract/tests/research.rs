@@ -420,6 +420,7 @@ fn every_toolkit_slug_is_published() {
         problem::SWEEP_TOO_LARGE,
         problem::ANALYSIS_QUOTA_EXCEEDED,
         problem::ANALYSIS_LEVEL_UNAVAILABLE,
+        problem::COHORT_NAME_EXISTS,
         problem::FRAMES_NOT_AVAILABLE,
         problem::FRAMES_PURGED,
         problem::RESEARCH_CONSENT_REQUIRED,

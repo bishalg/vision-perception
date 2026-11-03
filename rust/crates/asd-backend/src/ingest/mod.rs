@@ -56,34 +56,13 @@ pub fn flag_str(flag: SessionAttentionFlag) -> &'static str {
     }
 }
 
-/// Outcome of [`ingest`]: `201` for a new session, `200` for a replay.
+/// Outcome of [`ingest`]: `201` for a new session, `200` for a replay. The response carries
+/// `research_frames_upload_url` (RFL-3); the idempotency store keeps the body without it, so
+/// a replay recomputes it like the other upload URLs (CON-17).
 #[derive(Debug)]
 pub struct Ingested {
     pub status: StatusCode,
     pub response: SessionIngestResponse,
-    /// RFL-3: where to `PUT` the research frame log; see [`research_frames_upload_url`].
-    pub research_frames_upload_url: Option<String>,
-}
-
-impl Ingested {
-    /// The body the device gets.
-    pub fn ack(self) -> IngestAck {
-        IngestAck {
-            response: self.response,
-            research_frames_upload_url: self.research_frames_upload_url,
-        }
-    }
-}
-
-/// The ingest acknowledgement: the contract `SessionIngestResponse` plus, additively,
-/// `research_frames_upload_url` (RFL-3). The idempotency store keeps the contract part only,
-/// so a replay recomputes the URL like the other upload URLs (CON-17).
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
-pub struct IngestAck {
-    #[serde(flatten)]
-    pub response: SessionIngestResponse,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub research_frames_upload_url: Option<String>,
 }
 
 /// RFL-3: the relative proxy URL of the sealed research-log upload, offered only in proxy
@@ -130,10 +109,10 @@ pub async fn ingest(
                 blobs::upload_urls(state, org, &req.participant_token, &req.session_id).await?;
             response.frames_upload_url = frames;
             response.report_upload_url = report;
+            response.research_frames_upload_url = research_frames_upload_url(state, req);
             return Ok(Ingested {
                 status: StatusCode::OK,
                 response,
-                research_frames_upload_url: research_frames_upload_url(state, req),
             });
         }
         Claim::New => {}
@@ -228,8 +207,8 @@ pub async fn ingest(
                     duplicate: true,
                     frames_upload_url: frames,
                     report_upload_url: report,
+                    research_frames_upload_url: research_frames_upload_url(state, req),
                 },
-                research_frames_upload_url: research_frames_upload_url(state, req),
             });
         }
         return Err(AppError::Conflict {
@@ -297,22 +276,24 @@ pub async fn ingest(
 
     let (frames, report) =
         blobs::upload_urls(state, org, &req.participant_token, &req.session_id).await?;
-    let response = SessionIngestResponse {
+    let mut response = SessionIngestResponse {
         session_id: req.session_id.clone(),
         status: SessionIngestStatus::Accepted,
         duplicate: false,
         frames_upload_url: frames,
         report_upload_url: report,
+        research_frames_upload_url: None,
     };
+    // Stored without the research URL: a replay recomputes it (CON-17).
     let body = serde_json::to_value(&response)
         .map_err(|e| AppError::Internal(format!("response: {e}")))?;
     idempotency::complete(&mut tx, &scope, &v.idempotency_key, 201, &body).await?;
     tx.commit().await?;
+    response.research_frames_upload_url = research_frames_upload_url(state, req);
 
     Ok(Ingested {
         status: StatusCode::CREATED,
         response,
-        research_frames_upload_url: research_frames_upload_url(state, req),
     })
 }
 

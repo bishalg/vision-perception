@@ -6748,6 +6748,18 @@
         "name": {
           "type": "string"
         },
+        "research_frames_retention_months": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "RFL-5: retention horizon of the research frame log, `1..=240` months. Omitted when\nthe org follows `retention_months`. Present on `GET`/`PATCH /v1/orgs/{id}`."
+        },
         "retention_months": {
           "anyOf": [
             {
@@ -6800,6 +6812,18 @@
               "type": "null"
             }
           ]
+        },
+        "research_frames_retention_months": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "RFL-5, `1..=240` months (validated by the route like `retention_months`). Absent =\nunchanged (`None`), `null` = follow `retention_months` (`Some(None)`), a number = the\nlog's own horizon."
         },
         "retention_months": {
           "anyOf": [
@@ -7867,6 +7891,7 @@
         "experiment-name-exists",
         "experiment-promoted",
         "experiment-no-run",
+        "cohort-name-exists",
         "cohort-empty",
         "cohort-too-large",
         "sweep-too-large",
@@ -8367,6 +8392,12 @@
         },
         "org_id": {
           "type": "string"
+        },
+        "research_frames_purged": {
+          "default": 0,
+          "description": "Sessions whose research frame log was (or, in a dry run, would be) deleted (RFL-5).",
+          "minimum": 0,
+          "type": "integer"
         },
         "retention_months": {
           "description": "`organizations.retention_months`.",
@@ -10392,6 +10423,17 @@
             }
           ]
         },
+        "research_frames_upload_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "RFL-3: where to `PUT` the research frame log (relative proxy path\n`/v1/sessions/{id}/blobs/research_frames`). Offered only in proxy blob mode and only\nfor a research-consented session; omitted otherwise. Not part of the stored\nidempotency body: a replay recomputes it like the other upload URLs."
+        },
         "sessionId": {
           "type": "string"
         },
@@ -10413,12 +10455,195 @@
       ],
       "type": "string"
     },
+    "SessionListItem": {
+      "description": "`GET /v1/orgs/{id}/sessions` item: the [`SessionSummary`] plus list-only flags. The\nsummary members are flattened, so a list item is a superset of a summary.",
+      "examples": [
+        {
+          "attention_flag": "yellow",
+          "battery": "express_30s",
+          "bundle_version": null,
+          "capture_source": "truedepth",
+          "composite_confidence": 0.5,
+          "composite_score": 0.74,
+          "device_id": "9a8b7c6d-5e4f-4321-8fed-cba987654321",
+          "duration_sec": 32.5,
+          "id": "SESS-GOLDEN-0001",
+          "participant_id": "7f1c1c1e-0000-4000-8000-000000000001",
+          "participant_token": "child-SESS-GOL",
+          "quality_verdict": "optimal",
+          "research_frames_available": true,
+          "reviewed": false,
+          "scoring_status": null,
+          "started_at": "2026-10-26T07:33:20.000Z",
+          "tracking_accuracy_deg": null,
+          "tracking_verdict": null,
+          "unscorable_reason": null
+        }
+      ],
+      "properties": {
+        "attention_flag": {
+          "$ref": "#/$defs/SessionAttentionFlag"
+        },
+        "battery": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Catalog protocol id, e.g. `express_30s` (CON-16)."
+        },
+        "bundle_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "capture_source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CaptureSource"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "composite_confidence": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`1 - share of low-confidence clips` (ING-2)."
+        },
+        "composite_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "device_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "duration_sec": {
+          "type": "number"
+        },
+        "id": {
+          "type": "string"
+        },
+        "participant_id": {
+          "description": "`participants.id` (UUID, CON-20).",
+          "type": "string"
+        },
+        "participant_token": {
+          "description": "The pseudonymous token the device sent (CON-20).",
+          "type": "string"
+        },
+        "quality_verdict": {
+          "type": "string"
+        },
+        "research_frames_available": {
+          "default": false,
+          "description": "A research frame log is stored for the session (RFL-6; same test as\n`SessionDetail.research_frames.available` and the list's `frames=available`), so a\nclient can offer frame-level views without reading each session.",
+          "type": "boolean"
+        },
+        "reviewed": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "scoring_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScoringStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "SCH-5 scoring outcome of a schema 1.8 session; `null` for a 1.6 or 1.7 session (those\nalways carry score numbers). `unscorable`: the session has no scores; show \"not\nscored\", never a number."
+        },
+        "started_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "tracking_accuracy_deg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "QS-2 estimated gaze accuracy, degrees; `null` when not measured (SCH-4)."
+        },
+        "tracking_verdict": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TrackingVerdict"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "QS-4 tracking verdict of a schema 1.7 session; `null` for a 1.6 session or when the\ndevice sent no tracking-quality record (SCH-4)."
+        },
+        "unscorable_reason": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UnscorableReason"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Why an `unscorable` session was not scored, when the device said; `null` otherwise."
+        }
+      },
+      "required": [
+        "id",
+        "participant_id",
+        "participant_token",
+        "started_at",
+        "duration_sec",
+        "quality_verdict",
+        "attention_flag"
+      ],
+      "type": "object"
+    },
     "SessionPage": {
       "description": "`GET /v1/orgs/{id}/sessions`.\nCursor-paginated list envelope: `cursor` is opaque, `limit <= 100`.",
       "properties": {
         "items": {
           "items": {
-            "$ref": "#/$defs/SessionSummary"
+            "$ref": "#/$defs/SessionListItem"
           },
           "type": "array"
         },

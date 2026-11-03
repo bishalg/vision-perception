@@ -80,6 +80,8 @@ export const orgSchema = z.object({
   retention_months: z.number().int().nullable().optional(),
   /** Non-secret org settings; on `GET /orgs/{id}` only (absent in the org list). */
   settings: z.record(z.string(), z.unknown()).nullable().optional(),
+  /** RFL-5: research frame log horizon (1..240 months); absent = follows `retention_months`. */
+  research_frames_retention_months: z.number().int().min(1).max(240).nullable().optional(),
 });
 export type Org = z.infer<typeof orgSchema>;
 
@@ -248,6 +250,13 @@ export const sessionSummarySchema = z.object({
 });
 export type SessionSummary = z.infer<typeof sessionSummarySchema>;
 
+/** `GET /orgs/{id}/sessions` item (`SessionListItem`): the summary plus list-only flags. */
+export const sessionListItemSchema = sessionSummarySchema.extend({
+  /** RFL-6: a research frame log is stored (same test as the detail's `research_frames.available`). */
+  research_frames_available: z.boolean().default(false),
+});
+export type SessionListItem = z.infer<typeof sessionListItemSchema>;
+
 /** `ResearchFramesState` (RFL-6): whether a sealed research frame log is stored for the session. */
 export const researchFramesStateSchema = z.object({
   available: z.boolean(),
@@ -359,7 +368,7 @@ export interface SessionListQuery extends SessionFilters {
 
 /** Cursor-paginated list envelope (all list endpoints). */
 export const sessionPageSchema = z.object({
-  items: z.array(sessionSummarySchema),
+  items: z.array(sessionListItemSchema),
   next_cursor: z.string().nullable().optional(),
   total: z.number().int().nullable().optional(),
 });
@@ -595,6 +604,7 @@ export const PROBLEM_SLUGS = [
   "experiment-name-exists",
   "experiment-promoted",
   "experiment-no-run",
+  "cohort-name-exists",
   "cohort-empty",
   "cohort-too-large",
   "sweep-too-large",

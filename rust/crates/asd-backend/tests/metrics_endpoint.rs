@@ -375,9 +375,24 @@ fn scrape_writes_no_request_log() {
         }
         std::thread::sleep(Duration::from_millis(50));
     };
-    let responses = log.matches(r#""message":"response""#).count();
-    assert_eq!(responses, before + 1, "scrape was request-logged:\n{log}");
-    assert!(!log.contains("/metrics"), "{log}");
+    // Not a fixed count: under load the readiness poll in `serve_with_log` can add a late
+    // `/health` line. Every response line must be an API `/health` request, and the scrape
+    // must not appear anywhere.
+    let lines: Vec<&str> = log
+        .lines()
+        .filter(|l| l.contains(r#""message":"response""#))
+        .collect();
+    assert!(lines.len() >= 2, "{log}");
+    for line in lines {
+        assert!(
+            line.contains(r#""route":"/health""#),
+            "a non-/health request was logged (the scrape?):\n{line}"
+        );
+    }
+    assert!(
+        !log.contains("/metrics"),
+        "scrape was request-logged:\n{log}"
+    );
 }
 
 #[test]

@@ -22,7 +22,9 @@
 use std::sync::Arc;
 
 use asd_contract::api_v1::{ClipList, SessionDetail, SessionPage, SessionRaw};
-use asd_contract::session_v1_6::{IDEMPOTENCY_KEY_HEADER, SCHEMA_VERSION_HEADER};
+use asd_contract::session_v1_6::{
+    SessionIngestResponse, IDEMPOTENCY_KEY_HEADER, SCHEMA_VERSION_HEADER,
+};
 use axum::body::{Body, Bytes};
 use axum::extract::rejection::{BytesRejection, QueryRejection};
 use axum::extract::{DefaultBodyLimit, Path, Query, State};
@@ -114,7 +116,7 @@ async fn create(
     meta: RequestMeta,
     headers: HeaderMap,
     body: Result<Bytes, BytesRejection>,
-) -> AppResult<(StatusCode, Json<ingest::IngestAck>)> {
+) -> AppResult<(StatusCode, Json<SessionIngestResponse>)> {
     // Every authenticated attempt counts, valid or not.
     limiter
         .0
@@ -128,7 +130,7 @@ async fn create(
         state.config.allow_synthetic,
     )?;
     let done = ingest::ingest(&state, device, &meta, validated).await?;
-    Ok((done.status, Json(done.ack())))
+    Ok((done.status, Json(done.response)))
 }
 
 /// The list's query: the shared session filters plus `frames` (RFL-6).

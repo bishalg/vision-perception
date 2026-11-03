@@ -156,7 +156,7 @@ async fn sessions_filter_by_participant() {
     let (s, body) = list(format!("?participant_id={p}")).await;
     assert_eq!(s, StatusCode::OK, "{body}");
     let page: SessionPage = serde_json::from_value(body).unwrap();
-    let ids: Vec<_> = page.items.iter().map(|i| i.id.as_str()).collect();
+    let ids: Vec<_> = page.items.iter().map(|i| i.summary.id.as_str()).collect();
     assert_eq!(ids, ["S-b", "S-a"]);
     assert_eq!(page.total, Some(2));
 
@@ -167,7 +167,7 @@ async fn sessions_filter_by_participant() {
     let cur = page.next_cursor.unwrap();
     let (_, body) = list(format!("?participant_id={p}&limit=1&cursor={cur}")).await;
     let page: SessionPage = serde_json::from_value(body).unwrap();
-    assert_eq!(page.items[0].id, "S-a");
+    assert_eq!(page.items[0].summary.id, "S-a");
     assert!(page.next_cursor.is_none());
     let (_, body) = list(format!("?participant_id={p}&flag=green")).await;
     let page: SessionPage = serde_json::from_value(body).unwrap();
