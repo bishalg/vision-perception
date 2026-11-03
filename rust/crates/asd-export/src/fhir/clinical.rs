@@ -54,7 +54,7 @@ use super::session::{bundle as session_bundle, patient_reference, BundleInput, F
 use crate::claims;
 use crate::codes::{self, Code, CodePolicy, UnverifiedCode};
 use crate::ids::{fhir_timestamp, urn, uuid5, LOCAL};
-use crate::model::{Disposition, ExportRecord, ReportStatus, Signature, SignatureRole};
+use crate::model::{Disposition, ExportRecord, PatientRef, ReportStatus, Signature, SignatureRole};
 use crate::policy::Mode;
 use crate::watermark::{Watermark, MANDATORY_SENTENCE};
 use crate::{export_refusal, ExportError, ReportError};
@@ -244,7 +244,7 @@ pub fn clinical_report_bundle(input: &ClinicalBundleInput<'_>) -> Result<Value, 
 
     // Patient (FHX-3).
     let patient_url = patient_reference(&subject);
-    let (patient, patient_key) = patient(record, deidentified, input.profile, policy)?;
+    let (patient, patient_key) = patient(&record.patient, deidentified, input.profile, policy)?;
     entries.push(Entry {
         full_url: patient_url.clone(),
         resource: patient,
@@ -252,20 +252,9 @@ pub fn clinical_report_bundle(input: &ClinicalBundleInput<'_>) -> Result<Value, 
     });
 
     // Organization.
-    let org_id = record.session.org_id.as_str();
-    let org_uuid = uuid5(&format!("Organization/{org_id}"));
-    let org_url = urn(&org_uuid);
-    let org_key = (local(NS_ORGANIZATION), org_id.to_owned());
-    entries.push(Entry {
-        full_url: org_url.clone(),
-        resource: json!({
-            "resourceType": "Organization",
-            "id": org_uuid,
-            "identifier": [identifier(&org_key.0, &org_key.1)],
-            "name": record.org.name,
-        }),
-        request: conditional_create("Organization", &org_key),
-    });
+    let organization = organization(record.session.org_id.as_str(), &record.org.name);
+    let org_url = organization.full_url.clone();
+    entries.push(organization);
 
     // Practitioners (FHX-6): identified only, one per distinct signer.
     let signatures: &[Signature] = record
@@ -426,15 +415,76 @@ pub fn clinical_report_bundle(input: &ClinicalBundleInput<'_>) -> Result<Value, 
     Ok(json!({
         "resourceType": "Bundle",
         "id": uuid5(&format!("Bundle/clinical/{}/{session_id}", wm.export_id)),
-        "meta": {"tag": [
-            local_coding(CS_EXPORT_MODE, mode_code(mode), mode.label()),
-            local_coding(CS_EXPORT_MODE, purpose_code(wm), wm.purpose.label()),
-        ]},
+        "meta": bundle_meta(wm),
         "identifier": identifier(&local(NS_EXPORT), &wm.export_id),
         "type": if transaction { "transaction" } else { "collection" },
         "timestamp": fhir_timestamp("watermark.requested_at_utc", &wm.requested_at_utc)?,
         "entry": items,
     }))
+}
+
+/// `Bundle.meta`: the export mode and purpose tags (FHX-7).
+fn bundle_meta(wm: &Watermark) -> Value {
+    json!({"tag": [
+        local_coding(CS_EXPORT_MODE, mode_code(wm.mode), wm.mode.label()),
+        local_coding(CS_EXPORT_MODE, purpose_code(wm), wm.purpose.label()),
+    ]})
+}
+
+/// The `Organization` entry (conditional create on the org id).
+fn organization(org_id: &str, name: &str) -> Entry {
+    let org_uuid = uuid5(&format!("Organization/{org_id}"));
+    let key = (local(NS_ORGANIZATION), org_id.to_owned());
+    Entry {
+        full_url: urn(&org_uuid),
+        resource: json!({
+            "resourceType": "Organization",
+            "id": org_uuid,
+            "identifier": [identifier(&key.0, &key.1)],
+            "name": name,
+        }),
+        request: conditional_create("Organization", &key),
+    }
+}
+
+/// The parts of a `collection` bundle that do not depend on a session: `(meta,
+/// identifier, timestamp)` as [`clinical_report_bundle`] writes them, and the `Patient` and
+/// `Organization` entries (`fullUrl` + `resource`), with the same ids a session's bundle
+/// gives them. For a case package without sessions (SHR-4). `who` is already
+/// de-identified in that mode (pseudonym token, no MRN).
+pub(crate) fn subject_entries(
+    who: &PatientRef,
+    org_id: &str,
+    org_name: &str,
+    watermark: &Watermark,
+    profile: &FhirProfile,
+) -> Result<(Value, Value, Value, Vec<Value>), ExportError> {
+    let deidentified = watermark.mode == Mode::Deidentified;
+    if deidentified && who.mrn.is_some() {
+        return Err(ExportError::NotDeidentified);
+    }
+    let subject = FhirSubject::new(&who.participant_token, None, None);
+    let (resource, _) = patient(who, deidentified, profile, profile.codes)?;
+    let entries = [
+        Entry {
+            full_url: patient_reference(&subject),
+            resource,
+            request: Value::Null,
+        },
+        organization(org_id, org_name),
+    ]
+    .into_iter()
+    .map(|e| json!({"fullUrl": e.full_url, "resource": e.resource}))
+    .collect();
+    Ok((
+        bundle_meta(watermark),
+        identifier(&local(NS_EXPORT), &watermark.export_id),
+        json!(fhir_timestamp(
+            "watermark.requested_at_utc",
+            &watermark.requested_at_utc
+        )?),
+        entries,
+    ))
 }
 
 fn mode_code(mode: Mode) -> &'static str {
@@ -511,12 +561,12 @@ fn gate_codings(v: &mut Value, policy: CodePolicy) -> Result<(), UnverifiedCode>
 /// FHX-3. Returns the resource and the identifier used for conditional create (the MRN
 /// when present, else the token or pseudonym).
 fn patient(
-    record: &ExportRecord,
+    record: &PatientRef,
     deidentified: bool,
     profile: &FhirProfile,
     policy: CodePolicy,
 ) -> Result<(Value, (String, String)), ExportError> {
-    let token = record.patient.participant_token.as_str();
+    let token = record.participant_token.as_str();
     let mut ids = Vec::new();
     let mut key = None;
     if deidentified {
@@ -524,7 +574,7 @@ fn patient(
         ids.push(identifier(&k.0, &k.1));
         key = Some(k);
     } else {
-        if let Some(mrn) = record.patient.mrn.as_ref() {
+        if let Some(mrn) = record.mrn.as_ref() {
             let system = profile
                 .mrn_system
                 .clone()

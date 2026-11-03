@@ -11,6 +11,10 @@
 //! Session notes are read here, sealed, for identified packages whose requester held
 //! `ClinicalContentRead` when asking (`exports.include_clinical_content`).
 //!
+//! A case may have no eligible session (a child seen for visits and documents only): the
+//! participant and org are then read by [`load_subject`] and passed as the package's
+//! `subject` (SHR-1); the route refuses a case with nothing at all to share.
+//!
 //! [`complete`] (WP-I.13b) adds the participant's encounters (REC-3) and attachments
 //! (REC-6) once the sessions are mapped:
 //!
@@ -31,12 +35,13 @@ use std::collections::HashMap;
 use asd_contract::export::ExportMode;
 use asd_export::case_package::{
     self, AttachmentKind, CaseAttachment, CaseConsent, CaseEncounter, CasePackageInput,
-    CaseSession, EncounterKind, EncounterStatus,
+    CaseSession, CaseSubject, EncounterKind, EncounterStatus,
 };
 use asd_export::deid;
 use asd_export::fhir::clinical::FhirProfile;
 use asd_export::fhir::{FhirDevice, DEFAULT_DEVICE_NAME};
-use asd_export::model::{ExportRecord, NoteText};
+use asd_export::model::{ExportRecord, NoteText, OrgFacts, PatientRef};
+use asd_export::policy::ConsentFacts;
 use asd_export::watermark::Watermark;
 use serde_json::Value;
 use sqlx::PgPool;
@@ -145,14 +150,77 @@ pub struct CaseFacts {
     pub deid_salt: [u8; deid::SALT_LEN],
     pub recipient: String,
     pub consent: Option<CaseConsent>,
+    /// The participant and org, needed (and only read) when no session is included.
+    pub subject: Option<CaseSubject>,
+}
+
+/// The participant of a case without sessions as a [`CaseSubject`] (MRN not yet set), and
+/// its sealed MRN when the export may carry it (identified, `exports.include_mrn`, MRN-6).
+/// Research consent lives on sessions, so it is unknown here (a research package of a
+/// sessionless case is refused by the policy).
+pub async fn load_subject(
+    pool: &PgPool,
+    row: &ExportRow,
+    participant: Uuid,
+    org: OrgFacts,
+) -> AppResult<(CaseSubject, Option<(Sealed, String)>)> {
+    let p = sqlx::query!(
+        r#"SELECT token, age_bracket_at_enrol, withdrawn_at IS NOT NULL AS "withdrawn!"
+           FROM participants WHERE id = $1 AND org_id = $2"#,
+        participant,
+        row.org_id,
+    )
+    .fetch_optional(pool)
+    .await?
+    .ok_or(AppError::NotFound)?;
+    let mrn = if row.mode == ExportMode::Identified && row.include_mrn {
+        sqlx::query!(
+            "SELECT id, assigning_authority, mrn_ct, mrn_key_id
+             FROM patient_refs WHERE org_id = $1 AND participant_id = $2",
+            row.org_id,
+            participant,
+        )
+        .fetch_optional(pool)
+        .await?
+        .map(|m| {
+            (
+                Sealed {
+                    table: "patient_refs",
+                    column: "mrn_ct",
+                    row_id: m.id,
+                    key_id: m.mrn_key_id,
+                    ciphertext: m.mrn_ct,
+                },
+                m.assigning_authority,
+            )
+        })
+    } else {
+        None
+    };
+    let subject = CaseSubject {
+        org_id: row.org_id.to_string(),
+        org,
+        patient: PatientRef {
+            participant_id: participant.to_string(),
+            participant_token: p.token,
+            mrn: None,
+            age_bracket_at_enrol: p.age_bracket_at_enrol,
+        },
+        consent: ConsentFacts {
+            withdrawn: p.withdrawn,
+            research_consented: None,
+        },
+    };
+    Ok((subject, mrn))
 }
 
 /// Rows → [`CasePackageInput`]. Encounters and attachments are added by [`complete`].
+/// Without sessions the facts must carry the subject.
 pub fn package_input(
     facts: CaseFacts,
     sessions: Vec<IncludedSession>,
 ) -> Result<CasePackageInput, RenderError> {
-    if sessions.is_empty() {
+    if sessions.is_empty() && facts.subject.is_none() {
         return Err(RenderError::NoRecords);
     }
     let sessions = sessions
@@ -180,6 +248,7 @@ pub fn package_input(
         encounters: Vec::new(),
         attachments: Vec::new(),
         fhir_profile: FhirProfile::default(),
+        subject: facts.subject,
     })
 }
 
@@ -431,7 +500,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn an_empty_case_is_refused_before_rendering() {
+    fn an_empty_case_without_a_subject_is_refused_before_rendering() {
         let facts = CaseFacts {
             watermark: Watermark {
                 export_id: Uuid::nil().to_string(),
@@ -445,6 +514,7 @@ mod tests {
             deid_salt: [0; deid::SALT_LEN],
             recipient: "Dr B, City Hospital".into(),
             consent: None,
+            subject: None,
         };
         assert!(matches!(
             package_input(facts, Vec::new()),

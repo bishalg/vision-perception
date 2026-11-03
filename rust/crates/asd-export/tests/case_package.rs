@@ -9,7 +9,7 @@ use std::io::Read as _;
 use asd_contract::schema;
 use asd_export::case_package::{
     self, paths, AttachmentKind, CaseAttachment, CaseConsent, CaseEncounter, CasePackageInput,
-    CasePackageManifest, CaseSession, EncounterKind, EncounterStatus,
+    CasePackageManifest, CaseSession, CaseSubject, EncounterKind, EncounterStatus,
 };
 use asd_export::deid;
 use asd_export::fhir::clinical::FhirProfile;
@@ -105,7 +105,24 @@ fn input(mode: Mode, purpose: Purpose) -> CasePackageInput {
             bytes: ATTACHMENT_BYTES.to_vec(),
         }],
         fhir_profile: FhirProfile::default(),
+        subject: None,
     }
+}
+
+/// The case without sessions: one encounter and one attachment, the participant and org
+/// named in `subject` (taken from the first session's record).
+fn sessionless(mode: Mode, purpose: Purpose) -> CasePackageInput {
+    let mut input = input(mode, purpose);
+    let first = input.sessions[0].record.clone();
+    input.sessions.clear();
+    input.encounters[0].session_ids.clear();
+    input.subject = Some(CaseSubject {
+        org_id: first.session.org_id.clone(),
+        org: first.org.clone(),
+        patient: first.patient.clone(),
+        consent: first.consent,
+    });
+    input
 }
 
 fn identified() -> CasePackageInput {
@@ -703,4 +720,98 @@ fn inconsistent_input_is_refused() {
     let mut deid_no_consent = deidentified();
     deid_no_consent.consent = None;
     assert!(case_package::build(&deid_no_consent).is_ok());
+}
+
+// ---- a case without sessions (visits and documents only) -----------------------------------
+
+#[test]
+fn a_case_without_sessions_builds_a_valid_package() {
+    for mode in [Mode::Identified, Mode::Deidentified] {
+        let input = sessionless(mode, Purpose::ClinicalCare);
+        let (m, bytes) = case_package::build_with_manifest(&input).unwrap();
+        assert_eq!(bytes, case_package::build(&input).unwrap(), "deterministic");
+        let z = unzip(&bytes);
+        assert_eq!(z.names, expected_entries(mode), "{mode:?}");
+
+        let value: Value = serde_json::from_slice(&z.files[paths::MANIFEST]).unwrap();
+        let mut strict = case_package::manifest_schema();
+        schema::forbid_additional_properties(&mut strict);
+        if let Err(errors) = schema::validate(&strict, &value) {
+            panic!("manifest invalid: {errors:#?}");
+        }
+        assert_eq!(m.sessions_n, 0);
+        for f in &m.files {
+            assert_eq!(
+                f.sha256,
+                hex(&Sha256::digest(&z.files[&f.path])),
+                "{}",
+                f.path
+            );
+        }
+
+        let bundle: Value = serde_json::from_slice(&z.files[paths::FHIR_BUNDLE]).unwrap();
+        assert_eq!(bundle["type"], "collection");
+        assert_eq!(entries_of(&bundle, "Patient").len(), 1);
+        assert_eq!(entries_of(&bundle, "Organization").len(), 1);
+        assert_eq!(bundle["entry"].as_array().unwrap().len(), 2, "{bundle}");
+        assert!(entries_of(&bundle, "DiagnosticReport").is_empty());
+
+        let jsonl = String::from_utf8(z.files[paths::SESSIONS].clone()).unwrap();
+        assert_eq!(jsonl.lines().count(), 1, "the manifest line alone");
+        let readme = String::from_utf8(z.files[paths::README].clone()).unwrap();
+        assert!(readme.contains("Sessions: 0"), "{readme}");
+
+        if mode == Mode::Identified {
+            assert_eq!(m.date_range.from, "2026-10-03");
+            assert!(String::from_utf8_lossy(&z.files[paths::MANIFEST]).contains(sentinel::MRN));
+            assert_eq!(z.files[&attachment_path()], ATTACHMENT_BYTES);
+        } else {
+            assert_eq!(m.date_range.from, "2026-10");
+            let all = bytes_of(&z);
+            for s in [PARTICIPANT_ID, sentinel::MRN, ENC_SUMMARY, ENC_REASON] {
+                assert!(!contains(&all, s.as_bytes()), "{s:?} leaked");
+            }
+            let pseudonym = deid::pseudonym(&SALT, "P-", PARTICIPANT_ID);
+            assert_eq!(entries_of(&bundle, "Patient")[0]["id"], pseudonym.as_str());
+        }
+    }
+
+    // Attachments only, identified: still a package; the date range is the package date.
+    let mut only_files = sessionless(Mode::Identified, Purpose::ClinicalCare);
+    only_files.encounters.clear();
+    let (m, _) = case_package::build_with_manifest(&only_files).unwrap();
+    assert_eq!(m.date_range.from, m.date_range.to);
+}
+
+#[test]
+fn a_case_without_sessions_needs_a_subject_and_something_to_share() {
+    let mut no_subject = sessionless(Mode::Identified, Purpose::ClinicalCare);
+    no_subject.subject = None;
+    assert!(matches!(refused(&no_subject), ExportError::CasePackage(_)));
+
+    let mut nothing = sessionless(Mode::Identified, Purpose::ClinicalCare);
+    nothing.encounters.clear();
+    nothing.attachments.clear();
+    assert!(matches!(refused(&nothing), ExportError::CasePackage(_)));
+
+    // De-identified packages never carry attachments: those alone are nothing to share.
+    let mut deid_files = sessionless(Mode::Deidentified, Purpose::ClinicalCare);
+    deid_files.encounters.clear();
+    assert!(matches!(refused(&deid_files), ExportError::CasePackage(_)));
+
+    // Research needs research consent, which a case without sessions does not carry.
+    let mut research = sessionless(Mode::Deidentified, Purpose::Research);
+    research
+        .subject
+        .as_mut()
+        .unwrap()
+        .consent
+        .research_consented = None;
+    assert!(matches!(refused(&research), ExportError::CasePackage(_)));
+
+    // A subject naming someone else than the sessions is refused.
+    let mut mismatch = identified();
+    mismatch.subject = sessionless(Mode::Identified, Purpose::ClinicalCare).subject;
+    mismatch.subject.as_mut().unwrap().patient.participant_id = "someone-else".into();
+    assert!(matches!(refused(&mismatch), ExportError::CasePackage(_)));
 }

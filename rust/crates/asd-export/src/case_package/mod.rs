@@ -1,7 +1,14 @@
 //! owner: WP-I.12
 //!
-//! "Share a case" (ADR-0011 D5, SHR-1..6): one participant's sessions as a single
-//! deterministic ZIP a clinic can hand to another clinician or a researcher.
+//! "Share a case" (ADR-0011 D5, SHR-1..6): one participant's sessions, visits and
+//! documents as a single deterministic ZIP a clinic can hand to another clinician or a
+//! researcher.
+//!
+//! A case may hold no session at all (a child seen for visits and documents before any gaze
+//! session exists): the caller then names the participant and org in
+//! [`CasePackageInput::subject`], the FHIR bundle holds the `Patient` and `Organization`
+//! only, `data/sessions.jsonl` is its manifest line alone, `data/clips.csv` its header, and
+//! `manifest.date_range` spans the encounters (or the package date when there are none).
 //!
 //! Entries, exactly these and in this order (SHR-1):
 //!
@@ -40,8 +47,8 @@ use sha2::{Digest, Sha256};
 use crate::deid::{self, SALT_LEN};
 use crate::fhir::clinical::FhirProfile;
 use crate::fhir::FhirDevice;
-use crate::model::{ExportRecord, LetterKind};
-use crate::policy::{self, Mode};
+use crate::model::{ExportRecord, LetterKind, OrgFacts, PatientRef};
+use crate::policy::{self, ConsentFacts, Mode};
 use crate::tabular::columns::Table;
 use crate::tabular::{csv, Dialect, TabularOptions};
 use crate::watermark::{Watermark, MANDATORY_SENTENCE};
@@ -184,6 +191,18 @@ pub struct CaseConsent {
     pub recorded_by_display: String,
 }
 
+/// The participant and org of a case, for a package without sessions (identified: the
+/// package de-identifies it when the mode says so).
+#[derive(Debug, Clone)]
+pub struct CaseSubject {
+    /// `organizations.id` (the FHIR `Organization` identifier).
+    pub org_id: String,
+    pub org: OrgFacts,
+    pub patient: PatientRef,
+    /// The participant's consent facts; [`crate::policy::eligibility`] must include them.
+    pub consent: ConsentFacts,
+}
+
 /// Everything one case package is built from. The crate's own input type (as
 /// [`ExportRecord`] is); the backend maps `CaseShareRequest` (WP-R.7) onto it.
 #[derive(Debug, Clone)]
@@ -207,6 +226,9 @@ pub struct CasePackageInput {
     /// Attachments; written only in identified mode.
     pub attachments: Vec<CaseAttachment>,
     pub fhir_profile: FhirProfile,
+    /// The participant and org when `sessions` is empty (required then). `None`: taken
+    /// from the sessions. When both are given they must name the same participant.
+    pub subject: Option<CaseSubject>,
 }
 
 fn input_error(message: impl Into<String>) -> ExportError {
@@ -238,6 +260,12 @@ pub(crate) struct Case<'a> {
     pub records: Vec<ExportRecord>,
     /// Encounters in date order (identified text stripped in de-identified mode).
     pub encounters: Vec<CaseEncounter>,
+    /// The participant (de-identified in that mode: pseudonym, no MRN).
+    pub participant: PatientRef,
+    /// The sending org.
+    pub org: OrgFacts,
+    /// `organizations.id`.
+    pub org_id: String,
 }
 
 impl<'a> Case<'a> {
@@ -246,17 +274,44 @@ impl<'a> Case<'a> {
         let mode = wm.mode;
         policy::validate_request(wm.purpose, mode)?;
 
-        let first = input
-            .sessions
-            .first()
-            .ok_or_else(|| input_error("a case package needs at least one session"))?;
-        let participant = first.record.patient.participant_id.as_str();
+        let (patient, org, org_id) = match (input.sessions.first(), &input.subject) {
+            (_, Some(subject)) => (&subject.patient, &subject.org, subject.org_id.as_str()),
+            (Some(first), None) => (
+                &first.record.patient,
+                &first.record.org,
+                first.record.session.org_id.as_str(),
+            ),
+            (None, None) => {
+                return Err(input_error(
+                    "a case package without sessions needs its subject (participant and org)",
+                ))
+            }
+        };
+        let participant = patient.participant_id.as_str();
         if input
             .sessions
             .iter()
             .any(|s| s.record.patient.participant_id != participant)
         {
             return Err(input_error("a case package holds one participant only"));
+        }
+        if input.sessions.is_empty() {
+            let shared_files = mode == Mode::Identified && !input.attachments.is_empty();
+            if input.encounters.is_empty() && !shared_files {
+                return Err(input_error(
+                    "a case package needs a session, an encounter or an attachment",
+                ));
+            }
+            if let Some(subject) = &input.subject {
+                if let policy::Eligibility::Exclude(reason) =
+                    policy::eligibility(wm.purpose, mode, &subject.consent)
+                {
+                    return Err(input_error(format!(
+                        "the participant is not eligible for this purpose and mode: {}",
+                        reason.as_str()
+                    )));
+                }
+            }
         }
         let originals: Vec<ExportRecord> =
             input.sessions.iter().map(|s| s.record.clone()).collect();
@@ -343,12 +398,28 @@ impl<'a> Case<'a> {
             })
             .collect::<Result<_, ExportError>>()?;
 
+        let participant = match mode {
+            Mode::Identified => patient.clone(),
+            Mode::Deidentified => {
+                let p = deid::pseudonym(&input.deid_salt, "P-", participant);
+                PatientRef {
+                    participant_id: p.clone(),
+                    participant_token: p,
+                    mrn: None,
+                    age_bracket_at_enrol: patient.age_bracket_at_enrol.clone(),
+                }
+            }
+        };
+
         Ok(Self {
             input,
             mode,
             sessions,
             records,
             encounters,
+            participant,
+            org: org.clone(),
+            org_id: org_id.to_owned(),
         })
     }
 
@@ -358,7 +429,41 @@ impl<'a> Case<'a> {
 
     /// `P-` pseudonym or token.
     pub(crate) fn participant_label(&self) -> &str {
-        &self.records[0].patient.participant_token
+        &self.participant.participant_token
+    }
+
+    /// First and last session date ([`Self::session_date`]). Without sessions: the first
+    /// and last encounter, else the package date, in the same precision.
+    pub(crate) fn date_range(&self) -> Result<(String, String), ExportError> {
+        if let (Some(first), Some(last)) = (self.records.first(), self.records.last()) {
+            return Ok((self.session_date(first)?, self.session_date(last)?));
+        }
+        // Identified: the org's local date; de-identified: `YYYY-MM` UTC (encounter dates
+        // already are, Case::new).
+        let day = |field: &'static str, t: &str| -> Result<String, ExportError> {
+            let at = utc(field, t)?;
+            Ok(if self.deidentified() {
+                at.format("%Y-%m").to_string()
+            } else {
+                at.with_timezone(&self.org.tz()?)
+                    .format("%Y-%m-%d")
+                    .to_string()
+            })
+        };
+        let encounter_day = |e: &CaseEncounter| -> Result<String, ExportError> {
+            if self.deidentified() {
+                Ok(e.occurred_at.clone())
+            } else {
+                day("encounter.occurred_at", &e.occurred_at)
+            }
+        };
+        match (self.encounters.first(), self.encounters.last()) {
+            (Some(first), Some(last)) => Ok((encounter_day(first)?, encounter_day(last)?)),
+            _ => {
+                let d = day("created_at", &self.input.created_at)?;
+                Ok((d.clone(), d))
+            }
+        }
     }
 
     pub(crate) fn recipient_label(&self) -> &str {
@@ -536,7 +641,7 @@ fn manifest_of(
 ) -> Result<CasePackageManifest, ExportError> {
     let input = case.input;
     let wm = &input.watermark;
-    let org = &case.records[0].org;
+    let org = &case.org;
     let participant = if case.deidentified() {
         manifest::ParticipantInfo::Deidentified {
             pseudonym: case.participant_label().to_owned(),
@@ -544,14 +649,10 @@ fn manifest_of(
     } else {
         manifest::ParticipantInfo::Identified {
             token: case.participant_label().to_owned(),
-            mrn: case.records[0]
-                .patient
-                .mrn
-                .as_ref()
-                .map(|m| manifest::MrnInfo {
-                    authority: m.assigning_authority.clone(),
-                    value: m.value.clone(),
-                }),
+            mrn: case.participant.mrn.as_ref().map(|m| manifest::MrnInfo {
+                authority: m.assigning_authority.clone(),
+                value: m.value.clone(),
+            }),
         }
     };
     let consent = match (&input.consent, case.deidentified()) {
@@ -562,7 +663,7 @@ fn manifest_of(
         }),
         _ => None,
     };
-    let last = case.records.len() - 1;
+    let (from, to) = case.date_range()?;
     Ok(CasePackageManifest {
         schema: SCHEMA_TAG.to_owned(),
         package_id: wm.export_id.clone(),
@@ -583,10 +684,7 @@ fn manifest_of(
         consent,
         participant,
         sessions_n: case.records.len() as u64,
-        date_range: manifest::DateRange {
-            from: case.session_date(&case.records[0])?,
-            to: case.session_date(&case.records[last])?,
-        },
+        date_range: manifest::DateRange { from, to },
         files,
         absent,
         watermark: wm.line(),
