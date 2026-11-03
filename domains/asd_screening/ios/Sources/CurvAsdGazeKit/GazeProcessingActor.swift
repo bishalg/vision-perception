@@ -467,7 +467,7 @@ public actor GazeProcessingActor {
                     clipId: clipId,
                     order: researchLogClips.count,
                     aoisJSON: aois,
-                    catalogVersion: nil
+                    catalogVersion: researchLogConfiguration?.catalogVersion
                 ))
             }
         } catch {

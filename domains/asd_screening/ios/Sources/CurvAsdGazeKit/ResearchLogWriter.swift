@@ -13,6 +13,8 @@ public struct ResearchLogConfiguration: Sendable, Equatable {
     public let bundleVersion: String?
     /// Scoring profile version of that bundle.
     public let profileVersion: String?
+    /// Stimulus catalog version of that bundle (header `clips[].catalogVersion`).
+    public let catalogVersion: String?
     public let appVersion: String?
     /// Size cap in bytes (RFL-2: 16 MiB); a smaller value is a test hook.
     public let capBytes: Int
@@ -22,6 +24,7 @@ public struct ResearchLogConfiguration: Sendable, Equatable {
         participantToken: String?,
         bundleVersion: String?,
         profileVersion: String? = nil,
+        catalogVersion: String? = nil,
         appVersion: String? = nil,
         capBytes: Int = ResearchLogWriter.defaultCapBytes
     ) {
@@ -29,6 +32,7 @@ public struct ResearchLogConfiguration: Sendable, Equatable {
         self.participantToken = participantToken
         self.bundleVersion = bundleVersion
         self.profileVersion = profileVersion
+        self.catalogVersion = catalogVersion
         self.appVersion = appVersion
         self.capBytes = capBytes
     }

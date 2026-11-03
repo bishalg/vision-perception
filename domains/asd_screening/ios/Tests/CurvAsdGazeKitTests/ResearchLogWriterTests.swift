@@ -20,11 +20,17 @@ final class ResearchLogWriterTests: XCTestCase {
         try? FileManager.default.removeItem(at: directory)
     }
 
-    private func configuration(capBytes: Int = ResearchLogWriter.defaultCapBytes) -> ResearchLogConfiguration {
+    private func configuration(
+        capBytes: Int = ResearchLogWriter.defaultCapBytes,
+        profileVersion: String? = nil,
+        catalogVersion: String? = nil
+    ) -> ResearchLogConfiguration {
         ResearchLogConfiguration(
             directory: directory,
             participantToken: "STUDY-ASD-TEST",
             bundleVersion: "2026.11.1",
+            profileVersion: profileVersion,
+            catalogVersion: catalogVersion,
             appVersion: "9.9",
             capBytes: capBytes
         )
@@ -101,6 +107,27 @@ final class ResearchLogWriterTests: XCTestCase {
             process.waitUntilExit()
             XCTAssertEqual(process.terminationStatus, 0, "asd-cli gaze replay --check accepts the log")
         }
+    }
+
+    func testHeaderCarriesProfileAndCatalogVersionsWhenKnown() async throws {
+        let actor = GazeProcessingActor()
+        await actor.armResearchLog(configuration(profileVersion: "2026.11.1", catalogVersion: "2026.11.1"))
+        let summary = await runSession(actor, frames: 10)
+        let url = ResearchLogWriter.fileURL(sessionId: summary.sessionId, in: directory)
+        let header = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(try lines(of: url)[0].utf8)) as? [String: Any])
+        XCTAssertEqual(header["profileVersion"] as? String, "2026.11.1")
+        let clips = try XCTUnwrap(header["clips"] as? [[String: Any]])
+        XCTAssertEqual(clips.first?["catalogVersion"] as? String, "2026.11.1")
+    }
+
+    func testHeaderOmitsVersionsWhenUnknown() async throws {
+        let actor = GazeProcessingActor()
+        await actor.armResearchLog(configuration())
+        let summary = await runSession(actor, frames: 10)
+        let url = ResearchLogWriter.fileURL(sessionId: summary.sessionId, in: directory)
+        let header = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(try lines(of: url)[0].utf8)) as? [String: Any])
+        XCTAssertNil(header["profileVersion"])
+        XCTAssertNil((header["clips"] as? [[String: Any]])?.first?["catalogVersion"])
     }
 
     func testNoFileWhenTheGateIsOff() async {
