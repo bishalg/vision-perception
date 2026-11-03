@@ -115,3 +115,101 @@ test("single-session sweep draws the curve and creates no job (acceptance 8)", a
   await expect(page.getByTestId("sweep-curve")).toBeVisible();
   await expect(page.getByRole("table", { name: "Composite score against Green floor" }).getByRole("row")).toHaveCount(8);
 });
+
+/** WP-X.7: the cohorts and runs pages (RUI-5, RUI-6), driven by the mock progression (`mock/research.ts`). */
+async function openRuns(page: Page): Promise<void> {
+  await researcher(page);
+  await nav(page).getByRole("link", { name: "Research", exact: true }).click();
+  await page.getByRole("navigation", { name: "Research" }).getByRole("link", { name: "Analysis runs" }).click();
+  await expect(page.getByRole("table", { name: "Analysis runs" })).toBeVisible();
+}
+
+test("cohorts: list, create with a counts-only preview, and the saved cohort page", async ({ page }) => {
+  await researcher(page);
+  await nav(page).getByRole("link", { name: "Research", exact: true }).click();
+  await page.getByRole("navigation", { name: "Research" }).getByRole("link", { name: "Cohorts" }).click();
+  await expect(page.getByRole("table", { name: "Cohorts" })).toContainText("All consented sessions");
+  await page.getByRole("link", { name: "New cohort" }).click();
+  await page.getByLabel("Age bands", { exact: true }).fill("36-47");
+  await page.getByRole("button", { name: "Preview counts" }).click();
+  // 7 sessions are below the small-cell threshold (12): the count is hidden, never shown as a number.
+  await expect(page.getByTestId("cohort-preview")).toContainText("36-47: n < 12");
+  await page.getByLabel("Name", { exact: true }).fill(`E2E cohort ${Date.now()}`);
+  await page.getByRole("button", { name: "Save cohort" }).click();
+  await expect(page).toHaveURL(/\/research\/cohorts\/[^/]+$/, { timeout: 45_000 });
+  await expect(page.getByTestId("cohort-preview")).toContainText("n < 12");
+});
+
+test("a failed run shows the budget_exceeded copy and no cancel button", async ({ page }) => {
+  await openRuns(page);
+  await page.getByRole("combobox", { name: "Status" }).selectOption("failed");
+  await page.getByRole("button", { name: "Apply filter" }).click();
+  await page.getByRole("link", { name: "Failed" }).first().click();
+  await expect(page.getByRole("alert").filter({ hasText: "The run did not finish." })).toContainText("over the compute budget");
+  await expect(page.getByText("Reason code: budget_exceeded")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Cancel run" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Run again" })).toBeVisible();
+});
+
+test("a running run offers cancel and no re-run", async ({ page }) => {
+  await openRuns(page);
+  await page.getByRole("link", { name: "Running" }).first().click();
+  await expect(page.getByTestId("run-status")).toHaveText("Running");
+  await expect(page.getByRole("button", { name: "Cancel run" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Run again" })).toHaveCount(0);
+  await expect(page.getByRole("progressbar")).toBeVisible();
+});
+
+test("run again goes queued -> running -> finished, then shows provenance, results and the export pre-fill", async ({ page }) => {
+  await openRuns(page);
+  await page.getByRole("combobox", { name: "Status" }).selectOption("failed");
+  await page.getByRole("button", { name: "Apply filter" }).click();
+  await page.getByRole("link", { name: "Failed" }).first().click();
+  const failedUrl = page.url();
+  // The button is in the server HTML before React hydrates it: a click that lands too early does nothing, so retry.
+  await expect(async () => {
+    await page.getByRole("button", { name: "Run again" }).click();
+    await expect(page).not.toHaveURL(failedUrl, { timeout: 4_000 });
+  }).toPass({ timeout: 60_000 });
+  await expect(page).toHaveURL(/\/research\/runs\/[^/]+$/);
+  await expect(page.getByTestId("run-status")).toHaveText(/Queued|Running/);
+  await expect(page.getByTestId("run-status")).toHaveText("Running", { timeout: 30_000 });
+  // Cancel is offered while it runs and gone once it finished.
+  await expect(page.getByRole("button", { name: "Cancel run" })).toBeVisible();
+  await expect(page.getByTestId("run-status")).toHaveText("Finished", { timeout: 30_000 });
+  await expect(page.getByRole("button", { name: "Cancel run" })).toHaveCount(0);
+
+  // The page reloads with the results; RUN-5 provenance is complete and suppressed cells say "n < 12".
+  await expect(page.getByRole("region", { name: "Provenance" })).toContainText("Definition hash");
+  for (const label of ["Cohort hash", "Profile hash", "Baselines version", "Core version", "Registry version", "Seed"]) {
+    await expect(page.getByRole("region", { name: "Provenance" }).getByText(label, { exact: true })).toBeVisible();
+  }
+  await expect(page.getByRole("region", { name: "Age band 36-47" })).toContainText("n < 12");
+  await expect(page.getByTestId("baseline-range").first()).toBeVisible();
+
+  await page.getByRole("link", { name: "Per-session results" }).click();
+  await expect(page.getByRole("table", { name: "Per-session results" })).toContainText("SESS-MOCK-0001");
+  await page.getByRole("link", { name: "Back to the run" }).click();
+
+  await page.getByRole("link", { name: "Export results…" }).click();
+  await expect(page).toHaveURL(/\/exports\?format=analysis_results&run=/);
+  await expect(page.getByTestId("prefill-run")).toBeVisible();
+  await expect(page.getByLabel("Format")).toHaveCount(0);
+  await expect(page.getByLabel("Purpose").locator("option")).toHaveText(["Research", "Quality improvement"]);
+  await page.getByLabel(/^Reason/).fill("Compare the draft profile with the published one");
+  await page.getByRole("button", { name: "Request export" }).click();
+  await expect(page.getByText("Export queued.")).toBeVisible({ timeout: 45_000 });
+});
+
+test("the Quality tab draws the drift warn and hard lines from the effective profile", async ({ page }) => {
+  await researcher(page);
+  const org = new URL(page.url()).pathname.split("/")[1]!;
+  await page.goto(`/${org}/sessions?tracking=poor`);
+  const rows = page.locator("table.data tbody tr");
+  test.skip((await rows.count()) === 0, "no poor-tracking sessions in this org");
+  await rows.first().getByRole("link").click();
+  await page.getByRole("navigation", { name: "Session sections" }).getByRole("link", { name: "Quality" }).click();
+  await expect(page.getByRole("img", { name: /Gaze offset in degrees/ })).toBeVisible();
+  await expect(page.getByTestId("drift-warn")).toContainText("Warn 1.5°");
+  await expect(page.getByTestId("drift-hard")).toContainText("Hard limit 3°");
+});

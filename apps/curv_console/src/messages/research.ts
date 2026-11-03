@@ -8,7 +8,7 @@
  * `docs/spec/schemas/asd/param-registry-v1.json`: it adds new ids with "TODO" and keeps written values. WP-X.5 fills
  * the values (its `messages.test.ts` fails on a "TODO").
  */
-import type { ExperimentStatus, PARAM_UNITS, REPROCESS_LEVELS, RunStatus } from "@/lib/api/research";
+import type { ExperimentStatus, PARAM_UNITS, REPROCESS_LEVELS, RUN_KINDS, RunStatus } from "@/lib/api/research";
 
 type ParamUnit = (typeof PARAM_UNITS)[number];
 
@@ -182,6 +182,125 @@ export interface ResearchMessages {
     noCohorts: string;
     saveFirst: string;
     denied: string;
+  };
+  cohorts: {
+    title: string;
+    intro: string;
+    denied: string;
+    newTitle: string;
+    newIntro: string;
+    newLink: string;
+    readOnly: string;
+    empty: string;
+    allCohorts: string;
+    cols: { name: string; definition: string; created: string; status: string };
+    active: string;
+    archived: string;
+    name: string;
+    nameRequired: string;
+    ageBands: string;
+    ageBandsHint: string;
+    from: string;
+    to: string;
+    qualityVerdicts: string;
+    trackingVerdicts: string;
+    minValidRatio: string;
+    requireFrames: string;
+    includeSynthetic: string;
+    preview: string;
+    previewing: string;
+    previewTitle: string;
+    save: string;
+    saving: string;
+    definition: string;
+    any: string;
+    definitionHash: string;
+    archive: string;
+    archiving: string;
+    archivedNote: string;
+    summary: {
+      ageBands: (v: string) => string;
+      range: (from: string, to: string) => string;
+      quality: (v: string) => string;
+      tracking: (v: string) => string;
+      minValid: (v: string) => string;
+      framesOnly: string;
+      synthetic: string;
+      all: string;
+    };
+  };
+  runs: {
+    title: string;
+    intro: string;
+    empty: string;
+    allRuns: string;
+    filterStatus: string;
+    allStatuses: string;
+    apply: string;
+    cols: { status: string; kind: string; experiment: string; cohort: string; sessions: string; created: string };
+    kind: Record<(typeof RUN_KINDS)[number], string>;
+    unknownExperiment: string;
+    unknownCohort: string;
+    heading: (id: string) => string;
+    progress: (done: number, total: number, phase: string) => string;
+    updating: string;
+    pollStopped: string;
+    cancel: string;
+    cancelling: string;
+    cancelled: string;
+    rerun: string;
+    rerunning: string;
+    exportResults: string;
+    failure: { title: string; budget_exceeded: string; "result-too-large": string; fallback: string; code: (c: string) => string };
+    provenance: {
+      title: string;
+      intro: string;
+      copy: string;
+      copied: string;
+      copyField: (label: string) => string;
+      notRecorded: string;
+      fields: Record<string, string>;
+    };
+    results: {
+      title: string;
+      sessions: string;
+      byLevel: string;
+      excluded: string;
+      paramsNotApplied: string;
+      suppressedCells: string;
+      synthetic: string;
+      drift: (added: number, removed: number) => string;
+      published: string;
+      draft: string;
+      overall: string;
+      band: (b: string) => string;
+      composite: string;
+      metric: (id: string) => string;
+      flagCounts: string;
+      flagTransitions: string;
+      qualityTransitions: string;
+      deltaTitle: string;
+      noSummary: string;
+    };
+    sessionsLink: string;
+    sessionsTitle: string;
+    backToRun: string;
+    sessionCols: { session: string; level: string; band: string; published: string; draft: string; delta: string; warnings: string };
+    noSessions: string;
+    next: string;
+    first: string;
+  };
+  charts: {
+    histogram: (label: string) => string;
+    baseline: (low: string, high: string) => string;
+    noBaseline: string;
+    bin: (from: string, to: string, count: number) => string;
+    matrixFrom: string;
+    matrixTo: string;
+    noTransition: string;
+    deltaBars: (label: string) => string;
+    interval: string;
+    noData: string;
   };
   /** Server-action failures, by problem slug; `fallback` otherwise. */
   errors: Record<string, string>;
@@ -389,6 +508,147 @@ const en: ResearchMessages = {
     saveFirst: "Save the experiment first; unsaved changes are not part of the run.",
     denied: "Your role cannot start analysis runs.",
   },
+  cohorts: {
+    title: "Cohorts",
+    intro: "A cohort is a saved selection of consented sessions. Counts below the small-cell threshold are hidden.",
+    denied: "Your role cannot view cohorts.",
+    newTitle: "New cohort",
+    newIntro: "Choose the sessions to include. Preview the counts before saving.",
+    newLink: "New cohort",
+    readOnly: "Your role can view cohorts but not create them.",
+    empty: "There is no saved cohort yet.",
+    allCohorts: "All cohorts",
+    cols: { name: "Name", definition: "Selection", created: "Created", status: "Status" },
+    active: "Active",
+    archived: "Archived",
+    name: "Name",
+    nameRequired: "Enter a name.",
+    ageBands: "Age bands",
+    ageBandsHint: "Band ids separated by commas, for example 24-35, 36-47. Empty means every band.",
+    from: "From",
+    to: "To",
+    qualityVerdicts: "Capture quality",
+    trackingVerdicts: "Tracking verdict",
+    minValidRatio: "Minimum valid-frame ratio (0 to 1)",
+    requireFrames: "Only sessions with a frame log",
+    includeSynthetic: "Include synthetic sessions",
+    preview: "Preview counts",
+    previewing: "Counting…",
+    previewTitle: "Preview",
+    save: "Save cohort",
+    saving: "Saving…",
+    definition: "Selection",
+    any: "any",
+    definitionHash: "Definition hash",
+    archive: "Archive cohort",
+    archiving: "Archiving…",
+    archivedNote: "This cohort is archived.",
+    summary: {
+      ageBands: (v) => `Age bands: ${v}`,
+      range: (from, to) => `Dates: ${from} to ${to}`,
+      quality: (v) => `Capture quality: ${v}`,
+      tracking: (v) => `Tracking: ${v}`,
+      minValid: (v) => `Valid frames at least ${v}`,
+      framesOnly: "With frame log only",
+      synthetic: "Includes synthetic sessions",
+      all: "All consented sessions",
+    },
+  },
+  runs: {
+    title: "Analysis runs",
+    intro: "Each run evaluates an experiment against a cohort. Results are research output, not clinical findings.",
+    empty: "There is no analysis run yet.",
+    allRuns: "All runs",
+    filterStatus: "Status",
+    allStatuses: "All",
+    apply: "Apply filter",
+    cols: { status: "Status", kind: "Kind", experiment: "Experiment", cohort: "Cohort", sessions: "Sessions", created: "Created" },
+    kind: { cohort_rescore: "Cohort re-score", param_sweep: "Parameter sweep", age_profile: "Age profile" },
+    unknownExperiment: "(unknown experiment)",
+    unknownCohort: "(unknown cohort)",
+    heading: (id) => `Run ${id.slice(0, 8)}`,
+    progress: (done, total, phase) => `${done} of ${total} sessions (${phase})`,
+    updating: "Updating the status…",
+    pollStopped: "The status is no longer updating. Reload the page to check again.",
+    cancel: "Cancel run",
+    cancelling: "Cancelling…",
+    cancelled: "This run was cancelled.",
+    rerun: "Run again",
+    rerunning: "Starting…",
+    exportResults: "Export results…",
+    failure: {
+      title: "The run did not finish.",
+      budget_exceeded: "The run was over the compute budget. Choose a smaller cohort, a narrower sweep or the score level.",
+      "result-too-large": "The result was too large to store. Choose a smaller cohort or fewer metrics.",
+      fallback: "The run stopped before it produced a result.",
+      code: (c) => `Reason code: ${c}`,
+    },
+    provenance: {
+      title: "Provenance",
+      intro: "Everything needed to reproduce this run. Each value can be copied.",
+      copy: "Copy",
+      copied: "Copied",
+      copyField: (label) => `Copy ${label}`,
+      notRecorded: "not recorded",
+      fields: {
+        definition_hash: "Definition hash",
+        cohort_hash: "Cohort hash",
+        membership_hash: "Membership hash",
+        profile_hash: "Profile hash",
+        published_profile_version: "Published profile version",
+        baselines_version: "Baselines version",
+        catalog_version: "Catalog version",
+        bundle_version: "Bundle version",
+        core_version: "Core version",
+        contract_version: "Contract version",
+        pipeline_version: "Pipeline version",
+        registry_version: "Registry version",
+        seed: "Seed",
+        level_requested: "Level requested",
+        level_resolved: "Level resolved",
+      },
+    },
+    results: {
+      title: "Results",
+      sessions: "Sessions",
+      byLevel: "By level",
+      excluded: "Excluded sessions",
+      paramsNotApplied: "Parameters not applied to some sessions",
+      suppressedCells: "Hidden cells",
+      synthetic: "This run includes synthetic sessions.",
+      drift: (added, removed) => `Membership changed since the first run: ${added} added, ${removed} removed.`,
+      published: "Published",
+      draft: "Draft",
+      overall: "Overall",
+      band: (b) => `Age band ${b}`,
+      composite: "Composite",
+      metric: (id) => `Metric ${id}`,
+      flagCounts: "Analysis label counts",
+      flagTransitions: "Analysis label changes (published to draft)",
+      qualityTransitions: "Quality status changes (published to draft)",
+      deltaTitle: "Change in the composite, draft minus published",
+      noSummary: "No results yet.",
+    },
+    sessionsLink: "Per-session results",
+    sessionsTitle: "Per-session results",
+    backToRun: "Back to the run",
+    sessionCols: { session: "Session", level: "Level", band: "Age band", published: "Published", draft: "Draft", delta: "Change", warnings: "Notes" },
+    noSessions: "There are no per-session rows for this run.",
+    next: "Next",
+    first: "First",
+  },
+  charts: {
+    histogram: (label) => `Distribution of ${label}`,
+    baseline: (low, high) => `Shaded: published range ${low} to ${high}`,
+    noBaseline: "No published range for this age band.",
+    bin: (from, to, count) => `${from} to ${to}: ${count}`,
+    matrixFrom: "From",
+    matrixTo: "To",
+    noTransition: "-",
+    deltaBars: (label) => `Change in ${label} by age band`,
+    interval: "95% interval of the mean",
+    noData: "No data.",
+  },
   errors: {
     "experiment-name-exists": "An experiment with this name already exists.",
     "stale-version": "The experiment was changed elsewhere. Reload the page and apply your change again.",
@@ -399,6 +659,9 @@ const en: ResearchMessages = {
     "analysis-quota-exceeded": "Too many analysis runs right now. Try again later.",
     "sweep-too-large": "The sweep is over budget.",
     "cohort-too-large": "The cohort is over budget.",
+    "job-finished": "The run already finished.",
+    "analysis-level-unavailable": "This level is not available for the cohort.",
+    conflict: "A cohort with this name already exists.",
     "not-implemented": "This part is not available on the server yet.",
     forbidden: "Your role cannot do this.",
     "not-found": "Not found.",
@@ -701,6 +964,147 @@ const ne: ResearchMessages = {
     saveFirst: "पहिले प्रयोग सुरक्षित गर्नुहोस्; असुरक्षित परिवर्तन रनमा पर्दैन।",
     denied: "तपाईंको भूमिकाले विश्लेषण रन सुरु गर्न मिल्दैन।",
   },
+  cohorts: {
+    title: "कोहोर्ट",
+    intro: "कोहोर्ट भनेको सहमति भएका सत्रको सुरक्षित चयन हो। सानो-कक्ष सीमाभन्दा कम गणना लुकाइन्छ।",
+    denied: "तपाईंको भूमिकाले कोहोर्ट हेर्न मिल्दैन।",
+    newTitle: "नयाँ कोहोर्ट",
+    newIntro: "समावेश गर्ने सत्र छान्नुहोस्। सुरक्षित गर्नुअघि गणना हेर्नुहोस्।",
+    newLink: "नयाँ कोहोर्ट",
+    readOnly: "तपाईंको भूमिकाले कोहोर्ट हेर्न मिल्छ, बनाउन मिल्दैन।",
+    empty: "अहिलेसम्म कुनै सुरक्षित कोहोर्ट छैन।",
+    allCohorts: "सबै कोहोर्ट",
+    cols: { name: "नाम", definition: "चयन", created: "बनाइएको", status: "स्थिति" },
+    active: "सक्रिय",
+    archived: "अभिलेखित",
+    name: "नाम",
+    nameRequired: "नाम लेख्नुहोस्।",
+    ageBands: "उमेर समूह",
+    ageBandsHint: "अल्पविरामले छुट्याइएका समूह आईडी, जस्तै 24-35, 36-47। खाली भए सबै समूह।",
+    from: "देखि",
+    to: "सम्म",
+    qualityVerdicts: "क्याप्चर गुणस्तर",
+    trackingVerdicts: "ट्र्याकिङ नतिजा",
+    minValidRatio: "न्यूनतम वैध फ्रेम अनुपात (० देखि १)",
+    requireFrames: "फ्रेम लग भएका सत्र मात्र",
+    includeSynthetic: "कृत्रिम सत्र समावेश गर्नुहोस्",
+    preview: "गणना पूर्वावलोकन",
+    previewing: "गणना गर्दै…",
+    previewTitle: "पूर्वावलोकन",
+    save: "कोहोर्ट सुरक्षित गर्नुहोस्",
+    saving: "सुरक्षित गर्दै…",
+    definition: "चयन",
+    any: "कुनै पनि",
+    definitionHash: "परिभाषा ह्यास",
+    archive: "कोहोर्ट अभिलेखित गर्नुहोस्",
+    archiving: "अभिलेखित गर्दै…",
+    archivedNote: "यो कोहोर्ट अभिलेखित छ।",
+    summary: {
+      ageBands: (v) => `उमेर समूह: ${v}`,
+      range: (from, to) => `मिति: ${from} देखि ${to}`,
+      quality: (v) => `क्याप्चर गुणस्तर: ${v}`,
+      tracking: (v) => `ट्र्याकिङ: ${v}`,
+      minValid: (v) => `वैध फ्रेम कम्तीमा ${v}`,
+      framesOnly: "फ्रेम लग भएका मात्र",
+      synthetic: "कृत्रिम सत्र समावेश",
+      all: "सहमति भएका सबै सत्र",
+    },
+  },
+  runs: {
+    title: "विश्लेषण रन",
+    intro: "प्रत्येक रनले कोहोर्टमा एउटा प्रयोगको मूल्यांकन गर्छ। नतिजा अनुसन्धान सामग्री हो, क्लिनिकल निष्कर्ष होइन।",
+    empty: "अहिलेसम्म कुनै विश्लेषण रन छैन।",
+    allRuns: "सबै रन",
+    filterStatus: "स्थिति",
+    allStatuses: "सबै",
+    apply: "फिल्टर लागू गर्नुहोस्",
+    cols: { status: "स्थिति", kind: "प्रकार", experiment: "प्रयोग", cohort: "कोहोर्ट", sessions: "सत्र", created: "बनाइएको" },
+    kind: { cohort_rescore: "कोहोर्ट पुनः-स्कोर", param_sweep: "प्यारामिटर स्वीप", age_profile: "उमेर प्रोफाइल" },
+    unknownExperiment: "(अज्ञात प्रयोग)",
+    unknownCohort: "(अज्ञात कोहोर्ट)",
+    heading: (id) => `रन ${id.slice(0, 8)}`,
+    progress: (done, total, phase) => `${total} मध्ये ${done} सत्र (${phase})`,
+    updating: "स्थिति अद्यावधिक गर्दै…",
+    pollStopped: "स्थिति अब अद्यावधिक भइरहेको छैन। फेरि हेर्न पृष्ठ पुनः लोड गर्नुहोस्।",
+    cancel: "रन रद्द गर्नुहोस्",
+    cancelling: "रद्द गर्दै…",
+    cancelled: "यो रन रद्द गरियो।",
+    rerun: "फेरि चलाउनुहोस्",
+    rerunning: "सुरु गर्दै…",
+    exportResults: "नतिजा निर्यात गर्नुहोस्…",
+    failure: {
+      title: "रन सकिएन।",
+      budget_exceeded: "रन गणना बजेटभन्दा बढी भयो। सानो कोहोर्ट, साँघुरो स्वीप वा स्कोर तह छान्नुहोस्।",
+      "result-too-large": "नतिजा भण्डारण गर्न धेरै ठूलो भयो। सानो कोहोर्ट वा कम मेट्रिक छान्नुहोस्।",
+      fallback: "रनले नतिजा दिनुअघि नै रोकियो।",
+      code: (c) => `कारण कोड: ${c}`,
+    },
+    provenance: {
+      title: "उत्पत्ति विवरण",
+      intro: "यो रन दोहोर्याउन चाहिने सबै कुरा। प्रत्येक मान प्रतिलिपि गर्न सकिन्छ।",
+      copy: "प्रतिलिपि",
+      copied: "प्रतिलिपि भयो",
+      copyField: (label) => `${label} प्रतिलिपि गर्नुहोस्`,
+      notRecorded: "अभिलेख छैन",
+      fields: {
+        definition_hash: "परिभाषा ह्यास",
+        cohort_hash: "कोहोर्ट ह्यास",
+        membership_hash: "सदस्यता ह्यास",
+        profile_hash: "प्रोफाइल ह्यास",
+        published_profile_version: "प्रकाशित प्रोफाइल संस्करण",
+        baselines_version: "आधाररेखा संस्करण",
+        catalog_version: "क्याटलग संस्करण",
+        bundle_version: "बन्डल संस्करण",
+        core_version: "कोर संस्करण",
+        contract_version: "सम्झौता संस्करण",
+        pipeline_version: "पाइपलाइन संस्करण",
+        registry_version: "रजिस्ट्री संस्करण",
+        seed: "सिड",
+        level_requested: "अनुरोध गरिएको तह",
+        level_resolved: "लागू भएको तह",
+      },
+    },
+    results: {
+      title: "नतिजा",
+      sessions: "सत्र",
+      byLevel: "तह अनुसार",
+      excluded: "बहिष्कृत सत्र",
+      paramsNotApplied: "केही सत्रमा लागू नभएका प्यारामिटर",
+      suppressedCells: "लुकाइएका कक्ष",
+      synthetic: "यो रनमा कृत्रिम सत्र समावेश छन्।",
+      drift: (added, removed) => `पहिलो रनपछि सदस्यता फेरियो: ${added} थपिए, ${removed} हटाइए।`,
+      published: "प्रकाशित",
+      draft: "मस्यौदा",
+      overall: "समग्र",
+      band: (b) => `उमेर समूह ${b}`,
+      composite: "संयुक्त",
+      metric: (id) => `मेट्रिक ${id}`,
+      flagCounts: "विश्लेषण लेबल गणना",
+      flagTransitions: "विश्लेषण लेबल परिवर्तन (प्रकाशितबाट मस्यौदा)",
+      qualityTransitions: "गुणस्तर स्थिति परिवर्तन (प्रकाशितबाट मस्यौदा)",
+      deltaTitle: "संयुक्त मानमा परिवर्तन, मस्यौदा घटाएर प्रकाशित",
+      noSummary: "अहिलेसम्म नतिजा छैन।",
+    },
+    sessionsLink: "सत्र अनुसार नतिजा",
+    sessionsTitle: "सत्र अनुसार नतिजा",
+    backToRun: "रनमा फर्कनुहोस्",
+    sessionCols: { session: "सत्र", level: "तह", band: "उमेर समूह", published: "प्रकाशित", draft: "मस्यौदा", delta: "परिवर्तन", warnings: "टिप्पणी" },
+    noSessions: "यो रनका लागि सत्र अनुसारका पङ्क्ति छैनन्।",
+    next: "अर्को",
+    first: "पहिलो",
+  },
+  charts: {
+    histogram: (label) => `${label} को वितरण`,
+    baseline: (low, high) => `छायाँ: प्रकाशित दायरा ${low} देखि ${high}`,
+    noBaseline: "यो उमेर समूहका लागि प्रकाशित दायरा छैन।",
+    bin: (from, to, count) => `${from} देखि ${to}: ${count}`,
+    matrixFrom: "बाट",
+    matrixTo: "मा",
+    noTransition: "-",
+    deltaBars: (label) => `उमेर समूह अनुसार ${label} मा परिवर्तन`,
+    interval: "औसतको ९५% अन्तराल",
+    noData: "डाटा छैन।",
+  },
   errors: {
     "experiment-name-exists": "यो नामको प्रयोग पहिले नै छ।",
     "stale-version": "प्रयोग अन्यत्र परिवर्तन भयो। पृष्ठ पुनः लोड गरेर आफ्नो परिवर्तन फेरि लागू गर्नुहोस्।",
@@ -711,6 +1115,9 @@ const ne: ResearchMessages = {
     "analysis-quota-exceeded": "अहिले धेरै विश्लेषण रन छन्। पछि प्रयास गर्नुहोस्।",
     "sweep-too-large": "स्विप बजेटभन्दा बढी छ।",
     "cohort-too-large": "कोहोर्ट बजेटभन्दा ठूलो छ।",
+    "job-finished": "रन पहिले नै सकिइसकेको छ।",
+    "analysis-level-unavailable": "यो कोहोर्टका लागि यो तह उपलब्ध छैन।",
+    conflict: "यो नामको कोहोर्ट पहिले नै छ।",
     "not-implemented": "सर्भरमा यो भाग अझै उपलब्ध छैन।",
     forbidden: "तपाईंको भूमिकाले यो गर्न मिल्दैन।",
     "not-found": "फेला परेन।",

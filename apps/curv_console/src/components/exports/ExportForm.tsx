@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import {
+  ANALYSIS_ENCODINGS,
+  ANALYSIS_LAYOUTS,
   EXPORT_FORMATS,
   EXPORT_MODES,
   EXPORT_PURPOSES,
@@ -13,7 +15,7 @@ import {
 } from "@/lib/api/exports";
 import { ATTENTION_FLAGS, QUALITY_VERDICTS } from "@/lib/api/types";
 import { CLINICAL_STATES } from "@/lib/api/clinical";
-import { exportsText } from "@/messages/exports";
+import { analysisExportMessages, exportsText } from "@/messages/exports";
 import { privacyText } from "@/messages/privacy";
 import { failureText, type ActionResult } from "./types";
 
@@ -32,6 +34,7 @@ export function ExportForm({
   canIdentified,
   destinations,
   orgId,
+  prefill,
 }: {
   create: (formData: FormData) => Promise<ActionResult<{ id: string }>>;
   canCreate: boolean;
@@ -39,10 +42,69 @@ export function ExportForm({
   /** Active destinations an exporter may pick from (`GET /orgs/{id}/export-destinations`); empty hides the chooser. */
   destinations: DeliverableDestination[];
   orgId: string;
+  /** From `?format=analysis_results&run=`: the results of one analysis run (RUN-7). The format, mode and run are fixed. */
+  prefill?: { runId: string };
 }) {
   const [state, action, pending] = useActionState<State, FormData>((_prev, fd) => create(fd), null);
   const [format, setFormat] = useState<ExportFormat>("csv");
+  const [layout, setLayout] = useState<(typeof ANALYSIS_LAYOUTS)[number]>("aggregates");
   if (!canCreate) return <p className="muted">{t.readOnly}</p>;
+  if (prefill) {
+    const a = analysisExportMessages.en;
+    return (
+      <form action={action} className="stack panel" aria-label={t.title}>
+        <input type="hidden" name="format" value="analysis_results" />
+        <input type="hidden" name="mode" value="deidentified" />
+        <input type="hidden" name="analysis_run_id" value={prefill.runId} />
+        <p>
+          {t.format}: <strong>{exportsText.formats.analysis_results}</strong>
+        </p>
+        <p className="muted">{a.fixedFormat}</p>
+        <p>
+          {a.run}: <code data-testid="prefill-run">{prefill.runId}</code>
+        </p>
+        <label>
+          {t.purpose}
+          <select name="purpose" defaultValue="research">
+            {EXPORT_PURPOSES.filter((p) => p === "research" || p === "quality_improvement").map((p) => (
+              <option key={p} value={p}>{exportsText.purposes[p]}</option>
+            ))}
+          </select>
+        </label>
+        <p className="muted">{a.purposeOnly}</p>
+        <p className="muted">{a.deidentifiedOnly}</p>
+        <label>
+          {a.layout}
+          <select name="analysis_layout" value={layout} onChange={(e) => setLayout(e.target.value as typeof layout)}>
+            {ANALYSIS_LAYOUTS.map((l) => <option key={l} value={l}>{a.layouts[l]}</option>)}
+          </select>
+        </label>
+        <label>
+          {a.encoding}
+          <select name="analysis_encoding" key={layout} defaultValue="jsonl">
+            {ANALYSIS_ENCODINGS.filter((e) => e !== "parquet" || layout === "sessions").map((e) => (
+              <option key={e} value={e}>{a.encodings[e]}</option>
+            ))}
+          </select>
+        </label>
+        <p className="muted">{a.parquetNote}</p>
+        <label>
+          {t.reason}
+          <textarea name="reason" rows={3} minLength={10} maxLength={500} required />
+        </label>
+        <div>
+          <button type="submit" disabled={pending}>{t.submit}</button>
+        </div>
+        {state?.ok ? (
+          <p role="status">
+            {t.queued}{" "}
+            <Link href={`/${encodeURIComponent(orgId)}/exports/${encodeURIComponent(state.id)}`}>{t.view}</Link>
+          </p>
+        ) : null}
+        {state && !state.ok ? <p role="alert" className="error">{t.failed} {failureText(state)}</p> : null}
+      </form>
+    );
+  }
   // Datasets (WP-B.9) are always de-identified research exports: the identified mode and the purpose are fixed.
   const dataset = isDatasetFormat(format);
   const modes = EXPORT_MODES.filter((m) => (m !== "identified" || canIdentified) && !(dataset && m === "identified"));

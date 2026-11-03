@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { useJobPoll } from "@/hooks/useJobPoll";
 import type { RetentionSweepResult } from "@/lib/api/privacy";
 import { formatDateTime } from "@/lib/format";
 import { privacyText } from "@/messages/privacy";
@@ -15,16 +16,16 @@ export type SweepPollResult =
 
 type Phase =
   | { kind: "idle" }
-  | { kind: "working"; dryRun: boolean; status: string }
-  | { kind: "done"; result: RetentionSweepResult }
+  | { kind: "starting"; dryRun: boolean }
+  | { kind: "job"; jobId: string; dryRun: boolean }
   | { kind: "error"; failure: PrivacyFailure | null };
 
 const POLL_MS = 1000;
 const MAX_POLLS = 120;
 
 /**
- * Preview (dry run) first, then Run sweep. Starting a sweep queues a job; this polls the job until it finishes and
- * shows the counts the backend computed. Nothing is counted or deleted here.
+ * Preview (dry run) first, then Run sweep. Starting a sweep queues a job; `useJobPoll` polls the job until it finishes
+ * and the panel shows the counts the backend computed. Nothing is counted or deleted here.
  */
 export function RetentionPanel({
   start,
@@ -38,35 +39,43 @@ export function RetentionPanel({
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [confirming, setConfirming] = useState(false);
   const [previewCount, setPreviewCount] = useState<number | null>(null);
-  const alive = useRef(true);
-  useEffect(() => {
-    alive.current = true;
-    return () => {
-      alive.current = false;
-    };
-  }, []);
+  const jobId = phase.kind === "job" ? phase.jobId : "";
+  const job = useJobPoll<SweepPollResult>({
+    enabled: phase.kind === "job",
+    jobKey: jobId,
+    intervalMs: pollMs,
+    maxPolls: MAX_POLLS,
+    fetch: async () => {
+      const res = await poll(jobId);
+      if (!res.ok) throw res;
+      return res.poll;
+    },
+    isFinal: (p) => p.state !== "pending",
+    onValue: (p) => {
+      if (p.state === "done" && p.result.dry_run) setPreviewCount(p.result.orgs.reduce((n, o) => n + o.frames_purged, 0));
+    },
+  });
 
-  async function go(dryRun: boolean) {
+  async function go(dryRunNext: boolean) {
     setConfirming(false);
-    setPhase({ kind: "working", dryRun, status: "queued" });
-    const started = await start(dryRun);
-    if (!started.ok) return setPhase({ kind: "error", failure: started });
-    for (let i = 0; i < MAX_POLLS && alive.current; i++) {
-      await new Promise((r) => setTimeout(r, pollMs));
-      if (!alive.current) return;
-      const res = await poll(started.jobId);
-      if (!res.ok) return setPhase({ kind: "error", failure: res });
-      if (res.poll.state === "done") {
-        const result = res.poll.result;
-        if (result.dry_run) setPreviewCount(result.orgs.reduce((n, o) => n + o.frames_purged, 0));
-        return setPhase({ kind: "done", result });
-      }
-      if (res.poll.state === "failed") return setPhase({ kind: "error", failure: null });
-      setPhase({ kind: "working", dryRun, status: res.poll.status });
-    }
+    setPhase({ kind: "starting", dryRun: dryRunNext });
+    const started = await start(dryRunNext);
+    setPhase(started.ok ? { kind: "job", jobId: started.jobId, dryRun: dryRunNext } : { kind: "error", failure: started });
   }
 
-  const working = phase.kind === "working";
+  // The job's latest answer wins over the phase that started it.
+  const answer = job.value;
+  const result = answer?.state === "done" ? answer.result : null;
+  const failed: { failure: PrivacyFailure | null } | null =
+    job.state === "error"
+      ? { failure: job.error as PrivacyFailure }
+      : answer?.state === "failed" || job.state === "timeout"
+        ? { failure: null }
+        : phase.kind === "error"
+          ? { failure: phase.failure }
+          : null;
+  const dryRun = phase.kind === "starting" || phase.kind === "job" ? phase.dryRun : true;
+  const working = (phase.kind === "starting" || phase.kind === "job") && !result && !failed;
   return (
     <section className="panel stack" aria-label={t.title}>
       <p className="muted">{t.intro}</p>
@@ -87,12 +96,12 @@ export function RetentionPanel({
         </div>
       ) : null}
       {working ? (
-        <p role="status">{phase.dryRun ? t.running : t.runningReal}</p>
+        <p role="status">{dryRun ? t.running : t.runningReal}</p>
       ) : null}
-      {phase.kind === "done" ? (
+      {result ? (
         <div className="stack" data-testid="sweep-result">
-          <h3>{phase.result.dry_run ? t.resultDry : t.resultReal}</h3>
-          {phase.result.orgs.length === 0 ? (
+          <h3>{result.dry_run ? t.resultDry : t.resultReal}</h3>
+          {result.orgs.length === 0 ? (
             <p className="muted">{t.noOrgs}</p>
           ) : (
             <div className="table-wrap">
@@ -105,12 +114,12 @@ export function RetentionPanel({
                   </tr>
                 </thead>
                 <tbody>
-                  {phase.result.orgs.map((o) => (
+                  {result.orgs.map((o) => (
                     <tr key={o.org_id}>
                       <td data-label={t.cols.months}>{o.retention_months}</td>
                       <td data-label={t.cols.cutoff}>{formatDateTime(o.cutoff)}</td>
                       <td data-label={t.cols.purged}>
-                        {phase.result.dry_run ? t.purgedDry(o.frames_purged) : t.purgedReal(o.frames_purged)}
+                        {result.dry_run ? t.purgedDry(o.frames_purged) : t.purgedReal(o.frames_purged)}
                       </td>
                     </tr>
                   ))}
@@ -120,9 +129,9 @@ export function RetentionPanel({
           )}
         </div>
       ) : null}
-      {phase.kind === "error" ? (
+      {failed ? (
         <p role="alert" className="error">
-          {t.failed} {phase.failure ? privacyFailureText(phase.failure) : t.failedJob}
+          {t.failed} {failed.failure ? privacyFailureText(failed.failure) : t.failedJob}
         </p>
       ) : null}
     </section>

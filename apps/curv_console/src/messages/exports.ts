@@ -54,7 +54,52 @@ const formats: Record<ExportFormat, string> = {
   dataset_parquet: "Research dataset (Parquet)",
   case_package: "Case package (ZIP)",
   audit_csv: "Audit log (CSV)",
-  analysis_results: "Analysis results (not available yet)",
+  analysis_results: "Analysis results (one run)",
+};
+
+/**
+ * The pre-filled export of an analysis run (RUN-7; opened from the run page's "Export results..."). `exports.ts`
+ * is English-only elsewhere; this block carries `ne` too (`// ne: draft` until WP-L.3 reviews it).
+ */
+export interface AnalysisExportMessages {
+  title: string;
+  run: string;
+  layout: string;
+  encoding: string;
+  layouts: Record<"aggregates" | "sessions", string>;
+  encodings: Record<"jsonl" | "csv" | "parquet", string>;
+  parquetNote: string;
+  purposeOnly: string;
+  deidentifiedOnly: string;
+  fixedFormat: string;
+}
+
+export const analysisExportMessages: { en: AnalysisExportMessages; ne: AnalysisExportMessages } = {
+  en: {
+    title: "Analysis run",
+    run: "Run",
+    layout: "Table",
+    encoding: "File type",
+    layouts: { aggregates: "Aggregates (summary tables)", sessions: "Per-session rows" },
+    encodings: { jsonl: "JSONL", csv: "CSV", parquet: "Parquet" },
+    parquetNote: "Parquet is available for per-session rows only.",
+    purposeOnly: "Analysis results are exported for research or quality improvement only.",
+    deidentifiedOnly: "Analysis results are always de-identified.",
+    fixedFormat: "The format is fixed to the results of this run.",
+  },
+  // ne: draft
+  ne: {
+    title: "विश्लेषण रन",
+    run: "रन",
+    layout: "तालिका",
+    encoding: "फाइल प्रकार",
+    layouts: { aggregates: "सङ्कलित तालिका (सारांश)", sessions: "सत्र अनुसार पङ्क्ति" },
+    encodings: { jsonl: "JSONL", csv: "CSV", parquet: "Parquet" },
+    parquetNote: "Parquet सत्र अनुसार पङ्क्तिका लागि मात्र उपलब्ध छ।",
+    purposeOnly: "विश्लेषण नतिजा अनुसन्धान वा गुणस्तर सुधारका लागि मात्र निर्यात गरिन्छ।",
+    deidentifiedOnly: "विश्लेषण नतिजा सधैं पहिचान हटाइएको हुन्छ।",
+    fixedFormat: "ढाँचा यही रनको नतिजामा तय गरिएको छ।",
+  },
 };
 
 const sharedExportText = {

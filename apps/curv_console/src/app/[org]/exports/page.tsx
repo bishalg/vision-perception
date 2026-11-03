@@ -30,7 +30,11 @@ export default async function ExportsPage({
       </>
     );
   }
-  const cursor = parseCursor(await searchParams);
+  const query = await searchParams;
+  const cursor = parseCursor(query);
+  // RUN-7: `?format=analysis_results&run={id}` opens the form for one analysis run (from the run page's export link).
+  const rawRun = Array.isArray(query.run) ? query.run[0] : query.run;
+  const prefill = query.format === "analysis_results" && rawRun && rawRun.length <= 200 ? { runId: rawRun } : undefined;
   const api = await authedApi();
   const page = await loadOrNotFound(() => api.listExports(org, { cursor, limit: 50 }));
   // Every exporter role may pick from the active destinations (id, name, kind only; no config or secrets).
@@ -49,6 +53,7 @@ export default async function ExportsPage({
         canIdentified={can(role, "export.identified")}
         destinations={destinations}
         orgId={org}
+        {...(prefill ? { prefill } : {})}
       />
       <ExportsTable orgId={org} items={page.items} canDownload={can(role, "export.download")} />
       <p className="muted">{t.showing(page.items.length, page.total)}</p>

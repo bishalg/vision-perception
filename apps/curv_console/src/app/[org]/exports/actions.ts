@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { ActionFailure, ActionResult } from "@/components/exports/types";
 import { ApiError } from "@/lib/api";
 import {
+  analysisExportSchema,
   exportFormatSchema,
   exportModeSchema,
   exportPurposeSchema,
@@ -59,6 +60,32 @@ export async function createExportAction(orgId: string, formData: FormData): Pro
         reason: text(formData, "reason"),
         filters: filtersFrom(formData),
         include_labels: formData.get("include_labels") !== null,
+      });
+      revalidatePath(`/${encodeURIComponent(orgId)}/exports`);
+      return { ok: true, id: created.id };
+    } catch (err) {
+      return failure(err);
+    }
+  }
+  // RUN-7: the results of one analysis run, always de-identified, for research or quality improvement only.
+  if (format.success && format.data === "analysis_results") {
+    const analysis = analysisExportSchema.safeParse({
+      run_id: text(formData, "analysis_run_id"),
+      layout: text(formData, "analysis_layout"),
+      encoding: text(formData, "analysis_encoding"),
+    });
+    const researchPurpose = purpose.success && (purpose.data === "research" || purpose.data === "quality_improvement");
+    if (!analysis.success || !analysis.data.run_id || !researchPurpose || !purpose.success) {
+      return { ok: false, slug: "validation-failed", status: 400 };
+    }
+    try {
+      const created = await (await authedApi()).createExport(orgId, {
+        format: "analysis_results",
+        mode: "deidentified",
+        purpose: purpose.data,
+        reason: text(formData, "reason"),
+        filters: {},
+        analysis: analysis.data,
       });
       revalidatePath(`/${encodeURIComponent(orgId)}/exports`);
       return { ok: true, id: created.id };

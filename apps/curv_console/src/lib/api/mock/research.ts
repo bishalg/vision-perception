@@ -38,6 +38,32 @@ export const MOCK_RESEARCH_IDS = {
 
 const SMALL_CELL_K = 12;
 const HASH = (c: string) => c.repeat(64);
+/** Mock run progression (see `advance`): polls until `running` and until `succeeded`. */
+const PROGRESS_POLLS_TO_RUN = 2;
+const PROGRESS_POLLS_TO_SUCCEED = 5;
+
+/**
+ * A `NormativeBaselineSet`-shaped body (config-bundle-v1.json) with one range, so the run histograms shade it for
+ * the 24-35 band. Synthetic: not a norm.
+ */
+function baselineBody(): Record<string, unknown> {
+  return {
+    schemaVersion: "1.0.0", status: "provisional-literature-seeded", provenance: "Mock",
+    ageBrackets: [{ id: "24-35", minMonths: 24, maxMonths: 35 }, { id: "36-47", minMonths: 36, maxMonths: 47 }],
+    videos: {
+      mock_clip: {
+        title: "Mock clip", category: "Social", weight: 1,
+        segments: [{
+          id: "full", description: "Whole clip", startSec: 0, endSec: 8,
+          expectations: [{
+            biomarker: "eye_dwell_ratio", direction: "higher", citation: "Synthetic", source: "literature",
+            byAge: { "24-35": { acceptableLow: 0.25, acceptableHigh: 0.5, expected: 0.38 } },
+          }],
+        }],
+      },
+    },
+  };
+}
 
 function problem(status: number, slug: string, title: string, detail?: string) {
   return new ApiError(status, { type: `${PROBLEM_BASE}${slug}`, title, status, detail });
@@ -165,7 +191,7 @@ export function createMockResearch(ctx: MockResearchContext): ResearchApi {
     status: "failed", experiment_id: MOCK_RESEARCH_IDS.experimentPromoted, cohort_id: MOCK_RESEARCH_IDS.cohortAll,
     level_requested: "frames", error: "budget_exceeded", created_at: iso(-300), started_at: iso(-299), finished_at: iso(-269),
   }));
-  rows.set(MOCK_RESEARCH_IDS.runSucceeded, Array.from({ length: 37 }, (_, i): AnalysisSessionRow => {
+  const sessionRows = (): AnalysisSessionRow[] => Array.from({ length: 37 }, (_, i): AnalysisSessionRow => {
     const composite = 0.45 + (i % 10) * 0.04;
     return {
       session_id: `SESS-MOCK-${String(i + 1).padStart(4, "0")}`, level: i < 10 ? "frames" : "score",
@@ -175,7 +201,8 @@ export function createMockResearch(ctx: MockResearchContext): ResearchApi {
       delta: { composite: 0.03, metrics: { eye_dwell_ratio: 0.03 } },
       warnings: i < 10 ? [] : ["param_not_applied: metrics.ivtVelocityUnitsPerSec"],
     };
-  }));
+  });
+  rows.set(MOCK_RESEARCH_IDS.runSucceeded, sessionRows());
 
   function page<T extends { id?: string; created_at?: string }>(items: T[], cursor?: string, limit = 20) {
     const start = cursor ? Number.parseInt(cursor, 10) || 0 : 0;
@@ -195,7 +222,29 @@ export function createMockResearch(ctx: MockResearchContext): ResearchApi {
     if (!r) throw notFound();
     return r;
   };
-  const nameTaken = (name: string, except?: string) =>
+  /**
+   * Deterministic progression for the UI (no timers): every `getAnalysisRun` of a queued or running run counts as one
+   * poll. The 2nd poll moves it to `running` with progress, the 5th to `succeeded` with the seeded summary. The seeded
+   * running run (`MOCK_RESEARCH_IDS.runRunning`) never advances, so "cancel while running" has a stable subject.
+   */
+  const polls = new Map<string, number>();
+  const advance = (r: AnalysisRun) => {
+    if (r.id === MOCK_RESEARCH_IDS.runRunning || (r.status !== "queued" && r.status !== "running")) return;
+    const n = (polls.get(r.id) ?? 0) + 1;
+    polls.set(r.id, n);
+    if (n >= PROGRESS_POLLS_TO_SUCCEED) {
+      Object.assign(r, {
+        status: "succeeded", membership_hash: HASH("f"), sessions_n: 37, sessions_frames_n: 10, sessions_score_n: 27,
+        excluded: { no_age: 2, quality: 1 }, summary: succeededSummary(), result_bytes: 18_432,
+        progress: { done: 37, total: 37, phase: "done" }, started_at: r.started_at ?? stamp(), finished_at: stamp(),
+      } satisfies Partial<AnalysisRun>);
+      rows.set(r.id, sessionRows());
+    } else if (n >= PROGRESS_POLLS_TO_RUN) {
+      const done = Math.round((37 * (n - PROGRESS_POLLS_TO_RUN + 1)) / (PROGRESS_POLLS_TO_SUCCEED - PROGRESS_POLLS_TO_RUN + 1));
+      Object.assign(r, { status: "running", started_at: r.started_at ?? stamp(), progress: { done, total: 37, phase: "evaluate" } });
+    }
+  };
+  const nameTaken =(name: string, except?: string) =>
     [...experiments.values()].some((e) => e.name === name && e.id !== except);
   const newId = (prefix: string) => `${prefix}0000000-0000-4000-8000-${String(++seq).padStart(12, "0")}`;
 
@@ -310,7 +359,9 @@ export function createMockResearch(ctx: MockResearchContext): ResearchApi {
       return snap(r);
     },
     async getAnalysisRun(id) {
-      return snap(getRun(id));
+      const r = getRun(id);
+      advance(r);
+      return snap(r);
     },
     async listAnalysisRunSessions(id, q) {
       getRun(id);
@@ -339,8 +390,9 @@ export function createMockResearch(ctx: MockResearchContext): ResearchApi {
       return {
         source: "global",
         bundle_version: null,
-        scoring_profile: { version: "1.1.0", body: profile(5) },
-        normative_baselines: { version: "2026.10.0", body: {} },
+        // The drift thresholds (INV-2) are what the session Quality tab draws as warn/hard lines.
+        scoring_profile: { version: "1.1.0", body: { ...profile(5), trackingQuality: { drift: { warnDeg: 1.5, hardDeg: 3 } } } },
+        normative_baselines: { version: "2026.10.0", body: baselineBody() },
         stimulus_catalog: { version: "1.4.0", body: {} },
       };
     },

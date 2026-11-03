@@ -6,7 +6,16 @@ import { TrackingQuality } from "./TrackingQuality";
 
 const q = en.detail.quality_panel;
 
-export function QualityPanel({ session }: { session: SessionDetail }) {
+export function QualityPanel({
+  session,
+  warnDeg,
+  hardDeg,
+}: {
+  session: SessionDetail;
+  /** Drift thresholds of the effective scoring profile; absent draws no lines. */
+  warnDeg?: number | null;
+  hardDeg?: number | null;
+}) {
   const rows: [string, string][] = [
     [q.validFrames, formatPercent(session.valid_frame_ratio)],
     [q.distance, session.calibrated_distance_cm == null ? q.notMeasured : formatNumber(session.calibrated_distance_cm, 0)],
@@ -26,7 +35,7 @@ export function QualityPanel({ session }: { session: SessionDetail }) {
           </div>
         ))}
       </dl>
-      <TrackingQuality session={session} />
+      <TrackingQuality session={session} warnDeg={warnDeg} hardDeg={hardDeg} />
     </>
   );
 }

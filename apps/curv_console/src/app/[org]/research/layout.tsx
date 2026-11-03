@@ -27,6 +27,8 @@ export default async function ResearchLayout({ children, params }: { children: R
       <nav className={r.subnav} aria-label={t.title}>
         <Link href={base}>{t.title}</Link>
         <Link href={`${base}/experiments`}>{t.experiments.title}</Link>
+        <Link href={`${base}/cohorts`}>{t.cohorts.title}</Link>
+        <Link href={`${base}/runs`}>{t.runs.title}</Link>
       </nav>
       <p className="muted">{t.disclaimer}</p>
       {children}

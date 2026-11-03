@@ -39,7 +39,7 @@ export default async function ResearchOverviewPage({ params }: { params: Promise
         <section className="panel" aria-label={t.experiments.cohorts}>
           <h2>{t.experiments.cohorts}</h2>
           {cohorts.items.length === 0 ? <p className="muted">{t.experiments.noCohorts}</p> : (
-            <ul>{cohorts.items.map((c) => <li key={c.id}>{c.name}</li>)}</ul>
+            <ul>{cohorts.items.map((c) => <li key={c.id}><Link href={`${base}/cohorts/${encodeURIComponent(c.id)}`}>{c.name}</Link></li>)}</ul>
           )}
         </section>
         <section className="panel" aria-label={t.experiments.recentRuns}>
@@ -47,7 +47,7 @@ export default async function ResearchOverviewPage({ params }: { params: Promise
           {runs.items.length === 0 ? <p className="muted">{t.experiments.noRuns}</p> : (
             <ul>
               {runs.items.map((x) => (
-                <li key={x.id}>{t.runStatus[x.status]} <span className="muted">{formatDateTime(x.created_at)}</span></li>
+                <li key={x.id}><Link href={`${base}/runs/${encodeURIComponent(x.id)}`}>{t.runStatus[x.status]}</Link> <span className="muted">{formatDateTime(x.created_at)}</span></li>
               ))}
             </ul>
           )}
