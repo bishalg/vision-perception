@@ -1,10 +1,33 @@
 # Product vision: a helping hand for clinics that have no record system
 
-Owner statement recorded 2026-11-02 (Bishal Ghimire), written down by the architect so every
-later design can be checked against it. Decisions that follow from it are in
-`docs/spec/adr/ADR-0011-emr-lite-share-a-case-and-deployment.md`; the ASD-specific plan is
-in `docs/roadmap_2026q4/`. The older `docs/product_vision.md` describes the palm and flood
+Owner statements recorded 2026-11-02 and 2026-11-03 (Bishal Ghimire), written down by the
+architect so every later design can be checked against them. Decisions that follow from
+them are in `docs/spec/adr/ADR-0011-emr-lite-share-a-case-and-deployment.md` (the record,
+sharing and deployment), `ADR-0012-researcher-toolkit-tunable-analysis.md` (the research
+toolkit) and `ADR-0013-three-audience-platform-architecture.md` (one platform for three
+audiences, and the three principles below); the ASD-specific plan is in
+`docs/roadmap_2026q4/`. The older `docs/product_vision.md` describes the palm and flood
 products and is unchanged.
+
+## Core vision (2026-11-03)
+
+**One tool that bridges the gap for researchers, doctors and families alike, on mobile and
+web, with one Rust core.** The same observation, record and configuration serve three
+audiences at once: the researcher who tunes the analysis and studies cohorts, the doctor
+who records, reviews and follows up, and the family who captures at home or in the clinic
+and sees something of their own child's record. They meet in one backend on one clinic
+server, through one contract, with every calculation done once in Rust and every surface
+(iOS, Android, web console) a thin shell over it. Three principles follow:
+
+1. **Nothing is hard-coded.** Every threshold, range, band and rule lives in a versioned,
+   signed configuration document described by a parameter registry; the apps and the
+   console render it, the core validates it, and a researcher can change it at run time
+   without a rebuild (ADR-0012, ADR-0013 D6/D8).
+2. **Every word is localised.** User-facing strings on every surface, English and Nepali
+   first, with domain vocabulary defined once and a CI gate against new literals
+   (ADR-0013 D7).
+3. **Tuning never bypasses approval.** Researchers experiment freely on consented data;
+   clinical output changes only through publish-with-approval (ADR-0012 D9).
 
 ## Mission
 
@@ -42,6 +65,13 @@ they need a second opinion, without e-mailing spreadsheets.
   PDF + de-identified data), downloadable or handed over through a short-lived link.
 - A **one-server deployment**: Docker Compose, TLS, automatic encrypted backups, a
   rehearsed restore, upgrades in one command.
+- A **researcher toolkit** in the console (ADR-0012): tunable gaze-processing and scoring
+  parameters with a live single-session preview, cohort re-analysis by age band, parameter
+  sweeps, reproducible runs and de-identified result exports, with small-cell suppression
+  and research consent as the only admission rule.
+- A **clinician companion** on the clinic tablet or phone (ADR-0013): the console as a
+  responsive, installable page first, then native offline visit entry; and a **family view**
+  of the child's own follow-ups and visits on the caregiver app, in non-diagnostic words.
 
 ## What it is not
 
@@ -75,6 +105,15 @@ they need a second opinion, without e-mailing spreadsheets.
    backup is encrypted and tested on a schedule, not assumed.
 7. **Honest words.** Claims in the UI, store listing and documents are gated in CI
    (ADR-0004); what the product says it does is what it does.
+
+## Who sees what
+
+Families see their own child's observations, follow-ups and visit dates in plain,
+non-diagnostic words. Clinicians see the record and clinical text, every read audited.
+Researchers see metrics, distributions and de-identified exports, never clinical text or
+identity, and never a cell smaller than the clinic's minimum. The vendor never reads
+clinical content. A remote doctor or researcher receives one consented package and no
+account (ADR-0013 D5).
 
 ## Open questions for the owner (not decided here)
 

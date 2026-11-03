@@ -7,6 +7,7 @@
 > **2026-11-02 (phase 6):** Swift 6 mode, `Biomarker*` renames + wider claims gate, mandatory TOTP per role designed in ADR-0010; MUST ids CONC-5, CI-3, CLM-7/8 (`asd-gaze-app-store-readiness/technical.md`) and AUTH-11..14 (`asd-rust-core-and-backend/technical.md §9`); package detail in both modules' `work-packages.md` ("Phase 6 wave"); plan summary in §8 below.
 > **2026-10-31:** new prefixes **WP-I.n** = interoperability and export bridge (`asd-export` crate, deliveries) and **WP-C.9+** = clinician workspace; detail in `docs/spec/modules/asd-clinician-and-interop/work-packages.md` (ADR-0008). **WP-G.n** = gaze-tracking robustness; detail in `docs/spec/modules/asd-gaze-robustness/work-packages.md` (ADR-0007).
 > **2026-11-02 (phase 7, vision):** the owner's product vision (`docs/product/VISION.md`: EMR-lite for clinics with no record system, share-a-case to a US doctor/researcher, offline-first, one-command deployment, Rust core on every OS) is designed in ADR-0011; MUST ids REC/SHR/SYNC/DPL/HIP/TRS/AND in `docs/spec/modules/asd-emr-lite-and-sharing/technical.md`, package detail in that module's `work-packages.md`; plan summary in §9 below. The hospital-push half of ADR-0008 (WP-I.9, I.10, I.11, B.10) is **deferred**; WP-B.7 (AWS) is superseded by WP-B.18; WP-B.17 is promoted to wave 1; WP-C.12 is re-scoped to the clinical summary PDF. Migration numbers: 0024 B.19, 0025 I.13, 0026 B.21.
+> **2026-11-03 (phase 8, researcher toolkit + three-audience platform):** the owner's requests ("admin portal as a data-scientist toolkit: tune the eye-movement algorithm's ranges dynamically, age-driven analysis"; "one tool for researchers, doctors and families alike, mobile and web"; "nothing hard-coded, every string localised, tunable at run time") are designed in ADR-0012 (toolkit) and ADR-0013 (platform, principles, gap list); MUST ids PRM/INV/RFL/RPX/EXP/COH/RUN/SWP/AGE/PRV/GOV/RUI in `docs/spec/modules/asd-research-toolkit/technical.md`, packages **WP-X.n** in that module's `work-packages.md`; localisation **WP-L.n** and mobile/family **WP-M.n** rows below with one-line scope (detail when scheduled); plan summary in §10. WP-C.6 is folded into phase 8. Migration **0026** = WP-X.0; **WP-B.21 moves to 0027**.
 > **2026-11-03 (phase 7, wave 2 step 0 done):** shared seams committed (REC-8 RBAC rows, stub routers `encounters`/`attachments`/`follow_ups`/`share`, `ExportFormat::{case_package,audit_csv}` + `ExportRequest.case` + audit filters + `Export.{case_participant_id,share_links_n}`, timeline kinds `encounter`/`attachment`, `ErasureOutcome.attachments_deleted`, console `emr`/`share` API stubs and permissions) with the wave 1 defect fixes 1–4 (HIP-2 on client navigation and server actions, requester on `export.file_served`, one shared step-up limiter, contract `sanitize_file_name` in the case package); wave 2a can start.
 
 ## 0. Status table
@@ -74,7 +75,7 @@
 | WP-B.18 | One-command clinic deployment: `deploy/clinic-server/` (Caddy TLS, api/worker as `asd_app`, postgres/minio unpublished, console image), `install.sh` with key card, nightly `age`-encrypted backups + erasure ledger, `restore.sh`, monthly `restore-drill.sh`, `upgrade.sh`, CI smoke `deploy.yml` | 7 | S | done | DPL-1..11, HIP-6/7; phase 7 wave 1; answers H-11, supersedes B.7; 2026-11-02 wave 1: `deploy/clinic-server/test/compose_smoke.sh` passes locally (install, TLS via Caddy, console login, backup with erasure ledger, restore + `admin verify`, ledger replay, drill, status) in ~95 s; images built from host binaries because Docker Desktop's 7.8 GB disk cannot hold the `rust/Dockerfile` build, so that build runs in CI (`deploy.yml`) only. MinIO images are `bitnamilegacy/minio` + `minio-client` 2024.10 (`minio/minio` no longer on Docker Hub; frozen, no security updates: owner decision on a maintained S3 image). Not yet tested: `mc mirror` with real objects; `docker-image://` backend context under CI's classic image store |
 | WP-B.19 | EMR-lite backend: migration 0024 (encounters, attachments, encounter links), `POST /orgs/{id}/participants` + QR payload, participant search, encounters CRUD + session links, follow-ups due, attachments encrypted under the org DEK, RBAC actions, timeline kinds | 7 | S | done | 2026-11-03 wave 2a: 632 backend tests; attachments list route + contract AttachmentPage; encounter with clinician summary holds erasure; REC-1..8, REC-10; phase 7 wave 2, after R.7 + B.20 |
 | WP-B.20 | HIPAA audit gaps: audited reads (`session.read`, `participant.read`, `participant.timeline_read`, `clinical_review.read`, `note.read`, `disclosures.read`, `worklist.read`, `export.file_served`) via `audit::record_read` (failure = 500), blob PUT `Content-Digest` verification | 7 | I | done | HIP-1, HIP-4, SYNC-6 (backend); phase 7 wave 1; 2026-11-02 wave 1: `audit::record_read` on the 8 read paths (fail closed), blob `Content-Digest` → `digest-mismatch`; table in `rust/README.md` |
-| WP-B.21 | Participant identity (`identity.patient_ref_mode = local_record`): migration 0026, encrypted name/sex/birth-month/guardian phone + name blind index, identity routes, search, erasure, de-id exclusion | 7 | S | blocked | ADR-0011 Q3 (ADR-0008 Q1 reopened); phase 7 wave 3 |
+| WP-B.21 | Participant identity (`identity.patient_ref_mode = local_record`): migration **0027** (was 0026; moved 2026-11-03, phase 8 took 0026), encrypted name/sex/birth-month/guardian phone + name blind index, identity routes, search, erasure, de-id exclusion | 7 | S | blocked | ADR-0011 Q3 (ADR-0008 Q1 reopened); phase 7 wave 3 |
 | WP-B.22 | `asd-backend admin requeue-erasure --ledger`, `erasure-ledger`, `verify` (restore helpers; factor `enqueue_erasure` out of the privacy route) | 7 | I | done | DPL-7/8; phase 7 wave 1; consumed by B.18; 2026-11-02 wave 1: `erasure-ledger`, `requeue-erasure --ledger`, `verify` (`tests/admin_restore.rs`) |
 | WP-B.23 | Audit log export as a normal export job (`audit_csv`, owner/admin, canonical CSV via `asd-export::tabular`) + console button | 7 | I | done | HIP-3; 2026-11-03 wave 2b: `audit_csv` (de-identified, `quality_improvement` only, filters from/to/actor_id/action_prefix, download only, no destinations); `AuditExport` checked on create and on download URL; 9 columns, ids and SHA-256 of `before`/`after` only, formula-guarded, 200,000-row cap; console "Export CSV" on the audit page (hidden from superadmin, which lacks `ExportDeidentified`) |
 | WP-B.24 | `asd-backend admin reset-password` (server shell emergency access: one-time temporary password, revokes refresh tokens, audited, TOTP untouched) | 7 | I | done | 2026-11-03 wave 2a; no forced change at next sign-in yet (password-change package proposed, owner to schedule) |
@@ -83,7 +84,7 @@
 | WP-C.3 | Participants list, users/roles, audit page (participant detail/timeline moved to WP-C.14) | 2 | I | done | 2026-11-01; backend gaps: no invite/password reset, no audit filters, users/audit `total: null` |
 | WP-C.4 | Catalog editor (clips, AOI timeline, batteries) | 2 | S | done | 2026-11-01; backend gaps: catalog body checked for shape + non-empty clips only (no AOI range, time, duplicate-id or battery checks), body errors carry no JSON path, config problem slugs not in ProblemSlug, no media ref/upload, no org-role drafts (ConfigWrite unused) |
 | WP-C.5 | Baselines editor + scoring profile editor + sandbox re-score + bundle publish with approval | 2 | S | done | 2026-11-01: profile range checks moved to asd-contract `profile_checks` (backend + wasm share them); console baselines/scoring editors validated live by asd-wasm, sandbox draft-vs-published re-score, bundle compose/sign. Limits: age typed in (raw payload endpoint added in phase 4), 'sandbox before publish' + changelog enforced in console only |
-| WP-C.6 | Cohorts, norm-runs, exports, model registry | 3 | I | todo | |
+| WP-C.6 | Cohorts, norm-runs, exports, model registry | 3 | I | folded | 2026-11-03: cohorts → WP-X.2/X.7, analysis exports → WP-X.8, norm-run console view → WP-X.7 (runs page lists `norm_runs` too); model registry has no consumer (WP-D.3 todo) and stays backlog under WP-D.3 |
 | WP-C.7 | Replay heatmaps, hi/ne strings, superadmin | 4 | I | backlog | |
 | WP-C.8 | Console contract alignment to `api-v1.json`: `battery` string, `capture_source` + `synthetic`, clip `rows[]`, `participant_token`; zod-vs-schema test | 1 | I | done | API-3, CON-16/19/20; depends on R.3 |
 | WP-C.9 | Clinical foundation: migration 0008, envelope encryption + MRN blind index, 14 RBAC actions (superadmin excluded from clinical content), `asd-contract::clinical`, user display name/registration, encrypted review notes | 3 | S | done | Migration 0008, AES-256-GCM envelope (aws-lc-rs) + MRN blind index, superadmin carve-out in `rbac::allows`, signer profile `/v1/users/me`, encrypted review notes + `admin encrypt-review-notes` back-fill, org-settings audit diff only. New optional env `ASD_DATA_KEK` (clinical endpoints 503 without it) |
@@ -129,8 +130,34 @@
 | WP-E.6 | Security/privacy review pack: threat model, data-flow diagram, DPIA-lite, retention policy, AWS BAA | 3 | A + I | done | 2026-11-01: `docs/security/` (threat model, data flow, DPIA-lite, retention policy, AWS BAA checklist); owner decisions O-1..O-15 open |
 | WP-E.7 | App Store submission dry run (`appstore_precheck`, screenshots, age assurance flag) | 4 | I | backlog | |
 | WP-E.8 | HIPAA / Privacy Act 2018 administrative pack (docs only): risk analysis, policies, emergency-access procedure, BAA/DPA templates for US recipients, breach process, cross-border consent design, threat-model rows for share links, DPIA update | 7 | A + owner | drafts | ADR-0011 D9; 2026-11-02: drafts landed in 55c1cb2 (`docs/security/hipaa-safeguards.md`, `policies/`, `templates/`); final versions still need O-2, O-6, O-11, O-12, O-15 |
+| WP-X.0 | Phase 8 step 0: `asd-contract::params` registry + `validate`, scoring profile 1.2.0 (`metrics`, `aoi`, `ageBands`, `norms`), `research.rs` DTOs + slugs, `ExportFormat::analysis_results`, raw-log header/sample extension, FFI log wrappers, RBAC rows (`AnalysisRead/Run`, `ExperimentWrite/Promote`, `FramesRead`), migration 0026, `analysis_run` job kind + stub routers, `param-registry-v1.json`, console API/mock/permissions/nav stubs | 8 | S | todo | PRM-1..4, PRM-7, RFL-1, GOV-1; serial, first; ADR-0012 |
+| WP-X.1 | Core: constants → params (`metrics::extract_with`, margin, replay gate, norms from profile), `gaze::reprocess` (raw log + catalog → frames → metrics), `analysis::{evaluate, Aggregator, suppress}`; goldens byte-identical | 8 | S | todo | PRM-9, INV-1 core rows, RPX-1..3/6, PRV-1; wave 1 |
+| WP-X.2 | Backend: research-frames proxy PUT sealed under the org DEK, `GET /sessions/{id}/research-frames`, retention/erasure of the log, `age_months` at ingest, experiments + cohorts CRUD + preview with suppression, promote → draft via `ConfigWrite`, `config-unanalysed` publish rule, `config/effective`, review thresholds and norm bands from the published profile | 8 | S | todo | RFL-3..6, EXP, COH, GOV-2/3/6, INV-1 backend rows; wave 1 |
+| WP-X.5 | Console: `/[org]/research` experiments + workbench (registry-driven `RegistryForm`, session picker, live preview with scanpath, single-session sweep, run dialog), `ScoringProfileEditor` switched to the registry form, `en`+`ne` messages | 8 | I | todo | PRM-6, RUI-1..4, RUI-7; wave 1 mock-first |
+| WP-X.6 | iOS: research frame log writer (raw samples + affect + clips, consent-gated, 16 MiB cap) and third blob upload with `Content-Digest` | 8 | I | todo | RFL-2; wave 1 |
+| WP-X.3 | Backend: `analysis_run` job (`cohort_rescore`: membership snapshot, levels, unseal, evaluate ×2, incremental aggregates, sealed result blob, summary, progress, cancel, budget, quota), runs routes (create/list/get/sessions/cancel/rerun), `POST /jobs/{id}/cancel` | 8 | S | todo | RUN-1..6/8/9, GOV-4/5; wave 2 |
+| WP-X.4 | asd-wasm: `paramRegistry`, `reprocessSession`, `rescoreSession` honours `lowConfidenceValidRatio` + `metrics` (closes the R.6 open item); native == wasm32 parity | 8 | S | todo | RPX-4; wave 2 |
+| WP-X.7 | Console: cohorts pages, runs list/detail (progress, transition matrices, per-band histograms with baseline range, delta bars with CI, provenance, export pre-fill, re-run/cancel/promote), `useJobPoll`, drift lines from `config/effective` | 8 | I | todo | RUI-5/6, INV-2; wave 2 |
+| WP-X.8 | `asd-export::analysis` + backend arm: `analysis_results` export (aggregates CSV/JSONL, sessions JSONL/Parquet through `deid.rs`, provenance in the manifest) | 8 | I | todo | RUN-7, PRV-3/5; wave 2 |
+| WP-X.10 | `asd-cli research reprocess|evaluate`, `params list|check` polish | 8 | I | todo | RPX-5; wave 2 |
+| WP-X.9 | Sweeps (1–2 axes, ≤ 625 cells, budgets) and `age_profile` runs (shares vs baseline ranges, draft baselines), console curves and age tables, owner-gated knobs sweepable | 8 | S | todo | SWP-1..3, AGE-1; wave 3 (phase B) |
+| WP-L.0 | Shared domain string catalogue `asd-contract::i18n` (`domain.en.json`, `domain.ne.json`; enum labels, registry labels, problem slugs, flag/verdict texts), `asd-cli i18n export --target console|xcstrings|android`, `i18n check`, `i18n lint --swift --kotlin` (literal scan, warn + baseline) | 8 | S | todo | ADR-0013 D7; after X.0 (registry keys); unblocks L.1/L.2/L.4/L.5 |
+| WP-L.1 | Console localisation: `ne` message tree (typed same shape), locale per org (`settings.locale`) and per user, `<html lang>`/formatting, generated `domain.ts`, raw enum leaks fixed, Rust texts rendered from keys, ESLint `react/jsx-no-literals` + `aria-label` rule (fail) | 8 | I | todo | ADR-0013 D7; after L.0 |
+| WP-L.2 | iOS String Catalog (`Localizable.xcstrings` en/ne/hi), ~360 literal call sites migrated, `AppLocalizer` folded, in-app language override, generated `Domain.xcstrings`, `i18n lint --swift` flipped to fail per directory | 8+ | I | todo | ADR-0013 D7; after L.0; largest localisation package |
+| WP-L.3 | Nepali review of both catalogues by a native-speaking clinician (owner-arranged); fixes applied | 8+ | owner + I | todo | ADR-0013 Q6; after L.1, L.2 |
+| WP-L.4 | Rust-rendered text: `ExportRequest.locale`, keys + params for `ProfileProblem`/`Problem`/flag texts, README and manifest per locale, CSV data dictionary; Devanagari PDFs stay with WP-I.5 | 8+ | I | todo | ADR-0013 D7; after L.0 |
+| WP-L.5 | Android `res/values(-ne,-hi)/strings.xml` generated from the catalogue + app chrome strings | 9 | I | todo | with WP-M.5 |
+| WP-M.0 | Org-user login on the device (`asd-sync::user_session`: login, TOTP, refresh rotation, step-up; Keychain/Keystore; device token unchanged) | 9 | S | todo | ADR-0013 D4; iOS first, Kotlin with M.5 |
+| WP-M.1 | iOS display bands, age-band labels and remaining product constants from the bundle (`display.bands.*`, `ageBands`, dwell cap, one age split), `PediatricAgeBracket` raw values → ids, grep gate for numeric literals in result views | 8 | I | todo | INV-1 iOS rows, AGE-2; after X.0 |
+| WP-M.2 | Native clinician companion screens: offline visit entry and follow-up completion queued through `asd-sync` (`build_encounter_request`), worklist/follow-ups read-out; role-gated | 9 | S | todo | ADR-0013 D1(b); after M.0, C.22 |
+| WP-M.3 | Family view of the own record: device-plane `GET /v1/participants/me/{follow-ups,visits}` scoped to the device's tokens, audited `participant.self_read`, caregiver screen with non-diagnostic copy, threat-model row | 9 | S | todo | ADR-0013 D1(c)/D5, Q3; after B.19 |
+| WP-M.4 | Follow-up reminders as local notifications from synced follow-ups (no messaging) | 9 | I | todo | ADR-0013 Q2; after M.3 |
+| WP-M.5 | Android caregiver app on the AAR: capture (per A.14 outcome), calibration/validation flow, scoring, offline queue via `asd-sync`, results, consent; en/ne/hi | 9+ | S | blocked | ADR-0011 Q1 (A.14 number sheet) |
+| WP-M.6 | Android clinician companion screens in the same app | 9+ | S | blocked | after M.5, M.0 |
+| WP-M.7 | Family account (any phone, two parents, recovery) | 9+ | A + S | blocked | ADR-0013 Q1, ADR-0011 Q3, O-6 |
+| WP-C.22 | Console responsive layout + PWA manifest/icons/install (clinician companion on the clinic iPad): worklist, follow-ups, search, visit entry, case read-out at tablet width; same RBAC and audits | 8 | I | todo | ADR-0013 D1(b), ADR-0011 Q10 reopened |
 
-**Migration rule (2026-10-31 audit):** backend migrations are applied in order and numbers 0007 and 0010–0012 were never used. A new migration must take the next number above the highest existing one (≥0024 once WP-B.16 lands: 0020 is WP-B.11 pending TOTP, 0021 is ingest `request_hash` + housekeeping indexes, 0022 is WP-B.14 plaintext-column drop, 0023 is reserved for WP-B.16 `users.totp_required_by`), never a gap, or it will be applied out of order on databases that already ran later migrations. **2026-11-02 (verified: highest existing is 0023):** phase 7 reserves **0024** WP-B.19 (EMR-lite tables), **0025** WP-I.13 (share links, case-share columns), **0026** WP-B.21 (identity); wave 1 adds no migration; anything else takes ≥0027.
+**Migration rule (2026-10-31 audit):** backend migrations are applied in order and numbers 0007 and 0010–0012 were never used. A new migration must take the next number above the highest existing one (≥0024 once WP-B.16 lands: 0020 is WP-B.11 pending TOTP, 0021 is ingest `request_hash` + housekeeping indexes, 0022 is WP-B.14 plaintext-column drop, 0023 is reserved for WP-B.16 `users.totp_required_by`), never a gap, or it will be applied out of order on databases that already ran later migrations. **2026-11-02 (verified: highest existing is 0023):** phase 7 reserves **0024** WP-B.19 (EMR-lite tables), **0025** WP-I.13 (share links, case-share columns), **0026** WP-B.21 (identity); wave 1 adds no migration; anything else takes ≥0027. **2026-11-03 (phase 8; verified: highest existing is 0025):** **0026** is taken by WP-X.0 (research toolkit: experiments, cohorts, analysis runs, research-frame columns, `jobs.progress`/`cancel_requested_at`, `sessions.age_months`, export format) because WP-B.21 is blocked on an owner decision and a reserved-but-unapplied number followed by a higher applied one is exactly the out-of-order case; **WP-B.21 moves to 0027**; anything else takes ≥0028 (WP-L.1's `users.locale` is the next candidate).
 
 **Audit 2026-10-31 (independent backend-security and gaze/contract reviews, fresh-DB gates, live smoke `scripts/live_smoke.sh`).** Fixed: superadmin/admin clinical-role provisioning bypass, global config publish by org roles, export reclaim overwrite, list indexes, ingest 500s, worklist MRN flag, TOTP replay (0015); gaze recalibration after pose shift, replay retries, failed-recal isolation, empty validation (asd-core); 1.7 report decode; console report link; export missing-artifact 410. Open (owner or follow-up):
 - ~~WP-G.3 gap: per-clip ClipTracking producer~~ done 2026-11-01.
@@ -433,3 +460,101 @@ contract crate changes), `scripts/build_asd_android.sh --test` (from wave 1),
 `npm run typecheck`, `CURV_API_MODE=mock npm run build`, `npm run e2e`, and
 `bash deploy/clinic-server/test/compose_smoke.sh` (CI `deploy.yml`). Optional, numbers
 reported: `ASD_FIELD_TEST=1 scripts/field_sync_test.sh`.
+
+## 10. Phase 8 batch — researcher toolkit and the three-audience platform (designed 2026-11-03, ADR-0012, ADR-0013)
+
+Implementation batch driven by the owner's three requests of 2026-11-03 (data-scientist
+toolkit with dynamic ranges and age-driven analysis; one tool for researchers, doctors and
+families on mobile and web; nothing hard-coded, everything localised, tunable at run time).
+Toolkit detail (files, tests first, not-to-touch, traps) in
+`docs/spec/modules/asd-research-toolkit/work-packages.md`; MUST statements PRM-1..9,
+INV-1/2, RFL-1..8, RPX-1..6, EXP-1/2, COH-1..3, RUN-1..9, SWP-1..4, AGE-1..3, PRV-1..6,
+GOV-1..6, RUI-1..7 in that module's `technical.md`; acceptance scenarios 1–22 in its
+`acceptance.md`. Platform gaps (localisation WP-L.*, mobile/family WP-M.*, WP-C.22) are
+rows in §0 with one-line scope and ADR-0013 §C as their priority order; each gets its
+module spec when scheduled.
+
+Verified facts the design rests on: the server cannot read `frames.jsonl.enc` (device
+vault key; DPIA O-13), so frame-level reprocessing needs a consent-gated research frame
+log (raw samples, sealed by the server under the org DEK); I-VT, affect and
+low-confidence constants are hard-coded in `asd-core` and the wasm rescore ignores the
+profile's `lowConfidenceValidRatio`; config documents are global and superadmin-only with
+four-eyes; norms already use five age bands with min-n 12; the runner has no cancel,
+progress or quota; the console is English-only with ~1,420 centralised strings and no
+literal gate; iOS has 143 localised keys and ~360 literal call sites; ~20 traffic-light
+cut-offs live in iOS views.
+
+| WP | One line | Tier | Size | Wave | Shares files with |
+| --- | --- | --- | --- | --- | --- |
+| WP-X.0 | Step 0 seams: registry, profile 1.2.0, research DTOs, log format, RBAC, migration 0026, job kind, stubs, console stubs, schemas | S | I | 0 | everything (serial) |
+| WP-X.1 | Core: constants → params, `reprocess`, `evaluate`, `Aggregator`, `suppress` | S | L | 1 | — |
+| WP-X.2 | Backend: research frames, cohorts, experiments, promote, publish rule, `config/effective`, thresholds from profile | S | L | 1 | — |
+| WP-X.5 | Console: research area, `RegistryForm`, workbench, live preview, single-session sweep | I | L | 1 | — (mock-first) |
+| WP-X.6 | iOS: research frame log writer + third blob | I | I | 1 | — |
+| WP-X.3 | Backend: `analysis_run` job, runs routes, cancel/progress/quota | S | L | 2 | — |
+| WP-X.4 | wasm: `paramRegistry`, `reprocessSession`, honest `rescoreSession` | S | S | 2 | — |
+| WP-X.7 | Console: cohorts, runs pages, charts, `useJobPoll`, drift lines | I | L | 2 | — |
+| WP-X.8 | Export `analysis_results` (crate + job arm) | I | I | 2 | — |
+| WP-X.10 | CLI `research reprocess|evaluate` | I | S | 2 | — |
+| WP-X.9 | Sweeps + age profiles (phase B) | S | L | 3 | alone |
+| WP-L.0 | Shared string catalogue + `asd-cli i18n` export/check/lint | S | I | after X.0 | — |
+| WP-M.1 | iOS display bands / age labels / constants from the bundle + grep gate | I | I | after X.0 | — |
+| WP-C.22 | Console responsive + PWA (clinician companion on the iPad) | I | I | any | console layout files (not with X.5/X.7 in the same wave) |
+| WP-L.1 | Console `ne` + locale selection + literal gate | I | L | after L.0 | console-wide (runs alone among console packages) |
+| WP-L.2 | iOS String Catalog migration | I | L | after L.0 | iOS-wide (runs alone among iOS packages) |
+
+Parallel groups: **step 0** = {X.0}; **wave 1** = {X.1, X.2, X.5, X.6}; **wave 2** = {X.3,
+X.4, X.7, X.8, X.10}; **wave 3** = {X.9}; the platform packages slot in as their
+dependencies land and their "runs alone" notes allow (L.0 and M.1 fit wave 2; C.22 fits
+wave 3; L.1 and L.2 after their trees are quiet). After each wave the main session rebuilds
+the xcframework and `public/asd-wasm`, runs `cargo sqlx prepare`, regenerates
+`api-v1.json`, `config-bundle-v1.json`, `param-registry-v1.json`, runs every gate and
+commits.
+
+Phase A (what the owner gets first, waves 0–2): tunable gaze-processing and scoring
+parameters with validated ranges; a research frame log so a session can be fully
+reprocessed from raw samples; a live single-session preview in the browser (sliders →
+scanpath, dwell, subscores, flag) with a one-knob sweep; named experiments; cohorts by age
+band, site, date, quality and consent; cohort re-score jobs with per-band distributions,
+per-metric deltas, flag and quality transition counts, small-cell suppression, a
+reproducibility record and re-open; de-identified JSONL/CSV/Parquet exports; promote to a
+draft profile with the evidence attached; publish blocked without a run. Phase B (wave
+3): two-axis sweeps and age profiles against published or draft baselines.
+
+Deliberately out of this batch: new metrics; Android frame logging (WP-M.5 first);
+differential privacy; publishing from the workbench; any Python; a chart library; sex in
+the session schema (ADR-0012 Q8); a family account (WP-M.7, ADR-0013 Q1); messaging
+(ADR-0013 Q2).
+
+Owner decisions for this batch (recommendation in brackets; none blocks step 0 or wave 1):
+1. Research frame log retention [= `retention_months`; separate setting exists].
+2. Small-cell `k` [12; org setting 5..50].
+3. Publish without an analysis run: refuse or warn [refuse].
+4. O-13 stop uploading the device-sealed frames blob [stop with the WP-X.6 app release].
+5. Who may promote an experiment to a draft [owner, admin, researcher; approve/publish
+   unchanged].
+6. Clinic server without a vendor account: owner may approve/publish under four-eyes?
+   [keep vendor for the pilot; `org.local_publish` later].
+7. Analysis budgets [ADR-0012 D6 values; `ASD_ANALYSIS_*` env].
+8. `sex` in session schema 1.9 [yes, optional, with WP-X.6].
+9. Owner-gated knobs (`trackingQuality.scoring.*`, H-G2) sweepable in analysis [yes].
+10. Family account [no in phases 8–9; QR join]. 11. Messaging [out; local reminders].
+12. What a family sees [follow-ups, visit headers, clinic line, own summary]. 13. Locale
+selection [org default + user override; device OS language + in-app override]. 14. Bundle
+staleness [refresh when > 1 h at launch/foreground; ≤ 24 h online; offline until
+`expires_at` 90 d]. 15. Nepali reviewer [a Nepali-reading clinician before the pilot].
+16. Devanagari fonts (ADR-0008 Q3) [ratify OFL]. 17. Clinician companion device [iPad PWA
+first]. 18. Android go/no-go [A.14 sheet]. 19. Literal-string gate strictness [warn +
+baseline → fail per directory].
+
+Still blocked on the owner, unchanged: fonts for I.5/C.12 (Q3); clinical-record erasure
+(ADR-0008 Q2 / O-1); G.14 device bench (H-G4/H-G5); DPIA decisions O-1..O-15; identity
+(ADR-0011 Q3 → B.21 at 0027).
+
+Gates per wave: `scripts/rust_test.sh` with a UTF-8 Postgres (`initdb -E UTF8 --locale=C
+-k ''` on a free port, `ASD_REQUIRE_ALL=1`), `scripts/build_asd_wasm.sh --test`,
+`scripts/build_asd_android.sh --test`, `scripts/ios_test.sh` (`--prose`), in
+`apps/curv_console` `npm test`, `npm run lint`, `npm run typecheck`, `CURV_API_MODE=mock
+npm run build`, `npm run e2e`, `npm run e2e -- --project=prod`, and
+`bash deploy/clinic-server/test/compose_smoke.sh` (CI `deploy.yml`). From WP-L.0:
+`cargo run -p asd-cli -- i18n check` and `i18n lint` (warn) in `rust.yml`.
