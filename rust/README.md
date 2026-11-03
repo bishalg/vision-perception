@@ -384,6 +384,14 @@ research_frames_retention_months` (patch: absent = unchanged, `null` = follow `r
 `SessionPage.items` as `SessionListItem` (summary + `research_frames_available`, one extra column in
 the list query). The iOS raw-ack read stays until the xcframework is rebuilt.
 
+**WP-X.4 (asd-wasm).** Exports `paramRegistry()` (the `param-registry-v1.json` document) and
+`reprocessSession(log, catalog|null, profile, baselines, {ageMonths, scoredAtUtc?, model?, glasses?,
+traceHz?})`, which is `analysis::evaluate` at `frames` level and returns the core `Evaluation`.
+`rescoreSession`/`rescoreApiSession` now go through `evaluate(Score)`, so the profile's
+`lowConfidenceValidRatio` and `metrics` apply (`contractInfo.lowConfidenceValidRatio` is the
+default). `tests/research.rs` checks native == wasm32 on the synth scenarios; the replay's
+`tracking` record is compared to 1e-12 because of last-bit maths-library differences.
+
 **WP-X.1.** `asd_core::analysis` holds the core twins of the 1.2.0 profile sections
 (`AnalysisProfile`, which decodes from any `ScoringProfile` body) and of the run summary types,
 `evaluate` (score/frames/auto, RPX-2/3), `Aggregator` (exact quantiles, seeded bootstrap CIs, RUN-4)
