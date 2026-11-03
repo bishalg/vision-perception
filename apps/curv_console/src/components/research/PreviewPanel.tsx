@@ -8,6 +8,7 @@ import type { AsdCore } from "@/lib/asd/core";
 import { defaultScoringProfile, reprocessSession, rescoreSession } from "@/lib/asd/ops";
 import {
   MAX_PREVIEW_SESSIONS,
+  PREVIEW_TRACE_HZ,
   debounce,
   parseTrace,
   paramsNotApplied,
@@ -146,12 +147,12 @@ export function PreviewPanel(props: PreviewPanelProps) {
         const jsonl = frameState.current.get(s.id) ?? null;
         if (jsonl !== null) {
           const [a, b] = [
-            await reprocessSession(core, jsonl, catalog ?? null, pub, baselines, opts),
-            await reprocessSession(core, jsonl, catalog ?? null, draft, baselines, opts),
+            await reprocessSession(core, jsonl, catalog ?? null, pub, baselines, { ...opts, traceHz: PREVIEW_TRACE_HZ }),
+            await reprocessSession(core, jsonl, catalog ?? null, draft, baselines, { ...opts, traceHz: PREVIEW_TRACE_HZ }),
           ];
           if (a.ok && b.ok) {
-            publishedTrace = parseTrace(a.result.trace);
-            draftTrace = parseTrace(b.result.trace);
+            publishedTrace = parseTrace(a.result);
+            draftTrace = parseTrace(b.result);
           }
         }
         framesNote = !publishedTrace && !draftTrace;

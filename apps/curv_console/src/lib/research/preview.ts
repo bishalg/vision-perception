@@ -4,6 +4,8 @@
  * Rust core (asd-wasm).
  */
 import type { ParamSpec } from "@/lib/api/research";
+import type { SessionListItem } from "@/lib/api/types";
+import type { PickerSession } from "@/components/research/SessionPicker";
 import type { RescoreResult } from "@/lib/asd/ops";
 import { diffParams, type ProfileDoc } from "./registry";
 
@@ -79,12 +81,30 @@ const isXY = (v: unknown): v is { x: number; y: number } =>
   typeof v === "object" && v !== null && Number.isFinite((v as { x?: unknown }).x) && Number.isFinite((v as { y?: unknown }).y);
 
 /**
- * Reads the `trace` of a frame-level re-process (WP-X.4) when it has the `{points, fixations}` shape the plot draws;
- * anything else is `null` (the card then shows the score-level result only).
+ * Display sampling rate of the plotting trace, points per second. A preview-only constant: it only thins what the
+ * scanpath draws and has no effect on any score, so it is not a registry parameter or product setting.
  */
-export function parseTrace(v: unknown): Trace | null {
-  if (typeof v !== "object" || v === null) return null;
-  const { points, fixations } = v as { points?: unknown; fixations?: unknown };
-  if (!Array.isArray(points) || !points.every(isXY)) return null;
-  return { points: points.map(({ x, y }) => ({ x, y })), fixations: Array.isArray(fixations) ? fixations.filter(isXY).map(({ x, y }) => ({ x, y })) : [] };
+export const PREVIEW_TRACE_HZ = 10;
+
+/**
+ * Reads the plot data of a frame-level re-process (WP-X.4). The argument is the core `Evaluation`: `trace` is an array
+ * of `{tSec, x, y, state, ...}` points (present when `traceHz` was passed) and `fixations` is a top-level array of
+ * `{xNorm, yNorm, ...}`. Fixations of `{x, y}` are accepted too. Returns `null` when there is no usable trace (the card
+ * then shows the score-level result only).
+ */
+export function parseTrace(evaluation: unknown): Trace | null {
+  if (typeof evaluation !== "object" || evaluation === null) return null;
+  const { trace, fixations } = evaluation as { trace?: unknown; fixations?: unknown };
+  if (!Array.isArray(trace) || trace.length === 0 || !trace.every(isXY)) return null;
+  const fix = (Array.isArray(fixations) ? fixations : []).flatMap((f: unknown) => {
+    if (isXY(f)) return [{ x: f.x, y: f.y }];
+    const n = f as { xNorm?: unknown; yNorm?: unknown } | null;
+    return n && Number.isFinite(n.xNorm) && Number.isFinite(n.yNorm) ? [{ x: n.xNorm as number, y: n.yNorm as number }] : [];
+  });
+  return { points: trace.map(({ x, y }) => ({ x, y })), fixations: fix };
+}
+
+/** Picker rows from the session list; the frames badge is the list's `research_frames_available` (RFL-6), no per-session fetch. */
+export function pickerSessions(items: readonly SessionListItem[]): PickerSession[] {
+  return items.map((s) => ({ id: s.id, token: s.participant_token, startedAt: s.started_at, framesAvailable: s.research_frames_available }));
 }

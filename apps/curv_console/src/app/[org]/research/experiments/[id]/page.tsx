@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { Workbench } from "@/components/research/Workbench";
-import type { PickerSession } from "@/components/research/SessionPicker";
-import type { SessionSummary } from "@/lib/api";
+import type { SessionListItem } from "@/lib/api";
 import type { ConfigDocumentKind } from "@/lib/api/catalog";
 import { authedApi, currentRole } from "@/lib/auth/server";
 import { parseBaselines } from "@/lib/configDocs";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
+import { pickerSessions } from "@/lib/research/preview";
 import type { ProfileDoc } from "@/lib/research/registry";
 import { researchText } from "@/messages/research";
 import { loadPreviewRecordsAction, loadResearchFramesAction, previewCohortAction, promoteAction, runOnCohortAction, updateExperimentAction } from "../../actions";
@@ -30,16 +30,10 @@ export default async function ExperimentPage({ params }: { params: Promise<{ org
     published("scoring_profile"),
     published("normative_baselines"),
     published("stimulus_catalog"),
-    api.listSessions(org, { limit: PICKER_SESSIONS }).then((p) => p.items).catch(() => [] as SessionSummary[]),
+    api.listSessions(org, { limit: PICKER_SESSIONS }).then((p) => p.items).catch(() => [] as SessionListItem[]),
     api.listCohorts(org, { limit: 100 }).then((p) => p.items.filter((c) => !c.archived_at)).catch(() => []),
   ]);
-  // RFL-6 lives on the session detail, not on the list row.
-  const sessions: PickerSession[] = await Promise.all(
-    sessionPage.map(async (s) => {
-      const detail = await api.getSession(s.id).catch(() => null);
-      return { id: s.id, token: s.participant_token, startedAt: s.started_at, framesAvailable: Boolean(detail?.research_frames?.available) };
-    }),
-  );
+  const sessions = pickerSessions(sessionPage);
   const set = baselines ? parseBaselines(baselines.body) : null;
   return (
     <>

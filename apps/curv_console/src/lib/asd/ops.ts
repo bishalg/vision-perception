@@ -156,6 +156,7 @@ export const reprocessResultSchema = z
   .object({
     /** The score-level evaluation fields are the core's; the console draws what it needs and ignores the rest. */
     trace: z.unknown().optional(),
+    fixations: z.unknown().optional(),
   })
   .loose();
 export type ReprocessResult = z.infer<typeof reprocessResultSchema>;

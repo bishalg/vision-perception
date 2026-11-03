@@ -19,7 +19,7 @@ import type { ParamSpec } from "@/lib/api/research";
 import { AsdCore, type AsdWasmExports } from "@/lib/asd/core";
 import { paramRegistry as wasmParamRegistry, reprocessSession } from "@/lib/asd/ops";
 import { navLinks } from "@/lib/nav";
-import { MAX_PREVIEW_SESSIONS, PREVIEW_DEBOUNCE_MS, debounce, paramsNotApplied, parseTrace } from "@/lib/research/preview";
+import { MAX_PREVIEW_SESSIONS, PREVIEW_TRACE_HZ, PREVIEW_DEBOUNCE_MS, debounce, paramsNotApplied, parseTrace, pickerSessions } from "@/lib/research/preview";
 import { clampParam, diffParams, getAt, groupOf, groupRegistry, paramRegistry, setAt, valueOf } from "@/lib/research/registry";
 import { MAX_SWEEP_VALUES, defaultSweep, sweepValues } from "@/lib/research/sweep";
 import { researchMessages } from "@/messages/research";
@@ -244,11 +244,36 @@ describe("preview helpers", () => {
     expect(paramsNotApplied(paramRegistry.params, defaults, draft, "frames")).toEqual(["trackingQuality.calibration.maxRetriesPerTarget"]);
   });
 
-  it("reads a trace only in the shape the plot draws", () => {
-    expect(parseTrace({ points: [{ x: 0.1, y: 0.2 }], fixations: [{ x: 0.1, y: 0.2 }] })).toEqual({ points: [{ x: 0.1, y: 0.2 }], fixations: [{ x: 0.1, y: 0.2 }] });
-    expect(parseTrace({ points: [{ x: "a" }] })).toBeNull();
+  it("reads the core Evaluation: trace array and top-level fixations", () => {
+    const evaluation = {
+      level: "frames",
+      trace: [
+        { tSec: 0, x: 0.1, y: 0.2, state: "tracked", aoi: "face" },
+        { tSec: 0.1, x: 0.3, y: 0.4, state: "tracked", fixationId: 0 },
+      ],
+      fixations: [{ stimulusId: "c1", startSec: 0, endSec: 0.2, durationMs: 200, xNorm: 0.2, yNorm: 0.3, firstFrame: 0, endFrame: 6 }],
+    };
+    expect(parseTrace(evaluation)).toEqual({ points: [{ x: 0.1, y: 0.2 }, { x: 0.3, y: 0.4 }], fixations: [{ x: 0.2, y: 0.3 }] });
+    expect(parseTrace({ trace: evaluation.trace })?.fixations).toEqual([]);
+  });
+
+  it("returns null without a usable trace", () => {
+    expect(parseTrace({ level: "score" })).toBeNull();
+    expect(parseTrace({ trace: [] })).toBeNull();
+    expect(parseTrace({ trace: [{ x: "a" }] })).toBeNull();
+    expect(parseTrace({ trace: { points: [{ x: 0, y: 0 }] } })).toBeNull();
     expect(parseTrace(null)).toBeNull();
   });
+
+  it("takes the picker frames flag from the session list item", () => {
+    const item = { id: "s1", participant_token: "P1", started_at: "2026-11-01T00:00:00Z" };
+    const rows = pickerSessions([
+      { ...item, research_frames_available: true },
+      { ...item, id: "s2", research_frames_available: false },
+    ] as never);
+    expect(rows.map((r) => [r.id, r.token, r.framesAvailable])).toEqual([["s1", "P1", true], ["s2", "P1", false]]);
+  });
+
 });
 
 describe("core wrappers", () => {
@@ -330,6 +355,28 @@ describe("PreviewPanel", () => {
     expect(within(card1).getByTestId("scanpath")).toBeInTheDocument();
     const card2 = screen.getByRole("article", { name: en.preview.sessionCard("s2") });
     expect(within(card2).queryByTestId("scanpath")).toBeNull();
+  });
+
+  it("frames level: passes traceHz, parses the core Evaluation and draws the scanpath", async () => {
+    const seen: unknown[] = [];
+    const mod = {
+      ...stubModule(),
+      reprocessSession: (...a: unknown[]) => {
+        seen.push(JSON.parse(String(a[4])));
+        return JSON.stringify({
+          ok: true,
+          result: { level: "frames", trace: [{ tSec: 0, x: 0.1, y: 0.2, state: "tracked" }, { tSec: 0.1, x: 0.4, y: 0.5, state: "tracked" }], fixations: [{ xNorm: 0.4, yNorm: 0.5 }] },
+        });
+      },
+    } as unknown as AsdWasmExports;
+    const core = new AsdCore(async () => mod);
+    const loadFrames = vi.fn(async () => ({ ok: true as const, jsonl: "{}\n" }));
+    render(<PreviewPanel registry={paramRegistry} publishedProfile={defaults} baselines={{}} draft={defaults} sessions={sessions} loadRecords={okLoad} loadFrames={loadFrames} core={core} />);
+    const card1 = await screen.findByRole("article", { name: en.preview.sessionCard("s1") }, { timeout: 3000 });
+    await waitFor(() => expect(within(card1).getByRole("img", { name: en.preview.scanpathLabel })).toBeInTheDocument(), { timeout: 3000 });
+    expect(within(card1).queryByText(en.preview.framesUnavailable)).toBeNull();
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen[0]).toMatchObject({ traceHz: PREVIEW_TRACE_HZ });
   });
 
   it("flags a changed knob the score level cannot apply", async () => {
