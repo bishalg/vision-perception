@@ -29,6 +29,9 @@ commands:
   gaze replay FILE [--check] [--model KIND]
   gaze bench-report --logs DIR [--models all|KIND,...]
   gaze convert-android LOG LANDMARKS [--meta FILE] [--screen-mm W,H] [--camera-offset-mm X,Y] -o OUT
+  research reprocess LOG --catalog FILE --baselines FILE --age-months N [--profile FILE]
+  research evaluate SESSION.json --baselines FILE [--profile FILE] [--age-months N]
+                                      (research: exit 1 input error, 2 not processable)
 
 `asd-cli <command> --help` shows the options of one command.";
 
@@ -42,6 +45,7 @@ fn main() -> ExitCode {
         Some("norms") => cmd::norms::run(rest),
         Some("params") => cmd::params::run(rest),
         Some("gaze") => cmd::gaze::run(rest),
+        Some("research") => cmd::research::run(rest),
         Some("-h" | "--help" | "help") => {
             println!("{USAGE}");
             0
