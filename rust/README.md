@@ -369,6 +369,14 @@ export format. Job kind `analysis_run` and the `/experiments`, `/cohorts`, `/ana
 the `Evaluation` JSON, byte-equal to the core. Exit 0 ok, 1 input error, 2 not processable at the
 requested level (e.g. a log header without clips).
 
+**WP-X.8 (`analysis_results` export).** De-identified export of a succeeded analysis run, purpose
+research or quality_improvement, `AnalysisRead` required. Layout `aggregates` (JSONL, or a CSV ZIP;
+RUN-7 columns) or `sessions` (JSONL, CSV ZIP or Parquet with `curv.*` footer metadata incl.
+`run_id` and `definition_hash`). Sessions are joined at export time (withdrawn since the run →
+`excluded.withdrawn`, erased → `session_gone`). Suppressed cells carry no numbers; the manifest
+`provenance` block equals the run record. The research frame log has no encoder (PRV-5). The
+request's `analysis` block is stored in `exports.filters.analysis` until the contract gains a field.
+
 **WP-X.1.** `asd_core::analysis` holds the core twins of the 1.2.0 profile sections
 (`AnalysisProfile`, which decodes from any `ScoringProfile` body) and of the run summary types,
 `evaluate` (score/frames/auto, RPX-2/3), `Aggregator` (exact quantiles, seeded bootstrap CIs, RUN-4)
