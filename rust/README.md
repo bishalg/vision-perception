@@ -344,6 +344,12 @@ Responses are `no-store`, `noindex` and `no-referrer`; open, failed open and dow
 the client IP. Passcodes are Argon2id-hashed and never logged. Links never outlive the artifact
 (EXJ-4). Migration 0025.
 
+Share a case works before any gaze session: a child's visits and documents can be packaged alone
+(`sessions_n: 0`, FHIR bundle of `Patient` + `Organization` only, `data/sessions.jsonl` header only).
+A participant with no session, no visit and no uploaded file is refused (`400 validation-failed`,
+"the participant has nothing to share"). A visit posted by a `clinician` without `clinician_id`
+records the caller as its clinician, so `follow-ups?assigned=me` lists it (REC-4).
+
 ## Conventions
 
 - Licence `Apache-2.0` on every crate; dependencies must pass `rust/deny.toml`.
