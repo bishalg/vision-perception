@@ -57,6 +57,31 @@ impl NormBox {
     pub fn contains(&self, p: [f64; 2]) -> bool {
         p[0] >= self.x_min && p[0] <= self.x_max && p[1] >= self.y_min && p[1] <= self.y_max
     }
+
+    /// The box grown by `margin_norm` on every side (`aoi.marginNorm`, PRM-9; negative
+    /// shrinks). Not clipped to [0, 1]: gaze points are never clamped either. `None` when a
+    /// shrink empties it (or the margin is not finite). A zero margin returns the box as it
+    /// is, bit for bit.
+    pub fn with_margin(&self, margin_norm: f64) -> Option<NormBox> {
+        if margin_norm == 0.0 {
+            return Some(*self);
+        }
+        if !margin_norm.is_finite() {
+            return None;
+        }
+        let out = NormBox {
+            x_min: self.x_min - margin_norm,
+            y_min: self.y_min - margin_norm,
+            x_max: self.x_max + margin_norm,
+            y_max: self.y_max + margin_norm,
+        };
+        (out.x_max >= out.x_min && out.y_max >= out.y_min).then_some(out)
+    }
+
+    /// [`contains`](Self::contains) on the box grown by `margin_norm` (inclusive).
+    pub fn contains_with_margin(&self, p: [f64; 2], margin_norm: f64) -> bool {
+        self.with_margin(margin_norm).is_some_and(|b| b.contains(p))
+    }
 }
 
 fn valid_aspect(a: f64) -> bool {
@@ -118,6 +143,58 @@ impl ScreenAoi {
     pub fn contains(&self, p: [f64; 2], t_sec: f64) -> bool {
         t_sec >= self.start_sec && t_sec <= self.end_sec && self.rect.contains(p)
     }
+
+    /// [`contains`](Self::contains) with the box grown by `margin_norm` (time window unchanged).
+    pub fn contains_with_margin(&self, p: [f64; 2], t_sec: f64, margin_norm: f64) -> bool {
+        t_sec >= self.start_sec
+            && t_sec <= self.end_sec
+            && self.rect.contains_with_margin(p, margin_norm)
+    }
+
+    /// The AOI with its box grown by `margin_norm`; `None` when a shrink leaves nothing.
+    pub fn with_margin(&self, margin_norm: f64) -> Option<ScreenAoi> {
+        Some(ScreenAoi {
+            rect: self.rect.with_margin(margin_norm)?,
+            ..self.clone()
+        })
+    }
+}
+
+/// Every AOI grown by `margin_norm` (PRM-9 `aoi.marginNorm`), dropping the ones a shrink
+/// empties. A zero margin returns `aois` unchanged.
+pub fn with_margin(aois: &[ScreenAoi], margin_norm: f64) -> Vec<ScreenAoi> {
+    aois.iter()
+        .filter_map(|a| a.with_margin(margin_norm))
+        .collect()
+}
+
+/// [`clip_aois`] with every resulting box grown by `margin_norm` (the margin applies in
+/// screen space, after the video mapping).
+pub fn clip_aois_with_margin(
+    areas: &[Area],
+    space: AoiSpace,
+    video_aspect: f64,
+    screen_aspect: f64,
+    gravity: VideoGravity,
+    margin_norm: f64,
+) -> Vec<ScreenAoi> {
+    with_margin(
+        &clip_aois(areas, space, video_aspect, screen_aspect, gravity),
+        margin_norm,
+    )
+}
+
+/// [`active_aoi_names`] with every box grown by `margin_norm`.
+pub fn active_aoi_names_with_margin(
+    aois: &[ScreenAoi],
+    p: [f64; 2],
+    t_sec: f64,
+    margin_norm: f64,
+) -> Vec<String> {
+    aois.iter()
+        .filter(|a| a.contains_with_margin(p, t_sec, margin_norm))
+        .map(|a| a.name.clone())
+        .collect()
 }
 
 /// The clip's catalog areas as screen-space AOIs (with their roles). `Screen` passes boxes

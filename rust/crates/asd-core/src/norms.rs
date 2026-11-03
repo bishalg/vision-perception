@@ -14,6 +14,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::analysis::profile::NormsParams;
 use crate::types::{AgeBracket, NormativeDirection};
 
 /// Biomarkers where lower is better (candidate direction inference); all others are
@@ -37,15 +38,23 @@ pub struct AggregateParams {
 
 impl Default for AggregateParams {
     fn default() -> Self {
+        Self::from(&NormsParams::default(), &default_age_brackets())
+    }
+}
+
+impl AggregateParams {
+    /// AGE-2 / PRM-9: the parameters of a profile's `norms` section and `ageBands` (the norm
+    /// job and the analysis read both from the published profile, not from constants).
+    pub fn from(norms: &NormsParams, age_bands: &[AgeBracket]) -> Self {
         Self {
-            min_n: DEFAULT_MIN_N,
-            include_imputed: false,
-            brackets: default_age_brackets(),
+            min_n: norms.min_n as usize,
+            include_imputed: norms.include_imputed,
+            brackets: age_bands.to_vec(),
         }
     }
 }
 
-/// The five brackets of `DEFAULT_AGE_BRACKETS`.
+/// The five brackets of `DEFAULT_AGE_BRACKETS`: the default source of `ScoringProfile.ageBands`.
 pub fn default_age_brackets() -> Vec<AgeBracket> {
     [
         ("12-17", 12, 17),

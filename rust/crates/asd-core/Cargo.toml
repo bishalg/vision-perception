@@ -24,3 +24,8 @@ sha2 = { workspace = true, optional = true }
 
 [dev-dependencies]
 serde_jcs.workspace = true
+# Integration tests only (`tests/analysis.rs`): the core's profile and summary types must
+# match the contract's JSON. A dev-dependency cycle; never used by unit tests.
+asd-contract.workspace = true
+# `cargo test -p asd-core` runs the synth-driven tests (scenarios, reprocess) too.
+asd-core = { path = ".", features = ["synth"] }

@@ -210,6 +210,8 @@ dependencies = [
 name = "asd-core"
 version = "0.1.0"
 dependencies = [
+ "asd-contract",
+ "asd-core",
  "rand_chacha",
  "serde",
  "serde_jcs",
