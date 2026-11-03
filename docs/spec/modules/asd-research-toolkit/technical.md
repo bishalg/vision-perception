@@ -502,7 +502,9 @@ lifecycle, any Python.
   `analysis.run_cancel`, `analysis.read`, `analysis.sessions_read`, `session.frames_upload`
   (device), `session.frames_read`, `export.create` (existing, format
   `analysis_results`). `after` carries ids, hashes, counts and changed registry ids; never
-  per-session values.
+  per-session values. `analysis.read` is written only when the response carries results
+  (a `summary` or `membership_drift`); progress-only polls of a queued or running run are
+  not audited.
 - **GOV-5** Nothing in the toolkit writes to `sessions`, `session_clip_scores`,
   `review_items`, `clinical_*`, `config_documents` (except GOV-2's draft) or
   `config_bundles`; a test asserts the analysis job's role (`asd_app`) performs only

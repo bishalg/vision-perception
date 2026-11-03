@@ -14,7 +14,9 @@
 //!   (`AnalysisRead`): newest first, without `summary` (the detail has it).
 //! - `GET /v1/analysis-runs/{id}` (`AnalysisRead`): every RUN-1 column but the blob key,
 //!   the job's live `progress`, `membership_drift` of a finished re-run; audits
-//!   `analysis.read` once per call before the body is built.
+//!   `analysis.read` once per call only when the body carries results (a `summary` or
+//!   `membership_drift`). Progress-only bodies (`queued`, `running`, and `cancelled` or
+//!   `failed` without a summary) are not audited reads: the console polls them once a second.
 //! - `GET /v1/analysis-runs/{id}/sessions?cursor&limit` (`AnalysisRead` and `SessionRead`):
 //!   rows of the sealed result blob; audits `analysis.sessions_read` once per page.
 //! - `POST /v1/analysis-runs/{id}/cancel` (`AnalysisRun`): a queued run ends `cancelled` at
@@ -847,19 +849,23 @@ async fn get_run(
     let run = load_run(&mut conn, id).await?;
     drop(conn);
     auth.ensure_org(run.org_id)?;
-    // One audit row per run view (GOV-4): the page covers many participants.
-    record_read(
-        &state.db,
-        &auth.principal,
-        &meta,
-        run.org_id,
-        "analysis.read",
-        "analysis_run",
-        &id.to_string(),
-        Some(json!({"status": run.status})),
-    )
-    .await?;
-    Ok(Json(run.dto(true)?))
+    let dto = run.dto(true)?;
+    // One audit row per view that returns results (GOV-4): the page covers many participants.
+    // Progress-only polls of a queued or running run carry no results and are not audited.
+    if dto.summary.is_some() || dto.membership_drift.is_some() {
+        record_read(
+            &state.db,
+            &auth.principal,
+            &meta,
+            run.org_id,
+            "analysis.read",
+            "analysis_run",
+            &id.to_string(),
+            Some(json!({"status": run.status})),
+        )
+        .await?;
+    }
+    Ok(Json(dto))
 }
 
 #[derive(Debug, Default, Deserialize)]

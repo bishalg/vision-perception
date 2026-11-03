@@ -239,6 +239,58 @@ async fn auto_run_splits_by_level_pages_rows_and_audits() {
 }
 
 #[tokio::test]
+async fn progress_polls_are_not_audited_reads_but_results_are() {
+    let Some(c) = Ctx::new().await else { return };
+    cohort(&c, None).await;
+    let (_, researcher) = c.token(Role::Researcher).await;
+    let (exp_id, _) = experiment(&c, &researcher).await;
+    let (_, run) = create_run(&c, body(&exp_id, "auto", json!({})), &researcher).await;
+    let id = run["id"].as_str().unwrap().to_owned();
+
+    // Queued, then running: the console polls these once a second; no results, no audit row.
+    for _ in 0..5 {
+        let r = get_run(&c, &id, &researcher).await;
+        assert_eq!(r["status"], "queued");
+        assert_eq!(r["summary"], Value::Null);
+    }
+    sqlx::query("UPDATE analysis_runs SET status = 'running' WHERE id = $1::uuid")
+        .bind(&id)
+        .execute(&c.db.pool)
+        .await
+        .unwrap();
+    for _ in 0..5 {
+        let r = get_run(&c, &id, &researcher).await;
+        assert_eq!(r["status"], "running");
+    }
+    assert_eq!(c.audit_rows("analysis.read").await.len(), 0);
+    sqlx::query("UPDATE analysis_runs SET status = 'queued' WHERE id = $1::uuid")
+        .bind(&id)
+        .execute(&c.db.pool)
+        .await
+        .unwrap();
+
+    // The first read of the finished run is the audited one; the list is never audited.
+    assert_eq!(c.run_jobs().await, 1);
+    let r = get_run(&c, &id, &researcher).await;
+    assert_eq!(r["status"], "succeeded", "{r}");
+    assert!(r["summary"].is_object());
+    assert_eq!(c.audit_rows("analysis.read").await.len(), 1);
+    let (s, _) = c
+        .call(
+            Method::GET,
+            &format!("/v1/orgs/{}/analysis-runs", c.org),
+            None,
+            &researcher,
+        )
+        .await;
+    assert_eq!(s, StatusCode::OK);
+    assert_eq!(c.audit_rows("analysis.read").await.len(), 1);
+    get_run(&c, &id, &researcher).await;
+    assert_eq!(c.audit_rows("analysis.read").await.len(), 2);
+    c.db.cleanup().await;
+}
+
+#[tokio::test]
 async fn frames_level_excludes_sessions_without_a_log() {
     let Some(c) = Ctx::new().await else { return };
     let (device, _) = common::auth::seed_device(&c.db.pool, c.org).await;
