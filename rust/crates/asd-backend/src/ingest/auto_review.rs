@@ -1,7 +1,8 @@
 //! owner: WP-B.3
 //!
 //! ING-3 review auto-rules, applied inside the ingest transaction:
-//! `low_quality` when `validRatio < 0.80`, `flag_red` when the stored flag is `red`,
+//! `low_quality` when `validRatio < review.lowQualityValidRatio` of the published scoring
+//! profile (0.80 when none is published, INV-1), `flag_red` when the stored flag is `red`,
 //! `random_audit` with probability `organizations.settings.audit_rate` (default 0.05),
 //! drawn deterministically from `sha256(session_id)`, and `norm_candidate` when
 //! `rawPayload.normCollection.consented == true`.
@@ -28,8 +29,27 @@ use uuid::Uuid;
 
 use crate::error::AppResult;
 
+/// The documented fallback of `review.lowQualityValidRatio` (no profile published).
 pub const LOW_QUALITY_VALID_RATIO: f64 = 0.80;
 pub const DEFAULT_AUDIT_RATE: f64 = 0.05;
+
+/// The numbers the rules read: the profile's review threshold and the org's audit rate.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Rules {
+    /// `review.lowQualityValidRatio`.
+    pub low_quality_valid_ratio: f64,
+    /// `organizations.settings.audit_rate` ([`audit_rate`]).
+    pub audit_rate: f64,
+}
+
+impl Rules {
+    pub fn new(profile: &ScoringProfile, org_settings: &Value) -> Self {
+        Self {
+            low_quality_valid_ratio: profile.review.low_quality_valid_ratio,
+            audit_rate: audit_rate(org_settings),
+        }
+    }
+}
 
 /// Uniform draw in `[0, 1)`: the first 8 bytes of `sha256(session_id)` as a big-endian
 /// integer over 2^64. Same session, same draw, on every server.
@@ -67,26 +87,10 @@ pub fn low_tracking_quality(
         .is_some_and(|a| a > params.verdict.accuracy_bands.fair_max_deg)
 }
 
-/// `trackingQuality` of the latest published scoring profile; the asd-core defaults when none
-/// is published or it does not decode (logged, never fails an ingest).
-pub async fn tracking_params(conn: &mut PgConnection) -> AppResult<TrackingQualityParams> {
-    let body = sqlx::query_scalar!(
-        "SELECT body FROM config_documents
-         WHERE kind = 'scoring_profile' AND status = 'published'
-         ORDER BY published_at DESC LIMIT 1"
-    )
-    .fetch_optional(&mut *conn)
-    .await?;
-    Ok(match body {
-        None => TrackingQualityParams::default(),
-        Some(body) => match serde_json::from_value::<ScoringProfile>(body) {
-            Ok(p) => p.tracking_quality,
-            Err(e) => {
-                tracing::warn!(error = %e, "published scoring profile does not decode; default tracking thresholds");
-                TrackingQualityParams::default()
-            }
-        },
-    })
+/// The latest published scoring profile; the defaults when none is published or it does not
+/// decode (logged, never fails an ingest). `trackingQuality` and `review` are read from it.
+pub async fn published_profile(conn: &mut PgConnection) -> AppResult<ScoringProfile> {
+    crate::config_docs::lifecycle::effective_scoring_profile(conn).await
 }
 
 /// The reasons a new session enters the review queue, in a fixed order.
@@ -97,10 +101,10 @@ pub fn reasons(
     unscorable: bool,
     flag: SessionAttentionFlag,
     norm_consented: bool,
-    audit_rate: f64,
+    rules: &Rules,
 ) -> Vec<ReviewReason> {
     let mut out = Vec::new();
-    if valid_ratio < LOW_QUALITY_VALID_RATIO {
+    if valid_ratio < rules.low_quality_valid_ratio {
         out.push(ReviewReason::LowQuality);
     }
     if low_tracking {
@@ -112,7 +116,7 @@ pub fn reasons(
     if flag == SessionAttentionFlag::Red {
         out.push(ReviewReason::FlagRed);
     }
-    if audit_draw(session_id) < audit_rate {
+    if audit_draw(session_id) < rules.audit_rate {
         out.push(ReviewReason::RandomAudit);
     }
     if norm_consented {
@@ -159,6 +163,36 @@ mod tests {
     use super::*;
     use serde_json::json;
 
+    /// The default profile's rules with this audit rate.
+    fn rules_at(audit_rate: f64) -> Rules {
+        Rules {
+            audit_rate,
+            ..Rules::new(&ScoringProfile::default(), &json!({}))
+        }
+    }
+
+    #[test]
+    fn profile_and_settings_feed_the_rules() {
+        let r = Rules::new(&ScoringProfile::default(), &json!({"audit_rate": 0.2}));
+        assert_eq!(r.low_quality_valid_ratio, LOW_QUALITY_VALID_RATIO);
+        assert_eq!(r.audit_rate, 0.2);
+        let mut p = ScoringProfile::default();
+        p.review.low_quality_valid_ratio = 0.9;
+        let r = Rules::new(&p, &json!({"audit_rate": 0.0}));
+        assert_eq!(
+            reasons(
+                "S",
+                0.85,
+                false,
+                false,
+                SessionAttentionFlag::Green,
+                false,
+                &r
+            ),
+            [ReviewReason::LowQuality]
+        );
+    }
+
     #[test]
     fn rate_parsing() {
         assert_eq!(audit_rate(&json!({})), DEFAULT_AUDIT_RATE);
@@ -174,22 +208,22 @@ mod tests {
     #[test]
     fn rules() {
         use SessionAttentionFlag::*;
-        assert!(reasons("S", 0.8, false, false, Yellow, false, 0.0).is_empty());
+        assert!(reasons("S", 0.8, false, false, Yellow, false, &rules_at(0.0)).is_empty());
         assert_eq!(
-            reasons("S", 0.79, false, false, Yellow, false, 0.0),
+            reasons("S", 0.79, false, false, Yellow, false, &rules_at(0.0)),
             [ReviewReason::LowQuality]
         );
         assert_eq!(
-            reasons("S", 0.9, false, false, Red, false, 0.0),
+            reasons("S", 0.9, false, false, Red, false, &rules_at(0.0)),
             [ReviewReason::FlagRed]
         );
-        assert!(reasons("S", 0.9, false, false, Unreliable, false, 0.0).is_empty());
+        assert!(reasons("S", 0.9, false, false, Unreliable, false, &rules_at(0.0)).is_empty());
         assert_eq!(
-            reasons("S", 0.9, false, false, Green, true, 0.0),
+            reasons("S", 0.9, false, false, Green, true, &rules_at(0.0)),
             [ReviewReason::NormCandidate]
         );
         assert_eq!(
-            reasons("S", 0.9, false, false, Green, false, 1.0),
+            reasons("S", 0.9, false, false, Green, false, &rules_at(1.0)),
             [ReviewReason::RandomAudit]
         );
     }
@@ -198,7 +232,7 @@ mod tests {
     fn low_tracking_rule_and_order() {
         use SessionAttentionFlag::*;
         assert_eq!(
-            reasons("S", 0.7, true, false, Red, false, 0.0),
+            reasons("S", 0.7, true, false, Red, false, &rules_at(0.0)),
             [
                 ReviewReason::LowQuality,
                 ReviewReason::LowTrackingQuality,
@@ -236,11 +270,11 @@ mod tests {
     fn unscorable_rule_and_order() {
         use SessionAttentionFlag::*;
         assert_eq!(
-            reasons("S", 0.9, false, true, Unreliable, false, 0.0),
+            reasons("S", 0.9, false, true, Unreliable, false, &rules_at(0.0)),
             [ReviewReason::Unscorable]
         );
         assert_eq!(
-            reasons("S", 0.7, true, true, Unreliable, true, 0.0),
+            reasons("S", 0.7, true, true, Unreliable, true, &rules_at(0.0)),
             [
                 ReviewReason::LowQuality,
                 ReviewReason::LowTrackingQuality,

@@ -12,6 +12,9 @@
 //!   clips, review-queue items and labels (FK cascades), its idempotency key, its frames
 //!   and report blobs (recorded key and the ADR-B3 key, since pre-signed uploads do not
 //!   record one), and unsigned clinical review drafts about it;
+//! - (WP-X.2, RFL-5, PRV-4) the research frame log of **every** session of the participant,
+//!   held ones included: it is research data, not the clinical record. A held session keeps
+//!   its row with the research columns cleared and `research_frames_purged_at` set;
 //! - every care event, every draft referral letter;
 //! - the artifact of every unexpired export that included the participant (EXJ-8); the
 //!   export becomes `expired`, its pending deliveries fail (`export-unavailable`), and
@@ -301,6 +304,22 @@ pub(crate) fn session_blob_keys(
     keys.into_iter().collect()
 }
 
+/// Every key a session's research frame log may live under (RFL-3): the recorded one and
+/// the computed one.
+pub(crate) fn research_blob_keys(
+    org: Uuid,
+    token: &str,
+    session_id: &str,
+    recorded: Option<&str>,
+) -> Vec<String> {
+    let mut keys = BTreeSet::new();
+    keys.insert(BlobKind::ResearchFrames.key(org, token, session_id));
+    if let Some(k) = recorded {
+        keys.insert(k.to_owned());
+    }
+    keys.into_iter().collect()
+}
+
 /// Deletes `keys`; a key the store refuses as invalid is skipped (it cannot exist there).
 pub(crate) async fn delete_blobs(
     blobs: &dyn BlobStore,
@@ -322,6 +341,8 @@ struct SessionRow {
     id: String,
     held: bool,
     keys: Vec<String>,
+    /// The research log keys (RFL-5): deleted even when the session is held.
+    research_keys: Vec<String>,
     idempotency_key: Option<String>,
 }
 
@@ -385,7 +406,7 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
     // ---- phase 1: what to erase
     let sessions: Vec<SessionRow> = sqlx::query!(
         r#"SELECT s.id, s.participant_token, s.frames_blob_key, s.report_pdf_key,
-                  s.idempotency_key,
+                  s.idempotency_key, s.research_frames_blob_key,
                   (EXISTS (SELECT 1 FROM clinical_reviews cr
                            JOIN clinical_review_versions v ON v.review_id = cr.id
                            WHERE cr.session_id = s.id AND v.status <> 'draft')
@@ -408,6 +429,12 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
             s.frames_blob_key.as_deref(),
             s.report_pdf_key.as_deref(),
             false,
+        ),
+        research_keys: research_blob_keys(
+            org,
+            &s.participant_token,
+            &s.id,
+            s.research_frames_blob_key.as_deref(),
         ),
         id: s.id,
         held: s.held,
@@ -464,6 +491,10 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
     let mut outcome = ErasureOutcome::default();
     for s in sessions.iter().filter(|s| !s.held) {
         outcome.session_blobs_deleted += delete_blobs(&*blobs, &s.keys, job.attempts).await?;
+    }
+    // RFL-5 / PRV-4: research logs of every session, held or not.
+    for s in &sessions {
+        delete_blobs(&*blobs, &s.research_keys, job.attempts).await?;
     }
     for e in &exports {
         if let Some(key) = &e.blob_key {
@@ -631,6 +662,22 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
         .await?
         .rows_affected();
     outcome.sessions_held = (sessions.len() - erase.len()) as u64;
+    // RFL-5: a held session's research log went in phase 2; its row says so. (No new log can
+    // arrive: the participant is withdrawn, and the upload refuses withdrawn participants.)
+    let held: Vec<String> = sessions
+        .iter()
+        .filter(|s| s.held)
+        .map(|s| s.id.clone())
+        .collect();
+    sqlx::query!(
+        "UPDATE sessions
+         SET research_frames_blob_key = NULL, research_frames_bytes = NULL,
+             research_frames_sha256 = NULL, research_frames_purged_at = now()
+         WHERE id = ANY($1) AND research_frames_blob_key IS NOT NULL",
+        &held,
+    )
+    .execute(&mut *tx)
+    .await?;
     outcome.care_events_deleted = sqlx::query!(
         "DELETE FROM care_events WHERE participant_id = $1",
         participant

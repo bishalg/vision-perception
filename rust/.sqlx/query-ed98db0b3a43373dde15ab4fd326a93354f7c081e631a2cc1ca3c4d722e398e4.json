@@ -1,0 +1,56 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH base AS (\n               SELECT s.age_months,\n                      COALESCE(s.summary -> 'normCollection' -> 'consented' = 'true'::jsonb,\n                               false) AS consented,\n                      p.withdrawn_at IS NOT NULL AS withdrawn,\n                      COALESCE(s.scoring_status, 'scored') AS scoring_status,\n                      s.quality_verdict, s.tracking_verdict, s.valid_frame_ratio,\n                      s.research_frames_blob_key IS NOT NULL AS has_frames\n               FROM sessions s JOIN participants p ON p.id = s.participant_id\n               WHERE s.org_id = $1\n                 AND ($2::timestamptz IS NULL OR s.received_at >= $2)\n                 AND ($3::timestamptz IS NULL OR s.received_at <= $3)\n                 AND (cardinality($4::uuid[]) = 0 OR s.device_id = ANY($4))\n                 AND (s.capture_source = 'truedepth'\n                      OR ($5::bool AND s.capture_source = 'synthetic'))\n                 AND (NOT $6::bool OR s.research_frames_blob_key IS NOT NULL))\n           SELECT CASE\n                    WHEN NOT b.consented THEN 'no_consent'\n                    WHEN b.withdrawn THEN 'withdrawn'\n                    WHEN NOT (b.scoring_status = ANY($7::text[])) THEN 'unscorable'\n                    WHEN b.age_months IS NULL OR band.id IS NULL THEN 'no_age'\n                    WHEN (cardinality($8::text[]) > 0\n                          AND NOT (b.quality_verdict = ANY($8::text[])))\n                      OR (cardinality($9::text[]) > 0\n                          AND (b.tracking_verdict IS NULL\n                               OR NOT (b.tracking_verdict = ANY($9::text[]))))\n                      OR ($10::float8 IS NOT NULL AND b.valid_frame_ratio < $10)\n                    THEN 'quality'\n                  END AS reason,\n                  band.id AS band,\n                  b.has_frames AS \"has_frames!\",\n                  count(*) AS \"n!\"\n           FROM base b\n           LEFT JOIN LATERAL (\n               SELECT t.id\n               FROM unnest($11::text[], $12::int[], $13::int[]) WITH ORDINALITY\n                    AS t(id, lo, hi, ord)\n               WHERE b.age_months BETWEEN t.lo AND t.hi\n               ORDER BY t.ord\n               LIMIT 1) band ON true\n           GROUP BY 1, 2, 3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "reason",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "band",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "has_frames!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "n!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "Timestamptz",
+        "UuidArray",
+        "Bool",
+        "Bool",
+        "TextArray",
+        "TextArray",
+        "TextArray",
+        "Float8",
+        "TextArray",
+        "Int4Array",
+        "Int4Array"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "ed98db0b3a43373dde15ab4fd326a93354f7c081e631a2cc1ca3c4d722e398e4"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE experiments\n         SET status = 'promoted', promoted_config_version = $2,\n             row_version = row_version + 1, updated_at = now()\n         WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fc960f7c29448c59373d29014448f23b2132082aa5e963f755d9248a793438ab"
+}

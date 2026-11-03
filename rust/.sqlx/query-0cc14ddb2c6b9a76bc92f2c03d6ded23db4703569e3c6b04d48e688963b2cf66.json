@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT s.id, s.org_id, s.participant_id, s.participant_token, s.started_at,\n                  s.duration_sec, s.battery, s.capture_source, s.quality_verdict,\n                  s.attention_flag, s.composite_score, s.composite_confidence,\n                  s.bundle_version, s.device_id, s.age_pack, s.lang, s.schema_version,\n                  s.valid_frame_ratio, s.calibrated_distance_cm, s.social_preference,\n                  s.eye_dwell, s.mouth_dwell, s.first_eye_latency_ms, s.affect,\n                  s.report_pdf_key, s.tracking_verdict, s.tracking_accuracy_deg,\n                  s.scoring_status, s.unscorable_reason,\n                  CASE WHEN s.tracking_verdict IS NOT NULL\n                       THEN s.summary -> 'trackingQuality' END AS tracking_quality,\n                  EXISTS (SELECT 1 FROM review_items r\n                          WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed'))\n                      AS \"reviewed!\"\n           FROM sessions s WHERE s.id = $1",
+  "query": "SELECT s.id, s.org_id, s.participant_id, s.participant_token, s.started_at,\n                  s.duration_sec, s.battery, s.capture_source, s.quality_verdict,\n                  s.attention_flag, s.composite_score, s.composite_confidence,\n                  s.bundle_version, s.device_id, s.age_pack, s.lang, s.schema_version,\n                  s.valid_frame_ratio, s.calibrated_distance_cm, s.social_preference,\n                  s.eye_dwell, s.mouth_dwell, s.first_eye_latency_ms, s.affect,\n                  s.report_pdf_key, s.tracking_verdict, s.tracking_accuracy_deg,\n                  s.scoring_status, s.unscorable_reason,\n                  CASE WHEN s.tracking_verdict IS NOT NULL\n                       THEN s.summary -> 'trackingQuality' END AS tracking_quality,\n                  s.research_frames_blob_key IS NOT NULL AS \"research_available!\",\n                  s.research_frames_purged_at IS NOT NULL AS \"research_purged!\",\n                  s.research_frames_bytes,\n                  EXISTS (SELECT 1 FROM review_items r\n                          WHERE r.session_id = s.id AND r.status IN ('done', 'dismissed'))\n                      AS \"reviewed!\"\n           FROM sessions s WHERE s.id = $1",
   "describe": {
     "columns": [
       {
@@ -330,6 +330,29 @@
       },
       {
         "ordinal": 30,
+        "name": "research_available!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 31,
+        "name": "research_purged!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 32,
+        "name": "research_frames_bytes",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "research_frames_bytes"
+          }
+        }
+      },
+      {
+        "ordinal": 33,
         "name": "reviewed!",
         "type_info": "Bool",
         "origin": "Expression"
@@ -371,8 +394,11 @@
       true,
       true,
       null,
+      null,
+      null,
+      true,
       null
     ]
   },
-  "hash": "77f9daeb80b5c0838073cab963b63e919bfc1dc55cc8674d86ee3fa572c88d84"
+  "hash": "0cc14ddb2c6b9a76bc92f2c03d6ded23db4703569e3c6b04d48e688963b2cf66"
 }

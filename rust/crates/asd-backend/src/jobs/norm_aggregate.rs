@@ -16,8 +16,8 @@
 //! - the participant has not withdrawn consent;
 //! - `capture_source = 'truedepth'`, or `'synthetic'` when the run asks for
 //!   `source_filter.include_synthetic` (dev/test servers only, `ASD_ALLOW_SYNTHETIC`);
-//! - the quality verdict is `optimal` or `acceptable` and `valid_frame_ratio >= 0.80`
-//!   (the ING-3 `low_quality` threshold);
+//! - the quality verdict is `optimal` or `acceptable` and `valid_frame_ratio >=
+//!   review.lowQualityValidRatio` (the ING-3 `low_quality` threshold, 0.80 by default);
 //! - the session was scored: a schema 1.8 session with `scoring_status = 'unscorable'` never
 //!   feeds a norm (SCH-5; 1.6 and 1.7 sessions have no status and always carry scores);
 //! - no review item of the session is still `open` or `in_review`, and none is marked
@@ -28,8 +28,17 @@
 //!   that a reviewer closed as `done`. Synthetic rows have no consent to check.
 //!
 //! Imputed per-clip rows are dropped by `norms::extract_observations` unless the run sets
-//! `include_imputed` (default false).
+//! `include_imputed`.
+//!
+//! ## Parameters from the published profile (WP-X.2, AGE-2, INV-1)
+//!
+//! The age bands are the published scoring profile's `ageBands`; its `norms.minN` is a floor
+//! under the request's `min_n` and its `norms.includeImputed` opts imputed rows in; the
+//! validity floor is its `review.lowQualityValidRatio`. With no published profile these are
+//! today's constants (the five brackets, 12, false, 0.80), so a run is unchanged under the
+//! default profile. The values used are stored in the run's `params`.
 
+use asd_contract::config::ScoringProfile;
 use asd_core::norms::{self, AggregateParams, Buckets, CandidateBaselineSet};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -44,17 +53,14 @@ use crate::auth::extractors::{RequestMeta, UserPrincipal};
 use crate::error::{AppError, AppResult};
 use crate::problem::InvalidParam;
 
-/// `ING-3` low-quality threshold, reused as the validity floor for norm data.
+/// `ING-3` low-quality threshold, reused as the validity floor for norm data: the documented
+/// fallback of `review.lowQualityValidRatio` when no profile is published.
 pub const MIN_VALID_FRAME_RATIO: f64 = 0.80;
 /// Smallest `min_n` a run may use: the clinical floor of CORE-8.
 pub const MIN_N_FLOOR: usize = norms::DEFAULT_MIN_N;
 pub const MIN_N_CEILING: usize = 100_000;
 /// Sessions read per page; bounds memory regardless of table size.
 const PAGE: i64 = 500;
-
-fn default_min_n() -> usize {
-    norms::DEFAULT_MIN_N
-}
 
 /// Which stored sessions are considered.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -76,7 +82,12 @@ pub struct SourceFilter {
     pub to: Option<DateTime<Utc>>,
 }
 
-/// `POST /v1/jobs/norm-aggregate` body, also stored as the job's (and run's) params.
+fn default_min_n() -> usize {
+    norms::DEFAULT_MIN_N
+}
+
+/// `POST /v1/jobs/norm-aggregate` body, also stored as the job's (and run's) params. The
+/// published profile's `norms` apply on top (AGE-2, [`NormParams::aggregate_params`]).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NormParams {
@@ -122,11 +133,17 @@ impl NormParams {
         }
     }
 
-    fn aggregate_params(&self) -> AggregateParams {
+    /// The aggregation parameters under `profile` (AGE-2): its age bands; its `norms.minN`
+    /// as a floor under the request's `min_n` (a request may ask for more, never fewer); its
+    /// `norms.includeImputed` when either side opts in. Under the default profile this is
+    /// the request unchanged.
+    pub fn aggregate_params(&self, profile: &ScoringProfile) -> AggregateParams {
         AggregateParams {
-            min_n: self.min_n,
-            include_imputed: self.include_imputed,
-            brackets: norms::default_age_brackets(),
+            min_n: self
+                .min_n
+                .max(usize::try_from(profile.norms.min_n).unwrap_or(usize::MAX)),
+            include_imputed: self.include_imputed || profile.norms.include_imputed,
+            brackets: profile.age_bands.clone(),
         }
     }
 }
@@ -150,7 +167,11 @@ pub async fn execute(tx: &mut PgConnection, job: &Job) -> Result<Value, JobError
     params
         .validate()
         .map_err(|e| JobError::Permanent(format!("invalid norm-aggregate params: {e:?}")))?;
-    let agg = params.aggregate_params();
+    let profile = crate::config_docs::lifecycle::effective_scoring_profile(&mut *tx)
+        .await
+        .map_err(JobError::from)?;
+    let agg = params.aggregate_params(&profile);
+    let valid_floor = profile.review.low_quality_valid_ratio;
     let filter = &params.source_filter;
     let org = job.org_id.or(filter.org_id);
 
@@ -196,7 +217,7 @@ pub async fn execute(tx: &mut PgConnection, job: &Job) -> Result<Value, JobError
             org,
             filter.from,
             filter.to,
-            MIN_VALID_FRAME_RATIO,
+            valid_floor,
             filter.include_synthetic,
             PAGE,
         )
@@ -227,6 +248,10 @@ pub async fn execute(tx: &mut PgConnection, job: &Job) -> Result<Value, JobError
     .await?;
     let mut stored_params = job.params.clone();
     stored_params["brackets"] = json!(agg.brackets.iter().map(|b| &b.id).collect::<Vec<_>>());
+    // AGE-2: what the run actually used, whatever the request left to the profile.
+    stored_params["min_n"] = json!(agg.min_n);
+    stored_params["include_imputed"] = json!(agg.include_imputed);
+    stored_params["valid_ratio_floor"] = json!(valid_floor);
     let cells = serde_json::to_value(&candidate)
         .map_err(|e| JobError::Permanent(format!("candidate does not serialise: {e}")))?;
     let n_total = i32::try_from(used).unwrap_or(i32::MAX);
@@ -386,6 +411,30 @@ mod tests {
         assert_eq!(p.min_n, 12);
         assert!(!p.include_imputed);
         assert!(p.validate().is_ok());
+        // Under the default profile: the request unchanged, the five brackets (AGE-2).
+        let agg = p.aggregate_params(&ScoringProfile::default());
+        assert_eq!(agg.min_n, 12);
+        assert!(!agg.include_imputed);
+        assert_eq!(agg.brackets, norms::default_age_brackets());
+    }
+
+    /// AGE-2: the bands come from the profile and its `minN` is a floor.
+    #[test]
+    fn bands_and_min_n_come_from_the_profile() {
+        let mut profile = ScoringProfile::default();
+        profile.norms.min_n = 20;
+        profile.norms.include_imputed = true;
+        profile.age_bands.truncate(2);
+        let agg = NormParams::default().aggregate_params(&profile);
+        assert_eq!((agg.min_n, agg.include_imputed), (20, true));
+        assert_eq!(agg.brackets.len(), 2);
+        let asked = NormParams {
+            min_n: 30,
+            ..Default::default()
+        };
+        assert_eq!(asked.aggregate_params(&profile).min_n, 30);
+        profile.norms.min_n = 5;
+        assert_eq!(NormParams::default().aggregate_params(&profile).min_n, 12);
     }
 
     #[test]

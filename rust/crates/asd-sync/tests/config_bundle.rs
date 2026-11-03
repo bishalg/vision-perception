@@ -456,3 +456,43 @@ fn signed_bundle_with_invalid_profile_values_is_refused() {
         Err(BundleRejection::InvalidProfile(_))
     ));
 }
+
+/// PRM-3 (WP-X.2): the device runs the parameter registry first, so a 1.2.0 knob outside its
+/// registered range is refused even where no cross-field rule exists, with the same message
+/// backend publish gives. A profile inside every range (the delivered one, and the 1.1.0
+/// fixtures above) still passes.
+#[test]
+fn signed_bundle_outside_a_registry_range_is_refused() {
+    let mut b = bundle(
+        "2026.11.01-3",
+        "2026-11-01T00:00:00Z",
+        &trusted(SEED_A).key_id,
+    );
+    b.scoring_profile.metrics.ivt_velocity_units_per_sec = 100.0;
+    b.scoring_profile.norms.min_n = 2;
+    let text = signed(b, &key(SEED_A));
+    match accept_bundle(text.as_bytes(), &ring(), &policy(None, None)) {
+        Err(BundleRejection::InvalidProfile(message)) => {
+            assert!(
+                message.contains("metrics.ivtVelocityUnitsPerSec must be in [0.5, 50]"),
+                "{message}"
+            );
+            assert!(message.contains("norms.minN"), "{message}");
+        }
+        other => panic!("expected InvalidProfile, got {other:?}"),
+    }
+    // The same profile is valid by the old cross-field rules alone: the registry refused it.
+    let mut p = delivered_profile();
+    p.metrics.ivt_velocity_units_per_sec = 100.0;
+    assert!(asd_contract::profile_checks::scoring_profile_problems(&p).is_empty());
+
+    let ok = signed(
+        bundle(
+            "2026.11.01-4",
+            "2026-11-01T00:00:00Z",
+            &trusted(SEED_A).key_id,
+        ),
+        &key(SEED_A),
+    );
+    assert!(accept_bundle(ok.as_bytes(), &ring(), &policy(None, None)).is_ok());
+}

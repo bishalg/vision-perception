@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT org_id, participant_token, schema_version, summary,\n                  frames_blob_key IS NOT NULL AS \"frames_available!\",\n                  frames_purged_at IS NOT NULL AS \"frames_purged!\"\n           FROM sessions WHERE id = $1",
+  "query": "SELECT org_id, participant_token, schema_version, summary,\n                  frames_blob_key IS NOT NULL AS \"frames_available!\",\n                  frames_purged_at IS NOT NULL AS \"frames_purged!\",\n                  research_frames_blob_key IS NOT NULL AS \"research_available!\",\n                  research_frames_purged_at IS NOT NULL AS \"research_purged!\",\n                  research_frames_bytes\n           FROM sessions WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -58,6 +58,29 @@
         "name": "frames_purged!",
         "type_info": "Bool",
         "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "research_available!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "research_purged!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
+        "name": "research_frames_bytes",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "sessions",
+            "name": "research_frames_bytes"
+          }
+        }
       }
     ],
     "parameters": {
@@ -71,8 +94,11 @@
       false,
       false,
       null,
-      null
+      null,
+      null,
+      null,
+      true
     ]
   },
-  "hash": "30faab9e5b3a0e2b3655bfb84d47f555ed53cd875cce965c178913e34e96493c"
+  "hash": "ddf1f7799e797d192cabab3ccffcccd690588ff35bff88f8b0710de1c7548c98"
 }
