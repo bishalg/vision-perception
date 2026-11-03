@@ -1,0 +1,2187 @@
+{
+  "derivation": "Native asd-wasm output for tests/research.rs cases(): reprocess_session over every synth_tracking scenario (seed 7, clips renamed to catalog clips, asd-core fixture catalog and baselines, default profile, ageMonths 30) and rescore_session over one synth session per profile with lowConfidenceValidRatio 0.6 and 0.9. sha256 is over the result's JSON bytes without `tracking`, which the wasm build must reproduce exactly; `tracking` is compared to 1e-12 (platform libm, see tests/research.rs).",
+  "function": "reprocess_session+rescore_session",
+  "schema": "asd-golden/1",
+  "vectors": {
+    "frames/artifact_spike": {
+      "bytes": 6087,
+      "compositeScore": 0.33258003766478333,
+      "flag": "red",
+      "level": "frames",
+      "sha256": "4560a7d5babeb83790fd8f4e4ed7add08176b4f43a581817ceb9dbc7d98f80c6",
+      "tracking": {
+        "calibration": {
+          "ageSecAtStart": 7.016666999999998,
+          "attempts": 1,
+          "conditionNumber": 1.118937238033917,
+          "layoutPoints": 5,
+          "looCvDeg": 0.014367265221319205,
+          "missingPoints": 0,
+          "model": "screenAffine",
+          "pose": {
+            "distanceCm": 45.0,
+            "pitchDeg": 0.0,
+            "yawDeg": 0.0
+          },
+          "quality": "good",
+          "residualDeg": 0.0074158589772177815,
+          "usablePoints": 5
+        },
+        "conditions": {
+          "ambientIntensityMedian": 400.0,
+          "distanceCmIqr": 0.0,
+          "distanceCmMedian": 45.0,
+          "headSpeedDegPerSecP90": 0.0
+        },
+        "confidence": {
+          "lowConfidenceSampleRatio": 0.0,
+          "meanFixation": 1.0,
+          "meanSample": 1.0
+        },
+        "device": {
+          "geometrySource": "table",
+          "modelIdentifier": "iPhone17,3",
+          "orientation": "portrait",
+          "sampleRateHz": 59.99880002400596,
+          "screenHeightMm": 141.1357,
+          "screenWidthMm": 65.1013
+        },
+        "driftChecks": [
+          {
+            "atSec": 124.316667,
+            "driftDeg": 0.005569148080388474,
+            "missed": false,
+            "offsetDeg": 0.003414368263198374,
+            "xNorm": 0.5,
+            "yNorm": 0.5
+          },
+          {
+            "atSec": 132.316667,
+            "driftDeg": 0.017218611576656658,
+            "missed": false,
+            "offsetDeg": 0.010475199854150232,
+            "xNorm": 0.3,
+            "yNorm": 0.3
+          }
+        ],
+        "estimatedAccuracyDeg": 0.008004277423101263,
+        "loss": {
+          "artifactSec": 0.09999899999999684,
+          "blinkSec": 0.0,
+          "gapFilledSec": 0.09999899999999684,
+          "longestGapSec": 0.04999999999999716,
+          "offscreenSec": 0.0,
+          "trackLossSec": 0.0
+        },
+        "maxDriftDeg": 0.017218611576656658,
+        "paramsVersion": "1.0.0",
+        "pipelineVersion": "asd-gaze/1.0.0",
+        "recalibrations": [],
+        "validation": {
+          "accuracyDeg": 0.008004277423101263,
+          "complete": true,
+          "dataLoss": 0.0,
+          "precisionRmsDeg": 0.008700923618574935,
+          "precisionRmsRawDeg": 0.10860338909138767,
+          "targets": [
+            {
+              "accuracyDeg": 0.00832696169065721,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008585873293141172,
+              "sdDeg": 0.014788208613087757,
+              "validSamples": 61,
+              "xNorm": 0.3,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.005561611941450575,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008413632194816115,
+              "sdDeg": 0.019919898022806182,
+              "validSamples": 61,
+              "xNorm": 0.7,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.02652384604331697,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.009512991067281188,
+              "sdDeg": 0.03730908623730967,
+              "validSamples": 60,
+              "xNorm": 0.3,
+              "yNorm": 0.7
+            },
+            {
+              "accuracyDeg": 0.007681593155545317,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008815973944008699,
+              "sdDeg": 0.015128416298538989,
+              "validSamples": 60,
+              "xNorm": 0.7,
+              "yNorm": 0.7
+            }
+          ]
+        },
+        "verdict": "good"
+      }
+    },
+    "frames/bias_gain": {
+      "bytes": 6054,
+      "compositeScore": 0.2342592592592592,
+      "flag": "red",
+      "level": "frames",
+      "sha256": "7a08eafad58b8ca64b9928e5ced43eed8b78abf35e5193d2d88506a35a7d2175",
+      "tracking": {
+        "calibration": {
+          "ageSecAtStart": 7.016666999999998,
+          "attempts": 1,
+          "conditionNumber": 1.2772940107992719,
+          "layoutPoints": 5,
+          "looCvDeg": 0.03245293970608488,
+          "missingPoints": 0,
+          "model": "screenAffine",
+          "pose": {
+            "distanceCm": 45.0,
+            "pitchDeg": 0.0,
+            "yawDeg": 0.0
+          },
+          "quality": "good",
+          "residualDeg": 0.01766139390974524,
+          "usablePoints": 5
+        },
+        "conditions": {
+          "ambientIntensityMedian": 400.0,
+          "distanceCmIqr": 0.0,
+          "distanceCmMedian": 45.0,
+          "headSpeedDegPerSecP90": 0.0
+        },
+        "confidence": {
+          "lowConfidenceSampleRatio": 0.0,
+          "meanFixation": 1.0,
+          "meanSample": 1.0
+        },
+        "device": {
+          "geometrySource": "table",
+          "modelIdentifier": "iPhone17,3",
+          "orientation": "portrait",
+          "sampleRateHz": 59.99880002400596,
+          "screenHeightMm": 141.1357,
+          "screenWidthMm": 65.1013
+        },
+        "driftChecks": [
+          {
+            "atSec": 124.316667,
+            "driftDeg": 0.017921091946248777,
+            "missed": false,
+            "offsetDeg": 0.009519168570297727,
+            "xNorm": 0.5,
+            "yNorm": 0.5
+          },
+          {
+            "atSec": 132.316667,
+            "driftDeg": 0.00815449582957782,
+            "missed": false,
+            "offsetDeg": 0.00873474913243123,
+            "xNorm": 0.3,
+            "yNorm": 0.3
+          }
+        ],
+        "estimatedAccuracyDeg": 0.017134361981289464,
+        "loss": {
+          "artifactSec": 0.0,
+          "blinkSec": 0.0,
+          "gapFilledSec": 0.0,
+          "longestGapSec": 0.0,
+          "offscreenSec": 0.0,
+          "trackLossSec": 0.0
+        },
+        "maxDriftDeg": 0.017921091946248777,
+        "paramsVersion": "1.0.0",
+        "pipelineVersion": "asd-gaze/1.0.0",
+        "recalibrations": [],
+        "validation": {
+          "accuracyDeg": 0.017134361981289464,
+          "complete": true,
+          "dataLoss": 0.0,
+          "precisionRmsDeg": 0.008257222004750849,
+          "precisionRmsRawDeg": 0.09658303710628505,
+          "targets": [
+            {
+              "accuracyDeg": 0.020471373754516103,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008119343814364749,
+              "sdDeg": 0.01298883101145181,
+              "validSamples": 61,
+              "xNorm": 0.3,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.03806678602863672,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008395100195136949,
+              "sdDeg": 0.026605861619165505,
+              "validSamples": 61,
+              "xNorm": 0.7,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.013797350208062822,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.009034217681981649,
+              "sdDeg": 0.029277749140096312,
+              "validSamples": 60,
+              "xNorm": 0.3,
+              "yNorm": 0.7
+            },
+            {
+              "accuracyDeg": 0.012818048260144268,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.007373047388126564,
+              "sdDeg": 0.024235225143187294,
+              "validSamples": 60,
+              "xNorm": 0.7,
+              "yNorm": 0.7
+            }
+          ]
+        },
+        "verdict": "good"
+      }
+    },
+    "frames/bias_only": {
+      "bytes": 6039,
+      "compositeScore": 0.5342592592592593,
+      "flag": "yellow",
+      "level": "frames",
+      "sha256": "28aa2b00378b7f743bb83f4fe5b7d2a8a39ac1509922267e166b06725343eb68",
+      "tracking": {
+        "calibration": {
+          "ageSecAtStart": 7.016666999999998,
+          "attempts": 1,
+          "conditionNumber": 1.1190675965029588,
+          "layoutPoints": 5,
+          "looCvDeg": 0.06165797072630069,
+          "missingPoints": 0,
+          "model": "screenAffine",
+          "pose": {
+            "distanceCm": 45.0,
+            "pitchDeg": 0.0,
+            "yawDeg": 0.0
+          },
+          "quality": "good",
+          "residualDeg": 0.0230510696726662,
+          "usablePoints": 5
+        },
+        "conditions": {
+          "ambientIntensityMedian": 400.0,
+          "distanceCmIqr": 0.0,
+          "distanceCmMedian": 45.0,
+          "headSpeedDegPerSecP90": 0.0
+        },
+        "confidence": {
+          "lowConfidenceSampleRatio": 0.0,
+          "meanFixation": 1.0,
+          "meanSample": 1.0
+        },
+        "device": {
+          "geometrySource": "table",
+          "modelIdentifier": "iPhone17,3",
+          "orientation": "portrait",
+          "sampleRateHz": 59.99880002400596,
+          "screenHeightMm": 141.1357,
+          "screenWidthMm": 65.1013
+        },
+        "driftChecks": [
+          {
+            "atSec": 124.316667,
+            "driftDeg": 0.016834502223792357,
+            "missed": false,
+            "offsetDeg": 0.03384444144871189,
+            "xNorm": 0.5,
+            "yNorm": 0.5
+          },
+          {
+            "atSec": 132.316667,
+            "driftDeg": 0.010624477823727803,
+            "missed": false,
+            "offsetDeg": 0.011957318993580001,
+            "xNorm": 0.3,
+            "yNorm": 0.3
+          }
+        ],
+        "estimatedAccuracyDeg": 0.022900880221145947,
+        "loss": {
+          "artifactSec": 0.0,
+          "blinkSec": 0.0,
+          "gapFilledSec": 0.0,
+          "longestGapSec": 0.0,
+          "offscreenSec": 0.0,
+          "trackLossSec": 0.0
+        },
+        "maxDriftDeg": 0.016834502223792357,
+        "paramsVersion": "1.0.0",
+        "pipelineVersion": "asd-gaze/1.0.0",
+        "recalibrations": [],
+        "validation": {
+          "accuracyDeg": 0.0203149618705779,
+          "complete": true,
+          "dataLoss": 0.0,
+          "precisionRmsDeg": 0.008594149692916293,
+          "precisionRmsRawDeg": 0.10353741488811394,
+          "targets": [
+            {
+              "accuracyDeg": 0.017939746516450777,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008192958172289848,
+              "sdDeg": 0.01213470639623655,
+              "validSamples": 61,
+              "xNorm": 0.3,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.03246654160139053,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008448906602247867,
+              "sdDeg": 0.02073191323655333,
+              "validSamples": 61,
+              "xNorm": 0.7,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.011912486583866719,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.00902472637257931,
+              "sdDeg": 0.03792883106029872,
+              "validSamples": 60,
+              "xNorm": 0.3,
+              "yNorm": 0.7
+            },
+            {
+              "accuracyDeg": 0.022690177224705024,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008739392783584718,
+              "sdDeg": 0.020982210177374495,
+              "validSamples": 60,
+              "xNorm": 0.7,
+              "yNorm": 0.7
+            }
+          ]
+        },
+        "verdict": "good"
+      }
+    },
+    "frames/blinks_and_loss": {
+      "bytes": 5971,
+      "compositeScore": 0.0809867629362214,
+      "flag": "red",
+      "level": "frames",
+      "sha256": "9228dce2268985cbcdd283e109e68d3741e76cdbf27878e043df023b599d211a",
+      "tracking": {
+        "calibration": {
+          "ageSecAtStart": 7.016666999999998,
+          "attempts": 1,
+          "conditionNumber": 1.1190795459482794,
+          "layoutPoints": 5,
+          "looCvDeg": 0.014686911106870433,
+          "missingPoints": 0,
+          "model": "screenAffine",
+          "pose": {
+            "distanceCm": 45.0,
+            "pitchDeg": 0.0,
+            "yawDeg": 0.0
+          },
+          "quality": "good",
+          "residualDeg": 0.004414520296479311,
+          "usablePoints": 5
+        },
+        "conditions": {
+          "ambientIntensityMedian": 400.0,
+          "distanceCmIqr": 0.0,
+          "distanceCmMedian": 45.0,
+          "headSpeedDegPerSecP90": 0.0
+        },
+        "confidence": {
+          "lowConfidenceSampleRatio": 0.0,
+          "meanFixation": 1.0,
+          "meanSample": 1.0
+        },
+        "device": {
+          "geometrySource": "table",
+          "modelIdentifier": "iPhone17,3",
+          "orientation": "portrait",
+          "sampleRateHz": 59.99880002400596,
+          "screenHeightMm": 141.1357,
+          "screenWidthMm": 65.1013
+        },
+        "driftChecks": [
+          {
+            "atSec": 124.316667,
+            "driftDeg": 0.006910792609844059,
+            "missed": false,
+            "offsetDeg": 0.00661778778055725,
+            "xNorm": 0.5,
+            "yNorm": 0.5
+          },
+          {
+            "atSec": 132.316667,
+            "driftDeg": 0.01201189933760722,
+            "missed": false,
+            "offsetDeg": 0.014195681627310788,
+            "xNorm": 0.3,
+            "yNorm": 0.3
+          }
+        ],
+        "estimatedAccuracyDeg": 0.012493962201131956,
+        "loss": {
+          "artifactSec": 0.0,
+          "blinkSec": 1.7666660000000007,
+          "gapFilledSec": 0.0,
+          "longestGapSec": 0.8166670000000238,
+          "offscreenSec": 0.0,
+          "trackLossSec": 1.3000000000000114
+        },
+        "maxDriftDeg": 0.01201189933760722,
+        "paramsVersion": "1.0.0",
+        "pipelineVersion": "asd-gaze/1.0.0",
+        "recalibrations": [],
+        "validation": {
+          "accuracyDeg": 0.012493962201131956,
+          "complete": true,
+          "dataLoss": 0.0,
+          "precisionRmsDeg": 0.008395562902254794,
+          "precisionRmsRawDeg": 0.09763286601322946,
+          "targets": [
+            {
+              "accuracyDeg": 0.004176566897059527,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.007316382507049955,
+              "sdDeg": 0.012175156922146003,
+              "validSamples": 61,
+              "xNorm": 0.3,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.02235805870255523,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008514706221273814,
+              "sdDeg": 0.021454364381807697,
+              "validSamples": 61,
+              "xNorm": 0.7,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.013980904878158652,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.00929158346826874,
+              "sdDeg": 0.030211739030196635,
+              "validSamples": 60,
+              "xNorm": 0.3,
+              "yNorm": 0.7
+            },
+            {
+              "accuracyDeg": 0.011007019524105259,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008276419583235774,
+              "sdDeg": 0.02058389180204995,
+              "validSamples": 60,
+              "xNorm": 0.7,
+              "yNorm": 0.7
+            }
+          ]
+        },
+        "verdict": "fair"
+      }
+    },
+    "frames/cal_target_starved": {
+      "bytes": 6038,
+      "compositeScore": 0.5111111111111111,
+      "flag": "yellow",
+      "level": "frames",
+      "sha256": "a229e7a60df2ac30d3b60cd89292e270dcfc9571acdf68f8a2f330572755ff9f",
+      "tracking": {
+        "calibration": {
+          "ageSecAtStart": 7.016666999999998,
+          "attempts": 1,
+          "conditionNumber": 1.632636109448307,
+          "layoutPoints": 5,
+          "looCvDeg": 0.04065342685897928,
+          "missingPoints": 1,
+          "model": "screenAffine",
+          "pose": {
+            "distanceCm": 45.0,
+            "pitchDeg": 0.0,
+            "yawDeg": 0.0
+          },
+          "quality": "good",
+          "residualDeg": 0.006804993724565382,
+          "usablePoints": 4
+        },
+        "conditions": {
+          "ambientIntensityMedian": 400.0,
+          "distanceCmIqr": 0.0,
+          "distanceCmMedian": 45.0,
+          "headSpeedDegPerSecP90": 0.0
+        },
+        "confidence": {
+          "lowConfidenceSampleRatio": 0.0,
+          "meanFixation": 1.0,
+          "meanSample": 1.0
+        },
+        "device": {
+          "geometrySource": "table",
+          "modelIdentifier": "iPhone17,3",
+          "orientation": "portrait",
+          "sampleRateHz": 59.99880002400596,
+          "screenHeightMm": 141.1357,
+          "screenWidthMm": 65.1013
+        },
+        "driftChecks": [
+          {
+            "atSec": 124.316667,
+            "driftDeg": 0.01077680258900556,
+            "missed": false,
+            "offsetDeg": 0.007232247597577644,
+            "xNorm": 0.5,
+            "yNorm": 0.5
+          },
+          {
+            "atSec": 132.316667,
+            "driftDeg": 0.03472263666491821,
+            "missed": false,
+            "offsetDeg": 0.027108316016772546,
+            "xNorm": 0.3,
+            "yNorm": 0.3
+          }
+        ],
+        "estimatedAccuracyDeg": 0.017170281807175093,
+        "loss": {
+          "artifactSec": 0.0,
+          "blinkSec": 0.0,
+          "gapFilledSec": 0.0,
+          "longestGapSec": 0.0,
+          "offscreenSec": 0.0,
+          "trackLossSec": 0.0
+        },
+        "maxDriftDeg": 0.03472263666491821,
+        "paramsVersion": "1.0.0",
+        "pipelineVersion": "asd-gaze/1.0.0",
+        "recalibrations": [],
+        "validation": {
+          "accuracyDeg": 0.016173205645210416,
+          "complete": true,
+          "dataLoss": 0.0,
+          "precisionRmsDeg": 0.007916635555192406,
+          "precisionRmsRawDeg": 0.09216749902724486,
+          "targets": [
+            {
+              "accuracyDeg": 0.022883679247595136,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.007405563153971878,
+              "sdDeg": 0.01782030108331963,
+              "validSamples": 61,
+              "xNorm": 0.3,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.007776194888055571,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.0080790564627973,
+              "sdDeg": 0.020171235837369288,
+              "validSamples": 61,
+              "xNorm": 0.7,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.035274545284275545,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.00941686634592624,
+              "sdDeg": 0.03204799718415252,
+              "validSamples": 60,
+              "xNorm": 0.3,
+              "yNorm": 0.7
+            },
+            {
+              "accuracyDeg": 0.009462732042825696,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.007754214647587512,
+              "sdDeg": 0.019618045964428225,
+              "validSamples": 60,
+              "xNorm": 0.7,
+              "yNorm": 0.7
+            }
+          ]
+        },
+        "verdict": "good"
+      }
+    },
+    "frames/distance_shift_after_cal": {
+      "bytes": 5997,
+      "compositeScore": 0.5851851851851853,
+      "flag": "yellow",
+      "level": "frames",
+      "sha256": "89808058a0dc7ebf6bd9e635f7795b21518547a8c5316d2d7ef5ad4694551c89",
+      "tracking": {
+        "calibration": {
+          "ageSecAtStart": 7.016666999999998,
+          "attempts": 1,
+          "conditionNumber": 1.1190624805609644,
+          "layoutPoints": 5,
+          "looCvDeg": 0.02607953460510757,
+          "missingPoints": 0,
+          "model": "screenAffine",
+          "pose": {
+            "distanceCm": 45.0,
+            "pitchDeg": 0.0,
+            "yawDeg": 0.0
+          },
+          "quality": "good",
+          "residualDeg": 0.007833169324567029,
+          "usablePoints": 5
+        },
+        "conditions": {
+          "ambientIntensityMedian": 400.0,
+          "distanceCmIqr": 0.0,
+          "distanceCmMedian": 52.0,
+          "headSpeedDegPerSecP90": 0.0
+        },
+        "confidence": {
+          "lowConfidenceSampleRatio": 0.0,
+          "meanFixation": 0.7222222222222231,
+          "meanSample": 0.7222222222222268
+        },
+        "device": {
+          "geometrySource": "table",
+          "modelIdentifier": "iPhone17,3",
+          "orientation": "portrait",
+          "sampleRateHz": 59.99880002400596,
+          "screenHeightMm": 141.1357,
+          "screenWidthMm": 65.1013
+        },
+        "driftChecks": [
+          {
+            "atSec": 124.316667,
+            "driftDeg": 0.009650620220101597,
+            "missed": false,
+            "offsetDeg": 0.24463379072970537,
+            "xNorm": 0.5,
+            "yNorm": 0.5
+          },
+          {
+            "atSec": 132.316667,
+            "driftDeg": 0.00432311815611389,
+            "missed": false,
+            "offsetDeg": 0.24142168871255734,
+            "xNorm": 0.3,
+            "yNorm": 0.3
+          }
+        ],
+        "estimatedAccuracyDeg": 0.24302773972113134,
+        "loss": {
+          "artifactSec": 0.0,
+          "blinkSec": 0.0,
+          "gapFilledSec": 0.0,
+          "longestGapSec": 0.0,
+          "offscreenSec": 0.0,
+          "trackLossSec": 0.0
+        },
+        "maxDriftDeg": 0.009650620220101597,
+        "paramsVersion": "1.0.0",
+        "pipelineVersion": "asd-gaze/1.0.0",
+        "recalibrations": [],
+        "validation": {
+          "accuracyDeg": 0.2369905254729637,
+          "complete": true,
+          "dataLoss": 0.0,
+          "precisionRmsDeg": 0.008400716320295824,
+          "precisionRmsRawDeg": 0.09257183340618122,
+          "targets": [
+            {
+              "accuracyDeg": 0.23811439086952169,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.0074984087215537905,
+              "sdDeg": 0.011276906354720043,
+              "validSamples": 61,
+              "xNorm": 0.3,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.2461191981372567,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008589612857394013,
+              "sdDeg": 0.016736556956293197,
+              "validSamples": 61,
+              "xNorm": 0.7,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.23118023636180424,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008211819783197636,
+              "sdDeg": 0.03715428481598017,
+              "validSamples": 60,
+              "xNorm": 0.3,
+              "yNorm": 0.7
+            },
+            {
+              "accuracyDeg": 0.23586666007640572,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008664774412851772,
+              "sdDeg": 0.01597240874476647,
+              "validSamples": 60,
+              "xNorm": 0.7,
+              "yNorm": 0.7
+            }
+          ]
+        },
+        "verdict": "good"
+      }
+    },
+    "frames/distance_shift_large": {
+      "bytes": 5019,
+      "compositeScore": 0.26666666666666666,
+      "flag": "yellow",
+      "level": "frames",
+      "sha256": "4b7032f2eb93f2bf1f5c0c7a61ca558886e6a0a747bc42cfab33a8932cbb218d",
+      "tracking": {
+        "calibration": {
+          "ageSecAtStart": 7.016666999999998,
+          "attempts": 1,
+          "conditionNumber": 1.1178121360448727,
+          "layoutPoints": 5,
+          "looCvDeg": 0.023879681188043126,
+          "missingPoints": 0,
+          "model": "screenAffine",
+          "pose": {
+            "distanceCm": 45.0,
+            "pitchDeg": 0.0,
+            "yawDeg": 0.0
+          },
+          "quality": "good",
+          "residualDeg": 0.012700029591954952,
+          "usablePoints": 5
+        },
+        "conditions": {
+          "ambientIntensityMedian": 400.0,
+          "distanceCmIqr": 0.0,
+          "distanceCmMedian": 60.0,
+          "headSpeedDegPerSecP90": 0.0
+        },
+        "confidence": {
+          "lowConfidenceSampleRatio": 1.0,
+          "meanFixation": 0.0,
+          "meanSample": 0.0
+        },
+        "device": {
+          "geometrySource": "table",
+          "modelIdentifier": "iPhone17,3",
+          "orientation": "portrait",
+          "sampleRateHz": 59.99880002400596,
+          "screenHeightMm": 141.1357,
+          "screenWidthMm": 65.1013
+        },
+        "driftChecks": [
+          {
+            "atSec": 124.316667,
+            "missed": true,
+            "xNorm": 0.5,
+            "yNorm": 0.5
+          },
+          {
+            "atSec": 132.316667,
+            "missed": true,
+            "xNorm": 0.3,
+            "yNorm": 0.3
+          }
+        ],
+        "loss": {
+          "artifactSec": 0.0,
+          "blinkSec": 0.0,
+          "gapFilledSec": 0.0,
+          "longestGapSec": 0.0,
+          "offscreenSec": 0.0,
+          "trackLossSec": 0.0
+        },
+        "paramsVersion": "1.0.0",
+        "pipelineVersion": "asd-gaze/1.0.0",
+        "recalibrations": [],
+        "validation": {
+          "complete": false,
+          "dataLoss": 0.0,
+          "targets": [
+            {
+              "dataLoss": 0.0,
+              "missed": true,
+              "validSamples": 0,
+              "xNorm": 0.3,
+              "yNorm": 0.3
+            },
+            {
+              "dataLoss": 0.0,
+              "missed": true,
+              "validSamples": 0,
+              "xNorm": 0.7,
+              "yNorm": 0.3
+            },
+            {
+              "dataLoss": 0.0,
+              "missed": true,
+              "validSamples": 0,
+              "xNorm": 0.3,
+              "yNorm": 0.7
+            },
+            {
+              "dataLoss": 0.0,
+              "missed": true,
+              "validSamples": 0,
+              "xNorm": 0.7,
+              "yNorm": 0.7
+            }
+          ]
+        },
+        "verdict": "unusable"
+      }
+    },
+    "frames/drift_3deg_linear": {
+      "bytes": 8957,
+      "compositeScore": 0.20278322377272903,
+      "flag": "red",
+      "level": "frames",
+      "sha256": "bbc60c5deb15d0195bb78857d787f6ed11d02a5c17ae2554af6f51028b7a7c8c",
+      "tracking": {
+        "calibration": {
+          "ageSecAtStart": 7.016666999999998,
+          "attempts": 1,
+          "conditionNumber": 1.1186196015194143,
+          "layoutPoints": 5,
+          "looCvDeg": 0.031800286452971845,
+          "missingPoints": 0,
+          "model": "screenAffine",
+          "pose": {
+            "distanceCm": 45.0,
+            "pitchDeg": 0.0,
+            "yawDeg": 0.0
+          },
+          "quality": "good",
+          "residualDeg": 0.011564974790151405,
+          "usablePoints": 5
+        },
+        "conditions": {
+          "ambientIntensityMedian": 400.0,
+          "distanceCmIqr": 0.0,
+          "distanceCmMedian": 45.0,
+          "headSpeedDegPerSecP90": 0.0
+        },
+        "confidence": {
+          "lowConfidenceSampleRatio": 0.0,
+          "meanFixation": 1.0,
+          "meanSample": 1.0
+        },
+        "device": {
+          "geometrySource": "table",
+          "modelIdentifier": "iPhone17,3",
+          "orientation": "portrait",
+          "sampleRateHz": 59.99880002405712,
+          "screenHeightMm": 141.1357,
+          "screenWidthMm": 65.1013
+        },
+        "driftChecks": [
+          {
+            "atSec": 124.316667,
+            "driftDeg": 0.6667327329849553,
+            "missed": false,
+            "offsetDeg": 0.661807891744161,
+            "xNorm": 0.5,
+            "yNorm": 0.5
+          },
+          {
+            "atSec": 132.316667,
+            "driftDeg": 1.404363273986748,
+            "missed": false,
+            "offsetDeg": 1.399435014650755,
+            "xNorm": 0.3,
+            "yNorm": 0.3
+          },
+          {
+            "atSec": 140.316667,
+            "driftDeg": 2.12531165848878,
+            "missed": false,
+            "offsetDeg": 2.1204236024221377,
+            "xNorm": 0.7,
+            "yNorm": 0.3
+          },
+          {
+            "atSec": 148.316667,
+            "driftDeg": 2.8289119944568886,
+            "missed": false,
+            "offsetDeg": 2.8240189237274564,
+            "xNorm": 0.3,
+            "yNorm": 0.7
+          }
+        ],
+        "estimatedAccuracyDeg": 1.7599293085364462,
+        "loss": {
+          "artifactSec": 0.0,
+          "blinkSec": 0.0,
+          "gapFilledSec": 0.0,
+          "longestGapSec": 0.8166659999999979,
+          "offscreenSec": 0.8666669999999783,
+          "trackLossSec": 0.0
+        },
+        "maxDriftDeg": 2.8289119944568886,
+        "paramsVersion": "1.0.0",
+        "pipelineVersion": "asd-gaze/1.0.0",
+        "recalibrations": [],
+        "validation": {
+          "accuracyDeg": 0.009634005537341925,
+          "complete": true,
+          "dataLoss": 0.0,
+          "precisionRmsDeg": 0.008688265730210356,
+          "precisionRmsRawDeg": 0.10180929162456154,
+          "targets": [
+            {
+              "accuracyDeg": 0.011587878648288892,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.00871903430767278,
+              "sdDeg": 0.0137403083973709,
+              "validSamples": 61,
+              "xNorm": 0.3,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.007680132426394957,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008646252822420581,
+              "sdDeg": 0.023396036598112083,
+              "validSamples": 61,
+              "xNorm": 0.7,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.015165830886902628,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.009023042732015167,
+              "sdDeg": 0.040554668236080345,
+              "validSamples": 60,
+              "xNorm": 0.3,
+              "yNorm": 0.7
+            },
+            {
+              "accuracyDeg": 0.007371410207566508,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008657497152747932,
+              "sdDeg": 0.019556439116675192,
+              "validSamples": 60,
+              "xNorm": 0.7,
+              "yNorm": 0.7
+            }
+          ]
+        },
+        "verdict": "good"
+      }
+    },
+    "frames/fps_30": {
+      "bytes": 6033,
+      "compositeScore": 0.2222222222222222,
+      "flag": "red",
+      "level": "frames",
+      "sha256": "c8b95971d223c226c081526127c142d44a05972510a7b0d29d9f28333a3f13e5",
+      "tracking": {
+        "calibration": {
+          "ageSecAtStart": 7.033332999999999,
+          "attempts": 1,
+          "conditionNumber": 1.1183987684686663,
+          "layoutPoints": 5,
+          "looCvDeg": 0.035153616129761395,
+          "missingPoints": 0,
+          "model": "screenAffine",
+          "pose": {
+            "distanceCm": 45.0,
+            "pitchDeg": 0.0,
+            "yawDeg": 0.0
+          },
+          "quality": "good",
+          "residualDeg": 0.015167864468193435,
+          "usablePoints": 5
+        },
+        "conditions": {
+          "ambientIntensityMedian": 400.0,
+          "distanceCmIqr": 0.0,
+          "distanceCmMedian": 45.0,
+          "headSpeedDegPerSecP90": 0.0
+        },
+        "confidence": {
+          "lowConfidenceSampleRatio": 0.0,
+          "meanFixation": 1.0,
+          "meanSample": 1.0
+        },
+        "device": {
+          "geometrySource": "table",
+          "modelIdentifier": "iPhone17,3",
+          "orientation": "portrait",
+          "sampleRateHz": 30.000300003000977,
+          "screenHeightMm": 141.1357,
+          "screenWidthMm": 65.1013
+        },
+        "driftChecks": [
+          {
+            "atSec": 124.333333,
+            "driftDeg": 0.015938571949933294,
+            "missed": false,
+            "offsetDeg": 0.028300622608914198,
+            "xNorm": 0.5,
+            "yNorm": 0.5
+          },
+          {
+            "atSec": 132.333333,
+            "driftDeg": 0.02065358209975368,
+            "missed": false,
+            "offsetDeg": 0.01384950183528883,
+            "xNorm": 0.3,
+            "yNorm": 0.3
+          }
+        ],
+        "estimatedAccuracyDeg": 0.021075062222101513,
+        "loss": {
+          "artifactSec": 0.0,
+          "blinkSec": 0.0,
+          "gapFilledSec": 0.0,
+          "longestGapSec": 0.0,
+          "offscreenSec": 0.0,
+          "trackLossSec": 0.0
+        },
+        "maxDriftDeg": 0.02065358209975368,
+        "paramsVersion": "1.0.0",
+        "pipelineVersion": "asd-gaze/1.0.0",
+        "recalibrations": [],
+        "validation": {
+          "accuracyDeg": 0.01262513091829835,
+          "complete": true,
+          "dataLoss": 0.0,
+          "precisionRmsDeg": 0.015354711600961433,
+          "precisionRmsRawDeg": 0.09930895282116436,
+          "targets": [
+            {
+              "accuracyDeg": 0.011829503857092858,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.014599994324489773,
+              "sdDeg": 0.022059940126523864,
+              "validSamples": 31,
+              "xNorm": 0.3,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.009044274158189702,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.016109428877433093,
+              "sdDeg": 0.022679691187162298,
+              "validSamples": 30,
+              "xNorm": 0.7,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.013420757979503843,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.01758697320368942,
+              "sdDeg": 0.03719282309615086,
+              "validSamples": 30,
+              "xNorm": 0.3,
+              "yNorm": 0.7
+            },
+            {
+              "accuracyDeg": 0.042774979234202905,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.014050204599986243,
+              "sdDeg": 0.0346772187449357,
+              "validSamples": 31,
+              "xNorm": 0.7,
+              "yNorm": 0.7
+            }
+          ]
+        },
+        "verdict": "good"
+      }
+    },
+    "frames/gap_60ms_vs_200ms": {
+      "bytes": 3364,
+      "compositeScore": 1.0,
+      "flag": "green",
+      "level": "frames",
+      "sha256": "d4d75a5378a0a24cd3a90edf8720d1abe6cb491022dde29f7b555ed53947b766",
+      "tracking": {
+        "calibration": {
+          "ageSecAtStart": 7.016666999999998,
+          "attempts": 1,
+          "conditionNumber": 1.1192516717796377,
+          "layoutPoints": 5,
+          "looCvDeg": 0.029445873423535475,
+          "missingPoints": 0,
+          "model": "screenAffine",
+          "pose": {
+            "distanceCm": 45.0,
+            "pitchDeg": 0.0,
+            "yawDeg": 0.0
+          },
+          "quality": "good",
+          "residualDeg": 0.00878947528493733,
+          "usablePoints": 5
+        },
+        "conditions": {
+          "ambientIntensityMedian": 400.0,
+          "distanceCmIqr": 0.0,
+          "distanceCmMedian": 45.0,
+          "headSpeedDegPerSecP90": 0.0
+        },
+        "confidence": {
+          "lowConfidenceSampleRatio": 0.0,
+          "meanFixation": 1.0,
+          "meanSample": 1.0
+        },
+        "device": {
+          "geometrySource": "table",
+          "modelIdentifier": "iPhone17,3",
+          "orientation": "portrait",
+          "sampleRateHz": 59.99880002400596,
+          "screenHeightMm": 141.1357,
+          "screenWidthMm": 65.1013
+        },
+        "driftChecks": [],
+        "estimatedAccuracyDeg": 0.01783587065499094,
+        "loss": {
+          "artifactSec": 0.0,
+          "blinkSec": 0.0,
+          "gapFilledSec": 0.04999999999999716,
+          "longestGapSec": 0.21666700000000105,
+          "offscreenSec": 0.0,
+          "trackLossSec": 0.25
+        },
+        "paramsVersion": "1.0.0",
+        "pipelineVersion": "asd-gaze/1.0.0",
+        "recalibrations": [],
+        "validation": {
+          "accuracyDeg": 0.01783587065499094,
+          "complete": true,
+          "dataLoss": 0.0,
+          "precisionRmsDeg": 0.008739411756000438,
+          "precisionRmsRawDeg": 0.10369401304317234,
+          "targets": [
+            {
+              "accuracyDeg": 0.020471208208965717,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008148464581824132,
+              "sdDeg": 0.018192503662280007,
+              "validSamples": 61,
+              "xNorm": 0.3,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.018519644137187166,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008752186196896692,
+              "sdDeg": 0.01980098307986318,
+              "validSamples": 61,
+              "xNorm": 0.7,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.0063212353902720305,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.00940858975820151,
+              "sdDeg": 0.02903845262717136,
+              "validSamples": 60,
+              "xNorm": 0.3,
+              "yNorm": 0.7
+            },
+            {
+              "accuracyDeg": 0.017152097172794718,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008726637315104183,
+              "sdDeg": 0.025683995049930897,
+              "validSamples": 60,
+              "xNorm": 0.7,
+              "yNorm": 0.7
+            }
+          ]
+        },
+        "verdict": "good"
+      }
+    },
+    "frames/glasses_noise": {
+      "bytes": 5838,
+      "compositeScore": 0.7333333333333333,
+      "flag": "green",
+      "level": "frames",
+      "sha256": "74ddfb5ed10659c3ff616345ab8d375545ccbc4a25bcb954830f843e2b7ec19c",
+      "tracking": {
+        "calibration": {
+          "ageSecAtStart": 7.016666999999998,
+          "attempts": 1,
+          "conditionNumber": 1.1132970242768474,
+          "layoutPoints": 5,
+          "looCvDeg": 0.1776984525516406,
+          "missingPoints": 0,
+          "model": "screenAffine",
+          "pose": {
+            "distanceCm": 45.0,
+            "pitchDeg": 0.0,
+            "yawDeg": 0.0
+          },
+          "quality": "good",
+          "residualDeg": 0.07688762086431632,
+          "usablePoints": 5
+        },
+        "conditions": {
+          "ambientIntensityMedian": 400.0,
+          "distanceCmIqr": 0.0,
+          "distanceCmMedian": 45.0,
+          "headSpeedDegPerSecP90": 0.0
+        },
+        "confidence": {
+          "lowConfidenceSampleRatio": 0.0,
+          "meanFixation": 1.0,
+          "meanSample": 1.0
+        },
+        "device": {
+          "geometrySource": "table",
+          "modelIdentifier": "iPhone17,3",
+          "orientation": "portrait",
+          "sampleRateHz": 59.99880002400596,
+          "screenHeightMm": 141.1357,
+          "screenWidthMm": 65.1013
+        },
+        "driftChecks": [
+          {
+            "atSec": 124.316667,
+            "driftDeg": 0.11151668328751817,
+            "missed": false,
+            "offsetDeg": 0.13100796492947517,
+            "xNorm": 0.5,
+            "yNorm": 0.5
+          },
+          {
+            "atSec": 132.316667,
+            "driftDeg": 0.08462329391604884,
+            "missed": false,
+            "offsetDeg": 0.06623731605344053,
+            "xNorm": 0.3,
+            "yNorm": 0.3
+          }
+        ],
+        "estimatedAccuracyDeg": 0.09862264049145786,
+        "loss": {
+          "artifactSec": 0.0,
+          "blinkSec": 0.0,
+          "gapFilledSec": 0.0,
+          "longestGapSec": 0.0,
+          "offscreenSec": 0.0,
+          "trackLossSec": 0.0
+        },
+        "maxDriftDeg": 0.11151668328751817,
+        "paramsVersion": "1.0.0",
+        "pipelineVersion": "asd-gaze/1.0.0",
+        "recalibrations": [],
+        "validation": {
+          "accuracyDeg": 0.059208452127141875,
+          "complete": true,
+          "dataLoss": 0.0,
+          "precisionRmsDeg": 0.09348228437564045,
+          "precisionRmsRawDeg": 1.1395130201661479,
+          "targets": [
+            {
+              "accuracyDeg": 0.012976881329778006,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.09073455948423953,
+              "sdDeg": 0.13601436010542683,
+              "validSamples": 61,
+              "xNorm": 0.3,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.08523808598780787,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.09623000926704137,
+              "sdDeg": 0.14116302547601678,
+              "validSamples": 61,
+              "xNorm": 0.7,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.12905311333296599,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.09708129394384561,
+              "sdDeg": 0.23159556804007742,
+              "validSamples": 60,
+              "xNorm": 0.3,
+              "yNorm": 0.7
+            },
+            {
+              "accuracyDeg": 0.03317881826647588,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.08555450290528804,
+              "sdDeg": 0.1582513156444339,
+              "validSamples": 60,
+              "xNorm": 0.7,
+              "yNorm": 0.7
+            }
+          ]
+        },
+        "verdict": "good"
+      }
+    },
+    "frames/head_sway": {
+      "bytes": 5914,
+      "compositeScore": 0.6,
+      "flag": "red",
+      "level": "frames",
+      "sha256": "b2e29987a450fbf897e426caeb2664a5c55b57e04e77252228acd783bf40ea51",
+      "tracking": {
+        "calibration": {
+          "ageSecAtStart": 7.016666999999998,
+          "attempts": 1,
+          "conditionNumber": 1.1192155700424584,
+          "layoutPoints": 5,
+          "looCvDeg": 0.032439936325460154,
+          "missingPoints": 0,
+          "model": "screenAffine",
+          "pose": {
+            "distanceCm": 45.0,
+            "pitchDeg": 0.0,
+            "yawDeg": -0.7520000257258515
+          },
+          "quality": "good",
+          "residualDeg": 0.01148465438040589,
+          "usablePoints": 5
+        },
+        "conditions": {
+          "ambientIntensityMedian": 400.0,
+          "distanceCmIqr": 0.0,
+          "distanceCmMedian": 45.0,
+          "headSpeedDegPerSecP90": 14.916811713275541
+        },
+        "confidence": {
+          "lowConfidenceSampleRatio": 0.0,
+          "meanFixation": 1.0,
+          "meanSample": 1.0
+        },
+        "device": {
+          "geometrySource": "table",
+          "modelIdentifier": "iPhone17,3",
+          "orientation": "portrait",
+          "sampleRateHz": 59.99880002400596,
+          "screenHeightMm": 141.1357,
+          "screenWidthMm": 65.1013
+        },
+        "driftChecks": [
+          {
+            "atSec": 124.316667,
+            "driftDeg": 0.01758829351675242,
+            "missed": false,
+            "offsetDeg": 0.012002628375375652,
+            "xNorm": 0.5,
+            "yNorm": 0.5
+          },
+          {
+            "atSec": 132.316667,
+            "driftDeg": 0.010318948466858206,
+            "missed": false,
+            "offsetDeg": 0.006243130311423371,
+            "xNorm": 0.3,
+            "yNorm": 0.3
+          }
+        ],
+        "estimatedAccuracyDeg": 0.00912287934339951,
+        "loss": {
+          "artifactSec": 0.0,
+          "blinkSec": 0.0,
+          "gapFilledSec": 0.0,
+          "longestGapSec": 0.0,
+          "offscreenSec": 0.0,
+          "trackLossSec": 0.0
+        },
+        "maxDriftDeg": 0.01758829351675242,
+        "paramsVersion": "1.0.0",
+        "pipelineVersion": "asd-gaze/1.0.0",
+        "recalibrations": [],
+        "validation": {
+          "accuracyDeg": 0.007925524093252659,
+          "complete": true,
+          "dataLoss": 0.0,
+          "precisionRmsDeg": 0.00817670773487816,
+          "precisionRmsRawDeg": 0.09357456609177507,
+          "targets": [
+            {
+              "accuracyDeg": 0.005698115599052783,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008511841137596947,
+              "sdDeg": 0.010553888150015732,
+              "validSamples": 61,
+              "xNorm": 0.3,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.0021014275779651526,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.007841574332159375,
+              "sdDeg": 0.020986059684416514,
+              "validSamples": 61,
+              "xNorm": 0.7,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.022448626446750778,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.009079481170708241,
+              "sdDeg": 0.03529353769307619,
+              "validSamples": 60,
+              "xNorm": 0.3,
+              "yNorm": 0.7
+            },
+            {
+              "accuracyDeg": 0.010152932587452534,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.007615697197979826,
+              "sdDeg": 0.02333035309104125,
+              "validSamples": 60,
+              "xNorm": 0.7,
+              "yNorm": 0.7
+            }
+          ]
+        },
+        "verdict": "good"
+      }
+    },
+    "frames/head_yaw_15": {
+      "bytes": 5985,
+      "compositeScore": 0.7333333333333333,
+      "flag": "green",
+      "level": "frames",
+      "sha256": "0d86db05786029b910d34fe7f2bd0a24960573921eb540faeaa869919c5c8c9b",
+      "tracking": {
+        "calibration": {
+          "ageSecAtStart": 7.016666999999998,
+          "attempts": 1,
+          "conditionNumber": 1.1172874208395531,
+          "layoutPoints": 5,
+          "looCvDeg": 0.0207930520633255,
+          "missingPoints": 0,
+          "model": "screenAffine",
+          "pose": {
+            "distanceCm": 45.0,
+            "pitchDeg": 0.0,
+            "yawDeg": 0.0
+          },
+          "quality": "good",
+          "residualDeg": 0.011838054653626601,
+          "usablePoints": 5
+        },
+        "conditions": {
+          "ambientIntensityMedian": 400.0,
+          "distanceCmIqr": 0.0,
+          "distanceCmMedian": 45.0,
+          "headSpeedDegPerSecP90": 0.0
+        },
+        "confidence": {
+          "lowConfidenceSampleRatio": 0.0,
+          "meanFixation": 1.0,
+          "meanSample": 1.0
+        },
+        "device": {
+          "geometrySource": "table",
+          "modelIdentifier": "iPhone17,3",
+          "orientation": "portrait",
+          "sampleRateHz": 59.99880002400596,
+          "screenHeightMm": 141.1357,
+          "screenWidthMm": 65.1013
+        },
+        "driftChecks": [
+          {
+            "atSec": 124.316667,
+            "driftDeg": 0.0037767835575146357,
+            "missed": false,
+            "offsetDeg": 0.017115812330700333,
+            "xNorm": 0.5,
+            "yNorm": 0.5
+          },
+          {
+            "atSec": 132.316667,
+            "driftDeg": 0.012696804525030404,
+            "missed": false,
+            "offsetDeg": 0.009575710214298245,
+            "xNorm": 0.3,
+            "yNorm": 0.3
+          }
+        ],
+        "estimatedAccuracyDeg": 0.020708792718888182,
+        "loss": {
+          "artifactSec": 0.0,
+          "blinkSec": 0.0,
+          "gapFilledSec": 0.0,
+          "longestGapSec": 0.0,
+          "offscreenSec": 0.0,
+          "trackLossSec": 0.0
+        },
+        "maxDriftDeg": 0.012696804525030404,
+        "paramsVersion": "1.0.0",
+        "pipelineVersion": "asd-gaze/1.0.0",
+        "recalibrations": [],
+        "validation": {
+          "accuracyDeg": 0.020708792718888182,
+          "complete": true,
+          "dataLoss": 0.0,
+          "precisionRmsDeg": 0.008516620398931977,
+          "precisionRmsRawDeg": 0.0977991972558756,
+          "targets": [
+            {
+              "accuracyDeg": 0.008099225285959518,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008064371944922872,
+              "sdDeg": 0.018233370015628997,
+              "validSamples": 61,
+              "xNorm": 0.3,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.0209294278160522,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.007728031883878765,
+              "sdDeg": 0.012566308142917256,
+              "validSamples": 61,
+              "xNorm": 0.7,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.029326651623544645,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.009117437359529862,
+              "sdDeg": 0.031078287455602066,
+              "validSamples": 60,
+              "xNorm": 0.3,
+              "yNorm": 0.7
+            },
+            {
+              "accuracyDeg": 0.02048815762172417,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008968868852941084,
+              "sdDeg": 0.018041413795781027,
+              "validSamples": 60,
+              "xNorm": 0.7,
+              "yNorm": 0.7
+            }
+          ]
+        },
+        "verdict": "good"
+      }
+    },
+    "frames/ideal": {
+      "bytes": 5988,
+      "compositeScore": 0.03796296296296295,
+      "flag": "red",
+      "level": "frames",
+      "sha256": "efabb6539f7b442551c0d97310fcf38d88de135d36c419fea8f5aeff8ea41d73",
+      "tracking": {
+        "calibration": {
+          "ageSecAtStart": 7.016666999999998,
+          "attempts": 1,
+          "conditionNumber": 1.1192025492191156,
+          "layoutPoints": 5,
+          "looCvDeg": 0.011707794309532725,
+          "missingPoints": 0,
+          "model": "screenAffine",
+          "pose": {
+            "distanceCm": 45.0,
+            "pitchDeg": 0.0,
+            "yawDeg": 0.0
+          },
+          "quality": "good",
+          "residualDeg": 0.005278228026535633,
+          "usablePoints": 5
+        },
+        "conditions": {
+          "ambientIntensityMedian": 400.0,
+          "distanceCmIqr": 0.0,
+          "distanceCmMedian": 45.0,
+          "headSpeedDegPerSecP90": 0.0
+        },
+        "confidence": {
+          "lowConfidenceSampleRatio": 0.0,
+          "meanFixation": 1.0,
+          "meanSample": 1.0
+        },
+        "device": {
+          "geometrySource": "table",
+          "modelIdentifier": "iPhone17,3",
+          "orientation": "portrait",
+          "sampleRateHz": 59.99880002400596,
+          "screenHeightMm": 141.1357,
+          "screenWidthMm": 65.1013
+        },
+        "driftChecks": [
+          {
+            "atSec": 124.316667,
+            "driftDeg": 0.009621045722945566,
+            "missed": false,
+            "offsetDeg": 0.006268562905590539,
+            "xNorm": 0.5,
+            "yNorm": 0.5
+          },
+          {
+            "atSec": 132.316667,
+            "driftDeg": 0.008888173840591469,
+            "missed": false,
+            "offsetDeg": 0.005921600702428268,
+            "xNorm": 0.3,
+            "yNorm": 0.3
+          }
+        ],
+        "estimatedAccuracyDeg": 0.00812995489478933,
+        "loss": {
+          "artifactSec": 0.0,
+          "blinkSec": 0.0,
+          "gapFilledSec": 0.0,
+          "longestGapSec": 0.0,
+          "offscreenSec": 0.0,
+          "trackLossSec": 0.0
+        },
+        "maxDriftDeg": 0.009621045722945566,
+        "paramsVersion": "1.0.0",
+        "pipelineVersion": "asd-gaze/1.0.0",
+        "recalibrations": [],
+        "validation": {
+          "accuracyDeg": 0.00812995489478933,
+          "complete": true,
+          "dataLoss": 0.0,
+          "precisionRmsDeg": 0.008904256004522666,
+          "precisionRmsRawDeg": 0.10546986927209381,
+          "targets": [
+            {
+              "accuracyDeg": 0.007202999935299057,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008860638847040823,
+              "sdDeg": 0.016488296425574724,
+              "validSamples": 61,
+              "xNorm": 0.3,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.0037690098833707258,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008906542523378832,
+              "sdDeg": 0.01933103824112676,
+              "validSamples": 61,
+              "xNorm": 0.7,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.009056909854279602,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008901969485666501,
+              "sdDeg": 0.041652893769512485,
+              "validSamples": 60,
+              "xNorm": 0.3,
+              "yNorm": 0.7
+            },
+            {
+              "accuracyDeg": 0.01034799220438454,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008938531102860492,
+              "sdDeg": 0.020320193965008598,
+              "validSamples": 60,
+              "xNorm": 0.7,
+              "yNorm": 0.7
+            }
+          ]
+        },
+        "verdict": "good"
+      }
+    },
+    "frames/ideal_trace_10hz": {
+      "bytes": 20052,
+      "compositeScore": 0.03796296296296295,
+      "flag": "red",
+      "level": "frames",
+      "sha256": "d9ba53dbd94a4123d8f4b71cc1718b2c8750a546d4280c8bd08e71a2dad0e2b5",
+      "tracking": {
+        "calibration": {
+          "ageSecAtStart": 7.016666999999998,
+          "attempts": 1,
+          "conditionNumber": 1.1192025492191156,
+          "layoutPoints": 5,
+          "looCvDeg": 0.011707794309532725,
+          "missingPoints": 0,
+          "model": "screenAffine",
+          "pose": {
+            "distanceCm": 45.0,
+            "pitchDeg": 0.0,
+            "yawDeg": 0.0
+          },
+          "quality": "good",
+          "residualDeg": 0.005278228026535633,
+          "usablePoints": 5
+        },
+        "conditions": {
+          "ambientIntensityMedian": 400.0,
+          "distanceCmIqr": 0.0,
+          "distanceCmMedian": 45.0,
+          "headSpeedDegPerSecP90": 0.0
+        },
+        "confidence": {
+          "lowConfidenceSampleRatio": 0.0,
+          "meanFixation": 1.0,
+          "meanSample": 1.0
+        },
+        "device": {
+          "geometrySource": "table",
+          "modelIdentifier": "iPhone17,3",
+          "orientation": "portrait",
+          "sampleRateHz": 59.99880002400596,
+          "screenHeightMm": 141.1357,
+          "screenWidthMm": 65.1013
+        },
+        "driftChecks": [
+          {
+            "atSec": 124.316667,
+            "driftDeg": 0.009621045722945566,
+            "missed": false,
+            "offsetDeg": 0.006268562905590539,
+            "xNorm": 0.5,
+            "yNorm": 0.5
+          },
+          {
+            "atSec": 132.316667,
+            "driftDeg": 0.008888173840591469,
+            "missed": false,
+            "offsetDeg": 0.005921600702428268,
+            "xNorm": 0.3,
+            "yNorm": 0.3
+          }
+        ],
+        "estimatedAccuracyDeg": 0.00812995489478933,
+        "loss": {
+          "artifactSec": 0.0,
+          "blinkSec": 0.0,
+          "gapFilledSec": 0.0,
+          "longestGapSec": 0.0,
+          "offscreenSec": 0.0,
+          "trackLossSec": 0.0
+        },
+        "maxDriftDeg": 0.009621045722945566,
+        "paramsVersion": "1.0.0",
+        "pipelineVersion": "asd-gaze/1.0.0",
+        "recalibrations": [],
+        "validation": {
+          "accuracyDeg": 0.00812995489478933,
+          "complete": true,
+          "dataLoss": 0.0,
+          "precisionRmsDeg": 0.008904256004522666,
+          "precisionRmsRawDeg": 0.10546986927209381,
+          "targets": [
+            {
+              "accuracyDeg": 0.007202999935299057,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008860638847040823,
+              "sdDeg": 0.016488296425574724,
+              "validSamples": 61,
+              "xNorm": 0.3,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.0037690098833707258,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008906542523378832,
+              "sdDeg": 0.01933103824112676,
+              "validSamples": 61,
+              "xNorm": 0.7,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.009056909854279602,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008901969485666501,
+              "sdDeg": 0.041652893769512485,
+              "validSamples": 60,
+              "xNorm": 0.3,
+              "yNorm": 0.7
+            },
+            {
+              "accuracyDeg": 0.01034799220438454,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008938531102860492,
+              "sdDeg": 0.020320193965008598,
+              "validSamples": 60,
+              "xNorm": 0.7,
+              "yNorm": 0.7
+            }
+          ]
+        },
+        "verdict": "good"
+      }
+    },
+    "frames/missing_target": {
+      "bytes": 6053,
+      "compositeScore": 0.2842592592592592,
+      "flag": "red",
+      "level": "frames",
+      "sha256": "abf5bf06103ef81efc5f66b7c94ead24558fc540831b6ef6f541ca07873c8759",
+      "tracking": {
+        "calibration": {
+          "ageSecAtStart": 7.016666999999998,
+          "attempts": 1,
+          "conditionNumber": 1.1184991644544655,
+          "layoutPoints": 5,
+          "looCvDeg": 0.016908184334776272,
+          "missingPoints": 0,
+          "model": "screenAffine",
+          "pose": {
+            "distanceCm": 45.0,
+            "pitchDeg": 0.0,
+            "yawDeg": 0.0
+          },
+          "quality": "good",
+          "residualDeg": 0.006311103080587655,
+          "usablePoints": 5
+        },
+        "conditions": {
+          "ambientIntensityMedian": 400.0,
+          "distanceCmIqr": 0.0,
+          "distanceCmMedian": 45.0,
+          "headSpeedDegPerSecP90": 0.0
+        },
+        "confidence": {
+          "lowConfidenceSampleRatio": 0.0,
+          "meanFixation": 1.0,
+          "meanSample": 1.0
+        },
+        "device": {
+          "geometrySource": "table",
+          "modelIdentifier": "iPhone17,3",
+          "orientation": "portrait",
+          "sampleRateHz": 59.99880002400596,
+          "screenHeightMm": 141.1357,
+          "screenWidthMm": 65.1013
+        },
+        "driftChecks": [
+          {
+            "atSec": 124.316667,
+            "driftDeg": 0.011906380557523938,
+            "missed": false,
+            "offsetDeg": 0.008580113500333744,
+            "xNorm": 0.5,
+            "yNorm": 0.5
+          },
+          {
+            "atSec": 132.316667,
+            "driftDeg": 0.018429700593096027,
+            "missed": false,
+            "offsetDeg": 0.012782058815831228,
+            "xNorm": 0.3,
+            "yNorm": 0.3
+          }
+        ],
+        "estimatedAccuracyDeg": 0.010681086158082486,
+        "loss": {
+          "artifactSec": 0.0,
+          "blinkSec": 0.0,
+          "gapFilledSec": 0.0,
+          "longestGapSec": 0.0,
+          "offscreenSec": 0.0,
+          "trackLossSec": 0.0
+        },
+        "maxDriftDeg": 0.018429700593096027,
+        "paramsVersion": "1.0.0",
+        "pipelineVersion": "asd-gaze/1.0.0",
+        "recalibrations": [],
+        "validation": {
+          "accuracyDeg": 0.008212010917904678,
+          "complete": true,
+          "dataLoss": 0.25,
+          "precisionRmsDeg": 0.008963971741732656,
+          "precisionRmsRawDeg": 0.10176929348670347,
+          "targets": [
+            {
+              "accuracyDeg": 0.00974537223117981,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008963971741732656,
+              "sdDeg": 0.013492973946068037,
+              "validSamples": 61,
+              "xNorm": 0.3,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.008212010917904678,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.008994896885135767,
+              "sdDeg": 0.01581750606676326,
+              "validSamples": 61,
+              "xNorm": 0.7,
+              "yNorm": 0.3
+            },
+            {
+              "dataLoss": 1.0,
+              "missed": true,
+              "validSamples": 0,
+              "xNorm": 0.3,
+              "yNorm": 0.7
+            },
+            {
+              "accuracyDeg": 0.0070756434529289204,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.00616267093582544,
+              "sdDeg": 0.009571138185707234,
+              "validSamples": 60,
+              "xNorm": 0.7,
+              "yNorm": 0.7
+            }
+          ]
+        },
+        "verdict": "good"
+      }
+    },
+    "frames/orientation_landscape_ipad": {
+      "bytes": 6031,
+      "compositeScore": 0.5296296296296296,
+      "flag": "yellow",
+      "level": "frames",
+      "sha256": "a5b72b8259dfefa6a6ae193b5f38fa6e6cb66ff0ceed6af68c5a3249a7247745",
+      "tracking": {
+        "calibration": {
+          "ageSecAtStart": 7.016666999999998,
+          "attempts": 1,
+          "conditionNumber": 1.1187932591940108,
+          "layoutPoints": 5,
+          "looCvDeg": 0.07484849016419402,
+          "missingPoints": 0,
+          "model": "screenAffine",
+          "pose": {
+            "distanceCm": 45.0,
+            "pitchDeg": 0.0,
+            "yawDeg": 0.0
+          },
+          "quality": "good",
+          "residualDeg": 0.03565180283020351,
+          "usablePoints": 5
+        },
+        "conditions": {
+          "ambientIntensityMedian": 400.0,
+          "distanceCmIqr": 0.0,
+          "distanceCmMedian": 45.0,
+          "headSpeedDegPerSecP90": 0.0
+        },
+        "confidence": {
+          "lowConfidenceSampleRatio": 0.0,
+          "meanFixation": 1.0,
+          "meanSample": 1.0
+        },
+        "device": {
+          "geometrySource": "table",
+          "modelIdentifier": "iPad16,3",
+          "orientation": "landscapeLeft",
+          "sampleRateHz": 59.99880002400596,
+          "screenHeightMm": 160.4818,
+          "screenWidthMm": 232.8333
+        },
+        "driftChecks": [
+          {
+            "atSec": 124.316667,
+            "driftDeg": 0.035307896210061696,
+            "missed": false,
+            "offsetDeg": 0.06370796790852776,
+            "xNorm": 0.5,
+            "yNorm": 0.5
+          },
+          {
+            "atSec": 132.316667,
+            "driftDeg": 0.004766453936266313,
+            "missed": false,
+            "offsetDeg": 0.03337922547680741,
+            "xNorm": 0.3,
+            "yNorm": 0.3
+          }
+        ],
+        "estimatedAccuracyDeg": 0.048543596692667584,
+        "loss": {
+          "artifactSec": 0.0,
+          "blinkSec": 0.0,
+          "gapFilledSec": 0.0,
+          "longestGapSec": 0.0,
+          "offscreenSec": 0.0,
+          "trackLossSec": 0.0
+        },
+        "maxDriftDeg": 0.035307896210061696,
+        "paramsVersion": "1.0.0",
+        "pipelineVersion": "asd-gaze/1.0.0",
+        "recalibrations": [],
+        "validation": {
+          "accuracyDeg": 0.030025366402839506,
+          "complete": true,
+          "dataLoss": 0.0,
+          "precisionRmsDeg": 0.010894068450656096,
+          "precisionRmsRawDeg": 0.09818324975005183,
+          "targets": [
+            {
+              "accuracyDeg": 0.031194133844425452,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.007846744351835962,
+              "sdDeg": 0.013059456220218781,
+              "validSamples": 61,
+              "xNorm": 0.3,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.013604725992235708,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.011302570268676818,
+              "sdDeg": 0.05163193471863683,
+              "validSamples": 61,
+              "xNorm": 0.7,
+              "yNorm": 0.3
+            },
+            {
+              "accuracyDeg": 0.02885659896125356,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.010710308671452031,
+              "sdDeg": 0.06578510521904002,
+              "validSamples": 60,
+              "xNorm": 0.3,
+              "yNorm": 0.7
+            },
+            {
+              "accuracyDeg": 0.04175598488496689,
+              "dataLoss": 0.0,
+              "missed": false,
+              "precisionRmsDeg": 0.011077828229860162,
+              "sdDeg": 0.0522226534910348,
+              "validSamples": 60,
+              "xNorm": 0.7,
+              "yNorm": 0.7
+            }
+          ]
+        },
+        "verdict": "good"
+      }
+    },
+    "score/lowquality/ratio_0.6": {
+      "bytes": 6469,
+      "compositeScore": 0.43116161616161613,
+      "flag": "yellow",
+      "level": "score",
+      "sha256": "fc959404132a08bfd1871e2ce9b77783ec49cf26267e0c600cfa85d26d1538a8",
+      "tracking": null
+    },
+    "score/lowquality/ratio_0.9": {
+      "bytes": 6469,
+      "compositeScore": 0.43116161616161613,
+      "flag": "yellow",
+      "level": "score",
+      "sha256": "fc959404132a08bfd1871e2ce9b77783ec49cf26267e0c600cfa85d26d1538a8",
+      "tracking": null
+    },
+    "score/reducedsocial/ratio_0.6": {
+      "bytes": 3146,
+      "compositeScore": 0.24999999999999994,
+      "flag": "red",
+      "level": "score",
+      "sha256": "216ac121e02327a062fb650dc058526d696c58469f23c904e43685c6ef542af8",
+      "tracking": null
+    },
+    "score/reducedsocial/ratio_0.9": {
+      "bytes": 3146,
+      "compositeScore": 0.24999999999999994,
+      "flag": "red",
+      "level": "score",
+      "sha256": "216ac121e02327a062fb650dc058526d696c58469f23c904e43685c6ef542af8",
+      "tracking": null
+    },
+    "score/short/ratio_0.6": {
+      "bytes": 4522,
+      "compositeScore": 0.7825050505050506,
+      "flag": "green",
+      "level": "score",
+      "sha256": "8f60fa363b13883a47f6a585745f90d35b0d9fe5aa6e5e4551b1fbe58733fcc1",
+      "tracking": null
+    },
+    "score/short/ratio_0.9": {
+      "bytes": 4548,
+      "compositeScore": 0.7825050505050506,
+      "flag": "yellow",
+      "level": "score",
+      "sha256": "b0d3c4e1b1fb4ba9822418bd73d25d4fc8ace3f8b8d94040b03b43bb266d5bc2",
+      "tracking": null
+    },
+    "score/typical/ratio_0.6": {
+      "bytes": 2663,
+      "compositeScore": 0.4285714285714286,
+      "flag": "yellow",
+      "level": "score",
+      "sha256": "d00fdbf5efff49a6c16ccfca1af2c9c842b8d8b64720601e2a296d080117699e",
+      "tracking": null
+    },
+    "score/typical/ratio_0.9": {
+      "bytes": 2702,
+      "compositeScore": 0.4285714285714286,
+      "flag": "yellow",
+      "level": "score",
+      "sha256": "04599058c1c8ff6022e4bb0631d1abc50fdc50c761881577c342a5d3dc779772",
+      "tracking": null
+    }
+  }
+}
