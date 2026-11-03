@@ -279,19 +279,31 @@ public struct SessionIngestResponse: Decodable, Equatable, Sendable {
     public let duplicate: Bool?
     public let framesUploadURL: String?
     public let reportUploadURL: String?
+    /// RFL-3: offered only in proxy blob mode and for a research-consented session. The
+    /// asd-sync ack does not carry it yet, so it is read from the same body here.
+    public let researchFramesUploadURL: String?
 
-    public init(sessionId: String?, status: String?, duplicate: Bool?, framesUploadURL: String?, reportUploadURL: String?) {
+    public init(
+        sessionId: String?,
+        status: String?,
+        duplicate: Bool?,
+        framesUploadURL: String?,
+        reportUploadURL: String?,
+        researchFramesUploadURL: String? = nil
+    ) {
         self.sessionId = sessionId
         self.status = status
         self.duplicate = duplicate
         self.framesUploadURL = framesUploadURL
         self.reportUploadURL = reportUploadURL
+        self.researchFramesUploadURL = researchFramesUploadURL
     }
 
     enum CodingKeys: String, CodingKey {
         case sessionId, status, duplicate
         case framesUploadURL = "frames_upload_url"
         case reportUploadURL = "report_upload_url"
+        case researchFramesUploadURL = "research_frames_upload_url"
     }
 }
 
@@ -360,7 +372,7 @@ public struct SessionSyncClient: Sendable {
     /// quarantines the item.
     public func postSession(_ payload: SessionIngestPayload, mayReRegister: inout Bool) async throws -> SessionIngestResponse {
         guard var credential = registration.currentCredential() else { throw SessionSyncError.notRegistered }
-        var (status, outcome) = try await send(makeSessionRequest(payload, token: credential.deviceToken))
+        var (status, outcome, body) = try await send(makeSessionRequest(payload, token: credential.deviceToken))
 
         if case .reauthenticate = outcome {
             guard mayReRegister else {
@@ -374,7 +386,7 @@ public struct SessionSyncClient: Sendable {
             } catch is DeviceRegistrationError {
                 throw SessionSyncError.unauthorized
             }
-            (status, outcome) = try await send(makeSessionRequest(payload, token: credential.deviceToken))
+            (status, outcome, body) = try await send(makeSessionRequest(payload, token: credential.deviceToken))
             if case .reauthenticate = outcome {
                 registration.clear()
                 throw SessionSyncError.unauthorized
@@ -389,7 +401,8 @@ public struct SessionSyncClient: Sendable {
                 status: ack.status,
                 duplicate: ack.duplicate,
                 framesUploadURL: ack.framesUploadUrl,
-                reportUploadURL: ack.reportUploadUrl
+                reportUploadURL: ack.reportUploadUrl,
+                researchFramesUploadURL: Self.researchFramesUploadURL(in: body)
             )
         case .duplicate:
             return SessionIngestResponse(sessionId: payload.sessionId, status: "duplicate", duplicate: true, framesUploadURL: nil, reportUploadURL: nil)
@@ -453,9 +466,19 @@ public struct SessionSyncClient: Sendable {
     }
 
     /// Sends a request and lets asd-sync classify the answer.
-    private func send(_ request: URLRequest) async throws -> (status: Int, outcome: AsdSyncOutcome) {
+    private func send(_ request: URLRequest) async throws -> (status: Int, outcome: AsdSyncOutcome, body: Data) {
         let (data, response) = try await transport.send(request)
-        return classify(data, response)
+        let (status, outcome) = classify(data, response)
+        return (status, outcome, data)
+    }
+
+    /// `research_frames_upload_url` of an accepted ack body, if any (a sparse body has none).
+    private static func researchFramesUploadURL(in body: Data) -> String? {
+        struct Ack: Decodable {
+            let researchFramesUploadUrl: String?
+            enum CodingKeys: String, CodingKey { case researchFramesUploadUrl = "research_frames_upload_url" }
+        }
+        return (try? JSONDecoder().decode(Ack.self, from: body))?.researchFramesUploadUrl
     }
 
     /// asd-sync's classification, reading the 409 problem slug (SYNC-7).

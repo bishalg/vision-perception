@@ -399,6 +399,13 @@ public final class GazeSessionController: ObservableObject {
 
     // MARK: - Session lifecycle
 
+    /// Arms the research frame log for the next `startSession` (RFL-2). The app calls it only
+    /// when `NormCollectionGate.isActive`; it applies to one session and never to a simulated
+    /// one. `nil` disarms.
+    public func armResearchLog(_ configuration: ResearchLogConfiguration?) {
+        sessionBridge.armResearchLog(configuration)
+    }
+
     /// Starts live TrueDepth capture. Volatile RAM buffer is reset.
     ///
     /// Never falls back to simulation (SIM-2): when face tracking is unsupported the

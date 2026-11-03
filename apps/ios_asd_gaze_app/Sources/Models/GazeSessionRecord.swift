@@ -88,7 +88,7 @@ public struct GazeSessionRecord: Identifiable, Codable, Sendable, Equatable {
 
     /// Norm-collection consent (`rawPayload.normCollection`, ING-3); `nil` unless the parent
     /// consented to research and opted into normative collection for a live session.
-    public let normCollection: NormCollectionConsent?
+    public internal(set) var normCollection: NormCollectionConsent?
 
     /// Designated initialiser. Every metric and the capture source are explicit;
     /// test defaults live in the test target (`GazeSessionRecord.fixture`).
@@ -319,6 +319,14 @@ public struct NormCollectionConsent: Codable, Sendable, Equatable {
     public let studyIdentifier: String
     public let childAgeMonths: Int
     public let collectedAtUtc: String
+    /// RFL-2: `true` when the research frame log went over its size cap and was dropped; the
+    /// session itself still uploads. Absent (not `false`) otherwise.
+    public internal(set) var researchLogDropped: Bool?
+
+    private enum CodingKeys: String, CodingKey {
+        case consented, consentVersion, studyIdentifier, childAgeMonths, collectedAtUtc
+        case researchLogDropped = "research_log_dropped"
+    }
 
     /// `nil` when the gate is closed (`metadata == nil`) or the capture is simulated.
     public init?(metadata: NormCollectionMetadata?) {

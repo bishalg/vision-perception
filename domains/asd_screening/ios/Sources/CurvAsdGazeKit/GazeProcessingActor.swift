@@ -196,6 +196,13 @@ public actor GazeProcessingActor {
     /// the bundled default profile instead (the delivered one is reported, never silent).
     public private(set) var isUsingBundledProfileFallback: Bool = false
     private var telemetryWriter: GazeTelemetryWriterHandle?
+    /// RFL-2: what the app armed for the next session (`NormCollectionGate.isActive`); consumed
+    /// by `startSession`, which opens a writer only for live TrueDepth capture.
+    private var pendingResearchLog: ResearchLogConfiguration?
+    private var researchLogConfiguration: ResearchLogConfiguration?
+    private var researchLogWriter: ResearchLogWriter?
+    private var researchLogClips: [ResearchLogLines.Clip] = []
+    private var lastResearchSampleSec: Double?
     /// Processed frames parallel to `volatileFrameBuffer` (live frames only), for gap filling
     /// at finalize (GAP-1).
     private var processedBuffer: [ProcessedSampleRecord] = []
@@ -386,9 +393,53 @@ public actor GazeProcessingActor {
             (pipeline, telemetryWriter) = (nil, nil)
         }
         isClipOpen = false
+        openResearchLog(for: captureSource)
         if beginsClip {
             beginClip()
         }
+    }
+
+    /// Arms the research frame log for the next `startSession` (RFL-2). Call it only when the
+    /// session passes `NormCollectionGate.isActive`; `nil` disarms. The arming applies to one
+    /// session, and a simulated session never writes a log.
+    public func armResearchLog(_ configuration: ResearchLogConfiguration?) {
+        pendingResearchLog = configuration
+    }
+
+    private func openResearchLog(for source: CaptureSource) {
+        researchLogWriter?.discard()
+        researchLogWriter = nil
+        researchLogClips.removeAll()
+        lastResearchSampleSec = nil
+        researchLogConfiguration = nil
+        let configuration = pendingResearchLog
+        pendingResearchLog = nil
+        guard source == .trueDepth, let configuration else { return }
+        researchLogWriter = ResearchLogWriter(directory: configuration.directory, capBytes: configuration.capBytes)
+        if researchLogWriter != nil { researchLogConfiguration = configuration }
+    }
+
+    /// Assembles the log at session end (clips and AOIs known). A failure never affects the
+    /// session: the log is simply absent.
+    private func closeResearchLog(sessionId: String) {
+        guard let writer = researchLogWriter, let configuration = researchLogConfiguration else { return }
+        researchLogWriter = nil
+        researchLogConfiguration = nil
+        do {
+            let header = try ResearchLogLines.headerLine(
+                modelIdentifier: deviceModelIdentifier,
+                orientation: orientation,
+                sessionId: sessionId,
+                clips: researchLogClips,
+                configuration: configuration
+            )
+            _ = writer.finish(headerLine: header, sessionId: sessionId)
+        } catch {
+            AsdCoreBridge.report("gaze_research_log_header_line", error)
+            writer.discard()
+        }
+        researchLogClips.removeAll()
+        lastResearchSampleSec = nil
     }
 
     #if ASD_SIMULATION_ENABLED
@@ -409,10 +460,16 @@ public actor GazeProcessingActor {
         guard let pipeline else { return }
         do {
             let aois = try GazePipelineDocuments.clipAOIs(battery: aoiTracker, stimulusId: currentStimulusId)
-            try pipeline.beginClipJson(
-                clipId: currentStimulusId ?? PerVideoMetricsExtractor.untaggedClipId,
-                aoisJson: aois
-            )
+            let clipId = currentStimulusId ?? PerVideoMetricsExtractor.untaggedClipId
+            try pipeline.beginClipJson(clipId: clipId, aoisJson: aois)
+            if researchLogWriter != nil {
+                researchLogClips.append(ResearchLogLines.Clip(
+                    clipId: clipId,
+                    order: researchLogClips.count,
+                    aoisJSON: aois,
+                    catalogVersion: nil
+                ))
+            }
         } catch {
             AsdCoreBridge.report("gaze_begin_clip", error)
         }
@@ -661,6 +718,19 @@ public actor GazeProcessingActor {
 
         let tracked = snapshot.isTracked
         let affect = tracked ? Self.affect(from: snapshot.blendShapes) : .neutral
+
+        if let researchWriter = researchLogWriter, researchWriter.isActive, isRecording,
+           lastResearchSampleSec.map({ elapsedSec > $0 }) ?? true {
+            lastResearchSampleSec = elapsedSec
+            do {
+                researchWriter.append(line: try ResearchLogLines.sampleLine(
+                    record: raw,
+                    affect: isClipOpen ? affect : nil
+                ))
+            } catch {
+                AsdCoreBridge.report("gaze_research_log_sample_line", error)
+            }
+        }
 
         if isRecording && isClipOpen {
             processedBuffer.append(processed)
@@ -939,6 +1009,7 @@ public actor GazeProcessingActor {
             clipTracking: clipTracking
         )
 
+        closeResearchLog(sessionId: summary.sessionId)
         isRecording = false
         captureSource = nil
         volatileFrameBuffer.removeAll(keepingCapacity: false)

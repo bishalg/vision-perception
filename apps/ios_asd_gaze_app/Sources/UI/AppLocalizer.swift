@@ -745,6 +745,11 @@ public enum Localizer {
             "en": "Retry",
             "ne": "फेरि प्रयास",
             "hi": "फिर से प्रयास"
+        ],
+        "research_raw_samples_note": [
+            "en": "Raw gaze samples are shared for research when you opt in",
+            "ne": "तपाईंले छनोट गर्नुभएमा अनुसन्धानका लागि कच्चा नजर नमूनाहरू साझा गरिन्छ",
+            "hi": "आपके चुनने पर अनुसंधान के लिए कच्चे गेज नमूने साझा किए जाते हैं"
         ]
     ]
 

@@ -231,6 +231,12 @@ public final class ARSessionBridge: NSObject, Sendable {
         return nil
     }
 
+    /// Arms (or, with `nil`, disarms) the research frame log for the next `start` (RFL-2).
+    /// Ordered with every input submitted before and after, so call it before `start`.
+    public func armResearchLog(_ configuration: ResearchLogConfiguration?) {
+        continuation.yield(.perform { actor in await actor.armResearchLog(configuration) })
+    }
+
     public func interruptionBegan(at timestamp: TimeInterval) {
         continuation.yield(.interruptionBegan(timestamp))
     }

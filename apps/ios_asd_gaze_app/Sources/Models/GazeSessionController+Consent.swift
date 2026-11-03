@@ -24,7 +24,23 @@ public extension GazeSessionController {
         store: ChildProfileStore = .shared
     ) -> Bool {
         guard ConsentToken.mint(from: store) != nil else { return false }
+        armResearchLog(researchLogConfiguration(participantToken: store.participantToken()))
         startSession(battery: battery, stimulusId: stimulusId, beginsClip: beginsClip)
         return true
+    }
+
+    /// RFL-2: the research frame log is armed only through `NormCollectionGate.isActive`
+    /// (research consent, opt-in, live TrueDepth; the kit also refuses a simulated session).
+    /// The log sits next to the sealed vault file, so deleting the vault removes it.
+    @MainActor
+    private func researchLogConfiguration(participantToken profileToken: String) -> ResearchLogConfiguration? {
+        let enrollment = ResearchKitStudyStore.shared.fetchEnrollment()
+        guard NormCollectionGate.isActive(enrollment: enrollment, captureSource: .trueDepth) else { return nil }
+        return ResearchLogConfiguration(
+            directory: SessionVaultManager().vaultDirectory,
+            participantToken: GazeSessionRecord.participantToken(enrollment: enrollment, profileToken: profileToken),
+            bundleVersion: scoringConfiguration.bundleVersion,
+            appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+        )
     }
 }

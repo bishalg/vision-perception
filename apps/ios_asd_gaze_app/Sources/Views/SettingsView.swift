@@ -898,6 +898,8 @@ struct NormCollectionToggleRow: View {
                     .glassStyle(.headline)
                 Text("Contribute de-identified per-video gaze metrics to help build age-based reference ranges. Requires research consent; never includes video or images.")
                     .glassStyle(.subheadline)
+                Text(Localizer.tr("research_raw_samples_note"))
+                    .glassStyle(.subheadline)
                 Toggle(isOn: Binding(
                     get: { isOptedIn },
                     set: { newValue in

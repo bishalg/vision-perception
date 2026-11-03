@@ -118,11 +118,15 @@ struct QueuedSessionUpload: Codable, Equatable {
     enum BlobKind: String, Codable {
         case frames
         case report
+        /// RFL-2: the plain research frame log (the backend seals it, RFL-3). Proxy blob mode
+        /// only; the file is deleted as soon as it is uploaded or can never be.
+        case researchFrames = "research_frames"
 
         var contentType: String {
             switch self {
             case .frames: return "application/octet-stream"
             case .report: return "application/pdf"
+            case .researchFrames: return "application/x-ndjson"
             }
         }
     }
@@ -159,11 +163,12 @@ struct QueuedSessionUpload: Codable, Equatable {
         return "\(filePrefix)\(safe)_\(digest).json"
     }
 
-    mutating func applyUploadURLs(frames: String?, report: String?) {
+    mutating func applyUploadURLs(frames: String?, report: String?, researchFrames: String? = nil) {
         for index in blobs.indices {
             switch blobs[index].kind {
             case .frames: blobs[index].uploadURL = frames
             case .report: blobs[index].uploadURL = report
+            case .researchFrames: blobs[index].uploadURL = researchFrames
             }
             if blobs[index].uploadURL == nil { blobs[index].done = true }
         }
@@ -529,21 +534,32 @@ public final class ResearchKitSyncService: ObservableObject {
         attentionFlag: AttentionFlag? = nil,
         battery: String? = nil
     ) -> Bool {
-        guard isSessionSyncEnabled else { return false }
-        guard store.fetchEnrollment().isConsented else {
-            Self.logger.info("Session \(record.sessionId, privacy: .public) not queued: research consent is not active")
+        guard isSessionSyncEnabled, store.fetchEnrollment().isConsented else {
+            // Not queued: the plain research log has no use, so it is not left behind.
+            _ = researchLogFiles(for: record, framesFile: framesFile, keep: false)
+            if isSessionSyncEnabled {
+                Self.logger.info("Session \(record.sessionId, privacy: .public) not queued: research consent is not active")
+            }
             return false
         }
+        // RFL-2: the research log sits next to the vault file; a drop marker says the log went
+        // over its cap (acceptance 16). Only a record that carries norm-collection consent
+        // may send either, so a stray file without consent is deleted, never uploaded.
+        let research = researchLogFiles(for: record, framesFile: framesFile)
+        var record = record
+        if research.dropped { record.normCollection?.researchLogDropped = true }
         let payload: SessionIngestPayload
         do {
             payload = try SessionIngestPayload(record: record, attentionFlag: attentionFlag, battery: battery)
         } catch {
             Self.logger.info("Session \(record.sessionId, privacy: .public) not queued: \(String(describing: error), privacy: .public)")
+            if let log = research.log { try? fileManager.removeItem(at: log) }
             return false
         }
         var blobs: [QueuedSessionUpload.Blob] = []
         if let framesFile { blobs.append(queuedBlob(.frames, framesFile)) }
         if let reportFile { blobs.append(queuedBlob(.report, reportFile)) }
+        if let log = research.log { blobs.append(queuedBlob(.researchFrames, log)) }
         let item = QueuedSessionUpload(sessionId: record.sessionId, payload: payload, stage: .post, blobs: blobs)
         let fileURL = queueDirectory.appendingPathComponent(QueuedSessionUpload.fileName(for: record.sessionId))
         do {
@@ -592,6 +608,22 @@ public final class ResearchKitSyncService: ObservableObject {
         }
     }
 
+    /// The research log and drop marker `GazeProcessingActor` left beside the vault file for
+    /// this session. Without norm-collection consent on the record both are removed.
+    private func researchLogFiles(for record: GazeSessionRecord, framesFile: URL?, keep: Bool = true) -> (log: URL?, dropped: Bool) {
+        guard let directory = framesFile?.deletingLastPathComponent() else { return (nil, false) }
+        let log = ResearchLogWriter.fileURL(sessionId: record.sessionId, in: directory)
+        let marker = ResearchLogWriter.droppedMarkerURL(sessionId: record.sessionId, in: directory)
+        let hasLog = fileManager.fileExists(atPath: log.path)
+        let dropped = fileManager.fileExists(atPath: marker.path)
+        try? fileManager.removeItem(at: marker)
+        guard keep, record.normCollection?.consented == true else {
+            if hasLog { try? fileManager.removeItem(at: log) }
+            return (nil, false)
+        }
+        return (hasLog ? log : nil, dropped)
+    }
+
     private func queuedBlob(_ kind: QueuedSessionUpload.BlobKind, _ url: URL) -> QueuedSessionUpload.Blob {
         let path = url.resolvingSymlinksInPath().path
         let root = blobRoot.path.hasSuffix("/") ? blobRoot.path : blobRoot.path + "/"
@@ -599,6 +631,23 @@ public final class ResearchKitSyncService: ObservableObject {
             return .init(kind: kind, path: String(path.dropFirst(root.count)), isRelative: true, uploadURL: nil, done: false)
         }
         return .init(kind: kind, path: path, isRelative: false, uploadURL: nil, done: false)
+    }
+
+    /// RFL-2: the research log is deleted as soon as its blob is done (uploaded, or never
+    /// offered by the server); it is never kept once the queue has no use for it.
+    private func removeResearchFilesOfFinishedBlobs(_ item: QueuedSessionUpload) {
+        for blob in item.blobs where blob.kind == .researchFrames && blob.done {
+            try? fileManager.removeItem(at: blobFileURL(blob))
+        }
+    }
+
+    /// A quarantined session will never upload its research log: delete it.
+    private func removeResearchFiles(ofQueueFile file: URL) {
+        guard let data = try? Data(contentsOf: file),
+              let item = try? SessionPayloadCoding.decoder().decode(QueuedSessionUpload.self, from: data) else { return }
+        for blob in item.blobs where blob.kind == .researchFrames {
+            try? fileManager.removeItem(at: blobFileURL(blob))
+        }
     }
 
     private func blobFileURL(_ blob: QueuedSessionUpload.Blob) -> URL {
@@ -715,6 +764,7 @@ public final class ResearchKitSyncService: ObservableObject {
                   }) else { continue }
             item.blobs[index].done = true
             persist(item, to: file, generation: queueGeneration)
+            removeResearchFilesOfFinishedBlobs(item)
             Self.logger.info("Marked a background-uploaded blob done for \(item.sessionId, privacy: .public)")
             break
         }
@@ -816,6 +866,7 @@ public final class ResearchKitSyncService: ObservableObject {
                 case .quarantine(let code):
                     // 4xx status codes indicate permanent payload/client errors.
                     // Quarantine so this file does not block future sync runs.
+                    removeResearchFiles(ofQueueFile: file)
                     moveAside(file, folderName: Self.quarantineFolder)
                     Self.logger.warning("Quarantined invalid payload \(file.lastPathComponent, privacy: .public) (HTTP \(code))")
                 case .held:
@@ -1032,7 +1083,14 @@ public final class ResearchKitSyncService: ObservableObject {
                 let response = try await client.postSession(item.payload, mayReRegister: &mayReRegister)
                 refreshRegistrationStatus(authFailed: false)
                 guard generation == queueGeneration else { return .held }
-                item.applyUploadURLs(frames: response.framesUploadURL, report: response.reportUploadURL)
+                item.applyUploadURLs(
+                    frames: response.framesUploadURL,
+                    report: response.reportUploadURL,
+                    researchFrames: response.researchFramesUploadURL
+                )
+                // A research log the server will not take (presigned mode, no consent on file)
+                // is not kept: it is plain content.
+                removeResearchFilesOfFinishedBlobs(item)
                 guard item.hasPendingUploads else { return .delivered(receipt: item.sessionId) }
                 item.stage = .uploadBlobs
                 persist(item, to: file, generation: generation)
@@ -1069,7 +1127,9 @@ public final class ResearchKitSyncService: ObservableObject {
                 guard generation == queueGeneration else { return .held }
                 item.blobs[index].done = true
                 persist(item, to: file, generation: generation)
+                removeResearchFilesOfFinishedBlobs(item)
             }
+            removeResearchFilesOfFinishedBlobs(item)
             return .delivered(receipt: item.sessionId)
         } catch let error as SessionSyncError {
             switch error {

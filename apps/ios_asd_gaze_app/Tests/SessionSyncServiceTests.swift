@@ -113,12 +113,14 @@ final class SessionSyncServiceTests: XCTestCase {
     private static func ingested(
         frames: String? = nil,
         report: String? = nil,
+        research: String? = nil,
         duplicate: Bool = false
     ) -> @Sendable (URLRequest) throws -> (HTTPURLResponse, Data) {
         { request in
             var body: [String: Any] = ["sessionId": "SESS-0001", "status": "ingested", "duplicate": duplicate]
             body["frames_upload_url"] = frames ?? NSNull()
             body["report_upload_url"] = report ?? NSNull()
+            if let research { body["research_frames_upload_url"] = research }
             return (httpResponse(request, 200, headers: ["Content-Type": "application/json"]), jsonData(body))
         }
     }
@@ -660,6 +662,152 @@ final class SessionSyncServiceTests: XCTestCase {
         XCTAssertTrue(sync(service))
         XCTAssertTrue(log.entries.filter { $0.method == "PUT" }.isEmpty)
         XCTAssertEqual(service.pendingQueueCount, 0)
+    }
+
+    // MARK: - Research frame log (RFL-2, acceptance 15 and 16)
+
+    /// A record that carries norm-collection consent, as the gate builds it.
+    private func researchRecord(_ sessionId: String = "SESS-0001") -> GazeSessionRecord {
+        var r = record(sessionId)
+        r.normCollection = NormCollectionConsent(metadata: NormCollectionMetadata(
+            consentVersion: "v2", studyIdentifier: "STUDY", participantId: "STUDY-SYNC-V2",
+            childAgeMonths: 30, deviceModel: "iPhone", isSimulator: false, collectedAtUtc: "2026-11-03T00:00:00Z"
+        ))
+        return r
+    }
+
+    private func writeResearchLog(_ sessionId: String = "SESS-0001", bytes: String = "{\"header\":1}\n{\"t_sec\":0}\n") -> URL {
+        let url = ResearchLogWriter.fileURL(sessionId: sessionId, in: blobRoot)
+        try? Data(bytes.utf8).write(to: url)
+        return url
+    }
+
+    private static let researchPath = "/v1/sessions/SESS-0001/blobs/research_frames"
+
+    @MainActor
+    func testQueueUploadsThreeBlobsWithDigestsAndDeletesTheResearchLogAfterTheThird() throws {
+        consent()
+        registerToken("tok-research")
+        let service = makeService()
+        let frames = writeBlob("session_SESS-0001.jsonl.enc", bytes: "CIPHERTEXT")
+        let report = writeBlob("report.pdf", bytes: "%PDF-1.7")
+        let logFile = writeResearchLog(bytes: "RESEARCH-LINES\n")
+        XCTAssertTrue(service.enqueueSession(researchRecord(), framesFile: frames, reportFile: report))
+        route([
+            Self.sessionsPath: Self.ingested(
+                frames: "/v1/sessions/SESS-0001/blobs/frames",
+                report: "/v1/sessions/SESS-0001/blobs/report",
+                research: Self.researchPath
+            ),
+            "/v1/sessions/SESS-0001/blobs/frames": Self.ok,
+            "/v1/sessions/SESS-0001/blobs/report": Self.ok,
+            Self.researchPath: Self.ok
+        ])
+
+        XCTAssertTrue(sync(service))
+        let puts = log.entries.filter { $0.method == "PUT" }
+        XCTAssertEqual(puts.count, 3, "frames, report and research_frames")
+        let research = try XCTUnwrap(puts.first { $0.url.path == Self.researchPath })
+        XCTAssertEqual(research.body, Data("RESEARCH-LINES\n".utf8))
+        let digest = Data(SHA256.hash(data: Data("RESEARCH-LINES\n".utf8))).base64EncodedString()
+        XCTAssertEqual(research.headers["Content-Digest"], "sha-256=:\(digest):")
+        XCTAssertEqual(research.headers["Content-Type"], "application/x-ndjson")
+        XCTAssertEqual(research.headers["Authorization"], "Bearer tok-research", "proxy route: device bearer")
+        XCTAssertTrue(puts.allSatisfy { $0.headers["Content-Digest"] != nil })
+        XCTAssertFalse(FileManager.default.fileExists(atPath: logFile.path), "deleted once uploaded")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: frames.path), "the sealed vault file stays")
+        XCTAssertEqual(service.pendingQueueCount, 0)
+    }
+
+    @MainActor
+    func testRelaunchResumesTheResearchUploadWithoutASecondPost() {
+        consent()
+        registerToken()
+        let service = makeService()
+        let frames = writeBlob("session_SESS-0001.jsonl.enc")
+        let logFile = writeResearchLog()
+        service.enqueueSession(researchRecord(), framesFile: frames)
+        let urls = Self.ingested(frames: "/v1/sessions/SESS-0001/blobs/frames", research: Self.researchPath)
+        route([
+            Self.sessionsPath: urls,
+            "/v1/sessions/SESS-0001/blobs/frames": Self.ok,
+            Self.researchPath: { request in (httpResponse(request, 503), Data()) }
+        ])
+        XCTAssertFalse(sync(service), "the research PUT failed")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: logFile.path), "kept until it is uploaded")
+
+        // Relaunch: a new service reads the same queue directory.
+        let relaunched = makeService()
+        XCTAssertEqual(relaunched.pendingQueueCount, 1)
+        clock.advance(120)
+        route([
+            Self.sessionsPath: urls,
+            "/v1/sessions/SESS-0001/blobs/frames": Self.ok,
+            Self.researchPath: Self.ok
+        ])
+        XCTAssertTrue(sync(relaunched))
+        XCTAssertEqual(log.entries(path: Self.sessionsPath).count, 1, "no second POST")
+        XCTAssertEqual(log.entries(path: "/v1/sessions/SESS-0001/blobs/frames").count, 1, "frames not re-sent")
+        XCTAssertEqual(log.entries(path: Self.researchPath).count, 2)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: logFile.path))
+    }
+
+    @MainActor
+    func testResearchLogIsDeletedNotUploadedWhenTheServerOffersNoURL() {
+        consent()
+        registerToken()
+        let service = makeService()
+        let logFile = writeResearchLog()
+        service.enqueueSession(researchRecord(), framesFile: writeBlob("session_SESS-0001.jsonl.enc"))
+        route([Self.sessionsPath: Self.ingested(frames: "/v1/sessions/SESS-0001/blobs/frames"),
+               "/v1/sessions/SESS-0001/blobs/frames": Self.ok])
+
+        XCTAssertTrue(sync(service))
+        XCTAssertTrue(log.entries(path: Self.researchPath).isEmpty, "presigned mode never takes the log")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: logFile.path), "plain content is not kept")
+    }
+
+    @MainActor
+    func testResearchLogWithoutNormCollectionConsentIsDeletedAtEnqueue() {
+        consent()
+        let service = makeService()
+        let logFile = writeResearchLog()
+        XCTAssertTrue(service.enqueueSession(record(), framesFile: writeBlob("session_SESS-0001.jsonl.enc")))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: logFile.path))
+        XCTAssertEqual(queuedFiles().count, 1)
+    }
+
+    @MainActor
+    func testDroppedLogMarkerSetsTheFlagInTheNormCollectionPayload() throws {
+        consent()
+        registerToken()
+        let service = makeService()
+        let marker = ResearchLogWriter.droppedMarkerURL(sessionId: "SESS-0001", in: blobRoot)
+        try Data().write(to: marker)
+        service.enqueueSession(researchRecord(), framesFile: writeBlob("session_SESS-0001.jsonl.enc"))
+        route([Self.sessionsPath: Self.ingested()])
+
+        XCTAssertTrue(sync(service), "the session still uploads")
+        let post = try XCTUnwrap(log.entries(path: Self.sessionsPath).first)
+        let body = try XCTUnwrap(JSONSerialization.jsonObject(with: post.body) as? [String: Any])
+        let raw = try XCTUnwrap(body["rawPayload"] as? [String: Any])
+        let norm = try XCTUnwrap(raw["normCollection"] as? [String: Any])
+        XCTAssertEqual(norm["research_log_dropped"] as? Bool, true)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path), "marker consumed")
+    }
+
+    @MainActor
+    func testNoDropFlagWhenTheLogWasNotDropped() throws {
+        consent()
+        registerToken()
+        let service = makeService()
+        service.enqueueSession(researchRecord(), framesFile: writeBlob("session_SESS-0001.jsonl.enc"))
+        route([Self.sessionsPath: Self.ingested()])
+        XCTAssertTrue(sync(service))
+        let post = try XCTUnwrap(log.entries(path: Self.sessionsPath).first)
+        let body = try XCTUnwrap(JSONSerialization.jsonObject(with: post.body) as? [String: Any])
+        let norm = try XCTUnwrap((body["rawPayload"] as? [String: Any])?["normCollection"] as? [String: Any])
+        XCTAssertNil(norm["research_log_dropped"], "absent, not false")
     }
 
     // MARK: - Registration through the service
