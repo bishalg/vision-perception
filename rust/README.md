@@ -392,6 +392,15 @@ traceHz?})`, which is `analysis::evaluate` at `frames` level and returns the cor
 default). `tests/research.rs` checks native == wasm32 on the synth scenarios; the replay's
 `tracking` record is compared to 1e-12 because of last-bit maths-library differences.
 
+**WP-X.3** fills `jobs/analysis.rs` and `routes/analysis_runs.rs`. A run snapshots the experiment
+profile, cohort, level, options, seed and every RUN-5 version, then queues job `analysis_run`. The
+job resolves membership in a read-only snapshot, evaluates each session twice (published and
+experiment) at `frames` level where a research log exists and `score` otherwise, adding
+`param_not_applied` where needed. It checks cancel and the deadline before every page, seals the
+rows under the org key at `analysis/{org}/{run}/sessions.jsonl.sealed` and stores a PRV-1 `summary`.
+`POST /v1/jobs/{id}/cancel` and `GET /v1/jobs/{id}` `progress` work for every job. Limits are the
+`ASD_ANALYSIS_*` settings in `.env.example` (one running analysis per org by default).
+
 **WP-X.1.** `asd_core::analysis` holds the core twins of the 1.2.0 profile sections
 (`AnalysisProfile`, which decodes from any `ScoringProfile` body) and of the run summary types,
 `evaluate` (score/frames/auto, RPX-2/3), `Aggregator` (exact quantiles, seeded bootstrap CIs, RUN-4)
