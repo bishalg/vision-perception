@@ -401,6 +401,16 @@ rows under the org key at `analysis/{org}/{run}/sessions.jsonl.sealed` and store
 `POST /v1/jobs/{id}/cancel` and `GET /v1/jobs/{id}` `progress` work for every job. Limits are the
 `ASD_ANALYSIS_*` settings in `.env.example` (one running analysis per org by default).
 
+**WP-X.9.** `asd_core::analysis::{sweep, age_profile}`: sweep grids (the published value is always a
+cell; the cell nearest the experiment is the draft side), per-cell rates, means and medians
+(`summary.sweep`, plus `published_values`), and per band × expectation shares on-target / monitor /
+atypical and the expected-value percentile under published and draft baselines
+(`summary.age_profile`). `suppress` hides cells under k, and age cells under `max(k, norms.minN)`.
+The job runs `param_sweep` (cells evaluated off the async workers, cancel and deadline checked per
+session) and `age_profile`. The route validates SWP-1/2 against the registry and level; owner-gated
+knobs are sweepable. The new limit `ASD_ANALYSIS_MAX_SUMMARY_KIB` (1024) enforces RUN-4. The console
+run page gains `SweepPanel` (curves, or two-axis heatmaps up to 625 cells) and `AgeProfileTable`.
+
 **WP-X.1.** `asd_core::analysis` holds the core twins of the 1.2.0 profile sections
 (`AnalysisProfile`, which decodes from any `ScoringProfile` body) and of the run summary types,
 `evaluate` (score/frames/auto, RPX-2/3), `Aggregator` (exact quantiles, seeded bootstrap CIs, RUN-4)
