@@ -22,4 +22,7 @@ serde_json.workspace = true
 wasm-bindgen = "0.2.100"
 
 [dev-dependencies]
+# The parity tests replay the synthetic research logs (`synth_tracking`) and sessions.
+asd-core = { workspace = true, features = ["synth"] }
+sha2.workspace = true
 wasm-bindgen-test = "0.3"

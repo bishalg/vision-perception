@@ -72,6 +72,13 @@ pub fn default_scoring_profile() -> String {
     envelope(Ok(api::default_scoring_profile()))
 }
 
+/// The parameter registry, exactly `param-registry-v1.json`: `{$id, registryVersion, params}`
+/// (PRM-1, RPX-4).
+#[wasm_bindgen(js_name = paramRegistry)]
+pub fn param_registry() -> String {
+    envelope(Ok(api::param_registry()))
+}
+
 /// `{valid, problems, fieldProblems}`: the profile decodes as the contract `ScoringProfile`
 /// and passes the backend's range checks (asd-contract `profile_checks`); `fieldProblems`
 /// are `{path, message}` with the camelCase member path.
@@ -131,7 +138,8 @@ pub fn extract_metrics(frames_json: &str) -> String {
 }
 
 /// Sandbox re-score of a stored session (1.6/1.7/1.8 request or bare `rawPayload` record) with
-/// a scoring profile and baseline set. `options_json`: `{"ageMonths": n, "scoredAtUtc"?:
+/// a scoring profile and baseline set: `analysis::evaluate` at `score` level, so the profile's
+/// `metrics` and `lowConfidenceValidRatio` apply (WP-X.4). `options_json`: `{"ageMonths": n, "scoredAtUtc"?:
 /// "..."}`. `frames_json` (optional `[GazeFrame]`) selects the exact device path. Result:
 /// `{sessionId, schemaVersion, metricSource, score, flag, device, warnings}`.
 #[wasm_bindgen(js_name = rescoreSession)]
@@ -167,6 +175,29 @@ pub fn rescore_api_session(
     envelope(api::rescore_api_session(
         session_json,
         clips_json,
+        profile_json,
+        baselines_json,
+        options_json,
+    ))
+}
+
+/// RPX-4: re-processes a research frame log (`asd-raw-tracking/1` JSON lines) with a catalog
+/// (or `null` when the header carries the AOIs), a scoring profile and a baseline set:
+/// `analysis::evaluate` at `frames` level. `options_json`: `{"ageMonths": n, "scoredAtUtc"?,
+/// "model"?, "glasses"?, "traceHz"?}`. Result: the core `Evaluation` (`level`, `unscorable`?,
+/// `score`, `flag`, `qualityStatus`, `validRatio`, `metrics`, `tracking`, `fixations`?,
+/// `trace`?, `warnings`).
+#[wasm_bindgen(js_name = reprocessSession)]
+pub fn reprocess_session(
+    frame_log_jsonl: &str,
+    catalog_json: &str,
+    profile_json: &str,
+    baselines_json: &str,
+    options_json: &str,
+) -> String {
+    envelope(api::reprocess_session(
+        frame_log_jsonl,
+        catalog_json,
         profile_json,
         baselines_json,
         options_json,
