@@ -102,6 +102,23 @@ test("scoring-profile editor loads asd_wasm under the policy", async ({ page }) 
   await expectStrictDocument(await page.goto(page.url()));
 });
 
+test("research workbench: registry form, preview cards and SVG charts load under the policy", async ({ page }) => {
+  const wasmLoaded = page.waitForResponse((r) => r.url().includes("/asd-wasm/asd_wasm_bg.wasm"));
+  await login(page, "researcher@example.org");
+  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  const org = new URL(page.url()).pathname.split("/")[1]!;
+  await page.goto(`/${org}/research/experiments`);
+  await page.getByRole("link", { name: "Lower I-VT threshold" }).click();
+  await expect(page.getByRole("heading", { name: "Lower I-VT threshold" })).toBeVisible();
+  await expectStrictDocument(await page.goto(page.url()));
+  await expectHydrated(page);
+  await expect(page.getByRole("article")).toHaveCount(2, { timeout: 30_000 });
+  expect((await wasmLoaded).ok()).toBe(true);
+  await page.getByRole("combobox", { name: /^Parameter/ }).selectOption("flag.greenFloor");
+  await page.getByRole("button", { name: "Run sweep" }).click();
+  await expect(page.getByTestId("sweep-curve")).toBeVisible();
+});
+
 test("unmatched URL: 404 page is rendered per request, nonced and hydrated", async ({ page }) => {
   const org = await loginToOverview(page);
   for (const path of [`/${org}/no-such-page`, `/${org}/sessions/x/y/z`]) {

@@ -41,11 +41,10 @@ test("scoring profile editor: the Rust core flags a range problem at its field, 
   await expect(page.getByRole("heading", { name: "New scoring profile draft" })).toBeVisible();
   await expect(page.getByText("The Rust core accepts this document.")).toBeVisible();
 
-  const green = page.getByLabel("Green floor (composite)");
+  const green = page.getByLabel("Green floor", { exact: true });
   await green.fill("1.5");
   await expect(green).toHaveAttribute("aria-invalid", "true");
   await expect(page.getByText("flag.greenFloor must be in [0, 1]").first()).toBeVisible();
-  await expect(page.getByText(/Not applied by the Rust core scorer yet: it uses a fixed 0\.6/)).toBeVisible();
 
   await green.fill("0.7");
   await expect(page.getByText("The Rust core accepts this document.")).toBeVisible();

@@ -6,6 +6,7 @@
 import { z } from "@/lib/zod";
 import type { ClipScore, SessionDetail } from "@/lib/api/types";
 import type { NormativeBaselineSet, ScoringProfile } from "@/lib/api/config";
+import { paramRegistrySchema, type ParamRegistry } from "@/lib/api/research";
 import type { AsdCore, Envelope } from "./core";
 
 export const fieldProblemSchema = z.object({ path: z.string(), message: z.string() });
@@ -148,5 +149,54 @@ export async function rescoreApiSession(
     await core.call("rescoreApiSession", json(session), json(clips), json(profile), json(baselines), json(options)),
     rescoreResultSchema,
     "rescoreApiSession",
+  );
+}
+
+export const reprocessResultSchema = z
+  .object({
+    /** The score-level evaluation fields are the core's; the console draws what it needs and ignores the rest. */
+    trace: z.unknown().optional(),
+  })
+  .loose();
+export type ReprocessResult = z.infer<typeof reprocessResultSchema>;
+
+const unavailableExport = (name: string): Envelope<never> => ({
+  ok: false,
+  error: { kind: "unavailable", message: `${name}: this Rust core build does not export it yet (WP-X.4)` },
+});
+
+/**
+ * The parameter registry as the core serves it (RPX-4). Until WP-X.4 lands the module has no such export and this is
+ * an `unavailable` envelope; the console then uses its bundled copy of `param-registry-v1.json`.
+ */
+export async function paramRegistry(core: AsdCore): Promise<Envelope<ParamRegistry>> {
+  if (!(await core.supports("paramRegistry"))) return unavailableExport("paramRegistry");
+  return decode(await core.call("paramRegistry"), paramRegistrySchema, "paramRegistry");
+}
+
+export interface ReprocessOptions extends RescoreOptions {
+  model?: string;
+  glasses?: boolean;
+  traceHz?: number;
+}
+
+/**
+ * Re-process a session's research frame log (JSON lines) with a catalog, profile and baselines (RPX-4, frame level).
+ * Returns `unavailable` until the module exports `reprocessSession` (WP-X.4); callers then keep the score-level
+ * result of {@link rescoreSession}.
+ */
+export async function reprocessSession(
+  core: AsdCore,
+  frameLogJsonl: string,
+  catalog: unknown,
+  profile: ScoringProfile | unknown,
+  baselines: NormativeBaselineSet | unknown,
+  options: ReprocessOptions,
+): Promise<Envelope<ReprocessResult>> {
+  if (!(await core.supports("reprocessSession"))) return unavailableExport("reprocessSession");
+  return decode(
+    await core.call("reprocessSession", frameLogJsonl, json(catalog), json(profile), json(baselines), json(options)),
+    reprocessResultSchema,
+    "reprocessSession",
   );
 }

@@ -33,6 +33,15 @@ export interface AsdWasmExports {
     baselinesJson: string,
     optionsJson: string,
   ): string;
+  /** WP-X.4 (RPX-4); absent from a core built before it. */
+  paramRegistry?(): string;
+  reprocessSession?(
+    frameLogJsonl: string,
+    catalogJson: string,
+    profileJson: string,
+    baselinesJson: string,
+    optionsJson: string,
+  ): string;
   lastPanic(): string | undefined;
 }
 
@@ -73,6 +82,15 @@ export class AsdCore {
     try {
       await this.load();
       return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Whether the loaded module has the export `name` (false when the module does not load). */
+  async supports(name: AsdExportName): Promise<boolean> {
+    try {
+      return typeof (await this.load())[name] === "function";
     } catch {
       return false;
     }
