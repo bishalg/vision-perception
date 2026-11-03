@@ -362,6 +362,13 @@ export format. Job kind `analysis_run` and the `/experiments`, `/cohorts`, `/ana
 `/orgs/{id}/config/effective` routes are mounted and answer `501 not-implemented` until WP-X.2/X.3.
 `ASD_ANALYSIS_*` settings arrive with WP-X.3.
 
+**WP-X.10 (asd-cli).** `research reprocess LOG --catalog F --baselines F --age-months N [--profile F]
+[--level auto|frames] [--trace-hz N]` re-runs a research frame log through
+`asd_core::analysis::evaluate` at frames level; `research evaluate SESSION.json --baselines F
+[--profile F] [--age-months N] [--level auto|score]` re-scores a session at score level. Output is
+the `Evaluation` JSON, byte-equal to the core. Exit 0 ok, 1 input error, 2 not processable at the
+requested level (e.g. a log header without clips).
+
 **WP-X.1.** `asd_core::analysis` holds the core twins of the 1.2.0 profile sections
 (`AnalysisProfile`, which decodes from any `ScoringProfile` body) and of the run summary types,
 `evaluate` (score/frames/auto, RPX-2/3), `Aggregator` (exact quantiles, seeded bootstrap CIs, RUN-4)
