@@ -22,6 +22,7 @@ import {
 } from "../../worklist/actions";
 import { formatDateTime, formatNumber, formatPercent } from "@/lib/format";
 import { loadOrNotFound } from "@/lib/loaders";
+import { driftThresholds } from "@/lib/research/baselines";
 import { en } from "@/messages/en";
 
 export default async function SessionDetailPage({
@@ -42,6 +43,11 @@ export default async function SessionDetailPage({
   const role = await currentRole();
   const showClinical = can(role, "worklist.read");
   const clips = tab === "clips" ? await loadOrNotFound(() => api.getSessionClips(id)) : [];
+  // INV-2: the Quality tab draws the drift warn/hard lines from the effective scoring profile. A role without config
+  // access, or a profile that states none, shows no lines (never a hard-coded number).
+  const drift = tab === "quality"
+    ? driftThresholds((await api.getEffectiveConfig(org).catch(() => null))?.scoring_profile.body)
+    : { warnDeg: null, hardDeg: null };
   return (
     <>
       <p>
@@ -62,7 +68,7 @@ export default async function SessionDetailPage({
       </div>
       <SessionTabs basePath={basePath} active={tab} hidden={showClinical ? [] : ["clinical"]} />
       {tab === "clips" ? <ClipsTable clips={clips} /> : null}
-      {tab === "quality" ? <QualityPanel session={session} /> : null}
+      {tab === "quality" ? <QualityPanel session={session} warnDeg={drift.warnDeg} hardDeg={drift.hardDeg} /> : null}
       {tab === "report" ? <ReportPanel session={session} /> : null}
       {tab === "clinical" ? (
         showClinical ? (
