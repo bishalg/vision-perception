@@ -29,16 +29,22 @@
 //!   of the log. Raw logs carry no AOIs, so `aoiMinSizeDeg` stays absent in a replay.
 //! - **Config.** Built from the header (model, geometry, orientation) with default gate and
 //!   params unless [`ReplayOptions`] overrides them. No wall clock, no randomness (PIPE-5).
+//! - **Observer.** [`replay_with`] runs the same loop and lets a [`ReplayObserver`] supply each
+//!   clip's AOIs (passed to `begin_clip`, so the pipeline hit-tests like on the device) and see
+//!   every processed frame. [`replay`] is `replay_with` and an observer that supplies none
+//!   and watches nothing, so its output is unchanged (`gaze::reprocess` is the other caller).
 
 use serde::Serialize;
 use thiserror::Error;
 
+use super::aoi_space::ScreenAoi;
 use super::calibration::TargetStatus;
 use super::pipeline::{GazePipeline, PipelineConfig, PipelineError};
 use super::raw_log::RawLog;
+use crate::quality::QualityGate;
 use crate::types::tracking::{
-    CalModelKind, ClipTrackingEntry, RecalAdvice, ScheduledTarget, TargetKind, TargetResult,
-    TrackingQuality, TrackingQualityParams,
+    CalModelKind, ClipTrackingEntry, ProcessedSample, RawTrackingSample, RecalAdvice,
+    ScheduledTarget, TargetKind, TargetResult, TrackingQuality, TrackingQualityParams,
 };
 
 /// Replay settings.
@@ -51,7 +57,29 @@ pub struct ReplayOptions {
     pub model: Option<CalModelKind>,
     /// Operator answer at positioning (CNF-2).
     pub glasses: Option<bool>,
+    /// Replaces the default [`QualityGate`] (`ScoringProfile.qualityGate`, PRM-9).
+    pub quality_gate: Option<QualityGate>,
 }
+
+/// Hooks of [`replay_with`]. Both default to doing nothing.
+pub trait ReplayObserver {
+    /// The screen-space AOIs of the clip that begins (`clip_id` is the frame's `stimulus_id`,
+    /// empty when absent). They go to `GazePipeline::begin_clip`.
+    fn clip_aois(&mut self, clip_id: &str) -> Vec<ScreenAoi> {
+        let _ = clip_id;
+        Vec::new()
+    }
+
+    /// Every frame, after it was pushed (`recording`: it counts in the session summary).
+    fn frame(&mut self, raw: &RawTrackingSample, processed: &ProcessedSample, recording: bool) {
+        let _ = (raw, processed, recording);
+    }
+}
+
+/// The observer of a plain [`replay`].
+struct NoObserver;
+
+impl ReplayObserver for NoObserver {}
 
 /// Why a replay could not run.
 #[derive(Debug, Clone, PartialEq, Error)]
@@ -231,13 +259,22 @@ fn same(a: [f64; 2], b: [f64; 2]) -> bool {
 
 /// Replays `log` through a fresh pipeline.
 pub fn replay(log: &RawLog, options: &ReplayOptions) -> Result<ReplayReport, ReplayError> {
+    replay_with(log, options, &mut NoObserver)
+}
+
+/// [`replay`] with an observer (module docs, "Observer").
+pub fn replay_with<O: ReplayObserver + ?Sized>(
+    log: &RawLog,
+    options: &ReplayOptions,
+    observer: &mut O,
+) -> Result<ReplayReport, ReplayError> {
     check_schedule(&log.header.targets)?;
     let mut config = PipelineConfig {
         model_identifier: log.header.device_model.clone(),
         geometry_source: log.header.geometry_source,
         geometry: log.header.geometry.clone(),
         orientation: log.header.orientation,
-        quality_gate: Default::default(),
+        quality_gate: options.quality_gate.unwrap_or_default(),
         params: options.params.clone().unwrap_or_default(),
         calibration: None,
         glasses: options.glasses,
@@ -279,11 +316,13 @@ pub fn replay(log: &RawLog, options: &ReplayOptions) -> Result<ReplayReport, Rep
         if !recording {
             p.pipeline.end_clip();
         } else if current_clip.as_deref() != Some(clip_id.as_str()) || !p.pipeline.clip_open() {
-            p.pipeline.begin_clip(clip_id.clone(), Vec::new());
+            let aois = observer.clip_aois(&clip_id);
+            p.pipeline.begin_clip(clip_id.clone(), aois);
             current_clip = Some(clip_id);
         }
         p.pipeline.set_recording(recording);
-        p.pipeline.push(raw);
+        let processed = p.pipeline.push(raw);
+        observer.frame(raw, &processed, recording);
         if p.open && p.pipeline.target_complete() {
             p.end();
         }

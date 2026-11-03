@@ -13,6 +13,12 @@
 //!   front of the glass;
 //! - **screen-normalised space**: the oriented frame divided by its width and height, so
 //!   x, y in [0,1] cover the full display. Points are never clamped in the stored path.
+//!
+//! Not parameters (INV-1): the numerical guards and physical model constants of
+//! `raycast.rs`, `calibration.rs`, `pipeline.rs` and `mediapipe.rs` (`EPS_*`, `RANK_TOL`,
+//! `RAY_T_*`, `GRAZING_MIN_ANGLE_DEG`, the camera model) are not in the parameter registry; a
+//! change to one is a [`PIPELINE_VERSION`] bump. Every analysis knob comes from the profile's
+//! `qualityGate`, `trackingQuality`, `metrics` and `aoi` sections ([`reprocess`]).
 
 pub mod android_log;
 pub mod aoi_space;
@@ -28,6 +34,7 @@ pub mod pipeline;
 pub mod raw_log;
 pub mod raycast;
 pub mod replay;
+pub mod reprocess;
 pub mod summary;
 pub mod track_state;
 pub mod validation;

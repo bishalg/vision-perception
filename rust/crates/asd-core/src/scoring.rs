@@ -57,6 +57,10 @@ pub fn score_session(
 
 /// [`score_session`] with the low-confidence clip threshold of a delivered
 /// `ScoringProfile.lowConfidenceValidRatio` (WP-A.5) instead of the bundled default.
+///
+/// PRM-9 / INV-1: every product caller (wasm, ffi, backend, [`crate::analysis::evaluate`])
+/// calls this with the profile's value; [`score_session`] and [`LOW_CONFIDENCE_VALID_RATIO`]
+/// stay only as the default source and for the golden vectors.
 pub fn score_session_with(
     metric_sets: &[PerVideoMetricSet],
     baseline: &NormativeBaselineSet,

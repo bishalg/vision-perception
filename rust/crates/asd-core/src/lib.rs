@@ -4,6 +4,7 @@
 //! Domain types (CON-1) live in [`types`]; each logic module is filled by its own work package.
 
 pub mod aggregate;
+pub mod analysis;
 pub mod baselines;
 pub mod flag;
 pub mod gaze;
