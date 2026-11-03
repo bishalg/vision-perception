@@ -350,6 +350,18 @@ A participant with no session, no visit and no uploaded file is refused (`400 va
 "the participant has nothing to share"). A visit posted by a `clinician` without `clinician_id`
 records the caller as its clinician, so `follow-ups?assigned=me` lists it (REC-4).
 
+## Researcher toolkit seams (phase 8, WP-X.0)
+
+`asd_contract::params` is the parameter registry: one row per leaf of the 1.2.0 `ScoringProfile`
+(`metrics`, `aoi`, `ageBands`, `norms`, `review` are new and default to today's constants).
+`asd-cli schema export|check` covers `param-registry-v1.json`; `asd-cli params list [--stage S]
+[--reprocess R]` prints it and `asd-cli params check FILE` validates a profile (exit 0/1/2).
+Migration 0026 adds `experiments`, `cohorts`, `analysis_runs`, `sessions.age_months` (back-filled)
+and the research-frame columns, `jobs.progress` / `cancel_requested_at`, and the `analysis_results`
+export format. Job kind `analysis_run` and the `/experiments`, `/cohorts`, `/analysis-runs`,
+`/orgs/{id}/config/effective` routes are mounted and answer `501 not-implemented` until WP-X.2/X.3.
+`ASD_ANALYSIS_*` settings arrive with WP-X.3.
+
 ## Conventions
 
 - Licence `Apache-2.0` on every crate; dependencies must pass `rust/deny.toml`.
