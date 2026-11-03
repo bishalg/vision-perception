@@ -48,6 +48,10 @@ pub(crate) fn render(case: &Case<'_>, files: &[FileEntry], absent: &[AbsentFile]
     line(&format!("Purpose: {}", wm.purpose.label()));
     line(&format!("Recipient: {}", one_line(case.recipient_label())));
     line(&format!("Sessions: {}", case.records.len()));
+    if case.records.is_empty() {
+        line("This case holds no observation session yet: it carries the child's visits");
+        line("and documents only.");
+    }
     line(&format!("Watermark: {}", wm.line()));
     line("");
     line("The sending clinic remains the controller of this data. Use it only for the");

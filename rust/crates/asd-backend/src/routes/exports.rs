@@ -24,7 +24,9 @@
 //!
 //! `case_package` (SHR-7, WP-I.13): `case` names exactly one participant (and optionally
 //! some of its sessions); `filters` must be empty, the stored filters are derived from the
-//! case. The recipient is encrypted at rest (`exports.case_recipient_ct`) and never
+//! case. The participant needs something to share: a session, an encounter, or (when the
+//! package carries attachments) an uploaded attachment; a child seen only for visits and
+//! documents can be shared before any gaze session exists. The recipient is encrypted at rest (`exports.case_recipient_ct`) and never
 //! audited. Share links of a case export live in [`super::share`].
 
 use std::collections::BTreeMap;
@@ -250,8 +252,14 @@ fn validate_case(
 }
 
 /// SHR-7 database rules of a case: the participant is the org's and not withdrawn, the
-/// named sessions are its own, and it has at least one session.
-async fn check_case_rows(state: &AppState, org: Uuid, case: &ValidCase) -> AppResult<()> {
+/// named sessions are its own, and it has something to share: a session, an encounter, or
+/// an uploaded attachment when the package will carry attachments (`with_attachments`).
+async fn check_case_rows(
+    state: &AppState,
+    org: Uuid,
+    case: &ValidCase,
+    with_attachments: bool,
+) -> AppResult<()> {
     let withdrawn: Option<bool> = sqlx::query_scalar!(
         r#"SELECT withdrawn_at IS NOT NULL AS "withdrawn!" FROM participants
            WHERE id = $1 AND org_id = $2"#,
@@ -286,16 +294,31 @@ async fn check_case_rows(state: &AppState, org: Uuid, case: &ValidCase) -> AppRe
     .fetch_one(&state.db)
     .await?;
     let found = usize::try_from(found).unwrap_or(0);
-    if case.session_ids.is_empty() && found == 0 {
-        return Err(AppError::Validation(vec![bad(
-            "case.participant_id",
-            "the participant has no sessions to share",
-        )]));
-    }
     if !case.session_ids.is_empty() && found != case.session_ids.len() {
         return Err(AppError::Validation(vec![bad(
             "case.session_ids",
             "every session must be one of the participant's",
+        )]));
+    }
+    if found > 0 {
+        return Ok(());
+    }
+    let other: bool = sqlx::query_scalar!(
+        r#"SELECT EXISTS (SELECT 1 FROM encounters WHERE org_id = $1 AND participant_id = $2)
+               OR ($3 AND EXISTS (SELECT 1 FROM attachments
+                                  WHERE org_id = $1 AND participant_id = $2
+                                    AND deleted_at IS NULL AND blob_key IS NOT NULL))
+               AS "any!""#,
+        org,
+        case.participant,
+        with_attachments,
+    )
+    .fetch_one(&state.db)
+    .await?;
+    if !other {
+        return Err(AppError::Validation(vec![bad(
+            "case.participant_id",
+            "the participant has nothing to share",
         )]));
     }
     Ok(())
@@ -452,7 +475,12 @@ async fn create_export(
                         .into(),
             });
         }
-        check_case_rows(state, org, case).await?;
+        // Attachments travel only in an identified package whose requester may read them
+        // (`export_build::case::CaseScope`).
+        let with_attachments = case.include_attachments
+            && req.mode == ExportMode::Identified
+            && rbac::allows(role, Action::ClinicalContentRead);
+        check_case_rows(state, org, case, with_attachments).await?;
         stored_filters = ExportFilters {
             participant_ids: vec![case.participant.to_string()],
             session_ids: case.session_ids.clone(),

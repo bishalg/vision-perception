@@ -537,3 +537,62 @@ async fn list_pages_newest_first() {
     assert_eq!(seen.len(), 5);
     c.db.cleanup().await;
 }
+
+#[tokio::test]
+async fn omitted_clinician_defaults_to_a_clinician_caller_only() {
+    let Some(c) = Ctx::new().await else { return };
+    let p = setup(&c).await;
+    let (_, admin) = c.token(Role::Admin).await;
+    let (clin_id, clin) = c.token(Role::Clinician).await;
+    let body = json!({"kind": "follow_up_visit", "occurred_at": "2026-11-02T10:00:00Z",
+                      "follow_up_due_at": "2026-12-01T00:00:00Z"});
+
+    // A clinician who leaves the field out is the visit's clinician.
+    let (s, mine) = c
+        .call(Method::POST, &encounters_url(p), Some(body.clone()), &clin)
+        .await;
+    assert_eq!(s, StatusCode::CREATED, "{mine}");
+    assert_eq!(mine["clinician_id"], clin_id.to_string());
+    let mine_id: Uuid = mine["id"].as_str().unwrap().parse().unwrap();
+    let stored: Option<Uuid> =
+        sqlx::query_scalar("SELECT clinician_id FROM encounters WHERE id = $1")
+            .bind(mine_id)
+            .fetch_one(&c.db.pool)
+            .await
+            .unwrap();
+    assert_eq!(stored, Some(clin_id));
+
+    // An admin's visit stays unassigned.
+    let (s, theirs) = c
+        .call(Method::POST, &encounters_url(p), Some(body), &admin)
+        .await;
+    assert_eq!(s, StatusCode::CREATED, "{theirs}");
+    assert!(theirs["clinician_id"].is_null(), "{theirs}");
+    let theirs_id: Uuid = theirs["id"].as_str().unwrap().parse().unwrap();
+    let stored: Option<Uuid> =
+        sqlx::query_scalar("SELECT clinician_id FROM encounters WHERE id = $1")
+            .bind(theirs_id)
+            .fetch_one(&c.db.pool)
+            .await
+            .unwrap();
+    assert_eq!(stored, None);
+
+    // `assigned=me` lists the clinician's own follow-up and not the admin's.
+    let (s, b) = c
+        .call(
+            Method::GET,
+            &format!("/v1/orgs/{}/follow-ups?assigned=me", c.org),
+            None,
+            &clin,
+        )
+        .await;
+    assert_eq!(s, StatusCode::OK, "{b}");
+    let ids: Vec<&str> = b["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["encounter_id"].as_str().unwrap())
+        .collect();
+    assert_eq!(ids, [mine_id.to_string()]);
+    c.db.cleanup().await;
+}

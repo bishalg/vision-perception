@@ -53,7 +53,7 @@ pub struct CasePackageManifest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub consent: Option<ConsentInfo>,
     pub participant: ParticipantInfo,
-    /// Number of sessions in the package.
+    /// Number of sessions in the package (0 for a case of visits and documents only).
     pub sessions_n: u64,
     pub date_range: DateRange,
     /// Every entry of the archive except `manifest.json`, in archive order.
@@ -136,8 +136,9 @@ impl fmt::Debug for MrnInfo {
     }
 }
 
-/// First and last session: `YYYY-MM-DD` in the org time zone (identified) or `YYYY-MM`
-/// UTC (de-identified, XC-4).
+/// First and last session (without sessions: first and last encounter, else the package
+/// date): `YYYY-MM-DD` in the org time zone (identified) or `YYYY-MM` UTC (de-identified,
+/// XC-4).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct DateRange {
     pub from: String,

@@ -124,7 +124,8 @@ wave 3, REC-9 only sketches the contract), hospital integrations (deferred), PDF
   and `DELETE …/sessions/{session_id}` link and unlink a session of the same participant
   (`EncounterWrite`), `GET /v1/orgs/{id}/follow-ups?due_before=&assigned=` lists open
   follow-ups (`ParticipantRead`). Every write audits one row (AUTH-5) with ids and
-  `has_summary`, never the text.
+  `has_summary`, never the text. A POST without `clinician_id` by a `clinician` records the
+  caller as the clinician (owners and admins leave it empty); PATCH has no default.
 - **REC-5** Timeline (CW-3) gains entry kinds `encounter` (header: kind, date, clinician
   display name, status; never the summary) and `attachment` (kind, name, size). Session
   entries carry `encounter_id`.
@@ -234,7 +235,12 @@ wave 3, REC-9 only sketches the contract), hospital integrations (deferred), PDF
   {clinical_care, patient_request}`, and `consent_reference` + `consent_recorded_at`, else
   `400 case-consent-missing`; de-identified needs `CaseShare` + `ExportDeidentified` and
   follows `policy.rs` (research purpose → only `normCollection.consented` sessions, XC-5);
-  withdrawn participants refuse (`409 participant-withdrawn`). The job reuses `jobs/export.rs`
+  withdrawn participants refuse (`409 participant-withdrawn`); a participant with no
+  session, no encounter and (when the package carries attachments) no uploaded attachment
+  refuses (`400 validation-failed`, "the participant has nothing to share"). A case without
+  sessions renders with `sessions_n: 0`, a FHIR bundle of the `Patient` and `Organization`
+  only, `data/sessions.jsonl` as its manifest line, and `date_range` over the encounters
+  (else the package date). The job reuses `jobs/export.rs`
   phases; `export_items` gets one row per included session; `exports.excluded` counts
   the rest. Migration **0025** adds `exports.case_recipient_ct`, `case_consent_reference`,
   `case_consent_recorded_at`, `case_participant_id`.

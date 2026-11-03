@@ -4,6 +4,8 @@
 //!
 //! - `POST /v1/participants/{id}/encounters` (`EncounterWrite`); a `summary` also needs
 //!   `ClinicalNoteWrite`, else `400 encounter-summary-forbidden`.
+//!   Without `clinician_id`, a caller with the `clinician` role is recorded as the
+//!   encounter's clinician; for owners and admins it stays empty. `PATCH` has no default.
 //! - `GET /v1/participants/{id}/encounters` and `GET /v1/encounters/{id}`
 //!   (`ParticipantRead`): the summary only with `ClinicalContentRead`, otherwise
 //!   `has_summary` alone. Returning a summary writes one `encounter.read` row first (HIP-1).
@@ -391,7 +393,13 @@ async fn create(
     let occurred_at = timestamp("occurred_at", &req.occurred_at)?;
     let reason = reason(req.reason.as_deref())?;
     let follow_up_due_at = opt_timestamp("follow_up_due_at", req.follow_up_due_at.as_deref())?;
-    let clinician_id = clinician(&state.db, org, req.clinician_id.as_deref()).await?;
+    // REC-4: an omitted `clinician_id` defaults to the caller when they are a clinician, so
+    // the visit shows who made it and `follow-ups?assigned=me` finds it. Owners and admins
+    // record unassigned visits; an explicit value (even `""`, meaning none) wins.
+    let clinician_id = match req.clinician_id.as_deref() {
+        None if auth.principal.role == Role::Clinician => Some(auth.principal.user_id),
+        raw => clinician(&state.db, org, raw).await?,
+    };
 
     // Trap 3: the id is part of the AAD, so it exists before anything is encrypted.
     let id = Uuid::new_v4();

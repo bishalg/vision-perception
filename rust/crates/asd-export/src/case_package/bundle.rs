@@ -8,7 +8,8 @@
 //! Entry order: one `Patient`, one `Organization`, one `Practitioner` per signer
 //! (identified only), one `Device` per recording app version, then per session in date
 //! order its gaze `Observation`, its `DiagnosticReport` when a signed review exists, and a
-//! `Provenance` per signature (identified only). Shared resources are de-duplicated by
+//! `Provenance` per signature (identified only). A case without sessions holds the `Patient`
+//! and `Organization` only. Shared resources are de-duplicated by
 //! `fullUrl` (same id = same resource). Unverified codes stay dropped (XC-7), the
 //! de-identified rules of the clinical encoder apply unchanged (XC-4).
 
@@ -17,7 +18,9 @@ use std::collections::BTreeSet;
 use serde_json::{json, Value};
 
 use super::Case;
-use crate::fhir::clinical::{clinical_report_bundle, BundleKind, ClinicalBundleInput};
+use crate::fhir::clinical::{
+    clinical_report_bundle, subject_entries, BundleKind, ClinicalBundleInput,
+};
 use crate::ids::uuid5;
 use crate::ExportError;
 
@@ -67,7 +70,21 @@ pub(crate) fn case_bundle(case: &Case<'_>) -> Result<Value, ExportError> {
         }
     }
 
-    let (meta, identifier, timestamp) = head.expect("Case::new refuses a package without sessions");
+    let (meta, identifier, timestamp) = match head {
+        Some(head) => head,
+        None => {
+            // No session: the Patient and Organization alone, no DiagnosticReport.
+            let (meta, identifier, timestamp, subject) = subject_entries(
+                &case.participant,
+                &case.org_id,
+                &case.org.name,
+                wm,
+                &case.input.fhir_profile,
+            )?;
+            shared[0].extend(subject);
+            (meta, identifier, timestamp)
+        }
+    };
     let entries: Vec<Value> = shared.into_iter().flatten().chain(per_session).collect();
     Ok(json!({
         "resourceType": "Bundle",

@@ -17,7 +17,7 @@ use chrono::{DateTime, Utc};
 
 use super::Case;
 use crate::claims;
-use crate::model::{Disposition, ExportRecord, ReviewState, SignatureRole};
+use crate::model::{Disposition, ExportRecord, OrgFacts, ReviewState, SignatureRole};
 use crate::pdf::canvas::{colors, finish_pages, wrap, Canvas, Font, Rgb, PAGE_HEIGHT, PAGE_WIDTH};
 use crate::watermark::MANDATORY_SENTENCE;
 use crate::ExportError;
@@ -208,8 +208,8 @@ fn parse(field: &'static str, t: &str) -> Result<DateTime<Utc>, ExportError> {
 }
 
 /// `YYYY-MM-DD HH:MM (+05:45)` in the org zone (PDF-3).
-fn local(record: &ExportRecord, field: &'static str, t: &str) -> Result<String, ExportError> {
-    let tz = record.org.tz()?;
+fn local(org: &OrgFacts, field: &'static str, t: &str) -> Result<String, ExportError> {
+    let tz = org.tz()?;
     Ok(parse(field, t)?
         .with_timezone(&tz)
         .format("%Y-%m-%d %H:%M (%:z)")
@@ -269,10 +269,10 @@ pub(crate) fn render(case: &Case<'_>) -> Result<Vec<u8>, ExportError> {
 fn cover(d: &mut Doc, case: &Case<'_>) -> Result<(), ExportError> {
     let input = case.input;
     let wm = &input.watermark;
-    let first = &case.records[0];
+    let org = &case.org;
     d.heading(TITLE, 20.0);
-    d.paragraph(&first.org.name, Font::Bold, 12.0, colors::LABEL);
-    for l in first.org.letterhead.iter().take(4) {
+    d.paragraph(&org.name, Font::Bold, 12.0, colors::LABEL);
+    for l in org.letterhead.iter().take(4) {
         d.paragraph(l, Font::Regular, BODY, colors::SECONDARY_LABEL);
     }
     d.rule();
@@ -288,25 +288,18 @@ fn cover(d: &mut Doc, case: &Case<'_>) -> Result<(), ExportError> {
         },
         case.participant_label(),
     );
-    if let Some(mrn) = first.patient.mrn.as_ref() {
+    if let Some(mrn) = case.participant.mrn.as_ref() {
         d.field(
             "Hospital record number",
             &format!("{} ({})", mrn.value, mrn.assigning_authority),
         );
     }
-    if let Some(age) = first.patient.age_bracket_at_enrol.as_deref() {
+    if let Some(age) = case.participant.age_bracket_at_enrol.as_deref() {
         d.field("Age bracket at enrolment", age);
     }
     d.field("Sessions", &case.records.len().to_string());
-    let last = &case.records[case.records.len() - 1];
-    d.field(
-        "Date range",
-        &format!(
-            "{} to {}",
-            case.session_date(first)?,
-            case.session_date(last)?
-        ),
-    );
+    let (from, to) = case.date_range()?;
+    d.field("Date range", &format!("{from} to {to}"));
     if !case.deidentified() {
         if let Some(c) = input.consent.as_ref() {
             d.field(
@@ -314,7 +307,7 @@ fn cover(d: &mut Doc, case: &Case<'_>) -> Result<(), ExportError> {
                 &format!(
                     "{}, recorded {} by {}",
                     c.reference,
-                    local(first, "consent.recorded_at", &c.recorded_at)?,
+                    local(org, "consent.recorded_at", &c.recorded_at)?,
                     c.recorded_by_display
                 ),
             );
@@ -330,6 +323,15 @@ fn cover(d: &mut Doc, case: &Case<'_>) -> Result<(), ExportError> {
         BODY,
         colors::LABEL,
     );
+    if case.records.is_empty() {
+        d.gap(4.0);
+        d.paragraph(
+            "This case holds no observation session yet: it carries the child's visits              and documents only.",
+            Font::Regular,
+            BODY,
+            colors::LABEL,
+        );
+    }
     if case.deidentified() {
         d.gap(4.0);
         d.paragraph(
@@ -368,7 +370,10 @@ fn session(
         d.field("Started", &format!("{}{day}", sm.started_at));
     } else {
         d.field("Session id", &sm.id);
-        d.field("Started", &local(r, "session.started_at", &sm.started_at)?);
+        d.field(
+            "Started",
+            &local(&r.org, "session.started_at", &sm.started_at)?,
+        );
     }
     d.field("Duration", &format!("{:.0} s", sm.duration_sec));
     if let Some(c) = sm.capture_source.as_ref() {
@@ -498,7 +503,7 @@ fn session(
             }
             format!(
                 "{who}, {}",
-                local(r, "signature.signed_at", &sig.signed_at)?
+                local(&r.org, "signature.signed_at", &sig.signed_at)?
             )
         };
         d.field(role, &text);
@@ -511,12 +516,12 @@ fn session(
 
 fn encounters(d: &mut Doc, case: &Case<'_>) -> Result<(), ExportError> {
     d.heading("Encounters", 14.0);
-    let first = &case.records[0];
+    let org = &case.org;
     for e in &case.encounters {
         let when = if case.deidentified() {
             e.occurred_at.clone()
         } else {
-            local(first, "encounter.occurred_at", &e.occurred_at)?
+            local(org, "encounter.occurred_at", &e.occurred_at)?
         };
         let mut head = format!("{when} · {} · {}", e.kind.label(), wire(&e.status));
         if let Some(who) = e.clinician_display.as_deref() {
@@ -534,7 +539,7 @@ fn encounters(d: &mut Doc, case: &Case<'_>) -> Result<(), ExportError> {
             let due = if case.deidentified() {
                 due.to_owned()
             } else {
-                local(first, "encounter.follow_up_due_at", due)?
+                local(org, "encounter.follow_up_due_at", due)?
             };
             let done = if e.follow_up_done_at.is_some() {
                 " (done)"

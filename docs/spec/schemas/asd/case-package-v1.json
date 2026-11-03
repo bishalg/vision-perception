@@ -44,7 +44,7 @@
       "type": "object"
     },
     "DateRange": {
-      "description": "First and last session: `YYYY-MM-DD` in the org time zone (identified) or `YYYY-MM`\nUTC (de-identified, XC-4).",
+      "description": "First and last session (without sessions: first and last encounter, else the package\ndate): `YYYY-MM-DD` in the org time zone (identified) or `YYYY-MM` UTC (de-identified,\nXC-4).",
       "properties": {
         "from": {
           "type": "string"
@@ -280,7 +280,7 @@
       "type": "string"
     },
     "sessions_n": {
-      "description": "Number of sessions in the package.",
+      "description": "Number of sessions in the package (0 for a case of visits and documents only).",
       "format": "uint64",
       "minimum": 0,
       "type": "integer"

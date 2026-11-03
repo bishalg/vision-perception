@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS (SELECT 1 FROM encounters WHERE org_id = $1 AND participant_id = $2)\n               OR ($3 AND EXISTS (SELECT 1 FROM attachments\n                                  WHERE org_id = $1 AND participant_id = $2\n                                    AND deleted_at IS NULL AND blob_key IS NOT NULL))\n               AS \"any!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "any!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "9d973d8bbd3d0f48cb1269562bc52265063b98c6463dc484ab908bd819a655c9"
+}

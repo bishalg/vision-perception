@@ -456,6 +456,24 @@ async fn build_case(
         },
     )
     .await?;
+    // No eligible session (a case of visits and documents): name the participant and org
+    // directly (SHR-1). The MRN read counts like a session's (MRN-5).
+    let mut mrn_reads = selected.mrn_reads;
+    let subject = if records.is_empty() {
+        let (mut subject, mrn) = case::load_subject(&ctx.pool, row, participant, snap.org.clone())
+            .await
+            .map_err(JobError::from)?;
+        if let Some((sealed, authority)) = mrn {
+            subject.patient.mrn = Some(Mrn {
+                value: open(ctx, row.org_id, &sealed).await?,
+                assigning_authority: authority,
+            });
+            mrn_reads += 1;
+        }
+        Some(subject)
+    } else {
+        None
+    };
     let sessions = records
         .into_iter()
         .zip(selected.gazes.iter().cloned())
@@ -473,17 +491,22 @@ async fn build_case(
             deid_salt: fresh_salt()?,
             recipient,
             consent: case::consent(row, &snap.requested_by_display),
+            subject,
         },
         sessions,
     )
     .map_err(|e| permanent(e.to_string()))?;
     case::complete(ctx, row, participant, &mut input).await?;
+    if input.sessions.is_empty() && input.encounters.is_empty() && input.attachments.is_empty() {
+        // Every session was excluded and there is no visit or document either.
+        return Err(permanent(RenderError::NoRecords.to_string()));
+    }
     let artifact = case::render(&input).map_err(|e| permanent(e.to_string()))?;
     Ok(Built {
         artifact,
         items: items_of(&selected.included),
         excluded: selected.excluded,
-        mrn_reads: selected.mrn_reads,
+        mrn_reads,
         ttl: ttl_of(row, &snap),
         row_count: None,
     })

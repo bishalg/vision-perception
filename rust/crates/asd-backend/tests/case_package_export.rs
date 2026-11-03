@@ -626,3 +626,136 @@ async fn deidentified_packages_carry_no_encounter_text_and_no_attachment() {
     );
     c.db.cleanup().await;
 }
+
+// ---- a case of visits and documents only (no session yet) -----------------------------------
+
+#[tokio::test]
+async fn a_case_with_visits_and_files_but_no_session_is_shared() {
+    let Some(c) = Ctx::new().await else { return };
+    let (_, clin) = c.token(Role::Clinician).await;
+    let p = c.participant(c.org, "TOKEN-NO-SESSION").await;
+    c.set_mode(c.org, "mrn").await;
+    let (s, b) = c
+        .call(
+            Method::PUT,
+            &format!("/v1/participants/{p}/patient-ref"),
+            Some(json!({"assigning_authority": "TUTH", "mrn": MRN})),
+            &clin,
+        )
+        .await;
+    assert_eq!(s, StatusCode::CREATED, "{b}");
+    let (s, made) = c
+        .call(
+            Method::POST,
+            &format!("/v1/participants/{p}/encounters"),
+            Some(
+                json!({"kind": "screening_visit", "occurred_at": "2026-10-05T08:30:00Z",
+                        "reason": ENC_REASON, "summary": ENC_SUMMARY}),
+            ),
+            &clin,
+        )
+        .await;
+    assert_eq!(s, StatusCode::CREATED, "{made}");
+    let enc = made["id"].as_str().unwrap().to_owned();
+    let (att, file_name) = attachment(&c, p, &clin).await;
+
+    let mut body = case_body("identified", "clinical_care", p);
+    body["case"]["include_attachments"] = json!(true);
+    let done = case_with(&c, &clin, body, None).await;
+    let zip = c.artifact(done["id"].as_str().unwrap()).await;
+    let entries = unzip::entries(&zip);
+    let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
+    let attachment_path = format!("attachments/{att}-{file_name}");
+    assert_eq!(
+        names[..3],
+        ["manifest.json", "README.txt", "fhir/bundle.json"]
+    );
+    for n in ["data/sessions.jsonl", "data/clips.csv", "notes/notes.json"] {
+        assert!(names.contains(&n), "{n} in {names:?}");
+    }
+    assert_eq!(
+        entry(&entries, &attachment_path).expect("attachment").data,
+        pdf()
+    );
+
+    // The manifest validates against the committed schema and lists every file.
+    let manifest: Value = serde_json::from_slice(&entries[0].data).unwrap();
+    let mut strict = asd_export::case_package::manifest_schema();
+    asd_contract::schema::forbid_additional_properties(&mut strict);
+    if let Err(errors) = asd_contract::schema::validate(&strict, &manifest) {
+        panic!("manifest invalid: {errors:#?}");
+    }
+    assert_eq!(manifest["sessions_n"], 0);
+    assert_eq!(manifest["participant"]["token"], "TOKEN-NO-SESSION");
+    assert_eq!(manifest["participant"]["mrn"]["value"], MRN);
+    assert_eq!(manifest["date_range"]["from"], "2026-10-05");
+    for f in manifest["files"].as_array().unwrap() {
+        let e = entry(&entries, f["path"].as_str().unwrap()).expect("listed file exists");
+        assert_eq!(f["sha256"], hex(&Sha256::digest(&e.data)));
+    }
+
+    // FHIR: the Patient and the Organization, no DiagnosticReport.
+    let bundle: Value =
+        serde_json::from_slice(&entry(&entries, "fhir/bundle.json").unwrap().data).unwrap();
+    let types: Vec<&str> = bundle["entry"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["resource"]["resourceType"].as_str().unwrap())
+        .collect();
+    assert_eq!(types, ["Patient", "Organization"]);
+    let jsonl = &entry(&entries, "data/sessions.jsonl").unwrap().data;
+    assert_eq!(
+        jsonl.iter().filter(|b| **b == b'\n').count(),
+        1,
+        "the manifest line only"
+    );
+    let notes = notes_json(&zip);
+    assert_eq!(notes["encounters"][0]["id"], enc);
+    assert_eq!(notes["encounters"][0]["summary"], ENC_SUMMARY);
+
+    // No session, so no export item.
+    let items: i64 = sqlx::query_scalar("SELECT count(*) FROM export_items WHERE export_id = $1")
+        .bind(uuid(&done["id"]))
+        .fetch_one(&c.db.pool)
+        .await
+        .unwrap();
+    assert_eq!(items, 0);
+    c.db.cleanup().await;
+}
+
+#[tokio::test]
+async fn a_participant_with_nothing_to_share_is_refused() {
+    let Some(c) = Ctx::new().await else { return };
+    let (_, clin) = c.token(Role::Clinician).await;
+    let p = c.participant(c.org, "TOKEN-NOTHING").await;
+    let refused = |(s, b): (StatusCode, Value)| {
+        assert_eq!(s, StatusCode::BAD_REQUEST, "{b}");
+        assert_eq!(slug_of(&b), "validation-failed", "{b}");
+        assert!(
+            b.to_string()
+                .contains("the participant has nothing to share"),
+            "{b}"
+        );
+    };
+    refused(
+        c.request_export(&clin, case_body("identified", "clinical_care", p))
+            .await,
+    );
+
+    // An uploaded file counts only when the package carries attachments.
+    attachment(&c, p, &clin).await;
+    refused(
+        c.request_export(&clin, case_body("identified", "clinical_care", p))
+            .await,
+    );
+    refused(
+        c.request_export(&clin, case_body("deidentified", "clinical_care", p))
+            .await,
+    );
+    let mut body = case_body("identified", "clinical_care", p);
+    body["case"]["include_attachments"] = json!(true);
+    let (s, b) = c.request_export(&clin, body).await;
+    assert_eq!(s, StatusCode::ACCEPTED, "{b}");
+    c.db.cleanup().await;
+}
