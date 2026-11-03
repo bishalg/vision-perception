@@ -165,8 +165,10 @@ async fn run(ctx: &JobContext, job: &Job, export_id: Uuid) -> Result<Value, JobE
     }
     export_build::format_available(row.format)
         .map_err(|r| permanent(format!("unsupported-format: {r}")))?;
-    let stored_filters = serde_json::from_value(row.filters.clone())
-        .map_err(|_| permanent("invalid stored filters"))?;
+    // `analysis_results` keeps its run block next to the session filters.
+    let (session_filters, analysis) = export_build::analysis::split_filters(&row.filters);
+    let stored_filters =
+        serde_json::from_value(session_filters).map_err(|_| permanent("invalid stored filters"))?;
     let parsed =
         filters::parse(&stored_filters).map_err(|_| permanent("invalid stored filters"))?;
     let started = sqlx::query!(
@@ -199,9 +201,9 @@ async fn run(ctx: &JobContext, job: &Job, export_id: Uuid) -> Result<Value, JobE
         | ExportFormat::Hl7v2
         | ExportFormat::DatasetJsonl
         | ExportFormat::DatasetParquet => build_sessions(ctx, &row, &parsed).await?,
-        // Refused at request time until WP-X.8 adds its build arm (`format_available`).
         ExportFormat::AnalysisResults => {
-            return Err(permanent("analysis_results is not available yet (WP-X.8)"))
+            let spec = analysis.ok_or_else(|| permanent("invalid stored analysis block"))?;
+            build_analysis(ctx, &row, &spec).await?
         }
     };
 
@@ -513,6 +515,108 @@ async fn build_case(
         mrn_reads,
         ttl: ttl_of(row, &snap),
         row_count: None,
+    })
+}
+
+/// `analysis_results` (RUN-7, PRV-3, PRV-5): a finished run's aggregates or per-session rows,
+/// de-identified with a fresh salt. Reads the run record and its sealed result object only;
+/// never a research frame log. `export_items` lists the exported sessions (`sessions`
+/// layout), so the accounting of disclosures covers them.
+async fn build_analysis(
+    ctx: &JobContext,
+    row: &ExportRow,
+    spec: &asd_contract::export::AnalysisExport,
+) -> Result<Built, JobError> {
+    use asd_contract::export::AnalysisLayout;
+    use export_build::analysis as build;
+
+    if row.mode != ExportMode::Deidentified {
+        return Err(permanent("analysis exports are de-identified only (XC-4)"));
+    }
+    let run_id = Uuid::parse_str(&spec.run_id).map_err(|_| permanent("invalid stored run id"))?;
+    let run = build::load_run(&ctx.pool, row.org_id, run_id)
+        .await
+        .map_err(|e| permanent(format!("analysis-run-unavailable: {e}")))?;
+    let (mut inputs, mut items, mut excluded) = (Vec::new(), Vec::new(), BTreeMap::new());
+    if spec.layout == AnalysisLayout::Sessions {
+        let blobs = ctx
+            .blobs
+            .clone()
+            .ok_or_else(|| permanent("this worker has no blob store"))?;
+        let keyring = ctx.keyring.as_ref().ok_or_else(|| {
+            permanent("clinical-crypto-unavailable: this worker has no ASD_DATA_KEK")
+        })?;
+        let key = run
+            .blob_key
+            .as_deref()
+            .ok_or_else(|| permanent("analysis-run-unavailable: the run stored no session rows"))?;
+        let rows = build::load_rows(blobs.as_ref(), keyring, row.org_id, run_id, key)
+            .await
+            .map_err(|m| permanent(format!("analysis-run-unavailable: {m}")))?;
+        if rows.len() > MAX_EXPORT_ROWS {
+            return Err(permanent(format!(
+                "export-too-large: {} rows exceed {MAX_EXPORT_ROWS}",
+                rows.len()
+            )));
+        }
+        let facts = build::session_facts(&ctx.pool, row.org_id, rows).await?;
+        inputs = facts.inputs;
+        items = facts.items;
+        excluded = facts.excluded;
+    }
+    let org_name: String =
+        sqlx::query_scalar!("SELECT name FROM organizations WHERE id = $1", row.org_id)
+            .fetch_one(&ctx.pool)
+            .await?;
+    let requested_by_display = match row.requested_by {
+        Some(user) => sqlx::query_scalar!(
+            r#"SELECT coalesce(display_name, email) AS "name!" FROM users WHERE id = $1"#,
+            user
+        )
+        .fetch_optional(&ctx.pool)
+        .await?
+        .unwrap_or_else(|| "system".to_owned()),
+        None => "system".to_owned(),
+    };
+    let settings: Value = sqlx::query_scalar!(
+        "SELECT settings FROM organizations WHERE id = $1",
+        row.org_id
+    )
+    .fetch_one(&ctx.pool)
+    .await?;
+    let ttl = export_build::ttl_hours(
+        settings
+            .get(asd_contract::export::settings::EXPORTS)
+            .and_then(|e| e.get(asd_contract::export::settings::TTL_HOURS))
+            .and_then(Value::as_i64),
+    );
+    let opts = asd_export::analysis::AnalysisOptions {
+        watermark: Watermark {
+            export_id: row.id.to_string(),
+            requested_by_display,
+            requested_at_utc: cursor::ts(row.created_at),
+            mode: export_build::policy_mode(row.mode),
+            purpose: export_build::policy_purpose(row.purpose),
+            org_name,
+        },
+        deid_salt: fresh_salt()?,
+        layout: spec.layout,
+        encoding: spec.encoding,
+        provenance: run.provenance,
+    };
+    let built = asd_export::analysis::encode(&opts, &run.summary, &inputs)
+        .map_err(|e| permanent(e.to_string()))?;
+    Ok(Built {
+        artifact: Artifact {
+            bytes: built.bytes,
+            file_name: built.file_name,
+            content_type: built.content_type,
+        },
+        items,
+        excluded,
+        mrn_reads: 0,
+        ttl,
+        row_count: Some(built.row_count),
     })
 }
 

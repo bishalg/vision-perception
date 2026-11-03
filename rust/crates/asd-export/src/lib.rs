@@ -44,6 +44,7 @@ use asd_contract::session_v1_8::{ScoringStatus, UnscorableReason, SCORE_FIELDS};
 use asd_core::types::{CaptureSource, GazeQualityVerdict};
 use serde_json::Value;
 
+pub mod analysis; // WP-X.8
 pub mod case_package; // WP-I.12
 pub mod claims;
 pub mod codes;
@@ -145,6 +146,10 @@ pub enum ExportError {
     /// the ZIP writer (WP-I.12, SHR-1).
     #[error("case package: {0}")]
     CasePackage(String),
+    /// Inconsistent `analysis_results` input or a failed container writer (WP-X.8; never
+    /// patient data).
+    #[error("analysis results: {0}")]
+    Analysis(String),
 }
 
 /// Why `record`'s gaze Observation cannot be exported, or `None` when it can.
