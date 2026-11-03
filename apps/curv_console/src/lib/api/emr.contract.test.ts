@@ -14,6 +14,7 @@ import {
   ATTACHMENT_MEDIA_TYPES,
   ENCOUNTER_KINDS,
   ENCOUNTER_STATUSES,
+  attachmentPageSchema,
   attachmentSchema,
   attachmentUploadSchema,
   createAttachmentRequestSchema,
@@ -54,6 +55,7 @@ const SCHEMAS: Record<string, Shaped> = {
   FollowUp: followUpSchema,
   FollowUpPage: followUpPageSchema,
   Attachment: attachmentSchema,
+  AttachmentPage: attachmentPageSchema,
   CreateAttachmentRequest: createAttachmentRequestSchema,
   UploadTarget: uploadTargetSchema,
   AttachmentUpload: attachmentUploadSchema,
@@ -117,5 +119,7 @@ describe("api-v1.json contract: EMR-lite record (WP-C.18)", () => {
     attachmentUploadSchema.parse(
       await mock.createAttachment(first.id, { kind: "referral", file_name: "a.pdf", media_type: "application/pdf", byte_size: 10 }),
     );
+    const files = attachmentPageSchema.parse(await mock.listAttachments(first.id));
+    expect(files.items.some((a) => a.file_name === "a.pdf" && a.sha256 === null)).toBe(true);
   });
 });

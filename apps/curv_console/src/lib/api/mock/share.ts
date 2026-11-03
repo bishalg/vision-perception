@@ -74,24 +74,16 @@ interface SharedState {
 }
 
 /**
- * Links and download tokens are process-wide (on `globalThis`), not per mock client: `next dev` loads the route
- * handler `/api/share/[id]` in another module graph than the pages and server actions, so it gets its own mock client
- * (`getApi`'s singleton is per graph). Without this the token issued by the passcode step would be unknown to the
- * download route. Test files run in their own worker, so each starts from the seeds.
+ * Links and download tokens belong to the mock client. The page, server actions and the `/api/share/[id]` route
+ * handler all reach the same client because `getApi` keeps the process's mock on `globalThis` (index.ts).
  */
-const STATE_KEY = Symbol.for("curv-console.mock.share-links");
-function sharedState(): SharedState {
-  const g = globalThis as unknown as Record<symbol, SharedState | undefined>;
-  return (g[STATE_KEY] ??= { rows: new Map(), tokens: new Map(), seq: 100 });
-}
-
 export function createMockShare(ctx: MockShareContext): ShareApi {
   // Real clock, like the mock TOTP: the export page shows link states against the request time, so a link's expiry
   // must be on the same clock or every seeded and new link would look expired days after MOCK_FIXED_NOW.
   const now = () => Date.now();
   const store = ctx.exports ?? latestMockExportStore();
   const iso = (offsetMs: number) => new Date(now() + offsetMs).toISOString();
-  const state = sharedState();
+  const state: SharedState = { rows: new Map(), tokens: new Map(), seq: 100 };
   const { rows, tokens } = state;
   const next = () => (state.seq += 1);
 

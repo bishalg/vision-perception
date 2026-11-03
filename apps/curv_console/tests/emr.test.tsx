@@ -12,7 +12,7 @@ import { ParticipantSearch } from "@/components/participant/ParticipantSearch";
 import { describeEntry } from "@/components/participant/Timeline";
 import { ROLES } from "@/lib/api";
 import { downloadAttachment, uploadAttachmentContent } from "@/lib/api/attachmentFile";
-import { MAX_ATTACHMENT_BYTES, attachmentRowFromTimeline, type Encounter, type FollowUp } from "@/lib/api/emr";
+import { MAX_ATTACHMENT_BYTES, type Attachment, type Encounter, type FollowUp } from "@/lib/api/emr";
 import { createLiveClient } from "@/lib/api/live";
 import { createMockClient, MOCK_ORG_ID } from "@/lib/api/mock";
 import { navLinks } from "@/lib/nav";
@@ -110,24 +110,40 @@ describe("live client wire format (B.19 routes)", () => {
     expect(call(c.f).url).toBe("https://api.test/v1/orgs/o/follow-ups?due_before=2026-11-01T00%3A00%3A00.000Z&assigned=me&limit=50");
   });
 
-  it("attachments: metadata POST, DELETE, and the list from the attachment timeline headers", async () => {
+  it("attachments: metadata POST, DELETE, and the list from GET /participants/{id}/attachments", async () => {
     const meta = { id: "a1", participant_id: "p1", kind: "referral", file_name: "x.pdf", media_type: "application/pdf", byte_size: 9, created_at: "2026-11-01T00:00:00Z" };
     const c = client(
       json({ attachment: meta, upload: { method: "PUT", url: "/v1/attachments/a1/content" } }, 201),
       new Response(null, { status: 204 }),
-      json({
-        items: [{ kind: "attachment", id: "a1", at: "2026-11-01T00:00:00Z", actor_display_name: "Dr A", summary: { attachment_kind: "referral", file_name: "x.pdf", byte_size: 9 } }],
-        next_cursor: null,
-      }),
+      json({ items: [{ ...meta, sha256: "ab".repeat(32), uploaded_by: "u1" }], next_cursor: null, total: 1 }),
     );
     const up = await c.api.createAttachment("p1", { kind: "referral", file_name: "x.pdf", media_type: "application/pdf", byte_size: 9 });
     expect(up.upload.url).toBe("/v1/attachments/a1/content");
     expect(call(c.f)).toMatchObject({ url: "https://api.test/v1/participants/p1/attachments", method: "POST" });
     await c.api.deleteAttachment("a1");
     expect(call(c.f, 1)).toMatchObject({ url: "https://api.test/v1/attachments/a1", method: "DELETE" });
-    const rows = await c.api.listParticipantAttachments("p1");
-    expect(call(c.f, 2).url).toBe("https://api.test/v1/participants/p1/timeline?kind=attachment&limit=100");
-    expect(rows).toEqual([{ id: "a1", at: "2026-11-01T00:00:00Z", kind: "referral", file_name: "x.pdf", byte_size: 9, uploaded_by: "Dr A" }]);
+    const page = await c.api.listAttachments("p1", { limit: 50, cursor: "c/1" });
+    expect(call(c.f, 2)).toMatchObject({ url: "https://api.test/v1/participants/p1/attachments?limit=50&cursor=c%2F1", method: "GET" });
+    expect(page.items).toEqual([{ ...meta, sha256: "ab".repeat(32), uploaded_by: "u1" }]);
+    expect(page.total).toBe(1);
+  });
+
+  it("an encounter edit clears an emptied follow-up date with \"\" (null keeps it on the backend)", async () => {
+    const c = client(json(encounter({ row_version: 2 })));
+    await c.api.updateEncounter("e1", 1, { reason: "", follow_up_due_at: "" });
+    expect(call(c.f).body).toEqual({ reason: "", follow_up_due_at: "" });
+  });
+
+  it("the mock lives on globalThis and ApiError is recognised across module copies (next dev route handlers)", async () => {
+    const { ApiError, getApi } = await import("@/lib/api");
+    getApi(undefined, { CURV_API_MODE: "mock" });
+    expect((globalThis as unknown as Record<symbol, unknown>)[Symbol.for("curv-console.mock-client")]).toBeDefined();
+    // What another module graph's copy of the class produces: same brand, different prototype.
+    const foreign = Object.assign(new Error("x"), { [Symbol.for("curv-console.api-error")]: true, status: 400 });
+    expect(foreign instanceof ApiError).toBe(true);
+    expect(new ApiError(404, null) instanceof ApiError).toBe(true);
+    expect(new Error("x") instanceof ApiError).toBe(false);
+    expect((null as unknown as object) instanceof ApiError).toBe(false);
   });
 
   it("maps the record problem slugs", async () => {
@@ -136,14 +152,6 @@ describe("live client wire format (B.19 routes)", () => {
       status: 400,
       slug: "encounter-summary-forbidden",
     });
-  });
-
-  it("attachment rows tolerate either header spelling", () => {
-    const base = { kind: "attachment" as const, id: "a", at: "t", session_id: null, actor_id: null, actor_display_name: null };
-    expect(attachmentRowFromTimeline({ ...base, summary: { kind: "photo_of_document", name: "n.png", size: 2048 } })).toMatchObject({
-      kind: "photo_of_document", file_name: "n.png", byte_size: 2048,
-    });
-    expect(attachmentRowFromTimeline({ ...base, summary: { kind: "bogus" } })).toMatchObject({ kind: null, file_name: null, byte_size: null });
   });
 });
 
@@ -219,7 +227,7 @@ describe("mock record API", () => {
     await expect(hooks.mockPutAttachmentContent(up.attachment.id, bytes, "application/pdf", "sha-256=AAAA")).rejects.toMatchObject({ status: 400, slug: "validation-failed" });
     await expect(hooks.mockPutAttachmentContent(up.attachment.id, bytes, "application/pdf", `sha-256=:${btoa("x".repeat(32))}:`)).rejects.toMatchObject({ slug: "digest-mismatch" });
     await hooks.mockPutAttachmentContent(up.attachment.id, bytes, "application/pdf", await contentDigest(bytes.buffer as ArrayBuffer));
-    const rows = await api.listParticipantAttachments(p.id);
+    const rows = (await api.listAttachments(p.id)).items;
     expect(rows[0]).toMatchObject({ id: up.attachment.id, kind: "report", byte_size: bytes.byteLength });
     // Through attachmentFile with the shared mock (mock mode): upload then download the same bytes.
     const shared = (await import("@/lib/api")).getApi(undefined, env);
@@ -293,7 +301,7 @@ describe("route handlers", () => {
     const { getApi } = await import("@/lib/api");
     const shared = getApi(undefined, { CURV_API_MODE: "mock" });
     const p = (await shared.listParticipants(MOCK_ORG_ID, { limit: 100 })).items.find((x) => x.session_count > 0)!;
-    const file = (await shared.listParticipantAttachments(p.id)).find((a) => a.file_name === "consent-form-scan.png")!;
+    const file = (await shared.listAttachments(p.id)).items.find((a) => a.file_name === "consent-form-scan.png")!;
     const { GET } = await import("@/app/api/attachments/[id]/route");
     const res = await GET(new Request(`http://x/api/attachments/${file.id}`), { params: Promise.resolve({ id: file.id }) });
     expect(res.status).toBe(200);
@@ -474,7 +482,37 @@ describe("Visits tab", () => {
 });
 
 describe("Files tab", () => {
-  const rows = [{ id: "a/1", at: "2026-11-01T00:00:00Z", kind: "referral" as const, file_name: "letter.pdf", byte_size: 2_500_000, uploaded_by: "Dr A" }];
+  const file = (over: Partial<Attachment> = {}): Attachment => ({
+    id: "a/1",
+    participant_id: "p1",
+    encounter_id: null,
+    kind: "referral",
+    file_name: "letter.pdf",
+    media_type: "application/pdf",
+    byte_size: 2_500_000,
+    sha256: "ab".repeat(32),
+    uploaded_by: "u1",
+    created_at: "2026-11-01T00:00:00Z",
+    ...over,
+  });
+  const rows = [file()];
+
+  it("names the visit a file belongs to; a row without bytes offers no download, only remove", () => {
+    render(
+      <AttachmentsPanel
+        rows={[file({ encounter_id: "e1" }), file({ id: "a2", file_name: "half.png", media_type: "image/png", sha256: null })]}
+        canRead
+        canWrite
+        visits={[{ id: "e1", label: "Home visit, 2026-11-01" }]}
+        actions={{ create: vi.fn(), remove: vi.fn(), uploaded: vi.fn() }}
+      />,
+    );
+    expect(screen.getByText("Home visit, 2026-11-01", { selector: "td" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Download letter.pdf" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Download half.png" })).toBeNull();
+    expect(screen.getByText("Upload not finished")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove half.png" })).toBeInTheDocument();
+  });
 
   it("content roles get a download link through the console route; others do not", () => {
     const { unmount } = render(<AttachmentsPanel rows={rows} canRead canWrite={false} visits={[]} actions={{ create: vi.fn(), remove: vi.fn(), uploaded: vi.fn() }} />);

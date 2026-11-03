@@ -70,6 +70,18 @@ E2E_BASE_URL=http://localhost:3000 E2E_EMAIL=owner@example.org E2E_PASSWORD=... 
 The live run mutates data (it confirms/flags review items, creates an enrol code and revokes a device): use a test
 org.
 
+Record workspace and share-a-case against the real backend (`e2e/live/record.live.ts`, `e2e/live/share.live.ts`):
+`e2e/live/run-record-live.sh` builds `asd-backend`, creates a scratch database on `PG_URL`, starts `serve` + `worker`,
+an org, owner, clinician and an enrolled device, then the console in live mode, and runs both specs (participant + QR,
+visit, session link, files up to 10 MiB round trip, search, follow-ups, TOTP reset; case package, share link, public
+download once). The worker writes the case ZIP and the API serves it, so the blob store must be shared: with
+`ASD_BLOB_BACKEND=s3` (+ `S3_*` / `AWS_*`, e.g. MinIO) that is used, otherwise `e2e/live/fake-s3.mjs`, a small
+in-memory S3 stand-in (dev tooling only). `SERVE_ONLY=1` boots everything and prints the e2e environment instead.
+
+```bash
+PG_URL=postgres://postgres@127.0.0.1:5432 apps/curv_console/e2e/live/run-record-live.sh
+```
+
 CI: `.github/workflows/console.yml`.
 
 ## Architecture

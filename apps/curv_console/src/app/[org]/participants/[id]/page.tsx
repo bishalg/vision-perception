@@ -156,25 +156,35 @@ export default async function ParticipantWorkspacePage({
         );
       }
       case "attachments": {
-        const [rows, visits] = await Promise.all([
-          loadOrNotFound(() => api.listParticipantAttachments(id)),
+        const [files, visits] = await Promise.all([
+          loadOrNotFound(() => api.listAttachments(id, { cursor, limit: 50 })),
           loadOrNotFound(() => api.listEncounters(id, { limit: 50 })),
         ]);
         return (
-          <AttachmentsPanel
-            rows={rows}
-            canRead={canContent}
-            canWrite={can(role, "attachment.write") && !participant.withdrawn_at}
-            actions={{
-              create: createAttachmentAction.bind(null, org, id),
-              remove: deleteAttachmentAction.bind(null, org, id),
-              uploaded: attachmentUploadedAction.bind(null, org, id),
-            }}
-            visits={visits.items.map((v) => ({
-              id: v.id,
-              label: `${t.visits.kinds[v.kind]}, ${formatDateTime(v.occurred_at)}`,
-            }))}
-          />
+          <>
+            <AttachmentsPanel
+              rows={files.items}
+              canRead={canContent}
+              canWrite={can(role, "attachment.write") && !participant.withdrawn_at}
+              actions={{
+                create: createAttachmentAction.bind(null, org, id),
+                remove: deleteAttachmentAction.bind(null, org, id),
+                uploaded: attachmentUploadedAction.bind(null, org, id),
+              }}
+              visits={visits.items.map((v) => ({
+                id: v.id,
+                label: `${t.visits.kinds[v.kind]}, ${formatDateTime(v.occurred_at)}`,
+              }))}
+            />
+            <nav className="pagination" aria-label="File pages">
+              {cursor ? <Link href={`${basePath}?tab=attachments`}>{t.attachments.newest}</Link> : null}
+              {files.next_cursor ? (
+                <Link rel="next" href={`${basePath}?tab=attachments&cursor=${encodeURIComponent(files.next_cursor)}`}>
+                  {t.attachments.older}
+                </Link>
+              ) : null}
+            </nav>
+          </>
         );
       }
       case "notes": {

@@ -123,7 +123,11 @@ export async function createEncounterAction(orgId: string, participantId: string
   }
 }
 
-/** PATCH /v1/encounters/{id} with `If-Match`: kind, date, reason, follow-up date and (for clinicians) the summary. */
+/**
+ * PATCH /v1/encounters/{id} with `If-Match`: kind, date, reason, follow-up date and (for clinicians) the summary.
+ * The backend keeps a field that is absent or `null` and clears an optional one on `""`, so an emptied reason,
+ * summary or follow-up date is sent as `""`.
+ */
 export async function updateEncounterAction(
   orgId: string,
   participantId: string,
@@ -138,7 +142,7 @@ export async function updateEncounterAction(
       ...(f.occurred_at ? { occurred_at: f.occurred_at } : {}),
       reason: f.reason,
       ...(f.summary !== undefined ? { summary: f.summary } : {}),
-      follow_up_due_at: f.follow_up_due_at ?? null,
+      follow_up_due_at: f.follow_up_due_at ?? "",
     });
     revalidatePath(page(orgId, participantId));
     return { ok: true };

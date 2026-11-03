@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { AttachmentRow } from "@/lib/api/emr";
+import type { Attachment } from "@/lib/api/emr";
 import { formatDateTime } from "@/lib/format";
 import { formatFileSize, participantText } from "@/messages/participant";
 import { AttachmentUpload, type UploadActions } from "./AttachmentUpload";
@@ -38,9 +38,10 @@ function RemoveButton({ name, remove }: { name: string; remove: () => Promise<Ac
 }
 
 /**
- * Files tab (REC-6, REC-7). The list is the participant's attachment headers (kind, name, size); opening a file is a
- * plain link to the console's `/api/attachments/{id}` route handler, which streams it with `no-store` (and the backend
- * audits `attachment.read`). Download links only for `clinical.content` roles; upload for `attachment.write`.
+ * Files tab (REC-6, REC-7). The list is `GET /v1/participants/{id}/attachments` (metadata: kind, name, size, visit);
+ * opening a file is a plain link to the console's `/api/attachments/{id}` route handler, which streams it with
+ * `no-store` (and the backend audits `attachment.read`). Download links only for `clinical.content` roles, and only
+ * once the bytes have arrived (`sha256` set); upload for `attachment.write`.
  */
 export function AttachmentsPanel({
   rows,
@@ -49,12 +50,13 @@ export function AttachmentsPanel({
   actions,
   visits,
 }: {
-  rows: AttachmentRow[];
+  rows: Attachment[];
   canRead: boolean;
   canWrite: boolean;
   actions: UploadActions;
   visits: { id: string; label: string }[];
 }) {
+  const visitLabel = new Map(visits.map((v) => [v.id, v.label]));
   return (
     <section aria-labelledby="files-h" className="stack">
       <h2 id="files-h">{t.title}</h2>
@@ -72,23 +74,25 @@ export function AttachmentsPanel({
                 <th scope="col">{c.kind}</th>
                 <th scope="col">{c.size}</th>
                 <th scope="col">{c.when}</th>
-                <th scope="col">{c.by}</th>
+                <th scope="col">{c.visit}</th>
                 {canRead || canWrite ? <th scope="col">{c.actions}</th> : null}
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => {
-                const name = r.file_name ?? t.unnamed;
+                const name = r.file_name || t.unnamed;
                 return (
                   <tr key={r.id} data-testid="attachment-row">
                     <td data-label={c.name}>{name}</td>
-                    <td data-label={c.kind}>{r.kind ? t.kinds[r.kind] : "-"}</td>
+                    <td data-label={c.kind}>{t.kinds[r.kind]}</td>
                     <td data-label={c.size}>{formatFileSize(r.byte_size)}</td>
-                    <td data-label={c.when}>{formatDateTime(r.at)}</td>
-                    <td data-label={c.by}>{r.uploaded_by ?? "-"}</td>
+                    <td data-label={c.when}>{formatDateTime(r.created_at)}</td>
+                    <td data-label={c.visit}>{(r.encounter_id && visitLabel.get(r.encounter_id)) || "-"}</td>
                     {canRead || canWrite ? (
                       <td data-label={c.actions}>
-                        {canRead ? (
+                        {!r.sha256 ? (
+                          <span className="muted">{t.incomplete}</span>
+                        ) : canRead ? (
                           <a href={`/api/attachments/${encodeURIComponent(r.id)}`} download aria-label={t.downloadLabel(name)}>
                             {t.download}
                           </a>

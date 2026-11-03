@@ -10,7 +10,6 @@
 import { z } from "@/lib/zod";
 import { participantSchema } from "./admin";
 import type { LiveRequest } from "./clinical";
-import { timelinePageSchema, type TimelineEntry } from "./participant";
 import type { PageQuery } from "./types";
 
 const str = z.string().nullable().optional();
@@ -117,7 +116,10 @@ export const createEncounterRequestSchema = z.object({
 });
 export type CreateEncounterRequest = z.infer<typeof createEncounterRequestSchema>;
 
-/** Absent fields stay unchanged; a closed encounter accepts only `follow_up_done_at` and reopening. */
+/**
+ * Absent and `null` fields stay unchanged; `""` clears an optional text or date (`reason`, `summary`, `clinician_id`,
+ * `follow_up_due_at`, `follow_up_done_at`). A closed encounter accepts only `follow_up_done_at` and reopening.
+ */
 export const updateEncounterRequestSchema = z.object({
   kind: encounterKindSchema.nullable().optional(),
   occurred_at: str,
@@ -188,36 +190,9 @@ export type UploadTarget = z.infer<typeof uploadTargetSchema>;
 export const attachmentUploadSchema = z.object({ attachment: attachmentSchema, upload: uploadTargetSchema });
 export type AttachmentUpload = z.infer<typeof attachmentUploadSchema>;
 
-/**
- * One row of the Attachments tab. The contract has no attachment list route: the rows are the participant's
- * `attachment` timeline entries (REC-5 header: kind, name, size), so every role that reads the timeline sees the
- * same list and only the download (`ClinicalContentRead`) is restricted.
- */
-export interface AttachmentRow {
-  id: string;
-  at: string;
-  kind: AttachmentKind | null;
-  file_name: string | null;
-  byte_size: number | null;
-  uploaded_by: string | null;
-}
-
-/** REC-5 attachment header -> row. Tolerates `kind`/`attachment_kind`, `file_name`/`name`, `byte_size`/`size`. */
-export function attachmentRowFromTimeline(e: TimelineEntry): AttachmentRow {
-  const s = e.summary;
-  const pick = (...keys: string[]) => keys.map((k) => s[k]).find((v) => v !== undefined && v !== null);
-  const kind = attachmentKindSchema.safeParse(pick("attachment_kind", "kind"));
-  const name = pick("file_name", "name");
-  const size = pick("byte_size", "size");
-  return {
-    id: e.id,
-    at: e.at,
-    kind: kind.success ? kind.data : null,
-    file_name: typeof name === "string" ? name : null,
-    byte_size: typeof size === "number" && Number.isFinite(size) ? size : null,
-    uploaded_by: e.actor_display_name ?? null,
-  };
-}
+/** `GET /v1/participants/{id}/attachments` (REC-6): metadata only, newest first. Rows with `sha256: null` have no bytes yet. */
+export const attachmentPageSchema = z.object({ items: z.array(attachmentSchema), ...pageFields });
+export type AttachmentPage = z.infer<typeof attachmentPageSchema>;
 
 export interface EmrApi {
   /** REC-1 (`ParticipantCreate`): the token and QR payload are minted by the server. `201`. */
@@ -237,8 +212,8 @@ export interface EmrApi {
   /** Metadata first (`201` with the upload target); the bytes follow through `/api/attachments/{id}/content`. */
   createAttachment(participantId: string, request: CreateAttachmentRequest): Promise<AttachmentUpload>;
   deleteAttachment(attachmentId: string): Promise<void>;
-  /** The participant's attachments from the timeline (`attachment` headers), newest first. */
-  listParticipantAttachments(participantId: string): Promise<AttachmentRow[]>;
+  /** `GET /v1/participants/{id}/attachments` (`ParticipantRead`): metadata of the participant's files, newest first. */
+  listAttachments(participantId: string, query?: PageQuery): Promise<AttachmentPage>;
 }
 
 export function createLiveEmr(request: LiveRequest, buildQuery: (q: object) => string): EmrApi {
@@ -269,20 +244,7 @@ export function createLiveEmr(request: LiveRequest, buildQuery: (q: object) => s
     createAttachment: (id, body) =>
       request(`/participants/${enc(id)}/attachments`, attachmentUploadSchema, { method: "POST", body }),
     deleteAttachment: (id) => request(`/attachments/${enc(id)}`, null, { method: "DELETE" }),
-    async listParticipantAttachments(id) {
-      const rows: AttachmentRow[] = [];
-      let cursor: string | undefined;
-      // Bounded: a participant with more than 500 attachments shows the newest 500.
-      for (let i = 0; i < 5; i++) {
-        const page = await request(
-          `/participants/${enc(id)}/timeline${buildQuery({ kind: "attachment", limit: 100, cursor })}`,
-          timelinePageSchema,
-        );
-        rows.push(...page.items.filter((e) => e.kind === "attachment").map(attachmentRowFromTimeline));
-        cursor = page.next_cursor ?? undefined;
-        if (!cursor) break;
-      }
-      return rows;
-    },
+    listAttachments: (id, query) =>
+      request(`/participants/${enc(id)}/attachments${buildQuery(query ?? {})}`, attachmentPageSchema),
   };
 }

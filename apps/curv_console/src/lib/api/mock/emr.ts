@@ -22,7 +22,6 @@ import {
   MAX_ENCOUNTER_REASON_CHARS,
   MAX_ENCOUNTER_SUMMARY_CHARS,
   type Attachment,
-  type AttachmentRow,
   type EmrApi,
   type Encounter,
   type FollowUp,
@@ -68,16 +67,6 @@ const CLINICIAN = "Dr. Demo Clinician";
 let pending: MockRecordStore | undefined;
 const byListFn = new WeakMap<object, MockRecordStore>();
 
-/**
- * Attachments created in this process, by id. `next dev` can load the route handlers (`/api/attachments/...`) as a
- * separate module instance from the pages and server actions, each with its own mock client; the byte upload and the
- * download must still find the row the server action created. Ids are random, so clients never collide.
- */
-function sharedAttachments(): Map<string, StoredAttachment> {
-  const g = globalThis as unknown as { __curvMockAttachments?: Map<string, StoredAttachment> };
-  return (g.__curvMockAttachments ??= new Map());
-}
-
 /** Called by `createMockAdmin`: the next `createMockEmr` takes this store, and the participant mock finds it by `listFn`. */
 export function registerMockRecordStore(store: MockRecordStore, listFn: (orgId: string, query?: PageQuery) => Promise<ParticipantPage>): void {
   pending = store;
@@ -99,7 +88,7 @@ export function mockRecordTimeline(listFn: object, participantId: string): Timel
       session_id: null,
       actor_id: e.clinician_id ?? null,
       actor_display_name: e.clinician_display_name ?? null,
-      summary: { encounter_kind: e.kind, status: e.status, has_summary: e.has_summary },
+      summary: { encounter_kind: e.kind, status: e.status },
     });
   }
   for (const a of store.attachments) {
@@ -149,6 +138,7 @@ const PNG_1X1 = Uint8Array.from(
   atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="),
   (c) => c.charCodeAt(0),
 );
+const PNG_1X1_SHA256 = "6b7fa434f92a8b80aab02d9bf1a12e49ffcae424e4013a1c4f68b67e3d2bbcd0";
 
 function seed(store: MockRecordStore): void {
   if (store.seeded) return;
@@ -205,7 +195,8 @@ function seed(store: MockRecordStore): void {
       file_name: "consent-form-scan.png",
       media_type: "image/png",
       byte_size: PNG_1X1.byteLength,
-      sha256: null,
+      // The bytes are here, so (as on the backend) the row carries their hash; `null` means "not uploaded yet".
+      sha256: PNG_1X1_SHA256,
       uploaded_by: store.userId,
       created_at: iso(store.now - 10 * DAY),
       deleted_at: null,
@@ -277,7 +268,7 @@ export function createMockEmr(ctx: MockEmrContext): EmrApi & MockAttachmentConte
   };
   const attachment = (id: string) => {
     seed(store);
-    const a = store.attachments.find((x) => x.id === id) ?? sharedAttachments().get(id);
+    const a = store.attachments.find((x) => x.id === id);
     if (!a || a.deleted_at) throw notFound();
     return a;
   };
@@ -419,20 +410,21 @@ export function createMockEmr(ctx: MockEmrContext): EmrApi & MockAttachmentConte
       if (patch.kind != null && !(ENCOUNTER_KINDS as readonly string[]).includes(patch.kind)) throw invalid("kind", "unknown encounter kind");
       if (e.status === "closed") {
         const other = Object.entries(patch).some(
-          ([k, v]) => v !== undefined && k !== "follow_up_done_at" && !(k === "status" && (v === "open" || v === "closed")),
+          ([k, v]) => v != null && k !== "follow_up_done_at" && !(k === "status" && (v === "open" || v === "closed")),
         );
         if (other) throw problem(409, "encounter-closed", "Conflict", "a closed visit accepts only the follow-up done date or reopening");
       }
       if (patch.kind != null) e.kind = patch.kind;
       if (patch.occurred_at != null) e.occurred_at = time("occurred_at", patch.occurred_at)!;
-      if (patch.clinician_id !== undefined) e.clinician_id = patch.clinician_id;
-      if (patch.reason !== undefined) e.reason = text("reason", patch.reason, MAX_ENCOUNTER_REASON_CHARS);
-      if (patch.summary !== undefined) {
+      // As `PATCH /v1/encounters/{id}` (B.19): an absent or `null` field is kept, `""` clears an optional one.
+      if (patch.clinician_id != null) e.clinician_id = patch.clinician_id || null;
+      if (patch.reason != null) e.reason = text("reason", patch.reason, MAX_ENCOUNTER_REASON_CHARS);
+      if (patch.summary != null) {
         e.summary = text("summary", patch.summary, MAX_ENCOUNTER_SUMMARY_CHARS);
         e.has_summary = e.summary != null;
       }
-      if (patch.follow_up_due_at !== undefined) e.follow_up_due_at = time("follow_up_due_at", patch.follow_up_due_at);
-      if (patch.follow_up_done_at !== undefined) e.follow_up_done_at = time("follow_up_done_at", patch.follow_up_done_at);
+      if (patch.follow_up_due_at != null) e.follow_up_due_at = time("follow_up_due_at", patch.follow_up_due_at);
+      if (patch.follow_up_done_at != null) e.follow_up_done_at = time("follow_up_done_at", patch.follow_up_done_at);
       if (patch.status != null) e.status = patch.status;
       e.row_version += 1;
       e.updated_at = stamp();
@@ -441,18 +433,18 @@ export function createMockEmr(ctx: MockEmrContext): EmrApi & MockAttachmentConte
 
     async linkEncounterSession(id, sessionId) {
       const e = encounter(id);
+      if (e.status === "closed") throw problem(409, "encounter-closed", "Conflict", "a closed visit accepts only the follow-up done date or reopening");
       if (!sessionsOf(e.participant_id).some((d) => d.id === sessionId)) {
         throw invalid("session_id", "is not a session of this participant");
       }
       if (!e.session_ids?.includes(sessionId)) e.session_ids = [...(e.session_ids ?? []), sessionId];
-      e.row_version += 1;
     },
 
     async unlinkEncounterSession(id, sessionId) {
       const e = encounter(id);
+      if (e.status === "closed") throw problem(409, "encounter-closed", "Conflict", "a closed visit accepts only the follow-up done date or reopening");
       if (!e.session_ids?.includes(sessionId)) throw notFound();
       e.session_ids = e.session_ids.filter((s) => s !== sessionId);
-      e.row_version += 1;
     },
 
     async listFollowUps(orgId, query = {}) {
@@ -461,7 +453,7 @@ export function createMockEmr(ctx: MockEmrContext): EmrApi & MockAttachmentConte
       const before = time("due_before", query.due_before);
       const rows: FollowUp[] = store.encounters
         .filter((e) => openFollowUp(e))
-        .filter((e) => !before || e.follow_up_due_at! < before)
+        .filter((e) => !before || e.follow_up_due_at! <= before)
         .filter((e) => query.assigned !== "me" || e.clinician_id === store.userId)
         .flatMap((e) => {
           const p = store.participants.find((x) => x.id === e.participant_id);
@@ -512,7 +504,6 @@ export function createMockEmr(ctx: MockEmrContext): EmrApi & MockAttachmentConte
         bytes: null,
       };
       store.attachments.push(a);
-      sharedAttachments().set(a.id, a);
       const { deleted_at: _d, bytes: _b, ...meta } = a;
       void _d;
       void _b;
@@ -523,19 +514,20 @@ export function createMockEmr(ctx: MockEmrContext): EmrApi & MockAttachmentConte
       attachment(id).deleted_at = stamp();
     },
 
-    async listParticipantAttachments(participantId) {
+    async listAttachments(participantId, query: PageQuery = {}) {
       participant(participantId);
-      return store.attachments
+      // As the backend: live rows newest first, including ones whose bytes have not arrived yet (`sha256: null`).
+      const rows = store.attachments
         .filter((a) => a.participant_id === participantId && !a.deleted_at)
-        .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id))
-        .map((a): AttachmentRow => ({
-          id: a.id,
-          at: a.created_at,
-          kind: a.kind,
-          file_name: a.file_name,
-          byte_size: a.byte_size,
-          uploaded_by: CLINICIAN,
-        }));
+        .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id));
+      const { slice, next_cursor, total } = store.page(rows, (a) => [a.created_at, a.id], query.cursor, query.limit);
+      const items = slice.map((a): Attachment => {
+        const { deleted_at: _d, bytes: _b, ...meta } = a;
+        void _d;
+        void _b;
+        return meta;
+      });
+      return { items, next_cursor, total };
     },
 
     async mockPutAttachmentContent(id, bytes, mediaType, digest) {

@@ -196,7 +196,11 @@ export const participantText = {
     tooLarge: "The file is too large. The limit is 10 MB.",
     badType: "This file type is not accepted. Use a PDF, JPEG or PNG file.",
     empty_file: "The file is empty.",
-    cols: { name: "File", kind: "Type", size: "Size", when: "Added", by: "Added by", actions: "Actions" },
+    cols: { name: "File", kind: "Type", size: "Size", when: "Added", visit: "Visit", actions: "Actions" },
+    /** A row whose bytes never arrived (the upload was interrupted): no download, only remove. */
+    incomplete: "Upload not finished",
+    older: "Older files",
+    newest: "Newest files",
     download: "Download",
     downloadLabel: (name: string) => `Download ${name}`,
     noDownload: "Your role cannot open files.",

@@ -580,7 +580,18 @@ export const PROBLEM_SLUGS = [
 ] as const;
 export type ProblemSlug = (typeof PROBLEM_SLUGS)[number];
 
+/** Process-wide brand: `next dev` may hold two copies of this module (see `getApi`), each with its own class. */
+const API_ERROR = Symbol.for("curv-console.api-error");
+
 export class ApiError extends Error {
+  /**
+   * `instanceof ApiError` by brand, not by prototype: the mock client is shared on `globalThis` across module graphs,
+   * so an error thrown by one graph's copy of this class must still be recognised by code loaded in another.
+   */
+  static [Symbol.hasInstance](value: unknown): boolean {
+    return typeof value === "object" && value !== null && (value as Record<symbol, unknown>)[API_ERROR] === true;
+  }
+  readonly [API_ERROR] = true;
   readonly status: number;
   readonly problem: Problem | null;
   /** Problem slug, e.g. `validation-failed`; null when the body was not problem+json. */
