@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT DISTINCT e.id, e.blob_key FROM export_items i\n           JOIN exports e ON e.id = i.export_id\n           WHERE i.participant_id = $1 AND e.kind = 'bulk' AND e.status = 'succeeded'",
+  "query": "SELECT e.id, e.blob_key FROM exports e\n           WHERE e.status = 'succeeded'\n             AND ((e.kind = 'bulk'\n                   AND EXISTS (SELECT 1 FROM export_items i\n                               WHERE i.export_id = e.id AND i.participant_id = $1))\n                  OR e.case_participant_id = $1)\n           ORDER BY e.id",
   "describe": {
     "columns": [
       {
@@ -36,5 +36,5 @@
       true
     ]
   },
-  "hash": "de832826ada53408150d20bfa0ac7d6570a4a71633e061c68dd0ed469fe48f1f"
+  "hash": "bb16f4dc19618e3a80e8a39848ab839c32549b6057e047a6f2f2275ff86f224f"
 }

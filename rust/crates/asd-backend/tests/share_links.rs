@@ -5,8 +5,9 @@
 //! wrong passcodes are `401` and audited with the client IP; the right one yields a
 //! five-minute download token; downloads are counted atomically under concurrency;
 //! revoked and unknown links are `404`, expired ones `410`; the open route is rate
-//! limited per link and per IP; public responses are `no-store` and `noindex`.
-//! Needs `DATABASE_URL`.
+//! limited per link and per IP; public responses are `no-store` and `noindex`; erasure
+//! of the participant expires the package and revokes its links (SHR-11, WP-I.13b), also
+//! when no included session names the participant. Needs `DATABASE_URL`.
 
 mod common;
 mod export_support;
@@ -488,6 +489,153 @@ async fn opens_are_limited_per_link_and_per_ip() {
     );
     let (s, _, b) = open(&c, &links[4].0, &links[4].1, "198.51.100.2").await;
     assert_eq!(s, StatusCode::OK, "another IP still opens that link: {b}");
+    c.db.cleanup().await;
+}
+
+// ---- SHR-11: erasure revokes the links of every package it expires --------------------------
+
+/// Files an erasure of `participant` as an org admin and runs the queue; returns the
+/// request row.
+async fn erase(c: &Ctx, participant: &str) -> Value {
+    let (_, admin) = c.token(Role::Admin).await;
+    let (s, b) = c
+        .call(
+            Method::POST,
+            &format!("/v1/orgs/{}/participants/{participant}/erasure", c.org),
+            None,
+            &admin,
+        )
+        .await;
+    assert_eq!(s, StatusCode::ACCEPTED, "{b}");
+    c.run_jobs().await;
+    sqlx::query_scalar(
+        "SELECT to_jsonb(r) FROM erasure_requests r WHERE participant_id = $1::uuid
+         ORDER BY requested_at DESC LIMIT 1",
+    )
+    .bind(participant)
+    .fetch_one(&c.db.pool)
+    .await
+    .unwrap()
+}
+
+async fn revoked_at(c: &Ctx, link: &str) -> Option<chrono::DateTime<chrono::Utc>> {
+    sqlx::query_scalar("SELECT revoked_at FROM share_links WHERE id = $1::uuid")
+        .bind(link)
+        .fetch_one(&c.db.pool)
+        .await
+        .unwrap()
+}
+
+async fn export_status(c: &Ctx, export: &Value) -> String {
+    sqlx::query_scalar("SELECT status FROM exports WHERE id = $1::uuid")
+        .bind(export["id"].as_str().unwrap())
+        .fetch_one(&c.db.pool)
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn erasure_revokes_the_share_links_of_the_packages_it_expires() {
+    let _serial = SERIAL.lock().await;
+    let Some((c, clin, export)) = setup().await else {
+        return;
+    };
+    let participant = export["case_participant_id"].as_str().unwrap().to_owned();
+    let (id, passcode) = link(&c, &clin, &export, json!({"max_downloads": 5})).await;
+    let (spare, spare_pass) = link(&c, &clin, &export, json!({})).await;
+    // A link the sender revoked already is not revoked (nor audited) again.
+    let (s, _) = c
+        .call(
+            Method::DELETE,
+            &format!("/v1/share-links/{spare}"),
+            None,
+            &clin,
+        )
+        .await;
+    assert_eq!(s, StatusCode::NO_CONTENT);
+    let spare_revoked = revoked_at(&c, &spare).await;
+    // An unrelated package (another participant) keeps its link.
+    let other = c.participant(c.org, "TOKEN-UNRELATED").await;
+    c.exportable_session(
+        other,
+        "TOKEN-UNRELATED",
+        "SESS-UNRELATED",
+        "2026-10-04T10:00:00Z",
+        None,
+    )
+    .await;
+    let unrelated = c.ready_case(&clin, other).await;
+    let (kept, kept_pass) = link(&c, &clin, &unrelated, json!({})).await;
+    let (s, _, _) = open(&c, &id, &passcode, "203.0.113.7").await;
+    assert_eq!(s, StatusCode::OK, "the link works before the erasure");
+
+    let req = erase(&c, &participant).await;
+    // The fixture's clinical note holds the record; the package is expired either way.
+    assert_eq!(req["status"], "held", "{req}");
+    assert_eq!(req["outcome"]["export_artifacts_deleted"], 1, "{req}");
+    assert_eq!(export_status(&c, &export).await, "expired");
+    assert!(
+        revoked_at(&c, &id).await.is_some(),
+        "the live link is revoked"
+    );
+    assert_eq!(revoked_at(&c, &spare).await, spare_revoked);
+    assert!(revoked_at(&c, &kept).await.is_none());
+    assert_eq!(export_status(&c, &unrelated).await, "succeeded");
+
+    let revokes = c.audit_rows("share_link.revoke").await;
+    let by_erasure: Vec<&Value> = revokes
+        .iter()
+        .filter(|r| r["after"]["reason"] == "erasure")
+        .collect();
+    assert_eq!(by_erasure.len(), 1, "{revokes:?}");
+    let row = by_erasure[0];
+    assert_eq!(row["actor_type"], "system");
+    assert_eq!(row["target_type"], "share_link");
+    assert_eq!(row["target_id"], id);
+    assert_eq!(row["org_id"], c.org.to_string());
+    assert_eq!(row["after"]["export_id"], export["id"]);
+    assert_eq!(row["after"]["erasure_request_id"], req["id"]);
+
+    // Public open: not available, like any revoked link (one 404 for unknown and revoked).
+    let (s, h, _) = open(&c, &id, &passcode, "203.0.113.7").await;
+    assert_eq!(s, StatusCode::NOT_FOUND);
+    assert_public_headers(&h);
+    let (s, _, _) = open(&c, &spare, &spare_pass, "203.0.113.7").await;
+    assert_eq!(s, StatusCode::NOT_FOUND);
+    let (s, _, _) = open(&c, &kept, &kept_pass, "203.0.113.7").await;
+    assert_eq!(s, StatusCode::OK, "the unrelated link still opens");
+    c.db.cleanup().await;
+}
+
+#[tokio::test]
+async fn erasure_finds_a_case_package_through_its_participant_alone() {
+    let _serial = SERIAL.lock().await;
+    let Some(c) = Ctx::new().await else { return };
+    let (_, clin) = c.token(Role::Clinician).await;
+    // No note and no MRN: the erasure completes.
+    let p = c.participant(c.org, "TOKEN-BARE").await;
+    c.exportable_session(p, "TOKEN-BARE", "SESS-BARE", "2026-10-01T10:00:00Z", None)
+        .await;
+    let export = c.ready_case(&clin, p).await;
+    let (id, passcode) = link(&c, &clin, &export, json!({})).await;
+    // A package with no item naming the participant (no included session) is still found
+    // through `exports.case_participant_id`.
+    sqlx::query("DELETE FROM export_items WHERE export_id = $1::uuid")
+        .bind(export["id"].as_str().unwrap())
+        .execute(&c.db.pool)
+        .await
+        .unwrap();
+
+    let req = erase(&c, &p.to_string()).await;
+    assert_eq!(req["status"], "completed", "{req}");
+    assert_eq!(req["outcome"]["export_artifacts_deleted"], 1, "{req}");
+    assert_eq!(export_status(&c, &export).await, "expired");
+    assert!(revoked_at(&c, &id).await.is_some());
+    let revokes = c.audit_rows("share_link.revoke").await;
+    assert_eq!(revokes.len(), 1);
+    assert_eq!(revokes[0]["after"]["reason"], "erasure");
+    let (s, _, _) = open(&c, &id, &passcode, "203.0.113.7").await;
+    assert_eq!(s, StatusCode::NOT_FOUND);
     c.db.cleanup().await;
 }
 

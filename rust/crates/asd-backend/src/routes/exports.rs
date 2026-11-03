@@ -18,6 +18,10 @@
 //! participant (400 unknown, 409 `participant-withdrawn`), MRN mode for HL7 (409
 //! `patient-ref-disabled`).
 //!
+//! `audit_csv` (HIP-3, WP-B.23): also needs `AuditExport` (owner, admin), de-identified mode,
+//! purpose `quality_improvement`, no destinations and only the audit filters; downloads need
+//! `AuditExport` too.
+//!
 //! `case_package` (SHR-7, WP-I.13): `case` names exactly one participant (and optionally
 //! some of its sessions); `filters` must be empty, the stored filters are derived from the
 //! case. The recipient is encrypted at rest (`exports.case_recipient_ct`) and never
@@ -315,6 +319,11 @@ async fn create_export(
         rbac::authorize(principal, Action::CaseShare, Some(org))?;
     }
 
+    if req.format == ExportFormat::AuditCsv {
+        // HIP-3: AuditExport (owner, admin) on top of the route's ExportDeidentified.
+        rbac::authorize(principal, Action::AuditExport, Some(org))?;
+    }
+
     // ---- body validation (every problem at once)
     let mut errors = Vec::new();
     let reason = req.reason.trim().to_owned();
@@ -365,6 +374,14 @@ async fn create_export(
                 "only audit_csv exports filter by action",
             ));
         }
+    }
+    if req.format == ExportFormat::AuditCsv {
+        errors.extend(export_build::audit::validate(
+            req.mode,
+            req.purpose,
+            &req.filters,
+            req.destination_ids.len(),
+        ));
     }
     if let Err(AppError::Validation(p)) = filters::parse(&req.filters) {
         errors.extend(p);
@@ -706,6 +723,10 @@ async fn download_url(
         && !rbac::allows(p.role, Action::ExportIdentified)
     {
         return Err(AppError::Forbidden);
+    }
+    if row.format == ExportFormat::AuditCsv {
+        // HIP-3: the audit log stays with the roles that may export it.
+        rbac::authorize(&p, Action::AuditExport, Some(row.org_id))?;
     }
     let key = ensure_downloadable(&row)?;
     let file_name = row

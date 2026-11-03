@@ -11,14 +11,28 @@
 //! Session notes are read here, sealed, for identified packages whose requester held
 //! `ClinicalContentRead` when asking (`exports.include_clinical_content`).
 //!
-//! Wave 2a scope: encounters and attachments (WP-B.19's tables) are not loaded yet, so the
-//! input carries empty lists and `CaseShareRequest.include_attachments` is stored but has
-//! no effect until WP-I.13b.
+//! [`complete`] (WP-I.13b) adds the participant's encounters (REC-3) and attachments
+//! (REC-6) once the sessions are mapped:
+//!
+//! - encounters travel in both modes (the crate strips everything but kind, status and
+//!   months when de-identified); in a de-identified package the backend already leaves
+//!   out the clinician, reason, summary and session links, and never decrypts a summary;
+//! - an encounter's summary is decrypted only for an identified package whose requester
+//!   held `ClinicalContentRead` (`exports.include_clinical_content`), like session notes;
+//! - attachments are read only for an identified package that asked for them
+//!   (`exports.case_include_attachments`) and whose requester held `ClinicalContentRead`
+//!   (reading an attachment is that right, REC-7), through WP-B.19's decrypting reader
+//!   [`crate::routes::attachments::load_content`]; rows without uploaded content and
+//!   deleted rows are skipped. The request is audited by `export.create` /
+//!   `export.complete`; no per-attachment read row is written (trap 11).
 
 use std::collections::HashMap;
 
 use asd_contract::export::ExportMode;
-use asd_export::case_package::{self, CaseConsent, CasePackageInput, CaseSession};
+use asd_export::case_package::{
+    self, AttachmentKind, CaseAttachment, CaseConsent, CaseEncounter, CasePackageInput,
+    CaseSession, EncounterKind, EncounterStatus,
+};
 use asd_export::deid;
 use asd_export::fhir::clinical::FhirProfile;
 use asd_export::fhir::{FhirDevice, DEFAULT_DEVICE_NAME};
@@ -30,8 +44,13 @@ use uuid::Uuid;
 
 use super::record::Sealed;
 use super::{Artifact, ExportRow, RenderError};
-use crate::error::AppResult;
+use crate::blob::BlobStore;
+use crate::crypto::{Aad, Keyring};
+use crate::error::{AppError, AppResult};
+use crate::jobs::runner::JobError;
+use crate::jobs::JobContext;
 use crate::read::cursor;
+use crate::routes::attachments;
 
 /// One clinical note of an included session, not yet decrypted.
 #[derive(Debug, Clone)]
@@ -128,7 +147,7 @@ pub struct CaseFacts {
     pub consent: Option<CaseConsent>,
 }
 
-/// Rows → [`CasePackageInput`]. Encounters and attachments stay empty until WP-I.13b.
+/// Rows → [`CasePackageInput`]. Encounters and attachments are added by [`complete`].
 pub fn package_input(
     facts: CaseFacts,
     sessions: Vec<IncludedSession>,
@@ -162,6 +181,239 @@ pub fn package_input(
         attachments: Vec::new(),
         fhir_profile: FhirProfile::default(),
     })
+}
+
+/// What [`complete`] reads, given the export row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CaseScope {
+    /// Identified package: encounter headers keep clinician, reason and session links.
+    pub identified: bool,
+    /// Encounter summaries are decrypted (identified and `ClinicalContentRead`).
+    pub summaries: bool,
+    /// Attachments are decrypted and included.
+    pub attachments: bool,
+}
+
+impl CaseScope {
+    pub fn of(row: &ExportRow) -> Self {
+        let identified = row.mode == ExportMode::Identified;
+        let clinical = identified && row.include_clinical_content;
+        Self {
+            identified,
+            summaries: clinical,
+            attachments: clinical && row.case_include_attachments,
+        }
+    }
+}
+
+/// One encounter row; the summary still sealed (and only read when in scope).
+struct EncounterRow {
+    id: Uuid,
+    kind: String,
+    occurred_at: chrono::DateTime<chrono::Utc>,
+    status: String,
+    clinician_name: Option<String>,
+    reason: Option<String>,
+    summary: Option<Sealed>,
+    follow_up_due_at: Option<chrono::DateTime<chrono::Utc>>,
+    follow_up_done_at: Option<chrono::DateTime<chrono::Utc>>,
+    session_ids: Vec<String>,
+}
+
+async fn load_encounters(
+    pool: &PgPool,
+    org: Uuid,
+    participant: Uuid,
+    scope: CaseScope,
+) -> AppResult<Vec<EncounterRow>> {
+    let rows = sqlx::query!(
+        r#"SELECT e.id, e.kind, e.occurred_at, e.status, e.reason, e.summary_ct,
+                  e.summary_key_id, e.follow_up_due_at, e.follow_up_done_at,
+                  u.display_name AS "clinician_name?",
+                  coalesce((SELECT array_agg(s.id ORDER BY s.id) FROM sessions s
+                            WHERE s.encounter_id = e.id), '{}') AS "session_ids!"
+           FROM encounters e LEFT JOIN users u ON u.id = e.clinician_id
+           WHERE e.org_id = $1 AND e.participant_id = $2
+           ORDER BY e.occurred_at, e.id"#,
+        org,
+        participant,
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows
+        .into_iter()
+        .map(|r| {
+            let summary = match (scope.summaries, r.summary_ct, r.summary_key_id) {
+                (true, Some(ciphertext), Some(key_id)) => Some(Sealed {
+                    table: "encounters",
+                    column: "summary_ct",
+                    row_id: r.id,
+                    key_id,
+                    ciphertext,
+                }),
+                _ => None,
+            };
+            EncounterRow {
+                id: r.id,
+                kind: r.kind,
+                occurred_at: r.occurred_at,
+                status: r.status,
+                clinician_name: r.clinician_name,
+                reason: r.reason,
+                summary,
+                follow_up_due_at: r.follow_up_due_at,
+                follow_up_done_at: r.follow_up_done_at,
+                session_ids: r.session_ids,
+            }
+        })
+        .collect())
+}
+
+/// A database spelling → the crate's enum (same snake_case wire names).
+fn wire<T: serde::de::DeserializeOwned>(what: &str, s: &str) -> AppResult<T> {
+    serde_json::from_value(Value::String(s.to_owned()))
+        .map_err(|_| AppError::Internal(format!("unknown {what} {s:?}")))
+}
+
+/// One encounter row → [`CaseEncounter`] with its (already decrypted) summary. In a
+/// de-identified package only kind, status and dates are kept (the crate truncates the
+/// dates to months), and session links name only sessions that are in the package.
+fn map_encounter(
+    row: EncounterRow,
+    summary: Option<String>,
+    scope: CaseScope,
+    included: &[String],
+) -> AppResult<CaseEncounter> {
+    let identified = scope.identified;
+    Ok(CaseEncounter {
+        id: row.id.to_string(),
+        kind: wire::<EncounterKind>("encounter kind", &row.kind)?,
+        occurred_at: cursor::ts(row.occurred_at),
+        status: wire::<EncounterStatus>("encounter status", &row.status)?,
+        clinician_display: row.clinician_name.filter(|_| identified),
+        reason: row.reason.filter(|_| identified),
+        summary: summary.filter(|_| scope.summaries),
+        follow_up_due_at: row.follow_up_due_at.map(cursor::ts),
+        follow_up_done_at: row.follow_up_done_at.map(cursor::ts),
+        session_ids: if identified {
+            row.session_ids
+                .into_iter()
+                .filter(|s| included.contains(s))
+                .collect()
+        } else {
+            Vec::new()
+        },
+    })
+}
+
+/// The live attachments of `participant` that have content, in id order.
+async fn attachment_ids(pool: &PgPool, org: Uuid, participant: Uuid) -> AppResult<Vec<Uuid>> {
+    Ok(sqlx::query_scalar!(
+        "SELECT id FROM attachments
+         WHERE org_id = $1 AND participant_id = $2 AND deleted_at IS NULL
+           AND blob_key IS NOT NULL
+         ORDER BY id",
+        org,
+        participant,
+    )
+    .fetch_all(pool)
+    .await?)
+}
+
+/// Decrypts every attachment through WP-B.19's reader (digest-checked) and maps it.
+async fn load_attachments(
+    pool: &PgPool,
+    blobs: &dyn BlobStore,
+    keyring: &Keyring,
+    org: Uuid,
+    participant: Uuid,
+) -> AppResult<Vec<CaseAttachment>> {
+    let mut out = Vec::new();
+    for id in attachment_ids(pool, org, participant).await? {
+        let content = match attachments::load_content(pool, blobs, keyring, org, id).await {
+            Ok(c) => c,
+            // Deleted between the listing and the read: not part of the package.
+            Err(AppError::NotFound) => continue,
+            Err(e) => return Err(e),
+        };
+        let a = content.attachment;
+        out.push(CaseAttachment {
+            id: a.id,
+            kind: wire::<AttachmentKind>("attachment kind", a.kind.as_str())?,
+            file_name: a.file_name,
+            media_type: a.media_type.as_str().to_owned(),
+            bytes: content.bytes,
+        });
+    }
+    Ok(out)
+}
+
+fn crypto_error(e: AppError) -> JobError {
+    match e {
+        AppError::Database(_) | AppError::Unavailable => JobError::Transient(e.to_string()),
+        other => JobError::Permanent(format!("case-package: {other}")),
+    }
+}
+
+/// Adds the participant's encounters and (when asked for) attachments to `input`, as
+/// [`CaseScope::of`] the export row allows (see the module docs). Runs in the job's render
+/// phase, with no transaction open.
+pub async fn complete(
+    ctx: &JobContext,
+    row: &ExportRow,
+    participant: Uuid,
+    input: &mut CasePackageInput,
+) -> Result<(), JobError> {
+    let scope = CaseScope::of(row);
+    let org = row.org_id;
+    let included: Vec<String> = input
+        .sessions
+        .iter()
+        .map(|s| s.record.session.summary.id.clone())
+        .collect();
+    let rows = load_encounters(&ctx.pool, org, participant, scope).await?;
+    let needs_keys = scope.attachments || rows.iter().any(|r| r.summary.is_some());
+    let keyring = if needs_keys {
+        Some(ctx.keyring.as_ref().ok_or_else(|| {
+            JobError::Permanent(
+                "clinical-crypto-unavailable: this worker has no ASD_DATA_KEK".into(),
+            )
+        })?)
+    } else {
+        None
+    };
+    let mut encounters = Vec::with_capacity(rows.len());
+    for mut r in rows {
+        let summary = match (r.summary.take(), keyring) {
+            (Some(sealed), Some(keyring)) => Some(
+                keyring
+                    .decrypt_string(
+                        org,
+                        &Aad::new(sealed.table, sealed.column, org, sealed.row_id),
+                        sealed.key_id,
+                        &sealed.ciphertext,
+                    )
+                    .await
+                    .map_err(|e| crypto_error(e.into()))?,
+            ),
+            _ => None,
+        };
+        encounters.push(map_encounter(r, summary, scope, &included)?);
+    }
+    input.encounters = encounters;
+    input.attachments = match keyring.filter(|_| scope.attachments) {
+        Some(keyring) => {
+            let blobs = ctx
+                .blobs
+                .as_ref()
+                .ok_or_else(|| JobError::Permanent("this worker has no blob store".into()))?;
+            load_attachments(&ctx.pool, &**blobs, keyring, org, participant)
+                .await
+                .map_err(crypto_error)?
+        }
+        None => Vec::new(),
+    };
+    Ok(())
 }
 
 /// Renders the package (SHR-1): `export-{id}-case-package.zip`.

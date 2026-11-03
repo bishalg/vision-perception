@@ -188,12 +188,7 @@ async fn run(ctx: &JobContext, job: &Job, export_id: Uuid) -> Result<Value, JobE
     // ---- the format's build step: phase 1 and phase 2 up to the rendered artifact
     let built = match row.format {
         ExportFormat::CasePackage => build_case(ctx, &row, &parsed).await?,
-        // WP-B.23 adds the audit log build here; `format_available` refuses it until then.
-        ExportFormat::AuditCsv => {
-            return Err(permanent(
-                RenderError::Unsupported("audit_csv has no build step yet (WP-B.23)").to_string(),
-            ))
-        }
+        ExportFormat::AuditCsv => build_audit(ctx, &row, &stored_filters, &parsed).await?,
         ExportFormat::Csv
         | ExportFormat::CsvExcel
         | ExportFormat::CsvSheets
@@ -221,6 +216,8 @@ struct Built {
     mrn_reads: u32,
     /// The artifact lifetime (EXJ-4).
     ttl: i32,
+    /// `exports.row_count` when it is not the number of `items` (`audit_csv`: audit rows).
+    row_count: Option<usize>,
 }
 
 /// The snapshot's sessions after the consent policy and the capture-source rule, with
@@ -400,6 +397,7 @@ async fn build_sessions(
         excluded: selected.excluded,
         mrn_reads: selected.mrn_reads,
         ttl: ttl_of(row, &snap),
+        row_count: None,
     })
 }
 
@@ -468,7 +466,7 @@ async fn build_case(
             app_version,
         })
         .collect();
-    let input = case::package_input(
+    let mut input = case::package_input(
         case::CaseFacts {
             watermark: watermark(row, &snap),
             created_at: cursor::ts(row.created_at),
@@ -479,6 +477,7 @@ async fn build_case(
         sessions,
     )
     .map_err(|e| permanent(e.to_string()))?;
+    case::complete(ctx, row, participant, &mut input).await?;
     let artifact = case::render(&input).map_err(|e| permanent(e.to_string()))?;
     Ok(Built {
         artifact,
@@ -486,6 +485,51 @@ async fn build_case(
         excluded: selected.excluded,
         mrn_reads: selected.mrn_reads,
         ttl: ttl_of(row, &snap),
+        row_count: None,
+    })
+}
+
+/// `audit_csv` (HIP-3): the org's audit rows through `asd_export::tabular::audit`. No
+/// session is read, so no `export_items` rows are written; `row_count` is the audit rows.
+/// The org's artifact lifetime applies like for every export.
+async fn build_audit(
+    ctx: &JobContext,
+    row: &ExportRow,
+    stored: &asd_contract::export::ExportFilters,
+    parsed: &filters::ParsedFilters,
+) -> Result<Built, JobError> {
+    let rows = export_build::audit::load(&ctx.pool, row.org_id, stored, parsed)
+        .await
+        .map_err(|e| match e {
+            crate::error::AppError::Internal(m) if m.starts_with("export-too-large") => {
+                permanent(m)
+            }
+            other => JobError::from(other),
+        })?;
+    let bytes = asd_export::tabular::audit::encode(&rows).map_err(|e| permanent(e.to_string()))?;
+    let settings: Value = sqlx::query_scalar!(
+        "SELECT settings FROM organizations WHERE id = $1",
+        row.org_id
+    )
+    .fetch_one(&ctx.pool)
+    .await?;
+    let ttl = export_build::ttl_hours(
+        settings
+            .get(asd_contract::export::settings::EXPORTS)
+            .and_then(|e| e.get(asd_contract::export::settings::TTL_HOURS))
+            .and_then(Value::as_i64),
+    );
+    Ok(Built {
+        artifact: Artifact {
+            bytes,
+            file_name: asd_export::tabular::audit::file_name(&row.id.to_string()),
+            content_type: "text/csv; charset=utf-8",
+        },
+        items: Vec::new(),
+        excluded: BTreeMap::new(),
+        mrn_reads: 0,
+        ttl,
+        row_count: Some(rows.len()),
     })
 }
 
@@ -507,6 +551,7 @@ async fn finish(
         excluded,
         mrn_reads,
         ttl,
+        row_count,
     } = built;
     if artifact.bytes.len() > MAX_ARTIFACT_BYTES {
         return Err(permanent(format!(
@@ -524,7 +569,7 @@ async fn finish(
 
     let participants: Vec<Uuid> = items.iter().map(|(p, _)| *p).collect();
     let sessions: Vec<String> = items.into_iter().map(|(_, s)| s).collect();
-    let row_count = i32::try_from(sessions.len()).expect("capped at 200 000");
+    let row_count = i32::try_from(row_count.unwrap_or(sessions.len())).expect("capped at 200 000");
     let excluded_json = serde_json::to_value(&excluded).expect("string keys");
     let mut tx = ctx.pool.begin().await?;
     // Fence: this attempt must still own the job. The row lock holds off `reclaim_stale`

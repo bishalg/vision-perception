@@ -17,6 +17,7 @@ use crate::policy::Mode;
 use crate::watermark::Watermark;
 use crate::ExportError;
 
+pub mod audit;
 pub mod columns;
 pub mod csv;
 #[cfg(feature = "xlsx")]

@@ -619,36 +619,3 @@ async fn a_reclaimed_case_package_records_one_artifact() {
     assert_eq!(c.export_items(&id.to_string()).await.len(), 2);
     c.db.cleanup().await;
 }
-
-/// Migration 0025 admits `audit_csv` rows; until WP-B.23 adds its build step the job
-/// fails such an export with a reason instead of rendering anything.
-#[tokio::test]
-async fn audit_csv_rows_are_admitted_by_the_schema_and_refused_by_the_job() {
-    let Some(c) = Ctx::new().await else { return };
-    cohort(&c).await;
-    let (_, owner) = c.token(Role::Owner).await;
-    let (s, made) = c
-        .request_export(&owner, body("csv", "deidentified", "quality_improvement"))
-        .await;
-    assert_eq!(s, StatusCode::ACCEPTED, "{made}");
-    let id = uuid(&made["id"]);
-    sqlx::query("UPDATE exports SET format = 'audit_csv' WHERE id = $1")
-        .bind(id)
-        .execute(&c.db.pool)
-        .await
-        .unwrap();
-    c.run_jobs().await;
-    let (_, done) = c
-        .call(Method::GET, &format!("/v1/exports/{id}"), None, &owner)
-        .await;
-    assert_eq!(done["status"], "failed", "{done}");
-    assert!(
-        done["error"]
-            .as_str()
-            .unwrap()
-            .starts_with("unsupported-format: audit_csv"),
-        "{done}"
-    );
-    assert!(c.audit_rows("export.complete").await.is_empty());
-    c.db.cleanup().await;
-}

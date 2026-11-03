@@ -1,4 +1,5 @@
-//! owner: WP-B.9 (attachments and encounters: WP-B.19)
+//! owner: WP-B.9 (attachments and encounters: WP-B.19; case packages and share links:
+//! WP-I.13b)
 //!
 //! The `erasure` job: executes one `erasure_requests` row (ADR-B8 right to erasure; the
 //! request is filed by the device, WP-B.6, or an org admin, `routes::privacy`). A phased
@@ -14,7 +15,11 @@
 //! - every care event, every draft referral letter;
 //! - the artifact of every unexpired export that included the participant (EXJ-8); the
 //!   export becomes `expired`, its pending deliveries fail (`export-unavailable`), and
-//!   `export_items` stay (accounting of disclosures, EXJ-6);
+//!   `export_items` stay (accounting of disclosures, EXJ-6). A case package (SHR-11) is
+//!   found through its items and through `exports.case_participant_id`, so one whose
+//!   participant has no item row still expires; every unrevoked share link of an export
+//!   expired here is revoked (`revoked_by` NULL), audited `share_link.revoke` with
+//!   `reason: erasure`. Downloads already made cannot be recalled;
 //! - the MRN mapping (`patient_refs`), unless the participant is held;
 //! - (WP-B.19, REC-7) every attachment with its encrypted blob, and every encounter,
 //!   unless the participant is held (the hold rule as for notes).
@@ -420,10 +425,15 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
         )
         .fetch_one(pool)
         .await?;
+    // EXJ-8 / SHR-11: through the items, and case packages through their participant.
     let exports = sqlx::query!(
-        r#"SELECT DISTINCT e.id, e.blob_key FROM export_items i
-           JOIN exports e ON e.id = i.export_id
-           WHERE i.participant_id = $1 AND e.kind = 'bulk' AND e.status = 'succeeded'"#,
+        r#"SELECT e.id, e.blob_key FROM exports e
+           WHERE e.status = 'succeeded'
+             AND ((e.kind = 'bulk'
+                   AND EXISTS (SELECT 1 FROM export_items i
+                               WHERE i.export_id = e.id AND i.participant_id = $1))
+                  OR e.case_participant_id = $1)
+           ORDER BY e.id"#,
         participant
     )
     .fetch_all(pool)
@@ -560,6 +570,28 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
             .await?;
     }
     outcome.export_artifacts_deleted = expired.len() as u64;
+    // SHR-11: the share links of those exports stop answering (one 404, like any revoked
+    // link). Links revoked earlier keep their own revocation.
+    let expired_ids: Vec<Uuid> = expired.iter().map(|(id, _)| *id).collect();
+    let revoked = sqlx::query!(
+        "UPDATE share_links SET revoked_at = now()
+         WHERE export_id = ANY($1) AND revoked_at IS NULL
+         RETURNING id, org_id, export_id",
+        &expired_ids,
+    )
+    .fetch_all(&mut *tx)
+    .await?;
+    for link in &revoked {
+        AuditEvent::system("share_link.revoke", "share_link", link.id)
+            .org(link.org_id)
+            .after(json!({
+                "export_id": link.export_id,
+                "reason": "erasure",
+                "erasure_request_id": request_id,
+            }))
+            .record(&mut tx)
+            .await?;
+    }
 
     // Unsigned clinical drafts about the erased sessions, then the reviews themselves
     // (a review with only drafts has no signatures and no auto-export).

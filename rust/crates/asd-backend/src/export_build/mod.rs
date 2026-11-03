@@ -8,9 +8,11 @@
 //! Every format, de-identification and consent rule lives in `asd-export` (ADR-0008 D6/D7,
 //! CLAUDE.md): this module only loads inputs ([`record`]), maps enums and calls encoders.
 //! Session formats plug in as one match arm of [`render`]; `case_package` (WP-I.13) builds
-//! its own input in [`case`]. `pdf_summary` (WP-I.5) and `audit_csv` (WP-B.23) are refused
-//! up front with a clear reason until their encoders exist.
+//! its own input in [`case`]. `pdf_summary` (WP-I.5) is refused
+//! up front with a clear reason until its encoder exists. `audit_csv` (WP-B.23) builds in
+//! [`audit`] and the export job.
 
+pub mod audit;
 pub mod case;
 pub mod filters;
 pub mod record;
@@ -278,9 +280,6 @@ pub fn format_available(format: ExportFormat) -> Result<(), &'static str> {
         ExportFormat::PdfSummary => Err(
             "pdf_summary is not available yet: the PDF/A clinical summary encoder ships with WP-I.5",
         ),
-        ExportFormat::AuditCsv => {
-            Err("audit_csv is not available yet: the audit log export ships with WP-B.23")
-        }
         _ => Ok(()),
     }
 }
@@ -555,8 +554,12 @@ pub fn render(input: &RenderInput<'_>) -> Result<Artifact, RenderError> {
                 content_type: CT_HL7,
             })
         }
-        ExportFormat::PdfSummary | ExportFormat::AuditCsv => Err(RenderError::Unsupported(
+        ExportFormat::PdfSummary => Err(RenderError::Unsupported(
             format_available(input.format).expect_err("unavailable"),
+        )),
+        // The audit log has no session records; the job builds it through `audit`.
+        ExportFormat::AuditCsv => Err(RenderError::Unsupported(
+            "audit_csv renders through the export job's audit build, not the session dispatch",
         )),
         // One participant's case, built from its own input (`case::render`, SHR-1).
         ExportFormat::CasePackage => Err(RenderError::Unsupported(
@@ -679,10 +682,8 @@ mod tests {
             .unwrap_err()
             .contains("WP-I.5"));
         assert!(format_available(ExportFormat::CasePackage).is_ok());
-        assert!(format_available(ExportFormat::AuditCsv)
-            .unwrap_err()
-            .contains("WP-B.23"));
-        let unavailable = [ExportFormat::PdfSummary, ExportFormat::AuditCsv];
+        assert!(format_available(ExportFormat::AuditCsv).is_ok());
+        let unavailable = [ExportFormat::PdfSummary];
         for f in ExportFormat::ALL
             .iter()
             .filter(|f| !unavailable.contains(f))

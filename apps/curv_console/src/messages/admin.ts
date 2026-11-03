@@ -118,6 +118,19 @@ export const adminText = {
     after: "After",
     noChange: "-",
     showing: (shown: number) => `${shown} entries shown`,
+    export: {
+      label: "Export the audit log as CSV",
+      button: "Export CSV",
+      reason: "Reason for the export",
+      reasonHelp: "10 to 500 characters. Saved in the audit log. The file holds ids and hashes only, and uses the filters above.",
+      reasonDefault: "Periodic review of the audit trail",
+      errors: {
+        forbidden: "Only an owner or admin can export the audit log.",
+        "validation-failed": "The export request was not accepted. Check the reason and the filters.",
+        unavailable: "The export could not be started. Try again shortly.",
+      } as Record<string, string>,
+      errorFallback: "The export could not be started.",
+    },
     filters: {
       label: "Filter the audit log",
       actor: "Actor id",
