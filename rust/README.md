@@ -350,6 +350,20 @@ A participant with no session, no visit and no uploaded file is refused (`400 va
 "the participant has nothing to share"). A visit posted by a `clinician` without `clinician_id`
 records the caller as its clinician, so `follow-ups?assigned=me` lists it (REC-4).
 
+## Localisation seams (WP-L.0)
+
+Domain vocabulary that crosses surfaces (enum labels, flag headlines, problem slugs, registry
+labels) lives once in `asd_contract::i18n` (`i18n/domain.{en,ne,hi}.json`, keys like
+`encounter_kind.screening_visit`). The required keys are computed from Rust, so a new enum value or
+registry row without text fails `cargo test`. Run `cargo run -p asd-cli -- i18n fmt` after editing a
+catalogue file, then `i18n export --target console --out apps/curv_console/src/messages/domain.ts`
+(also `--target xcstrings|android`). `i18n check` runs the catalogue checks and the console drift
+check. `i18n lint` holds Swift and Kotlin UI literals to `scripts/i18n/literal-baseline.txt`, which
+may only shrink (exit 1 on a new literal or a stale entry). `i18n::negotiate` picks the locale in the
+order user > org > Accept-Language > en (shared fixture `i18n-negotiation-cases.json`). Migration
+0028 adds `users.locale` and `organizations.default_locale`; Nepali text is a machine draft until
+WP-L.3 lists reviewed keys in `REVIEWED_NE`.
+
 ## Researcher toolkit seams (phase 8, WP-X.0)
 
 `asd_contract::params` is the parameter registry: one row per leaf of the 1.2.0 `ScoringProfile`
