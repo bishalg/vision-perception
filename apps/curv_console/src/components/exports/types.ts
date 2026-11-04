@@ -5,6 +5,8 @@ export type ActionFailure = { ok: false; slug: string | null; status: number; pa
 
 export type ActionResult<T = object> = ({ ok: true } & T) | ActionFailure;
 
-export function failureText(f: ActionFailure): string {
-  return f.params ? `${exportsErrorMessage(f.slug, f.status)} ${f.params}` : exportsErrorMessage(f.slug, f.status);
+/** `errors` is `t.exports.errors` of the active locale (default: English). */
+export function failureText(f: ActionFailure, errors?: Record<string, string>): string {
+  const message = exportsErrorMessage(f.slug, f.status, errors);
+  return f.params ? `${message} ${f.params}` : message;
 }

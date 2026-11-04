@@ -206,6 +206,11 @@ The console ships `en` and `ne` (ADR-0013). Plumbing only so far; the wave packa
 - **Formatting:** `src/lib/format.ts` takes a locale (default `en`); digits are Latin and the calendar Gregorian in both locales.
 - **Mock mode:** a `+ne` tag on the email's local part (`clinician+ne@example.org`) gives that user the locale `ne`;
   `PATCH /users/me` stores a locale per mock user; an untagged user follows the mock org's `default_locale`, then `Accept-Language`.
+- **Language selectors (WP-L.1c, I18N-20):** `/[org]/settings/security` has the user's own "Language" (`PATCH /users/me`
+  `locale`; "System default" sends `null`), `/[org]/settings/clinical` has the organisation's "Default language"
+  (`default_locale`, owner/admin only). Both are server actions that `revalidatePath("/", "layout")`, so the page
+  re-renders in the chosen language. `/share/*` negotiates from `Accept-Language` only and shows the English
+  "This is not a diagnostic tool." in addition to the Nepali text.
 - **Lint:** `react/jsx-no-literals` and `curv/no-literal-ui-props` (`eslint-rules/`) run at `warn`; add a directory to
   `LITERAL_GATE_ERROR_DIRS` in `eslint.config.mjs` once it is clean. Exempt a line with
   `// eslint-disable-next-line react/jsx-no-literals -- i18n-ok: <reason>`.

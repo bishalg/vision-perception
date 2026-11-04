@@ -2,10 +2,8 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { privacyText } from "@/messages/privacy";
+import { useText } from "@/lib/i18n/provider";
 import { privacyFailureText, type PrivacyResult } from "./types";
-
-const t = privacyText.participantAction;
 
 type State = PrivacyResult<{ duplicate: boolean }> | null;
 
@@ -22,6 +20,8 @@ export function ErasureAction({
   request: () => Promise<PrivacyResult<{ duplicate: boolean }>>;
   requestsHref: string;
 }) {
+  const text = useText().privacy;
+  const t = text.participantAction;
   const [confirming, setConfirming] = useState(false);
   const [state, action, pending] = useActionState<State, FormData>(async () => {
     const result = await request();
@@ -50,7 +50,7 @@ export function ErasureAction({
           {state.duplicate ? t.duplicate : t.queued} <Link href={requestsHref}>{t.viewRequests}</Link>
         </p>
       ) : null}
-      {state && !state.ok ? <p role="alert" className="error">{t.failed} {privacyFailureText(state)}</p> : null}
+      {state && !state.ok ? <p role="alert" className="error">{t.failed} {privacyFailureText(state, text.errors)}</p> : null}
     </div>
   );
 }

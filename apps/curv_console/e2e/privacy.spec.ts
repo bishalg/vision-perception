@@ -1,4 +1,4 @@
-import { expect, test, LIVE, loginToOverview } from "./helpers";
+import { expect, test, LIVE, login, loginToOverview } from "./helpers";
 
 test.skip(LIVE, "mock-mode flows: they rely on the seeded mock erasure requests and participants");
 
@@ -62,4 +62,16 @@ test("exports: a dataset is de-identified research only and can include labels",
   await expect(page.getByText("Export queued.")).toBeVisible();
   await page.getByRole("link", { name: "View export" }).click();
   await expect(page.getByText("Research dataset (JSONL)").first()).toBeVisible();
+});
+
+test("erasure requests and retention render in Nepali for a user whose locale is ne", async ({ page }) => {
+  await login(page, "admin+ne@example.org");
+  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  const org = new URL(page.url()).pathname.split("/")[1];
+  await page.goto(`/${org}/erasure`);
+  await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");
+  await expect(page.getByRole("heading", { name: "मेटाउने अनुरोध", level: 1 })).toBeVisible();
+  await expect(page.getByTestId("held-explainer")).toContainText("क्लिनिकल अभिलेख रोकमा राखिएको");
+  await page.goto(`/${org}/settings/retention`);
+  await expect(page.getByRole("heading", { name: "डेटा राख्ने अवधि", level: 1 })).toBeVisible();
 });

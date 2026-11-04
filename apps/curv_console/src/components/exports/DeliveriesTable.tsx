@@ -1,10 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import type { Delivery, DeliveryStatus } from "@/lib/api/exports";
 import { formatDateTime } from "@/lib/format";
-import { deliveriesText } from "@/messages/exports";
-
-const t = deliveriesText;
-const c = t.cols;
+import { useText } from "@/lib/i18n/provider";
 
 const BADGE: Record<DeliveryStatus, string> = {
   pending: "badge-yellow",
@@ -13,16 +12,24 @@ const BADGE: Record<DeliveryStatus, string> = {
   failed: "badge-red",
 };
 
-/** Delivery log rows. `exportHref`/`destinationHref` link the other side of the relation when given. */
+/**
+ * Delivery log rows. `exportBase`/`destinationBase` (a path such as `/{org}/exports`) link the other side of the
+ * relation to `{base}/{id}` when given; they are strings, not functions, so a server page can pass them to this
+ * client component.
+ */
 export function DeliveriesTable({
   items,
-  exportHref,
-  destinationHref,
+  exportBase,
+  destinationBase,
 }: {
   items: Delivery[];
-  exportHref?: (exportId: string) => string;
-  destinationHref?: (destinationId: string) => string;
+  exportBase?: string;
+  destinationBase?: string;
 }) {
+  const t = useText().exports.deliveries;
+  const c = t.cols;
+  const exportHref = exportBase ? (id: string) => `${exportBase}/${encodeURIComponent(id)}` : undefined;
+  const destinationHref = destinationBase ? (id: string) => `${destinationBase}/${encodeURIComponent(id)}` : undefined;
   if (items.length === 0) return <p className="muted">{t.empty}</p>;
   return (
     <div className="table-wrap">

@@ -15,11 +15,8 @@ import {
 } from "@/lib/api/exports";
 import { ATTENTION_FLAGS, QUALITY_VERDICTS } from "@/lib/api/types";
 import { CLINICAL_STATES } from "@/lib/api/clinical";
-import { analysisExportMessages, exportsText } from "@/messages/exports";
-import { privacyText } from "@/messages/privacy";
+import { useText } from "@/lib/i18n/provider";
 import { failureText, type ActionResult } from "./types";
-
-const t = exportsText.create;
 
 type State = ActionResult<{ id: string }> | null;
 
@@ -45,19 +42,22 @@ export function ExportForm({
   /** From `?format=analysis_results&run=`: the results of one analysis run (RUN-7). The format, mode and run are fixed. */
   prefill?: { runId: string };
 }) {
+  const all = useText();
+  const text = all.exports;
+  const t = text.exports.create;
   const [state, action, pending] = useActionState<State, FormData>((_prev, fd) => create(fd), null);
   const [format, setFormat] = useState<ExportFormat>("csv");
   const [layout, setLayout] = useState<(typeof ANALYSIS_LAYOUTS)[number]>("aggregates");
   if (!canCreate) return <p className="muted">{t.readOnly}</p>;
   if (prefill) {
-    const a = analysisExportMessages.en;
+    const a = text.analysis;
     return (
       <form action={action} className="stack panel" aria-label={t.title}>
         <input type="hidden" name="format" value="analysis_results" />
         <input type="hidden" name="mode" value="deidentified" />
         <input type="hidden" name="analysis_run_id" value={prefill.runId} />
         <p>
-          {t.format}: <strong>{exportsText.formats.analysis_results}</strong>
+          {t.format}: <strong>{text.exports.formats.analysis_results}</strong>
         </p>
         <p className="muted">{a.fixedFormat}</p>
         <p>
@@ -67,7 +67,7 @@ export function ExportForm({
           {t.purpose}
           <select name="purpose" defaultValue="research">
             {EXPORT_PURPOSES.filter((p) => p === "research" || p === "quality_improvement").map((p) => (
-              <option key={p} value={p}>{exportsText.purposes[p]}</option>
+              <option key={p} value={p}>{text.exports.purposes[p]}</option>
             ))}
           </select>
         </label>
@@ -101,7 +101,7 @@ export function ExportForm({
             <Link href={`/${encodeURIComponent(orgId)}/exports/${encodeURIComponent(state.id)}`}>{t.view}</Link>
           </p>
         ) : null}
-        {state && !state.ok ? <p role="alert" className="error">{t.failed} {failureText(state)}</p> : null}
+        {state && !state.ok ? <p role="alert" className="error">{t.failed} {failureText(state, text.exports.errors)}</p> : null}
       </form>
     );
   }
@@ -114,7 +114,7 @@ export function ExportForm({
         {t.format}
         <select name="format" value={format} onChange={(e) => setFormat(e.target.value as ExportFormat)}>
           {EXPORT_FORMATS.filter((f) => f !== "pdf_summary" && !isDedicatedFormat(f)).map((f) => (
-            <option key={f} value={f}>{exportsText.formats[f]}</option>
+            <option key={f} value={f}>{text.exports.formats[f]}</option>
           ))}
         </select>
       </label>
@@ -122,7 +122,7 @@ export function ExportForm({
         {t.purpose}
         <select name="purpose" key={dataset ? "ds" : "std"} defaultValue="research" disabled={dataset}>
           {EXPORT_PURPOSES.filter((p) => !dataset || p === "research").map((p) => (
-            <option key={p} value={p}>{exportsText.purposes[p]}</option>
+            <option key={p} value={p}>{text.exports.purposes[p]}</option>
           ))}
         </select>
       </label>
@@ -130,19 +130,19 @@ export function ExportForm({
         {t.mode}
         <select name="mode" key={dataset ? "ds" : "std"} defaultValue="deidentified" disabled={dataset}>
           {modes.map((m) => (
-            <option key={m} value={m}>{exportsText.modes[m]}</option>
+            <option key={m} value={m}>{text.exports.modes[m]}</option>
           ))}
         </select>
       </label>
       <p className="muted">{t.purposeHint}</p>
       {dataset ? (
         <>
-          <p className="muted">{privacyText.dataset.deidentifiedOnly}</p>
+          <p className="muted">{all.privacy.dataset.deidentifiedOnly}</p>
           <label className="check">
             <input type="checkbox" name="include_labels" defaultChecked />
-            {privacyText.dataset.labels}
+            {all.privacy.dataset.labels}
           </label>
-          <p className="muted">{privacyText.dataset.labelsHint}</p>
+          <p className="muted">{all.privacy.dataset.labelsHint}</p>
         </>
       ) : null}
       <label>
@@ -207,7 +207,7 @@ export function ExportForm({
           <textarea name="participant_ids" rows={2} autoComplete="off" />
         </label>
       </fieldset>
-      {destinations.length > 0 && dataset ? <p className="muted">{privacyText.dataset.destinationsOff}</p> : null}
+      {destinations.length > 0 && dataset ? <p className="muted">{all.privacy.dataset.destinationsOff}</p> : null}
       {destinations.length > 0 && !dataset ? (
         <fieldset>
           <legend>{t.destinations}</legend>
@@ -230,7 +230,7 @@ export function ExportForm({
         </p>
       ) : null}
       {state && !state.ok ? (
-        <p role="alert" className="error">{t.failed} {failureText(state)}</p>
+        <p role="alert" className="error">{t.failed} {failureText(state, text.exports.errors)}</p>
       ) : null}
     </form>
   );

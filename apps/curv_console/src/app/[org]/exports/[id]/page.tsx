@@ -1,21 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DeliveriesTable } from "@/components/exports/DeliveriesTable";
-import { DownloadForm, ExportStatusBadge, excludedSummary } from "@/components/exports/ExportsTable";
+import { DownloadForm, ExcludedSummary, ExportStatusBadge } from "@/components/exports/ExportsTable";
 import { ShareLinkPanel } from "@/components/exports/ShareLinkPanel";
 import { authedApi, currentRole } from "@/lib/auth/server";
 import { formatDateTime } from "@/lib/format";
 import { parseCursor, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound, requestTime } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
-import { deliveriesText, exportsText } from "@/messages/exports";
+import { getText } from "@/lib/i18n/server";
 import { createShareLinkAction, revokeShareLinkAction } from "../actions";
 
-const t = exportsText;
-const d = t.detail;
-
 // Fixed title: nothing from the export (reason, filters) reaches the document title.
-export const metadata: Metadata = { title: t.title };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getText()).exports.exports.title };
+}
 
 export default async function ExportDetailPage({
   params,
@@ -25,6 +24,9 @@ export default async function ExportDetailPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { org, id } = await params;
+  const text = (await getText()).exports;
+  const t = text.exports;
+  const d = t.detail;
   const role = await currentRole();
   if (!can(role, "export.read")) {
     return (
@@ -74,7 +76,7 @@ export default async function ExportDetailPage({
           <dt className="kpi-label">{t.cols.sessions}</dt>
           <dd>{e.row_count ?? "-"}</dd>
           <dt className="kpi-label">{t.cols.excluded}</dt>
-          <dd>{excludedSummary(e.excluded)}</dd>
+          <dd><ExcludedSummary excluded={e.excluded} /></dd>
           <dt className="kpi-label">{t.cols.expires}</dt>
           <dd>{e.expires_at ? formatDateTime(e.expires_at) : "-"}</dd>
           {e.format === "case_package" ? (
@@ -130,18 +132,14 @@ export default async function ExportDetailPage({
       ) : (
         <DeliveriesTable
           items={deliveries.items}
-          destinationHref={
-            can(role, "integration.read")
-              ? (destinationId) => `/${encodeURIComponent(org)}/settings/integrations/${encodeURIComponent(destinationId)}`
-              : undefined
-          }
+          destinationBase={can(role, "integration.read") ? `/${encodeURIComponent(org)}/settings/integrations` : undefined}
         />
       )}
-      <p className="muted">{deliveriesText.showing(deliveries.items.length, deliveries.total)}</p>
-      <nav className="pagination" aria-label="Pagination">
-        {cursor ? <Link href={base}>{deliveriesText.first}</Link> : null}
+      <p className="muted">{text.deliveries.showing(deliveries.items.length, deliveries.total)}</p>
+      <nav className="pagination" aria-label={t.pagination}>
+        {cursor ? <Link href={base}>{text.deliveries.first}</Link> : null}
         {deliveries.next_cursor ? (
-          <Link rel="next" href={`${base}${toSearch({ cursor: deliveries.next_cursor })}`}>{deliveriesText.next}</Link>
+          <Link rel="next" href={`${base}${toSearch({ cursor: deliveries.next_cursor })}`}>{text.deliveries.next}</Link>
         ) : null}
       </nav>
     </>

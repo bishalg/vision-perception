@@ -6,12 +6,12 @@ import { authedApi, currentRole } from "@/lib/auth/server";
 import { parseCursor, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
-import { exportsText } from "@/messages/exports";
+import { getText } from "@/lib/i18n/server";
 import { createExportAction } from "./actions";
 
-const t = exportsText;
-
-export const metadata: Metadata = { title: t.title };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getText()).exports.exports.title };
+}
 
 export default async function ExportsPage({
   params,
@@ -21,6 +21,7 @@ export default async function ExportsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { org } = await params;
+  const t = (await getText()).exports.exports;
   const role = await currentRole();
   if (!can(role, "export.read")) {
     return (
@@ -57,7 +58,7 @@ export default async function ExportsPage({
       />
       <ExportsTable orgId={org} items={page.items} canDownload={can(role, "export.download")} />
       <p className="muted">{t.showing(page.items.length, page.total)}</p>
-      <nav className="pagination" aria-label="Pagination">
+      <nav className="pagination" aria-label={t.pagination}>
         {cursor ? <Link href={base}>{t.first}</Link> : null}
         {page.next_cursor ? (
           <Link rel="next" href={`${base}${toSearch({ cursor: page.next_cursor })}`}>{t.next}</Link>

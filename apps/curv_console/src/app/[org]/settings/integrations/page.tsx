@@ -6,12 +6,12 @@ import { authedApi, currentRole } from "@/lib/auth/server";
 import { parseCursor, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
-import { integrationsText } from "@/messages/exports";
+import { getText } from "@/lib/i18n/server";
 import { createIntegrationAction } from "./actions";
 
-const t = integrationsText;
-
-export const metadata: Metadata = { title: t.title };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getText()).exports.integrations.title };
+}
 
 export default async function IntegrationsPage({
   params,
@@ -21,6 +21,8 @@ export default async function IntegrationsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { org } = await params;
+  const text = (await getText()).exports;
+  const t = text.integrations;
   const role = await currentRole();
   if (!can(role, "integration.read")) {
     return (
@@ -40,7 +42,7 @@ export default async function IntegrationsPage({
       <p className="muted">{t.intro}</p>
       <IntegrationsTable orgId={org} items={page.items} />
       <p className="muted">{t.showing(page.items.length, page.total)}</p>
-      <nav className="pagination" aria-label="Pagination">
+      <nav className="pagination" aria-label={text.exports.pagination}>
         {cursor ? <Link href={base}>{t.first}</Link> : null}
         {page.next_cursor ? (
           <Link rel="next" href={`${base}${toSearch({ cursor: page.next_cursor })}`}>{t.next}</Link>

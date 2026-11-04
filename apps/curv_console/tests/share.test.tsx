@@ -399,7 +399,7 @@ describe("ShareOpenForm (public page)", () => {
     let resolve!: (r: typeof opened) => void;
     const open = vi.fn().mockReturnValue(new Promise((r) => (resolve = r)));
     const user = userEvent.setup();
-    const { container } = render(<ShareOpenForm linkId="l 1" open={open} initialError={null} />);
+    const { container } = render(<ShareOpenForm linkId="l 1" locale="en" open={open} initialError={null} />);
     const input = screen.getByLabelText("Passcode") as HTMLInputElement;
     expect(input.type).toBe("text");
     await user.type(input, "ABCDEFGHJKLM");
@@ -419,12 +419,12 @@ describe("ShareOpenForm (public page)", () => {
   it("shows the backend's refusal and the error key the download route sent back", async () => {
     const open = vi.fn().mockResolvedValue({ ok: false, error: "share-passcode-invalid", retryAfter: null });
     const user = userEvent.setup();
-    const { unmount } = render(<ShareOpenForm linkId="l" open={open} initialError={null} />);
+    const { unmount } = render(<ShareOpenForm linkId="l" locale="en" open={open} initialError={null} />);
     await user.type(screen.getByLabelText("Passcode"), "X");
     await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(sharePageText.errors["share-passcode-invalid"]!);
     unmount();
-    render(<ShareOpenForm linkId="l" open={open} initialError="share-link-exhausted" />);
+    render(<ShareOpenForm linkId="l" locale="en" open={open} initialError="share-link-exhausted" />);
     expect(screen.getByRole("alert")).toHaveTextContent(sharePageText.errors["share-link-exhausted"]!);
   });
 });

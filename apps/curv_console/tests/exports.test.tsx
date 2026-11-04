@@ -254,7 +254,7 @@ describe("components", () => {
           status: "failed", attempts: 5, created_at: "2026-10-31T09:00:00.000Z", updated_at: "2026-10-31T09:10:00.000Z",
           last_error_class: "connect-failed",
         }]}
-        exportHref={(id) => `/o/exports/${id}`}
+        exportBase="/o/exports"
       />,
     );
     const row = screen.getAllByRole("row")[1]!;

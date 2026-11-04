@@ -14,10 +14,8 @@ import {
   type Integration,
   type IntegrationKind,
 } from "@/lib/api/exports";
-import { deliveriesText, exportsText, integrationsText } from "@/messages/exports";
+import { useText } from "@/lib/i18n/provider";
 import { failureText, type ActionResult } from "./types";
-
-const t = integrationsText.form;
 
 /** Kinds that can be created today (the backend refuses the others until their channels exist). */
 const CREATABLE: IntegrationKind[] = ["webhook", "sftp"];
@@ -65,6 +63,8 @@ export function IntegrationForm({
   orgId: string;
   existing?: Integration;
 }) {
+  const text = useText().exports;
+  const t = text.integrations.form;
   const [state, action, pending] = useActionState<State, FormData>((_prev, fd) => save(fd), null);
   const [kind, setKind] = useState<IntegrationKind>(existing?.kind ?? "webhook");
   const cfg = existing?.config ?? {};
@@ -82,7 +82,7 @@ export function IntegrationForm({
           {t.kind}
           <select name="kind" value={kind} onChange={(e) => setKind(e.target.value as IntegrationKind)}>
             {CREATABLE.map((k) => (
-              <option key={k} value={k}>{integrationsText.kinds[k]}</option>
+              <option key={k} value={k}>{text.integrations.kinds[k]}</option>
             ))}
           </select>
         </label>
@@ -91,26 +91,26 @@ export function IntegrationForm({
         name="environment"
         label={t.environment}
         values={INTEGRATION_ENVIRONMENTS}
-        names={integrationsText.environments}
+        names={text.integrations.environments}
         current={existing?.environment ?? "test"}
       />
       <p className="muted">{t.environmentHint}</p>
       {existing ? (
-        <Select name="status" label={t.status} values={INTEGRATION_STATUSES} names={integrationsText.statuses} current={existing.status} />
+        <Select name="status" label={t.status} values={INTEGRATION_STATUSES} names={text.integrations.statuses} current={existing.status} />
       ) : null}
 
       {kind === "webhook" ? (
         <>
           <label>
             {t.url}
-            <input name="url" type="url" placeholder="https://" defaultValue={cfg.url ?? ""} autoComplete="off" />
+            <input name="url" type="url" placeholder={t.urlPlaceholder} defaultValue={cfg.url ?? ""} autoComplete="off" />
           </label>
           <fieldset>
             <legend>{t.events}</legend>
             {DELIVERY_EVENTS.map((e) => (
               <label key={e} className="check">
                 <input type="checkbox" name="events" value={e} defaultChecked={accepted.has(e)} />
-                {deliveriesText.events[e]}
+                {text.deliveries.events[e]}
               </label>
             ))}
           </fieldset>
@@ -123,7 +123,7 @@ export function IntegrationForm({
           </label>
           <label>
             {t.port}
-            <input name="port" type="number" min={1} max={65535} placeholder="22" defaultValue={cfg.port ?? ""} />
+            <input name="port" type="number" min={1} max={65535} placeholder={t.portPlaceholder} defaultValue={cfg.port ?? ""} />
           </label>
           <label>
             {t.username}
@@ -131,7 +131,7 @@ export function IntegrationForm({
           </label>
           <label>
             {t.remoteDir}
-            <input name="remote_dir" maxLength={255} placeholder="/inbound" defaultValue={cfg.remote_dir ?? ""} autoComplete="off" />
+            <input name="remote_dir" maxLength={255} placeholder={t.remoteDirPlaceholder} defaultValue={cfg.remote_dir ?? ""} autoComplete="off" />
           </label>
           <label>
             {t.hostKey}
@@ -143,9 +143,9 @@ export function IntegrationForm({
           </label>
         </>
       )}
-      <Select name="trigger" label={t.trigger} values={DELIVERY_TRIGGERS} names={integrationsText.triggers} current={cfg.trigger} unset={t.unset} />
-      <Select name="format" label={t.format} values={EXPORT_FORMATS.filter((f) => !isDatasetFormat(f) && !isDedicatedFormat(f))} names={exportsText.formats} current={cfg.format} unset={t.unset} />
-      <Select name="mode" label={t.mode} values={EXPORT_MODES} names={exportsText.modes} current={cfg.mode} unset={t.unset} />
+      <Select name="trigger" label={t.trigger} values={DELIVERY_TRIGGERS} names={text.integrations.triggers} current={cfg.trigger} unset={t.unset} />
+      <Select name="format" label={t.format} values={EXPORT_FORMATS.filter((f) => !isDatasetFormat(f) && !isDedicatedFormat(f))} names={text.exports.formats} current={cfg.format} unset={t.unset} />
+      <Select name="mode" label={t.mode} values={EXPORT_MODES} names={text.exports.modes} current={cfg.mode} unset={t.unset} />
       <div>
         <button type="submit" disabled={pending}>{existing ? t.save : t.create}</button>
       </div>
@@ -157,7 +157,7 @@ export function IntegrationForm({
           ) : null}
         </p>
       ) : null}
-      {state && !state.ok ? <p role="alert" className="error">{t.failed} {failureText(state)}</p> : null}
+      {state && !state.ok ? <p role="alert" className="error">{t.failed} {failureText(state, text.exports.errors)}</p> : null}
     </form>
   );
 }

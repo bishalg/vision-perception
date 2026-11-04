@@ -8,7 +8,8 @@
 import { revalidatePath } from "next/cache";
 import { ApiError } from "@/lib/api";
 import { authedApi } from "@/lib/auth/server";
-import type { TotpFailure, TotpResult } from "@/components/security/types";
+import type { LanguageResult, TotpFailure, TotpResult } from "@/components/security/types";
+import { isLocale } from "@/lib/i18n/types";
 
 function failure(err: unknown): TotpFailure {
   if (err instanceof ApiError) return { ok: false, slug: err.slug, status: err.status };
@@ -47,6 +48,23 @@ export async function disableTotpAction(formData: FormData): Promise<TotpResult<
     const res = await (await authedApi()).disableTotp(field(formData, "password"), totpCode || undefined);
     revalidatePath("/", "layout");
     return { ok: true, totp_enrolled: res.totp_enrolled };
+  } catch (err) {
+    return failure(err);
+  }
+}
+
+/**
+ * I18N-20: `PATCH /v1/users/me` `{ locale }`. An empty choice is "follow the organisation" (`null`); anything that is
+ * not a console locale is refused here (the backend would answer 400 `validation-failed`). The layout is revalidated so
+ * the next render, including `<html lang>`, uses the new language.
+ */
+export async function saveLanguageAction(formData: FormData): Promise<LanguageResult> {
+  const raw = field(formData, "locale");
+  if (raw !== "" && !isLocale(raw)) return { ok: false, slug: "validation-failed", status: 400 };
+  try {
+    await (await authedApi()).updateMyProfile({ locale: raw === "" ? null : (raw as "en" | "ne") });
+    revalidatePath("/", "layout");
+    return { ok: true };
   } catch (err) {
     return failure(err);
   }

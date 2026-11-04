@@ -1,4 +1,4 @@
-import { expect, test, LIVE, loginToOverview } from "./helpers";
+import { expect, test, LIVE, login, loginToOverview } from "./helpers";
 
 test.skip(LIVE, "mock-mode flows: they rely on the seeded mock exports and destinations");
 
@@ -45,4 +45,16 @@ test("integrations: delete a destination after an in-page confirmation", async (
   await page.getByRole("button", { name: "Yes, delete" }).click();
   await expect(page).toHaveURL(new RegExp(`/${org}/settings/integrations$`));
   await expect(page.getByRole("link", { name: "E2E delete me" })).toHaveCount(0);
+});
+
+test("exports and integrations render in Nepali for a user whose locale is ne", async ({ page }) => {
+  await login(page, "admin+ne@example.org");
+  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  const org = new URL(page.url()).pathname.split("/")[1];
+  await page.goto(`/${org}/exports`);
+  await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");
+  await expect(page.getByRole("heading", { name: "निर्यात", level: 1 })).toBeVisible();
+  await expect(page.getByRole("button", { name: "निर्यात अनुरोध गर्नुहोस्" })).toBeVisible();
+  await page.goto(`/${org}/settings/integrations`);
+  await expect(page.getByRole("heading", { name: "एकीकरण", level: 1 })).toBeVisible();
 });

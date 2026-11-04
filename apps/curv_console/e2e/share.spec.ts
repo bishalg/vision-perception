@@ -155,3 +155,16 @@ test("a signed-in user opening a share link stays on it", async ({ page, context
   const after = (await context.cookies()).map((c) => `${c.name}=${c.value}`).sort();
   expect(after).toEqual(before);
 });
+
+test("the public share page follows Accept-Language and keeps the English mandatory sentence", async ({ browser }) => {
+  const ne = await browser.newContext({ locale: "ne-NP", extraHTTPHeaders: { "Accept-Language": "ne-NP,en;q=0.5" } });
+  const page = await ne.newPage();
+  await page.goto(`/share/${LINKS.active}`);
+  await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");
+  await expect(page.getByRole("heading", { name: "साझा गरिएको फाइल डाउनलोड गर्नुहोस्", level: 1 })).toBeVisible();
+  await expect(page.getByText("This is not a diagnostic tool.")).toBeVisible();
+  await page.getByLabel("पासकोड").fill("WRONGPASS234");
+  await page.getByRole("button", { name: "जारी राख्नुहोस्" }).click();
+  await expect(page.locator(".error[role='alert']")).toContainText("पासकोड मिलेन");
+  await ne.close();
+});

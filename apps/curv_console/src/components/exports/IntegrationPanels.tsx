@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useActionState, useState } from "react";
 import type { Integration, IntegrationTestResult, SshPublicKey } from "@/lib/api/exports";
 import { formatDateTime } from "@/lib/format";
-import { integrationsText } from "@/messages/exports";
+import { useText } from "@/lib/i18n/provider";
 import { failureText, type ActionResult } from "./types";
 
 /**
@@ -20,7 +20,8 @@ export function SecretPanel({
   put: (formData: FormData) => Promise<ActionResult<{ generated?: string }>>;
   canManage: boolean;
 }) {
-  const t = integrationsText.secret;
+  const text = useText().exports;
+  const t = text.integrations.secret;
   const [state, action, pending] = useActionState<ActionResult<{ generated?: string }> | null, FormData>(
     (_prev, fd) => put(fd),
     null,
@@ -49,7 +50,7 @@ export function SecretPanel({
           <p className="muted">{t.generatedOnce}</p>
         </div>
       ) : null}
-      {state && !state.ok ? <p role="alert" className="error">{t.failed} {failureText(state)}</p> : null}
+      {state && !state.ok ? <p role="alert" className="error">{t.failed} {failureText(state, text.exports.errors)}</p> : null}
     </section>
   );
 }
@@ -64,7 +65,8 @@ export function SshKeyPanel({
   generate: () => Promise<ActionResult<{ key: SshPublicKey }>>;
   canManage: boolean;
 }) {
-  const t = integrationsText.ssh;
+  const text = useText().exports;
+  const t = text.integrations.ssh;
   const [state, action, pending] = useActionState<ActionResult<{ key: SshPublicKey }> | null, FormData>(
     () => generate(),
     null,
@@ -102,7 +104,7 @@ export function SshKeyPanel({
         </form>
       ) : null}
       {state?.ok ? <p role="status">{t.generated}</p> : null}
-      {state && !state.ok ? <p role="alert" className="error">{t.failed} {failureText(state)}</p> : null}
+      {state && !state.ok ? <p role="alert" className="error">{t.failed} {failureText(state, text.exports.errors)}</p> : null}
     </section>
   );
 }
@@ -115,7 +117,8 @@ export function TestPanel({
   test: () => Promise<ActionResult<{ result: IntegrationTestResult }>>;
   canManage: boolean;
 }) {
-  const t = integrationsText.test;
+  const text = useText().exports;
+  const t = text.integrations.test;
   const [state, action, pending] = useActionState<ActionResult<{ result: IntegrationTestResult }> | null, FormData>(
     () => test(),
     null,
@@ -143,7 +146,7 @@ export function TestPanel({
           </p>
         </div>
       ) : null}
-      {state && !state.ok ? <p role="alert" className="error">{t.unavailable} {failureText(state)}</p> : null}
+      {state && !state.ok ? <p role="alert" className="error">{t.unavailable} {failureText(state, text.exports.errors)}</p> : null}
     </section>
   );
 }
@@ -161,7 +164,8 @@ export function DeleteIntegrationPanel({
   remove: () => Promise<ActionResult>;
   listHref: string;
 }) {
-  const t = integrationsText.delete;
+  const text = useText().exports;
+  const t = text.integrations.delete;
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [state, action, pending] = useActionState<ActionResult | null, FormData>(async () => {
@@ -189,7 +193,7 @@ export function DeleteIntegrationPanel({
       {state?.ok ? <p role="status">{t.deleted}</p> : null}
       {state && !state.ok ? (
         <p role="alert" className="error">
-          {state.status === 409 ? t.inFlight : `${t.failed} ${failureText(state)}`}
+          {state.status === 409 ? t.inFlight : `${t.failed} ${failureText(state, text.exports.errors)}`}
         </p>
       ) : null}
     </section>
