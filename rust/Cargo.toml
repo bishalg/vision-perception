@@ -36,6 +36,16 @@ asd-export = { path = "crates/asd-export" }
 [workspace.lints.rust]
 unsafe_code = "forbid"
 
+[profile.dev]
+opt-level = 0
+debug = 1
+split-debuginfo = "unpacked"
+
+[profile.test]
+debug = 1
+split-debuginfo = "unpacked"
+
 [profile.release]
 lto = "thin"
 codegen-units = 1
+strip = "debuginfo"
