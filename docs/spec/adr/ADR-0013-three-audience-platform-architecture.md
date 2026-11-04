@@ -356,3 +356,29 @@ keeps its place.
    until then Android stays bindings + spike].
 10. **Literal-string gate strictness** [warn with a baseline now; fail per directory as
     each package clears it; fail everywhere by the end of WP-L.2].
+11. **Where the locale is stored** (added 2026-11-04 with the WP-L.0/L.1 design,
+    `docs/spec/modules/asd-localisation/`) [typed columns in migration 0028:
+    `users.locale` (nullable override) and `organizations.default_locale` (default `en`),
+    instead of `organizations.settings.locale`; negotiation user > org > `Accept-Language` > `en`].
+12. **Digits in the Nepali UI** [Latin digits (`ne-NP-u-nu-latn`) for measurements, dates,
+    ids and counts on every surface; no Devanagari numerals in phase 8].
+13. **Calendar** [Gregorian only; a Bikram Sambat display can come later as an org setting].
+14. **Server-rendered text in L.1** [deferred to WP-L.4: the console shows the catalogue text
+    for each problem slug and the English server `detail` as a secondary line; PDFs, letters
+    and export READMEs stay English until WP-L.4 and WP-I.5].
+15. **Hindi in the shared catalogue** [optional and partial (`domain.hi.json`), exported only
+    to iOS/Android, falling back to English; the console ships `en` and `ne` only].
+16. **Inconsistent iOS cut-offs** (WP-M.1 inventory) [one band per metric, the risk view's
+    values: social preference ≥ 60 % / ≥ 50 %, eye dwell ≥ 25 % / ≥ 18 %, first-eye latency
+    < 550 ms / < 750 ms; the detail view's 650 ms and the dashboard's "> 50 %" adopt them].
+17. **Publishing a 1.3.0 profile** (with `display`/`sessionQuality`) [hold until an app
+    release carrying WP-X.0c's tolerant bundle acceptance is on the pilot devices; older apps
+    refuse unknown profile sections and keep their previous profile].
+18. **Research-build Swift heuristics** (`EngagementClassificationEngine` weights, logit and
+    cut-offs under `ASD_RESEARCH_CLASSIFIER`) [stay Debug-only and exempt from the WP-M.1
+    gate; delete them the next time they are touched rather than port them; never in Release].
+19. **Age entry on iOS** [stays band-based; the band's `representativeMonths` (14, 20, 28,
+    40, 54 by default) is sent as `ageMonths`, so sessions do not change; exact birth month
+    comes with the identity decision (ADR-0011 Q3, WP-B.21)].
+20. **Devanagari web font in the console ahead of Q7** [ship Noto Sans Devanagari (SIL
+    OFL-1.1) self-hosted in the console with WP-L.1; Q7 still governs fonts embedded in PDFs].
