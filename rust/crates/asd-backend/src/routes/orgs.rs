@@ -21,6 +21,7 @@ use asd_contract::clinical::{
     settings as keys, CosignPolicy, Paper, PatientRefMode, WorklistScope, MAX_LETTERHEAD_LINES,
     MAX_LETTERHEAD_LINE_CHARS,
 };
+use asd_contract::i18n::Locale;
 use asd_contract::research::{settings as research_keys, MAX_SMALL_CELL_K, MIN_SMALL_CELL_K};
 use axum::extract::{Query, State};
 use axum::routing::get;
@@ -239,6 +240,14 @@ pub fn settings_errors(settings: &std::collections::BTreeMap<String, Value>) -> 
     let mut errors = Vec::new();
     for (key, value) in settings {
         let name = format!("settings.{key}");
+        if key == "locale" {
+            bad(
+                &mut errors,
+                name,
+                "use default_locale (en or ne) instead of settings.locale",
+            );
+            continue;
+        }
         if forbidden_setting_key(key) {
             bad(
                 &mut errors,
@@ -321,7 +330,8 @@ async fn get_org(
 ) -> AppResult<Json<Org>> {
     let org = auth.org();
     let row = sqlx::query!(
-        "SELECT id, name, kind, retention_months, settings, research_frames_retention_months
+        "SELECT id, name, kind, retention_months, settings, research_frames_retention_months,
+                default_locale
          FROM organizations WHERE id = $1",
         org
     )
@@ -337,7 +347,7 @@ async fn get_org(
         research_frames_retention_months: row
             .research_frames_retention_months
             .and_then(|m| u32::try_from(m).ok()),
-        default_locale: None, // WP-L.1e reads `organizations.default_locale`
+        default_locale: Locale::parse(&row.default_locale),
     }))
 }
 
@@ -466,7 +476,8 @@ async fn patch_org(
     let name = validate_patch(&patch)?;
     let mut tx = state.db.begin().await?;
     let current = sqlx::query!(
-        "SELECT name, kind, retention_months, settings, research_frames_retention_months
+        "SELECT name, kind, retention_months, settings, research_frames_retention_months,
+                default_locale
          FROM organizations WHERE id = $1 FOR UPDATE",
         org
     )
@@ -508,17 +519,26 @@ async fn patch_org(
             json!(current.research_frames_retention_months);
         after["research_frames_retention_months"] = json!(new_research_retention);
     }
+    let new_locale = patch
+        .default_locale
+        .or_else(|| Locale::parse(&current.default_locale))
+        .unwrap_or(Locale::En);
+    if new_locale.as_str() != current.default_locale {
+        before["default_locale"] = json!(current.default_locale);
+        after["default_locale"] = json!(new_locale);
+    }
     if after.as_object().is_some_and(|m| !m.is_empty()) {
         sqlx::query!(
             "UPDATE organizations
              SET name = $2, retention_months = $3, settings = $4,
-                 research_frames_retention_months = $5
+                 research_frames_retention_months = $5, default_locale = $6
              WHERE id = $1",
             org,
             new_name,
             new_retention,
             new_settings,
             new_research_retention,
+            new_locale.as_str(),
         )
         .execute(&mut *tx)
         .await?;
@@ -539,7 +559,7 @@ async fn patch_org(
         settings: Some(public_settings(&new_settings)),
         research_frames_retention_months: new_research_retention
             .and_then(|m| u32::try_from(m).ok()),
-        default_locale: None, // WP-L.1e
+        default_locale: Some(new_locale),
     }))
 }
 
