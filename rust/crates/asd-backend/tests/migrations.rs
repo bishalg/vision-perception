@@ -324,6 +324,16 @@ fn latest() -> i64 {
         .expect("migrations are embedded")
 }
 
+/// Every embedded migration version from `first` on. Numbers are not contiguous (0027 is
+/// reserved for WP-B.21 while 0028 exists), so a range `first..=latest()` is wrong.
+fn versions_from(first: i64) -> Vec<i64> {
+    db::MIGRATOR
+        .iter()
+        .map(|m| m.version)
+        .filter(|v| *v >= first)
+        .collect()
+}
+
 /// Highest successfully applied migration version.
 async fn applied_max(pool: &PgPool) -> i64 {
     sqlx::query_scalar("SELECT max(version) FROM _sqlx_migrations WHERE success")
@@ -466,7 +476,7 @@ async fn database_at_0019_with_a_plaintext_seed_is_sealed_before_0022() {
     let applied = db::migrate_with_backfill(pool, &config_with_kek(true))
         .await
         .expect("migrate with the KEK");
-    assert_eq!(applied, (20..=latest()).collect::<Vec<i64>>());
+    assert_eq!(applied, versions_from(20));
     assert_plaintext_columns_dropped(pool).await;
     let encrypted: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM audit_log WHERE action = 'user.totp_secret_encrypt'",
@@ -652,7 +662,7 @@ async fn guard_0022_refuses_plaintext_review_notes_and_migrate_is_rerunnable() {
     let applied = db::migrate_with_backfill(pool, &config_with_kek(true))
         .await
         .expect("migrate again");
-    assert_eq!(applied, (22..=latest()).collect::<Vec<i64>>());
+    assert_eq!(applied, versions_from(22));
     assert_plaintext_columns_dropped(pool).await;
     let (ct, key_id): (Vec<u8>, uuid::Uuid) =
         sqlx::query_as("SELECT note_ct, note_key_id FROM review_items WHERE id = $1")

@@ -209,6 +209,13 @@ pub fn assess_flag(
     Ok(flag::assess(&score, &thresholds(&profile)))
 }
 
+/// I18N-4 (WP-L.0): the case id (`matches`, `no_scored_clips`, ...) of a sent flag headline,
+/// so the console renders `flag_assessment.<case>.*` in the user's locale; `None` for a
+/// headline this core does not know (shown as sent).
+pub fn flag_case(headline: &str) -> Option<&'static str> {
+    flag::flag_case_of_headline(headline).map(flag::FlagCase::id)
+}
+
 /// `PerVideoMetricsExtractor.extract(from:)`: `[GazeFrame]` -> `[PerVideoMetricSet]`.
 pub fn extract_metrics(frames_json: &str) -> Result<Vec<PerVideoMetricSet>, BoundaryError> {
     let frames: Vec<GazeFrame> = decode(frames_json, "frames")?;

@@ -22,7 +22,8 @@ usage:
   asd-cli schema print session|config-bundle|api|param-registry
 
 DIR defaults to docs/spec/schemas/asd/ of this checkout. `export` and `check` include the
-parameter registry (param-registry-v1.json, PRM-4).";
+parameter registry (param-registry-v1.json, PRM-4), the domain catalogue (i18n-v1.json,
+I18N-5) and the locale negotiation fixture (i18n-negotiation-cases.json, I18N-12).";
 
 /// `docs/spec/schemas/asd` of the checkout this binary was built from.
 pub fn default_dir() -> PathBuf {
@@ -253,6 +254,25 @@ mod tests {
         std::fs::write(&path, schema::render(&v)).unwrap();
         assert_eq!(run(&s(&["check", "--dir", out])), 1);
         assert_eq!(run(&s(&["print", "param-registry"])), 0);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn i18n_documents_are_exported_and_checked() {
+        // I18N-5 / I18N-12 (WP-L.0): export writes both, check fails on an edit.
+        let dir = scratch("i18n");
+        let out = dir.to_str().unwrap();
+        assert_eq!(run(&s(&["export", "--out", out])), 0);
+        let path = dir.join(asd_contract::i18n::I18N_FILE);
+        let mut v: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(v["$id"], asd_contract::i18n::I18N_ID);
+        let cases = dir.join(asd_contract::i18n::NEGOTIATION_FILE);
+        let c: Value = serde_json::from_str(&std::fs::read_to_string(&cases).unwrap()).unwrap();
+        assert!(c.as_array().unwrap().len() >= 20);
+        assert_eq!(run(&s(&["check", "--dir", out])), 0);
+        v["entries"]["role.owner"]["en"] = Value::String("Boss".into());
+        std::fs::write(&path, schema::render(&v)).unwrap();
+        assert_eq!(run(&s(&["check", "--dir", out])), 1);
         let _ = std::fs::remove_dir_all(&dir);
     }
 

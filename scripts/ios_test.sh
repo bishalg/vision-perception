@@ -127,6 +127,14 @@ run "$ASD_TARGET/debug/asd-cli" schema validate \
   "$ROOT/$APP_DIR/Tests/Fixtures/expected-session-v1.8.json" \
   "$ROOT/$APP_DIR/Tests/Fixtures/expected-session-v1.8-unscorable.json"
 
+step "Static gate: UI string literals (asd-cli i18n lint, WP-L.0)"
+# Relative roots (cwd is $ROOT): the baseline keys findings by repository-relative path.
+run "$ASD_TARGET/debug/asd-cli" i18n lint \
+  --swift apps/ios_asd_gaze_app/Sources \
+  --swift domains/asd_screening/ios/Sources \
+  --kotlin apps/android_asd_gaze_spike \
+  --baseline scripts/i18n/literal-baseline.txt
+
 step "Static gate: privacy API use"
 run bash scripts/check_privacy_api_use.sh
 

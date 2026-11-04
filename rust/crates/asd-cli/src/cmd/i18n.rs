@@ -1,0 +1,1210 @@
+//! owner: WP-L.0
+//!
+//! `asd-cli i18n export | check | lint | fmt` (I18N-5..8,
+//! `docs/spec/modules/asd-localisation/technical.md`).
+//!
+//! - `export --target console|xcstrings|android --out P`: the generated artefacts of the
+//!   domain catalogue (`asd_contract::i18n`): the console module `domain.ts` (I18N-6), an
+//!   Xcode String Catalog and Android `values*/domain_strings.xml` (I18N-7).
+//! - `check`: the I18N-3 catalogue checks plus drift of the committed console module (and of
+//!   the native files when given).
+//! - `lint`: string literals in Swift and Kotlin UI calls, held against a baseline (I18N-8).
+//! - `fmt`: rewrites the catalogue files sorted and pretty-printed.
+//!
+//! `--catalogue DIR` (export) reads `domain.{en,ne,hi}.json` from DIR instead of the
+//! compiled-in files; the golden tests use it with a small fixture catalogue.
+
+use std::collections::{BTreeMap, BTreeSet};
+use std::fmt::Write as _;
+use std::path::{Path, PathBuf};
+
+use asd_contract::i18n::{self, Catalogue, CatalogueLocale, Sources};
+use serde_json::{json, Value};
+use sha2::{Digest, Sha256};
+
+const USAGE: &str = "\
+usage:
+  asd-cli i18n export --target console|xcstrings|android --out PATH [--catalogue DIR]
+  asd-cli i18n check [--console PATH] [--xcstrings PATH] [--android DIR]
+  asd-cli i18n lint [--swift DIR]... [--kotlin DIR]... [--exclude GLOB]... --baseline FILE
+                    [--catalog Localizable.xcstrings] [--update-baseline] [--format text|json]
+  asd-cli i18n fmt [--dir DIR]
+
+`check` runs the catalogue checks (I18N-3) and fails when the console module
+(default apps/curv_console/src/messages/domain.ts) differs from a fresh export.
+`lint` exits 0 when every finding is in the baseline, 1 on a new finding or a stale
+baseline entry, 2 on a usage or I/O error.";
+
+fn usage_error(message: &str) -> i32 {
+    eprintln!("error: {message}\n\n{USAGE}");
+    2
+}
+
+/// The checkout this binary was built from.
+fn repo_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..")
+}
+
+/// `apps/curv_console/src/messages/domain.ts` of this checkout.
+pub fn default_console() -> PathBuf {
+    repo_root().join("apps/curv_console/src/messages/domain.ts")
+}
+
+/// `rust/crates/asd-contract/i18n` of this checkout.
+fn default_catalogue_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../asd-contract/i18n")
+}
+
+/// Runs `i18n <sub> ...`; `args` are the arguments after `i18n`.
+pub fn run(args: &[String]) -> i32 {
+    let rest = args.get(1..).unwrap_or(&[]);
+    match args.first().map(String::as_str) {
+        Some("export") => export(rest),
+        Some("check") => check(rest),
+        Some("lint") => lint(rest),
+        Some("fmt") => fmt(rest),
+        Some("-h" | "--help") => {
+            println!("{USAGE}");
+            0
+        }
+        _ => usage_error("missing or unknown i18n subcommand"),
+    }
+}
+
+/// `--flag value` pairs; repeated flags keep every value; bare switches map to "".
+fn flags(args: &[String], switches: &[&str]) -> Result<BTreeMap<String, Vec<String>>, String> {
+    let mut out: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    let mut i = 0;
+    while i < args.len() {
+        let a = &args[i];
+        if !a.starts_with("--") {
+            return Err(format!("unexpected argument `{a}`"));
+        }
+        if switches.contains(&a.as_str()) {
+            out.entry(a.clone()).or_default().push(String::new());
+            i += 1;
+            continue;
+        }
+        let v = args.get(i + 1).ok_or(format!("`{a}` needs a value"))?;
+        out.entry(a.clone()).or_default().push(v.clone());
+        i += 2;
+    }
+    Ok(out)
+}
+
+fn one<'a>(f: &'a BTreeMap<String, Vec<String>>, name: &str) -> Option<&'a str> {
+    f.get(name).and_then(|v| v.last()).map(String::as_str)
+}
+
+fn only(f: &BTreeMap<String, Vec<String>>, allowed: &[&str]) -> Result<(), String> {
+    match f.keys().find(|k| !allowed.contains(&k.as_str())) {
+        Some(k) => Err(format!("unknown option `{k}`")),
+        None => Ok(()),
+    }
+}
+
+// ---- catalogue loading ----------------------------------------------------------------------
+
+fn load_catalogue(dir: Option<&str>) -> Result<Catalogue, String> {
+    let Some(dir) = dir else {
+        return Ok(i18n::catalogue().clone());
+    };
+    let read = |name: &str| {
+        std::fs::read_to_string(Path::new(dir).join(name)).map_err(|e| format!("{dir}/{name}: {e}"))
+    };
+    let en = read("domain.en.json")?;
+    let ne = read("domain.ne.json")?;
+    let hi = read("domain.hi.json").ok();
+    Catalogue::from_sources(&Sources {
+        en: &en,
+        ne: &ne,
+        hi: hi.as_deref(),
+    })
+}
+
+// ---- console module (I18N-6) ----------------------------------------------------------------
+
+fn ts_str(s: &str) -> String {
+    serde_json::to_string(s).expect("a string serialises")
+}
+
+/// The generated `domain.ts`.
+pub fn console_module(cat: &Catalogue) -> String {
+    let mut out = String::new();
+    let _ = writeln!(out, "// GENERATED by asd-cli i18n export; do not edit.");
+    let _ = writeln!(
+        out,
+        "// Source: rust/crates/asd-contract/i18n/domain.{{en,ne}}.json, catalogue {} (I18N-6). Regenerate with",
+        cat.version
+    );
+    let _ = writeln!(
+        out,
+        "// `cargo run -p asd-cli -- i18n export --target console --out apps/curv_console/src/messages/domain.ts`."
+    );
+    let _ = writeln!(
+        out,
+        "// Every `ne` text is a machine draft until WP-L.3 (`draft` in docs/spec/schemas/asd/i18n-v1.json).\n"
+    );
+    let _ = writeln!(out, "export type DomainLocale = \"en\" | \"ne\";\n");
+    let _ = writeln!(
+        out,
+        "export const DOMAIN_CATALOGUE_VERSION = {};\n",
+        ts_str(cat.version)
+    );
+
+    let _ = writeln!(out, "export type DomainKey =");
+    let keys: Vec<&String> = cat.entries.keys().collect();
+    for (i, k) in keys.iter().enumerate() {
+        let end = if i + 1 == keys.len() { ";" } else { "" };
+        let _ = writeln!(out, "  | {}{end}", ts_str(k));
+    }
+    if keys.is_empty() {
+        let _ = writeln!(out, "  never;");
+    }
+    out.push('\n');
+
+    // `group.value` keys: the groups `enumLabel` accepts.
+    let groups: BTreeSet<&str> = cat
+        .entries
+        .keys()
+        .filter(|k| k.matches('.').count() == 1)
+        .filter_map(|k| k.split('.').next())
+        .collect();
+    let _ = writeln!(
+        out,
+        "/** Groups of `group.value` keys (enumerations, problems, units, ...). */"
+    );
+    let _ = writeln!(out, "export type DomainGroup =");
+    for (i, g) in groups.iter().enumerate() {
+        let end = if i + 1 == groups.len() { ";" } else { "" };
+        let _ = writeln!(out, "  | {}{end}", ts_str(g));
+    }
+    if groups.is_empty() {
+        let _ = writeln!(out, "  never;");
+    }
+    out.push('\n');
+
+    let _ = writeln!(
+        out,
+        "/** Placeholder arguments of the keys that have `{{name}}` placeholders. */"
+    );
+    let _ = writeln!(out, "export type DomainParams = {{");
+    for (k, e) in &cat.entries {
+        if e.params.is_empty() {
+            continue;
+        }
+        let fields: Vec<String> = e
+            .params
+            .iter()
+            .map(|p| format!("{p}: string | number"))
+            .collect();
+        let _ = writeln!(out, "  {}: {{ {} }};", ts_str(k), fields.join("; "));
+    }
+    let _ = writeln!(out, "}};\n");
+
+    let _ = writeln!(
+        out,
+        "export const DOMAIN: Record<DomainLocale, Record<DomainKey, string>> = {{"
+    );
+    for locale in [CatalogueLocale::En, CatalogueLocale::Ne] {
+        let _ = writeln!(out, "  {}: {{", locale.as_str());
+        for k in cat.entries.keys() {
+            let text = cat.text(locale, k).unwrap_or_default();
+            let _ = writeln!(out, "    {}: {},", ts_str(k), ts_str(text));
+        }
+        let _ = writeln!(out, "  }},");
+    }
+    let _ = writeln!(out, "}};\n");
+
+    out.push_str(
+        r#"/** The text of `key` with every `{name}` replaced by its argument: a lookup plus substitution, nothing else. */
+export function dt<K extends DomainKey>(
+  locale: DomainLocale,
+  key: K,
+  ...args: K extends keyof DomainParams ? [DomainParams[K]] : []
+): string {
+  const text = DOMAIN[locale][key];
+  const params = args[0] as Record<string, string | number> | undefined;
+  if (!params) return text;
+  return text.replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (whole: string, name: string) =>
+    name in params ? String(params[name]) : whole,
+  );
+}
+
+/** The label of an enumeration value; an unknown value is shown raw in ‹ › (never throws). */
+export function enumLabel(locale: DomainLocale, group: DomainGroup, value: string): string {
+  const table: Record<string, string | undefined> = DOMAIN[locale];
+  return table[`${group}.${value}`] ?? `‹${value}›`;
+}
+"#,
+    );
+    out
+}
+
+// ---- native targets (I18N-7) ----------------------------------------------------------------
+
+/// `{name}` -> positional specifier `%N$<conv>` in the order of `params`.
+fn positional(text: &str, params: &[String], conv: char) -> String {
+    let args: Vec<(String, String)> = params
+        .iter()
+        .enumerate()
+        .map(|(i, p)| (p.clone(), format!("%{}${conv}", i + 1)))
+        .collect();
+    let refs: Vec<(&str, &str)> = args.iter().map(|(a, b)| (a.as_str(), b.as_str())).collect();
+    i18n::substitute(text, &refs)
+}
+
+/// An Xcode String Catalog: `en` source, `ne` and (where present) `hi` localisations;
+/// draft `ne` entries are `needs_review`.
+pub fn xcstrings(cat: &Catalogue) -> Value {
+    let mut strings = serde_json::Map::new();
+    for (key, e) in &cat.entries {
+        let unit = |value: &str, state: &str| {
+            let escaped = if e.params.is_empty() {
+                value.to_owned()
+            } else {
+                positional(&value.replace('%', "%%"), &e.params, '@')
+            };
+            json!({ "stringUnit": { "state": state, "value": escaped } })
+        };
+        let mut loc = serde_json::Map::new();
+        loc.insert("en".into(), unit(&e.en, "translated"));
+        if !e.ne.is_empty() {
+            let state = if e.draft {
+                "needs_review"
+            } else {
+                "translated"
+            };
+            loc.insert("ne".into(), unit(&e.ne, state));
+        }
+        if let Some(hi) = &e.hi {
+            loc.insert("hi".into(), unit(hi, "needs_review"));
+        }
+        strings.insert(
+            key.clone(),
+            json!({ "extractionState": "manual", "localizations": loc }),
+        );
+    }
+    json!({ "sourceLanguage": "en", "strings": strings, "version": "1.0" })
+}
+
+/// Android resource name of a key: `.` -> `__`, `-` -> `_`.
+pub fn android_name(key: &str) -> String {
+    key.replace('.', "__").replace('-', "_")
+}
+
+fn android_escape(value: &str, formatted: bool) -> String {
+    let mut out = String::with_capacity(value.len());
+    for (i, c) in value.chars().enumerate() {
+        match c {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '\\' => out.push_str("\\\\"),
+            '\'' => out.push_str("\\'"),
+            '"' => out.push_str("\\\""),
+            '\n' => out.push_str("\\n"),
+            '@' | '?' if i == 0 => {
+                out.push('\\');
+                out.push(c);
+            }
+            '%' if formatted => out.push_str("%%"),
+            c => out.push(c),
+        }
+    }
+    out
+}
+
+/// `values/domain_strings.xml`, `values-ne/...`, `values-hi/...` (relative path -> text).
+pub fn android(cat: &Catalogue) -> Result<BTreeMap<String, String>, String> {
+    let mut seen: BTreeMap<String, &str> = BTreeMap::new();
+    for key in cat.entries.keys() {
+        if let Some(other) = seen.insert(android_name(key), key) {
+            return Err(format!(
+                "keys `{other}` and `{key}` map to the same Android name"
+            ));
+        }
+    }
+    let mut files = BTreeMap::new();
+    for (dir, locale) in [
+        ("values", CatalogueLocale::En),
+        ("values-ne", CatalogueLocale::Ne),
+        ("values-hi", CatalogueLocale::Hi),
+    ] {
+        let mut xml = String::from(
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!-- GENERATED by asd-cli i18n export; do not edit. -->\n<resources>\n",
+        );
+        for (key, e) in &cat.entries {
+            let value = match locale {
+                CatalogueLocale::En => Some(e.en.as_str()),
+                CatalogueLocale::Ne => Some(e.ne.as_str()).filter(|s| !s.is_empty()),
+                CatalogueLocale::Hi => e.hi.as_deref(),
+            };
+            let Some(value) = value else { continue };
+            let formatted = !e.params.is_empty();
+            let mut text = android_escape(value, formatted);
+            if formatted {
+                text = positional(&text, &e.params, 's');
+            }
+            let attr = if !formatted && value.contains('%') {
+                " formatted=\"false\""
+            } else {
+                ""
+            };
+            let _ = writeln!(
+                xml,
+                "    <string name=\"{}\"{attr}>{text}</string>",
+                android_name(key)
+            );
+        }
+        xml.push_str("</resources>\n");
+        files.insert(format!("{dir}/domain_strings.xml"), xml);
+    }
+    Ok(files)
+}
+
+fn export(args: &[String]) -> i32 {
+    let f = match flags(args, &[])
+        .and_then(|f| only(&f, &["--target", "--out", "--catalogue"]).map(|()| f))
+    {
+        Ok(f) => f,
+        Err(e) => return usage_error(&e),
+    };
+    let (Some(target), Some(out)) = (one(&f, "--target"), one(&f, "--out")) else {
+        return usage_error("`export` needs --target and --out");
+    };
+    let cat = match load_catalogue(one(&f, "--catalogue")) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("error: {e}");
+            return 2;
+        }
+    };
+    let out = Path::new(out);
+    let written: Result<Vec<PathBuf>, String> = match target {
+        "console" => write(out, &console_module(&cat)).map(|()| vec![out.to_path_buf()]),
+        "xcstrings" => write(out, &asd_contract::schema::render(&xcstrings(&cat)))
+            .map(|()| vec![out.to_path_buf()]),
+        "android" => android(&cat).and_then(|files| {
+            files
+                .iter()
+                .map(|(rel, text)| {
+                    let p = out.join(rel);
+                    write(&p, text).map(|()| p)
+                })
+                .collect()
+        }),
+        other => return usage_error(&format!("unknown target `{other}`")),
+    };
+    match written {
+        Ok(paths) => {
+            for p in paths {
+                println!("wrote {}", p.display());
+            }
+            0
+        }
+        Err(e) => {
+            eprintln!("error: {e}");
+            2
+        }
+    }
+}
+
+fn write(path: &Path, text: &str) -> Result<(), String> {
+    if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+        std::fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
+    }
+    std::fs::write(path, text).map_err(|e| format!("{}: {e}", path.display()))
+}
+
+// ---- check -----------------------------------------------------------------------------------
+
+fn check(args: &[String]) -> i32 {
+    let f = match flags(args, &[])
+        .and_then(|f| only(&f, &["--console", "--xcstrings", "--android"]).map(|()| f))
+    {
+        Ok(f) => f,
+        Err(e) => return usage_error(&e),
+    };
+    let cat = i18n::catalogue();
+    let mut failed = false;
+    for p in i18n::problems() {
+        eprintln!("PROBLEM: {p}");
+        failed = true;
+    }
+
+    let console = one(&f, "--console")
+        .map(PathBuf::from)
+        .unwrap_or_else(default_console);
+    let mut drift = |path: &Path, ok: bool, target: &str| {
+        if !ok {
+            failed = true;
+            eprintln!(
+                "DRIFT: {} differs from the catalogue; run `cargo run -p asd-cli -- i18n export --target {target} --out {}`",
+                path.display(),
+                path.display()
+            );
+        }
+    };
+    let committed = std::fs::read_to_string(&console).unwrap_or_default();
+    drift(&console, committed == console_module(cat), "console");
+    if let Some(p) = one(&f, "--xcstrings") {
+        let committed = std::fs::read_to_string(p)
+            .ok()
+            .and_then(|t| serde_json::from_str::<Value>(&t).ok());
+        drift(
+            Path::new(p),
+            committed.as_ref() == Some(&xcstrings(cat)),
+            "xcstrings",
+        );
+    }
+    if let Some(dir) = one(&f, "--android") {
+        let ok = android(cat).is_ok_and(|files| {
+            files.iter().all(|(rel, text)| {
+                std::fs::read_to_string(Path::new(dir).join(rel))
+                    .ok()
+                    .as_deref()
+                    == Some(text.as_str())
+            })
+        });
+        drift(Path::new(dir), ok, "android");
+    }
+    if failed {
+        return 1;
+    }
+    println!(
+        "OK: catalogue {} has {} keys in en and ne ({} in hi); {} is current",
+        cat.version,
+        cat.entries.len(),
+        cat.entries.values().filter(|e| e.hi.is_some()).count(),
+        console.display()
+    );
+    0
+}
+
+// ---- fmt -------------------------------------------------------------------------------------
+
+fn fmt(args: &[String]) -> i32 {
+    let f = match flags(args, &[]).and_then(|f| only(&f, &["--dir"]).map(|()| f)) {
+        Ok(f) => f,
+        Err(e) => return usage_error(&e),
+    };
+    let dir = one(&f, "--dir")
+        .map(PathBuf::from)
+        .unwrap_or_else(default_catalogue_dir);
+    for locale in CatalogueLocale::ALL {
+        let path = dir.join(format!("domain.{}.json", locale.as_str()));
+        let Ok(text) = std::fs::read_to_string(&path) else {
+            if locale == CatalogueLocale::Hi {
+                continue;
+            }
+            eprintln!("error: cannot read {}", path.display());
+            return 2;
+        };
+        let map = match i18n::parse_file(&text) {
+            Ok(m) => m,
+            Err(e) => {
+                eprintln!("error: {}: {e}", path.display());
+                return 2;
+            }
+        };
+        let formatted = i18n::format_file(&map);
+        if formatted == text {
+            println!("unchanged {}", path.display());
+        } else if let Err(e) = std::fs::write(&path, formatted) {
+            eprintln!("error: {}: {e}", path.display());
+            return 2;
+        } else {
+            println!("wrote {}", path.display());
+        }
+    }
+    0
+}
+
+// ---- lint (I18N-8) ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Lang {
+    Swift,
+    Kotlin,
+}
+
+/// One string literal of a source file.
+#[derive(Debug, Clone)]
+struct Literal {
+    line: usize,
+    col: usize,
+    /// The content as written (escapes not decoded).
+    text: String,
+    multiline: bool,
+    /// The code before the literal on its line (comments removed, literals as `""`).
+    prefix: String,
+}
+
+/// One lint finding.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Finding {
+    pub path: String,
+    pub line: usize,
+    pub col: usize,
+    pub rule: &'static str,
+    pub literal: String,
+}
+
+impl Finding {
+    fn hash(&self) -> String {
+        let digest = Sha256::digest(self.literal.as_bytes());
+        digest.iter().take(6).fold(String::new(), |mut s, b| {
+            let _ = write!(s, "{b:02x}");
+            s
+        })
+    }
+}
+
+/// Reads a literal starting at `i` (the opening quote(s)); returns the index after it.
+fn read_literal(c: &[char], start: usize, lang: Lang, hashes: usize) -> (usize, String, bool) {
+    let triple = c.get(start..start + 3) == Some(&['"', '"', '"']);
+    let mut i = start + if triple { 3 } else { 1 };
+    let body_start = i;
+    let raw = hashes > 0 || (lang == Lang::Kotlin && triple);
+    let closes = |i: usize| -> bool {
+        let q = if triple { 3 } else { 1 };
+        c.get(i..i + q).is_some_and(|s| s.iter().all(|&x| x == '"'))
+            && c.get(i + q..i + q + hashes)
+                .is_some_and(|s| s.iter().all(|&x| x == '#'))
+    };
+    while i < c.len() {
+        if closes(i) {
+            let text: String = c[body_start..i].iter().collect();
+            return (i + if triple { 3 } else { 1 } + hashes, text, triple);
+        }
+        if !triple && c[i] == '\n' {
+            break; // unterminated: stop at the line end
+        }
+        if c[i] == '\\' && !raw {
+            // Swift interpolation `\( ... )` may hold nested literals.
+            if lang == Lang::Swift && c.get(i + 1) == Some(&'(') {
+                i = skip_nested(c, i + 2, '(', ')', lang);
+                continue;
+            }
+            i += 2;
+            continue;
+        }
+        if lang == Lang::Kotlin && c[i] == '$' && c.get(i + 1) == Some(&'{') {
+            i = skip_nested(c, i + 2, '{', '}', lang);
+            continue;
+        }
+        i += 1;
+    }
+    let text: String = c[body_start..i.min(c.len())].iter().collect();
+    (i, text, triple)
+}
+
+/// Skips to after the bracket closing an interpolation opened before `i`.
+fn skip_nested(c: &[char], mut i: usize, open: char, close: char, lang: Lang) -> usize {
+    let mut depth = 1;
+    while i < c.len() && depth > 0 {
+        match c[i] {
+            '"' => {
+                i = read_literal(c, i, lang, 0).0;
+                continue;
+            }
+            x if x == open => depth += 1,
+            x if x == close => depth -= 1,
+            _ => {}
+        }
+        i += 1;
+    }
+    i
+}
+
+/// Every string literal of `src`, comments skipped.
+fn scan(src: &str, lang: Lang) -> Vec<Literal> {
+    let c: Vec<char> = src.chars().collect();
+    let mut out = Vec::new();
+    let (mut i, mut line, mut line_start) = (0usize, 1usize, 0usize);
+    let mut prefix = String::new();
+    let newline = |i: usize, line: &mut usize, line_start: &mut usize, prefix: &mut String| {
+        *line += 1;
+        *line_start = i + 1;
+        prefix.clear();
+    };
+    while i < c.len() {
+        let ch = c[i];
+        if ch == '\n' {
+            newline(i, &mut line, &mut line_start, &mut prefix);
+            i += 1;
+        } else if ch == '/' && c.get(i + 1) == Some(&'/') {
+            while i < c.len() && c[i] != '\n' {
+                i += 1;
+            }
+        } else if ch == '/' && c.get(i + 1) == Some(&'*') {
+            let mut depth = 1;
+            i += 2;
+            while i < c.len() && depth > 0 {
+                if c[i] == '/' && c.get(i + 1) == Some(&'*') {
+                    depth += 1;
+                    i += 2;
+                } else if c[i] == '*' && c.get(i + 1) == Some(&'/') {
+                    depth -= 1;
+                    i += 2;
+                } else {
+                    if c[i] == '\n' {
+                        newline(i, &mut line, &mut line_start, &mut prefix);
+                    }
+                    i += 1;
+                }
+            }
+        } else if lang == Lang::Kotlin && ch == '\'' {
+            // Char literal ('"', '\'', 'A'): a quote inside must not open a string.
+            i += if c.get(i + 1) == Some(&'\\') { 3 } else { 2 };
+            while i < c.len() && c[i] != '\'' && c[i] != '\n' {
+                i += 1;
+            }
+            i += 1;
+            prefix.push_str("' '");
+        } else if ch == '"'
+            || (lang == Lang::Swift && ch == '#' && {
+                let mut j = i;
+                while c.get(j) == Some(&'#') {
+                    j += 1;
+                }
+                c.get(j) == Some(&'"')
+            })
+        {
+            let mut hashes = 0;
+            while c.get(i + hashes) == Some(&'#') {
+                hashes += 1;
+            }
+            let (end, text, multiline) = read_literal(&c, i + hashes, lang, hashes);
+            out.push(Literal {
+                line,
+                col: i - line_start + 1,
+                text,
+                multiline,
+                prefix: prefix.trim_end().to_owned(),
+            });
+            for &x in &c[i..end.min(c.len())] {
+                if x == '\n' {
+                    line += 1;
+                }
+            }
+            if let Some(last_nl) = c[i..end.min(c.len())].iter().rposition(|&x| x == '\n') {
+                line_start = i + last_nl + 1;
+                prefix.clear();
+            }
+            prefix.push_str("\"\"");
+            i = end;
+        } else {
+            prefix.push(ch);
+            i += 1;
+        }
+    }
+    out
+}
+
+/// The literal without interpolations (`\( )`, `${ }`, `$name`), for the "has a letter" test.
+fn without_interpolation(text: &str, lang: Lang) -> String {
+    let c: Vec<char> = text.chars().collect();
+    let mut out = String::new();
+    let mut i = 0;
+    while i < c.len() {
+        let open = match lang {
+            Lang::Swift if c[i] == '\\' && c.get(i + 1) == Some(&'(') => Some(('(', ')')),
+            Lang::Kotlin if c[i] == '$' && c.get(i + 1) == Some(&'{') => Some(('{', '}')),
+            _ => None,
+        };
+        if let Some((o, cl)) = open {
+            let mut depth = 1;
+            i += 2;
+            while i < c.len() && depth > 0 {
+                if c[i] == o {
+                    depth += 1;
+                } else if c[i] == cl {
+                    depth -= 1;
+                }
+                i += 1;
+            }
+            continue;
+        }
+        if lang == Lang::Kotlin && c[i] == '$' && c.get(i + 1).is_some_and(|x| x.is_alphabetic()) {
+            i += 1;
+            while i < c.len() && (c[i].is_alphanumeric() || c[i] == '_') {
+                i += 1;
+            }
+            continue;
+        }
+        if c[i] == '\\' {
+            i += 2; // an escape (`\n`, `\u{..}`) is not a word
+            continue;
+        }
+        out.push(c[i]);
+        i += 1;
+    }
+    out
+}
+
+fn is_ident(c: char) -> bool {
+    c.is_alphanumeric() || c == '_'
+}
+
+/// `prefix` ends with `call` at an identifier boundary.
+fn ends_with_call(prefix: &str, call: &str) -> bool {
+    prefix
+        .strip_suffix(call)
+        .is_some_and(|before| call.starts_with('.') || !before.chars().last().is_some_and(is_ident))
+}
+
+const SWIFT_CALLS: &[(&str, &str)] = &[
+    ("Text(", "swift-text"),
+    ("Label(", "swift-label"),
+    ("Button(", "swift-button"),
+    ("Toggle(", "swift-toggle"),
+    ("Picker(", "swift-picker"),
+    ("Section(", "swift-section"),
+    ("Link(", "swift-link"),
+    ("TextField(", "swift-text-field"),
+    ("SecureField(", "swift-secure-field"),
+    (".navigationTitle(", "swift-navigation-title"),
+    (".accessibilityLabel(", "swift-accessibility-label"),
+    (".accessibilityHint(", "swift-accessibility-hint"),
+    (".alert(", "swift-alert"),
+    (".confirmationDialog(", "swift-confirmation-dialog"),
+    (".help(", "swift-help"),
+];
+
+fn swift_call(prefix: &str) -> Option<&'static str> {
+    SWIFT_CALLS
+        .iter()
+        .find(|(call, _)| ends_with_call(prefix, call))
+        .map(|(_, rule)| *rule)
+}
+
+fn kotlin_rule(prefix: &str) -> Option<&'static str> {
+    if ends_with_call(prefix, "Text(") {
+        return Some("kotlin-text");
+    }
+    if ends_with_call(prefix, "setText(") {
+        return Some("kotlin-set-text");
+    }
+    if let Some(before) = prefix.strip_suffix('=') {
+        let before = before.trim_end();
+        let declared = |name: &str| {
+            before
+                .strip_suffix(name)
+                .is_some_and(|b| b.trim_end().ends_with("val") || b.trim_end().ends_with("var"))
+        };
+        if ends_with_call(before, "contentDescription") && !declared("contentDescription") {
+            return Some("kotlin-content-description");
+        }
+        if ends_with_call(before, "title") && !declared("title") {
+            return Some("kotlin-title");
+        }
+    }
+    if prefix.contains("Toast.makeText(") && prefix.ends_with(',') {
+        return Some("kotlin-toast");
+    }
+    None
+}
+
+/// Findings of one file. `catalog` holds the String Catalog keys with a `ne` value.
+fn lint_file(path: &str, src: &str, lang: Lang, catalog: &BTreeSet<String>) -> Vec<Finding> {
+    let lines: Vec<&str> = src.lines().collect();
+    let mut out = Vec::new();
+    for lit in scan(src, lang) {
+        if lines
+            .get(lit.line - 1)
+            .is_some_and(|l| l.contains("i18n-ok:"))
+        {
+            continue;
+        }
+        let rule = match lang {
+            Lang::Swift => swift_call(&lit.prefix).or_else(|| {
+                let inner = lit.prefix.strip_suffix("String(format:")?.trim_end();
+                swift_call(inner).map(|_| "swift-format")
+            }),
+            Lang::Kotlin => kotlin_rule(&lit.prefix),
+        };
+        let Some(rule) = rule else { continue };
+        if !without_interpolation(&lit.text, lang)
+            .chars()
+            .any(char::is_alphabetic)
+        {
+            continue;
+        }
+        let rule = if lit.multiline { "multiline" } else { rule };
+        if lang == Lang::Swift
+            && rule != "swift-format"
+            && rule != "multiline"
+            && catalog.contains(&lit.text)
+        {
+            continue; // `LocalizedStringKey` of a catalogued key: localised, not a leak
+        }
+        out.push(Finding {
+            path: path.to_owned(),
+            line: lit.line,
+            col: lit.col,
+            rule,
+            literal: lit.text,
+        });
+    }
+    out
+}
+
+/// `*` (no `/`), `**` (anything) and `?`.
+fn glob(pattern: &str, text: &str) -> bool {
+    fn go(p: &[char], t: &[char]) -> bool {
+        match p.first() {
+            None => t.is_empty(),
+            Some('*') if p.get(1) == Some(&'*') => {
+                let rest = &p[2..];
+                let rest = rest.strip_prefix(&['/']).unwrap_or(rest);
+                (0..=t.len()).any(|i| go(rest, &t[i..]))
+            }
+            Some('*') => (0..=t.len())
+                .take_while(|&i| i == 0 || t[i - 1] != '/')
+                .any(|i| go(&p[1..], &t[i..])),
+            Some('?') => !t.is_empty() && t[0] != '/' && go(&p[1..], &t[1..]),
+            Some(c) => t.first() == Some(c) && go(&p[1..], &t[1..]),
+        }
+    }
+    let p: Vec<char> = pattern.chars().collect();
+    let t: Vec<char> = text.chars().collect();
+    go(&p, &t)
+}
+
+fn walk(dir: &Path, exts: &[&str], out: &mut Vec<PathBuf>) -> std::io::Result<()> {
+    let mut entries: Vec<_> = std::fs::read_dir(dir)?.collect::<Result<_, _>>()?;
+    entries.sort_by_key(std::fs::DirEntry::file_name);
+    for e in entries {
+        let path = e.path();
+        let name = e.file_name().to_string_lossy().into_owned();
+        if path.is_dir() {
+            if name.starts_with('.') || matches!(name.as_str(), "build" | "DerivedData" | "Pods") {
+                continue;
+            }
+            walk(&path, exts, out)?;
+        } else if exts.iter().any(|x| name.ends_with(x)) {
+            out.push(path);
+        }
+    }
+    Ok(())
+}
+
+fn catalog_keys(path: &str) -> Result<BTreeSet<String>, String> {
+    let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
+    let v: Value = serde_json::from_str(&text).map_err(|e| format!("{path}: {e}"))?;
+    Ok(v["strings"]
+        .as_object()
+        .map(|m| {
+            m.iter()
+                .filter(|(_, e)| e["localizations"]["ne"].is_object())
+                .map(|(k, _)| k.clone())
+                .collect()
+        })
+        .unwrap_or_default())
+}
+
+type BaselineKey = (String, String, String);
+
+fn read_baseline(text: &str) -> Result<BTreeMap<BaselineKey, usize>, String> {
+    let mut out = BTreeMap::new();
+    for (n, line) in text.lines().enumerate() {
+        if line.trim().is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let parts: Vec<&str> = line.split('\t').collect();
+        let [path, rule, hash, count] = parts[..] else {
+            return Err(format!(
+                "line {}: expected path<TAB>rule<TAB>hash<TAB>count",
+                n + 1
+            ));
+        };
+        let count: usize = count
+            .parse()
+            .map_err(|_| format!("line {}: bad count", n + 1))?;
+        out.insert((path.to_owned(), rule.to_owned(), hash.to_owned()), count);
+    }
+    Ok(out)
+}
+
+const BASELINE_HEADER: &str = "# asd-cli i18n lint baseline (I18N-8): path<TAB>rule<TAB>sha256(literal)[:12]<TAB>count.\n# Accepted literals only; it may only shrink. Rewrite with `asd-cli i18n lint ... --update-baseline`.\n";
+
+fn render_baseline(counts: &BTreeMap<BaselineKey, usize>) -> String {
+    let mut out = String::from(BASELINE_HEADER);
+    for ((path, rule, hash), n) in counts {
+        let _ = writeln!(out, "{path}\t{rule}\t{hash}\t{n}");
+    }
+    out
+}
+
+fn lint(args: &[String]) -> i32 {
+    let allowed = [
+        "--swift",
+        "--kotlin",
+        "--exclude",
+        "--baseline",
+        "--catalog",
+        "--update-baseline",
+        "--format",
+    ];
+    let f = match flags(args, &["--update-baseline"]).and_then(|f| only(&f, &allowed).map(|()| f)) {
+        Ok(f) => f,
+        Err(e) => return usage_error(&e),
+    };
+    let Some(baseline_path) = one(&f, "--baseline") else {
+        return usage_error("`lint` needs --baseline FILE");
+    };
+    let json_out = match one(&f, "--format").unwrap_or("text") {
+        "text" => false,
+        "json" => true,
+        other => return usage_error(&format!("unknown format `{other}`")),
+    };
+    let update = f.contains_key("--update-baseline");
+    let catalog = match one(&f, "--catalog").map(catalog_keys).transpose() {
+        Ok(c) => c.unwrap_or_default(),
+        Err(e) => {
+            eprintln!("error: {e}");
+            return 2;
+        }
+    };
+    let excludes = f.get("--exclude").cloned().unwrap_or_default();
+
+    let mut findings = Vec::new();
+    for (flag, lang, exts) in [
+        ("--swift", Lang::Swift, &[".swift"][..]),
+        ("--kotlin", Lang::Kotlin, &[".kt", ".kts"][..]),
+    ] {
+        for dir in f.get(flag).into_iter().flatten() {
+            let mut files = Vec::new();
+            if let Err(e) = walk(Path::new(dir), exts, &mut files) {
+                eprintln!("error: {dir}: {e}");
+                return 2;
+            }
+            for file in files {
+                let path = file.to_string_lossy().replace('\\', "/");
+                if excludes.iter().any(|g| glob(g, &path)) {
+                    continue;
+                }
+                let src = match std::fs::read_to_string(&file) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        eprintln!("error: {path}: {e}");
+                        return 2;
+                    }
+                };
+                findings.extend(lint_file(&path, &src, lang, &catalog));
+            }
+        }
+    }
+
+    let mut counts: BTreeMap<BaselineKey, usize> = BTreeMap::new();
+    for fd in &findings {
+        *counts
+            .entry((fd.path.clone(), fd.rule.to_owned(), fd.hash()))
+            .or_default() += 1;
+    }
+    if update {
+        if let Err(e) = write(Path::new(baseline_path), &render_baseline(&counts)) {
+            eprintln!("error: {e}");
+            return 2;
+        }
+        println!(
+            "wrote {baseline_path}: {} entries, {} findings",
+            counts.len(),
+            findings.len()
+        );
+        return 0;
+    }
+    let baseline = match std::fs::read_to_string(baseline_path)
+        .map_err(|e| format!("{baseline_path}: {e}"))
+        .and_then(|t| read_baseline(&t).map_err(|e| format!("{baseline_path}: {e}")))
+    {
+        Ok(b) => b,
+        Err(e) => {
+            eprintln!("error: {e}");
+            return 2;
+        }
+    };
+
+    // New: a group found more often than the baseline allows (the excess, in file order).
+    let mut allowance = baseline.clone();
+    let mut new = Vec::new();
+    for fd in &findings {
+        let key = (fd.path.clone(), fd.rule.to_owned(), fd.hash());
+        match allowance.get_mut(&key) {
+            Some(n) if *n > 0 => *n -= 1,
+            _ => new.push(fd),
+        }
+    }
+    let stale: Vec<(&BaselineKey, usize)> = baseline
+        .iter()
+        .filter_map(|(k, n)| {
+            let found = counts.get(k).copied().unwrap_or(0);
+            (found < *n).then_some((k, n - found))
+        })
+        .collect();
+    let stale_total: usize = stale.iter().map(|(_, n)| n).sum();
+
+    if json_out {
+        let item = |fd: &Finding| json!({"path": fd.path, "line": fd.line, "col": fd.col, "rule": fd.rule, "literal": fd.literal});
+        let doc = json!({
+            "findings": findings.len(),
+            "new": new.iter().map(|f| item(f)).collect::<Vec<_>>(),
+            "stale": stale.iter().map(|((p, r, h), n)| json!({"path": p, "rule": r, "hash": h, "count": n})).collect::<Vec<_>>(),
+        });
+        println!("{}", asd_contract::schema::render(&doc).trim_end());
+    } else {
+        for fd in &new {
+            println!(
+                "{}:{}:{} {} {}",
+                fd.path,
+                fd.line,
+                fd.col,
+                fd.rule,
+                ts_str(&fd.literal)
+            );
+        }
+        for ((p, r, h), n) in &stale {
+            println!("stale: {p}\t{r}\t{h} ({n} fewer than the baseline)");
+        }
+    }
+    if new.is_empty() && stale.is_empty() {
+        if !json_out {
+            println!(
+                "OK: {} literal(s), all in the baseline ({} entries)",
+                findings.len(),
+                baseline.len()
+            );
+        }
+        return 0;
+    }
+    if !new.is_empty() {
+        eprintln!(
+            "{} new literal(s) not in the baseline: localise them, or mark the line `// i18n-ok: <reason>`",
+            new.len()
+        );
+    }
+    if stale_total > 0 {
+        let s = if stale_total == 1 { "entry" } else { "entries" };
+        eprintln!("baseline has {stale_total} stale {s}: run with --update-baseline");
+    }
+    1
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn swift(src: &str) -> Vec<Finding> {
+        lint_file("V.swift", src, Lang::Swift, &BTreeSet::new())
+    }
+
+    fn kotlin(src: &str) -> Vec<Finding> {
+        lint_file("A.kt", src, Lang::Kotlin, &BTreeSet::new())
+    }
+
+    #[test]
+    fn swift_ui_literals_are_findings() {
+        let f = swift("VStack {\n    Text(\"Hello\")\n}\n");
+        assert_eq!(f.len(), 1);
+        assert_eq!((f[0].line, f[0].col, f[0].rule), (2, 10, "swift-text"));
+        assert_eq!(f[0].literal, "Hello");
+        for (src, rule) in [
+            ("Button(\"Save\") { }", "swift-button"),
+            (".navigationTitle(\"Home\")", "swift-navigation-title"),
+            (
+                "x.accessibilityLabel(\"Close\")",
+                "swift-accessibility-label",
+            ),
+            ("Text(String(format: \"%d items\", n))", "swift-format"),
+            ("TextField(\"Name\", text: $n)", "swift-text-field"),
+            ("Text(#\"raw \"quoted\" text\"#)", "swift-text"),
+            ("Text(\"\"\"\n  Long prose\n  \"\"\")", "multiline"),
+        ] {
+            let f = swift(src);
+            assert_eq!(f.len(), 1, "{src}: {f:?}");
+            assert_eq!(f[0].rule, rule, "{src}");
+        }
+    }
+
+    #[test]
+    fn swift_non_findings() {
+        for src in [
+            "Text(verbatim: \"v1.2\")",
+            "Text(String(localized: \"home.title\"))",
+            "Text(AppLocalizer.tr(\"home.title\", lang: l))",
+            "Text(\"·\")",
+            "Text(\"\\(n)\")",
+            "Text(\"\\(a) / \\(b)\")",
+            "Text(\"Brand\") // i18n-ok: brand name",
+            "// Text(\"commented\")",
+            "/* Text(\"block\") */",
+            "let s = \"Hello\"",
+            "MyText(\"Hello\")",
+            "Text(\"\\(name ?? \"Guest\")\")",
+        ] {
+            assert!(swift(src).is_empty(), "{src}: {:?}", swift(src));
+        }
+        let catalog: BTreeSet<String> = ["Hello".to_string()].into();
+        assert!(lint_file("V.swift", "Text(\"Hello\")", Lang::Swift, &catalog).is_empty());
+    }
+
+    #[test]
+    fn kotlin_findings_and_non_findings() {
+        for (src, rule) in [
+            ("Text(\"Hello\")", "kotlin-text"),
+            ("view.setText(\"Hello\")", "kotlin-set-text"),
+            (
+                "Icon(contentDescription = \"Close\")",
+                "kotlin-content-description",
+            ),
+            ("TopAppBar(title = \"Home\")", "kotlin-title"),
+            (
+                "Toast.makeText(ctx, \"Saved\", LENGTH_SHORT)",
+                "kotlin-toast",
+            ),
+            ("label = { Text(\"Name\") }", "kotlin-text"),
+        ] {
+            let f = kotlin(src);
+            assert_eq!(f.len(), 1, "{src}: {f:?}");
+            assert_eq!(f[0].rule, rule, "{src}");
+        }
+        for src in [
+            "Text(stringResource(R.string.home))",
+            "Text(getString(R.string.home))",
+            "Text(\"Hi\") // i18n-ok: test",
+            "val title = \"x\"",
+            "Text(\"${n}\")",
+            "val c = '\"'; Text(stringResource(R.string.a))",
+        ] {
+            assert!(kotlin(src).is_empty(), "{src}: {:?}", kotlin(src));
+        }
+    }
+
+    #[test]
+    fn glob_matches() {
+        assert!(glob("**/Inference/*.swift", "a/b/Inference/X.swift"));
+        assert!(!glob("**/Inference/*.swift", "a/b/Inference/c/X.swift"));
+        assert!(glob("apps/*/Sources/**", "apps/x/Sources/a/b.swift"));
+        assert!(!glob("*.swift", "a/b.swift"));
+    }
+
+    #[test]
+    fn android_names_and_escapes() {
+        assert_eq!(
+            android_name("problem.case-consent-missing"),
+            "problem__case_consent_missing"
+        );
+        assert_eq!(
+            android_escape("It's <b> & \"x\"", false),
+            "It\\'s &lt;b&gt; &amp; \\\"x\\\""
+        );
+        assert_eq!(android_escape("@home", false), "\\@home");
+        assert_eq!(android_escape("50%", true), "50%%");
+        assert_eq!(
+            positional("{min}–{max} mo", &["min".into(), "max".into()], 's'),
+            "%1$s–%2$s mo"
+        );
+    }
+}

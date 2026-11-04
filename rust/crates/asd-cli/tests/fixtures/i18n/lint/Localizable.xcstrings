@@ -1,0 +1,12 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "home.greeting": {
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Hi" } },
+        "ne": { "stringUnit": { "state": "translated", "value": "नमस्ते" } }
+      }
+    }
+  },
+  "version": "1.0"
+}

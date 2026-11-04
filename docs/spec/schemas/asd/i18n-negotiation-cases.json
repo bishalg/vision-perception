@@ -1,0 +1,176 @@
+[
+  {
+    "acceptLanguage": "en",
+    "expected": "ne",
+    "org": "en",
+    "user": "ne"
+  },
+  {
+    "acceptLanguage": "ne",
+    "expected": "en",
+    "org": "ne",
+    "user": "en"
+  },
+  {
+    "acceptLanguage": "en-US",
+    "expected": "ne",
+    "org": null,
+    "user": "ne"
+  },
+  {
+    "acceptLanguage": "en",
+    "expected": "ne",
+    "org": "ne",
+    "user": null
+  },
+  {
+    "acceptLanguage": "ne-NP",
+    "expected": "en",
+    "org": "en",
+    "user": null
+  },
+  {
+    "acceptLanguage": null,
+    "expected": "ne",
+    "org": "ne",
+    "user": null
+  },
+  {
+    "acceptLanguage": "ne-NP,en;q=0.5",
+    "expected": "ne",
+    "org": null,
+    "user": null
+  },
+  {
+    "acceptLanguage": "ne-NP;q=0.8,en;q=0.9",
+    "expected": "en",
+    "org": null,
+    "user": null
+  },
+  {
+    "acceptLanguage": "en-US,en;q=0.9",
+    "expected": "en",
+    "org": null,
+    "user": null
+  },
+  {
+    "acceptLanguage": "ne",
+    "expected": "ne",
+    "org": null,
+    "user": null
+  },
+  {
+    "acceptLanguage": "NE-np",
+    "expected": "ne",
+    "org": null,
+    "user": null
+  },
+  {
+    "acceptLanguage": "ne-IN",
+    "expected": "ne",
+    "org": null,
+    "user": null
+  },
+  {
+    "acceptLanguage": "fr",
+    "expected": "en",
+    "org": null,
+    "user": null
+  },
+  {
+    "acceptLanguage": "fr,ne;q=0.5",
+    "expected": "ne",
+    "org": null,
+    "user": null
+  },
+  {
+    "acceptLanguage": "ne;q=0",
+    "expected": "en",
+    "org": null,
+    "user": null
+  },
+  {
+    "acceptLanguage": "ne;q=0,en;q=0",
+    "expected": "en",
+    "org": null,
+    "user": null
+  },
+  {
+    "acceptLanguage": "*",
+    "expected": "en",
+    "org": null,
+    "user": null
+  },
+  {
+    "acceptLanguage": "*,ne;q=0.1",
+    "expected": "ne",
+    "org": null,
+    "user": null
+  },
+  {
+    "acceptLanguage": "",
+    "expected": "en",
+    "org": null,
+    "user": null
+  },
+  {
+    "acceptLanguage": null,
+    "expected": "en",
+    "org": null,
+    "user": null
+  },
+  {
+    "acceptLanguage": "garbage;;;==,,",
+    "expected": "en",
+    "org": null,
+    "user": null
+  },
+  {
+    "acceptLanguage": "ne;q=abc",
+    "expected": "en",
+    "org": null,
+    "user": null
+  },
+  {
+    "acceptLanguage": "ne;q=1.5",
+    "expected": "en",
+    "org": null,
+    "user": null
+  },
+  {
+    "acceptLanguage": "en;q=0.5,ne;q=0.5",
+    "expected": "en",
+    "org": null,
+    "user": null
+  },
+  {
+    "acceptLanguage": "ne;q=0.5,en;q=0.5",
+    "expected": "ne",
+    "org": null,
+    "user": null
+  },
+  {
+    "acceptLanguage": " ne-NP ; q=0.7 , hi;q=0.9",
+    "expected": "ne",
+    "org": null,
+    "user": null
+  },
+  {
+    "acceptLanguage": "en-GB;q=0.2, ne;q=0.3",
+    "expected": "ne",
+    "org": null,
+    "user": null
+  },
+  {
+    "acceptLanguage": "nepali",
+    "expected": "en",
+    "org": null,
+    "user": null
+  },
+  {
+    "acceptLanguage": "hi-IN,hi;q=0.9",
+    "expected": "en",
+    "org": null,
+    "user": null
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "age_band.range": "{min}–{max} माह",
+  "age_band.range_open": "{min}+ माह",
+  "attention_flag.green": "हरा",
+  "attention_flag.red": "लाल",
+  "attention_flag.unreliable": "अविश्वसनीय",
+  "attention_flag.yellow": "पीला",
+  "flag_assessment.differs.headline": "देखना आयु संदर्भ से अलग है",
+  "flag_assessment.matches.headline": "देखना आयु संदर्भ से मेल खाता है",
+  "flag_assessment.no_scored_clips.headline": "पर्याप्त स्कोर किए गए क्लिप नहीं",
+  "flag_assessment.some_differ.headline": "कुछ क्लिप आयु संदर्भ से अलग हैं",
+  "flag_assessment.unreliable.headline": "दोबारा जाँचें — देखने का समय भरोसेमंद नहीं था"
+}

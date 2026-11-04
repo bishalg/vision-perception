@@ -1,0 +1,6 @@
+{
+  "age_band.range": "{min}–{max} mo",
+  "attention_flag.green": "Green",
+  "problem.case-consent-missing": "The participant has not consented to sharing this case.",
+  "unit.percent": "%"
+}

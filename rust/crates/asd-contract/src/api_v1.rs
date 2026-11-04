@@ -17,6 +17,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::i18n::Locale;
 use crate::mirror;
 pub use crate::session_v1_8::{ScoringStatus, UnscorableReason};
 pub use crate::tracking_api::SessionTrackingQuality;
@@ -262,6 +263,10 @@ pub struct Org {
     /// the org follows `retention_months`. Present on `GET`/`PATCH /v1/orgs/{id}`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub research_frames_retention_months: Option<u32>,
+    /// I18N-11: `organizations.default_locale` (migration 0028). Present on
+    /// `GET`/`PATCH /v1/orgs/{id}`; absent in `GET /v1/orgs`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_locale: Option<Locale>,
 }
 
 /// `PATCH /v1/orgs/{id}`; absent members are unchanged.
@@ -284,6 +289,9 @@ pub struct OrgPatch {
     )]
     #[schemars(with = "Option<u32>")]
     pub research_frames_retention_months: Option<Option<u32>>,
+    /// I18N-11: the org's default locale (`OrgUpdate`: owner, admin). Absent = unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_locale: Option<Locale>,
 }
 
 /// User account status. `invited` accounts exist but cannot sign in yet; only `active`
@@ -944,6 +952,7 @@ fn example_org() -> Org {
         retention_months: Some(24),
         settings: None,
         research_frames_retention_months: None,
+        default_locale: Some(Locale::En),
     }
 }
 

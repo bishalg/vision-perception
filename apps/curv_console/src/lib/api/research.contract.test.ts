@@ -136,7 +136,7 @@ describe("api-v1.json contract: researcher toolkit (WP-X.0)", () => {
       expect(p.labelKey).toBe(`param.${p.id}.label`);
       expect(p.helpKey).toBe(`param.${p.id}.help`);
     }
-    // PRM-5: both locales carry an entry for every id, in registry order (scripts/gen-registry-messages.mjs).
+    // PRM-5: both locales carry an entry for every id, in registry order (from the generated messages/domain.ts).
     for (const locale of ["en", "ne"] as const) {
       expect(Object.keys(researchMessages[locale].params), locale).toEqual(ids);
     }

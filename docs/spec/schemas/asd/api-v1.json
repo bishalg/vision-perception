@@ -6208,6 +6208,14 @@
       ],
       "type": "object"
     },
+    "Locale": {
+      "description": "A console and backend locale (I18N-14): stored in `users.locale` and\n`organizations.default_locale` (migration 0028).",
+      "enum": [
+        "en",
+        "ne"
+      ],
+      "type": "string"
+    },
     "LoginRequest": {
       "description": "`POST /v1/auth/login`.\n\nTwo-step for a user with TOTP enrolled (AUTH-1): the first request carries `email` and\n`password` only; when both are right the answer is `401` problem `totp-required`. The\nclient asks for the authenticator code and sends the same request again with\n`totp_code`. A wrong, expired or already used code answers `401` problem `totp-invalid`.\nBoth legs count against the per-IP login limit; requests with a code also count\nagainst a per-user limit (10 per minute, `429` + `Retry-After`).",
       "properties": {
@@ -6732,6 +6740,7 @@
       "description": "`GET /v1/orgs/{id}`.",
       "examples": [
         {
+          "default_locale": "en",
           "id": "5f0e1d2c-3b4a-4968-8776-655443322110",
           "kind": "clinic",
           "name": "Example Clinic",
@@ -6739,6 +6748,17 @@
         }
       ],
       "properties": {
+        "default_locale": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locale"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "I18N-11: `organizations.default_locale` (migration 0028). Present on\n`GET`/`PATCH /v1/orgs/{id}`; absent in `GET /v1/orgs`."
+        },
         "id": {
           "type": "string"
         },
@@ -6803,6 +6823,17 @@
     "OrgPatch": {
       "description": "`PATCH /v1/orgs/{id}`; absent members are unchanged.",
       "properties": {
+        "default_locale": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locale"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "I18N-11: the org's default locale (`OrgUpdate`: owner, admin). Absent = unchanged."
+        },
         "name": {
           "anyOf": [
             {
@@ -13036,6 +13067,17 @@
             }
           ]
         },
+        "locale": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locale"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "I18N-11: absent = unchanged (`None`), `null` = clear the override (`Some(None)`), a\nlocale = set it."
+        },
         "professional_registration": {
           "anyOf": [
             {
@@ -13199,11 +13241,27 @@
             }
           ]
         },
+        "effective_locale": {
+          "$ref": "#/$defs/Locale",
+          "default": "en",
+          "description": "I18N-12: the locale for this request (user > org > `Accept-Language` > `en`).\nAbsent from older backends, hence the `en` default."
+        },
         "email": {
           "type": "string"
         },
         "id": {
           "type": "string"
+        },
+        "locale": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locale"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "I18N-11: the user's locale override (`users.locale`); `null` = follow the org.\nAbsent from older backends."
         },
         "org_id": {
           "anyOf": [

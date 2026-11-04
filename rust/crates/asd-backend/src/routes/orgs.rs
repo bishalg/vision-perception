@@ -337,6 +337,7 @@ async fn get_org(
         research_frames_retention_months: row
             .research_frames_retention_months
             .and_then(|m| u32::try_from(m).ok()),
+        default_locale: None, // WP-L.1e reads `organizations.default_locale`
     }))
 }
 
@@ -407,6 +408,7 @@ async fn list_orgs(
                 retention_months: u32::try_from(r.retention_months).ok(),
                 settings: None,
                 research_frames_retention_months: None,
+                default_locale: None,
             })
         })
         .collect::<AppResult<Vec<_>>>()?;
@@ -537,6 +539,7 @@ async fn patch_org(
         settings: Some(public_settings(&new_settings)),
         research_frames_retention_months: new_research_retention
             .and_then(|m| u32::try_from(m).ok()),
+        default_locale: None, // WP-L.1e
     }))
 }
 

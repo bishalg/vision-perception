@@ -241,6 +241,10 @@ pub const SLUGS: &[&str] = &[
     NOT_IMPLEMENTED,
 ];
 
+/// Every slug constant of this module (I18N-2: each needs a `problem.<slug>` catalogue text).
+/// The same list as [`SLUGS`]; a test checks that no `pub const` slug is missing from it.
+pub const ALL_SLUGS: &[&str] = SLUGS;
+
 /// Full `type` URI for a slug.
 pub fn type_uri(slug: &str) -> String {
     format!("{TYPE_PREFIX}{slug}")
@@ -310,4 +314,34 @@ fn example_problem() -> Problem {
     Problem::new(VALIDATION_FAILED, 400, "Validation failed")
         .with_detail("sessionId is required")
         .with_invalid_param("sessionId", "missing")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn all_slugs_lists_every_slug_constant() {
+        // Every `pub const X: &str = "slug";` above, except the two non-slug constants.
+        let source = include_str!("problem.rs");
+        let lines: Vec<&str> = source.lines().collect();
+        let declared: Vec<&str> = lines
+            .iter()
+            .enumerate()
+            .filter(|(_, l)| l.starts_with("pub const ") && l.contains(": &str ="))
+            .filter(|(_, l)| !l.contains("CONTENT_TYPE") && !l.contains("TYPE_PREFIX"))
+            // rustfmt may move a long value to the next line.
+            .filter_map(|(i, l)| {
+                l.split('"')
+                    .nth(1)
+                    .or_else(|| lines.get(i + 1)?.split('"').nth(1))
+            })
+            .collect();
+        assert_eq!(declared.len(), ALL_SLUGS.len());
+        for slug in &declared {
+            assert!(ALL_SLUGS.contains(slug), "{slug} missing from SLUGS");
+        }
+        let unique: std::collections::BTreeSet<_> = ALL_SLUGS.iter().collect();
+        assert_eq!(unique.len(), ALL_SLUGS.len(), "duplicate slug");
+    }
 }

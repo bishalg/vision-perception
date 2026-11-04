@@ -192,6 +192,7 @@ pub fn api_v1() -> Value {
         api_v1::DevicePage,
         api_v1::Org,
         api_v1::OrgPatch,
+        crate::i18n::Locale, // WP-L.0 (I18N-11)
         api_v1::OrgUser,
         api_v1::OrgUserPage,
         api_v1::CreateUserRequest,
@@ -474,6 +475,16 @@ pub fn documents() -> Vec<SchemaDocument> {
         SchemaDocument {
             file_name: crate::params::PARAM_REGISTRY_FILE,
             value: crate::params::registry_json(),
+        },
+        // I18N-5: the domain vocabulary catalogue (data, not a JSON Schema).
+        SchemaDocument {
+            file_name: crate::i18n::I18N_FILE,
+            value: crate::i18n::i18n_document(),
+        },
+        // I18N-12: the negotiation fixture the Rust and console tests both run.
+        SchemaDocument {
+            file_name: crate::i18n::NEGOTIATION_FILE,
+            value: crate::i18n::negotiation_cases_json(),
         },
     ]
 }

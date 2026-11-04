@@ -175,6 +175,26 @@ fn assess_flag_matches_swift_golden_and_core() {
 }
 
 #[test]
+fn flag_case_maps_every_golden_headline_and_nulls_unknown_text() {
+    // I18N-4 / acceptance 5 (WP-L.0).
+    let profile = profile_json();
+    for (name, input, _) in vectors(core_golden!("flag/assess_v1.json")) {
+        let out = ok(&asd_wasm::assess_flag(
+            &input["score"].to_string(),
+            &profile,
+        ));
+        let headline = out["headline"].as_str().expect("headline");
+        let case = ok(&asd_wasm::flag_case(headline));
+        assert!(case.is_string(), "{name}: {headline}");
+    }
+    assert_eq!(
+        ok(&asd_wasm::flag_case("Looking matches the age reference")),
+        json!("matches")
+    );
+    assert_eq!(ok(&asd_wasm::flag_case("Some other text")), Value::Null);
+}
+
+#[test]
 fn extract_metrics_matches_swift_golden_and_core() {
     for text in EXTRACT_GOLDEN {
         let doc = parse(text);

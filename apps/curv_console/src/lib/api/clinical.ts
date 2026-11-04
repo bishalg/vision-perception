@@ -165,12 +165,18 @@ export const userProfileSchema = z.object({
   org_id: str,
   display_name: str,
   professional_registration: str,
+  /** I18N-11 (contract from WP-L.0; WP-L.1.0 wires it): the user's override, `null` = follow the org. */
+  locale: z.enum(["en", "ne"]).nullable().optional(),
+  /** I18N-12: the locale for this request; older backends omit it (= `en`). */
+  effective_locale: z.enum(["en", "ne"]).optional(),
 });
 export type UserProfile = z.infer<typeof userProfileSchema>;
 
 export const updateProfileRequestSchema = z.object({
   display_name: str,
   professional_registration: str,
+  /** I18N-11: absent = unchanged, `null` = clear the override. */
+  locale: z.enum(["en", "ne"]).nullable().optional(),
 });
 export type UpdateProfileRequest = z.infer<typeof updateProfileRequestSchema>;
 

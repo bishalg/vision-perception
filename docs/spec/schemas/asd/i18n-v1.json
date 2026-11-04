@@ -1,0 +1,2525 @@
+{
+  "$id": "https://schemas.curv.org/asd/i18n-v1.json",
+  "catalogueVersion": "1.0.0",
+  "entries": {
+    "age_band.range": {
+      "draft": true,
+      "en": "{min}–{max} mo",
+      "hi": "{min}–{max} माह",
+      "ne": "{min}–{max} महिना",
+      "params": [
+        "min",
+        "max"
+      ]
+    },
+    "age_band.range_open": {
+      "draft": true,
+      "en": "{min}+ mo",
+      "hi": "{min}+ माह",
+      "ne": "{min}+ महिना",
+      "params": [
+        "min"
+      ]
+    },
+    "attachment_kind.other": {
+      "draft": true,
+      "en": "Other",
+      "ne": "अन्य",
+      "params": []
+    },
+    "attachment_kind.paper_form": {
+      "draft": true,
+      "en": "Paper form",
+      "ne": "कागजी फारम",
+      "params": []
+    },
+    "attachment_kind.photo_of_document": {
+      "draft": true,
+      "en": "Photo of a document",
+      "ne": "कागजातको फोटो",
+      "params": []
+    },
+    "attachment_kind.referral": {
+      "draft": true,
+      "en": "Referral letter",
+      "ne": "रेफरल पत्र",
+      "params": []
+    },
+    "attachment_kind.report": {
+      "draft": true,
+      "en": "Report",
+      "ne": "प्रतिवेदन",
+      "params": []
+    },
+    "attention_flag.green": {
+      "draft": true,
+      "en": "Green",
+      "hi": "हरा",
+      "ne": "हरियो",
+      "params": []
+    },
+    "attention_flag.red": {
+      "draft": true,
+      "en": "Red",
+      "hi": "लाल",
+      "ne": "रातो",
+      "params": []
+    },
+    "attention_flag.unreliable": {
+      "draft": true,
+      "en": "Unreliable",
+      "hi": "अविश्वसनीय",
+      "ne": "भरपर्दो नभएको",
+      "params": []
+    },
+    "attention_flag.yellow": {
+      "draft": true,
+      "en": "Yellow",
+      "hi": "पीला",
+      "ne": "पहेँलो",
+      "params": []
+    },
+    "calibration_quality.failed": {
+      "draft": true,
+      "en": "Failed",
+      "ne": "असफल",
+      "params": []
+    },
+    "calibration_quality.fair": {
+      "draft": true,
+      "en": "Fair",
+      "ne": "ठिकै",
+      "params": []
+    },
+    "calibration_quality.good": {
+      "draft": true,
+      "en": "Good",
+      "ne": "राम्रो",
+      "params": []
+    },
+    "calibration_quality.poor": {
+      "draft": true,
+      "en": "Poor",
+      "ne": "कमजोर",
+      "params": []
+    },
+    "calibration_quality.skipped": {
+      "draft": true,
+      "en": "Skipped",
+      "ne": "छोडिएको",
+      "params": []
+    },
+    "capture_source.simulated": {
+      "draft": true,
+      "en": "Simulated",
+      "ne": "सिमुलेटेड",
+      "params": []
+    },
+    "capture_source.synthetic": {
+      "draft": true,
+      "en": "Synthetic",
+      "ne": "कृत्रिम",
+      "params": []
+    },
+    "capture_source.truedepth": {
+      "draft": true,
+      "en": "TrueDepth camera",
+      "ne": "TrueDepth क्यामेरा",
+      "params": []
+    },
+    "care_event_kind.diary": {
+      "draft": true,
+      "en": "Diary entry",
+      "ne": "डायरी टिपोट",
+      "params": []
+    },
+    "care_event_kind.medication": {
+      "draft": true,
+      "en": "Medication",
+      "ne": "औषधि",
+      "params": []
+    },
+    "care_event_kind.milestone": {
+      "draft": true,
+      "en": "Milestone",
+      "ne": "विकासको चरण",
+      "params": []
+    },
+    "care_event_kind.task": {
+      "draft": true,
+      "en": "Task",
+      "ne": "काम",
+      "params": []
+    },
+    "clinical_note_kind.correction": {
+      "draft": true,
+      "en": "Correction",
+      "ne": "सुधार",
+      "params": []
+    },
+    "clinical_note_kind.general": {
+      "draft": true,
+      "en": "Note",
+      "ne": "टिपोट",
+      "params": []
+    },
+    "clinical_review_state.amending": {
+      "draft": true,
+      "en": "Amending",
+      "ne": "संशोधन हुँदै",
+      "params": []
+    },
+    "clinical_review_state.awaiting_cosign": {
+      "draft": true,
+      "en": "Awaiting co-signature",
+      "ne": "सह-हस्ताक्षर पर्खँदै",
+      "params": []
+    },
+    "clinical_review_state.final": {
+      "draft": true,
+      "en": "Final",
+      "ne": "अन्तिम",
+      "params": []
+    },
+    "clinical_review_state.in_progress": {
+      "draft": true,
+      "en": "In progress",
+      "ne": "प्रगतिमा",
+      "params": []
+    },
+    "clinical_review_state.open": {
+      "draft": true,
+      "en": "Open",
+      "ne": "खुला",
+      "params": []
+    },
+    "config_document_kind.normative_baselines": {
+      "draft": true,
+      "en": "Normative baselines",
+      "ne": "मानक आधाररेखा",
+      "params": []
+    },
+    "config_document_kind.scoring_profile": {
+      "draft": true,
+      "en": "Scoring profile",
+      "ne": "स्कोरिङ प्रोफाइल",
+      "params": []
+    },
+    "config_document_kind.stimulus_catalog": {
+      "draft": true,
+      "en": "Stimulus catalog",
+      "ne": "भिडियो सूची",
+      "params": []
+    },
+    "config_document_status.candidate": {
+      "draft": true,
+      "en": "Approved",
+      "ne": "स्वीकृत",
+      "params": []
+    },
+    "config_document_status.draft": {
+      "draft": true,
+      "en": "Draft",
+      "ne": "मस्यौदा",
+      "params": []
+    },
+    "config_document_status.published": {
+      "draft": true,
+      "en": "Published",
+      "ne": "प्रकाशित",
+      "params": []
+    },
+    "config_document_status.retired": {
+      "draft": true,
+      "en": "Retired",
+      "ne": "अवकाशप्राप्त",
+      "params": []
+    },
+    "cosign_policy.always": {
+      "draft": true,
+      "en": "Always",
+      "ne": "सधैं",
+      "params": []
+    },
+    "cosign_policy.none": {
+      "draft": true,
+      "en": "Never",
+      "ne": "कहिल्यै होइन",
+      "params": []
+    },
+    "cosign_policy.red_flag": {
+      "draft": true,
+      "en": "Red-flag sessions",
+      "ne": "रातो फ्लाग भएका सत्र",
+      "params": []
+    },
+    "dataset_format.jsonl": {
+      "draft": true,
+      "en": "JSONL",
+      "ne": "JSONL",
+      "params": []
+    },
+    "dataset_format.parquet": {
+      "draft": true,
+      "en": "Parquet",
+      "ne": "Parquet",
+      "params": []
+    },
+    "disposition.monitor": {
+      "draft": true,
+      "en": "Monitor",
+      "ne": "निगरानी",
+      "params": []
+    },
+    "disposition.no_concern_noted": {
+      "draft": true,
+      "en": "No concern noted",
+      "ne": "कुनै चिन्ता देखिएन",
+      "params": []
+    },
+    "disposition.not_interpretable": {
+      "draft": true,
+      "en": "Not interpretable",
+      "ne": "व्याख्या गर्न नमिल्ने",
+      "params": []
+    },
+    "disposition.recapture_requested": {
+      "draft": true,
+      "en": "Recapture requested",
+      "ne": "फेरि रेकर्ड गर्न अनुरोध",
+      "params": []
+    },
+    "disposition.refer_for_evaluation": {
+      "draft": true,
+      "en": "Refer for evaluation",
+      "ne": "मूल्याङ्कनका लागि रेफर",
+      "params": []
+    },
+    "encounter_kind.follow_up_visit": {
+      "draft": true,
+      "en": "Follow-up visit",
+      "ne": "फलो-अप भेट",
+      "params": []
+    },
+    "encounter_kind.home_visit": {
+      "draft": true,
+      "en": "Home visit",
+      "ne": "घर भेट",
+      "params": []
+    },
+    "encounter_kind.other": {
+      "draft": true,
+      "en": "Other",
+      "ne": "अन्य",
+      "params": []
+    },
+    "encounter_kind.phone_call": {
+      "draft": true,
+      "en": "Phone call",
+      "ne": "फोन कल",
+      "params": []
+    },
+    "encounter_kind.screening_visit": {
+      "draft": true,
+      "en": "Observation visit",
+      "ne": "अवलोकन भेट",
+      "params": []
+    },
+    "encounter_status.closed": {
+      "draft": true,
+      "en": "Closed",
+      "ne": "बन्द",
+      "params": []
+    },
+    "encounter_status.open": {
+      "draft": true,
+      "en": "Open",
+      "ne": "खुला",
+      "params": []
+    },
+    "expectation_status.atypical": {
+      "draft": true,
+      "en": "Atypical",
+      "ne": "असामान्य",
+      "params": []
+    },
+    "expectation_status.monitor": {
+      "draft": true,
+      "en": "Monitor",
+      "ne": "निगरानी",
+      "params": []
+    },
+    "expectation_status.onTarget": {
+      "draft": true,
+      "en": "On target",
+      "ne": "लक्ष्यमा",
+      "params": []
+    },
+    "experiment_status.archived": {
+      "draft": true,
+      "en": "Archived",
+      "ne": "संग्रह गरिएको",
+      "params": []
+    },
+    "experiment_status.draft": {
+      "draft": true,
+      "en": "Draft",
+      "ne": "मस्यौदा",
+      "params": []
+    },
+    "experiment_status.promoted": {
+      "draft": true,
+      "en": "Promoted",
+      "ne": "प्रवर्द्धित",
+      "params": []
+    },
+    "export_format.analysis_results": {
+      "draft": true,
+      "en": "Analysis results",
+      "ne": "विश्लेषण नतिजा",
+      "params": []
+    },
+    "export_format.audit_csv": {
+      "draft": true,
+      "en": "Audit log (CSV)",
+      "ne": "अडिट लग (CSV)",
+      "params": []
+    },
+    "export_format.case_package": {
+      "draft": true,
+      "en": "Case package",
+      "ne": "केस प्याकेज",
+      "params": []
+    },
+    "export_format.csv": {
+      "draft": true,
+      "en": "CSV",
+      "ne": "CSV",
+      "params": []
+    },
+    "export_format.csv_excel": {
+      "draft": true,
+      "en": "CSV for Excel",
+      "ne": "Excel का लागि CSV",
+      "params": []
+    },
+    "export_format.csv_sheets": {
+      "draft": true,
+      "en": "CSV for Google Sheets",
+      "ne": "Google Sheets का लागि CSV",
+      "params": []
+    },
+    "export_format.dataset_jsonl": {
+      "draft": true,
+      "en": "Research dataset (JSONL)",
+      "ne": "अनुसन्धान डेटासेट (JSONL)",
+      "params": []
+    },
+    "export_format.dataset_parquet": {
+      "draft": true,
+      "en": "Research dataset (Parquet)",
+      "ne": "अनुसन्धान डेटासेट (Parquet)",
+      "params": []
+    },
+    "export_format.fhir_bundle": {
+      "draft": true,
+      "en": "FHIR bundle",
+      "ne": "FHIR bundle",
+      "params": []
+    },
+    "export_format.fhir_ndjson": {
+      "draft": true,
+      "en": "FHIR NDJSON",
+      "ne": "FHIR NDJSON",
+      "params": []
+    },
+    "export_format.hl7v2": {
+      "draft": true,
+      "en": "HL7 v2",
+      "ne": "HL7 v2",
+      "params": []
+    },
+    "export_format.pdf_summary": {
+      "draft": true,
+      "en": "PDF summary",
+      "ne": "PDF सारांश",
+      "params": []
+    },
+    "export_format.xlsx": {
+      "draft": true,
+      "en": "XLSX",
+      "ne": "XLSX",
+      "params": []
+    },
+    "export_mode.deidentified": {
+      "draft": true,
+      "en": "De-identified",
+      "ne": "पहिचान हटाइएको",
+      "params": []
+    },
+    "export_mode.identified": {
+      "draft": true,
+      "en": "Identified",
+      "ne": "पहिचानसहित",
+      "params": []
+    },
+    "export_purpose.clinical_care": {
+      "draft": true,
+      "en": "Clinical care",
+      "ne": "उपचार र हेरचाह",
+      "params": []
+    },
+    "export_purpose.patient_request": {
+      "draft": true,
+      "en": "Patient request",
+      "ne": "बिरामीको अनुरोध",
+      "params": []
+    },
+    "export_purpose.quality_improvement": {
+      "draft": true,
+      "en": "Quality improvement",
+      "ne": "गुणस्तर सुधार",
+      "params": []
+    },
+    "export_purpose.research": {
+      "draft": true,
+      "en": "Research",
+      "ne": "अनुसन्धान",
+      "params": []
+    },
+    "export_status.expired": {
+      "draft": true,
+      "en": "Expired",
+      "ne": "म्याद सकिएको",
+      "params": []
+    },
+    "export_status.failed": {
+      "draft": true,
+      "en": "Failed",
+      "ne": "असफल",
+      "params": []
+    },
+    "export_status.queued": {
+      "draft": true,
+      "en": "Queued",
+      "ne": "पालोमा",
+      "params": []
+    },
+    "export_status.running": {
+      "draft": true,
+      "en": "Running",
+      "ne": "चलिरहेको",
+      "params": []
+    },
+    "export_status.succeeded": {
+      "draft": true,
+      "en": "Ready",
+      "ne": "तयार",
+      "params": []
+    },
+    "flag_assessment.differs.detail": {
+      "draft": true,
+      "en": "Share this result with your pediatrician at the next visit. This is a screening signal, not a diagnosis.",
+      "ne": "अर्को भेटमा यो नतिजा आफ्नो बाल रोग विशेषज्ञलाई देखाउनुहोस्। यो एउटा प्रारम्भिक संकेत मात्र हो, निदान होइन।",
+      "params": []
+    },
+    "flag_assessment.differs.headline": {
+      "draft": true,
+      "en": "Looking differs from the age reference",
+      "hi": "देखना आयु संदर्भ से अलग है",
+      "ne": "हेराइ उमेरको सन्दर्भभन्दा फरक छ",
+      "params": []
+    },
+    "flag_assessment.matches.detail": {
+      "draft": true,
+      "en": "Looking time sits in the expected range for this age. This is a screening signal, not a diagnosis.",
+      "ne": "हेराइको समय यो उमेरका लागि अपेक्षित दायराभित्र छ। यो एउटा प्रारम्भिक संकेत मात्र हो, निदान होइन।",
+      "params": []
+    },
+    "flag_assessment.matches.headline": {
+      "draft": true,
+      "en": "Looking matches the age reference",
+      "hi": "देखना आयु संदर्भ से मेल खाता है",
+      "ne": "हेराइ उमेरको सन्दर्भसँग मिल्छ",
+      "params": []
+    },
+    "flag_assessment.no_scored_clips.detail": {
+      "draft": true,
+      "en": "Run a full stimulus set before reading a flag. This is a screening signal, not a diagnosis.",
+      "ne": "फ्लाग पढ्नुअघि पूरा भिडियो सेट चलाउनुहोस्। यो एउटा प्रारम्भिक संकेत मात्र हो, निदान होइन।",
+      "params": []
+    },
+    "flag_assessment.no_scored_clips.headline": {
+      "draft": true,
+      "en": "Not enough scored clips",
+      "hi": "पर्याप्त स्कोर किए गए क्लिप नहीं",
+      "ne": "स्कोर गरिएका क्लिप पर्याप्त छैनन्",
+      "params": []
+    },
+    "flag_assessment.some_differ.detail": {
+      "draft": true,
+      "en": "A repeat session is worth doing. This is a screening signal, not a diagnosis.",
+      "ne": "फेरि एउटा सत्र गर्नु उपयोगी हुन्छ। यो एउटा प्रारम्भिक संकेत मात्र हो, निदान होइन।",
+      "params": []
+    },
+    "flag_assessment.some_differ.headline": {
+      "draft": true,
+      "en": "Some clips differ from the age reference",
+      "hi": "कुछ क्लिप आयु संदर्भ से अलग हैं",
+      "ne": "केही क्लिप उमेरको सन्दर्भभन्दा फरक छन्",
+      "params": []
+    },
+    "flag_assessment.unreliable.detail": {
+      "draft": true,
+      "en": "Too many clips fell below the quality gate. Seat the child again and repeat. This is a screening signal, not a diagnosis.",
+      "ne": "धेरै क्लिप गुणस्तरको सीमाभन्दा तल परे। बच्चालाई फेरि राम्रोसँग बसाएर दोहोर्याउनुहोस्। यो एउटा प्रारम्भिक संकेत मात्र हो, निदान होइन।",
+      "params": []
+    },
+    "flag_assessment.unreliable.headline": {
+      "draft": true,
+      "en": "Recheck — looking time was unreliable",
+      "hi": "दोबारा जाँचें — देखने का समय भरोसेमंद नहीं था",
+      "ne": "फेरि जाँच्नुहोस् — हेराइको समय भरपर्दो थिएन",
+      "params": []
+    },
+    "letter_kind.referral": {
+      "draft": true,
+      "en": "Referral letter",
+      "ne": "रेफरल पत्र",
+      "params": []
+    },
+    "letter_kind.summary": {
+      "draft": true,
+      "en": "Summary letter",
+      "ne": "सारांश पत्र",
+      "params": []
+    },
+    "letter_status.draft": {
+      "draft": true,
+      "en": "Draft",
+      "ne": "मस्यौदा",
+      "params": []
+    },
+    "letter_status.final": {
+      "draft": true,
+      "en": "Final",
+      "ne": "अन्तिम",
+      "params": []
+    },
+    "level.frames": {
+      "draft": true,
+      "en": "Frame level",
+      "ne": "फ्रेम तह",
+      "params": []
+    },
+    "level.score": {
+      "draft": true,
+      "en": "Score level",
+      "ne": "स्कोर तह",
+      "params": []
+    },
+    "org_kind.clinic": {
+      "draft": true,
+      "en": "Clinic",
+      "ne": "क्लिनिक",
+      "params": []
+    },
+    "org_kind.home": {
+      "draft": true,
+      "en": "Home",
+      "ne": "घर",
+      "params": []
+    },
+    "org_kind.research": {
+      "draft": true,
+      "en": "Research",
+      "ne": "अनुसन्धान",
+      "params": []
+    },
+    "param.ageBands.help": {
+      "draft": true,
+      "en": "The age bands used to group sessions and norms.",
+      "ne": "सत्र र मानकलाई समूह बनाउन प्रयोग हुने उमेर समूह।",
+      "params": []
+    },
+    "param.ageBands.label": {
+      "draft": true,
+      "en": "Age bands",
+      "ne": "उमेर समूह",
+      "params": []
+    },
+    "param.aoi.dwellCapMs.help": {
+      "draft": true,
+      "en": "Longest time one sample can add to a dwell total.",
+      "ne": "एउटा नमुनाले बसाइ जोडमा थप्न सक्ने सबैभन्दा लामो समय।",
+      "params": []
+    },
+    "param.aoi.dwellCapMs.label": {
+      "draft": true,
+      "en": "Dwell cap per sample",
+      "ne": "प्रति नमुना बसाइ सीमा",
+      "params": []
+    },
+    "param.aoi.marginNorm.help": {
+      "draft": true,
+      "en": "Grows (positive) or shrinks (negative) every area of interest by this fraction of the screen.",
+      "ne": "प्रत्येक रुचि क्षेत्रलाई स्क्रिनको यति अंशले बढाउँछ (धनात्मक) वा घटाउँछ (ऋणात्मक)।",
+      "params": []
+    },
+    "param.aoi.marginNorm.label": {
+      "draft": true,
+      "en": "Area margin",
+      "ne": "क्षेत्र मार्जिन",
+      "params": []
+    },
+    "param.flag.atypicalShareForRed.help": {
+      "draft": true,
+      "en": "Share of atypical clips at which the session is labelled red.",
+      "ne": "असामान्य क्लिपको यो अंशमा सत्रलाई रातो लेबल दिइन्छ।",
+      "params": []
+    },
+    "param.flag.atypicalShareForRed.label": {
+      "draft": true,
+      "en": "Atypical share for red",
+      "ne": "रातोका लागि असामान्य अंश",
+      "params": []
+    },
+    "param.flag.greenFloor.help": {
+      "draft": true,
+      "en": "Composite score at or above this value is labelled green (analysis label only).",
+      "ne": "यो मान वा माथिको कम्पोजिट स्कोरलाई हरियो लेबल दिइन्छ (विश्लेषण लेबल मात्र)।",
+      "params": []
+    },
+    "param.flag.greenFloor.label": {
+      "draft": true,
+      "en": "Green floor",
+      "ne": "हरियो न्यूनतम सीमा",
+      "params": []
+    },
+    "param.flag.lowConfidenceShare.help": {
+      "draft": true,
+      "en": "Share of low-confidence clips above which the session is labelled unreliable.",
+      "ne": "कम-विश्वास क्लिपको यो अंशभन्दा माथि सत्रलाई अविश्वसनीय लेबल दिइन्छ।",
+      "params": []
+    },
+    "param.flag.lowConfidenceShare.label": {
+      "draft": true,
+      "en": "Low-confidence share",
+      "ne": "कम-विश्वास अंश",
+      "params": []
+    },
+    "param.flag.yellowFloor.help": {
+      "draft": true,
+      "en": "Composite score at or above this value, and below the green floor, is labelled yellow.",
+      "ne": "यो मान वा माथि र हरियो सीमाभन्दा तलको कम्पोजिट स्कोरलाई पहेँलो लेबल दिइन्छ।",
+      "params": []
+    },
+    "param.flag.yellowFloor.label": {
+      "draft": true,
+      "en": "Yellow floor",
+      "ne": "पहेँलो न्यूनतम सीमा",
+      "params": []
+    },
+    "param.lowConfidenceValidRatio.help": {
+      "draft": true,
+      "en": "A clip with a valid-sample ratio below this value counts as low confidence.",
+      "ne": "वैध नमुना अनुपात यसभन्दा कम भएको क्लिप कम-विश्वासमा गनिन्छ।",
+      "params": []
+    },
+    "param.lowConfidenceValidRatio.label": {
+      "draft": true,
+      "en": "Low-confidence valid ratio",
+      "ne": "कम-विश्वास वैध अनुपात",
+      "params": []
+    },
+    "param.metrics.fallbackFrameIntervalSec.help": {
+      "draft": true,
+      "en": "Frame interval assumed when timestamps are missing.",
+      "ne": "टाइमस्ट्याम्प नभएको बेला मानिने फ्रेम अन्तराल।",
+      "params": []
+    },
+    "param.metrics.fallbackFrameIntervalSec.label": {
+      "draft": true,
+      "en": "Fallback frame interval",
+      "ne": "वैकल्पिक फ्रेम अन्तराल",
+      "params": []
+    },
+    "param.metrics.flatAffectGain.help": {
+      "draft": true,
+      "en": "Scales the facial-movement signal used for the flat-affect measure.",
+      "ne": "सपाट भाव मापनमा प्रयोग हुने अनुहारको चाल संकेतलाई स्केल गर्छ।",
+      "params": []
+    },
+    "param.metrics.flatAffectGain.label": {
+      "draft": true,
+      "en": "Flat affect gain",
+      "ne": "सपाट भाव गेन",
+      "params": []
+    },
+    "param.metrics.ivtUnit.help": {
+      "draft": true,
+      "en": "Whether the fixation threshold is in screen units or degrees.",
+      "ne": "फिक्सेसन सीमा स्क्रिन एकाइमा हो कि डिग्रीमा।",
+      "params": []
+    },
+    "param.metrics.ivtUnit.label": {
+      "draft": true,
+      "en": "Fixation velocity unit",
+      "ne": "फिक्सेसन गति एकाइ",
+      "params": []
+    },
+    "param.metrics.ivtVelocityDegPerSec.help": {
+      "draft": true,
+      "en": "Fixation threshold in degrees per second; used when the unit is degrees.",
+      "ne": "डिग्री प्रति सेकेन्डमा फिक्सेसन सीमा; एकाइ डिग्री हुँदा प्रयोग हुन्छ।",
+      "params": []
+    },
+    "param.metrics.ivtVelocityDegPerSec.label": {
+      "draft": true,
+      "en": "Fixation velocity (degrees)",
+      "ne": "फिक्सेसन गति (डिग्री)",
+      "params": []
+    },
+    "param.metrics.ivtVelocityUnitsPerSec.help": {
+      "draft": true,
+      "en": "Gaze speed below which samples count as one fixation (screen units per second).",
+      "ne": "यो गतिभन्दा कम नजर नमुना एउटै फिक्सेसनमा गनिन्छन् (स्क्रिन एकाइ प्रति सेकेन्ड)।",
+      "params": []
+    },
+    "param.metrics.ivtVelocityUnitsPerSec.label": {
+      "draft": true,
+      "en": "Fixation velocity threshold",
+      "ne": "फिक्सेसन गति सीमा",
+      "params": []
+    },
+    "param.metrics.minFixationDurationSec.help": {
+      "draft": true,
+      "en": "Shortest run of slow samples that counts as a fixation.",
+      "ne": "फिक्सेसन गनिने सुस्त नमुनाको सबैभन्दा छोटो शृङ्खला।",
+      "params": []
+    },
+    "param.metrics.minFixationDurationSec.label": {
+      "draft": true,
+      "en": "Minimum fixation duration",
+      "ne": "न्यूनतम फिक्सेसन अवधि",
+      "params": []
+    },
+    "param.metrics.smileReactivityWindowSec.help": {
+      "draft": true,
+      "en": "Time after a cue in which a smile counts as a reaction.",
+      "ne": "संकेतपछि मुस्कान प्रतिक्रिया गनिने समय।",
+      "params": []
+    },
+    "param.metrics.smileReactivityWindowSec.label": {
+      "draft": true,
+      "en": "Smile reactivity window",
+      "ne": "मुस्कान प्रतिक्रिया विन्डो",
+      "params": []
+    },
+    "param.norms.includeImputed.help": {
+      "draft": true,
+      "en": "Include norm cells that were filled by interpolation.",
+      "ne": "इन्टरपोलेसनले भरिएका मानक कक्ष समावेश गर्छ।",
+      "params": []
+    },
+    "param.norms.includeImputed.label": {
+      "draft": true,
+      "en": "Include imputed norms",
+      "ne": "इम्प्युट गरिएका मानक समावेश",
+      "params": []
+    },
+    "param.norms.minN.help": {
+      "draft": true,
+      "en": "A band with fewer sessions is not reported.",
+      "ne": "यसभन्दा कम सत्र भएको समूह रिपोर्ट गरिँदैन।",
+      "params": []
+    },
+    "param.norms.minN.label": {
+      "draft": true,
+      "en": "Minimum sessions per band",
+      "ne": "प्रति समूह न्यूनतम सत्र",
+      "params": []
+    },
+    "param.qualityGate.blinkThreshold.help": {
+      "draft": true,
+      "en": "Eye-closure level treated as a blink.",
+      "ne": "झिम्काइका रूपमा गनिने आँखा बन्द हुने स्तर।",
+      "params": []
+    },
+    "param.qualityGate.blinkThreshold.label": {
+      "draft": true,
+      "en": "Blink threshold",
+      "ne": "आँखा झिम्काइ सीमा",
+      "params": []
+    },
+    "param.qualityGate.maxDistanceCm.help": {
+      "draft": true,
+      "en": "Farthest face-to-screen distance accepted during capture.",
+      "ne": "क्याप्चरका बेला स्वीकार गरिने अनुहार-स्क्रिन सबैभन्दा टाढाको दूरी।",
+      "params": []
+    },
+    "param.qualityGate.maxDistanceCm.label": {
+      "draft": true,
+      "en": "Maximum distance",
+      "ne": "अधिकतम दूरी",
+      "params": []
+    },
+    "param.qualityGate.maxPitchRad.help": {
+      "draft": true,
+      "en": "Largest up or down head tilt for which a sample is kept.",
+      "ne": "नमुना राखिने सबैभन्दा ठूलो माथि वा तलको टाउको झुकाइ।",
+      "params": []
+    },
+    "param.qualityGate.maxPitchRad.label": {
+      "draft": true,
+      "en": "Maximum head pitch",
+      "ne": "अधिकतम टाउको झुकाइ",
+      "params": []
+    },
+    "param.qualityGate.maxYawRad.help": {
+      "draft": true,
+      "en": "Largest sideways head turn for which a sample is kept.",
+      "ne": "नमुना राखिने सबैभन्दा ठूलो छेउतर्फको टाउको घुमाइ।",
+      "params": []
+    },
+    "param.qualityGate.maxYawRad.label": {
+      "draft": true,
+      "en": "Maximum head yaw",
+      "ne": "अधिकतम टाउको घुमाइ",
+      "params": []
+    },
+    "param.qualityGate.minConfidence.help": {
+      "draft": true,
+      "en": "Samples below this tracker confidence are dropped.",
+      "ne": "ट्र्याकरको विश्वास यसभन्दा कम भएका नमुना हटाइन्छन्।",
+      "params": []
+    },
+    "param.qualityGate.minConfidence.label": {
+      "draft": true,
+      "en": "Minimum tracking confidence",
+      "ne": "न्यूनतम ट्र्याकिङ विश्वास",
+      "params": []
+    },
+    "param.qualityGate.minDistanceCm.help": {
+      "draft": true,
+      "en": "Closest face-to-screen distance accepted during capture.",
+      "ne": "क्याप्चरका बेला स्वीकार गरिने अनुहार-स्क्रिन सबैभन्दा नजिकको दूरी।",
+      "params": []
+    },
+    "param.qualityGate.minDistanceCm.label": {
+      "draft": true,
+      "en": "Minimum distance",
+      "ne": "न्यूनतम दूरी",
+      "params": []
+    },
+    "param.review.lowQualityValidRatio.help": {
+      "draft": true,
+      "en": "Sessions with a valid-sample ratio below this value are queued for quality review.",
+      "ne": "वैध नमुना अनुपात यसभन्दा कम भएका सत्र गुणस्तर समीक्षामा पठाइन्छन्।",
+      "params": []
+    },
+    "param.review.lowQualityValidRatio.label": {
+      "draft": true,
+      "en": "Low-quality valid ratio",
+      "ne": "कम-गुणस्तर वैध अनुपात",
+      "params": []
+    },
+    "param.trackingQuality.calibration.autoSelect.help": {
+      "draft": true,
+      "en": "Pick the best-fitting calibration model per session.",
+      "ne": "प्रत्येक सत्रका लागि सबैभन्दा मिल्ने क्यालिब्रेसन मोडेल छान्छ।",
+      "params": []
+    },
+    "param.trackingQuality.calibration.autoSelect.label": {
+      "draft": true,
+      "en": "Select model automatically",
+      "ne": "मोडेल स्वचालित छनोट",
+      "params": []
+    },
+    "param.trackingQuality.calibration.bands.fairMaxDeg.help": {
+      "draft": true,
+      "en": "Largest error still rated fair after calibration.",
+      "ne": "क्यालिब्रेसनपछि ठीकै मानिने सबैभन्दा ठूलो त्रुटि।",
+      "params": []
+    },
+    "param.trackingQuality.calibration.bands.fairMaxDeg.label": {
+      "draft": true,
+      "en": "Calibration fair up to",
+      "ne": "क्यालिब्रेसन ठीकै सीमा",
+      "params": []
+    },
+    "param.trackingQuality.calibration.bands.goodMaxDeg.help": {
+      "draft": true,
+      "en": "Largest error still rated good after calibration.",
+      "ne": "क्यालिब्रेसनपछि राम्रो मानिने सबैभन्दा ठूलो त्रुटि।",
+      "params": []
+    },
+    "param.trackingQuality.calibration.bands.goodMaxDeg.label": {
+      "draft": true,
+      "en": "Calibration good up to",
+      "ne": "क्यालिब्रेसन राम्रो सीमा",
+      "params": []
+    },
+    "param.trackingQuality.calibration.bands.poorMaxDeg.help": {
+      "draft": true,
+      "en": "Largest error still rated poor after calibration.",
+      "ne": "क्यालिब्रेसनपछि कमजोर मानिने सबैभन्दा ठूलो त्रुटि।",
+      "params": []
+    },
+    "param.trackingQuality.calibration.bands.poorMaxDeg.label": {
+      "draft": true,
+      "en": "Calibration poor up to",
+      "ne": "क्यालिब्रेसन कमजोर सीमा",
+      "params": []
+    },
+    "param.trackingQuality.calibration.collectMs.help": {
+      "draft": true,
+      "en": "Time over which samples are collected at each calibration target.",
+      "ne": "प्रत्येक क्यालिब्रेसन लक्ष्यमा नमुना संकलन गरिने अवधि।",
+      "params": []
+    },
+    "param.trackingQuality.calibration.collectMs.label": {
+      "draft": true,
+      "en": "Calibration collect time",
+      "ne": "क्यालिब्रेसन संकलन समय",
+      "params": []
+    },
+    "param.trackingQuality.calibration.defaultModel.help": {
+      "draft": true,
+      "en": "Mapping model used when automatic selection is off.",
+      "ne": "स्वचालित छनोट बन्द हुँदा प्रयोग हुने म्यापिङ मोडेल।",
+      "params": []
+    },
+    "param.trackingQuality.calibration.defaultModel.label": {
+      "draft": true,
+      "en": "Default calibration model",
+      "ne": "पूर्वनिर्धारित क्यालिब्रेसन मोडेल",
+      "params": []
+    },
+    "param.trackingQuality.calibration.eligibilityMarginPoints.help": {
+      "draft": true,
+      "en": "Extra usable points a complex model needs beyond its minimum.",
+      "ne": "जटिल मोडेललाई न्यूनतमभन्दा बढी चाहिने प्रयोगयोग्य बिन्दु।",
+      "params": []
+    },
+    "param.trackingQuality.calibration.eligibilityMarginPoints.label": {
+      "draft": true,
+      "en": "Eligibility margin",
+      "ne": "योग्यता मार्जिन",
+      "params": []
+    },
+    "param.trackingQuality.calibration.layout5.help": {
+      "draft": true,
+      "en": "Normalised target positions of the five-point calibration.",
+      "ne": "पाँच-बिन्दु क्यालिब्रेसनका सामान्यीकृत लक्ष्य स्थान।",
+      "params": []
+    },
+    "param.trackingQuality.calibration.layout5.label": {
+      "draft": true,
+      "en": "Five-point layout",
+      "ne": "पाँच-बिन्दु लेआउट",
+      "params": []
+    },
+    "param.trackingQuality.calibration.layout9.help": {
+      "draft": true,
+      "en": "Normalised target positions of the nine-point calibration.",
+      "ne": "नौ-बिन्दु क्यालिब्रेसनका सामान्यीकृत लक्ष्य स्थान।",
+      "params": []
+    },
+    "param.trackingQuality.calibration.layout9.label": {
+      "draft": true,
+      "en": "Nine-point layout",
+      "ne": "नौ-बिन्दु लेआउट",
+      "params": []
+    },
+    "param.trackingQuality.calibration.madRejectK.help": {
+      "draft": true,
+      "en": "Samples farther than this many median deviations from the target centre are rejected.",
+      "ne": "लक्ष्य केन्द्रबाट यति मध्यक विचलनभन्दा टाढाका नमुना अस्वीकार गरिन्छन्।",
+      "params": []
+    },
+    "param.trackingQuality.calibration.madRejectK.label": {
+      "draft": true,
+      "en": "Outlier rejection factor",
+      "ne": "आउटलायर अस्वीकार गुणक",
+      "params": []
+    },
+    "param.trackingQuality.calibration.maxConditionNumber.help": {
+      "draft": true,
+      "en": "Largest numerical condition of the fit; above it the fit is rejected as unstable.",
+      "ne": "फिटको सबैभन्दा ठूलो संख्यात्मक कन्डिसन; यसभन्दा माथि अस्थिर मानी अस्वीकार हुन्छ।",
+      "params": []
+    },
+    "param.trackingQuality.calibration.maxConditionNumber.label": {
+      "draft": true,
+      "en": "Maximum condition number",
+      "ne": "अधिकतम कन्डिसन सङ्ख्या",
+      "params": []
+    },
+    "param.trackingQuality.calibration.maxRetriesPerTarget.help": {
+      "draft": true,
+      "en": "How often a failed calibration target is repeated.",
+      "ne": "असफल क्यालिब्रेसन लक्ष्य कति पटक दोहोर्याइन्छ।",
+      "params": []
+    },
+    "param.trackingQuality.calibration.maxRetriesPerTarget.label": {
+      "draft": true,
+      "en": "Maximum retries per target",
+      "ne": "प्रति लक्ष्य अधिकतम पुनः प्रयास",
+      "params": []
+    },
+    "param.trackingQuality.calibration.maxTargetWaitMs.help": {
+      "draft": true,
+      "en": "Longest wait for a calibration target before it is skipped.",
+      "ne": "क्यालिब्रेसन लक्ष्य छोड्नुअघिको सबैभन्दा लामो प्रतीक्षा।",
+      "params": []
+    },
+    "param.trackingQuality.calibration.maxTargetWaitMs.label": {
+      "draft": true,
+      "en": "Maximum target wait",
+      "ne": "लक्ष्यको अधिकतम प्रतीक्षा",
+      "params": []
+    },
+    "param.trackingQuality.calibration.minImprovementDeg.help": {
+      "draft": true,
+      "en": "Accuracy gain needed before a more complex model replaces the default.",
+      "ne": "जटिल मोडेलले पूर्वनिर्धारितलाई बदल्न चाहिने शुद्धता सुधार।",
+      "params": []
+    },
+    "param.trackingQuality.calibration.minImprovementDeg.label": {
+      "draft": true,
+      "en": "Minimum improvement",
+      "ne": "न्यूनतम सुधार",
+      "params": []
+    },
+    "param.trackingQuality.calibration.minSamplesPerTarget.help": {
+      "draft": true,
+      "en": "Samples needed at a calibration target for it to count.",
+      "ne": "क्यालिब्रेसन लक्ष्य गणना हुन चाहिने नमुना संख्या।",
+      "params": []
+    },
+    "param.trackingQuality.calibration.minSamplesPerTarget.label": {
+      "draft": true,
+      "en": "Minimum samples per target",
+      "ne": "प्रति लक्ष्य न्यूनतम नमुना",
+      "params": []
+    },
+    "param.trackingQuality.calibration.minUsablePoints.help": {
+      "draft": true,
+      "en": "Calibration points needed for a calibration to be accepted.",
+      "ne": "क्यालिब्रेसन स्वीकार हुन चाहिने बिन्दु संख्या।",
+      "params": []
+    },
+    "param.trackingQuality.calibration.minUsablePoints.label": {
+      "draft": true,
+      "en": "Minimum usable points",
+      "ne": "न्यूनतम प्रयोगयोग्य बिन्दु",
+      "params": []
+    },
+    "param.trackingQuality.calibration.settleMs.help": {
+      "draft": true,
+      "en": "Wait after a target appears before samples are collected.",
+      "ne": "लक्ष्य देखिएपछि नमुना संकलन सुरु हुनुअघिको प्रतीक्षा।",
+      "params": []
+    },
+    "param.trackingQuality.calibration.settleMs.label": {
+      "draft": true,
+      "en": "Calibration settle time",
+      "ne": "क्यालिब्रेसन स्थिर हुने समय",
+      "params": []
+    },
+    "param.trackingQuality.confidence.distanceComfortMaxCm.help": {
+      "draft": true,
+      "en": "Farthest distance at which confidence is not reduced.",
+      "ne": "विश्वास नघटिने सबैभन्दा टाढाको दूरी।",
+      "params": []
+    },
+    "param.trackingQuality.confidence.distanceComfortMaxCm.label": {
+      "draft": true,
+      "en": "Comfort distance: maximum",
+      "ne": "सहज दूरी: अधिकतम",
+      "params": []
+    },
+    "param.trackingQuality.confidence.distanceComfortMinCm.help": {
+      "draft": true,
+      "en": "Nearest distance at which confidence is not reduced.",
+      "ne": "विश्वास नघटिने सबैभन्दा नजिकको दूरी।",
+      "params": []
+    },
+    "param.trackingQuality.confidence.distanceComfortMinCm.label": {
+      "draft": true,
+      "en": "Comfort distance: minimum",
+      "ne": "सहज दूरी: न्यूनतम",
+      "params": []
+    },
+    "param.trackingQuality.confidence.eyeOpennessComfort.help": {
+      "draft": true,
+      "en": "Eye openness at or above which confidence is not reduced.",
+      "ne": "यो वा माथिको आँखा खुलाइमा विश्वास घटाइँदैन।",
+      "params": []
+    },
+    "param.trackingQuality.confidence.eyeOpennessComfort.label": {
+      "draft": true,
+      "en": "Eye openness comfort",
+      "ne": "आँखा खुलाइ सहज स्तर",
+      "params": []
+    },
+    "param.trackingQuality.confidence.headSpeedComfortDegPerSec.help": {
+      "draft": true,
+      "en": "Head speed up to which confidence is not reduced.",
+      "ne": "यस गतिसम्म विश्वास घटाइँदैन।",
+      "params": []
+    },
+    "param.trackingQuality.confidence.headSpeedComfortDegPerSec.label": {
+      "draft": true,
+      "en": "Head speed comfort",
+      "ne": "टाउको गति सहज स्तर",
+      "params": []
+    },
+    "param.trackingQuality.confidence.maxHeadSpeedDegPerSec.help": {
+      "draft": true,
+      "en": "Head speed at which confidence falls to zero.",
+      "ne": "यस गतिमा विश्वास शून्यमा झर्छ।",
+      "params": []
+    },
+    "param.trackingQuality.confidence.maxHeadSpeedDegPerSec.label": {
+      "draft": true,
+      "en": "Maximum head speed",
+      "ne": "टाउकोको अधिकतम गति",
+      "params": []
+    },
+    "param.trackingQuality.confidence.poseComfortFraction.help": {
+      "draft": true,
+      "en": "Share of the pose range in which confidence is not reduced.",
+      "ne": "मुद्रा दायराको जुन अंशमा विश्वास घटाइँदैन।",
+      "params": []
+    },
+    "param.trackingQuality.confidence.poseComfortFraction.label": {
+      "draft": true,
+      "en": "Pose comfort fraction",
+      "ne": "मुद्रा सहज अंश",
+      "params": []
+    },
+    "param.trackingQuality.confidence.poseShiftComfortPct.help": {
+      "draft": true,
+      "en": "Pose change up to which confidence is not reduced.",
+      "ne": "यस परिवर्तनसम्म विश्वास घटाइँदैन।",
+      "params": []
+    },
+    "param.trackingQuality.confidence.poseShiftComfortPct.label": {
+      "draft": true,
+      "en": "Pose shift comfort",
+      "ne": "मुद्रा परिवर्तन सहज स्तर",
+      "params": []
+    },
+    "param.trackingQuality.drift.checkLayout.help": {
+      "draft": true,
+      "en": "Normalised target positions of the drift check.",
+      "ne": "ड्रिफ्ट जाँचका सामान्यीकृत लक्ष्य स्थान।",
+      "params": []
+    },
+    "param.trackingQuality.drift.checkLayout.label": {
+      "draft": true,
+      "en": "Drift check layout",
+      "ne": "ड्रिफ्ट जाँच लेआउट",
+      "params": []
+    },
+    "param.trackingQuality.drift.collectMs.help": {
+      "draft": true,
+      "en": "Time over which samples are collected at each drift target.",
+      "ne": "प्रत्येक ड्रिफ्ट लक्ष्यमा नमुना संकलन गरिने अवधि।",
+      "params": []
+    },
+    "param.trackingQuality.drift.collectMs.label": {
+      "draft": true,
+      "en": "Drift collect time",
+      "ne": "ड्रिफ्ट संकलन समय",
+      "params": []
+    },
+    "param.trackingQuality.drift.hardDeg.help": {
+      "draft": true,
+      "en": "Drift above which the session tracking is marked unusable.",
+      "ne": "यसभन्दा माथिको ड्रिफ्टमा सत्रको ट्र्याकिङ प्रयोगअयोग्य चिन्ह लाग्छ।",
+      "params": []
+    },
+    "param.trackingQuality.drift.hardDeg.label": {
+      "draft": true,
+      "en": "Drift hard limit",
+      "ne": "ड्रिफ्ट कडा सीमा",
+      "params": []
+    },
+    "param.trackingQuality.drift.minSamples.help": {
+      "draft": true,
+      "en": "Samples needed for a drift check to count.",
+      "ne": "ड्रिफ्ट जाँच गणना हुन चाहिने नमुना संख्या।",
+      "params": []
+    },
+    "param.trackingQuality.drift.minSamples.label": {
+      "draft": true,
+      "en": "Drift minimum samples",
+      "ne": "ड्रिफ्ट न्यूनतम नमुना",
+      "params": []
+    },
+    "param.trackingQuality.drift.settleMs.help": {
+      "draft": true,
+      "en": "Wait after a drift target appears before samples are collected.",
+      "ne": "ड्रिफ्ट लक्ष्य देखिएपछि नमुना संकलनअघिको प्रतीक्षा।",
+      "params": []
+    },
+    "param.trackingQuality.drift.settleMs.label": {
+      "draft": true,
+      "en": "Drift settle time",
+      "ne": "ड्रिफ्ट स्थिर हुने समय",
+      "params": []
+    },
+    "param.trackingQuality.drift.warnConsecutive.help": {
+      "draft": true,
+      "en": "Warnings in a row that trigger a recalibration.",
+      "ne": "पुनः क्यालिब्रेसन सुरु गर्ने लगातार चेतावनी संख्या।",
+      "params": []
+    },
+    "param.trackingQuality.drift.warnConsecutive.label": {
+      "draft": true,
+      "en": "Consecutive drift warnings",
+      "ne": "लगातार ड्रिफ्ट चेतावनी",
+      "params": []
+    },
+    "param.trackingQuality.drift.warnDeg.help": {
+      "draft": true,
+      "en": "Drift above which a warning is recorded.",
+      "ne": "यसभन्दा माथिको ड्रिफ्टमा चेतावनी दर्ता हुन्छ।",
+      "params": []
+    },
+    "param.trackingQuality.drift.warnDeg.label": {
+      "draft": true,
+      "en": "Drift warning",
+      "ne": "ड्रिफ्ट चेतावनी",
+      "params": []
+    },
+    "param.trackingQuality.filter.beta.help": {
+      "draft": true,
+      "en": "How strongly smoothing relaxes at higher gaze speed.",
+      "ne": "उच्च नजर गतिमा स्मूदिङ कति खुकुलो हुन्छ।",
+      "params": []
+    },
+    "param.trackingQuality.filter.beta.label": {
+      "draft": true,
+      "en": "Filter speed coefficient",
+      "ne": "फिल्टर गति गुणांक",
+      "params": []
+    },
+    "param.trackingQuality.filter.dCutoffHz.help": {
+      "draft": true,
+      "en": "Cutoff of the speed estimate used by the filter.",
+      "ne": "फिल्टरले प्रयोग गर्ने गति अनुमानको कटअफ।",
+      "params": []
+    },
+    "param.trackingQuality.filter.dCutoffHz.label": {
+      "draft": true,
+      "en": "Filter derivative cutoff",
+      "ne": "फिल्टर डेरिभेटिभ कटअफ",
+      "params": []
+    },
+    "param.trackingQuality.filter.minCutoffHz.help": {
+      "draft": true,
+      "en": "Smoothing at rest; lower values smooth more.",
+      "ne": "स्थिर अवस्थाको स्मूदिङ; कम मानले बढी स्मूद गर्छ।",
+      "params": []
+    },
+    "param.trackingQuality.filter.minCutoffHz.label": {
+      "draft": true,
+      "en": "Filter minimum cutoff",
+      "ne": "फिल्टर न्यूनतम कटअफ",
+      "params": []
+    },
+    "param.trackingQuality.gapFill.lossIntervalCapMs.help": {
+      "draft": true,
+      "en": "Longest single loss interval counted towards data loss.",
+      "ne": "डाटा हानिमा गनिने सबैभन्दा लामो एकल हानि अन्तराल।",
+      "params": []
+    },
+    "param.trackingQuality.gapFill.lossIntervalCapMs.label": {
+      "draft": true,
+      "en": "Loss interval cap",
+      "ne": "हानि अन्तराल सीमा",
+      "params": []
+    },
+    "param.trackingQuality.gapFill.maxDeg.help": {
+      "draft": true,
+      "en": "Largest gaze movement across a gap that is still filled.",
+      "ne": "ग्यापभरि नजरको जुन सबैभन्दा ठूलो चालसम्म भरिन्छ।",
+      "params": []
+    },
+    "param.trackingQuality.gapFill.maxDeg.label": {
+      "draft": true,
+      "en": "Gap fill: maximum movement",
+      "ne": "ग्याप भर्ने: अधिकतम चाल",
+      "params": []
+    },
+    "param.trackingQuality.gapFill.maxMs.help": {
+      "draft": true,
+      "en": "Longest tracking gap that is filled by interpolation.",
+      "ne": "इन्टरपोलेसनले भरिने सबैभन्दा लामो ट्र्याकिङ ग्याप।",
+      "params": []
+    },
+    "param.trackingQuality.gapFill.maxMs.label": {
+      "draft": true,
+      "en": "Gap fill: maximum duration",
+      "ne": "ग्याप भर्ने: अधिकतम अवधि",
+      "params": []
+    },
+    "param.trackingQuality.provisional.help": {
+      "draft": true,
+      "en": "Marks the tracking-quality thresholds as provisional until they are validated.",
+      "ne": "ट्र्याकिङ-गुणस्तर सीमा प्रमाणित नभएसम्म अस्थायी चिन्ह लगाउँछ।",
+      "params": []
+    },
+    "param.trackingQuality.provisional.label": {
+      "draft": true,
+      "en": "Tracking thresholds provisional",
+      "ne": "ट्र्याकिङ सीमा अस्थायी",
+      "params": []
+    },
+    "param.trackingQuality.recalibration.maxCalibrationAgeSec.help": {
+      "draft": true,
+      "en": "A calibration older than this is repeated.",
+      "ne": "यसभन्दा पुरानो क्यालिब्रेसन दोहोर्याइन्छ।",
+      "params": []
+    },
+    "param.trackingQuality.recalibration.maxCalibrationAgeSec.label": {
+      "draft": true,
+      "en": "Maximum calibration age",
+      "ne": "क्यालिब्रेसनको अधिकतम उमेर",
+      "params": []
+    },
+    "param.trackingQuality.recalibration.maxRecalibrationsInBattery.help": {
+      "draft": true,
+      "en": "Most recalibrations allowed in one battery of clips.",
+      "ne": "क्लिपको एउटा ब्याट्रीमा अनुमति हुने अधिकतम पुनः क्यालिब्रेसन।",
+      "params": []
+    },
+    "param.trackingQuality.recalibration.maxRecalibrationsInBattery.label": {
+      "draft": true,
+      "en": "Recalibrations per battery",
+      "ne": "प्रति ब्याट्री पुनः क्यालिब्रेसन",
+      "params": []
+    },
+    "param.trackingQuality.recalibration.maxRecalibrationsPerSession.help": {
+      "draft": true,
+      "en": "Most recalibrations allowed in one session.",
+      "ne": "एउटा सत्रमा अनुमति हुने अधिकतम पुनः क्यालिब्रेसन।",
+      "params": []
+    },
+    "param.trackingQuality.recalibration.maxRecalibrationsPerSession.label": {
+      "draft": true,
+      "en": "Recalibrations per session",
+      "ne": "प्रति सत्र पुनः क्यालिब्रेसन",
+      "params": []
+    },
+    "param.trackingQuality.recalibration.poseShiftAngleDeg.help": {
+      "draft": true,
+      "en": "Change in head angle that asks for a new calibration.",
+      "ne": "नयाँ क्यालिब्रेसन माग्ने टाउको कोणको परिवर्तन।",
+      "params": []
+    },
+    "param.trackingQuality.recalibration.poseShiftAngleDeg.label": {
+      "draft": true,
+      "en": "Pose shift: angle",
+      "ne": "मुद्रा परिवर्तन: कोण",
+      "params": []
+    },
+    "param.trackingQuality.recalibration.poseShiftDistancePct.help": {
+      "draft": true,
+      "en": "Change in face distance that asks for a new calibration.",
+      "ne": "नयाँ क्यालिब्रेसन माग्ने अनुहार दूरीको परिवर्तन।",
+      "params": []
+    },
+    "param.trackingQuality.recalibration.poseShiftDistancePct.label": {
+      "draft": true,
+      "en": "Pose shift: distance",
+      "ne": "मुद्रा परिवर्तन: दूरी",
+      "params": []
+    },
+    "param.trackingQuality.recalibration.poseWindowSec.help": {
+      "draft": true,
+      "en": "Time window over which pose changes are measured.",
+      "ne": "मुद्रा परिवर्तन नापिने समय विन्डो।",
+      "params": []
+    },
+    "param.trackingQuality.recalibration.poseWindowSec.label": {
+      "draft": true,
+      "en": "Pose window",
+      "ne": "मुद्रा विन्डो",
+      "params": []
+    },
+    "param.trackingQuality.scoring.aoiResolutionFactor.help": {
+      "draft": true,
+      "en": "Scales the gaze error that is allowed around an area of interest.",
+      "ne": "रुचि क्षेत्रवरिपरि अनुमति हुने नजर त्रुटिलाई स्केल गर्छ।",
+      "params": []
+    },
+    "param.trackingQuality.scoring.aoiResolutionFactor.label": {
+      "draft": true,
+      "en": "Area-of-interest resolution factor",
+      "ne": "रुचि क्षेत्र रिजोल्युसन गुणक",
+      "params": []
+    },
+    "param.trackingQuality.scoring.ivtVelocityDegPerSec.help": {
+      "draft": true,
+      "en": "Velocity threshold in degrees per second used to detect fixations.",
+      "ne": "फिक्सेसन पत्ता लगाउन प्रयोग हुने डिग्री प्रति सेकेन्ड गति सीमा।",
+      "params": []
+    },
+    "param.trackingQuality.scoring.ivtVelocityDegPerSec.label": {
+      "draft": true,
+      "en": "Fixation velocity (tracking section)",
+      "ne": "फिक्सेसन गति (ट्र्याकिङ खण्ड)",
+      "params": []
+    },
+    "param.trackingQuality.scoring.maxAccuracyDegForScoring.help": {
+      "draft": true,
+      "en": "Sessions with a larger measured error are not scored.",
+      "ne": "यसभन्दा ठूलो नापिएको त्रुटि भएका सत्र स्कोर हुँदैनन्।",
+      "params": []
+    },
+    "param.trackingQuality.scoring.maxAccuracyDegForScoring.label": {
+      "draft": true,
+      "en": "Maximum error for scoring",
+      "ne": "स्कोरिङका लागि अधिकतम त्रुटि",
+      "params": []
+    },
+    "param.trackingQuality.trackState.blinkRecoveryMs.help": {
+      "draft": true,
+      "en": "Time after a blink before the eye counts as tracked again.",
+      "ne": "झिम्काइपछि आँखा फेरि ट्र्याक भएको गनिनुअघिको समय।",
+      "params": []
+    },
+    "param.trackingQuality.trackState.blinkRecoveryMs.label": {
+      "draft": true,
+      "en": "Blink recovery",
+      "ne": "झिम्काइ रिकभरी",
+      "params": []
+    },
+    "param.trackingQuality.trackState.maxEyeSpeedDegPerSec.help": {
+      "draft": true,
+      "en": "Eye speeds above this are treated as tracking errors.",
+      "ne": "यसभन्दा माथिको आँखा गति ट्र्याकिङ त्रुटि मानिन्छ।",
+      "params": []
+    },
+    "param.trackingQuality.trackState.maxEyeSpeedDegPerSec.label": {
+      "draft": true,
+      "en": "Maximum eye speed",
+      "ne": "आँखाको अधिकतम गति",
+      "params": []
+    },
+    "param.trackingQuality.trackState.offscreenMarginNorm.help": {
+      "draft": true,
+      "en": "Margin beyond the screen edge before gaze counts as off-screen.",
+      "ne": "नजर स्क्रिन बाहिर गनिनुअघि स्क्रिन किनारापारिको मार्जिन।",
+      "params": []
+    },
+    "param.trackingQuality.trackState.offscreenMarginNorm.label": {
+      "draft": true,
+      "en": "Off-screen margin",
+      "ne": "स्क्रिन बाहिरको मार्जिन",
+      "params": []
+    },
+    "param.trackingQuality.validation.benchLayout13.help": {
+      "draft": true,
+      "en": "Normalised target positions of the 13-point bench validation.",
+      "ne": "१३-बिन्दु बेन्च प्रमाणीकरणका सामान्यीकृत लक्ष्य स्थान।",
+      "params": []
+    },
+    "param.trackingQuality.validation.benchLayout13.label": {
+      "draft": true,
+      "en": "Bench layout (13 points)",
+      "ne": "बेन्च लेआउट (१३ बिन्दु)",
+      "params": []
+    },
+    "param.trackingQuality.validation.collectMs.help": {
+      "draft": true,
+      "en": "Time over which samples are collected at each validation target.",
+      "ne": "प्रत्येक प्रमाणीकरण लक्ष्यमा नमुना संकलन गरिने अवधि।",
+      "params": []
+    },
+    "param.trackingQuality.validation.collectMs.label": {
+      "draft": true,
+      "en": "Validation collect time",
+      "ne": "प्रमाणीकरण संकलन समय",
+      "params": []
+    },
+    "param.trackingQuality.validation.layout.help": {
+      "draft": true,
+      "en": "Normalised target positions of the accuracy validation.",
+      "ne": "शुद्धता प्रमाणीकरणका सामान्यीकृत लक्ष्य स्थान।",
+      "params": []
+    },
+    "param.trackingQuality.validation.layout.label": {
+      "draft": true,
+      "en": "Validation layout",
+      "ne": "प्रमाणीकरण लेआउट",
+      "params": []
+    },
+    "param.trackingQuality.validation.maxAccuracyDeg.help": {
+      "draft": true,
+      "en": "Measured error above which the validation fails.",
+      "ne": "यसभन्दा माथिको नापिएको त्रुटिमा प्रमाणीकरण असफल हुन्छ।",
+      "params": []
+    },
+    "param.trackingQuality.validation.maxAccuracyDeg.label": {
+      "draft": true,
+      "en": "Validation maximum accuracy error",
+      "ne": "प्रमाणीकरण अधिकतम त्रुटि",
+      "params": []
+    },
+    "param.trackingQuality.validation.minSamplesPerTarget.help": {
+      "draft": true,
+      "en": "Samples needed at a validation target for it to count.",
+      "ne": "प्रमाणीकरण लक्ष्य गणना हुन चाहिने नमुना संख्या।",
+      "params": []
+    },
+    "param.trackingQuality.validation.minSamplesPerTarget.label": {
+      "draft": true,
+      "en": "Validation samples per target",
+      "ne": "प्रमाणीकरण प्रति लक्ष्य नमुना",
+      "params": []
+    },
+    "param.trackingQuality.validation.minTargetsHit.help": {
+      "draft": true,
+      "en": "Validation targets that must be measured for a validation to count.",
+      "ne": "प्रमाणीकरण गणना हुन नापिनुपर्ने लक्ष्य संख्या।",
+      "params": []
+    },
+    "param.trackingQuality.validation.minTargetsHit.label": {
+      "draft": true,
+      "en": "Minimum targets hit",
+      "ne": "न्यूनतम लक्ष्य",
+      "params": []
+    },
+    "param.trackingQuality.validation.settleMs.help": {
+      "draft": true,
+      "en": "Wait after a validation target appears before samples are collected.",
+      "ne": "प्रमाणीकरण लक्ष्य देखिएपछि नमुना संकलनअघिको प्रतीक्षा।",
+      "params": []
+    },
+    "param.trackingQuality.validation.settleMs.label": {
+      "draft": true,
+      "en": "Validation settle time",
+      "ne": "प्रमाणीकरण स्थिर हुने समय",
+      "params": []
+    },
+    "param.trackingQuality.validation.warnAccuracyDeg.help": {
+      "draft": true,
+      "en": "Measured error above which a warning is recorded.",
+      "ne": "यसभन्दा माथिको नापिएको त्रुटिमा चेतावनी दर्ता हुन्छ।",
+      "params": []
+    },
+    "param.trackingQuality.validation.warnAccuracyDeg.label": {
+      "draft": true,
+      "en": "Validation warning accuracy",
+      "ne": "प्रमाणीकरण चेतावनी शुद्धता",
+      "params": []
+    },
+    "param.trackingQuality.verdict.accuracyBands.fairMaxDeg.help": {
+      "draft": true,
+      "en": "Largest error rated fair in the tracking verdict.",
+      "ne": "ट्र्याकिङ निर्णयमा ठीकै मानिने सबैभन्दा ठूलो त्रुटि।",
+      "params": []
+    },
+    "param.trackingQuality.verdict.accuracyBands.fairMaxDeg.label": {
+      "draft": true,
+      "en": "Verdict: fair up to",
+      "ne": "निर्णय: ठीकै सीमा",
+      "params": []
+    },
+    "param.trackingQuality.verdict.accuracyBands.goodMaxDeg.help": {
+      "draft": true,
+      "en": "Largest error rated good in the tracking verdict.",
+      "ne": "ट्र्याकिङ निर्णयमा राम्रो मानिने सबैभन्दा ठूलो त्रुटि।",
+      "params": []
+    },
+    "param.trackingQuality.verdict.accuracyBands.goodMaxDeg.label": {
+      "draft": true,
+      "en": "Verdict: good up to",
+      "ne": "निर्णय: राम्रो सीमा",
+      "params": []
+    },
+    "param.trackingQuality.verdict.accuracyBands.poorMaxDeg.help": {
+      "draft": true,
+      "en": "Largest error rated poor in the tracking verdict.",
+      "ne": "ट्र्याकिङ निर्णयमा कमजोर मानिने सबैभन्दा ठूलो त्रुटि।",
+      "params": []
+    },
+    "param.trackingQuality.verdict.accuracyBands.poorMaxDeg.label": {
+      "draft": true,
+      "en": "Verdict: poor up to",
+      "ne": "निर्णय: कमजोर सीमा",
+      "params": []
+    },
+    "param.trackingQuality.verdict.fairAboveDataLoss.help": {
+      "draft": true,
+      "en": "Data loss above which tracking is rated fair at best.",
+      "ne": "यसभन्दा माथिको डाटा हानिमा ट्र्याकिङ बढीमा ठीकै मानिन्छ।",
+      "params": []
+    },
+    "param.trackingQuality.verdict.fairAboveDataLoss.label": {
+      "draft": true,
+      "en": "Fair above data loss",
+      "ne": "यसभन्दा माथि डाटा हानिमा ठीकै",
+      "params": []
+    },
+    "param.trackingQuality.verdict.poorAboveDataLoss.help": {
+      "draft": true,
+      "en": "Data loss above which tracking is rated poor.",
+      "ne": "यसभन्दा माथिको डाटा हानिमा ट्र्याकिङ कमजोर मानिन्छ।",
+      "params": []
+    },
+    "param.trackingQuality.verdict.poorAboveDataLoss.label": {
+      "draft": true,
+      "en": "Poor above data loss",
+      "ne": "यसभन्दा माथि डाटा हानिमा कमजोर",
+      "params": []
+    },
+    "param.trackingQuality.verdict.unusableBelowValidRatio.help": {
+      "draft": true,
+      "en": "Sessions with a lower valid-sample ratio are rated unusable.",
+      "ne": "वैध नमुना अनुपात यसभन्दा कम भएका सत्र प्रयोगअयोग्य मानिन्छन्।",
+      "params": []
+    },
+    "param.trackingQuality.verdict.unusableBelowValidRatio.label": {
+      "draft": true,
+      "en": "Unusable below valid ratio",
+      "ne": "यसभन्दा तल प्रयोगअयोग्य वैध अनुपात",
+      "params": []
+    },
+    "param_group.ageBands": {
+      "draft": true,
+      "en": "Age bands",
+      "ne": "उमेर समूह",
+      "params": []
+    },
+    "param_group.aoi": {
+      "draft": true,
+      "en": "Areas of interest",
+      "ne": "रुचि क्षेत्र",
+      "params": []
+    },
+    "param_group.flag": {
+      "draft": true,
+      "en": "Analysis labels",
+      "ne": "विश्लेषण लेबल",
+      "params": []
+    },
+    "param_group.lowConfidenceValidRatio": {
+      "draft": true,
+      "en": "Low-confidence gate",
+      "ne": "कम-विश्वास गेट",
+      "params": []
+    },
+    "param_group.metrics": {
+      "draft": true,
+      "en": "Gaze metrics",
+      "ne": "नजर मेट्रिक्स",
+      "params": []
+    },
+    "param_group.norms": {
+      "draft": true,
+      "en": "Norms",
+      "ne": "मानक",
+      "params": []
+    },
+    "param_group.qualityGate": {
+      "draft": true,
+      "en": "Quality gate",
+      "ne": "गुणस्तर गेट",
+      "params": []
+    },
+    "param_group.review": {
+      "draft": true,
+      "en": "Review",
+      "ne": "समीक्षा",
+      "params": []
+    },
+    "param_group.trackingQuality": {
+      "draft": true,
+      "en": "Tracking quality",
+      "ne": "ट्र्याकिङ गुणस्तर",
+      "params": []
+    },
+    "patient_ref_mode.mrn": {
+      "draft": true,
+      "en": "Hospital MRN",
+      "ne": "अस्पताल MRN",
+      "params": []
+    },
+    "patient_ref_mode.none": {
+      "draft": true,
+      "en": "Off",
+      "ne": "बन्द",
+      "params": []
+    },
+    "problem.analysis-level-unavailable": {
+      "draft": true,
+      "en": "This level is not available for the cohort.",
+      "ne": "यो तह यो कोहोर्टका लागि उपलब्ध छैन।",
+      "params": []
+    },
+    "problem.analysis-quota-exceeded": {
+      "draft": true,
+      "en": "Too many analysis runs right now. Try again later.",
+      "ne": "अहिले धेरै विश्लेषण चलिरहेका छन्। पछि फेरि प्रयास गर्नुहोस्।",
+      "params": []
+    },
+    "problem.attachment-too-large": {
+      "draft": true,
+      "en": "The file is too large.",
+      "ne": "फाइल धेरै ठुलो छ।",
+      "params": []
+    },
+    "problem.attachment-type-not-allowed": {
+      "draft": true,
+      "en": "Only PDF, JPEG and PNG files are accepted.",
+      "ne": "PDF, JPEG र PNG फाइल मात्र स्वीकार हुन्छन्।",
+      "params": []
+    },
+    "problem.bundle-signing-unavailable": {
+      "draft": true,
+      "en": "Bundles cannot be signed right now. Try again later.",
+      "ne": "अहिले बन्डलमा हस्ताक्षर गर्न सकिँदैन। पछि फेरि प्रयास गर्नुहोस्।",
+      "params": []
+    },
+    "problem.capture-source-rejected": {
+      "draft": true,
+      "en": "Sessions from this capture source are not accepted.",
+      "ne": "यो रेकर्डिङ स्रोतबाट आएका सत्र स्वीकार हुँदैनन्।",
+      "params": []
+    },
+    "problem.case-consent-missing": {
+      "draft": true,
+      "en": "The participant has not consented to sharing this case.",
+      "ne": "सहभागीले यो केस बाँड्न सहमति दिनुभएको छैन।",
+      "params": []
+    },
+    "problem.clinical-crypto-unavailable": {
+      "draft": true,
+      "en": "Clinical records cannot be opened right now. Try again later.",
+      "ne": "अहिले चिकित्सकीय अभिलेख खोल्न सकिँदैन। पछि फेरि प्रयास गर्नुहोस्।",
+      "params": []
+    },
+    "problem.clinical-role-not-assignable": {
+      "draft": true,
+      "en": "This clinical role cannot be given to this account.",
+      "ne": "यो चिकित्सकीय भूमिका यो खातालाई दिन मिल्दैन।",
+      "params": []
+    },
+    "problem.cohort-empty": {
+      "draft": true,
+      "en": "The cohort has no sessions.",
+      "ne": "कोहोर्टमा कुनै सत्र छैन।",
+      "params": []
+    },
+    "problem.cohort-name-exists": {
+      "draft": true,
+      "en": "A cohort with this name already exists.",
+      "ne": "यो नामको कोहोर्ट पहिले नै छ।",
+      "params": []
+    },
+    "problem.cohort-too-large": {
+      "draft": true,
+      "en": "The cohort is over budget. Narrow its filters.",
+      "ne": "कोहोर्ट सीमाभन्दा ठुलो भयो। फिल्टर साँघुरो बनाउनुहोस्।",
+      "params": []
+    },
+    "problem.config-invalid": {
+      "draft": true,
+      "en": "The document has invalid values. Fix the marked fields.",
+      "ne": "कागजातमा गलत मानहरू छन्। चिन्ह लगाइएका फिल्ड सच्याउनुहोस्।",
+      "params": []
+    },
+    "problem.config-not-published": {
+      "draft": true,
+      "en": "No published version exists yet.",
+      "ne": "अहिलेसम्म कुनै प्रकाशित संस्करण छैन।",
+      "params": []
+    },
+    "problem.config-unanalysed": {
+      "draft": true,
+      "en": "Run a sandbox analysis of this version before publishing.",
+      "ne": "प्रकाशन गर्नुअघि यो संस्करणको स्यान्डबक्स विश्लेषण चलाउनुहोस्।",
+      "params": []
+    },
+    "problem.config-version-exists": {
+      "draft": true,
+      "en": "This version number already exists. Choose another.",
+      "ne": "यो संस्करण नम्बर पहिले नै छ। अर्को छान्नुहोस्।",
+      "params": []
+    },
+    "problem.conflict": {
+      "draft": true,
+      "en": "This conflicts with the current state. Reload and try again.",
+      "ne": "यो हालको अवस्थासँग बाझियो। पेज फेरि खोलेर प्रयास गर्नुहोस्।",
+      "params": []
+    },
+    "problem.consent-purpose-mismatch": {
+      "draft": true,
+      "en": "The participant’s consent does not cover this purpose.",
+      "ne": "सहभागीको सहमतिले यो उद्देश्य समेट्दैन।",
+      "params": []
+    },
+    "problem.content-changed": {
+      "draft": true,
+      "en": "The content changed since you opened it. Reload and sign again.",
+      "ne": "तपाईंले खोलेपछि सामग्री बदलियो। पेज फेरि खोलेर हस्ताक्षर गर्नुहोस्।",
+      "params": []
+    },
+    "problem.cosigner-must-differ": {
+      "draft": true,
+      "en": "A co-signature must come from a different person.",
+      "ne": "सह-हस्ताक्षर अर्कै व्यक्तिले गर्नुपर्छ।",
+      "params": []
+    },
+    "problem.digest-mismatch": {
+      "draft": true,
+      "en": "The upload was damaged in transit. Upload it again.",
+      "ne": "अपलोड बाटोमै बिग्रियो। फेरि अपलोड गर्नुहोस्।",
+      "params": []
+    },
+    "problem.digest-required": {
+      "draft": true,
+      "en": "The upload is missing its checksum. Update the app.",
+      "ne": "अपलोडमा चेकसम छैन। एप अपडेट गर्नुहोस्।",
+      "params": []
+    },
+    "problem.encounter-closed": {
+      "draft": true,
+      "en": "This visit is closed. Reopen it to make changes.",
+      "ne": "यो भेट बन्द छ। बदल्न फेरि खोल्नुहोस्।",
+      "params": []
+    },
+    "problem.encounter-summary-forbidden": {
+      "draft": true,
+      "en": "Your role cannot write the visit summary.",
+      "ne": "तपाईंको भूमिकाले भेटको सारांश लेख्न मिल्दैन।",
+      "params": []
+    },
+    "problem.enrol-code-exhausted": {
+      "draft": true,
+      "en": "The enrol code is used up or expired. Ask for a new one.",
+      "ne": "दर्ता कोड सकियो वा म्याद गुज्र्यो। नयाँ कोड माग्नुहोस्।",
+      "params": []
+    },
+    "problem.experiment-name-exists": {
+      "draft": true,
+      "en": "An experiment with this name already exists.",
+      "ne": "यो नामको प्रयोग पहिले नै छ।",
+      "params": []
+    },
+    "problem.experiment-no-run": {
+      "draft": true,
+      "en": "Run an analysis of this experiment first.",
+      "ne": "पहिले यो प्रयोगको विश्लेषण चलाउनुहोस्।",
+      "params": []
+    },
+    "problem.experiment-promoted": {
+      "draft": true,
+      "en": "This experiment was promoted and can no longer change.",
+      "ne": "यो प्रयोग प्रवर्द्धन भइसकेको छ, अब बदल्न मिल्दैन।",
+      "params": []
+    },
+    "problem.export-expired": {
+      "draft": true,
+      "en": "This export has expired. Create a new one.",
+      "ne": "यो निर्यातको म्याद सकियो। नयाँ बनाउनुहोस्।",
+      "params": []
+    },
+    "problem.export-too-large": {
+      "draft": true,
+      "en": "The export is too large. Narrow the filters.",
+      "ne": "निर्यात धेरै ठुलो भयो। फिल्टर साँघुरो बनाउनुहोस्।",
+      "params": []
+    },
+    "problem.forbidden": {
+      "draft": true,
+      "en": "Your role cannot do this.",
+      "ne": "तपाईंको भूमिकाले यो गर्न मिल्दैन।",
+      "params": []
+    },
+    "problem.four-eyes-required": {
+      "draft": true,
+      "en": "Another person must approve this change.",
+      "ne": "यो परिवर्तन अर्को व्यक्तिले स्वीकृत गर्नुपर्छ।",
+      "params": []
+    },
+    "problem.frames-not-available": {
+      "draft": true,
+      "en": "Frame data is not available for this session.",
+      "ne": "यो सत्रको फ्रेम डेटा उपलब्ध छैन।",
+      "params": []
+    },
+    "problem.frames-purged": {
+      "draft": true,
+      "en": "Frame data was deleted under the retention rules.",
+      "ne": "राख्ने नियमअनुसार फ्रेम डेटा मेटाइयो।",
+      "params": []
+    },
+    "problem.host-key-mismatch": {
+      "draft": true,
+      "en": "The server’s host key changed. Check the destination settings.",
+      "ne": "सर्भरको होस्ट की बदलियो। गन्तव्यका सेटिङ जाँच्नुहोस्।",
+      "params": []
+    },
+    "problem.idempotency-key-reused": {
+      "draft": true,
+      "en": "This request was already sent with different content. Start again.",
+      "ne": "यो अनुरोध फरक सामग्रीसँग पहिले नै पठाइएको थियो। फेरि सुरु गर्नुहोस्।",
+      "params": []
+    },
+    "problem.identity-disabled": {
+      "draft": true,
+      "en": "Identity details are turned off for this organisation.",
+      "ne": "यो संस्थामा पहिचान विवरण बन्द गरिएको छ।",
+      "params": []
+    },
+    "problem.internal": {
+      "draft": true,
+      "en": "Something went wrong on the server. Try again later.",
+      "ne": "सर्भरमा समस्या आयो। पछि फेरि प्रयास गर्नुहोस्।",
+      "params": []
+    },
+    "problem.invalid-credentials": {
+      "draft": true,
+      "en": "Invalid email or password.",
+      "ne": "इमेल वा पासवर्ड मिलेन।",
+      "params": []
+    },
+    "problem.invalid-transition": {
+      "draft": true,
+      "en": "This status change is not allowed.",
+      "ne": "यो स्थिति परिवर्तन गर्न मिल्दैन।",
+      "params": []
+    },
+    "problem.job-finished": {
+      "draft": true,
+      "en": "The run already finished.",
+      "ne": "यो काम पहिले नै सकियो।",
+      "params": []
+    },
+    "problem.not-found": {
+      "draft": true,
+      "en": "Not found. It may have been removed.",
+      "ne": "भेटिएन। यो हटाइएको हुन सक्छ।",
+      "params": []
+    },
+    "problem.not-implemented": {
+      "draft": true,
+      "en": "This part is not available on the server yet.",
+      "ne": "यो भाग अहिलेसम्म सर्भरमा उपलब्ध छैन।",
+      "params": []
+    },
+    "problem.participant-withdrawn": {
+      "draft": true,
+      "en": "This participant withdrew consent. No new data is accepted.",
+      "ne": "यो सहभागीले सहमति फिर्ता लिनुभएको छ। नयाँ डेटा स्वीकार हुँदैन।",
+      "params": []
+    },
+    "problem.patient-ref-disabled": {
+      "draft": true,
+      "en": "Hospital MRNs are turned off for this organisation.",
+      "ne": "यो संस्थामा अस्पताल MRN बन्द गरिएको छ।",
+      "params": []
+    },
+    "problem.rate-limited": {
+      "draft": true,
+      "en": "Too many requests. Wait a moment and try again.",
+      "ne": "धेरै अनुरोध भए। केही बेर पर्खेर फेरि प्रयास गर्नुहोस्।",
+      "params": []
+    },
+    "problem.reauthentication-failed": {
+      "draft": true,
+      "en": "Your password or code was not accepted. Try again.",
+      "ne": "तपाईंको पासवर्ड वा कोड स्वीकार भएन। फेरि प्रयास गर्नुहोस्।",
+      "params": []
+    },
+    "problem.research-consent-required": {
+      "draft": true,
+      "en": "The participant has not consented to research use.",
+      "ne": "सहभागीले अनुसन्धानमा प्रयोगका लागि सहमति दिनुभएको छैन।",
+      "params": []
+    },
+    "problem.result-too-large": {
+      "draft": true,
+      "en": "The result is too large to show. Narrow the request.",
+      "ne": "नतिजा देखाउन धेरै ठुलो छ। अनुरोध साँघुरो बनाउनुहोस्।",
+      "params": []
+    },
+    "problem.share-link-exhausted": {
+      "draft": true,
+      "en": "This link was used the allowed number of times.",
+      "ne": "यो लिङ्क अनुमति भएजति पटक प्रयोग भइसक्यो।",
+      "params": []
+    },
+    "problem.share-link-expired": {
+      "draft": true,
+      "en": "This link has expired. Ask the sender for a new one.",
+      "ne": "यो लिङ्कको म्याद सकियो। पठाउनेसँग नयाँ लिङ्क माग्नुहोस्।",
+      "params": []
+    },
+    "problem.share-passcode-invalid": {
+      "draft": true,
+      "en": "The passcode is wrong.",
+      "ne": "पासकोड मिलेन।",
+      "params": []
+    },
+    "problem.signer-profile-incomplete": {
+      "draft": true,
+      "en": "Add your display name and registration number before signing.",
+      "ne": "हस्ताक्षर गर्नुअघि आफ्नो नाम र दर्ता नम्बर थप्नुहोस्।",
+      "params": []
+    },
+    "problem.stale-version": {
+      "draft": true,
+      "en": "Someone else changed this. Reload to see the latest version.",
+      "ne": "अरू कसैले यो बदल्नुभयो। नयाँ संस्करण हेर्न पेज फेरि खोल्नुहोस्।",
+      "params": []
+    },
+    "problem.sweep-too-large": {
+      "draft": true,
+      "en": "The sweep is over budget. Use fewer steps.",
+      "ne": "स्वीप सीमाभन्दा ठुलो भयो। कम चरण प्रयोग गर्नुहोस्।",
+      "params": []
+    },
+    "problem.totp-already-enrolled": {
+      "draft": true,
+      "en": "Two-step sign-in is already set up.",
+      "ne": "दुई-चरण साइन इन पहिले नै मिलाइएको छ।",
+      "params": []
+    },
+    "problem.totp-enrolment-expired": {
+      "draft": true,
+      "en": "The setup took too long. Start two-step sign-in setup again.",
+      "ne": "मिलाउन धेरै समय लाग्यो। दुई-चरण साइन इन फेरि सुरुदेखि मिलाउनुहोस्।",
+      "params": []
+    },
+    "problem.totp-enrolment-required": {
+      "draft": true,
+      "en": "Set up two-step sign-in to continue.",
+      "ne": "अगाडि बढ्न दुई-चरण साइन इन मिलाउनुहोस्।",
+      "params": []
+    },
+    "problem.totp-invalid": {
+      "draft": true,
+      "en": "The authenticator code is wrong or expired. Try the current code.",
+      "ne": "प्रमाणीकरण कोड गलत वा पुरानो भयो। अहिलेको कोड हाल्नुहोस्।",
+      "params": []
+    },
+    "problem.totp-not-enrolled": {
+      "draft": true,
+      "en": "Two-step sign-in is not set up for this account.",
+      "ne": "यो खातामा दुई-चरण साइन इन मिलाइएको छैन।",
+      "params": []
+    },
+    "problem.totp-required": {
+      "draft": true,
+      "en": "Enter the code from your authenticator app.",
+      "ne": "आफ्नो प्रमाणीकरण एपको कोड हाल्नुहोस्।",
+      "params": []
+    },
+    "problem.totp-reset-forbidden": {
+      "draft": true,
+      "en": "You cannot reset two-step sign-in for this account.",
+      "ne": "तपाईं यो खाताको दुई-चरण साइन इन रिसेट गर्न सक्नुहुन्न।",
+      "params": []
+    },
+    "problem.unauthorized": {
+      "draft": true,
+      "en": "Your sign-in is no longer valid. Sign in again.",
+      "ne": "तपाईंको साइन इन अब मान्य छैन। फेरि साइन इन गर्नुहोस्।",
+      "params": []
+    },
+    "problem.unsupported-schema-version": {
+      "draft": true,
+      "en": "The app version is not supported. Update the app.",
+      "ne": "एपको यो संस्करण चल्दैन। एप अपडेट गर्नुहोस्।",
+      "params": []
+    },
+    "problem.validation-failed": {
+      "draft": true,
+      "en": "Some values are invalid. Check the marked fields.",
+      "ne": "केही मान मिलेनन्। चिन्ह लगाइएका फिल्ड जाँच्नुहोस्।",
+      "params": []
+    },
+    "quality_verdict.acceptable": {
+      "draft": true,
+      "en": "Acceptable",
+      "ne": "स्वीकार्य",
+      "params": []
+    },
+    "quality_verdict.degraded": {
+      "draft": true,
+      "en": "Degraded",
+      "ne": "कमजोर",
+      "params": []
+    },
+    "quality_verdict.optimal": {
+      "draft": true,
+      "en": "Optimal",
+      "ne": "उत्तम",
+      "params": []
+    },
+    "quality_verdict.rejected": {
+      "draft": true,
+      "en": "Rejected",
+      "ne": "अस्वीकृत",
+      "params": []
+    },
+    "review_reason.flag_red": {
+      "draft": true,
+      "en": "Red flag",
+      "ne": "रातो फ्लाग",
+      "params": []
+    },
+    "review_reason.low_quality": {
+      "draft": true,
+      "en": "Low quality",
+      "ne": "कम गुणस्तर",
+      "params": []
+    },
+    "review_reason.low_tracking_quality": {
+      "draft": true,
+      "en": "Low tracking quality",
+      "ne": "कम ट्र्याकिङ गुणस्तर",
+      "params": []
+    },
+    "review_reason.manual": {
+      "draft": true,
+      "en": "Manual",
+      "ne": "हातैले थपिएको",
+      "params": []
+    },
+    "review_reason.norm_candidate": {
+      "draft": true,
+      "en": "Norm candidate",
+      "ne": "मानक उम्मेदवार",
+      "params": []
+    },
+    "review_reason.random_audit": {
+      "draft": true,
+      "en": "Random audit",
+      "ne": "अनियमित जाँच",
+      "params": []
+    },
+    "review_reason.unscorable": {
+      "draft": true,
+      "en": "Not scored",
+      "ne": "स्कोर नगरिएको",
+      "params": []
+    },
+    "review_status.dismissed": {
+      "draft": true,
+      "en": "Dismissed",
+      "ne": "खारेज",
+      "params": []
+    },
+    "review_status.done": {
+      "draft": true,
+      "en": "Done",
+      "ne": "सम्पन्न",
+      "params": []
+    },
+    "review_status.in_review": {
+      "draft": true,
+      "en": "In review",
+      "ne": "समीक्षामा",
+      "params": []
+    },
+    "review_status.open": {
+      "draft": true,
+      "en": "Open",
+      "ne": "खुला",
+      "params": []
+    },
+    "role.admin": {
+      "draft": true,
+      "en": "Admin",
+      "ne": "प्रशासक",
+      "params": []
+    },
+    "role.clinician": {
+      "draft": true,
+      "en": "Clinician",
+      "ne": "चिकित्सक",
+      "params": []
+    },
+    "role.owner": {
+      "draft": true,
+      "en": "Owner",
+      "ne": "मालिक",
+      "params": []
+    },
+    "role.researcher": {
+      "draft": true,
+      "en": "Researcher",
+      "ne": "अनुसन्धानकर्ता",
+      "params": []
+    },
+    "role.reviewer": {
+      "draft": true,
+      "en": "Reviewer",
+      "ne": "समीक्षक",
+      "params": []
+    },
+    "role.superadmin": {
+      "draft": true,
+      "en": "Superadmin",
+      "ne": "सुपर प्रशासक",
+      "params": []
+    },
+    "role.viewer": {
+      "draft": true,
+      "en": "Viewer",
+      "ne": "दर्शक",
+      "params": []
+    },
+    "run_kind.age_profile": {
+      "draft": true,
+      "en": "Age profile",
+      "ne": "उमेर प्रोफाइल",
+      "params": []
+    },
+    "run_kind.cohort_rescore": {
+      "draft": true,
+      "en": "Cohort re-score",
+      "ne": "कोहोर्ट पुनः-स्कोर",
+      "params": []
+    },
+    "run_kind.param_sweep": {
+      "draft": true,
+      "en": "Parameter sweep",
+      "ne": "प्यारामिटर स्वीप",
+      "params": []
+    },
+    "run_status.cancelled": {
+      "draft": true,
+      "en": "Cancelled",
+      "ne": "रद्द गरिएको",
+      "params": []
+    },
+    "run_status.failed": {
+      "draft": true,
+      "en": "Failed",
+      "ne": "असफल",
+      "params": []
+    },
+    "run_status.queued": {
+      "draft": true,
+      "en": "Queued",
+      "ne": "पालोमा",
+      "params": []
+    },
+    "run_status.running": {
+      "draft": true,
+      "en": "Running",
+      "ne": "चलिरहेको",
+      "params": []
+    },
+    "run_status.succeeded": {
+      "draft": true,
+      "en": "Finished",
+      "ne": "सम्पन्न",
+      "params": []
+    },
+    "scoring_status.scored": {
+      "draft": true,
+      "en": "Scored",
+      "ne": "स्कोर गरिएको",
+      "params": []
+    },
+    "scoring_status.unscorable": {
+      "draft": true,
+      "en": "Not scored",
+      "ne": "स्कोर नगरिएको",
+      "params": []
+    },
+    "timeline_entry_kind.attachment": {
+      "draft": true,
+      "en": "Attachment",
+      "ne": "संलग्न फाइल",
+      "params": []
+    },
+    "timeline_entry_kind.care_event": {
+      "draft": true,
+      "en": "Care event",
+      "ne": "हेरचाह घटना",
+      "params": []
+    },
+    "timeline_entry_kind.clinical_review": {
+      "draft": true,
+      "en": "Clinical review",
+      "ne": "चिकित्सकीय समीक्षा",
+      "params": []
+    },
+    "timeline_entry_kind.encounter": {
+      "draft": true,
+      "en": "Visit",
+      "ne": "भेट",
+      "params": []
+    },
+    "timeline_entry_kind.letter": {
+      "draft": true,
+      "en": "Letter",
+      "ne": "पत्र",
+      "params": []
+    },
+    "timeline_entry_kind.note": {
+      "draft": true,
+      "en": "Note",
+      "ne": "टिपोट",
+      "params": []
+    },
+    "timeline_entry_kind.session": {
+      "draft": true,
+      "en": "Session",
+      "ne": "सत्र",
+      "params": []
+    },
+    "tracking_verdict.fair": {
+      "draft": true,
+      "en": "Fair",
+      "ne": "ठिकै",
+      "params": []
+    },
+    "tracking_verdict.good": {
+      "draft": true,
+      "en": "Good",
+      "ne": "राम्रो",
+      "params": []
+    },
+    "tracking_verdict.poor": {
+      "draft": true,
+      "en": "Poor",
+      "ne": "कमजोर",
+      "params": []
+    },
+    "tracking_verdict.unusable": {
+      "draft": true,
+      "en": "Unusable",
+      "ne": "प्रयोग गर्न नमिल्ने",
+      "params": []
+    },
+    "unit.cm": {
+      "draft": true,
+      "en": "cm",
+      "ne": "cm",
+      "params": []
+    },
+    "unit.count": {
+      "draft": true,
+      "en": "count",
+      "ne": "गणना",
+      "params": []
+    },
+    "unit.deg": {
+      "draft": true,
+      "en": "°",
+      "ne": "°",
+      "params": []
+    },
+    "unit.deg_per_sec": {
+      "draft": true,
+      "en": "°/s",
+      "ne": "°/s",
+      "params": []
+    },
+    "unit.hz": {
+      "draft": true,
+      "en": "Hz",
+      "ne": "Hz",
+      "params": []
+    },
+    "unit.millis": {
+      "draft": true,
+      "en": "ms",
+      "ne": "ms",
+      "params": []
+    },
+    "unit.mm": {
+      "draft": true,
+      "en": "mm",
+      "ne": "mm",
+      "params": []
+    },
+    "unit.months": {
+      "draft": true,
+      "en": "months",
+      "ne": "महिना",
+      "params": []
+    },
+    "unit.none": {
+      "draft": true,
+      "en": "no unit",
+      "ne": "एकाइ छैन",
+      "params": []
+    },
+    "unit.norm_units": {
+      "draft": true,
+      "en": "screen units",
+      "ne": "स्क्रिन एकाइ",
+      "params": []
+    },
+    "unit.norm_units_per_sec": {
+      "draft": true,
+      "en": "screen units/s",
+      "ne": "स्क्रिन एकाइ/से.",
+      "params": []
+    },
+    "unit.percent": {
+      "draft": true,
+      "en": "%",
+      "ne": "%",
+      "params": []
+    },
+    "unit.rad": {
+      "draft": true,
+      "en": "rad",
+      "ne": "rad",
+      "params": []
+    },
+    "unit.ratio": {
+      "draft": true,
+      "en": "ratio",
+      "ne": "अनुपात",
+      "params": []
+    },
+    "unit.seconds": {
+      "draft": true,
+      "en": "s",
+      "ne": "s",
+      "params": []
+    },
+    "user_status.active": {
+      "draft": true,
+      "en": "Active",
+      "ne": "सक्रिय",
+      "params": []
+    },
+    "user_status.disabled": {
+      "draft": true,
+      "en": "Disabled",
+      "ne": "निष्क्रिय",
+      "params": []
+    },
+    "user_status.invited": {
+      "draft": true,
+      "en": "Invited",
+      "ne": "निमन्त्रित",
+      "params": []
+    }
+  },
+  "locales": [
+    "en",
+    "ne"
+  ],
+  "partialLocales": [
+    "hi"
+  ]
+}

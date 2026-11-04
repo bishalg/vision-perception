@@ -131,6 +131,13 @@ pub fn assess_flag(score_json: &str, profile_json: &str) -> String {
     envelope(api::assess_flag(score_json, profile_json))
 }
 
+/// I18N-4: `"matches"`, `"no_scored_clips"`, ... for a flag headline the core writes, or
+/// `null` for any other text (render it as sent).
+#[wasm_bindgen(js_name = flagCase)]
+pub fn flag_case(headline: &str) -> String {
+    envelope(Ok(api::flag_case(headline)))
+}
+
 /// `[PerVideoMetricSet]` from `[GazeFrame]` (asd-core `metrics::extract`).
 #[wasm_bindgen(js_name = extractMetrics)]
 pub fn extract_metrics(frames_json: &str) -> String {

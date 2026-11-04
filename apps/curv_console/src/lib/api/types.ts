@@ -82,6 +82,8 @@ export const orgSchema = z.object({
   settings: z.record(z.string(), z.unknown()).nullable().optional(),
   /** RFL-5: research frame log horizon (1..240 months); absent = follows `retention_months`. */
   research_frames_retention_months: z.number().int().min(1).max(240).nullable().optional(),
+  /** I18N-11 (contract from WP-L.0; WP-L.1.0 wires it): `organizations.default_locale`. */
+  default_locale: z.enum(["en", "ne"]).nullable().optional(),
 });
 export type Org = z.infer<typeof orgSchema>;
 

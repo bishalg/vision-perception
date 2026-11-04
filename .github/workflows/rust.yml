@@ -13,6 +13,7 @@ on:
     paths:
       - "rust/**"
       - "scripts/rust_test.sh"
+      - "scripts/i18n/**"
       - "docs/spec/schemas/asd/**"
       - ".github/workflows/rust.yml"
       - "apps/android_asd_core/**"
@@ -21,6 +22,7 @@ on:
     paths:
       - "rust/**"
       - "scripts/rust_test.sh"
+      - "scripts/i18n/**"
       - "docs/spec/schemas/asd/**"
       - ".github/workflows/rust.yml"
       - "apps/android_asd_core/**"
@@ -79,6 +81,19 @@ jobs:
 
       - name: Rust gates
         run: scripts/rust_test.sh
+
+      # WP-L.0 (I18N-3, I18N-6): domain catalogue checks and console module drift.
+      - name: i18n catalogue check
+        run: cargo run --manifest-path rust/Cargo.toml -q -p asd-cli -- i18n check
+
+      # WP-L.0 (I18N-8): no new UI string literal in Swift or Kotlin beyond the baseline.
+      - name: i18n literal lint (iOS, Android)
+        run: >-
+          cargo run --manifest-path rust/Cargo.toml -q -p asd-cli -- i18n lint
+          --swift apps/ios_asd_gaze_app/Sources
+          --swift domains/asd_screening/ios/Sources
+          --kotlin apps/android_asd_gaze_spike
+          --baseline scripts/i18n/literal-baseline.txt
 
       # WP-R.6: the asd-wasm parity tests again, compiled to wasm32 and run under Node, then
       # the `--target web` package build the console consumes.

@@ -17,6 +17,7 @@ use sha2::{Digest, Sha256};
 
 use crate::api_v1::{MetricRow, Role, SessionAttentionFlag, SessionSummary};
 use crate::auth_policy::TotpEnforcement;
+use crate::i18n::Locale;
 
 // ---- limits and fixed text ---------------------------------------------------------------
 
@@ -334,6 +335,14 @@ pub struct UserProfile {
     pub org_id: Option<String>,
     pub display_name: Option<String>,
     pub professional_registration: Option<String>,
+    /// I18N-11: the user's locale override (`users.locale`); `null` = follow the org.
+    /// Absent from older backends.
+    #[serde(default)]
+    pub locale: Option<Locale>,
+    /// I18N-12: the locale for this request (user > org > `Accept-Language` > `en`).
+    /// Absent from older backends, hence the `en` default.
+    #[serde(default)]
+    pub effective_locale: Locale,
 }
 
 /// `PATCH /v1/users/me`. Absent = unchanged, `""` = clear. Unknown fields are rejected
@@ -345,6 +354,15 @@ pub struct UpdateProfileRequest {
     pub display_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub professional_registration: Option<String>,
+    /// I18N-11: absent = unchanged (`None`), `null` = clear the override (`Some(None)`), a
+    /// locale = set it.
+    #[serde(
+        default,
+        deserialize_with = "crate::session_v1_6::explicit_null",
+        skip_serializing_if = "Option::is_none"
+    )]
+    #[schemars(with = "Option<Locale>")]
+    pub locale: Option<Option<Locale>>,
 }
 
 // ---- worklist (CW-1, CW-2) ---------------------------------------------------------------

@@ -1,0 +1,86 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "age_band.range": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@–%2$@ mo"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "%1$@–%2$@ माह"
+          }
+        },
+        "ne": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "%1$@–%2$@ महिना"
+          }
+        }
+      }
+    },
+    "attention_flag.green": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Green"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "हरा"
+          }
+        },
+        "ne": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "हरियो"
+          }
+        }
+      }
+    },
+    "problem.case-consent-missing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The participant has not consented to sharing this case."
+          }
+        },
+        "ne": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "सहभागीले यो केस बाँड्न सहमति दिनुभएको छैन।"
+          }
+        }
+      }
+    },
+    "unit.percent": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%"
+          }
+        },
+        "ne": {
+          "stringUnit": {
+            "state": "needs_review",
+            "value": "%"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

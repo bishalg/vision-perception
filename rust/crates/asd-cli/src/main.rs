@@ -12,8 +12,8 @@ const USAGE: &str = "\
 usage: asd-cli <command> [args]
 
 commands:
-  schema export [--out DIR]           write the session, config-bundle, api-v1 and
-                                      param-registry-v1 documents
+  schema export [--out DIR]           write the session, config-bundle, api-v1,
+                                      param-registry-v1, i18n-v1 and negotiation documents
   schema check [--dir DIR]            fail when the committed schemas differ from the Rust types
   schema validate SCHEMA FILE...      validate JSON documents against a schema file
   schema print session|config-bundle|api|param-registry
@@ -30,6 +30,10 @@ commands:
   gaze bench-report --logs DIR [--models all|KIND,...]
   gaze convert-android LOG LANDMARKS [--meta FILE] [--screen-mm W,H] [--camera-offset-mm X,Y] -o OUT
   research reprocess LOG --catalog FILE --baselines FILE --age-months N [--profile FILE]
+  i18n export --target console|xcstrings|android --out PATH
+  i18n check [--console PATH]         domain catalogue checks and console module drift
+  i18n lint --swift DIR --kotlin DIR --baseline FILE   UI string literals (I18N-8)
+  i18n fmt                            sort and format the catalogue files
   research evaluate SESSION.json --baselines FILE [--profile FILE] [--age-months N]
                                       (research: exit 1 input error, 2 not processable)
 
@@ -46,6 +50,7 @@ fn main() -> ExitCode {
         Some("params") => cmd::params::run(rest),
         Some("gaze") => cmd::gaze::run(rest),
         Some("research") => cmd::research::run(rest),
+        Some("i18n") => cmd::i18n::run(rest),
         Some("-h" | "--help" | "help") => {
             println!("{USAGE}");
             0

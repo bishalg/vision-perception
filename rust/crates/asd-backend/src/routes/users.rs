@@ -48,6 +48,7 @@ use asd_contract::clinical::{
     TotpResetRequest, UpdateProfileRequest, UserProfile, MAX_DISPLAY_NAME_CHARS,
     MAX_REGISTRATION_CHARS, MAX_TOTP_RESET_REASON_CHARS, MIN_TOTP_RESET_REASON_CHARS,
 };
+use asd_contract::i18n::Locale;
 use axum::extract::{Path, State};
 use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
@@ -699,6 +700,9 @@ fn user_profile(
         org_id: org_id.map(|o| o.to_string()),
         display_name: profile.display_name,
         professional_registration: profile.professional_registration,
+        // WP-L.0 contract only; WP-L.1e reads `users.locale` and negotiates.
+        locale: None,
+        effective_locale: Locale::En,
     })
 }
 
