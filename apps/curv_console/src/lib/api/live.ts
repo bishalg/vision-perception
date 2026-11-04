@@ -54,6 +54,19 @@ export function buildSessionQuery(query: SessionListQuery = {}): string {
   return buildQuery(query);
 }
 
+/**
+ * `JSON.parse` that keeps every integer outside `Number`'s safe range as its exact decimal text instead of rounding it.
+ * The backend's integers are Rust `i64`/`u64`: an analysis run's `seed` is drawn from the whole 64-bit range (RUN-5), and
+ * a rounded seed shown as provenance would not reproduce the run. Schemas that can see such a value accept the string.
+ */
+export function parseApiJson(text: string): unknown {
+  return JSON.parse(text, (_key: string, value: unknown, context?: { source?: string }) =>
+    typeof value === "number" && !Number.isSafeInteger(value) && Number.isInteger(value) && context?.source && /^-?\d+$/.test(context.source)
+      ? context.source
+      : value,
+  );
+}
+
 async function toApiError(res: Response): Promise<ApiError> {
   // Backend errors are RFC 7807 `application/problem+json`; anything else (proxy 502, HTML) carries no problem.
   let problem: Problem | null = null;
@@ -88,7 +101,15 @@ export function createLiveClient(opts: LiveOptions): CurvApi & AuthApi {
     });
     if (!res.ok) throw await toApiError(res);
     if (schema === null) return undefined as T;
-    return schema.parse(await res.json());
+    return schema.parse(parseApiJson(await res.text()));
+  }
+
+  async function requestText(path: string): Promise<string> {
+    const headers: Record<string, string> = {};
+    if (opts.accessToken) headers.Authorization = `Bearer ${opts.accessToken}`;
+    const res = await doFetch(`${base}/v1${path}`, { headers, cache: "no-store" });
+    if (!res.ok) throw await toApiError(res);
+    return res.text();
   }
 
   const enc = encodeURIComponent;
@@ -103,7 +124,7 @@ export function createLiveClient(opts: LiveOptions): CurvApi & AuthApi {
     ...createLiveTotp(request),
     ...createLiveEmr(request, buildQuery),
     ...createLiveShare(request, buildQuery),
-    ...createLiveResearch(request, buildQuery),
+    ...createLiveResearch(request, buildQuery, requestText),
     login: (email, password, totpCode) =>
       request("/auth/login", tokenPairSchema, {
         method: "POST",

@@ -82,6 +82,26 @@ in-memory S3 stand-in (dev tooling only). `SERVE_ONLY=1` boots everything and pr
 PG_URL=postgres://postgres@127.0.0.1:5432 apps/curv_console/e2e/live/run-record-live.sh
 ```
 
+Researcher toolkit against the real backend (`e2e/live/research.live.ts`, phase 8): `e2e/live/run-research-live.sh`
+is the same runner with `SUITE=research`. `e2e/live/seed-research.sh` adds a researcher, two superadmins (the four-eyes
+rule), publishes the seeded config drafts, ingests 14 research-consented sessions at 30 months (each with a research
+frame log from `asd-cli gaze synth`, clips renamed to catalog clips and uploaded through
+`PUT /v1/sessions/{id}/blobs/research_frames`), 3 at 54 months (a band below `small_cell_k`) and 2 without research
+consent. The spec (about 2 minutes) creates an experiment from the published profile, moves knobs and checks the
+preview at score and frames level, previews and saves a cohort (suppressed band shown as `n < 12`), runs
+`cohort_rescore`, a one-axis `param_sweep` and `age_profile`, exports `analysis_results` from the pre-filled form and
+validates the download, promotes the experiment, checks that publishing an unanalysed draft is refused
+(`config-unanalysed`) while the promoted one publishes, that a superadmin cannot start runs, and that a run watched
+for a minute writes no `analysis.read` row before the cancel button cancels it. It needs `asd-cli` as well as
+`asd-backend` (built unless `SKIP_BUILD=1`; `LIVE_BIN=dir` takes both from elsewhere) and the wasm build
+(`scripts/build_asd_wasm.sh`; the runner copies it into `public/`). The spec is re-runnable on the same database
+(`SERVE_ONLY=1`, then `npx playwright test -c e2e/live/playwright.live.config.ts research.live.ts` with the printed
+environment).
+
+```bash
+PG_URL=postgres://postgres@127.0.0.1:5432 apps/curv_console/e2e/live/run-research-live.sh
+```
+
 CI: `.github/workflows/console.yml`.
 
 ## Architecture

@@ -1,5 +1,6 @@
 /** User-visible strings for the stimulus catalog pages and editor (WP-C.4). Merged next to `en` by import. */
 import type { ConfigDocumentStatus, ConfigTransition } from "@/lib/api/catalog";
+import { researchText } from "./research";
 
 const errors: Record<string, string> = {
   "validation-failed": "The server rejected some fields.",
@@ -7,6 +8,8 @@ const errors: Record<string, string> = {
   "four-eyes-required": "Four-eyes rule: a different superadmin must do this step.",
   "invalid-transition": "That step is not possible in the document's current state. Reload to see it.",
   "config-invalid": "The document no longer passes the server's checks, so it cannot be approved.",
+  // GOV-3: publishing a human-authored scoring profile or baselines needs a succeeded analysis run over it.
+  "config-unanalysed": researchText.errors["config-unanalysed"]!,
   conflict: "That action is not possible in the current state.",
   forbidden: "Only a platform superadmin can change catalog versions.",
   "not-found": "Not found.",
