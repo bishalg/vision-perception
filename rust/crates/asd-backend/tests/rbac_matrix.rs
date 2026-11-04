@@ -794,7 +794,7 @@ async fn org_patch_merges_settings_and_validates() {
         .call(
             Method::PATCH,
             &uri,
-            Some(json!({"settings": {"locale": "en-GB"}})),
+            Some(json!({"settings": {"timezone": "Asia/Kathmandu"}})),
             &owner,
         )
         .await;
@@ -806,7 +806,7 @@ async fn org_patch_merges_settings_and_validates() {
         .unwrap();
     assert_eq!(
         settings,
-        json!({"audit_rate": 0.1, "locale": "en-GB"}),
+        json!({"audit_rate": 0.1, "timezone": "Asia/Kathmandu"}),
         "merged"
     );
 
@@ -816,6 +816,7 @@ async fn org_patch_merges_settings_and_validates() {
         json!({"retention_months": 241}),
         json!({"settings": {"audit_rate": 1.5}}),
         json!({"settings": {"audit_rate": "high"}}),
+        json!({"settings": {"locale": "en-GB"}}),
     ] {
         let (status, resp) = c.call(Method::PATCH, &uri, Some(bad.clone()), &owner).await;
         assert_eq!(status, StatusCode::BAD_REQUEST, "{bad}: {resp}");
