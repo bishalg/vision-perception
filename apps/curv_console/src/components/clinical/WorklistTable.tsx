@@ -1,17 +1,19 @@
+"use client";
+
 import Link from "next/link";
 import { ATTENTION_FLAGS } from "@/lib/api";
 import { CLINICAL_STATES, WORKLIST_ASSIGNED, type WorklistItem } from "@/lib/api/clinical";
-import { en } from "@/messages/en";
-import { clinicalText } from "@/messages/clinical";
+import { useText } from "@/lib/i18n/provider";
+import { labelOr } from "@/messages/participant";
 import { FlagBadge } from "@/components/FlagBadge";
-
-const t = clinicalText.worklist;
 
 /**
  * Worklist rows. Links carry only the org and session ids: no patient reference, impression or free text is ever put
  * in an href (UI-4). The "Patient ref" column says whether one is linked, never what it is.
  */
 export function WorklistTable({ orgId, items }: { orgId: string; items: WorklistItem[] }) {
+  const text = useText();
+  const t = text.clinical.worklist;
   if (items.length === 0) return <p className="muted">{t.empty}</p>;
   const base = `/${encodeURIComponent(orgId)}/sessions`;
   return (
@@ -39,7 +41,7 @@ export function WorklistTable({ orgId, items }: { orgId: string; items: Worklist
               <td data-label={t.cols.flag}>
                 <FlagBadge flag={w.attention_flag} />
               </td>
-              <td data-label={t.cols.quality}>{w.quality_verdict}</td>
+              <td data-label={t.cols.quality}>{labelOr(text.locale, "quality_verdict", w.quality_verdict)}</td>
               <td data-label={t.cols.state}>{t.states[w.clinical_state ?? "none"]}</td>
               <td data-label={t.cols.assigned}>{w.assigned_to ? t.assignedOther : "-"}</td>
               <td data-label={t.cols.cosign}>{w.cosign_required ? t.cosignRequired : "-"}</td>
@@ -62,6 +64,8 @@ export function WorklistFilters({
   flag?: string;
   assigned?: string;
 }) {
+  const text = useText();
+  const t = text.clinical.worklist;
   const f = t.filters;
   return (
     <form method="get" className="picker" aria-label={f.label}>
@@ -82,7 +86,7 @@ export function WorklistFilters({
           <option value="">{f.any}</option>
           {ATTENTION_FLAGS.map((x) => (
             <option key={x} value={x}>
-              {en.flags[x]}
+              {text.domain.enumLabel(text.locale, "attention_flag", x)}
             </option>
           ))}
         </select>

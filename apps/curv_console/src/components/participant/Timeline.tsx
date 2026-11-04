@@ -1,59 +1,14 @@
+"use client";
+
 import Link from "next/link";
-import { attentionFlagSchema } from "@/lib/api";
 import { TIMELINE_KINDS, type TimelineEntry, type TimelineKind } from "@/lib/api/participant";
 import { formatDateTime } from "@/lib/format";
-import { participantText } from "@/messages/participant";
+import { useText } from "@/lib/i18n/provider";
 import { FlagBadge } from "../FlagBadge";
+import { describeEntry, entryTab, flagOf } from "./timelineQuery";
 
-const t = participantText.timeline;
-
-/** Parse repeated `?kind=` params into a validated, de-duplicated list (unknown values are dropped). */
-export function parseKinds(value: string | string[] | undefined): TimelineKind[] {
-  const raw = Array.isArray(value) ? value : value ? [value] : [];
-  return TIMELINE_KINDS.filter((k) => raw.includes(k));
-}
-
-/** Kind-specific header text. Headers carry no free text (CW-3), so nothing here can leak note content. */
-export function describeEntry(e: TimelineEntry): string {
-  const s = e.summary;
-  const str = (k: string) => (typeof s[k] === "string" ? (s[k] as string) : "");
-  switch (e.kind) {
-    case "session":
-      return str("attention_flag") ? t.flag(str("attention_flag")) : t.kinds.session;
-    case "clinical_review":
-      return t.review(str("state") || "open", s.version_no);
-    case "note":
-      return t.note(str("note_kind"));
-    case "letter":
-      return t.letter(str("letter_kind"), s.status);
-    case "care_event":
-      return t.care(str("care_kind") || "event");
-    // REC-5 headers as B.19 writes them (`read/timeline.rs`): `{encounter_kind, status}` (the clinician is the "By"
-    // column) and `{attachment_kind, file_name, byte_size}`. Never the visit summary or reason.
-    case "encounter":
-      return t.encounter(str("encounter_kind"), s.status);
-    case "attachment":
-      return t.attachment(str("attachment_kind"), str("file_name"), typeof s.byte_size === "number" ? s.byte_size : null);
-  }
-}
-
-/** The workspace tab an entry opens, for kinds that have one. */
-function entryTab(kind: TimelineKind): "visits" | "attachments" | null {
-  return kind === "encounter" ? "visits" : kind === "attachment" ? "attachments" : null;
-}
-
-function flagOf(e: TimelineEntry) {
-  const parsed = e.kind === "session" ? attentionFlagSchema.safeParse(e.summary.attention_flag) : null;
-  return parsed?.success ? parsed.data : null;
-}
-
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-/** A `?from=` / `?to=` calendar day (`YYYY-MM-DD`); anything else is dropped. */
-export function parseDay(value: string | string[] | undefined): string | undefined {
-  const v = Array.isArray(value) ? value[0] : value;
-  return v && DATE_RE.test(v) ? v : undefined;
-}
+// The query parsers and `describeEntry` live in `timelineQuery.ts` (a server page calls them); re-exported here.
+export { describeEntry, parseDay, parseKinds } from "./timelineQuery";
 
 /**
  * The timeline page. `entries` are already filtered by the server (`kind`, `from`, `to` of
@@ -81,6 +36,9 @@ export function Timeline({
   nextCursor: string | null | undefined;
   hasCursor: boolean;
 }) {
+  const text = useText();
+  const t = text.participant.timeline;
+  const kindLabel = (k: TimelineKind) => text.domain.enumLabel(text.locale, "timeline_entry_kind", k);
   const filtered = kinds.length > 0 || Boolean(from) || Boolean(to);
   const keep = new URLSearchParams();
   keep.set("tab", "timeline");
@@ -99,7 +57,7 @@ export function Timeline({
           <legend>{t.filterLegend}</legend>
           {TIMELINE_KINDS.map((k) => (
             <label key={k} className="check">
-              <input type="checkbox" name="kind" value={k} defaultChecked={kinds.includes(k)} /> {t.kinds[k]}
+              <input type="checkbox" name="kind" value={k} defaultChecked={kinds.includes(k)} /> {kindLabel(k)}
             </label>
           ))}
         </fieldset>
@@ -131,9 +89,9 @@ export function Timeline({
               {entries.map((e) => (
                 <tr key={`${e.kind}:${e.id}`} data-kind={e.kind}>
                   <td data-label={t.cols.when}>{formatDateTime(e.at)}</td>
-                  <td data-label={t.cols.kind}>{t.kinds[e.kind]}</td>
+                  <td data-label={t.cols.kind}>{kindLabel(e.kind)}</td>
                   <td data-label={t.cols.detail}>
-                    {flagOf(e) ? <FlagBadge flag={flagOf(e)!} /> : describeEntry(e)}{" "}
+                    {flagOf(e) ? <FlagBadge flag={flagOf(e)!} /> : describeEntry(e, text)}{" "}
                     {e.kind === "session" ? (
                       <Link href={`${orgPath}/sessions/${encodeURIComponent(e.id)}`}>{t.openSession}</Link>
                     ) : entryTab(e.kind) ? (
@@ -149,7 +107,7 @@ export function Timeline({
           </table>
         </div>
       )}
-      <nav className="pagination" aria-label="Timeline pages">
+      <nav className="pagination" aria-label={t.pages}>
         {hasCursor ? <Link href={`${basePath}?${keep.toString()}`}>{t.newest}</Link> : null}
         {nextCursor ? (
           <Link rel="next" href={`${basePath}?${next.toString()}`}>

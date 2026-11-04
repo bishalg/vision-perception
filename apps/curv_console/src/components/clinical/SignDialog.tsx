@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import type { ClinicalReview } from "@/lib/api/clinical";
-import { clinicalErrorMessage, clinicalText, hashPrefix } from "@/messages/clinical";
+import { SIGNATURE_MEANING, type ClinicalReview } from "@/lib/api/clinical";
+import { useText } from "@/lib/i18n/provider";
+import { clinicalErrorMessage, hashPrefix } from "@/messages/clinical";
 import type { ReviewResult } from "./types";
-
-const t = clinicalText;
 
 export interface StepUpDialogProps {
   kind: "sign" | "cosign";
@@ -24,6 +23,8 @@ export interface StepUpDialogProps {
  * React state. The content hash shown is the API's value and is sent back unchanged.
  */
 export function StepUpDialog({ kind, review, submit, onDone, onClose, onReload }: StepUpDialogProps) {
+  const text = useText();
+  const t = text.clinical;
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<{ slug: string | null; status: number } | null>(null);
   const first = useRef<HTMLInputElement>(null);
@@ -63,6 +64,11 @@ export function StepUpDialog({ kind, review, submit, onDone, onClose, onReload }
       >
         <h2 id="stepup-title">{title}</h2>
         <blockquote className="meaning">{t.dialog.meaning}</blockquote>
+        {text.locale === "en" ? null : (
+          <p className="muted">
+            {t.dialog.meaningRecorded} <q>{SIGNATURE_MEANING}</q>
+          </p>
+        )}
         <p>
           {t.dialog.hashLabel}: <code data-testid="hash-prefix">{hashPrefix(review.content_hash)}</code>
         </p>
@@ -83,7 +89,7 @@ export function StepUpDialog({ kind, review, submit, onDone, onClose, onReload }
           <p className="muted">{t.dialog.secretNote}</p>
           {failure ? (
             <div role="alert" className="error">
-              <p>{clinicalErrorMessage(failure.slug, failure.status)}</p>
+              <p>{clinicalErrorMessage(failure.slug, failure.status, text.locale)}</p>
               {mustReload ? (
                 <button type="button" onClick={onReload}>
                   {t.review.reload}

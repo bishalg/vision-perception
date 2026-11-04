@@ -8,14 +8,14 @@ import { authedApi, currentRole } from "@/lib/auth/server";
 import { parseCursor, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
-import { adminText } from "@/messages/admin";
+import { getText } from "@/lib/i18n/server";
 import { requestErasureAction } from "../privacy-actions";
 import { createParticipantAction, searchParticipantsAction } from "./actions";
 
-const t = adminText.participants;
-
 // No token or search value in the title (UI-4).
-export const metadata: Metadata = { title: t.title };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getText()).admin.participants.title };
+}
 
 export default async function ParticipantsPage({
   params,
@@ -25,6 +25,8 @@ export default async function ParticipantsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { org } = await params;
+  const text = await getText();
+  const t = text.admin.participants;
   const cursor = parseCursor(await searchParams);
   const api = await authedApi();
   const role = await currentRole();
@@ -48,10 +50,10 @@ export default async function ParticipantsPage({
         erase={can(role, "participant.erase") ? requestErasureAction.bind(null, org) : undefined}
       />
       <p className="muted">{t.showing(page.items.length, page.total)}</p>
-      <nav className="pagination" aria-label="Pagination">
-        {cursor ? <Link href={base}>{adminText.common.first}</Link> : null}
+      <nav className="pagination" aria-label={text.participant.pagination}>
+        {cursor ? <Link href={base}>{text.admin.common.first}</Link> : null}
         {page.next_cursor ? (
-          <Link rel="next" href={`${base}${toSearch({ cursor: page.next_cursor })}`}>{adminText.common.next}</Link>
+          <Link rel="next" href={`${base}${toSearch({ cursor: page.next_cursor })}`}>{text.admin.common.next}</Link>
         ) : null}
       </nav>
     </>

@@ -7,10 +7,8 @@ import {
   MAX_ENCOUNTER_SUMMARY_CHARS,
   type Encounter,
 } from "@/lib/api/emr";
-import { participantText } from "@/messages/participant";
+import { useText } from "@/lib/i18n/provider";
 import { failureText, type ActionResult } from "./types";
-
-const t = participantText.visits;
 
 export interface SessionChoice {
   id: string;
@@ -58,6 +56,8 @@ export function EncounterForm({
   encounter?: Encounter;
   onDone: () => void;
 }) {
+  const text = useText();
+  const t = text.participant.visits;
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<ActionResult | null>(null);
   const first = useRef<HTMLSelectElement>(null);
@@ -95,7 +95,7 @@ export function EncounterForm({
         {t.kind}
         <select ref={first} name="kind" required defaultValue={encounter?.kind ?? "follow_up_visit"}>
           {ENCOUNTER_KINDS.map((k) => (
-            <option key={k} value={k}>{t.kinds[k]}</option>
+            <option key={k} value={k}>{text.domain.enumLabel(text.locale, "encounter_kind", k)}</option>
           ))}
         </select>
       </label>
@@ -140,7 +140,7 @@ export function EncounterForm({
         </fieldset>
       ) : null}
       {failure && !failure.ok ? (
-        <p role="alert" className="error">{t.failed} {failureText(failure)}</p>
+        <p role="alert" className="error">{t.failed} {failureText(failure, text.locale)}</p>
       ) : null}
       <div className="dialog-actions">
         <button type="submit" disabled={pending}>{pending ? t.saving : t.save}</button>

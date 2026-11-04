@@ -3,14 +3,14 @@
 import { useState, useTransition } from "react";
 import type { Attachment } from "@/lib/api/emr";
 import { formatDateTime } from "@/lib/format";
-import { formatFileSize, participantText } from "@/messages/participant";
+import { useText } from "@/lib/i18n/provider";
+import { formatFileSize } from "@/messages/participant";
 import { AttachmentUpload, type UploadActions } from "./AttachmentUpload";
 import { failureText, type ActionResult } from "./types";
 
-const t = participantText.attachments;
-const c = t.cols;
-
 function RemoveButton({ name, remove }: { name: string; remove: () => Promise<ActionResult> }) {
+  const text = useText();
+  const t = text.participant.attachments;
   const [confirming, setConfirming] = useState(false);
   const [busy, start] = useTransition();
   const [result, setResult] = useState<ActionResult | null>(null);
@@ -32,7 +32,7 @@ function RemoveButton({ name, remove }: { name: string; remove: () => Promise<Ac
         {t.confirmRemoveButton}
       </button>
       <button type="button" className="secondary" disabled={busy} onClick={() => setConfirming(false)}>{t.cancel}</button>
-      {result && !result.ok ? <span role="alert" className="error">{failureText(result)}</span> : null}
+      {result && !result.ok ? <span role="alert" className="error">{failureText(result, text.locale)}</span> : null}
     </span>
   );
 }
@@ -56,6 +56,9 @@ export function AttachmentsPanel({
   actions: UploadActions;
   visits: { id: string; label: string }[];
 }) {
+  const text = useText();
+  const t = text.participant.attachments;
+  const c = t.cols;
   const visitLabel = new Map(visits.map((v) => [v.id, v.label]));
   return (
     <section aria-labelledby="files-h" className="stack">
@@ -84,7 +87,7 @@ export function AttachmentsPanel({
                 return (
                   <tr key={r.id} data-testid="attachment-row">
                     <td data-label={c.name}>{name}</td>
-                    <td data-label={c.kind}>{t.kinds[r.kind]}</td>
+                    <td data-label={c.kind}>{text.domain.enumLabel(text.locale, "attachment_kind", r.kind)}</td>
                     <td data-label={c.size}>{formatFileSize(r.byte_size)}</td>
                     <td data-label={c.when}>{formatDateTime(r.created_at)}</td>
                     <td data-label={c.visit}>{(r.encounter_id && visitLabel.get(r.encounter_id)) || "-"}</td>

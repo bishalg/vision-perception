@@ -8,16 +8,19 @@ import { EncountersPanel } from "@/components/participant/EncountersPanel";
 import { MrnPanel } from "@/components/participant/MrnPanel";
 import { NotesPanel } from "@/components/participant/NotesPanel";
 import { ParticipantHeader } from "@/components/participant/ParticipantHeader";
-import { ParticipantTabs, parseWorkspaceTab } from "@/components/participant/ParticipantTabs";
+import { ParticipantTabs } from "@/components/participant/ParticipantTabs";
+import { parseWorkspaceTab } from "@/components/participant/workspaceTab";
 import { PrintSummary, type PrintRow } from "@/components/participant/PrintSummary";
-import { Timeline, parseDay, parseKinds } from "@/components/participant/Timeline";
+import { Timeline } from "@/components/participant/Timeline";
+import { parseDay, parseKinds } from "@/components/participant/timelineQuery";
 import { ApiError, type ClinicalReview, type CurvApi } from "@/lib/api";
 import { authedApi, currentRole } from "@/lib/auth/server";
 import { formatDateTime } from "@/lib/format";
 import { parseCursor } from "@/lib/listQuery";
 import { loadOrNotFound, requestTime } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
-import { participantText, type WorkspaceTab } from "@/messages/participant";
+import { getText } from "@/lib/i18n/server";
+import type { WorkspaceTab } from "@/messages/participant";
 import {
   attachmentUploadedAction,
   createAttachmentAction,
@@ -33,10 +36,10 @@ import {
   unlinkMrnAction,
 } from "./actions";
 
-const t = participantText;
-
 // No token, MRN or note text in the title (UI-4).
-export const metadata: Metadata = { title: t.title };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getText()).participant.title };
+}
 
 const PRINT_SESSIONS = 20;
 
@@ -57,6 +60,8 @@ export default async function ParticipantWorkspacePage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { org, id } = await params;
+  const text = await getText();
+  const t = text.participant;
   const sp = await searchParams;
   const api = await authedApi();
   const role = await currentRole();
@@ -144,7 +149,7 @@ export default async function ParticipantWorkspacePage({
               now={requestTime()}
               orgPath={orgPath}
             />
-            <nav className="pagination" aria-label="Visit pages">
+            <nav className="pagination" aria-label={t.visits.pages}>
               {cursor ? <Link href={`${basePath}?tab=visits`}>{t.visits.newest}</Link> : null}
               {page.next_cursor ? (
                 <Link rel="next" href={`${basePath}?tab=visits&cursor=${encodeURIComponent(page.next_cursor)}`}>
@@ -173,10 +178,10 @@ export default async function ParticipantWorkspacePage({
               }}
               visits={visits.items.map((v) => ({
                 id: v.id,
-                label: `${t.visits.kinds[v.kind]}, ${formatDateTime(v.occurred_at)}`,
+                label: t.visits.visitLine(text.domain.enumLabel(text.locale, "encounter_kind", v.kind), formatDateTime(v.occurred_at)),
               }))}
             />
-            <nav className="pagination" aria-label="File pages">
+            <nav className="pagination" aria-label={t.attachments.pages}>
               {cursor ? <Link href={`${basePath}?tab=attachments`}>{t.attachments.newest}</Link> : null}
               {files.next_cursor ? (
                 <Link rel="next" href={`${basePath}?tab=attachments&cursor=${encodeURIComponent(files.next_cursor)}`}>
@@ -202,7 +207,7 @@ export default async function ParticipantWorkspacePage({
               canWrite={can(role, "note.write") && !participant.withdrawn_at}
               create={createNoteAction.bind(null, org, id)}
             />
-            <nav className="pagination" aria-label="Note pages">
+            <nav className="pagination" aria-label={t.notes.pages}>
               {cursor ? <Link href={`${basePath}?tab=notes`}>{t.notes.newest}</Link> : null}
               {page.next_cursor ? (
                 <Link rel="next" href={`${basePath}?tab=notes&cursor=${encodeURIComponent(page.next_cursor)}`}>

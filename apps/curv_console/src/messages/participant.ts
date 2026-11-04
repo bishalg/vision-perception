@@ -1,12 +1,14 @@
 /**
  * User-visible strings for the participant workspace (WP-C.14) and the record workspace (WP-C.18: visits,
- * attachments, follow-ups, search, new participant). en only for now; every string lives here (no literals in
- * components) so a Nepali file can mirror this one. Wording is for clinic staff: short sentences, plain words, and
- * nothing that reads as a diagnosis (ADR-0004).
+ * attachments, follow-ups, search, new participant), in `en` and `ne` (WP-L.1b, ADR-0013). Every string lives here (no
+ * literals in components). Wording is for clinic staff: short sentences, plain words, and nothing that reads as a
+ * diagnosis (ADR-0004). Enumerations (visit, file and entry kinds, visit status, export mode/purpose, dispositions) are
+ * rendered with `enumLabel` from the generated domain catalogue, not from maps in this file.
+ *
+ * The `ne` tree is a machine draft for WP-L.3's native-speaker review (`// ne: draft`).
  */
-import type { NoteKind, TimelineKind } from "@/lib/api/participant";
-import type { AttachmentKind, EncounterKind, EncounterStatus } from "@/lib/api/emr";
-import type { Widen } from "@/lib/i18n/types";
+import type { Locale, Widen } from "@/lib/i18n/types";
+import { DOMAIN, dt, type DomainKey } from "@/messages/domain";
 
 const MIB = 1_048_576;
 
@@ -29,51 +31,68 @@ const errors: Record<string, string> = {
   fallback: "The request failed. Try again.",
 };
 
-export function participantErrorMessage(slug: string | null, status: number): string {
-  if (slug && errors[slug]) return errors[slug];
-  if (status === 403) return errors.forbidden!;
-  if (status === 404) return errors["not-found"]!;
-  if (status === 409) return errors.conflict!;
-  if (status === 429) return errors["rate-limited"]!;
-  if (status === 0) return errors.unavailable!;
-  return errors.fallback!;
+// ne: draft
+const errorsNe: Record<string, string> = {
+  "validation-failed": "केही फिल्डहरू स्वीकार गरिएनन्।",
+  "encounter-closed": "यो भेट बन्द भइसकेको छ। परिवर्तन गर्न पहिले यसलाई फेरि खोल्नुहोस्।",
+  "encounter-summary-forbidden": "तपाईंको भूमिकाले भेटको सारांश लेख्न मिल्दैन। सारांश खाली छोड्नुहोस्।",
+  "stale-version": "तपाईं सम्पादन गर्दा अरू कसैले यो भेट परिवर्तन गर्नुभयो। पृष्ठ पुनः लोड गरेर फेरि प्रयास गर्नुहोस्।",
+  "attachment-too-large": "फाइल धेरै ठूलो छ। सीमा १० MB हो।",
+  "attachment-type-not-allowed": "यो प्रकारको फाइल स्वीकार गरिँदैन। PDF, JPEG वा PNG फाइल प्रयोग गर्नुहोस्।",
+  "digest-mismatch": "सर्भरसम्म पुग्दा फाइल बिग्रियो। फेरि अपलोड गर्ने प्रयास गर्नुहोस्।",
+  forbidden: "तपाईंको भूमिकाले यो काम गर्न मिल्दैन।",
+  "not-found": "फेला परेन।",
+  conflict: "त्यो बिरामी सन्दर्भ पहिले नै अर्को सहभागीसँग जोडिएको छ।",
+  "patient-ref-disabled": "यो संस्थाले अस्पतालको बिरामी सन्दर्भ भण्डारण गर्दैन।",
+  "clinical-crypto-unavailable": "क्लिनिकल एन्क्रिप्सन उपलब्ध छैन। केही बेरमा फेरि प्रयास गर्नुहोस्।",
+  "participant-withdrawn": "यो सहभागीले सहभागिता फिर्ता लिनुभएको छ।",
+  "rate-limited": "धेरै अनुरोध भए। केही बेर पर्खेर फेरि प्रयास गर्नुहोस्।",
+  unavailable: "सर्भरसँग सम्पर्क हुन सकेन। केही बेरमा फेरि प्रयास गर्नुहोस्।",
+  fallback: "अनुरोध असफल भयो। फेरि प्रयास गर्नुहोस्।",
+};
+
+/**
+ * The sentence for an API failure: by problem slug, else by HTTP status. The default locale is `en` so call sites
+ * without a bundle (and the existing tests) keep the English text; components pass `t.locale`.
+ */
+export function participantErrorMessage(slug: string | null, status: number, locale: Locale = "en"): string {
+  const table = (locale === "ne" ? errorsNe : errors) as Record<string, string>;
+  if (slug && table[slug]) return table[slug];
+  if (status === 403) return table.forbidden!;
+  if (status === 404) return table["not-found"]!;
+  if (status === 409) return table.conflict!;
+  if (status === 429) return table["rate-limited"]!;
+  if (status === 0) return table.unavailable!;
+  return table.fallback!;
 }
 
 export const TAB_IDS = ["timeline", "visits", "attachments", "notes", "mrn", "letters", "disclosures", "print"] as const;
 export type WorkspaceTab = (typeof TAB_IDS)[number];
 
-const encounterKinds = {
-  screening_visit: "Observation visit",
-  follow_up_visit: "Follow-up visit",
-  phone_call: "Phone call",
-  home_visit: "Home visit",
-  other: "Other",
-} satisfies Record<EncounterKind, string>;
-
-const attachmentKinds = {
-  paper_form: "Paper form",
-  referral: "Referral letter",
-  report: "Report",
-  photo_of_document: "Photo of a document",
-  other: "Other",
-} satisfies Record<AttachmentKind, string>;
-
 /**
  * Age groups offered when creating or searching: the values the iOS app records (`AgeBracket` raw values), so a
- * search by age group matches sessions from the app. Shown as written.
+ * search by age group matches sessions from the app. The option value is the raw string; the shown label is
+ * formatted from the band's months (`ageBracketLabel`).
  */
 export const AGE_GROUPS = ["12–17 mo", "18–23 mo", "24–35 mo", "36–47 mo", "48–60 mo"] as const;
 
-/** "1.2 MB", "340 KB": sizes for people, not bytes. */
+/** "1.2 MB", "340 KB": sizes for people, not bytes. The unit symbols are the same in every locale. */
 export function formatFileSize(bytes: number | null | undefined): string {
   if (bytes == null) return "-";
   if (bytes >= MIB) return `${(bytes / MIB).toFixed(1)} MB`;
   return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
+/** The catalogue label of an enum value, or the value itself when the catalogue has no such key (never `‹x›`). */
+export function labelOr(locale: Locale, group: string, value: string): string {
+  const key = `${group}.${value}`;
+  return key in DOMAIN[locale] ? dt(locale, key as DomainKey) : value;
+}
+
 export const participantText = {
   title: "Participant",
   back: "Back to participants",
+  pagination: "Pagination",
   header: {
     ageBracket: "Age bracket",
     language: "Language",
@@ -111,26 +130,26 @@ export const participantText = {
     cols: { when: "When", kind: "Kind", detail: "Detail", by: "By" },
     older: "Older",
     newest: "Newest",
+    pages: "Timeline pages",
     openSession: "Open session",
-    kinds: {
-      session: "Session",
-      clinical_review: "Clinical review",
-      note: "Note",
-      letter: "Letter",
-      care_event: "Care event",
-      encounter: "Visit",
-      attachment: "Attachment",
-    } satisfies Record<TimelineKind, string>,
     flag: (f: string) => `Attention flag ${f}`,
-    review: (state: string, v: unknown) => `Review ${state.replace(/_/g, " ")}${typeof v === "number" ? `, version ${v}` : ""}`,
-    note: (k: string) => (k === "correction" ? "Correction to a note" : "Clinical note"),
-    letter: (kind: string, status: unknown) =>
-      `${kind === "referral" ? "Referral" : "Summary"} letter${typeof status === "string" ? ` (${status})` : ""}`,
-    care: (k: string) => `Care event: ${k.replace(/_/g, " ")}`,
-    encounter: (kind: string, status: unknown) =>
-      `${encounterKinds[kind as EncounterKind] ?? "Visit"}${status === "closed" ? " (closed)" : status === "open" ? " (open)" : ""}`,
-    attachment: (kind: string, name: string, size: number | null) =>
-      [attachmentKinds[kind as AttachmentKind] ?? "File", name, size != null ? formatFileSize(size) : ""].filter(Boolean).join(", "),
+    /** `state` is the lower-case state word from `reviewStates`; `v` the version number when the entry has one. */
+    review: (state: string, v: unknown) => `Review ${state}${typeof v === "number" ? `, version ${v}` : ""}`,
+    reviewStates: {
+      open: "open",
+      in_progress: "in progress",
+      awaiting_cosign: "awaiting cosign",
+      final: "final",
+      amending: "amending",
+    } as Record<string, string>,
+    note: (correction: boolean): string => (correction ? "Correction to a note" : "Clinical note"),
+    care: (kind: string) => `Care event: ${kind}`,
+    careKinds: { task: "task", medication: "medication", diary: "diary", milestone: "milestone" } as Record<string, string>,
+    careUnknown: "event",
+    /** "Home visit (open)", "Referral letter (draft)": a label with an optional lower-case status word. */
+    withStatus: (label: string, status: string | null) => (status ? `${label} (${status})` : label),
+    attachment: (kind: string, name: string, size: string) => [kind, name, size].filter(Boolean).join(", "),
+    fileFallback: "File",
     openVisits: "Open visits",
     openFiles: "Open files",
   },
@@ -142,8 +161,6 @@ export const participantText = {
     addTitle: "New visit",
     editTitle: "Change visit",
     kind: "Type of visit",
-    kinds: encounterKinds,
-    statuses: { open: "Open", closed: "Closed" } satisfies Record<EncounterStatus, string>,
     date: "Date of visit",
     reason: "Reason for the visit (short)",
     reasonHelp: (n: number) => `A few words, up to ${n} characters. Do not write clinical findings here.`,
@@ -162,6 +179,8 @@ export const participantText = {
     link: "Link",
     unlink: "Remove",
     unlinkLabel: (when: string) => `Remove session ${when} from this visit`,
+    /** "Observation visit, 2026-10-30 09:00 UTC": a visit as named in a list or an accessible label. */
+    visitLine: (kind: string, when: string) => `${kind}, ${when}`,
     by: "Staff",
     dueBy: "Follow up by",
     done: "Follow-up done",
@@ -179,6 +198,7 @@ export const participantText = {
     readOnly: "Your role can view visits but not add them.",
     older: "Older visits",
     newest: "Newest visits",
+    pages: "Visit pages",
   },
   attachments: {
     title: "Files",
@@ -187,7 +207,6 @@ export const participantText = {
     uploadTitle: "Add a file",
     file: "Choose a file (PDF, JPEG or PNG, up to 10 MB)",
     kind: "What is this file?",
-    kinds: attachmentKinds,
     visit: "From visit (optional)",
     noVisit: "Not linked to a visit",
     upload: "Upload file",
@@ -202,6 +221,7 @@ export const participantText = {
     incomplete: "Upload not finished",
     older: "Older files",
     newest: "Newest files",
+    pages: "File pages",
     download: "Download",
     downloadLabel: (name: string) => `Download ${name}`,
     noDownload: "Your role cannot open files.",
@@ -245,7 +265,6 @@ export const participantText = {
     ageNone: "Not recorded",
     language: "Language (optional)",
     languageNone: "Not recorded",
-    languages: { en: "English", ne: "Nepali" } as Record<string, string>,
     consentVersion: "Consent form version (optional)",
     consentDate: "Consent signed on (optional)",
     consentHelp: "Fill in only if the family signed the consent form on paper today or earlier.",
@@ -313,9 +332,9 @@ export const participantText = {
     corrected: "Corrected",
     correctedBy: "Corrected by a later note",
     byline: (author: string | null | undefined, at: string) => `${author ?? "Unknown author"}, ${at}`,
-    kindLabel: { general: "Note", correction: "Correction" } satisfies Record<NoteKind, string>,
     older: "Older",
     newest: "Newest",
+    pages: "Note pages",
     count: (shown: number, total: number | null | undefined) =>
       total == null ? `${shown} shown` : `${shown} of ${total} shown`,
     readOnly: "Only clinicians can add notes.",
@@ -325,7 +344,7 @@ export const participantText = {
     title: "Hospital patient reference (MRN)",
     intro:
       "Links this pseudonymous participant to a hospital record number. The number is encrypted, every view and change is audited, and it never appears in a URL.",
-    disabledTitle: "Disabled",
+    disabledTitle: "Disabled.",
     disabled:
       "This organisation does not store hospital patient references. An owner or admin can switch identity.patient_ref_mode to mrn in the organisation settings.",
     none: "No MRN is linked to this participant.",
@@ -366,14 +385,11 @@ export const participantText = {
     noDeliveries: "None",
     older: "Older",
     newest: "Newest",
-    modes: { identified: "Identified", deidentified: "De-identified" } as Record<string, string>,
-    purposes: {
-      clinical_care: "Clinical care",
-      research: "Research",
-      quality_improvement: "Quality improvement",
-      patient_request: "Patient request",
-    } as Record<string, string>,
+    pages: "Disclosure pages",
     byline: (who: string) => `by ${who}`,
+    deliveryStatuses: { pending: "pending", sending: "sending", delivered: "delivered", failed: "failed" } as Record<string, string>,
+    /** "Hospital SFTP: delivered (2026-10-30 09:00 UTC)". */
+    delivery: (destination: string, status: string, at: string | null) => `${destination}: ${status}${at ? ` (${at})` : ""}`,
   },
   print: {
     title: "Clinical summary",
@@ -396,17 +412,334 @@ export const participantText = {
     noNotes: "No notes.",
     truncated: (n: number) => `Showing the latest ${n} entries only.`,
     footer: "Confidential. Contains clinical information; handle under the organisation's privacy policy. Observation record, not a diagnosis.",
-    dispositions: {
-      no_concern_noted: "No concern noted",
-      monitor: "Monitor",
-      refer_for_evaluation: "Refer for evaluation",
-      recapture_requested: "Recapture requested",
-      not_interpretable: "Not interpretable",
-    } as Record<string, string>,
   },
+  /** The failure sentences by problem slug (`participantErrorMessage`). */
+  errors,
 };
 
-/** WP-L.1.0 (I18N-15): both locales of this file. `ne` is typed by the `en` tree; the wave package replaces the copy. */
+// ne: draft
+const participantTextNe: Widen<typeof participantText> = {
+  title: "सहभागी",
+  back: "सहभागीहरूमा फर्कनुहोस्",
+  pagination: "पृष्ठ क्रम",
+  header: {
+    ageBracket: "उमेर समूह",
+    language: "भाषा",
+    sessions: "सत्रहरू",
+    lastSession: "पछिल्लो सत्र",
+    status: "अवस्था",
+    mrn: "MRN",
+    mrnOnFile: "अभिलेखमा छ",
+    mrnNone: "कुनै जोडिएको छैन",
+    withdrawn: "फिर्ता लिएको",
+    active: "सक्रिय",
+    withdrawnNote: "यो सहभागीले सहमति फिर्ता लिनुभएको छ। नयाँ रेकर्डिङ अस्वीकार गरिन्छ।",
+  },
+  tabsLabel: "सहभागीका खण्डहरू",
+  tabs: {
+    timeline: "समयरेखा",
+    visits: "भेटहरू",
+    attachments: "फाइलहरू",
+    notes: "टिपोटहरू",
+    mrn: "MRN",
+    letters: "पत्रहरू",
+    disclosures: "खुलासाहरू",
+    print: "सारांश छाप्नुहोस्",
+  },
+  timeline: {
+    title: "समयरेखा",
+    intro: "सत्र, भेट, फाइल, क्लिनिकल समीक्षा, टिपोट, पत्र र हेरचाह घटनाहरू, नयाँ पहिले। प्रविष्टिहरूमा शीर्षक मात्र देखिन्छ।",
+    filterLegend: "देखाउनुहोस्",
+    apply: "फिल्टर लगाउनुहोस्",
+    clear: "सबै देखाउनुहोस्",
+    empty: "समयरेखामा अहिलेसम्म केही छैन।",
+    emptyFiltered: "छानिएका फिल्टरसँग मिल्ने प्रविष्टि छैन।",
+    from: "देखि",
+    to: "सम्म",
+    cols: { when: "कहिले", kind: "प्रकार", detail: "विवरण", by: "द्वारा" },
+    older: "पुराना",
+    newest: "नयाँ",
+    pages: "समयरेखा पृष्ठहरू",
+    openSession: "सत्र खोल्नुहोस्",
+    flag: (f: string) => `ध्यान सङ्केत ${f}`,
+    review: (state: string, v: unknown) => `समीक्षा ${state}${typeof v === "number" ? `, संस्करण ${v}` : ""}`,
+    reviewStates: {
+      open: "खुला",
+      in_progress: "चलिरहेको",
+      awaiting_cosign: "सह-हस्ताक्षर पर्खाइमा",
+      final: "अन्तिम",
+      amending: "संशोधन हुँदै",
+    },
+    note: (correction: boolean): string => (correction ? "टिपोटको सच्याइ" : "क्लिनिकल टिपोट"),
+    care: (kind: string) => `हेरचाह घटना: ${kind}`,
+    careKinds: { task: "कार्य", medication: "औषधि", diary: "डायरी", milestone: "कोसेढुङ्गा" },
+    careUnknown: "घटना",
+    withStatus: (label: string, status: string | null) => (status ? `${label} (${status})` : label),
+    attachment: (kind: string, name: string, size: string) => [kind, name, size].filter(Boolean).join(", "),
+    fileFallback: "फाइल",
+    openVisits: "भेटहरू खोल्नुहोस्",
+    openFiles: "फाइलहरू खोल्नुहोस्",
+  },
+  visits: {
+    title: "भेटहरू",
+    intro: "यो सहभागीसँगको प्रत्येक भेट, फोन वा घर भ्रमण, नयाँ पहिले।",
+    empty: "अहिलेसम्म कुनै भेट दर्ता भएको छैन।",
+    add: "भेट थप्नुहोस्",
+    addTitle: "नयाँ भेट",
+    editTitle: "भेट परिवर्तन गर्नुहोस्",
+    kind: "भेटको प्रकार",
+    date: "भेटको मिति",
+    reason: "भेटको कारण (छोटो)",
+    reasonHelp: (n: number) => `केही शब्द मात्र, अधिकतम ${n} अक्षर। यहाँ क्लिनिकल निष्कर्ष नलेख्नुहोस्।`,
+    summary: "भेटको सारांश",
+    summaryHelp: (n: number) => `भेटमा के भयो, अधिकतम ${n.toLocaleString("en-US")} अक्षर। एन्क्रिप्ट गरेर राखिन्छ।`,
+    summaryHidden: "सारांश अभिलेखमा छ। तपाईंको भूमिकाले यसलाई पढ्न मिल्दैन।",
+    summaryNoWrite: "भेटको सारांश क्लिनिसियनले मात्र लेख्न सक्छन्।",
+    followUp: "फलो-अप गर्ने मिति (ऐच्छिक)",
+    followUpHelp: "यो भेटलाई फलो-अप सूचीमा राख्न मिति छान्नुहोस्।",
+    sessions: "यो भेटका सत्रहरू",
+    noSessions: "यो सहभागीको अहिलेसम्म कुनै सत्र छैन।",
+    linked: "सत्रहरू",
+    noneLinked: "कुनै सत्र जोडिएको छैन।",
+    linkSession: "सत्र जोड्नुहोस्",
+    chooseSession: "सत्र छान्नुहोस्",
+    link: "जोड्नुहोस्",
+    unlink: "हटाउनुहोस्",
+    unlinkLabel: (when: string) => `सत्र ${when} लाई यो भेटबाट हटाउनुहोस्`,
+    visitLine: (kind: string, when: string) => `${kind}, ${when}`,
+    by: "कर्मचारी",
+    dueBy: "फलो-अप गर्ने मिति",
+    done: "फलो-अप सम्पन्न",
+    markDone: "फलो-अप सम्पन्न चिन्ह लगाउनुहोस्",
+    overdue: "म्याद नाघेको",
+    save: "भेट सुरक्षित गर्नुहोस्",
+    saving: "सुरक्षित गरिँदै…",
+    saved: "भेट सुरक्षित भयो।",
+    failed: "भेट सुरक्षित भएन।",
+    edit: "परिवर्तन",
+    close: "भेट बन्द गर्नुहोस्",
+    reopen: "भेट फेरि खोल्नुहोस्",
+    cancel: "रद्द गर्नुहोस्",
+    reload: "पृष्ठ पुनः लोड गर्नुहोस्",
+    readOnly: "तपाईंको भूमिकाले भेट हेर्न मात्र मिल्छ, थप्न मिल्दैन।",
+    older: "पुराना भेटहरू",
+    newest: "नयाँ भेटहरू",
+    pages: "भेट पृष्ठहरू",
+  },
+  attachments: {
+    title: "फाइलहरू",
+    intro: "यो सहभागीका स्क्यान गरिएका कागजी फारम, रेफरल पत्र र अन्य कागजात। फाइलहरू एन्क्रिप्ट गरिएका छन्।",
+    empty: "अहिलेसम्म कुनै फाइल छैन।",
+    uploadTitle: "फाइल थप्नुहोस्",
+    file: "फाइल छान्नुहोस् (PDF, JPEG वा PNG, १० MB सम्म)",
+    kind: "यो कस्तो फाइल हो?",
+    visit: "कुन भेटबाट (ऐच्छिक)",
+    noVisit: "कुनै भेटसँग जोडिएको छैन",
+    upload: "फाइल अपलोड गर्नुहोस्",
+    uploading: "अपलोड हुँदै…",
+    uploaded: "फाइल अपलोड भयो।",
+    failed: "फाइल अपलोड भएन।",
+    tooLarge: "फाइल धेरै ठूलो छ। सीमा १० MB हो।",
+    badType: "यो प्रकारको फाइल स्वीकार गरिँदैन। PDF, JPEG वा PNG फाइल प्रयोग गर्नुहोस्।",
+    empty_file: "फाइल खाली छ।",
+    cols: { name: "फाइल", kind: "प्रकार", size: "आकार", when: "थपिएको", visit: "भेट", actions: "कार्यहरू" },
+    incomplete: "अपलोड पूरा भएको छैन",
+    older: "पुराना फाइलहरू",
+    newest: "नयाँ फाइलहरू",
+    pages: "फाइल पृष्ठहरू",
+    download: "डाउनलोड",
+    downloadLabel: (name: string) => `${name} डाउनलोड गर्नुहोस्`,
+    noDownload: "तपाईंको भूमिकाले फाइल खोल्न मिल्दैन।",
+    remove: "हटाउनुहोस्",
+    removeLabel: (name: string) => `${name} हटाउनुहोस्`,
+    confirmRemove: (name: string) => `${name} हटाउने? यो फेरि उपलब्ध हुने छैन।`,
+    confirmRemoveButton: "हो, हटाउनुहोस्",
+    removed: "फाइल हटाइयो।",
+    cancel: "रद्द गर्नुहोस्",
+    readOnly: "तपाईंको भूमिकाले फाइल थप्न मिल्दैन।",
+    unnamed: "फाइल",
+  },
+  followUps: {
+    title: "फलो-अपहरू",
+    intro: "फलो-अप चाहिने भेटहरू, चाँडो म्याद भएको पहिले। फलो-अप भइसकेपछि सम्पन्न चिन्ह लगाउनुहोस्।",
+    empty: "कुनै फलो-अप बाँकी छैन।",
+    emptyFiltered: "यो फिल्टरसँग मिल्ने फलो-अप छैन।",
+    filterLabel: "फलो-अपहरू देखाउनुहोस्",
+    show: "देखाउनुहोस्",
+    all: "सबै खुला",
+    overdue: "म्याद नाघेको",
+    week: "आगामी ७ दिनभित्र",
+    mine: "मेरो मात्र",
+    apply: "देखाउनुहोस्",
+    cols: { due: "फलो-अप मिति", participant: "सहभागी", visit: "भेट", reason: "कारण", staff: "कर्मचारी", actions: "कार्यहरू" },
+    overdueBadge: "म्याद नाघेको",
+    todayBadge: "आज गर्ने",
+    markDone: "सम्पन्न चिन्ह लगाउनुहोस्",
+    markDoneLabel: (token: string) => `${token} को फलो-अप सम्पन्न चिन्ह लगाउनुहोस्`,
+    done: "सम्पन्न।",
+    failed: "यो फलो-अप सम्पन्न चिन्ह लगाउन सकिएन।",
+    open: "अभिलेख खोल्नुहोस्",
+    older: "थप",
+    first: "पहिलो पृष्ठ",
+  },
+  create: {
+    button: "नयाँ सहभागी",
+    title: "नयाँ सहभागी",
+    intro: "प्रणालीले सहभागी कोड र QR कोड बनाउँछ। कुनै नाम भण्डारण गरिँदैन।",
+    age: "उमेर समूह (ऐच्छिक)",
+    ageNone: "दर्ता गरिएको छैन",
+    language: "भाषा (ऐच्छिक)",
+    languageNone: "दर्ता गरिएको छैन",
+    consentVersion: "सहमति फारमको संस्करण (ऐच्छिक)",
+    consentDate: "सहमतिमा हस्ताक्षर गरेको मिति (ऐच्छिक)",
+    consentHelp: "परिवारले आज वा अघि कागजी सहमति फारममा हस्ताक्षर गरेको भए मात्र भर्नुहोस्।",
+    submit: "सहभागी बनाउनुहोस्",
+    creating: "बनाइँदै…",
+    failed: "सहभागी बनेन।",
+    doneTitle: "सहभागी बनाइयो",
+    code: "सहभागी कोड",
+    qrLabel: (token: string) => `सहभागी ${token} को QR कोड`,
+    qrHelp: "यो सहभागीको सत्र सुरु गर्न क्लिनिकको iPad ले यो QR कोड स्क्यान गर्नुहोस्, वा कोड कागजी फाइलमा लेख्नुहोस्।",
+    print: "छाप्नुहोस्",
+    open: "अभिलेख खोल्नुहोस्",
+    another: "अर्को बनाउनुहोस्",
+    close: "बन्द गर्नुहोस्",
+  },
+  search: {
+    title: "सहभागी खोज्नुहोस्",
+    intro: "एक वा बढी फिल्ड भर्नुहोस्। खोजी फारमको रूपमा पठाइन्छ र ठेगाना पट्टीमा राखिँदैन।",
+    token: "सहभागी कोड (सुरुको भाग)",
+    tokenHelp: "उदाहरण: child-3f",
+    age: "उमेर समूह",
+    any: "कुनै पनि",
+    lastSeenFrom: "पछिल्लो सत्र (देखि)",
+    lastSeenTo: "पछिल्लो सत्र (सम्म)",
+    openFollowUp: "फलो-अप बाँकी भएका सहभागी मात्र",
+    mrn: "अस्पताल रेकर्ड नम्बर (MRN)",
+    submit: "खोज्नुहोस्",
+    searching: "खोजिँदै…",
+    clear: "खाली गर्नुहोस्",
+    results: (n: number, total: number | null | undefined) =>
+      total == null || total === n ? `${n} फेला परे` : `${total} मध्ये ${n} फेला परे`,
+    none: "मिल्ने सहभागी छैन।",
+    more: "थप देखाउनुहोस्",
+    failed: "खोजी असफल भयो।",
+    cols: {
+      token: "सहभागी",
+      age: "उमेर समूह",
+      sessions: "सत्रहरू",
+      lastSession: "पछिल्लो सत्र",
+      openVisits: "खुला भेटहरू",
+      nextFollowUp: "अर्को फलो-अप",
+      status: "अवस्था",
+    },
+  },
+  notes: {
+    title: "क्लिनिकल टिपोटहरू",
+    intro: "टिपोटहरू एन्क्रिप्ट गरिएका र थप मात्र गर्न मिल्ने हुन्छन्। सच्याइ नयाँ टिपोटको रूपमा थपिन्छ; मूल टिपोट काटिएको रूपमा देखिइरहन्छ।",
+    deniedRead: "तपाईंको भूमिकाले क्लिनिकल टिपोट पढ्न मिल्दैन।",
+    empty: "अहिलेसम्म कुनै टिपोट छैन।",
+    newTitle: "टिपोट थप्नुहोस्",
+    body: "टिपोट",
+    session: "कुन सत्रको बारेमा",
+    noSession: "कुनै विशेष सत्र होइन",
+    add: "टिपोट थप्नुहोस्",
+    adding: "सुरक्षित गरिँदै…",
+    correctionOf: "अघिल्लो टिपोटको सच्याइ",
+    correct: "सच्याउनुहोस्",
+    correctTitle: "यो टिपोट सच्याउनुहोस्",
+    correctHelp: "मूल टिपोट राखिन्छ र काटिएको देखाइन्छ। पढ्नका लागि तपाईंको पाठले यसलाई प्रतिस्थापन गर्छ।",
+    saveCorrection: "सच्याइ सुरक्षित गर्नुहोस्",
+    cancel: "रद्द गर्नुहोस्",
+    saved: "टिपोट सुरक्षित भयो।",
+    failed: "टिपोट सुरक्षित भएन।",
+    corrected: "सच्याइएको",
+    correctedBy: "पछिल्लो टिपोटले सच्याएको",
+    byline: (author: string | null | undefined, at: string) => `${author ?? "अज्ञात लेखक"}, ${at}`,
+    older: "पुराना",
+    newest: "नयाँ",
+    pages: "टिपोट पृष्ठहरू",
+    count: (shown: number, total: number | null | undefined) =>
+      total == null ? `${shown} देखाइएको` : `${total} मध्ये ${shown} देखाइएको`,
+    readOnly: "टिपोट क्लिनिसियनले मात्र थप्न सक्छन्।",
+    maxHint: (n: number) => `अधिकतम ${n.toLocaleString("en-US")} अक्षर।`,
+  },
+  mrn: {
+    title: "अस्पतालको बिरामी सन्दर्भ (MRN)",
+    intro:
+      "यो छद्मनामी सहभागीलाई अस्पतालको रेकर्ड नम्बरसँग जोड्छ। नम्बर एन्क्रिप्ट गरिएको हुन्छ, हरेक हेराइ र परिवर्तन अडिट गरिन्छ, र यो कहिल्यै URL मा देखिँदैन।",
+    disabledTitle: "निष्क्रिय।",
+    disabled:
+      "यो संस्थाले अस्पतालको बिरामी सन्दर्भ भण्डारण गर्दैन। मालिक वा प्रशासकले संस्था सेटिङमा identity.patient_ref_mode लाई mrn मा बदल्न सक्छन्।",
+    none: "यो सहभागीसँग कुनै MRN जोडिएको छैन।",
+    onFile: "MRN अभिलेखमा छ। यसलाई हेर्दा अडिट लगमा दर्ता हुन्छ।",
+    reveal: "MRN देखाउनुहोस्",
+    hide: "MRN लुकाउनुहोस्",
+    authority: "जारी गर्ने निकाय",
+    number: "MRN",
+    updated: "अद्यावधिक गरिएको",
+    linkTitle: "MRN जोड्नुहोस्",
+    replaceTitle: "MRN बदल्नुहोस्",
+    authorityHelp: "जारी गर्ने अस्पतालको छोटो कोड, जस्तै TUTH।",
+    save: "MRN सुरक्षित गर्नुहोस्",
+    saving: "सुरक्षित गरिँदै…",
+    saved: "MRN सुरक्षित भयो।",
+    unlink: "MRN अलग गर्नुहोस्",
+    confirmUnlink: "यो सहभागीबाट MRN को सम्बन्ध हटाउने? जोडाइ मेटिन्छ र परिवर्तन अडिट गरिन्छ।",
+    confirmUnlinkButton: "हो, अलग गर्नुहोस्",
+    cancel: "रद्द गर्नुहोस्",
+    unlinked: "MRN अलग गरियो।",
+    failed: "MRN अनुरोध असफल भयो।",
+    noRead: "तपाईंको भूमिकाले बिरामी सन्दर्भ हेर्न वा परिवर्तन गर्न मिल्दैन।",
+    searchTitle: "MRN द्वारा सहभागी खोज्नुहोस्",
+    searchHelp: "फारम POST को रूपमा पठाइन्छ। नम्बर ठेगाना पट्टी वा ब्राउजर इतिहासमा राखिँदैन।",
+    searchButton: "खोज्नुहोस्",
+    notFound: "त्यो MRN भएको कुनै सहभागी छैन।",
+  },
+  letters: {
+    title: "पत्रहरू",
+    soon: "रेफरल र सारांश पत्रहरू चाँडै आउँदैछन्। पत्रहरू यहीँबाट बनाइने, अन्तिम गरिने र छापिने छन्।",
+  },
+  disclosures: {
+    title: "खुलासाहरू",
+    intro: "यो सहभागी समावेश भएका हरेक निर्यात, नयाँ पहिले (खुलासाको लेखाजोखा)।",
+    deniedRead: "तपाईंको भूमिकाले खुलासाहरू पढ्न मिल्दैन।",
+    empty: "यो सहभागीको डेटा निर्यात गरिएको छैन।",
+    cols: { when: "कहिले", what: "निर्यात", mode: "मोड", purpose: "उद्देश्य", status: "अवस्था", sessions: "सत्रहरू", deliveries: "पठाइहरू" },
+    noDeliveries: "कुनै छैन",
+    older: "पुराना",
+    newest: "नयाँ",
+    pages: "खुलासा पृष्ठहरू",
+    byline: (who: string) => `${who} द्वारा`,
+    deliveryStatuses: { pending: "बाँकी", sending: "पठाइँदै", delivered: "पुगेको", failed: "असफल" },
+    delivery: (destination: string, status: string, at: string | null) => `${destination}: ${status}${at ? ` (${at})` : ""}`,
+  },
+  print: {
+    title: "क्लिनिकल सारांश",
+    intro: "छाप्नका लागि मिलाइएको दृश्य। फाइल चाहिए छाप्नुहोस् थिच्नुहोस्, अनि छाप्ने संवादमा PDF को रूपमा सुरक्षित गर्नुहोस् छान्नुहोस्।",
+    button: "छाप्नुहोस्",
+    heading: "सहभागीको क्लिनिकल सारांश",
+    generated: "तयार गरिएको",
+    participant: "सहभागी",
+    sessionsHeading: "सत्र र समीक्षाहरू",
+    cols: { when: "मिति", flag: "सङ्केत", review: "क्लिनिकल समीक्षा", disposition: "निर्णय", impression: "धारणा" },
+    noSessions: "कुनै सत्र दर्ता गरिएको छैन।",
+    notReviewed: "समीक्षा गरिएको छैन",
+    draft: "मस्यौदा (हस्ताक्षर नभएको)",
+    signedBy: (names: string) => `${names} द्वारा हस्ताक्षरित`,
+    hidden: "तपाईंको भूमिकाका लागि देखाइएको छैन",
+    careHeading: "घरमा गरिएको हेरचाह",
+    careLine: (c: { total_events: number; task_completions: number; medication_doses: number; diary_entries: number; milestones: number; recent_moods: string[] }) =>
+      `${c.total_events} हेरचाह घटना दर्ता: ${c.task_completions} कार्य सम्पन्न, ${c.medication_doses} औषधि मात्रा, ${c.diary_entries} डायरी प्रविष्टि, ${c.milestones} कोसेढुङ्गा।${c.recent_moods.length ? ` हालका मनोदशा: ${c.recent_moods.join(", ")}।` : ""}`,
+    notesHeading: "क्लिनिकल टिपोटहरू",
+    noNotes: "कुनै टिपोट छैन।",
+    truncated: (n: number) => `पछिल्ला ${n} प्रविष्टि मात्र देखाइएको छ।`,
+    footer: "गोप्य। क्लिनिकल जानकारी समावेश छ; संस्थाको गोपनीयता नीति अनुसार सम्हाल्नुहोस्। अवलोकन अभिलेख हो, निदान होइन।",
+  },
+  errors: errorsNe,
+};
+
+/** WP-L.1.0 (I18N-15): both locales of this file; `ne` is typed by the `en` tree, so a missing key is a compile error. */
 const en = participantText;
-const ne: Widen<typeof en> = en; // ne: TODO
+const ne = participantTextNe;
 export const participantMessages = { en, ne } as const;

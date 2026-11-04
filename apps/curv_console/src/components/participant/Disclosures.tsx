@@ -1,10 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import type { Disclosure } from "@/lib/api/participant";
 import { formatDateTime } from "@/lib/format";
-import { participantText } from "@/messages/participant";
-
-const t = participantText.disclosures;
-const c = t.cols;
+import { useText } from "@/lib/i18n/provider";
+import { labelOr } from "@/messages/participant";
 
 export function Disclosures({
   items,
@@ -17,6 +17,10 @@ export function Disclosures({
   nextCursor: string | null | undefined;
   hasCursor: boolean;
 }) {
+  const text = useText();
+  const t = text.participant.disclosures;
+  const c = t.cols;
+  const { locale } = text;
   return (
     <section aria-labelledby="disc-h">
       <h2 id="disc-h">{t.title}</h2>
@@ -42,12 +46,12 @@ export function Disclosures({
                 <tr key={d.export_id}>
                   <td data-label={c.when}>{formatDateTime(d.created_at)}</td>
                   <td data-label={c.what}>
-                    {d.format.replace(/_/g, " ")}
+                    {labelOr(locale, "export_format", d.format)}
                     {d.requested_by ? <span className="muted"> {t.byline(d.requested_by)}</span> : null}
                   </td>
-                  <td data-label={c.mode}>{t.modes[d.mode] ?? d.mode}</td>
-                  <td data-label={c.purpose}>{t.purposes[d.purpose] ?? d.purpose}</td>
-                  <td data-label={c.status}>{d.status}</td>
+                  <td data-label={c.mode}>{labelOr(locale, "export_mode", d.mode)}</td>
+                  <td data-label={c.purpose}>{labelOr(locale, "export_purpose", d.purpose)}</td>
+                  <td data-label={c.status}>{labelOr(locale, "export_status", d.status)}</td>
                   <td data-label={c.sessions}>{d.session_ids.length}</td>
                   <td data-label={c.deliveries}>
                     {d.deliveries.length === 0 ? (
@@ -56,8 +60,11 @@ export function Disclosures({
                       <ul className="plain">
                         {d.deliveries.map((x) => (
                           <li key={x.destination_id}>
-                            {x.destination_name}: {x.status}
-                            {x.delivered_at ? ` (${formatDateTime(x.delivered_at)})` : ""}
+                            {t.delivery(
+                              x.destination_name,
+                              t.deliveryStatuses[x.status] ?? x.status,
+                              x.delivered_at ? formatDateTime(x.delivered_at) : null,
+                            )}
                           </li>
                         ))}
                       </ul>
@@ -69,7 +76,7 @@ export function Disclosures({
           </table>
         </div>
       )}
-      <nav className="pagination" aria-label="Disclosure pages">
+      <nav className="pagination" aria-label={t.pages}>
         {hasCursor ? <Link href={`${basePath}?tab=disclosures`}>{t.newest}</Link> : null}
         {nextCursor ? (
           <Link rel="next" href={`${basePath}?tab=disclosures&cursor=${encodeURIComponent(nextCursor)}`}>{t.older}</Link>

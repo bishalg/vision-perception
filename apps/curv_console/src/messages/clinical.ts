@@ -1,6 +1,12 @@
-/** User-visible strings for the clinician workspace (WP-C.13). Merged next to `en` by import, not by editing it. */
+/**
+ * User-visible strings for the clinician workspace (WP-C.13), `en` and `ne` (WP-L.1b, ADR-0013). Dispositions, cosign
+ * policies, flags and quality verdicts are rendered with `enumLabel` from the domain catalogue. The review-state and
+ * patient-reference-mode words stay here because the console's English differs from the catalogue's (`Claimed` /
+ * `Awaiting cosign` / `None (no MRN stored)`). The `ne` tree is a machine draft for WP-L.3 (`// ne: draft`).
+ */
 import { SIGNATURE_MEANING } from "@/lib/api/clinical";
-import type { Widen } from "@/lib/i18n/types";
+import type { Locale, Widen } from "@/lib/i18n/types";
+import { DOMAIN, dt, type DomainKey } from "@/messages/domain";
 
 export const clinicalText = {
   worklist: {
@@ -34,6 +40,7 @@ export const clinicalText = {
     denied: "Your role cannot view the clinical worklist.",
     next: "Next page",
     first: "First page",
+    pagination: "Pagination",
     showing: (n: number, total: number | null | undefined) =>
       total == null ? `Showing ${n} sessions` : `Showing ${n} of ${total} sessions`,
     hours: (h: number) => (h < 24 ? `${Math.round(h)}h` : `${Math.floor(h / 24)}d ${Math.round(h % 24)}h`),
@@ -52,13 +59,11 @@ export const clinicalText = {
     cosignRequired: "A second clinician must cosign this review.",
     disposition: "Disposition",
     dispositionPick: "Choose a disposition...",
-    dispositions: {
-      no_concern_noted: "No concern noted",
-      monitor: "Monitor",
-      refer_for_evaluation: "Refer for evaluation",
-      recapture_requested: "Recapture requested",
-      not_interpretable: "Not interpretable",
-    },
+    versionStatuses: { draft: "Draft", signed: "Signed", superseded: "Superseded" } as Record<string, string>,
+    /** "Name (reg), 2026-10-30 09:00 UTC, v2,": the line after the role word of a signature (the hash follows). */
+    signatureMeta: (signer: string, at: string, version: number) => `${signer}, ${at}, v${version},`,
+    /** The ADR-0004 sentence; in `ne` the English sentence is shown beside it (I18N-23). */
+    disclaimer: "This is not a diagnostic tool.",
     impression: "Impression",
     recommendations: "Recommendations",
     amendReason: "Amendment reason",
@@ -89,6 +94,8 @@ export const clinicalText = {
     signTitle: "Sign clinical review",
     cosignTitle: "Cosign clinical review",
     meaning: SIGNATURE_MEANING,
+    /** Shown in `ne` before the English sentence the server stores with the signature. */
+    meaningRecorded: "Recorded with the signature (English):",
     hashLabel: "Content hash (first 12 characters)",
     hashNote: "This is what you are signing. If the review changes before you confirm, signing is refused.",
     password: "Your password",
@@ -129,10 +136,10 @@ export const clinicalText = {
     worklistScope: "Worklist scope",
     scopes: { all: "All sessions", flagged: "Flagged sessions only (red, yellow, unreliable)" },
     cosignPolicy: "Second signature (cosign)",
-    cosignPolicies: { none: "Never", red_flag: "Red-flag sessions", always: "Always" },
     patientRefMode: "Patient reference",
     patientRefModes: { none: "None (no MRN stored)", mrn: "Hospital MRN" },
     timezone: "Time zone (IANA, e.g. Asia/Kathmandu)",
+    timezonePlaceholder: "UTC",
     paper: "Paper size",
     papers: { a4: "A4", letter: "Letter" },
     save: "Save organisation settings",
@@ -148,13 +155,21 @@ export const clinicalText = {
   },
 } as const;
 
-/** Message for an API failure: by problem slug, else by HTTP status. */
-export function clinicalErrorMessage(slug: string | null, status: number): string {
-  if (slug && clinicalText.errors[slug]) return clinicalText.errors[slug];
-  if (status === 403) return clinicalText.errors.forbidden!;
-  if (status === 429) return clinicalText.errors["rate-limited"]!;
-  if (status === 0) return clinicalText.errors.unavailable!;
-  return clinicalText.errors.fallback!;
+/**
+ * Message for an API failure: by problem slug, else by HTTP status. In `ne` a slug that the domain catalogue knows
+ * renders its `problem.<slug>` sentence (I18N-19); `en` keeps the console's own English, which carries more detail.
+ */
+export function clinicalErrorMessage(slug: string | null, status: number, locale: Locale = "en"): string {
+  const table = (locale === "ne" ? clinicalTextNe.errors : clinicalText.errors) as Record<string, string>;
+  if (slug && locale !== "en") {
+    const key = `problem.${slug}`;
+    if (key in DOMAIN[locale]) return dt(locale, key as DomainKey);
+  }
+  if (slug && table[slug]) return table[slug];
+  if (status === 403) return table.forbidden!;
+  if (status === 429) return table["rate-limited"]!;
+  if (status === 0) return table.unavailable!;
+  return table.fallback!;
 }
 
 /** First characters of the API-supplied hash, for display only. */
@@ -162,7 +177,152 @@ export function hashPrefix(hash: string, n = 12): string {
   return hash.slice(0, n);
 }
 
-/** WP-L.1.0 (I18N-15): both locales of this file. `ne` is typed by the `en` tree; the wave package replaces the copy. */
+// ne: draft
+const clinicalTextNe: Widen<typeof clinicalText> = {
+  worklist: {
+    title: "कार्यसूची",
+    intro: "क्लिनिकल समीक्षा पर्खिरहेका सत्रहरू। अवलोकन पढ्न र आफ्नो समीक्षा दर्ता गर्न एउटा खोल्नुहोस्।",
+    filters: { label: "कार्यसूची फिल्टरहरू", state: "समीक्षाको अवस्था", flag: "सङ्केत", assigned: "तोकिएको", any: "कुनै पनि", apply: "लागू गर्नुहोस्" },
+    assigned: { me: "मलाई तोकिएको", unassigned: "नतोकिएको", any: "जो कोही" },
+    cols: {
+      received: "पर्खाइ",
+      participant: "सहभागी",
+      flag: "सङ्केत",
+      quality: "गुणस्तर",
+      state: "समीक्षा",
+      assigned: "तोकिएको",
+      cosign: "सह-हस्ताक्षर",
+      mrn: "बिरामी सन्दर्भ",
+    },
+    states: {
+      none: "सुरु भएको छैन",
+      open: "दाबी गरिएको",
+      in_progress: "चलिरहेको",
+      awaiting_cosign: "सह-हस्ताक्षर पर्खाइमा",
+      final: "अन्तिम",
+      amending: "संशोधन हुँदै",
+    },
+    cosignRequired: "आवश्यक",
+    mrnLinked: "जोडिएको",
+    assignedMe: "म",
+    assignedOther: "तोकिएको",
+    empty: "समीक्षाका लागि पर्खिरहेको केही छैन।",
+    denied: "तपाईंको भूमिकाले क्लिनिकल कार्यसूची हेर्न मिल्दैन।",
+    next: "अर्को पृष्ठ",
+    first: "पहिलो पृष्ठ",
+    pagination: "पृष्ठ क्रम",
+    showing: (n: number, total: number | null | undefined) =>
+      total == null ? `${n} सत्र देखाइएको` : `${total} मध्ये ${n} सत्र देखाइएको`,
+    hours: (h: number) => (h < 24 ? `${Math.round(h)}घ` : `${Math.floor(h / 24)}दि ${Math.round(h % 24)}घ`),
+  },
+  review: {
+    title: "क्लिनिकल समीक्षा",
+    none: "यो सत्रको क्लिनिकल समीक्षा कसैले सुरु गरेको छैन।",
+    claim: "समीक्षा दाबी गर्नुहोस्",
+    claiming: "दाबी गरिँदै...",
+    denied: "तपाईंको भूमिकाले क्लिनिकल समीक्षा हेर्न मिल्दैन।",
+    contentHidden: "धारणा र सिफारिसहरू तपाईंको भूमिकाका लागि लुकाइएका छन्।",
+    readOnly: "तपाईंको भूमिकाले समीक्षाको अवस्था हेर्न मात्र मिल्छ, सम्पादन गर्न मिल्दैन।",
+    state: "अवस्था",
+    version: (n: number) => `संस्करण ${n}`,
+    contentHash: "सामग्री ह्यास",
+    cosignRequired: "दोस्रो क्लिनिसियनले यो समीक्षामा सह-हस्ताक्षर गर्नुपर्छ।",
+    disposition: "निर्णय",
+    dispositionPick: "निर्णय छान्नुहोस्...",
+    versionStatuses: { draft: "मस्यौदा", signed: "हस्ताक्षरित", superseded: "प्रतिस्थापित" },
+    signatureMeta: (signer: string, at: string, version: number) => `${signer}, ${at}, सं.${version},`,
+    disclaimer: "यो निदान गर्ने उपकरण होइन।",
+    impression: "धारणा",
+    recommendations: "सिफारिसहरू",
+    amendReason: "संशोधनको कारण",
+    limit: (n: number, max: number) => `${n} / ${max}`,
+    saveDraft: "मस्यौदा सुरक्षित गर्नुहोस्",
+    saving: "सुरक्षित गरिँदै...",
+    saved: "मस्यौदा सुरक्षित भयो।",
+    unsaved: "सुरक्षित नगरिएका परिवर्तन छन्। हस्ताक्षर गर्नुअघि मस्यौदा सुरक्षित गर्नुहोस्।",
+    sign: "हस्ताक्षर गर्नुहोस्",
+    cosign: "सह-हस्ताक्षर गर्नुहोस्",
+    amend: "संशोधन गर्नुहोस्",
+    needDisposition: "हस्ताक्षर गर्न निर्णय छान्नुहोस्।",
+    signatures: "हस्ताक्षरहरू",
+    noSignatures: "अहिलेसम्म हस्ताक्षर भएको छैन।",
+    signedBy: (name: string, reg: string | null | undefined) => (reg ? `${name} (${reg})` : name),
+    roleLabel: { sign: "हस्ताक्षर गरेको", cosign: "सह-हस्ताक्षर गरेको" },
+    states: {
+      open: "दाबी गरिएको",
+      in_progress: "चलिरहेको",
+      awaiting_cosign: "सह-हस्ताक्षर पर्खाइमा",
+      final: "अन्तिम",
+      amending: "संशोधन हुँदै",
+    },
+    reload: "समीक्षा पुनः लोड गर्नुहोस्",
+    dismiss: "बन्द गर्नुहोस्",
+  },
+  dialog: {
+    signTitle: "क्लिनिकल समीक्षामा हस्ताक्षर",
+    cosignTitle: "क्लिनिकल समीक्षामा सह-हस्ताक्षर",
+    meaning: "मैले यो अवलोकन अभिलेख हेरेको छु र यो समीक्षालाई स्वीकृत गर्दछु।",
+    meaningRecorded: "हस्ताक्षरसँग दर्ता हुने (अङ्ग्रेजीमा):",
+    hashLabel: "सामग्री ह्यास (पहिलो १२ अक्षर)",
+    hashNote: "तपाईं यसैमा हस्ताक्षर गर्दै हुनुहुन्छ। पुष्टि गर्नुअघि समीक्षा बदलिएमा हस्ताक्षर अस्वीकार गरिन्छ।",
+    password: "तपाईंको पासवर्ड",
+    totp: "प्रमाणीकरण कोड (दर्ता गरेको भए)",
+    ack: "म माथिको कथन पुष्टि गर्दछु।",
+    confirmSign: "समीक्षामा हस्ताक्षर गर्नुहोस्",
+    confirmCosign: "समीक्षामा सह-हस्ताक्षर गर्नुहोस्",
+    submitting: "हस्ताक्षर गरिँदै...",
+    cancel: "रद्द गर्नुहोस्",
+    secretNote: "तपाईंको पासवर्ड यो हस्ताक्षर पुन: प्रमाणित गर्न एक पटक मात्र पठाइन्छ र भण्डारण गरिँदैन।",
+    amendTitle: "क्लिनिकल समीक्षा संशोधन",
+    amendIntro: "हस्ताक्षर भइसकेको समीक्षा कहिल्यै सम्पादन गरिँदैन। संशोधनले नयाँ मस्यौदा संस्करण सुरु गर्छ; अघिल्लो संस्करण अभिलेखमा रहन्छ।",
+    amendReason: "संशोधनको कारण (१० देखि ५०० अक्षर)",
+    confirmAmend: "संशोधन सुरु गर्नुहोस्",
+  },
+  errors: {
+    "content-changed": "तपाईंले खोलेपछि समीक्षा बदलियो, त्यसैले तपाईंको हस्ताक्षर दर्ता भएन। समीक्षा पुनः लोड गरेर फेरि जाँच्नुहोस्।",
+    "stale-version": "अरू कसैले पहिले नै यो समीक्षा सुरक्षित गर्नुभयो, त्यसैले तपाईंको मस्यौदा सुरक्षित भएन। उनको परिवर्तन हेर्न समीक्षा पुनः लोड गर्नुहोस्।",
+    "reauthentication-failed": "पासवर्ड वा प्रमाणीकरण कोड स्वीकार भएन। केही पनि हस्ताक्षर भएन।",
+    "cosigner-must-differ": "अर्कै क्लिनिसियनले यो समीक्षामा सह-हस्ताक्षर गर्नुपर्छ।",
+    "signer-profile-incomplete": "हस्ताक्षर गर्नुअघि क्लिनिकल सेटिङमा आफ्नो प्रदर्शन नाम राख्नुहोस्।",
+    "clinical-crypto-unavailable": "क्लिनिकल सामग्री सर्भरमा अस्थायी रूपमा उपलब्ध छैन। पछि फेरि प्रयास गर्नुहोस्।",
+    "patient-ref-disabled": "यो संस्थामा बिरामी सन्दर्भ सक्रिय गरिएको छैन।",
+    forbidden: "तपाईंको भूमिकालाई यो गर्न अनुमति छैन।",
+    "validation-failed": "सर्भरले इनपुट अस्वीकार गर्यो।",
+    "rate-limited": "धेरै प्रयास भए। केही बेर पर्खेर फेरि प्रयास गर्नुहोस्।",
+    conflict: "समीक्षा यो कार्य गर्न मिल्ने अवस्थामा छैन। यसलाई पुनः लोड गर्नुहोस्।",
+    unavailable: "सर्भरसँग सम्पर्क हुन सकेन। फेरि प्रयास गर्नुहोस्।",
+    fallback: "कार्य असफल भयो। फेरि प्रयास गर्नुहोस्।",
+  },
+  reloadSlugs: ["content-changed", "stale-version"],
+  settings: {
+    title: "क्लिनिकल सेटिङ",
+    intro: "यी सेटिङ सम्पूर्ण संस्थामा लागू हुन्छन्।",
+    unchanged: "परिवर्तन नगर्नुहोस्",
+    readOnly: "तपाईंको भूमिकाले संस्था सेटिङ हेर्न मात्र मिल्छ, परिवर्तन गर्न मिल्दैन।",
+    currentUnknown: "हालका मानहरू यहाँ देखाइएका छैनन्; परिवर्तन गर्न चाहेमा मात्र मान छान्नुहोस्।",
+    worklistScope: "कार्यसूचीको दायरा",
+    scopes: { all: "सबै सत्रहरू", flagged: "सङ्केत भएका सत्र मात्र (रातो, पहेँलो, अविश्वसनीय)" },
+    cosignPolicy: "दोस्रो हस्ताक्षर (सह-हस्ताक्षर)",
+    patientRefMode: "बिरामी सन्दर्भ",
+    patientRefModes: { none: "कुनै होइन (MRN भण्डारण हुँदैन)", mrn: "अस्पताल MRN" },
+    timezone: "समय क्षेत्र (IANA, जस्तै Asia/Kathmandu)",
+    timezonePlaceholder: "UTC",
+    paper: "कागजको आकार",
+    papers: { a4: "A4", letter: "लेटर" },
+    save: "संस्था सेटिङ सुरक्षित गर्नुहोस्",
+    saved: "सेटिङ सुरक्षित भयो।",
+    failed: "सेटिङ सुरक्षित गर्न सकिएन।",
+    profileTitle: "तपाईंको हस्ताक्षरकर्ता प्रोफाइल",
+    profileIntro: "तपाईंले हस्ताक्षर गर्ने हरेक समीक्षामा तपाईंको प्रदर्शन नाम र दर्ता छापिन्छ। हस्ताक्षर गर्न प्रदर्शन नाम आवश्यक छ।",
+    displayName: "प्रदर्शन नाम",
+    registration: "व्यावसायिक दर्ता (जस्तै NMC 12345)",
+    saveProfile: "प्रोफाइल सुरक्षित गर्नुहोस्",
+    profileSaved: "प्रोफाइल सुरक्षित भयो।",
+    profileFailed: "प्रोफाइल सुरक्षित गर्न सकिएन।",
+  },
+};
+
+/** WP-L.1.0 (I18N-15): both locales of this file; `ne` is typed by the `en` tree, so a missing key is a compile error. */
 const en = clinicalText;
-const ne: Widen<typeof en> = en; // ne: TODO
+const ne = clinicalTextNe;
 export const clinicalMessages = { en, ne } as const;

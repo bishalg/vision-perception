@@ -5,11 +5,9 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { Encounter } from "@/lib/api/emr";
 import { formatDateTime } from "@/lib/format";
-import { participantText } from "@/messages/participant";
+import { useText } from "@/lib/i18n/provider";
 import { EncounterForm, type SessionChoice } from "./EncounterForm";
 import { failureText, type ActionResult } from "./types";
-
-const t = participantText.visits;
 
 /** Server actions of the Visits tab, already bound to the org and participant. */
 export interface VisitActions {
@@ -47,6 +45,9 @@ function VisitItem({
   sessionLabel: (id: string) => string;
 }) {
   const router = useRouter();
+  const text = useText();
+  const t = text.participant.visits;
+  const kind = text.domain.enumLabel(text.locale, "encounter_kind", e.kind);
   const [editing, setEditing] = useState(false);
   const [busy, start] = useTransition();
   const [result, setResult] = useState<ActionResult | null>(null);
@@ -70,10 +71,10 @@ function VisitItem({
   const stale = result && !result.ok && (result.slug === "stale-version" || result.status === 412);
 
   return (
-    <li className="card stack" data-testid="visit" data-status={e.status} aria-label={`${t.kinds[e.kind]}, ${formatDateTime(e.occurred_at)}`}>
+    <li className="card stack" data-testid="visit" data-status={e.status} aria-label={t.visitLine(kind, formatDateTime(e.occurred_at))}>
       <p className="note-meta">
-        <strong>{t.kinds[e.kind]}</strong> · {formatDateTime(e.occurred_at)} ·{" "}
-        <span className={`badge ${open ? "badge-green" : "badge-unreliable"}`}>{t.statuses[e.status]}</span>
+        <strong>{kind}</strong> · {formatDateTime(e.occurred_at)} ·{" "}
+        <span className={`badge ${open ? "badge-green" : "badge-unreliable"}`}>{text.domain.enumLabel(text.locale, "encounter_status", e.status)}</span>
         {e.clinician_display_name ? <span className="muted"> · {t.by}: {e.clinician_display_name}</span> : null}
       </p>
       {e.reason ? <p>{e.reason}</p> : null}
@@ -170,7 +171,7 @@ function VisitItem({
       ) : null}
       {result && !result.ok ? (
         <div role="alert" className="error">
-          <p>{failureText(result)}</p>
+          <p>{failureText(result, text.locale)}</p>
           {stale ? (
             <button type="button" onClick={() => router.refresh()}>{t.reload}</button>
           ) : null}
@@ -182,6 +183,7 @@ function VisitItem({
 
 /** Visits tab (REC-4): list newest first, add, change, close/reopen, follow-up done, link sessions. */
 export function EncountersPanel(p: EncountersPanelProps) {
+  const t = useText().participant.visits;
   const [adding, setAdding] = useState(false);
   const [saved, setSaved] = useState(false);
   const labels = new Map(p.sessions.map((s) => [s.id, s.label]));

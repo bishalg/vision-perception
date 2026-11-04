@@ -1,10 +1,10 @@
-import Link from "next/link";
-import { TAB_IDS, participantText, type WorkspaceTab } from "@/messages/participant";
+"use client";
 
-export function parseWorkspaceTab(value: string | string[] | undefined, allowed: readonly WorkspaceTab[] = TAB_IDS): WorkspaceTab {
-  const v = Array.isArray(value) ? value[0] : value;
-  return allowed.includes(v as WorkspaceTab) ? (v as WorkspaceTab) : "timeline";
-}
+import Link from "next/link";
+import { useText } from "@/lib/i18n/provider";
+import type { WorkspaceTab } from "@/messages/participant";
+
+export { parseWorkspaceTab } from "./workspaceTab";
 
 export function ParticipantTabs({
   basePath,
@@ -15,8 +15,9 @@ export function ParticipantTabs({
   active: WorkspaceTab;
   tabs: readonly WorkspaceTab[];
 }) {
+  const t = useText().participant;
   return (
-    <nav className="tabs no-print" aria-label={participantText.tabsLabel}>
+    <nav className="tabs no-print" aria-label={t.tabsLabel}>
       {tabs.map((id) => (
         <Link
           key={id}
@@ -24,7 +25,7 @@ export function ParticipantTabs({
           aria-current={id === active ? "page" : undefined}
           className={id === active ? "tab active" : "tab"}
         >
-          {participantText.tabs[id]}
+          {t.tabs[id]}
         </Link>
       ))}
     </nav>

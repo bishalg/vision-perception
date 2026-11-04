@@ -1,13 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import type { Participant } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
-import { adminText } from "@/messages/admin";
-import { privacyText } from "@/messages/privacy";
+import { useText } from "@/lib/i18n/provider";
 import { ErasureAction } from "@/components/privacy/ErasureAction";
 import type { PrivacyResult } from "@/components/privacy/types";
-
-const t = adminText.participants;
-const c = t.cols;
+import { ageBracketLabel, languageLabel } from "@/components/participant/labels";
 
 /**
  * List with an optional "Request erasure" action per row (WP-B.9, owners and admins: the page passes `erase`, the
@@ -23,6 +22,10 @@ export function ParticipantsTable({
   orgId?: string;
   erase?: (participantId: string) => Promise<PrivacyResult<{ duplicate: boolean }>>;
 }) {
+  const text = useText();
+  const t = text.admin.participants;
+  const c = t.cols;
+  const privacy = text.privacy.participantAction;
   const canErase = erase !== undefined && orgId !== undefined;
   if (participants.length === 0) return <p className="muted">{t.empty}</p>;
   const showRef = participants.some((p) => p.has_patient_ref != null);
@@ -38,7 +41,7 @@ export function ParticipantsTable({
             <th scope="col">{c.lastSession}</th>
             <th scope="col">{c.status}</th>
             {showRef ? <th scope="col">{c.patientRef}</th> : null}
-            {canErase ? <th scope="col">{privacyText.participantAction.cols}</th> : null}
+            {canErase ? <th scope="col">{privacy.cols}</th> : null}
           </tr>
         </thead>
         <tbody>
@@ -53,8 +56,8 @@ export function ParticipantsTable({
                   p.participant_token
                 )}
               </td>
-              <td data-label={c.age}>{p.age_bracket_at_enrol ?? "-"}</td>
-              <td data-label={c.language}>{p.language ?? "-"}</td>
+              <td data-label={c.age}>{p.age_bracket_at_enrol ? ageBracketLabel(text.locale, p.age_bracket_at_enrol) : "-"}</td>
+              <td data-label={c.language}>{p.language ? languageLabel(text.locale, p.language) : "-"}</td>
               <td data-label={c.sessions}>{p.session_count}</td>
               <td data-label={c.lastSession}>{p.last_session_at ? formatDateTime(p.last_session_at) : "-"}</td>
               <td data-label={c.status}>
@@ -64,7 +67,7 @@ export function ParticipantsTable({
               </td>
               {showRef ? <td data-label={c.patientRef}>{p.has_patient_ref ? t.refOnFile : t.refNone}</td> : null}
               {canErase ? (
-                <td data-label={privacyText.participantAction.cols}>
+                <td data-label={privacy.cols}>
                   <ErasureAction
                     token={p.participant_token}
                     request={erase.bind(null, p.id)}

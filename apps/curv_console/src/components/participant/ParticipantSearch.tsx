@@ -4,12 +4,10 @@ import Link from "next/link";
 import { useRef, useState, type FormEvent } from "react";
 import type { ParticipantSearchPage, ParticipantSearchRow } from "@/lib/api/emr";
 import { formatDateTime } from "@/lib/format";
-import { adminText } from "@/messages/admin";
-import { AGE_GROUPS, participantText } from "@/messages/participant";
+import { useText } from "@/lib/i18n/provider";
+import { AGE_GROUPS } from "@/messages/participant";
+import { ageBracketLabel } from "./labels";
 import { failureText, type ActionResult } from "./types";
-
-const t = participantText.search;
-const c = t.cols;
 
 type Search = (form: FormData) => Promise<ActionResult<{ page: ParticipantSearchPage }>>;
 
@@ -19,6 +17,9 @@ type Search = (form: FormData) => Promise<ActionResult<{ page: ParticipantSearch
  * re-sends the same form with the cursor. The MRN field is cleared once the search is sent.
  */
 export function ParticipantSearch({ search, canMrn, orgPath }: { search: Search; canMrn: boolean; orgPath: string }) {
+  const text = useText();
+  const t = text.participant.search;
+  const c = t.cols;
   const formRef = useRef<HTMLFormElement>(null);
   const last = useRef<FormData | null>(null);
   const [pending, setPending] = useState(false);
@@ -85,7 +86,7 @@ export function ParticipantSearch({ search, canMrn, orgPath }: { search: Search;
           <select name="age_bracket" defaultValue="">
             <option value="">{t.any}</option>
             {AGE_GROUPS.map((a) => (
-              <option key={a} value={a}>{a}</option>
+              <option key={a} value={a}>{ageBracketLabel(text.locale, a)}</option>
             ))}
           </select>
         </label>
@@ -111,7 +112,7 @@ export function ParticipantSearch({ search, canMrn, orgPath }: { search: Search;
           <button type="button" className="secondary" onClick={clear} disabled={pending}>{t.clear}</button>
         </div>
       </form>
-      {failure && !failure.ok ? <p role="alert" className="error">{t.failed} {failureText(failure)}</p> : null}
+      {failure && !failure.ok ? <p role="alert" className="error">{t.failed} {failureText(failure, text.locale)}</p> : null}
       {rows === null ? null : rows.length === 0 ? (
         <p role="status" className="muted">{t.none}</p>
       ) : (
@@ -136,14 +137,14 @@ export function ParticipantSearch({ search, canMrn, orgPath }: { search: Search;
                     <td data-label={c.token}>
                       <Link href={`${orgPath}/participants/${encodeURIComponent(p.id)}`}>{p.participant_token}</Link>
                     </td>
-                    <td data-label={c.age}>{p.age_bracket_at_enrol ?? "-"}</td>
+                    <td data-label={c.age}>{p.age_bracket_at_enrol ? ageBracketLabel(text.locale, p.age_bracket_at_enrol) : "-"}</td>
                     <td data-label={c.sessions}>{p.session_count}</td>
                     <td data-label={c.lastSession}>{p.last_session_at ? formatDateTime(p.last_session_at) : "-"}</td>
                     <td data-label={c.openVisits}>{p.open_encounters_n ?? 0}</td>
                     <td data-label={c.nextFollowUp}>{p.next_follow_up_at ? formatDateTime(p.next_follow_up_at) : "-"}</td>
                     <td data-label={c.status}>
                       <span className={`badge ${p.withdrawn_at ? "badge-unreliable" : "badge-green"}`}>
-                        {p.withdrawn_at ? adminText.participants.withdrawn : adminText.participants.active}
+                        {p.withdrawn_at ? text.participant.header.withdrawn : text.participant.header.active}
                       </span>
                     </td>
                   </tr>

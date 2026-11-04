@@ -24,6 +24,12 @@ const LITERAL_GATE_ERROR_DIRS = [
   "src/components/exports",
   "src/components/privacy",
   "src/components/security",
+  // L.1b: participants, encounters, attachments, follow-ups, worklist, clinical review (`[org]` is escaped: it is a glob).
+  "src/app/\\[org\\]/participants",
+  "src/app/\\[org\\]/worklist",
+  "src/app/\\[org\\]/follow-ups",
+  "src/components/participant",
+  "src/components/clinical",
 ];
 
 const literalRules = (level) => ({

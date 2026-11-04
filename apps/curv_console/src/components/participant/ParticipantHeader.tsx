@@ -3,10 +3,9 @@ import type { Participant } from "@/lib/api/admin";
 import { currentRole } from "@/lib/auth/server";
 import { formatDateTime } from "@/lib/format";
 import { can } from "@/lib/permissions";
-import { participantText } from "@/messages/participant";
+import { getText } from "@/lib/i18n/server";
 import { ShareCaseDialog } from "./ShareCaseDialog";
-
-const t = participantText.header;
+import { ageBracketLabel, languageLabel } from "./labels";
 
 /**
  * Token, age bracket, withdrawn state and, for roles that may see it, whether an MRN is on file. The MRN itself is
@@ -17,6 +16,8 @@ const t = participantText.header;
  */
 export async function ParticipantHeader({ participant: p }: { participant: Participant }) {
   const role = await currentRole();
+  const text = await getText();
+  const t = text.participant.header;
   const canShare = can(role, "case.share") && !p.withdrawn_at;
   return (
     <header className="participant-header">
@@ -30,11 +31,11 @@ export async function ParticipantHeader({ participant: p }: { participant: Parti
       <dl className="facts">
         <div>
           <dt>{t.ageBracket}</dt>
-          <dd>{p.age_bracket_at_enrol ?? "-"}</dd>
+          <dd>{p.age_bracket_at_enrol ? ageBracketLabel(text.locale, p.age_bracket_at_enrol) : "-"}</dd>
         </div>
         <div>
           <dt>{t.language}</dt>
-          <dd>{p.language ?? "-"}</dd>
+          <dd>{p.language ? languageLabel(text.locale, p.language) : "-"}</dd>
         </div>
         <div>
           <dt>{t.sessions}</dt>
