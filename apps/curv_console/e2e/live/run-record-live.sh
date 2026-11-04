@@ -18,6 +18,10 @@
 #   SKIP_BUILD=1    use the binaries already in $CARGO_TARGET_DIR/debug (default rust/target/debug)
 #   SERVE_ONLY=1    boot everything, print the e2e environment and wait (Ctrl-C to stop) instead of running Playwright
 #   KEEP_LOGS=1     keep the temp dir with server logs after a pass
+#   SUITE=research  run research.live.ts instead (researcher toolkit, phase 8): seed-research.sh adds a researcher,
+#                   two superadmins, the published config, research-consented sessions and research frame logs
+#                   (run-research-live.sh sets it)
+#   LIVE_BIN=DIR    take asd-backend / asd-cli from DIR instead of $CARGO_TARGET_DIR/debug
 set -euo pipefail
 
 CONSOLE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -28,7 +32,8 @@ CONSOLE_PORT="${CONSOLE_PORT:-18511}"
 S3_PORT="${S3_PORT:-18611}"
 API="http://127.0.0.1:${API_PORT}"
 CONSOLE="http://127.0.0.1:${CONSOLE_PORT}"
-BIN="${CARGO_TARGET_DIR:-$ROOT/rust/target}/debug"
+BIN="${LIVE_BIN:-${CARGO_TARGET_DIR:-$ROOT/rust/target}/debug}"
+SUITE="${SUITE:-record}"
 FIXTURE="$ROOT/apps/ios_asd_gaze_app/Tests/Fixtures/expected-session-v1.7.json"
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/record_live.XXXXXX")"
 RUN_ID="$(date +%s)$RANDOM"
@@ -110,14 +115,21 @@ req POST /v1/devices/register "" "$(jq -nc --arg c "$(jq -er .code "$BODY")" '{e
 expect 201 200
 DEVICE_TOKEN=$(jq -er .device_token "$BODY")
 
+RESEARCH_ENV=()
+# shellcheck source=seed-research.sh
+[[ "$SUITE" == research ]] && source "$CONSOLE_DIR/e2e/live/seed-research.sh"
+
 say "console (live, next dev) on $CONSOLE"
+# `next dev` is started directly (no npm `predev`): copy the Rust core's wasm build into public/ (the workbench
+# preview and the profile validation run it; without a build the script only warns).
+(cd "$CONSOLE_DIR" && node scripts/prepare-asd-wasm.mjs) || fail "prepare asd-wasm"
 (cd "$CONSOLE_DIR" && CURV_API_MODE=live CURV_API_BASE_URL="$API" CURV_COOKIE_SECURE=false NEXT_TELEMETRY_DISABLED=1 \
   exec npx next dev --port "$CONSOLE_PORT" --hostname 127.0.0.1) >"$WORK/console.log" 2>&1 & PIDS+=($!)
 wait_for "$CONSOLE/login" 300 "console"
 
 E2E_ENV=(E2E_RECORD=1 E2E_BASE_URL="$CONSOLE" E2E_API_URL="$API" E2E_ORG_ID="$ORG" E2E_PASSWORD="$PASSWORD"
   E2E_EMAIL="$CLIN_EMAIL" E2E_OWNER_EMAIL="$OWNER_EMAIL" E2E_CLINICIAN_ID="$CLIN_ID"
-  E2E_DEVICE_TOKEN="$DEVICE_TOKEN" E2E_SESSION_FIXTURE="$FIXTURE")
+  E2E_DEVICE_TOKEN="$DEVICE_TOKEN" E2E_SESSION_FIXTURE="$FIXTURE" "${RESEARCH_ENV[@]}")
 if [[ -n "${SERVE_ONLY:-}" ]]; then
   printf '%q ' "${E2E_ENV[@]}" >"$WORK/e2e.env"; echo
   say "serving; e2e environment in $WORK/e2e.env (logs in $WORK); Ctrl-C to stop"
@@ -125,7 +137,9 @@ if [[ -n "${SERVE_ONLY:-}" ]]; then
   wait
 fi
 
-say "playwright (record.live.ts, share.live.ts)"
+SPECS=(record.live.ts share.live.ts)
+[[ "$SUITE" == research ]] && SPECS=(research.live.ts)
+say "playwright (${SPECS[*]})"
 (cd "$CONSOLE_DIR" && env "${E2E_ENV[@]}" npx playwright test --config e2e/live/playwright.live.config.ts \
-  record.live.ts share.live.ts) || fail "live Playwright specs failed (logs in $WORK)"
-say "RECORD + SHARE LIVE PASSED"
+  "${SPECS[@]}") || fail "live Playwright specs failed (logs in $WORK)"
+say "$(tr '[:lower:]' '[:upper:]' <<<"$SUITE") LIVE PASSED"

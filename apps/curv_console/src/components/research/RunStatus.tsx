@@ -70,8 +70,12 @@ export function RunStatus({
     start(async () => {
       const res = await cancel(runId);
       if (res.ok) {
-        setOverride(res.run);
-        router.refresh();
+        // A queued run ends `cancelled` at once; a running one answers 202 still `running` (cancel requested) and
+        // stops before its next page, so the poll keeps going until it sees the final state.
+        if (isRunFinished(res.run.status)) {
+          setOverride(res.run);
+          router.refresh();
+        }
       } else setError(failureText(res, text));
     });
   }

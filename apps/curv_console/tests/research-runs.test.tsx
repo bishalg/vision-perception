@@ -328,6 +328,19 @@ describe("RunStatus", () => {
     expect(screen.queryByRole("button", { name: en.runs.cancel })).toBeNull();
   });
 
+  it("keeps polling after the backend accepts a cancel with the run still running (202, live)", async () => {
+    let cancelled = false;
+    const poll = vi.fn(async () => ({ ok: true as const, run: snap(cancelled ? "cancelled" : "running") }));
+    const cancel = vi.fn(async () => {
+      cancelled = true;
+      return { ok: true as const, run: snap("running") };
+    });
+    render(<RunStatus orgId="org" runId="run1" initial={snap("running")} poll={poll} cancel={cancel} rerun={noop} canRun canExport pollMs={5} />);
+    await userEvent.click(screen.getByRole("button", { name: en.runs.cancel }));
+    await waitFor(() => expect(screen.getByTestId("run-status").textContent).toBe(en.runStatus.cancelled));
+    expect(cancel).toHaveBeenCalledWith("run1");
+  });
+
   it("runs again and goes to the new run", async () => {
     const { rerun } = setup(snap("failed", { error: "budget_exceeded" }));
     await userEvent.click(screen.getByRole("button", { name: en.runs.rerun }));

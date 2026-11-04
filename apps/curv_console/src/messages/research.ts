@@ -795,6 +795,7 @@ const en: ResearchMessages = {
     "stale-version": "The experiment was changed elsewhere. Reload the page and apply your change again.",
     "experiment-no-run": "Run the experiment on a cohort before promoting it.",
     "experiment-promoted": "This experiment was already promoted.",
+    "config-unanalysed": "This scoring profile has no finished analysis run over it. Run it on a cohort as an experiment, promote that experiment and publish the promoted draft.",
     "config-invalid": "The profile has invalid values.",
     "validation-failed": "Some values are invalid.",
     "analysis-quota-exceeded": "Too many analysis runs right now. Try again later.",
@@ -1339,6 +1340,7 @@ const ne: ResearchMessages = {
     "stale-version": "प्रयोग अन्यत्र परिवर्तन भयो। पृष्ठ पुनः लोड गरेर आफ्नो परिवर्तन फेरि लागू गर्नुहोस्।",
     "experiment-no-run": "प्रवर्द्धन गर्नुअघि प्रयोगलाई कोहोर्टमा चलाउनुहोस्।",
     "experiment-promoted": "यो प्रयोग पहिले नै प्रवर्द्धन गरिसकिएको छ।",
+    "config-unanalysed": "यो स्कोरिङ प्रोफाइलमाथि कुनै पूरा भएको विश्लेषण रन छैन। यसलाई प्रयोगका रूपमा कोहोर्टमा चलाउनुहोस्, त्यो प्रयोग प्रवर्द्धन गर्नुहोस् र प्रवर्द्धित मस्यौदा प्रकाशित गर्नुहोस्।", // ne: draft
     "config-invalid": "प्रोफाइलमा अमान्य मान छन्।",
     "validation-failed": "केही मान अमान्य छन्।",
     "analysis-quota-exceeded": "अहिले धेरै विश्लेषण रन छन्। पछि प्रयास गर्नुहोस्।",

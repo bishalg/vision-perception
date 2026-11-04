@@ -8,6 +8,7 @@
  * the mock (`mock/research.ts`) covers every state meanwhile (RUI-7).
  */
 import { z } from "@/lib/zod";
+import { configDocumentSchema, type ConfigDocument } from "./catalog";
 import type { LiveRequest } from "./clinical";
 
 const str = z.string().nullable().optional();
@@ -191,6 +192,12 @@ export const sweepAxisSchema = z.object({ param_id: z.string(), from: z.number()
 export const sweepSpecSchema = z.object({ axes: z.array(sweepAxisSchema) });
 export type SweepSpec = z.infer<typeof sweepSpecSchema>;
 
+/**
+ * A run's bootstrap seed as stored: a 64-bit integer, so above 2^53 it arrives as its exact decimal text (`parseApiJson`
+ * in `live.ts`) and is shown as such; a seed the console sends is always a safe integer.
+ */
+export const storedSeedSchema = z.union([z.number().int(), z.string().regex(/^-?\d+$/)]);
+
 export const runOptionsSchema = z.object({ metrics: z.array(z.string()).optional(), bootstrap: z.boolean().optional() });
 
 export const analysisRunRequestSchema = z.object({
@@ -213,7 +220,7 @@ export const analysisDefinitionSchema = z.object({
   sweep: sweepSpecSchema.nullable().optional(),
   level: z.enum(LEVEL_REQUESTS),
   options: runOptionsSchema,
-  seed: z.number().int(),
+  seed: storedSeedSchema,
 });
 
 /** RUN-4 distribution. `suppressed: true` means every number is `null` (show "n < k", never 0). */
@@ -310,7 +317,7 @@ export const analysisRunSchema = z.object({
   contract_version: z.string(),
   pipeline_version: z.string(),
   registry_version: z.string(),
-  seed: z.number().int(),
+  seed: storedSeedSchema,
   level_requested: z.enum(LEVEL_REQUESTS),
   sessions_n: optCount,
   sessions_frames_n: optCount,
@@ -394,8 +401,11 @@ export interface ResearchApi {
   /** `PATCH /v1/experiments/{id}` with `If-Match`; `412 stale-version`, `400 config-invalid`. */
   updateExperiment(experimentId: string, rowVersion: number, request: UpdateExperimentRequest): Promise<Experiment>;
   archiveExperiment(experimentId: string): Promise<Experiment>;
-  /** `POST /v1/experiments/{id}/promote` (`ExperimentPromote`); `409 experiment-no-run | experiment-promoted`. */
-  promoteExperiment(experimentId: string, request: PromoteExperimentRequest): Promise<Experiment>;
+  /**
+   * `POST /v1/experiments/{id}/promote` (`ExperimentPromote`) → `201` with the draft `ConfigDocument` it filed (the
+   * experiment becomes `promoted`); `409 experiment-no-run | experiment-promoted`.
+   */
+  promoteExperiment(experimentId: string, request: PromoteExperimentRequest): Promise<ConfigDocument>;
   listCohorts(orgId: string, query?: ResearchListQuery): Promise<CohortPage>;
   createCohort(orgId: string, request: CreateCohortRequest): Promise<Cohort>;
   getCohort(cohortId: string): Promise<Cohort>;
@@ -411,11 +421,23 @@ export interface ResearchApi {
   rerunAnalysisRun(runId: string): Promise<AnalysisRun>;
   /** `GET /v1/orgs/{id}/config/effective` (`ConfigRead`, GOV-6). */
   getEffectiveConfig(orgId: string): Promise<EffectiveConfig>;
+  /**
+   * RFL-4 `GET /v1/sessions/{id}/research-frames` (`FramesRead`): the research frame log as JSON Lines text, never
+   * parsed here (the Rust core reprocesses it). Audited `session.frames_read` per call; `404 frames-unavailable`,
+   * `410 frames-purged`.
+   */
+  getResearchFrames(sessionId: string): Promise<string>;
 }
 
-export function createLiveResearch(request: LiveRequest, buildQuery: (q: object) => string): ResearchApi {
+export function createLiveResearch(
+  request: LiveRequest,
+  buildQuery: (q: object) => string,
+  /** GET returning the body as text (`live.ts`), for the one route that is not JSON. */
+  requestText: (path: string) => Promise<string>,
+): ResearchApi {
   const enc = encodeURIComponent;
   return {
+    getResearchFrames: (id) => requestText(`/sessions/${enc(id)}/research-frames`),
     listExperiments: (orgId, q) =>
       request(`/orgs/${enc(orgId)}/experiments${buildQuery(q ?? {})}`, experimentPageSchema),
     createExperiment: (orgId, body) =>
@@ -428,7 +450,7 @@ export function createLiveResearch(request: LiveRequest, buildQuery: (q: object)
         headers: { "If-Match": `"${rowVersion}"` },
       }),
     archiveExperiment: (id) => request(`/experiments/${enc(id)}/archive`, experimentSchema, { method: "POST", body: {} }),
-    promoteExperiment: (id, body) => request(`/experiments/${enc(id)}/promote`, experimentSchema, { method: "POST", body }),
+    promoteExperiment: (id, body) => request(`/experiments/${enc(id)}/promote`, configDocumentSchema, { method: "POST", body }),
     listCohorts: (orgId, q) => request(`/orgs/${enc(orgId)}/cohorts${buildQuery(q ?? {})}`, cohortPageSchema),
     createCohort: (orgId, body) => request(`/orgs/${enc(orgId)}/cohorts`, cohortSchema, { method: "POST", body }),
     getCohort: (id) => request(`/cohorts/${enc(id)}`, cohortSchema),

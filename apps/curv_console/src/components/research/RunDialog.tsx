@@ -152,7 +152,7 @@ export function RunDialog({
         experiment_id: experimentId,
         cohort_id: cohort.id,
         level,
-        ...(parsedSeed !== undefined && Number.isInteger(parsedSeed) ? { seed: parsedSeed } : {}),
+        ...(parsedSeed !== undefined && Number.isSafeInteger(parsedSeed) ? { seed: parsedSeed } : {}),
         ...(sweeping ? { sweep: sweepSpec(axes), options: { metrics } } : {}),
       });
       if (res.ok) router.push(`/${encodeURIComponent(orgId)}/research/runs/${encodeURIComponent(res.runId)}`);

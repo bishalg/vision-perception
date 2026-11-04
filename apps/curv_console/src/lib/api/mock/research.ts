@@ -375,8 +375,13 @@ export function createMockResearch(ctx: MockResearchContext): ResearchApi {
       const e = getExperiment(id);
       if (e.status === "promoted") throw problem(409, "experiment-promoted", "Already promoted");
       if (!e.last_run_id) throw problem(409, "experiment-no-run", "No run", "run the experiment on a cohort first");
-      Object.assign(e, { status: "promoted", promoted_config_version: req.version, updated_at: stamp() });
-      return snap(e);
+      const at = stamp();
+      Object.assign(e, { status: "promoted", promoted_config_version: req.version, updated_at: at });
+      return {
+        id: newId("d"), kind: req.kind, version: req.version, status: "draft", body: snap(e.profile),
+        created_by: e.created_by ?? null, created_at: at, published_at: null,
+        notes: `experiment:${e.id} run:${e.last_run_id}${req.notes ? ` ${req.notes}` : ""}`,
+      };
     },
     async listCohorts(orgId, q) {
       ensureOrg(orgId);
@@ -468,6 +473,10 @@ export function createMockResearch(ctx: MockResearchContext): ResearchApi {
       };
       runs.set(r.id, r);
       return snap(r);
+    },
+    async getResearchFrames() {
+      // The mock stores no research frame log: the preview shows the score-level result.
+      throw problem(404, "frames-unavailable", "Not found", "no research frame log was uploaded for this session");
     },
     async getEffectiveConfig(orgId) {
       ensureOrg(orgId);

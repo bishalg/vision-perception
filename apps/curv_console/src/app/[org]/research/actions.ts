@@ -91,13 +91,13 @@ export async function promoteAction(
   const parsed = promoteInput.safeParse(input);
   if (!parsed.success) return invalid;
   try {
-    const e = await (await authedApi()).promoteExperiment(experimentId, {
+    const doc = await (await authedApi()).promoteExperiment(experimentId, {
       kind: "scoring_profile",
       version: parsed.data.version,
       ...(parsed.data.notes ? { notes: parsed.data.notes } : {}),
     });
     revalidatePath(`${base(orgId)}/experiments`);
-    return { ok: true, version: e.promoted_config_version ?? parsed.data.version };
+    return { ok: true, version: doc.version };
   } catch (err) {
     return failure(err);
   }
@@ -161,11 +161,14 @@ export async function loadPreviewRecordsAction(ids: string[]): Promise<ResearchR
 
 /**
  * RFL-4 `GET /v1/sessions/{id}/research-frames` (`FramesRead`): the research frame log is read once per session and
- * held in memory by the preview (the read is audited). The API client has no method for it yet (`src/lib/api/*` is
- * WP-X.0's and not changed here), so the action answers `501 not-implemented` and the preview keeps the score-level
- * result. WP-X.2 / X.4 follow-up: add `ResearchApi.getResearchFrames` and return `{ ok: true, jsonl }`.
+ * held in memory by the preview (each read writes one `session.frames_read` audit row). On any failure the preview
+ * keeps the score-level result.
  */
 export async function loadResearchFramesAction(sessionId: string): Promise<ResearchResult<{ jsonl: string }>> {
   if (!id.safeParse(sessionId).success) return invalid;
-  return { ok: false, slug: "not-implemented", status: 501 };
+  try {
+    return { ok: true, jsonl: await (await authedApi()).getResearchFrames(sessionId) };
+  } catch (err) {
+    return failure(err);
+  }
 }
