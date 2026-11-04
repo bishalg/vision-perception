@@ -326,3 +326,15 @@ test("admin: create a participant, see its code and QR, find it and open its rec
   await page.getByRole("navigation", { name: "Participant sections" }).getByRole("link", { name: "Visits" }).click();
   await expect(page.getByText("No visits recorded yet.")).toBeVisible();
 });
+
+test("clinician (ne): the participant workspace is in Nepali with a Nepali visit-kind label and no raw enum values", async ({ page }) => {
+  await openFirstParticipant(page, "clinician+ne@example.org");
+  await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("child-");
+  const tabs = page.getByRole("navigation", { name: "सहभागीका खण्डहरू" });
+  await expect(tabs.getByRole("link").first()).toHaveText("समयरेखा");
+  await expect(page.getByRole("heading", { name: "समयरेखा" })).toBeVisible();
+  await tabs.getByRole("link", { name: "भेटहरू" }).click();
+  await expect(page.getByRole("heading", { name: "भेटहरू" })).toBeVisible();
+  await expect(page.locator("main")).not.toContainText(/screening_visit|follow_up_visit|home_visit|phone_call/);
+});

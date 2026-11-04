@@ -2,9 +2,9 @@
 
 import { useActionState } from "react";
 import { COSIGN_POLICIES, PAPERS, PATIENT_REF_MODES, WORKLIST_SCOPES } from "@/lib/api/clinical";
-import { clinicalErrorMessage, clinicalText } from "@/messages/clinical";
-
-const t = clinicalText.settings;
+import { useText } from "@/lib/i18n/provider";
+import type { Locale } from "@/lib/i18n/types";
+import { clinicalErrorMessage } from "@/messages/clinical";
 
 export type SettingsActionResult =
   | { ok: true }
@@ -12,12 +12,12 @@ export type SettingsActionResult =
 
 type State = SettingsActionResult | null;
 
-function Outcome({ state, saved, failed }: { state: State; saved: string; failed: string }) {
+function Outcome({ state, saved, failed, locale }: { state: State; saved: string; failed: string; locale: Locale }) {
   if (!state) return null;
   if (state.ok) return <p role="status">{saved}</p>;
   return (
     <p role="alert" className="error">
-      {failed} {state.params ?? clinicalErrorMessage(state.slug, state.status)}
+      {failed} {state.params ?? clinicalErrorMessage(state.slug, state.status, locale)}
     </p>
   );
 }
@@ -30,6 +30,8 @@ export function ClinicalSettingsForm({
   save: (formData: FormData) => Promise<SettingsActionResult>;
   canEdit: boolean;
 }) {
+  const text = useText();
+  const t = text.clinical.settings;
   const [state, action, pending] = useActionState<State, FormData>((_prev, fd) => save(fd), null);
   if (!canEdit) return <p className="muted">{t.readOnly}</p>;
   return (
@@ -49,7 +51,7 @@ export function ClinicalSettingsForm({
         <select name="cosign_policy" defaultValue="">
           <option value="">{t.unchanged}</option>
           {COSIGN_POLICIES.map((v) => (
-            <option key={v} value={v}>{t.cosignPolicies[v]}</option>
+            <option key={v} value={v}>{text.domain.enumLabel(text.locale, "cosign_policy", v)}</option>
           ))}
         </select>
       </label>
@@ -64,7 +66,7 @@ export function ClinicalSettingsForm({
       </label>
       <label>
         {t.timezone}
-        <input name="timezone" maxLength={64} autoComplete="off" placeholder="UTC" />
+        <input name="timezone" maxLength={64} autoComplete="off" placeholder={t.timezonePlaceholder} />
       </label>
       <label>
         {t.paper}
@@ -78,7 +80,7 @@ export function ClinicalSettingsForm({
       <div>
         <button type="submit" disabled={pending}>{t.save}</button>
       </div>
-      <Outcome state={state} saved={t.saved} failed={t.failed} />
+      <Outcome state={state} saved={t.saved} failed={t.failed} locale={text.locale} />
     </form>
   );
 }
@@ -93,6 +95,8 @@ export function SignerProfileForm({
   displayName: string;
   registration: string;
 }) {
+  const text = useText();
+  const t = text.clinical.settings;
   const [state, action, pending] = useActionState<State, FormData>((_prev, fd) => save(fd), null);
   return (
     <form action={action} className="stack panel" aria-label={t.profileTitle}>
@@ -108,7 +112,7 @@ export function SignerProfileForm({
       <div>
         <button type="submit" disabled={pending}>{t.saveProfile}</button>
       </div>
-      <Outcome state={state} saved={t.profileSaved} failed={t.profileFailed} />
+      <Outcome state={state} saved={t.profileSaved} failed={t.profileFailed} locale={text.locale} />
     </form>
   );
 }

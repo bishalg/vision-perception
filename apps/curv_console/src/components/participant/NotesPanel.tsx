@@ -3,10 +3,8 @@
 import { useActionState, useRef, useState } from "react";
 import { MAX_NOTE_CHARS, type ClinicalNote } from "@/lib/api/participant";
 import { formatDateTime } from "@/lib/format";
-import { participantText } from "@/messages/participant";
+import { useText } from "@/lib/i18n/provider";
 import { failureText, type ActionResult } from "./types";
-
-const t = participantText.notes;
 
 type State = ActionResult | null;
 type Create = (form: FormData) => Promise<ActionResult>;
@@ -31,6 +29,8 @@ function NoteForm({
   corrects?: ClinicalNote;
   onDone?: () => void;
 }) {
+  const text = useText();
+  const t = text.participant.notes;
   const ref = useRef<HTMLFormElement>(null);
   const [state, action, pending] = useActionState<State, FormData>(async (_prev, form) => {
     const result = await create(form);
@@ -71,7 +71,7 @@ function NoteForm({
         ) : null}
       </div>
       {state?.ok && !corrects ? <p role="status">{t.saved}</p> : null}
-      {state && !state.ok ? <p role="alert" className="error">{t.failed} {failureText(state)}</p> : null}
+      {state && !state.ok ? <p role="alert" className="error">{t.failed} {failureText(state, text.locale)}</p> : null}
     </form>
   );
 }
@@ -89,12 +89,14 @@ function NoteItem({
   sessions: SessionOption[];
   corrector: ClinicalNote | undefined;
 }) {
+  const text = useText();
+  const t = text.participant.notes;
   const [correcting, setCorrecting] = useState(false);
   const superseded = Boolean(note.corrected_by);
   return (
     <li id={`note-${note.id}`} className="note card" data-kind={note.kind} data-corrected={superseded ? "true" : "false"}>
       <p className="muted note-meta">
-        <strong>{t.kindLabel[note.kind]}</strong> · {t.byline(note.author_display_name, formatDateTime(note.created_at))}
+        <strong>{text.domain.enumLabel(text.locale, "clinical_note_kind", note.kind)}</strong> · {t.byline(note.author_display_name, formatDateTime(note.created_at))}
         {note.corrects_id ? <> · <a href={`#note-${note.corrects_id}`}>{t.correctionOf}</a></> : null}
         {superseded ? (
           <> · <span className="badge badge-unreliable">{t.corrected}</span>{" "}
@@ -128,6 +130,7 @@ export function NotesPanel({
   canWrite: boolean;
   create: Create;
 }) {
+  const t = useText().participant.notes;
   const byId = new Map(notes.map((n) => [n.id, n]));
   return (
     <section aria-labelledby="notes-h" className="stack">

@@ -107,3 +107,19 @@ test("admin sees the worklist but no clinical text, and can change clinical sett
   await page.getByRole("button", { name: "Save profile" }).click();
   await expect(page.getByText("Profile saved.")).toBeVisible();
 });
+
+test("clinician (ne): the worklist and the clinical review are in Nepali", async ({ page }) => {
+  await login(page, "clinician+ne@example.org");
+  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  const org = new URL(page.url()).pathname.split("/")[1]!;
+  await page.goto(`/${org}/worklist`);
+  await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");
+  await expect(page.getByRole("heading", { name: "कार्यसूची" })).toBeVisible();
+  const row = page.locator("table.worklist-table tbody tr").filter({ hasText: "सुरु भएको छैन" }).first();
+  await row.getByRole("link").click();
+  await expect(page).toHaveURL(/tab=clinical/, { timeout: 90_000 });
+  await page.getByRole("button", { name: "समीक्षा दाबी गर्नुहोस्" }).click();
+  // The ADR-0004 sentence is shown in Nepali and in English (I18N-23).
+  await expect(page.getByTestId("review-disclaimer")).toContainText("यो निदान गर्ने उपकरण होइन।");
+  await expect(page.getByTestId("review-disclaimer")).toContainText("This is not a diagnostic tool.");
+});

@@ -3,10 +3,13 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { QrCode } from "@/components/QrCode";
-import { AGE_GROUPS, participantText } from "@/messages/participant";
+import { useText } from "@/lib/i18n/provider";
+import { AGE_GROUPS } from "@/messages/participant";
+import { ageBracketLabel, languageLabel } from "./labels";
 import { failureText, type ActionResult } from "./types";
 
-const t = participantText.create;
+/** The languages a participant can be recorded with. */
+const LANGUAGES = ["en", "ne"] as const;
 
 export interface CreatedParticipantView {
   id: string;
@@ -26,6 +29,8 @@ export function CreateParticipantDialog({
   /** `/org`, for the record link. */
   orgPath: string;
 }) {
+  const text = useText();
+  const t = text.participant.create;
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<ActionResult | null>(null);
@@ -104,7 +109,7 @@ export function CreateParticipantDialog({
               <select ref={first} name="age_bracket" defaultValue="">
                 <option value="">{t.ageNone}</option>
                 {AGE_GROUPS.map((a) => (
-                  <option key={a} value={a}>{a}</option>
+                  <option key={a} value={a}>{ageBracketLabel(text.locale, a)}</option>
                 ))}
               </select>
             </label>
@@ -112,8 +117,8 @@ export function CreateParticipantDialog({
               {t.language}
               <select name="language" defaultValue="">
                 <option value="">{t.languageNone}</option>
-                {Object.entries(t.languages).map(([code, name]) => (
-                  <option key={code} value={code}>{name}</option>
+                {LANGUAGES.map((code) => (
+                  <option key={code} value={code}>{languageLabel(text.locale, code)}</option>
                 ))}
               </select>
             </label>
@@ -126,7 +131,7 @@ export function CreateParticipantDialog({
               <input type="date" name="consent_date" />
             </label>
             <p className="muted">{t.consentHelp}</p>
-            {failure && !failure.ok ? <p role="alert" className="error">{t.failed} {failureText(failure)}</p> : null}
+            {failure && !failure.ok ? <p role="alert" className="error">{t.failed} {failureText(failure, text.locale)}</p> : null}
             <div className="dialog-actions">
               <button type="submit" disabled={pending}>{pending ? t.creating : t.submit}</button>
               <button type="button" className="secondary" onClick={close} disabled={pending}>{t.close}</button>

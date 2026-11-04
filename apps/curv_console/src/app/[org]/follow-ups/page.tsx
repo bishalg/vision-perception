@@ -6,12 +6,12 @@ import { authedApi, currentRole } from "@/lib/auth/server";
 import { parseCursor } from "@/lib/listQuery";
 import { loadOrNotFound, requestTime } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
-import { participantText } from "@/messages/participant";
+import { getText } from "@/lib/i18n/server";
 import { markFollowUpDoneAction } from "./actions";
 
-const t = participantText.followUps;
-
-export const metadata: Metadata = { title: t.title };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getText()).participant.followUps.title };
+}
 
 const SHOWS = ["all", "overdue", "week"] as const;
 type Show = (typeof SHOWS)[number];
@@ -29,6 +29,8 @@ export default async function FollowUpsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { org } = await params;
+  const text = await getText();
+  const t = text.participant.followUps;
   const sp = await searchParams;
   const one = (k: string) => (Array.isArray(sp[k]) ? sp[k]![0] : (sp[k] as string | undefined));
   const show: Show = (SHOWS as readonly string[]).includes(one("show") ?? "") ? (one("show") as Show) : "all";
@@ -78,7 +80,7 @@ export default async function FollowUpsPage({
         done={markFollowUpDoneAction.bind(null, org)}
         filtered={show !== "all" || mine}
       />
-      <nav className="pagination" aria-label="Pagination">
+      <nav className="pagination" aria-label={text.participant.pagination}>
         {cursor ? <Link href={`${base}${keep.size ? `?${keep}` : ""}`}>{t.first}</Link> : null}
         {page.next_cursor ? (
           <Link rel="next" href={`${base}?${next}`}>{t.older}</Link>

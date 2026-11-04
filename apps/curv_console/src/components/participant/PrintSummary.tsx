@@ -1,13 +1,14 @@
+"use client";
+
 import type { ClinicalReview } from "@/lib/api/clinical";
 import type { Participant } from "@/lib/api/admin";
 import type { AttentionFlag } from "@/lib/api/types";
 import type { CareSummary, ClinicalNote } from "@/lib/api/participant";
 import { formatDateTime } from "@/lib/format";
-import { en } from "@/messages/en";
-import { participantText } from "@/messages/participant";
+import { useText } from "@/lib/i18n/provider";
+import { labelOr } from "@/messages/participant";
 import { PrintButton } from "./PrintButton";
-
-const t = participantText.print;
+import { ageBracketLabel } from "./labels";
 
 export interface PrintRow {
   sessionId: string;
@@ -39,7 +40,10 @@ export function PrintSummary({
   truncated?: number;
   generatedAt: string;
 }) {
+  const text = useText();
+  const t = text.participant.print;
   const c = t.cols;
+  const { locale } = text;
   return (
     <section aria-labelledby="print-h" className="print-summary">
       <div className="no-print stack">
@@ -57,12 +61,12 @@ export function PrintSummary({
             <dd>{participant.participant_token}</dd>
           </div>
           <div>
-            <dt>{participantText.header.ageBracket}</dt>
-            <dd>{participant.age_bracket_at_enrol ?? "-"}</dd>
+            <dt>{text.participant.header.ageBracket}</dt>
+            <dd>{participant.age_bracket_at_enrol ? ageBracketLabel(locale, participant.age_bracket_at_enrol) : "-"}</dd>
           </div>
           <div>
-            <dt>{participantText.header.status}</dt>
-            <dd>{participant.withdrawn_at ? participantText.header.withdrawn : participantText.header.active}</dd>
+            <dt>{text.participant.header.status}</dt>
+            <dd>{participant.withdrawn_at ? text.participant.header.withdrawn : text.participant.header.active}</dd>
           </div>
           <div>
             <dt>{t.generated}</dt>
@@ -88,7 +92,7 @@ export function PrintSummary({
               {rows.map((r) => (
                 <tr key={r.sessionId}>
                   <td>{formatDateTime(r.at)}</td>
-                  <td>{r.flag ? en.flags[r.flag] : "-"}</td>
+                  <td>{r.flag ? text.domain.enumLabel(locale, "attention_flag", r.flag) : "-"}</td>
                   <ReviewCells review={r.review} />
                 </tr>
               ))}
@@ -131,6 +135,8 @@ export function PrintSummary({
 }
 
 function ReviewCells({ review }: { review: ClinicalReview | null | undefined }) {
+  const text = useText();
+  const t = text.participant.print;
   if (review === undefined) return <td colSpan={3}>{t.hidden}</td>;
   if (review === null) return <td colSpan={3}>{t.notReviewed}</td>;
   if (review.state !== "final") return <td colSpan={3}>{t.draft}</td>;
@@ -139,7 +145,7 @@ function ReviewCells({ review }: { review: ClinicalReview | null | undefined }) 
   return (
     <>
       <td>{names ? t.signedBy(names) : "-"}</td>
-      <td>{disposition ? (t.dispositions[disposition] ?? disposition) : "-"}</td>
+      <td>{disposition ? labelOr(text.locale, "disposition", disposition) : "-"}</td>
       <td>{review.current.impression ?? "-"}</td>
     </>
   );

@@ -4,11 +4,8 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import type { FollowUp } from "@/lib/api/emr";
 import { formatDateTime } from "@/lib/format";
-import { participantText } from "@/messages/participant";
+import { useText } from "@/lib/i18n/provider";
 import { failureText, type ActionResult } from "./types";
-
-const t = participantText.followUps;
-const c = t.cols;
 
 /** Earliest due first, whatever order the rows arrived in (the API already sorts; this keeps the page honest). */
 export function sortFollowUps(rows: FollowUp[]): FollowUp[] {
@@ -20,6 +17,8 @@ export function sortFollowUps(rows: FollowUp[]): FollowUp[] {
 const DAY = 86_400_000;
 
 function DoneButton({ token, done }: { token: string; done: () => Promise<ActionResult> }) {
+  const text = useText();
+  const t = text.participant.followUps;
   const [busy, start] = useTransition();
   const [result, setResult] = useState<ActionResult | null>(null);
   return (
@@ -33,7 +32,7 @@ function DoneButton({ token, done }: { token: string; done: () => Promise<Action
       >
         {t.markDone}
       </button>
-      {result && !result.ok ? <span role="alert" className="error"> {t.failed} {failureText(result)}</span> : null}
+      {result && !result.ok ? <span role="alert" className="error"> {t.failed} {failureText(result, text.locale)}</span> : null}
     </>
   );
 }
@@ -55,6 +54,9 @@ export function FollowUpsTable({
   done: (encounterId: string) => Promise<ActionResult>;
   filtered: boolean;
 }) {
+  const text = useText();
+  const t = text.participant.followUps;
+  const c = t.cols;
   if (rows.length === 0) return <p className="muted">{filtered ? t.emptyFiltered : t.empty}</p>;
   return (
     <div className="table-wrap">
@@ -84,7 +86,7 @@ export function FollowUpsTable({
                   <Link href={`${orgPath}/participants/${encodeURIComponent(f.participant_id)}?tab=visits`}>{f.participant_token}</Link>
                 </td>
                 <td data-label={c.visit}>
-                  {participantText.visits.kinds[f.kind]}, {formatDateTime(f.occurred_at)}
+                  {text.participant.visits.visitLine(text.domain.enumLabel(text.locale, "encounter_kind", f.kind), formatDateTime(f.occurred_at))}
                 </td>
                 <td data-label={c.reason}>{f.reason ?? "-"}</td>
                 <td data-label={c.staff}>{f.clinician_display_name ?? "-"}</td>

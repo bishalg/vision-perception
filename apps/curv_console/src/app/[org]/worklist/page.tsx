@@ -6,12 +6,12 @@ import { toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { parseWorklistQuery } from "@/lib/worklistQuery";
-import { clinicalText } from "@/messages/clinical";
-
-const t = clinicalText.worklist;
+import { getText } from "@/lib/i18n/server";
 
 // A fixed title: nothing from the data (participant, MRN, impression) may reach the document title (UI-4).
-export const metadata: Metadata = { title: t.title };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getText()).clinical.worklist.title };
+}
 
 type Raw = Record<string, string | string[] | undefined>;
 
@@ -23,6 +23,7 @@ export default async function WorklistPage({
   searchParams: Promise<Raw>;
 }) {
   const { org } = await params;
+  const t = (await getText()).clinical.worklist;
   const role = await currentRole();
   if (!can(role, "worklist.read")) {
     return (
@@ -44,7 +45,7 @@ export default async function WorklistPage({
       <WorklistFilters state={query.state} flag={query.flag} assigned={query.assigned} />
       <WorklistTable orgId={org} items={page.items} />
       <p className="muted">{t.showing(page.items.length, page.total)}</p>
-      <nav className="pagination" aria-label="Pagination">
+      <nav className="pagination" aria-label={t.pagination}>
         {query.cursor ? <Link href={`${base}${toSearch(keep)}`}>{t.first}</Link> : null}
         {page.next_cursor ? (
           <Link rel="next" href={`${base}${toSearch({ ...keep, cursor: page.next_cursor })}`}>

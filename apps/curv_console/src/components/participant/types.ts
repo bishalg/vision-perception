@@ -1,3 +1,4 @@
+import type { Locale } from "@/lib/i18n/types";
 import type { ClinicalNote } from "@/lib/api/participant";
 import { participantErrorMessage } from "@/messages/participant";
 
@@ -5,8 +6,9 @@ import { participantErrorMessage } from "@/messages/participant";
 export type ActionFailure = { ok: false; slug: string | null; status: number; params?: string };
 export type ActionResult<T = object> = ({ ok: true } & T) | ActionFailure;
 
-export function failureText(f: ActionFailure): string {
-  const base = participantErrorMessage(f.slug, f.status);
+/** The sentence for a failed action in the user's locale (`useText().locale`). */
+export function failureText(f: ActionFailure, locale: Locale): string {
+  const base = participantErrorMessage(f.slug, f.status, locale);
   return f.params ? `${base} ${f.params}` : base;
 }
 

@@ -2,10 +2,10 @@
 
 import { useRef, useState, type FormEvent } from "react";
 import { ATTACHMENT_KINDS, ATTACHMENT_MEDIA_TYPES, MAX_ATTACHMENT_BYTES } from "@/lib/api/emr";
-import { participantErrorMessage, participantText } from "@/messages/participant";
+import { useText } from "@/lib/i18n/provider";
+import type { Locale } from "@/lib/i18n/types";
+import { participantErrorMessage, participantMessages } from "@/messages/participant";
 import { failureText, type ActionResult } from "./types";
-
-const t = participantText.attachments;
 
 export interface AttachmentMetaInput {
   kind: string;
@@ -39,10 +39,10 @@ export async function contentDigest(data: Blob | ArrayBuffer): Promise<string | 
 }
 
 /** Client-side refusals use the same words as the API's `attachment-too-large` / `attachment-type-not-allowed`. */
-export function checkFile(file: { size: number; type: string } | null): string | null {
-  if (!file || file.size === 0) return t.empty_file;
-  if (file.size > MAX_ATTACHMENT_BYTES) return participantErrorMessage("attachment-too-large", 400);
-  if (!(ATTACHMENT_MEDIA_TYPES as readonly string[]).includes(file.type)) return participantErrorMessage("attachment-type-not-allowed", 400);
+export function checkFile(file: { size: number; type: string } | null, locale: Locale = "en"): string | null {
+  if (!file || file.size === 0) return participantMessages[locale].attachments.empty_file;
+  if (file.size > MAX_ATTACHMENT_BYTES) return participantErrorMessage("attachment-too-large", 400, locale);
+  if (!(ATTACHMENT_MEDIA_TYPES as readonly string[]).includes(file.type)) return participantErrorMessage("attachment-type-not-allowed", 400, locale);
   return null;
 }
 
@@ -59,6 +59,8 @@ export function AttachmentUpload({
   /** Visits to link the file to (id, label). */
   visits: { id: string; label: string }[];
 }) {
+  const text = useText();
+  const t = text.participant.attachments;
   const form = useRef<HTMLFormElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState(false);
@@ -69,7 +71,7 @@ export function AttachmentUpload({
     const data = new FormData(event.currentTarget);
     // The picked file itself (not a FormData copy): its bytes are what the digest covers and what is sent.
     const picked = fileInput.current?.files?.[0] ?? null;
-    const refusal = checkFile(picked);
+    const refusal = checkFile(picked, text.locale);
     if (refusal || !picked) {
       setMessage({ ok: false, text: refusal ?? t.empty_file });
       return;
@@ -87,7 +89,7 @@ export function AttachmentUpload({
         ...(visit ? { encounter_id: visit } : {}),
       });
       if (!created.ok) {
-        setMessage({ ok: false, text: `${t.failed} ${failureText(created)}` });
+        setMessage({ ok: false, text: `${t.failed} ${failureText(created, text.locale)}` });
         return;
       }
       const res = await fetch(`/api/attachments/${encodeURIComponent(created.id)}/content`, {
@@ -99,14 +101,14 @@ export function AttachmentUpload({
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as { slug?: string | null } | null;
         await actions.remove(created.id).catch(() => undefined);
-        setMessage({ ok: false, text: `${t.failed} ${participantErrorMessage(body?.slug ?? null, res.status)}` });
+        setMessage({ ok: false, text: `${t.failed} ${participantErrorMessage(body?.slug ?? null, res.status, text.locale)}` });
         return;
       }
       form.current?.reset();
       setMessage({ ok: true, text: t.uploaded });
       await actions.uploaded();
     } catch {
-      setMessage({ ok: false, text: `${t.failed} ${participantErrorMessage(null, 0)}` });
+      setMessage({ ok: false, text: `${t.failed} ${participantErrorMessage(null, 0, text.locale)}` });
     } finally {
       setPending(false);
     }
@@ -124,7 +126,7 @@ export function AttachmentUpload({
         {t.kind}
         <select name="kind" defaultValue="paper_form" required>
           {ATTACHMENT_KINDS.map((k) => (
-            <option key={k} value={k}>{t.kinds[k]}</option>
+            <option key={k} value={k}>{text.domain.enumLabel(text.locale, "attachment_kind", k)}</option>
           ))}
         </select>
       </label>

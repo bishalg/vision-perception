@@ -5,9 +5,8 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { failureText, type ActionFailure, type ActionResult } from "@/components/exports/types";
 import { EXPORT_PURPOSES, type ExportMode } from "@/lib/api/exports";
 import { formatDateTime } from "@/lib/format";
-import { exportsErrorMessage, exportsText, shareCaseText } from "@/messages/exports";
-
-const t = shareCaseText;
+import { useText } from "@/lib/i18n/provider";
+import { exportsErrorMessage } from "@/messages/exports";
 
 type SessionsResult = { ok: true; sessions: { id: string; startedAt: string }[] } | ActionFailure;
 
@@ -26,6 +25,8 @@ export interface ShareCaseDialogProps {
  * request with the API's message so a clinician is not sent round-trip for an empty field.
  */
 export function ShareCaseDialog({ canIdentified, create, loadSessions, exportsHref }: ShareCaseDialogProps) {
+  const text = useText();
+  const t = text.exports.shareCase;
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<ExportMode>("deidentified");
   const [pick, setPick] = useState(false);
@@ -118,7 +119,7 @@ export function ShareCaseDialog({ canIdentified, create, loadSessions, exportsHr
                     checked={mode === "deidentified"}
                     onChange={() => setMode("deidentified")}
                   />
-                  {exportsText.modes.deidentified}
+                  {text.domain.enumLabel(text.locale, "export_mode", "deidentified")}
                 </label>
                 {canIdentified ? (
                   <label className="check">
@@ -129,7 +130,7 @@ export function ShareCaseDialog({ canIdentified, create, loadSessions, exportsHr
                       checked={mode === "identified"}
                       onChange={() => setMode("identified")}
                     />
-                    {exportsText.modes.identified}
+                    {text.domain.enumLabel(text.locale, "export_mode", "identified")}
                   </label>
                 ) : null}
                 <p className="muted">{t.modeHint}</p>
@@ -138,7 +139,7 @@ export function ShareCaseDialog({ canIdentified, create, loadSessions, exportsHr
                 {t.purpose}
                 <select name="purpose" defaultValue="clinical_care">
                   {EXPORT_PURPOSES.map((p) => (
-                    <option key={p} value={p}>{exportsText.purposes[p]}</option>
+                    <option key={p} value={p}>{text.domain.enumLabel(text.locale, "export_purpose", p)}</option>
                   ))}
                 </select>
               </label>
@@ -196,6 +197,7 @@ export function ShareCaseDialog({ canIdentified, create, loadSessions, exportsHr
 }
 
 function SessionPicker({ result }: { result: SessionsResult | null }) {
+  const t = useText().exports.shareCase;
   if (!result) return <p className="muted">{t.sessionsLoading}</p>;
   if (!result.ok) return <p role="alert" className="error">{t.sessionsFailed}</p>;
   if (result.sessions.length === 0) return <p className="muted">{t.sessionsNone}</p>;

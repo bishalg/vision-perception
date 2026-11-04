@@ -7,7 +7,14 @@ import curv from "./eslint-rules/no-literal-ui-props.mjs";
  * I18N-9 ratchet: both literal-text rules are `warn` everywhere; a wave package appends the directories (globs) it has
  * made clean here and they become `error`. The integration commit after the wave replaces this with `error` globally.
  */
-const LITERAL_GATE_ERROR_DIRS = [];
+const LITERAL_GATE_ERROR_DIRS = [
+  // L.1b: participants, encounters, attachments, follow-ups, worklist, clinical review (`[org]` is escaped: it is a glob).
+  "src/app/\\[org\\]/participants",
+  "src/app/\\[org\\]/worklist",
+  "src/app/\\[org\\]/follow-ups",
+  "src/components/participant",
+  "src/components/clinical",
+];
 
 const literalRules = (level) => ({
   "react/jsx-no-literals": [

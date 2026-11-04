@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { DISPOSITIONS, dispositionSchema, type ClinicalReview } from "@/lib/api/clinical";
 import { formatDateTime } from "@/lib/format";
-import { clinicalErrorMessage, clinicalText, hashPrefix } from "@/messages/clinical";
+import type { Locale } from "@/lib/i18n/types";
+import { useText } from "@/lib/i18n/provider";
+import { clinicalErrorMessage, clinicalMessages, hashPrefix } from "@/messages/clinical";
 import { AmendDialog } from "./AmendDialog";
 import { CosignDialog } from "./CosignDialog";
 import { SignDialog } from "./SignDialog";
 import type { ResultFailure, ReviewActions, ReviewResult } from "./types";
 
-const t = clinicalText.review;
 const MAX_TEXT = 8000;
 const EDITABLE = ["open", "in_progress", "amending"] as const;
 
@@ -26,6 +27,8 @@ export interface ReviewPanelProps {
 /** The "Clinical review" tab body. Remount it (key) when the server hands over a different review. */
 export function ReviewPanel(props: ReviewPanelProps) {
   const { canWrite, canSign, canCosign, canContent, actions } = props;
+  const text = useText();
+  const t = text.clinical.review;
   const [review, setReview] = useState<ClinicalReview | null>(props.review);
   const [disposition, setDisposition] = useState<string>(props.review?.current.disposition ?? "");
   const [impression, setImpression] = useState(props.review?.current.impression ?? "");
@@ -79,7 +82,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
         ) : (
           <p className="muted">{t.readOnly}</p>
         )}
-        <Failure failure={failure} onReload={null} />
+        <Failure failure={failure} locale={text.locale} onReload={null} />
       </section>
     );
   }
@@ -105,7 +108,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
         </div>
         <div>
           <dt>{t.version(review.current.version_no)}</dt>
-          <dd>{review.current.status}</dd>
+          <dd>{t.versionStatuses[review.current.status] ?? review.current.status}</dd>
         </div>
         <div>
           <dt>{t.contentHash}</dt>
@@ -147,7 +150,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
             <option value="">{t.dispositionPick}</option>
             {DISPOSITIONS.map((d) => (
               <option key={d} value={d}>
-                {t.dispositions[d]}
+                {text.domain.enumLabel(text.locale, "disposition", d)}
               </option>
             ))}
           </select>
@@ -209,7 +212,13 @@ export function ReviewPanel(props: ReviewPanelProps) {
       <div role="status" aria-live="polite">
         {notice}
       </div>
-      <Failure failure={failure} onReload={failure?.slug && clinicalText.reloadSlugs.includes(failure.slug) ? reload : null} />
+      <Failure failure={failure} locale={text.locale} onReload={failure?.slug && text.clinical.reloadSlugs.includes(failure.slug) ? reload : null} />
+
+      <div data-testid="review-disclaimer" className="muted">
+        <p>{t.disclaimer}</p>
+        {/* ADR-0004 (I18N-23): the English sentence stays visible next to the localised one. */}
+        {text.locale === "en" ? null : <p lang="en">{clinicalMessages.en.review.disclaimer}</p>}
+      </div>
 
       <h3>{t.signatures}</h3>
       {review.signatures.length === 0 ? (
@@ -218,8 +227,8 @@ export function ReviewPanel(props: ReviewPanelProps) {
         <ul className="signatures">
           {review.signatures.map((s) => (
             <li key={s.id}>
-              <strong>{t.roleLabel[s.role]}</strong> {t.signedBy(s.signer_display_name, s.signer_registration)},{" "}
-              {formatDateTime(s.signed_at)}, v{s.version_no}, <code>{hashPrefix(s.content_hash)}</code>
+              <strong>{t.roleLabel[s.role]}</strong>{" "}
+              {t.signatureMeta(t.signedBy(s.signer_display_name, s.signer_registration), formatDateTime(s.signed_at), s.version_no)} <code>{hashPrefix(s.content_hash)}</code>
               <br />
               <span className="muted">{s.meaning}</span>
             </li>
@@ -266,11 +275,12 @@ export function ReviewPanel(props: ReviewPanelProps) {
   );
 }
 
-function Failure({ failure, onReload }: { failure: ResultFailure | null; onReload: (() => void) | null }) {
+function Failure({ failure, onReload, locale }: { failure: ResultFailure | null; onReload: (() => void) | null; locale: Locale }) {
+  const t = useText().clinical.review;
   if (!failure) return null;
   return (
     <div role="alert" className="error">
-      <p>{clinicalErrorMessage(failure.slug, failure.status)}</p>
+      <p>{clinicalErrorMessage(failure.slug, failure.status, locale)}</p>
       {onReload ? (
         <button type="button" onClick={onReload}>
           {t.reload}

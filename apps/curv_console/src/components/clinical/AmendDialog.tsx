@@ -2,10 +2,9 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { ClinicalReview } from "@/lib/api/clinical";
-import { clinicalErrorMessage, clinicalText } from "@/messages/clinical";
+import { useText } from "@/lib/i18n/provider";
+import { clinicalErrorMessage } from "@/messages/clinical";
 import type { ReviewResult } from "./types";
-
-const t = clinicalText;
 
 export function AmendDialog({
   submit,
@@ -16,6 +15,8 @@ export function AmendDialog({
   onDone: (review: ClinicalReview) => void;
   onClose: () => void;
 }) {
+  const text = useText();
+  const t = text.clinical;
   const [reason, setReason] = useState("");
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<{ slug: string | null; status: number } | null>(null);
@@ -59,7 +60,7 @@ export function AmendDialog({
           <p className="muted">{t.review.limit(length, 500)}</p>
           {failure ? (
             <p role="alert" className="error">
-              {clinicalErrorMessage(failure.slug, failure.status)}
+              {clinicalErrorMessage(failure.slug, failure.status, text.locale)}
             </p>
           ) : null}
           <div className="dialog-actions">

@@ -3,10 +3,8 @@
 import { useActionState, useRef, useState, useTransition } from "react";
 import { MAX_ASSIGNING_AUTHORITY_CHARS, MAX_MRN_CHARS } from "@/lib/api/participant";
 import { formatDateTime } from "@/lib/format";
-import { participantText } from "@/messages/participant";
+import { useText } from "@/lib/i18n/provider";
 import { failureText, type ActionResult, type RevealResult } from "./types";
-
-const t = participantText.mrn;
 
 type Form = (form: FormData) => Promise<ActionResult>;
 
@@ -28,6 +26,8 @@ export interface MrnPanelProps {
  * and typed or searched only in POST forms handled by server actions: it never reaches a URL, a title or the console log.
  */
 export function MrnPanel(p: MrnPanelProps) {
+  const text = useText();
+  const t = text.participant.mrn;
   const [shown, setShown] = useState<{ authority: string; mrn: string; updatedAt: string } | null>(null);
   const [revealError, setRevealError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -60,7 +60,7 @@ export function MrnPanel(p: MrnPanelProps) {
       <section aria-labelledby="mrn-h" className="stack">
         <h2 id="mrn-h">{t.title}</h2>
         <p role="status" data-testid="mrn-disabled">
-          <strong>{t.disabledTitle}.</strong> {t.disabled}
+          <strong>{t.disabledTitle}</strong> {t.disabled}
         </p>
       </section>
     );
@@ -79,7 +79,7 @@ export function MrnPanel(p: MrnPanelProps) {
       setRevealError(null);
       const r = await p.reveal();
       if (r.ok) setShown({ authority: r.authority, mrn: r.mrn, updatedAt: r.updatedAt });
-      else setRevealError(failureText(r));
+      else setRevealError(failureText(r, text.locale));
     });
   const unlinkNow = () =>
     startTransition(async () => {
@@ -139,7 +139,7 @@ export function MrnPanel(p: MrnPanelProps) {
             </div>
           ) : null}
           {revealError ? <p role="alert" className="error">{t.failed} {revealError}</p> : null}
-          {unlinkState && !unlinkState.ok ? <p role="alert" className="error">{t.failed} {failureText(unlinkState)}</p> : null}
+          {unlinkState && !unlinkState.ok ? <p role="alert" className="error">{t.failed} {failureText(unlinkState, text.locale)}</p> : null}
         </div>
       ) : (
         <p data-testid="mrn-none">{t.none}</p>
@@ -163,11 +163,11 @@ export function MrnPanel(p: MrnPanelProps) {
             {editing ? <button type="button" onClick={() => setEditing(false)} disabled={saving}>{t.cancel}</button> : null}
           </div>
           {saveState?.ok ? <p role="status">{t.saved}</p> : null}
-          {saveState && !saveState.ok ? <p role="alert" className="error">{t.failed} {failureText(saveState)}</p> : null}
+          {saveState && !saveState.ok ? <p role="alert" className="error">{t.failed} {failureText(saveState, text.locale)}</p> : null}
         </form>
       ) : null}
 
-      <form ref={searchRef} action={searchAction}className="card stack" aria-label={t.searchTitle}>
+      <form ref={searchRef} action={searchAction} className="card stack" aria-label={t.searchTitle}>
         <h3>{t.searchTitle}</h3>
         <p className="muted">{t.searchHelp}</p>
         <label>
@@ -182,7 +182,7 @@ export function MrnPanel(p: MrnPanelProps) {
           <button type="submit" disabled={searching}>{t.searchButton}</button>
         </div>
         {searchState?.ok && !searchState.found ? <p role="status">{t.notFound}</p> : null}
-        {searchState && !searchState.ok ? <p role="alert" className="error">{t.failed} {failureText(searchState)}</p> : null}
+        {searchState && !searchState.ok ? <p role="alert" className="error">{t.failed} {failureText(searchState, text.locale)}</p> : null}
       </form>
     </section>
   );
