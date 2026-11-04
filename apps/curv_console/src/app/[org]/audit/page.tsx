@@ -7,11 +7,11 @@ import { authedApi, currentRole } from "@/lib/auth/server";
 import { auditFilterParams, parseAuditQuery, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
-import { adminText } from "@/messages/admin";
+import { getText } from "@/lib/i18n/server";
 
-const t = adminText.audit;
-
-export const metadata: Metadata = { title: t.title };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getText()).app.audit.title };
+}
 
 export default async function AuditPage({
   params,
@@ -21,11 +21,13 @@ export default async function AuditPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { org } = await params;
+  const text = await getText();
+  const t = text.app.audit;
   if (!can(await currentRole(), "audit.read")) {
     return (
       <>
         <h1>{t.title}</h1>
-        <p className="muted">{adminText.common.denied}</p>
+        <p className="muted">{text.app.common.denied}</p>
       </>
     );
   }
@@ -69,10 +71,10 @@ export default async function AuditPage({
         <AuditTable entries={page.items} />
       )}
       <p className="muted">{t.showing(page.items.length)}</p>
-      <nav className="pagination" aria-label="Pagination">
-        {cursor ? <Link href={`${base}${toSearch(filters)}`}>{adminText.common.first}</Link> : null}
+      <nav className="pagination" aria-label={text.app.common.pagination}>
+        {cursor ? <Link href={`${base}${toSearch(filters)}`}>{text.app.common.first}</Link> : null}
         {page.next_cursor ? (
-          <Link rel="next" href={`${base}${toSearch({ ...filters, cursor: page.next_cursor })}`}>{adminText.common.next}</Link>
+          <Link rel="next" href={`${base}${toSearch({ ...filters, cursor: page.next_cursor })}`}>{text.app.common.next}</Link>
         ) : null}
       </nav>
     </>

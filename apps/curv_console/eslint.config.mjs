@@ -7,7 +7,15 @@ import curv from "./eslint-rules/no-literal-ui-props.mjs";
  * I18N-9 ratchet: both literal-text rules are `warn` everywhere; a wave package appends the directories (globs) it has
  * made clean here and they become `error`. The integration commit after the wave replaces this with `error` globally.
  */
-const LITERAL_GATE_ERROR_DIRS = [];
+const LITERAL_GATE_ERROR_DIRS = [
+  // L.1a: console shell, sessions, review, devices, audit.
+  "src/app/login",
+  "src/app/[[]org]/overview",
+  "src/app/[[]org]/sessions",
+  "src/app/[[]org]/review",
+  "src/app/[[]org]/devices",
+  "src/app/[[]org]/audit",
+];
 
 const literalRules = (level) => ({
   "react/jsx-no-literals": [
@@ -51,5 +59,22 @@ export default defineConfig([
         },
       ]
     : []),
+  {
+    // L.1a: single files of the shell that share a directory with other packages (components, org layout and error pages).
+    files: [
+      "src/app/page.tsx",
+      "src/app/not-found.tsx",
+      "src/app/[[]org]/layout.tsx",
+      "src/app/[[]org]/error.tsx",
+      "src/app/[[]org]/not-found.tsx",
+      ...[
+        "AuditFilters", "AuditTable", "ClipsTable", "DevicesTable", "Distribution", "DriftChart", "EnrolCodePanel", "FlagBadge",
+        "KpiCard", "LossBar", "NavLinks", "OrgSwitcher", "Pagination", "QualityPanel", "ReportPanel", "ReviewQueue",
+        "ScoringStatus", "SessionFilters", "SessionsTable", "SessionTabs", "TrackingQuality",
+      ].map((c) => `src/components/${c}.tsx`),
+    ],
+    plugins: { curv },
+    rules: literalRules("error"),
+  },
   globalIgnores([".next/**", "out/**", "coverage/**", "next-env.d.ts", "public/asd-wasm/**"]),
 ]);

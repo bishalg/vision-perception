@@ -1,8 +1,6 @@
 "use client";
 
-import { en } from "@/messages/en";
-
-const t = en.orgs;
+import { useText } from "@/lib/i18n/provider";
 
 /** Plain GET form to /switch-org (works without JS); the select submits on change. */
 export function OrgSwitcher({
@@ -14,6 +12,7 @@ export function OrgSwitcher({
   orgs: { id: string; name: string }[];
   allowAnyId: boolean;
 }) {
+  const t = useText().app.orgs;
   return (
     <form method="get" action="/switch-org" aria-label={t.formLabel} className="org-switcher">
       <select

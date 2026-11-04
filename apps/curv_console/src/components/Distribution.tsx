@@ -1,14 +1,17 @@
-import { en } from "@/messages/en";
+"use client";
+
+import { useText } from "@/lib/i18n/provider";
 
 /** Accessible horizontal bar list for a label -> count map. */
 export function Distribution({ title, counts }: { title: string; counts: Record<string, number> }) {
+  const t = useText().app.overview;
   const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
   const max = Math.max(1, ...entries.map(([, n]) => n));
   return (
     <section className="panel" aria-label={title}>
       <h2>{title}</h2>
       {entries.length === 0 ? (
-        <p className="muted">{en.overview.none}</p>
+        <p className="muted">{t.none}</p>
       ) : (
         <ul className="bars">
           {entries.map(([label, n]) => (

@@ -1,5 +1,6 @@
-import { en } from "@/messages/en";
+import { getText } from "@/lib/i18n/server";
 
-export default function NotFound() {
-  return <h1>{en.errors.notFound}</h1>;
+export default async function NotFound() {
+  const t = await getText();
+  return <h1>{t.app.errors.notFound}</h1>;
 }

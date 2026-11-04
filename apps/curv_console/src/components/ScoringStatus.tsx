@@ -1,13 +1,16 @@
-import { en } from "@/messages/en";
 import type { SessionSummary } from "@/lib/api";
-
-const t = en.detail.scoring;
+import { messagesFor, type Messages } from "@/lib/i18n/messages";
+import { useText } from "@/lib/i18n/provider";
 
 /**
  * SCH-5 (session schema 1.8): "Not scored (reason)" for a session whose on-device scoring failed, `null` for a
  * scored one (1.6 and 1.7 sessions are always scored). Shown instead of every score number.
  */
-export function notScoredLabel(session: Pick<SessionSummary, "scoring_status" | "unscorable_reason">): string | null {
+export function notScoredLabel(
+  session: Pick<SessionSummary, "scoring_status" | "unscorable_reason">,
+  text: Messages["app"] = messagesFor("en").app,
+): string | null {
+  const t = text.detail.scoring;
   if (session.scoring_status !== "unscorable") return null;
   return session.unscorable_reason ? t.withReason(t.reasons[session.unscorable_reason]) : t.notScored;
 }
@@ -20,6 +23,6 @@ export function ScoreValue({
   session: Pick<SessionSummary, "scoring_status" | "unscorable_reason">;
   value: string;
 }) {
-  const label = notScoredLabel(session);
+  const label = notScoredLabel(session, useText().app);
   return label ? <span className="muted">{label}</span> : <>{value}</>;
 }

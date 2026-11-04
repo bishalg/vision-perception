@@ -1,4 +1,13 @@
-import { expect, test, loginToOverview } from "./helpers";
+import { expect, test, LIVE, login, loginToOverview } from "./helpers";
+
+/** WP-L.1a: a mock user whose locale is `ne` (the `+ne` email tag) sees Devanagari headings under `lang="ne-NP"`. */
+async function loginNe(page: import("@playwright/test").Page): Promise<string> {
+  await login(page, "admin+ne@example.org");
+  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");
+  return new URL(page.url()).pathname.split("/")[1]!;
+}
+
 
 test("sessions table -> session detail with Clips, Quality and Report tabs", async ({ page }) => {
   const org = await loginToOverview(page);
@@ -69,4 +78,16 @@ test("an unscorable 1.8 session shows Not scored instead of numbers (SCH-5)", as
   );
   await page.goto(`/${org}/sessions/SESS-MOCK-0010?tab=report`);
   await expect(page.getByRole("status")).toContainText("Not scored (aggregation failed).");
+});
+
+test("sessions list and a session detail render in Nepali", async ({ page }) => {
+  test.skip(LIVE, "locale flows use the mock backend's user locale seed");
+  const org = await loginNe(page);
+  await page.goto(`/${org}/sessions`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("सत्रहरू");
+  const rows = page.locator("table.data tbody tr");
+  test.skip((await rows.count()) === 0, "no sessions in this org");
+  await rows.first().getByRole("link").click();
+  await expect(page.getByRole("navigation", { name: "सत्रका खण्डहरू" }).getByRole("link", { name: "क्लिपहरू" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "संयुक्त स्कोर", exact: true })).toBeVisible();
 });

@@ -1,20 +1,23 @@
-import Link from "next/link";
-import { en } from "@/messages/en";
-import { ATTENTION_FLAGS, QUALITY_VERDICTS, TRACKING_VERDICTS, type SessionListQuery } from "@/lib/api";
+"use client";
 
-const f = en.sessions.filters;
+import Link from "next/link";
+import { ATTENTION_FLAGS, QUALITY_VERDICTS, TRACKING_VERDICTS, type SessionListQuery } from "@/lib/api";
+import { useText } from "@/lib/i18n/provider";
+import { enumLabel } from "@/messages/domain";
 
 /** Plain GET form: works without client JS and keeps filter state in the URL. */
 export function SessionFilters({ orgId, query }: { orgId: string; query: SessionListQuery }) {
+  const t = useText();
+  const f = t.app.sessions.filters;
   const reviewed = query.reviewed === undefined ? "" : String(query.reviewed);
   return (
-    <form method="get" className="filters" aria-label={en.sessions.title}>
+    <form method="get" className="filters" aria-label={t.app.sessions.title}>
       <label>
         {f.flag}
         <select name="flag" defaultValue={query.flag ?? ""}>
           <option value="">{f.any}</option>
           {ATTENTION_FLAGS.map((x) => (
-            <option key={x} value={x}>{en.flags[x]}</option>
+            <option key={x} value={x}>{enumLabel(t.locale, "attention_flag", x)}</option>
           ))}
         </select>
       </label>
@@ -23,7 +26,7 @@ export function SessionFilters({ orgId, query }: { orgId: string; query: Session
         <select name="quality" defaultValue={query.quality ?? ""}>
           <option value="">{f.any}</option>
           {QUALITY_VERDICTS.map((x) => (
-            <option key={x} value={x}>{x}</option>
+            <option key={x} value={x}>{enumLabel(t.locale, "quality_verdict", x)}</option>
           ))}
         </select>
       </label>
@@ -32,7 +35,7 @@ export function SessionFilters({ orgId, query }: { orgId: string; query: Session
         <select name="tracking" defaultValue={query.tracking ?? ""}>
           <option value="">{f.any}</option>
           {TRACKING_VERDICTS.map((x) => (
-            <option key={x} value={x}>{en.detail.tracking.verdicts[x]}</option>
+            <option key={x} value={x}>{enumLabel(t.locale, "tracking_verdict", x)}</option>
           ))}
         </select>
       </label>

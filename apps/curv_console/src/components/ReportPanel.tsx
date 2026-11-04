@@ -1,5 +1,8 @@
-import { en } from "@/messages/en";
+"use client";
+
 import type { SessionDetail } from "@/lib/api";
+import { flagAssessmentText } from "@/lib/flagAssessment";
+import { useText } from "@/lib/i18n/provider";
 import { notScoredLabel } from "./ScoringStatus";
 
 /**
@@ -12,14 +15,30 @@ export function reportAvailable(session: Pick<SessionDetail, "capture_source" | 
   return session.capture_source === "truedepth" || session.report_pdf_available === true;
 }
 
-export function ReportPanel({ session }: { session: SessionDetail }) {
-  const r = en.detail.report;
-  const notScored = notScoredLabel(session);
+export function ReportPanel({
+  session,
+  assessment,
+}: {
+  session: SessionDetail;
+  /** The headline and detail the device sent with the flag, when the API carries them. */
+  assessment?: { headline: string; detail?: string | null };
+}) {
+  const text = useText();
+  const t = text.app;
+  const r = t.detail.report;
+  const notScored = notScoredLabel(session, t);
+  const flagText = assessment ? flagAssessmentText(text.locale, assessment) : null;
   return (
     <div className="panel">
       {notScored ? (
         <p role="status">
-          <strong>{notScored}.</strong> {en.detail.scoring.reportNote}
+          <strong>{t.detail.scoring.reportLead(notScored)}</strong> {t.detail.scoring.reportNote}
+        </p>
+      ) : null}
+      {flagText ? (
+        <p>
+          <strong>{flagText.headline}</strong>
+          {flagText.detail ? <> {flagText.detail}</> : null}
         </p>
       ) : null}
       {reportAvailable(session) ? (

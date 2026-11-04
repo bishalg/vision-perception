@@ -1,13 +1,14 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { en } from "@/messages/en";
+import { messagesFor, type Messages } from "@/lib/i18n/messages";
+import { useText } from "@/lib/i18n/provider";
 import type { LoginState } from "./actions";
 
 type Action = (prev: LoginState, formData: FormData) => Promise<LoginState>;
 
-export function loginErrorText(state: LoginState): string | null {
-  const t = en.login;
+/** The sentence for a failed sign-in; `t` defaults to English for callers outside a component. */
+export function loginErrorText(state: LoginState, t: Messages["app"]["login"] = messagesFor("en").app.login): string | null {
   switch (state.error) {
     case null:
       return null;
@@ -32,8 +33,8 @@ export function LoginForm({ action, next, mockHint }: { action: Action; next?: s
   const [password, setPassword] = useState("");
   const [dismissed, setDismissed] = useState(false);
   const totp = state.step === "totp" && !dismissed;
-  const t = en.login;
-  const error = loginErrorText(state);
+  const t = useText().app.login;
+  const error = loginErrorText(state, t);
   return (
     <form
       action={(fd) => {

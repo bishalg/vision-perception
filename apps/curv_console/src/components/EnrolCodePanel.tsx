@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { formatDateTime } from "@/lib/format";
-import { en } from "@/messages/en";
+import { useText } from "@/lib/i18n/provider";
 import { QrCode } from "./QrCode";
 
 export type EnrolResult =
@@ -11,8 +11,6 @@ export type EnrolResult =
 
 type State = EnrolResult | null;
 
-const t = en.devices.enrol;
-
 export function EnrolCodePanel({
   create,
   canCreate,
@@ -20,6 +18,7 @@ export function EnrolCodePanel({
   create: (formData: FormData) => Promise<EnrolResult>;
   canCreate: boolean;
 }) {
+  const t = useText().app.devices.enrol;
   const [state, formAction, pending] = useActionState<State, FormData>((_prev, fd) => create(fd), null);
   return (
     <section className="panel enrol" aria-label={t.title}>

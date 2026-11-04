@@ -1,9 +1,10 @@
+"use client";
+
 import type { AuditEntry } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
-import { adminText } from "@/messages/admin";
+import { useText } from "@/lib/i18n/provider";
 
-const t = adminText.audit;
-const c = t.cols;
+type AuditText = ReturnType<typeof useText>["app"]["audit"];
 
 function json(value: unknown): string {
   return JSON.stringify(value, null, 2);
@@ -14,7 +15,7 @@ function hasValue(value: unknown): boolean {
 }
 
 /** Before/after snapshots are redacted by the backend; shown as plain text (never as HTML). */
-function Change({ entry }: { entry: AuditEntry }) {
+function Change({ entry, t }: { entry: AuditEntry; t: AuditText }) {
   if (!hasValue(entry.before) && !hasValue(entry.after)) return <>{t.noChange}</>;
   return (
     <details>
@@ -38,6 +39,8 @@ function Change({ entry }: { entry: AuditEntry }) {
 const short = (id: string | null | undefined) => (id ? id.slice(0, 8) : "-");
 
 export function AuditTable({ entries }: { entries: AuditEntry[] }) {
+  const t = useText().app.audit;
+  const c = t.cols;
   if (entries.length === 0) return <p className="muted">{t.empty}</p>;
   return (
     <div className="table-wrap">
@@ -64,7 +67,7 @@ export function AuditTable({ entries }: { entries: AuditEntry[] }) {
                 {e.target_type ? `${e.target_type} ${short(e.target_id)}` : "-"}
               </td>
               <td data-label={c.change}>
-                <Change entry={e} />
+                <Change entry={e} t={t} />
               </td>
             </tr>
           ))}

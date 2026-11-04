@@ -1,4 +1,13 @@
-import { expect, test, loginToOverview } from "./helpers";
+import { expect, test, LIVE, login, loginToOverview } from "./helpers";
+
+/** WP-L.1a: a mock user whose locale is `ne` (the `+ne` email tag) sees Devanagari headings under `lang="ne-NP"`. */
+async function loginNe(page: import("@playwright/test").Page): Promise<string> {
+  await login(page, "admin+ne@example.org");
+  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");
+  return new URL(page.url()).pathname.split("/")[1]!;
+}
+
 
 test("review queue: keyboard triage closes the selected item (j, then 1 = Confirm)", async ({ page }) => {
   const org = await loginToOverview(page);
@@ -43,3 +52,11 @@ test("review queue: Flag capture issue asks for a label first", async ({ page })
   await expect(page.getByRole("status")).toContainText("Flag capture issue:");
   await expect(rows).toHaveCount(before - 1);
 });
+
+test("review queue renders in Nepali", async ({ page }) => {
+  test.skip(LIVE, "locale flows use the mock backend's user locale seed");
+  const org = await loginNe(page);
+  await page.goto(`/${org}/review`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("समीक्षा पङ्क्ति");
+  await expect(page.getByLabel("अवस्था").first()).toBeVisible();
+}); 

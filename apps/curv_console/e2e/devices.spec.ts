@@ -1,4 +1,13 @@
-import { expect, test, loginToOverview } from "./helpers";
+import { expect, test, LIVE, login, loginToOverview } from "./helpers";
+
+/** WP-L.1a: a mock user whose locale is `ne` (the `+ne` email tag) sees Devanagari headings under `lang="ne-NP"`. */
+async function loginNe(page: import("@playwright/test").Page): Promise<string> {
+  await login(page, "admin+ne@example.org");
+  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");
+  return new URL(page.url()).pathname.split("/")[1]!;
+}
+
 
 test("devices: generate an enrol code shown as text and QR", async ({ page }) => {
   const org = await loginToOverview(page);
@@ -27,4 +36,12 @@ test("devices: revoke asks for confirmation and marks the device revoked", async
   const revoked = page.locator("table.data tbody tr", { hasText: label });
   await expect(revoked.first().getByText("Revoked")).toBeVisible();
   await expect(live).toHaveCount(before - 1);
+});
+
+test("devices page renders in Nepali", async ({ page }) => {
+  test.skip(LIVE, "locale flows use the mock backend's user locale seed");
+  const org = await loginNe(page);
+  await page.goto(`/${org}/devices`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("उपकरणहरू");
+  await expect(page.getByRole("button", { name: "दर्ता कोड बनाउनुहोस्" })).toBeVisible();
 });

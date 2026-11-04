@@ -1,13 +1,14 @@
-import { en } from "@/messages/en";
-import type { SessionTrackingQuality } from "@/lib/api";
+"use client";
 
-const t = en.detail.tracking.loss;
+import type { SessionTrackingQuality } from "@/lib/api";
+import { useText } from "@/lib/i18n/provider";
 
 /**
  * Data loss by track state (disjoint states, seconds from the API). "Tracked" is the remainder of the
  * session duration; every other segment is plotted as sent.
  */
 export function LossBar({ loss, durationSec }: { loss: SessionTrackingQuality["loss"]; durationSec: number }) {
+  const t = useText().app.detail.tracking.loss;
   const parts = [
     { key: "blink", label: t.blink, sec: loss.blink_sec },
     { key: "lost", label: t.lost, sec: loss.track_loss_sec },

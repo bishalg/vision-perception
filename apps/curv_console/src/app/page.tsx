@@ -1,14 +1,14 @@
 import { redirect } from "next/navigation";
 import { authedApi, homeOrg, recentOrgs } from "@/lib/auth/server";
-import { en } from "@/messages/en";
-
-const t = en.orgs;
+import { getText } from "@/lib/i18n/server";
 
 /**
  * Home: users with an org go to its overview. The superadmin has no home org, so this page lets them open
  * one by id or pick a recent one (the backend has no org list endpoint yet).
  */
 export default async function Home({ searchParams }: { searchParams: Promise<{ invalid?: string }> }) {
+  const text = await getText();
+  const t = text.app.orgs;
   const org = await homeOrg();
   if (org) redirect(`/${encodeURIComponent(org)}/overview`);
   const api = await authedApi();
@@ -18,7 +18,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ i
   return (
     <main className="login-page">
       <div className="login-card">
-        <p className="brand">{en.appName}</p>
+        <p className="brand">{text.app.appName}</p>
         <h1>{t.pickTitle}</h1>
         <p className="muted">{t.pickIntro}</p>
         <form method="get" action="/switch-org" className="login-form" aria-label={t.pickTitle}>

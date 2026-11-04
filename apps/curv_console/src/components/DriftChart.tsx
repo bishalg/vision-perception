@@ -1,7 +1,7 @@
-import { en } from "@/messages/en";
-import type { SessionTrackingQuality } from "@/lib/api";
+"use client";
 
-const t = en.detail.tracking.drift;
+import type { SessionTrackingQuality } from "@/lib/api";
+import { useText } from "@/lib/i18n/provider";
 
 const W = 640;
 const H = 220;
@@ -21,6 +21,8 @@ export function DriftChart({
   warnDeg?: number | null;
   hardDeg?: number | null;
 }) {
+  const tracking = useText().app.detail.tracking;
+  const t = tracking.drift;
   if (checks.length === 0) return <p className="muted">{t.empty}</p>;
   const lines: { key: string; label: string; deg: number }[] = [];
   if (warnDeg != null) lines.push({ key: "warn", label: t.warn, deg: warnDeg });
@@ -36,22 +38,22 @@ export function DriftChart({
       <svg className="drift-chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t.alt(checks.length)}>
         <line className="axis" x1={PAD.l} y1={H - PAD.b} x2={W - PAD.r} y2={H - PAD.b} />
         <line className="axis" x1={PAD.l} y1={PAD.t} x2={PAD.l} y2={H - PAD.b} />
-        <text x={PAD.l - 6} y={y(0) + 4} textAnchor="end">0</text>
+        <text x={PAD.l - 6} y={y(0) + 4} textAnchor="end">{0}</text>
         <text x={PAD.l - 6} y={PAD.t + 8} textAnchor="end">{maxDeg.toFixed(1)}</text>
         <text x={(W + PAD.l) / 2} y={H - 4} textAnchor="middle">{t.axisSec}</text>
         {lines.map((l) => (
           <g key={l.key} data-testid={`drift-${l.key}`}>
             <line className={l.key} x1={PAD.l} x2={W - PAD.r} y1={y(l.deg)} y2={y(l.deg)} />
-            <text x={W - PAD.r} y={y(l.deg) - 3} textAnchor="end">{`${l.label} ${l.deg}°`}</text>
+            <text x={W - PAD.r} y={y(l.deg) - 3} textAnchor="end">{t.limit(l.label, l.deg)}</text>
           </g>
         ))}
         {path ? <path className="line" d={path} /> : null}
         {checks.map((c) =>
           c.offset_deg == null ? (
-            <text key={c.at_sec} x={x(c.at_sec)} y={H - PAD.b - 4} textAnchor="middle">{`× ${t.missed}`}</text>
+            <text key={c.at_sec} x={x(c.at_sec)} y={H - PAD.b - 4} textAnchor="middle">{t.missedMark(t.missed)}</text>
           ) : (
             <circle key={c.at_sec} cx={x(c.at_sec)} cy={y(c.offset_deg)} r={4} fill="currentColor">
-              <title>{`${c.at_sec.toFixed(1)} s: ${c.offset_deg.toFixed(2)}°`}</title>
+              <title>{t.at(c.at_sec, tracking.deg(c.offset_deg))}</title>
             </circle>
           ),
         )}
@@ -61,8 +63,8 @@ export function DriftChart({
           {checks.map((c) => (
             <li key={c.at_sec}>
               {c.offset_deg == null
-                ? `${c.at_sec.toFixed(1)} s: ${t.missed}`
-                : `${c.at_sec.toFixed(1)} s: ${en.detail.tracking.deg(c.offset_deg)}`}
+                ? t.at(c.at_sec, t.missed)
+                : t.at(c.at_sec, tracking.deg(c.offset_deg))}
             </li>
           ))}
         </ul>

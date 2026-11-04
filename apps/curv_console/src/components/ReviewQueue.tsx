@@ -13,7 +13,8 @@ import {
   type CaptureIssueLabel,
   type TriageAction,
 } from "@/lib/review";
-import { en } from "@/messages/en";
+import { useText } from "@/lib/i18n/provider";
+import { enumLabel } from "@/messages/domain";
 import { FlagBadge } from "./FlagBadge";
 
 /** The session columns the queue shows next to each item (fetched by the page; null when unavailable). */
@@ -31,8 +32,6 @@ export interface ReviewRow {
 
 export type TriageResult = { ok: true; item: ReviewItem } | { ok: false; error: string };
 export type TriageFn = (reviewId: string, action: TriageAction, label?: CaptureIssueLabel) => Promise<TriageResult>;
-
-const t = en.review;
 
 function isTyping(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -58,6 +57,8 @@ export function ReviewQueue({
   filterStatus?: ReviewStatus;
   triage: TriageFn;
 }) {
+  const text = useText();
+  const t = text.app.review;
   const router = useRouter();
   const [rows, setRows] = useState(initialRows);
   const [selected, setSelected] = useState(0);
@@ -101,7 +102,7 @@ export function ReviewQueue({
         setSelected((s) => Math.max(0, Math.min(leaves ? s : s + 1, remaining - 1)));
       });
     },
-    [canWrite, filterStatus, pending, rows, selected, triage],
+    [canWrite, filterStatus, pending, rows, selected, triage, t],
   );
 
   const choose = useCallback(
@@ -221,10 +222,10 @@ export function ReviewQueue({
                   </td>
                   <td data-label={c.started}>{r.session ? formatDateTime(r.session.started_at) : "-"}</td>
                   <td data-label={c.flag}>{r.session ? <FlagBadge flag={r.session.attention_flag} /> : "-"}</td>
-                  <td data-label={c.quality}>{r.session?.quality_verdict ?? "-"}</td>
-                  <td data-label={c.reason}>{t.reasons[r.item.reason]}</td>
-                  <td data-label={c.status}>{t.statuses[r.item.status]}</td>
-                  <td data-label={c.age} className="num">{formatAge(r.item.created_at, now)}</td>
+                  <td data-label={c.quality}>{r.session ? enumLabel(text.locale, "quality_verdict", r.session.quality_verdict) : "-"}</td>
+                  <td data-label={c.reason}>{enumLabel(text.locale, "review_reason", r.item.reason)}</td>
+                  <td data-label={c.status}>{enumLabel(text.locale, "review_status", r.item.status)}</td>
+                  <td data-label={c.age} className="num">{formatAge(r.item.created_at, now, text.locale, text.app.units)}</td>
                 </tr>
               );
             })}

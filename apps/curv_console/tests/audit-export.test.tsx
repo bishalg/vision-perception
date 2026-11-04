@@ -14,6 +14,10 @@ vi.mock("@/lib/auth/server", async () => {
   shared.api = api();
   return { authedApi: async () => shared.api, currentRole: async () => role };
 });
+vi.mock("@/lib/i18n/server", async () => {
+  const { messagesFor } = await import("@/lib/i18n/messages");
+  return { getText: async () => messagesFor("en") };
+});
 vi.mock("next/navigation", () => ({
   redirect: (to: string) => {
     throw Object.assign(new Error("NEXT_REDIRECT"), { to });

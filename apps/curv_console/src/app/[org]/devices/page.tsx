@@ -6,10 +6,12 @@ import { authedApi, currentRole } from "@/lib/auth/server";
 import { parseCursor, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
-import { en } from "@/messages/en";
+import { getText } from "@/lib/i18n/server";
 import { createEnrolCodeAction, revokeDeviceAction } from "./actions";
 
-export const metadata: Metadata = { title: en.devices.title };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getText()).app.devices.title };
+}
 
 export default async function DevicesPage({
   params,
@@ -19,6 +21,7 @@ export default async function DevicesPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { org } = await params;
+  const t = (await getText()).app;
   const cursor = parseCursor(await searchParams);
   const api = await authedApi();
   const role = await currentRole();
@@ -26,13 +29,13 @@ export default async function DevicesPage({
   const base = `/${encodeURIComponent(org)}/devices`;
   return (
     <>
-      <h1>{en.devices.title}</h1>
+      <h1>{t.devices.title}</h1>
       <EnrolCodePanel create={createEnrolCodeAction.bind(null, org)} canCreate={can(role, "enrol.create")} />
       <DevicesTable devices={page.items} canRevoke={can(role, "device.revoke")} revoke={revokeDeviceAction.bind(null, org)} />
-      <nav className="pagination" aria-label="Pagination">
-        {cursor ? <Link href={base}>{en.devices.first}</Link> : null}
+      <nav className="pagination" aria-label={t.common.pagination}>
+        {cursor ? <Link href={base}>{t.devices.first}</Link> : null}
         {page.next_cursor ? (
-          <Link rel="next" href={`${base}${toSearch({ cursor: page.next_cursor })}`}>{en.devices.next}</Link>
+          <Link rel="next" href={`${base}${toSearch({ cursor: page.next_cursor })}`}>{t.devices.next}</Link>
         ) : null}
       </nav>
     </>

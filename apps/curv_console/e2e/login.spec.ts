@@ -72,3 +72,20 @@ test("superadmin (no home org) picks an org by id, then sees it in the switcher"
   await expect(page.getByRole("combobox", { name: "Organisation", exact: true })).toHaveValue(TARGET_ORG_ID);
   await expect(page.getByRole("textbox", { name: "Organisation id" })).toBeVisible();
 });
+
+test("login page and overview render in Nepali for a ne user (lang=ne-NP)", async ({ browser, page }) => {
+  test.skip(LIVE, "locale flows use the mock backend's user locale seed");
+  const ctx = await browser.newContext({ locale: "ne-NP", extraHTTPHeaders: { "Accept-Language": "ne-NP,en;q=0.5" } });
+  const anon = await ctx.newPage();
+  await anon.goto("/login");
+  await expect(anon.locator("html")).toHaveAttribute("lang", "ne-NP");
+  await expect(anon.getByRole("heading", { name: "साइन इन" })).toBeVisible();
+  await ctx.close();
+
+  await login(page, "admin+ne@example.org");
+  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("सारांश");
+  await expect(page.getByRole("navigation", { name: "मुख्य नेभिगेसन" })).toBeVisible();
+});
+

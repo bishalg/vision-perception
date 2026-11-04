@@ -1,11 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import type { AuditQuery } from "@/lib/api";
-import { adminText } from "@/messages/admin";
-
-const f = adminText.audit.filters;
+import { useText } from "@/lib/i18n/provider";
 
 /** Plain GET form: works without client JS and keeps the filters in the URL (the backend validates them). */
 export function AuditFilters({ orgId, query }: { orgId: string; query: AuditQuery }) {
+  const f = useText().app.audit.filters;
   return (
     <form method="get" className="filters" aria-label={f.label}>
       <label>

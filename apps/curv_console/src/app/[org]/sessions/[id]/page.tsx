@@ -11,7 +11,8 @@ import { ReviewPanel } from "@/components/clinical/ReviewPanel";
 import { ApiError } from "@/lib/api";
 import { authedApi, currentRole } from "@/lib/auth/server";
 import { can } from "@/lib/permissions";
-import { clinicalErrorMessage, clinicalText } from "@/messages/clinical";
+import { problemText } from "@/lib/api/problem";
+import { clinicalErrorMessage } from "@/messages/clinical";
 import {
   amendReviewAction,
   claimReviewAction,
@@ -23,7 +24,8 @@ import {
 import { formatDateTime, formatNumber, formatPercent } from "@/lib/format";
 import { loadOrNotFound } from "@/lib/loaders";
 import { driftThresholds } from "@/lib/research/baselines";
-import { en } from "@/messages/en";
+import { enumLabel } from "@/messages/domain";
+import { getText } from "@/lib/i18n/server";
 
 export default async function SessionDetailPage({
   params,
@@ -38,7 +40,8 @@ export default async function SessionDetailPage({
   const session = await loadOrNotFound(() => api.getSession(id));
   // The id in the URL must belong to the org in the URL.
   if (session.org_id !== org) notFound();
-  const t = en.detail;
+  const text = await getText();
+  const t = text.app.detail;
   const basePath = `/${encodeURIComponent(org)}/sessions/${encodeURIComponent(id)}`;
   const role = await currentRole();
   const showClinical = can(role, "worklist.read");
@@ -57,16 +60,16 @@ export default async function SessionDetailPage({
         {session.participant_token} <span className="muted">{formatDateTime(session.started_at)}</span>
       </h1>
       <div className="kpi-grid">
-        <KpiCard label={t.composite} value={notScoredLabel(session) ?? formatNumber(session.composite_score)} />
-        <KpiCard label={t.confidence} value={formatPercent(session.composite_confidence)} />
+        <KpiCard label={t.composite} value={notScoredLabel(session, text.app) ?? formatNumber(session.composite_score, 1, text.locale)} />
+        <KpiCard label={t.confidence} value={formatPercent(session.composite_confidence, text.locale)} />
         <section className="kpi" aria-label={t.flag}>
           <div className="kpi-label">{t.flag}</div>
           <div className="kpi-value"><FlagBadge flag={session.attention_flag} /></div>
         </section>
-        <KpiCard label={t.quality} value={session.quality_verdict} />
+        <KpiCard label={t.quality} value={enumLabel(text.locale, "quality_verdict", session.quality_verdict)} />
         <KpiCard label={t.bundle} value={session.bundle_version ?? "-"} />
       </div>
-      <SessionTabs basePath={basePath} active={tab} hidden={showClinical ? [] : ["clinical"]} />
+      <SessionTabs basePath={basePath} active={tab} hidden={showClinical ? [] : ["clinical"]} labels={t.tabs} label={t.tabsLabel} />
       {tab === "clips" ? <ClipsTable clips={clips} /> : null}
       {tab === "quality" ? <QualityPanel session={session} warnDeg={drift.warnDeg} hardDeg={drift.hardDeg} /> : null}
       {tab === "report" ? <ReportPanel session={session} /> : null}
@@ -74,7 +77,7 @@ export default async function SessionDetailPage({
         showClinical ? (
           <ClinicalTab org={org} sessionId={id} role={role} />
         ) : (
-          <p className="muted">{clinicalText.review.denied}</p>
+          <p className="muted">{text.clinical.review.denied}</p>
         )
       ) : null}
     </>
@@ -84,12 +87,13 @@ export default async function SessionDetailPage({
 /** Loads the session's review (404 = not started) and wires the server actions. Clinical text never enters a URL. */
 async function ClinicalTab({ org, sessionId, role }: { org: string; sessionId: string; role: Awaited<ReturnType<typeof currentRole>> }) {
   const api = await authedApi();
+  const text = await getText();
   let review;
   try {
     review = await api.getSessionClinicalReview(sessionId);
   } catch (err) {
     if (err instanceof ApiError && err.status !== 401) {
-      return <p role="alert" className="error">{clinicalErrorMessage(err.slug, err.status)}</p>;
+      return <p role="alert" className="error">{err.problem ? problemText(text, err.problem).text : clinicalErrorMessage(err.slug, err.status)}</p>;
     }
     throw err;
   }

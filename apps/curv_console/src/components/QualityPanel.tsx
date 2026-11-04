@@ -1,10 +1,11 @@
-import { en } from "@/messages/en";
+"use client";
+
 import type { SessionDetail } from "@/lib/api";
 import { formatNumber, formatPercent } from "@/lib/format";
+import { useText } from "@/lib/i18n/provider";
+import { enumLabel } from "@/messages/domain";
 import { notScoredLabel } from "./ScoringStatus";
 import { TrackingQuality } from "./TrackingQuality";
-
-const q = en.detail.quality_panel;
 
 export function QualityPanel({
   session,
@@ -16,14 +17,16 @@ export function QualityPanel({
   warnDeg?: number | null;
   hardDeg?: number | null;
 }) {
+  const t = useText();
+  const q = t.app.detail.quality_panel;
   const rows: [string, string][] = [
-    [q.validFrames, formatPercent(session.valid_frame_ratio)],
-    [q.distance, session.calibrated_distance_cm == null ? q.notMeasured : formatNumber(session.calibrated_distance_cm, 0)],
-    [q.captureSource, session.capture_source ?? "-"],
-    [q.socialPreference, notScoredLabel(session) ?? formatPercent(session.social_preference)],
-    [q.eyeDwell, formatPercent(session.eye_dwell)],
-    [q.mouthDwell, formatPercent(session.mouth_dwell)],
-    [q.firstEyeLatency, formatNumber(session.first_eye_latency_ms, 0)],
+    [q.validFrames, formatPercent(session.valid_frame_ratio, t.locale)],
+    [q.distance, session.calibrated_distance_cm == null ? q.notMeasured : formatNumber(session.calibrated_distance_cm, 0, t.locale)],
+    [q.captureSource, session.capture_source ? enumLabel(t.locale, "capture_source", session.capture_source) : "-"],
+    [q.socialPreference, notScoredLabel(session, t.app) ?? formatPercent(session.social_preference, t.locale)],
+    [q.eyeDwell, formatPercent(session.eye_dwell, t.locale)],
+    [q.mouthDwell, formatPercent(session.mouth_dwell, t.locale)],
+    [q.firstEyeLatency, formatNumber(session.first_eye_latency_ms, 0, t.locale)],
   ];
   return (
     <>

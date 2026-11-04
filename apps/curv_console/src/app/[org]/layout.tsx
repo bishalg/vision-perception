@@ -8,7 +8,7 @@ import { enforcementRedirect } from "@/lib/auth/guard";
 import { authedApi, currentRole, homeOrg, recentOrgs } from "@/lib/auth/server";
 import { loadOrNotFound } from "@/lib/loaders";
 import { navLinks } from "@/lib/nav";
-import { en } from "@/messages/en";
+import { getText } from "@/lib/i18n/server";
 
 export default async function OrgLayout({
   children,
@@ -18,6 +18,7 @@ export default async function OrgLayout({
   params: Promise<{ org: string }>;
 }) {
   const { org } = await params;
+  const t = await getText();
   const api = await authedApi();
   // `GET /users/me` and `GET /orgs/{id}` are the two reads a user past the TOTP deadline may still make (AUTH-13).
   const [orgInfo, profile] = await Promise.all([
@@ -45,16 +46,16 @@ export default async function OrgLayout({
     ...resolved.flatMap((r) => (r.status === "fulfilled" ? [{ id: r.value.id, name: r.value.name }] : [])),
   ];
   const base = `/${encodeURIComponent(org)}`;
-  const links = navLinks(base, role);
+  const links = navLinks(base, role, t);
   return (
     <div className="shell">
       <header className="topbar">
-        <span className="brand">{en.appName}</span>
+        <span className="brand">{t.app.appName}</span>
         <OrgSwitcher current={orgInfo.id} orgs={orgs} allowAnyId={role === "superadmin"} />
-        <NavLinks links={links} label={en.nav.main} />
+        <NavLinks links={links} label={t.app.nav.main} />
         <form action={logoutAction}>
           <button type="submit" className="link-button">
-            {en.nav.signOut}
+            {t.app.nav.signOut}
           </button>
         </form>
       </header>

@@ -1,15 +1,18 @@
+"use client";
+
 import Link from "next/link";
-import { en } from "@/messages/en";
 import type { SessionSummary } from "@/lib/api";
 import { formatDateTime, formatDuration, formatNumber, formatPercent } from "@/lib/format";
+import { useText } from "@/lib/i18n/provider";
+import { enumLabel } from "@/messages/domain";
 import { FlagBadge } from "./FlagBadge";
 import { ScoreValue } from "./ScoringStatus";
 import { TrackingBadge } from "./TrackingQuality";
 
-const c = en.sessions.cols;
-
 export function SessionsTable({ orgId, sessions }: { orgId: string; sessions: SessionSummary[] }) {
-  if (sessions.length === 0) return <p className="muted">{en.sessions.empty}</p>;
+  const t = useText();
+  const c = t.app.sessions.cols;
+  if (sessions.length === 0) return <p className="muted">{t.app.sessions.empty}</p>;
   return (
     <div className="table-wrap">
       <table className="data responsive">
@@ -38,17 +41,17 @@ export function SessionsTable({ orgId, sessions }: { orgId: string; sessions: Se
               <td data-label={c.participant}>{s.participant_token}</td>
               <td data-label={c.flag}><FlagBadge flag={s.attention_flag} /></td>
               <td data-label={c.composite} className="num">
-                <ScoreValue session={s} value={formatNumber(s.composite_score)} />
+                <ScoreValue session={s} value={formatNumber(s.composite_score, 1, t.locale)} />
               </td>
-              <td data-label={c.confidence} className="num">{formatPercent(s.composite_confidence)}</td>
-              <td data-label={c.quality}>{s.quality_verdict}</td>
+              <td data-label={c.confidence} className="num">{formatPercent(s.composite_confidence, t.locale)}</td>
+              <td data-label={c.quality}>{enumLabel(t.locale, "quality_verdict", s.quality_verdict)}</td>
               <td data-label={c.tracking}>
                 <TrackingBadge verdict={s.tracking_verdict} />
-                {s.tracking_accuracy_deg != null ? ` ${en.detail.tracking.deg(s.tracking_accuracy_deg)}` : ""}
+                {s.tracking_accuracy_deg != null ? ` ${t.app.detail.tracking.deg(s.tracking_accuracy_deg)}` : ""}
               </td>
               <td data-label={c.duration} className="num">{formatDuration(s.duration_sec)}</td>
               <td data-label={c.bundle}>{s.bundle_version ?? "-"}</td>
-              <td data-label={c.reviewed}>{s.reviewed ? "Yes" : "No"}</td>
+              <td data-label={c.reviewed}>{s.reviewed ? t.app.common.yes : t.app.common.no}</td>
             </tr>
           ))}
         </tbody>

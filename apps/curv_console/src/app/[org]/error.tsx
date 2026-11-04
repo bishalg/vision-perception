@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { en } from "@/messages/en";
-import { securityErrorMessage } from "@/messages/security";
+import { useText } from "@/lib/i18n/provider";
 
 /** Slug of the 403 a user past their two-step sign-in deadline gets (AUTH-13). */
 const ENROLMENT_REQUIRED = "totp-enrolment-required";
@@ -15,20 +14,21 @@ const ENROLMENT_REQUIRED = "totp-enrolment-required";
  */
 export default function OrgError({ error, reset }: { error: Error & { slug?: string | null }; reset: () => void }) {
   const { org } = useParams<{ org: string }>();
+  const t = useText().app.errors;
   if (error.slug === ENROLMENT_REQUIRED || error.message.includes(ENROLMENT_REQUIRED)) {
     return (
       <div className="panel" role="alert">
-        <h1>{en.errors.title}</h1>
-        <p>{securityErrorMessage(ENROLMENT_REQUIRED, 403)}</p>
-        <Link href={`/${encodeURIComponent(org)}/settings/security?required=1`}>{en.errors.securityLink}</Link>
+        <h1>{t.title}</h1>
+        <p>{t.enrolmentRequired}</p>
+        <Link href={`/${encodeURIComponent(org)}/settings/security?required=1`}>{t.securityLink}</Link>
       </div>
     );
   }
   return (
     <div className="panel" role="alert">
-      <h1>{en.errors.title}</h1>
+      <h1>{t.title}</h1>
       <button type="button" onClick={reset}>
-        {en.errors.retry}
+        {t.retry}
       </button>
     </div>
   );

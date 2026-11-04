@@ -3,14 +3,13 @@
 import { useState, useTransition } from "react";
 import type { Device } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
-import { en } from "@/messages/en";
+import { useText } from "@/lib/i18n/provider";
 
-const t = en.devices;
-const c = t.cols;
+type DevicesText = ReturnType<typeof useText>["app"]["devices"];
 
 export type RevokeFn = (deviceId: string) => Promise<{ ok: boolean }>;
 
-function RevokeButton({ device, revoke }: { device: Device; revoke: RevokeFn }) {
+function RevokeButton({ device, revoke, t }: { device: Device; revoke: RevokeFn; t: DevicesText }) {
   const [confirming, setConfirming] = useState(false);
   const [failed, setFailed] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -46,6 +45,8 @@ function RevokeButton({ device, revoke }: { device: Device; revoke: RevokeFn }) 
 }
 
 export function DevicesTable({ devices, canRevoke, revoke }: { devices: Device[]; canRevoke: boolean; revoke: RevokeFn }) {
+  const t = useText().app.devices;
+  const c = t.cols;
   if (devices.length === 0) return <p className="muted">{t.empty}</p>;
   return (
     <div className="table-wrap">
@@ -77,7 +78,7 @@ export function DevicesTable({ devices, canRevoke, revoke }: { devices: Device[]
                 </span>
               </td>
               {canRevoke ? (
-                <td data-label={c.actions}>{d.revoked_at ? null : <RevokeButton device={d} revoke={revoke} />}</td>
+                <td data-label={c.actions}>{d.revoked_at ? null : <RevokeButton device={d} revoke={revoke} t={t} />}</td>
               ) : null}
             </tr>
           ))}

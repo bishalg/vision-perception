@@ -6,13 +6,15 @@ import { authedApi, currentRole } from "@/lib/auth/server";
 import { parseReviewQuery, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound, requestTime } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
-import { en } from "@/messages/en";
+import { getText } from "@/lib/i18n/server";
+import { enumLabel } from "@/messages/domain";
 import { triageAction } from "./actions";
 
-export const metadata: Metadata = { title: en.review.title };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getText()).app.review.title };
+}
 
 const PAGE_SIZE = 25;
-const t = en.review;
 
 export default async function ReviewPage({
   params,
@@ -22,6 +24,8 @@ export default async function ReviewPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { org } = await params;
+  const text = await getText();
+  const t = text.app.review;
   const query = parseReviewQuery(await searchParams);
   const api = await authedApi();
   const role = await currentRole();
@@ -57,7 +61,7 @@ export default async function ReviewPage({
           {t.filters.status}
           <select name="status" defaultValue={statusParam}>
             {REVIEW_STATUSES.map((s) => (
-              <option key={s} value={s}>{t.statuses[s]}</option>
+              <option key={s} value={s}>{enumLabel(text.locale, "review_status", s)}</option>
             ))}
             <option value="all">{t.filters.any}</option>
           </select>
@@ -67,7 +71,7 @@ export default async function ReviewPage({
           <select name="reason" defaultValue={query.reason ?? ""}>
             <option value="">{t.filters.any}</option>
             {REVIEW_REASONS.map((r) => (
-              <option key={r} value={r}>{t.reasons[r]}</option>
+              <option key={r} value={r}>{enumLabel(text.locale, "review_reason", r)}</option>
             ))}
           </select>
         </label>
@@ -84,14 +88,14 @@ export default async function ReviewPage({
         filterStatus={query.status}
         triage={triage}
       />
-      <nav className="pagination" aria-label="Pagination">
+      <nav className="pagination" aria-label={text.app.common.pagination}>
         <span className="muted">{t.showing(page.items.length, page.total)}</span>
         {query.cursor ? (
-          <Link href={`${base}${toSearch({ status: statusParam, reason: query.reason })}`}>{en.sessions.first}</Link>
+          <Link href={`${base}${toSearch({ status: statusParam, reason: query.reason })}`}>{text.app.common.first}</Link>
         ) : null}
         {page.next_cursor ? (
           <Link rel="next" href={`${base}${toSearch({ status: statusParam, reason: query.reason, cursor: page.next_cursor })}`}>
-            {en.sessions.next}
+            {text.app.common.next}
           </Link>
         ) : null}
       </nav>
