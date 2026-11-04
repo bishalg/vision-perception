@@ -1,5 +1,5 @@
 import type { Trace } from "@/lib/research/preview";
-import { researchText, type ResearchMessages } from "@/messages/research";
+import type { ResearchMessages } from "@/messages/research";
 import r from "./research.module.css";
 
 export interface PlotRect {
@@ -34,12 +34,12 @@ export function ScanpathPlot({
   published,
   draft,
   aois = [],
-  text = researchText,
+  text,
 }: {
   published: Trace | null;
   draft: Trace | null;
   aois?: PlotRect[];
-  text?: ResearchMessages;
+  text: ResearchMessages;
 }) {
   const line = (t: Trace | null) => (t ? thin(t.points).map((p) => `${px(p.x)},${py(p.y)}`).join(" ") : "");
   return (

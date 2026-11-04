@@ -5,13 +5,16 @@ import { loadDraftContext } from "@/components/config/draftContext";
 import type { NormativeBaselineSet } from "@/lib/api/config";
 import { currentRole } from "@/lib/auth/server";
 import { parseBaselines } from "@/lib/configDocs";
+import { getText } from "@/lib/i18n/server";
 import { can } from "@/lib/permissions";
-import { configText } from "@/messages/config";
 import { createDocDraftAction, loadSandboxSessionsAction } from "../../docActions";
 
-const t = configText;
 
-export const metadata: Metadata = { title: t.baselines.editorTitle };
+export async function generateMetadata(): Promise<Metadata> {
+  const tx = await getText();
+  const t = tx.config;
+  return { title: t.baselines.editorTitle };
+}
 
 const EMPTY: NormativeBaselineSet = { schemaVersion: "1.0.0", status: "draft", provenance: null, ageBrackets: [], videos: {} };
 
@@ -23,6 +26,8 @@ export default async function NewBaselinesDraftPage({
   params: Promise<{ org: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const tx = await getText();
+  const t = tx.config;
   const { org } = await params;
   const base = `/${encodeURIComponent(org)}/config/baselines`;
   if (!can(await currentRole(), "config.manage")) {

@@ -21,7 +21,7 @@ import { MOCK_RESEARCH_IDS } from "@/lib/api/mock/research";
 import { baselineRange, driftThresholds } from "@/lib/research/baselines";
 import { describeCohort } from "@/lib/research/cohort";
 import { snapshotOf, type RunSnapshot } from "@/lib/research/runs";
-import { researchMessages } from "@/messages/research";
+import { researchMessages, researchText } from "@/messages/research";
 
 const refresh = vi.fn();
 const push = vi.fn();
@@ -147,7 +147,7 @@ describe("useJobPoll", () => {
 
 describe("TransitionMatrix", () => {
   it("renders n < k for a suppressed cell and never 0", () => {
-    render(<TransitionMatrix caption="Changes" k={K} transitions={[["green", "green", 17], ["yellow", "green", null], ["yellow", "yellow", 12]]} />);
+    render(<TransitionMatrix text={researchText} caption="Changes" k={K} transitions={[["green", "green", 17], ["yellow", "green", null], ["yellow", "yellow", 12]]} />);
     const cells = screen.getAllByTestId("transition-cell").map((c) => c.textContent);
     expect(cells).toContain("n < 12");
     expect(cells).toContain("17");
@@ -162,25 +162,25 @@ describe("Histogram and DeltaBars", () => {
   const dist = { n: 30, suppressed: false, mean: 0.4, hist: { edges: [0, 0.25, 0.5, 0.75, 1], counts: [3, 12, 10, 5] } };
 
   it("shades the baseline range behind the bars", () => {
-    const { rerender } = render(<Histogram label="Dwell" dist={dist} k={K} baseline={{ low: 0.25, high: 0.5, expected: 0.38 }} />);
+    const { rerender } = render(<Histogram text={researchText} label="Dwell" dist={dist} k={K} baseline={{ low: 0.25, high: 0.5, expected: 0.38 }} />);
     const band = screen.getByTestId("baseline-range");
     expect(Number(band.getAttribute("width"))).toBeGreaterThan(0);
     expect(screen.getAllByTestId("hist-bar")).toHaveLength(4);
     expect(screen.getByText(en.charts.baseline("0.25", "0.50"))).toBeTruthy();
-    rerender(<Histogram label="Dwell" dist={dist} k={K} baseline={null} />);
+    rerender(<Histogram text={researchText} label="Dwell" dist={dist} k={K} baseline={null} />);
     expect(screen.queryByTestId("baseline-range")).toBeNull();
     expect(screen.getByText(en.charts.noBaseline)).toBeTruthy();
   });
 
   it("shows n < k and no bars for a suppressed distribution", () => {
-    render(<Histogram label="Dwell" dist={{ n: null, suppressed: true, hist: null }} k={K} baseline={{ low: 0, high: 1, expected: null }} />);
+    render(<Histogram text={researchText} label="Dwell" dist={{ n: null, suppressed: true, hist: null }} k={K} baseline={{ low: 0, high: 1, expected: null }} />);
     expect(screen.getByText("n < 12")).toBeTruthy();
     expect(screen.queryAllByTestId("hist-bar")).toHaveLength(0);
     expect(screen.queryByTestId("baseline-range")).toBeNull();
   });
 
   it("DeltaBars draws one bar per shown band and lists a suppressed band as n < k", () => {
-    render(<DeltaBars label="Composite" k={K} rows={[{ label: "24-35", delta: { n: 30, mean: 0.03, ci95_mean: [0.01, 0.05] } }, { label: "36-47", delta: { n: null, suppressed: true, mean: null } }]} />);
+    render(<DeltaBars text={researchText} label="Composite" k={K} rows={[{ label: "24-35", delta: { n: 30, mean: 0.03, ci95_mean: [0.01, 0.05] } }, { label: "36-47", delta: { n: null, suppressed: true, mean: null } }]} />);
     expect(screen.getAllByTestId("delta-bar")).toHaveLength(1);
     expect(screen.getByTestId("delta-suppressed").textContent).toBe("36-47: n < 12");
   });
@@ -219,7 +219,7 @@ describe("mock runs and results", () => {
     const api = client();
     const run = await api.getAnalysisRun(MOCK_RESEARCH_IDS.runSucceeded);
     const cfg = await api.getEffectiveConfig(MOCK_ORG_ID);
-    render(<RunResults summary={run.summary!} baselines={cfg.normative_baselines.body} />);
+    render(<RunResults text={researchText} summary={run.summary!} baselines={cfg.normative_baselines.body} />);
     const suppressedFlags = screen.getAllByTestId("flag-count").filter((c) => c.textContent === "n < 12");
     expect(suppressedFlags.length).toBe(4);
     expect(screen.getAllByTestId("flag-count").map((c) => c.textContent)).not.toContain("0");
@@ -232,7 +232,7 @@ describe("mock runs and results", () => {
   it("per-session rows never show a token, MRN or device model", async () => {
     const api = client();
     const rows = (await api.listAnalysisRunSessions(MOCK_RESEARCH_IDS.runSucceeded, { limit: 5 })).items;
-    render(<RunSessionsTable rows={rows} />);
+    render(<RunSessionsTable text={researchText} rows={rows} />);
     expect(screen.getAllByRole("row")).toHaveLength(6);
     expect(Object.keys(rows[0]!)).not.toContain("participant_token");
   });
@@ -352,7 +352,7 @@ describe("RunStatus", () => {
 describe("cohorts", () => {
   it("CohortPreview shows n < k for suppressed counts, never 0", () => {
     render(
-      <CohortPreview preview={{ n: null, by_age_band: [{ band: "36-47", n: null, frames_n: null, suppressed: true }, { band: "24-35", n: 30, frames_n: 10, suppressed: false }], by_level: { frames: 12, score: 0 }, excluded: { no_consent: 1, withdrawn: 0, unscorable: 0, no_age: 0, quality: 0 }, small_cell_k: K }} />,
+      <CohortPreview text={researchText} preview={{ n: null, by_age_band: [{ band: "36-47", n: null, frames_n: null, suppressed: true }, { band: "24-35", n: 30, frames_n: 10, suppressed: false }], by_level: { frames: 12, score: 0 }, excluded: { no_consent: 1, withdrawn: 0, unscorable: 0, no_age: 0, quality: 0 }, small_cell_k: K }} />,
     );
     const view = screen.getByTestId("cohort-preview");
     expect(view.textContent).toContain("36-47: n < 12");

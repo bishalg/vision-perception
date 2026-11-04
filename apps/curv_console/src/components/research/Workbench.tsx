@@ -5,9 +5,10 @@ import { useState, useTransition } from "react";
 import type { PreviewRecord } from "@/app/[org]/research/actions";
 import { DraftChecks } from "./DraftChecks";
 import type { Cohort, CohortPreview, Experiment, ParamRegistry } from "@/lib/api/research";
+import { useText } from "@/lib/i18n/provider";
 import { paramRegistry as bundledRegistry, sameValue, type ProfileDoc } from "@/lib/research/registry";
 import { failureText, fieldReasons, type ResearchResult } from "@/lib/research/result";
-import { researchText, type ResearchMessages } from "@/messages/research";
+import type { ResearchMessages } from "@/messages/research";
 import { ExperimentHeader } from "./ExperimentHeader";
 import { PreviewPanel } from "./PreviewPanel";
 import { RegistryForm } from "./RegistryForm";
@@ -43,7 +44,7 @@ export function Workbench({
   canRun,
   canPromote,
   actions,
-  text = researchText,
+  text: textProp,
 }: {
   orgId: string;
   experiment: Experiment;
@@ -59,6 +60,8 @@ export function Workbench({
   actions: WorkbenchActions;
   text?: ResearchMessages;
 }) {
+  const bundle = useText();
+  const text = textProp ?? bundle.research;
   const w = text.workbench;
   const [name, setName] = useState(experiment.name);
   const [description, setDescription] = useState(experiment.description ?? "");

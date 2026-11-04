@@ -4,8 +4,9 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { CohortDefinition, CohortPreview as Preview } from "@/lib/api/research";
 import { QUALITY_VERDICTS, TRACKING_VERDICTS } from "@/lib/api/types";
+import { useText } from "@/lib/i18n/provider";
 import { failureText, type ResearchResult } from "@/lib/research/result";
-import { researchText, type ResearchMessages } from "@/messages/research";
+import type { ResearchMessages } from "@/messages/research";
 import { CohortPreview } from "./CohortPreview";
 import r from "./research.module.css";
 
@@ -19,13 +20,15 @@ export function CohortForm({
   orgId,
   create,
   preview,
-  text = researchText,
+  text: textProp,
 }: {
   orgId: string;
   create: (input: { name: string; definition: CohortDefinition }) => Promise<ResearchResult<{ id: string }>>;
   preview: (definition: CohortDefinition) => Promise<ResearchResult<{ preview: Preview }>>;
   text?: ResearchMessages;
 }) {
+  const bundle = useText();
+  const text = textProp ?? bundle.research;
   const t = text.cohorts;
   const router = useRouter();
   const [name, setName] = useState("");

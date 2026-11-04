@@ -4,15 +4,18 @@ import { BundleCompose } from "@/components/config/BundleCompose";
 import { CONFIG_DOCUMENT_KINDS, type ConfigDocumentKind } from "@/lib/api/catalog";
 import { authedApi, currentRole } from "@/lib/auth/server";
 import { formatDateTime } from "@/lib/format";
+import { getText } from "@/lib/i18n/server";
 import { parseCursor, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
-import { configText } from "@/messages/config";
 import { composeBundleAction } from "../docActions";
 
-const t = configText.bundles;
 
-export const metadata: Metadata = { title: t.title };
+export async function generateMetadata(): Promise<Metadata> {
+  const tx = await getText();
+  const t = tx.config.bundles;
+  return { title: t.title };
+}
 
 const SEGMENT: Record<ConfigDocumentKind, string> = {
   stimulus_catalog: "catalog",
@@ -28,13 +31,15 @@ export default async function BundlesPage({
   params: Promise<{ org: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const tx = await getText();
+  const t = tx.config.bundles;
   const { org } = await params;
   const role = await currentRole();
   if (!can(role, "config.read")) {
     return (
       <>
         <h1>{t.title}</h1>
-        <p className="muted">{configText.denied}</p>
+        <p className="muted">{tx.config.denied}</p>
       </>
     );
   }
@@ -102,7 +107,7 @@ export default async function BundlesPage({
       ) : (
         <p className="muted">{t.empty}</p>
       )}
-      <nav className="pagination" aria-label="Pagination">
+      <nav className="pagination" aria-label={tx.config.pagination}>
         {cursor ? <Link href={`${o}/bundles`}>{t.first}</Link> : null}
         {page.next_cursor ? <Link rel="next" href={`${o}/bundles${toSearch({ cursor: page.next_cursor })}`}>{t.next}</Link> : null}
       </nav>

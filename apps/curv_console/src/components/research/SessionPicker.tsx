@@ -1,7 +1,8 @@
 "use client";
 
 import { formatDateTime } from "@/lib/format";
-import { researchText, type ResearchMessages } from "@/messages/research";
+import { useText } from "@/lib/i18n/provider";
+import type { ResearchMessages } from "@/messages/research";
 import r from "./research.module.css";
 
 export interface PickerSession {
@@ -25,7 +26,7 @@ export function SessionPicker({
   onAge,
   onDefaultAge,
   max,
-  text = researchText,
+  text: textProp,
 }: {
   sessions: PickerSession[];
   selected: ReadonlySet<string>;
@@ -37,6 +38,8 @@ export function SessionPicker({
   max: number;
   text?: ResearchMessages;
 }) {
+  const bundle = useText();
+  const text = textProp ?? bundle.research;
   const p = text.preview;
   const full = selected.size >= max;
   return (

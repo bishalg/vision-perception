@@ -2,16 +2,21 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CohortForm } from "@/components/research/CohortForm";
 import { currentRole } from "@/lib/auth/server";
+import { getText } from "@/lib/i18n/server";
 import { can } from "@/lib/permissions";
-import { researchText } from "@/messages/research";
 import { previewCohortAction } from "../../actions";
 import { createCohortAction } from "../actions";
 
-const t = researchText.cohorts;
 
-export const metadata: Metadata = { title: t.newTitle };
+export async function generateMetadata(): Promise<Metadata> {
+  const tx = await getText();
+  const t = tx.research.cohorts;
+  return { title: t.newTitle };
+}
 
 export default async function NewCohortPage({ params }: { params: Promise<{ org: string }> }) {
+  const tx = await getText();
+  const t = tx.research.cohorts;
   const { org } = await params;
   const back = `/${encodeURIComponent(org)}/research/cohorts`;
   const allowed = can(await currentRole(), "analysis.run");

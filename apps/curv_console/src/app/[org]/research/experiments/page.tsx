@@ -2,17 +2,22 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { authedApi, currentRole } from "@/lib/auth/server";
 import { formatDateTime } from "@/lib/format";
+import { getText } from "@/lib/i18n/server";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
-import { researchText } from "@/messages/research";
 
-const t = researchText.experiments;
 
-export const metadata: Metadata = { title: t.title };
+export async function generateMetadata(): Promise<Metadata> {
+  const tx = await getText();
+  const t = tx.research.experiments;
+  return { title: t.title };
+}
 
 const PAGE = 50;
 
 export default async function ExperimentsPage({ params }: { params: Promise<{ org: string }> }) {
+  const tx = await getText();
+  const t = tx.research.experiments;
   const { org } = await params;
   const role = await currentRole();
   const api = await authedApi();

@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { TotpResetDialog, UsersTable, totpResetErrorText, type TotpResetResult } from "@/components/UsersAdmin";
 import { ROLES, type OrgUser, type Role } from "@/lib/api";
 import { createLiveClient } from "@/lib/api/live";
+import { adminMessages } from "@/messages/admin";
 import { createMockClient, MOCK_ORG_ID, MOCK_PASSWORD } from "@/lib/api/mock";
 import { MOCK_STEP_UP_PASSWORD } from "@/lib/api/mock/admin";
 import { assignableRoles, can } from "@/lib/permissions";
@@ -99,8 +100,8 @@ describe("TotpResetDialog (UI-3)", () => {
   });
 
   it("error text falls back by status", () => {
-    expect(totpResetErrorText({ ok: false, slug: null, status: 0 })).toMatch(/unavailable/);
-    expect(totpResetErrorText({ ok: false, slug: null, status: 404 })).toMatch(/not found/);
+    expect(totpResetErrorText({ ok: false, slug: null, status: 0 }, adminMessages.en.users.totpReset)).toMatch(/unavailable/);
+    expect(totpResetErrorText({ ok: false, slug: null, status: 404 }, adminMessages.en.users.totpReset)).toMatch(/not found/);
   });
 
   it("from the table: the success line names the user", async () => {

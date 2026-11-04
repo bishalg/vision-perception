@@ -4,8 +4,9 @@ import { useEffect } from "react";
 import s from "@/components/catalog/catalog.module.css";
 import { useCoreCheck } from "@/components/config/DraftShell";
 import { validateScoringProfile } from "@/lib/asd/ops";
+import { useText } from "@/lib/i18n/provider";
 import type { ProfileDoc } from "@/lib/research/registry";
-import { researchText, type ResearchMessages } from "@/messages/research";
+import type { ResearchMessages } from "@/messages/research";
 
 export interface CoreProblems {
   count: number;
@@ -19,12 +20,14 @@ export interface CoreProblems {
 export function DraftChecks({
   draft,
   onResult,
-  text = researchText,
+  text: textProp,
 }: {
   draft: ProfileDoc;
   onResult: (p: CoreProblems) => void;
   text?: ResearchMessages;
 }) {
+  const bundle = useText();
+  const text = textProp ?? bundle.research;
   const check = useCoreCheck(draft, validateScoringProfile);
   const w = text.workbench;
   useEffect(() => {

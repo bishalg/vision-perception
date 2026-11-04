@@ -4,25 +4,25 @@ import { useState, useTransition } from "react";
 import s from "@/components/catalog/catalog.module.css";
 import { catalogFailureText, type CatalogFailure, type CatalogResult } from "@/components/catalog/types";
 import type { ConfigBundleSummary } from "@/lib/api/config";
-import { configText } from "@/messages/config";
+import { useText } from "@/lib/i18n/provider";
+import type { Messages } from "@/lib/i18n/messages";
 
-const t = configText.bundles;
 
 /** `name=true` lines -> flags; the first bad line is returned as an error. */
-export function parseFeatureFlags(text: string): { flags: Record<string, boolean> } | { error: string } {
+export function parseFeatureFlags(text: string, flagsInvalid: (line: string) => string): { flags: Record<string, boolean> } | { error: string } {
   const flags: Record<string, boolean> = {};
   for (const raw of text.split("\n")) {
     const line = raw.trim();
     if (!line) continue;
     const m = /^([A-Za-z0-9_.-]{1,100})\s*=\s*(true|false)$/.exec(line);
-    if (!m) return { error: t.flagsInvalid(line) };
+    if (!m) return { error: flagsInvalid(line) };
     flags[m[1]!] = m[2] === "true";
   }
   return { flags };
 }
 
-function failureText(f: CatalogFailure): string {
-  return (f.slug && configText.errors[f.slug]) || catalogFailureText(f);
+function failureText(f: CatalogFailure, tx: Messages): string {
+  return (f.slug && tx.config.errors[f.slug]) || catalogFailureText(f, tx.catalog.errors);
 }
 
 /**
@@ -39,17 +39,19 @@ export function BundleCompose({
   superadmin: boolean;
   compose: (input: { global: boolean; featureFlags: Record<string, boolean> }) => Promise<CatalogResult<{ bundle: ConfigBundleSummary }>>;
 }) {
+  const tx = useText();
+  const t = tx.config.bundles;
   const [global, setGlobal] = useState(false);
   const [flagsText, setFlagsText] = useState("");
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [pending, start] = useTransition();
-  const parsed = parseFeatureFlags(flagsText);
+  const parsed = parseFeatureFlags(flagsText, t.flagsInvalid);
 
   function submit() {
     if ("error" in parsed) return;
     start(async () => {
       const r = await compose({ global: superadmin && global, featureFlags: parsed.flags });
-      setMessage(r.ok ? { ok: true, text: t.composed(r.bundle.bundle_version) } : { ok: false, text: failureText(r) });
+      setMessage(r.ok ? { ok: true, text: t.composed(r.bundle.bundle_version) } : { ok: false, text: failureText(r, tx) });
     });
   }
 

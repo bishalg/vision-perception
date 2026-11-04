@@ -24,7 +24,7 @@ import { clampParam, diffParams, getAt, groupOf, groupRegistry, paramRegistry, s
 import { MAX_SWEEP_VALUES, defaultSweep, sweepValues } from "@/lib/research/sweep";
 import { LocaleProvider } from "@/lib/i18n/provider";
 import { paramText } from "@/lib/research/paramText";
-import { researchMessages } from "@/messages/research";
+import { researchMessages, researchText } from "@/messages/research";
 import { stubCore, stubModule } from "./researchStub";
 
 // The registry form has 88 controls; typing into it under jsdom is slow.
@@ -307,7 +307,7 @@ describe("core wrappers", () => {
 describe("charts", () => {
   it("draws the scanpath as plain SVG with both traces, fixations and areas (no script, no style attribute)", () => {
     const trace = { points: [{ x: 0.1, y: 0.1 }, { x: 0.5, y: 0.5 }], fixations: [{ x: 0.5, y: 0.5 }] };
-    const { container } = render(<ScanpathPlot published={trace} draft={trace} aois={[{ name: "eyes", xMin: 0.4, yMin: 0.4, xMax: 0.6, yMax: 0.6 }]} />);
+    const { container } = render(<ScanpathPlot text={researchText} published={trace} draft={trace} aois={[{ name: "eyes", xMin: 0.4, yMin: 0.4, xMax: 0.6, yMax: 0.6 }]} />);
     const svg = screen.getByRole("img", { name: en.preview.scanpathLabel });
     expect(svg.querySelectorAll("polyline")).toHaveLength(2);
     expect(svg.querySelectorAll("circle")).toHaveLength(2);
@@ -316,7 +316,7 @@ describe("charts", () => {
   });
 
   it("marks the published value on the sweep curve", () => {
-    const { container } = render(<SweepCurve points={[{ x: 0.5, y: 0.5 }, { x: 0.65, y: 0.5 }, { x: 0.8, y: null }]} published={0.65} label="Green floor" />);
+    const { container } = render(<SweepCurve text={researchText} points={[{ x: 0.5, y: 0.5 }, { x: 0.65, y: 0.5 }, { x: 0.8, y: null }]} published={0.65} label="Green floor" />);
     expect(screen.getByRole("img", { name: en.sweep.curve("Green floor") })).toBeInTheDocument();
     expect(container.querySelectorAll("line").length).toBe(3);
     expect(container.querySelector("script, [style]")).toBeNull();

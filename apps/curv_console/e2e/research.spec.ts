@@ -265,3 +265,13 @@ test("an age-profile run shows the shares under both baselines and hides the sma
   await expect(shown.getByTestId("age-row")).toContainText("30% on target, 50% monitor, 20% atypical");
   await expect(section.getByRole("region", { name: "Age band 36-47 (36-47 months)" }).getByTestId("age-band-suppressed")).toHaveText("n < 12");
 });
+
+test("L.1d: a researcher whose locale is ne reads the research page in Nepali (lang=ne-NP)", async ({ page }) => {
+  await login(page, "researcher+ne@example.org");
+  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  const org = new URL(page.url()).pathname.split("/")[1]!;
+  await page.goto(`/${org}/research`);
+  await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");
+  await expect(page.getByRole("heading", { name: "अनुसन्धान", exact: true })).toBeVisible();
+  await expect(page.getByText("This is not a diagnostic tool.")).toBeVisible();
+});

@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import { DocVersionsPage } from "@/components/config/DocVersions";
 import { currentRole } from "@/lib/auth/server";
-import { configText } from "@/messages/config";
+import { getText } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: configText.baselines.title };
+export async function generateMetadata(): Promise<Metadata> {
+  const tx = await getText();
+  return { title: tx.config.baselines.title };
+}
 
 export default async function BaselinesPage({
   params,
@@ -12,6 +15,7 @@ export default async function BaselinesPage({
   params: Promise<{ org: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const tx = await getText();
   const { org } = await params;
   const [role, query] = [await currentRole(), await searchParams];
   return (
@@ -19,8 +23,8 @@ export default async function BaselinesPage({
       org={org}
       kind="normative_baselines"
       segment="baselines"
-      title={configText.baselines.title}
-      intro={configText.baselines.intro}
+      title={tx.config.baselines.title}
+      intro={tx.config.baselines.intro}
       role={role}
       searchParams={query}
     />

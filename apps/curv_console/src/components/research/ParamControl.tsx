@@ -3,8 +3,8 @@
 import { useId, useState } from "react";
 import type { ParamKind, ParamSpec } from "@/lib/api/research";
 import { clampParam, formatValue, isNumeric, sameValue, stepOf } from "@/lib/research/registry";
-import { researchText, type ResearchMessages } from "@/messages/research";
-import { useLocale } from "@/lib/i18n/provider";
+import type { ResearchMessages } from "@/messages/research";
+import { useLocale, useText } from "@/lib/i18n/provider";
 import { paramText } from "@/lib/research/paramText";
 import r from "./research.module.css";
 
@@ -198,7 +198,9 @@ function AgeBandsEditor({
  * marker with a reset link, the published value when it differs, and the `reprocess` badge. A `capture_only` knob is
  * disabled in the preview context.
  */
-export function ParamControl({ spec, value, published, onChange, context, error, text = researchText }: ParamControlProps) {
+export function ParamControl({ spec, value, published, onChange, context, error, text: textProp }: ParamControlProps) {
+  const bundle = useText();
+  const text = textProp ?? bundle.research;
   const uid = useId();
   const inputId = `param-${spec.id}`;
   const helpId = `${uid}-help`;

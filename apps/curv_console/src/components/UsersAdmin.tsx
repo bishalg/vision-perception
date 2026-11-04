@@ -3,12 +3,10 @@
 import { useActionState, useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import { MAX_TOTP_RESET_REASON_CHARS, MIN_TOTP_RESET_REASON_CHARS, type OrgUser, type Role } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
+import { useText } from "@/lib/i18n/provider";
+import type { Messages } from "@/lib/i18n/messages";
 import { can, canEditUserRole } from "@/lib/permissions";
-import { adminText } from "@/messages/admin";
 
-const t = adminText.users;
-const c = t.cols;
-const tr = t.totpReset;
 
 export type UserActionResult =
   | { ok: true; email: string }
@@ -21,7 +19,7 @@ export type UpdateUserFn = (userId: string, formData: FormData) => Promise<UserA
 export type TotpResetResult = { ok: true } | { ok: false; slug: string | null; status: number; retryAfter?: number };
 export type ResetTotpFn = (userId: string, formData: FormData) => Promise<TotpResetResult>;
 
-export function totpResetErrorText(r: Extract<TotpResetResult, { ok: false }>): string {
+export function totpResetErrorText(r: Extract<TotpResetResult, { ok: false }>, tr: Messages["admin"]["users"]["totpReset"]): string {
   if (r.slug && tr.errors[r.slug]) return tr.errors[r.slug]!;
   if (r.status === 429) return tr.errors["rate-limited"]!;
   if (r.status === 403) return tr.errors.forbidden!;
@@ -46,6 +44,8 @@ export function TotpResetDialog({
   onDone: () => void;
   onClose: () => void;
 }) {
+  const tx = useText();
+  const tr = tx.admin.users.totpReset;
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<Extract<TotpResetResult, { ok: false }> | null>(null);
   const first = useRef<HTMLTextAreaElement>(null);
@@ -109,7 +109,7 @@ export function TotpResetDialog({
           </label>
           <p className="muted">{tr.secretNote}</p>
           {failure ? (
-            <p role="alert" className="error">{tr.failed} {totpResetErrorText(failure)}</p>
+            <p role="alert" className="error">{tr.failed} {totpResetErrorText(failure, tr)}</p>
           ) : null}
           <div className="dialog-actions">
             <button type="submit" disabled={pending}>{pending ? tr.submitting : tr.submit}</button>
@@ -121,12 +121,14 @@ export function TotpResetDialog({
   );
 }
 
-function errorText(r: Extract<UserActionResult, { ok: false }>): string {
+function errorText(r: Extract<UserActionResult, { ok: false }>, t: Messages["admin"]["users"]): string {
   const base = (r.slug && t.errors[r.slug]) || (r.status === 0 ? t.errors.unavailable : null);
   return [base, r.params].filter(Boolean).join(" ") || `status ${r.status}`;
 }
 
 function EditRow({ user, roles, update, onDone }: { user: OrgUser; roles: Role[]; update: UpdateUserFn; onDone: () => void }) {
+  const tx = useText();
+  const t = tx.admin.users;
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   // Keep the current role selectable even when the actor could not grant it (the backend then rejects a change).
@@ -139,7 +141,7 @@ function EditRow({ user, roles, update, onDone }: { user: OrgUser; roles: Role[]
         startTransition(async () => {
           const res = await update(user.id, fd);
           if (res.ok) onDone();
-          else setError(`${t.updateFailed} ${errorText(res)}`);
+          else setError(`${t.updateFailed} ${errorText(res, t)}`);
         })
       }
     >
@@ -178,6 +180,10 @@ function Row({
   /** Present when the actor may reset this user's two-step sign-in (not self, not a higher rank). */
   resetTotp?: ResetTotpFn;
 }) {
+  const tx = useText();
+  const t = tx.admin.users;
+  const c = tx.admin.users.cols;
+  const tr = tx.admin.users.totpReset;
   const [editing, setEditing] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [resetDone, setResetDone] = useState(false);
@@ -242,6 +248,9 @@ export function UsersTable({
   /** TRS-3: the reset action, passed only to `user.totp_reset` roles. */
   resetTotp?: ResetTotpFn;
 }) {
+  const tx = useText();
+  const t = tx.admin.users;
+  const c = tx.admin.users.cols;
   if (users.length === 0) return <p className="muted">{t.empty}</p>;
   // Same rank rule as editing: never yourself, never a role above yours (the backend answers totp-reset-forbidden).
   const mayReset = (u: OrgUser) =>
@@ -282,6 +291,8 @@ export function UsersTable({
 type CreateState = UserActionResult | null;
 
 export function CreateUserForm({ create, roles }: { create: UserAction; roles: Role[] }) {
+  const tx = useText();
+  const t = tx.admin.users;
   const [state, action, pending] = useActionState<CreateState, FormData>((_prev, fd) => create(fd), null);
   const ct = t.create;
   return (
@@ -317,7 +328,7 @@ export function CreateUserForm({ create, roles }: { create: UserAction; roles: R
       </div>
       {state?.ok ? <p role="status">{ct.created(state.email)}</p> : null}
       {state && !state.ok ? (
-        <p role="alert" className="error">{ct.failed} {errorText(state)}</p>
+        <p role="alert" className="error">{ct.failed} {errorText(state, t)}</p>
       ) : null}
     </form>
   );

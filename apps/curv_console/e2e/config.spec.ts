@@ -118,3 +118,12 @@ test("baselines editor: the Rust core names a clip without segments", async ({ p
     page.getByRole("navigation", { name: "Clip list" }).getByRole("button", { name: /stim_99_new_clip_6s/ }),
   ).toContainText("has problems");
 });
+
+test("L.1d: a user whose locale is ne reads the config bundles page in Nepali (lang=ne-NP)", async ({ page }) => {
+  await login(page, "demo+ne@example.org");
+  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  const org = new URL(page.url()).pathname.split("/")[1]!;
+  await page.goto(`/${org}/config/bundles`);
+  await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");
+  await expect(page.getByRole("heading", { name: "कन्फिग बन्डलहरू" })).toBeVisible();
+});

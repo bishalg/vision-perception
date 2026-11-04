@@ -11,7 +11,8 @@ export type CatalogFailure = {
 
 export type CatalogResult<T = object> = ({ ok: true } & T) | CatalogFailure;
 
-export function catalogFailureText(f: CatalogFailure): string {
-  const base = catalogErrorMessage(f.slug, f.status);
+/** `errs` is `t.catalog.errors` of the caller's locale (English when omitted). */
+export function catalogFailureText(f: CatalogFailure, errs?: Record<string, string>): string {
+  const base = catalogErrorMessage(f.slug, f.status, errs);
   return f.detail && f.slug !== "validation-failed" ? `${base} (${f.detail})` : base;
 }

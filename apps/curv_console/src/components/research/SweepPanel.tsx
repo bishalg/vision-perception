@@ -1,7 +1,7 @@
 import { formatPercent } from "@/lib/format";
 import { formatValue } from "@/lib/research/registry";
 import { gridKey, gridLayout, isPublishedCell, orderedCells, shadeStep, type SweepCell, type SweepSummary } from "@/lib/research/run-sweep";
-import { researchText, type ResearchMessages } from "@/messages/research";
+import type { ResearchMessages } from "@/messages/research";
 import type { Locale } from "@/lib/i18n/types";
 import { paramText } from "@/lib/research/paramText";
 import r from "./research.module.css";
@@ -20,7 +20,7 @@ type Quantity = { label: string; value: (c: SweepCell) => number | null | undefi
  * cell, the published cell outlined, hidden cells grey). Every cell is also in a table. All numbers are the Rust job's;
  * a suppressed cell (PRV-1) shows "n < k", never a number.
  */
-export function SweepPanel({ sweep, k, text = researchText, locale = "en" }: { sweep: SweepSummary; k: number; text?: ResearchMessages; locale?: Locale }) {
+export function SweepPanel({ sweep, k, text, locale = "en" }: { sweep: SweepSummary; k: number; text: ResearchMessages; locale?: Locale }) {
   const t = text.analysis;
   const label = (id: string) => paramText(locale, id).label;
   const cells = orderedCells(sweep);
@@ -181,9 +181,10 @@ function SweepTable({
         <tbody>
           {cells.map((c) => {
             const pub = isPublishedCell(sweep, c);
+            const rowLabel = `${c.values.map(formatValue).join(", ")}${pub ? ` (${t.publishedRow})` : ""}`;
             return (
               <tr key={c.values.join("|")} data-published={pub || undefined}>
-                <th scope="row">{`${c.values.map(formatValue).join(", ")}${pub ? ` (${t.publishedRow})` : ""}`}</th>
+                <th scope="row">{rowLabel}</th>
                 <td className="num">{c.n == null ? hidden : c.n}</td>
                 <td className="num">{rate(c, "green")}</td>
                 <td className="num">{rate(c, "yellow")}</td>

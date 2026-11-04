@@ -1,6 +1,6 @@
 /** User-visible strings for the stimulus catalog pages and editor (WP-C.4). Merged next to `en` by import. */
 import type { ConfigDocumentStatus, ConfigTransition } from "@/lib/api/catalog";
-import { researchText } from "./research";
+import { researchMessages, researchText } from "./research";
 import type { Widen } from "@/lib/i18n/types";
 
 const errors: Record<string, string> = {
@@ -19,17 +19,20 @@ const errors: Record<string, string> = {
   fallback: "The request failed. Try again.",
 };
 
-export function catalogErrorMessage(slug: string | null, status: number): string {
-  if (slug && errors[slug]) return errors[slug];
-  if (status === 403) return errors.forbidden!;
-  if (status === 404) return errors["not-found"]!;
-  if (status === 409) return errors.conflict!;
-  if (status === 429) return errors["rate-limited"]!;
-  if (status === 0) return errors.unavailable!;
-  return errors.fallback!;
+/** The server-error sentence for a failed catalog call; `errs` is `t.catalog.errors` of the caller's locale. */
+export function catalogErrorMessage(slug: string | null, status: number, errs: Record<string, string> = errors): string {
+  if (slug && errs[slug]) return errs[slug];
+  if (status === 403) return errs.forbidden!;
+  if (status === 404) return errs["not-found"]!;
+  if (status === 409) return errs.conflict!;
+  if (status === 429) return errs["rate-limited"]!;
+  if (status === 0) return errs.unavailable!;
+  return errs.fallback!;
 }
 
 export const catalogText = {
+  errors,
+  pagination: "Pagination",
   nav: "Catalog",
   title: "Stimulus catalog",
   intro:
@@ -121,6 +124,7 @@ export const catalogText = {
     noBattery: "Not in any battery",
     areas: (n: number) => `${n} AOI${n === 1 ? "" : "s"}`,
     seconds: (s: number) => `${Number.isFinite(s) ? s : "?"} s`,
+    ageRange: (min: number, max: number) => `${min}–${max} mo`,
     media: "Media: no preview in the console yet. Boxes are drawn on a 16:9 placeholder frame.",
   },
   aoi: {
@@ -153,6 +157,7 @@ export const catalogText = {
     none: "No batteries.",
     add: "Add battery",
     newId: "New battery id",
+    newIdExample: "express_30s",
     addClip: "Add clip",
     addClipTo: (id: string) => `Add a clip to ${id}`,
     choose: "Choose a clip",
@@ -195,7 +200,190 @@ export const catalogText = {
 
 export type CatalogText = typeof catalogText;
 
-/** WP-L.1.0 (I18N-15): both locales of this file. `ne` is typed by the `en` tree; the wave package replaces the copy. */
+/** WP-L.1.0 (I18N-15): both locales of this file. `ne` is typed by the `en` tree; a `// ne: draft` text is a machine draft until WP-L.3. */
 const en = catalogText;
-const ne: Widen<typeof en> = en; // ne: TODO
+
+// ne: draft (whole tree, until WP-L.3 reviews it)
+const errorsNe: Record<string, string> = {
+  "validation-failed": "सर्भरले केही क्षेत्रहरू अस्वीकार गर्‍यो।",
+  "config-version-exists": "त्यो संस्करण पहिल्यै छ। अर्को संस्करण नाम रोज्नुहोस्।",
+  "four-eyes-required": "चार-आँखा नियम: यो चरण अर्को सुपरप्रशासकले गर्नुपर्छ।",
+  "invalid-transition": "कागजातको हालको अवस्थामा यो चरण सम्भव छैन। हेर्न पुनः लोड गर्नुहोस्।",
+  "config-invalid": "कागजातले अब सर्भरका जाँच पास गर्दैन, त्यसैले यसलाई स्वीकृत गर्न सकिँदैन।",
+  "config-unanalysed": researchMessages.ne.errors["config-unanalysed"]!,
+  conflict: "हालको अवस्थामा यो कार्य सम्भव छैन।",
+  forbidden: "क्याटलग संस्करणहरू प्लेटफर्म सुपरप्रशासकले मात्र फेर्न सक्छ।",
+  "not-found": "फेला परेन।",
+  "rate-limited": "धेरै अनुरोधहरू भए। एक छिन पर्खेर फेरि प्रयास गर्नुहोस्।",
+  unavailable: "सर्भरसँग सम्पर्क हुन सकेन। केही बेरपछि फेरि प्रयास गर्नुहोस्।",
+  fallback: "अनुरोध असफल भयो। फेरि प्रयास गर्नुहोस्।",
+};
+
+const ne: Widen<typeof en> = {
+  errors: errorsNe,
+  pagination: "पृष्ठ नेभिगेसन",
+  nav: "क्याटलग",
+  title: "उद्दीपक क्याटलग",
+  intro:
+    "एपले चलाउने क्लिपहरू, तिनका AOI टाइमलाइन र तिनीहरू सम्बन्धित ब्याट्रीहरू। परिवर्तन सधैं नयाँ संस्करण हुन्छ: मस्यौदा, त्यसपछि स्वीकृत, त्यसपछि प्रकाशित। उपकरणहरूले आफ्नो हस्ताक्षरित कन्फिग बन्डलमा प्रकाशित संस्करण पाउँछन्।",
+  denied: "तपाईंको भूमिकाले उद्दीपक क्याटलग हेर्न मिल्दैन।",
+  readOnly: "हेर्न मात्र: क्याटलग संस्करणहरू बनाउने, स्वीकृत गर्ने, प्रकाशित गर्ने र हटाउने काम प्लेटफर्म सुपरप्रशासकमा सीमित छ।",
+  statuses: {
+    draft: "मस्यौदा",
+    candidate: "स्वीकृत",
+    published: "प्रकाशित",
+    retired: "हटाइएको",
+  },
+  all: "सबै",
+  filterLabel: "स्थितिअनुसार फिल्टर गर्नुहोस्",
+  cols: { version: "संस्करण", status: "स्थिति", created: "बनाइएको", author: "लेखक", published: "प्रकाशित", notes: "टिप्पणी" },
+  system: "प्रणाली (पूर्वनिर्मित)",
+  empty: "कुनै संस्करण मिलेन।",
+  showing: (n: number) => `${n} संस्करण देखाइएको`,
+  first: "पहिलो पृष्ठ",
+  next: "अर्को पृष्ठ",
+  newDraft: "नयाँ मस्यौदा",
+  newDraftFrom: (v: string) => `${v} बाट नयाँ मस्यौदा`,
+  current: (v: string) => `अहिले प्रकाशित: ${v}`,
+  noneLive: "कुनै क्याटलग संस्करण प्रकाशित छैन।",
+  back: "सबै क्याटलग संस्करणहरू",
+  view: {
+    facts: {
+      status: "स्थिति",
+      created: "बनाइएको",
+      author: "लेखक",
+      published: "प्रकाशित",
+      clips: "क्लिपहरू",
+      schema: "स्कीमा संस्करण",
+      languages: "भाषाहरू",
+      agePacks: "उमेर प्याकहरू",
+    },
+    notes: "टिप्पणी",
+    comment: "लेखन टिप्पणी",
+    editAsDraft: "नयाँ मस्यौदाको रूपमा सम्पादन गर्नुहोस्",
+    created: "मस्यौदा सुरक्षित गरियो। अर्को सुपरप्रशासकले यसलाई स्वीकृत गर्छ, त्यसपछि यसलाई प्रकाशित गर्न सकिन्छ।",
+    unreadable: "यो संस्करणको सामग्री कन्सोलले देखाउन सक्ने उद्दीपक क्याटलग होइन। मूल कागजात:",
+    compare: "तुलना गर्नुहोस्",
+    compareSubmit: "परिवर्तनहरू देखाउनुहोस्",
+    compareNone: "तुलना छैन",
+  },
+  lifecycle: {
+    title: "जीवनचक्र",
+    approve: "स्वीकृत गर्नुहोस्",
+    publish: "प्रकाशित गर्नुहोस्",
+    retire: "हटाउनुहोस्",
+    confirmRetire: "यो संस्करण हटाउने? पहिले नै बनाइएका बन्डलहरूले यसलाई चलाउन जारी राख्छन्।",
+    confirm: "हो, हटाउनुहोस्",
+    cancel: "रद्द गर्नुहोस्",
+    done: {
+      approve: "स्वीकृत भयो। अब अर्को सुपरप्रशासकले यसलाई प्रकाशित गर्न सक्छ।",
+      publish: "प्रकाशित भयो। अघिल्लो प्रकाशित संस्करण हटाइयो।",
+      retire: "हटाइयो।",
+    },
+    hint: {
+      draft: "स्वीकृत गर्दा यो ‘स्वीकृत’ अवस्थामा जान्छ। लेखकले आफ्नै मस्यौदा स्वीकृत गर्न सक्दैन।",
+      candidate: "प्रकाशित गर्दा यो नयाँ बन्डलहरूले प्रयोग गर्ने क्याटलग बन्छ र हालको हटाइन्छ। लेखकले यसलाई प्रकाशित गर्न सक्दैन।",
+      published: "प्रकाशित क्याटलग हटाउँदा अर्को संस्करण प्रकाशित नभएसम्म कुनै प्रकाशित संस्करण रहँदैन।",
+      retired: "हटाइएका संस्करणहरू इतिहासका लागि राखिन्छन्।",
+    },
+  },
+  diff: {
+    title: (from: string, to: string) => `${from} देखि ${to} सम्मका परिवर्तनहरू`,
+    none: "कुनै भिन्नता छैन।",
+    fields: "क्याटलग सेटिङ परिवर्तन भएको",
+    added: "थपिएका क्लिपहरू",
+    removed: "हटाइएका क्लिपहरू",
+    changed: "परिवर्तन भएका क्लिपहरू",
+  },
+  clips: {
+    title: "क्लिपहरू",
+    list: "क्लिप सूची",
+    add: "क्लिप थप्नुहोस्",
+    remove: "क्लिप हटाउनुहोस्",
+    duplicate: "नक्कल गर्नुहोस्",
+    none: "अहिलेसम्म कुनै क्लिप छैन। सुरु गर्न एउटा थप्नुहोस्।",
+    hasErrors: "मा त्रुटि छ",
+    id: "क्लिप आईडी (मिडिया स्रोत नाम)",
+    clipTitle: "शीर्षक",
+    category: "वर्ग",
+    duration: "अवधि (सेकेन्ड)",
+    minMonths: "न्यूनतम उमेर (महिना)",
+    maxMonths: "अधिकतम उमेर (महिना)",
+    batteries: "ब्याट्रीहरू",
+    noBattery: "कुनै ब्याट्रीमा छैन",
+    areas: (n: number) => `${n} AOI क्षेत्र`,
+    seconds: (s: number) => `${Number.isFinite(s) ? s : "?"} सेकेन्ड`,
+    ageRange: (min: number, max: number) => `${min}–${max} महिना`,
+    media: "मिडिया: कन्सोलमा अहिलेसम्म पूर्वावलोकन छैन। बक्सहरू १६:९ को नमूना फ्रेममा कोरिन्छन्।",
+  },
+  aoi: {
+    title: "AOI टाइमलाइन",
+    timeline: "AOI टाइमलाइन",
+    playhead: "प्लेहेड (सेकेन्ड)",
+    at: (t: number) => `${t.toFixed(1)} सेकेन्डमा`,
+    frame: "AOI बक्ससहितको फ्रेम",
+    frameHint: "बक्स सार्न तान्नुहोस्, आकार बदल्न यसको कुना तान्नुहोस्। निर्देशाङ्कहरू सामान्यीकृत छन् (० देखि १, माथिल्लो-बायाँ सुरुवात)।",
+    add: "प्लेहेडमा AOI थप्नुहोस्",
+    remove: "AOI हटाउनुहोस्",
+    none: "यो क्लिपमा कुनै AOI छैन।",
+    noneAtTime: "यो समयमा कुनै AOI सक्रिय छैन।",
+    name: "AOI नाम",
+    selected: "छानिएको AOI",
+    start: "सुरु (सेकेन्ड)",
+    end: "अन्त्य (सेकेन्ड)",
+    xMin: "x न्यूनतम",
+    yMin: "y न्यूनतम",
+    xMax: "x अधिकतम",
+    yMax: "y अधिकतम",
+    roles: "भूमिकाहरू",
+    otherRoles: "राखिएका अन्य भूमिकाहरू",
+    noRole: "भूमिका छैन (नियन्त्रण लक्ष्य)",
+    roleNames: { social: "सामाजिक", geometric: "ज्यामितीय", eye: "आँखा", mouth: "मुख", orienting: "ध्यान-उन्मुखीकरण" } as Record<string, string>,
+  },
+  batteries: {
+    title: "ब्याट्रीहरू",
+    intro: "प्रत्येक ब्याट्री क्लिपहरूको क्रमबद्ध सूची हो (एपले चलाउने क्रम)।",
+    none: "कुनै ब्याट्री छैन।",
+    add: "ब्याट्री थप्नुहोस्",
+    newId: "नयाँ ब्याट्री आईडी",
+    newIdExample: "express_30s",
+    addClip: "क्लिप थप्नुहोस्",
+    addClipTo: (id: string) => `${id} मा क्लिप थप्नुहोस्`,
+    choose: "क्लिप छान्नुहोस्",
+    up: "माथि सार्नुहोस्",
+    down: "तल सार्नुहोस्",
+    remove: "ब्याट्रीबाट हटाउनुहोस्",
+    summary: (n: number, sec: number) => `${n} क्लिप, जम्मा ${Number.isFinite(sec) ? sec.toFixed(1) : "?"} सेकेन्ड`,
+    empty: "यो ब्याट्रीमा कुनै क्लिप छैन।",
+  },
+  editor: {
+    title: "नयाँ क्याटलग मस्यौदा",
+    from: (v: string) => `${v} बाट सुरु गर्दै। सुरक्षित गर्दा नयाँ मस्यौदा संस्करण बन्छ; स्रोत संस्करण फेरिँदैन।`,
+    blank: "खाली क्याटलगबाट सुरु गर्दै।",
+    version: "नयाँ संस्करण",
+    versionHint: "अक्षर, अङ्क, ‘.’, ‘_’ वा ‘-’ (उदाहरण: 2026.11.1)।",
+    notes: "टिप्पणी (संस्करण इतिहासमा देखिन्छ)",
+    settings: "क्याटलग सेटिङ",
+    schemaVersion: "स्कीमा संस्करण",
+    languages: "भाषाहरू (अल्पविरामले छुट्याइएको)",
+    fallbackLanguage: "वैकल्पिक भाषा",
+    comment: "लेखन टिप्पणी",
+    agePacks: "उमेर प्याकहरू",
+    agePackId: "उमेर प्याक आईडी",
+    addAgePack: "उमेर प्याक थप्नुहोस्",
+    removeAgePack: "उमेर प्याक हटाउनुहोस्",
+    submit: "मस्यौदाको रूपमा सुरक्षित गर्नुहोस्",
+    saving: "सुरक्षित गर्दै…",
+    fixFirst: (n: number) => `सुरक्षित गर्नु अघि ${n} क्षेत्र सच्याउनुहोस्।`,
+    serverRejected: "सर्भरले मस्यौदा अस्वीकार गर्‍यो:",
+    denied: "क्याटलग मस्यौदा प्लेटफर्म सुपरप्रशासकले मात्र बनाउन सक्छ।",
+    cancel: "रद्द गर्नुहोस्",
+  },
+  shape: {
+    required: "अनिवार्य।",
+    number: "सङ्ख्या हाल्नुहोस्।",
+    integer: "पूर्णाङ्क हाल्नुहोस्।",
+    invalid: "मान्य मान होइन।",
+  },
+};
 export const catalogMessages = { en, ne } as const;

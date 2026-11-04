@@ -2,10 +2,9 @@
 
 import type { MouseEvent } from "react";
 import { AOI_ROLES, type CatalogClip } from "@/lib/api/catalog";
-import { catalogText } from "@/messages/catalog";
 import s from "./catalog.module.css";
+import { useText } from "@/lib/i18n/provider";
 
-const t = catalogText.aoi;
 
 /** CSS class for an AOI's colour: its first known role, else the neutral "no role" colour. */
 export function roleClass(roles: string[]): string {
@@ -14,6 +13,8 @@ export function roleClass(roles: string[]): string {
 }
 
 export function RoleChips({ roles }: { roles: string[] }) {
+  const tx = useText();
+  const t = tx.catalog.aoi;
   if (!roles.length) return <span className="muted">{t.noRole}</span>;
   return (
     <span className={s.chips}>
@@ -43,6 +44,8 @@ export function AoiTimeline({
   time: number;
   onTime: (t: number) => void;
 }) {
+  const tx = useText();
+  const t = tx.catalog.aoi;
   const duration = Number.isFinite(clip.durationSec) && clip.durationSec > 0 ? clip.durationSec : 1;
   const step = duration > 20 ? 5 : duration > 6 ? 1 : 0.5;
   const ticks = Array.from({ length: Math.floor(duration / step) + 1 }, (_, i) => i * step);

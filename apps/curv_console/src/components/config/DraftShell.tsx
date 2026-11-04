@@ -7,11 +7,10 @@ import { catalogFailureText, type CatalogResult } from "@/components/catalog/typ
 import { browserCore } from "@/lib/asd/browser";
 import { contractInfo, type ContractInfo, type Validation } from "@/lib/asd/ops";
 import { serverFieldErrors } from "@/lib/catalog";
-import { configText } from "@/messages/config";
 import type { AsdCore, Envelope } from "@/lib/asd/core";
 import c from "./config.module.css";
+import { useText } from "@/lib/i18n/provider";
 
-const e = configText.editor;
 
 export type CoreCheck =
   | { state: "checking" }
@@ -64,8 +63,10 @@ export function useContractInfo(): { info: ContractInfo | null; unavailable: boo
 }
 
 export function CoreCheckPanel({ check, grouped }: { check: CoreCheck; grouped?: ReactNode }) {
+  const tx = useText();
+  const e = tx.config.editor;
   if (check.state === "checking") return <p className="muted" role="status">{e.checking}</p>;
-  if (check.state === "unavailable") return <p className={s.alert} role="alert">{configText.sandbox.coreUnavailable}</p>;
+  if (check.state === "unavailable") return <p className={s.alert} role="alert">{tx.config.sandbox.coreUnavailable}</p>;
   const v = check.validation;
   if (v.valid) return <p className={s.ok} role="status">{e.valid}</p>;
   return (
@@ -110,6 +111,8 @@ export function DraftShell<T>({
   onServerFields?: (fields: Record<string, string>) => void;
   children: ReactNode;
 }) {
+  const tx = useText();
+  const e = tx.config.editor;
   const router = useRouter();
   const [version, setVersion] = useState("");
   const [notes, setNotes] = useState("");
@@ -131,11 +134,11 @@ export function DraftShell<T>({
         return;
       }
       const { fields, general } = serverFieldErrors(r.params ?? []);
-      const versionReason = r.slug === "config-version-exists" ? catalogFailureText(r) : fields.version;
+      const versionReason = r.slug === "config-version-exists" ? catalogFailureText(r, tx.catalog.errors) : fields.version;
       delete fields.version;
       onServerFields?.(fields);
       setServer({
-        message: catalogFailureText(r),
+        message: catalogFailureText(r, tx.catalog.errors),
         list: [...general, ...Object.entries(fields).map(([k, v]) => `${k}: ${v}`), ...(versionReason ? [`version: ${versionReason}`] : [])],
         version: versionReason,
       });

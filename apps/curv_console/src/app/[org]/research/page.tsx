@@ -2,17 +2,22 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { authedApi } from "@/lib/auth/server";
 import { formatDateTime } from "@/lib/format";
+import { getText } from "@/lib/i18n/server";
 import { loadOrNotFound } from "@/lib/loaders";
-import { researchText } from "@/messages/research";
 
-const t = researchText;
 
-export const metadata: Metadata = { title: t.title };
+export async function generateMetadata(): Promise<Metadata> {
+  const tx = await getText();
+  const t = tx.research;
+  return { title: t.title };
+}
 
 const RECENT = 5;
 
 /** `/[org]/research`: recent experiments, cohorts and runs (RUI-1). Reads only. */
 export default async function ResearchOverviewPage({ params }: { params: Promise<{ org: string }> }) {
+  const tx = await getText();
+  const t = tx.research;
   const { org } = await params;
   const api = await authedApi();
   const [experiments, cohorts, runs] = await Promise.all([

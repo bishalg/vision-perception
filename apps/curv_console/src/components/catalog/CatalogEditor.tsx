@@ -14,15 +14,13 @@ import {
 } from "@/lib/catalog";
 import { useCoreCheck } from "@/components/config/DraftShell";
 import { validateCatalog } from "@/lib/asd/ops";
-import { catalogText } from "@/messages/catalog";
 import { AoiFrame } from "./AoiFrame";
 import { AoiTimeline } from "./AoiTimeline";
 import { BatteryPanel } from "./BatteryPanel";
 import s from "./catalog.module.css";
 import { catalogFailureText, type CatalogResult } from "./types";
+import { useText } from "@/lib/i18n/provider";
 
-const t = catalogText;
-const e = catalogText.editor;
 
 export interface DraftInput {
   version: string;
@@ -124,6 +122,9 @@ export function CatalogEditor({
   fromVersion: string | null;
   save: (input: DraftInput) => Promise<CatalogResult<{ version: string }>>;
 }) {
+  const tx = useText();
+  const t = tx.catalog;
+  const e = tx.catalog.editor;
   const router = useRouter();
   const [catalog, setCatalog] = useState<StimulusCatalog>(initial);
   const [version, setVersion] = useState("");
@@ -184,8 +185,8 @@ export function CatalogEditor({
       }
       const { fields, general } = serverFieldErrors(r.params ?? []);
       // 409 config-version-exists names no field; it is about the version.
-      if (r.slug === "config-version-exists") fields.version = catalogFailureText(r);
-      setServer({ message: catalogFailureText(r), fields, general });
+      if (r.slug === "config-version-exists") fields.version = catalogFailureText(r, tx.catalog.errors);
+      setServer({ message: catalogFailureText(r, tx.catalog.errors), fields, general });
     });
   }
 

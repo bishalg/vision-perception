@@ -2,19 +2,24 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { authedApi, currentRole } from "@/lib/auth/server";
 import { formatDateTime } from "@/lib/format";
+import { getText } from "@/lib/i18n/server";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { describeCohort } from "@/lib/research/cohort";
-import { researchText } from "@/messages/research";
 
-const t = researchText.cohorts;
 
-export const metadata: Metadata = { title: t.title };
+export async function generateMetadata(): Promise<Metadata> {
+  const tx = await getText();
+  const t = tx.research.cohorts;
+  return { title: t.title };
+}
 
 const PAGE = 100;
 
 /** `/[org]/research/cohorts`: the saved cohorts (RUI-5). */
 export default async function CohortsPage({ params }: { params: Promise<{ org: string }> }) {
+  const tx = await getText();
+  const t = tx.research.cohorts;
   const { org } = await params;
   const role = await currentRole();
   const api = await authedApi();

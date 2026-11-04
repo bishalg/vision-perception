@@ -2,11 +2,10 @@
 
 import { useState, useTransition, type ReactNode } from "react";
 import type { ConfigDocumentStatus, ConfigTransition } from "@/lib/api/catalog";
-import { catalogText } from "@/messages/catalog";
 import s from "./catalog.module.css";
 import { catalogFailureText, type CatalogResult } from "./types";
+import { useText } from "@/lib/i18n/provider";
 
-const t = catalogText.lifecycle;
 
 /** The steps the backend allows from each state (`config_docs::lifecycle`); it still checks state and four-eyes. */
 export function stepsFor(status: ConfigDocumentStatus): ConfigTransition[] {
@@ -40,6 +39,8 @@ export function LifecycleActions({
   blocked?: Partial<Record<ConfigTransition, string>>;
   children?: ReactNode;
 }) {
+  const tx = useText();
+  const t = tx.catalog.lifecycle;
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -49,7 +50,7 @@ export function LifecycleActions({
     start(async () => {
       setConfirming(false);
       const r = await run(step);
-      setMessage(r.ok ? { ok: true, text: t.done[step] } : { ok: false, text: catalogFailureText(r) });
+      setMessage(r.ok ? { ok: true, text: t.done[step] } : { ok: false, text: catalogFailureText(r, tx.catalog.errors) });
     });
 
   return (

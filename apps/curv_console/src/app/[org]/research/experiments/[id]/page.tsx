@@ -4,16 +4,19 @@ import type { SessionListItem } from "@/lib/api";
 import type { ConfigDocumentKind } from "@/lib/api/catalog";
 import { authedApi, currentRole } from "@/lib/auth/server";
 import { parseBaselines } from "@/lib/configDocs";
+import { getText } from "@/lib/i18n/server";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { pickerSessions } from "@/lib/research/preview";
 import type { ProfileDoc } from "@/lib/research/registry";
-import { researchText } from "@/messages/research";
 import { loadPreviewRecordsAction, loadResearchFramesAction, previewCohortAction, promoteAction, runOnCohortAction, updateExperimentAction } from "../../actions";
 
-const t = researchText;
 
-export const metadata: Metadata = { title: t.workbench.title };
+export async function generateMetadata(): Promise<Metadata> {
+  const tx = await getText();
+  const t = tx.research;
+  return { title: t.workbench.title };
+}
 
 /** RUI-3: the most recent sessions offered for the preview. */
 const PICKER_SESSIONS = 50;

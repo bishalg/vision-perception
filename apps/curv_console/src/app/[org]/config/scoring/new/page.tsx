@@ -4,13 +4,16 @@ import { loadDraftContext } from "@/components/config/draftContext";
 import { ScoringProfileDraft } from "@/components/config/ScoringProfileEditor";
 import { currentRole } from "@/lib/auth/server";
 import { parseProfile } from "@/lib/configDocs";
+import { getText } from "@/lib/i18n/server";
 import { can } from "@/lib/permissions";
-import { configText } from "@/messages/config";
 import { createDocDraftAction, loadSandboxSessionsAction } from "../../docActions";
 
-const t = configText;
 
-export const metadata: Metadata = { title: t.scoring.editorTitle };
+export async function generateMetadata(): Promise<Metadata> {
+  const tx = await getText();
+  const t = tx.config;
+  return { title: t.scoring.editorTitle };
+}
 
 /** `?from=<version>` starts from that version; without it, from the published profile (else the core default). */
 export default async function NewScoringDraftPage({
@@ -20,6 +23,8 @@ export default async function NewScoringDraftPage({
   params: Promise<{ org: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const tx = await getText();
+  const t = tx.config;
   const { org } = await params;
   const base = `/${encodeURIComponent(org)}/config/scoring`;
   if (!can(await currentRole(), "config.manage")) {

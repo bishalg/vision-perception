@@ -4,20 +4,18 @@
  */
 import Link from "next/link";
 import { transitionDocAction, type EditableKind } from "@/app/[org]/config/docActions";
-import { ConfigStatusBadge, authorText } from "@/components/catalog/CatalogTables";
+import { authorText } from "@/components/catalog/authorText";
+import { ConfigStatusBadge } from "@/components/catalog/CatalogTables";
 import s from "@/components/catalog/catalog.module.css";
 import { authedApi, currentRole } from "@/lib/auth/server";
 import { diffDocuments, parseBaselines, parseProfile } from "@/lib/configDocs";
 import { formatDateTime } from "@/lib/format";
+import { getText } from "@/lib/i18n/server";
 import { toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
-import { catalogText } from "@/messages/catalog";
-import { configText } from "@/messages/config";
 import { DocLifecycle } from "./DocLifecycle";
 import { BaselinesView, DocDiffView, ScoringProfileView } from "./DocViews";
-
-const t = configText;
 
 export async function DocVersionPage({
   org,
@@ -30,6 +28,8 @@ export async function DocVersionPage({
   version: string;
   searchParams: Record<string, string | string[] | undefined>;
 }) {
+  const tx = await getText();
+  const t = tx.config;
   const isProfile = kind === "scoring_profile";
   const text = isProfile ? t.scoring : t.baselines;
   const segment = isProfile ? "scoring" : "baselines";
@@ -65,9 +65,9 @@ export async function DocVersionPage({
         {text.title} {doc.version} <ConfigStatusBadge status={doc.status} />
       </h1>
       <dl className="facts panel">
-        <div><dt>{f.status}</dt><dd>{catalogText.statuses[doc.status]}</dd></div>
+        <div><dt>{f.status}</dt><dd>{tx.catalog.statuses[doc.status]}</dd></div>
         <div><dt>{f.created}</dt><dd>{formatDateTime(doc.created_at)}</dd></div>
-        <div><dt>{f.author}</dt><dd title={doc.created_by ?? undefined}>{authorText(doc.created_by)}</dd></div>
+        <div><dt>{f.author}</dt><dd title={doc.created_by ?? undefined}>{authorText(doc.created_by, tx.catalog.system)}</dd></div>
         <div><dt>{f.published}</dt><dd>{doc.published_at ? formatDateTime(doc.published_at) : "—"}</dd></div>
         {set ? (
           <>
@@ -112,7 +112,7 @@ export async function DocVersionPage({
             <select name="compare" defaultValue={other?.version ?? ""}>
               <option value="">{t.compareNone}</option>
               {others.map((d) => (
-                <option key={d.id} value={d.version}>{d.version} ({catalogText.statuses[d.status]})</option>
+                <option key={d.id} value={d.version}>{d.version} ({tx.catalog.statuses[d.status]})</option>
               ))}
             </select>
           </label>

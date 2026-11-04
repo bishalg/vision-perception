@@ -1,6 +1,6 @@
 import type { Dist } from "@/lib/api/research";
 import { formatNumber } from "@/lib/format";
-import { researchText, type ResearchMessages } from "@/messages/research";
+import type { ResearchMessages } from "@/messages/research";
 import r from "./research.module.css";
 
 export interface DeltaRow {
@@ -20,12 +20,12 @@ export function DeltaBars({
   label,
   rows,
   k,
-  text = researchText,
+  text,
 }: {
   label: string;
   rows: readonly DeltaRow[];
   k: number;
-  text?: ResearchMessages;
+  text: ResearchMessages;
 }) {
   const shown = rows.filter((row) => !row.delta.suppressed && row.delta.mean != null);
   const hidden = rows.filter((row) => !shown.includes(row));
@@ -49,13 +49,13 @@ export function DeltaBars({
               <g key={row.label} data-testid="delta-bar">
                 <text className={r.axisText} x={PAD.l - 6} y={yMid + 3} textAnchor="end">{row.label}</text>
                 <rect className={mean >= 0 ? r.deltaUp : r.deltaDown} x={Math.min(zero, x(mean))} y={yMid - 6} width={Math.abs(x(mean) - zero)} height={12}>
-                  <title>{`${row.label}: ${formatNumber(mean, 3)}`}</title>
+                  <title>{row.label}: {formatNumber(mean, 3)}</title>
                 </rect>
                 {ci ? <line className={r.whisker} x1={x(ci[0])} y1={yMid} x2={x(ci[1])} y2={yMid} /> : null}
               </g>
             );
           })}
-          <text className={r.axisText} x={zero} y={height - 6} textAnchor="middle">0</text>
+          <text className={r.axisText} x={zero} y={height - 6} textAnchor="middle">{formatNumber(0, 0)}</text>
         </svg>
       ) : (
         <p className="muted">{text.charts.noData}</p>

@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { DocVersionPage } from "@/components/config/DocVersionPage";
-import { configText } from "@/messages/config";
+import { getText } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: configText.scoring.title };
+export async function generateMetadata(): Promise<Metadata> {
+  const tx = await getText();
+  return { title: tx.config.scoring.title };
+}
 
 export default async function ScoringVersionPage({
   params,

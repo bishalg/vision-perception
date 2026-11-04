@@ -2,16 +2,17 @@
 
 import { useState } from "react";
 import type { StimulusCatalog } from "@/lib/api/catalog";
-import { catalogText } from "@/messages/catalog";
 import { AoiFrame } from "./AoiFrame";
 import { AoiTimeline, RoleChips } from "./AoiTimeline";
 import { BatteryPanel } from "./BatteryPanel";
 import s from "./catalog.module.css";
+import { useText } from "@/lib/i18n/provider";
 
-const t = catalogText;
 
 /** Read-only view of a catalog version: batteries, then each clip with its AOI timeline and boxes. */
 export function CatalogViewer({ catalog }: { catalog: StimulusCatalog }) {
+  const tx = useText();
+  const t = tx.catalog;
   const [clipIdx, setClipIdx] = useState(0);
   const [areaIdx, setAreaIdx] = useState<number | null>(null);
   const [time, setTime] = useState(0);
@@ -55,7 +56,7 @@ export function CatalogViewer({ catalog }: { catalog: StimulusCatalog }) {
               <div><dt>{t.clips.id}</dt><dd>{clip.id}</dd></div>
               <div><dt>{t.clips.category}</dt><dd>{clip.category}</dd></div>
               <div><dt>{t.clips.duration}</dt><dd>{clip.durationSec}</dd></div>
-              <div><dt>{t.view.facts.agePacks}</dt><dd>{clip.minMonths}–{clip.maxMonths} mo</dd></div>
+              <div><dt>{t.view.facts.agePacks}</dt><dd>{t.clips.ageRange(clip.minMonths, clip.maxMonths)}</dd></div>
               <div>
                 <dt>{t.clips.batteries}</dt>
                 <dd>{clip.protocols.length ? clip.protocols.map((m) => `${m.id} #${m.order + 1}`).join(", ") : t.clips.noBattery}</dd>

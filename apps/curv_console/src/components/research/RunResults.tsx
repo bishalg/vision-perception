@@ -1,6 +1,6 @@
 import type { BandSummary, RunSummary } from "@/lib/api/research";
 import { baselineRange } from "@/lib/research/baselines";
-import { researchText, type ResearchMessages } from "@/messages/research";
+import type { ResearchMessages } from "@/messages/research";
 import { DeltaBars } from "./DeltaBars";
 import { Histogram } from "./Histogram";
 import r from "./research.module.css";
@@ -18,18 +18,19 @@ export function RunResults({
   summary,
   baselines,
   membershipDrift,
-  text = researchText,
+  text,
 }: {
   summary: RunSummary;
   /** `normative_baselines.body` of the effective config; `unknown` is read tolerantly, or null when unavailable. */
   baselines: unknown;
   membershipDrift?: { added: number; removed: number } | null;
-  text?: ResearchMessages;
+  text: ResearchMessages;
 }) {
   const t = text.runs.results;
   const k = summary.small_cell_k;
   const flagLabel = (f: string) => text.preview.flagLabel[f as FlagName] ?? f;
   const cell = (n: number | null | undefined) => (n == null ? text.suppressedCell(k) : String(n));
+  const byLevel = `${text.level.frames}: ${summary.counts.by_level.frames}, ${text.level.score}: ${summary.counts.by_level.score}`;
   const bands = [summary.overall, ...summary.by_age_band];
   const bandRows = summary.by_age_band.map((b) => ({ label: b.band, delta: b.composite.delta }));
   const metricIds = [...new Set(bands.flatMap((b) => Object.keys(b.metrics)))];
@@ -39,12 +40,12 @@ export function RunResults({
       <section className="panel stack" aria-label={t.sessions}>
         <dl className="facts">
           <div><dt>{t.sessions}</dt><dd>{summary.counts.sessions}</dd></div>
-          <div><dt>{t.byLevel}</dt><dd>{`${text.level.frames}: ${summary.counts.by_level.frames}, ${text.level.score}: ${summary.counts.by_level.score}`}</dd></div>
+          <div><dt>{t.byLevel}</dt><dd>{byLevel}</dd></div>
           {Object.entries(summary.counts.excluded).map(([reason, n]) => (
-            <div key={reason}><dt>{`${t.excluded}: ${reason}`}</dt><dd>{n}</dd></div>
+            <div key={reason}><dt>{t.excluded}: {reason}</dt><dd>{n}</dd></div>
           ))}
           {Object.entries(summary.counts.params_not_applied).map(([id, n]) => (
-            <div key={id}><dt>{`${t.paramsNotApplied}: ${id}`}</dt><dd>{n}</dd></div>
+            <div key={id}><dt>{t.paramsNotApplied}: {id}</dt><dd>{n}</dd></div>
           ))}
           {summary.counts.suppressed_cells != null ? <div><dt>{t.suppressedCells}</dt><dd>{summary.counts.suppressed_cells}</dd></div> : null}
         </dl>
@@ -58,7 +59,7 @@ export function RunResults({
           <table className="data" aria-label={t.flagCounts}>
             <thead>
               <tr>
-                <th scope="col">{`${t.published} / ${t.draft}`}</th>
+                <th scope="col">{t.published} / {t.draft}</th>
                 {FLAGS.map((f) => <th key={f} scope="col">{flagLabel(f)}</th>)}
               </tr>
             </thead>

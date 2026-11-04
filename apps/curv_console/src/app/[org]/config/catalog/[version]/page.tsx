@@ -1,22 +1,25 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CatalogDiffView, ConfigStatusBadge, authorText } from "@/components/catalog/CatalogTables";
+import { authorText } from "@/components/catalog/authorText";
+import { CatalogDiffView, ConfigStatusBadge } from "@/components/catalog/CatalogTables";
 import { CatalogViewer } from "@/components/catalog/CatalogViewer";
 import { LifecycleActions } from "@/components/catalog/LifecycleActions";
 import s from "@/components/catalog/catalog.module.css";
 import { authedApi, currentRole } from "@/lib/auth/server";
 import { diffCatalogs, parseCatalog } from "@/lib/catalog";
 import { formatDateTime } from "@/lib/format";
+import { getText } from "@/lib/i18n/server";
 import { toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
-import { catalogText } from "@/messages/catalog";
 import { transitionCatalogAction } from "../actions";
 
-const t = catalogText;
-const f = t.view.facts;
 
-export const metadata: Metadata = { title: t.title };
+export async function generateMetadata(): Promise<Metadata> {
+  const tx = await getText();
+  const t = tx.catalog;
+  return { title: t.title };
+}
 
 export default async function CatalogVersionPage({
   params,
@@ -25,6 +28,9 @@ export default async function CatalogVersionPage({
   params: Promise<{ org: string; version: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const tx = await getText();
+  const t = tx.catalog;
+  const f = t.view.facts;
   const { org, version } = await params;
   const role = await currentRole();
   if (!can(role, "config.read")) {
@@ -61,7 +67,7 @@ export default async function CatalogVersionPage({
       <dl className="facts panel">
         <div><dt>{f.status}</dt><dd>{t.statuses[doc.status]}</dd></div>
         <div><dt>{f.created}</dt><dd>{formatDateTime(doc.created_at)}</dd></div>
-        <div><dt>{f.author}</dt><dd title={doc.created_by ?? undefined}>{authorText(doc.created_by)}</dd></div>
+        <div><dt>{f.author}</dt><dd title={doc.created_by ?? undefined}>{authorText(doc.created_by, t.system)}</dd></div>
         <div><dt>{f.published}</dt><dd>{doc.published_at ? formatDateTime(doc.published_at) : "—"}</dd></div>
         {catalog ? (
           <>

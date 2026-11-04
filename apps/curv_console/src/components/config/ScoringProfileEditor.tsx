@@ -9,13 +9,11 @@ import type { SessionSummary } from "@/lib/api";
 import type { NormativeBaselineSet, ScoringProfile } from "@/lib/api/config";
 import { browserCore } from "@/lib/asd/browser";
 import { defaultScoringProfile, validateScoringProfile } from "@/lib/asd/ops";
+import { useText } from "@/lib/i18n/provider";
 import { paramRegistry, type ProfileDoc } from "@/lib/research/registry";
-import { configText } from "@/messages/config";
 import { CoreCheckPanel, DraftShell, useCoreCheck, type DraftSubmit } from "./DraftShell";
 import { SandboxRunner } from "./SandboxRunner";
 
-const p = configText.profile;
-const e = configText.editor;
 
 type EditorProps = Parameters<typeof ScoringProfileEditor>[0];
 
@@ -24,6 +22,8 @@ type EditorProps = Parameters<typeof ScoringProfileEditor>[0];
  * (asd-wasm `defaultScoringProfile`).
  */
 export function ScoringProfileDraft(props: Omit<EditorProps, "initial"> & { initial: ScoringProfile | null }) {
+  const tx = useText();
+  const e = tx.config.editor;
   const [loaded, setLoaded] = useState<ScoringProfile | null | "unavailable">(props.initial);
   useEffect(() => {
     if (props.initial) return;
@@ -35,7 +35,7 @@ export function ScoringProfileDraft(props: Omit<EditorProps, "initial"> & { init
       live = false;
     };
   }, [props.initial]);
-  if (loaded === "unavailable") return <p className={s.alert} role="alert">{configText.sandbox.coreUnavailable}</p>;
+  if (loaded === "unavailable") return <p className={s.alert} role="alert">{tx.config.sandbox.coreUnavailable}</p>;
   if (!loaded) return <p className="muted" role="status">{e.checking}</p>;
   return <ScoringProfileEditor {...props} initial={loaded} />;
 }
@@ -63,6 +63,9 @@ export function ScoringProfileEditor({
   };
   save: (input: DraftSubmit<ScoringProfile>) => Promise<CatalogResult<{ version: string }>>;
 }) {
+  const tx = useText();
+  const p = tx.config.profile;
+  const e = tx.config.editor;
   const [profile, setProfile] = useState<ProfileDoc>(initial);
   const [serverFields, setServerFields] = useState<Record<string, string>>({});
   const publishedDoc = (preview.published?.profile ?? initial) as ProfileDoc;
@@ -109,7 +112,7 @@ export function ScoringProfileEditor({
             load={preview.load}
           />
         ) : (
-          <p className="muted">{configText.sandbox.noBaselines}</p>
+          <p className="muted">{tx.config.sandbox.noBaselines}</p>
         )}
       </details>
     </DraftShell>

@@ -19,8 +19,8 @@ import {
   type AxisDraft,
 } from "@/lib/research/run-sweep";
 import { MAX_SWEEP_STEPS } from "@/lib/research/sweep";
-import { researchText, type ResearchMessages } from "@/messages/research";
-import { useLocale } from "@/lib/i18n/provider";
+import type { ResearchMessages } from "@/messages/research";
+import { useLocale, useText } from "@/lib/i18n/provider";
 import { paramText } from "@/lib/research/paramText";
 import r from "./research.module.css";
 
@@ -55,7 +55,7 @@ export function RunDialog({
   onClose,
   registry = bundledRegistry,
   publishedProfile = null,
-  text = researchText,
+  text: textProp,
 }: {
   orgId: string;
   experimentId: string;
@@ -68,6 +68,8 @@ export function RunDialog({
   publishedProfile?: ProfileDoc | null;
   text?: ResearchMessages;
 }) {
+  const bundle = useText();
+  const text = textProp ?? bundle.research;
   const locale = useLocale();
   const t = text.run;
   const s = text.runSetup;

@@ -4,14 +4,17 @@ import { VersionsTable } from "@/components/catalog/CatalogTables";
 import s from "@/components/catalog/catalog.module.css";
 import { CONFIG_DOCUMENT_STATUSES, type ConfigDocumentStatus } from "@/lib/api/catalog";
 import { authedApi, currentRole } from "@/lib/auth/server";
+import { getText } from "@/lib/i18n/server";
 import { parseCursor, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
-import { catalogText } from "@/messages/catalog";
 
-const t = catalogText;
 
-export const metadata: Metadata = { title: t.title };
+export async function generateMetadata(): Promise<Metadata> {
+  const tx = await getText();
+  const t = tx.catalog;
+  return { title: t.title };
+}
 
 export default async function CatalogPage({
   params,
@@ -20,6 +23,8 @@ export default async function CatalogPage({
   params: Promise<{ org: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const tx = await getText();
+  const t = tx.catalog;
   const { org } = await params;
   const role = await currentRole();
   if (!can(role, "config.read")) {
@@ -72,7 +77,7 @@ export default async function CatalogPage({
       </nav>
       <VersionsTable orgId={org} items={page.items} />
       <p className="muted">{t.showing(page.items.length)}</p>
-      <nav className="pagination" aria-label="Pagination">
+      <nav className="pagination" aria-label={t.pagination}>
         {cursor ? <Link href={filterHref(status)}>{t.first}</Link> : null}
         {page.next_cursor ? (
           <Link rel="next" href={`${base}${toSearch({ status, cursor: page.next_cursor })}`}>{t.next}</Link>

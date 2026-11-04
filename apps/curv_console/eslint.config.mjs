@@ -30,6 +30,13 @@ const LITERAL_GATE_ERROR_DIRS = [
   "src/app/\\[org\\]/follow-ups",
   "src/components/participant",
   "src/components/clinical",
+  // L.1d: users, catalog, config, research (a bracket is a glob class, so the dynamic segment is escaped)
+  "src/app/\\[org\\]/users",
+  "src/app/\\[org\\]/config",
+  "src/app/\\[org\\]/research",
+  "src/components/catalog",
+  "src/components/config",
+  "src/components/research",
 ];
 
 const literalRules = (level) => ({
