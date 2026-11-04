@@ -87,7 +87,8 @@ describe("SweepPanel", () => {
     const grey = [...container.querySelectorAll('[data-testid="sweep-cell"]')].filter((el) => el.textContent?.includes("n < 12"));
     expect(grey).toHaveLength(8);
     expect(within(screen.getByRole("table", { name: en.analysis.tableTitle })).getAllByRole("row")).toHaveLength(627);
-  });
+    // 1,250 SVG cells and a 627-row table in jsdom: well over the 5 s default on a loaded host.
+  }, 30_000);
 
   it("renders in Nepali from the same data", () => {
     render(<SweepPanel sweep={oneAxis} k={12} text={ne} />);
