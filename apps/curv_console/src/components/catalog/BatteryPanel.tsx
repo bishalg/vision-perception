@@ -3,10 +3,12 @@
 import { useState } from "react";
 import type { StimulusCatalog } from "@/lib/api/catalog";
 import { batteriesOf, move, setBattery } from "@/lib/catalog";
-import { catalogText } from "@/messages/catalog";
 import s from "./catalog.module.css";
+import { useText } from "@/lib/i18n/provider";
 
-const t = catalogText.batteries;
+/** Symbols, not words: the buttons are named by their `aria-label`. */
+const GLYPH = { up: "↑", down: "↓", remove: "✕" } as const;
+
 
 /**
  * Batteries as ordered clip lists. Read-only without `onChange`; with it, clips can be added, removed and reordered,
@@ -20,11 +22,14 @@ export function BatteryPanel({
   catalog: StimulusCatalog;
   onChange?: (next: StimulusCatalog) => void;
 }) {
+  const tx = useText();
+  const t = tx.catalog.batteries;
   const [extra, setExtra] = useState<string[]>([]);
   const [newId, setNewId] = useState("");
   const known = batteriesOf(catalog);
   const batteries = [...known, ...extra.filter((id) => !known.some((b) => b.id === id)).map((id) => ({ id, clipIds: [] }))];
   const byId = new Map(catalog.clips.map((c) => [c.id, c]));
+  const clipMeta = (id: string, sec: number | undefined) => `(${id}, ${tx.catalog.clips.seconds(sec ?? NaN)})`;
   const write = (id: string, clipIds: string[]) => onChange?.(setBattery(catalog, id, clipIds));
 
   return (
@@ -47,13 +52,13 @@ export function BatteryPanel({
                     <li key={id}>
                       <span className={s.batteryRow}>
                         <span>
-                          {clip?.title || id} <span className="muted">({id}, {catalogText.clips.seconds(clip?.durationSec ?? NaN)})</span>
+                          {clip?.title || id} <span className="muted">{clipMeta(id, clip?.durationSec)}</span>
                         </span>
                         {onChange ? (
                           <span className={s.batteryActions}>
-                            <button type="button" className={s.iconButton} aria-label={`${t.up}: ${id}`} disabled={i === 0} onClick={() => write(b.id, move(b.clipIds, i, i - 1))}>↑</button>
-                            <button type="button" className={s.iconButton} aria-label={`${t.down}: ${id}`} disabled={i === b.clipIds.length - 1} onClick={() => write(b.id, move(b.clipIds, i, i + 1))}>↓</button>
-                            <button type="button" className={s.iconButton} aria-label={`${t.remove}: ${id}`} onClick={() => write(b.id, b.clipIds.filter((x) => x !== id))}>✕</button>
+                            <button type="button" className={s.iconButton} aria-label={`${t.up}: ${id}`} disabled={i === 0} onClick={() => write(b.id, move(b.clipIds, i, i - 1))}>{GLYPH.up}</button>
+                            <button type="button" className={s.iconButton} aria-label={`${t.down}: ${id}`} disabled={i === b.clipIds.length - 1} onClick={() => write(b.id, move(b.clipIds, i, i + 1))}>{GLYPH.down}</button>
+                            <button type="button" className={s.iconButton} aria-label={`${t.remove}: ${id}`} onClick={() => write(b.id, b.clipIds.filter((x) => x !== id))}>{GLYPH.remove}</button>
                           </span>
                         ) : null}
                       </span>
@@ -85,7 +90,7 @@ export function BatteryPanel({
         <div className={s.row} style={{ marginTop: ".75rem" }}>
           <label>
             {t.newId}
-            <input value={newId} onChange={(e) => setNewId(e.currentTarget.value)} placeholder="express_30s" />
+            <input value={newId} onChange={(e) => setNewId(e.currentTarget.value)} placeholder={t.newIdExample} />
           </label>
           <button
             type="button"

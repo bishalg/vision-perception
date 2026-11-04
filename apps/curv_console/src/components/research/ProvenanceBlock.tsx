@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import type { AnalysisRun } from "@/lib/api/research";
-import { researchText, type ResearchMessages } from "@/messages/research";
+import { useText } from "@/lib/i18n/provider";
+import type { ResearchMessages } from "@/messages/research";
 import r from "./research.module.css";
 
 /** RUN-5: every field that identifies what a run computed and with which code, in display order. */
@@ -55,7 +56,9 @@ function CopyButton({ label, value, text }: { label: string; value: string; text
 }
 
 /** The RUN-5 provenance of a run: every field, copyable. A field the backend did not record says so, never a blank. */
-export function ProvenanceBlock({ run, text = researchText }: { run: AnalysisRun; text?: ResearchMessages }) {
+export function ProvenanceBlock({ run, text: textProp }: { run: AnalysisRun; text?: ResearchMessages }) {
+  const bundle = useText();
+  const text = textProp ?? bundle.research;
   const t = text.runs.provenance;
   return (
     <section className="panel stack" aria-label={t.title}>

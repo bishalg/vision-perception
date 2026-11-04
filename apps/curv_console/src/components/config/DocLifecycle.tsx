@@ -7,9 +7,8 @@ import type { CatalogResult } from "@/components/catalog/types";
 import type { ConfigDocumentKind, ConfigDocumentStatus, ConfigTransition } from "@/lib/api/catalog";
 import { readSandboxRun } from "@/lib/configDocs";
 import { formatDateTime } from "@/lib/format";
-import { configText } from "@/messages/config";
+import { useText } from "@/lib/i18n/provider";
 
-const g = configText.lifecycleGate;
 
 function subscribe(onChange: () => void): () => void {
   window.addEventListener("storage", onChange);
@@ -37,6 +36,8 @@ export function DocLifecycle({
   sandboxHref: string;
   run: (step: ConfigTransition) => Promise<CatalogResult<{ status: string }>>;
 }) {
+  const tx = useText();
+  const g = tx.config.lifecycleGate;
   const raw = useSyncExternalStore(
     subscribe,
     () => {
@@ -55,7 +56,7 @@ export function DocLifecycle({
     >
       <p style={{ margin: 0 }}>
         {record ? g.lastRun(formatDateTime(record.at), record.sessions, record.changed) : g.noRun}{" "}
-        <Link href={sandboxHref}>{configText.runSandbox}</Link>
+        <Link href={sandboxHref}>{tx.config.runSandbox}</Link>
       </p>
     </LifecycleActions>
   );

@@ -1,15 +1,14 @@
+"use client";
+
 /**
  * Read-only views of a scoring profile and a baseline set, and the diff between two versions (WP-C.5).
  */
 import s from "@/components/catalog/catalog.module.css";
 import { DEFAULT_BRACKET_ID, type NormativeBaselineSet, type NormativeExpectation, type ScoringProfile } from "@/lib/api/config";
 import { formatValue, groupBaselineChanges, type LeafChange } from "@/lib/configDocs";
-import { configText } from "@/messages/config";
 import c from "./config.module.css";
+import { useText } from "@/lib/i18n/provider";
 
-const t = configText;
-const p = configText.profile;
-const b = configText.baselineEditor;
 
 export const PROFILE_FIELDS = {
   flag: ["greenFloor", "yellowFloor", "lowConfidenceShare", "atypicalShareForRed"],
@@ -17,6 +16,8 @@ export const PROFILE_FIELDS = {
 } as const;
 
 export function ScoringProfileView({ profile }: { profile: ScoringProfile }) {
+  const tx = useText();
+  const p = tx.config.profile;
   return (
     <div className={c.columns}>
       <section className="panel" aria-label={p.flag}>
@@ -58,6 +59,8 @@ const label = (e: NormativeExpectation) => (e.targetAOI ? `${e.biomarker} · ${e
 const num = (v: number | null | undefined) => (v === null || v === undefined ? "—" : String(v));
 
 export function BaselinesView({ set }: { set: NormativeBaselineSet }) {
+  const tx = useText();
+  const b = tx.config.baselineEditor;
   const rows = [DEFAULT_BRACKET_ID, ...set.ageBrackets.map((x) => x.id)];
   return (
     <div className="stack">
@@ -72,7 +75,7 @@ export function BaselinesView({ set }: { set: NormativeBaselineSet }) {
             <div key={seg.id} className="table-wrap">
               <table className="data">
                 <caption className={c.caption}>
-                  {b.grid(seg.id)} ({seg.startSec}–{seg.endSec} s)
+                  {b.grid(seg.id)} ({b.segmentSpan(seg.startSec, seg.endSec)})
                 </caption>
                 <thead>
                   <tr>
@@ -110,6 +113,8 @@ export function BaselinesView({ set }: { set: NormativeBaselineSet }) {
 }
 
 function ChangeTable({ changes }: { changes: LeafChange[] }) {
+  const tx = useText();
+  const t = tx.config;
   return (
     <div className="table-wrap">
       <table className="data">
@@ -141,6 +146,9 @@ export function DocDiffView({
   changes: LeafChange[];
   groupByClip?: boolean;
 }) {
+  const tx = useText();
+  const t = tx.config;
+  const b = tx.config.baselineEditor;
   const title = t.diff.title(from, to);
   return (
     <section className={`panel ${s.diff}`} aria-label={title}>

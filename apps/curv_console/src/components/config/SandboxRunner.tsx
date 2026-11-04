@@ -11,11 +11,10 @@ import { browserCore } from "@/lib/asd/browser";
 import { defaultScoringProfile, rescoreSession, type ContractInfo, type RescoreResult } from "@/lib/asd/ops";
 import { recordSandboxRun, summarizeSandbox, type SandboxOutcome } from "@/lib/configDocs";
 import { formatNumber } from "@/lib/format";
-import { configText } from "@/messages/config";
 import c from "./config.module.css";
 import { useContractInfo } from "./DraftShell";
+import { useText } from "@/lib/i18n/provider";
 
-const t = configText.sandbox;
 
 export interface SandboxSide {
   label: string;
@@ -32,6 +31,8 @@ interface Row {
 }
 
 function Caveats({ info }: { info: ContractInfo | null }) {
+  const tx = useText();
+  const t = tx.config.sandbox;
   const fixed = info ? String(info.lowConfidenceValidRatio) : "0.6";
   return (
     <section className="panel" aria-label={t.caveats.title}>
@@ -71,6 +72,8 @@ export function SandboxRunner({
   record?: { kind: ConfigDocumentKind; version: string }[];
   defaultAge?: number;
 }) {
+  const tx = useText();
+  const t = tx.config.sandbox;
   const [selected, setSelected] = useState<Set<string>>(() => new Set(initialSelected));
   const [age, setAge] = useState(defaultAge);
   const [ages, setAges] = useState<Record<string, number>>({});
@@ -105,7 +108,7 @@ export function SandboxRunner({
     start(async () => {
       const loaded = await load(ids);
       if (!loaded.ok) {
-        setError(`${t.loadFailed} ${catalogFailureText(loaded)}`);
+        setError(`${t.loadFailed} ${catalogFailureText(loaded, tx.catalog.errors)}`);
         return;
       }
       const core = browserCore();

@@ -1,11 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import type { ConfigDocument, ConfigDocumentStatus } from "@/lib/api/catalog";
 import type { CatalogDiff } from "@/lib/catalog";
 import { formatDateTime } from "@/lib/format";
-import { catalogText } from "@/messages/catalog";
+import { useText } from "@/lib/i18n/provider";
+import { authorText } from "./authorText";
 import s from "./catalog.module.css";
-
-const t = catalogText;
 
 const STATUS_BADGE: Record<ConfigDocumentStatus, string> = {
   draft: "badge-yellow",
@@ -15,15 +16,15 @@ const STATUS_BADGE: Record<ConfigDocumentStatus, string> = {
 };
 
 export function ConfigStatusBadge({ status }: { status: ConfigDocumentStatus }) {
+  const tx = useText();
+  const t = tx.catalog;
   return <span className={`badge ${STATUS_BADGE[status]}`}>{t.statuses[status]}</span>;
 }
 
-/** Author column: user ids are opaque; a null author is the system seed. */
-export function authorText(createdBy: string | null | undefined): string {
-  return createdBy ? createdBy.slice(0, 8) : t.system;
-}
 
 export function VersionsTable({ orgId, items }: { orgId: string; items: ConfigDocument[] }) {
+  const tx = useText();
+  const t = tx.catalog;
   const base = `/${encodeURIComponent(orgId)}/config/catalog`;
   if (!items.length) return <p className="muted">{t.empty}</p>;
   return (
@@ -45,7 +46,7 @@ export function VersionsTable({ orgId, items }: { orgId: string; items: ConfigDo
               <td><Link href={`${base}/${encodeURIComponent(d.version)}`}>{d.version}</Link></td>
               <td><ConfigStatusBadge status={d.status} /></td>
               <td>{formatDateTime(d.created_at)}</td>
-              <td title={d.created_by ?? undefined}>{authorText(d.created_by)}</td>
+              <td title={d.created_by ?? undefined}>{authorText(d.created_by, t.system)}</td>
               <td>{d.published_at ? formatDateTime(d.published_at) : "—"}</td>
               <td style={{ whiteSpace: "normal" }}>{d.notes ?? ""}</td>
             </tr>
@@ -57,6 +58,8 @@ export function VersionsTable({ orgId, items }: { orgId: string; items: ConfigDo
 }
 
 export function CatalogDiffView({ from, to, diff }: { from: string; to: string; diff: CatalogDiff }) {
+  const tx = useText();
+  const t = tx.catalog;
   const empty = !diff.fields.length && !diff.added.length && !diff.removed.length && !diff.changed.length;
   return (
     <section className={`panel ${s.diff}`} aria-label={t.diff.title(from, to)}>

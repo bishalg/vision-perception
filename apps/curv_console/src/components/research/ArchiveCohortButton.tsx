@@ -2,17 +2,20 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { useText } from "@/lib/i18n/provider";
 import { failureText, type ResearchResult } from "@/lib/research/result";
-import { researchText, type ResearchMessages } from "@/messages/research";
+import type { ResearchMessages } from "@/messages/research";
 
 /** Archives a cohort (it stays readable; runs that used it keep their membership hash). */
 export function ArchiveCohortButton({
   archive,
-  text = researchText,
+  text: textProp,
 }: {
   archive: () => Promise<ResearchResult>;
   text?: ResearchMessages;
 }) {
+  const bundle = useText();
+  const text = textProp ?? bundle.research;
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();

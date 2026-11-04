@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import type { Experiment } from "@/lib/api/research";
-import { researchText, type ResearchMessages } from "@/messages/research";
+import { useText } from "@/lib/i18n/provider";
+import type { ResearchMessages } from "@/messages/research";
 import r from "./research.module.css";
 
 /**
@@ -24,7 +25,7 @@ export function ExperimentHeader({
   canPromote,
   onPromote,
   promoteError,
-  text = researchText,
+  text: textProp,
 }: {
   experiment: Experiment;
   name: string;
@@ -42,6 +43,8 @@ export function ExperimentHeader({
   promoteError: string | null;
   text?: ResearchMessages;
 }) {
+  const bundle = useText();
+  const text = textProp ?? bundle.research;
   const w = text.workbench;
   const [promoting, setPromoting] = useState(false);
   const [version, setVersion] = useState("");

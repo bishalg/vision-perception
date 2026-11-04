@@ -3,11 +3,10 @@
 import { useRef, type PointerEvent } from "react";
 import type { Area, CatalogClip } from "@/lib/api/catalog";
 import { areasAt, moveBox, resizeBox } from "@/lib/catalog";
-import { catalogText } from "@/messages/catalog";
 import { roleClass } from "./AoiTimeline";
 import s from "./catalog.module.css";
+import { useText } from "@/lib/i18n/provider";
 
-const t = catalogText.aoi;
 
 type Drag = { index: number; mode: "move" | "resize"; x: number; y: number; start: Area };
 
@@ -28,6 +27,8 @@ export function AoiFrame({
   onSelect: (index: number) => void;
   onChange?: (index: number, area: Area) => void;
 }) {
+  const tx = useText();
+  const t = tx.catalog.aoi;
   const frame = useRef<HTMLDivElement>(null);
   const drag = useRef<Drag | null>(null);
   const active = areasAt(clip, time);
@@ -91,7 +92,7 @@ export function AoiFrame({
       </div>
       <figcaption className="muted">
         {active.length === 0 ? `${t.noneAtTime} ` : ""}
-        {onChange ? t.frameHint : catalogText.clips.media}
+        {onChange ? t.frameHint : tx.catalog.clips.media}
       </figcaption>
     </figure>
   );

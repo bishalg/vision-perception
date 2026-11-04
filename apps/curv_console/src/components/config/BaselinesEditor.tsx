@@ -16,14 +16,12 @@ import {
 } from "@/lib/api/config";
 import { validateBaselines } from "@/lib/asd/ops";
 import { baselineProblemsByClip } from "@/lib/configDocs";
-import { configText } from "@/messages/config";
 import { CoreCheckPanel, DraftShell, useCoreCheck, type DraftSubmit } from "./DraftShell";
 import { provenanceClass } from "./DocViews";
 import { SandboxRunner } from "./SandboxRunner";
 import c from "./config.module.css";
+import { useText } from "@/lib/i18n/provider";
 
-const b = configText.baselineEditor;
-const e = configText.editor;
 
 type Mutate = (fn: (set: NormativeBaselineSet) => void) => void;
 
@@ -78,6 +76,8 @@ function numbersFinite(set: NormativeBaselineSet): boolean {
 }
 
 function SegmentEditor({ clipId, index, set, mutate }: { clipId: string; index: number; set: NormativeBaselineSet; mutate: Mutate }) {
+  const tx = useText();
+  const b = tx.config.baselineEditor;
   const seg = set.videos[clipId]!.segments[index]!;
   const brackets = [DEFAULT_BRACKET_ID, ...set.ageBrackets.map((x) => x.id)];
   const at = (fn: (sg: typeof seg) => void) => mutate((d) => fn(d.videos[clipId]!.segments[index]!));
@@ -238,6 +238,9 @@ export function BaselinesEditor({
   };
   save: (input: DraftSubmit<NormativeBaselineSet>) => Promise<CatalogResult<{ version: string }>>;
 }) {
+  const tx = useText();
+  const b = tx.config.baselineEditor;
+  const e = tx.config.editor;
   const [set, setSet] = useState<NormativeBaselineSet>(initial);
   const [clipId, setClipId] = useState<string | null>(Object.keys(initial.videos)[0] ?? null);
   const [newId, setNewId] = useState("");
@@ -437,7 +440,7 @@ export function BaselinesEditor({
             load={preview.load}
           />
         ) : (
-          <p className="muted">{configText.sandbox.noBaselines}</p>
+          <p className="muted">{tx.config.sandbox.noBaselines}</p>
         )}
       </details>
     </DraftShell>

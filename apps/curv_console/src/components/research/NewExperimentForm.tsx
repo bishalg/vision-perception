@@ -2,8 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { useText } from "@/lib/i18n/provider";
 import { failureText, type ResearchResult } from "@/lib/research/result";
-import { researchText, type ResearchMessages } from "@/messages/research";
+import type { ResearchMessages } from "@/messages/research";
 import r from "./research.module.css";
 
 /** Name, description and the starting point of a new experiment; on success opens its workbench. */
@@ -11,13 +12,15 @@ export function NewExperimentForm({
   orgId,
   experiments,
   create,
-  text = researchText,
+  text: textProp,
 }: {
   orgId: string;
   experiments: { id: string; name: string }[];
   create: (input: { name: string; description?: string; from_experiment_id?: string }) => Promise<ResearchResult<{ id: string }>>;
   text?: ResearchMessages;
 }) {
+  const bundle = useText();
+  const text = textProp ?? bundle.research;
   const t = text.experiments;
   const router = useRouter();
   const [name, setName] = useState("");

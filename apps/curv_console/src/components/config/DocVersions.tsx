@@ -3,52 +3,15 @@
  * paged table. Same layout as the catalog list (WP-C.4); server component.
  */
 import Link from "next/link";
-import { ConfigStatusBadge, authorText } from "@/components/catalog/CatalogTables";
 import s from "@/components/catalog/catalog.module.css";
-import { CONFIG_DOCUMENT_STATUSES, type ConfigDocument, type ConfigDocumentKind, type ConfigDocumentStatus } from "@/lib/api/catalog";
+import { CONFIG_DOCUMENT_STATUSES, type ConfigDocumentKind, type ConfigDocumentStatus } from "@/lib/api/catalog";
 import type { Role } from "@/lib/api";
 import { authedApi } from "@/lib/auth/server";
-import { formatDateTime } from "@/lib/format";
+import { getText } from "@/lib/i18n/server";
 import { parseCursor, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
-import { catalogText } from "@/messages/catalog";
-import { configText } from "@/messages/config";
-
-const t = configText;
-const ct = catalogText;
-
-export function DocVersionsTable({ base, items }: { base: string; items: ConfigDocument[] }) {
-  if (!items.length) return <p className="muted">{ct.empty}</p>;
-  return (
-    <div className="table-wrap">
-      <table className="data">
-        <thead>
-          <tr>
-            <th>{ct.cols.version}</th>
-            <th>{ct.cols.status}</th>
-            <th>{ct.cols.created}</th>
-            <th>{ct.cols.author}</th>
-            <th>{ct.cols.published}</th>
-            <th>{t.facts.notes}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((d) => (
-            <tr key={d.id}>
-              <td><Link href={`${base}/${encodeURIComponent(d.version)}`}>{d.version}</Link></td>
-              <td><ConfigStatusBadge status={d.status} /></td>
-              <td>{formatDateTime(d.created_at)}</td>
-              <td title={d.created_by ?? undefined}>{authorText(d.created_by)}</td>
-              <td>{d.published_at ? formatDateTime(d.published_at) : "—"}</td>
-              <td style={{ whiteSpace: "normal" }}>{d.notes ?? ""}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
+import { DocVersionsTable } from "./DocVersionsTable";
 
 export async function DocVersionsPage({
   org,
@@ -67,6 +30,9 @@ export async function DocVersionsPage({
   role: Role | undefined;
   searchParams: Record<string, string | string[] | undefined>;
 }) {
+  const tx = await getText();
+  const t = tx.config;
+  const ct = tx.catalog;
   if (!can(role, "config.read")) {
     return (
       <>
@@ -115,7 +81,7 @@ export async function DocVersionsPage({
       </nav>
       <DocVersionsTable base={base} items={page.items} />
       <p className="muted">{t.showing(page.items.length)}</p>
-      <nav className="pagination" aria-label="Pagination">
+      <nav className="pagination" aria-label={t.pagination}>
         {cursor ? <Link href={filterHref(status)}>{ct.first}</Link> : null}
         {page.next_cursor ? (
           <Link rel="next" href={`${base}${toSearch({ status, cursor: page.next_cursor })}`}>{ct.next}</Link>

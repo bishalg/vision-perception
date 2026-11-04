@@ -84,8 +84,8 @@ describe("display helpers", () => {
   });
 
   it("parses feature flags", () => {
-    expect(parseFeatureFlags("a=true\n\n b.c = false ")).toEqual({ flags: { a: true, "b.c": false } });
-    expect(parseFeatureFlags("a=yes")).toEqual({ error: configText.bundles.flagsInvalid("a=yes") });
+    expect(parseFeatureFlags("a=true\n\n b.c = false ", configText.bundles.flagsInvalid)).toEqual({ flags: { a: true, "b.c": false } });
+    expect(parseFeatureFlags("a=yes", configText.bundles.flagsInvalid)).toEqual({ error: configText.bundles.flagsInvalid("a=yes") });
   });
 });
 

@@ -1,4 +1,4 @@
-import { researchText, type ResearchMessages } from "@/messages/research";
+import type { ResearchMessages } from "@/messages/research";
 
 export type Transition = readonly [string, string, number | null];
 
@@ -11,14 +11,14 @@ export function TransitionMatrix({
   transitions,
   k,
   stateLabel,
-  text = researchText,
+  text,
 }: {
   caption: string;
   transitions: readonly Transition[];
   k: number;
   /** Display name of a state (a flag, a quality status); the raw value when omitted. */
   stateLabel?: (state: string) => string;
-  text?: ResearchMessages;
+  text: ResearchMessages;
 }) {
   const label = stateLabel ?? ((s: string) => s);
   const froms = [...new Set(transitions.map((x) => x[0]))];
@@ -30,7 +30,7 @@ export function TransitionMatrix({
         <caption className="muted">{caption}</caption>
         <thead>
           <tr>
-            <th scope="col">{`${text.charts.matrixFrom} / ${text.charts.matrixTo}`}</th>
+            <th scope="col">{text.charts.matrixFrom} / {text.charts.matrixTo}</th>
             {tos.map((to) => <th key={to} scope="col">{label(to)}</th>)}
           </tr>
         </thead>

@@ -1,6 +1,6 @@
 import type { ScoreSide, Trace } from "@/lib/research/preview";
 import { formatNumber } from "@/lib/format";
-import { researchText, type ResearchMessages } from "@/messages/research";
+import type { ResearchMessages } from "@/messages/research";
 import { ScanpathPlot, type PlotRect } from "./ScanpathPlot";
 import r from "./research.module.css";
 
@@ -52,7 +52,7 @@ function Side({ title, side, text }: { title: string; side: ScoreSide | null; te
  * Published against draft for one session (RUI-3): composite, analysis label, per-clip subscores, the
  * `param_not_applied` knobs, and at frame level the scanpath. The published side never changes with the draft.
  */
-export function PreviewCard({ card, text = researchText }: { card: CardData; text?: ResearchMessages }) {
+export function PreviewCard({ card, text }: { card: CardData; text: ResearchMessages }) {
   const p = text.preview;
   const changed = card.published && card.draft && (card.published.composite !== card.draft.composite || card.published.flag !== card.draft.flag);
   return (

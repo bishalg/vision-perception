@@ -1,7 +1,7 @@
 import type { Dist } from "@/lib/api/research";
 import type { BaselineRange } from "@/lib/research/baselines";
 import { formatNumber } from "@/lib/format";
-import { researchText, type ResearchMessages } from "@/messages/research";
+import type { ResearchMessages } from "@/messages/research";
 import r from "./research.module.css";
 
 const W = 320;
@@ -18,13 +18,13 @@ export function Histogram({
   dist,
   k,
   baseline = null,
-  text = researchText,
+  text,
 }: {
   label: string;
   dist: Dist;
   k: number;
   baseline?: BaselineRange | null;
-  text?: ResearchMessages;
+  text: ResearchMessages;
 }) {
   const hist = dist.hist;
   if (dist.suppressed || !hist || hist.counts.length === 0 || hist.edges.length !== hist.counts.length + 1) {

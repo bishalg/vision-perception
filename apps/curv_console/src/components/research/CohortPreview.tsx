@@ -1,11 +1,11 @@
 import type { CohortPreview as Preview } from "@/lib/api/research";
-import { researchText, type ResearchMessages } from "@/messages/research";
+import type { ResearchMessages } from "@/messages/research";
 
 /**
  * COH-2 preview: counts only. A count the backend suppressed (PRV-1, below `small_cell_k`) is `null` and shows the
  * "n < k" message, never `0`.
  */
-export function CohortPreview({ preview, text = researchText }: { preview: Preview; text?: ResearchMessages }) {
+export function CohortPreview({ preview, text }: { preview: Preview; text: ResearchMessages }) {
   const t = text.run;
   const k = preview.small_cell_k;
   const count = (n: number | null | undefined) => (n == null ? text.suppressedCell(k) : String(n));

@@ -3,15 +3,17 @@ import s from "@/components/catalog/catalog.module.css";
 import { SandboxRunner } from "@/components/config/SandboxRunner";
 import type { ConfigDocument, ConfigDocumentKind } from "@/lib/api/catalog";
 import { authedApi, currentRole } from "@/lib/auth/server";
+import { getText } from "@/lib/i18n/server";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
-import { catalogText } from "@/messages/catalog";
-import { configText } from "@/messages/config";
 import { loadSandboxSessionsAction } from "../docActions";
 
-const t = configText.sandbox;
 
-export const metadata: Metadata = { title: t.title };
+export async function generateMetadata(): Promise<Metadata> {
+  const tx = await getText();
+  const t = tx.config.sandbox;
+  return { title: t.title };
+}
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)?.slice(0, 64);
 
@@ -32,13 +34,15 @@ export default async function SandboxPage({
   params: Promise<{ org: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const tx = await getText();
+  const t = tx.config.sandbox;
   const { org } = await params;
   const role = await currentRole();
   if (!can(role, "config.read")) {
     return (
       <>
         <h1>{t.title}</h1>
-        <p className="muted">{configText.denied}</p>
+        <p className="muted">{tx.config.denied}</p>
       </>
     );
   }
@@ -66,7 +70,7 @@ export default async function SandboxPage({
       : []),
   ];
   const option = (d: ConfigDocument) => (
-    <option key={d.id} value={d.version}>{d.version} ({catalogText.statuses[d.status]})</option>
+    <option key={d.id} value={d.version}>{d.version} ({tx.catalog.statuses[d.status]})</option>
   );
 
   return (

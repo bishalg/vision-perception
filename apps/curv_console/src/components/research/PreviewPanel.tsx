@@ -18,8 +18,8 @@ import {
 import { formatValue, isNumeric, setAt, stepOf, sweepableParams, valueOf, type ProfileDoc } from "@/lib/research/registry";
 import type { ResearchResult } from "@/lib/research/result";
 import { MAX_SWEEP_STEPS, defaultSweep, sweepValues } from "@/lib/research/sweep";
-import { researchText, type ResearchMessages } from "@/messages/research";
-import { useLocale } from "@/lib/i18n/provider";
+import type { ResearchMessages } from "@/messages/research";
+import { useLocale, useText } from "@/lib/i18n/provider";
 import { paramText } from "@/lib/research/paramText";
 import { PreviewCard, type CardData } from "./PreviewCard";
 import { SessionPicker, type PickerSession } from "./SessionPicker";
@@ -53,7 +53,8 @@ type Side = { score: ScoreSide; trace: ReturnType<typeof parseTrace> };
  */
 export function PreviewPanel(props: PreviewPanelProps) {
   const { registry, publishedProfile, baselines, draft, sessions, loadRecords, loadFrames, catalog } = props;
-  const text = props.text ?? researchText;
+  const bundle = useText();
+  const text = props.text ?? bundle.research;
   const p = text.preview;
   const core = useMemo(() => props.core ?? browserCore(), [props.core]);
   const [selected, setSelected] = useState<Set<string>>(() => new Set(sessions.slice(0, 2).map((s) => s.id)));

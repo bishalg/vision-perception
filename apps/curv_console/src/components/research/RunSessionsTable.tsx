@@ -1,12 +1,12 @@
 import type { AnalysisSessionRow } from "@/lib/api/research";
 import { formatNumber } from "@/lib/format";
-import { researchText, type ResearchMessages } from "@/messages/research";
+import type { ResearchMessages } from "@/messages/research";
 
 /**
  * RUN-3 per-session rows: published and draft composite and flag side by side, with the change. The rows carry no
  * token, MRN, name or device model (PRV-2); a missing value shows a dash, never a made-up number.
  */
-export function RunSessionsTable({ rows, text = researchText }: { rows: readonly AnalysisSessionRow[]; text?: ResearchMessages }) {
+export function RunSessionsTable({ rows, text }: { rows: readonly AnalysisSessionRow[]; text: ResearchMessages }) {
   const t = text.runs;
   const dash = text.charts.noTransition;
   const flag = (f: string | null | undefined) => (f ? text.preview.flagLabel[f as keyof typeof text.preview.flagLabel] ?? f : dash);

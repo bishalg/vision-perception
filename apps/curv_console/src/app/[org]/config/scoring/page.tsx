@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import { DocVersionsPage } from "@/components/config/DocVersions";
 import { currentRole } from "@/lib/auth/server";
-import { configText } from "@/messages/config";
+import { getText } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: configText.scoring.title };
+export async function generateMetadata(): Promise<Metadata> {
+  const tx = await getText();
+  return { title: tx.config.scoring.title };
+}
 
 export default async function ScoringPage({
   params,
@@ -12,6 +15,7 @@ export default async function ScoringPage({
   params: Promise<{ org: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const tx = await getText();
   const { org } = await params;
   const [role, query] = [await currentRole(), await searchParams];
   return (
@@ -19,8 +23,8 @@ export default async function ScoringPage({
       org={org}
       kind="scoring_profile"
       segment="scoring"
-      title={configText.scoring.title}
-      intro={configText.scoring.intro}
+      title={tx.config.scoring.title}
+      intro={tx.config.scoring.intro}
       role={role}
       searchParams={query}
     />

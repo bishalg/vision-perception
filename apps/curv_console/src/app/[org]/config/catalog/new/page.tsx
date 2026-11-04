@@ -3,14 +3,17 @@ import Link from "next/link";
 import { CatalogEditor } from "@/components/catalog/CatalogEditor";
 import { authedApi, currentRole } from "@/lib/auth/server";
 import { emptyCatalog, parseCatalog } from "@/lib/catalog";
+import { getText } from "@/lib/i18n/server";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
-import { catalogText } from "@/messages/catalog";
 import { createCatalogDraftAction } from "../actions";
 
-const t = catalogText;
 
-export const metadata: Metadata = { title: t.editor.title };
+export async function generateMetadata(): Promise<Metadata> {
+  const tx = await getText();
+  const t = tx.catalog;
+  return { title: t.editor.title };
+}
 
 /** `?from=<version>` starts from that version's body; without it, from the published version (else empty). */
 export default async function NewCatalogDraftPage({
@@ -20,6 +23,8 @@ export default async function NewCatalogDraftPage({
   params: Promise<{ org: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const tx = await getText();
+  const t = tx.catalog;
   const { org } = await params;
   const base = `/${encodeURIComponent(org)}/config/catalog`;
   const role = await currentRole();

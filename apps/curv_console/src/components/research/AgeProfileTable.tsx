@@ -1,7 +1,7 @@
 import { formatPercent } from "@/lib/format";
 import type { AgeProfile, AgeProfileExpectation, AgeProfileSide } from "@/lib/research/age-profile";
 import { formatValue } from "@/lib/research/registry";
-import { researchText, type ResearchMessages } from "@/messages/research";
+import type { ResearchMessages } from "@/messages/research";
 import r from "./research.module.css";
 
 /**
@@ -10,7 +10,7 @@ import r from "./research.module.css";
  * atypical under the published and the experiment baselines, and the percentile of the expected value. Everything is
  * the Rust job's; a band or cell under `max(k, norms.minN)` shows "n < t", never a number.
  */
-export function AgeProfileTable({ profile, k, text = researchText }: { profile: AgeProfile; k: number; text?: ResearchMessages }) {
+export function AgeProfileTable({ profile, k, text }: { profile: AgeProfile; k: number; text: ResearchMessages }) {
   const t = text.analysis;
   const threshold = profile.suppression_threshold || Math.max(k, profile.min_n);
   const hidden = text.suppressedCell(threshold);
@@ -32,7 +32,7 @@ export function AgeProfileTable({ profile, k, text = researchText }: { profile: 
             ) : (
               <div className="table-wrap">
                 <table className={`data ${r.ageTable}`} aria-label={t.ageCaption(band.band)}>
-                  <caption className="muted">{`${t.ageCols.n}: ${band.n}`}</caption>
+                  <caption className="muted">{t.ageCols.n}: {band.n}</caption>
                   <thead>
                     <tr>
                       <th scope="col">{t.ageCols.expectation}</th>

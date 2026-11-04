@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useJobPoll } from "@/hooks/useJobPoll";
 import { isRunFinished } from "@/lib/api/research";
+import { useText } from "@/lib/i18n/provider";
 import { failureText, type ResearchResult } from "@/lib/research/result";
 import { exportPrefillHref, type RunSnapshot } from "@/lib/research/runs";
-import { researchText, type ResearchMessages } from "@/messages/research";
+import type { ResearchMessages } from "@/messages/research";
 import r from "./research.module.css";
 
 const POLL_MS = 1000;
@@ -27,7 +28,7 @@ export function RunStatus({
   canRun,
   canExport,
   pollMs = POLL_MS,
-  text = researchText,
+  text: textProp,
 }: {
   orgId: string;
   runId: string;
@@ -40,6 +41,8 @@ export function RunStatus({
   pollMs?: number;
   text?: ResearchMessages;
 }) {
+  const bundle = useText();
+  const text = textProp ?? bundle.research;
   const t = text.runs;
   const router = useRouter();
   const [override, setOverride] = useState<RunSnapshot | null>(null);

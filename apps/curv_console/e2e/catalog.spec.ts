@@ -95,3 +95,12 @@ test("catalog lifecycle: approve and publish someone else's draft, then compare 
   await page.getByRole("link", { name: "All catalog versions" }).click();
   await expect(page.getByText("Published now: 2026.11.0-rc2")).toBeVisible();
 });
+
+test("L.1d: a user whose locale is ne reads the catalog page in Nepali (lang=ne-NP)", async ({ page }) => {
+  await login(page, "demo+ne@example.org");
+  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  const org = new URL(page.url()).pathname.split("/")[1]!;
+  await page.goto(`/${org}/config/catalog`);
+  await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");
+  await expect(page.getByRole("heading", { name: "उद्दीपक क्याटलग" })).toBeVisible();
+});

@@ -3,13 +3,16 @@ import Link from "next/link";
 import { RUN_STATUSES, type RunStatus } from "@/lib/api/research";
 import { authedApi } from "@/lib/auth/server";
 import { formatDateTime } from "@/lib/format";
+import { getText } from "@/lib/i18n/server";
 import { parseCursor, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
-import { researchText } from "@/messages/research";
 
-const t = researchText.runs;
 
-export const metadata: Metadata = { title: t.title };
+export async function generateMetadata(): Promise<Metadata> {
+  const tx = await getText();
+  const t = tx.research.runs;
+  return { title: t.title };
+}
 
 const PAGE = 25;
 
@@ -21,6 +24,8 @@ export default async function RunsPage({
   params: Promise<{ org: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const tx = await getText();
+  const t = tx.research.runs;
   const { org } = await params;
   const query = await searchParams;
   const rawStatus = Array.isArray(query.status) ? query.status[0] : query.status;
@@ -42,7 +47,7 @@ export default async function RunsPage({
           {t.filterStatus}
           <select name="status" defaultValue={status ?? ""}>
             <option value="">{t.allStatuses}</option>
-            {RUN_STATUSES.map((s) => <option key={s} value={s}>{researchText.runStatus[s]}</option>)}
+            {RUN_STATUSES.map((s) => <option key={s} value={s}>{tx.research.runStatus[s]}</option>)}
           </select>
         </label>
         <button type="submit" className="secondary">{t.apply}</button>
@@ -61,11 +66,11 @@ export default async function RunsPage({
             <tbody>
               {page.items.map((run) => (
                 <tr key={run.id}>
-                  <td><Link href={`${base}/${encodeURIComponent(run.id)}`}>{researchText.runStatus[run.status]}</Link></td>
+                  <td><Link href={`${base}/${encodeURIComponent(run.id)}`}>{tx.research.runStatus[run.status]}</Link></td>
                   <td>{t.kind[run.kind]}</td>
                   <td>{(run.experiment_id && experiments.get(run.experiment_id)) || t.unknownExperiment}</td>
                   <td>{(run.cohort_id && cohorts.get(run.cohort_id)) || t.unknownCohort}</td>
-                  <td className="num">{run.sessions_n ?? researchText.charts.noTransition}</td>
+                  <td className="num">{run.sessions_n ?? tx.research.charts.noTransition}</td>
                   <td>{formatDateTime(run.created_at)}</td>
                 </tr>
               ))}

@@ -2,8 +2,9 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import type { ParamRegistry, ParamSpec } from "@/lib/api/research";
+import { useText } from "@/lib/i18n/provider";
 import { diffParams, groupRegistry, setAt, valueOf, type ProfileDoc } from "@/lib/research/registry";
-import { researchText, type ResearchMessages } from "@/messages/research";
+import type { ResearchMessages } from "@/messages/research";
 import { ParamControl, type ParamContext } from "./ParamControl";
 import r from "./research.module.css";
 
@@ -51,7 +52,7 @@ export function RegistryForm({
   context,
   onChange,
   errors = {},
-  text = researchText,
+  text: textProp,
 }: {
   registry: ParamRegistry;
   published: ProfileDoc;
@@ -61,6 +62,8 @@ export function RegistryForm({
   errors?: Record<string, string>;
   text?: ResearchMessages;
 }) {
+  const bundle = useText();
+  const text = textProp ?? bundle.research;
   const groups = useMemo(() => groupRegistry(registry.params), [registry]);
   const diff = diffParams(registry.params, published, draft);
   const latest = useRef({ draft, onChange });

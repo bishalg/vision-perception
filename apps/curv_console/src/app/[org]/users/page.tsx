@@ -2,15 +2,18 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CreateUserForm, UsersTable } from "@/components/UsersAdmin";
 import { authedApi, currentRole } from "@/lib/auth/server";
+import { getText } from "@/lib/i18n/server";
 import { parseCursor, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { assignableRoles, can } from "@/lib/permissions";
-import { adminText } from "@/messages/admin";
 import { createUserAction, resetTotpAction, updateUserAction } from "./actions";
 
-const t = adminText.users;
 
-export const metadata: Metadata = { title: t.title };
+export async function generateMetadata(): Promise<Metadata> {
+  const tx = await getText();
+  const t = tx.admin.users;
+  return { title: t.title };
+}
 
 export default async function UsersPage({
   params,
@@ -19,13 +22,15 @@ export default async function UsersPage({
   params: Promise<{ org: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const tx = await getText();
+  const t = tx.admin.users;
   const { org } = await params;
   const role = await currentRole();
   if (!can(role, "user.read")) {
     return (
       <>
         <h1>{t.title}</h1>
-        <p className="muted">{adminText.common.denied}</p>
+        <p className="muted">{tx.admin.common.denied}</p>
       </>
     );
   }
@@ -51,10 +56,10 @@ export default async function UsersPage({
         update={updateUserAction.bind(null, org)}
         resetTotp={can(role, "user.totp_reset") ? resetTotpAction.bind(null, org) : undefined}
       />
-      <nav className="pagination" aria-label="Pagination">
-        {cursor ? <Link href={base}>{adminText.common.first}</Link> : null}
+      <nav className="pagination" aria-label={tx.admin.common.pagination}>
+        {cursor ? <Link href={base}>{tx.admin.common.first}</Link> : null}
         {page.next_cursor ? (
-          <Link rel="next" href={`${base}${toSearch({ cursor: page.next_cursor })}`}>{adminText.common.next}</Link>
+          <Link rel="next" href={`${base}${toSearch({ cursor: page.next_cursor })}`}>{tx.admin.common.next}</Link>
         ) : null}
       </nav>
       {canManage && roles.length > 0 ? <CreateUserForm create={createUserAction.bind(null, org)} roles={roles} /> : null}

@@ -8,22 +8,27 @@ import { RunStatus } from "@/components/research/RunStatus";
 import { SweepPanel } from "@/components/research/SweepPanel";
 import { authedApi, currentRole } from "@/lib/auth/server";
 import { formatDateTime } from "@/lib/format";
+import { getText } from "@/lib/i18n/server";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { parseAgeProfile } from "@/lib/research/age-profile";
 import { snapshotOf } from "@/lib/research/runs";
-import { researchText } from "@/messages/research";
 import { cancelRunAction, pollRunAction, rerunRunAction } from "../actions";
 
-const t = researchText.runs;
 
-export const metadata: Metadata = { title: t.title };
+export async function generateMetadata(): Promise<Metadata> {
+  const tx = await getText();
+  const t = tx.research.runs;
+  return { title: t.title };
+}
 
 /**
  * `/[org]/research/runs/[id]`: status with live polling, RUN-5 provenance, the sweep (SWP-3) or age-profile (AGE-1)
  * section of a phase-B run, and the RUN-4 results (RUI-6).
  */
 export default async function RunPage({ params }: { params: Promise<{ org: string; id: string }> }) {
+  const tx = await getText();
+  const t = tx.research.runs;
   const { org, id } = await params;
   const role = await currentRole();
   const api = await authedApi();
@@ -63,14 +68,14 @@ export default async function RunPage({ params }: { params: Promise<{ org: strin
         <p><Link href={`${base}/runs/${encodeURIComponent(run.id)}/sessions`}>{t.sessionsLink}</Link></p>
       ) : null}
       <ProvenanceBlock run={run} />
-      {run.summary?.sweep ? <SweepPanel sweep={run.summary.sweep} k={k} /> : null}
+      {run.summary?.sweep ? <SweepPanel sweep={run.summary.sweep} k={k} text={tx.research} locale={tx.locale} /> : null}
       {ageProfile ? (
-        <AgeProfileTable profile={ageProfile} k={k} />
+        <AgeProfileTable profile={ageProfile} k={k} text={tx.research} />
       ) : run.summary?.age_profile != null ? (
-        <p className="muted">{researchText.analysis.unreadable}</p>
+        <p className="muted">{tx.research.analysis.unreadable}</p>
       ) : null}
       {run.summary ? (
-        <RunResults summary={run.summary} baselines={effective?.normative_baselines.body ?? null} membershipDrift={run.membership_drift} />
+        <RunResults text={tx.research} summary={run.summary} baselines={effective?.normative_baselines.body ?? null} membershipDrift={run.membership_drift} />
       ) : run.status === "succeeded" ? (
         <p className="muted">{t.results.noSummary}</p>
       ) : null}
