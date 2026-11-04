@@ -4,10 +4,8 @@ import { useState } from "react";
 import { useJobPoll } from "@/hooks/useJobPoll";
 import type { RetentionSweepResult } from "@/lib/api/privacy";
 import { formatDateTime } from "@/lib/format";
-import { privacyText } from "@/messages/privacy";
+import { useText } from "@/lib/i18n/provider";
 import { privacyFailureText, type PrivacyFailure, type PrivacyResult } from "./types";
-
-const t = privacyText.retention;
 
 export type SweepPollResult =
   | { state: "pending"; status: string }
@@ -36,6 +34,8 @@ export function RetentionPanel({
   poll: (jobId: string) => Promise<PrivacyResult<{ poll: SweepPollResult }>>;
   pollMs?: number;
 }) {
+  const text = useText().privacy;
+  const t = text.retention;
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [confirming, setConfirming] = useState(false);
   const [previewCount, setPreviewCount] = useState<number | null>(null);
@@ -131,7 +131,7 @@ export function RetentionPanel({
       ) : null}
       {failed ? (
         <p role="alert" className="error">
-          {t.failed} {failed.failure ? privacyFailureText(failed.failure) : t.failedJob}
+          {t.failed} {failed.failure ? privacyFailureText(failed.failure, text.errors) : t.failedJob}
         </p>
       ) : null}
     </section>

@@ -160,3 +160,13 @@ test.describe("automatic logoff (WP-C.21, acceptance 23)", () => {
     await expect(page.getByRole("heading", { name: "Sessions", level: 1 })).toBeVisible();
   });
 });
+
+test("the security page renders in Nepali for a user whose locale is ne", async ({ page }) => {
+  await login(page, "admin+ne@example.org");
+  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  const org = new URL(page.url()).pathname.split("/")[1];
+  await page.goto(`/${org}/settings/security`);
+  await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");
+  await expect(page.getByRole("heading", { name: "खाता सुरक्षा", level: 1 })).toBeVisible();
+  await expect(page.getByRole("region", { name: "दुई-चरण साइन इन मिलाउनुहोस्" })).toBeVisible();
+});

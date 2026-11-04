@@ -11,10 +11,8 @@ import {
   type ShareLink,
 } from "@/lib/api/share";
 import { formatDateTime } from "@/lib/format";
-import { shareLinksText } from "@/messages/exports";
+import { useText } from "@/lib/i18n/provider";
 import { failureText, type ActionFailure, type ActionResult } from "./types";
-
-const t = shareLinksText;
 
 export interface ShareLinkPanelProps {
   links: ShareLink[];
@@ -38,6 +36,7 @@ function absolute(url: string): string {
 }
 
 function CopyButton({ value, label }: { value: string; label: string }) {
+  const t = useText().exports.shareLinks;
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
   return (
     <>
@@ -66,6 +65,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
  * and nothing else keeps a copy (no storage, no URL, no page data: the list never carries it).
  */
 function CreatedBox({ created, onClose }: { created: CreatedShareLink; onClose: () => void }) {
+  const t = useText().exports.shareLinks;
   const url = absolute(created.link.url);
   return (
     <div role="dialog" aria-modal="false" aria-labelledby="share-created-h" className="panel stack" data-testid="share-created">
@@ -90,6 +90,8 @@ function CreatedBox({ created, onClose }: { created: CreatedShareLink; onClose: 
 }
 
 function RevokeButton({ link, revoke }: { link: ShareLink; revoke: ShareLinkPanelProps["revoke"] }) {
+  const text = useText().exports;
+  const t = text.shareLinks;
   const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
   const [failure, setFailure] = useState<ActionFailure | null>(null);
@@ -122,13 +124,15 @@ function RevokeButton({ link, revoke }: { link: ShareLink; revoke: ShareLinkPane
           {t.cancel}
         </button>
       </div>
-      {failure ? <p role="alert" className="error">{t.revokeFailed} {failureText(failure)}</p> : null}
+      {failure ? <p role="alert" className="error">{t.revokeFailed} {failureText(failure, text.exports.errors)}</p> : null}
     </div>
   );
 }
 
 /** Share links of one case-package export (SHR-8, SHR-10): create (passcode shown once), list, revoke. */
 export function ShareLinkPanel({ links, ready, canManage, now, create, revoke }: ShareLinkPanelProps) {
+  const text = useText().exports;
+  const t = text.shareLinks;
   const [created, setCreated] = useState<CreatedShareLink | null>(null);
   const [failure, setFailure] = useState<ActionFailure | null>(null);
   const [pending, setPending] = useState(false);
@@ -177,7 +181,7 @@ export function ShareLinkPanel({ links, ready, canManage, now, create, revoke }:
           <button type="submit" disabled={pending}>{pending ? t.creating : t.create}</button>
         </form>
       ) : null}
-      {failure ? <p role="alert" className="error">{t.failed} {failureText(failure)}</p> : null}
+      {failure ? <p role="alert" className="error">{t.failed} {failureText(failure, text.exports.errors)}</p> : null}
       {created ? <CreatedBox created={created} onClose={() => setCreated(null)} /> : null}
       {links.length === 0 ? (
         <p className="muted">{t.empty}</p>
@@ -201,7 +205,7 @@ export function ShareLinkPanel({ links, ready, canManage, now, create, revoke }:
                 <tr key={l.id} data-link-id={l.id} data-state={state}>
                   <td>{formatDateTime(l.created_at)}</td>
                   <td>{t.states[state]}</td>
-                  <td>{`${l.downloads ?? 0} / ${l.max_downloads}`}</td>
+                  <td>{l.downloads ?? 0} / {l.max_downloads}</td>
                   <td>{l.opens ?? 0}</td>
                   <td>{l.last_opened_at ? formatDateTime(l.last_opened_at) : "-"}</td>
                   <td>{formatDateTime(l.expires_at)}</td>

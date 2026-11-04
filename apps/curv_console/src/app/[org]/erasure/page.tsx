@@ -5,11 +5,11 @@ import { authedApi, currentRole } from "@/lib/auth/server";
 import { parseCursor, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
-import { privacyText } from "@/messages/privacy";
+import { getText } from "@/lib/i18n/server";
 
-const t = privacyText.erasure;
-
-export const metadata: Metadata = { title: t.title };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getText()).privacy.erasure.title };
+}
 
 export default async function ErasurePage({
   params,
@@ -19,11 +19,13 @@ export default async function ErasurePage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { org } = await params;
+  const text = (await getText()).privacy;
+  const t = text.erasure;
   if (!can(await currentRole(), "participant.erase")) {
     return (
       <>
         <h1>{t.title}</h1>
-        <p className="muted">{privacyText.denied}</p>
+        <p className="muted">{text.denied}</p>
       </>
     );
   }
@@ -38,7 +40,7 @@ export default async function ErasurePage({
       <p className="muted" data-testid="held-explainer">{t.heldExplain}</p>
       <ErasureTable items={page.items} />
       <p className="muted">{t.showing(page.items.length)}</p>
-      <nav className="pagination" aria-label="Pagination">
+      <nav className="pagination" aria-label={text.pagination}>
         {cursor ? <Link href={base}>{t.first}</Link> : null}
         {page.next_cursor ? (
           <Link rel="next" href={`${base}${toSearch({ cursor: page.next_cursor })}`}>{t.next}</Link>

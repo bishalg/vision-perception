@@ -2,10 +2,9 @@
 
 import { useState, type FormEvent } from "react";
 import { formatDateTime } from "@/lib/format";
-import { sharePageText } from "@/messages/exports";
+import { messagesFor } from "@/lib/i18n/messages";
+import type { Locale } from "@/lib/i18n/types";
 import type { ShareOpenResult } from "./actions";
-
-const t = sharePageText;
 
 type Opened = Extract<ShareOpenResult, { ok: true }>;
 
@@ -23,13 +22,17 @@ function size(bytes: number): string {
  */
 export function ShareOpenForm({
   linkId,
+  locale,
   open,
   initialError,
 }: {
   linkId: string;
+  /** From the page's `Accept-Language` negotiation (never the signed-in user's setting: the page is public). */
+  locale: Locale;
   open: (form: FormData) => Promise<ShareOpenResult>;
   initialError: string | null;
 }) {
+  const t = messagesFor(locale).exports.sharePage;
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<{ key: string; retryAfter: number | null } | null>(
     initialError ? { key: initialError, retryAfter: null } : null,

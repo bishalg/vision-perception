@@ -1,13 +1,13 @@
+"use client";
+
 import Link from "next/link";
 import type { Integration } from "@/lib/api/exports";
 import { formatDateTime } from "@/lib/format";
-import { integrationsText } from "@/messages/exports";
-
-const t = integrationsText;
-const c = t.cols;
+import { useText } from "@/lib/i18n/provider";
 
 /** Last test outcome: pass/fail with the error class (never remote text), or "Never run". */
 export function TestBadge({ i }: { i: Pick<Integration, "last_test_at" | "last_test_ok" | "last_test_error"> }) {
+  const t = useText().exports.integrations;
   if (!i.last_test_at || i.last_test_ok == null) return <span className="muted">{t.testNever}</span>;
   return (
     <>
@@ -23,6 +23,8 @@ export function TestBadge({ i }: { i: Pick<Integration, "last_test_at" | "last_t
 }
 
 export function IntegrationsTable({ orgId, items }: { orgId: string; items: Integration[] }) {
+  const t = useText().exports.integrations;
+  const c = t.cols;
   if (items.length === 0) return <p className="muted">{t.empty}</p>;
   return (
     <div className="table-wrap">

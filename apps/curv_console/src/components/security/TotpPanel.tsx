@@ -2,7 +2,8 @@
 
 import { useActionState } from "react";
 import { formatDateTime } from "@/lib/format";
-import { securityErrorMessage, securityText } from "@/messages/security";
+import { useText } from "@/lib/i18n/provider";
+import { securityErrorMessage } from "@/messages/security";
 import { QrCode } from "../QrCode";
 import type { TotpFailure, TotpResult } from "./types";
 
@@ -26,10 +27,9 @@ type State = {
   error: { form: "enrol" | "confirm" | "disable"; failure: TotpFailure } | null;
 };
 
-const t = securityText;
-
 /** `initialEnrolled`: `totp_enrolled` from `GET /users/me`, or null when unknown. */
 export function TotpPanel({ actions, initialEnrolled = null }: { actions: TotpActions; initialEnrolled?: boolean | null }) {
+  const t = useText().security.security;
   const initial: State = { seed: null, enrolled: initialEnrolled, error: null };
   const [state, dispatch, pending] = useActionState<State, FormData>(async (prev, fd) => {
     const intent = fd.get("intent");
@@ -58,7 +58,7 @@ export function TotpPanel({ actions, initialEnrolled = null }: { actions: TotpAc
   const errorFor = (form: "enrol" | "confirm" | "disable") =>
     state.error?.form === form ? (
       <p role="alert" className="error">
-        {securityErrorMessage(state.error.failure.slug, state.error.failure.status)}
+        {securityErrorMessage(state.error.failure.slug, state.error.failure.status, t.errors)}
       </p>
     ) : null;
 

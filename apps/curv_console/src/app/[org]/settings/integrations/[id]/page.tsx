@@ -8,7 +8,7 @@ import { authedApi, currentRole } from "@/lib/auth/server";
 import { parseCursor, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
-import { deliveriesText, integrationsText } from "@/messages/exports";
+import { getText } from "@/lib/i18n/server";
 import {
   deleteIntegrationAction,
   generateSshKeyAction,
@@ -17,10 +17,10 @@ import {
   updateIntegrationAction,
 } from "../actions";
 
-const t = integrationsText;
-
 // Fixed title: the destination name and URL never reach the document title.
-export const metadata: Metadata = { title: t.title };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getText()).exports.integrations.title };
+}
 
 export default async function IntegrationDetailPage({
   params,
@@ -30,6 +30,8 @@ export default async function IntegrationDetailPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { org, id } = await params;
+  const text = (await getText()).exports;
+  const t = text.integrations;
   const role = await currentRole();
   if (!can(role, "integration.read")) {
     return (
@@ -82,13 +84,13 @@ export default async function IntegrationDetailPage({
       <h2>{t.deliveries.title}</h2>
       <DeliveriesTable
         items={deliveries.items}
-        exportHref={can(role, "export.read") ? (exportId) => `/${encodeURIComponent(org)}/exports/${encodeURIComponent(exportId)}` : undefined}
+        exportBase={can(role, "export.read") ? `/${encodeURIComponent(org)}/exports` : undefined}
       />
-      <p className="muted">{deliveriesText.showing(deliveries.items.length, deliveries.total)}</p>
-      <nav className="pagination" aria-label="Pagination">
-        {cursor ? <Link href={base}>{deliveriesText.first}</Link> : null}
+      <p className="muted">{text.deliveries.showing(deliveries.items.length, deliveries.total)}</p>
+      <nav className="pagination" aria-label={text.exports.pagination}>
+        {cursor ? <Link href={base}>{text.deliveries.first}</Link> : null}
         {deliveries.next_cursor ? (
-          <Link rel="next" href={`${base}${toSearch({ cursor: deliveries.next_cursor })}`}>{deliveriesText.next}</Link>
+          <Link rel="next" href={`${base}${toSearch({ cursor: deliveries.next_cursor })}`}>{text.deliveries.next}</Link>
         ) : null}
       </nav>
     </>

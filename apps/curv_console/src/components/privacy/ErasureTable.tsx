@@ -1,15 +1,14 @@
+"use client";
+
 import type { ErasureOutcome, ErasureRequest } from "@/lib/api/privacy";
 import { formatDateTime } from "@/lib/format";
-import { privacyText } from "@/messages/privacy";
-
-const t = privacyText.erasure;
-const c = t.cols;
+import { useText } from "@/lib/i18n/provider";
+import type { Messages } from "@/lib/i18n/messages";
 
 const BADGE = { pending: "badge-yellow", completed: "badge-green", held: "badge-unreliable" } as const;
 
-function counts(o: ErasureOutcome): string[] {
+function counts(o: ErasureOutcome, k: Messages["privacy"]["erasure"]["counts"]): string[] {
   const out: string[] = [];
-  const k = t.counts;
   if (o.sessions_deleted) out.push(k.sessions_deleted(o.sessions_deleted));
   if (o.sessions_held) out.push(k.sessions_held(o.sessions_held));
   if (o.care_events_deleted) out.push(k.care_events_deleted(o.care_events_deleted));
@@ -22,6 +21,8 @@ function counts(o: ErasureOutcome): string[] {
 
 /** Counts only: the backend never returns identifiers beyond the pseudonymous participant token. */
 export function ErasureTable({ items }: { items: ErasureRequest[] }) {
+  const t = useText().privacy.erasure;
+  const c = t.cols;
   if (items.length === 0) return <p className="muted">{t.empty}</p>;
   return (
     <div className="table-wrap">
@@ -38,7 +39,7 @@ export function ErasureTable({ items }: { items: ErasureRequest[] }) {
         </thead>
         <tbody>
           {items.map((r) => {
-            const lines = r.outcome ? counts(r.outcome) : [];
+            const lines = r.outcome ? counts(r.outcome, t.counts) : [];
             return (
               <tr key={r.id}>
                 <td data-label={c.participant}>{r.participant_token}</td>

@@ -15,6 +15,15 @@ const LITERAL_GATE_ERROR_DIRS = [
   "src/app/[[]org]/review",
   "src/app/[[]org]/devices",
   "src/app/[[]org]/audit",
+  // L.1c exports, privacy, security, settings, share (`[`/`]` are escaped: the entries are globs)
+  "src/app/\\[org\\]/exports",
+  "src/app/\\[org\\]/erasure",
+  "src/app/\\[org\\]/settings",
+  "src/app/share",
+  "src/app/api",
+  "src/components/exports",
+  "src/components/privacy",
+  "src/components/security",
 ];
 
 const literalRules = (level) => ({
