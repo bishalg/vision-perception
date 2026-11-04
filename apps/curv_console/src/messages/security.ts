@@ -1,4 +1,5 @@
 /** User-visible strings for the account security page (WP-C.15 TOTP enrolment). en only; merged by import. */
+import type { Widen } from "@/lib/i18n/types";
 
 const errors: Record<string, string> = {
   "invalid-credentials": "The password is not correct.",
@@ -69,3 +70,8 @@ export const logoffText = {
   idle: "You were signed out because the console was idle for 30 minutes. Sign in again to continue.",
   expired: "Your session reached its 12-hour limit. Sign in again to continue.",
 } as const;
+
+/** WP-L.1.0 (I18N-15): both locales of this file. `ne` is typed by the `en` tree; the wave package replaces the copy. */
+const en = { security: securityText, logoff: logoffText };
+const ne: Widen<typeof en> = en; // ne: TODO
+export const securityMessages = { en, ne } as const;

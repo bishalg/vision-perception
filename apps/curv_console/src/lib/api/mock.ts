@@ -28,6 +28,8 @@ import {
 import { createMockAdmin } from "./mock/admin";
 import { createMockClinical } from "./mock/clinical";
 import type { UserProfile } from "./clinical";
+import { matchAcceptLanguage } from "@/lib/i18n/negotiate";
+import type { Locale } from "@/lib/i18n/types";
 import { createMockExports } from "./mock/exports";
 import { createMockPrivacy } from "./mock/privacy";
 import { createMockParticipant } from "./mock/participant";
@@ -360,8 +362,27 @@ const MOCK_USER_ID = "0b7c9e2a-5d1f-4c3e-9a8b-1f2e3d4c5b6a";
 
 /** The email's local part picks the role (`viewer@...` signs in as a viewer) so role-gated UI can be tried. */
 function roleFor(email: string): Role {
-  const local = email.split("@")[0]?.toLowerCase() ?? "";
+  const local = (email.split("@")[0]?.toLowerCase() ?? "").split("+")[0] ?? "";
   return (ROLES as readonly string[]).includes(local) ? (local as Role) : "admin";
+}
+
+/**
+ * I18N-16 (mock): a `+ne` / `+en` tag on the local part seeds the user's own locale (`clinician+ne@example.org`); an
+ * untagged user follows the mock org's `default_locale`, else the request's `Accept-Language`, else `en`.
+ */
+function taggedLocale(email: string): Locale | null {
+  const tag = (email.split("@")[0]?.toLowerCase() ?? "").split("+")[1];
+  return tag === "ne" || tag === "en" ? tag : null;
+}
+
+/** `Accept-Language` of the current request in a server render; null outside one (unit tests, route-less calls). */
+async function requestAcceptLanguage(): Promise<string | null> {
+  try {
+    const { headers } = await import("next/headers");
+    return (await headers()).get("accept-language");
+  } catch {
+    return null;
+  }
 }
 
 /** Tokens carry the email so refresh can restore the same user. Mock only: never do this with real tokens. */
@@ -532,8 +553,19 @@ export function createMockClient(): MockClient {
     return { totp_enforcement: "not_required", totp_required_by: null };
   };
 
+  /** I18N-16 (mock): per-user override (set by PATCH /users/me or the `+ne` tag) and the org default. */
+  const userLocales = new Map<string, Locale | null>();
+  let orgDefaultLocale: Locale | null = null;
+  const ownLocale = (email: string): Locale | null =>
+    userLocales.has(email) ? (userLocales.get(email) ?? null) : taggedLocale(email);
+
   const base: Omit<CurvApi & AuthApi, "getMyProfile" | "enrolTotp" | "confirmTotp" | "disableTotp"> = {
     ...clinical,
+    async updateOrgClinicalSettings(orgId, settings, org) {
+      const result = await clinical.updateOrgClinicalSettings(orgId, settings, org);
+      if (org?.default_locale) orgDefaultLocale = org.default_locale;
+      return { ...result, default_locale: orgDefaultLocale };
+    },
     ...exportsApi,
     ...createMockParticipant({
       details,
@@ -583,7 +615,10 @@ export function createMockClient(): MockClient {
     async logout() {},
     async getOrg(orgId) {
       if (orgId !== MOCK_ORG_ID) throw notFound("Organisation not found");
-      return { id: MOCK_ORG_ID, name: "Demo Clinic (synthetic)", kind: "clinic", retention_months: 24 };
+      return {
+        id: MOCK_ORG_ID, name: "Demo Clinic (synthetic)", kind: "clinic", retention_months: 24,
+        ...(orgDefaultLocale ? { default_locale: orgDefaultLocale } : {}),
+      };
     },
     async getMetrics(orgId) {
       if (orgId !== MOCK_ORG_ID) throw notFound("Organisation not found");
@@ -700,10 +735,22 @@ export function createMockClient(): MockClient {
   /** The client as seen by `email`: own enrolment state and profile; a `required` user is limited to enrolment. */
   const view = (email: string): CurvApi & AuthApi => {
     const totp = totpFor(email);
+    const profileFor = async () => {
+      const locale = ownLocale(email);
+      const effective = locale ?? orgDefaultLocale ?? matchAcceptLanguage(await requestAcceptLanguage()) ?? "en";
+      return {
+        ...(await clinical.getMyProfile()), ...totp.status(), ...enforcementFor(email),
+        locale, effective_locale: effective,
+      };
+    };
     const user = {
       ...base,
-      async getMyProfile() {
-        return { ...(await clinical.getMyProfile()), ...totp.status(), ...enforcementFor(email) };
+      getMyProfile: profileFor,
+      async updateMyProfile(patch: { locale?: Locale | null; display_name?: string | null; professional_registration?: string | null }) {
+        const { locale, ...rest } = patch;
+        if (locale !== undefined) userLocales.set(email, locale);
+        await clinical.updateMyProfile(rest);
+        return profileFor();
       },
       enrolTotp: totp.enrolTotp,
       confirmTotp: totp.confirmTotp,

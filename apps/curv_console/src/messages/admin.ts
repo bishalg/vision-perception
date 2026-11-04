@@ -1,5 +1,6 @@
 /** User-visible strings for participants, users and roles, and the audit log (WP-C.3). Merged by import, not into `en`. */
 import type { Role, UserStatus } from "@/lib/api";
+import type { Widen } from "@/lib/i18n/types";
 
 export const adminText = {
   nav: { participants: "Participants", followUps: "Follow-ups", users: "Users", audit: "Audit log" },
@@ -146,3 +147,8 @@ export const adminText = {
     },
   },
 } as const;
+
+/** WP-L.1.0 (I18N-15): both locales of this file. `ne` is typed by the `en` tree; the wave package replaces the copy. */
+const en = adminText;
+const ne: Widen<typeof en> = en; // ne: TODO
+export const adminMessages = { en, ne } as const;

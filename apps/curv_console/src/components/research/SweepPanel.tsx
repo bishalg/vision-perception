@@ -2,6 +2,8 @@ import { formatPercent } from "@/lib/format";
 import { formatValue } from "@/lib/research/registry";
 import { gridKey, gridLayout, isPublishedCell, orderedCells, shadeStep, type SweepCell, type SweepSummary } from "@/lib/research/run-sweep";
 import { researchText, type ResearchMessages } from "@/messages/research";
+import type { Locale } from "@/lib/i18n/types";
+import { paramText } from "@/lib/research/paramText";
 import r from "./research.module.css";
 import { SweepCurve } from "./SweepCurve";
 
@@ -18,9 +20,9 @@ type Quantity = { label: string; value: (c: SweepCell) => number | null | undefi
  * cell, the published cell outlined, hidden cells grey). Every cell is also in a table. All numbers are the Rust job's;
  * a suppressed cell (PRV-1) shows "n < k", never a number.
  */
-export function SweepPanel({ sweep, k, text = researchText }: { sweep: SweepSummary; k: number; text?: ResearchMessages }) {
+export function SweepPanel({ sweep, k, text = researchText, locale = "en" }: { sweep: SweepSummary; k: number; text?: ResearchMessages; locale?: Locale }) {
   const t = text.analysis;
-  const label = (id: string) => text.params[id]?.label ?? id;
+  const label = (id: string) => paramText(locale, id).label;
   const cells = orderedCells(sweep);
   const metricIds = [...new Set(sweep.cells.flatMap((c) => Object.keys(c.metrics)))];
   const quantities: Quantity[] = [

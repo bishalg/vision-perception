@@ -1,5 +1,6 @@
 /** User-visible strings for the clinician workspace (WP-C.13). Merged next to `en` by import, not by editing it. */
 import { SIGNATURE_MEANING } from "@/lib/api/clinical";
+import type { Widen } from "@/lib/i18n/types";
 
 export const clinicalText = {
   worklist: {
@@ -160,3 +161,8 @@ export function clinicalErrorMessage(slug: string | null, status: number): strin
 export function hashPrefix(hash: string, n = 12): string {
   return hash.slice(0, n);
 }
+
+/** WP-L.1.0 (I18N-15): both locales of this file. `ne` is typed by the `en` tree; the wave package replaces the copy. */
+const en = clinicalText;
+const ne: Widen<typeof en> = en; // ne: TODO
+export const clinicalMessages = { en, ne } as const;

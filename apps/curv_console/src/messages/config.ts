@@ -1,5 +1,6 @@
 /** User-visible strings for the baselines, scoring profile, sandbox and bundle pages (WP-C.5). */
 import type { ConfigDocumentStatus } from "@/lib/api/catalog";
+import type { Widen } from "@/lib/i18n/types";
 
 const lifecycleHints = (what: string): Record<ConfigDocumentStatus, string> => ({
   draft: "Approve moves it to Approved. The author cannot approve their own draft. Run the sandbox first to see its effect on real sessions.",
@@ -245,3 +246,8 @@ export const configText = {
 };
 
 export type ConfigText = typeof configText;
+
+/** WP-L.1.0 (I18N-15): both locales of this file. `ne` is typed by the `en` tree; the wave package replaces the copy. */
+const en = configText;
+const ne: Widen<typeof en> = en; // ne: TODO
+export const configMessages = { en, ne } as const;

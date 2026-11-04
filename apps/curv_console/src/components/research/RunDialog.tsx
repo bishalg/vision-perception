@@ -20,6 +20,8 @@ import {
 } from "@/lib/research/run-sweep";
 import { MAX_SWEEP_STEPS } from "@/lib/research/sweep";
 import { researchText, type ResearchMessages } from "@/messages/research";
+import { useLocale } from "@/lib/i18n/provider";
+import { paramText } from "@/lib/research/paramText";
 import r from "./research.module.css";
 
 export type RunKind = (typeof RUN_KINDS)[number];
@@ -66,6 +68,7 @@ export function RunDialog({
   publishedProfile?: ProfileDoc | null;
   text?: ResearchMessages;
 }) {
+  const locale = useLocale();
   const t = text.run;
   const s = text.runSetup;
   const router = useRouter();
@@ -238,7 +241,7 @@ export function RunDialog({
                 <label>
                   {s.knob}
                   <select value={axis.paramId} onChange={(ev) => pickKnob(i, ev.currentTarget.value)}>
-                    {knobs.map((k) => <option key={k.id} value={k.id}>{text.params[k.id]?.label ?? k.id}</option>)}
+                    {knobs.map((k) => <option key={k.id} value={k.id}>{paramText(locale, k.id).label}</option>)}
                   </select>
                 </label>
                 {(["from", "to", "step"] as const).map((f) => (

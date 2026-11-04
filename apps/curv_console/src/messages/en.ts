@@ -1,6 +1,9 @@
 /** All user-visible strings. A hi/ne catalogue can mirror this shape later (spec 03 §2). */
+import type { Widen } from "@/lib/i18n/types";
 export const en = {
   appName: "Curv Console",
+  /** Short unit words of `formatAge` (I18N-17). */
+  units: { minutesShort: "m", hoursShort: "h", daysShort: "d" },
   login: {
     title: "Sign in",
     email: "Email",
@@ -287,3 +290,8 @@ export const en = {
     securityLink: "Go to account security",
   },
 } as const;
+
+/** WP-L.1.0 (I18N-15): both locales of this file. `ne` is typed by the `en` tree; the wave package replaces the copy. */
+const appEn = en;
+const appNe: Widen<typeof appEn> = { ...appEn, units: { minutesShort: "मि", hoursShort: "घ", daysShort: "दि" } }; // ne: TODO (units only)
+export const appMessages = { en: appEn, ne: appNe } as const;

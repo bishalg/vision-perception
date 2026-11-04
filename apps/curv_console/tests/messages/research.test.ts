@@ -6,6 +6,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { PARAM_UNITS, REPROCESS_LEVELS } from "@/lib/api/research";
+import { paramText } from "@/lib/research/paramText";
 import { groupRegistry, paramRegistry } from "@/lib/research/registry";
 import { researchMessages } from "@/messages/research";
 
@@ -35,12 +36,12 @@ describe("research messages", () => {
     describe(locale, () => {
       const m = researchMessages[locale];
 
-      it("has a label and a help text for every registry row, and nothing else", () => {
-        expect(Object.keys(m.params).sort()).toEqual(paramRegistry.params.map((p) => p.id).sort());
+      it("has a label and a help text for every registry row in the domain catalogue (PRM-5)", () => {
         for (const p of paramRegistry.params) {
-          const t = m.params[p.id]!;
+          const t = paramText(locale, p);
           expect(t.label.trim(), `${locale} label of ${p.id}`).not.toBe("");
-          expect(t.help.trim(), `${locale} help of ${p.id}`).not.toBe("");
+          expect(t.label, `${locale} label of ${p.id} resolves`).not.toBe(p.id);
+          expect(t.help, `${locale} help of ${p.id} resolves`).not.toBe(p.id);
         }
       });
 

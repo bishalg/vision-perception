@@ -3,29 +3,12 @@
  * locales have the same shape (`ResearchMessages`); a `ne` text marked `// ne: draft` is a machine draft until WP-L.3
  * reviews it. WP-X.5 / WP-X.7 add the page strings here.
  *
- * `params` holds one label and help text per parameter-registry row (PRM-5). Since WP-L.0 the texts live once, in the
- * Rust domain catalogue (`rust/crates/asd-contract/i18n/domain.{en,ne}.json`, keys `param.<id>.label|help`), and reach
- * the console through the generated `./domain.ts`; `params` only looks them up in registry order. WP-L.1.0 replaces it
- * with `dt(locale, spec.label_key)` at the consumers.
+ * Parameter labels and help (PRM-5) are not here: they live once in the Rust domain catalogue (keys
+ * `param.<id>.label|help`) and are read with `paramText(locale, spec)` from `@/lib/research/paramText`.
  */
 import type { ExperimentStatus, PARAM_UNITS, REPROCESS_LEVELS, RUN_KINDS, RunStatus } from "@/lib/api/research";
-import { paramRegistry } from "@/lib/research/registry";
-import { DOMAIN, type DomainLocale } from "./domain";
 
 type ParamUnit = (typeof PARAM_UNITS)[number];
-
-export interface ParamText {
-  label: string;
-  help: string;
-}
-
-/** Label and help of every registry row from the domain catalogue, in registry order (the row id when a key is missing). */
-function registryParamTexts(locale: DomainLocale): Record<string, ParamText> {
-  const table: Record<string, string | undefined> = DOMAIN[locale];
-  return Object.fromEntries(
-    paramRegistry.params.map((p) => [p.id, { label: table[p.labelKey] ?? p.id, help: table[p.helpKey] ?? p.id }]),
-  );
-}
 
 export interface ResearchMessages {
   nav: string;
@@ -367,7 +350,6 @@ export interface ResearchMessages {
   };
   /** Server-action failures, by problem slug; `fallback` otherwise. */
   errors: Record<string, string>;
-  params: Record<string, ParamText>;
   /** WP-X.9b: the kind picker and the sweep axis editor of the run dialog (RUI-5, SWP-1). */
   runSetup: {
     kind: string;
@@ -819,7 +801,6 @@ const en: ResearchMessages = {
     "not-found": "Not found.",
     fallback: "Something went wrong. Try again.",
   },
-  params: registryParamTexts("en"),
   runSetup: {
     kind: "Analysis",
     kinds: { cohort_rescore: "Cohort re-score (published vs draft)", param_sweep: "Parameter sweep", age_profile: "Age profile" },
@@ -1273,7 +1254,6 @@ const ne: ResearchMessages = {
     "not-found": "फेला परेन।",
     fallback: "केही गडबड भयो। फेरि प्रयास गर्नुहोस्।",
   },
-  params: registryParamTexts("ne"),
   runSetup: {
     kind: "विश्लेषणको प्रकार", // ne: draft
     kinds: { cohort_rescore: "कोहोर्ट पुनः-स्कोर (प्रकाशित बनाम मस्यौदा)", param_sweep: "प्यारामिटर स्वीप", age_profile: "उमेर प्रोफाइल" }, // ne: draft

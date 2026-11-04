@@ -22,6 +22,8 @@ import { navLinks } from "@/lib/nav";
 import { MAX_PREVIEW_SESSIONS, PREVIEW_TRACE_HZ, PREVIEW_DEBOUNCE_MS, debounce, paramsNotApplied, parseTrace, pickerSessions } from "@/lib/research/preview";
 import { clampParam, diffParams, getAt, groupOf, groupRegistry, paramRegistry, setAt, valueOf } from "@/lib/research/registry";
 import { MAX_SWEEP_VALUES, defaultSweep, sweepValues } from "@/lib/research/sweep";
+import { LocaleProvider } from "@/lib/i18n/provider";
+import { paramText } from "@/lib/research/paramText";
 import { researchMessages } from "@/messages/research";
 import { stubCore, stubModule } from "./researchStub";
 
@@ -39,7 +41,7 @@ vi.mock("@/lib/asd/browser", async () => {
 const en = researchMessages.en;
 const ne = researchMessages.ne;
 const spec = (id: string): ParamSpec => paramRegistry.params.find((p) => p.id === id)!;
-const label = (id: string) => en.params[id]!.label;
+const label = (id: string) => paramText("en", id).label;
 const defaults = { schemaVersion: "1.2.0", flag: { greenFloor: 0.65, yellowFloor: 0.35, lowConfidenceShare: 0.5, atypicalShareForRed: 0.4 }, lowConfidenceValidRatio: 0.6 };
 
 beforeEach(() => push.mockClear());
@@ -92,7 +94,7 @@ describe("RegistryForm", () => {
     expect(ids).toEqual(paramRegistry.params.map((p) => p.id));
     const first = container.querySelector('[data-param-id="flag.greenFloor"]') as HTMLElement;
     expect(within(first).getByText(label("flag.greenFloor"))).toBeInTheDocument();
-    expect(within(first).getByText(en.params["flag.greenFloor"]!.help)).toBeInTheDocument();
+    expect(within(first).getByText(paramText("en", "flag.greenFloor").help)).toBeInTheDocument();
     expect(within(first).getByText(en.reprocess.score)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: en.groups.metrics })).toBeInTheDocument();
   });
@@ -128,15 +130,17 @@ describe("RegistryForm", () => {
   });
 
   it("shows the Nepali label for the same knob (ADR-0013)", () => {
-    render(form({ text: ne }));
-    expect(screen.getByLabelText(ne.params["flag.greenFloor"]!.label)).toBeInTheDocument();
-    expect(ne.params["flag.greenFloor"]!.label).not.toBe(label("flag.greenFloor"));
+    render(<LocaleProvider locale="ne">{form({ text: ne })}</LocaleProvider>);
+    expect(screen.getByLabelText(paramText("ne", "flag.greenFloor").label)).toBeInTheDocument();
+    expect(paramText("ne", "flag.greenFloor").label).not.toBe(label("flag.greenFloor"));
   });
 
-  it("falls back to the id when a message key is missing", () => {
-    const text = { ...en, params: {} };
-    render(form({ text }));
-    expect(screen.getByLabelText("flag.greenFloor")).toBeInTheDocument();
+  it("falls back to the id when a catalogue key is missing", () => {
+    expect(paramText("en", { id: "flag.greenFloor", labelKey: "param.nope.label", helpKey: "param.nope.help" })).toEqual({
+      label: "flag.greenFloor",
+      help: "flag.greenFloor",
+    });
+    expect(paramText("en", "no.such.row")).toEqual({ label: "no.such.row", help: "no.such.row" });
   });
 
   it("renders a control per kind: bool, enum, point list and age bands", () => {

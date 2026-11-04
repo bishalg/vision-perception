@@ -4,12 +4,12 @@
  * parameter registry (`param-registry-v1.json`) parses, every registry id has a label/help entry in both locales of
  * `messages/research.ts`, the console permissions mirror GOV-1, and the RUI-7 mock seeds parse and cover every run state.
  */
+import { paramText } from "@/lib/research/paramText";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { ZodType } from "@/lib/zod";
 import { can } from "@/lib/permissions";
-import { researchMessages } from "@/messages/research";
 import { EXPORT_FORMATS, analysisExportSchema, isDedicatedFormat } from "./exports";
 import { createMockClient, MOCK_ORG_ID } from "./mock";
 import { MOCK_RESEARCH_IDS } from "./mock/research";
@@ -136,9 +136,12 @@ describe("api-v1.json contract: researcher toolkit (WP-X.0)", () => {
       expect(p.labelKey).toBe(`param.${p.id}.label`);
       expect(p.helpKey).toBe(`param.${p.id}.help`);
     }
-    // PRM-5: both locales carry an entry for every id, in registry order (from the generated messages/domain.ts).
+    // PRM-5: both locales carry a label and a help text for every row (generated messages/domain.ts).
     for (const locale of ["en", "ne"] as const) {
-      expect(Object.keys(researchMessages[locale].params), locale).toEqual(ids);
+      for (const p of parsed.params) {
+        expect(paramText(locale, p).label, `${locale} ${p.id}`).not.toBe(p.id);
+        expect(paramText(locale, p).help, `${locale} ${p.id}`).not.toBe(p.id);
+      }
     }
   });
 

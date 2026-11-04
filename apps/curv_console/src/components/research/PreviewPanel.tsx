@@ -19,6 +19,8 @@ import { formatValue, isNumeric, setAt, stepOf, sweepableParams, valueOf, type P
 import type { ResearchResult } from "@/lib/research/result";
 import { MAX_SWEEP_STEPS, defaultSweep, sweepValues } from "@/lib/research/sweep";
 import { researchText, type ResearchMessages } from "@/messages/research";
+import { useLocale } from "@/lib/i18n/provider";
+import { paramText } from "@/lib/research/paramText";
 import { PreviewCard, type CardData } from "./PreviewCard";
 import { SessionPicker, type PickerSession } from "./SessionPicker";
 import { SweepCurve, type CurvePoint } from "./SweepCurve";
@@ -254,6 +256,7 @@ function SweepSection({
   text: ResearchMessages;
 }) {
   const w = text.sweep;
+  const locale = useLocale();
   const knobs = useMemo(() => sweepableParams(registry.params), [registry]);
   const [knobId, setKnobId] = useState(knobs[0]?.id ?? "");
   const knob = knobs.find((k) => k.id === knobId);
@@ -265,7 +268,7 @@ function SweepSection({
 
   if (!knob || !range) return <section aria-label={w.title}><h3>{w.title}</h3><p className="muted">{w.noKnobs}</p></section>;
   const sid = sessions.find((s) => s.id === sessionId)?.id ?? sessions[0]?.id ?? "";
-  const label = text.params[knob.id]?.label ?? knob.id;
+  const label = paramText(locale, knob.id).label;
   const num = (v: string) => Number(v);
 
   function run() {
@@ -310,7 +313,7 @@ function SweepSection({
         <label>
           {w.knob}
           <select value={knobId} onChange={(ev) => { const k = knobs.find((x) => x.id === ev.currentTarget.value); setKnobId(ev.currentTarget.value); setRange(k ? defaultSweep(k.kind) : null); setResult(null); }}>
-            {knobs.map((k) => <option key={k.id} value={k.id}>{text.params[k.id]?.label ?? k.id}</option>)}
+            {knobs.map((k) => <option key={k.id} value={k.id}>{paramText(locale, k.id).label}</option>)}
           </select>
         </label>
         <label>

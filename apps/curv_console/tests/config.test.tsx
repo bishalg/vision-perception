@@ -2,6 +2,7 @@
  * WP-C.5: baselines and scoring-profile editors, sandbox re-score, lifecycle gate and bundles. Components that use the
  * Rust core get the real asd-wasm build through `./asdCoreNode` (skipped when it is not built).
  */
+import { paramText } from "@/lib/research/paramText";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -25,7 +26,6 @@ import {
 import { navLinks } from "@/lib/nav";
 import { can } from "@/lib/permissions";
 import { configText } from "@/messages/config";
-import { researchMessages } from "@/messages/research";
 import { HAS_WASM } from "./asdCoreNode";
 
 const push = vi.fn();
@@ -195,7 +195,7 @@ describe.skipIf(!HAS_WASM)("editors and sandbox with the Rust core", () => {
     const save = vi.fn().mockResolvedValue({ ok: true, version: "v9" });
     render(<ScoringProfileEditor orgId={MOCK_ORG_ID} initial={mockScoringProfile()} fromVersion="2026.10.1" preview={noPreview} save={save} />);
     expect(await screen.findByText(configText.editor.valid, {}, SLOW)).toBeInTheDocument();
-    const green = screen.getByLabelText(researchMessages.en.params["flag.greenFloor"]!.label);
+    const green = screen.getByLabelText(paramText("en", "flag.greenFloor").label);
     await userEvent.clear(green);
     await userEvent.type(green, "1.5");
     await waitFor(() => expect(green).toHaveAttribute("aria-invalid", "true"), SLOW);

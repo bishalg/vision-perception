@@ -1,6 +1,21 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+import curv from "./eslint-rules/no-literal-ui-props.mjs";
+
+/**
+ * I18N-9 ratchet: both literal-text rules are `warn` everywhere; a wave package appends the directories (globs) it has
+ * made clean here and they become `error`. The integration commit after the wave replaces this with `error` globally.
+ */
+const LITERAL_GATE_ERROR_DIRS = [];
+
+const literalRules = (level) => ({
+  "react/jsx-no-literals": [
+    level,
+    { noStrings: true, ignoreProps: true, allowedStrings: ["…", "·", "—", "–", "/", "|", ":", "(", ")", "%", "×", "+", "-", "*"] },
+  ],
+  "curv/no-literal-ui-props": level,
+});
 
 export default defineConfig([
   ...nextVitals,
@@ -19,5 +34,22 @@ export default defineConfig([
       ],
     },
   },
+  {
+    // I18N-9: user-visible literals. Exempt a line with `// eslint-disable-next-line react/jsx-no-literals -- i18n-ok: <reason>`.
+    files: ["src/**/*.tsx"],
+    ignores: ["src/**/*.test.tsx", "src/messages/domain.ts"],
+    plugins: { curv },
+    rules: literalRules("warn"),
+  },
+  ...(LITERAL_GATE_ERROR_DIRS.length
+    ? [
+        {
+          files: LITERAL_GATE_ERROR_DIRS.map((d) => `${d}/**/*.tsx`),
+          ignores: ["src/**/*.test.tsx"],
+          plugins: { curv },
+          rules: literalRules("error"),
+        },
+      ]
+    : []),
   globalIgnores([".next/**", "out/**", "coverage/**", "next-env.d.ts", "public/asd-wasm/**"]),
 ]);

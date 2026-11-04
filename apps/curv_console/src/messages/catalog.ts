@@ -1,6 +1,7 @@
 /** User-visible strings for the stimulus catalog pages and editor (WP-C.4). Merged next to `en` by import. */
 import type { ConfigDocumentStatus, ConfigTransition } from "@/lib/api/catalog";
 import { researchText } from "./research";
+import type { Widen } from "@/lib/i18n/types";
 
 const errors: Record<string, string> = {
   "validation-failed": "The server rejected some fields.",
@@ -193,3 +194,8 @@ export const catalogText = {
 };
 
 export type CatalogText = typeof catalogText;
+
+/** WP-L.1.0 (I18N-15): both locales of this file. `ne` is typed by the `en` tree; the wave package replaces the copy. */
+const en = catalogText;
+const ne: Widen<typeof en> = en; // ne: TODO
+export const catalogMessages = { en, ne } as const;

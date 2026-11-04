@@ -4,6 +4,8 @@ import { useId, useState } from "react";
 import type { ParamKind, ParamSpec } from "@/lib/api/research";
 import { clampParam, formatValue, isNumeric, sameValue, stepOf } from "@/lib/research/registry";
 import { researchText, type ResearchMessages } from "@/messages/research";
+import { useLocale } from "@/lib/i18n/provider";
+import { paramText } from "@/lib/research/paramText";
 import r from "./research.module.css";
 
 export type ParamContext = "preview" | "edit";
@@ -96,7 +98,8 @@ function PointListEditor({
   disabled: boolean;
   text: ResearchMessages;
 }) {
-  const label = text.params[spec.id]?.label ?? spec.id;
+  const locale = useLocale();
+  const label = paramText(locale, spec).label;
   const points = asPoints(value);
   const set = (next: Point[]) => onChange(next);
   return (
@@ -148,13 +151,14 @@ function AgeBandsEditor({
   disabled: boolean;
   text: ResearchMessages;
 }) {
+  const label = paramText(useLocale(), spec).label;
   const bands = asBands(value);
   const set = (next: Band[]) => onChange(next);
   const patch = (i: number, p: Partial<Band>) => set(bands.map((b, j) => (j === i ? { ...b, ...p } : b)));
   return (
     <div className={r.pointList}>
       {bands.map((b, i) => (
-        <div key={i} className={r.pointRow} role="group" aria-label={text.form.pointsOf(text.params[spec.id]?.label ?? spec.id, i + 1)}>
+        <div key={i} className={r.pointRow} role="group" aria-label={text.form.pointsOf(label, i + 1)}>
           <label>
             {text.form.bandId}
             <input value={b.id} disabled={disabled} onChange={(ev) => patch(i, { id: ev.currentTarget.value })} />
@@ -199,8 +203,9 @@ export function ParamControl({ spec, value, published, onChange, context, error,
   const inputId = `param-${spec.id}`;
   const helpId = `${uid}-help`;
   const errId = `${uid}-err`;
-  const msg = text.params[spec.id];
-  const label = msg?.label ?? spec.id;
+  const locale = useLocale();
+  const msg = paramText(locale, spec);
+  const label = msg.label;
   const disabled = context === "preview" && spec.reprocess === "capture_only";
   const kind = spec.kind;
   const unit = "unit" in kind ? text.units[kind.unit] : "";

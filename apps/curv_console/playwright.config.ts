@@ -15,7 +15,7 @@ import { defineConfig, devices } from "@playwright/test";
 const PORT = Number(process.env.E2E_PORT ?? 3100);
 const PROD_PORT = Number(process.env.E2E_PROD_PORT ?? 3200);
 const external = process.env.E2E_BASE_URL;
-const PROD_SPECS = ["csp.spec.ts", "csp-prod.spec.ts"];
+const PROD_SPECS = ["csp.spec.ts", "csp-prod.spec.ts", "locale.spec.ts"];
 const mockEnv = { CURV_API_MODE: "mock", CURV_COOKIE_SECURE: "false", NEXT_TELEMETRY_DISABLED: "1" };
 const prodBuild = process.env.E2E_PROD_REUSE_BUILD ? "true" : "npm run build";
 

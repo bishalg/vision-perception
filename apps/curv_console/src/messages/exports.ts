@@ -11,6 +11,7 @@ import type {
   IntegrationKind,
   IntegrationStatus,
 } from "@/lib/api/exports";
+import type { Widen } from "@/lib/i18n/types";
 
 const errors: Record<string, string> = {
   "validation-failed": "Some fields were rejected.",
@@ -469,3 +470,8 @@ export function shareErrorKey(slug: string | null, status: number): string {
   if (status === 429) return "rate-limited";
   return "fallback";
 }
+
+/** WP-L.1.0 (I18N-15): both locales of this file. `ne` is typed by the `en` tree; the wave package replaces the copy. */
+const en = { exports: exportsText, deliveries: deliveriesText, integrations: integrationsText, shareCase: shareCaseText, shareLinks: shareLinksText, sharePage: sharePageText, analysis: analysisExportMessages.en };
+const ne: Widen<typeof en> = en; // ne: TODO
+export const exportsMessages = { en, ne } as const;

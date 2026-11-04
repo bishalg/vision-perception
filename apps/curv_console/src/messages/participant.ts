@@ -6,6 +6,7 @@
  */
 import type { NoteKind, TimelineKind } from "@/lib/api/participant";
 import type { AttachmentKind, EncounterKind, EncounterStatus } from "@/lib/api/emr";
+import type { Widen } from "@/lib/i18n/types";
 
 const MIB = 1_048_576;
 
@@ -404,3 +405,8 @@ export const participantText = {
     } as Record<string, string>,
   },
 };
+
+/** WP-L.1.0 (I18N-15): both locales of this file. `ne` is typed by the `en` tree; the wave package replaces the copy. */
+const en = participantText;
+const ne: Widen<typeof en> = en; // ne: TODO
+export const participantMessages = { en, ne } as const;

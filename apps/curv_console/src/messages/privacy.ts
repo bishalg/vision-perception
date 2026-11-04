@@ -1,5 +1,6 @@
 /** User-visible strings for erasure, retention and research datasets (WP-B.9). en only; merged by import. */
 import type { ErasureStatus } from "@/lib/api/privacy";
+import type { Widen } from "@/lib/i18n/types";
 
 const errors: Record<string, string> = {
   "validation-failed": "Some fields were rejected.",
@@ -112,3 +113,8 @@ export const privacyText = {
     withoutLabels: "No labels",
   },
 };
+
+/** WP-L.1.0 (I18N-15): both locales of this file. `ne` is typed by the `en` tree; the wave package replaces the copy. */
+const en = privacyText;
+const ne: Widen<typeof en> = en; // ne: TODO
+export const privacyMessages = { en, ne } as const;

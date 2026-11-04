@@ -184,6 +184,32 @@ pulls `@img/sharp-libvips-*` (LGPL-3.0, dynamically loaded); this app sets `imag
 `next/image`, so it is not exercised, but add `--omit=optional` to production installs if a strict reading is wanted.
 `caniuse-lite` is CC-BY-4.0 data (build-time only).
 
+Fonts: **Noto Sans Devanagari** (Noto Project Authors, SIL Open Font License 1.1; licence text in `src/app/fonts/OFL.txt`),
+variable weight, two `woff2` subsets (Devanagari, Latin) taken from the `@fontsource-variable/noto-sans-devanagari` 5.3.0
+package and self-hosted through `next/font/local`; no runtime request to a font CDN, CSP `font-src 'self'` unchanged. It
+is the default pending owner ratification (ADR-0013 Q7).
+
+## Localisation (WP-L.1.0)
+
+The console ships `en` and `ne` (ADR-0013). Plumbing only so far; the wave packages translate the pages.
+
+- **Locale:** `resolveLocale()` (`src/lib/i18n/server.ts`) is the signed-in user's `effective_locale` from `GET /users/me`
+  (user > org > `Accept-Language` > `en`, decided by the backend); without a session (login, `/share/*`) it is the
+  `Accept-Language` match (`src/lib/i18n/negotiate.ts`, tested against `docs/spec/schemas/asd/i18n-negotiation-cases.json`), else `en`.
+  The root layout sets `<html lang>` (`en` or `ne-NP`), the title and the font, and wraps the tree in `LocaleProvider`.
+- **Text:** server components `const t = await getText()`, client components `const t = useText()` (`src/lib/i18n`).
+  Every `src/messages/<file>.ts` exports `<file>Messages = { en, ne }`; `ne` is typed by `en` (`Widen`), so a missing key
+  is a compile error. `ne` is a `// ne: TODO` copy until the owning wave package translates it and sets `NE_PENDING = false`
+  in `tests/messages/<file>.test.ts`. The old named exports (`en`, `adminText`, ...) stay as aliases of the `en` trees.
+- **Domain labels** (enums, flag text, problem sentences, parameter labels) come from the generated `src/messages/domain.ts`
+  (`asd-cli i18n export --target console`), never edited by hand. `paramText(locale, spec)` and `problemText(t, problem)` read it.
+- **Formatting:** `src/lib/format.ts` takes a locale (default `en`); digits are Latin and the calendar Gregorian in both locales.
+- **Mock mode:** a `+ne` tag on the email's local part (`clinician+ne@example.org`) gives that user the locale `ne`;
+  `PATCH /users/me` stores a locale per mock user; an untagged user follows the mock org's `default_locale`, then `Accept-Language`.
+- **Lint:** `react/jsx-no-literals` and `curv/no-literal-ui-props` (`eslint-rules/`) run at `warn`; add a directory to
+  `LITERAL_GATE_ERROR_DIRS` in `eslint.config.mjs` once it is clean. Exempt a line with
+  `// eslint-disable-next-line react/jsx-no-literals -- i18n-ok: <reason>`.
+
 ## Backend gaps (reported, not worked around in the backend)
 
 - No `GET /v1/orgs` (or "my orgs") endpoint: the org switcher can only offer recent orgs and a free id field.

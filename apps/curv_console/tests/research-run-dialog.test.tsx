@@ -23,6 +23,7 @@ import {
   type AxisDraft,
 } from "@/lib/research/run-sweep";
 import { MAX_SWEEP_STEPS } from "@/lib/research/sweep";
+import { paramText } from "@/lib/research/paramText";
 import { researchMessages } from "@/messages/research";
 
 const push = vi.fn();
@@ -32,7 +33,7 @@ beforeEach(() => push.mockClear());
 const en = researchMessages.en;
 const ne = researchMessages.ne;
 const spec = (id: string): ParamSpec => paramRegistry.params.find((p) => p.id === id)!;
-const label = (id: string) => en.params[id]!.label;
+const label = (id: string) => paramText("en", id).label;
 const axis = (paramId: string, from: string, to: string, step: string): AxisDraft => ({ paramId, from, to, step });
 
 const GREEN = "flag.greenFloor";

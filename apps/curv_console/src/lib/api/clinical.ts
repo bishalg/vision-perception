@@ -188,6 +188,11 @@ export interface ClinicalSettingsPatch {
   clinical?: { worklist_scope?: WorklistScope; cosign_policy?: CosignPolicy };
 }
 
+/** The top-level `PATCH /orgs/{id}` fields the clinical settings page may send (I18N-11, `OrgUpdate`). */
+export interface OrgLocalePatch {
+  default_locale?: "en" | "ne";
+}
+
 export interface ClinicalApi {
   getWorklist(orgId: string, query?: WorklistQuery): Promise<WorklistPage>;
   /** `null` when nobody has claimed the session yet (the backend answers 404). */
@@ -200,7 +205,8 @@ export interface ClinicalApi {
   amendClinicalReview(reviewId: string, request: AmendClinicalReviewRequest): Promise<ClinicalReview>;
   getMyProfile(): Promise<UserProfile>;
   updateMyProfile(patch: UpdateProfileRequest): Promise<UserProfile>;
-  updateOrgClinicalSettings(orgId: string, settings: ClinicalSettingsPatch): Promise<Org>;
+  /** `org.default_locale` is a top-level field of the org patch (I18N-11), not part of `settings`. */
+  updateOrgClinicalSettings(orgId: string, settings: ClinicalSettingsPatch, org?: OrgLocalePatch): Promise<Org>;
 }
 
 /** The request function `live.ts` injects (keeps `fetch` in one module). */
@@ -237,7 +243,7 @@ export function createLiveClinical(request: LiveRequest, buildQuery: (q: object)
     amendClinicalReview: (id, body) => post(`/clinical-reviews/${enc(id)}/amend`, body),
     getMyProfile: () => request("/users/me", userProfileSchema),
     updateMyProfile: (patch) => request("/users/me", userProfileSchema, { method: "PATCH", body: patch }),
-    updateOrgClinicalSettings: (orgId, settings) =>
-      request(`/orgs/${enc(orgId)}`, orgSchema, { method: "PATCH", body: { settings } }),
+    updateOrgClinicalSettings: (orgId, settings, org) =>
+      request(`/orgs/${enc(orgId)}`, orgSchema, { method: "PATCH", body: { settings, ...org } }),
   };
 }
