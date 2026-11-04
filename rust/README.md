@@ -362,7 +362,7 @@ check. `i18n lint` holds Swift and Kotlin UI literals to `scripts/i18n/literal-b
 may only shrink (exit 1 on a new literal or a stale entry). `i18n::negotiate` picks the locale in the
 order user > org > Accept-Language > en (shared fixture `i18n-negotiation-cases.json`). Migration
 0028 adds `users.locale` and `organizations.default_locale`; Nepali text is a machine draft until
-WP-L.3 lists reviewed keys in `REVIEWED_NE`.
+WP-L.3 lists reviewed keys in `REVIEWED_NE`. `GET/PATCH /v1/users/me` carry `locale` (null = follow the clinic) and the negotiated `effective_locale`; `GET/PATCH /v1/orgs/{id}` carry `default_locale` (owner/admin; audit `org.update` and `user.profile_update`); `settings.locale` is refused (WP-L.1e).
 
 ## Researcher toolkit seams (phase 8, WP-X.0)
 

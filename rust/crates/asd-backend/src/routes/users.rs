@@ -48,7 +48,7 @@ use asd_contract::clinical::{
     TotpResetRequest, UpdateProfileRequest, UserProfile, MAX_DISPLAY_NAME_CHARS,
     MAX_REGISTRATION_CHARS, MAX_TOTP_RESET_REASON_CHARS, MIN_TOTP_RESET_REASON_CHARS,
 };
-use asd_contract::i18n::Locale;
+use asd_contract::i18n::{negotiate, Locale};
 use axum::extract::{Path, State};
 use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
@@ -680,6 +680,7 @@ fn user_profile(
     role: &str,
     org_id: Option<Uuid>,
     profile: Profile,
+    locales: Locales<'_>,
 ) -> AppResult<UserProfile> {
     let role_value = rbac::role_from_str(role)
         .ok_or_else(|| AppError::Internal(format!("unknown role in database: {role}")))?;
@@ -700,23 +701,46 @@ fn user_profile(
         org_id: org_id.map(|o| o.to_string()),
         display_name: profile.display_name,
         professional_registration: profile.professional_registration,
-        // WP-L.0 contract only; WP-L.1e reads `users.locale` and negotiates.
-        locale: None,
-        effective_locale: Locale::En,
+        locale: locales.user,
+        effective_locale: negotiate(locales.user, locales.org, locales.accept_language),
     })
+}
+
+/// The inputs of the locale negotiation (I18N-12): the user's column, the org default and
+/// the request's `Accept-Language`.
+#[derive(Clone, Copy)]
+struct Locales<'a> {
+    user: Option<Locale>,
+    org: Option<Locale>,
+    accept_language: Option<&'a str>,
+}
+
+impl<'a> Locales<'a> {
+    fn new(user: Option<&str>, org: Option<&str>, headers: &'a http::HeaderMap) -> Self {
+        Self {
+            user: user.and_then(Locale::parse),
+            org: org.and_then(Locale::parse),
+            accept_language: headers
+                .get(http::header::ACCEPT_LANGUAGE)
+                .and_then(|v| v.to_str().ok()),
+        }
+    }
 }
 
 /// `GET /v1/users/me`: the caller's account and signer profile.
 async fn get_me(
     State(state): State<AppState>,
     principal: UserPrincipal,
+    headers: http::HeaderMap,
 ) -> AppResult<Json<UserProfile>> {
     let row = sqlx::query!(
         r#"SELECT email, role, org_id, display_name, professional_registration,
                 (totp_secret_ct IS NOT NULL) AS "totp_enrolled!",
                 COALESCE(totp_pending_ct IS NOT NULL AND totp_pending_expires_at > now(), false)
                     AS "totp_pending!",
-                totp_required_by
+                totp_required_by, locale,
+                (SELECT o.default_locale FROM organizations o WHERE o.id = users.org_id)
+                    AS org_default_locale
          FROM users WHERE id = $1"#,
         principal.user_id
     )
@@ -735,6 +759,11 @@ async fn get_me(
             display_name: row.display_name,
             professional_registration: row.professional_registration,
         },
+        Locales::new(
+            row.locale.as_deref(),
+            row.org_default_locale.as_deref(),
+            &headers,
+        ),
     )?))
 }
 
@@ -744,6 +773,7 @@ async fn patch_me(
     State(state): State<AppState>,
     principal: UserPrincipal,
     meta: RequestMeta,
+    headers: http::HeaderMap,
     ApiJson(req): ApiJson<UpdateProfileRequest>,
 ) -> AppResult<Json<UserProfile>> {
     let mut errors = Vec::new();
@@ -761,7 +791,9 @@ async fn patch_me(
                 (totp_secret_ct IS NOT NULL) AS "totp_enrolled!",
                 COALESCE(totp_pending_ct IS NOT NULL AND totp_pending_expires_at > now(), false)
                     AS "totp_pending!",
-                totp_required_by
+                totp_required_by, locale,
+                (SELECT o.default_locale FROM organizations o WHERE o.id = users.org_id)
+                    AS org_default_locale
          FROM users WHERE id = $1 FOR UPDATE"#,
         principal.user_id
     )
@@ -773,13 +805,21 @@ async fn patch_me(
         professional_registration: row.professional_registration,
     };
     let new = patch.apply(&current);
-    let (before, after) = profile_diff(&current, &new);
+    let (mut before, mut after) = profile_diff(&current, &new);
+    let current_locale = row.locale.as_deref().and_then(Locale::parse);
+    let new_locale = req.locale.unwrap_or(current_locale);
+    if new_locale != current_locale {
+        before.insert("locale".into(), json!(current_locale));
+        after.insert("locale".into(), json!(new_locale));
+    }
     if !after.is_empty() {
         sqlx::query!(
-            "UPDATE users SET display_name = $2, professional_registration = $3 WHERE id = $1",
+            "UPDATE users SET display_name = $2, professional_registration = $3, locale = $4
+             WHERE id = $1",
             principal.user_id,
             new.display_name,
-            new.professional_registration
+            new.professional_registration,
+            new_locale.map(Locale::as_str)
         )
         .execute(&mut *tx)
         .await?;
@@ -800,6 +840,10 @@ async fn patch_me(
         &row.role,
         row.org_id,
         new,
+        Locales {
+            user: new_locale,
+            ..Locales::new(None, row.org_default_locale.as_deref(), &headers)
+        },
     )?))
 }
 

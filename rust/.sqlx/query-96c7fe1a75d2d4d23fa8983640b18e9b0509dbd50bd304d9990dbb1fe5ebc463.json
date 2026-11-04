@@ -1,21 +1,10 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, name, kind, retention_months, settings, research_frames_retention_months\n         FROM organizations WHERE id = $1",
+  "query": "SELECT name, kind, retention_months, settings, research_frames_retention_months,\n                default_locale\n         FROM organizations WHERE id = $1 FOR UPDATE",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id",
-        "type_info": "Uuid",
-        "origin": {
-          "Table": {
-            "table": "organizations",
-            "name": "id"
-          }
-        }
-      },
-      {
-        "ordinal": 1,
         "name": "name",
         "type_info": "Text",
         "origin": {
@@ -26,7 +15,7 @@
         }
       },
       {
-        "ordinal": 2,
+        "ordinal": 1,
         "name": "kind",
         "type_info": "Text",
         "origin": {
@@ -37,7 +26,7 @@
         }
       },
       {
-        "ordinal": 3,
+        "ordinal": 2,
         "name": "retention_months",
         "type_info": "Int4",
         "origin": {
@@ -48,7 +37,7 @@
         }
       },
       {
-        "ordinal": 4,
+        "ordinal": 3,
         "name": "settings",
         "type_info": "Jsonb",
         "origin": {
@@ -59,13 +48,24 @@
         }
       },
       {
-        "ordinal": 5,
+        "ordinal": 4,
         "name": "research_frames_retention_months",
         "type_info": "Int4",
         "origin": {
           "Table": {
             "table": "organizations",
             "name": "research_frames_retention_months"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "default_locale",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "organizations",
+            "name": "default_locale"
           }
         }
       }
@@ -80,9 +80,9 @@
       false,
       false,
       false,
-      false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "ea064185bec0f154a24de9272538afe2086d5d31bf03c15298cc9568a0ba2d7c"
+  "hash": "96c7fe1a75d2d4d23fa8983640b18e9b0509dbd50bd304d9990dbb1fe5ebc463"
 }
