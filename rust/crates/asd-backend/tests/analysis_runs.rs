@@ -61,7 +61,7 @@ async fn auto_run_splits_by_level_pages_rows_and_audits() {
     assert_eq!(run["profile_hash"], exp["profile_hash"]);
     assert_eq!(run["seed"], 42);
     assert_eq!(run["level_requested"], "auto");
-    assert_eq!(run["published_profile_version"], "bundled-1.2.0");
+    assert_eq!(run["published_profile_version"], "bundled-1.3.0");
     for f in [
         "definition_hash",
         "cohort_hash",

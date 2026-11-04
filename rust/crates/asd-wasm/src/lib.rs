@@ -138,6 +138,25 @@ pub fn flag_case(headline: &str) -> String {
     envelope(Ok(api::flag_case(headline)))
 }
 
+/// DSP-3 (WP-X.0c): `{status, comparator, low, high, unit}` of `value` (`undefined`: not
+/// observed) for `metric` (`socialPreferencePct`, ..., `validFramePct`) under the profile's
+/// `display` and `sessionQuality` sections.
+#[wasm_bindgen(js_name = displayBand)]
+pub fn display_band(metric: &str, value: Option<f64>, profile_json: &str) -> String {
+    envelope(api::display_band(metric, value, profile_json))
+}
+
+/// DSP-4 (WP-X.0c): `"optimal"`, `"acceptable"` or `"degraded"` for a session's valid-frame
+/// ratio and interruption under the profile's `sessionQuality`.
+#[wasm_bindgen(js_name = sessionQualityVerdict)]
+pub fn session_quality_verdict(valid_ratio: f64, interrupted: bool, profile_json: &str) -> String {
+    envelope(api::session_quality_verdict(
+        valid_ratio,
+        interrupted,
+        profile_json,
+    ))
+}
+
 /// `[PerVideoMetricSet]` from `[GazeFrame]` (asd-core `metrics::extract`).
 #[wasm_bindgen(js_name = extractMetrics)]
 pub fn extract_metrics(frames_json: &str) -> String {

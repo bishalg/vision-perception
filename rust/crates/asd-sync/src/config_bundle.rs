@@ -10,7 +10,9 @@
 //!   `asd_contract::signing::verify_bundle_with_keys` (the only verifier, CON-6) against the
 //!   app's key ring (key rotation by `key_id`), then the device policy: no rollback below the
 //!   newest bundle this device accepted, and an optional maximum age of `signed_at`; last,
-//!   the profile value checks of every publisher (`asd_contract::profile_checks`, WP-A.13).
+//!   the profile value checks of every publisher (`asd_contract::params`, WP-A.13), in their
+//!   device form: members a later profile schema added are ignored, not refused (DSP-6,
+//!   `params::validate_for_device`; [`ignored_profile_members`] lists them for the log).
 //!
 //! A rejected bundle is never used; the app keeps its last good bundle or the bundled
 //! default.
@@ -18,8 +20,9 @@
 use std::cmp::Ordering;
 
 use asd_contract::config::ConfigBundle;
-use asd_contract::profile_checks;
+use asd_contract::params;
 use asd_contract::signing::{self, SigningError, VerifyingKey};
+use serde_json::Value;
 
 use crate::request::{ClientInfo, SyncRequest};
 use crate::response::retry_after_seconds;
@@ -157,17 +160,35 @@ pub fn accept_bundle(
             return Err(BundleRejection::Expired(bundle.signed_at));
         }
     }
-    // WP-A.13 / PRM-3 (WP-X.2): the same value rules as backend publish, registry first (kind,
-    // range, unknown keys), then the cross-field rules; a bundle that passes the signature but
-    // not these never configures the pipeline.
-    let problems: Vec<String> = profile_checks::profile_problems(&bundle.scoring_profile)
-        .into_iter()
-        .map(|p| p.message)
-        .collect();
+    // WP-A.13 / PRM-3 (WP-X.2) / DSP-6 (WP-X.0c): the value rules of backend publish on the
+    // profile as delivered (registry kind and range, then the cross-field rules), except that
+    // members this build does not know are ignored (`params::validate_for_device`): a profile
+    // of a later schema keeps configuring an older app instead of being refused. A bundle
+    // that passes the signature but not these never configures the pipeline.
+    let raw_profile = serde_json::from_str::<Value>(text)
+        .ok()
+        .and_then(|mut v| v.get_mut("scoring_profile").map(Value::take))
+        .ok_or_else(|| BundleRejection::Malformed("no scoring_profile".into()))?;
+    let problems: Vec<String> =
+        params::validate_for_device(params::DocumentKind::ScoringProfile, &raw_profile)
+            .into_iter()
+            .map(|p| p.message)
+            .collect();
     if !problems.is_empty() {
         return Err(BundleRejection::InvalidProfile(problems.join("; ")));
     }
     Ok(bundle)
+}
+
+/// DSP-6: the `scoring_profile` members of a bundle that this build does not know and
+/// [`accept_bundle`] therefore ignored (e.g. a section of a later profile schema), for the
+/// app's log. Empty when the bundle is not JSON or carries no profile.
+pub fn ignored_profile_members(bundle_json: &[u8]) -> Vec<String> {
+    serde_json::from_slice::<Value>(bundle_json)
+        .ok()
+        .and_then(|v| v.get("scoring_profile").cloned())
+        .map(|p| params::unknown_parameters(params::DocumentKind::ScoringProfile, &p))
+        .unwrap_or_default()
 }
 
 /// `YYYY.MM.DD-N` (the backend's bundle numbering) as `(year, month, day, n)`.

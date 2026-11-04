@@ -265,6 +265,90 @@
       "ne": "Parquet",
       "params": []
     },
+    "display_band.monitor": {
+      "draft": true,
+      "en": "Monitor",
+      "ne": "निगरानी",
+      "params": []
+    },
+    "display_band.not_observed": {
+      "draft": true,
+      "en": "Not observed",
+      "ne": "देखिएन",
+      "params": []
+    },
+    "display_band.ok": {
+      "draft": true,
+      "en": "On target",
+      "ne": "लक्ष्यमा",
+      "params": []
+    },
+    "display_band.outside": {
+      "draft": true,
+      "en": "Outside the reference",
+      "ne": "सन्दर्भ बाहिर",
+      "params": []
+    },
+    "display_metric.eyeDwellPct": {
+      "draft": true,
+      "en": "Eye-region looking",
+      "ne": "आँखा क्षेत्र हेराइ",
+      "params": []
+    },
+    "display_metric.firstEyeLatencyMs": {
+      "draft": true,
+      "en": "First look at the eyes",
+      "ne": "आँखामा पहिलो नजर",
+      "params": []
+    },
+    "display_metric.flatAffect": {
+      "draft": true,
+      "en": "Flat affect",
+      "ne": "सपाट भाव",
+      "params": []
+    },
+    "display_metric.mouthDwellPct": {
+      "draft": true,
+      "en": "Mouth looking",
+      "ne": "मुख हेराइ",
+      "params": []
+    },
+    "display_metric.nonSocialPct": {
+      "draft": true,
+      "en": "Non-social looking",
+      "ne": "गैर-सामाजिक हेराइ",
+      "params": []
+    },
+    "display_metric.smileIntensityPct": {
+      "draft": true,
+      "en": "Smile intensity",
+      "ne": "मुस्कानको तीव्रता",
+      "params": []
+    },
+    "display_metric.smileReactivity": {
+      "draft": true,
+      "en": "Smile reactivity",
+      "ne": "मुस्कान प्रतिक्रिया",
+      "params": []
+    },
+    "display_metric.socialPreferencePct": {
+      "draft": true,
+      "en": "Social preference",
+      "ne": "सामाजिक रुचि",
+      "params": []
+    },
+    "display_metric.surprisePct": {
+      "draft": true,
+      "en": "Surprise",
+      "ne": "आश्चर्य",
+      "params": []
+    },
+    "display_metric.validFramePct": {
+      "draft": true,
+      "en": "Valid frames",
+      "ne": "वैध फ्रेम",
+      "params": []
+    },
     "disposition.monitor": {
       "draft": true,
       "en": "Monitor",
@@ -672,6 +756,174 @@
       "ne": "क्षेत्र मार्जिन",
       "params": []
     },
+    "param.display.bands.eyeDwellPct.monitorMin.help": {
+      "draft": true,
+      "en": "An eye-region dwell share at or above this value shows as monitor instead of outside the reference.",
+      "ne": "यो वा यसभन्दा बढी आँखा क्षेत्र बसाइ अंश भए सन्दर्भ बाहिरको सट्टा निगरानी देखाइन्छ।",
+      "params": []
+    },
+    "param.display.bands.eyeDwellPct.monitorMin.label": {
+      "draft": true,
+      "en": "Eye-region dwell: monitor minimum",
+      "ne": "आँखा क्षेत्र बसाइ: निगरानी न्यूनतम",
+      "params": []
+    },
+    "param.display.bands.eyeDwellPct.okMin.help": {
+      "draft": true,
+      "en": "An eye-region dwell share at or above this value shows as on target.",
+      "ne": "यो वा यसभन्दा बढी आँखा क्षेत्र बसाइ अंश भए नतिजामा लक्ष्यमा देखाइन्छ।",
+      "params": []
+    },
+    "param.display.bands.eyeDwellPct.okMin.label": {
+      "draft": true,
+      "en": "Eye-region dwell: on-target minimum",
+      "ne": "आँखा क्षेत्र बसाइ: लक्ष्य न्यूनतम",
+      "params": []
+    },
+    "param.display.bands.firstEyeLatencyMs.monitorMax.help": {
+      "draft": true,
+      "en": "Slower than the on-target limit but faster than this shows as monitor; slower shows outside the reference.",
+      "ne": "लक्ष्य सीमाभन्दा ढिलो तर यसभन्दा छिटो भए निगरानी देखाइन्छ; यसभन्दा ढिलो भए सन्दर्भ बाहिर।",
+      "params": []
+    },
+    "param.display.bands.firstEyeLatencyMs.monitorMax.label": {
+      "draft": true,
+      "en": "First look at the eyes: monitor limit",
+      "ne": "आँखामा पहिलो नजर: निगरानी सीमा",
+      "params": []
+    },
+    "param.display.bands.firstEyeLatencyMs.okMax.help": {
+      "draft": true,
+      "en": "A first look at the eyes faster than this shows as on target.",
+      "ne": "आँखामा पहिलो नजर यसभन्दा छिटो भए लक्ष्यमा देखाइन्छ।",
+      "params": []
+    },
+    "param.display.bands.firstEyeLatencyMs.okMax.label": {
+      "draft": true,
+      "en": "First look at the eyes: on-target limit",
+      "ne": "आँखामा पहिलो नजर: लक्ष्य सीमा",
+      "params": []
+    },
+    "param.display.bands.flatAffect.okMax.help": {
+      "draft": true,
+      "en": "A flat-affect score at or below this value shows as expressive.",
+      "ne": "सपाट भाव अंक यो वा यसभन्दा कम भए अभिव्यक्त देखाइन्छ।",
+      "params": []
+    },
+    "param.display.bands.flatAffect.okMax.label": {
+      "draft": true,
+      "en": "Flat affect: on-target maximum",
+      "ne": "सपाट भाव: लक्ष्य अधिकतम",
+      "params": []
+    },
+    "param.display.bands.mouthDwellPct.okMax.help": {
+      "draft": true,
+      "en": "Highest mouth dwell share inside the reference range.",
+      "ne": "सन्दर्भ दायराभित्रको सबैभन्दा बढी मुख बसाइ अंश।",
+      "params": []
+    },
+    "param.display.bands.mouthDwellPct.okMax.label": {
+      "draft": true,
+      "en": "Mouth dwell: upper bound",
+      "ne": "मुख बसाइ: माथिल्लो सीमा",
+      "params": []
+    },
+    "param.display.bands.mouthDwellPct.okMin.help": {
+      "draft": true,
+      "en": "Lowest mouth dwell share inside the reference range.",
+      "ne": "सन्दर्भ दायराभित्रको सबैभन्दा कम मुख बसाइ अंश।",
+      "params": []
+    },
+    "param.display.bands.mouthDwellPct.okMin.label": {
+      "draft": true,
+      "en": "Mouth dwell: lower bound",
+      "ne": "मुख बसाइ: तल्लो सीमा",
+      "params": []
+    },
+    "param.display.bands.smileIntensityPct.monitorMin.help": {
+      "draft": true,
+      "en": "A smile intensity at or above this value shows as monitor instead of outside the reference.",
+      "ne": "यो वा यसभन्दा बढी मुस्कानको तीव्रता भए सन्दर्भ बाहिरको सट्टा निगरानी देखाइन्छ।",
+      "params": []
+    },
+    "param.display.bands.smileIntensityPct.monitorMin.label": {
+      "draft": true,
+      "en": "Smile intensity: monitor minimum",
+      "ne": "मुस्कानको तीव्रता: निगरानी न्यूनतम",
+      "params": []
+    },
+    "param.display.bands.smileIntensityPct.okMin.help": {
+      "draft": true,
+      "en": "A smile intensity at or above this value shows as on target.",
+      "ne": "यो वा यसभन्दा बढी मुस्कानको तीव्रता भए लक्ष्यमा देखाइन्छ।",
+      "params": []
+    },
+    "param.display.bands.smileIntensityPct.okMin.label": {
+      "draft": true,
+      "en": "Smile intensity: on-target minimum",
+      "ne": "मुस्कानको तीव्रता: लक्ष्य न्यूनतम",
+      "params": []
+    },
+    "param.display.bands.smileReactivity.okMin.help": {
+      "draft": true,
+      "en": "A smile reactivity index at or above this value shows as responsive.",
+      "ne": "यो वा यसभन्दा बढी मुस्कान प्रतिक्रिया सूचकांक भए प्रतिक्रियाशील देखाइन्छ।",
+      "params": []
+    },
+    "param.display.bands.smileReactivity.okMin.label": {
+      "draft": true,
+      "en": "Smile reactivity: on-target minimum",
+      "ne": "मुस्कान प्रतिक्रिया: लक्ष्य न्यूनतम",
+      "params": []
+    },
+    "param.display.bands.socialPreferencePct.monitorMin.help": {
+      "draft": true,
+      "en": "Below the on-target minimum but at or above this share shows as monitor; below it, outside the reference.",
+      "ne": "लक्ष्यभन्दा कम तर यो वा यसभन्दा बढी अंश भए निगरानी देखाइन्छ; यसभन्दा कम भए सन्दर्भ बाहिर।",
+      "params": []
+    },
+    "param.display.bands.socialPreferencePct.monitorMin.label": {
+      "draft": true,
+      "en": "Social preference: monitor minimum",
+      "ne": "सामाजिक रुचि: निगरानी न्यूनतम",
+      "params": []
+    },
+    "param.display.bands.socialPreferencePct.okMin.help": {
+      "draft": true,
+      "en": "A social-preference share at or above this value shows as on target.",
+      "ne": "यो वा यसभन्दा बढी सामाजिक रुचि अंश भए नतिजामा लक्ष्यमा देखाइन्छ।",
+      "params": []
+    },
+    "param.display.bands.socialPreferencePct.okMin.label": {
+      "draft": true,
+      "en": "Social preference: on-target minimum",
+      "ne": "सामाजिक रुचि: लक्ष्य न्यूनतम",
+      "params": []
+    },
+    "param.display.bands.surprisePct.okMin.help": {
+      "draft": true,
+      "en": "A share of surprise expressions at or above this value shows as expressive.",
+      "ne": "यो वा यसभन्दा बढी आश्चर्य भाव अंश भए अभिव्यक्त देखाइन्छ।",
+      "params": []
+    },
+    "param.display.bands.surprisePct.okMin.label": {
+      "draft": true,
+      "en": "Surprise: on-target minimum",
+      "ne": "आश्चर्य: लक्ष्य न्यूनतम",
+      "params": []
+    },
+    "param.display.scanpathMaxGapMs.help": {
+      "draft": true,
+      "en": "The drawn gaze path breaks across a gap between samples longer than this.",
+      "ne": "नमुनाबीचको अन्तराल यसभन्दा लामो भए कोरिएको नजर मार्ग टुट्छ।",
+      "params": []
+    },
+    "param.display.scanpathMaxGapMs.label": {
+      "draft": true,
+      "en": "Scanpath gap limit",
+      "ne": "नजर मार्ग अन्तराल सीमा",
+      "params": []
+    },
     "param.flag.atypicalShareForRed.help": {
       "draft": true,
       "en": "Share of atypical clips at which the session is labelled red.",
@@ -922,6 +1174,30 @@
       "draft": true,
       "en": "Low-quality valid ratio",
       "ne": "कम-गुणस्तर वैध अनुपात",
+      "params": []
+    },
+    "param.sessionQuality.acceptableMinValidRatio.help": {
+      "draft": true,
+      "en": "Sessions below the optimal ratio with at least this share of valid frames are stored as acceptable; below it, degraded.",
+      "ne": "उत्तम अनुपातभन्दा कम तर कम्तीमा यति वैध फ्रेम अंश भएका सत्र स्वीकार्य, यसभन्दा कम भए कमजोर रूपमा राखिन्छन्।",
+      "params": []
+    },
+    "param.sessionQuality.acceptableMinValidRatio.label": {
+      "draft": true,
+      "en": "Acceptable session valid ratio",
+      "ne": "स्वीकार्य सत्र वैध अनुपात",
+      "params": []
+    },
+    "param.sessionQuality.optimalMinValidRatio.help": {
+      "draft": true,
+      "en": "Sessions with at least this share of valid frames are stored as optimal quality.",
+      "ne": "कम्तीमा यति वैध फ्रेम अंश भएका सत्र उत्तम गुणस्तरका रूपमा राखिन्छन्।",
+      "params": []
+    },
+    "param.sessionQuality.optimalMinValidRatio.label": {
+      "draft": true,
+      "en": "Optimal session valid ratio",
+      "ne": "उत्तम सत्र वैध अनुपात",
       "params": []
     },
     "param.trackingQuality.calibration.autoSelect.help": {
@@ -1704,6 +1980,12 @@
       "ne": "रुचि क्षेत्र",
       "params": []
     },
+    "param_group.display": {
+      "draft": true,
+      "en": "Result display",
+      "ne": "नतिजा प्रदर्शन",
+      "params": []
+    },
     "param_group.flag": {
       "draft": true,
       "en": "Analysis labels",
@@ -1738,6 +2020,12 @@
       "draft": true,
       "en": "Review",
       "ne": "समीक्षा",
+      "params": []
+    },
+    "param_group.sessionQuality": {
+      "draft": true,
+      "en": "Session quality",
+      "ne": "सत्र गुणस्तर",
       "params": []
     },
     "param_group.trackingQuality": {

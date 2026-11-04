@@ -106,6 +106,52 @@ pub fn scoring_profile_problems(p: &ScoringProfile) -> Vec<ProfileProblem> {
             "schemaVersion is required",
         ));
     }
+    // DSP-1 (1.3.0): band and verdict bounds in order. Only finite values are compared; the
+    // registry reports the rest.
+    let b = &p.display.bands;
+    let q = &p.session_quality;
+    for (path, lower, upper, message) in [
+        (
+            "display.bands.socialPreferencePct.monitorMin",
+            b.social_preference_pct.monitor_min,
+            b.social_preference_pct.ok_min,
+            "display.bands.socialPreferencePct.monitorMin must not exceed okMin",
+        ),
+        (
+            "display.bands.eyeDwellPct.monitorMin",
+            b.eye_dwell_pct.monitor_min,
+            b.eye_dwell_pct.ok_min,
+            "display.bands.eyeDwellPct.monitorMin must not exceed okMin",
+        ),
+        (
+            "display.bands.mouthDwellPct.okMin",
+            b.mouth_dwell_pct.ok_min,
+            b.mouth_dwell_pct.ok_max,
+            "display.bands.mouthDwellPct.okMin must not exceed okMax",
+        ),
+        (
+            "display.bands.firstEyeLatencyMs.okMax",
+            b.first_eye_latency_ms.ok_max,
+            b.first_eye_latency_ms.monitor_max,
+            "display.bands.firstEyeLatencyMs.okMax must not exceed monitorMax",
+        ),
+        (
+            "display.bands.smileIntensityPct.monitorMin",
+            b.smile_intensity_pct.monitor_min,
+            b.smile_intensity_pct.ok_min,
+            "display.bands.smileIntensityPct.monitorMin must not exceed okMin",
+        ),
+        (
+            "sessionQuality.acceptableMinValidRatio",
+            q.acceptable_min_valid_ratio,
+            q.optimal_min_valid_ratio,
+            "sessionQuality.acceptableMinValidRatio must not exceed optimalMinValidRatio",
+        ),
+    ] {
+        if lower.is_finite() && upper.is_finite() && lower > upper {
+            problems.push(ProfileProblem::new(path, message));
+        }
+    }
     // WP-A.13: the delivered gaze-robustness parameters (SCH-3) the device pipeline runs on.
     if let Err(tracking) = p.tracking_quality.validate() {
         problems.extend(tracking.into_iter().map(|t| ProfileProblem {

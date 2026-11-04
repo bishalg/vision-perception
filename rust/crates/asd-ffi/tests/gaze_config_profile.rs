@@ -31,9 +31,17 @@ fn default_profile() -> Value {
 #[test]
 fn changed_drift_threshold_in_a_1_1_0_profile_reaches_the_config() {
     let mut profile = default_profile();
-    // The default is 1.2.0 since WP-X.0; a 1.1.0 document is the same minus its sections.
-    assert_eq!(profile["schemaVersion"], "1.2.0");
-    for k in ["metrics", "aoi", "ageBands", "norms", "review"] {
+    // The default is 1.3.0 since WP-X.0c; a 1.1.0 document is the same minus its sections.
+    assert_eq!(profile["schemaVersion"], "1.3.0");
+    for k in [
+        "metrics",
+        "aoi",
+        "ageBands",
+        "norms",
+        "review",
+        "display",
+        "sessionQuality",
+    ] {
         profile.as_object_mut().unwrap().remove(k);
     }
     profile["schemaVersion"] = json!("1.1.0");

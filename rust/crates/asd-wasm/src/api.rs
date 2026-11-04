@@ -20,15 +20,17 @@ use asd_contract::{params, session_v1_6, session_v1_7, session_v1_8};
 use asd_core::analysis::{
     self, AnalysisProfile, Evaluation, IvtUnit, LevelRequest, ResearchInput, SessionInput,
 };
+use asd_core::display::{self, BandStatus, BandTarget, DisplayMetric};
 use asd_core::gaze::raw_log::{self, RawLogError};
 use asd_core::gaze::reprocess::ReprocessOptions;
 use asd_core::metrics::AoiRole;
 use asd_core::types::tracking::CalModelKind;
+use asd_core::types::GazeQualityVerdict;
 use asd_core::types::{
     AttentionFlag, AttentionFlagAssessment, GazeFrame, NormativeBaselineSet, PerVideoMetricSet,
     PerVideoSessionScore, StimulusCatalog,
 };
-use asd_core::{baselines, flag, metrics, scoring};
+use asd_core::{baselines, flag, metrics, quality, scoring};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -214,6 +216,54 @@ pub fn assess_flag(
 /// headline this core does not know (shown as sent).
 pub fn flag_case(headline: &str) -> Option<&'static str> {
     flag::flag_case_of_headline(headline).map(flag::FlagCase::id)
+}
+
+// --- display bands and session verdict (DSP-3, DSP-4, WP-X.0c) ----------------------------
+
+/// The band of one value: `status` (`ok`, `monitor`, `outside`, `not_observed`) and the `ok`
+/// target (`comparator` `at_least` | `at_most` | `below` | `between`, `low`, `high`, `unit`).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DisplayBandResult {
+    pub status: BandStatus,
+    #[serde(flatten)]
+    pub target: BandTarget,
+}
+
+/// DSP-3: `asd_core::display::band` of `value` (`None`: not observed) for `metric`
+/// (`socialPreferencePct`, ..., `validFramePct`) under a profile's `display` and
+/// `sessionQuality` sections (absent: the defaults).
+pub fn display_band(
+    metric: &str,
+    value: Option<f64>,
+    profile_json: &str,
+) -> Result<DisplayBandResult, BoundaryError> {
+    let metric = DisplayMetric::parse(metric).ok_or_else(|| {
+        BoundaryError::InvalidArgument(format!("unknown display metric `{metric}`"))
+    })?;
+    let profile: ScoringProfile = decode(profile_json, "scoring profile")?;
+    let (status, target) = display::band(
+        metric,
+        value,
+        &(&profile.display).into(),
+        &(&profile.session_quality).into(),
+    );
+    Ok(DisplayBandResult { status, target })
+}
+
+/// DSP-4: the session `qualityVerdict` (`optimal`, `acceptable`, `degraded`) of a valid-frame
+/// ratio under a profile's `sessionQuality` (`asd_core::quality::session_verdict`).
+pub fn session_quality_verdict(
+    valid_ratio: f64,
+    interrupted: bool,
+    profile_json: &str,
+) -> Result<GazeQualityVerdict, BoundaryError> {
+    let profile: ScoringProfile = decode(profile_json, "scoring profile")?;
+    Ok(quality::session_verdict(
+        valid_ratio,
+        interrupted,
+        &(&profile.session_quality).into(),
+    ))
 }
 
 /// `PerVideoMetricsExtractor.extract(from:)`: `[GazeFrame]` -> `[PerVideoMetricSet]`.

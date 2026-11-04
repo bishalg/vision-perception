@@ -417,6 +417,8 @@ const en: ResearchMessages = {
     aoi: "Areas of interest",
     norms: "Norms",
     review: "Review",
+    display: "Result display",
+    sessionQuality: "Session quality",
   },
   units: {
     none: "",
@@ -869,6 +871,8 @@ const ne: ResearchMessages = {
     aoi: "रुचि क्षेत्र",
     norms: "मानक",
     review: "समीक्षा",
+    display: "नतिजा प्रदर्शन",
+    sessionQuality: "सत्र गुणस्तर",
   },
   units: {
     none: "",

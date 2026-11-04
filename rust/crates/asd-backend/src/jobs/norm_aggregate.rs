@@ -415,7 +415,17 @@ mod tests {
         let agg = p.aggregate_params(&ScoringProfile::default());
         assert_eq!(agg.min_n, 12);
         assert!(!agg.include_imputed);
-        assert_eq!(agg.brackets, norms::default_age_brackets());
+        // Same bands; the profile's 1.3.0 `representativeMonths` ride along and never reach
+        // the candidate's `ageBrackets` (asd-core strips them, DSP-2).
+        let bounds = |b: &[asd_core::types::AgeBracket]| -> Vec<(String, i64, i64)> {
+            b.iter()
+                .map(|x| (x.id.clone(), x.min_months, x.max_months))
+                .collect()
+        };
+        assert_eq!(
+            bounds(&agg.brackets),
+            bounds(&norms::default_age_brackets())
+        );
     }
 
     /// AGE-2: the bands come from the profile and its `minN` is a floor.

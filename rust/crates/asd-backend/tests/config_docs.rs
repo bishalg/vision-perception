@@ -296,7 +296,7 @@ async fn promoted_experiment_reaches_a_device_bundle() {
     let req = common::auth::empty(Method::GET, "/v1/config/bundle", Some(&device));
     let (s, _, bundle) = common::send(c.app.clone(), req).await;
     assert_eq!(s, StatusCode::OK, "{bundle}");
-    assert_eq!(bundle["scoring_profile"]["schemaVersion"], "1.2.0");
+    assert_eq!(bundle["scoring_profile"]["schemaVersion"], "1.3.0");
     assert_eq!(
         bundle["scoring_profile"]["metrics"]["ivtVelocityUnitsPerSec"],
         4.0

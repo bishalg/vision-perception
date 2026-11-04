@@ -50,7 +50,7 @@ afterEach(() => vi.useRealTimers());
 describe("registry helpers", () => {
   it("groups by first path segment in registry order, a root-level knob is its own group", () => {
     const groups = groupRegistry(paramRegistry.params);
-    expect(groups.map((g) => g.group)).toEqual(["flag", "lowConfidenceValidRatio", "qualityGate", "trackingQuality", "metrics", "aoi", "ageBands", "norms", "review"]);
+    expect(groups.map((g) => g.group)).toEqual(["flag", "lowConfidenceValidRatio", "qualityGate", "trackingQuality", "metrics", "aoi", "ageBands", "norms", "review", "display", "sessionQuality"]);
     expect(groups.flatMap((g) => g.params.map((p) => p.id)).sort()).toEqual(paramRegistry.params.map((p) => p.id).sort());
     expect(groupOf("lowConfidenceValidRatio")).toBe("lowConfidenceValidRatio");
     expect(groupOf("flag.greenFloor")).toBe("flag");

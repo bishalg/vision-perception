@@ -15,6 +15,12 @@
 //! backend (`metrics`, `aoi`, `ageBands`, `norms`, `review`; INV-1). Every new member is
 //! `serde(default)` to today's constant, so a 1.1.0 or 1.0.0 body decodes to exactly the
 //! behaviour it had. The parameter registry ([`crate::params`]) describes every leaf.
+//!
+//! Profile schema 1.3.0 (DSP-1, DSP-2, WP-X.0c) adds `display` (the result screens' band
+//! cut-offs, [`DisplayParams`]) and `sessionQuality` (the session verdict ratios,
+//! [`SessionQualityParams`]), both `serde(default)` to today's iOS constants, and the optional
+//! `ageBands[].representativeMonths` (the default profile sets 14, 20, 28, 40, 54). An older
+//! body decodes to the same behaviour; no scoring input changes.
 
 use std::collections::BTreeMap;
 
@@ -28,7 +34,7 @@ use crate::mirror;
 /// `$id` of the exported bundle schema.
 pub const CONFIG_BUNDLE_SCHEMA_ID: &str = "https://schemas.curv.org/asd/config-bundle-v1.json";
 /// Version written into a default [`ScoringProfile`].
-pub const SCORING_PROFILE_SCHEMA_VERSION: &str = "1.2.0";
+pub const SCORING_PROFILE_SCHEMA_VERSION: &str = "1.3.0";
 
 /// Traffic-light thresholds (`AttentionFlagAlgorithm`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -141,6 +147,13 @@ pub struct ScoringProfile {
     /// Backend review rules (INV-1 backend rows, 1.2.0).
     #[serde(default)]
     pub review: ReviewParams,
+    /// Result-screen band cut-offs (DSP-1, 1.3.0). Display only: no stored value depends on it.
+    #[serde(default)]
+    pub display: DisplayParams,
+    /// Session verdict ratios (DSP-1, DSP-4, 1.3.0): the stored `qualityVerdict` of new
+    /// sessions.
+    #[serde(default)]
+    pub session_quality: SessionQualityParams,
 }
 
 impl Default for ScoringProfile {
@@ -156,6 +169,8 @@ impl Default for ScoringProfile {
             age_bands: default_age_bands(),
             norms: NormsParams::default(),
             review: ReviewParams::default(),
+            display: DisplayParams::default(),
+            session_quality: SessionQualityParams::default(),
         }
     }
 }
@@ -172,9 +187,31 @@ impl ScoringProfile {
     }
 }
 
-/// The five `asd_core::norms` default brackets (12-17 .. 48-60 months).
+/// `representativeMonths` of the five default bands (DSP-2): the `midpointMonths` the iOS app
+/// sends as `ageMonths` today (`ChildProfile.swift:73-80`), so sessions keep the same age.
+pub use asd_core::analysis::profile::DEFAULT_REPRESENTATIVE_MONTHS;
+
+/// The five `asd_core::norms` default brackets (12-17 .. 48-60 months) with their
+/// representative months (DSP-2; `asd_core::analysis::profile::default_age_bands`).
 pub fn default_age_bands() -> Vec<AgeBracket> {
-    asd_core::norms::default_age_brackets()
+    asd_core::analysis::profile::default_age_bands()
+}
+
+/// The age in months a session in `band` carries (DSP-2, DSP-10): its `representativeMonths`;
+/// absent, the default band's value when the band is one of the five defaults (same id and
+/// bounds, so a pre-1.3.0 profile keeps today's 14, 20, 28, 40, 54), else
+/// `(minMonths + maxMonths) / 2`.
+pub fn representative_months(band: &AgeBracket) -> i64 {
+    if let Some(m) = band.representative_months {
+        return m;
+    }
+    default_age_bands()
+        .into_iter()
+        .find(|d| {
+            d.id == band.id && d.min_months == band.min_months && d.max_months == band.max_months
+        })
+        .and_then(|d| d.representative_months)
+        .unwrap_or_else(|| band.representative_or_midpoint())
 }
 
 /// Unit of the I-VT velocity threshold (`metrics.ivtUnit`).
@@ -284,6 +321,183 @@ impl Default for ReviewParams {
     fn default() -> Self {
         Self {
             low_quality_valid_ratio: 0.80,
+        }
+    }
+}
+
+// ---- 1.3.0: display bands and session quality (DSP-1) ----------------------------------
+
+macro_rules! band_section {
+    ($(#[$meta:meta])* $name:ident { $($(#[$fmeta:meta])* $field:ident = $default:ident),+ $(,)? }) => {
+        $(#[$meta])*
+        #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+        #[serde(rename_all = "camelCase", default)]
+        pub struct $name {
+            $($(#[$fmeta])* pub $field: f64,)+
+        }
+
+        impl Default for $name {
+            fn default() -> Self {
+                let d = asd_core::display::DisplayParams::default();
+                Self { $($field: d.$default,)+ }
+            }
+        }
+    };
+}
+
+band_section!(
+    /// `display.bands.socialPreferencePct`, percent: `>= okMin` ok, `>= monitorMin` monitor.
+    /// Also the non-social bound (`100 - okMin`).
+    SocialPreferenceBand {
+        ok_min = social_preference_pct_ok_min,
+        monitor_min = social_preference_pct_monitor_min,
+    }
+);
+band_section!(
+    /// `display.bands.eyeDwellPct`, percent: `>= okMin` ok, `>= monitorMin` monitor.
+    EyeDwellBand {
+        ok_min = eye_dwell_pct_ok_min,
+        monitor_min = eye_dwell_pct_monitor_min,
+    }
+);
+band_section!(
+    /// `display.bands.mouthDwellPct`, percent: `okMin <= x <= okMax` ok.
+    MouthDwellBand {
+        ok_min = mouth_dwell_pct_ok_min,
+        ok_max = mouth_dwell_pct_ok_max,
+    }
+);
+band_section!(
+    /// `display.bands.firstEyeLatencyMs`, milliseconds: `< okMax` ok, `< monitorMax` monitor.
+    FirstEyeLatencyBand {
+        ok_max = first_eye_latency_ms_ok_max,
+        monitor_max = first_eye_latency_ms_monitor_max,
+    }
+);
+band_section!(
+    /// `display.bands.smileIntensityPct`, percent: `>= okMin` ok, `>= monitorMin` monitor.
+    SmileIntensityBand {
+        ok_min = smile_intensity_pct_ok_min,
+        monitor_min = smile_intensity_pct_monitor_min,
+    }
+);
+band_section!(
+    /// `display.bands.smileReactivity`, index 0..1: `>= okMin` ok.
+    SmileReactivityBand {
+        ok_min = smile_reactivity_ok_min,
+    }
+);
+band_section!(
+    /// `display.bands.surprisePct`, percent: `>= okMin` ok.
+    SurpriseBand {
+        ok_min = surprise_pct_ok_min,
+    }
+);
+band_section!(
+    /// `display.bands.flatAffect`, score 0..1: `<= okMax` ok.
+    FlatAffectBand {
+        ok_max = flat_affect_ok_max,
+    }
+);
+
+/// `display.bands` (DSP-1): one object per coloured metric.
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", default)]
+pub struct DisplayBands {
+    pub social_preference_pct: SocialPreferenceBand,
+    pub eye_dwell_pct: EyeDwellBand,
+    pub mouth_dwell_pct: MouthDwellBand,
+    pub first_eye_latency_ms: FirstEyeLatencyBand,
+    pub smile_intensity_pct: SmileIntensityBand,
+    pub smile_reactivity: SmileReactivityBand,
+    pub surprise_pct: SurpriseBand,
+    pub flat_affect: FlatAffectBand,
+}
+
+/// `display` (DSP-1, 1.3.0): the result screens' band cut-offs and the scanpath gap. Read by
+/// the device views through `asd_core::display::band`; no stored value depends on it.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", default)]
+pub struct DisplayParams {
+    pub bands: DisplayBands,
+    /// The scanpath line breaks across a sample gap longer than this, milliseconds.
+    pub scanpath_max_gap_ms: u32,
+}
+
+impl Default for DisplayParams {
+    fn default() -> Self {
+        Self {
+            bands: DisplayBands::default(),
+            scanpath_max_gap_ms: asd_core::display::DisplayParams::default().scanpath_max_gap_ms,
+        }
+    }
+}
+
+/// The core twin, field by field (a field added to either side fails to compile here).
+impl From<&DisplayParams> for asd_core::display::DisplayParams {
+    fn from(p: &DisplayParams) -> Self {
+        let DisplayParams {
+            bands:
+                DisplayBands {
+                    social_preference_pct: s,
+                    eye_dwell_pct: e,
+                    mouth_dwell_pct: m,
+                    first_eye_latency_ms: l,
+                    smile_intensity_pct: si,
+                    smile_reactivity: sr,
+                    surprise_pct: su,
+                    flat_affect: fa,
+                },
+            scanpath_max_gap_ms,
+        } = *p;
+        Self {
+            social_preference_pct_ok_min: s.ok_min,
+            social_preference_pct_monitor_min: s.monitor_min,
+            eye_dwell_pct_ok_min: e.ok_min,
+            eye_dwell_pct_monitor_min: e.monitor_min,
+            mouth_dwell_pct_ok_min: m.ok_min,
+            mouth_dwell_pct_ok_max: m.ok_max,
+            first_eye_latency_ms_ok_max: l.ok_max,
+            first_eye_latency_ms_monitor_max: l.monitor_max,
+            smile_intensity_pct_ok_min: si.ok_min,
+            smile_intensity_pct_monitor_min: si.monitor_min,
+            smile_reactivity_ok_min: sr.ok_min,
+            surprise_pct_ok_min: su.ok_min,
+            flat_affect_ok_max: fa.ok_max,
+            scanpath_max_gap_ms,
+        }
+    }
+}
+
+/// `sessionQuality` (DSP-1, DSP-4, 1.3.0): the valid-frame ratios of the session verdict.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", default)]
+pub struct SessionQualityParams {
+    /// At or above: `optimal`.
+    pub optimal_min_valid_ratio: f64,
+    /// At or above (and below optimal): `acceptable`; below: `degraded`.
+    pub acceptable_min_valid_ratio: f64,
+}
+
+impl Default for SessionQualityParams {
+    fn default() -> Self {
+        let d = asd_core::quality::SessionQualityParams::default();
+        Self {
+            optimal_min_valid_ratio: d.optimal_min_valid_ratio,
+            acceptable_min_valid_ratio: d.acceptable_min_valid_ratio,
+        }
+    }
+}
+
+impl From<&SessionQualityParams> for asd_core::quality::SessionQualityParams {
+    fn from(p: &SessionQualityParams) -> Self {
+        let SessionQualityParams {
+            optimal_min_valid_ratio,
+            acceptable_min_valid_ratio,
+        } = *p;
+        Self {
+            optimal_min_valid_ratio,
+            acceptable_min_valid_ratio,
         }
     }
 }

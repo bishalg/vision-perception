@@ -24,8 +24,14 @@ use serde::Serialize;
 
 uniffi::setup_scaffolding!("asd_core");
 
+pub mod display;
 pub mod gaze;
 pub mod raw_log;
+
+pub use display::{
+    age_bands_from_profile, display_band, display_params_from_profile, session_quality_verdict,
+    AsdAgeBand, AsdBand, AsdBandStatus, AsdComparator, AsdDisplayMetric, AsdDisplayParams,
+};
 
 /// The single error type of the boundary. The variant is the kind; `message` is for logs
 /// and never contains document contents beyond a serde position hint.

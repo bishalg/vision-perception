@@ -110,11 +110,7 @@ mod tests {
             schema_version: "t".into(),
             status: "t".into(),
             provenance: None,
-            age_brackets: vec![AgeBracket {
-                id: "x".into(),
-                min_months: 10,
-                max_months: 12,
-            }],
+            age_brackets: vec![AgeBracket::new("x", 10, 12)],
             videos: BTreeMap::new(),
         };
         assert_eq!(bracket_id_for(&set, 10), Some("x"));

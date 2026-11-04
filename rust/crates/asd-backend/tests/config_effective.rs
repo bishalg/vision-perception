@@ -67,7 +67,7 @@ async fn effective_falls_back_from_org_bundle_to_global_to_defaults() {
     assert_eq!(s, StatusCode::OK, "{e}");
     assert_eq!(e["source"], "global");
     assert_eq!(e["bundle_version"], Value::Null);
-    assert_eq!(e["scoring_profile"]["version"], "bundled-1.2.0");
+    assert_eq!(e["scoring_profile"]["version"], "bundled-1.3.0");
     assert_eq!(
         e["scoring_profile"]["body"],
         serde_json::to_value(ScoringProfile::default()).unwrap()

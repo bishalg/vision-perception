@@ -118,3 +118,45 @@ pub fn evaluate_sample(sample: &GazeTelemetrySample, gate: &QualityGate) -> Eval
         is_blink,
     }
 }
+
+/// `sessionQuality` of a profile (DSP-4, profile 1.3.0): the valid-frame ratios of the
+/// session verdict. Core twin of `asd_contract::config::SessionQualityParams`; the defaults
+/// are `GazeProcessingActor.swift:1175` and the default source of the contract's.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct SessionQualityParams {
+    /// At or above: `optimal`.
+    pub optimal_min_valid_ratio: f64,
+    /// At or above (and below optimal): `acceptable`; below: `degraded`.
+    pub acceptable_min_valid_ratio: f64,
+}
+
+impl Default for SessionQualityParams {
+    fn default() -> Self {
+        Self {
+            optimal_min_valid_ratio: 0.75,
+            acceptable_min_valid_ratio: 0.50,
+        }
+    }
+}
+
+/// The stored `qualityVerdict` of a session (DSP-4): `>= optimal` -> `optimal`,
+/// `>= acceptable` -> `acceptable`, else `degraded`; any interruption demotes `optimal` and
+/// `acceptable` to `degraded`. Reproduces `GazeProcessingActor.swift:1175-1178`; a NaN ratio
+/// is `degraded`. Never `rejected` (that is a per-sample verdict).
+pub fn session_verdict(
+    valid_ratio: f64,
+    interrupted: bool,
+    p: &SessionQualityParams,
+) -> GazeQualityVerdict {
+    if interrupted {
+        return GazeQualityVerdict::Degraded;
+    }
+    if valid_ratio >= p.optimal_min_valid_ratio {
+        GazeQualityVerdict::Optimal
+    } else if valid_ratio >= p.acceptable_min_valid_ratio {
+        GazeQualityVerdict::Acceptable
+    } else {
+        GazeQualityVerdict::Degraded
+    }
+}

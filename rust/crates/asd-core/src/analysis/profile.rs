@@ -124,8 +124,21 @@ fn default_low_confidence_valid_ratio() -> f64 {
     crate::scoring::LOW_CONFIDENCE_VALID_RATIO
 }
 
-fn default_age_bands() -> Vec<AgeBracket> {
+/// `ageBands[].representativeMonths` of the five default bands (DSP-2, profile 1.3.0): the
+/// iOS `midpointMonths` sent as `ageMonths` (`ChildProfile.swift:73-80`). The default source
+/// of `asd_contract::config::default_age_bands`; the norm brackets carry none.
+pub const DEFAULT_REPRESENTATIVE_MONTHS: [i64; 5] = [14, 20, 28, 40, 54];
+
+/// The profile default `ageBands`: the norm brackets with [`DEFAULT_REPRESENTATIVE_MONTHS`].
+pub fn default_age_bands() -> Vec<AgeBracket> {
     crate::norms::default_age_brackets()
+        .into_iter()
+        .zip(DEFAULT_REPRESENTATIVE_MONTHS)
+        .map(|(b, months)| AgeBracket {
+            representative_months: Some(months),
+            ..b
+        })
+        .collect()
 }
 
 /// The members of a 1.2.0 `ScoringProfile` the core reads. Decodes from a full profile body

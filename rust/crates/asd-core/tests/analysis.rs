@@ -59,9 +59,12 @@ fn core_profile_defaults_equal_the_contract_scoring_profile() {
     let contract = ScoringProfile::default();
     assert_eq!(core_profile(&contract), AnalysisProfile::default());
 
-    // Same JSON for every section the core reads (the contract adds only schemaVersion).
+    // Same JSON for every section the core reads (the contract adds schemaVersion and the
+    // 1.3.0 device-display sections, DSP-1, which the analysis never reads).
     let mut c = serde_json::to_value(&contract).unwrap();
-    c.as_object_mut().unwrap().remove("schemaVersion");
+    for k in ["schemaVersion", "display", "sessionQuality"] {
+        c.as_object_mut().unwrap().remove(k);
+    }
     assert_eq!(c, serde_json::to_value(AnalysisProfile::default()).unwrap());
 
     // Sections individually, both ways.
@@ -104,7 +107,9 @@ fn every_profile_value_reaches_the_core() {
     p.review.low_quality_valid_ratio = 0.75;
     let core = core_profile(&p);
     let mut c = serde_json::to_value(&p).unwrap();
-    c.as_object_mut().unwrap().remove("schemaVersion");
+    for k in ["schemaVersion", "display", "sessionQuality"] {
+        c.as_object_mut().unwrap().remove(k);
+    }
     assert_eq!(c, serde_json::to_value(&core).unwrap());
 
     let agg = AggregateParams::from(&core.norms, &core.age_bands);

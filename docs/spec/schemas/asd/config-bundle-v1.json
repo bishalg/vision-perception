@@ -27,6 +27,17 @@
         },
         "minMonths": {
           "type": "integer"
+        },
+        "representativeMonths": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Profile `ageBands[]` only (DSP-2, 1.3.0): the `ageMonths` a session in this band\ncarries; absent means `(minMonths + maxMonths) / 2`. Never written in a baselines\ndocument's `ageBrackets`."
         }
       },
       "required": [
@@ -348,6 +359,111 @@
       },
       "type": "object"
     },
+    "DisplayBands": {
+      "description": "`display.bands` (DSP-1): one object per coloured metric.",
+      "properties": {
+        "eyeDwellPct": {
+          "$ref": "#/$defs/EyeDwellBand",
+          "default": {
+            "monitorMin": 18.0,
+            "okMin": 25.0
+          }
+        },
+        "firstEyeLatencyMs": {
+          "$ref": "#/$defs/FirstEyeLatencyBand",
+          "default": {
+            "monitorMax": 750.0,
+            "okMax": 550.0
+          }
+        },
+        "flatAffect": {
+          "$ref": "#/$defs/FlatAffectBand",
+          "default": {
+            "okMax": 0.25
+          }
+        },
+        "mouthDwellPct": {
+          "$ref": "#/$defs/MouthDwellBand",
+          "default": {
+            "okMax": 30.0,
+            "okMin": 10.0
+          }
+        },
+        "smileIntensityPct": {
+          "$ref": "#/$defs/SmileIntensityBand",
+          "default": {
+            "monitorMin": 10.0,
+            "okMin": 20.0
+          }
+        },
+        "smileReactivity": {
+          "$ref": "#/$defs/SmileReactivityBand",
+          "default": {
+            "okMin": 0.3
+          }
+        },
+        "socialPreferencePct": {
+          "$ref": "#/$defs/SocialPreferenceBand",
+          "default": {
+            "monitorMin": 50.0,
+            "okMin": 60.0
+          }
+        },
+        "surprisePct": {
+          "$ref": "#/$defs/SurpriseBand",
+          "default": {
+            "okMin": 15.0
+          }
+        }
+      },
+      "type": "object"
+    },
+    "DisplayParams": {
+      "description": "`display` (DSP-1, 1.3.0): the result screens' band cut-offs and the scanpath gap. Read by\nthe device views through `asd_core::display::band`; no stored value depends on it.",
+      "properties": {
+        "bands": {
+          "$ref": "#/$defs/DisplayBands",
+          "default": {
+            "eyeDwellPct": {
+              "monitorMin": 18.0,
+              "okMin": 25.0
+            },
+            "firstEyeLatencyMs": {
+              "monitorMax": 750.0,
+              "okMax": 550.0
+            },
+            "flatAffect": {
+              "okMax": 0.25
+            },
+            "mouthDwellPct": {
+              "okMax": 30.0,
+              "okMin": 10.0
+            },
+            "smileIntensityPct": {
+              "monitorMin": 10.0,
+              "okMin": 20.0
+            },
+            "smileReactivity": {
+              "okMin": 0.3
+            },
+            "socialPreferencePct": {
+              "monitorMin": 50.0,
+              "okMin": 60.0
+            },
+            "surprisePct": {
+              "okMin": 15.0
+            }
+          }
+        },
+        "scanpathMaxGapMs": {
+          "default": 120,
+          "description": "The scanpath line breaks across a sample gap longer than this, milliseconds.",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
     "DriftParams": {
       "properties": {
         "checkLayout": {
@@ -412,6 +528,20 @@
       },
       "type": "object"
     },
+    "EyeDwellBand": {
+      "description": "`display.bands.eyeDwellPct`, percent: `>= okMin` ok, `>= monitorMin` monitor.",
+      "properties": {
+        "monitorMin": {
+          "default": 18.0,
+          "type": "number"
+        },
+        "okMin": {
+          "default": 25.0,
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
     "FilterParams": {
       "properties": {
         "beta": {
@@ -424,6 +554,20 @@
         },
         "minCutoffHz": {
           "default": 1.2,
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "FirstEyeLatencyBand": {
+      "description": "`display.bands.firstEyeLatencyMs`, milliseconds: `< okMax` ok, `< monitorMax` monitor.",
+      "properties": {
+        "monitorMax": {
+          "default": 750.0,
+          "type": "number"
+        },
+        "okMax": {
+          "default": 550.0,
           "type": "number"
         }
       },
@@ -455,6 +599,16 @@
         "lowConfidenceShare",
         "atypicalShareForRed"
       ],
+      "type": "object"
+    },
+    "FlatAffectBand": {
+      "description": "`display.bands.flatAffect`, score 0..1: `<= okMax` ok.",
+      "properties": {
+        "okMax": {
+          "default": 0.25,
+          "type": "number"
+        }
+      },
       "type": "object"
     },
     "GapFillParams": {
@@ -539,6 +693,20 @@
         "smileReactivityWindowSec": {
           "default": 0.5,
           "description": "Window after a clip onset in which a smile counts as reactive, seconds.",
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "MouthDwellBand": {
+      "description": "`display.bands.mouthDwellPct`, percent: `okMin <= x <= okMax` ok.",
+      "properties": {
+        "okMax": {
+          "default": 30.0,
+          "type": "number"
+        },
+        "okMin": {
+          "default": 10.0,
           "type": "number"
         }
       },
@@ -849,32 +1017,71 @@
             {
               "id": "12-17",
               "maxMonths": 17,
-              "minMonths": 12
+              "minMonths": 12,
+              "representativeMonths": 14
             },
             {
               "id": "18-23",
               "maxMonths": 23,
-              "minMonths": 18
+              "minMonths": 18,
+              "representativeMonths": 20
             },
             {
               "id": "24-35",
               "maxMonths": 35,
-              "minMonths": 24
+              "minMonths": 24,
+              "representativeMonths": 28
             },
             {
               "id": "36-47",
               "maxMonths": 47,
-              "minMonths": 36
+              "minMonths": 36,
+              "representativeMonths": 40
             },
             {
               "id": "48-60",
               "maxMonths": 60,
-              "minMonths": 48
+              "minMonths": 48,
+              "representativeMonths": 54
             }
           ],
           "aoi": {
             "dwellCapMs": 100,
             "marginNorm": 0.0
+          },
+          "display": {
+            "bands": {
+              "eyeDwellPct": {
+                "monitorMin": 18.0,
+                "okMin": 25.0
+              },
+              "firstEyeLatencyMs": {
+                "monitorMax": 750.0,
+                "okMax": 550.0
+              },
+              "flatAffect": {
+                "okMax": 0.25
+              },
+              "mouthDwellPct": {
+                "okMax": 30.0,
+                "okMin": 10.0
+              },
+              "smileIntensityPct": {
+                "monitorMin": 10.0,
+                "okMin": 20.0
+              },
+              "smileReactivity": {
+                "okMin": 0.3
+              },
+              "socialPreferencePct": {
+                "monitorMin": 50.0,
+                "okMin": 60.0
+              },
+              "surprisePct": {
+                "okMin": 15.0
+              }
+            },
+            "scanpathMaxGapMs": 120
           },
           "flag": {
             "atypicalShareForRed": 0.4,
@@ -907,7 +1114,11 @@
           "review": {
             "lowQualityValidRatio": 0.8
           },
-          "schemaVersion": "1.2.0",
+          "schemaVersion": "1.3.0",
+          "sessionQuality": {
+            "acceptableMinValidRatio": 0.5,
+            "optimalMinValidRatio": 0.75
+          },
           "trackingQuality": {
             "calibration": {
               "autoSelect": false,
@@ -1156,27 +1367,32 @@
             {
               "id": "12-17",
               "maxMonths": 17,
-              "minMonths": 12
+              "minMonths": 12,
+              "representativeMonths": 14
             },
             {
               "id": "18-23",
               "maxMonths": 23,
-              "minMonths": 18
+              "minMonths": 18,
+              "representativeMonths": 20
             },
             {
               "id": "24-35",
               "maxMonths": 35,
-              "minMonths": 24
+              "minMonths": 24,
+              "representativeMonths": 28
             },
             {
               "id": "36-47",
               "maxMonths": 47,
-              "minMonths": 36
+              "minMonths": 36,
+              "representativeMonths": 40
             },
             {
               "id": "48-60",
               "maxMonths": 60,
-              "minMonths": 48
+              "minMonths": 48,
+              "representativeMonths": 54
             }
           ],
           "description": "Age bands of norms and analysis (PRM-7, AGE-2): contiguous, ascending, 1..=12 bands,\nmonths 0..=240. Absent before 1.2.0: the five `asd_core::norms` brackets.",
@@ -1192,6 +1408,44 @@
             "marginNorm": 0.0
           },
           "description": "AOI hit testing (PRM-7, 1.2.0)."
+        },
+        "display": {
+          "$ref": "#/$defs/DisplayParams",
+          "default": {
+            "bands": {
+              "eyeDwellPct": {
+                "monitorMin": 18.0,
+                "okMin": 25.0
+              },
+              "firstEyeLatencyMs": {
+                "monitorMax": 750.0,
+                "okMax": 550.0
+              },
+              "flatAffect": {
+                "okMax": 0.25
+              },
+              "mouthDwellPct": {
+                "okMax": 30.0,
+                "okMin": 10.0
+              },
+              "smileIntensityPct": {
+                "monitorMin": 10.0,
+                "okMin": 20.0
+              },
+              "smileReactivity": {
+                "okMin": 0.3
+              },
+              "socialPreferencePct": {
+                "monitorMin": 50.0,
+                "okMin": 60.0
+              },
+              "surprisePct": {
+                "okMin": 15.0
+              }
+            },
+            "scanpathMaxGapMs": 120
+          },
+          "description": "Result-screen band cut-offs (DSP-1, 1.3.0). Display only: no stored value depends on it."
         },
         "flag": {
           "$ref": "#/$defs/FlagThresholds"
@@ -1233,6 +1487,14 @@
         },
         "schemaVersion": {
           "type": "string"
+        },
+        "sessionQuality": {
+          "$ref": "#/$defs/SessionQualityParams",
+          "default": {
+            "acceptableMinValidRatio": 0.5,
+            "optimalMinValidRatio": 0.75
+          },
+          "description": "Session verdict ratios (DSP-1, DSP-4, 1.3.0): the stored `qualityVerdict` of new\nsessions."
         },
         "trackingQuality": {
           "$ref": "#/$defs/TrackingQualityParams",
@@ -1487,6 +1749,60 @@
       ],
       "type": "object"
     },
+    "SessionQualityParams": {
+      "description": "`sessionQuality` (DSP-1, DSP-4, 1.3.0): the valid-frame ratios of the session verdict.",
+      "properties": {
+        "acceptableMinValidRatio": {
+          "default": 0.5,
+          "description": "At or above (and below optimal): `acceptable`; below: `degraded`.",
+          "type": "number"
+        },
+        "optimalMinValidRatio": {
+          "default": 0.75,
+          "description": "At or above: `optimal`.",
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "SmileIntensityBand": {
+      "description": "`display.bands.smileIntensityPct`, percent: `>= okMin` ok, `>= monitorMin` monitor.",
+      "properties": {
+        "monitorMin": {
+          "default": 10.0,
+          "type": "number"
+        },
+        "okMin": {
+          "default": 20.0,
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "SmileReactivityBand": {
+      "description": "`display.bands.smileReactivity`, index 0..1: `>= okMin` ok.",
+      "properties": {
+        "okMin": {
+          "default": 0.3,
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "SocialPreferenceBand": {
+      "description": "`display.bands.socialPreferencePct`, percent: `>= okMin` ok, `>= monitorMin` monitor.\nAlso the non-social bound (`100 - okMin`).",
+      "properties": {
+        "monitorMin": {
+          "default": 50.0,
+          "type": "number"
+        },
+        "okMin": {
+          "default": 60.0,
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
     "StimulusCatalog": {
       "properties": {
         "agePacks": {
@@ -1531,6 +1847,16 @@
         "agePacks",
         "clips"
       ],
+      "type": "object"
+    },
+    "SurpriseBand": {
+      "description": "`display.bands.surprisePct`, percent: `>= okMin` ok.",
+      "properties": {
+        "okMin": {
+          "default": 15.0,
+          "type": "number"
+        }
+      },
       "type": "object"
     },
     "TrackStateParams": {

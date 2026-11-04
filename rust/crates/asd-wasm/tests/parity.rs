@@ -628,6 +628,54 @@ fn contract_info_and_default_profile() {
     );
 }
 
+/// DSP-3/DSP-4 (WP-X.0c): `displayBand` and `sessionQualityVerdict` are the core decisions
+/// under the profile's 1.3.0 sections; a 1.2.0 profile gives the defaults.
+#[test]
+fn display_band_and_session_verdict_follow_the_profile() {
+    let mut profile = serde_json::to_value(ScoringProfile::default()).unwrap();
+    let band = |p: &Value, metric: &str, v: Option<f64>| {
+        ok(&asd_wasm::display_band(metric, v, &p.to_string()))
+    };
+    assert_eq!(
+        band(&profile, "eyeDwellPct", Some(27.0)),
+        json!({"status": "ok", "comparator": "at_least", "low": 25.0, "high": null, "unit": "percent"})
+    );
+    assert_eq!(
+        band(&profile, "firstEyeLatencyMs", Some(550.0))["status"],
+        "monitor"
+    );
+    assert_eq!(band(&profile, "flatAffect", None)["status"], "not_observed");
+    profile["display"]["bands"]["eyeDwellPct"]["okMin"] = json!(30);
+    assert_eq!(
+        band(&profile, "eyeDwellPct", Some(27.0))["status"],
+        "monitor"
+    );
+    assert_eq!(
+        err_kind(&asd_wasm::display_band(
+            "nope",
+            Some(1.0),
+            &profile.to_string()
+        )),
+        "invalidArgument"
+    );
+
+    let verdict =
+        |p: &Value, r: f64, i: bool| ok(&asd_wasm::session_quality_verdict(r, i, &p.to_string()));
+    let mut v120 = serde_json::to_value(ScoringProfile::default()).unwrap();
+    v120.as_object_mut().unwrap().remove("display");
+    v120.as_object_mut().unwrap().remove("sessionQuality");
+    assert_eq!(verdict(&v120, 0.75, false), "optimal");
+    assert_eq!(verdict(&v120, 0.749, false), "acceptable");
+    assert_eq!(verdict(&v120, 0.75, true), "degraded");
+    assert_eq!(band(&v120, "validFramePct", Some(75.0))["status"], "ok");
+    profile["sessionQuality"]["optimalMinValidRatio"] = json!(0.85);
+    assert_eq!(verdict(&profile, 0.80, false), "acceptable");
+    assert_eq!(
+        err_kind(&asd_wasm::session_quality_verdict(0.5, false, "nope")),
+        "invalidJson"
+    );
+}
+
 #[test]
 fn validation_reports_problems_without_failing() {
     let good = ok(&asd_wasm::validate_scoring_profile(&profile_json()));

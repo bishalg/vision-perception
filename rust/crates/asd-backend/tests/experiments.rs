@@ -204,8 +204,8 @@ async fn a_published_profile_is_the_starting_point() {
     assert_eq!(s, StatusCode::CREATED, "{e}");
     assert_eq!(e["base_profile_version"], "pub-1");
     assert_eq!(e["profile"]["flag"]["greenFloor"], 0.7);
-    // Stored whole, at 1.2.0.
-    assert_eq!(e["profile"]["schemaVersion"], "1.2.0");
+    // Stored whole, at the current profile schema (1.3.0, WP-X.0c).
+    assert_eq!(e["profile"]["schemaVersion"], "1.3.0");
     assert_eq!(e["profile"]["metrics"], profile()["metrics"]);
     c.db.cleanup().await;
 }

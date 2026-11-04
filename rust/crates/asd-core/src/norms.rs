@@ -54,7 +54,8 @@ impl AggregateParams {
     }
 }
 
-/// The five brackets of `DEFAULT_AGE_BRACKETS`: the default source of `ScoringProfile.ageBands`.
+/// The five brackets of `DEFAULT_AGE_BRACKETS`: the default source of `ScoringProfile.ageBands`
+/// (without `representativeMonths`; the contract's profile default sets those, DSP-2).
 pub fn default_age_brackets() -> Vec<AgeBracket> {
     [
         ("12-17", 12, 17),
@@ -64,11 +65,7 @@ pub fn default_age_brackets() -> Vec<AgeBracket> {
         ("48-60", 48, 60),
     ]
     .into_iter()
-    .map(|(id, min_months, max_months)| AgeBracket {
-        id: id.to_string(),
-        min_months,
-        max_months,
-    })
+    .map(|(id, min_months, max_months)| AgeBracket::new(id, min_months, max_months))
     .collect()
 }
 
@@ -301,7 +298,13 @@ pub fn build_candidate_baseline(
         schema_version: "1.0.0-candidate".to_string(),
         status: "candidate-collected".to_string(),
         provenance: "Aggregated by asd-cli norms aggregate from consented norm-collection sessions. NOT approved for on-device scoring until reviewed and promoted.".to_string(),
-        age_brackets: params.brackets.clone(),
+        // DSP-2: a baselines document's brackets never carry the profile's
+        // `representativeMonths`.
+        age_brackets: params
+            .brackets
+            .iter()
+            .map(|b| AgeBracket::new(b.id.clone(), b.min_months, b.max_months))
+            .collect(),
         videos,
     }
 }

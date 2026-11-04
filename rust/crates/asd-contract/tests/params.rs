@@ -1,9 +1,12 @@
 //! owner: WP-X.0
 //!
-//! PRM-1..4 and PRM-7: the parameter registry describes every leaf of the 1.2.0 scoring
+//! PRM-1..4 and PRM-7: the parameter registry describes every leaf of the 1.3.0 scoring
 //! profile (completeness, both directions), refuses out-of-range and unknown members with
 //! their paths, keeps the cross-field rules, and the 1.2.0 sections default to today's
 //! constants so older profiles decode to the same behaviour.
+//!
+//! DSP-1, DSP-2, DSP-6 (WP-X.0c): the 16 `display.*` / `sessionQuality.*` rows, their
+//! cross-field rules, `ageBands[].representativeMonths`, and `validate_for_device`.
 
 use std::collections::BTreeSet;
 
@@ -11,8 +14,8 @@ use asd_contract::config::{
     IvtUnit, ScoringProfile, TrackingQualityParams, SCORING_PROFILE_SCHEMA_VERSION,
 };
 use asd_contract::params::{
-    self, leaf_paths, registry, validate, DocumentKind, ParamKind, Reprocess, NON_PARAMETER_LEAVES,
-    PARAM_REGISTRY_FILE, PARAM_REGISTRY_ID, REGISTRY_VERSION,
+    self, leaf_paths, registry, validate, validate_for_device, DocumentKind, ParamKind, Reprocess,
+    Stage, Unit, NON_PARAMETER_LEAVES, PARAM_REGISTRY_FILE, PARAM_REGISTRY_ID, REGISTRY_VERSION,
 };
 use asd_contract::profile_checks::{profile_problems, scoring_profile_problems};
 use asd_contract::schema;
@@ -122,7 +125,11 @@ fn rows_carry_defaults_message_keys_and_consistent_kinds() {
             }
         }
         let since = spec.since.as_str();
-        assert!(["1.0.0", "1.1.0", "1.2.0"].contains(&since), "{}", spec.id);
+        assert!(
+            ["1.0.0", "1.1.0", "1.2.0", "1.3.0"].contains(&since),
+            "{}",
+            spec.id
+        );
     }
     assert_eq!(params::registry_version(), REGISTRY_VERSION);
 }
@@ -171,6 +178,9 @@ fn the_default_profile_and_older_bodies_are_valid() {
         v110.as_object_mut().unwrap().remove(k);
     }
     v110["schemaVersion"] = json!("1.1.0");
+    for k in ["display", "sessionQuality"] {
+        v110.as_object_mut().unwrap().remove(k);
+    }
     assert!(problems(&v110).is_empty());
     let mut v100 = v110.clone();
     v100.as_object_mut().unwrap().remove("trackingQuality");
@@ -295,11 +305,11 @@ fn unknown_members_under_registered_objects_are_refused() {
     let mut body = default_body();
     body["qualityGate"]["maxRollRad"] = json!(0.3);
     body["trackingQuality"]["filter"]["gamma"] = json!(1);
-    body["display"] = json!({"bands": {}});
+    body["futureSection"] = json!({"bands": {}});
     assert_eq!(
         paths(&body),
         [
-            "display",
+            "futureSection",
             "qualityGate.maxRollRad",
             "trackingQuality.filter.gamma"
         ]
@@ -331,7 +341,7 @@ fn typed_profile_problems_match_the_json_validation() {
 
 #[test]
 fn profile_1_2_0_defaults_are_todays_constants() {
-    assert_eq!(SCORING_PROFILE_SCHEMA_VERSION, "1.2.0");
+    assert_eq!(SCORING_PROFILE_SCHEMA_VERSION, "1.3.0");
     let p = ScoringProfile::default();
     assert_eq!(p.metrics.ivt_velocity_units_per_sec, 5.0);
     assert_eq!(
@@ -352,7 +362,13 @@ fn profile_1_2_0_defaults_are_todays_constants() {
     assert_eq!(p.metrics.flat_affect_gain, 50.0);
     assert_eq!(p.aoi.margin_norm, 0.0);
     assert_eq!(p.aoi.dwell_cap_ms, 100);
-    assert_eq!(p.age_bands, asd_core::norms::default_age_brackets());
+    // The norm brackets, plus the 1.3.0 representative months (DSP-2).
+    let bare: Vec<_> = p
+        .age_bands
+        .iter()
+        .map(|b| asd_core::types::AgeBracket::new(b.id.clone(), b.min_months, b.max_months))
+        .collect();
+    assert_eq!(bare, asd_core::norms::default_age_brackets());
     assert_eq!(p.norms.min_n as usize, asd_core::norms::DEFAULT_MIN_N);
     assert!(!p.norms.include_imputed);
     assert_eq!(p.review.low_quality_valid_ratio, 0.80);
@@ -365,7 +381,15 @@ fn profile_1_2_0_defaults_are_todays_constants() {
 #[test]
 fn a_1_1_0_profile_decodes_with_the_1_2_0_defaults() {
     let mut v = default_body();
-    for k in ["metrics", "aoi", "ageBands", "norms", "review"] {
+    for k in [
+        "metrics",
+        "aoi",
+        "ageBands",
+        "norms",
+        "review",
+        "display",
+        "sessionQuality",
+    ] {
         v.as_object_mut().unwrap().remove(k);
     }
     v["schemaVersion"] = json!("1.1.0");
@@ -434,4 +458,228 @@ fn bundle_schema_carries_the_1_2_0_sections() {
             "{k} is optional (serde default)"
         );
     }
+}
+
+// ---- DSP-1, DSP-2, DSP-6: profile 1.3.0 (WP-X.0c) ---------------------------------------
+
+const DSP_ROWS: [(&str, f64); 16] = [
+    ("display.bands.socialPreferencePct.okMin", 60.0),
+    ("display.bands.socialPreferencePct.monitorMin", 50.0),
+    ("display.bands.eyeDwellPct.okMin", 25.0),
+    ("display.bands.eyeDwellPct.monitorMin", 18.0),
+    ("display.bands.mouthDwellPct.okMin", 10.0),
+    ("display.bands.mouthDwellPct.okMax", 30.0),
+    ("display.bands.firstEyeLatencyMs.okMax", 550.0),
+    ("display.bands.firstEyeLatencyMs.monitorMax", 750.0),
+    ("display.bands.smileIntensityPct.okMin", 20.0),
+    ("display.bands.smileIntensityPct.monitorMin", 10.0),
+    ("display.bands.smileReactivity.okMin", 0.30),
+    ("display.bands.surprisePct.okMin", 15.0),
+    ("display.bands.flatAffect.okMax", 0.25),
+    ("display.scanpathMaxGapMs", 120.0),
+    ("sessionQuality.optimalMinValidRatio", 0.75),
+    ("sessionQuality.acceptableMinValidRatio", 0.50),
+];
+
+#[test]
+fn the_16_rows_of_1_3_0_are_registered_with_their_defaults() {
+    assert_eq!(registry().len(), 88 + 16, "acceptance 12: 104 rows");
+    let added: Vec<&str> = registry()
+        .iter()
+        .filter(|s| s.since == "1.3.0")
+        .map(|s| s.id.as_str())
+        .collect();
+    assert_eq!(added, DSP_ROWS.map(|(id, _)| id));
+    for (id, default) in DSP_ROWS {
+        let spec = params::spec(id).unwrap();
+        assert_eq!(spec.default.as_f64(), Some(default), "{id}");
+        assert_eq!(spec.reprocess, Reprocess::Score, "{id}");
+        assert!(spec.owner_gate.is_none(), "{id}");
+        let want_stage = if id.starts_with("display.") {
+            Stage::Display
+        } else {
+            Stage::Metrics
+        };
+        assert_eq!(spec.stage, want_stage, "{id}");
+    }
+    assert!(matches!(
+        params::spec("display.bands.firstEyeLatencyMs.okMax")
+            .unwrap()
+            .kind,
+        ParamKind::Number {
+            min: 50.0,
+            max: 5000.0,
+            step: 10.0,
+            unit: Unit::Millis
+        }
+    ));
+    assert!(matches!(
+        params::spec("display.scanpathMaxGapMs").unwrap().kind,
+        ParamKind::Integer {
+            min: 16,
+            max: 1000,
+            unit: Unit::Millis
+        }
+    ));
+    assert_eq!(REGISTRY_VERSION, "1.0.0", "rows added, none changed");
+}
+
+#[test]
+fn a_1_2_0_profile_decodes_with_the_1_3_0_defaults() {
+    let mut v = default_body();
+    for k in ["display", "sessionQuality"] {
+        v.as_object_mut().unwrap().remove(k);
+    }
+    for band in v["ageBands"].as_array_mut().unwrap() {
+        band.as_object_mut().unwrap().remove("representativeMonths");
+    }
+    v["schemaVersion"] = json!("1.2.0");
+    assert!(problems(&v).is_empty());
+    let p: ScoringProfile = serde_json::from_value(v).unwrap();
+    let d = ScoringProfile::default();
+    assert_eq!(p.display, d.display);
+    assert_eq!(p.session_quality, d.session_quality);
+    // Every older section is unchanged.
+    assert_eq!(
+        (&p.flag, &p.metrics, &p.aoi, &p.norms, &p.review),
+        (&d.flag, &d.metrics, &d.aoi, &d.norms, &d.review)
+    );
+    // The bands carry no representative months; the effective ages are still today's.
+    assert!(p
+        .age_bands
+        .iter()
+        .all(|b| b.representative_months.is_none()));
+    let months: Vec<i64> = p
+        .age_bands
+        .iter()
+        .map(asd_contract::config::representative_months)
+        .collect();
+    assert_eq!(months, [14, 20, 28, 40, 54]);
+
+    // A partial band object fills the rest from the defaults.
+    let mut v = default_body();
+    v["display"] = json!({"bands": {"eyeDwellPct": {"okMin": 30}}});
+    let p: ScoringProfile = serde_json::from_value(v).unwrap();
+    assert_eq!(p.display.bands.eye_dwell_pct.ok_min, 30.0);
+    assert_eq!(p.display.bands.eye_dwell_pct.monitor_min, 18.0);
+    assert_eq!(p.display.scanpath_max_gap_ms, 120);
+}
+
+#[test]
+fn display_and_session_quality_ranges_and_orders_are_refused() {
+    let mut body = default_body();
+    set(&mut body, "display.bands.eyeDwellPct.okMin", json!(120));
+    assert_eq!(
+        problems(&body),
+        [(
+            "display.bands.eyeDwellPct.okMin".to_string(),
+            "display.bands.eyeDwellPct.okMin must be in [0, 100]".to_string()
+        )]
+    );
+
+    // monitorMin above okMin (both in range): the cross-field rule.
+    let mut body = default_body();
+    set(&mut body, "display.bands.eyeDwellPct.monitorMin", json!(30));
+    assert_eq!(
+        problems(&body),
+        [(
+            "display.bands.eyeDwellPct.monitorMin".to_string(),
+            "display.bands.eyeDwellPct.monitorMin must not exceed okMin".to_string()
+        )]
+    );
+
+    // Acceptance 12: latency okMax 900 above monitorMax 750.
+    let mut body = default_body();
+    set(
+        &mut body,
+        "display.bands.firstEyeLatencyMs.okMax",
+        json!(900),
+    );
+    assert_eq!(paths(&body), ["display.bands.firstEyeLatencyMs.okMax"]);
+
+    let mut body = default_body();
+    set(&mut body, "display.bands.mouthDwellPct.okMin", json!(40));
+    set(
+        &mut body,
+        "display.bands.smileIntensityPct.monitorMin",
+        json!(25),
+    );
+    set(
+        &mut body,
+        "display.bands.socialPreferencePct.monitorMin",
+        json!(65),
+    );
+    set(
+        &mut body,
+        "sessionQuality.acceptableMinValidRatio",
+        json!(0.8),
+    );
+    set(&mut body, "display.scanpathMaxGapMs", json!(5));
+    assert_eq!(
+        paths(&body),
+        [
+            "display.scanpathMaxGapMs",
+            "display.bands.socialPreferencePct.monitorMin",
+            "display.bands.mouthDwellPct.okMin",
+            "display.bands.smileIntensityPct.monitorMin",
+            "sessionQuality.acceptableMinValidRatio",
+        ]
+    );
+}
+
+#[test]
+fn representative_months_must_lie_in_their_band() {
+    let mut body = default_body();
+    assert_eq!(body["ageBands"][2]["representativeMonths"], 28);
+    // Acceptance 12: 40 is outside band 24-35.
+    body["ageBands"][2]["representativeMonths"] = json!(40);
+    assert_eq!(
+        problems(&body),
+        [(
+            "ageBands.2".to_string(),
+            "ageBands.2.representativeMonths must be an integer in [24, 35]".to_string()
+        )]
+    );
+    body["ageBands"][2]["representativeMonths"] = json!(27.5);
+    assert_eq!(paths(&body), ["ageBands.2"]);
+    // At either bound, or absent, is fine.
+    body["ageBands"][2]["representativeMonths"] = json!(35);
+    assert!(problems(&body).is_empty());
+    body["ageBands"][2]["representativeMonths"] = json!(24);
+    assert!(problems(&body).is_empty());
+    body["ageBands"][2]
+        .as_object_mut()
+        .unwrap()
+        .remove("representativeMonths");
+    assert!(problems(&body).is_empty());
+}
+
+#[test]
+fn device_validation_ignores_unknown_members_but_not_known_ranges() {
+    let mut body = default_body();
+    body["futureSection"] = json!({"knob": 1});
+    body["display"]["bands"]["newMetric"] = json!({"okMin": 1});
+    let device = |b: &Value| -> Vec<String> {
+        validate_for_device(DocumentKind::ScoringProfile, b)
+            .into_iter()
+            .map(|p| p.path)
+            .collect()
+    };
+    assert!(device(&body).is_empty());
+    assert_eq!(
+        params::unknown_parameters(DocumentKind::ScoringProfile, &body),
+        ["display.bands.newMetric", "futureSection"]
+    );
+    // Publish stays strict.
+    assert_eq!(paths(&body), ["display.bands.newMetric", "futureSection"]);
+
+    // A known member out of range, and a cross-field rule, still fail on the device.
+    set(&mut body, "display.bands.eyeDwellPct.okMin", json!(120));
+    assert_eq!(device(&body), ["display.bands.eyeDwellPct.okMin"]);
+    let mut body = default_body();
+    body["futureSection"] = json!(true);
+    set(&mut body, "flag.yellowFloor", json!(0.9));
+    assert_eq!(device(&body), ["flag.yellowFloor"]);
+    // The default profile and an older one pass on the device too.
+    assert!(device(&default_body()).is_empty());
 }

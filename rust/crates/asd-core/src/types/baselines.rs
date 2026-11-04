@@ -67,13 +67,36 @@ pub struct NormativeVideo {
     pub segments: Vec<NormativeSegment>,
 }
 
-/// `NormativeBaselineSet.AgeBracket`.
+/// `NormativeBaselineSet.AgeBracket`, also the scoring profile's `ageBands[]` item.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgeBracket {
     pub id: String,
     pub min_months: i64,
     pub max_months: i64,
+    /// DSP-2 (profile 1.3.0): the age in months a session in this band carries as `ageMonths`
+    /// when only the band is known (the iOS age picker). Absent: [`Self::representative_or_midpoint`].
+    /// A baselines document's `ageBrackets` never carry it (the norm job strips it).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub representative_months: Option<i64>,
+}
+
+impl AgeBracket {
+    /// A bracket without `representativeMonths`.
+    pub fn new(id: impl Into<String>, min_months: i64, max_months: i64) -> Self {
+        Self {
+            id: id.into(),
+            min_months,
+            max_months,
+            representative_months: None,
+        }
+    }
+
+    /// `representativeMonths`, else `(minMonths + maxMonths) / 2` (integer division, DSP-2).
+    pub fn representative_or_midpoint(&self) -> i64 {
+        self.representative_months
+            .unwrap_or((self.min_months + self.max_months).div_euclid(2))
+    }
 }
 
 /// Versioned baseline set bundled with the app.

@@ -55,7 +55,13 @@ export const normativeVideoSchema = z.object({
 });
 export type NormativeVideo = z.infer<typeof normativeVideoSchema>;
 
-export const ageBracketSchema = z.object({ id: z.string(), minMonths: z.number().int(), maxMonths: z.number().int() });
+export const ageBracketSchema = z.object({
+  id: z.string(),
+  minMonths: z.number().int(),
+  maxMonths: z.number().int(),
+  /** Profile `ageBands[]` only (DSP-2, 1.3.0): the `ageMonths` a session in the band carries. */
+  representativeMonths: z.number().int().optional(),
+});
 export type AgeBracket = z.infer<typeof ageBracketSchema>;
 
 export const normativeBaselineSetSchema = z.object({
@@ -100,9 +106,13 @@ export const scoringProfileSchema = z.object({
   // registry form (WP-X.5) edits them and the Rust registry validates them.
   metrics: z.record(z.string(), z.unknown()).optional(),
   aoi: z.record(z.string(), z.unknown()).optional(),
-  ageBands: z.array(z.object({ id: z.string(), minMonths: z.number().int(), maxMonths: z.number().int() })).optional(),
+  ageBands: z.array(ageBracketSchema).optional(),
   norms: z.record(z.string(), z.unknown()).optional(),
   review: z.record(z.string(), z.unknown()).optional(),
+  // Profile 1.3.0 (DSP-1, WP-X.0c): result-screen bands and session verdict ratios; absent before 1.3.0. Opaque here
+  // like the 1.2.0 sections; the Rust registry validates them.
+  display: z.record(z.string(), z.unknown()).optional(),
+  sessionQuality: z.record(z.string(), z.unknown()).optional(),
 });
 export type ScoringProfile = z.infer<typeof scoringProfileSchema>;
 

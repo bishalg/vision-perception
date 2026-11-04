@@ -499,6 +499,15 @@ pub fn required_groups() -> Vec<KeyGroup> {
         KeyGroup::of_values("param_group", param_groups),
         KeyGroup::of_enum::<params::Unit>("unit"),
         KeyGroup::of_values("age_band", ["range", "range_open"]),
+        // DSP-3/DSP-7 (WP-X.0c): the result-screen bands and the metrics they colour.
+        KeyGroup::of_values(
+            "display_band",
+            asd_core::display::BandStatus::ALL.map(|s| s.as_str()),
+        ),
+        KeyGroup::of_values(
+            "display_metric",
+            asd_core::display::DisplayMetric::ALL.map(|m| m.as_str()),
+        ),
         KeyGroup::of_values("problem", problem::ALL_SLUGS.iter().copied()),
     ]
 }

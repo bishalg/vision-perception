@@ -496,3 +496,55 @@ fn signed_bundle_outside_a_registry_range_is_refused() {
     );
     assert!(accept_bundle(ok.as_bytes(), &ring(), &policy(None, None)).is_ok());
 }
+
+/// DSP-6 (WP-X.0c, acceptance 13): a signed 1.3.0 bundle whose profile carries a section this
+/// build does not know (`futureSection`, as a later profile schema would add) is accepted,
+/// the section is reported for the log and dropped from the decoded profile; a known member
+/// out of range in the same bundle is still refused. Publishing the same body stays strict.
+#[test]
+fn signed_bundle_with_an_unknown_profile_section_is_accepted() {
+    use asd_contract::params::{self, DocumentKind};
+
+    let id = trusted(SEED_A).key_id;
+    let with_future = |edit: &dyn Fn(&mut Value)| -> String {
+        let b = bundle("2026.11.04-1", "2026-11-01T00:00:00Z", &id);
+        let mut v = serde_json::to_value(&b).unwrap();
+        v["scoring_profile"]["futureSection"] = serde_json::json!({"knob": 1});
+        edit(&mut v);
+        signing::sign_bundle_json(&v.to_string(), &key(SEED_A)).unwrap()
+    };
+
+    let text = with_future(&|_| {});
+    let accepted = accept_bundle(text.as_bytes(), &ring(), &policy(None, None))
+        .expect("an unknown section is ignored on the device");
+    assert_eq!(accepted.scoring_profile.schema_version, "1.3.0");
+    assert_eq!(accepted.scoring_profile.display, Default::default());
+    assert_eq!(
+        asd_sync::ignored_profile_members(text.as_bytes()),
+        ["futureSection"]
+    );
+
+    // Publish (strict) refuses the same profile body.
+    let body: Value = serde_json::from_str::<Value>(&text).unwrap()["scoring_profile"].clone();
+    let strict: Vec<String> = params::validate(DocumentKind::ScoringProfile, &body)
+        .into_iter()
+        .map(|p| p.message)
+        .collect();
+    assert_eq!(strict, ["futureSection: unknown parameter"]);
+    assert!(params::validate_for_device(DocumentKind::ScoringProfile, &body).is_empty());
+
+    // A known 1.3.0 member out of range is still refused next to the unknown section.
+    let text = with_future(&|v| {
+        v["scoring_profile"]["display"]["bands"]["eyeDwellPct"]["okMin"] = Value::from(120);
+    });
+    match accept_bundle(text.as_bytes(), &ring(), &policy(None, None)) {
+        Err(BundleRejection::InvalidProfile(message)) => {
+            assert!(
+                message.contains("display.bands.eyeDwellPct.okMin must be in [0, 100]"),
+                "{message}"
+            );
+            assert!(!message.contains("futureSection"), "{message}");
+        }
+        other => panic!("expected InvalidProfile, got {other:?}"),
+    }
+}

@@ -24,8 +24,8 @@ mod url_rules;
 
 pub use config_bundle::{
     accept_bundle, build_config_bundle_request, classify_config_bundle_response,
-    compare_bundle_versions, parse_bundle_version, parse_rfc3339_unix, BundlePolicy,
-    BundleRejection, ConfigBundleOutcome, TrustedKey, CONFIG_BUNDLE_PATH,
+    compare_bundle_versions, ignored_profile_members, parse_bundle_version, parse_rfc3339_unix,
+    BundlePolicy, BundleRejection, ConfigBundleOutcome, TrustedKey, CONFIG_BUNDLE_PATH,
     CONFIG_BUNDLE_TIMEOUT_SECS, MAX_CLOCK_SKEW_SECS,
 };
 pub use request::{

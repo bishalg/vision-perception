@@ -8,11 +8,14 @@
 use std::path::PathBuf;
 
 use asd_contract::config::{
-    AoiParams, ConfigBundle, FlagThresholds, IvtUnit, MetricsParams, NormsParams,
-    QualityGateParams, ReviewParams, ScoringProfile, TrackingQualityParams,
+    AoiParams, ConfigBundle, DisplayBands, DisplayParams, EyeDwellBand, FirstEyeLatencyBand,
+    FlagThresholds, FlatAffectBand, IvtUnit, MetricsParams, MouthDwellBand, NormsParams,
+    QualityGateParams, ReviewParams, ScoringProfile, SessionQualityParams, SmileIntensityBand,
+    SmileReactivityBand, SocialPreferenceBand, SurpriseBand, TrackingQualityParams,
     SCORING_PROFILE_SCHEMA_VERSION,
 };
 use asd_contract::schema;
+use asd_core::types::AgeBracket;
 use asd_core::types::{NormativeBaselineSet, StimulusCatalog};
 use serde_json::{json, Value};
 
@@ -106,7 +109,7 @@ fn default_scoring_profile_literal_values() {
     assert_eq!(
         ScoringProfile::default(),
         ScoringProfile {
-            schema_version: "1.2.0".into(),
+            schema_version: "1.3.0".into(),
             flag: FlagThresholds {
                 green_floor: 0.65,
                 yellow_floor: 0.35,
@@ -137,13 +140,58 @@ fn default_scoring_profile_literal_values() {
                 margin_norm: 0.0,
                 dwell_cap_ms: 100,
             },
-            age_bands: asd_core::norms::default_age_brackets(),
+            // DSP-2 (1.3.0): the iOS `midpointMonths` as representative months.
+            age_bands: [
+                ("12-17", 12, 17, 14),
+                ("18-23", 18, 23, 20),
+                ("24-35", 24, 35, 28),
+                ("36-47", 36, 47, 40),
+                ("48-60", 48, 60, 54),
+            ]
+            .map(|(id, lo, hi, rep)| AgeBracket {
+                representative_months: Some(rep),
+                ..AgeBracket::new(id, lo, hi)
+            })
+            .into(),
             norms: NormsParams {
                 min_n: 12,
                 include_imputed: false,
             },
             review: ReviewParams {
                 low_quality_valid_ratio: 0.80,
+            },
+            // DSP-1 (1.3.0): today's iOS cut-offs (owner question 16: 60/50, 25/18, 550/750).
+            display: DisplayParams {
+                bands: DisplayBands {
+                    social_preference_pct: SocialPreferenceBand {
+                        ok_min: 60.0,
+                        monitor_min: 50.0,
+                    },
+                    eye_dwell_pct: EyeDwellBand {
+                        ok_min: 25.0,
+                        monitor_min: 18.0,
+                    },
+                    mouth_dwell_pct: MouthDwellBand {
+                        ok_min: 10.0,
+                        ok_max: 30.0,
+                    },
+                    first_eye_latency_ms: FirstEyeLatencyBand {
+                        ok_max: 550.0,
+                        monitor_max: 750.0,
+                    },
+                    smile_intensity_pct: SmileIntensityBand {
+                        ok_min: 20.0,
+                        monitor_min: 10.0,
+                    },
+                    smile_reactivity: SmileReactivityBand { ok_min: 0.30 },
+                    surprise_pct: SurpriseBand { ok_min: 15.0 },
+                    flat_affect: FlatAffectBand { ok_max: 0.25 },
+                },
+                scanpath_max_gap_ms: 120,
+            },
+            session_quality: SessionQualityParams {
+                optimal_min_valid_ratio: 0.75,
+                acceptable_min_valid_ratio: 0.50,
             },
         }
     );
@@ -156,7 +204,7 @@ fn scoring_profile_is_camel_case() {
     assert_eq!(
         v,
         json!({
-            "schemaVersion": "1.2.0",
+            "schemaVersion": "1.3.0",
             "flag": {
                 "greenFloor": 0.65,
                 "yellowFloor": 0.35,
@@ -184,14 +232,28 @@ fn scoring_profile_is_camel_case() {
             },
             "aoi": {"marginNorm": 0.0, "dwellCapMs": 100},
             "ageBands": [
-                {"id": "12-17", "minMonths": 12, "maxMonths": 17},
-                {"id": "18-23", "minMonths": 18, "maxMonths": 23},
-                {"id": "24-35", "minMonths": 24, "maxMonths": 35},
-                {"id": "36-47", "minMonths": 36, "maxMonths": 47},
-                {"id": "48-60", "minMonths": 48, "maxMonths": 60}
+                {"id": "12-17", "minMonths": 12, "maxMonths": 17, "representativeMonths": 14},
+                {"id": "18-23", "minMonths": 18, "maxMonths": 23, "representativeMonths": 20},
+                {"id": "24-35", "minMonths": 24, "maxMonths": 35, "representativeMonths": 28},
+                {"id": "36-47", "minMonths": 36, "maxMonths": 47, "representativeMonths": 40},
+                {"id": "48-60", "minMonths": 48, "maxMonths": 60, "representativeMonths": 54}
             ],
             "norms": {"minN": 12, "includeImputed": false},
-            "review": {"lowQualityValidRatio": 0.8}
+            "review": {"lowQualityValidRatio": 0.8},
+            "display": {
+                "bands": {
+                    "socialPreferencePct": {"okMin": 60.0, "monitorMin": 50.0},
+                    "eyeDwellPct": {"okMin": 25.0, "monitorMin": 18.0},
+                    "mouthDwellPct": {"okMin": 10.0, "okMax": 30.0},
+                    "firstEyeLatencyMs": {"okMax": 550.0, "monitorMax": 750.0},
+                    "smileIntensityPct": {"okMin": 20.0, "monitorMin": 10.0},
+                    "smileReactivity": {"okMin": 0.3},
+                    "surprisePct": {"okMin": 15.0},
+                    "flatAffect": {"okMax": 0.25}
+                },
+                "scanpathMaxGapMs": 120
+            },
+            "sessionQuality": {"optimalMinValidRatio": 0.75, "acceptableMinValidRatio": 0.5}
         })
     );
     let back: ScoringProfile = serde_json::from_value(v).unwrap();
@@ -287,10 +349,11 @@ fn bundled_catalog_and_baselines_validate_against_their_schema_definitions() {
 // ---- SCH-3 (WP-G.6): `ScoringProfile.trackingQuality` ------------------------------------
 
 #[test]
-fn scoring_profile_schema_version_is_1_2_0() {
-    // 1.1.0 added trackingQuality (SCH-3); 1.2.0 the registry sections (PRM-7, WP-X.0).
-    assert_eq!(SCORING_PROFILE_SCHEMA_VERSION, "1.2.0");
-    assert_eq!(ScoringProfile::default().schema_version, "1.2.0");
+fn scoring_profile_schema_version_is_1_3_0() {
+    // 1.1.0 added trackingQuality (SCH-3); 1.2.0 the registry sections (PRM-7, WP-X.0);
+    // 1.3.0 display, sessionQuality and ageBands[].representativeMonths (DSP-1/2, WP-X.0c).
+    assert_eq!(SCORING_PROFILE_SCHEMA_VERSION, "1.3.0");
+    assert_eq!(ScoringProfile::default().schema_version, "1.3.0");
 }
 
 #[test]

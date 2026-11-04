@@ -50,6 +50,20 @@ export type DomainKey =
   | "cosign_policy.red_flag"
   | "dataset_format.jsonl"
   | "dataset_format.parquet"
+  | "display_band.monitor"
+  | "display_band.not_observed"
+  | "display_band.ok"
+  | "display_band.outside"
+  | "display_metric.eyeDwellPct"
+  | "display_metric.firstEyeLatencyMs"
+  | "display_metric.flatAffect"
+  | "display_metric.mouthDwellPct"
+  | "display_metric.nonSocialPct"
+  | "display_metric.smileIntensityPct"
+  | "display_metric.smileReactivity"
+  | "display_metric.socialPreferencePct"
+  | "display_metric.surprisePct"
+  | "display_metric.validFramePct"
   | "disposition.monitor"
   | "disposition.no_concern_noted"
   | "disposition.not_interpretable"
@@ -117,6 +131,34 @@ export type DomainKey =
   | "param.aoi.dwellCapMs.label"
   | "param.aoi.marginNorm.help"
   | "param.aoi.marginNorm.label"
+  | "param.display.bands.eyeDwellPct.monitorMin.help"
+  | "param.display.bands.eyeDwellPct.monitorMin.label"
+  | "param.display.bands.eyeDwellPct.okMin.help"
+  | "param.display.bands.eyeDwellPct.okMin.label"
+  | "param.display.bands.firstEyeLatencyMs.monitorMax.help"
+  | "param.display.bands.firstEyeLatencyMs.monitorMax.label"
+  | "param.display.bands.firstEyeLatencyMs.okMax.help"
+  | "param.display.bands.firstEyeLatencyMs.okMax.label"
+  | "param.display.bands.flatAffect.okMax.help"
+  | "param.display.bands.flatAffect.okMax.label"
+  | "param.display.bands.mouthDwellPct.okMax.help"
+  | "param.display.bands.mouthDwellPct.okMax.label"
+  | "param.display.bands.mouthDwellPct.okMin.help"
+  | "param.display.bands.mouthDwellPct.okMin.label"
+  | "param.display.bands.smileIntensityPct.monitorMin.help"
+  | "param.display.bands.smileIntensityPct.monitorMin.label"
+  | "param.display.bands.smileIntensityPct.okMin.help"
+  | "param.display.bands.smileIntensityPct.okMin.label"
+  | "param.display.bands.smileReactivity.okMin.help"
+  | "param.display.bands.smileReactivity.okMin.label"
+  | "param.display.bands.socialPreferencePct.monitorMin.help"
+  | "param.display.bands.socialPreferencePct.monitorMin.label"
+  | "param.display.bands.socialPreferencePct.okMin.help"
+  | "param.display.bands.socialPreferencePct.okMin.label"
+  | "param.display.bands.surprisePct.okMin.help"
+  | "param.display.bands.surprisePct.okMin.label"
+  | "param.display.scanpathMaxGapMs.help"
+  | "param.display.scanpathMaxGapMs.label"
   | "param.flag.atypicalShareForRed.help"
   | "param.flag.atypicalShareForRed.label"
   | "param.flag.greenFloor.help"
@@ -159,6 +201,10 @@ export type DomainKey =
   | "param.qualityGate.minDistanceCm.label"
   | "param.review.lowQualityValidRatio.help"
   | "param.review.lowQualityValidRatio.label"
+  | "param.sessionQuality.acceptableMinValidRatio.help"
+  | "param.sessionQuality.acceptableMinValidRatio.label"
+  | "param.sessionQuality.optimalMinValidRatio.help"
+  | "param.sessionQuality.optimalMinValidRatio.label"
   | "param.trackingQuality.calibration.autoSelect.help"
   | "param.trackingQuality.calibration.autoSelect.label"
   | "param.trackingQuality.calibration.bands.fairMaxDeg.help"
@@ -289,12 +335,14 @@ export type DomainKey =
   | "param.trackingQuality.verdict.unusableBelowValidRatio.label"
   | "param_group.ageBands"
   | "param_group.aoi"
+  | "param_group.display"
   | "param_group.flag"
   | "param_group.lowConfidenceValidRatio"
   | "param_group.metrics"
   | "param_group.norms"
   | "param_group.qualityGate"
   | "param_group.review"
+  | "param_group.sessionQuality"
   | "param_group.trackingQuality"
   | "patient_ref_mode.mrn"
   | "patient_ref_mode.none"
@@ -439,6 +487,8 @@ export type DomainGroup =
   | "config_document_status"
   | "cosign_policy"
   | "dataset_format"
+  | "display_band"
+  | "display_metric"
   | "disposition"
   | "encounter_kind"
   | "encounter_status"
@@ -517,6 +567,20 @@ export const DOMAIN: Record<DomainLocale, Record<DomainKey, string>> = {
     "cosign_policy.red_flag": "Red-flag sessions",
     "dataset_format.jsonl": "JSONL",
     "dataset_format.parquet": "Parquet",
+    "display_band.monitor": "Monitor",
+    "display_band.not_observed": "Not observed",
+    "display_band.ok": "On target",
+    "display_band.outside": "Outside the reference",
+    "display_metric.eyeDwellPct": "Eye-region looking",
+    "display_metric.firstEyeLatencyMs": "First look at the eyes",
+    "display_metric.flatAffect": "Flat affect",
+    "display_metric.mouthDwellPct": "Mouth looking",
+    "display_metric.nonSocialPct": "Non-social looking",
+    "display_metric.smileIntensityPct": "Smile intensity",
+    "display_metric.smileReactivity": "Smile reactivity",
+    "display_metric.socialPreferencePct": "Social preference",
+    "display_metric.surprisePct": "Surprise",
+    "display_metric.validFramePct": "Valid frames",
     "disposition.monitor": "Monitor",
     "disposition.no_concern_noted": "No concern noted",
     "disposition.not_interpretable": "Not interpretable",
@@ -584,6 +648,34 @@ export const DOMAIN: Record<DomainLocale, Record<DomainKey, string>> = {
     "param.aoi.dwellCapMs.label": "Dwell cap per sample",
     "param.aoi.marginNorm.help": "Grows (positive) or shrinks (negative) every area of interest by this fraction of the screen.",
     "param.aoi.marginNorm.label": "Area margin",
+    "param.display.bands.eyeDwellPct.monitorMin.help": "An eye-region dwell share at or above this value shows as monitor instead of outside the reference.",
+    "param.display.bands.eyeDwellPct.monitorMin.label": "Eye-region dwell: monitor minimum",
+    "param.display.bands.eyeDwellPct.okMin.help": "An eye-region dwell share at or above this value shows as on target.",
+    "param.display.bands.eyeDwellPct.okMin.label": "Eye-region dwell: on-target minimum",
+    "param.display.bands.firstEyeLatencyMs.monitorMax.help": "Slower than the on-target limit but faster than this shows as monitor; slower shows outside the reference.",
+    "param.display.bands.firstEyeLatencyMs.monitorMax.label": "First look at the eyes: monitor limit",
+    "param.display.bands.firstEyeLatencyMs.okMax.help": "A first look at the eyes faster than this shows as on target.",
+    "param.display.bands.firstEyeLatencyMs.okMax.label": "First look at the eyes: on-target limit",
+    "param.display.bands.flatAffect.okMax.help": "A flat-affect score at or below this value shows as expressive.",
+    "param.display.bands.flatAffect.okMax.label": "Flat affect: on-target maximum",
+    "param.display.bands.mouthDwellPct.okMax.help": "Highest mouth dwell share inside the reference range.",
+    "param.display.bands.mouthDwellPct.okMax.label": "Mouth dwell: upper bound",
+    "param.display.bands.mouthDwellPct.okMin.help": "Lowest mouth dwell share inside the reference range.",
+    "param.display.bands.mouthDwellPct.okMin.label": "Mouth dwell: lower bound",
+    "param.display.bands.smileIntensityPct.monitorMin.help": "A smile intensity at or above this value shows as monitor instead of outside the reference.",
+    "param.display.bands.smileIntensityPct.monitorMin.label": "Smile intensity: monitor minimum",
+    "param.display.bands.smileIntensityPct.okMin.help": "A smile intensity at or above this value shows as on target.",
+    "param.display.bands.smileIntensityPct.okMin.label": "Smile intensity: on-target minimum",
+    "param.display.bands.smileReactivity.okMin.help": "A smile reactivity index at or above this value shows as responsive.",
+    "param.display.bands.smileReactivity.okMin.label": "Smile reactivity: on-target minimum",
+    "param.display.bands.socialPreferencePct.monitorMin.help": "Below the on-target minimum but at or above this share shows as monitor; below it, outside the reference.",
+    "param.display.bands.socialPreferencePct.monitorMin.label": "Social preference: monitor minimum",
+    "param.display.bands.socialPreferencePct.okMin.help": "A social-preference share at or above this value shows as on target.",
+    "param.display.bands.socialPreferencePct.okMin.label": "Social preference: on-target minimum",
+    "param.display.bands.surprisePct.okMin.help": "A share of surprise expressions at or above this value shows as expressive.",
+    "param.display.bands.surprisePct.okMin.label": "Surprise: on-target minimum",
+    "param.display.scanpathMaxGapMs.help": "The drawn gaze path breaks across a gap between samples longer than this.",
+    "param.display.scanpathMaxGapMs.label": "Scanpath gap limit",
     "param.flag.atypicalShareForRed.help": "Share of atypical clips at which the session is labelled red.",
     "param.flag.atypicalShareForRed.label": "Atypical share for red",
     "param.flag.greenFloor.help": "Composite score at or above this value is labelled green (analysis label only).",
@@ -626,6 +718,10 @@ export const DOMAIN: Record<DomainLocale, Record<DomainKey, string>> = {
     "param.qualityGate.minDistanceCm.label": "Minimum distance",
     "param.review.lowQualityValidRatio.help": "Sessions with a valid-sample ratio below this value are queued for quality review.",
     "param.review.lowQualityValidRatio.label": "Low-quality valid ratio",
+    "param.sessionQuality.acceptableMinValidRatio.help": "Sessions below the optimal ratio with at least this share of valid frames are stored as acceptable; below it, degraded.",
+    "param.sessionQuality.acceptableMinValidRatio.label": "Acceptable session valid ratio",
+    "param.sessionQuality.optimalMinValidRatio.help": "Sessions with at least this share of valid frames are stored as optimal quality.",
+    "param.sessionQuality.optimalMinValidRatio.label": "Optimal session valid ratio",
     "param.trackingQuality.calibration.autoSelect.help": "Pick the best-fitting calibration model per session.",
     "param.trackingQuality.calibration.autoSelect.label": "Select model automatically",
     "param.trackingQuality.calibration.bands.fairMaxDeg.help": "Largest error still rated fair after calibration.",
@@ -756,12 +852,14 @@ export const DOMAIN: Record<DomainLocale, Record<DomainKey, string>> = {
     "param.trackingQuality.verdict.unusableBelowValidRatio.label": "Unusable below valid ratio",
     "param_group.ageBands": "Age bands",
     "param_group.aoi": "Areas of interest",
+    "param_group.display": "Result display",
     "param_group.flag": "Analysis labels",
     "param_group.lowConfidenceValidRatio": "Low-confidence gate",
     "param_group.metrics": "Gaze metrics",
     "param_group.norms": "Norms",
     "param_group.qualityGate": "Quality gate",
     "param_group.review": "Review",
+    "param_group.sessionQuality": "Session quality",
     "param_group.trackingQuality": "Tracking quality",
     "patient_ref_mode.mrn": "Hospital MRN",
     "patient_ref_mode.none": "Off",
@@ -935,6 +1033,20 @@ export const DOMAIN: Record<DomainLocale, Record<DomainKey, string>> = {
     "cosign_policy.red_flag": "रातो फ्लाग भएका सत्र",
     "dataset_format.jsonl": "JSONL",
     "dataset_format.parquet": "Parquet",
+    "display_band.monitor": "निगरानी",
+    "display_band.not_observed": "देखिएन",
+    "display_band.ok": "लक्ष्यमा",
+    "display_band.outside": "सन्दर्भ बाहिर",
+    "display_metric.eyeDwellPct": "आँखा क्षेत्र हेराइ",
+    "display_metric.firstEyeLatencyMs": "आँखामा पहिलो नजर",
+    "display_metric.flatAffect": "सपाट भाव",
+    "display_metric.mouthDwellPct": "मुख हेराइ",
+    "display_metric.nonSocialPct": "गैर-सामाजिक हेराइ",
+    "display_metric.smileIntensityPct": "मुस्कानको तीव्रता",
+    "display_metric.smileReactivity": "मुस्कान प्रतिक्रिया",
+    "display_metric.socialPreferencePct": "सामाजिक रुचि",
+    "display_metric.surprisePct": "आश्चर्य",
+    "display_metric.validFramePct": "वैध फ्रेम",
     "disposition.monitor": "निगरानी",
     "disposition.no_concern_noted": "कुनै चिन्ता देखिएन",
     "disposition.not_interpretable": "व्याख्या गर्न नमिल्ने",
@@ -1002,6 +1114,34 @@ export const DOMAIN: Record<DomainLocale, Record<DomainKey, string>> = {
     "param.aoi.dwellCapMs.label": "प्रति नमुना बसाइ सीमा",
     "param.aoi.marginNorm.help": "प्रत्येक रुचि क्षेत्रलाई स्क्रिनको यति अंशले बढाउँछ (धनात्मक) वा घटाउँछ (ऋणात्मक)।",
     "param.aoi.marginNorm.label": "क्षेत्र मार्जिन",
+    "param.display.bands.eyeDwellPct.monitorMin.help": "यो वा यसभन्दा बढी आँखा क्षेत्र बसाइ अंश भए सन्दर्भ बाहिरको सट्टा निगरानी देखाइन्छ।",
+    "param.display.bands.eyeDwellPct.monitorMin.label": "आँखा क्षेत्र बसाइ: निगरानी न्यूनतम",
+    "param.display.bands.eyeDwellPct.okMin.help": "यो वा यसभन्दा बढी आँखा क्षेत्र बसाइ अंश भए नतिजामा लक्ष्यमा देखाइन्छ।",
+    "param.display.bands.eyeDwellPct.okMin.label": "आँखा क्षेत्र बसाइ: लक्ष्य न्यूनतम",
+    "param.display.bands.firstEyeLatencyMs.monitorMax.help": "लक्ष्य सीमाभन्दा ढिलो तर यसभन्दा छिटो भए निगरानी देखाइन्छ; यसभन्दा ढिलो भए सन्दर्भ बाहिर।",
+    "param.display.bands.firstEyeLatencyMs.monitorMax.label": "आँखामा पहिलो नजर: निगरानी सीमा",
+    "param.display.bands.firstEyeLatencyMs.okMax.help": "आँखामा पहिलो नजर यसभन्दा छिटो भए लक्ष्यमा देखाइन्छ।",
+    "param.display.bands.firstEyeLatencyMs.okMax.label": "आँखामा पहिलो नजर: लक्ष्य सीमा",
+    "param.display.bands.flatAffect.okMax.help": "सपाट भाव अंक यो वा यसभन्दा कम भए अभिव्यक्त देखाइन्छ।",
+    "param.display.bands.flatAffect.okMax.label": "सपाट भाव: लक्ष्य अधिकतम",
+    "param.display.bands.mouthDwellPct.okMax.help": "सन्दर्भ दायराभित्रको सबैभन्दा बढी मुख बसाइ अंश।",
+    "param.display.bands.mouthDwellPct.okMax.label": "मुख बसाइ: माथिल्लो सीमा",
+    "param.display.bands.mouthDwellPct.okMin.help": "सन्दर्भ दायराभित्रको सबैभन्दा कम मुख बसाइ अंश।",
+    "param.display.bands.mouthDwellPct.okMin.label": "मुख बसाइ: तल्लो सीमा",
+    "param.display.bands.smileIntensityPct.monitorMin.help": "यो वा यसभन्दा बढी मुस्कानको तीव्रता भए सन्दर्भ बाहिरको सट्टा निगरानी देखाइन्छ।",
+    "param.display.bands.smileIntensityPct.monitorMin.label": "मुस्कानको तीव्रता: निगरानी न्यूनतम",
+    "param.display.bands.smileIntensityPct.okMin.help": "यो वा यसभन्दा बढी मुस्कानको तीव्रता भए लक्ष्यमा देखाइन्छ।",
+    "param.display.bands.smileIntensityPct.okMin.label": "मुस्कानको तीव्रता: लक्ष्य न्यूनतम",
+    "param.display.bands.smileReactivity.okMin.help": "यो वा यसभन्दा बढी मुस्कान प्रतिक्रिया सूचकांक भए प्रतिक्रियाशील देखाइन्छ।",
+    "param.display.bands.smileReactivity.okMin.label": "मुस्कान प्रतिक्रिया: लक्ष्य न्यूनतम",
+    "param.display.bands.socialPreferencePct.monitorMin.help": "लक्ष्यभन्दा कम तर यो वा यसभन्दा बढी अंश भए निगरानी देखाइन्छ; यसभन्दा कम भए सन्दर्भ बाहिर।",
+    "param.display.bands.socialPreferencePct.monitorMin.label": "सामाजिक रुचि: निगरानी न्यूनतम",
+    "param.display.bands.socialPreferencePct.okMin.help": "यो वा यसभन्दा बढी सामाजिक रुचि अंश भए नतिजामा लक्ष्यमा देखाइन्छ।",
+    "param.display.bands.socialPreferencePct.okMin.label": "सामाजिक रुचि: लक्ष्य न्यूनतम",
+    "param.display.bands.surprisePct.okMin.help": "यो वा यसभन्दा बढी आश्चर्य भाव अंश भए अभिव्यक्त देखाइन्छ।",
+    "param.display.bands.surprisePct.okMin.label": "आश्चर्य: लक्ष्य न्यूनतम",
+    "param.display.scanpathMaxGapMs.help": "नमुनाबीचको अन्तराल यसभन्दा लामो भए कोरिएको नजर मार्ग टुट्छ।",
+    "param.display.scanpathMaxGapMs.label": "नजर मार्ग अन्तराल सीमा",
     "param.flag.atypicalShareForRed.help": "असामान्य क्लिपको यो अंशमा सत्रलाई रातो लेबल दिइन्छ।",
     "param.flag.atypicalShareForRed.label": "रातोका लागि असामान्य अंश",
     "param.flag.greenFloor.help": "यो मान वा माथिको कम्पोजिट स्कोरलाई हरियो लेबल दिइन्छ (विश्लेषण लेबल मात्र)।",
@@ -1044,6 +1184,10 @@ export const DOMAIN: Record<DomainLocale, Record<DomainKey, string>> = {
     "param.qualityGate.minDistanceCm.label": "न्यूनतम दूरी",
     "param.review.lowQualityValidRatio.help": "वैध नमुना अनुपात यसभन्दा कम भएका सत्र गुणस्तर समीक्षामा पठाइन्छन्।",
     "param.review.lowQualityValidRatio.label": "कम-गुणस्तर वैध अनुपात",
+    "param.sessionQuality.acceptableMinValidRatio.help": "उत्तम अनुपातभन्दा कम तर कम्तीमा यति वैध फ्रेम अंश भएका सत्र स्वीकार्य, यसभन्दा कम भए कमजोर रूपमा राखिन्छन्।",
+    "param.sessionQuality.acceptableMinValidRatio.label": "स्वीकार्य सत्र वैध अनुपात",
+    "param.sessionQuality.optimalMinValidRatio.help": "कम्तीमा यति वैध फ्रेम अंश भएका सत्र उत्तम गुणस्तरका रूपमा राखिन्छन्।",
+    "param.sessionQuality.optimalMinValidRatio.label": "उत्तम सत्र वैध अनुपात",
     "param.trackingQuality.calibration.autoSelect.help": "प्रत्येक सत्रका लागि सबैभन्दा मिल्ने क्यालिब्रेसन मोडेल छान्छ।",
     "param.trackingQuality.calibration.autoSelect.label": "मोडेल स्वचालित छनोट",
     "param.trackingQuality.calibration.bands.fairMaxDeg.help": "क्यालिब्रेसनपछि ठीकै मानिने सबैभन्दा ठूलो त्रुटि।",
@@ -1174,12 +1318,14 @@ export const DOMAIN: Record<DomainLocale, Record<DomainKey, string>> = {
     "param.trackingQuality.verdict.unusableBelowValidRatio.label": "यसभन्दा तल प्रयोगअयोग्य वैध अनुपात",
     "param_group.ageBands": "उमेर समूह",
     "param_group.aoi": "रुचि क्षेत्र",
+    "param_group.display": "नतिजा प्रदर्शन",
     "param_group.flag": "विश्लेषण लेबल",
     "param_group.lowConfidenceValidRatio": "कम-विश्वास गेट",
     "param_group.metrics": "नजर मेट्रिक्स",
     "param_group.norms": "मानक",
     "param_group.qualityGate": "गुणस्तर गेट",
     "param_group.review": "समीक्षा",
+    "param_group.sessionQuality": "सत्र गुणस्तर",
     "param_group.trackingQuality": "ट्र्याकिङ गुणस्तर",
     "patient_ref_mode.mrn": "अस्पताल MRN",
     "patient_ref_mode.none": "बन्द",

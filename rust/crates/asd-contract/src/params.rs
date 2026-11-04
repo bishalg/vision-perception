@@ -3,9 +3,10 @@
 //! The parameter registry (PRM-1..4, ADR-0012 D1, ADR-0013 principle 1): one self-describing
 //! row per tunable leaf of the [`ScoringProfile`] (id, kind and range, unit, default, stage,
 //! what a change needs to take effect, message keys). The console, iOS and Android render
-//! tuning forms from it; [`validate`] is the one range check every caller uses (backend
-//! `config_docs::lifecycle::validate_body`, wasm `validateScoringProfile`,
-//! `asd_sync::accept_bundle`); `asd-cli schema export` writes it to
+//! tuning forms from it; [`validate`] is the one range check every publisher uses (backend
+//! `config_docs::lifecycle::validate_body`, wasm `validateScoringProfile`) and
+//! [`validate_for_device`] its tolerant twin for `asd_sync::accept_bundle` (DSP-6: unknown
+//! members ignored, known ones checked); `asd-cli schema export` writes it to
 //! `docs/spec/schemas/asd/param-registry-v1.json`.
 //!
 //! Rules:
@@ -98,7 +99,8 @@ pub enum ParamKind {
         min_points: u32,
         max_points: u32,
     },
-    /// `[{id, minMonths, maxMonths}]`: ids unique, bands contiguous and ascending.
+    /// `[{id, minMonths, maxMonths, representativeMonths?}]`: ids unique, bands contiguous and
+    /// ascending, `minMonths <= representativeMonths <= maxMonths` (DSP-2, 1.3.0).
     AgeBands {
         min_bands: u32,
         max_bands: u32,
@@ -192,6 +194,7 @@ type Row = (
 const V100: &str = "1.0.0";
 const V110: &str = "1.1.0";
 const V120: &str = "1.2.0";
+const V130: &str = "1.3.0";
 const HG2: Option<&str> = Some("H-G2");
 
 const CAL_MODELS: &[&str] = &[
@@ -307,6 +310,24 @@ const ROWS: &[Row] = &[
     ("norms.includeImputed", K::Bool, Norms, Score, V120, None),
     // ---- 1.2.0: backend review rule (INV-1 backend rows)
     ("review.lowQualityValidRatio", K::Num(0.0, 1.0, 0.01, Ratio), Display, Score, V120, None),
+    // ---- 1.3.0: result-screen bands (DSP-1, technical §5.1 #4-#17, #22)
+    ("display.bands.socialPreferencePct.okMin", K::Num(0.0, 100.0, 1.0, Percent), Display, Score, V130, None),
+    ("display.bands.socialPreferencePct.monitorMin", K::Num(0.0, 100.0, 1.0, Percent), Display, Score, V130, None),
+    ("display.bands.eyeDwellPct.okMin", K::Num(0.0, 100.0, 1.0, Percent), Display, Score, V130, None),
+    ("display.bands.eyeDwellPct.monitorMin", K::Num(0.0, 100.0, 1.0, Percent), Display, Score, V130, None),
+    ("display.bands.mouthDwellPct.okMin", K::Num(0.0, 100.0, 1.0, Percent), Display, Score, V130, None),
+    ("display.bands.mouthDwellPct.okMax", K::Num(0.0, 100.0, 1.0, Percent), Display, Score, V130, None),
+    ("display.bands.firstEyeLatencyMs.okMax", K::Num(50.0, 5000.0, 10.0, Millis), Display, Score, V130, None),
+    ("display.bands.firstEyeLatencyMs.monitorMax", K::Num(50.0, 5000.0, 10.0, Millis), Display, Score, V130, None),
+    ("display.bands.smileIntensityPct.okMin", K::Num(0.0, 100.0, 1.0, Percent), Display, Score, V130, None),
+    ("display.bands.smileIntensityPct.monitorMin", K::Num(0.0, 100.0, 1.0, Percent), Display, Score, V130, None),
+    ("display.bands.smileReactivity.okMin", K::Num(0.0, 1.0, 0.01, Ratio), Display, Score, V130, None),
+    ("display.bands.surprisePct.okMin", K::Num(0.0, 100.0, 1.0, Percent), Display, Score, V130, None),
+    ("display.bands.flatAffect.okMax", K::Num(0.0, 1.0, 0.01, Ratio), Display, Score, V130, None),
+    ("display.scanpathMaxGapMs", K::Int(16, 1000, Millis), Display, Score, V130, None),
+    // ---- 1.3.0: session verdict (DSP-1, DSP-4, technical §5.1 #18-#20)
+    ("sessionQuality.optimalMinValidRatio", K::Num(0.0, 1.0, 0.01, Ratio), Metrics, Score, V130, None),
+    ("sessionQuality.acceptableMinValidRatio", K::Num(0.0, 1.0, 0.01, Ratio), Metrics, Score, V130, None),
 ];
 
 /// `ageBands` limits (PRM-7).
@@ -543,6 +564,18 @@ fn check_age_bands(
             ));
             return;
         }
+        match band.get("representativeMonths") {
+            None | Some(Value::Null) => {}
+            Some(r) => {
+                if !r.as_i64().is_some_and(|r| lo <= r && r <= hi) {
+                    out.push(problem(
+                        &path,
+                        format!("{path}.representativeMonths must be an integer in [{lo}, {hi}]"),
+                    ));
+                    return;
+                }
+            }
+        }
         if let Some(prev) = previous_max {
             if lo != prev + 1 {
                 out.push(problem(
@@ -581,6 +614,14 @@ fn unknown_keys(v: &Value, prefix: &str, out: &mut Vec<ProfileProblem>) {
 
 /// The registry checks alone: kind, range and unknown keys, in registry order.
 pub fn registry_problems(document: DocumentKind, body: &Value) -> Vec<ProfileProblem> {
+    registry_problems_with(document, body, true)
+}
+
+fn registry_problems_with(
+    document: DocumentKind,
+    body: &Value,
+    refuse_unknown: bool,
+) -> Vec<ProfileProblem> {
     let DocumentKind::ScoringProfile = document;
     let mut out = Vec::new();
     if !body.is_object() {
@@ -592,15 +633,47 @@ pub fn registry_problems(document: DocumentKind, body: &Value) -> Vec<ProfilePro
             check_value(spec, v, &mut out);
         }
     }
-    unknown_keys(body, "", &mut out);
+    if refuse_unknown {
+        unknown_keys(body, "", &mut out);
+    }
     out
+}
+
+/// The paths of members the registry does not know (what [`validate`] refuses as
+/// `<path>: unknown parameter` and [`validate_for_device`] ignores), in key order.
+pub fn unknown_parameters(document: DocumentKind, body: &Value) -> Vec<String> {
+    let DocumentKind::ScoringProfile = document;
+    let mut out = Vec::new();
+    unknown_keys(body, "", &mut out);
+    out.into_iter().map(|p| p.path).collect()
 }
 
 /// PRM-3: the registry checks of `body`, then the cross-field rules of
 /// [`scoring_profile_problems`] (ordering of bands and thresholds, `trackingQuality` rules)
 /// for members the registry did not already refuse. Empty when the document is valid.
+///
+/// Strict: an unknown member is a problem. This is the publish check (backend
+/// `config_docs::lifecycle::validate_body`, the console editor); a device uses
+/// [`validate_for_device`].
 pub fn validate(document: DocumentKind, body: &Value) -> Vec<ProfileProblem> {
-    let mut out = registry_problems(document, body);
+    validate_with(document, body, true)
+}
+
+/// DSP-6: [`validate`] for a device accepting a delivered profile (`asd_sync::accept_bundle`).
+/// Members this build does not know (a section added by a later profile version, e.g. 1.4.0)
+/// are **ignored**, so an app keeps working with a newer profile instead of refusing it;
+/// kind, range and cross-field checks still apply to every member it knows. The ignored
+/// paths are [`unknown_parameters`]. Publishing stays strict ([`validate`]).
+pub fn validate_for_device(document: DocumentKind, body: &Value) -> Vec<ProfileProblem> {
+    validate_with(document, body, false)
+}
+
+fn validate_with(
+    document: DocumentKind,
+    body: &Value,
+    refuse_unknown: bool,
+) -> Vec<ProfileProblem> {
+    let mut out = registry_problems_with(document, body, refuse_unknown);
     match serde_json::from_value::<ScoringProfile>(body.clone()) {
         Ok(profile) => {
             for p in scoring_profile_problems(&profile) {

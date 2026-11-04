@@ -162,6 +162,11 @@ pub(crate) struct AgeBracket {
     id: String,
     min_months: i64,
     max_months: i64,
+    /// Profile `ageBands[]` only (DSP-2, 1.3.0): the `ageMonths` a session in this band
+    /// carries; absent means `(minMonths + maxMonths) / 2`. Never written in a baselines
+    /// document's `ageBrackets`.
+    #[serde(default)]
+    representative_months: Option<i64>,
 }
 
 #[derive(Deserialize, JsonSchema)]

@@ -95,7 +95,7 @@ export function mockBaselineSet(strict = false): NormativeBaselineSet {
 /** Same values as the Rust `ScoringProfile::default()` (no `trackingQuality`: it decodes to the core defaults). */
 export function mockScoringProfile(strict = false): ScoringProfile {
   return {
-    schemaVersion: "1.2.0",
+    schemaVersion: "1.3.0",
     flag: {
       greenFloor: strict ? 0.75 : 0.65,
       yellowFloor: strict ? 0.45 : 0.35,
@@ -123,13 +123,28 @@ export function mockScoringProfile(strict = false): ScoringProfile {
     },
     aoi: { marginNorm: 0, dwellCapMs: 100 },
     ageBands: [
-      { id: "12-17", minMonths: 12, maxMonths: 17 },
-      { id: "18-23", minMonths: 18, maxMonths: 23 },
-      { id: "24-35", minMonths: 24, maxMonths: 35 },
-      { id: "36-47", minMonths: 36, maxMonths: 47 },
-      { id: "48-60", minMonths: 48, maxMonths: 60 },
+      { id: "12-17", minMonths: 12, maxMonths: 17, representativeMonths: 14 },
+      { id: "18-23", minMonths: 18, maxMonths: 23, representativeMonths: 20 },
+      { id: "24-35", minMonths: 24, maxMonths: 35, representativeMonths: 28 },
+      { id: "36-47", minMonths: 36, maxMonths: 47, representativeMonths: 40 },
+      { id: "48-60", minMonths: 48, maxMonths: 60, representativeMonths: 54 },
     ],
     norms: { minN: 12, includeImputed: false },
     review: { lowQualityValidRatio: 0.8 },
+    // Profile 1.3.0 sections (DSP-1, WP-X.0c): the Rust defaults, today's iOS cut-offs.
+    display: {
+      bands: {
+        socialPreferencePct: { okMin: 60, monitorMin: 50 },
+        eyeDwellPct: { okMin: 25, monitorMin: 18 },
+        mouthDwellPct: { okMin: 10, okMax: 30 },
+        firstEyeLatencyMs: { okMax: 550, monitorMax: 750 },
+        smileIntensityPct: { okMin: 20, monitorMin: 10 },
+        smileReactivity: { okMin: 0.3 },
+        surprisePct: { okMin: 15 },
+        flatAffect: { okMax: 0.25 },
+      },
+      scanpathMaxGapMs: 120,
+    },
+    sessionQuality: { optimalMinValidRatio: 0.75, acceptableMinValidRatio: 0.5 },
   };
 }

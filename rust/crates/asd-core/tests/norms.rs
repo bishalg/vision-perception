@@ -188,6 +188,26 @@ fn cells_below_min_n_are_withheld() {
     assert_eq!(qualifying_cells(&set), 0);
 }
 
+/// DSP-2 (WP-X.0c): profile bands with `representativeMonths` bin the same way, and the
+/// candidate's `ageBrackets` never carry the field (the baselines document ignores it).
+#[test]
+fn representative_months_never_reach_the_candidate() {
+    let mut params = AggregateParams::default();
+    for (b, m) in params.brackets.iter_mut().zip([14, 20, 28, 40, 54]) {
+        b.representative_months = Some(m);
+    }
+    let with = aggregate(&seed_social(12, 24), &params);
+    let without = aggregate(&seed_social(12, 24), &AggregateParams::default());
+    assert_eq!(
+        serde_json::to_value(&with).unwrap(),
+        serde_json::to_value(&without).unwrap()
+    );
+    assert_eq!(with.age_brackets, default_age_brackets());
+    assert!(!serde_json::to_string(&with)
+        .unwrap()
+        .contains("representativeMonths"));
+}
+
 #[test]
 fn qualifying_cells_emit_median_and_p10() {
     let set = aggregate(&seed_social(12, 24), &AggregateParams::default());
