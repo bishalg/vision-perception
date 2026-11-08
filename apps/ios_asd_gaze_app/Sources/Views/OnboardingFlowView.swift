@@ -13,7 +13,12 @@ public struct OnboardingFlowView: View {
     @State private var childNameInput: String = ""
     @State private var selectedAgeBracket: PediatricAgeBracket = .months18_23
     @State private var selectedLanguage: String = "en"
-    @State private var consentAgreed: Bool = false
+    /// Signed consent record (S-10); step 1 is complete only when it is current.
+    @ObservedObject private var consentRecords = ConsentRecordStore.shared
+    @ObservedObject private var optIns = FeatureOptIns.shared
+    @State private var showConsentFlow: Bool = false
+    /// S-11: primer shown before the declared age range request (opt-in, default off).
+    @State private var showAgeRangePrimer: Bool = false
     @State private var showLanguagePickerSheet: Bool = false
     /// ODR tag the splash has fully resolved — avoids re-downloading when the
     /// caregiver steps back and forth without changing age/language.
@@ -78,11 +83,27 @@ public struct OnboardingFlowView: View {
         .sheet(isPresented: $showLanguagePickerSheet) {
             LanguageSelectionSheetView(selectedLanguage: $selectedLanguage)
         }
+        .fullScreenCover(isPresented: $showConsentFlow) {
+            ConsentFlowView(
+                store: consentRecords,
+                onAgreed: { showConsentFlow = false },
+                onCancel: { showConsentFlow = false }
+            )
+        }
+        .fullScreenCover(isPresented: $showAgeRangePrimer) {
+            PermissionPrimerView(
+                .ageRange,
+                request: { _ = await DeclaredAgeRangeService.requestAgeRangeIfEnabled() },
+                onFinish: {
+                    showAgeRangePrimer = false
+                    onCompleted()
+                }
+            )
+        }
         .onAppear {
             childNameInput = profileStore.profile.childName
             selectedAgeBracket = profileStore.profile.ageBracket
             selectedLanguage = profileStore.profile.preferredLanguage
-            consentAgreed = profileStore.profile.hasConsentedPIA
         }
     }
 
@@ -145,28 +166,42 @@ public struct OnboardingFlowView: View {
                 )
             }
 
-            // Consent Agreement Toggle. The switch is kept as a standalone,
-            // explicitly labelled control (identifier `onboarding_consent_switch`)
-            // so assistive tech reads it as a single switch and test automation
-            // can tap the control itself, not its text block.
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Parent Consent")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundColor(LiquidGlass.textPrimary)
+            // Guardian consent (S-10): a ResearchKit-style visual consent flow with a typed
+            // name and relationship replaces the old switch. The step completes only when
+            // `ConsentRecordStore.isCurrent`. Button identifier: `onboarding_consent_review`.
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Parent Consent")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(LiquidGlass.textPrimary)
 
-                    Text("I am this child’s parent or legal guardian. I agree that the front camera measures where my child looks and their facial expression, on this device only. This is not a diagnostic tool.")
-                        .font(.system(size: 12))
-                        .foregroundColor(LiquidGlass.textSecondary)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
+                Text(ConsentL10n.text("onboarding.consent.body", "Before the first observation, a parent or legal guardian reviews what is recorded and agrees.") + " " + StoreBuild.disclaimer)
+                    .font(.system(size: 12))
+                    .foregroundColor(LiquidGlass.textSecondary)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if consentRecords.isCurrent, let record = consentRecords.record {
+                    Label(ConsentL10n.text("onboarding.consent.agreed", "Agreed by") + " " + record.guardianName, systemImage: "checkmark.seal.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(LiquidGlass.emeraldMint)
+                        .accessibilityIdentifier("onboarding_consent_agreed")
                 }
-                Spacer(minLength: 12)
-                Toggle("Parent Consent", isOn: $consentAgreed)
-                    .labelsHidden()
-                    .accessibilityIdentifier("onboarding_consent_switch")
-                    .accessibilityLabel("Parent Consent")
-                    .tint(LiquidGlass.emeraldMint)
+
+                Button {
+                    showConsentFlow = true
+                } label: {
+                    Text(consentRecords.isCurrent
+                         ? ConsentL10n.text("onboarding.consent.again", "Review again")
+                         : ConsentL10n.text("onboarding.consent.review", "Review and agree"))
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(consentRecords.isCurrent ? LiquidGlass.cardInset : LiquidGlass.accentFill)
+                        .foregroundColor(consentRecords.isCurrent ? LiquidGlass.celestialTeal : LiquidGlass.onAccent)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("onboarding_consent_review")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .glassCard(cornerRadius: 16, padding: 14)
@@ -215,7 +250,7 @@ public struct OnboardingFlowView: View {
 
             // Granular Age Tier Selection Cards
             VStack(alignment: .leading, spacing: 8) {
-                Text("Developmental Age Bracket")
+                Text(Localizer.tr("onb_age_bracket"))
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundColor(LiquidGlass.textPrimary)
 
@@ -615,11 +650,11 @@ public struct OnboardingFlowView: View {
                             .foregroundColor(LiquidGlass.celestialTeal)
                     }
 
-                    Text("Cohort: \(selectedAgeBracket.developmentalStage)")
+                    Text("\(Localizer.tr("onb_age_group_prefix")) \(selectedAgeBracket.developmentalStage)")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(LiquidGlass.textSecondary)
 
-                    Text("Focus: \(selectedAgeBracket.clinicalFocus)")
+                    Text("\(Localizer.tr("onb_notes_prefix")) \(selectedAgeBracket.clinicalFocus)")
                         .font(.system(size: 11, weight: .regular))
                         .foregroundColor(LiquidGlass.textTertiary)
                         .lineLimit(2)
@@ -726,7 +761,7 @@ public struct OnboardingFlowView: View {
     private var isStepValid: Bool {
         switch currentStep {
         case 1:
-            return consentAgreed
+            return consentRecords.isCurrent
         case 2:
             return !childNameInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case 3:
@@ -805,13 +840,16 @@ public struct OnboardingFlowView: View {
         profile.ageBracket = selectedAgeBracket
         profile.preferredLanguage = selectedLanguage
         profile.hasConsentedPIA = true
-        profile.consentTimestamp = Date()
+        // Legacy flag kept for `ConsentToken`; the signed record is the source of truth (S-10).
+        profile.consentTimestamp = consentRecords.record?.agreedAt ?? Date()
         profileStore.profile = profile
 
         // App Store builds only (Release config): ask for the parent-declared age
         // range via Apple's Declared Age Range API. Internal builds bypass this.
-        Task { @MainActor in
-            _ = await DeclaredAgeRangeService.requestAgeRangeIfEnabled()
+        // S-11 / S-12: only when the guardian opted in, and only after the in-app primer.
+        if optIns.ageRangeCheck && AgeAssuranceGate.isAppStoreAgeAssuranceBuild {
+            showAgeRangePrimer = true
+            return
         }
 
         onCompleted()

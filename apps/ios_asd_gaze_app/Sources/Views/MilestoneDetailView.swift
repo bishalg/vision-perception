@@ -25,7 +25,7 @@ public struct MilestoneDetailView: View {
                         ProgressView(value: milestone.completionRatio)
                         ClinicalTermTooltip(term: ClinicalGlossary.pointingContrast)
                     } header: {
-                        Text("Risk context")
+                        Text(Localizer.tr("milestone_background"))
                     } footer: {
                         Text("These checks support well-child surveillance. They are not a diagnosis.")
                     }

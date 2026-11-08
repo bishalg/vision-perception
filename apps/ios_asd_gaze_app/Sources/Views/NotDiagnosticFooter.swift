@@ -8,6 +8,8 @@ import CurvAsdGazeKit
 public enum ClaimsCopy {
     /// "This is not a diagnostic tool." (CLM-5)
     public static let notDiagnostic = "This is not a diagnostic tool."
+    /// Second mandatory sentence (S-8)
+    public static let clinicReviews = "It does not measure, screen for or diagnose any condition; your clinic reviews each session."
     /// Mission line (CLM-5)
     public static let mission = "Part of Open Spectrum Tracking"
 
@@ -40,6 +42,9 @@ public struct NotDiagnosticFooter: View {
         VStack(spacing: 2) {
             Text(ClaimsCopy.notDiagnostic)
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundColor(LiquidGlass.textSecondary)
+            Text(ClaimsCopy.clinicReviews)
+                .font(.system(size: 11, weight: .regular, design: .rounded))
                 .foregroundColor(LiquidGlass.textSecondary)
             Text(ClaimsCopy.mission)
                 .font(.system(size: 10, weight: .medium))

@@ -810,6 +810,9 @@ public struct GazeStimulusScreeningView: View {
             GazeSessionHistoryStore.shared.record(sessionRecord)
 
             // CareKit sync (both ignore simulated sessions, SIM-5; CarePlanStore mirrors outcome to CareKitClinicalStore)
+            // Store build (S-5): the care plan is not updated; the vault, history and the
+            // sync payload above are written in every build.
+            #if !ASD_STORE_BUILD
             #if ASD_RESEARCH_CLASSIFIER
             CarePlanStore.shared.markScreeningCompleted(
                 captureSource: summary.captureSource,
@@ -826,6 +829,7 @@ public struct GazeStimulusScreeningView: View {
                 validFramePercentage: summary.validRatio * 100.0,
                 summary: summary
             )
+            #endif
             #endif
         }
 

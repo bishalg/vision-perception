@@ -51,10 +51,15 @@ public struct SettingsView: View {
                         #if ASD_BENCH_CAPTURE
                         benchCaptureSection
                         #endif
+                        #if ASD_STORE_BUILD
+                        // S-6: mode, medical conditions and care alerts belong to the clinic platform.
+                        profileSection
+                        #else
                         appModeSection
                         profileSection
                         medicalConditionsSection
                         careAlertsSection
+                        #endif
                         screeningToolsSection
                         languageSection
                         sensorDiagnosticsSection
@@ -235,9 +240,11 @@ public struct SettingsView: View {
                     Spacer()
                 }
 
+                #if !ASD_STORE_BUILD
                 GlassDivider()
 
                 healthKitMoodRow
+                #endif
 
                 GlassDivider()
 
@@ -538,6 +545,31 @@ public struct SettingsView: View {
             GlassSectionHeader(title: Localizer.tr("settings_privacy_section"), icon: "lock.shield.fill")
 
             VStack(alignment: .leading, spacing: 12) {
+                // S-12: "Privacy & Your Data" in every build (WP-S.5).
+                NavigationLink {
+                    PrivacyDashboardView()
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "hand.raised.fill")
+                            .foregroundColor(LiquidGlass.celestialTeal)
+                            .font(.system(size: 18))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(ConsentL10n.text("privacy.title", "Privacy & Your Data"))
+                                .glassStyle(.headline)
+                            Text(ConsentL10n.text("privacy.settings.row", "Optional features, permissions, your consent and delete all."))
+                                .glassStyle(.subheadline)
+                                .multilineTextAlignment(.leading)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(LiquidGlass.textTertiary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("settings_privacy_dashboard")
+
+                GlassDivider()
+
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: "video.slash.fill")
                         .foregroundColor(LiquidGlass.emeraldMint)
@@ -701,10 +733,10 @@ public struct SettingsView: View {
                         )
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("ASD Gaze")
+                        Text(StoreBuild.displayName())
                             .font(.system(size: 15, weight: .bold, design: .rounded))
                             .foregroundColor(LiquidGlass.textPrimary)
-                        Text("Pediatric Vision Perception")
+                        Text(Localizer.tr("settings_gaze_capture_sub"))
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(LiquidGlass.textSecondary)
                     }
@@ -724,6 +756,19 @@ public struct SettingsView: View {
                         .accessibilityIdentifier("settings_app_version")
                 }
 
+                #if ASD_STORE_BUILD
+                // S-6 / S-9: the same legal links as the store listing.
+                if let url = StoreBuild.privacyPolicyURL() {
+                    GlassDivider()
+                    aboutLinkRow(title: "Privacy Policy", systemImage: "hand.raised.fill", url: url)
+                        .accessibilityIdentifier("settings_privacy_policy")
+                }
+                if let url = StoreBuild.supportURL() {
+                    GlassDivider()
+                    aboutLinkRow(title: "Support", systemImage: "questionmark.circle.fill", url: url)
+                        .accessibilityIdentifier("settings_support")
+                }
+                #else
                 GlassDivider()
 
                 HStack {
@@ -744,10 +789,38 @@ public struct SettingsView: View {
                     Text(Localizer.tr("settings_regulatory_value"))
                         .glassStyle(.subheadline)
                 }
+                #endif
             }
             .glassCard(cornerRadius: 14, padding: 14)
+
+            #if ASD_STORE_BUILD
+            Text(StoreBuild.disclaimer)
+                .font(.footnote)
+                .foregroundColor(LiquidGlass.textSecondary)
+                .padding(.horizontal, 4)
+            #endif
         }
     }
+
+    #if ASD_STORE_BUILD
+    private func aboutLinkRow(title: String, systemImage: String, url: URL) -> some View {
+        Button {
+            openURL(url)
+        } label: {
+            HStack {
+                Label(title, systemImage: systemImage)
+                    .glassStyle(.body)
+                Spacer()
+                Image(systemName: "arrow.up.right.square")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(LiquidGlass.celestialTeal)
+                    .accessibilityHidden(true)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+    #endif
 
     #if ASD_DEMO_TOOLS
     private var demoToolsSection: some View {

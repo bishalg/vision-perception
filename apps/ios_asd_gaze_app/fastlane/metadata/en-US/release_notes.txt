@@ -1,10 +1,9 @@
-Welcome to EarlyGaze Observation Diary.
+First release of EarlyGaze Observation Capture.
 
-• Short observation sessions that note where your child looks and how their face moves
-• Mood diary, milestones and medication log in one place
-• PDF summary you can bring to a pediatrician visit
-• Camera frames are never stored or sent anywhere
-• Delete all of your data from Settings
+• Short observation sessions that note where a child looks and how their face moves
+• Sessions are stored on the device
+• Sessions are delivered to your clinic's console once the clinic enrols the device
+• Delete everything from Settings
 
 This is not a diagnostic tool. Part of Open Spectrum Tracking.
 

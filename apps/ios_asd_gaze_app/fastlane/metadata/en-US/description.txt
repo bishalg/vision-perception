@@ -1,23 +1,26 @@
-EarlyGaze Observation Diary helps parents and caregivers keep a private record of how a young child engages with the world, alongside everyday notes.
+EarlyGaze Observation Capture records a short gaze observation session for your clinic. The child watches short clips while the front TrueDepth camera notes where they look and their facial expressions. Everything is processed on the device, and no photos or video are saved. Nothing is interpreted on the device.
 
-Part of Open Spectrum Tracking: parents' daily observations become structured, shareable records, and you decide whether to share them with your child's clinician.
+How a session works:
+1. Check the camera and calibrate with the operator.
+2. The child watches short, child-friendly clips.
+3. The app notes where the child looks and how their face moves.
+4. The session is stored on the device, or delivered to your clinic once it is enrolled.
 
-What you can do:
-• Watch short, child-friendly videos while the front TrueDepth camera notes where your child looks and how their face moves, as simple engagement measures
-• Keep a mood diary, milestone list and medication log in one place
-• Review each session as an easy-to-read engagement summary
-• Export a PDF summary to bring to a pediatrician visit
-• Share standard health records (FHIR R4 format) only when you choose
+Your clinic reviews each session:
+Sessions stay on the device until your clinic enrols it with a clinic code. Once enrolled, sessions are delivered to the clinic's console, where clinicians review them on their own platform. The app itself shows no result.
 
-Privacy first:
-• Camera frames are processed in memory on your device and are never saved or sent anywhere
-• Session data stays on your device, encrypted and excluded from backups
+Privacy:
+• Camera frames are processed in memory and are never saved or sent
+• Sessions are encrypted on the device and excluded from backups
 • You can delete everything from Settings
 
-Requires iOS 18 or later. Observation sessions need an iPhone or iPad with Face ID (TrueDepth front camera); on other devices, including Apple Vision Pro, the diary, reminders and notes still work.
+Device requirements:
+Requires iOS 18 or later and an iPhone or iPad with Face ID (TrueDepth camera). On other devices the app can be used for settings only.
 
 This is not a diagnostic tool.
-EarlyGaze Observation Diary does not diagnose any condition, is not a medical device, and does not replace advice from a qualified pediatrician or other licensed professional. Talk to your child's doctor about any concerns about their development.
+It does not measure, screen for or diagnose any condition; your clinic reviews each session. EarlyGaze does not diagnose any condition and is not a medical device.
+
+Part of Open Spectrum Tracking.
 
 Contact: support@curv.engineering
 Learn more: https://curv.engineering/asd-gaze

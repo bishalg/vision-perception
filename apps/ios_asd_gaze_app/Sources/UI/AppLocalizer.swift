@@ -385,10 +385,11 @@ public enum Localizer {
             "ne": "मुख्य हाइलाइटहरू",
             "hi": "मुख्य हाइलाइट्स"
         ],
+        // hi/ne native review pending
         "dashboard_highlight_note": [
-            "en": "On average, this week's social visual attention is consistent with typical developmental milestones.",
-            "ne": "औसतमा, यस हप्ताको सामाजिक दृष्टि ध्यान सामान्य विकासात्मक कोशेढुङ्गाहरूसँग मेल खान्छ।",
-            "hi": "औसत रूप से, इस सप्ताह का सामाजिक दृष्टि ध्यान सामान्य विकासात्मक मील के पत्थरों के अनुरूप है।"
+            "en": "Sessions recorded this week are saved on this device and ready for your clinic to review.",
+            "ne": "यस हप्ता रेकर्ड गरिएका सत्रहरू यस उपकरणमा सुरक्षित छन् र तपाईंको क्लिनिकद्वारा समीक्षाका लागि तयार छन्।",
+            "hi": "इस सप्ताह रिकॉर्ड किए गए सत्र इस डिवाइस पर सहेजे गए हैं और आपके क्लिनिक की समीक्षा के लिए तैयार हैं।"
         ],
         "settings_language_section": [
             "en": "Language & Localization",
@@ -750,6 +751,72 @@ public enum Localizer {
             "en": "Raw gaze samples are shared for research when you opt in",
             "ne": "तपाईंले छनोट गर्नुभएमा अनुसन्धानका लागि कच्चा नजर नमूनाहरू साझा गरिन्छ",
             "hi": "आपके चुनने पर अनुसंधान के लिए कच्चे गेज नमूने साझा किए जाते हैं"
+        ],
+        // 2026-11-08 store build; hi/ne native review pending
+        "store_tab_capture": [
+            "en": "Capture",
+            "ne": "क्याप्चर",
+            "hi": "कैप्चर"
+        ],
+        "store_tab_sessions": [
+            "en": "Sessions",
+            "ne": "सत्रहरू",
+            "hi": "सत्र"
+        ],
+        "mode_select_prompt": [
+            "en": "How will you use EarlyGaze?",
+            "ne": "तपाईं EarlyGaze कसरी प्रयोग गर्नुहुन्छ?",
+            "hi": "आप EarlyGaze का उपयोग कैसे करेंगे?"
+        ],
+        "about_records_gaze": [
+            "en": "It records where a child looks during short clips.",
+            "ne": "यसले छोटा क्लिपहरूमा बच्चाले कहाँ हेर्छ भनेर रेकर्ड गर्छ।",
+            "hi": "यह छोटे क्लिप के दौरान बच्चा कहाँ देखता है, इसे रिकॉर्ड करता है।"
+        ],
+        "recording_quality": [
+            "en": "Recording quality",
+            "ne": "रेकर्डिङको गुणस्तर",
+            "hi": "रिकॉर्डिंग की गुणवत्ता"
+        ],
+        "recording_quality_format": [
+            "en": "Usable samples: %.1f%% • Quality: %@",
+            "ne": "प्रयोगयोग्य नमूना: %.1f%% • गुणस्तर: %@",
+            "hi": "उपयोग योग्य नमूने: %.1f%% • गुणवत्ता: %@"
+        ],
+        "saved_on_device": [
+            "en": "Saved on this device",
+            "ne": "यो उपकरणमा सुरक्षित गरियो",
+            "hi": "इस डिवाइस पर सहेजा गया"
+        ],
+        "milestone_background": [
+            "en": "Background",
+            "ne": "पृष्ठभूमि",
+            "hi": "पृष्ठभूमि"
+        ],
+        "onb_age_bracket": [
+            "en": "Age Bracket",
+            "ne": "उमेर समूह",
+            "hi": "आयु वर्ग"
+        ],
+        "onb_age_group_prefix": [
+            "en": "Age group:",
+            "ne": "उमेर समूह:",
+            "hi": "आयु समूह:"
+        ],
+        "onb_notes_prefix": [
+            "en": "Notes:",
+            "ne": "टिप्पणी:",
+            "hi": "नोट्स:"
+        ],
+        "settings_gaze_capture_sub": [
+            "en": "Gaze observation capture",
+            "ne": "नजर अवलोकन क्याप्चर",
+            "hi": "गेज अवलोकन कैप्चर"
+        ],
+        "store_no_sessions": [
+            "en": "No observation sessions yet.",
+            "ne": "अहिलेसम्म कुनै अवलोकन सत्र छैन।",
+            "hi": "अभी तक कोई अवलोकन सत्र नहीं है।"
         ]
     ]
 

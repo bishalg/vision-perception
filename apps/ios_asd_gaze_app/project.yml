@@ -48,7 +48,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(APP_IDENTIFIER:default=com.open-spectrum.eye-gaze)
         PRODUCT_NAME: AsdGazeCollector
-        INFOPLIST_KEY_CFBundleDisplayName: "Eye Gaze"
+        INFOPLIST_KEY_CFBundleDisplayName: "EarlyGaze"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         DEVELOPMENT_TEAM: 6J3WY94J6T
         CODE_SIGN_STYLE: Automatic
@@ -61,7 +61,6 @@ targets:
         # No ASDResearchStudy key: there is no research study at launch (H7, CNS-9).
         INFOPLIST_KEY_NSCameraUsageDescription: "The front camera measures where your child looks and their facial expressions while short clips play. Processing happens on this device, and photos and video are never saved. If you choose the optional age-range check, it also runs on this device."
         INFOPLIST_KEY_NSMotionUsageDescription: "Motion data separates movement of the phone from your child's head movement during an observation."
-        INFOPLIST_KEY_NSUserNotificationsUsageDescription: "Medication and sensory diary reminders use local notifications so caregivers can be alerted at scheduled times."
         INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "Speech recognition lets you dictate diary notes. Audio is processed on this device when possible and is not saved as a recording."
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "The microphone is used only while you hold the dictate button for diary notes."
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "You can attach a photo to a diary entry. Attached photos stay on this device."
@@ -84,8 +83,10 @@ targets:
           OTHER_SWIFT_FLAGS: "$(inherited) -DASD_SIMULATION_ENABLED -DASD_RESEARCH_CLASSIFIER -DASD_DEMO_TOOLS -DASD_BENCH_CAPTURE $(ASD_MCHAT_FLAG)"
         DemoRelease:
           OTHER_SWIFT_FLAGS: "$(inherited) -DASD_APP_STORE_AGE_ASSURANCE -DASD_DEMO_TOOLS $(ASD_MCHAT_FLAG)"
+        # ASD_STORE_BUILD (store-collection-build.md S-1): the App Store build is an observation
+        # capture tool with no on-device verdicts. Release only; Debug and DemoRelease keep the result screens.
         Release:
-          OTHER_SWIFT_FLAGS: "$(inherited) -DASD_APP_STORE_AGE_ASSURANCE $(ASD_MCHAT_FLAG)"
+          OTHER_SWIFT_FLAGS: "$(inherited) -DASD_APP_STORE_AGE_ASSURANCE -DASD_STORE_BUILD $(ASD_MCHAT_FLAG)"
           CODE_SIGN_STYLE: Manual
           CODE_SIGN_IDENTITY: "Apple Distribution"
           PROVISIONING_PROFILE_SPECIFIER: "Eye Gaze AppStore"
@@ -121,6 +122,8 @@ targets:
       path: Widget/Info.plist
       properties:
         CFBundleDisplayName: Care Alerts
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSSupportsLiveActivities: true
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension

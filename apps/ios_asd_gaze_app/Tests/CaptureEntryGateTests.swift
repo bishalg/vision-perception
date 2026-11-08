@@ -36,9 +36,36 @@ final class CaptureEntryGateTests: XCTestCase {
         XCTAssertEqual(gate, .blocked(.consentRequired))
     }
 
+    private func consentRecords(agreed: Bool) -> ConsentRecordStore {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("CaptureEntryGateTests_consent_\(UUID().uuidString).json")
+        let records = ConsentRecordStore(fileURL: url)
+        if agreed { records.agree(guardianName: "Sam Guardian", relationship: .parent) }
+        return records
+    }
+
     func testSupportedAndConsentedIsReady() {
-        let gate = CaptureEntryGate.evaluate(store: consentedStore(), faceTrackingSupported: true)
+        let gate = CaptureEntryGate.evaluate(
+            store: consentedStore(), consentRecords: consentRecords(agreed: true), faceTrackingSupported: true)
         guard case .ready = gate else { return XCTFail("expected ready, got \(gate)") }
+    }
+
+    /// S-10: the legacy onboarding switch alone is not enough; a signed record for the
+    /// current document is required (once after upgrade, and after each version bump).
+    func testLegacyConsentWithoutCurrentRecordIsOutdated() {
+        let gate = CaptureEntryGate.evaluate(
+            store: consentedStore(), consentRecords: consentRecords(agreed: false), faceTrackingSupported: true)
+        XCTAssertEqual(gate, .blocked(.consentOutdated))
+    }
+
+    func testRecordForOlderDocumentVersionIsOutdated() {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("CaptureEntryGateTests_consent_\(UUID().uuidString).json")
+        let old = ConsentDocument(version: "2000-01-01.1", sections: ConsentDocument.current.sections)
+        ConsentRecordStore(fileURL: url, document: old).agree(guardianName: "Sam Guardian", relationship: .parent)
+        let gate = CaptureEntryGate.evaluate(
+            store: consentedStore(), consentRecords: ConsentRecordStore(fileURL: url), faceTrackingSupported: true)
+        XCTAssertEqual(gate, .blocked(.consentOutdated))
     }
 
     func testBlockReasonMapsFromTrackingUnavailableReason() {

@@ -1,17 +1,20 @@
-EarlyGaze Observation Diary helps parents and caregivers keep a private record of how a young child engages with the world, alongside everyday notes.
+EarlyGaze Observation Capture records a short gaze observation session for your clinic. The child watches short clips while the front camera notes where they look. Everything is processed on the device, and no photos or video are saved. Nothing is interpreted on the device.
 
-Part of Open Spectrum Tracking: parents' daily observations become structured, shareable records, and you decide whether to share them with your child's clinician.
+How a session works:
+1. Check the camera and calibrate with the operator.
+2. The child watches short, child-friendly clips.
+3. The app notes where the child looks.
+4. The session is stored on the device, or delivered to your clinic once it is enrolled.
 
-What you can do:
-• Watch short, child-friendly videos while the front camera notes where your child looks, as simple engagement measures
-• Keep a mood diary, milestone list and medication log in one place
-• Review each session as an easy-to-read engagement summary
-• Export a PDF summary to bring to a pediatrician visit
+Your clinic reviews each session:
+Sessions stay on the device until your clinic enrols it with a clinic code. Once enrolled, sessions are delivered to the clinic's console, where clinicians review them on their own platform.
 
-Privacy first:
-• Camera frames are processed in memory on your device and are never saved or sent anywhere
-• Session data stays on your device
+Privacy:
+• Camera frames are processed in memory and are never saved or sent
+• Sessions are encrypted on the device and excluded from backups
 • You can delete everything from Settings
 
 This is not a diagnostic tool.
-EarlyGaze Observation Diary does not diagnose any condition, is not a medical device, and does not replace advice from a qualified pediatrician or other licensed professional. Talk to your child's doctor about any concerns about their development.
+It does not measure, screen for or diagnose any condition; your clinic reviews each session. EarlyGaze does not diagnose any condition and is not a medical device.
+
+Part of Open Spectrum Tracking.

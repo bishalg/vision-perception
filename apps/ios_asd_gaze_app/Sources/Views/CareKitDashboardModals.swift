@@ -40,7 +40,7 @@ public struct ClinicalDetailsModalView: View {
                                 .font(.system(size: 15, weight: .bold))
                                 .foregroundColor(.primary)
 
-                            Text("This tool measures objective visual attention distributions during standardized social and geometric preference stimuli (GeoPref). It is intended as an adjunctive developmental monitoring instrument and does not provide standalone medical diagnoses.")
+                            Text("\(Localizer.tr("about_records_gaze")) \(StoreBuild.disclaimer)")
                                 .font(.system(size: 13))
                                 .foregroundColor(.secondary)
 
@@ -190,7 +190,7 @@ public struct CareKitExportModalView: View {
             VStack(spacing: 10) {
                 ShareLink(
                     item: store.exportClinicalCareKitJSON(),
-                    preview: SharePreview("ASD Gaze Observation Report", image: Image(systemName: "doc.text.fill"))
+                    preview: SharePreview("EarlyGaze Observation Report", image: Image(systemName: "doc.text.fill"))
                 ) {
                     HStack {
                         Spacer()

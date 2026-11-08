@@ -1041,7 +1041,7 @@ fn lint(args: &[String]) -> i32 {
         .iter()
         .filter_map(|(k, n)| {
             let found = counts.get(k).copied().unwrap_or(0);
-            (found < *n).then_some((k, n - found))
+            (found < *n).then(|| (k, n - found))
         })
         .collect();
     let stale_total: usize = stale.iter().map(|(_, n)| n).sum();

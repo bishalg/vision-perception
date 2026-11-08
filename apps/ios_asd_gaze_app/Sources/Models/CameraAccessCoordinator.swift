@@ -113,6 +113,10 @@ public final class CameraAccessCoordinator: ObservableObject {
 
     public var canStartSession: Bool { state == .granted }
 
+    /// `true` while iOS has not asked for camera access yet. Call sites show the in-app
+    /// camera primer (`PermissionPrimerView(.camera)`, S-11) before `ensureAccess` then.
+    public var needsSystemPrompt: Bool { authorizer.status == .notDetermined }
+
     public static var settingsURL: URL? {
         #if canImport(UIKit)
         return URL(string: UIApplication.openSettingsURLString)

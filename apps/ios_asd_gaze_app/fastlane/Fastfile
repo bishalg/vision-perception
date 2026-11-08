@@ -279,7 +279,7 @@ platform :ios do
       ipa: ipa,
       skip_waiting_for_build_processing: true,
       distribute_external: options.fetch(:distribute_external, false),
-      changelog: options[:changelog] || "EarlyGaze developmental observation beta with 16 objective gaze biomarkers and M-CHAT-R questionnaire."
+      changelog: options[:changelog] || "EarlyGaze observation capture beta. Records gaze observation sessions for clinic review. Not a diagnostic tool."
     )
     UI.success("🚀 Uploaded to TestFlight!")
   end

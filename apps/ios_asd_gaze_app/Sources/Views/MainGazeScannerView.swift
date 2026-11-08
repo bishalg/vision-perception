@@ -822,6 +822,9 @@ public struct MainGazeScannerView: View {
             // 3. Mark in CarePlan (which mirrors the outcome into CareKit and compiles
             // the ResearchKit step result from the full summary). Both ignore
             // simulated sessions (SIM-5).
+            // Store build (S-5): the care plan is not updated; the vault, history and the
+            // sync payload above are written in every build.
+            #if !ASD_STORE_BUILD
             #if ASD_RESEARCH_CLASSIFIER
             CarePlanStore.shared.markScreeningCompleted(
                 captureSource: summary.captureSource,
@@ -838,6 +841,7 @@ public struct MainGazeScannerView: View {
                 validFramePercentage: summary.validRatio * 100.0,
                 summary: summary
             )
+            #endif
             #endif
         }
 

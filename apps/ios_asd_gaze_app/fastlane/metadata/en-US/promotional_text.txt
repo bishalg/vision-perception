@@ -1,1 +1,1 @@
-A private diary for your child's attention, mood and milestones. Camera frames are never stored. This is not a diagnostic tool.
+Records a short gaze observation session while your child watches clips; nothing is saved from the camera. This is not a diagnostic tool.

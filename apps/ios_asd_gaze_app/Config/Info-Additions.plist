@@ -16,6 +16,12 @@
 		<key>trustedKeys</key>
 		<array/>
 	</dict>
+	<!-- Store build (S-9): legal links shown in Settings > About. Same URLs as the fastlane metadata;
+	     placeholders until H-6. Read through StoreBuild.privacyPolicyURL / supportURL. -->
+	<key>ASDPrivacyPolicyURL</key>
+	<string>https://curv.engineering/privacy/asd-gaze</string>
+	<key>ASDSupportURL</key>
+	<string>https://curv.engineering/support</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>

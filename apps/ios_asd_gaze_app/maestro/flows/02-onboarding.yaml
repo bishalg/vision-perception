@@ -18,9 +18,35 @@ name: bdd-02-onboarding-consent-and-profile
 - waitForAnimationToEnd:
     timeout: 8000
 
+# Guardian consent (WP-S.5, S-10): visual consent pages, then review with a typed name.
 - tapOn:
-    id: "onboarding_consent_switch"
+    id: "onboarding_consent_review"
+- extendedWaitUntil:
+    visible:
+      id: "consent_next"
+    timeout: 10000
 - takeScreenshot: onboarding-consent
+# 9 consent pages: 8 x Next, then "Review and sign".
+- repeat:
+    times: 9
+    commands:
+      - tapOn:
+          id: "consent_next"
+      - waitForAnimationToEnd:
+          timeout: 3000
+- tapOn:
+    id: "consent_guardian_name"
+- inputText: Sam Guardian
+- pressKey: Enter
+- scrollUntilVisible:
+    element:
+      id: "consent_agree"
+- tapOn:
+    id: "consent_agree"
+- extendedWaitUntil:
+    visible:
+      id: "onboarding_consent_agreed"
+    timeout: 10000
 
 - tapOn: Continue
 - assertVisible: Child Profile Setup

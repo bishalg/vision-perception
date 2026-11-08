@@ -80,6 +80,15 @@ public struct GazeSessionResultView: View {
 
                 ScrollView {
                     VStack(spacing: 16) {
+                        #if ASD_STORE_BUILD
+                        // S-3: the store build shows the replay, recording quality and where the
+                        // session is; no score, flag, band, affect or report (the clinic reviews it).
+                        scanpathHeroCanvas
+                        storeRecordingQualityBlock
+                        storeStorageLine
+                        storeActionButtons
+                        NotDiagnosticFooter()
+                        #else
                         SimulatedDataBadge(captureSource: summary.captureSource)
                         scanpathHeroCanvas
                         GazeTelemetryReviewCard(
@@ -111,6 +120,7 @@ public struct GazeSessionResultView: View {
                         qualityAndContractCard
                         actionButtonsSection
                         NotDiagnosticFooter()
+                        #endif
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
@@ -138,6 +148,7 @@ public struct GazeSessionResultView: View {
                             .foregroundColor(.secondary)
                     }
                 }
+                #if !ASD_STORE_BUILD
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: triggerShareReport) {
                         Image(systemName: "square.and.arrow.up")
@@ -146,6 +157,7 @@ public struct GazeSessionResultView: View {
                     }
                     .accessibilityLabel("Share Report")
                 }
+                #endif
             }
             .navigationDestination(for: EngagementDetailType.self) { detailType in
                 #if ASD_RESEARCH_CLASSIFIER
@@ -176,7 +188,9 @@ public struct GazeSessionResultView: View {
                 }
             }
             .onAppear {
+                #if !ASD_STORE_BUILD
                 // Per-video scoring is linear over frames; compute once per presentation.
+                // The store build never shows it (S-3), so it is not computed there.
                 if perVideoScore == nil {
                     let model = PerVideoMatrixModel(
                         recordedFrames: recordedFrames,
@@ -185,6 +199,7 @@ public struct GazeSessionResultView: View {
                     perVideoScore = model.sessionScore
                     perVideoBaselineStatus = model.baselineStatus
                 }
+                #endif
             }
         }
         .fullScreenCover(isPresented: $showFullScreenReplay) {
@@ -274,7 +289,9 @@ public struct GazeSessionResultView: View {
                 Spacer()
             }
 
-            // Dedicated Button to Open Full-Screen Replay & Heatmap
+            #if !ASD_STORE_BUILD
+            // Dedicated Button to Open Full-Screen Replay & Heatmap. Not in the store build:
+            // the full-screen replay overlays per-frame expression values (S-3).
             Button {
                 showFullScreenReplay = true
             } label: {
@@ -299,6 +316,7 @@ public struct GazeSessionResultView: View {
                 )
             }
             .buttonStyle(.plain)
+            #endif
         }
         .glassCard(cornerRadius: 16, padding: 12)
     }
@@ -537,7 +555,7 @@ public struct GazeSessionResultView: View {
                     Text("Recording Quality")
                         .font(.system(size: 13, weight: .bold))
                         .foregroundColor(.primary)
-                    Text(String(format: "Usable samples: %.1f%% • Quality: %@", summary.validRatio * 100, summary.qualityVerdict.rawValue.capitalized))
+                    Text(String(format: Localizer.tr("recording_quality_format"), summary.validRatio * 100, summary.qualityVerdict.rawValue.capitalized))
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
@@ -553,8 +571,78 @@ public struct GazeSessionResultView: View {
         .buttonStyle(.plain)
     }
 
+    #if ASD_STORE_BUILD
+    // MARK: - Store build (S-3)
+
+    /// Recording quality for the operator: read-only, no drill-down into the report views.
+    private var storeRecordingQualityBlock: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "checkmark.seal.fill")
+                .foregroundColor(LiquidGlass.emeraldMint)
+                .font(.system(size: 26))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(Localizer.tr("recording_quality"))
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.primary)
+                Text(String(format: Localizer.tr("recording_quality_format"), summary.validRatio * 100, summary.qualityVerdict.rawValue.capitalized))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+        }
+        .glassCard(cornerRadius: 14, padding: 12)
+        .accessibilityElement(children: .combine)
+    }
+
+    /// Where the session is: on this device, or the clinic upload queue (S-4).
+    @ViewBuilder
+    private var storeStorageLine: some View {
+        Group {
+            if let sync = ResearchKitSyncService.shared, sync.isSessionSyncEnabled {
+                ClinicSyncStatusLine(syncService: sync)
+            } else {
+                HStack(spacing: 8) {
+                    Image(systemName: "iphone")
+                        .foregroundStyle(LiquidGlass.celestialTeal)
+                        .accessibilityHidden(true)
+                    Text(Localizer.tr("saved_on_device"))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
+        .glassCard(cornerRadius: 14, padding: 12)
+    }
+
+    private var storeActionButtons: some View {
+        VStack(spacing: 12) {
+            GlassButton(
+                title: "New Observation",
+                systemImage: "arrow.counterclockwise",
+                isPrimary: true
+            ) {
+                onRetake()
+            }
+            GlassButton(
+                title: "Done",
+                systemImage: "checkmark",
+                isPrimary: false
+            ) {
+                onDismiss()
+            }
+        }
+        .padding(.top, 4)
+    }
+    #endif
+
     // MARK: - Action Buttons Section
 
+    // Report sharing and FHIR export are not compiled into the store build (S-3);
+    // scripts/check_release_symbols.sh asserts their strings are absent from Release.
+    #if !ASD_STORE_BUILD
     private var actionButtonsSection: some View {
         VStack(spacing: 12) {
             GlassButton(
@@ -621,6 +709,7 @@ public struct GazeSessionResultView: View {
         }
         .padding(.top, 4)
     }
+    #endif
 
     // MARK: - Helper Methods
 
@@ -681,6 +770,7 @@ public struct GazeSessionResultView: View {
     }
     #endif
 
+    #if !ASD_STORE_BUILD
     /// Shares the session as a FHIR R4 Bundle file (ADR-0003). The subject is the pseudonymous
     /// token only (CNS-7); the last M-CHAT-R/F result is included with its stored answers.
     private func exportFHIRBundle() {
@@ -806,6 +896,7 @@ public struct GazeSessionResultView: View {
         shareItems = items
         showShareSheet = true
     }
+    #endif
 }
 
 // MARK: - Native iOS Share Sheet Representable

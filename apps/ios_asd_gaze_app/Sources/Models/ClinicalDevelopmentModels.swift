@@ -248,7 +248,7 @@ public enum ClinicalGlossary {
     public static let pointingContrast = ClinicalTerm(
         id: "pointing",
         term: "Pointing",
-        explanation: "Imperative pointing asks for an object or help. Declarative pointing shares interest (“look at that”) without requesting the object. Loss of declarative pointing is a CDC surveillance flag."
+        explanation: "Imperative pointing asks for an object or help. Declarative pointing shares interest (“look at that”) without requesting the object."
     )
     public static let jointAttention = ClinicalTerm(
         id: "ja",
@@ -258,7 +258,7 @@ public enum ClinicalGlossary {
     public static let geopref = ClinicalTerm(
         id: "geopref",
         term: "Social vs geometric preference",
-        explanation: "During GeoPref-style clips, typically developing toddlers look more at faces than at repeating geometric patterns. This app records looking time only — it does not diagnose ASD."
+        explanation: "Social vs geometric preference records how much of the looking time fell on people versus shapes. This app records looking time only and is not a diagnostic tool."
     )
 }
 

@@ -1,14 +1,17 @@
-# Fastlane Snapfile for ASD Gaze Collector iOS App
+# Fastlane Snapfile for the EarlyGaze iOS app
 # Reference: https://docs.fastlane.tools/actions/snapshot/
 
 devices([
   "iPhone 16 Pro Max",
   "iPhone 16 Pro",
-  "iPhone 15"
+  "iPhone 15",
+  "iPad Pro 13-inch (M4)"
 ])
 
 languages([
-  "en-US"
+  "en-US",
+  "hi",
+  "ne-NP"
 ])
 
 scheme("AsdGazeCollector")

@@ -32,10 +32,10 @@ DEVICE="iPhone 18 Pro" ./scripts/run_maestro_screens.sh --copy-to /path/to/open-
   they can be run in sequence (matches the script order).
 - `takeScreenshot` names are stable: they are referenced by the feature files and
   by the website copy step.
-- The parent-consent switch is a standalone, explicitly labelled SwiftUI
-  `Toggle` carrying `accessibilityIdentifier("onboarding_consent_switch")`
-  (added in OnboardingFlowView for assistive tech and automation). The flows
-  tap it by id — no screen coordinates anywhere in the suite.
+- Guardian consent (WP-S.5) is a visual consent flow opened by the
+  `onboarding_consent_review` button; flow 02 pages through it with `consent_next`,
+  types a name into `consent_guardian_name` and taps `consent_agree`. The flows
+  tap controls by id — no screen coordinates anywhere in the suite.
 - Live gaze capture cannot run on a simulator (no TrueDepth camera); flow 03
   asserts the honest gate screen instead of a fake observation.
 

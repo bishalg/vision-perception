@@ -51,6 +51,16 @@ final class CameraAccessCoordinatorTests: XCTestCase {
         XCTAssertEqual(c.state, .granted)
     }
 
+    /// S-11: call sites show the camera primer only while iOS has not asked yet.
+    func testNeedsSystemPromptOnlyWhileUndetermined() async {
+        let (c, _, _) = make(.notDetermined, grant: true)
+        XCTAssertTrue(c.needsSystemPrompt)
+        await c.ensureAccess()
+        XCTAssertFalse(c.needsSystemPrompt)
+        XCTAssertFalse(make(.denied).0.needsSystemPrompt)
+        XCTAssertFalse(make(.authorized).0.needsSystemPrompt)
+    }
+
     func testNotDeterminedRequestsAndDenies() async {
         let (c, auth, _) = make(.notDetermined, grant: false)
         let state = await c.ensureAccess()

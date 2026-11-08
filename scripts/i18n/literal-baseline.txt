@@ -7,7 +7,6 @@ apps/ios_asd_gaze_app/Sources/Views/AppModeSelectionView.swift	swift-accessibili
 apps/ios_asd_gaze_app/Sources/Views/AppModeSelectionView.swift	swift-accessibility-label	31fbef162594	1
 apps/ios_asd_gaze_app/Sources/Views/AppModeSelectionView.swift	swift-text	681411444d07	1
 apps/ios_asd_gaze_app/Sources/Views/AppModeSelectionView.swift	swift-text	d20520996b1e	1
-apps/ios_asd_gaze_app/Sources/Views/AppModeSelectionView.swift	swift-text	df85f2f250e6	1
 apps/ios_asd_gaze_app/Sources/Views/AttentionTrendChartView.swift	swift-accessibility-label	751820925b39	1
 apps/ios_asd_gaze_app/Sources/Views/AttentionTrendChartView.swift	swift-label	8b9c1c26373c	1
 apps/ios_asd_gaze_app/Sources/Views/AttentionTrendChartView.swift	swift-text	1b06c0d8ba42	1
@@ -48,7 +47,6 @@ apps/ios_asd_gaze_app/Sources/Views/CareKitDashboardModals.swift	swift-text	43b9
 apps/ios_asd_gaze_app/Sources/Views/CareKitDashboardModals.swift	swift-text	4452efd96e14	1
 apps/ios_asd_gaze_app/Sources/Views/CareKitDashboardModals.swift	swift-text	52b597ee883b	1
 apps/ios_asd_gaze_app/Sources/Views/CareKitDashboardModals.swift	swift-text	52d71d281533	1
-apps/ios_asd_gaze_app/Sources/Views/CareKitDashboardModals.swift	swift-text	7487bda34db2	1
 apps/ios_asd_gaze_app/Sources/Views/CareKitDashboardModals.swift	swift-text	7a156d19ee37	1
 apps/ios_asd_gaze_app/Sources/Views/CareKitDashboardModals.swift	swift-text	839334dbb485	1
 apps/ios_asd_gaze_app/Sources/Views/CareKitDashboardModals.swift	swift-text	90e2b5e20669	1
@@ -179,7 +177,6 @@ apps/ios_asd_gaze_app/Sources/Views/GazeSessionResultView.swift	swift-accessibil
 apps/ios_asd_gaze_app/Sources/Views/GazeSessionResultView.swift	swift-button	7d9eb7acb13e	1
 apps/ios_asd_gaze_app/Sources/Views/GazeSessionResultView.swift	swift-format	16007fb6e7c2	1
 apps/ios_asd_gaze_app/Sources/Views/GazeSessionResultView.swift	swift-format	23724a8f2a3d	1
-apps/ios_asd_gaze_app/Sources/Views/GazeSessionResultView.swift	swift-format	7104bf7f4cb9	1
 apps/ios_asd_gaze_app/Sources/Views/GazeSessionResultView.swift	swift-navigation-title	9ec3ebc4fdeb	1
 apps/ios_asd_gaze_app/Sources/Views/GazeSessionResultView.swift	swift-text	16ec0c9189e8	1
 apps/ios_asd_gaze_app/Sources/Views/GazeSessionResultView.swift	swift-text	248b3b88c7f5	1
@@ -258,7 +255,6 @@ apps/ios_asd_gaze_app/Sources/Views/MilestoneDetailView.swift	swift-section	740a
 apps/ios_asd_gaze_app/Sources/Views/MilestoneDetailView.swift	swift-section	aa1fe9f9307d	1
 apps/ios_asd_gaze_app/Sources/Views/MilestoneDetailView.swift	swift-text	07e3b43237c7	1
 apps/ios_asd_gaze_app/Sources/Views/MilestoneDetailView.swift	swift-text	1a143269047a	1
-apps/ios_asd_gaze_app/Sources/Views/MilestoneDetailView.swift	swift-text	97c201096444	1
 apps/ios_asd_gaze_app/Sources/Views/MoodDiaryView.swift	swift-accessibility-label	91d752886859	1
 apps/ios_asd_gaze_app/Sources/Views/MoodDiaryView.swift	swift-accessibility-label	a6d01dcff3bf	1
 apps/ios_asd_gaze_app/Sources/Views/MoodDiaryView.swift	swift-button	1509f561f241	1
@@ -280,12 +276,9 @@ apps/ios_asd_gaze_app/Sources/Views/MoodDiaryView.swift	swift-text-field	085b8b7
 apps/ios_asd_gaze_app/Sources/Views/ObservationQuickLogBar.swift	swift-accessibility-label	4dfe412f5171	1
 apps/ios_asd_gaze_app/Sources/Views/ObservationQuickLogBar.swift	swift-text	422f36b65068	1
 apps/ios_asd_gaze_app/Sources/Views/ObservationQuickLogBar.swift	swift-text-field	0e43bf08a777	1
-apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-accessibility-label	b72c9902ee18	1
 apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-button	11a6767d5674	1
 apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-label	e281fae7f2e6	1
 apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-navigation-title	2d8f9954cb33	1
-apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-text	23a6da75123f	1
-apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-text	23d19d8c8161	1
 apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-text	264257f767b8	1
 apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-text	2eef93e3d789	1
 apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-text	3362981bd1ae	1
@@ -295,10 +288,8 @@ apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-text	55240d71
 apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-text	58b6cb49d027	1
 apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-text	5ae2ada52650	1
 apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-text	76900f1bfd16	1
-apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-text	7a25d51a104e	1
 apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-text	8b1e239bc97f	1
 apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-text	8be8e482baca	1
-apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-text	90cca89bc69d	1
 apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-text	99391a1e9726	1
 apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-text	a39e8a61cb93	1
 apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-text	a9520bf7844f	1
@@ -309,7 +300,6 @@ apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-text	f2363280
 apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-text	f68a6ebe6a18	1
 apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-text-field	5e45b50a9a51	1
 apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-text-field	818c81d38544	1
-apps/ios_asd_gaze_app/Sources/Views/OnboardingFlowView.swift	swift-toggle	b72c9902ee18	1
 apps/ios_asd_gaze_app/Sources/Views/PediatricReportView.swift	swift-button	11a6767d5674	1
 apps/ios_asd_gaze_app/Sources/Views/PediatricReportView.swift	swift-label	459bae8437a7	1
 apps/ios_asd_gaze_app/Sources/Views/PediatricReportView.swift	swift-navigation-title	fd9704485c15	1
@@ -367,8 +357,6 @@ apps/ios_asd_gaze_app/Sources/Views/SettingsView.swift	swift-text	531c6fb9cc89	1
 apps/ios_asd_gaze_app/Sources/Views/SettingsView.swift	swift-text	531f6b44bfe6	1
 apps/ios_asd_gaze_app/Sources/Views/SettingsView.swift	swift-text	76cbd23d0020	1
 apps/ios_asd_gaze_app/Sources/Views/SettingsView.swift	swift-text	7f4accc439b4	1
-apps/ios_asd_gaze_app/Sources/Views/SettingsView.swift	swift-text	85f719d08225	1
-apps/ios_asd_gaze_app/Sources/Views/SettingsView.swift	swift-text	8b87b67449bd	1
 apps/ios_asd_gaze_app/Sources/Views/SettingsView.swift	swift-text	8daf1eb1cdd5	1
 apps/ios_asd_gaze_app/Sources/Views/SettingsView.swift	swift-text	9a585cb75c7a	1
 apps/ios_asd_gaze_app/Sources/Views/SettingsView.swift	swift-text	a22d84114d96	1
@@ -384,7 +372,6 @@ apps/ios_asd_gaze_app/Sources/Views/SimulatedDataBadge.swift	swift-accessibility
 apps/ios_asd_gaze_app/Sources/Views/SimulatedDataBadge.swift	swift-text	5832b2898a7a	1
 apps/ios_asd_gaze_app/Sources/Views/SimulatedDataBadge.swift	swift-text	87eecd1e1e48	1
 apps/ios_asd_gaze_app/Sources/Views/SplashScreenView.swift	swift-text	18799643f410	1
-apps/ios_asd_gaze_app/Sources/Views/SplashScreenView.swift	swift-text	85f719d08225	1
 apps/ios_asd_gaze_app/Sources/Views/StimulusDownloadGateView.swift	swift-text	4d066406946b	1
 apps/ios_asd_gaze_app/Sources/Views/StimulusDownloadGateView.swift	swift-text	6158f4097c29	1
 apps/ios_asd_gaze_app/Sources/Views/StimulusDownloadGateView.swift	swift-text	66094886a172	1

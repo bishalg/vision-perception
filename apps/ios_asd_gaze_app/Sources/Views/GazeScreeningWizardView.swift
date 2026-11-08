@@ -5,6 +5,9 @@ import CurvAsdGazeKit
 // MARK: - Wizard Step Enum
 
 public enum ScreeningWizardStep: Equatable, Sendable {
+    /// "Before you begin" (S-13): disclaimer, checklist and what is recorded. Shown before
+    /// positioning; not part of `captureOrder` because no capture session runs yet.
+    case beforeYouBegin
     case positioning
     case gate
     /// Calibration and its validation (CAL-7 .. CAL-9, VAL-1) in the run's capture session.
@@ -18,7 +21,8 @@ public enum ScreeningWizardStep: Equatable, Sendable {
 
     public static func == (lhs: ScreeningWizardStep, rhs: ScreeningWizardStep) -> Bool {
         switch (lhs, rhs) {
-        case (.positioning, .positioning),
+        case (.beforeYouBegin, .beforeYouBegin),
+             (.positioning, .positioning),
              (.calibrating, .calibrating),
              (.gate, .gate),
              (.stimulus, .stimulus):
@@ -45,14 +49,19 @@ public enum ScreeningWizardStep: Equatable, Sendable {
 // MARK: - Wizard Orchestrator
 
 /// The top-level Gaze Screening Wizard (`ScreeningWizardStep.captureOrder`):
+///   Step 0 → `BeforeYouBeginView` (disclaimer, checklist; camera primer before the system prompt)
 ///   Step 1 → `GazePositioningStepView` (Face Alignment & Distance Sweet Spot)
 ///   Step 2 → `StimulusDownloadGateView` (stimuli on the device)
 ///   Step 3 → `BubbleCalibrationView` (calibration + validation in the capture session)
 ///   Step 4 → `GazeStimulusScreeningView` (clips with drift checks, same capture session)
 ///   Result → `GazeSessionResultView` (Engagement Report & CareKit Sync)
 public struct GazeScreeningWizardView: View {
-    @State private var step: ScreeningWizardStep = .positioning
+    @State private var step: ScreeningWizardStep = .beforeYouBegin
     @StateObject private var camera = CameraAccessCoordinator()
+    /// Observed so the entry gate re-evaluates when the guardian agrees (S-10).
+    @ObservedObject private var consentRecords = ConsentRecordStore.shared
+    /// S-11: camera primer before the system prompt, only while iOS has not asked yet.
+    @State private var permissionPrimer: PermissionKind?
     /// CAL-1: one capture session per wizard run. Calibration, validation, the clips and the
     /// drift checks all run in this controller's session pipeline, which is new for every run
     /// (every start creates a new pipeline), so a calibration is never applied to another
@@ -69,11 +78,20 @@ public struct GazeScreeningWizardView: View {
         ZStack {
             // SIM-7 / CNS-1 entry gate: unsupported hardware (or missing consent) shows an
             // explanation and offers no way to start a session.
-            if case .blocked(let reason) = CaptureEntryGate.evaluate() {
-                UnsupportedDeviceView(reason: reason)
+            if case .blocked(let reason) = CaptureEntryGate.evaluate(consentRecords: consentRecords) {
+                if reason == .consentOutdated {
+                    // S-10: a changed or withdrawn consent is reviewed here, not a dead end.
+                    ConsentOutdatedView(store: consentRecords)
+                } else {
+                    UnsupportedDeviceView(reason: reason)
+                }
             } else if camera.state.showsDeniedView {
                 // CAM-1: denied or restricted camera access shows the explanation and Settings link.
                 CameraDeniedView(state: camera.state)
+            } else if step == .beforeYouBegin {
+                // S-13: shown before positioning, before any camera prompt.
+                BeforeYouBeginView(onBegin: beginTapped, onCancel: nil)
+                    .transition(.opacity)
             } else if camera.canStartSession {
                 wizardSteps
             } else {
@@ -84,15 +102,46 @@ public struct GazeScreeningWizardView: View {
         .task {
             // SIM-7: no camera prompt on hardware the gate above already blocks.
             guard CaptureEntryGate.deviceSupportsFaceTracking else { return }
+            // S-11: an undetermined camera is asked only after "Begin" and the in-app primer.
+            guard !camera.needsSystemPrompt else { return }
             await camera.ensureAccess(consentStore: .shared)
         }
         .cameraScenePhase(camera) { _ in }
+        .permissionPrimer(
+            $permissionPrimer,
+            request: { _ in _ = await camera.ensureAccess(consentStore: .shared) },
+            onFinish: { _ in
+                // "Not now" leaves the camera undetermined: stay on "Before you begin".
+                if camera.canStartSession { advanceToPositioning() }
+            }
+        )
+    }
+
+    /// "Begin": camera primer first when iOS has not asked yet (S-11), then positioning.
+    private func beginTapped() {
+        guard CaptureEntryGate.deviceSupportsFaceTracking else { return }
+        if camera.needsSystemPrompt {
+            permissionPrimer = .camera
+            return
+        }
+        Task { @MainActor in
+            await camera.ensureAccess(consentStore: .shared)
+            if camera.canStartSession { advanceToPositioning() }
+        }
+    }
+
+    private func advanceToPositioning() {
+        withAnimation(.easeInOut(duration: 0.3)) { step = .positioning }
     }
 
     @ViewBuilder
     private var wizardSteps: some View {
         ZStack {
             switch step {
+            case .beforeYouBegin:
+                // Rendered by `body` before the camera is ready; never reached here.
+                EmptyView()
+
             case .positioning:
                 GazePositioningStepView(
                     onReady: {
@@ -184,7 +233,8 @@ public struct GazeScreeningWizardView: View {
                     recordedFrames: frames,
                     classification: classification,
                     onDismiss: {
-                        withAnimation(.easeInOut(duration: 0.3)) { step = .positioning }
+                        // The next observation starts with "Before you begin" again (S-13).
+                        withAnimation(.easeInOut(duration: 0.3)) { step = .beforeYouBegin }
                     },
                     onRetake: {
                         withAnimation(.easeInOut(duration: 0.3)) { step = .positioning }
@@ -200,7 +250,8 @@ public struct GazeScreeningWizardView: View {
                     summary: summary,
                     recordedFrames: frames,
                     onDismiss: {
-                        withAnimation(.easeInOut(duration: 0.3)) { step = .positioning }
+                        // The next observation starts with "Before you begin" again (S-13).
+                        withAnimation(.easeInOut(duration: 0.3)) { step = .beforeYouBegin }
                     },
                     onRetake: {
                         withAnimation(.easeInOut(duration: 0.3)) { step = .positioning }
@@ -219,7 +270,7 @@ public struct GazeScreeningWizardView: View {
         .onChange(of: step) { _, newStep in
             // A new run (retake, abort, dismiss) never inherits the previous calibration: the
             // run's session ends here and the next calibration starts a new pipeline.
-            if newStep == .positioning, captureController.isRecording {
+            if newStep == .positioning || newStep == .beforeYouBegin, captureController.isRecording {
                 Task { _ = await captureController.stopSession() }
             }
         }

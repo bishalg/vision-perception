@@ -7,13 +7,17 @@ import ARKit
 // MARK: - Why capture cannot start (SIM-2, SIM-7, CNS-1)
 
 /// Why live capture cannot start. Mirrors the kit's `TrackingUnavailableReason`
-/// and adds the app-level `consentRequired`.
+/// and adds the app-level `consentRequired` and `consentOutdated`.
 public enum DeviceBlockReason: String, CaseIterable, Sendable, Equatable {
     case faceTrackingUnsupported
     case cameraPermissionDenied
     case sessionFailed
     case interrupted
     case consentRequired
+    /// Onboarding consent exists, but there is no signed `ConsentRecord` for the current
+    /// `ConsentDocument` (first launch after WP-S.5, a document version bump, or consent
+    /// withdrawn in Privacy & Your Data). The guardian must review and agree again (S-10).
+    case consentOutdated
 
     public init(_ reason: TrackingUnavailableReason) {
         switch reason {
@@ -59,6 +63,11 @@ public struct UnsupportedDeviceContent: Equatable {
                 title: "Finish setup first",
                 message: "Gaze observations start only after you accept the privacy and consent step in setup.",
                 systemImage: "lock.shield")
+        case .consentOutdated:
+            return .init(
+                title: "Review the consent first",
+                message: "The consent for gaze observations has changed or was withdrawn. Review it and agree again before the next observation.",
+                systemImage: "signature")
         }
     }
 }
@@ -70,14 +79,17 @@ public enum CaptureEntryGate: Equatable {
     case blocked(DeviceBlockReason)
 
     /// Hardware is checked first so unsupported devices never see a consent prompt
-    /// they cannot use.
+    /// they cannot use. Then the onboarding consent (`ConsentToken`), then the signed
+    /// consent record for the current document version (S-10).
     @MainActor
     public static func evaluate(
         store: ChildProfileStore = .shared,
+        consentRecords: ConsentRecordStore = .shared,
         faceTrackingSupported: Bool = CaptureEntryGate.deviceSupportsFaceTracking
     ) -> CaptureEntryGate {
         guard faceTrackingSupported else { return .blocked(.faceTrackingUnsupported) }
         guard let token = ConsentToken.mint(from: store) else { return .blocked(.consentRequired) }
+        guard consentRecords.isCurrent else { return .blocked(.consentOutdated) }
         return .ready(token)
     }
 

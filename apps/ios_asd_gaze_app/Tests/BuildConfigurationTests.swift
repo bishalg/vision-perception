@@ -156,6 +156,39 @@ final class BuildConfigurationTests: XCTestCase {
         }
     }
 
+    // MARK: - Store build (store-collection-build.md S-1, S-9)
+
+    /// The in-app legal links match the store listing and are https.
+    func testLegalLinkKeysArePresentAndHTTPS() throws {
+        for key in [StoreBuild.privacyPolicyURLKey, StoreBuild.supportURLKey] {
+            let value = try XCTUnwrap(Bundle.main.object(forInfoDictionaryKey: key) as? String, "\(key) missing")
+            XCTAssertTrue(value.hasPrefix("https://"), "\(key) is not https: \(value)")
+        }
+        XCTAssertEqual(StoreBuild.privacyPolicyURL()?.absoluteString, "https://curv.engineering/privacy/asd-gaze")
+        XCTAssertEqual(StoreBuild.supportURL()?.absoluteString, "https://curv.engineering/support")
+    }
+
+    /// `NSUserNotificationsUsageDescription` is not an iOS key; local notifications need no usage string.
+    func testNoBogusNotificationUsageKey() {
+        XCTAssertNil(Bundle.main.object(forInfoDictionaryKey: "NSUserNotificationsUsageDescription"))
+    }
+
+    /// S-7: the home-screen name is the working name, and "ASD" never appears in it.
+    func testDisplayNameIsEarlyGaze() {
+        XCTAssertEqual(StoreBuild.displayName(), "EarlyGaze")
+    }
+
+    /// S-1: the store flag is defined in Release only.
+    func testStoreBuildFlagIsReleaseOnly() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let project = try String(contentsOf: root.appendingPathComponent("project.yml"), encoding: .utf8)
+        let flags = try Self.otherSwiftFlags(inProjectYAML: project)
+        XCTAssertTrue(try XCTUnwrap(flags["Release"]).contains("-DASD_STORE_BUILD"))
+        XCTAssertFalse(try XCTUnwrap(flags["Debug"]).contains("ASD_STORE_BUILD"))
+        XCTAssertFalse(try XCTUnwrap(flags["DemoRelease"]).contains("ASD_STORE_BUILD"))
+    }
+
     // MARK: - WP-A.1: Demo tools presence
 
     func testDemoToolsFlagMatchesConfiguration() {

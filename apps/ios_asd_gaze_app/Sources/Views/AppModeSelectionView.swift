@@ -59,7 +59,7 @@ public struct AppModeSelectionView: View {
                         startPoint: .topLeading, endPoint: .bottomTrailing
                     )
                 )
-            Text("How will you use Curv?")
+            Text(Localizer.tr("mode_select_prompt"))
                 .font(.system(size: 26, weight: .bold, design: .rounded))
             Text("This tailors the app to your setting. You can switch it anytime in Settings.")
                 .font(.system(size: 14))

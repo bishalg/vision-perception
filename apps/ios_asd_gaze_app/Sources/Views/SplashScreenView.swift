@@ -64,7 +64,7 @@ public struct SplashScreenView: View {
 
                 // Title & Subtitle Branding
                 VStack(spacing: 6) {
-                    Text("ASD Gaze")
+                    Text("EarlyGaze") // i18n-ok: product name
                         .font(.system(size: 26, weight: .bold, design: .rounded))
                         .foregroundColor(LiquidGlass.textPrimary)
 

@@ -1,1 +1,1 @@
-diary,toddler,development,attention,gaze,milestones,mood,parent,routine,observation,eye
+gaze,eye,attention,observation,capture,clinic,child,toddler,session,camera

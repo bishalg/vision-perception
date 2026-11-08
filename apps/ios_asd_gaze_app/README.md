@@ -1,7 +1,7 @@
 # iOS Pediatric Gaze Collector (`apps/ios_asd_gaze_app`)
 
-> **Application**: Pediatric Social Attention & Oculomotor Gaze Collector  
-> **Platform**: iOS / iPadOS 18.0+ (TrueDepth ARKit face tracking; Swift 5.9 language mode with complete strict-concurrency checking)  
+> **Application**: EarlyGaze Observation Capture. A capture tool that records where a child looks during short clips and delivers each session to the child's clinic. This is not a diagnostic tool. It does not measure, screen for or diagnose any condition; your clinic reviews each session.  
+> **Platform**: iOS / iPadOS 18.0+ (TrueDepth ARKit face tracking; Swift 6 language mode with complete strict-concurrency checking)  
 > **Architecture**: Model-View-Controller (MVC) + Apple ResearchKit & CareKit + Liquid Glass Design  
 > **Package Link**: [`domains/asd_screening/ios`](../../domains/asd_screening/ios) (`CurvAsdGazeKit`)  
 > **Full Architecture & Handover Guide**: [`docs/ASD_GAZE_TRACKER_ARCHITECTURE.md`](../../docs/ASD_GAZE_TRACKER_ARCHITECTURE.md)  
@@ -9,14 +9,15 @@
 
 ---
 
-## 1. Overview & Clinical Context
+## 1. Overview
 
-This application coordinates the pediatric eye-gaze data collection and social visual attention screening workflow:
-1. **IRB Informed e-Consent & Survey**: Caregiver onboarding and validated M-CHAT-R/F screening.
-2. **Interactive 5-Point Bubble Calibration**: Engaging, fast optical axis calibration using floating popped bubbles.
-3. **Synchronized Stimuli Playback**: GeoPref split-screen and naturalistic face videos synchronized with 60 Hz TrueDepth telemetry.
-4. **CareKit Longitudinal Milestones**: Milestone tracking at 18, 24, and 36 months with continuous trend visualizations.
-5. **Zero Raw Video Recording**: Camera frames are processed strictly in volatile memory. Only numerical telemetry is encrypted at rest using Apple CryptoKit (`AES-GCM-256`).
+This application records short gaze observation sessions and delivers them to the clinic that reviews them:
+1. **Consent and onboarding**: caregiver consent and a short child profile (age band, session language).
+2. **Interactive 5-point bubble calibration**: fast optical axis calibration using floating popped bubbles.
+3. **Synchronized stimulus playback**: split-screen and naturalistic face clips recorded alongside 60 Hz TrueDepth telemetry.
+4. **Daily notes and milestones**: CareKit notes, diary and milestone checklists for the caregiver.
+5. **Delivery to the clinic**: each session is sent to the clinic's console for review.
+6. **Zero raw video recording**: camera frames are processed strictly in volatile memory. Only numerical telemetry is encrypted at rest using Apple CryptoKit (`AES-GCM-256`).
 
 ---
 
@@ -59,7 +60,7 @@ Build output always lives outside the repository (`DERIVED_DATA`, default `/priv
 The JSON-schema contract gate is Rust: the script builds `asd-cli` (`cargo build -p asd-cli`, so a Rust toolchain is required) and runs `asd-cli schema check` plus `asd-cli schema validate` against `Tests/Fixtures/expected-session-v1.6.json`. Set `ASD_CARGO_TARGET_DIR` to keep cargo output outside the repo.
 CI runs the same script from `.github/workflows/ios.yml`.
 
-## 3. Screening Flow & Stimulus Batteries
+## 3. Capture Flow & Stimulus Batteries
 
 1. **Onboarding** (`OnboardingFlowView`): caregiver intro → `ChildProfile`
    (age band 12–60 mo, session language, 30 s vs 60 s battery) → consent.
@@ -76,9 +77,8 @@ CI runs the same script from `.github/workflows/ios.yml`.
    blendshapes) and `ScreenRaycaster` projects gaze onto screen AOIs at
    60 Hz. Zero raw video is ever stored — only numerical telemetry,
    AES-GCM-256 encrypted (`SessionVaultManager`).
-5. **Results & care loop**: biomarker detail views, AI risk-stratification
-   matrix, replay heatmaps, doctor PDF report (`DoctorReportGenerator`),
-   CareKit milestones/diaries, ResearchKit study sync.
+5. **Session summary and notes**: session summary, replay heatmaps,
+   CareKit milestones/diaries, delivery to the clinic.
 
 ## 4. Directory Layout
 
@@ -122,6 +122,6 @@ apps/ios_asd_gaze_app/
 │       ├── EngagementRiskStratificationView.swift
 │       ├── CaregiverDashboardView.swift
 │       └── CareKitDashboardModals.swift
-└── Tests/                              # 55 tests: playlist integrity, CareKit,
+└── Tests/                              # playlist integrity, CareKit,
                                         # ResearchKit sync, report generation
 ```
