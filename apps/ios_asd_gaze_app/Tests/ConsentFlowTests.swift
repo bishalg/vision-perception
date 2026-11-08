@@ -34,7 +34,7 @@ final class ConsentFlowTests: XCTestCase {
     // MARK: ConsentDocument
 
     func testDocumentHasSectionsInOrder() {
-        XCTAssertEqual(ConsentDocument.current.version, "2026-11-08.1")
+        XCTAssertEqual(ConsentDocument.current.version, "2026-11-08.2")
         XCTAssertEqual(ConsentDocument.current.sections.map(\.id), [
             "overview", "recorded", "neverRecorded", "dataLocation", "access",
             "choices", "withdrawing", "notDiagnostic", "time",

@@ -50,7 +50,7 @@ public struct ConsentDocument: Equatable, Sendable {
         self.sections = sections
     }
 
-    public static let currentVersion = "2026-11-08.1"
+    public static let currentVersion = "2026-11-08.2"
 
     public static let current = ConsentDocument(version: currentVersion, sections: standardSections)
 
@@ -101,6 +101,7 @@ public struct ConsentDocument: Equatable, Sendable {
                 ConsentL10n.text("consent.recorded.more.3", "Facial-expression measurements, for example how much your child smiles."),
                 ConsentL10n.text("consent.recorded.more.4", "The time the session started and how long it lasted."),
                 ConsentL10n.text("consent.recorded.more.5", "The age bracket you enter for your child."),
+                ConsentL10n.text("consent.recorded.more.6", "Summary measures worked out from the looking data, such as how much of the time was spent looking at people rather than shapes, and a note on how usable the recording was. The app does not show or interpret these; your clinic reviews them."),
             ].joined(separator: " ")
         ),
         ConsentSection(
