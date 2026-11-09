@@ -30,7 +30,7 @@ thiserror.workspace = true
 # Idempotency request hashes and the deterministic random-audit draw (ING-1, ING-3).
 sha2.workspace = true
 # Opaque list cursors (base64url, API conventions).
-base64 = "0.22"
+base64 = "0.23"
 
 async-trait = "0.1"
 aws-config = { version = "1", features = ["behavior-version-latest"] }

@@ -30,7 +30,7 @@ schemars = "1"
 # only; no `v4` (no getrandom in the mobile and WASM builds). DTO ids stay UUID strings.
 uuid = { version = "1", default-features = false, features = ["std"] }
 ed25519-dalek = { version = "2", default-features = false, features = ["std", "zeroize", "fast", "pkcs8", "pem"] }
-base64 = "0.22"
+base64 = "0.23"
 sha2.workspace = true
 jsonschema = { version = "0.18", default-features = false, features = ["draft202012"], optional = true }
 

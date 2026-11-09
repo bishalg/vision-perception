@@ -143,7 +143,7 @@ dependencies = [
  "aws-lc-rs",
  "aws-sdk-s3",
  "axum",
- "base64 0.22.1",
+ "base64 0.23.1",
  "bytes",
  "chrono",
  "ed25519-dalek 2.2.0",
@@ -194,7 +194,7 @@ version = "0.1.0"
 dependencies = [
  "asd-contract",
  "asd-core",
- "base64 0.22.1",
+ "base64 0.23.1",
  "ed25519-dalek 2.2.0",
  "jsonschema",
  "ryu-js",
@@ -226,7 +226,7 @@ version = "0.1.0"
 dependencies = [
  "asd-contract",
  "asd-core",
- "base64 0.22.1",
+ "base64 0.23.1",
  "bytes",
  "calamine",
  "chrono",
