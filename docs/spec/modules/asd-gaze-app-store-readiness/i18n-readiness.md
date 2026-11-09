@@ -1,6 +1,6 @@
 # Multilanguage readiness for the EarlyGaze iOS app (2026-11-09)
 
-Status: design record and work-package plan. Owner decision 2026-11-09: the first App Store submission is
+Status: design record and work-package plan. WP-LN.1 and WP-LN.3 landed 2026-11-09 (see section 7); WP-LN.2, WP-LN.4, WP-S.6 open. Owner decision 2026-11-09: the first App Store submission is
 English-only (store-collection-build.md decision S-14), and the app itself must be fully multilanguage-ready
 so that Hindi and Nepali can be switched on by a metadata move and a native review, not by code changes.
 
@@ -74,3 +74,15 @@ WP-LN.2 confirms the list by building `StoreSim` and taking the set of compiled 
 - No runtime translation through FFI.
 - No RTL work (I-9).
 - No translation of stimulus clip content (there is none) or of the console (separate module).
+
+## 7. Status (2026-11-09)
+
+| WP | State | Notes |
+| --- | --- | --- |
+| WP-LN.1 | done | `Resources/Localizable.xcstrings` (163 keys), `Resources/InfoPlist.xcstrings`; `Localizer.tr` resolves `<lang>.lproj`, then `en.lproj`, then the key; `project.yml` already had `developmentLanguage: en` and XcodeGen emits `knownRegions` Base/en/hi/ne; `Config/Info-Additions.plist` carries `CFBundleDevelopmentRegion` and `CFBundleLocalizations`; `asd-cli i18n check --app-xcstrings` added (the existing `--xcstrings` flag means drift against the domain catalogue) and wired into `scripts/ios_test.sh`. hi/ne values are machine drafts (`needs_review`, 0% translated) pending H-10. |
+| WP-LN.3 | done | 82 `String(format:)` classified: 74 user-visible pass `locale: Locale.current`, 8 machine pass `FormatLocale.posix` (`Sources/Models/FormatLocale.swift`); two "d MMM" patterns replaced by `formatted(.dateTime.day().month(.abbreviated))`; lint rule `swift-format-locale` (single-line calls only; a multi-line `String(` newline `format:` call is not detected, follow-up). |
+| WP-LN.2 | open | store-build literal burn-down; the baseline still holds 404 entries. |
+| WP-LN.4 | open | pseudo-locale run; its dependencies WP-LN.1 and WP-S.7 are done, so it can start. |
+| WP-LN.5 | open | after submission. |
+| WP-S.6 | open | Tier A shared text in `asd-contract`; consent hash per language. |
+| H-10 | open | native hi/ne review; then S-14 promotion of `fastlane/metadata_pending/`. |

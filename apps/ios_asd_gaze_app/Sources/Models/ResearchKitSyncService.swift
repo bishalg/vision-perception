@@ -25,6 +25,7 @@ public enum ResearchSyncState: Sendable, Equatable {
         case .synced(let ts, let receipt):
             let f = DateFormatter()
             f.timeStyle = .short
+            f.locale = Locale.current
             return "Synced at \(f.string(from: ts)) (Receipt #\(receipt.prefix(8)))"
         case .failed(let err): return "Sync error: \(err)"
         }
@@ -159,7 +160,7 @@ struct QueuedSessionUpload: Codable, Equatable {
     static func fileName(for sessionId: String) -> String {
         let allowed = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_")
         let safe = String(sessionId.prefix(64).map { allowed.contains($0) ? $0 : "_" })
-        let digest = SHA256.hash(data: Data(sessionId.utf8)).prefix(4).map { String(format: "%02x", $0) }.joined()
+        let digest = SHA256.hash(data: Data(sessionId.utf8)).prefix(4).map { String(format: "%02x", locale: FormatLocale.posix, $0) }.joined()
         return "\(filePrefix)\(safe)_\(digest).json"
     }
 

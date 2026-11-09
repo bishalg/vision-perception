@@ -313,7 +313,7 @@ public struct EngagementDetailView: View {
         case .facialAffect:
             return summary.socialSmileIntensityMean.map { "\(Int($0 * 100))% Smile" } ?? "Not scored"
         case .dataQuality:
-            return "\(String(format: "%.1f%%", summary.validRatio * 100)) Usable"
+            return "\(String(format: "%.1f%%", locale: Locale.current, summary.validRatio * 100)) Usable"
         }
     }
 
@@ -412,7 +412,7 @@ public struct EngagementDetailView: View {
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text(summary.socialPreferenceScore.map { String(format: "%+.2f", $0) } ?? "Not scored")
+                        Text(summary.socialPreferenceScore.map { String(format: "%+.2f", locale: Locale.current, $0) } ?? "Not scored")
                             .font(.system(size: 20, weight: .bold, design: .monospaced))
                             .foregroundColor(.primary)
                         Text("GeoPref Score")
@@ -424,19 +424,19 @@ public struct EngagementDetailView: View {
                 HStack(spacing: 8) {
                     detailMetricTile(
                         title: "Social Dwell",
-                        value: String(format: "%.1fs", summary.socialDwellSec),
+                        value: String(format: "%.1fs", locale: Locale.current, summary.socialDwellSec),
                         subtitle: "\(socialPrefPct)% Social",
                         color: LiquidGlass.celestialTeal
                     )
                     detailMetricTile(
                         title: "Geometric",
-                        value: String(format: "%.1fs", summary.geometricDwellSec),
+                        value: String(format: "%.1fs", locale: Locale.current, summary.geometricDwellSec),
                         subtitle: "\(100 - socialPrefPct)% Shape",
                         color: LiquidGlass.warmAmber
                     )
                     detailMetricTile(
                         title: "First Look at Eyes",
-                        value: summary.firstEyeLatencyMs.map { String(format: "%.0fms", $0) } ?? "Not observed",
+                        value: summary.firstEyeLatencyMs.map { String(format: "%.0fms", locale: Locale.current, $0) } ?? "Not observed",
                         subtitle: summary.firstEyeLatencyMs == nil ? "No eye look" : ((summary.firstEyeLatencyMs ?? 0) <= 650 ? "Quick" : "Slower"),
                         color: (summary.firstEyeLatencyMs ?? 0) <= 650 && summary.firstEyeLatencyMs != nil ? LiquidGlass.emeraldMint : LiquidGlass.warmAmber
                     )
@@ -465,7 +465,7 @@ public struct EngagementDetailView: View {
                 biomarkerMatrixCellRow(
                     icon: "person.2.fill",
                     title: "Social Actor Fixation Duration",
-                    observed: String(format: "%.1fs (%d%%)", summary.socialDwellSec, socialPrefPct),
+                    observed: String(format: "%.1fs (%d%%)", locale: Locale.current, summary.socialDwellSec, socialPrefPct),
                     target: "≥ 60.0% Dwell",
                     weight: "Primary Index",
                     status: isSocialNormal ? "Within reference" : (isSocialMonitor ? "Near reference" : "Below reference"),
@@ -476,7 +476,7 @@ public struct EngagementDetailView: View {
                 biomarkerMatrixCellRow(
                     icon: "circle.grid.cross.fill",
                     title: "Dynamic Geometric Fixation Duration",
-                    observed: String(format: "%.1fs (%d%%)", summary.geometricDwellSec, 100 - socialPrefPct),
+                    observed: String(format: "%.1fs (%d%%)", locale: Locale.current, summary.geometricDwellSec, 100 - socialPrefPct),
                     target: "≤ 40.0% Dwell",
                     weight: "Contrast Index",
                     status: (100 - socialPrefPct) <= 40 ? "Within reference" : "Above reference",
@@ -489,7 +489,7 @@ public struct EngagementDetailView: View {
                 biomarkerMatrixCellRow(
                     icon: "eyes.inverse",
                     title: "Looking at Eyes",
-                    observed: hasEye ? String(format: "%.1f%% Eye Dwell", eyePct) : "Not observed",
+                    observed: hasEye ? String(format: "%.1f%% Eye Dwell", locale: Locale.current, eyePct) : "Not observed",
                     target: "≥ 25.0% of Face",
                     weight: "Face Looking",
                     status: !hasEye ? "Not observed" : (eyePct >= 25.0 ? "Within reference" : (eyePct >= 18.0 ? "Near reference" : "Below reference")),
@@ -502,7 +502,7 @@ public struct EngagementDetailView: View {
                 biomarkerMatrixCellRow(
                     icon: "mouth.fill",
                     title: "Looking at the Mouth",
-                    observed: hasMouth ? String(format: "%.1f%% Mouth Dwell", mouthPct) : "Not observed",
+                    observed: hasMouth ? String(format: "%.1f%% Mouth Dwell", locale: Locale.current, mouthPct) : "Not observed",
                     target: "10.0% – 30.0%",
                     weight: "Speech Watching",
                     status: !hasMouth ? "Not observed" : (mouthPct >= 10.0 && mouthPct <= 30.0 ? "Within reference" : "Outside reference"),
@@ -515,7 +515,7 @@ public struct EngagementDetailView: View {
                 biomarkerMatrixCellRow(
                     icon: "bolt.stop.fill",
                     title: "Time to First Look at Eyes",
-                    observed: hasLat ? String(format: "%.0f ms", lat) : "Not observed",
+                    observed: hasLat ? String(format: "%.0f ms", locale: Locale.current, lat) : "Not observed",
                     target: "< 650 ms",
                     weight: "Quick Orienting",
                     status: !hasLat ? "Not observed" : (lat <= 650 ? "Quick" : "Slower"),

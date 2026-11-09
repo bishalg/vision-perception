@@ -160,7 +160,7 @@ public final class BlendShapeCSVLogger: @unchecked Sendable {
     }
 
     private func csvNumber(_ value: Double) -> String {
-        String(format: "%.5f", value)
+        String(format: "%.5f", locale: FormatLocale.posix, value)
     }
 
     private func csvEscape(_ value: String) -> String {

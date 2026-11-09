@@ -26,12 +26,16 @@ const USAGE: &str = "\
 usage:
   asd-cli i18n export --target console|xcstrings|android --out PATH [--catalogue DIR]
   asd-cli i18n check [--console PATH] [--xcstrings PATH] [--android DIR]
+                     [--app-xcstrings PATH]
   asd-cli i18n lint [--swift DIR]... [--kotlin DIR]... [--exclude GLOB]... --baseline FILE
                     [--catalog Localizable.xcstrings] [--update-baseline] [--format text|json]
   asd-cli i18n fmt [--dir DIR]
 
 `check` runs the catalogue checks (I18N-3) and fails when the console module
 (default apps/curv_console/src/messages/domain.ts) differs from a fresh export.
+`check --app-xcstrings PATH` (WP-LN.1) reports, per language (en hi ne), the keys of an app
+String Catalog with a missing or empty value and the `translated` percentage; it fails on any
+missing value (drafts are `needs_review`, so the percentage is informational until H-10).
 `lint` exits 0 when every finding is in the baseline, 1 on a new finding or a stale
 baseline entry, 2 on a usage or I/O error.";
 
@@ -419,10 +423,71 @@ fn write(path: &Path, text: &str) -> Result<(), String> {
 
 // ---- check -----------------------------------------------------------------------------------
 
+const APP_LANGS: [&str; 3] = ["en", "hi", "ne"];
+
+/// Per-language coverage of an app String Catalog (WP-LN.1).
+struct Coverage {
+    keys: usize,
+    translated: BTreeMap<&'static str, usize>,
+    /// `key: lang` pairs with no value or an empty one.
+    missing: Vec<String>,
+}
+
+impl Coverage {
+    fn report(&self, path: &str) -> String {
+        let mut out = String::new();
+        for m in &self.missing {
+            let _ = writeln!(out, "MISSING: {path}: {m}");
+        }
+        for lang in APP_LANGS {
+            let n = self.translated.get(lang).copied().unwrap_or(0);
+            let pct = if self.keys == 0 {
+                0.0
+            } else {
+                100.0 * n as f64 / self.keys as f64
+            };
+            let _ = writeln!(
+                out,
+                "{path}: {lang} {n}/{} translated ({pct:.1}%)",
+                self.keys
+            );
+        }
+        out
+    }
+}
+
+fn app_coverage(text: &str) -> Result<Coverage, String> {
+    let v: Value = serde_json::from_str(text).map_err(|e| format!("not JSON: {e}"))?;
+    let strings = v["strings"].as_object().ok_or("no `strings` object")?;
+    let mut c = Coverage {
+        keys: strings.len(),
+        translated: BTreeMap::new(),
+        missing: Vec::new(),
+    };
+    for (key, entry) in strings {
+        for lang in APP_LANGS {
+            let unit = &entry["localizations"][lang]["stringUnit"];
+            match unit["value"].as_str() {
+                Some(s) if !s.trim().is_empty() => {
+                    if unit["state"].as_str() == Some("translated") {
+                        *c.translated.entry(lang).or_default() += 1;
+                    }
+                }
+                _ => c.missing.push(format!("{key}: {lang}")),
+            }
+        }
+    }
+    Ok(c)
+}
+
 fn check(args: &[String]) -> i32 {
-    let f = match flags(args, &[])
-        .and_then(|f| only(&f, &["--console", "--xcstrings", "--android"]).map(|()| f))
-    {
+    let f = match flags(args, &[]).and_then(|f| {
+        only(
+            &f,
+            &["--console", "--xcstrings", "--android", "--app-xcstrings"],
+        )
+        .map(|()| f)
+    }) {
         Ok(f) => f,
         Err(e) => return usage_error(&e),
     };
@@ -436,6 +501,7 @@ fn check(args: &[String]) -> i32 {
     let console = one(&f, "--console")
         .map(PathBuf::from)
         .unwrap_or_else(default_console);
+    let mut coverage_failed = false;
     let mut drift = |path: &Path, ok: bool, target: &str| {
         if !ok {
             failed = true;
@@ -458,6 +524,23 @@ fn check(args: &[String]) -> i32 {
             "xcstrings",
         );
     }
+    if let Some(p) = one(&f, "--app-xcstrings") {
+        match std::fs::read_to_string(p)
+            .map_err(|e| format!("{p}: {e}"))
+            .and_then(|t| app_coverage(&t))
+        {
+            Ok(c) => {
+                print!("{}", c.report(p));
+                if !c.missing.is_empty() {
+                    coverage_failed = true;
+                }
+            }
+            Err(e) => {
+                eprintln!("error: {e}");
+                return 2;
+            }
+        }
+    }
     if let Some(dir) = one(&f, "--android") {
         let ok = android(cat).is_ok_and(|files| {
             files.iter().all(|(rel, text)| {
@@ -469,7 +552,7 @@ fn check(args: &[String]) -> i32 {
         });
         drift(Path::new(dir), ok, "android");
     }
-    if failed {
+    if failed || coverage_failed {
         return 1;
     }
     println!(
@@ -807,6 +890,73 @@ fn kotlin_rule(prefix: &str) -> Option<&'static str> {
     None
 }
 
+/// True when the call opened just before `i` has a top-level `locale:` argument.
+fn call_has_locale(c: &[char], mut i: usize) -> bool {
+    let mut depth = 1;
+    while i < c.len() && depth > 0 {
+        match c[i] {
+            '"' => {
+                i = read_literal(c, i, Lang::Swift, 0).0;
+                continue;
+            }
+            '(' | '[' | '{' => depth += 1,
+            ')' | ']' | '}' => depth -= 1,
+            _ if depth == 1
+                && c.get(i..i + 7)
+                    .is_some_and(|w| w.iter().collect::<String>() == "locale:") =>
+            {
+                return true;
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    false
+}
+
+/// `swift-format-locale` (WP-LN.3, I-5): every `String(format:` call states its `locale:`,
+/// `Locale.current` for user-visible text or `en_US_POSIX` for machine output. The finding's
+/// literal is the whitespace-normalised call, so the baseline keys it like a string literal.
+fn format_locale_findings(path: &str, src: &str) -> Vec<Finding> {
+    const NEEDLE: &str = "String(format:";
+    let c: Vec<char> = src.chars().collect();
+    let needle: Vec<char> = NEEDLE.chars().collect();
+    let lines: Vec<&str> = src.lines().collect();
+    let mut out = Vec::new();
+    let (mut line, mut line_start) = (1usize, 0usize);
+    for i in 0..c.len() {
+        if c[i] == '\n' {
+            line += 1;
+            line_start = i + 1;
+            continue;
+        }
+        if c[i] != 'S' || c.get(i..i + needle.len()) != Some(&needle[..]) {
+            continue;
+        }
+        let before: String = c[line_start..i].iter().collect();
+        if before.contains("//") || lines.get(line - 1).is_some_and(|l| l.contains("i18n-ok:")) {
+            continue;
+        }
+        if before.chars().last().is_some_and(is_ident) {
+            continue;
+        }
+        let open = i + "String(".len();
+        let end = skip_nested(&c, open, '(', ')', Lang::Swift);
+        if call_has_locale(&c, open) {
+            continue;
+        }
+        let call: String = c[i..end.min(c.len())].iter().collect();
+        out.push(Finding {
+            path: path.to_owned(),
+            line,
+            col: i - line_start + 1,
+            rule: "swift-format-locale",
+            literal: call.split_whitespace().collect::<Vec<_>>().join(" "),
+        });
+    }
+    out
+}
+
 /// Findings of one file. `catalog` holds the String Catalog keys with a `ne` value.
 fn lint_file(path: &str, src: &str, lang: Lang, catalog: &BTreeSet<String>) -> Vec<Finding> {
     let lines: Vec<&str> = src.lines().collect();
@@ -847,6 +997,9 @@ fn lint_file(path: &str, src: &str, lang: Lang, catalog: &BTreeSet<String>) -> V
             rule,
             literal: lit.text,
         });
+    }
+    if lang == Lang::Swift {
+        out.extend(format_locale_findings(path, src));
     }
     out
 }
@@ -1117,7 +1270,10 @@ mod tests {
                 "x.accessibilityLabel(\"Close\")",
                 "swift-accessibility-label",
             ),
-            ("Text(String(format: \"%d items\", n))", "swift-format"),
+            (
+                "Text(String(format: \"%d items\", locale: .current, n))",
+                "swift-format",
+            ),
             ("TextField(\"Name\", text: $n)", "swift-text-field"),
             ("Text(#\"raw \"quoted\" text\"#)", "swift-text"),
             ("Text(\"\"\"\n  Long prose\n  \"\"\")", "multiline"),
@@ -1126,6 +1282,18 @@ mod tests {
             assert_eq!(f.len(), 1, "{src}: {f:?}");
             assert_eq!(f[0].rule, rule, "{src}");
         }
+    }
+
+    #[test]
+    fn swift_format_without_locale_is_a_finding() {
+        let f = swift("let a = String(format: \"%.1f\", x)\nlet b = String(format: \"%d\", locale: Locale.current, n)\nlet c = String(format: \"%02x\", locale: FormatLocale.posix, $0)\n// String(format: \"%d\", n)\n");
+        let hits: Vec<_> = f
+            .iter()
+            .filter(|x| x.rule == "swift-format-locale")
+            .collect();
+        assert_eq!(hits.len(), 1, "{f:?}");
+        assert_eq!(hits[0].line, 1);
+        assert_eq!(hits[0].literal, "String(format: \"%.1f\", x)");
     }
 
     #[test]
@@ -1180,6 +1348,22 @@ mod tests {
         ] {
             assert!(kotlin(src).is_empty(), "{src}: {:?}", kotlin(src));
         }
+    }
+
+    #[test]
+    fn app_coverage_counts_and_reports_missing() {
+        let unit = |s: &str, v: &str| json!({ "stringUnit": { "state": s, "value": v } });
+        let cat = json!({ "strings": {
+            "a": { "localizations": { "en": unit("translated", "A"), "hi": unit("needs_review", "ए"), "ne": unit("needs_review", "ए") } },
+            "b": { "localizations": { "en": unit("translated", "B"), "hi": unit("translated", " ") } }
+        }});
+        let c = app_coverage(&cat.to_string()).unwrap();
+        assert_eq!(c.keys, 2);
+        assert_eq!(c.translated.get("en"), Some(&2));
+        assert_eq!(c.translated.get("hi"), None);
+        assert_eq!(c.missing, vec!["b: hi".to_string(), "b: ne".to_string()]);
+        assert!(c.report("x").contains("en 2/2 translated (100.0%)"));
+        assert!(app_coverage("[").is_err());
     }
 
     #[test]

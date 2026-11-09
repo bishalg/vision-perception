@@ -407,40 +407,31 @@ public struct SettingsView: View {
             GlassSectionHeader(title: Localizer.tr("settings_language_section"), icon: "globe")
 
             VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(Localizer.tr("settings_active_language"))
-                            .glassStyle(.headline)
-                        Text(AppLocale.current.displayName)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(LiquidGlass.celestialTeal)
+                // WP-LN.1: iOS owns per-app language; this row opens the app's page in Settings.
+                Button(action: openSystemSettings) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(Localizer.tr("settings_language_row"))
+                                .glassStyle(.headline)
+                            Text(AppLocale.current.displayName)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(LiquidGlass.celestialTeal)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(LiquidGlass.textSecondary)
                     }
-                    Spacer()
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(LiquidGlass.emeraldMint)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("settings_language_row")
 
                 GlassDivider()
 
                 Text(Localizer.tr("settings_lang_note"))
                     .glassStyle(.subheadline)
                     .fixedSize(horizontal: false, vertical: true)
-
-                Button(action: openSystemSettings) {
-                    HStack {
-                        Image(systemName: "gear")
-                        Text(Localizer.tr("settings_open_button"))
-                            .fontWeight(.semibold)
-                        Spacer()
-                        Image(systemName: "arrow.up.forward.app")
-                            .font(.system(size: 12))
-                    }
-                    .font(.system(size: 14))
-                    .foregroundColor(LiquidGlass.onAccent)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(LiquidGlass.accentFill))
-                }
             }
             .glassCard(cornerRadius: 14, padding: 14)
         }
@@ -783,6 +774,13 @@ public struct SettingsView: View {
                     }
 
                     Spacer()
+                }
+
+                if AppLocale.current != .english {
+                    Text(Localizer.tr("about_translation_under_review"))
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(LiquidGlass.textSecondary)
+                        .accessibilityIdentifier("settings_translation_under_review")
                 }
 
                 GlassDivider()

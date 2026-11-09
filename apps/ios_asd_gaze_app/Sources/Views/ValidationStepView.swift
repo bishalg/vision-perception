@@ -53,13 +53,15 @@ struct ValidationResultCard: View {
     let canRetry: Bool
     let onRetry: () -> Void
     let onContinue: () -> Void
+    /// Locale of the rendered number (injectable for tests, WP-LN.3).
+    var formatLocale: Locale = .current
 
     private var isRecalibrate: Bool { advice.action == .recalibrate }
 
     var message: String {
         var lines: [String] = []
         if let accuracyDeg {
-            lines.append(String(format: Localizer.tr("validation_result_offset"), accuracyDeg))
+            lines.append(String(format: Localizer.tr("validation_result_offset"), locale: formatLocale, accuracyDeg))
         } else {
             lines.append(Localizer.tr("validation_result_missed"))
         }

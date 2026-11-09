@@ -493,7 +493,7 @@ public struct OnboardingFlowView: View {
     }
 
     private static func formatMB(_ bytes: Int64) -> String {
-        String(format: "%.1f MB", Double(bytes) / 1_000_000.0)
+        String(format: "%.1f MB", locale: Locale.current, Double(bytes) / 1_000_000.0)
     }
 
     private func downloadStageRow(done: Bool, active: Bool, title: String, detail: String) -> some View {

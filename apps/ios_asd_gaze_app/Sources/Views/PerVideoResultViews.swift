@@ -379,7 +379,7 @@ struct PerVideoResultDetailView: View {
                         .foregroundColor(LiquidGlass.celestialTeal)
                     Text("Expectations for \(score.ageBracketId) months")
                         .font(.system(size: 12, weight: .semibold))
-                    Text(String(format: "Clip quality: %.0f%% valid", report.validSampleRatio * 100))
+                    Text(String(format: "Clip quality: %.0f%% valid", locale: Locale.current, report.validSampleRatio * 100))
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                     if report.lowConfidence {
@@ -567,9 +567,9 @@ struct ExpectationRowView: View {
             return "\(Int(value)) ms"
         }
         if row.biomarker == "fixation_count" {
-            return String(format: "%.0f", value)
+            return String(format: "%.0f", locale: Locale.current, value)
         }
-        return String(format: "%.0f%%", value * 100)
+        return String(format: "%.0f%%", locale: Locale.current, value * 100)
     }
 }
 

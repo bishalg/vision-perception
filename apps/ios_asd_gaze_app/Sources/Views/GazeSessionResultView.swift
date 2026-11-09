@@ -300,7 +300,7 @@ public struct GazeSessionResultView: View {
                         .background(Circle().fill(LiquidGlass.cardBackground))
                 }
 
-                Text(String(format: "%.1fs / %.1fs (%d frames)", Double(replayFrameIndex) * (1.0 / 60.0), summary.durationSec, recordedFrames.count))
+                Text(String(format: "%.1fs / %.1fs (%d frames)", locale: Locale.current, Double(replayFrameIndex) * (1.0 / 60.0), summary.durationSec, recordedFrames.count))
                     .font(.system(size: 11, weight: .semibold, design: .monospaced))
                     .foregroundColor(LiquidGlass.textPrimary)
 
@@ -405,7 +405,7 @@ public struct GazeSessionResultView: View {
                             .font(.system(size: 10))
                             .foregroundColor(.purple)
                         Spacer()
-                        Text(summary.socialPreferenceScore.map { String(format: "%+.2f", $0) } ?? "Not scored")
+                        Text(summary.socialPreferenceScore.map { String(format: "%+.2f", locale: Locale.current, $0) } ?? "Not scored")
                             .font(.system(size: 12, weight: .bold, design: .monospaced))
                             .foregroundColor(.primary)
                         Spacer()
@@ -421,8 +421,8 @@ public struct GazeSessionResultView: View {
                 HStack(spacing: 16) {
                     metricCol(title: "Eye Looking", value: Self.percentText(summary.eyeDwellRatio))
                     metricCol(title: "Mouth Looking", value: Self.percentText(summary.mouthDwellRatio))
-                    metricCol(title: "First Look at Eyes", value: summary.firstEyeLatencyMs.map { String(format: "%.0f ms", $0) } ?? "Not observed")
-                    metricCol(title: "Time on People", value: String(format: "%.1fs", summary.socialDwellSec))
+                    metricCol(title: "First Look at Eyes", value: summary.firstEyeLatencyMs.map { String(format: "%.0f ms", locale: Locale.current, $0) } ?? "Not observed")
+                    metricCol(title: "Time on People", value: String(format: "%.1fs", locale: Locale.current, summary.socialDwellSec))
                 }
             }
             .glassCard(cornerRadius: 16, padding: 14)
@@ -477,7 +477,7 @@ public struct GazeSessionResultView: View {
                     Spacer()
 
                     VStack(alignment: .trailing, spacing: 1) {
-                        Text(String(format: "%.0f%%", result.confidence * 100))
+                        Text(String(format: "%.0f%%", locale: Locale.current, result.confidence * 100))
                             .font(.system(size: 14, weight: .bold, design: .monospaced))
                             .foregroundColor(.primary)
                         Text("Model certainty")
@@ -490,8 +490,8 @@ public struct GazeSessionResultView: View {
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(LiquidGlass.cardBorder, lineWidth: 1))
 
                 HStack(spacing: 12) {
-                    metricCol(title: "Index", value: String(format: "%.1f%%", result.riskScore * 100))
-                    metricCol(title: "Inference Latency", value: String(format: "%.1f ms", result.inferenceLatencyMs))
+                    metricCol(title: "Index", value: String(format: "%.1f%%", locale: Locale.current, result.riskScore * 100))
+                    metricCol(title: "Inference Latency", value: String(format: "%.1f ms", locale: Locale.current, result.inferenceLatencyMs))
                     metricCol(title: "Engine", value: result.executionDevice == .appleNeuralEngine ? "Neural Engine" : "CPU")
                 }
             }
@@ -549,10 +549,10 @@ public struct GazeSessionResultView: View {
                 }
 
                 HStack(spacing: 16) {
-                    metricCol(title: "Smile Reactivity", value: Self.scoreText(summary.smileReactivityIndex) { String(format: "%.2f", $0) })
-                    metricCol(title: "Mean Smile", value: Self.scoreText(summary.socialSmileIntensityMean) { String(format: "%d%%", Int($0 * 100)) })
-                    metricCol(title: "Flat Affect", value: Self.scoreText(summary.flatAffectScore) { String(format: "%.2f", $0) })
-                    metricCol(title: "Surprise Mean", value: Self.scoreText(summary.surpriseScoreMean) { String(format: "%d%%", Int($0 * 100)) })
+                    metricCol(title: "Smile Reactivity", value: Self.scoreText(summary.smileReactivityIndex) { String(format: "%.2f", locale: Locale.current, $0) })
+                    metricCol(title: "Mean Smile", value: Self.scoreText(summary.socialSmileIntensityMean) { String(format: "%d%%", locale: Locale.current, Int($0 * 100)) })
+                    metricCol(title: "Flat Affect", value: Self.scoreText(summary.flatAffectScore) { String(format: "%.2f", locale: Locale.current, $0) })
+                    metricCol(title: "Surprise Mean", value: Self.scoreText(summary.surpriseScoreMean) { String(format: "%d%%", locale: Locale.current, Int($0 * 100)) })
                 }
             }
             .glassCard(cornerRadius: 16, padding: 14)
@@ -573,7 +573,7 @@ public struct GazeSessionResultView: View {
                     Text("Recording Quality")
                         .font(.system(size: 13, weight: .bold))
                         .foregroundColor(.primary)
-                    Text(String(format: Localizer.tr("recording_quality_format"), summary.validRatio * 100, summary.qualityVerdict.rawValue.capitalized))
+                    Text(String(format: Localizer.tr("recording_quality_format"), locale: Locale.current, summary.validRatio * 100, summary.qualityVerdict.rawValue.capitalized))
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
@@ -603,7 +603,7 @@ public struct GazeSessionResultView: View {
                 Text(Localizer.tr("recording_quality"))
                     .font(.system(size: 13, weight: .bold))
                     .foregroundColor(.primary)
-                Text(String(format: Localizer.tr("recording_quality_format"), summary.validRatio * 100, summary.qualityVerdict.rawValue.capitalized))
+                Text(String(format: Localizer.tr("recording_quality_format"), locale: Locale.current, summary.validRatio * 100, summary.qualityVerdict.rawValue.capitalized))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             }
@@ -762,7 +762,7 @@ public struct GazeSessionResultView: View {
 
     private static func percentText(_ ratio: Double?) -> String {
         guard let ratio else { return "Not observed" }
-        return String(format: "%.1f%%", ratio * 100)
+        return String(format: "%.1f%%", locale: Locale.current, ratio * 100)
     }
 
     #if DEBUG
@@ -834,7 +834,7 @@ public struct GazeSessionResultView: View {
             careKitCompletionRate: carePlanStore.completionRatio,
             careKitMedicationsLogged: carePlanStore.medications.count,
             careKitDiaryEntriesLogged: carePlanStore.streakDays,
-            notes: "Social preference index: \(Self.scoreText(summary.socialPreferenceScore) { String(format: "%+.2f", $0) }). Usable samples: \(String(format: "%.1f%%", summary.validRatio * 100))."
+            notes: "Social preference index: \(Self.scoreText(summary.socialPreferenceScore) { String(format: "%+.2f", locale: Locale.current, $0) }). Usable samples: \(String(format: "%.1f%%", locale: Locale.current, summary.validRatio * 100))."
         )
 
         let pdfData = DoctorReportGenerator.generatePDFData(input: input)
@@ -864,7 +864,7 @@ public struct GazeSessionResultView: View {
         let dateStr = Date().formatted(date: .abbreviated, time: .shortened)
         let eyeMouthRatioStr: String
         if let eye = summary.eyeDwellRatio, let mouth = summary.mouthDwellRatio, mouth > 0 {
-            eyeMouthRatioStr = String(format: "%.2f", eye / mouth)
+            eyeMouthRatioStr = String(format: "%.2f", locale: Locale.current, eye / mouth)
         } else {
             eyeMouthRatioStr = "Not observed"
         }
@@ -880,28 +880,28 @@ public struct GazeSessionResultView: View {
         Age group: \(profile.ageBracket.developmentalStage) (\(profile.ageBracket.rawValue))
         Date: \(dateStr)
         Session ID: \(summary.sessionId)
-        Duration: \(String(format: "%.1f", summary.durationSec))s (\(summary.validFrames)/\(summary.totalFrames) usable samples)
-        Recording quality: \(summary.qualityVerdict.rawValue.uppercased()) (\(String(format: "%.1f%%", summary.validRatio * 100)) usable)
+        Duration: \(String(format: "%.1f", locale: Locale.current, summary.durationSec))s (\(summary.validFrames)/\(summary.totalFrames) usable samples)
+        Recording quality: \(summary.qualityVerdict.rawValue.uppercased()) (\(String(format: "%.1f%%", locale: Locale.current, summary.validRatio * 100)) usable)
 
         WHERE YOUR CHILD LOOKED:
-        • Social preference index: \(Self.scoreText(summary.socialPreferenceScore) { String(format: "%+.2f", $0) }) (-1.0 shapes to +1.0 people)
-        • Time on people: \(String(format: "%.2f", summary.socialDwellSec))s (\(String(format: "%.1f%%", socialDwellRatio * 100)))
-        • Time on shapes: \(String(format: "%.2f", summary.geometricDwellSec))s (\(String(format: "%.1f%%", geomDwellRatio * 100)))
+        • Social preference index: \(Self.scoreText(summary.socialPreferenceScore) { String(format: "%+.2f", locale: Locale.current, $0) }) (-1.0 shapes to +1.0 people)
+        • Time on people: \(String(format: "%.2f", locale: Locale.current, summary.socialDwellSec))s (\(String(format: "%.1f%%", locale: Locale.current, socialDwellRatio * 100)))
+        • Time on shapes: \(String(format: "%.2f", locale: Locale.current, summary.geometricDwellSec))s (\(String(format: "%.1f%%", locale: Locale.current, geomDwellRatio * 100)))
         • Looking at eyes: \(Self.percentText(summary.eyeDwellRatio))
         • Looking at mouth: \(Self.percentText(summary.mouthDwellRatio))
         • Eye to mouth ratio: \(eyeMouthRatioStr)
-        • First look at eyes: \(summary.firstEyeLatencyMs.map { String(format: "%.0f ms", $0) } ?? "Not observed")
+        • First look at eyes: \(summary.firstEyeLatencyMs.map { String(format: "%.0f ms", locale: Locale.current, $0) } ?? "Not observed")
 
         FACIAL EXPRESSION:
-        • Mean smile: \(Self.scoreText(summary.socialSmileIntensityMean) { String(format: "%.1f%%", $0 * 100) })
-        • Smile reactivity: \(Self.scoreText(summary.smileReactivityIndex) { String(format: "%.2f", $0) })
-        • Neutral expression score: \(Self.scoreText(summary.flatAffectScore) { String(format: "%.2f", $0) })
-        • Mean surprise: \(Self.scoreText(summary.surpriseScoreMean) { String(format: "%.1f%%", $0 * 100) })
+        • Mean smile: \(Self.scoreText(summary.socialSmileIntensityMean) { String(format: "%.1f%%", locale: Locale.current, $0 * 100) })
+        • Smile reactivity: \(Self.scoreText(summary.smileReactivityIndex) { String(format: "%.2f", locale: Locale.current, $0) })
+        • Neutral expression score: \(Self.scoreText(summary.flatAffectScore) { String(format: "%.2f", locale: Locale.current, $0) })
+        • Mean surprise: \(Self.scoreText(summary.surpriseScoreMean) { String(format: "%.1f%%", locale: Locale.current, $0 * 100) })
 
         PRIVACY AND ROUTINE:
         • No video or photos were stored
         • \(mchatLine)
-        • Care routine completion: \(String(format: "%.0f%%", carePlanStore.completionRatio * 100)) (\(carePlanStore.streakDays)-day streak)
+        • Care routine completion: \(String(format: "%.0f%%", locale: Locale.current, carePlanStore.completionRatio * 100)) (\(carePlanStore.streakDays)-day streak)
         • Care plan: \(carePlanStore.tasks.count) active tasks, \(carePlanStore.medications.count) medications logged
 
         ATTACHMENTS:

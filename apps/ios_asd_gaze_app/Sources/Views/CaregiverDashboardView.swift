@@ -36,9 +36,8 @@ public struct CaregiverDashboardView: View {
         let cal = Calendar.current
         let end = Date()
         let start = cal.date(byAdding: .day, value: -6, to: end) ?? end
-        let fmt = DateFormatter()
-        fmt.dateFormat = "d MMM"
-        return "\(fmt.string(from: start))–\(fmt.string(from: end))"
+        let fmt = Date.FormatStyle().day().month(.abbreviated)
+        return "\(start.formatted(fmt))–\(end.formatted(fmt))"
     }
 
     private func refreshLiveData() {
@@ -1062,17 +1061,17 @@ struct ClinicSyncStatusLine: View {
 
     static func text(for summary: SyncStatusSummary, now: Date = Date(), lang: AppLocale? = nil) -> String {
         var parts = [
-            String(format: Localizer.tr("sync_status_waiting", lang: lang), summary.waiting),
-            String(format: Localizer.tr("sync_status_uploading", lang: lang), summary.uploading)
+            String(format: Localizer.tr("sync_status_waiting", lang: lang), locale: Locale.current, summary.waiting),
+            String(format: Localizer.tr("sync_status_uploading", lang: lang), locale: Locale.current, summary.uploading)
         ]
         if summary.needsAttention > 0 {
-            parts.append(String(format: Localizer.tr("sync_status_attention", lang: lang), summary.needsAttention))
+            parts.append(String(format: Localizer.tr("sync_status_attention", lang: lang), locale: Locale.current, summary.needsAttention))
         }
         if let last = summary.lastSyncedAt {
             let formatter = RelativeDateTimeFormatter()
             formatter.dateTimeStyle = .named
             formatter.locale = Locale(identifier: (lang ?? AppLocale.current).rawValue)
-            parts.append(String(format: Localizer.tr("sync_status_last_synced", lang: lang), formatter.localizedString(for: last, relativeTo: now)))
+            parts.append(String(format: Localizer.tr("sync_status_last_synced", lang: lang), locale: Locale.current, formatter.localizedString(for: last, relativeTo: now)))
         } else {
             parts.append(Localizer.tr("sync_status_never", lang: lang))
         }

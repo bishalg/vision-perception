@@ -1,0 +1,190 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "EarlyGaze"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "EarlyGaze"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "EarlyGaze"
+          }
+        }
+      }
+    },
+    "NSCameraUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The front camera measures where your child looks and their facial expressions while short clips play. Processing happens on this device, and photos and video are never saved. If you choose the optional age-range check, it also runs on this device."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "फ्रंट कैमरा यह मापता है कि छोटे क्लिप चलते समय आपका बच्चा कहाँ देखता है और उसके चेहरे के भाव कैसे हैं। प्रोसेसिंग इसी डिवाइस पर होती है, और फ़ोटो या वीडियो कभी सहेजे नहीं जाते। यदि आप वैकल्पिक आयु-सीमा जाँच चुनते हैं, तो वह भी इसी डिवाइस पर चलती है।"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "फ्रन्ट क्यामेराले छोटा क्लिप चलिरहँदा तपाईंको बच्चाले कहाँ हेर्छ र उसको अनुहारका भाव कस्ता छन् भनी मापन गर्छ। प्रशोधन यही यन्त्रमा हुन्छ, र फोटो वा भिडियो कहिल्यै सुरक्षित गरिँदैन। तपाईंले वैकल्पिक उमेर-दायरा जाँच रोज्नुभयो भने, त्यो पनि यही यन्त्रमा चल्छ।"
+          }
+        }
+      }
+    },
+    "NSHealthShareUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mood diary entries can be read from State of Mind in the Health app, so you see one history across apps."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Health ऐप के State of Mind से मूड डायरी प्रविष्टियाँ पढ़ी जा सकती हैं, ताकि आपको सभी ऐप में एक ही इतिहास दिखे।"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Health एपको State of Mind बाट मुड डायरी प्रविष्टिहरू पढ्न सकिन्छ, ताकि तपाईंले सबै एपमा एउटै इतिहास देख्नुहुन्छ।"
+          }
+        }
+      }
+    },
+    "NSHealthUpdateUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When you log a mood in this app, it can save a State of Mind entry to the Health app."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "जब आप इस ऐप में मूड दर्ज करते हैं, तो वह Health ऐप में State of Mind प्रविष्टि के रूप में सहेजा जा सकता है।"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "तपाईंले यस एपमा मुड दर्ता गर्दा, त्यो Health एपमा State of Mind प्रविष्टिका रूपमा सुरक्षित हुन सक्छ।"
+          }
+        }
+      }
+    },
+    "NSMicrophoneUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The microphone is used only while you hold the dictate button for diary notes."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "माइक्रोफ़ोन का उपयोग केवल तब होता है जब आप डायरी नोट के लिए डिक्टेट बटन दबाए रखते हैं।"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "माइक्रोफोन डायरी नोटका लागि डिक्टेट बटन थिचिराख्दा मात्र प्रयोग हुन्छ।"
+          }
+        }
+      }
+    },
+    "NSMotionUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Motion data separates movement of the phone from your child's head movement during an observation."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "मोशन डेटा से अवलोकन के दौरान फ़ोन की हलचल और आपके बच्चे के सिर की हलचल को अलग किया जाता है।"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "मोसन डेटाले अवलोकनका बेला फोनको चाल र तपाईंको बच्चाको टाउकोको चाललाई छुट्याउँछ।"
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can attach a photo to a diary entry. Attached photos stay on this device."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "आप डायरी प्रविष्टि में फ़ोटो जोड़ सकते हैं। जोड़ी गई फ़ोटो इसी डिवाइस पर रहती हैं।"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "तपाईं डायरी प्रविष्टिमा फोटो जोड्न सक्नुहुन्छ। जोडिएका फोटो यही यन्त्रमा रहन्छन्।"
+          }
+        }
+      }
+    },
+    "NSSpeechRecognitionUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Speech recognition lets you dictate diary notes. Audio is processed on this device when possible and is not saved as a recording."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "स्पीच रिकग्निशन से आप डायरी नोट बोलकर लिख सकते हैं। ऑडियो संभव होने पर इसी डिवाइस पर प्रोसेस होता है और रिकॉर्डिंग के रूप में सहेजा नहीं जाता।"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "स्पिच रिकग्निसनले तपाईंलाई डायरी नोट बोलेर लेख्न दिन्छ। सम्भव भएमा अडियो यही यन्त्रमा प्रशोधन हुन्छ र रेकर्डिङका रूपमा सुरक्षित गरिँदैन।"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

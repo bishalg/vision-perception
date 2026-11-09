@@ -175,7 +175,7 @@ public struct GazeTelemetrySession: Identifiable, Sendable, Equatable {
     /// "42%" for a measured ratio, "Not observed" for an absent one (PLC-2).
     static func percent(_ ratio: Double?) -> String {
         guard let ratio else { return "Not observed" }
-        return String(format: "%.0f%%", ratio * 100)
+        return String(format: "%.0f%%", locale: Locale.current, ratio * 100)
     }
 
     public init(from record: GazeSessionRecord) {

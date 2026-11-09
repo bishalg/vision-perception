@@ -237,7 +237,7 @@ public struct GazePositioningStepView: View {
                             .foregroundColor(LiquidGlass.emeraldMint)
                             .transition(.scale.combined(with: .opacity))
                     } else if distanceState == .sweetSpot {
-                        Text(String(format: "%.0f", ceil(max(0, requiredContinuousSec - continuousDetectionSec))))
+                        Text(String(format: "%.0f", locale: Locale.current, ceil(max(0, requiredContinuousSec - continuousDetectionSec))))
                             .font(.system(size: 15, weight: .bold, design: .rounded))
                             .foregroundColor(LiquidGlass.emeraldMint)
                     } else {
@@ -266,7 +266,7 @@ public struct GazePositioningStepView: View {
                     .foregroundColor(.white)
                     .lineLimit(1)
                 Spacer()
-                Text(String(format: "%.0f cm", controller.currentDistanceCm))
+                Text(String(format: "%.0f cm", locale: Locale.current, controller.currentDistanceCm))
                     .font(.system(size: 14, weight: .bold, design: .monospaced))
                     .foregroundColor(isVerified ? LiquidGlass.emeraldMint : distanceState.color)
             }
@@ -319,7 +319,7 @@ public struct GazePositioningStepView: View {
         } else if distanceState != .sweetSpot {
             return "Align Face in Center Oval"
         } else if continuousDetectionSec < requiredContinuousSec {
-            return "Hold Steady (\(String(format: "%.1f", continuousDetectionSec))s / 3.0s)"
+            return "Hold Steady (\(String(format: "%.1f", locale: Locale.current, continuousDetectionSec))s / 3.0s)"
         } else {
             return "Verifying Face Pose (\(Int(ceil(max(0, minPreviewSec - elapsedPreviewSec))))s)"
         }

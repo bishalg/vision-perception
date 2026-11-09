@@ -59,7 +59,7 @@ Build: CMake presets (`release`, `debug`, `asan`, `tsan`, `coverage`), GoogleTes
 | H-3 | Demo build: Release flag-only vs Debug classifier | **Release flag-only** (`DemoRelease` configuration) | WP-A.1 |
 | H-4 | Backend hosting for Phase 1–2: single Docker host (Fly.io/Railway/EC2) vs AWS-native (App Runner + RDS via CDK) | **Docker host for demo**, AWS-native from Phase 3 | WP-B.1, WP-B.7 |
 | H-5 | Admin auth provider: self-hosted (FastAPI + Argon2 + JWT) vs AWS Cognito vs Clerk | **Self-hosted for Phase 1**, Cognito when moving to AWS (BAA-eligible) | WP-B.3 |
-| H-6 | Organisation Apple Developer account, bundle id, real publisher domain (replaces `curv.engineering` placeholder) | Pending org setup | WP-E.2 |
+| H-6 | Organisation Apple Developer account and real publisher domain (replaces `curv.engineering` placeholder). Bundle id closed 2026-11-09: the app already exists in App Store Connect as "Eye Gaze", app id 6828468388, bundle id `com.open-spectrum.eye-gaze` (repo default); owner: keep the identity, change metadata only | Account/domain pending; publisher legal name still needed for the privacy policy | WP-E.2 |
 | H-7 | M-CHAT-R/F licence request to instrument owners | Keep compiled out | WP-E.4 |
 | H-8 | Stimulus clips: license existing, commission, or generate own | Commission/generate 8–10 clips (Default) | WP-D.1 |
 | H-9 | Product name (EarlyGaze Observation Diary is a placeholder) | Keep until store submission (Default) | WP-E.1 |

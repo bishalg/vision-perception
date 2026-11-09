@@ -287,7 +287,7 @@ public final class ResearchKitStudyStore: @unchecked Sendable {
         encoder.outputFormatting = [.sortedKeys]
         if let encodedData = try? encoder.encode(package) {
             let digest = SHA256.hash(data: encodedData)
-            package.payloadSha256 = digest.compactMap { String(format: "%02x", $0) }.joined()
+            package.payloadSha256 = digest.compactMap { String(format: "%02x", locale: FormatLocale.posix, $0) }.joined()
         }
 
         guard let finalData = try? encoder.encode(package),
@@ -321,7 +321,7 @@ public final class ResearchKitStudyStore: @unchecked Sendable {
         encoder.outputFormatting = [.sortedKeys]
         if let encodedData = try? encoder.encode(package) {
             let digest = SHA256.hash(data: encodedData)
-            package.payloadSha256 = digest.compactMap { String(format: "%02x", $0) }.joined()
+            package.payloadSha256 = digest.compactMap { String(format: "%02x", locale: FormatLocale.posix, $0) }.joined()
         }
 
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

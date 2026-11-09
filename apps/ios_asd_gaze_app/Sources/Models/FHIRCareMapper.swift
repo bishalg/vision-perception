@@ -205,7 +205,7 @@ public enum FHIRCareMapper {
               let hour = Int(parts[0]), let minute = Int(parts[1]),
               (0...23).contains(hour), (0...59).contains(minute)
         else { return nil }
-        return String(format: "%02d:%02d:00", hour, minute)
+        return String(format: "%02d:%02d:00", locale: FormatLocale.posix, hour, minute)
     }
 
     /// Stable FHIR id `<prefix>-<model id>` restricted to `[A-Za-z0-9-.]{1,64}`.
@@ -221,7 +221,7 @@ public enum FHIRCareMapper {
             return candidate
         }
         let digest = SHA256.hash(data: Data(modelId.utf8))
-        let hex = digest.map { String(format: "%02x", $0) }.joined()
+        let hex = digest.map { String(format: "%02x", locale: FormatLocale.posix, $0) }.joined()
         return "\(prefix)-\(hex.prefix(64 - prefix.count - 1))"
     }
 }

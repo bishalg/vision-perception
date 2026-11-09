@@ -22,6 +22,15 @@
 	<string>https://open-spectrum-tracking.vercel.app/privacy/earlygaze</string>
 	<key>ASDSupportURL</key>
 	<string>https://open-spectrum-tracking.vercel.app/support/earlygaze</string>
+	<!-- WP-LN.1: declared localisations (i18n-readiness I-2); hi and ne are machine drafts until H-10. -->
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>hi</string>
+		<string>ne</string>
+	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>

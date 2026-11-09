@@ -312,7 +312,7 @@ public struct GazeStimulusScreeningView: View {
                 Image(systemName: "stopwatch.fill")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundColor(LiquidGlass.emeraldMint)
-                Text(String(format: "%02d:%02d",
+                Text(String(format: "%02d:%02d", locale: Locale.current,
                             Int(elapsedSeconds) / 60,
                             Int(elapsedSeconds) % 60))
                     .font(.system(size: 12, weight: .bold, design: .monospaced))

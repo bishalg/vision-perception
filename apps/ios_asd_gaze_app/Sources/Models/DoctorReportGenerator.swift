@@ -338,7 +338,7 @@ public enum DoctorReportGenerator {
                 if row.biomarker.contains("latency") {
                     observed = "\(Int(row.observed)) ms"
                 } else if row.biomarker == "fixation_count" {
-                    observed = String(format: "%.0f", row.observed)
+                    observed = String(format: "%.0f", locale: Locale.current, row.observed)
                 } else {
                     observed = "\(Int(row.observed * 100))%"
                 }

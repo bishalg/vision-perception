@@ -104,7 +104,7 @@ public struct EngagementRiskStratificationDetailSection: View {
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text(String(format: "%.1f%%", result.riskScore * 100))
+                    Text(String(format: "%.1f%%", locale: Locale.current, result.riskScore * 100))
                         .font(.system(size: 20, weight: .bold, design: .monospaced))
                         .foregroundColor(.primary)
                     Text("Index")
@@ -116,13 +116,13 @@ public struct EngagementRiskStratificationDetailSection: View {
             HStack(spacing: 8) {
                 summaryTile(
                     title: "Model certainty",
-                    value: String(format: "%.0f%%", result.confidence * 100),
+                    value: String(format: "%.0f%%", locale: Locale.current, result.confidence * 100),
                     subtitle: "Experimental",
                     color: LiquidGlass.celestialTeal
                 )
                 summaryTile(
                     title: "Inference",
-                    value: String(format: "%.1fms", result.inferenceLatencyMs),
+                    value: String(format: "%.1fms", locale: Locale.current, result.inferenceLatencyMs),
                     subtitle: "Latency",
                     color: LiquidGlass.emeraldMint
                 )
@@ -184,7 +184,7 @@ public struct EngagementRiskStratificationDetailSection: View {
             riskMatrixCellRow(
                 icon: "eyes.inverse",
                 title: "Eye-Region Fixation Allocation",
-                observed: hasEye ? String(format: "%.1f%% Eye", eyeDwellPct) : "Not observed",
+                observed: hasEye ? String(format: "%.1f%% Eye", locale: Locale.current, eyeDwellPct) : "Not observed",
                 target: "≥ 25.0%",
                 weight: "24% Weight",
                 status: eyeStatus,
@@ -203,7 +203,7 @@ public struct EngagementRiskStratificationDetailSection: View {
             riskMatrixCellRow(
                 icon: "bolt.stop.fill",
                 title: "First Saccade Latency to Face",
-                observed: hasLatency ? String(format: "%.0f ms", latency) : "Not observed",
+                observed: hasLatency ? String(format: "%.0f ms", locale: Locale.current, latency) : "Not observed",
                 target: "< 550 ms",
                 weight: "14% Weight",
                 status: latencyStatus,
@@ -238,7 +238,7 @@ public struct EngagementRiskStratificationDetailSection: View {
             riskMatrixCellRow(
                 icon: "shield.checkered",
                 title: "Sensor Telemetry & Tracking Integrity",
-                observed: String(format: "%.1f%% Valid", validPct),
+                observed: String(format: "%.1f%% Valid", locale: Locale.current, validPct),
                 target: "≥ 75.0%",
                 weight: "8% Weight",
                 status: validStatus,

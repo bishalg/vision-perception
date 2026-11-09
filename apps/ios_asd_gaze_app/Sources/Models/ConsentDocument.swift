@@ -65,7 +65,7 @@ public struct ConsentDocument: Equatable, Sendable {
 
     /// Lower-case hex SHA-256 of `fullText` (UTF-8).
     public var sha256Hex: String {
-        SHA256.hash(data: Data(fullText.utf8)).map { String(format: "%02x", $0) }.joined()
+        SHA256.hash(data: Data(fullText.utf8)).map { String(format: "%02x", locale: FormatLocale.posix, $0) }.joined()
     }
 
     /// The single sentence about interpretation (S-13). Shared with the pre-session screen.

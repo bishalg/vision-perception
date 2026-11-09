@@ -79,7 +79,7 @@ public enum CareClockTime {
     }
 
     public static func format(hour: Int, minute: Int) -> String {
-        String(format: "%02d:%02d", hour, minute)
+        String(format: "%02d:%02d", locale: FormatLocale.posix, hour, minute)
     }
 
     /// Next fire `Date` for a daily clock time, skipping today when `skipToday`.

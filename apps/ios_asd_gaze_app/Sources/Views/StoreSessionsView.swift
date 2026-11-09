@@ -107,7 +107,7 @@ private struct StoreSessionRow: View {
 
     private var durationText: String {
         let total = max(0, Int(record.durationSec.rounded()))
-        return String(format: "%d:%02d", total / 60, total % 60)
+        return String(format: "%d:%02d", locale: Locale.current, total / 60, total % 60)
     }
 
     private var clipsText: String {

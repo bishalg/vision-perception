@@ -437,7 +437,7 @@ public struct GazeReplayHeatmapFullScreenView: View {
 
             // Timeline Scrubber Slider
             HStack(spacing: 12) {
-                Text(String(format: "%02d:%02d", Int(currentTimeSec) / 60, Int(currentTimeSec) % 60))
+                Text(String(format: "%02d:%02d", locale: Locale.current, Int(currentTimeSec) / 60, Int(currentTimeSec) % 60))
                     .font(.system(size: 12, weight: .bold, design: .monospaced))
                     .foregroundColor(.white)
 
@@ -452,7 +452,7 @@ public struct GazeReplayHeatmapFullScreenView: View {
                 )
                 .tint(LiquidGlass.emeraldMint)
 
-                Text(String(format: "%02d:%02d", Int(totalDurationSec) / 60, Int(totalDurationSec) % 60))
+                Text(String(format: "%02d:%02d", locale: Locale.current, Int(totalDurationSec) / 60, Int(totalDurationSec) % 60))
                     .font(.system(size: 12, weight: .bold, design: .monospaced))
                     .foregroundColor(Color.white.opacity(0.65))
             }
@@ -505,7 +505,7 @@ public struct GazeReplayHeatmapFullScreenView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "speedometer")
                             .font(.system(size: 11))
-                        Text(String(format: "%.1fx", playbackSpeed))
+                        Text(String(format: "%.1fx", locale: Locale.current, playbackSpeed))
                             .font(.system(size: 12, weight: .bold, design: .monospaced))
                     }
                     .foregroundColor(.white)
@@ -516,7 +516,7 @@ public struct GazeReplayHeatmapFullScreenView: View {
                 }
 
                 // Frame info badge
-                Text(String(format: "%d / %d", min(currentFrameIndex + 1, frames.count), frames.count))
+                Text(String(format: "%d / %d", locale: Locale.current, min(currentFrameIndex + 1, frames.count), frames.count))
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
                     .foregroundColor(.white.opacity(0.6))
             }

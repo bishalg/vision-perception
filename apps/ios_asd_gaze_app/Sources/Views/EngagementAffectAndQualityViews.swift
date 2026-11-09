@@ -64,7 +64,7 @@ public struct EngagementFacialAffectDetailSection: View {
                     )
                     summaryMetricTile(
                         title: "Reactivity",
-                        value: String(format: "%.2f", scores.smileReactivityIndex),
+                        value: String(format: "%.2f", locale: Locale.current, scores.smileReactivityIndex),
                         subtitle: "Matches clips",
                         color: LiquidGlass.celestialTeal
                     )
@@ -110,7 +110,7 @@ public struct EngagementFacialAffectDetailSection: View {
                 biomarkerDetailMatrixRow(
                     icon: "waveform.path.badge.plus",
                     title: "Smile Reactivity",
-                    observed: String(format: "%.2f Index", scores.smileReactivityIndex),
+                    observed: String(format: "%.2f Index", locale: Locale.current, scores.smileReactivityIndex),
                     target: "≥ 0.30",
                     weight: "Timing",
                     status: scores.smileReactivityIndex >= 0.30 ? "Responsive" : "Less responsive",
@@ -133,7 +133,7 @@ public struct EngagementFacialAffectDetailSection: View {
                 biomarkerDetailMatrixRow(
                     icon: "face.dashed.fill",
                     title: "Neutral Expression",
-                    observed: String(format: "%.2f Score", scores.flatAffectScore),
+                    observed: String(format: "%.2f Score", locale: Locale.current, scores.flatAffectScore),
                     target: "≤ 0.25 (Low Baseline)",
                     weight: "Expression Range",
                     status: scores.flatAffectScore <= 0.25 ? "Expressive" : "More neutral",
@@ -198,7 +198,7 @@ public struct EngagementDataQualityDetailSection: View {
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text(String(format: "%.1f%%", validPct))
+                        Text(String(format: "%.1f%%", locale: Locale.current, validPct))
                             .font(.system(size: 20, weight: .bold, design: .monospaced))
                             .foregroundColor(.primary)
                         Text("Usable")
@@ -216,14 +216,14 @@ public struct EngagementDataQualityDetailSection: View {
                     )
                     summaryMetricTile(
                         title: "Duration",
-                        value: String(format: "%.1fs", summary.durationSec),
+                        value: String(format: "%.1fs", locale: Locale.current, summary.durationSec),
                         subtitle: "Continuous",
                         color: LiquidGlass.celestialTeal
                     )
                     summaryMetricTile(
                         title: "Interruptions",
                         value: "\(summary.interruptionCount)",
-                        subtitle: String(format: "%.1fs paused", summary.interruptedSec),
+                        subtitle: String(format: "%.1fs paused", locale: Locale.current, summary.interruptedSec),
                         color: Color.blue
                     )
                 }
@@ -251,7 +251,7 @@ public struct EngagementDataQualityDetailSection: View {
                 biomarkerDetailMatrixRow(
                     icon: "wave.3.forward.circle.fill",
                     title: "Usable Gaze Samples",
-                    observed: String(format: "%.1f%% (%d frames)", validPct, summary.validFrames),
+                    observed: String(format: "%.1f%% (%d frames)", locale: Locale.current, validPct, summary.validFrames),
                     target: "≥ 75.0%",
                     weight: "Baseline",
                     status: isQualityNormal ? "Good" : "Lower",

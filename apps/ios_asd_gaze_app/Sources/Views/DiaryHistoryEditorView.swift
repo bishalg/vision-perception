@@ -134,9 +134,7 @@ struct DiaryHistoryEditorView: View {
     }
 
     private func shortDay(_ date: Date) -> String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "d MMM"
-        return fmt.string(from: date)
+        return date.formatted(.dateTime.day().month(.abbreviated))
     }
 
     private func save() {

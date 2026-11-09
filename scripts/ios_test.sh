@@ -135,6 +135,12 @@ run "$ASD_TARGET/debug/asd-cli" i18n lint \
   --kotlin apps/android_asd_gaze_spike \
   --baseline scripts/i18n/literal-baseline.txt
 
+# WP-LN.1: every key of the app catalogues has en, hi and ne values (non-zero exit on a missing one).
+run "$ASD_TARGET/debug/asd-cli" i18n check \
+  --app-xcstrings "$APP_DIR/Resources/Localizable.xcstrings"
+run "$ASD_TARGET/debug/asd-cli" i18n check \
+  --app-xcstrings "$APP_DIR/Resources/InfoPlist.xcstrings"
+
 step "Static gate: privacy API use"
 run bash scripts/check_privacy_api_use.sh
 
