@@ -205,6 +205,8 @@ export const analysisRunRequestSchema = z.object({
   experiment_id: z.string(),
   cohort_id: str,
   cohort: cohortDefinitionSchema.nullable().optional(),
+  /** WP-X.11: run on a frozen dataset's members instead of a cohort (exactly one of the three). */
+  dataset_id: str,
   sweep: sweepSpecSchema.nullable().optional(),
   level: z.enum(LEVEL_REQUESTS).optional(),
   seed: z.number().int().nullable().optional(),
@@ -221,6 +223,8 @@ export const analysisDefinitionSchema = z.object({
   level: z.enum(LEVEL_REQUESTS),
   options: runOptionsSchema,
   seed: storedSeedSchema,
+  /** WP-X.11: the dataset whose frozen members the run read. */
+  dataset: z.object({ id: z.string(), content_hash: z.string() }).nullable().optional(),
 });
 
 /** RUN-4 distribution. `suppressed: true` means every number is `null` (show "n < k", never 0). */
@@ -303,6 +307,9 @@ export const analysisRunSchema = z.object({
   status: runStatusSchema,
   experiment_id: str,
   cohort_id: str,
+  /** WP-X.11 provenance: the dataset and its content hash at enqueue time. */
+  dataset_id: str,
+  dataset_hash: str,
   definition: analysisDefinitionSchema,
   // RUN-5 provenance: every field is shown, copyable, on the run page.
   definition_hash: z.string(),
@@ -367,6 +374,138 @@ export const analysisSessionPageSchema = z.object({
 });
 export type AnalysisSessionPage = z.infer<typeof analysisSessionPageSchema>;
 
+// ---- datasets (WP-X.11, ADR-0015 R-7..R-9) ----------------------------------------------------------------------
+
+export const DATASET_STATUSES = ["frozen", "archived"] as const;
+export const SPLIT_NAMES = ["train", "validation", "holdout"] as const;
+export const LABEL_SOURCE_KINDS = ["review_outcomes", "import"] as const;
+export const EXCLUSION_RULE_KINDS = ["quality_gates", "tukey", "mad_z", "explicit_list"] as const;
+export const COLUMN_TYPES = ["string", "integer", "number", "datetime"] as const;
+export type SplitName = (typeof SPLIT_NAMES)[number];
+
+const explicitExclusionSchema = z.object({ session_id: z.string(), reason: z.string() });
+
+/** An exclusion rule (ADR-0015 V-5 kinds). The backend applies `quality_gates` and `explicit_list` today. */
+export const exclusionRuleSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("quality_gates"),
+    id: z.string(),
+    min_valid_ratio: optNum,
+    exclude_quality_verdicts: z.array(z.string()).optional(),
+    exclude_tracking_verdicts: z.array(z.string()).optional(),
+    min_clips_completed: optCount,
+  }),
+  z.object({ kind: z.literal("tukey"), id: z.string(), metric: z.string(), k: z.number().optional() }),
+  z.object({ kind: z.literal("mad_z"), id: z.string(), metric: z.string(), z: z.number().optional() }),
+  z.object({ kind: z.literal("explicit_list"), id: z.string(), sessions: z.array(explicitExclusionSchema) }),
+]);
+export type ExclusionRule = z.infer<typeof exclusionRuleSchema>;
+
+export const exclusionSchema = z.object({ session_id: z.string(), rule_id: str, reason: z.string() });
+export type Exclusion = z.infer<typeof exclusionSchema>;
+
+export const labelSourceSchema = z.object({ kind: z.enum(LABEL_SOURCE_KINDS), taken_at: z.string(), count });
+export const labelSchema = z.object({
+  value: z.string(),
+  source: z.enum(LABEL_SOURCE_KINDS),
+  taken_at: z.string(),
+  reviewer_pseudonym: str,
+});
+export type Label = z.infer<typeof labelSchema>;
+
+export const splitFractionsSchema = z.object({ train: z.number(), validation: z.number(), holdout: z.number() });
+export type SplitFractions = z.infer<typeof splitFractionsSchema>;
+export const splitSchema = z.object({ seed: storedSeedSchema, fractions: splitFractionsSchema, strata: z.literal("age_band").optional() });
+export type Split = z.infer<typeof splitSchema>;
+export const splitRequestSchema = z.object({
+  seed: z.number().int().nullable().optional(),
+  fractions: splitFractionsSchema.optional(),
+  strata: z.literal("age_band").optional(),
+});
+export const splitStratumCountSchema = z.object({ stratum: z.string(), train: count, validation: count, holdout: count });
+export type SplitStratumCount = z.infer<typeof splitStratumCountSchema>;
+
+export const lineageSchema = z.object({
+  cohort_id: str,
+  cohort_hash: z.string(),
+  parent_dataset_id: str,
+  run_id: str,
+  profile_hash: z.string(),
+  profile_version: z.string(),
+  catalog_version: z.string(),
+  baselines_version: z.string(),
+  code_version: z.string(),
+});
+export type Lineage = z.infer<typeof lineageSchema>;
+
+/** A data dictionary column; `description_key` is a domain catalogue key (`dataset_column.<name>`). */
+export const columnSchema = z.object({
+  name: z.string(),
+  type: z.enum(COLUMN_TYPES),
+  unit: unitSchema.nullable().optional(),
+  description_key: z.string(),
+});
+export type Column = z.infer<typeof columnSchema>;
+
+/** A frozen dataset (R-7): immutable; `content_hash` is its identity; erasure only raises `erased_count` (R-9). */
+export const datasetSchema = z.object({
+  id: z.string(),
+  org_id: z.string(),
+  name: z.string(),
+  description: str,
+  status: z.enum(DATASET_STATUSES),
+  cohort_id: str,
+  frozen_at: z.string(),
+  content_hash: z.string(),
+  member_count: count,
+  erased_count: count.optional(),
+  exclusion_rules: z.array(exclusionRuleSchema),
+  exclusions: z.array(exclusionSchema),
+  label_source: labelSourceSchema.nullable().optional(),
+  split: splitSchema.nullable().optional(),
+  split_counts: z.array(splitStratumCountSchema).optional(),
+  lineage: lineageSchema,
+  data_dictionary: z.array(columnSchema),
+  created_by: str,
+  created_at: z.string(),
+  archived_at: str,
+});
+export type Dataset = z.infer<typeof datasetSchema>;
+
+export const datasetPageSchema = z.object({ items: z.array(datasetSchema), next_cursor: z.string().nullable().optional() });
+export type DatasetPage = z.infer<typeof datasetPageSchema>;
+
+/** One member; an erased one keeps only `session_id` and `excluded: "erased"`. */
+export const datasetMemberSchema = z.object({
+  session_id: z.string(),
+  participant_pseudonym: str,
+  age_months: z.number().int().nullable().optional(),
+  age_band: str,
+  split: z.enum(SPLIT_NAMES).nullable().optional(),
+  label: labelSchema.nullable().optional(),
+  excluded: str,
+});
+export type DatasetMember = z.infer<typeof datasetMemberSchema>;
+
+export const datasetMemberPageSchema = z.object({ items: z.array(datasetMemberSchema), next_cursor: z.string().nullable().optional() });
+export type DatasetMemberPage = z.infer<typeof datasetMemberPageSchema>;
+
+export const createDatasetRequestSchema = z.object({
+  name: z.string(),
+  description: str,
+  cohort_id: z.string(),
+  parent_dataset_id: str,
+  run_id: str,
+  exclusion_rules: z.array(exclusionRuleSchema).optional(),
+  labels: z.enum(LABEL_SOURCE_KINDS).nullable().optional(),
+  split: splitRequestSchema.nullable().optional(),
+});
+export type CreateDatasetRequest = z.infer<typeof createDatasetRequestSchema>;
+
+export interface DatasetMemberQuery extends ResearchListQuery {
+  split?: SplitName;
+}
+
 // ---- effective configuration (GOV-6) ------------------------------------------------------------------------------
 
 const effectiveDocumentSchema = z.object({ version: z.string(), body: z.unknown() });
@@ -421,6 +560,15 @@ export interface ResearchApi {
   rerunAnalysisRun(runId: string): Promise<AnalysisRun>;
   /** `GET /v1/orgs/{id}/config/effective` (`ConfigRead`, GOV-6). */
   getEffectiveConfig(orgId: string): Promise<EffectiveConfig>;
+  /** WP-X.11 `GET /v1/research/datasets` (`AnalysisRead`): the caller's org, newest first. */
+  listDatasets(orgId: string, query?: ResearchListQuery): Promise<DatasetPage>;
+  /** `POST /v1/research/datasets` (`ExperimentWrite`) → `201`; `400 cohort-empty | cohort-too-large`, `409 conflict`. */
+  createDataset(orgId: string, request: CreateDatasetRequest): Promise<Dataset>;
+  getDataset(datasetId: string): Promise<Dataset>;
+  /** `GET /v1/research/datasets/{id}/members` (`AnalysisRead` + `SessionRead`); audited once per page. */
+  listDatasetMembers(datasetId: string, query?: DatasetMemberQuery): Promise<DatasetMemberPage>;
+  /** `POST /v1/research/datasets/{id}/archive`; `409 invalid-transition` when already archived. */
+  archiveDataset(datasetId: string): Promise<Dataset>;
   /**
    * RFL-4 `GET /v1/sessions/{id}/research-frames` (`FramesRead`): the research frame log as JSON Lines text, never
    * parsed here (the Rust core reprocesses it). Audited `session.frames_read` per call; `404 frames-unavailable`,
@@ -467,5 +615,12 @@ export function createLiveResearch(
     cancelAnalysisRun: (id) => request(`/analysis-runs/${enc(id)}/cancel`, analysisRunSchema, { method: "POST", body: {} }),
     rerunAnalysisRun: (id) => request(`/analysis-runs/${enc(id)}/rerun`, analysisRunSchema, { method: "POST", body: {} }),
     getEffectiveConfig: (orgId) => request(`/orgs/${enc(orgId)}/config/effective`, effectiveConfigSchema),
+    // The org is the caller's (the token's); `orgId` keeps the interface uniform and is not sent.
+    listDatasets: (_orgId, q) => request(`/research/datasets${buildQuery(q ?? {})}`, datasetPageSchema),
+    createDataset: (_orgId, body) => request(`/research/datasets`, datasetSchema, { method: "POST", body }),
+    getDataset: (id) => request(`/research/datasets/${enc(id)}`, datasetSchema),
+    listDatasetMembers: (id, q) =>
+      request(`/research/datasets/${enc(id)}/members${buildQuery(q ?? {})}`, datasetMemberPageSchema),
+    archiveDataset: (id) => request(`/research/datasets/${enc(id)}/archive`, datasetSchema, { method: "POST", body: {} }),
   };
 }

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE dataset_members\n         SET erased_at = now(), participant_pseudonym = NULL, age_months = NULL,\n             age_band = NULL, split = NULL, label = NULL\n         WHERE session_id = ANY($1) AND erased_at IS NULL\n         RETURNING dataset_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "dataset_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "dataset_members",
+            "name": "dataset_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f367cb9e0c3c211e800fbff7f953f046984d5dcebe2da08559c3f9aa907ceb4f"
+}

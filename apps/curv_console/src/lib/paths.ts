@@ -50,6 +50,13 @@ export function orgPaths(base: string) {
       runs: `${research}/runs`,
       run: (id: string) => `${research}/runs/${enc(id)}`,
       runSessions: (id: string) => `${research}/runs/${enc(id)}/sessions`,
+      /** WP-X.11: frozen datasets. */
+      datasets: `${research}/datasets`,
+      newDataset: `${research}/datasets/new`,
+      dataset: (id: string) => `${research}/datasets/${enc(id)}`,
+      /** The workbench with the run dialog open on a dataset (WP-X.11 "Start run from this dataset"). */
+      experimentRunOnDataset: (experimentId: string, datasetId: string) =>
+        `${research}/experiments/${enc(experimentId)}?dataset=${enc(datasetId)}`,
     },
     config: {
       root: config,
@@ -67,6 +74,8 @@ export function orgPaths(base: string) {
       root: data,
       exports: `${data}/exports`,
       export: (id: string) => `${data}/exports/${enc(id)}`,
+      /** The export form pre-filled for a dataset (WP-X.11; the dataset package format arrives with WP-X.15). */
+      exportDataset: (datasetId: string) => `${data}/exports?format=dataset&dataset=${enc(datasetId)}`,
       erasure: `${data}/erasure`,
       retention: `${data}/retention`,
       audit: `${data}/audit`,

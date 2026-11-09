@@ -14,6 +14,25 @@ import { EXPORT_FORMATS, analysisExportSchema, isDedicatedFormat } from "./expor
 import { createMockClient, MOCK_ORG_ID } from "./mock";
 import { MOCK_RESEARCH_IDS } from "./mock/research";
 import {
+  COLUMN_TYPES,
+  DATASET_STATUSES,
+  EXCLUSION_RULE_KINDS,
+  LABEL_SOURCE_KINDS,
+  SPLIT_NAMES,
+  columnSchema,
+  createDatasetRequestSchema,
+  datasetMemberPageSchema,
+  datasetMemberSchema,
+  datasetPageSchema,
+  datasetSchema,
+  exclusionRuleSchema,
+  exclusionSchema,
+  labelSchema,
+  labelSourceSchema,
+  lineageSchema,
+  splitFractionsSchema,
+  splitSchema,
+  splitStratumCountSchema,
   EXPERIMENT_STATUSES,
   LEVEL_REQUESTS,
   LEVELS,
@@ -90,6 +109,20 @@ const SCHEMAS: Record<string, Shaped> = {
   EffectiveConfig: effectiveConfigSchema,
   ResearchFramesState: researchFramesStateSchema,
   AnalysisExport: analysisExportSchema,
+  // WP-X.11 datasets.
+  Dataset: datasetSchema,
+  DatasetPage: datasetPageSchema,
+  DatasetMember: datasetMemberSchema,
+  DatasetMemberPage: datasetMemberPageSchema,
+  CreateDatasetRequest: createDatasetRequestSchema,
+  Exclusion: exclusionSchema,
+  Label: labelSchema,
+  LabelSource: labelSourceSchema,
+  Lineage: lineageSchema,
+  Column: columnSchema,
+  Split: splitSchema,
+  SplitFractions: splitFractionsSchema,
+  SplitStratumCount: splitStratumCountSchema,
 } as never;
 
 /** Required members typed as arbitrary JSON (`z.unknown()` accepts `undefined`, so zod reports them optional). */
@@ -121,6 +154,14 @@ describe("api-v1.json contract: researcher toolkit (WP-X.0)", () => {
     expect([...LEVELS]).toEqual(values(defs.Level));
     expect([...SEXES]).toEqual(values(defs.Sex));
     expect([...EXPORT_FORMATS]).toEqual(values(defs.ExportFormat));
+    expect([...DATASET_STATUSES]).toEqual(values(defs.DatasetStatus));
+    expect([...SPLIT_NAMES]).toEqual(values(defs.SplitName));
+    expect([...LABEL_SOURCE_KINDS]).toEqual(values(defs.LabelSourceKind));
+    expect([...EXCLUSION_RULE_KINDS]).toEqual(values(defs.ExclusionRuleKind));
+    expect([...COLUMN_TYPES]).toEqual(values(defs.ColumnType));
+    // The rule union: one variant per kind, each with the kind's tag.
+    const variants = (defs.ExclusionRule as unknown as { oneOf: { properties: { kind: { const: string } } }[] }).oneOf;
+    expect(variants.map((v) => v.properties.kind.const)).toEqual([...EXCLUSION_RULE_KINDS]);
     expect(isDedicatedFormat("analysis_results")).toBe(true);
     expect(isRunFinished("running")).toBe(false);
     expect(isRunFinished("cancelled")).toBe(true);
@@ -189,5 +230,25 @@ describe("api-v1.json contract: researcher toolkit (WP-X.0)", () => {
     const cancelled = await api.cancelAnalysisRun(MOCK_RESEARCH_IDS.runRunning);
     expect(cancelled.status).toBe("cancelled");
     await expect(api.cancelAnalysisRun(MOCK_RESEARCH_IDS.runRunning)).rejects.toMatchObject({ status: 409 });
+  });
+});
+
+describe("WP-X.11 dataset mock seeds", () => {
+  it("parse against the zod schemas, carry labels and a split, and start a run from the dataset", async () => {
+    const api = createMockClient();
+    const list = datasetPageSchema.parse(await api.listDatasets(MOCK_ORG_ID));
+    const seeded = list.items.find((d) => d.id === MOCK_RESEARCH_IDS.datasetToddlers)!;
+    expect(seeded.content_hash).toMatch(/^[0-9a-f]{64}$/);
+    for (const r of seeded.exclusion_rules) exclusionRuleSchema.parse(r);
+    expect(seeded.split?.seed).toBe(42);
+    expect(seeded.label_source?.kind).toBe("review_outcomes");
+    const members = datasetMemberPageSchema.parse(await api.listDatasetMembers(seeded.id, { limit: 500 }));
+    expect(members.items).toHaveLength(seeded.member_count);
+    const run = await api.createAnalysisRun(MOCK_ORG_ID, {
+      kind: "cohort_rescore", experiment_id: MOCK_RESEARCH_IDS.experimentDraft, dataset_id: seeded.id, level: "auto",
+    });
+    expect(run.dataset_id).toBe(seeded.id);
+    expect(run.dataset_hash).toBe(seeded.content_hash);
+    expect(run.definition.dataset?.content_hash).toBe(seeded.content_hash);
   });
 });

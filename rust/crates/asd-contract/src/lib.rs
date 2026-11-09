@@ -13,6 +13,7 @@ pub mod catalog_checks; // WP-C.4
 pub mod claims; // WP-L.0 (I18N-3 rule 7)
 pub mod clinical;
 pub mod config;
+pub mod datasets; // WP-X.11 (ADR-0015 R-7..R-9)
 pub mod emr; // WP-R.7
 pub mod export;
 pub mod i18n; // WP-L.0 (I18N-1..5, I18N-11, I18N-12)

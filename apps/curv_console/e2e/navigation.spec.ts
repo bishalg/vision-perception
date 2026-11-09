@@ -37,7 +37,7 @@ test("researcher: the Research sidebar, no Administration", async ({ page }) => 
   await expect(mainNav(page).getByRole("link")).toHaveText(["Clinic", "Research", "Configuration", "Data"]);
   await mainNav(page).getByRole("link", { name: "Research", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`${paths(MOCK_ORG_ID).research.root}$`));
-  await expect(sideNav(page, "Research").getByRole("link")).toHaveText(["Experiments", "Cohorts", "Analysis runs"]);
+  await expect(sideNav(page, "Research").getByRole("link")).toHaveText(["Experiments", "Cohorts", "Datasets", "Analysis runs"]);
   await sideNav(page, "Research").getByRole("link", { name: "Analysis runs" }).click();
   await expect(page).toHaveURL(new RegExp(`${paths(MOCK_ORG_ID).research.runs}$`));
   await expect(sideNav(page, "Research").getByRole("link", { name: "Analysis runs" })).toHaveAttribute("aria-current", "page");

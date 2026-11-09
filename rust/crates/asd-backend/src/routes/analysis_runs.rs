@@ -4,7 +4,9 @@
 //! RUN-6, RUN-8, RUN-9, SWP-2, GOV-4):
 //!
 //! - `POST /v1/orgs/{id}/analysis-runs` (`AnalysisRun`): validates the request (the
-//!   experiment profile against the parameter registry, PRM-3; the cohort; the options),
+//!   experiment profile against the parameter registry, PRM-3; the cohort, or from WP-X.11 a
+//!   frozen dataset of the org whose members are the membership, recorded as `dataset_id` and
+//!   `dataset_hash`; the options),
 //!   resolves the membership once to check the budget (`400 cohort-empty`,
 //!   `cohort-too-large`, `sweep-too-large`, `analysis-level-unavailable`), checks the org's
 //!   queue (`429 analysis-quota-exceeded`), snapshots the definition and every RUN-5 version,
@@ -172,6 +174,8 @@ struct RunRow {
     status: String,
     experiment_id: Option<Uuid>,
     cohort_id: Option<Uuid>,
+    dataset_id: Option<Uuid>,
+    dataset_hash: Option<Vec<u8>>,
     definition: Value,
     definition_hash: Vec<u8>,
     cohort_hash: Vec<u8>,
@@ -220,6 +224,8 @@ impl RunRow {
             status: decode("run status", Value::from(self.status.as_str()))?,
             experiment_id: self.experiment_id.map(|u| u.to_string()),
             cohort_id: self.cohort_id.map(|u| u.to_string()),
+            dataset_id: self.dataset_id.map(|u| u.to_string()),
+            dataset_hash: self.dataset_hash.as_deref().map(hex),
             definition: decode("run definition", self.definition.clone())?,
             definition_hash: hex(&self.definition_hash),
             cohort_hash: hex(&self.cohort_hash),
@@ -265,7 +271,8 @@ impl RunRow {
 async fn load_run(conn: &mut PgConnection, id: Uuid) -> RResult<RunRow> {
     sqlx::query_as!(
         RunRow,
-        r#"SELECT r.id, r.org_id, r.kind, r.status, r.experiment_id, r.cohort_id, r.definition,
+        r#"SELECT r.id, r.org_id, r.kind, r.status, r.experiment_id, r.cohort_id, r.dataset_id,
+                  r.dataset_hash, r.definition,
                   r.definition_hash, r.cohort_hash, r.membership_hash, r.profile_hash,
                   r.published_profile_version, r.baselines_version, r.catalog_version,
                   r.bundle_version, r.core_version, r.contract_version, r.pipeline_version,
@@ -296,6 +303,8 @@ struct ExperimentRow {
 struct Plan {
     experiment_id: Option<Uuid>,
     cohort_id: Option<Uuid>,
+    /// WP-X.11: the dataset whose members the run reads (`definition.dataset` names it too).
+    dataset_id: Option<Uuid>,
     definition: AnalysisDefinition,
     /// The experiment profile body as stored (GOV-3: `profile_hash = body_hash(body)`).
     profile_body: Value,
@@ -479,8 +488,16 @@ async fn plan_request(
     profile_problems(&exp.profile)?;
     let profile: ScoringProfile = serde_json::from_value(exp.profile.clone())
         .map_err(|e| AppError::Internal(format!("stored experiment profile: {e}")))?;
-    let (cohort_id, cohort) = match (&req.cohort_id, req.cohort) {
-        (Some(raw), None) => {
+    let mut dataset = None;
+    let (cohort_id, cohort) = match (&req.cohort_id, req.cohort, &req.dataset_id) {
+        (None, None, Some(raw)) => {
+            let id = Uuid::parse_str(raw)
+                .map_err(|_| validation(vec![invalid("dataset_id", "must be a dataset id")]))?;
+            let source = crate::routes::datasets::run_source(conn, org, id).await?;
+            dataset = Some((id, source.reference));
+            (source.cohort_id, source.cohort)
+        }
+        (Some(raw), None, None) => {
             let id = Uuid::parse_str(raw)
                 .map_err(|_| validation(vec![invalid("cohort_id", "must be a cohort id")]))?;
             let row = sqlx::query!(
@@ -503,11 +520,11 @@ async fn plan_request(
                 decode::<CohortDefinition>("cohort", row.definition)?,
             )
         }
-        (None, Some(def)) => (None, def),
+        (None, Some(def), None) => (None, def),
         _ => {
             return Err(validation(vec![invalid(
                 "cohort_id",
-                "give exactly one of cohort_id and cohort",
+                "give exactly one of cohort_id, cohort and dataset_id",
             )]))
         }
     };
@@ -516,9 +533,11 @@ async fn plan_request(
         let b = Uuid::new_v4().into_bytes();
         i64::from_le_bytes([b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]])
     });
+    let (dataset_id, dataset) = dataset.unzip();
     Ok(Plan {
         experiment_id: Some(experiment_id),
         cohort_id,
+        dataset_id,
         definition: AnalysisDefinition {
             kind: req.kind,
             cohort,
@@ -528,6 +547,7 @@ async fn plan_request(
             level: req.level,
             options: req.options,
             seed,
+            dataset,
         },
         profile_body: exp.profile,
         rerun_of: None,
@@ -564,9 +584,13 @@ async fn enqueue(
         (_, None) => None,
     };
     let known: BTreeSet<&str> = draft.age_bands.iter().map(|b| b.id.as_str()).collect();
-    let bad_bands: Vec<InvalidParam> = def
-        .cohort
-        .age_bands
+    // A dataset's members are fixed: its cohort's bands are a record, not a filter.
+    let band_filter: &[String] = if def.dataset.is_some() {
+        &[]
+    } else {
+        &def.cohort.age_bands
+    };
+    let bad_bands: Vec<InvalidParam> = band_filter
         .iter()
         .enumerate()
         .filter(|(_, b)| !known.contains(b.as_str()))
@@ -591,19 +615,42 @@ async fn enqueue(
     .await?;
 
     let level = core_level(def.level);
+    // WP-X.11: a dataset run reads the frozen members; its hash must still be the stored one.
+    let (cohort, snapshot, dataset_hash) = match (&def.dataset, plan.dataset_id) {
+        (Some(d), Some(id)) => {
+            let source = crate::routes::datasets::run_source(&mut tx, org, id).await?;
+            if source.reference.content_hash != d.content_hash {
+                return Err(RunError::App(AppError::Internal(
+                    "the dataset's content hash changed".into(),
+                )));
+            }
+            let ids = crate::routes::datasets::snapshot_ids(&mut tx, org, id).await?;
+            (
+                crate::routes::datasets::snapshot_definition(&def.cohort),
+                Some(ids),
+                Some(source.hash),
+            )
+        }
+        _ => (def.cohort.clone(), None, None),
+    };
     let members = job::membership(
         &mut tx,
         org,
-        &def.cohort,
+        &cohort,
         &draft.age_bands,
         level,
         state.config.allow_synthetic,
+        snapshot.as_deref(),
     )
     .await?;
     if members.ids.is_empty() {
         return Err(bad_request(
             slugs::COHORT_EMPTY,
-            "the cohort selects no research-consented session",
+            if snapshot.is_some() {
+                "no member of the dataset is still available (erased or withdrawn)"
+            } else {
+                "the cohort selects no research-consented session"
+            },
         ));
     }
     if def.level == LevelRequest::Frames && members.frames_n() == 0 {
@@ -714,9 +761,10 @@ async fn enqueue(
            (id, org_id, kind, status, experiment_id, cohort_id, definition, definition_hash,
             cohort_hash, profile_hash, published_profile_version, baselines_version,
             catalog_version, core_version, contract_version, pipeline_version,
-            registry_version, seed, level_requested, job_id, created_by)
+            registry_version, seed, level_requested, job_id, created_by, dataset_id,
+            dataset_hash)
          VALUES ($1, $2, $3, 'queued', $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-                 $16, $17, $18, $19, $20)",
+                 $16, $17, $18, $19, $20, $21, $22)",
         run_id,
         org,
         wire(&def.kind),
@@ -737,6 +785,8 @@ async fn enqueue(
         wire(&def.level),
         job_row.id,
         principal.user_id,
+        plan.dataset_id,
+        dataset_hash,
     )
     .execute(&mut *tx)
     .await?;
@@ -757,6 +807,7 @@ async fn enqueue(
             "job_id": job_row.id,
             "experiment_id": plan.experiment_id,
             "cohort_id": plan.cohort_id,
+            "dataset_id": plan.dataset_id,
             "rerun_of": plan.rerun_of,
             "level": wire(&def.level),
             "profile_hash": hex(&profile_hash),
@@ -810,6 +861,7 @@ async fn rerun(
     let plan = Plan {
         experiment_id: old.experiment_id,
         cohort_id: old.cohort_id,
+        dataset_id: old.dataset_id,
         definition,
         profile_body,
         rerun_of: Some(old_id),
@@ -884,7 +936,8 @@ async fn list_runs(
     };
     let rows = sqlx::query_as!(
         RunRow,
-        r#"SELECT r.id, r.org_id, r.kind, r.status, r.experiment_id, r.cohort_id, r.definition,
+        r#"SELECT r.id, r.org_id, r.kind, r.status, r.experiment_id, r.cohort_id, r.dataset_id,
+                  r.dataset_hash, r.definition,
                   r.definition_hash, r.cohort_hash, r.membership_hash, r.profile_hash,
                   r.published_profile_version, r.baselines_version, r.catalog_version,
                   r.bundle_version, r.core_version, r.contract_version, r.pipeline_version,

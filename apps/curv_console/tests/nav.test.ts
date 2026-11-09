@@ -10,7 +10,7 @@ const shape = (role: Role) =>
 
 const CLINIC_ALL = ["clinic/overview", "clinic/worklist", "clinic/participants", "clinic/follow-ups", "clinic/review", "clinic/sessions"];
 const CLINIC_READ = ["clinic/overview", "clinic/participants", "clinic/review", "clinic/sessions"];
-const RESEARCH = ["research/experiments", "research/cohorts", "research/runs"];
+const RESEARCH = ["research/experiments", "research/cohorts", "research/datasets", "research/runs"];
 const CONFIG = ["config/catalog", "config/baselines", "config/scoring", "config/sandbox", "config/bundles"];
 const DATA_ALL = ["data/exports", "data/erasure", "data/retention", "data/audit"];
 const ADMIN_ALL = ["admin/users", "admin/devices", "admin/integrations", "admin/clinical"];

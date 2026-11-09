@@ -253,6 +253,60 @@
       "ne": "रातो फ्लाग भएका सत्र",
       "params": []
     },
+    "dataset_column.age_band": {
+      "draft": true,
+      "en": "Age band of the published scoring profile at freeze time.",
+      "ne": "स्थिर गर्दाको प्रकाशित स्कोरिङ प्रोफाइलको उमेर समूह।",
+      "params": []
+    },
+    "dataset_column.age_months": {
+      "draft": true,
+      "en": "Age at the session, in whole months.",
+      "ne": "सत्रको समयमा उमेर, पूरा महिनामा।",
+      "params": []
+    },
+    "dataset_column.label": {
+      "draft": true,
+      "en": "Label value, for example the signed review’s disposition.",
+      "ne": "लेबलको मान, जस्तै हस्ताक्षरित समीक्षाको निर्णय।",
+      "params": []
+    },
+    "dataset_column.label_source": {
+      "draft": true,
+      "en": "Where the label came from.",
+      "ne": "लेबल कहाँबाट आयो।",
+      "params": []
+    },
+    "dataset_column.label_taken_at": {
+      "draft": true,
+      "en": "When the label was given (UTC).",
+      "ne": "लेबल दिइएको समय (UTC)।",
+      "params": []
+    },
+    "dataset_column.participant_pseudonym": {
+      "draft": true,
+      "en": "Participant pseudonym, stable within this dataset only.",
+      "ne": "सहभागीको छद्म नाम, यही डेटासेटभित्र मात्र स्थिर।",
+      "params": []
+    },
+    "dataset_column.reviewer_pseudonym": {
+      "draft": true,
+      "en": "Reviewer pseudonym, stable within this dataset only.",
+      "ne": "समीक्षकको छद्म नाम, यही डेटासेटभित्र मात्र स्थिर।",
+      "params": []
+    },
+    "dataset_column.session_id": {
+      "draft": true,
+      "en": "Session identifier (random, no personal data).",
+      "ne": "सत्र पहिचानकर्ता (अनियमित, व्यक्तिगत विवरण छैन)।",
+      "params": []
+    },
+    "dataset_column.split": {
+      "draft": true,
+      "en": "Split part: train, validation or holdout.",
+      "ne": "विभाजनको भाग: प्रशिक्षण, प्रमाणीकरण वा छुट्याइएको भाग।",
+      "params": []
+    },
     "dataset_format.jsonl": {
       "draft": true,
       "en": "JSONL",
@@ -263,6 +317,36 @@
       "draft": true,
       "en": "Parquet",
       "ne": "Parquet",
+      "params": []
+    },
+    "dataset_split.holdout": {
+      "draft": true,
+      "en": "Holdout",
+      "ne": "छुट्याइएको भाग",
+      "params": []
+    },
+    "dataset_split.train": {
+      "draft": true,
+      "en": "Train",
+      "ne": "प्रशिक्षण",
+      "params": []
+    },
+    "dataset_split.validation": {
+      "draft": true,
+      "en": "Validation",
+      "ne": "प्रमाणीकरण",
+      "params": []
+    },
+    "dataset_status.archived": {
+      "draft": true,
+      "en": "Archived",
+      "ne": "संग्रहित",
+      "params": []
+    },
+    "dataset_status.frozen": {
+      "draft": true,
+      "en": "Frozen",
+      "ne": "स्थिर गरिएको",
       "params": []
     },
     "display_band.monitor": {
@@ -419,6 +503,30 @@
       "draft": true,
       "en": "Open",
       "ne": "खुला",
+      "params": []
+    },
+    "exclusion_rule_kind.explicit_list": {
+      "draft": true,
+      "en": "Named sessions",
+      "ne": "नाम तोकिएका सत्रहरू",
+      "params": []
+    },
+    "exclusion_rule_kind.mad_z": {
+      "draft": true,
+      "en": "Robust z (MAD)",
+      "ne": "बलियो z (MAD)",
+      "params": []
+    },
+    "exclusion_rule_kind.quality_gates": {
+      "draft": true,
+      "en": "Quality gates",
+      "ne": "गुणस्तर सीमा",
+      "params": []
+    },
+    "exclusion_rule_kind.tukey": {
+      "draft": true,
+      "en": "Tukey fences",
+      "ne": "टुकी सीमा",
       "params": []
     },
     "expectation_status.atypical": {
@@ -664,6 +772,18 @@
       "en": "Recheck — looking time was unreliable",
       "hi": "दोबारा जाँचें — देखने का समय भरोसेमंद नहीं था",
       "ne": "फेरि जाँच्नुहोस् — हेराइको समय भरपर्दो थिएन",
+      "params": []
+    },
+    "label_source_kind.import": {
+      "draft": true,
+      "en": "Imported label file",
+      "ne": "आयात गरिएको लेबल फाइल",
+      "params": []
+    },
+    "label_source_kind.review_outcomes": {
+      "draft": true,
+      "en": "Clinician review outcomes",
+      "ne": "चिकित्सक समीक्षाका नतिजा",
       "params": []
     },
     "letter_kind.referral": {

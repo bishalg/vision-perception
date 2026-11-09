@@ -15,6 +15,7 @@ pub mod blobs;
 pub mod care;
 pub mod clinical_reviews; // WP-C.10
 pub mod config;
+pub mod datasets; // WP-X.11
 pub mod devices;
 pub mod encounters; // WP-B.19 (stub from wave 2 step 0)
 pub mod exports; // WP-I.6
@@ -70,6 +71,8 @@ pub fn v1() -> Router<AppState> {
         // and effective config (WP-X.2), analysis runs (WP-X.3).
         .merge(research::router())
         .merge(analysis_runs::router())
+        // WP-X.11: research datasets (frozen, hashed member lists).
+        .merge(datasets::router())
         // WP-B.5: norm aggregation jobs and runs.
         .merge(jobs::router())
         // WP-B.4: config documents, bundles, device bundle delivery.

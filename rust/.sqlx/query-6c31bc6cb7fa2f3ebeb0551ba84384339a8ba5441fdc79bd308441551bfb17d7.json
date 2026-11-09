@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT org_id, status, cohort_id, cohort_definition, content_hash\n         FROM datasets WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "org_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "datasets",
+            "name": "org_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "datasets",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "cohort_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "datasets",
+            "name": "cohort_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "cohort_definition",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "datasets",
+            "name": "cohort_definition"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "content_hash",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "datasets",
+            "name": "content_hash"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "6c31bc6cb7fa2f3ebeb0551ba84384339a8ba5441fdc79bd308441551bfb17d7"
+}

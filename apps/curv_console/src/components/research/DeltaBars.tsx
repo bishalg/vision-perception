@@ -3,6 +3,9 @@ import { formatNumber } from "@/lib/format";
 import type { ResearchMessages } from "@/messages/research";
 import r from "./research.module.css";
 
+/** One string for an SVG `<title>`: React renders a single text child there (mixed children break hydration). */
+const tooltip = (label: string, value: string): string => `${label}: ${value}`;
+
 export interface DeltaRow {
   label: string;
   delta: Dist;
@@ -49,7 +52,7 @@ export function DeltaBars({
               <g key={row.label} data-testid="delta-bar">
                 <text className={r.axisText} x={PAD.l - 6} y={yMid + 3} textAnchor="end">{row.label}</text>
                 <rect className={mean >= 0 ? r.deltaUp : r.deltaDown} x={Math.min(zero, x(mean))} y={yMid - 6} width={Math.abs(x(mean) - zero)} height={12}>
-                  <title>{row.label}: {formatNumber(mean, 3)}</title>
+                  <title>{tooltip(row.label, formatNumber(mean, 3))}</title>
                 </rect>
                 {ci ? <line className={r.whisker} x1={x(ci[0])} y1={yMid} x2={x(ci[1])} y2={yMid} /> : null}
               </g>

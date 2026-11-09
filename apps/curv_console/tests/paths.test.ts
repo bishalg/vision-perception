@@ -30,6 +30,14 @@ describe("paths", () => {
     expect(p.research.cohort("c")).toBe("/o/research/cohorts/c");
     expect(p.research.run("r")).toBe("/o/research/runs/r");
     expect(p.research.runSessions("r")).toBe("/o/research/runs/r/sessions");
+    // WP-X.11: datasets, the workbench opened on a dataset, the export pre-fill.
+    expect([p.research.datasets, p.research.newDataset, p.research.dataset("d 1")]).toEqual([
+      "/o/research/datasets",
+      "/o/research/datasets/new",
+      "/o/research/datasets/d%201",
+    ]);
+    expect(p.research.experimentRunOnDataset("e", "d")).toBe("/o/research/experiments/e?dataset=d");
+    expect(p.data.exportDataset("d")).toBe("/o/data/exports?format=dataset&dataset=d");
     expect([p.config.catalog, p.config.baselines, p.config.scoring, p.config.sandbox, p.config.bundles]).toEqual([
       "/o/config/catalog",
       "/o/config/baselines",

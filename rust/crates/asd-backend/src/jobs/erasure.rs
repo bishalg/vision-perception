@@ -23,6 +23,9 @@
 //!   participant has no item row still expires; every unrevoked share link of an export
 //!   expired here is revoked (`revoked_by` NULL), audited `share_link.revoke` with
 //!   `reason: erasure`. Downloads already made cannot be recalled;
+//! - (WP-X.11, ADR-0015 R-9) the data of every erased session in a frozen research dataset:
+//!   the member row keeps only the session id, marked `erased`, and the dataset's
+//!   `erased_count` follows;
 //! - the MRN mapping (`patient_refs`), unless the participant is held;
 //! - (WP-B.19, REC-7) every attachment with its encrypted blob, and every encounter,
 //!   unless the participant is held (the hold rule as for notes).
@@ -656,6 +659,30 @@ pub async fn execute(ctx: &JobContext, job: &Job) -> Result<Value, JobError> {
     )
     .execute(&mut *tx)
     .await?;
+    // WP-X.11 (ADR-0015 R-9): a frozen dataset keeps an erased session as its id marked
+    // `erased`, its data (pseudonym, age, band, split, label) cleared; the dataset's content
+    // hash stays the freeze-time identity.
+    let marked = sqlx::query_scalar!(
+        "UPDATE dataset_members
+         SET erased_at = now(), participant_pseudonym = NULL, age_months = NULL,
+             age_band = NULL, split = NULL, label = NULL
+         WHERE session_id = ANY($1) AND erased_at IS NULL
+         RETURNING dataset_id",
+        &erase,
+    )
+    .fetch_all(&mut *tx)
+    .await?;
+    if !marked.is_empty() {
+        sqlx::query!(
+            "UPDATE datasets d
+             SET erased_count = (SELECT count(*) FROM dataset_members m
+                                 WHERE m.dataset_id = d.id AND m.erased_at IS NOT NULL)
+             WHERE d.id = ANY($1)",
+            &marked,
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
     // Clips, review-queue items and labels go with their session (ON DELETE CASCADE).
     outcome.sessions_deleted = sqlx::query!("DELETE FROM sessions WHERE id = ANY($1)", &erase)
         .execute(&mut *tx)

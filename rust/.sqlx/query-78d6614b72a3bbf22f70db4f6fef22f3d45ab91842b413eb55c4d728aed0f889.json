@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT m.session_id FROM dataset_members m JOIN datasets d ON d.id = m.dataset_id\n         WHERE m.dataset_id = $1 AND d.org_id = $2\n         ORDER BY m.session_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "session_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "dataset_members",
+            "name": "session_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "78d6614b72a3bbf22f70db4f6fef22f3d45ab91842b413eb55c4d728aed0f889"
+}

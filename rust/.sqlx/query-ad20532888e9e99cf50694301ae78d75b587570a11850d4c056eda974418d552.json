@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO dataset_members\n           (dataset_id, session_id, participant_pseudonym, age_months, age_band, split, label)\n         SELECT $1, s, p, a, b, sp, l::jsonb\n         FROM unnest($2::text[], $3::text[], $4::int4[], $5::text[], $6::text[], $7::text[])\n              AS u(s, p, a, b, sp, l)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "TextArray",
+        "TextArray",
+        "Int4Array",
+        "TextArray",
+        "TextArray",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ad20532888e9e99cf50694301ae78d75b587570a11850d4c056eda974418d552"
+}

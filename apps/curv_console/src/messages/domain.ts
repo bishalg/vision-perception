@@ -48,8 +48,22 @@ export type DomainKey =
   | "cosign_policy.always"
   | "cosign_policy.none"
   | "cosign_policy.red_flag"
+  | "dataset_column.age_band"
+  | "dataset_column.age_months"
+  | "dataset_column.label"
+  | "dataset_column.label_source"
+  | "dataset_column.label_taken_at"
+  | "dataset_column.participant_pseudonym"
+  | "dataset_column.reviewer_pseudonym"
+  | "dataset_column.session_id"
+  | "dataset_column.split"
   | "dataset_format.jsonl"
   | "dataset_format.parquet"
+  | "dataset_split.holdout"
+  | "dataset_split.train"
+  | "dataset_split.validation"
+  | "dataset_status.archived"
+  | "dataset_status.frozen"
   | "display_band.monitor"
   | "display_band.not_observed"
   | "display_band.ok"
@@ -76,6 +90,10 @@ export type DomainKey =
   | "encounter_kind.screening_visit"
   | "encounter_status.closed"
   | "encounter_status.open"
+  | "exclusion_rule_kind.explicit_list"
+  | "exclusion_rule_kind.mad_z"
+  | "exclusion_rule_kind.quality_gates"
+  | "exclusion_rule_kind.tukey"
   | "expectation_status.atypical"
   | "expectation_status.monitor"
   | "expectation_status.onTarget"
@@ -116,6 +134,8 @@ export type DomainKey =
   | "flag_assessment.some_differ.headline"
   | "flag_assessment.unreliable.detail"
   | "flag_assessment.unreliable.headline"
+  | "label_source_kind.import"
+  | "label_source_kind.review_outcomes"
   | "letter_kind.referral"
   | "letter_kind.summary"
   | "letter_status.draft"
@@ -486,18 +506,23 @@ export type DomainGroup =
   | "config_document_kind"
   | "config_document_status"
   | "cosign_policy"
+  | "dataset_column"
   | "dataset_format"
+  | "dataset_split"
+  | "dataset_status"
   | "display_band"
   | "display_metric"
   | "disposition"
   | "encounter_kind"
   | "encounter_status"
+  | "exclusion_rule_kind"
   | "expectation_status"
   | "experiment_status"
   | "export_format"
   | "export_mode"
   | "export_purpose"
   | "export_status"
+  | "label_source_kind"
   | "letter_kind"
   | "letter_status"
   | "level"
@@ -565,8 +590,22 @@ export const DOMAIN: Record<DomainLocale, Record<DomainKey, string>> = {
     "cosign_policy.always": "Always",
     "cosign_policy.none": "Never",
     "cosign_policy.red_flag": "Red-flag sessions",
+    "dataset_column.age_band": "Age band of the published scoring profile at freeze time.",
+    "dataset_column.age_months": "Age at the session, in whole months.",
+    "dataset_column.label": "Label value, for example the signed review’s disposition.",
+    "dataset_column.label_source": "Where the label came from.",
+    "dataset_column.label_taken_at": "When the label was given (UTC).",
+    "dataset_column.participant_pseudonym": "Participant pseudonym, stable within this dataset only.",
+    "dataset_column.reviewer_pseudonym": "Reviewer pseudonym, stable within this dataset only.",
+    "dataset_column.session_id": "Session identifier (random, no personal data).",
+    "dataset_column.split": "Split part: train, validation or holdout.",
     "dataset_format.jsonl": "JSONL",
     "dataset_format.parquet": "Parquet",
+    "dataset_split.holdout": "Holdout",
+    "dataset_split.train": "Train",
+    "dataset_split.validation": "Validation",
+    "dataset_status.archived": "Archived",
+    "dataset_status.frozen": "Frozen",
     "display_band.monitor": "Monitor",
     "display_band.not_observed": "Not observed",
     "display_band.ok": "On target",
@@ -593,6 +632,10 @@ export const DOMAIN: Record<DomainLocale, Record<DomainKey, string>> = {
     "encounter_kind.screening_visit": "Observation visit",
     "encounter_status.closed": "Closed",
     "encounter_status.open": "Open",
+    "exclusion_rule_kind.explicit_list": "Named sessions",
+    "exclusion_rule_kind.mad_z": "Robust z (MAD)",
+    "exclusion_rule_kind.quality_gates": "Quality gates",
+    "exclusion_rule_kind.tukey": "Tukey fences",
     "expectation_status.atypical": "Atypical",
     "expectation_status.monitor": "Monitor",
     "expectation_status.onTarget": "On target",
@@ -633,6 +676,8 @@ export const DOMAIN: Record<DomainLocale, Record<DomainKey, string>> = {
     "flag_assessment.some_differ.headline": "Some clips differ from the age reference",
     "flag_assessment.unreliable.detail": "Too many clips fell below the quality gate. Seat the child again and repeat. This is a screening signal, not a diagnosis.",
     "flag_assessment.unreliable.headline": "Recheck — looking time was unreliable",
+    "label_source_kind.import": "Imported label file",
+    "label_source_kind.review_outcomes": "Clinician review outcomes",
     "letter_kind.referral": "Referral letter",
     "letter_kind.summary": "Summary letter",
     "letter_status.draft": "Draft",
@@ -1031,8 +1076,22 @@ export const DOMAIN: Record<DomainLocale, Record<DomainKey, string>> = {
     "cosign_policy.always": "सधैं",
     "cosign_policy.none": "कहिल्यै होइन",
     "cosign_policy.red_flag": "रातो फ्लाग भएका सत्र",
+    "dataset_column.age_band": "स्थिर गर्दाको प्रकाशित स्कोरिङ प्रोफाइलको उमेर समूह।",
+    "dataset_column.age_months": "सत्रको समयमा उमेर, पूरा महिनामा।",
+    "dataset_column.label": "लेबलको मान, जस्तै हस्ताक्षरित समीक्षाको निर्णय।",
+    "dataset_column.label_source": "लेबल कहाँबाट आयो।",
+    "dataset_column.label_taken_at": "लेबल दिइएको समय (UTC)।",
+    "dataset_column.participant_pseudonym": "सहभागीको छद्म नाम, यही डेटासेटभित्र मात्र स्थिर।",
+    "dataset_column.reviewer_pseudonym": "समीक्षकको छद्म नाम, यही डेटासेटभित्र मात्र स्थिर।",
+    "dataset_column.session_id": "सत्र पहिचानकर्ता (अनियमित, व्यक्तिगत विवरण छैन)।",
+    "dataset_column.split": "विभाजनको भाग: प्रशिक्षण, प्रमाणीकरण वा छुट्याइएको भाग।",
     "dataset_format.jsonl": "JSONL",
     "dataset_format.parquet": "Parquet",
+    "dataset_split.holdout": "छुट्याइएको भाग",
+    "dataset_split.train": "प्रशिक्षण",
+    "dataset_split.validation": "प्रमाणीकरण",
+    "dataset_status.archived": "संग्रहित",
+    "dataset_status.frozen": "स्थिर गरिएको",
     "display_band.monitor": "निगरानी",
     "display_band.not_observed": "देखिएन",
     "display_band.ok": "लक्ष्यमा",
@@ -1059,6 +1118,10 @@ export const DOMAIN: Record<DomainLocale, Record<DomainKey, string>> = {
     "encounter_kind.screening_visit": "अवलोकन भेट",
     "encounter_status.closed": "बन्द",
     "encounter_status.open": "खुला",
+    "exclusion_rule_kind.explicit_list": "नाम तोकिएका सत्रहरू",
+    "exclusion_rule_kind.mad_z": "बलियो z (MAD)",
+    "exclusion_rule_kind.quality_gates": "गुणस्तर सीमा",
+    "exclusion_rule_kind.tukey": "टुकी सीमा",
     "expectation_status.atypical": "असामान्य",
     "expectation_status.monitor": "निगरानी",
     "expectation_status.onTarget": "लक्ष्यमा",
@@ -1099,6 +1162,8 @@ export const DOMAIN: Record<DomainLocale, Record<DomainKey, string>> = {
     "flag_assessment.some_differ.headline": "केही क्लिप उमेरको सन्दर्भभन्दा फरक छन्",
     "flag_assessment.unreliable.detail": "धेरै क्लिप गुणस्तरको सीमाभन्दा तल परे। बच्चालाई फेरि राम्रोसँग बसाएर दोहोर्याउनुहोस्। यो एउटा प्रारम्भिक संकेत मात्र हो, निदान होइन।",
     "flag_assessment.unreliable.headline": "फेरि जाँच्नुहोस् — हेराइको समय भरपर्दो थिएन",
+    "label_source_kind.import": "आयात गरिएको लेबल फाइल",
+    "label_source_kind.review_outcomes": "चिकित्सक समीक्षाका नतिजा",
     "letter_kind.referral": "रेफरल पत्र",
     "letter_kind.summary": "सारांश पत्र",
     "letter_status.draft": "मस्यौदा",

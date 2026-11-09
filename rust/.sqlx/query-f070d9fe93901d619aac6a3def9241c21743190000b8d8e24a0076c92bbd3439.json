@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT cr.session_id, v.disposition AS \"disposition!\", s.signer_id,\n                          s.signed_at\n                   FROM clinical_reviews cr\n                   JOIN clinical_review_versions v\n                     ON v.review_id = cr.id AND v.status = 'signed'\n                        AND v.disposition IS NOT NULL\n                   JOIN clinical_signatures s ON s.version_id = v.id AND s.role = 'sign'\n                   WHERE cr.org_id = $1 AND cr.session_id = ANY($2)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "session_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "clinical_reviews",
+            "name": "session_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "disposition!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "clinical_review_versions",
+            "name": "disposition"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "signer_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "clinical_signatures",
+            "name": "signer_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "signed_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "clinical_signatures",
+            "name": "signed_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "f070d9fe93901d619aac6a3def9241c21743190000b8d8e24a0076c92bbd3439"
+}

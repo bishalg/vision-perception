@@ -175,6 +175,14 @@ export interface ResearchMessages {
     noCohorts: string;
     saveFirst: string;
     denied: string;
+    /** WP-X.11: run on a cohort or on a frozen dataset. */
+    source: string;
+    sourceCohort: string;
+    sourceDataset: string;
+    dataset: string;
+    datasetPick: string;
+    noDatasets: string;
+    datasetCounts: (members: number, hash: string) => string;
   };
   cohorts: {
     title: string;
@@ -221,6 +229,95 @@ export interface ResearchMessages {
       synthetic: string;
       all: string;
     };
+  };
+  datasets: {
+    title: string;
+    intro: string;
+    readOnly: string;
+    empty: string;
+    newLink: string;
+    newTitle: string;
+    newIntro: string;
+    allDatasets: string;
+    cols: { name: string; members: string; hash: string; frozen: string; status: string };
+    form: {
+      cohort: string;
+      cohortPick: string;
+      noCohorts: string;
+      name: string;
+      nameRequired: string;
+      nameTaken: string;
+      description: string;
+      rulesTitle: string;
+      rulesIntro: string;
+      minValidRatio: string;
+      excludePoorTracking: string;
+      excludeSessions: string;
+      excludeSessionsHint: string;
+      excludeReason: string;
+      labels: string;
+      labelsHint: string;
+      split: string;
+      seed: string;
+      seedHint: string;
+      fractionsHint: string;
+      fractionsInvalid: string;
+      save: string;
+      saving: string;
+    };
+    hash: { label: string; copy: string; copied: string; full: string };
+    facts: string;
+    frozenAt: string;
+    cohort: string;
+    memberCount: (n: number) => string;
+    erasedCount: (n: number) => string;
+    lineage: string;
+    lineageFields: {
+      cohort_hash: string;
+      parent_dataset_id: string;
+      run_id: string;
+      profile_hash: string;
+      profile_version: string;
+      catalog_version: string;
+      baselines_version: string;
+      code_version: string;
+    };
+    none: string;
+    dictionary: string;
+    dictCols: { name: string; type: string; unit: string; description: string };
+    members: string;
+    memberCols: { session: string; pseudonym: string; age: string; band: string; split: string; label: string };
+    erasedMember: string;
+    nextPage: string;
+    firstPage: string;
+    exclusions: string;
+    exclusionCols: { session: string; rule: string; reason: string };
+    systemRule: string;
+    noExclusions: string;
+    reasons: Record<string, string>;
+    rules: string;
+    noRules: string;
+    splitTitle: string;
+    splitCols: { stratum: string; train: string; validation: string; holdout: string; total: string };
+    splitSeed: (seed: string) => string;
+    splitFractions: (train: string, validation: string, holdout: string) => string;
+    unbanded: string;
+    total: string;
+    noSplit: string;
+    labelsTitle: string;
+    labelSource: (kind: string, count: number, at: string) => string;
+    noLabels: string;
+    runTitle: string;
+    runIntro: string;
+    experiment: string;
+    experimentPick: string;
+    noExperiments: string;
+    startRun: string;
+    exportLink: string;
+    exportHint: string;
+    archive: string;
+    archiving: string;
+    archivedNote: string;
   };
   runs: {
     title: string;
@@ -588,6 +685,13 @@ const en: ResearchMessages = {
     noCohorts: "There is no saved cohort yet.",
     saveFirst: "Save the experiment first; unsaved changes are not part of the run.",
     denied: "Your role cannot start analysis runs.",
+    source: "Run on",
+    sourceCohort: "A cohort (its sessions now)",
+    sourceDataset: "A frozen dataset",
+    dataset: "Dataset",
+    datasetPick: "Choose a dataset",
+    noDatasets: "There is no frozen dataset yet.",
+    datasetCounts: (members, hash) => `${members} frozen members, hash ${hash}`,
   },
   cohorts: {
     title: "Cohorts",
@@ -635,6 +739,101 @@ const en: ResearchMessages = {
       all: "All consented sessions",
     },
   },
+  datasets: {
+    title: "Datasets",
+    intro: "A dataset is a frozen list of sessions taken from a cohort, with its exclusions, labels and split. It never changes; its content hash identifies it.",
+    readOnly: "Your role can view datasets but not create them.",
+    empty: "There is no dataset yet.",
+    newLink: "New dataset",
+    newTitle: "New dataset",
+    newIntro: "Freeze the current sessions of a cohort. Exclusions, labels and the split are fixed with it.",
+    allDatasets: "All datasets",
+    cols: { name: "Name", members: "Members", hash: "Content hash", frozen: "Frozen", status: "Status" },
+    form: {
+      cohort: "Cohort",
+      cohortPick: "Choose a cohort",
+      noCohorts: "There is no saved cohort yet. Create a cohort first.",
+      name: "Name",
+      nameRequired: "Enter a name and choose a cohort.",
+      nameTaken: "A dataset with this name already exists.",
+      description: "Description (optional)",
+      rulesTitle: "Exclusion rules",
+      rulesIntro: "Sessions without a placeable age are always left out. Each exclusion is stored with its rule.",
+      minValidRatio: "Minimum valid-frame ratio (0 to 1, optional)",
+      excludePoorTracking: "Leave out sessions with poor tracking",
+      excludeSessions: "Leave out these sessions",
+      excludeSessionsHint: "One session id per line.",
+      excludeReason: "Reason for leaving them out",
+      labels: "Attach clinician labels",
+      labelsHint: "Uses the disposition of each signed clinical review; reviewers are shown by pseudonym.",
+      split: "Split into train, validation and holdout",
+      seed: "Split seed (optional)",
+      seedHint: "Whole number. The same seed and members give the same split.",
+      fractionsHint: "Shares of each age band, adding up to 1.",
+      fractionsInvalid: "The shares must be between 0 and 1, add up to 1, and train must be above 0.",
+      save: "Freeze dataset",
+      saving: "Freezing…",
+    },
+    hash: { label: "Content hash", copy: "Copy hash", copied: "Copied", full: "Full hash" },
+    facts: "Facts",
+    frozenAt: "Frozen",
+    cohort: "Cohort",
+    memberCount: (n) => `${n} member${n === 1 ? "" : "s"}`,
+    erasedCount: (n) => `${n} erased since the freeze`,
+    lineage: "Lineage",
+    lineageFields: {
+      cohort_hash: "Cohort definition hash",
+      parent_dataset_id: "Previous version",
+      run_id: "Analysis run",
+      profile_hash: "Scoring profile hash",
+      profile_version: "Scoring profile version",
+      catalog_version: "Catalog version",
+      baselines_version: "Baselines version",
+      code_version: "Code version",
+    },
+    none: "none",
+    dictionary: "Data dictionary",
+    dictCols: { name: "Column", type: "Type", unit: "Unit", description: "Description" },
+    members: "Members",
+    memberCols: { session: "Session", pseudonym: "Participant", age: "Age (months)", band: "Age band", split: "Split", label: "Label" },
+    erasedMember: "Erased (data removed)",
+    nextPage: "Next page",
+    firstPage: "First page",
+    exclusions: "Exclusions",
+    exclusionCols: { session: "Session", rule: "Rule", reason: "Reason" },
+    systemRule: "always applied",
+    noExclusions: "No session was left out.",
+    reasons: {
+      no_age: "No placeable age",
+      valid_ratio_below: "Valid-frame ratio below the threshold",
+      quality_verdict: "Capture quality excluded",
+      tracking_verdict: "Tracking verdict excluded",
+      clips_below: "Too few clips completed",
+    },
+    rules: "Rules",
+    noRules: "No exclusion rule.",
+    splitTitle: "Split",
+    splitCols: { stratum: "Age band", train: "Train", validation: "Validation", holdout: "Holdout", total: "Total" },
+    splitSeed: (seed) => `Seed ${seed}, stratified by age band`,
+    splitFractions: (train, validation, holdout) => `Shares: train ${train}, validation ${validation}, holdout ${holdout}`,
+    unbanded: "no band",
+    total: "All bands",
+    noSplit: "This dataset has no split.",
+    labelsTitle: "Labels",
+    labelSource: (kind, count, at) => `${kind}: ${count} labelled member${count === 1 ? "" : "s"}, read ${at}`,
+    noLabels: "This dataset has no labels.",
+    runTitle: "Start a run from this dataset",
+    runIntro: "Choose an experiment; its workbench opens with the run dialog set to this dataset.",
+    experiment: "Experiment",
+    experimentPick: "Choose an experiment",
+    noExperiments: "There is no draft experiment to run.",
+    startRun: "Start run from this dataset",
+    exportLink: "Export this dataset",
+    exportHint: "Opens the export form for this dataset. The research package format arrives with a later release.",
+    archive: "Archive dataset",
+    archiving: "Archiving…",
+    archivedNote: "This dataset is archived. It stays readable but starts no new run.",
+  },
   runs: {
     title: "Analysis runs",
     intro: "Each run evaluates an experiment against a cohort. Results are research output, not clinical findings.",
@@ -675,6 +874,8 @@ const en: ResearchMessages = {
         definition_hash: "Definition hash",
         cohort_hash: "Cohort hash",
         membership_hash: "Membership hash",
+        dataset_id: "Dataset",
+        dataset_hash: "Dataset content hash",
         profile_hash: "Profile hash",
         published_profile_version: "Published profile version",
         baselines_version: "Baselines version",
@@ -1042,6 +1243,14 @@ const ne: ResearchMessages = {
     noCohorts: "अहिलेसम्म कुनै सुरक्षित कोहोर्ट छैन।",
     saveFirst: "पहिले प्रयोग सुरक्षित गर्नुहोस्; असुरक्षित परिवर्तन रनमा पर्दैन।",
     denied: "तपाईंको भूमिकाले विश्लेषण रन सुरु गर्न मिल्दैन।",
+    // ne: draft (needs review, WP-L.3)
+    source: "यसमा चलाउनुहोस्",
+    sourceCohort: "कोहोर्ट (यसका हालका सत्र)",
+    sourceDataset: "स्थिर डेटासेट",
+    dataset: "डेटासेट",
+    datasetPick: "डेटासेट छान्नुहोस्",
+    noDatasets: "अहिलेसम्म कुनै स्थिर डेटासेट छैन।",
+    datasetCounts: (members, hash) => `${members} स्थिर सदस्य, ह्यास ${hash}`,
   },
   cohorts: {
     title: "कोहोर्ट",
@@ -1089,6 +1298,102 @@ const ne: ResearchMessages = {
       all: "सहमति भएका सबै सत्र",
     },
   },
+  // ne: draft (needs review, WP-L.3)
+  datasets: {
+    title: "डेटासेटहरू",
+    intro: "डेटासेट भनेको कोहोर्टबाट लिइएको सत्रहरूको स्थिर सूची हो, यसका बहिष्करण, लेबल र विभाजनसहित। यो कहिल्यै बदलिँदैन; यसको सामग्री ह्यासले यसलाई चिनाउँछ।",
+    readOnly: "तपाईंको भूमिकाले डेटासेट हेर्न मिल्छ तर बनाउन मिल्दैन।",
+    empty: "अहिलेसम्म कुनै डेटासेट छैन।",
+    newLink: "नयाँ डेटासेट",
+    newTitle: "नयाँ डेटासेट",
+    newIntro: "कोहोर्टका हालका सत्रहरू स्थिर गर्नुहोस्। बहिष्करण, लेबल र विभाजन यससँगै स्थिर हुन्छन्।",
+    allDatasets: "सबै डेटासेट",
+    cols: { name: "नाम", members: "सदस्य", hash: "सामग्री ह्यास", frozen: "स्थिर गरिएको", status: "स्थिति" },
+    form: {
+      cohort: "कोहोर्ट",
+      cohortPick: "कोहोर्ट छान्नुहोस्",
+      noCohorts: "अहिलेसम्म कुनै सुरक्षित कोहोर्ट छैन। पहिले कोहोर्ट बनाउनुहोस्।",
+      name: "नाम",
+      nameRequired: "नाम लेख्नुहोस् र कोहोर्ट छान्नुहोस्।",
+      nameTaken: "यो नामको डेटासेट पहिल्यै छ।",
+      description: "विवरण (ऐच्छिक)",
+      rulesTitle: "बहिष्करण नियम",
+      rulesIntro: "उमेर तोक्न नमिल्ने सत्रहरू सधैं हटाइन्छन्। हरेक बहिष्करण यसको नियमसँग राखिन्छ।",
+      minValidRatio: "न्यूनतम मान्य-फ्रेम अनुपात (० देखि १, ऐच्छिक)",
+      excludePoorTracking: "कमजोर ट्र्याकिङ भएका सत्रहरू हटाउनुहोस्",
+      excludeSessions: "यी सत्रहरू हटाउनुहोस्",
+      excludeSessionsHint: "हरेक लाइनमा एउटा सत्र पहिचान।",
+      excludeReason: "हटाउनुको कारण",
+      labels: "चिकित्सक लेबल जोड्नुहोस्",
+      labelsHint: "हस्ताक्षरित क्लिनिकल समीक्षाको निर्णय प्रयोग गर्छ; समीक्षकहरू छद्म नामले देखिन्छन्।",
+      split: "प्रशिक्षण, प्रमाणीकरण र छुट्याइएको भागमा विभाजन गर्नुहोस्",
+      seed: "विभाजन सिड (ऐच्छिक)",
+      seedHint: "पूर्णांक। उही सिड र सदस्यले उही विभाजन दिन्छ।",
+      fractionsHint: "हरेक उमेर समूहको हिस्सा, जम्मा १ हुने गरी।",
+      fractionsInvalid: "हिस्सा ० र १ बीच हुनुपर्छ, जम्मा १ हुनुपर्छ, र प्रशिक्षण ० भन्दा बढी हुनुपर्छ।",
+      save: "डेटासेट स्थिर गर्नुहोस्",
+      saving: "स्थिर गर्दै…",
+    },
+    hash: { label: "सामग्री ह्यास", copy: "ह्यास प्रतिलिपि गर्नुहोस्", copied: "प्रतिलिपि भयो", full: "पूरा ह्यास" },
+    facts: "तथ्यहरू",
+    frozenAt: "स्थिर गरिएको",
+    cohort: "कोहोर्ट",
+    memberCount: (n) => `${n} सदस्य`,
+    erasedCount: (n) => `स्थिर गरेपछि ${n} मेटाइएको`,
+    lineage: "उत्पत्ति",
+    lineageFields: {
+      cohort_hash: "कोहोर्ट परिभाषा ह्यास",
+      parent_dataset_id: "अघिल्लो संस्करण",
+      run_id: "विश्लेषण रन",
+      profile_hash: "स्कोरिङ प्रोफाइल ह्यास",
+      profile_version: "स्कोरिङ प्रोफाइल संस्करण",
+      catalog_version: "क्याटलग संस्करण",
+      baselines_version: "आधाररेखा संस्करण",
+      code_version: "कोड संस्करण",
+    },
+    none: "छैन",
+    dictionary: "डाटा शब्दकोश",
+    dictCols: { name: "स्तम्भ", type: "प्रकार", unit: "एकाइ", description: "विवरण" },
+    members: "सदस्यहरू",
+    memberCols: { session: "सत्र", pseudonym: "सहभागी", age: "उमेर (महिना)", band: "उमेर समूह", split: "विभाजन", label: "लेबल" },
+    erasedMember: "मेटाइएको (डाटा हटाइएको)",
+    nextPage: "अर्को पृष्ठ",
+    firstPage: "पहिलो पृष्ठ",
+    exclusions: "बहिष्करणहरू",
+    exclusionCols: { session: "सत्र", rule: "नियम", reason: "कारण" },
+    systemRule: "सधैं लागू",
+    noExclusions: "कुनै सत्र हटाइएन।",
+    reasons: {
+      no_age: "उमेर तोक्न मिलेन",
+      valid_ratio_below: "मान्य-फ्रेम अनुपात सीमाभन्दा कम",
+      quality_verdict: "क्याप्चर गुणस्तरका कारण हटाइएको",
+      tracking_verdict: "ट्र्याकिङ निर्णयका कारण हटाइएको",
+      clips_below: "पूरा भएका क्लिप धेरै कम",
+    },
+    rules: "नियमहरू",
+    noRules: "कुनै बहिष्करण नियम छैन।",
+    splitTitle: "विभाजन",
+    splitCols: { stratum: "उमेर समूह", train: "प्रशिक्षण", validation: "प्रमाणीकरण", holdout: "छुट्याइएको भाग", total: "जम्मा" },
+    splitSeed: (seed) => `सिड ${seed}, उमेर समूह अनुसार स्तरीकृत`,
+    splitFractions: (train, validation, holdout) => `हिस्सा: प्रशिक्षण ${train}, प्रमाणीकरण ${validation}, छुट्याइएको भाग ${holdout}`,
+    unbanded: "समूह छैन",
+    total: "सबै समूह",
+    noSplit: "यो डेटासेटमा विभाजन छैन।",
+    labelsTitle: "लेबलहरू",
+    labelSource: (kind, count, at) => `${kind}: ${count} लेबल भएका सदस्य, ${at} मा पढिएको`,
+    noLabels: "यो डेटासेटमा लेबल छैन।",
+    runTitle: "यो डेटासेटबाट रन सुरु गर्नुहोस्",
+    runIntro: "प्रयोग छान्नुहोस्; यसको वर्कबेन्च यही डेटासेटमा सेट गरिएको रन संवादसहित खुल्छ।",
+    experiment: "प्रयोग",
+    experimentPick: "प्रयोग छान्नुहोस्",
+    noExperiments: "चलाउन कुनै मस्यौदा प्रयोग छैन।",
+    startRun: "यो डेटासेटबाट रन सुरु गर्नुहोस्",
+    exportLink: "यो डेटासेट निर्यात गर्नुहोस्",
+    exportHint: "यस डेटासेटको निर्यात फारम खोल्छ। अनुसन्धान प्याकेज ढाँचा पछिको संस्करणमा आउँछ।",
+    archive: "डेटासेट संग्रह गर्नुहोस्",
+    archiving: "संग्रह गर्दै…",
+    archivedNote: "यो डेटासेट संग्रहित छ। यो पढ्न मिल्छ तर नयाँ रन सुरु गर्दैन।",
+  },
   runs: {
     title: "विश्लेषण रन",
     intro: "प्रत्येक रनले कोहोर्टमा एउटा प्रयोगको मूल्यांकन गर्छ। नतिजा अनुसन्धान सामग्री हो, क्लिनिकल निष्कर्ष होइन।",
@@ -1129,6 +1434,8 @@ const ne: ResearchMessages = {
         definition_hash: "परिभाषा ह्यास",
         cohort_hash: "कोहोर्ट ह्यास",
         membership_hash: "सदस्यता ह्यास",
+        dataset_id: "डेटासेट", // ne: draft
+        dataset_hash: "डेटासेट सामग्री ह्यास", // ne: draft
         profile_hash: "प्रोफाइल ह्यास",
         published_profile_version: "प्रकाशित प्रोफाइल संस्करण",
         baselines_version: "आधाररेखा संस्करण",

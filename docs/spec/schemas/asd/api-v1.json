@@ -104,6 +104,17 @@
         "cohort": {
           "$ref": "#/$defs/CohortDefinition"
         },
+        "dataset": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DatasetRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "WP-X.11: the dataset whose frozen members the run reads instead of resolving `cohort`\n(then the dataset's cohort definition, for the record). Absent for cohort runs, so their\n`definition_hash` is unchanged."
+        },
         "kind": {
           "$ref": "#/$defs/RunKind"
         },
@@ -230,6 +241,27 @@
               "type": "null"
             }
           ]
+        },
+        "dataset_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dataset_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "WP-X.11: the dataset the membership came from, and its content hash (provenance)."
         },
         "definition": {
           "$ref": "#/$defs/AnalysisDefinition"
@@ -466,7 +498,7 @@
     },
     "AnalysisRunRequest": {
       "additionalProperties": false,
-      "description": "`POST /v1/orgs/{id}/analysis-runs` (`AnalysisRun`; RUN-2). Exactly one of `cohort_id`\nand `cohort`. Answers `202 AnalysisRun`.",
+      "description": "`POST /v1/orgs/{id}/analysis-runs` (`AnalysisRun`; RUN-2). Exactly one of `cohort_id`,\n`cohort` and `dataset_id` (WP-X.11: the run takes its membership from the frozen dataset).\nAnswers `202 AnalysisRun`.",
       "properties": {
         "cohort": {
           "anyOf": [
@@ -487,6 +519,17 @@
               "type": "null"
             }
           ]
+        },
+        "dataset_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A frozen dataset of the org (WP-X.11): its included, not erased members."
         },
         "experiment_id": {
           "type": "string"
@@ -2443,6 +2486,46 @@
       ],
       "type": "object"
     },
+    "Column": {
+      "description": "One column of the data dictionary (R-7). `description_key` is a domain catalogue key\n(`dataset_column.<name>`).",
+      "properties": {
+        "description_key": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/ColumnType"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Unit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "type",
+        "description_key"
+      ],
+      "type": "object"
+    },
+    "ColumnType": {
+      "description": "Value type of a data dictionary column.",
+      "enum": [
+        "string",
+        "integer",
+        "number",
+        "datetime"
+      ],
+      "type": "string"
+    },
     "ConfidenceParams": {
       "properties": {
         "distanceComfortMaxCm": {
@@ -2794,6 +2877,84 @@
       "required": [
         "version",
         "body"
+      ],
+      "type": "object"
+    },
+    "CreateDatasetRequest": {
+      "additionalProperties": false,
+      "description": "`POST /v1/research/datasets` (`ExperimentWrite`): freezes a dataset from a cohort of the\ncaller's org. Answers `201 Dataset`.",
+      "properties": {
+        "cohort_id": {
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "exclusion_rules": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ExclusionRule"
+          },
+          "type": "array"
+        },
+        "labels": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LabelSourceKind"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Attach labels from this source (`import` arrives with WP-X.16)."
+        },
+        "name": {
+          "description": "1..80 characters, unique in the org.",
+          "type": "string"
+        },
+        "parent_dataset_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A dataset of the org this one is a new version of."
+        },
+        "run_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An analysis run of the org this dataset was derived for (lineage only)."
+        },
+        "split": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SplitRequest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "cohort_id"
       ],
       "type": "object"
     },
@@ -3206,6 +3367,151 @@
       ],
       "type": "object"
     },
+    "Dataset": {
+      "description": "`GET /v1/research/datasets/{id}` (`AnalysisRead`).",
+      "properties": {
+        "archived_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cohort_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "content_hash": {
+          "description": "[`content_hash`] at freeze time, hex. Erasure later does not change it (R-9).",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "created_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "data_dictionary": {
+          "items": {
+            "$ref": "#/$defs/Column"
+          },
+          "type": "array"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "erased_count": {
+          "default": 0,
+          "description": "Included members erased since the freeze (`excluded: erased` in the members list).",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "exclusion_rules": {
+          "items": {
+            "$ref": "#/$defs/ExclusionRule"
+          },
+          "type": "array"
+        },
+        "exclusions": {
+          "description": "Every cohort session left out, sorted by session id.",
+          "items": {
+            "$ref": "#/$defs/Exclusion"
+          },
+          "type": "array"
+        },
+        "frozen_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "label_source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LabelSource"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lineage": {
+          "$ref": "#/$defs/Lineage"
+        },
+        "member_count": {
+          "description": "Members included at freeze time.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "org_id": {
+          "type": "string"
+        },
+        "split": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Split"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "split_counts": {
+          "default": [],
+          "description": "Members per stratum and split part at freeze time (empty without a split).",
+          "items": {
+            "$ref": "#/$defs/SplitStratumCount"
+          },
+          "type": "array"
+        },
+        "status": {
+          "$ref": "#/$defs/DatasetStatus"
+        }
+      },
+      "required": [
+        "id",
+        "org_id",
+        "name",
+        "status",
+        "frozen_at",
+        "content_hash",
+        "member_count",
+        "exclusion_rules",
+        "exclusions",
+        "lineage",
+        "data_dictionary",
+        "created_at"
+      ],
+      "type": "object"
+    },
     "DatasetExportRequest": {
       "additionalProperties": false,
       "description": "`POST /v1/jobs/export-dataset` (WP-B.9, 02 §4): a de-identified research dataset of the\ncaller's org. Same as `POST /v1/orgs/{id}/exports` with `mode = deidentified`,\n`purpose = research` (only research-consented sessions) and a dataset format; answers\n`202` with the [`Export`], downloaded through `POST /v1/exports/{id}/download-url`.",
@@ -3238,6 +3544,154 @@
       "enum": [
         "jsonl",
         "parquet"
+      ],
+      "type": "string"
+    },
+    "DatasetMember": {
+      "description": "One member of a dataset (`GET /v1/research/datasets/{id}/members`). A member erased after\nthe freeze keeps only `session_id` and `excluded: \"erased\"` (R-9).",
+      "properties": {
+        "age_band": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "age_months": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "excluded": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`erased` when the session was erased after the freeze."
+        },
+        "label": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Label"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "participant_pseudonym": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`P-` pseudonym of the participant, stable within the dataset only."
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "split": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SplitName"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "session_id"
+      ],
+      "type": "object"
+    },
+    "DatasetMemberPage": {
+      "description": "`GET /v1/research/datasets/{id}/members` (`AnalysisRead`); sorted by session id.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/DatasetMember"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "DatasetPage": {
+      "description": "`GET /v1/research/datasets` (`AnalysisRead`); `cursor` is opaque, `limit <= 100`.",
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/Dataset"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "DatasetRef": {
+      "description": "The dataset an analysis run takes its membership from (stored in the run definition).",
+      "properties": {
+        "content_hash": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "content_hash"
+      ],
+      "type": "object"
+    },
+    "DatasetStatus": {
+      "description": "`datasets.status`. A dataset is frozen when it is created; archive hides it from pickers.",
+      "enum": [
+        "frozen",
+        "archived"
       ],
       "type": "string"
     },
@@ -4553,6 +5007,173 @@
       ],
       "type": "string"
     },
+    "Exclusion": {
+      "description": "A session of the cohort snapshot left out of the dataset. `rule_id` names the rule; a\nsystem exclusion (no placeable age) has none. `reason` is a [`reasons`] value or, for an\nexplicit list, the researcher's text.",
+      "properties": {
+        "reason": {
+          "type": "string"
+        },
+        "rule_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "session_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id",
+        "reason"
+      ],
+      "type": "object"
+    },
+    "ExclusionRule": {
+      "description": "An exclusion rule of a dataset (R-7). The kinds mirror the ADR-0015 V-5 presets so the\noutlier tools (WP-X.22) store what they apply here. Every rule has an `id` unique in the\ndataset (1..64 characters); each [`Exclusion`] names the rule that removed the session.\n\nWP-X.11 applies `quality_gates` and `explicit_list`; `tukey` and `mad_z` need per-session\nmetric values (WP-X.19/X.22) and are refused with `400 validation-failed` until then.",
+      "oneOf": [
+        {
+          "description": "V-5 \"quality gates\": every threshold given is applied; none given excludes nothing.",
+          "properties": {
+            "exclude_quality_verdicts": {
+              "items": {
+                "$ref": "#/$defs/GazeQualityVerdict"
+              },
+              "type": "array"
+            },
+            "exclude_tracking_verdicts": {
+              "items": {
+                "$ref": "#/$defs/TrackingVerdict"
+              },
+              "type": "array"
+            },
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "quality_gates",
+              "type": "string"
+            },
+            "min_clips_completed": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Excludes sessions with fewer scored clips than this."
+            },
+            "min_valid_ratio": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Excludes sessions whose valid-sample ratio is below this, `[0, 1]`."
+            }
+          },
+          "required": [
+            "kind",
+            "id"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "V-5 Tukey fences: outside `[q1 - k * IQR, q3 + k * IQR]` of `metric` (WP-X.22).",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "k": {
+              "default": 1.5,
+              "type": "number"
+            },
+            "kind": {
+              "const": "tukey",
+              "type": "string"
+            },
+            "metric": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "id",
+            "metric"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "V-5 robust z: `|x - median| / (1.4826 * MAD) > z` of `metric` (WP-X.22).",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "mad_z",
+              "type": "string"
+            },
+            "metric": {
+              "type": "string"
+            },
+            "z": {
+              "default": 3.5,
+              "type": "number"
+            }
+          },
+          "required": [
+            "kind",
+            "id",
+            "metric"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "Sessions the researcher names, each with a reason.",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "explicit_list",
+              "type": "string"
+            },
+            "sessions": {
+              "items": {
+                "$ref": "#/$defs/ExplicitExclusion"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "id",
+            "sessions"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ExclusionRuleKind": {
+      "description": "The kinds of [`ExclusionRule`] (for labels and filters).",
+      "enum": [
+        "quality_gates",
+        "tukey",
+        "mad_z",
+        "explicit_list"
+      ],
+      "type": "string"
+    },
     "ExpectationStatus": {
       "enum": [
         "onTarget",
@@ -4701,6 +5322,24 @@
         "promoted"
       ],
       "type": "string"
+    },
+    "ExplicitExclusion": {
+      "additionalProperties": false,
+      "description": "One session named by an explicit-list rule, with the researcher's reason.",
+      "properties": {
+        "reason": {
+          "description": "1..200 characters; no names or dates of birth (de-identified research data).",
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id",
+        "reason"
+      ],
+      "type": "object"
     },
     "Export": {
       "description": "An export (EXJ-1..4). Never carries clinical content: counts, hashes and the request.",
@@ -6195,6 +6834,40 @@
       ],
       "type": "object"
     },
+    "Label": {
+      "description": "One member's label with its provenance (R-8).",
+      "properties": {
+        "reviewer_pseudonym": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "`R-` pseudonym of the signing reviewer, stable within the dataset only."
+        },
+        "source": {
+          "$ref": "#/$defs/LabelSourceKind"
+        },
+        "taken_at": {
+          "description": "When the label was given (the review's signing time).",
+          "format": "date-time",
+          "type": "string"
+        },
+        "value": {
+          "description": "For `review_outcomes`: the signed review's disposition (`clinical::Disposition`).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "value",
+        "source",
+        "taken_at"
+      ],
+      "type": "object"
+    },
     "LabelInput": {
       "description": "A human annotation attached by a reviewer.",
       "properties": {
@@ -6218,6 +6891,44 @@
         "value"
       ],
       "type": "object"
+    },
+    "LabelSource": {
+      "description": "Where the dataset's labels came from and when they were read.",
+      "properties": {
+        "count": {
+          "description": "Members that carry a label.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "kind": {
+          "$ref": "#/$defs/LabelSourceKind"
+        },
+        "taken_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "taken_at",
+        "count"
+      ],
+      "type": "object"
+    },
+    "LabelSourceKind": {
+      "description": "Where labels come from (R-8).",
+      "oneOf": [
+        {
+          "const": "review_outcomes",
+          "description": "The signed clinical review's disposition (the review queue outcome).",
+          "type": "string"
+        },
+        {
+          "const": "import",
+          "description": "An imported label file (WP-X.16).",
+          "type": "string"
+        }
+      ]
     },
     "LetterKind": {
       "description": "NOTE-3.",
@@ -6349,6 +7060,71 @@
         "frames"
       ],
       "type": "string"
+    },
+    "Lineage": {
+      "description": "Where a dataset came from (R-7): the cohort snapshot, the versions in force at freeze time,\nan optional parent dataset (a new version of it) and an optional run it was derived for.",
+      "properties": {
+        "baselines_version": {
+          "type": "string"
+        },
+        "catalog_version": {
+          "type": "string"
+        },
+        "code_version": {
+          "description": "The backend build (`asd-backend/<workspace version>`).",
+          "type": "string"
+        },
+        "cohort_hash": {
+          "description": "sha256 of the RFC 8785 form of the cohort definition used.",
+          "type": "string"
+        },
+        "cohort_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "parent_dataset_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "profile_hash": {
+          "description": "sha256 of the RFC 8785 form of the published scoring profile whose `ageBands` placed\nthe members.",
+          "type": "string"
+        },
+        "profile_version": {
+          "type": "string"
+        },
+        "run_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "cohort_hash",
+        "profile_hash",
+        "profile_version",
+        "catalog_version",
+        "baselines_version",
+        "code_version"
+      ],
+      "type": "object"
     },
     "LinkSessionRequest": {
       "description": "`POST /v1/encounters/{id}/sessions` (REC-4): link a session of the same participant.",
@@ -12210,6 +12986,119 @@
           "type": "number"
         }
       },
+      "type": "object"
+    },
+    "Split": {
+      "description": "A frozen dataset's split: [`assign_split`] with this seed and these fractions.",
+      "properties": {
+        "fractions": {
+          "$ref": "#/$defs/SplitFractions"
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "strata": {
+          "$ref": "#/$defs/SplitStrata",
+          "default": "age_band"
+        }
+      },
+      "required": [
+        "seed",
+        "fractions"
+      ],
+      "type": "object"
+    },
+    "SplitFractions": {
+      "additionalProperties": false,
+      "description": "Shares of the split; each in `[0, 1]`, `train > 0`, summing to 1 (±1e-9).",
+      "properties": {
+        "holdout": {
+          "type": "number"
+        },
+        "train": {
+          "type": "number"
+        },
+        "validation": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "train",
+        "validation",
+        "holdout"
+      ],
+      "type": "object"
+    },
+    "SplitName": {
+      "description": "The part of a split a member belongs to.",
+      "enum": [
+        "train",
+        "validation",
+        "holdout"
+      ],
+      "type": "string"
+    },
+    "SplitRequest": {
+      "additionalProperties": false,
+      "description": "The split a create request asks for; the server draws the seed when absent.",
+      "properties": {
+        "fractions": {
+          "$ref": "#/$defs/SplitFractions",
+          "default": {
+            "holdout": 0.15,
+            "train": 0.7,
+            "validation": 0.15
+          }
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "strata": {
+          "$ref": "#/$defs/SplitStrata",
+          "default": "age_band"
+        }
+      },
+      "type": "object"
+    },
+    "SplitStrata": {
+      "description": "What a split is stratified by. Only `age_band` today (R-7).",
+      "enum": [
+        "age_band"
+      ],
+      "type": "string"
+    },
+    "SplitStratumCount": {
+      "description": "Members per split part in one stratum (`age_band` id, or `unbanded`).",
+      "properties": {
+        "holdout": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "stratum": {
+          "type": "string"
+        },
+        "train": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "validation": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "stratum",
+        "train",
+        "validation",
+        "holdout"
+      ],
       "type": "object"
     },
     "SshPublicKey": {

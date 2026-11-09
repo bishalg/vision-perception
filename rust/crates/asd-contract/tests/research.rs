@@ -8,6 +8,7 @@ use std::collections::BTreeMap;
 
 use asd_contract::api_v1::{ConfigDocumentKind, JobProgress, ResearchFramesState};
 use asd_contract::config::ScoringProfile;
+use asd_contract::datasets::*;
 use asd_contract::export::{
     AnalysisEncoding, AnalysisExport, AnalysisLayout, ExportFormat, ExportMode, ExportPurpose,
     ExportRequest,
@@ -165,6 +166,8 @@ fn run() -> AnalysisRun {
         status: RunStatus::Succeeded,
         experiment_id: Some("22222222-2222-4222-8222-222222222222".into()),
         cohort_id: None,
+        dataset_id: Some("33333333-3333-4333-8333-333333333333".into()),
+        dataset_hash: Some("aa".repeat(32)),
         definition: AnalysisDefinition {
             kind: RunKind::CohortRescore,
             cohort: cohort(),
@@ -174,6 +177,10 @@ fn run() -> AnalysisRun {
             level: LevelRequest::Auto,
             options: RunOptions::default(),
             seed: 42,
+            dataset: Some(DatasetRef {
+                id: "33333333-3333-4333-8333-333333333333".into(),
+                content_hash: "aa".repeat(32),
+            }),
         },
         definition_hash: "ab".repeat(32),
         cohort_hash: "cd".repeat(32),
@@ -474,4 +481,147 @@ fn analysis_results_export_contract() {
         None,
         "absent stays absent"
     );
+}
+
+/// WP-X.11: the dataset DTOs round-trip and validate against `api-v1.json`, the run fields too.
+#[test]
+fn datasets_round_trip_and_validate() {
+    let lineage = Lineage {
+        cohort_id: Some("44444444-4444-4444-8444-444444444444".into()),
+        cohort_hash: "cd".repeat(32),
+        parent_dataset_id: None,
+        run_id: None,
+        profile_hash: "01".repeat(32),
+        profile_version: "1.3.0".into(),
+        catalog_version: "1.4.0".into(),
+        baselines_version: "2026.10.0".into(),
+        code_version: "asd-backend/0.1.0".into(),
+    };
+    let members = vec![
+        DatasetMember {
+            session_id: "S-1".into(),
+            participant_pseudonym: Some("P-0a1b2c3d4e".into()),
+            age_months: Some(30),
+            age_band: Some("24-35".into()),
+            split: Some(SplitName::Train),
+            label: Some(Label {
+                value: "monitor".into(),
+                source: LabelSourceKind::ReviewOutcomes,
+                taken_at: "2026-11-01T10:00:00Z".into(),
+                reviewer_pseudonym: Some("R-1234abcd".into()),
+            }),
+            excluded: None,
+        },
+        DatasetMember {
+            session_id: "S-2".into(),
+            participant_pseudonym: None,
+            age_months: None,
+            age_band: None,
+            split: None,
+            label: None,
+            excluded: Some(EXCLUDED_ERASED.into()),
+        },
+    ];
+    let rules = vec![
+        ExclusionRule::QualityGates {
+            id: "quality".into(),
+            min_valid_ratio: Some(0.6),
+            exclude_quality_verdicts: vec![GazeQualityVerdict::Rejected],
+            exclude_tracking_verdicts: vec![TrackingVerdict::Poor],
+            min_clips_completed: Some(3),
+        },
+        ExclusionRule::Tukey {
+            id: "tukey".into(),
+            metric: "eye_dwell_ratio".into(),
+            k: 1.5,
+        },
+        ExclusionRule::MadZ {
+            id: "mad".into(),
+            metric: "eye_dwell_ratio".into(),
+            z: 3.5,
+        },
+        ExclusionRule::ExplicitList {
+            id: "manual".into(),
+            sessions: vec![ExplicitExclusion {
+                session_id: "S-3".into(),
+                reason: "recorded twice".into(),
+            }],
+        },
+    ];
+    let exclusions = vec![Exclusion {
+        session_id: "S-3".into(),
+        rule_id: Some("manual".into()),
+        reason: "recorded twice".into(),
+    }];
+    let split = Split {
+        seed: 42,
+        fractions: SplitFractions::default(),
+        strata: SplitStrata::AgeBand,
+    };
+    let hash = content_hash(&members, &exclusions, &rules, Some(&split), None, &lineage);
+    let dataset = Dataset {
+        id: "33333333-3333-4333-8333-333333333333".into(),
+        org_id: "5f0e1d2c-3b4a-4968-8776-655443322110".into(),
+        name: "Toddlers v1".into(),
+        description: Some("first freeze".into()),
+        status: DatasetStatus::Frozen,
+        cohort_id: lineage.cohort_id.clone(),
+        frozen_at: "2026-11-09T10:00:00Z".into(),
+        content_hash: hash,
+        member_count: 2,
+        erased_count: 1,
+        exclusion_rules: rules.clone(),
+        exclusions,
+        label_source: Some(LabelSource {
+            kind: LabelSourceKind::ReviewOutcomes,
+            taken_at: "2026-11-09T10:00:00Z".into(),
+            count: 1,
+        }),
+        split: Some(split),
+        split_counts: split_counts(&members),
+        lineage,
+        data_dictionary: data_dictionary(),
+        created_by: None,
+        created_at: "2026-11-09T10:00:00Z".into(),
+        archived_at: None,
+    };
+    validates_as("Dataset", &round_trip(&dataset));
+    let page = DatasetPage {
+        items: vec![dataset],
+        next_cursor: Some("c".into()),
+    };
+    validates_as("DatasetPage", &round_trip(&page));
+    let members_page = DatasetMemberPage {
+        items: members,
+        next_cursor: None,
+    };
+    validates_as("DatasetMemberPage", &round_trip(&members_page));
+    let req = CreateDatasetRequest {
+        name: "Toddlers v2".into(),
+        description: None,
+        cohort_id: "44444444-4444-4444-8444-444444444444".into(),
+        parent_dataset_id: Some("33333333-3333-4333-8333-333333333333".into()),
+        run_id: None,
+        exclusion_rules: rules,
+        labels: Some(LabelSourceKind::ReviewOutcomes),
+        split: Some(SplitRequest {
+            seed: Some(7),
+            fractions: SplitFractions::default(),
+            strata: SplitStrata::AgeBand,
+        }),
+    };
+    validates_as("CreateDatasetRequest", &round_trip(&req));
+    let by_dataset = AnalysisRunRequest {
+        kind: RunKind::CohortRescore,
+        experiment_id: "22222222-2222-4222-8222-222222222222".into(),
+        cohort_id: None,
+        cohort: None,
+        dataset_id: Some("33333333-3333-4333-8333-333333333333".into()),
+        sweep: None,
+        level: LevelRequest::Score,
+        seed: Some(7),
+        options: RunOptions::default(),
+    };
+    validates_as("AnalysisRunRequest", &round_trip(&by_dataset));
+    validates_as("AnalysisRun", &round_trip(&run()));
 }

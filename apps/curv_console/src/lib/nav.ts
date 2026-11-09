@@ -57,6 +57,8 @@ export function navTree(base: string, role: Role | undefined, t: Messages = mess
         ? [
             { href: p.research.experiments, text: t.research.experiments.title },
             { href: p.research.cohorts, text: t.research.cohorts.title },
+            // WP-X.11: frozen datasets (from a cohort, hashed, with labels and a split).
+            { href: p.research.datasets, text: t.research.datasets.title },
             { href: p.research.runs, text: t.research.runs.title },
           ]
         : [],

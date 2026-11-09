@@ -20,6 +20,7 @@ use serde_json::Value;
 
 use crate::api_v1::{ConfigDocumentKind, JobProgress, ScoringStatus, SessionAttentionFlag};
 use crate::config::ScoringProfile;
+use crate::datasets::DatasetRef;
 use crate::mirror;
 
 // ---- limits (owner defaults, ADR-0012 open questions) ---------------------------------------
@@ -355,8 +356,9 @@ pub struct SweepSpec {
     pub axes: Vec<SweepAxis>,
 }
 
-/// `POST /v1/orgs/{id}/analysis-runs` (`AnalysisRun`; RUN-2). Exactly one of `cohort_id`
-/// and `cohort`. Answers `202 AnalysisRun`.
+/// `POST /v1/orgs/{id}/analysis-runs` (`AnalysisRun`; RUN-2). Exactly one of `cohort_id`,
+/// `cohort` and `dataset_id` (WP-X.11: the run takes its membership from the frozen dataset).
+/// Answers `202 AnalysisRun`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AnalysisRunRequest {
@@ -366,6 +368,9 @@ pub struct AnalysisRunRequest {
     pub cohort_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cohort: Option<CohortDefinition>,
+    /// A frozen dataset of the org (WP-X.11): its included, not erased members.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dataset_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sweep: Option<SweepSpec>,
     #[serde(default)]
@@ -392,6 +397,11 @@ pub struct AnalysisDefinition {
     pub level: LevelRequest,
     pub options: RunOptions,
     pub seed: i64,
+    /// WP-X.11: the dataset whose frozen members the run reads instead of resolving `cohort`
+    /// (then the dataset's cohort definition, for the record). Absent for cohort runs, so their
+    /// `definition_hash` is unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dataset: Option<DatasetRef>,
 }
 
 /// Histogram of a distribution: `counts[i]` values in `[edges[i], edges[i + 1])`.
@@ -571,6 +581,11 @@ pub struct AnalysisRun {
     pub experiment_id: Option<String>,
     #[serde(default)]
     pub cohort_id: Option<String>,
+    /// WP-X.11: the dataset the membership came from, and its content hash (provenance).
+    #[serde(default)]
+    pub dataset_id: Option<String>,
+    #[serde(default)]
+    pub dataset_hash: Option<String>,
     pub definition: AnalysisDefinition,
     pub definition_hash: String,
     pub cohort_hash: String,

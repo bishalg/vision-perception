@@ -263,6 +263,12 @@ pub fn core_level(level: WireLevel) -> LevelRequest {
 
 /// Resolves the cohort `def` of `org` with the band edges of `bands` (the experiment
 /// profile's, COH-3) and picks each session's level (RPX-3). Only `SELECT`s.
+///
+/// With `only` (WP-X.11, a run from a dataset) the members are those sessions instead of the
+/// definition's selection: research consent, "not withdrawn" and real capture still apply
+/// (synthetic only when `def.include_synthetic`), the definition's other filters do not, and
+/// a snapshot session no longer found (erased or withdrawn since the freeze) is excluded
+/// `session_gone`.
 pub async fn membership(
     conn: &mut PgConnection,
     org: Uuid,
@@ -270,6 +276,7 @@ pub async fn membership(
     bands: &[AgeBracket],
     level: LevelRequest,
     allow_synthetic: bool,
+    only: Option<&[String]>,
 ) -> AppResult<Membership> {
     let ((from, to), devices) =
         check_definition(def, allow_synthetic).map_err(AppError::Validation)?;
@@ -297,10 +304,12 @@ pub async fn membership(
              AND (NOT $6::bool OR s.research_frames_blob_key IS NOT NULL)
              AND COALESCE(s.summary -> 'normCollection' -> 'consented' = 'true'::jsonb, false)
              AND p.withdrawn_at IS NULL
-             AND COALESCE(s.scoring_status, 'scored') = ANY($7::text[])
-             AND (cardinality($8::text[]) = 0 OR s.quality_verdict = ANY($8::text[]))
-             AND (cardinality($9::text[]) = 0 OR s.tracking_verdict = ANY($9::text[]))
-             AND ($10::float8 IS NULL OR s.valid_frame_ratio >= $10)
+             AND ($11::text[] IS NOT NULL OR (
+                  COALESCE(s.scoring_status, 'scored') = ANY($7::text[])
+                  AND (cardinality($8::text[]) = 0 OR s.quality_verdict = ANY($8::text[]))
+                  AND (cardinality($9::text[]) = 0 OR s.tracking_verdict = ANY($9::text[]))
+                  AND ($10::float8 IS NULL OR s.valid_frame_ratio >= $10)))
+             AND ($11::text[] IS NULL OR s.id = ANY($11::text[]))
            ORDER BY s.id"#,
         org,
         from,
@@ -312,12 +321,22 @@ pub async fn membership(
         &quality,
         &tracking,
         def.min_valid_ratio,
+        only as Option<&[String]>,
     )
     .fetch_all(&mut *conn)
     .await?;
 
     let selected: Vec<&str> = def.age_bands.iter().map(String::as_str).collect();
     let mut out = Membership::default();
+    if let Some(only) = only {
+        let gone = only.len().saturating_sub(rows.len());
+        if gone > 0 {
+            out.excluded.insert(
+                reasons::SESSION_GONE.into(),
+                u32::try_from(gone).unwrap_or(u32::MAX),
+            );
+        }
+    }
     for r in rows {
         let band = r
             .age_months
@@ -735,13 +754,28 @@ async fn execute(ctx: &JobContext, job: &Job, run_id: Uuid) -> Result<Value, Job
         .execute(&mut *tx)
         .await?;
     let inputs = Arc::new(load_inputs(&mut tx, &run, &run.definition).await?);
+    // WP-X.11: a run from a dataset reads its frozen members, never the cohort again.
+    let (cohort, snapshot) = match &def.dataset {
+        Some(d) => {
+            let id = Uuid::parse_str(&d.id).map_err(|_| {
+                JobError::Permanent("analysis run definition: bad dataset id".into())
+            })?;
+            let ids = crate::routes::datasets::snapshot_ids(&mut tx, org, id).await?;
+            (
+                crate::routes::datasets::snapshot_definition(&def.cohort),
+                Some(ids),
+            )
+        }
+        None => (def.cohort.clone(), None),
+    };
     let members = membership(
         &mut tx,
         org,
-        &def.cohort,
+        &cohort,
         &inputs.draft.age_bands,
         core_level(def.level),
         config.allow_synthetic,
+        snapshot.as_deref(),
     )
     .await?;
     let previous: Option<Vec<String>> = match param_uuid(job, "rerun_of")? {

@@ -22,20 +22,34 @@ export async function generateMetadata(): Promise<Metadata> {
 const PICKER_SESSIONS = 50;
 
 /** `/[org]/research/experiments/[id]`: the workbench (RUI-1..5). */
-export default async function ExperimentPage({ params }: { params: Promise<{ org: string; id: string }> }) {
+export default async function ExperimentPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ org: string; id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { org, id } = await params;
+  // WP-X.11 "Start run from this dataset": `?dataset=<id>` opens the run dialog on that dataset.
+  const query = await searchParams;
+  const rawDataset = Array.isArray(query.dataset) ? query.dataset[0] : query.dataset;
   const role = await currentRole();
   const api = await authedApi();
   const published = (kind: ConfigDocumentKind) =>
     loadOrNotFound(() => api.listConfigDocuments(kind, { status: "published", limit: 1 })).then((p) => p.items[0]);
-  const [experiment, profile, baselines, catalog, sessionPage, cohorts] = await Promise.all([
+  const [experiment, profile, baselines, catalog, sessionPage, cohorts, datasets] = await Promise.all([
     loadOrNotFound(() => api.getExperiment(id)),
     published("scoring_profile"),
     published("normative_baselines"),
     published("stimulus_catalog"),
     api.listSessions(org, { limit: PICKER_SESSIONS }).then((p) => p.items).catch(() => [] as SessionListItem[]),
     api.listCohorts(org, { limit: 100 }).then((p) => p.items.filter((c) => !c.archived_at)).catch(() => []),
+    api
+      .listDatasets(org, { status: "frozen", limit: 100 })
+      .then((p) => p.items.map(({ id: dsId, name, member_count, content_hash, split }) => ({ id: dsId, name, member_count, content_hash, split })))
+      .catch(() => []),
   ]);
+  const initialDatasetId = rawDataset && datasets.some((d) => d.id === rawDataset) ? rawDataset : undefined;
   const sessions = pickerSessions(sessionPage);
   const set = baselines ? parseBaselines(baselines.body) : null;
   return (
@@ -49,6 +63,8 @@ export default async function ExperimentPage({ params }: { params: Promise<{ org
         catalog={catalog?.body ?? null}
         sessions={sessions}
         cohorts={cohorts}
+        datasets={datasets}
+        {...(initialDatasetId ? { initialDatasetId } : {})}
         canEdit={can(role, "experiment.write")}
         canRun={can(role, "analysis.run")}
         canPromote={can(role, "experiment.promote")}

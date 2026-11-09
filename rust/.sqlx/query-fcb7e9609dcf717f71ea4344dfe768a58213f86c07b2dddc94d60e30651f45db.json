@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE datasets d\n             SET erased_count = (SELECT count(*) FROM dataset_members m\n                                 WHERE m.dataset_id = d.id AND m.erased_at IS NOT NULL)\n             WHERE d.id = ANY($1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fcb7e9609dcf717f71ea4344dfe768a58213f86c07b2dddc94d60e30651f45db"
+}

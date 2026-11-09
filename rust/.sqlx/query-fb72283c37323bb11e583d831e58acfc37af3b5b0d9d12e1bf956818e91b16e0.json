@@ -1,0 +1,98 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT session_id, participant_pseudonym, age_months, age_band, split, label,\n                  erased_at IS NOT NULL AS \"erased!\"\n           FROM dataset_members\n           WHERE dataset_id = $1\n             AND ($2::text IS NULL OR split = $2)\n             AND ($3::text IS NULL OR session_id > $3)\n           ORDER BY session_id\n           LIMIT $4",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "session_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "dataset_members",
+            "name": "session_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "participant_pseudonym",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "dataset_members",
+            "name": "participant_pseudonym"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "age_months",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "dataset_members",
+            "name": "age_months"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "age_band",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "dataset_members",
+            "name": "age_band"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "split",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "dataset_members",
+            "name": "split"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "label",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "dataset_members",
+            "name": "label"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "erased!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "fb72283c37323bb11e583d831e58acfc37af3b5b0d9d12e1bf956818e91b16e0"
+}

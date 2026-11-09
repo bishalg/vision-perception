@@ -2,6 +2,9 @@ import { formatValue } from "@/lib/research/registry";
 import type { ResearchMessages } from "@/messages/research";
 import r from "./research.module.css";
 
+/** One string for an SVG `<title>`: React renders a single text child there (mixed children break hydration). */
+const tooltip = (label: string, value: string): string => `${label}: ${value}`;
+
 export interface CurvePoint {
   x: number;
   y: number | null;
@@ -53,7 +56,7 @@ export function SweepCurve({
         </line>
       ) : null}
       {segments.map((pts, i) => <polyline key={i} className={r.curveLine} points={pts} />)}
-      {points.map((p) => (p.y === null ? null : <circle key={p.x} className={r.curveDot} cx={sx(p.x)} cy={sy(p.y)} r={2.5}><title>{formatValue(p.x)}: {formatValue(p.y)}</title></circle>))}
+      {points.map((p) => (p.y === null ? null : <circle key={p.x} className={r.curveDot} cx={sx(p.x)} cy={sy(p.y)} r={2.5}><title>{tooltip(formatValue(p.x), formatValue(p.y))}</title></circle>))}
       <text className={r.axisText} x={PAD} y={H - 10}>{formatValue(x0)}</text>
       <text className={r.axisText} x={W - PAD} y={H - 10} textAnchor="end">{formatValue(x1)}</text>
       <text className={r.axisText} x={4} y={H - PAD}>{formatValue(y0)}</text>

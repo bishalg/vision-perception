@@ -25,6 +25,8 @@ export const PROVENANCE_FIELDS = [
   "level_resolved",
 ] as const;
 export type ProvenanceField = (typeof PROVENANCE_FIELDS)[number];
+/** WP-X.11: shown only for a run started from a frozen dataset. */
+export const DATASET_PROVENANCE_FIELDS = ["dataset_id", "dataset_hash"] as const;
 
 function fieldValue(run: AnalysisRun, field: ProvenanceField, text: ResearchMessages): string | null {
   if (field === "level_resolved") {
@@ -65,6 +67,19 @@ export function ProvenanceBlock({ run, text: textProp }: { run: AnalysisRun; tex
       <h2>{t.title}</h2>
       <p className="muted">{t.intro}</p>
       <dl className={r.provenance}>
+        {DATASET_PROVENANCE_FIELDS.map((field) => {
+          const value = run[field];
+          if (value == null) return null;
+          return (
+            <div key={field} style={{ display: "contents" }} data-provenance={field}>
+              <dt>{t.fields[field]}</dt>
+              <dd>
+                <code>{value}</code>
+                <CopyButton label={t.fields[field]!} value={value} text={text} />
+              </dd>
+            </div>
+          );
+        })}
         {PROVENANCE_FIELDS.map((field) => {
           const value = fieldValue(run, field, text);
           return (

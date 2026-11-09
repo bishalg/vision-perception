@@ -61,7 +61,7 @@ describe("AppShell", () => {
     pathname = "/o/research/runs/r1";
     shell("researcher");
     const side = screen.getByRole("navigation", { name: "Research" });
-    expect(within(side).getAllByRole("link").map((a) => a.textContent)).toEqual(["Experiments", "Cohorts", "Analysis runs"]);
+    expect(within(side).getAllByRole("link").map((a) => a.textContent)).toEqual(["Experiments", "Cohorts", "Datasets", "Analysis runs"]);
     expect(within(side).getByRole("link", { name: "Analysis runs" })).toHaveAttribute("aria-current", "page");
   });
 

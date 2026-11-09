@@ -115,17 +115,20 @@ export async function previewCohortAction(orgId: string, definition: unknown): P
   }
 }
 
-const runInput = analysisRunRequestSchema.pick({ kind: true, experiment_id: true, cohort_id: true, level: true, seed: true, sweep: true, options: true });
+const runInput = analysisRunRequestSchema.pick({ kind: true, experiment_id: true, cohort_id: true, dataset_id: true, level: true, seed: true, sweep: true, options: true });
 
-/** POST /v1/orgs/{id}/analysis-runs (`AnalysisRun`) → 202; `429 analysis-quota-exceeded`, `400 *-too-large`. */
+/**
+ * POST /v1/orgs/{id}/analysis-runs (`AnalysisRun`) → 202; `429 analysis-quota-exceeded`, `400 *-too-large`. The run
+ * reads a saved cohort or (WP-X.11) a frozen dataset: exactly one of `cohort_id` and `dataset_id`.
+ */
 export async function runOnCohortAction(orgId: string, input: unknown): Promise<ResearchResult<{ runId: string }>> {
   const parsed = runInput.safeParse(input);
-  if (!parsed.success || !parsed.data.cohort_id) return invalid;
+  if (!parsed.success || Boolean(parsed.data.cohort_id) === Boolean(parsed.data.dataset_id)) return invalid;
   try {
     const run = await (await authedApi()).createAnalysisRun(orgId, {
       kind: parsed.data.kind,
       experiment_id: parsed.data.experiment_id,
-      cohort_id: parsed.data.cohort_id,
+      ...(parsed.data.dataset_id ? { dataset_id: parsed.data.dataset_id } : { cohort_id: parsed.data.cohort_id! }),
       level: parsed.data.level ?? "auto",
       ...(parsed.data.seed != null ? { seed: parsed.data.seed } : {}),
       ...(parsed.data.kind === "param_sweep" && parsed.data.sweep ? { sweep: parsed.data.sweep, options: parsed.data.options ?? {} } : {}),

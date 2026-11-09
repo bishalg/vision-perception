@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT r.id, r.org_id, r.kind, r.status, r.experiment_id, r.cohort_id, r.definition,\n                  r.definition_hash, r.cohort_hash, r.membership_hash, r.profile_hash,\n                  r.published_profile_version, r.baselines_version, r.catalog_version,\n                  r.bundle_version, r.core_version, r.contract_version, r.pipeline_version,\n                  r.registry_version, r.seed, r.level_requested, r.sessions_n,\n                  r.sessions_frames_n, r.sessions_score_n, r.excluded, NULL::jsonb AS summary,\n                  r.result_blob_key, r.result_bytes, r.progress, r.job_id, r.error,\n                  r.created_by, r.created_at, r.started_at, r.finished_at,\n                  j.progress AS \"job_progress?\", j.result -> 'membership_drift' AS \"drift?\"\n           FROM analysis_runs r LEFT JOIN jobs j ON j.id = r.job_id\n           WHERE r.org_id = $1\n             AND ($2::text IS NULL OR r.kind = $2)\n             AND ($3::text IS NULL OR r.status = $3)\n             AND ($4::uuid IS NULL OR r.experiment_id = $4)\n             AND ($5::timestamptz IS NULL OR (r.created_at, r.id) < ($5, $6::uuid))\n           ORDER BY r.created_at DESC, r.id DESC\n           LIMIT $7",
+  "query": "SELECT r.id, r.org_id, r.kind, r.status, r.experiment_id, r.cohort_id, r.dataset_id,\n                  r.dataset_hash, r.definition,\n                  r.definition_hash, r.cohort_hash, r.membership_hash, r.profile_hash,\n                  r.published_profile_version, r.baselines_version, r.catalog_version,\n                  r.bundle_version, r.core_version, r.contract_version, r.pipeline_version,\n                  r.registry_version, r.seed, r.level_requested, r.sessions_n,\n                  r.sessions_frames_n, r.sessions_score_n, r.excluded, r.summary,\n                  r.result_blob_key, r.result_bytes, r.progress, r.job_id, r.error,\n                  r.created_by, r.created_at, r.started_at, r.finished_at,\n                  j.progress AS \"job_progress?\", j.result -> 'membership_drift' AS \"drift?\"\n           FROM analysis_runs r LEFT JOIN jobs j ON j.id = r.job_id\n           WHERE r.id = $1",
   "describe": {
     "columns": [
       {
@@ -71,6 +71,28 @@
       },
       {
         "ordinal": 6,
+        "name": "dataset_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "dataset_id"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "dataset_hash",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "dataset_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
         "name": "definition",
         "type_info": "Jsonb",
         "origin": {
@@ -81,7 +103,7 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 9,
         "name": "definition_hash",
         "type_info": "Bytea",
         "origin": {
@@ -92,7 +114,7 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 10,
         "name": "cohort_hash",
         "type_info": "Bytea",
         "origin": {
@@ -103,7 +125,7 @@
         }
       },
       {
-        "ordinal": 9,
+        "ordinal": 11,
         "name": "membership_hash",
         "type_info": "Bytea",
         "origin": {
@@ -114,7 +136,7 @@
         }
       },
       {
-        "ordinal": 10,
+        "ordinal": 12,
         "name": "profile_hash",
         "type_info": "Bytea",
         "origin": {
@@ -125,7 +147,7 @@
         }
       },
       {
-        "ordinal": 11,
+        "ordinal": 13,
         "name": "published_profile_version",
         "type_info": "Text",
         "origin": {
@@ -136,7 +158,7 @@
         }
       },
       {
-        "ordinal": 12,
+        "ordinal": 14,
         "name": "baselines_version",
         "type_info": "Text",
         "origin": {
@@ -147,7 +169,7 @@
         }
       },
       {
-        "ordinal": 13,
+        "ordinal": 15,
         "name": "catalog_version",
         "type_info": "Text",
         "origin": {
@@ -158,7 +180,7 @@
         }
       },
       {
-        "ordinal": 14,
+        "ordinal": 16,
         "name": "bundle_version",
         "type_info": "Text",
         "origin": {
@@ -169,7 +191,7 @@
         }
       },
       {
-        "ordinal": 15,
+        "ordinal": 17,
         "name": "core_version",
         "type_info": "Text",
         "origin": {
@@ -180,7 +202,7 @@
         }
       },
       {
-        "ordinal": 16,
+        "ordinal": 18,
         "name": "contract_version",
         "type_info": "Text",
         "origin": {
@@ -191,7 +213,7 @@
         }
       },
       {
-        "ordinal": 17,
+        "ordinal": 19,
         "name": "pipeline_version",
         "type_info": "Text",
         "origin": {
@@ -202,7 +224,7 @@
         }
       },
       {
-        "ordinal": 18,
+        "ordinal": 20,
         "name": "registry_version",
         "type_info": "Text",
         "origin": {
@@ -213,7 +235,7 @@
         }
       },
       {
-        "ordinal": 19,
+        "ordinal": 21,
         "name": "seed",
         "type_info": "Int8",
         "origin": {
@@ -224,7 +246,7 @@
         }
       },
       {
-        "ordinal": 20,
+        "ordinal": 22,
         "name": "level_requested",
         "type_info": "Text",
         "origin": {
@@ -235,7 +257,7 @@
         }
       },
       {
-        "ordinal": 21,
+        "ordinal": 23,
         "name": "sessions_n",
         "type_info": "Int4",
         "origin": {
@@ -246,7 +268,7 @@
         }
       },
       {
-        "ordinal": 22,
+        "ordinal": 24,
         "name": "sessions_frames_n",
         "type_info": "Int4",
         "origin": {
@@ -257,7 +279,7 @@
         }
       },
       {
-        "ordinal": 23,
+        "ordinal": 25,
         "name": "sessions_score_n",
         "type_info": "Int4",
         "origin": {
@@ -268,7 +290,7 @@
         }
       },
       {
-        "ordinal": 24,
+        "ordinal": 26,
         "name": "excluded",
         "type_info": "Jsonb",
         "origin": {
@@ -279,13 +301,18 @@
         }
       },
       {
-        "ordinal": 25,
+        "ordinal": 27,
         "name": "summary",
         "type_info": "Jsonb",
-        "origin": "Expression"
+        "origin": {
+          "Table": {
+            "table": "analysis_runs",
+            "name": "summary"
+          }
+        }
       },
       {
-        "ordinal": 26,
+        "ordinal": 28,
         "name": "result_blob_key",
         "type_info": "Text",
         "origin": {
@@ -296,7 +323,7 @@
         }
       },
       {
-        "ordinal": 27,
+        "ordinal": 29,
         "name": "result_bytes",
         "type_info": "Int4",
         "origin": {
@@ -307,7 +334,7 @@
         }
       },
       {
-        "ordinal": 28,
+        "ordinal": 30,
         "name": "progress",
         "type_info": "Jsonb",
         "origin": {
@@ -318,7 +345,7 @@
         }
       },
       {
-        "ordinal": 29,
+        "ordinal": 31,
         "name": "job_id",
         "type_info": "Uuid",
         "origin": {
@@ -329,7 +356,7 @@
         }
       },
       {
-        "ordinal": 30,
+        "ordinal": 32,
         "name": "error",
         "type_info": "Text",
         "origin": {
@@ -340,7 +367,7 @@
         }
       },
       {
-        "ordinal": 31,
+        "ordinal": 33,
         "name": "created_by",
         "type_info": "Uuid",
         "origin": {
@@ -351,7 +378,7 @@
         }
       },
       {
-        "ordinal": 32,
+        "ordinal": 34,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -362,7 +389,7 @@
         }
       },
       {
-        "ordinal": 33,
+        "ordinal": 35,
         "name": "started_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -373,7 +400,7 @@
         }
       },
       {
-        "ordinal": 34,
+        "ordinal": 36,
         "name": "finished_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -384,7 +411,7 @@
         }
       },
       {
-        "ordinal": 35,
+        "ordinal": 37,
         "name": "job_progress?",
         "type_info": "Jsonb",
         "origin": {
@@ -395,7 +422,7 @@
         }
       },
       {
-        "ordinal": 36,
+        "ordinal": 38,
         "name": "drift?",
         "type_info": "Jsonb",
         "origin": "Expression"
@@ -403,13 +430,7 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Text",
-        "Text",
-        "Uuid",
-        "Timestamptz",
-        "Uuid",
-        "Int8"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -419,6 +440,8 @@
       false,
       true,
       true,
+      true,
+      true,
       false,
       false,
       false,
@@ -438,7 +461,7 @@
       true,
       true,
       true,
-      null,
+      true,
       true,
       true,
       true,
@@ -452,5 +475,5 @@
       null
     ]
   },
-  "hash": "fa520ad767b27edf5651b7a9b81ee512d8c1deabc9d6f22cd20722e2dbc7c8d4"
+  "hash": "f2690c31d049c28c33752d8e5008e49715d93c6817a02410eb7b9bc29189ba7b"
 }

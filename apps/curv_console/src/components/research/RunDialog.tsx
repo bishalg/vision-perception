@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import type { Cohort, CohortPreview, ParamRegistry, RUN_KINDS, SweepSpec } from "@/lib/api/research";
+import type { Cohort, CohortPreview, Dataset, ParamRegistry, RUN_KINDS, SweepSpec } from "@/lib/api/research";
 import { LEVEL_REQUESTS } from "@/lib/api/research";
 import { formatValue, paramRegistry as bundledRegistry, stepOf, valueOf, type ProfileDoc } from "@/lib/research/registry";
 import { failureText, fieldReasons, type ResearchFailure, type ResearchResult } from "@/lib/research/result";
@@ -24,6 +24,7 @@ import { useLocale, useText } from "@/lib/i18n/provider";
 import { paramText } from "@/lib/research/paramText";
 import r from "./research.module.css";
 import { pathsFor } from "@/lib/paths";
+import { shortHash } from "@/lib/research/datasets";
 
 export type RunKind = (typeof RUN_KINDS)[number];
 
@@ -31,7 +32,9 @@ export type RunKind = (typeof RUN_KINDS)[number];
 export interface RunStartInput {
   kind: RunKind;
   experiment_id: string;
-  cohort_id: string;
+  /** Exactly one of `cohort_id` and `dataset_id` (WP-X.11). */
+  cohort_id?: string;
+  dataset_id?: string;
   level: string;
   seed?: number;
   sweep?: SweepSpec;
@@ -50,6 +53,8 @@ export function RunDialog({
   orgId,
   experimentId,
   cohorts,
+  datasets = [],
+  initialDatasetId,
   dirty,
   previewCohort,
   runOnCohort,
@@ -61,6 +66,10 @@ export function RunDialog({
   orgId: string;
   experimentId: string;
   cohorts: Cohort[];
+  /** WP-X.11: frozen datasets the run may read instead of a cohort. */
+  datasets?: Pick<Dataset, "id" | "name" | "member_count" | "content_hash" | "split">[];
+  /** Opens the dialog on this dataset ("Start run from this dataset"). */
+  initialDatasetId?: string;
   dirty: boolean;
   previewCohort: (definition: Cohort["definition"]) => Promise<ResearchResult<{ preview: CohortPreview }>>;
   runOnCohort: (input: RunStartInput) => Promise<ResearchResult<{ runId: string }>>;
@@ -75,17 +84,23 @@ export function RunDialog({
   const t = text.run;
   const s = text.runSetup;
   const router = useRouter();
+  const initialDataset = datasets.find((d) => d.id === initialDatasetId);
+  const [source, setSource] = useState<"cohort" | "dataset">(initialDataset ? "dataset" : "cohort");
   const [cohortId, setCohortId] = useState("");
+  const [datasetId, setDatasetId] = useState(initialDataset?.id ?? "");
   const [kind, setKind] = useState<RunKind>("cohort_rescore");
   const [level, setLevel] = useState<string>("auto");
-  const [seed, setSeed] = useState("");
+  // A dataset's split seed pre-fills the run seed (one seed for the whole analysis).
+  const [seed, setSeed] = useState(initialDataset?.split ? String(initialDataset.split.seed) : "");
   const [axes, setAxes] = useState<AxisDraft[]>([]);
   const [metrics, setMetrics] = useState<string[]>([]);
   const [preview, setPreview] = useState<CohortPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [serverFields, setServerFields] = useState<ResearchFailure["params"]>(undefined);
   const [pending, start] = useTransition();
-  const cohort = cohorts.find((c) => c.id === cohortId);
+  const cohort = source === "cohort" ? cohorts.find((c) => c.id === cohortId) : undefined;
+  const dataset = source === "dataset" ? datasets.find((d) => d.id === datasetId) : undefined;
+  const target = Boolean(cohort ?? dataset);
   const published = useMemo<ProfileDoc>(() => publishedProfile ?? {}, [publishedProfile]);
   const knobs = useMemo(() => axisKnobs(registry.params, level), [registry, level]);
   const check = useMemo(() => checkSweep(registry.params, axes, level, published), [registry, axes, level, published]);
@@ -148,7 +163,7 @@ export function RunDialog({
   }
 
   function submit() {
-    if (!cohort || dirty || !sweepReady) return;
+    if (!target || dirty || !sweepReady) return;
     setError(null);
     setServerFields(undefined);
     const parsedSeed = seed.trim() === "" ? undefined : Number(seed);
@@ -156,7 +171,7 @@ export function RunDialog({
       const res = await runOnCohort({
         kind,
         experiment_id: experimentId,
-        cohort_id: cohort.id,
+        ...(dataset ? { dataset_id: dataset.id } : { cohort_id: cohort!.id }),
         level,
         ...(parsedSeed !== undefined && Number.isSafeInteger(parsedSeed) ? { seed: parsedSeed } : {}),
         ...(sweeping ? { sweep: sweepSpec(axes), options: { metrics } } : {}),
@@ -195,17 +210,38 @@ export function RunDialog({
       <h2 id="run-dialog-title" style={{ margin: 0 }}>{t.title}</h2>
       <p className="muted" style={{ margin: 0 }}>{t.intro}</p>
       {dirty ? <p className="muted">{t.saveFirst}</p> : null}
-      {cohorts.length === 0 ? (
+      {datasets.length > 0 ? (
+        <fieldset className={r.row} aria-label={t.source}>
+          <legend>{t.source}</legend>
+          <label>
+            <input type="radio" name="run-source" checked={source === "cohort"} onChange={() => { setSource("cohort"); setPreview(null); }} /> {t.sourceCohort}
+          </label>
+          <label>
+            <input type="radio" name="run-source" checked={source === "dataset"} onChange={() => { setSource("dataset"); setPreview(null); }} /> {t.sourceDataset}
+          </label>
+        </fieldset>
+      ) : null}
+      {source === "cohort" && cohorts.length === 0 ? (
         <p className="muted">{t.noCohorts}</p>
       ) : (
         <div className={r.row}>
-          <label>
-            {t.cohort}
-            <select value={cohortId} onChange={(ev) => pickCohort(ev.currentTarget.value)}>
-              <option value="">{t.cohortPick}</option>
-              {cohorts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </label>
+          {source === "dataset" ? (
+            <label>
+              {t.dataset}
+              <select value={datasetId} onChange={(ev) => { setDatasetId(ev.currentTarget.value); setError(null); }}>
+                <option value="">{t.datasetPick}</option>
+                {datasets.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            </label>
+          ) : (
+            <label>
+              {t.cohort}
+              <select value={cohortId} onChange={(ev) => pickCohort(ev.currentTarget.value)}>
+                <option value="">{t.cohortPick}</option>
+                {cohorts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </label>
+          )}
           <label>
             {s.kind}
             <select value={kind} onChange={(ev) => pickKind(ev.currentTarget.value as RunKind)}>
@@ -285,9 +321,13 @@ export function RunDialog({
           </fieldset>
         </div>
       ) : null}
-      <div className={r.row}>
-        <button type="button" className="secondary" disabled={!cohort || pending} onClick={countPreview}>{pending ? t.previewing : t.preview}</button>
-      </div>
+      {dataset ? (
+        <p role="status" style={{ margin: 0 }}>{t.datasetCounts(dataset.member_count, shortHash(dataset.content_hash))}</p>
+      ) : (
+        <div className={r.row}>
+          <button type="button" className="secondary" disabled={!cohort || pending} onClick={countPreview}>{pending ? t.previewing : t.preview}</button>
+        </div>
+      )}
       {preview ? (
         <div role="status">
           <p style={{ margin: 0 }}>
@@ -308,7 +348,7 @@ export function RunDialog({
       ) : null}
       {error ? <p role="alert" className="muted">{error}</p> : null}
       <div className={r.row}>
-        <button type="button" disabled={!cohort || dirty || pending || !sweepReady} onClick={submit}>{pending ? t.submitting : t.submit}</button>
+        <button type="button" disabled={!target || dirty || pending || !sweepReady} onClick={submit}>{pending ? t.submitting : t.submit}</button>
         <button type="button" className="secondary" onClick={onClose}>{t.cancel}</button>
       </div>
     </section>

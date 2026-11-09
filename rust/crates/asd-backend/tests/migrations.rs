@@ -29,6 +29,8 @@ const TABLES: &[&str] = &[
     "cohorts", // WP-X.0
     "config_bundles",
     "config_documents",
+    "dataset_members", // WP-X.11 (0029_datasets.sql)
+    "datasets",        // WP-X.11
     "devices",
     "encounters", // WP-B.19
     "enrol_codes",

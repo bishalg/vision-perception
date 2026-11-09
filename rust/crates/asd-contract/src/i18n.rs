@@ -27,7 +27,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-use crate::{api_v1, care, claims, clinical, emr, export, mirror, params, problem, research};
+use crate::{
+    api_v1, care, claims, clinical, datasets, emr, export, mirror, params, problem, research,
+};
 
 /// Bumped when a key is removed or changes meaning (adding keys keeps it).
 pub const CATALOGUE_VERSION: &str = "1.0.0";
@@ -490,6 +492,15 @@ pub fn required_groups() -> Vec<KeyGroup> {
         KeyGroup::of_enum::<research::RunKind>("run_kind"),
         KeyGroup::of_enum::<research::RunStatus>("run_status"),
         KeyGroup::of_enum::<research::Level>("level"),
+        // WP-X.11 (ADR-0015 R-7..R-9): datasets.
+        KeyGroup::of_enum::<datasets::DatasetStatus>("dataset_status"),
+        KeyGroup::of_enum::<datasets::SplitName>("dataset_split"),
+        KeyGroup::of_enum::<datasets::LabelSourceKind>("label_source_kind"),
+        KeyGroup::of_enum::<datasets::ExclusionRuleKind>("exclusion_rule_kind"),
+        KeyGroup::of_values(
+            "dataset_column",
+            datasets::DICTIONARY_COLUMNS.iter().map(|c| c.0),
+        ),
         KeyGroup::of_enum::<api_v1::ConfigDocumentKind>("config_document_kind"),
         KeyGroup::of_enum::<api_v1::ConfigDocumentStatus>("config_document_status"),
         KeyGroup {

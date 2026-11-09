@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT s.id, s.age_months, s.device_id,\n                  s.capture_source = 'synthetic' AS \"synthetic!\",\n                  s.research_frames_blob_key, s.research_frames_bytes,\n                  s.research_frames_sha256,\n                  s.research_frames_purged_at IS NOT NULL AS \"purged!\"\n           FROM sessions s JOIN participants p ON p.id = s.participant_id\n           WHERE s.org_id = $1\n             AND ($2::timestamptz IS NULL OR s.received_at >= $2)\n             AND ($3::timestamptz IS NULL OR s.received_at <= $3)\n             AND (cardinality($4::uuid[]) = 0 OR s.device_id = ANY($4))\n             AND (s.capture_source = 'truedepth'\n                  OR ($5::bool AND s.capture_source = 'synthetic'))\n             AND (NOT $6::bool OR s.research_frames_blob_key IS NOT NULL)\n             AND COALESCE(s.summary -> 'normCollection' -> 'consented' = 'true'::jsonb, false)\n             AND p.withdrawn_at IS NULL\n             AND COALESCE(s.scoring_status, 'scored') = ANY($7::text[])\n             AND (cardinality($8::text[]) = 0 OR s.quality_verdict = ANY($8::text[]))\n             AND (cardinality($9::text[]) = 0 OR s.tracking_verdict = ANY($9::text[]))\n             AND ($10::float8 IS NULL OR s.valid_frame_ratio >= $10)\n           ORDER BY s.id",
+  "query": "SELECT s.id, s.age_months, s.device_id,\n                  s.capture_source = 'synthetic' AS \"synthetic!\",\n                  s.research_frames_blob_key, s.research_frames_bytes,\n                  s.research_frames_sha256,\n                  s.research_frames_purged_at IS NOT NULL AS \"purged!\"\n           FROM sessions s JOIN participants p ON p.id = s.participant_id\n           WHERE s.org_id = $1\n             AND ($2::timestamptz IS NULL OR s.received_at >= $2)\n             AND ($3::timestamptz IS NULL OR s.received_at <= $3)\n             AND (cardinality($4::uuid[]) = 0 OR s.device_id = ANY($4))\n             AND (s.capture_source = 'truedepth'\n                  OR ($5::bool AND s.capture_source = 'synthetic'))\n             AND (NOT $6::bool OR s.research_frames_blob_key IS NOT NULL)\n             AND COALESCE(s.summary -> 'normCollection' -> 'consented' = 'true'::jsonb, false)\n             AND p.withdrawn_at IS NULL\n             AND ($11::text[] IS NOT NULL OR (\n                  COALESCE(s.scoring_status, 'scored') = ANY($7::text[])\n                  AND (cardinality($8::text[]) = 0 OR s.quality_verdict = ANY($8::text[]))\n                  AND (cardinality($9::text[]) = 0 OR s.tracking_verdict = ANY($9::text[]))\n                  AND ($10::float8 IS NULL OR s.valid_frame_ratio >= $10)))\n             AND ($11::text[] IS NULL OR s.id = ANY($11::text[]))\n           ORDER BY s.id",
   "describe": {
     "columns": [
       {
@@ -93,7 +93,8 @@
         "TextArray",
         "TextArray",
         "TextArray",
-        "Float8"
+        "Float8",
+        "TextArray"
       ]
     },
     "nullable": [
@@ -107,5 +108,5 @@
       null
     ]
   },
-  "hash": "0ffc92717f378f158ccb242e0498b5ecfbbd18994f40ea3d82acaac9148e6c4e"
+  "hash": "01cb5452ebd1ba30fea25f9c3fad432d8e3097e7a9b74aa2a585b67f544dcf74"
 }

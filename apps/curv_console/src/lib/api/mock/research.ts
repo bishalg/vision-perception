@@ -13,6 +13,8 @@ import type {
   BandSummary,
   Cohort,
   CohortDefinition,
+  Dataset,
+  DatasetMember,
   Dist,
   Experiment,
   ResearchApi,
@@ -37,6 +39,8 @@ export const MOCK_RESEARCH_IDS = {
   runFailed: "a0000000-0000-4000-8000-000000000003",
   runSweep: "a0000000-0000-4000-8000-000000000004",
   runAgeProfile: "a0000000-0000-4000-8000-000000000005",
+  /** WP-X.11: a frozen dataset of the toddlers cohort with labels and a split. */
+  datasetToddlers: "d0000000-0000-4000-8000-000000000001",
 } as const;
 
 const SMALL_CELL_K = 12;
@@ -194,6 +198,13 @@ function ageProfileSummary(): RunSummary {
   };
 }
 
+/** The data dictionary of a frozen dataset (asd_contract::datasets::DICTIONARY_COLUMNS). */
+const DICTIONARY: [string, "string" | "integer" | "datetime", "months" | null][] = [
+  ["session_id", "string", null], ["participant_pseudonym", "string", null], ["age_months", "integer", "months"],
+  ["age_band", "string", null], ["split", "string", null], ["label", "string", null], ["label_source", "string", null],
+  ["label_taken_at", "datetime", null], ["reviewer_pseudonym", "string", null],
+];
+
 const DEFINITION: CohortDefinition = { age_bands: ["24-35", "36-47"], tracking_verdicts: ["good", "fair"], from: "2025-11-01" };
 
 export function createMockResearch(ctx: MockResearchContext): ResearchApi {
@@ -209,6 +220,8 @@ export function createMockResearch(ctx: MockResearchContext): ResearchApi {
   const cohorts = new Map<string, Cohort>();
   const runs = new Map<string, AnalysisRun>();
   const rows = new Map<string, AnalysisSessionRow[]>();
+  const datasets = new Map<string, Dataset>();
+  const datasetMembers = new Map<string, DatasetMember[]>();
 
   const experiment = (id: string, over: Partial<Experiment>): Experiment => ({
     id, org_id: ctx.orgId, name: "", description: null, status: "draft", base_profile_version: "1.1.0",
@@ -233,7 +246,7 @@ export function createMockResearch(ctx: MockResearchContext): ResearchApi {
 
   const run = (id: string, over: Partial<AnalysisRun>): AnalysisRun => ({
     id, org_id: ctx.orgId, kind: "cohort_rescore", status: "queued",
-    experiment_id: MOCK_RESEARCH_IDS.experimentDraft, cohort_id: MOCK_RESEARCH_IDS.cohortToddlers,
+    experiment_id: MOCK_RESEARCH_IDS.experimentDraft, cohort_id: MOCK_RESEARCH_IDS.cohortToddlers, dataset_id: null, dataset_hash: null,
     definition: { kind: "cohort_rescore", cohort: DEFINITION, profile: profile(4), baselines_version: null, sweep: null, level: "auto", options: { metrics: [], bootstrap: true }, seed: 42 },
     definition_hash: HASH("1"), cohort_hash: HASH("c"), membership_hash: null, profile_hash: HASH("b"),
     published_profile_version: "1.1.0", baselines_version: "2026.10.0", catalog_version: "1.4.0", bundle_version: null,
@@ -287,6 +300,84 @@ export function createMockResearch(ctx: MockResearchContext): ResearchApi {
     };
   });
   rows.set(MOCK_RESEARCH_IDS.runSucceeded, sessionRows());
+
+  /**
+   * WP-X.11 mock datasets: the synthetic sessions of the run rows, with a fixed pattern for the split and labels. The
+   * real snapshot, rules, seeded split and content hash are computed by the Rust backend; this only shapes answers.
+   */
+  const MOCK_SESSIONS = 37;
+  const PARTS = ["train", "train", "train", "train", "train", "train", "train", "validation", "validation", "holdout"] as const;
+  const freeze = (
+    id: string,
+    name: string,
+    cohortId: string,
+    over: { rules?: Dataset["exclusion_rules"]; labels?: boolean; seed?: number | null; description?: string | null; at?: string },
+  ): Dataset => {
+    const named = new Map<string, string>();
+    for (const r of over.rules ?? []) if (r.kind === "explicit_list") for (const s of r.sessions) named.set(s.session_id, r.id);
+    const quality = (over.rules ?? []).find((r) => r.kind === "quality_gates");
+    const all = Array.from({ length: MOCK_SESSIONS }, (_, i) => `SESS-MOCK-${String(i + 1).padStart(4, "0")}`);
+    const exclusions: Dataset["exclusions"] = [
+      { session_id: "SESS-MOCK-NOAGE", rule_id: null, reason: "no_age" },
+      ...(quality ? [{ session_id: "SESS-MOCK-0037", rule_id: quality.id, reason: "valid_ratio_below" }] : []),
+    ];
+    const members: DatasetMember[] = [];
+    all.forEach((sid, i) => {
+      if (quality && sid === "SESS-MOCK-0037") return;
+      const rule = named.get(sid);
+      if (rule) {
+        const rs = (over.rules ?? []).find((r) => r.id === rule);
+        const reason = rs?.kind === "explicit_list" ? rs.sessions.find((s) => s.session_id === sid)?.reason ?? "" : "";
+        exclusions.push({ session_id: sid, rule_id: rule, reason });
+        return;
+      }
+      const age = 24 + (i % 24);
+      members.push({
+        session_id: sid, participant_pseudonym: `P-${(0x5a17c0de00 + i * 7919).toString(16).slice(-12)}`, age_months: age,
+        age_band: age < 36 ? "24-35" : "36-47", split: over.seed == null ? null : PARTS[i % PARTS.length]!,
+        label: over.labels && i % 6 === 0
+          ? { value: i % 12 === 0 ? "monitor" : "no_concern_noted", source: "review_outcomes", taken_at: iso(-2000 + i), reviewer_pseudonym: "R-3f9a1c07" }
+          : null,
+        excluded: null,
+      });
+    });
+    exclusions.sort((a, b) => a.session_id.localeCompare(b.session_id));
+    const counts = new Map<string, { train: number; validation: number; holdout: number }>();
+    for (const m of members) {
+      if (!m.split) continue;
+      const c = counts.get(m.age_band!) ?? { train: 0, validation: 0, holdout: 0 };
+      c[m.split] += 1;
+      counts.set(m.age_band!, c);
+    }
+    datasetMembers.set(id, members);
+    const at = over.at ?? stamp();
+    return {
+      id, org_id: ctx.orgId, name, description: over.description ?? null, status: "frozen", cohort_id: cohortId, frozen_at: at,
+      content_hash: HASH(String((seq + name.length) % 10)).replace(/^./, "e"), member_count: members.length, erased_count: 0,
+      exclusion_rules: over.rules ?? [], exclusions,
+      label_source: over.labels ? { kind: "review_outcomes", taken_at: at, count: members.filter((m) => m.label).length } : null,
+      split: over.seed == null ? null : { seed: over.seed, fractions: { train: 0.7, validation: 0.15, holdout: 0.15 }, strata: "age_band" },
+      split_counts: [...counts.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([stratum, c]) => ({ stratum, ...c })),
+      lineage: {
+        cohort_id: cohortId, cohort_hash: HASH("c"), parent_dataset_id: null, run_id: null, profile_hash: HASH("b"),
+        profile_version: "1.1.0", catalog_version: "1.4.0", baselines_version: "2026.10.0", code_version: "asd-backend/0.1.0",
+      },
+      data_dictionary: DICTIONARY.map(([name, type, unit]) => ({ name, type, unit, description_key: `dataset_column.${name}` })),
+      created_by: ctx.userId, created_at: at, archived_at: null,
+    };
+  };
+  datasets.set(MOCK_RESEARCH_IDS.datasetToddlers, freeze(MOCK_RESEARCH_IDS.datasetToddlers, "Toddlers v1", MOCK_RESEARCH_IDS.cohortToddlers, {
+    rules: [
+      { kind: "quality_gates", id: "quality", min_valid_ratio: 0.6 },
+      { kind: "explicit_list", id: "manual", sessions: [{ session_id: "SESS-MOCK-0003", reason: "recorded twice" }] },
+    ],
+    labels: true, seed: 42, description: "First freeze of the toddler cohort", at: iso(-500),
+  }));
+  const getDataset = (id: string) => {
+    const d = datasets.get(id);
+    if (!d) throw notFound();
+    return d;
+  };
 
   function page<T extends { id?: string; created_at?: string }>(items: T[], cursor?: string, limit = 20) {
     const start = cursor ? Number.parseInt(cursor, 10) || 0 : 0;
@@ -439,9 +530,14 @@ export function createMockResearch(ctx: MockResearchContext): ResearchApi {
       const e = getExperiment(req.experiment_id);
       const active = [...runs.values()].filter((r) => r.status === "queued" || r.status === "running").length;
       if (active >= 5) throw problem(429, "analysis-quota-exceeded", "Quota exceeded", "too many queued runs");
+      const ds = req.dataset_id ? getDataset(req.dataset_id) : null;
+      if (ds?.status === "archived") throw problem(400, "validation-failed", "Invalid", "the dataset is archived");
+      const base = run("", {});
       const r = run(newId("a"), {
-        kind: req.kind, experiment_id: e.id, cohort_id: req.cohort_id ?? null, level_requested: req.level ?? "auto",
+        kind: req.kind, experiment_id: e.id, cohort_id: ds ? ds.cohort_id ?? null : req.cohort_id ?? null,
+        dataset_id: ds?.id ?? null, dataset_hash: ds?.content_hash ?? null, level_requested: req.level ?? "auto",
         seed: req.seed ?? 42, created_at: stamp(),
+        definition: { ...base.definition, kind: req.kind, level: req.level ?? "auto", seed: req.seed ?? 42, dataset: ds ? { id: ds.id, content_hash: ds.content_hash } : null },
       });
       runs.set(r.id, r);
       e.last_run_id = r.id;
@@ -477,6 +573,41 @@ export function createMockResearch(ctx: MockResearchContext): ResearchApi {
     async getResearchFrames() {
       // The mock stores no research frame log: the preview shows the score-level result.
       throw problem(404, "frames-unavailable", "Not found", "no research frame log was uploaded for this session");
+    },
+    async listDatasets(orgId, q) {
+      ensureOrg(orgId);
+      return page(newest(datasets).filter((d) => !q?.status || d.status === q.status), q?.cursor, q?.limit);
+    },
+    async createDataset(orgId, req) {
+      ensureOrg(orgId);
+      const c = cohorts.get(req.cohort_id);
+      if (!c) throw problem(400, "validation-failed", "Invalid", "no such cohort in this org");
+      if ([...datasets.values()].some((d) => d.name === req.name)) throw problem(409, "conflict", "Conflict", "a dataset with that name exists");
+      if ((req.exclusion_rules ?? []).some((r) => r.kind === "tukey" || r.kind === "mad_z")) {
+        throw problem(400, "validation-failed", "Invalid", "metric outlier rules are applied from WP-X.22");
+      }
+      const d = freeze(newId("d"), req.name, c.id, {
+        rules: req.exclusion_rules ?? [], labels: req.labels === "review_outcomes",
+        seed: req.split ? (req.split.seed ?? 7) : null, description: req.description ?? null,
+      });
+      datasets.set(d.id, d);
+      return snap(d);
+    },
+    async getDataset(id) {
+      return snap(getDataset(id));
+    },
+    async listDatasetMembers(id, q) {
+      getDataset(id);
+      const all = (datasetMembers.get(id) ?? []).filter((m) => !q?.split || m.split === q.split);
+      const start = q?.cursor ? Number.parseInt(q.cursor, 10) || 0 : 0;
+      const limit = q?.limit ?? 50;
+      return { items: snap(all.slice(start, start + limit)), next_cursor: start + limit < all.length ? String(start + limit) : null };
+    },
+    async archiveDataset(id) {
+      const d = getDataset(id);
+      if (d.status === "archived") throw problem(409, "invalid-transition", "Already archived");
+      Object.assign(d, { status: "archived", archived_at: stamp() });
+      return snap(d);
     },
     async getEffectiveConfig(orgId) {
       ensureOrg(orgId);

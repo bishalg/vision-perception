@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import type { PreviewRecord } from "@/app/[org]/research/actions";
 import { DraftChecks } from "./DraftChecks";
-import type { Cohort, CohortPreview, Experiment, ParamRegistry } from "@/lib/api/research";
+import type { Cohort, CohortPreview, Dataset, Experiment, ParamRegistry } from "@/lib/api/research";
 import { useText } from "@/lib/i18n/provider";
 import { paramRegistry as bundledRegistry, sameValue, type ProfileDoc } from "@/lib/research/registry";
 import { failureText, fieldReasons, type ResearchResult } from "@/lib/research/result";
@@ -41,6 +41,8 @@ export function Workbench({
   catalog,
   sessions,
   cohorts,
+  datasets = [],
+  initialDatasetId,
   canEdit,
   canRun,
   canPromote,
@@ -55,6 +57,9 @@ export function Workbench({
   catalog?: unknown;
   sessions: PickerSession[];
   cohorts: Cohort[];
+  /** WP-X.11: frozen datasets for the run dialog; `initialDatasetId` opens it on one. */
+  datasets?: Pick<Dataset, "id" | "name" | "member_count" | "content_hash" | "split">[];
+  initialDatasetId?: string;
   canEdit: boolean;
   canRun: boolean;
   canPromote: boolean;
@@ -75,7 +80,7 @@ export function Workbench({
   const [serverFields, setServerFields] = useState<Record<string, string>>({});
   const [coreProblems, setCoreProblems] = useState<{ count: number; fields: Record<string, string> }>({ count: 0, fields: {} });
   const [promoteError, setPromoteError] = useState<string | null>(null);
-  const [running, setRunning] = useState(false);
+  const [running, setRunning] = useState(Boolean(initialDatasetId) && canRun);
   const [pending, start] = useTransition();
 
   const dirty = name !== saved.name || description !== saved.description || !sameValue(draft, saved.profile);
@@ -141,6 +146,8 @@ export function Workbench({
           orgId={orgId}
           experimentId={experiment.id}
           cohorts={cohorts}
+          datasets={datasets}
+          {...(initialDatasetId ? { initialDatasetId } : {})}
           dirty={dirty}
           previewCohort={actions.previewCohort}
           runOnCohort={actions.runOnCohort}
