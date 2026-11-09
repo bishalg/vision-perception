@@ -39,7 +39,7 @@ chrono-tz = { version = "0.10", default-features = false, features = ["std"] }
 # Name-based (v5, SHA-1) UUIDs for every bundle fullUrl, as FHIRBundleBuilder.uuid.
 uuid = { version = "1", features = ["v5"] }
 # DocumentReference attachment: base64 data and SHA-1 hash (FHIR Attachment.hash); HL7 ED.
-base64 = "0.22"
+base64 = "0.23"
 sha1_smol = "1"
 # Multi-table CSV exports are a ZIP (CSV-3). Deflate only, pure-Rust backend; no
 # encryption, no other codecs, no clock (timestamps are fixed for XC-8).
