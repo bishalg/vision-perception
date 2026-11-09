@@ -1,80 +1,108 @@
-# Handoff: ASD Gaze App Store readiness (as of 2026-10-24)
+# Handoff: EarlyGaze App Store readiness (as of 2026-11-09)
 
-Read first: `work-packages.md` (authoritative for file ownership and traps), `technical.md`, `acceptance.md`,
-`qa-validation.md`, ADR-0001..0005. Working rules: spec before code; test-first; implementers do not commit;
-the main session runs every gate and commits what passed; builds only under `/private/tmp/...`.
-Model routing: architect (Fable) designs, `senior-implementer` (Opus) for subtle packages, `implementer`
-(Sonnet) for mechanical ones.
+Read first: `store-collection-build.md` (the store build, decisions S-1..S-21), `i18n-readiness.md`,
+`public-site-alignment.md`, `work-packages.md` (file ownership and traps for the older packages),
+`technical.md`, `acceptance.md`, `qa-validation.md`, ADR-0001..0005. Tracker:
+`docs/roadmap_2026q4/04_asd_phased_work_packages.md` (rows WP-A.*, WP-S.*, WP-LN.*, WP-W.1).
+Working rules: spec before code; test-first; implementers do not commit; the main session runs every gate
+and commits what passed; builds only under `/private/tmp/...`. Model routing per the repo `CLAUDE.md`.
+
+The 2026-10-24 handoff (phase 1 blockers, phases 2-4 of the original plan) is history: those packages
+landed as WP-A.1..A.6 and are recorded in the tracker. This file now holds only what matters for the
+first submission.
 
 ## State
 
-Branch `dev`, pushed to `origin` at `9e025c3`. Not pushed to the `cursor` remote.
-Phase 1 (blockers) is DONE: WP-1.1, 1.2, 1.3, 1.4, 1.5a, 1.5b, 1.6. PR #2 (gaze reaction scoring) is merged
-(reconciled with the nil/optional metric contract).
+Branch `dev`. The App Store build (`Release`, `ASD_STORE_BUILD`) is an observation-capture tool: no
+score, band, flag or report on the device (S-1..S-9). Landed: WP-S.1..S.5, S.7, LN.1, LN.3; WP-W.1 is on
+the landing repo's `dev` branch awaiting the owner's merge to `main`. The listing is en-US only (S-14);
+hi and ne-NP texts are parked in `fastlane/metadata_pending/`.
 
-Gates at handoff (all commands in `qa-validation.md`):
-- Kit: `swift test --scratch-path /private/tmp/asd-kit` -> 150 tests, 0 failures (one earlier run showed 18
-  failures that did not reproduce in 6 reruns; watch for flakiness).
-- App: 162 tests passing (iPhone 18 Pro simulator), Release build succeeds.
-- `python3 scripts/check_asd_claims.py [--swift|--secrets|--selftest]` all pass; CI `asd-claims` job runs `--swift`.
-- Repo CI on `dev` was already red before this work (C++ build, mobile strings/shapes, coverage, sanitizers).
-  Not investigated.
+Identity: bundle id `com.open-spectrum.eye-gaze`, widget `com.open-spectrum.eye-gaze.carewidget`,
+App Store Connect app id 6828468388 (record currently named "Eye Gaze"; the rename to "EarlyGaze" is a
+metadata change on this version, S-7). Display name "EarlyGaze". `MARKETING_VERSION` 1.0.0, build 3,
+iOS 18.0+. Category HEALTH_AND_FITNESS. Privacy manifest: no tracking, no collected data (true while the
+default build sends nothing off the device, S-4). Entitlements: HealthKit, Declared Age Range.
 
-## Decisions made (H-items)
+Gates (all in `scripts/ios_test.sh`; run from the repo root): kit tests, kit TSAN, XcodeGen, app tests
+on a simulator, Release and DemoRelease builds, `check_asd_claims.py --swift --prose --secrets`, privacy
+API check, `asd-cli i18n lint` against `scripts/i18n/literal-baseline.txt`, `asd-cli i18n check` on
+both catalogues, `check_release_symbols.sh` for Release and DemoRelease. Plus `fastlane validate_metadata`
+and `ruby -c fastlane/Fastfile`. Last full green run: 2026-11-09 (WP-S.5b integration). Note: before 2026-11-09 the `ios_test.sh` claims step ran only the secrets scan (flag exclusivity in the script); the claims scan itself was green when run on its own.
 
-- H8: working tree committed in chunks.  H1: secrets removed going forward only, NO history rewrite
-  (`git filter-repo` command documented in `apps/ios_asd_gaze_app/fastlane/README.md`, not run).
-- H2: name "EarlyGaze Observation Diary" (placeholder). H7: no research study at launch; study/IRB framing removed.
-- Category HEALTH_AND_FITNESS (H6 not formally confirmed).
+## Before submission: code
 
-## Still needs the human
+| Item | Status | Where |
+| --- | --- | --- |
+| WP-S.5b opt-in gating (every toggle gates its feature; store build shows only the opt-ins whose feature exists; clinic delivery authorised by guardian consent + opt-in + enrolment) | done 2026-11-09 | `store-collection-build.md` S-15..S-21 |
+| App Review notes sent with the metadata (`fastlane/review_notes.txt` -> `app_review_information[:notes]`), checked by the claims gate | done 2026-11-09 | `fastlane/Fastfile` `update_metadata` |
+| WP-S.7b polish: plain-language Settings rows (CoreMotion filter, vault wording), iPad readable-width consent layout | todo | tracker |
+| Regenerate screenshots before upload (PNGs are git-ignored; the S.5b run on 2026-11-09 produced all 16) | at submission time | `apps/ios_asd_gaze_app/scripts/run_store_screenshots.sh` |
+| README drift sweep (`apps/ios_asd_gaze_app/README.md`) | done 2026-11-09 | |
+| WP-LN.2 literal burn-down of store-build files, WP-LN.4 pseudo-locale run | nice to have for en-US; needed before hi/ne listing | `i18n-readiness.md` |
+| WP-S.6 shared consent text in the catalogue + `asd-contract` | after submission unless hi/ne listing moves first | `i18n-readiness.md`, `android-parity-plan.md` |
+| WP-S.5c facial-expression metrics droppable per session in the kit, then offered as an opt-in | after submission | S-21 |
 
-1. Rotate the committed password (still in history on `origin` and `cursor`). Decide on a history rewrite + force push.
-2. H3 M-CHAT-R/F licence; H4 org Apple developer account, bundle id (currently `org.curv.asd.gazecollector`),
-   domains. `curv.engineering` is a placeholder publisher domain (age-suitability URL etc.): confirm.
-3. Decode default: a pre-change `GazeSessionReportSummary` with no `captureSource` decodes as `.trueDepth`
-   (kit). Alternative is to throw. Pre-v1.6 records without the no-video guarantee decode as simulated/legacy.
-4. Native-speaker review of Hindi/Nepali store text (mandatory sentences are in English).
-5. Manual device checklist (acceptance scenarios 1, 10-16, 19). File protection cannot be verified on the
-   simulator or macOS; the vault, sync queue and logger protection must be checked on a real iPhone.
+## Before submission: human (owner)
 
-## Remaining packages
+1. **H-6 account.** Confirm the Apple team, App Store Connect team and API key in the environment
+   (`APPLE_TEAM_ID`, `ITC_TEAM_ID`, `ASC_KEY_ID`/`ASC_ISSUER_ID`/`ASC_KEY_CONTENT`), `APP_IDENTIFIER`
+   unset or `com.open-spectrum.eye-gaze`. Enable the **Declared Age Range** capability on the App ID
+   (the entitlement is in the build; without the capability the archive fails to sign).
+   Decide the publisher name shown on the listing and the privacy page (copyright reads "Curv
+   Engineering"; the site is "Open Spectrum Tracking").
+2. **HealthKit entitlement in the store build.** The store build offers no HealthKit feature (S-6, S-16).
+   Apple rejects entitlements for features the build does not use (2.5.1 / HealthKit rules). Recommended:
+   a Release-only entitlements file without `com.apple.developer.healthkit`, or accept the review risk
+   and keep the note in `review_notes.txt`. Owner decision.
+3. **Public pages live.** Merge the landing repo `dev` -> `main` so
+   `https://open-spectrum-tracking.vercel.app/earlygaze`, `/privacy/earlygaze` and `/support/earlygaze`
+   resolve (the listing and the in-app links already point there; the pages ship `noindex` while
+   `[TODO]` placeholders remain). Legal review of the privacy policy text. Replace the support email
+   `support@curv.engineering` in the descriptions if the domain changes.
+4. **Review contact.** Set `REVIEW_CONTACT_FIRST_NAME`, `REVIEW_CONTACT_LAST_NAME`, `REVIEW_CONTACT_EMAIL`,
+   `REVIEW_CONTACT_PHONE` before `fastlane update_metadata` (never committed, CI-4). No demo account is
+   needed (the app has no login); `review_notes.txt` says so.
+5. **H-8 stimulus clips.** The clips are git-ignored and absent from a clean checkout, so a clean archive
+   ships without them. Confirm the licence, place the licensed clips, and archive from a tree that has them
+   (or ship the on-demand resource path). The capture flow blocks on the download gate otherwise.
+6. **U7 real-device checklist** (`qa-validation.md`, acceptance scenarios 1, 10-16, 19): file protection
+   of vault, sync queue and logs; consent flow; camera primer; a full capture on an iPhone with Face ID;
+   the Declared Age Range prompt on a device signed into a child account.
+7. **App Store Connect form.** Age rating questionnaire; App Privacy answers = "Data Not Collected" for this
+   build (matches the manifest); export compliance (`ITSAppUsesNonExemptEncryption` is set in the plist);
+   content rights (clips, H-8); the listing rename "Eye Gaze" -> "EarlyGaze".
+8. **Old secrets.** The 2026-10 handoff recorded a committed password still in history on `origin` and the
+   `cursor` remote (`fastlane/README.md`, "History cleanup", decision H1: no rewrite). Confirm it was
+   rotated; nothing in the current tree uses it.
+9. **Native hi/ne review** of the parked listing texts and of the `needs_review` catalogue strings: not
+   needed for the en-US submission; needed before the hi/ne listing or in-app review-quality translations.
 
-Phase 2 (high):
-- WP-2.1 actor-owned gaze pipeline: adopt the existing `GazeProcessingActor` (do not rewrite), TSAN preset
-  (`swift test --sanitize=thread`), timestamp-based durations (currently assume 60 fps), real
-  `interruptionCount`/`interruptedSec`. `stopSession()` becomes async: `ConsentGatingTests` calls
-  `_ = controller.stopSession()` and needs `await`. Fix: kit `stopSession()` on an empty session labels it
-  `captureSource ?? .trueDepth`; it should not claim live data.
-- WP-2.2 camera permission flow, idle timer, scene phase.
-- WP-2.3 research endpoint from config (HTTPS only), privacy manifests, usage strings. `http://127.0.0.1` is an
-  IP literal that bypasses ATS; app tests currently attempt real network calls to it ("Transmission failed" logs).
+## Submission runbook (after the code items above land and the gates are green)
 
-Phase 3 (medium): WP-3.1 FHIR Bundle/Provenance/real coding (SNOMED/OMOP codes untouched so far);
-WP-3.2 diary/milestones/medications to FHIR; WP-3.3 iOS CI (`ios.yml`, `scripts/ios_test.sh`; also add
-`scripts/check_release_symbols.sh` as a CI step); WP-3.4 publisher identity, M-CHAT gate, stimulus provenance
-(needs H3, H4).
-Phase 4 (low): WP-4.1 URLs/locales; WP-4.2 Swift 6 strict concurrency as errors; WP-4.3 protected history store
-out of UserDefaults; WP-4.4 renames, last.
+```bash
+cd apps/ios_asd_gaze_app
+bundle exec fastlane validate_metadata          # lengths, URLs, claims mirror
+bash scripts/run_store_screenshots.sh           # 16 en-US captures from the StoreSim build
+bundle exec fastlane appstore_precheck          # Apple precheck rules on the metadata
+bundle exec fastlane sync_store_listing         # metadata (+ review info from env) and screenshots
+bundle exec fastlane beta                       # archive Release, upload to TestFlight (build number bump)
+# TestFlight install on a Face ID device, run U7, then:
+bundle exec fastlane submit_app_store           # submit the processed build, manual release
+```
 
-## Known follow-ups and traps
+## Traps that still apply
 
-- `MainGazeScannerView` writes the CareKit outcome twice (second overwrites first; pre-existing).
-- In Debug the classifier runs twice per session (stimulus `onComplete` no longer passes a classification).
-- Kit `RiskStratification.elevatedRisk` raw value compiles in every configuration (check_release_symbols.sh
-  passes today; keep an eye on it).
-- Delete-all: observation data is deleted when the first dialog is confirmed; answering "Keep care plans" on the
-  second prompt does not undo it.
-- `ASD_ML_DATA_EXPORT` is not defined in `project.yml`; `BlendShapeLoggerTests` run only with
-  `OTHER_SWIFT_FLAGS='$(inherited) -DASD_ML_DATA_EXPORT'`.
-- Teardown bug in `ResearchKitSyncServiceTests`/`ResearchKitStudyTests`: `removePersistentDomain(forName:
-  testUserDefaults.description)` leaves settings files behind.
-- `xcodegen generate` rewrites the tracked `project.pbxproj`; it drops resources whose files are absent (e.g.
-  stimulus .mp4s in a fresh worktree). Do not commit a pbxproj regenerated in such a tree.
+- `xcodegen generate` rewrites the tracked `project.pbxproj` and drops resources whose files are absent
+  (the git-ignored clips in a fresh tree). Do not commit a pbxproj regenerated in such a tree.
 - `xcodebuild test` occasionally hangs at launch; `test-without-building` after a build worked.
-- The claims script scans only lines that call `Text(`/`Label(` etc. Clinical wording in model strings
-  (`ChildProfile.clinicalFocus`, `MCHATScoreResult.clinicalRecommendation`) is not caught; consider widening it.
-- Parallel agents share one tree and the scratchpad: use distinct derived-data paths and never restore from the
-  scratchpad with a wildcard.
-- `docs/LAUNCH_PLAN.md` (open-spectrum-tracking repo) was not found locally; its package rows were NOT updated.
-  Mark WP-1.1..1.6 done there.
+- Kit tests write temp files; in a sandboxed agent session 11 of them fail for that reason only. Run
+  `swift test --package-path domains/asd_screening/ios` unsandboxed to confirm.
+- The claims script scans `Text(`/`Label(` call lines and the metadata; model strings and new prose files
+  need adding to its lists (`check_asd_claims.py`) to be covered.
+- `StoreSim` is a debug-type configuration for the simulator only; it is never archived.
+  `check_release_symbols.sh` proves the fixture launch keys are absent from Release and DemoRelease.
+- Delete-all: observation data is deleted when the first dialog is confirmed; answering "Keep care plans"
+  on the second prompt does not undo it (non-store builds).
+- Docker Desktop's disk is too small for the `rust/Dockerfile` build; that build runs in CI only
+  (unrelated to iOS, but it bites anyone running the full repo gates locally).

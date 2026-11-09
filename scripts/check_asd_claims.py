@@ -5,13 +5,13 @@ This file is the single source of truth for the denylist. The human-readable cop
 is docs/spec/modules/asd-gaze-app-store-readiness/claims-denylist.md.
 
 Usage:
-  scripts/check_asd_claims.py             scan store metadata (all locales, iOS + Android)
+  scripts/check_asd_claims.py             scan store metadata (all locales, iOS + Android) and fastlane/review_notes.txt
   scripts/check_asd_claims.py --swift     also scan user-facing Swift string literals (CLM-2), app and kit
   scripts/check_asd_claims.py --swift --prose
                                           also check every prose literal (whitespace, >= 12 chars)
                                           on any non-comment line (CLM-7); off by default until
                                           scripts/ios_test.sh adopts it (WP-A.7b)
-  scripts/check_asd_claims.py --secrets   scan fastlane for committed personal identifiers (CI-4)
+  scripts/check_asd_claims.py --secrets   also scan fastlane for committed personal identifiers (CI-4)
   scripts/check_asd_claims.py --selftest  prove the checks fail on seeded violations
 
 Exit status 0 when clean, 1 when any violation is found.
@@ -31,6 +31,8 @@ REPO = Path(__file__).resolve().parent.parent
 APP = REPO / "apps" / "ios_asd_gaze_app"
 METADATA = APP / "fastlane" / "metadata"
 FASTLANE = APP / "fastlane"
+REVIEW_NOTES = FASTLANE / "review_notes.txt"
+REVIEW_NOTES_LIMIT = 4000
 SWIFT_SOURCES = APP / "Sources"
 KIT_SOURCES = REPO / "domains" / "asd_screening" / "ios" / "Sources" / "CurvAsdGazeKit"
 SWIFT_ROOTS = [SWIFT_SOURCES, KIT_SOURCES]
@@ -150,6 +152,21 @@ def check_text(where: str, field: str, text: str) -> list[Finding]:
         for s in _sentences(text):
             if DIAGNOS.search(s) and not NEGATION.search(s):
                 out.append(Finding(where, "diagnos", f'"diagnos*" outside a negating sentence: "{s.strip()[:80]}"'))
+    return out
+
+
+def check_review_notes(path: Path) -> list[Finding]:
+    """App Review notes: non-strict denylist rules and the 4000-character limit."""
+    where = "review/review_notes.txt"
+    if not path.is_file():
+        return [Finding(where, "missing", "review_notes.txt not found")]
+    text = path.read_text(encoding="utf-8").strip()
+    out: list[Finding] = []
+    if not text:
+        out.append(Finding(where, "missing", "review_notes.txt is empty"))
+    out += check_text(where, "review_notes.txt", text)
+    if len(text) > REVIEW_NOTES_LIMIT:
+        out.append(Finding(where, "length", f"{len(text)} > {REVIEW_NOTES_LIMIT} chars"))
     return out
 
 
@@ -372,6 +389,19 @@ def selftest() -> int:
             if rule not in rules:
                 failures.append(f"{label}: expected rule {rule!r}, got {sorted(rules)}")
 
+        # review notes
+        rn = tmp / "rn"
+        _write_tree(rn, {"ok.txt": "Open the Capture tab. This is not a diagnostic tool.",
+                         "fda.txt": "FDA cleared.", "long.txt": "x" * 4001})
+        if check_review_notes(rn / "ok.txt"):
+            failures.append("review notes good fixture should pass")
+        if "fda" not in {f.rule for f in check_review_notes(rn / "fda.txt")}:
+            failures.append("review notes: expected 'fda'")
+        if "length" not in {f.rule for f in check_review_notes(rn / "long.txt")}:
+            failures.append("review notes: expected 'length'")
+        if "missing" not in {f.rule for f in check_review_notes(rn / "none.txt")}:
+            failures.append("review notes: expected 'missing'")
+
         # swift scan
         sw = tmp / "swift"
         _write_tree(sw, {
@@ -445,6 +475,17 @@ def selftest() -> int:
             _write_tree(d / "fastlane", {rel: text})
             if rule not in {f.rule for f in check_secrets(d / "fastlane")}:
                 failures.append(f"{label}: expected {rule!r}")
+
+        # combined mode: --swift --prose --secrets must report both a swift and a secret finding
+        cm = tmp / "combined"
+        _write_tree(cm / "meta", GOOD)
+        _write_tree(cm / "swift", {"v.swift": 'Text("16 digital biomarkers")\n'})
+        _write_tree(cm / "fastlane", {"x.txt": "ClinicalPass2026!"})
+        (cm / "notes.txt").write_text("Open the Capture tab.", encoding="utf-8")
+        rules = {f.rule for f in run_checks(True, True, True, cm / "meta", cm / "notes.txt",
+                                            [cm / "swift"], cm / "fastlane")}
+        if not {"biomarker", "demo-password"} <= rules:
+            failures.append(f"combined flags: expected biomarker and demo-password, got {sorted(rules)}")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -458,10 +499,22 @@ def selftest() -> int:
 
 
 # --------------------------------------------------------------------------- main
+def run_checks(swift: bool, prose: bool, secrets: bool, metadata: Path = METADATA,
+               notes: Path = REVIEW_NOTES, swift_roots: list[Path] | None = None,
+               fastlane: Path = FASTLANE) -> list[Finding]:
+    """Flags are additive: metadata and review notes always run; --swift and --secrets add scans."""
+    findings = check_metadata(metadata) + check_review_notes(notes)
+    if swift:
+        findings += check_swift(SWIFT_ROOTS if swift_roots is None else swift_roots, prose=prose)
+    if secrets:
+        findings += check_secrets(fastlane)
+    return findings
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--selftest", action="store_true", help="run seeded-failure self test and exit")
-    ap.add_argument("--secrets", action="store_true", help="scan fastlane for personal identifiers and secrets")
+    ap.add_argument("--secrets", action="store_true", help="also scan fastlane for personal identifiers and secrets")
     ap.add_argument("--swift", action="store_true", help="also scan user-facing Swift string literals (app and kit)")
     ap.add_argument("--prose", action="store_true",
                     help="with --swift: also check every prose literal on any non-comment line (CLM-7)")
@@ -473,20 +526,14 @@ def main() -> int:
     if args.prose and not args.swift:
         ap.error("--prose requires --swift")
 
-    findings: list[Finding] = []
-    if args.secrets:
-        findings += check_secrets(FASTLANE)
-    else:
-        findings += check_metadata(METADATA)
-        if args.swift:
-            findings += check_swift(SWIFT_ROOTS, prose=args.prose)
+    findings = run_checks(args.swift, args.prose, args.secrets)
 
     for f in findings:
         print(f)
     if findings:
         print(f"\n{len(findings)} violation(s).")
         return 1
-    print("claims check ok" if not args.secrets else "secrets check ok")
+    print("claims check ok" + (" (incl. secrets)" if args.secrets else ""))
     return 0
 
 
