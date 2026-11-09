@@ -94,6 +94,11 @@ public enum CaptureEntryGate: Equatable {
     }
 
     public static var deviceSupportsFaceTracking: Bool {
+        #if ASD_STORE_BUILD && ASD_STORE_SCREENSHOTS
+        // StoreSim screenshot fixture only (WP-S.7): the simulator stands in for a TrueDepth
+        // device so the store flows reach "Before you begin" and the camera primer.
+        if StoreScreenshotFixture.isActive { return true }
+        #endif
         #if canImport(ARKit) && !os(macOS)
         return ARFaceTrackingConfiguration.isSupported
         #else

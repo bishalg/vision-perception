@@ -813,6 +813,28 @@ public enum Localizer {
             "ne": "नजर अवलोकन क्याप्चर",
             "hi": "गेज अवलोकन कैप्चर"
         ],
+        // Store build Settings, sensor rows in plain words (S-6).
+        "store_settings_gaze_calibration": [
+            "en": "Gaze calibration",
+            "ne": "दृष्टि क्यालिब्रेसन",
+            "hi": "दृष्टि कैलिब्रेशन"
+        ],
+        "store_face_tracking_available": [
+            "en": "Face tracking available",
+            "ne": "अनुहार ट्र्याकिङ उपलब्ध",
+            "hi": "चेहरा ट्रैकिंग उपलब्ध"
+        ],
+        "store_face_tracking_unavailable": [
+            "en": "Face tracking not available on this device",
+            "ne": "यो उपकरणमा अनुहार ट्र्याकिङ उपलब्ध छैन",
+            "hi": "इस डिवाइस पर चेहरा ट्रैकिंग उपलब्ध नहीं है"
+        ],
+        // Post-session title in the store build (S-3): no "report" on the device.
+        "store_result_title": [
+            "en": "Observation saved",
+            "ne": "अवलोकन सुरक्षित भयो",
+            "hi": "अवलोकन सहेजा गया"
+        ],
         "store_no_sessions": [
             "en": "No observation sessions yet.",
             "ne": "अहिलेसम्म कुनै अवलोकन सत्र छैन।",

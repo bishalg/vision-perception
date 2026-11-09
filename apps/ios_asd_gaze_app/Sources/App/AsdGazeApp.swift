@@ -34,7 +34,13 @@ struct AsdGazeApp: App {
         WindowGroup {
             ZStack {
                 // Main Application Layer (routes Mode Selection → Onboarding → TabView)
+                #if ASD_STORE_BUILD && ASD_STORE_SCREENSHOTS
+                // StoreSim only (WP-S.7): example sessions for the App Store screenshot flows.
                 rootContent
+                    .modifier(StoreScreenshotFixtureModifier())
+                #else
+                rootContent
+                #endif
 
                 // Branded Launch Splash Screen with Custom Liquid Glass Spinner
                 if showSplashScreen {
@@ -123,7 +129,11 @@ struct AsdGazeApp: App {
         TabView(selection: $selectedTab) {
             ForEach(RootTab.visibleTabs(), id: \.self) { tab in
                 tabContent(tab)
-                    .tabItem { tabLabel(tab) }
+                    .tabItem {
+                        tabLabel(tab)
+                            // Maestro flows select tabs by id in every language (WP-S.7).
+                            .accessibilityIdentifier("tab_\(tab)")
+                    }
                     .tag(tab)
             }
         }

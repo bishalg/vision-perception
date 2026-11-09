@@ -90,6 +90,8 @@ public struct PermissionPrimerView: View {
             .padding(.vertical, 16)
         }
         .background(LiquidGlass.deepCanvas.ignoresSafeArea())
+        // A container keeps the children's own ids (Maestro taps them, WP-S.7).
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(PermissionPrimerAccessibility.view)
     }
 }

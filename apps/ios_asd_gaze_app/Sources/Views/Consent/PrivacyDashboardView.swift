@@ -54,6 +54,8 @@ public struct PrivacyDashboardView: View {
         .background(LiquidGlass.deepCanvas.ignoresSafeArea())
         .navigationTitle(ConsentL10n.text("privacy.title", "Privacy & Your Data"))
         .navigationBarTitleDisplayMode(.inline)
+        // A container keeps the children's own ids (Maestro taps them, WP-S.7).
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(PrivacyDashboardAccessibility.view)
         .confirmationDialog(
             ConsentL10n.text("privacy.withdraw.confirm.title", "Withdraw consent?"),

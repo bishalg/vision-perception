@@ -246,6 +246,9 @@ public struct SettingsView: View {
                 healthKitMoodRow
                 #endif
 
+                #if !ASD_STORE_BUILD
+                // Store build (S-6): consent state lives in Privacy & Your Data, and care
+                // features (CareKit) are not part of the store build.
                 GlassDivider()
 
                 HStack {
@@ -269,6 +272,7 @@ public struct SettingsView: View {
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(LiquidGlass.celestialTeal)
                 }
+                #endif
 
                 GlassDivider()
 
@@ -444,6 +448,31 @@ public struct SettingsView: View {
 
     // MARK: - Section 2: Sensor Diagnostics
 
+    /// Store build (S-6): plain words instead of the engineering labels Debug keeps.
+    private static var calibrationRowTitle: String {
+        #if ASD_STORE_BUILD
+        Localizer.tr("store_settings_gaze_calibration")
+        #else
+        Localizer.tr("settings_screen_raycaster")
+        #endif
+    }
+
+    private var uncalibratedSubtitle: String {
+        #if ASD_STORE_BUILD
+        isTrueDepthAvailable ? Localizer.tr("store_face_tracking_available") : Self.faceTrackingUnavailableText
+        #else
+        Localizer.tr("settings_uncalibrated_sub")
+        #endif
+    }
+
+    private static var faceTrackingUnavailableText: String {
+        #if ASD_STORE_BUILD
+        Localizer.tr("store_face_tracking_unavailable")
+        #else
+        "Face tracking unsupported on this device" // i18n-ok: Debug/DemoRelease diagnostics text, unchanged
+        #endif
+    }
+
     private var sensorDiagnosticsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             GlassSectionHeader(title: Localizer.tr("settings_sensors_section"), icon: "sensor.tag.radiowaves.forward.fill")
@@ -451,7 +480,7 @@ public struct SettingsView: View {
             VStack(spacing: 12) {
                 GlassDiagnosticRow(
                     title: Localizer.tr("settings_truedepth_title"),
-                    subtitle: isTrueDepthAvailable ? Localizer.tr("settings_truedepth_available") : "Face tracking unsupported on this device",
+                    subtitle: isTrueDepthAvailable ? Localizer.tr("settings_truedepth_available") : Self.faceTrackingUnavailableText,
                     statusText: isTrueDepthAvailable ? Localizer.tr("settings_status_active") : "Unsupported",
                     isGood: isTrueDepthAvailable
                 )
@@ -459,10 +488,10 @@ public struct SettingsView: View {
                 GlassDivider()
 
                 GlassDiagnosticRow(
-                    title: Localizer.tr("settings_screen_raycaster"),
+                    title: Self.calibrationRowTitle,
                     subtitle: calibrationProfile.isCalibrated
                         ? Localizer.tr("settings_calibrated_sub")
-                        : Localizer.tr("settings_uncalibrated_sub"),
+                        : uncalibratedSubtitle,
                     statusText: calibrationProfile.isCalibrated ? Localizer.tr("settings_calibrated") : Localizer.tr("settings_uncalibrated"),
                     isGood: calibrationProfile.isCalibrated
                 )
@@ -564,6 +593,8 @@ public struct SettingsView: View {
                         Image(systemName: "chevron.right")
                             .foregroundColor(LiquidGlass.textTertiary)
                     }
+                    // The whole row is tappable, including the gap on wide (iPad) layouts.
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("settings_privacy_dashboard")
@@ -667,15 +698,25 @@ public struct SettingsView: View {
 
     /// Delete-all copy names research data only in a build that has a study (CNS-9).
     static var deleteAllConfirmationMessage: String {
-        ResearchStudyConfiguration.isResearchEnabled
+        #if ASD_STORE_BUILD
+        // Store build: no M-CHAT or care data exists; same scope as Privacy & Your Data.
+        return ConsentL10n.text("privacy.delete.message", "This permanently removes saved sessions, session history, queued uploads and calibration from this device. It cannot be undone.")
+        #else
+        return ResearchStudyConfiguration.isResearchEnabled
             ? "This permanently removes saved sessions, session history, queued research uploads, calibration, M-CHAT-R/F answers and study enrollment from this device. It cannot be undone."
             : "This permanently removes saved sessions, session history, calibration and M-CHAT-R/F answers from this device. It cannot be undone."
+        #endif
     }
 
     static var deleteAllRowDetail: String {
-        ResearchStudyConfiguration.isResearchEnabled
+        #if ASD_STORE_BUILD
+        // What `DataDeletionService.deleteAll` removes; it keeps the consent record and settings.
+        return ConsentL10n.text("settings.delete.store.detail", "Removes every session, the session history and calibration from this device. Sessions already delivered to your clinic are deleted by asking the clinic.")
+        #else
+        return ResearchStudyConfiguration.isResearchEnabled
             ? "Sessions, history, uploads queue, calibration, M-CHAT-R/F answers and enrollment."
             : "Sessions, history, calibration and M-CHAT-R/F answers."
+        #endif
     }
 
     /// CNS-6: reachable in one tap from Settings, behind a confirmation dialog;
@@ -888,11 +929,8 @@ public struct SettingsView: View {
     }
 
     private var isTrueDepthAvailable: Bool {
-        #if canImport(ARKit) && !os(macOS)
-        return ARFaceTrackingConfiguration.isSupported
-        #else
-        return false
-        #endif
+        // Same answer as the capture entry gate (ARFaceTrackingConfiguration.isSupported).
+        CaptureEntryGate.deviceSupportsFaceTracking
     }
 
     private var healthKitMoodRow: some View {

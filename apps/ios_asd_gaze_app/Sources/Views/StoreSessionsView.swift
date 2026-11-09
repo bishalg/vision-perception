@@ -137,5 +137,6 @@ private struct StoreSessionRow: View {
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("store_session_row")
     }
 }

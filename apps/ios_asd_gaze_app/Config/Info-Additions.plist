@@ -19,9 +19,9 @@
 	<!-- Store build (S-9): legal links shown in Settings > About. Same URLs as the fastlane metadata;
 	     placeholders until H-6. Read through StoreBuild.privacyPolicyURL / supportURL. -->
 	<key>ASDPrivacyPolicyURL</key>
-	<string>https://curv.engineering/privacy/asd-gaze</string>
+	<string>https://open-spectrum-tracking.vercel.app/privacy/earlygaze</string>
 	<key>ASDSupportURL</key>
-	<string>https://curv.engineering/support</string>
+	<string>https://open-spectrum-tracking.vercel.app/support/earlygaze</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>

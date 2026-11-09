@@ -115,3 +115,14 @@ public final class GazeSessionHistoryStore: ObservableObject {
         }
     }
 }
+
+#if ASD_STORE_BUILD && ASD_STORE_SCREENSHOTS
+extension GazeSessionHistoryStore {
+    /// StoreSim screenshot fixture only (WP-S.7, `StoreScreenshotFixture`): shows example
+    /// sessions for this launch. Never persisted, so the simulated provenance never reaches
+    /// the history file and the next launch without the fixture starts from the real history.
+    func showScreenshotExamples(_ examples: [GazeSessionRecord]) {
+        records = examples.sorted { $0.endedAt < $1.endedAt }
+    }
+}
+#endif

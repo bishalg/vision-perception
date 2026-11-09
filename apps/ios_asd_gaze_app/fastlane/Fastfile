@@ -97,8 +97,11 @@ platform :ios do
     UI.message("📏 Checking App Store metadata limits (Apple ASO constraints)...")
     base = "metadata"
 
+    # S-14: the first submission lists en-US only; hi and ne-NP are parked in
+    # metadata_pending/ (not uploaded by deliver) and checked with the same limits.
     %w[en-US hi ne-NP].each do |locale|
       loc_dir = File.join(base, locale)
+      loc_dir = File.expand_path(File.join("metadata_pending", locale), __dir__) unless Dir.exist?(loc_dir)
       next unless Dir.exist?(loc_dir)
 
       # Name: max 30 chars
@@ -318,6 +321,8 @@ platform :ios do
       metadata_path: meta_path,
       skip_screenshots: true,
       skip_metadata: false,
+      # S-14: English-only listing for the first submission (hi/ne-NP in metadata_pending/).
+      languages: ["en-US"],
       skip_app_version_update: true,
       force: true,
       ignore_language_directory_validation: true,

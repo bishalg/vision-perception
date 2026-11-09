@@ -1,0 +1,49 @@
+appId: com.open-spectrum.eye-gaze
+name: store-02-capture-entry
+tags:
+  - store
+---
+# Feature: capture entry (Tests/bdd/features/store_capture_entry.feature)
+#   "Before you begin" (S-13) comes first on the Capture tab; "Begin" shows the in-app
+#   camera primer (S-11) before any system prompt, and "Not now" leaves the camera untouched.
+#   Screenshots: 03_before_you_begin, 04_camera_primer.
+#
+# StoreSim screenshot fixture: the simulator stands in for a TrueDepth device
+# (StoreScreenshotFixture.swift). No camera frame and no stimulus clip is ever shown here.
+# Continues the state from 01 (onboarding done, consent signed).
+- launchApp:
+    stopApp: true
+    arguments:
+      ASDStoreScreenshotFixture: "YES"
+- extendedWaitUntil:
+    visible:
+      id: "tab_capture"
+    timeout: 30000
+- tapOn:
+    id: "tab_capture"
+- extendedWaitUntil:
+    visible:
+      id: "before_you_begin_start"
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: 03_before_you_begin
+
+- tapOn:
+    id: "before_you_begin_start"
+- extendedWaitUntil:
+    visible:
+      id: "permission_primer_not_now"
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: 04_camera_primer
+
+# "Not now" keeps the camera undetermined and returns to "Before you begin" (S-11).
+- tapOn:
+    id: "permission_primer_not_now"
+- extendedWaitUntil:
+    visible:
+      id: "before_you_begin_start"
+    timeout: 10000
+- assertNotVisible: ".*Would Like to Access the Camera.*"

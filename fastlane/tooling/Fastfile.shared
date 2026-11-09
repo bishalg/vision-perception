@@ -463,6 +463,10 @@ lane :validate_metadata do |options|
 
   locales.each do |locale|
     loc_dir = File.join(base_path, locale)
+    # Locales parked in fastlane/metadata_pending/ (not uploaded) get the same checks
+    # (EarlyGaze S-14: en-US-only first submission).
+    pending_dir = File.join(resolve_app_root, "fastlane", "metadata_pending", locale)
+    loc_dir = pending_dir if !Dir.exist?(loc_dir) && Dir.exist?(pending_dir)
     next unless Dir.exist?(loc_dir)
 
     # Name: max 30 chars

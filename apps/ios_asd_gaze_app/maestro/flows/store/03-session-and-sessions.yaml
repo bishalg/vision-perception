@@ -1,0 +1,41 @@
+appId: com.open-spectrum.eye-gaze
+name: store-03-session-and-sessions
+tags:
+  - store
+---
+# Feature: after a session (Tests/bdd/features/store_sessions.feature)
+#   The post-session screen shows only the replay, recording quality, where the session is,
+#   New Observation, Done and the not-diagnostic footer (S-3). The Sessions tab lists date,
+#   duration, clips, recording quality and storage state, never a score (S-2).
+#   Screenshots: 05_recording_quality, 06_sessions.
+#
+# StoreSim screenshot fixture: example sessions in memory for this launch (marked simulated,
+# no score values); `ASDStoreScreenshotScreen: result` opens the post-session screen.
+- launchApp:
+    stopApp: true
+    arguments:
+      ASDStoreScreenshotFixture: "YES"
+      ASDStoreScreenshotScreen: "result"
+- extendedWaitUntil:
+    visible:
+      id: "store_session_done"
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: 05_recording_quality
+
+- tapOn:
+    id: "store_session_done"
+- extendedWaitUntil:
+    notVisible:
+      id: "store_session_done"
+    timeout: 10000
+- tapOn:
+    id: "tab_sessions"
+- extendedWaitUntil:
+    visible:
+      id: "store_session_row"
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: 06_sessions

@@ -161,7 +161,11 @@ def check_metadata(root: Path) -> list[Finding]:
     out: list[Finding] = []
     targets: list[tuple[Path, dict[str, int], str]] = []
     for loc in IOS_LOCALES:
-        targets.append((root / loc, IOS_LIMITS, f"ios/{loc}"))
+        # S-14: locales parked in fastlane/metadata_pending/ (not uploaded) are checked the same way.
+        d = root / loc
+        if not d.is_dir() and (root.parent / "metadata_pending" / loc).is_dir():
+            d = root.parent / "metadata_pending" / loc
+        targets.append((d, IOS_LIMITS, f"ios/{loc}"))
     targets.append((root / "android" / "en-US", ANDROID_LIMITS, "android/en-US"))
 
     for d, limits, label in targets:

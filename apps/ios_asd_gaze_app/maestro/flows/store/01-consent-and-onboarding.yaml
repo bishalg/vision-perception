@@ -1,0 +1,107 @@
+appId: com.open-spectrum.eye-gaze
+name: store-01-consent-and-onboarding
+tags:
+  - store
+---
+# Feature: store build first launch (Tests/bdd/features/store_consent_and_onboarding.feature)
+#   The store build (StoreSim on a simulator) opens on onboarding with no mode picker.
+#   A guardian reviews the visual consent page by page, types a name and agrees.
+#   Screenshots: 01_consent_overview, 02_consent_sign.
+#
+# Every tap is by accessibility id, so the flow runs in en-US, hi and ne-NP.
+# Starts from a clean install: clearState wipes the app container, clearKeychain the
+# signed consent record and device keys.
+- clearKeychain
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: "onboarding_consent_review"
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+# No consent yet: Continue is disabled.
+- assertVisible:
+    id: "onboarding_continue"
+    enabled: false
+
+- tapOn:
+    id: "onboarding_consent_review"
+- extendedWaitUntil:
+    visible:
+      id: "consent_next"
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: 01_consent_overview
+
+# 9 consent pages: 8 x Next, then "Review and sign".
+- repeat:
+    times: 9
+    commands:
+      - tapOn:
+          id: "consent_next"
+      - waitForAnimationToEnd:
+          timeout: 3000
+# The review page shows the whole document first; the name field is below it.
+- scrollUntilVisible:
+    element:
+      id: "consent_guardian_name"
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: "consent_guardian_name"
+# Neutral placeholder, never a real person's name.
+- inputText: A. Parent
+- pressKey: Enter
+- waitForAnimationToEnd:
+    timeout: 3000
+- scrollUntilVisible:
+    element:
+      id: "consent_agree"
+    direction: DOWN
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 02_consent_sign
+- tapOn:
+    id: "consent_agree"
+- extendedWaitUntil:
+    visible:
+      id: "onboarding_consent_agreed"
+    timeout: 10000
+
+# Child profile (pre-filled "Child"), activity pack, environment guidance.
+- tapOn:
+    id: "onboarding_continue"
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: "onboarding_continue"
+# Continue stays disabled until the activity pack resolves (cache, bundle or offline fallback).
+- extendedWaitUntil:
+    visible:
+      id: "onboarding_continue"
+      enabled: true
+    timeout: 60000
+- tapOn:
+    id: "onboarding_continue"
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: "onboarding_continue"
+
+# Store tabs: Capture, Sessions, Settings (S-2). Without the screenshot fixture a simulator
+# has no TrueDepth camera, so Capture shows the honest hardware gate and no camera prompt.
+- extendedWaitUntil:
+    visible:
+      id: "tab_capture"
+    timeout: 20000
+- assertVisible:
+    id: "tab_sessions"
+- assertVisible:
+    id: "tab_settings"
+- assertNotVisible:
+    id: "tab_dashboard"
+- assertVisible:
+    id: "unsupported-device-view"

@@ -59,17 +59,10 @@ automatic_release: false
 force: true
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Screenshots (snapshot)
+# Screenshots
 # ─────────────────────────────────────────────────────────────────────────────
-snapshot_devices:
-  - "iPhone 16 Pro Max"
-  - "iPhone 16 Pro"
-  - "iPhone 15"
-snapshot_languages:
-  - "en-US"
-snapshot_scheme: "AsdGazeCollector"
-snapshot_clear_previous: true
-snapshot_reinstall_app: true
+# Not produced by `snapshot` (WP-S.7): scripts/run_store_screenshots.sh runs the Maestro
+# store flows (maestro/flows/store/) on the StoreSim build and writes screenshots_path.
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Slack / Notifications

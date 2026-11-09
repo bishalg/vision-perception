@@ -173,7 +173,6 @@ apps/ios_asd_gaze_app/Sources/Views/GazeReplayHeatmapFullScreenView.swift	swift-
 apps/ios_asd_gaze_app/Sources/Views/GazeReplayHeatmapFullScreenView.swift	swift-text	e1b7dfbff559	1
 apps/ios_asd_gaze_app/Sources/Views/GazeReplayHeatmapFullScreenView.swift	swift-text	e42ac94dbca6	1
 apps/ios_asd_gaze_app/Sources/Views/GazeSessionResultView.swift	swift-accessibility-label	01085e5bc612	1
-apps/ios_asd_gaze_app/Sources/Views/GazeSessionResultView.swift	swift-accessibility-label	8a78ffa3b963	1
 apps/ios_asd_gaze_app/Sources/Views/GazeSessionResultView.swift	swift-button	7d9eb7acb13e	1
 apps/ios_asd_gaze_app/Sources/Views/GazeSessionResultView.swift	swift-format	16007fb6e7c2	1
 apps/ios_asd_gaze_app/Sources/Views/GazeSessionResultView.swift	swift-format	23724a8f2a3d	1

@@ -59,6 +59,24 @@ public struct GazeSessionResultView: View {
     }
     #endif
 
+    /// Close button label: the store build has no report to close (S-3).
+    private static var closeLabel: String {
+        #if ASD_STORE_BUILD
+        ConsentL10n.text("result.close.store", "Done")
+        #else
+        "Close Report" // i18n-ok: Debug/DemoRelease label, unchanged
+        #endif
+    }
+
+    /// The store build shows no report on the device (S-3), so its title does not say "report".
+    private static var titleText: String {
+        #if ASD_STORE_BUILD
+        Localizer.tr("store_result_title")
+        #else
+        Localizer.tr("result_title")
+        #endif
+    }
+
     /// Pseudonymous participant token (CNS-7). The child's name never enters a record.
     private var participantToken: String { "child-\(summary.sessionId.prefix(8))" }
 
@@ -126,7 +144,7 @@ public struct GazeSessionResultView: View {
                     .padding(.vertical, 12)
                 }
             }
-            .navigationTitle(Localizer.tr("result_title"))
+            .navigationTitle(Self.titleText)
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .toolbar {
@@ -136,11 +154,11 @@ public struct GazeSessionResultView: View {
                             .font(.system(size: 20))
                             .foregroundColor(LiquidGlass.textTertiary)
                     }
-                    .accessibilityLabel("Close Report")
+                    .accessibilityLabel(Self.closeLabel)
                 }
                 ToolbarItem(placement: .principal) {
                     VStack(spacing: 2) {
-                        Text(Localizer.tr("result_title"))
+                        Text(Self.titleText)
                             .font(.system(size: 15, weight: .bold, design: .rounded))
                             .foregroundColor(.primary)
                         Text("Session #\(summary.sessionId.prefix(8))")
@@ -633,6 +651,7 @@ public struct GazeSessionResultView: View {
             ) {
                 onDismiss()
             }
+            .accessibilityIdentifier("store_session_done")
         }
         .padding(.top, 4)
     }

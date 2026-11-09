@@ -258,9 +258,11 @@ Contact: support@curv.engineering
 
 Interim host `https://open-spectrum-tracking.vercel.app`. Later swap to a custom domain once H-6 lands; change only the host, keep the paths (set up a redirect from the old host).
 
-| Where | File or key | Current value | New value |
+Applied 2026-11-09 (WP-S.7 follow-up): every row below, plus the "Learn more" line in the en-US `description.txt` and the parked hi and ne-NP ones (`fastlane/metadata_pending/`, S-14) (the Android `full_description.txt` has no such line, so nothing changed there) and `Tests/BuildConfigurationTests.swift`. Only `privacy_url.txt`, `privacy_policy_url.txt`, `support_url.txt`, `marketing_url.txt` and `age_suitability_url.txt` exist under `en-US`; hi and ne-NP have no URL files (deliver falls back to en-US). The support email `support@curv.engineering` in the descriptions stays until H-6. The pages exist on the landing repo's `dev` branch and are not live until it merges to `main`.
+
+| Where | File or key | Previous value | New value (applied 2026-11-09) |
 | --- | --- | --- | --- |
-| fastlane (en-US, hi, ne-NP) | `privacy_url.txt` | `https://curv.engineering/privacy/asd-gaze` | `https://open-spectrum-tracking.vercel.app/privacy/earlygaze` |
+| fastlane (en-US) | `privacy_url.txt` | `https://curv.engineering/privacy/asd-gaze` | `https://open-spectrum-tracking.vercel.app/privacy/earlygaze` |
 | fastlane | `privacy_policy_url.txt` | `https://curv.engineering/privacy/asd-gaze` | `https://open-spectrum-tracking.vercel.app/privacy/earlygaze` |
 | fastlane | `support_url.txt` | `https://curv.engineering/support` | `https://open-spectrum-tracking.vercel.app/support/earlygaze` |
 | fastlane | `marketing_url.txt` | `https://curv.engineering/asd-gaze` | `https://open-spectrum-tracking.vercel.app/earlygaze` |

@@ -1,0 +1,73 @@
+appId: com.open-spectrum.eye-gaze
+name: store-04-privacy-and-settings
+tags:
+  - store
+---
+# Feature: privacy and settings (Tests/bdd/features/store_privacy_and_settings.feature)
+#   Privacy & Your Data (S-12) shows the saved sessions, delivery state, every opt-in
+#   (off by default), the signed consent and delete-all. Settings ends with About, the
+#   legal links and the not-diagnostic disclaimer (S-6, S-13).
+#   Screenshots: 07_privacy_your_data, 08_settings_about.
+- launchApp:
+    stopApp: true
+    arguments:
+      ASDStoreScreenshotFixture: "YES"
+- extendedWaitUntil:
+    visible:
+      id: "tab_settings"
+    timeout: 30000
+- tapOn:
+    id: "tab_settings"
+- scrollUntilVisible:
+    element:
+      id: "settings_privacy_dashboard"
+    direction: DOWN
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: "settings_privacy_dashboard"
+- waitForAnimationToEnd:
+    timeout: 5000
+# A tap that lands while the list is still settling only stops the scroll; tap once more.
+- runFlow:
+    when:
+      notVisible:
+        id: "privacy_session_count"
+    commands:
+      - tapOn:
+          id: "settings_privacy_dashboard"
+- extendedWaitUntil:
+    visible:
+      id: "privacy_session_count"
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: 07_privacy_your_data
+
+# Relaunch instead of a back gesture (no coordinates); the tabs reset to Capture.
+- launchApp:
+    stopApp: true
+    arguments:
+      ASDStoreScreenshotFixture: "YES"
+- extendedWaitUntil:
+    visible:
+      id: "tab_settings"
+    timeout: 30000
+- tapOn:
+    id: "tab_settings"
+- scrollUntilVisible:
+    element:
+      id: "settings_app_version"
+    direction: DOWN
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: "settings_support"
+    direction: DOWN
+    timeout: 10000
+# One more swipe to the end of the list so About and the disclaimer clear the floating tab bar.
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: 08_settings_about

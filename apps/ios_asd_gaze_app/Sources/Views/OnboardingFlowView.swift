@@ -753,6 +753,8 @@ public struct OnboardingFlowView: View {
                 .shadow(color: isStepValid ? LiquidGlass.accentFill.opacity(0.25) : Color.clear, radius: 8, y: 3)
             }
             .disabled(!isStepValid)
+            // Maestro flows tap by id so they run in every language (WP-S.7).
+            .accessibilityIdentifier("onboarding_continue")
         }
     }
 

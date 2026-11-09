@@ -2,7 +2,7 @@
 """
 Generate publication-grade App Store screenshots for:
 1. PalmReader (iPhone 16 Pro Max 1290x2796)
-2. EarlyGaze (iPhone 16 Pro Max 1290x2796 & iPad Pro 12.9" 2048x2732)
+2. (Legacy, no longer used for EarlyGaze: its App Store screenshots come from apps/ios_asd_gaze_app/scripts/run_store_screenshots.sh)
 Locales: en-US, hi, ne-NP
 """
 

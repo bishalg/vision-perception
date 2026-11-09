@@ -107,6 +107,13 @@ public final class CameraAccessCoordinator: ObservableObject {
 
     #if canImport(UIKit)
     public convenience init() {
+        #if ASD_STORE_BUILD && ASD_STORE_SCREENSHOTS
+        // StoreSim screenshot fixture only (WP-S.7): a first-run camera (iOS has not asked yet).
+        if StoreScreenshotFixture.isActive {
+            self.init(authorizer: StoreScreenshotCameraAuthorizer(), idleTimer: SystemIdleTimer())
+            return
+        }
+        #endif
         self.init(authorizer: SystemCameraAuthorizer(), idleTimer: SystemIdleTimer())
     }
     #endif

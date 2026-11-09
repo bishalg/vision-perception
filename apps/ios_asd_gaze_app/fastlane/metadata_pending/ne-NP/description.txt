@@ -26,4 +26,4 @@ It does not measure, screen for or diagnose any condition; your clinic reviews e
 Part of Open Spectrum Tracking.
 
 सम्पर्क: support@curv.engineering
-थप जान्नुहोस्: https://curv.engineering/asd-gaze
+थप जान्नुहोस्: https://open-spectrum-tracking.vercel.app/earlygaze

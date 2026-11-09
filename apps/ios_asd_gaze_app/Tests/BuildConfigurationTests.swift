@@ -164,8 +164,8 @@ final class BuildConfigurationTests: XCTestCase {
             let value = try XCTUnwrap(Bundle.main.object(forInfoDictionaryKey: key) as? String, "\(key) missing")
             XCTAssertTrue(value.hasPrefix("https://"), "\(key) is not https: \(value)")
         }
-        XCTAssertEqual(StoreBuild.privacyPolicyURL()?.absoluteString, "https://curv.engineering/privacy/asd-gaze")
-        XCTAssertEqual(StoreBuild.supportURL()?.absoluteString, "https://curv.engineering/support")
+        XCTAssertEqual(StoreBuild.privacyPolicyURL()?.absoluteString, "https://open-spectrum-tracking.vercel.app/privacy/earlygaze")
+        XCTAssertEqual(StoreBuild.supportURL()?.absoluteString, "https://open-spectrum-tracking.vercel.app/support/earlygaze")
     }
 
     /// `NSUserNotificationsUsageDescription` is not an iOS key; local notifications need no usage string.

@@ -23,6 +23,8 @@ case "$config" in
 esac
 # Bench capture (WP-G.8): the flag literal, the app types and the kit's tap. Valid for both.
 needles+=("ASD_BENCH_CAPTURE" "BenchCaptureView" "BenchLogWriter" "BenchRunConfig" "BenchRawSample" "setBenchTap")
+# Store screenshot fixture (WP-S.7): compiled into the StoreSim configuration only. Valid for both.
+needles+=("ASDStoreScreenshotFixture" "ASDStoreScreenshotScreen")
 fail=0
 syms="$(strings -a "$bin")"
 for needle in "${needles[@]}"; do
