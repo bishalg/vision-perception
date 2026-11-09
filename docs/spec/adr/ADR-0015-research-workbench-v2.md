@@ -60,6 +60,32 @@ reviewer or another lab opens without reading our docs; download a chart as SVG/
 | R-14 | Charts are described as **Vega-Lite** specs generated in Rust (`asd-core::viz` emits data + spec; the console only renders). Console renders with `vega-embed` (BSD-3), themed by the design tokens, with Download as SVG, PNG and spec (opens in Altair, Observable, Vega Editor). Existing SVG charts migrate incrementally; axes, units, n and CI method are always printed on the chart; colour never carries meaning alone. | **owner**: Vega-Lite (recommended) vs Plotly (MIT, heavier) vs keep hand-made SVG |
 | R-15 | Every chart has a table view and a CSV download of exactly the plotted data (reproducibility; WCAG). | default |
 
+### E. Domain visualisations: gaze replay, expected-versus-actual, outlier tools (owner, 2026-11-09)
+
+Owner: "more custom graphics for our domain: replay of where the child looked on the video, the baseline
+limit, the expected level on the axis, outlier filters in the data tools". These are the views an
+eye-tracking researcher and a clinician actually use; the statistics pack serves them, not the other way.
+
+Data already stored per session: per-frame `x_norm`, `y_norm`, `is_valid`, `video_time_sec`,
+`clip_media_time_sec`, `active_aoi_names`, affect, quality verdict (`GazeFrame`, in the session's
+`rawPayload`, readable by the console through `GET /sessions/{id}/raw` with an audit row); the consent-gated
+research frame log (raw samples, head and eye transforms, blinks); the catalog's time-coded AOI boxes with
+roles (`Area`); the device geometry (screen mm, pixels); the published baselines and flag thresholds per age
+bracket. Not stored on the server: the clip media (licensed, H-8) and the device key that seals the
+`frames` blob.
+
+| # | Decision | Default / owner |
+| --- | --- | --- |
+| V-1 | **Session replay** (session detail "Replay" tab; the research workbench preview): a canvas showing the clip media when the org has uploaded it (V-8), otherwise a wireframe of the clip's AOI boxes; the gaze point with a 300 ms trail; fixations as circles whose radius is duration, detected by the **current profile's parameters through WASM** (so changing the I-VT threshold re-renders them); saccades as lines; blink and lost segments greyed on the trail; AOI boxes coloured and labelled by role; a scrubber bound to `clip_media_time_sec`; play at 0.25x to 2x; frame step. Under the canvas, a timeline strip: an **AOI-hit ribbon** (which AOI the gaze is in at every instant, by role colour), the existing tracking-loss bar, scheduled targets and clip boundaries. | default |
+| V-2 | **Expected versus actual on the time axis**: per clip, the metric trace over clip time (for example proportion of gaze on the target AOI in a sliding 1 s window) with the **expected band** shaded from the published baselines for the child's age bracket (mean ± tolerance, or the percentile band once R-3 lands) and the flag thresholds drawn as labelled horizontal lines ("expected 0.62 for 24–35 months", "flag below 0.35"). The clip card shows recorded versus expected as a bar inside the band. The axis never implies a diagnosis; labels say "expected range", "recorded". | default |
+| V-3 | **Heatmaps**: per clip, the session's gaze density (Gaussian kernel, grid computed in Rust) over the clip frame or AOI wireframe, side by side with the age-bracket cohort density from a run or baseline set, and a difference map; n and suppression printed on the cohort panel. | default |
+| V-4 | **Quality timeline** (extends WP-G.12): distance, head yaw and pitch, calibration drift, luminance, each with its gate threshold drawn from the effective profile, aligned to the replay scrubber so a quality dip can be seen against the gaze. | default |
+| V-5 | **Outlier and filter tools** (dataset and run level, R-7): per metric a histogram with brushable thresholds; rule presets: quality gates from the profile, Tukey 1.5×IQR, MAD-based robust z > 3.5, minimum valid-sample ratio, minimum clips completed; live n before and after; each exclusion stored with its rule or reason in the dataset; a **what-if** panel shows the aggregates with and without the excluded sessions (sandbox, no writes). | default |
+| V-6 | **Tuning view**: the workbench's single-session preview gains the replay and the timeline, side by side for published and draft parameters, so a researcher watches fixations and AOI hits change while moving a knob. The sweep heatmaps (exist) link each cell to this view. | default |
+| V-7 | **Clinician read-out**: one consistent "centile strip" per metric: the age-bracket distribution with the published band and a dot for this session, plain words, no colour-only meaning; used on the session detail and in the review queue instead of ad-hoc badges. | default |
+| V-8 | **Clip media on the server**: an admin uploads each licensed clip (mp4) through Catalog, per clip id; the file goes to the org blob store sealed under the org DEK with its sha256 and licence acknowledgement recorded; served to roles with `session.read` through a short-lived, audited URL; the replay degrades to the wireframe when a clip is missing. The media never leaves the clinic server. | **owner**: confirm server-side hosting is allowed under the clip licence (H-8) |
+| V-9 | **All computation in Rust** (`asd-core::replay`: fixation and saccade events from frames with profile parameters, AOI-hit ribbon, windowed metric traces, KDE grids, outlier rules), through WASM for one session and the backend job for cohorts; the console draws canvas and SVG only. Replay reads use the existing `session.raw_read` audit; cohort heatmaps obey suppression. | default |
+
 ## Work packages
 
 | WP | Scope | Tier | Depends on |
@@ -71,10 +97,15 @@ reviewer or another lab opens without reading our docs; download a chart as SVG/
 | WP-X.15 | Export package: Frictionless Data Package, Croissant, DataCite, README + CITATION, BIDS eye-tracking derivatives | I | X.11; owner R-11 |
 | WP-X.16 | Import wizard: CSV mapping, BIDS import, participants/labels CSV; de-id schema at the door; audit | S | X.11; owner R-12 |
 | WP-X.17 | Classifier evaluation on labelled datasets (ROC/PR/calibration with bands) under governance | S | X.11, X.12 |
-| WP-X.18 | Gaze helpers: I-DT, TTFF and dwell curves, cohort heatmaps | S | X.14 |
+| WP-X.18 | Gaze helpers: I-DT, time-to-first-fixation and dwell curves (feeds V-2) | S | X.19 |
+| WP-X.19 | `asd-core::replay` + WASM: fixation/saccade events from frames with profile params, AOI-hit ribbon, windowed metric traces with expected bands, KDE heatmap grids, outlier rules; reference tests | S | — |
+| WP-X.20 | Console replay: Replay tab (canvas, scrubber, trail, fixations, AOI boxes, timeline strip), expected-versus-actual charts on clip cards, heatmap pair, quality timeline alignment, tuning view side by side | S | X.19 |
+| WP-X.21 | Clip media: catalog upload (sealed, sha256, licence ack), audited short-lived serving, replay media source | S | owner V-8 |
+| WP-X.22 | Outlier and filter tools on datasets with what-if aggregates | S | X.11, X.19 |
+| WP-X.23 | Centile strip component replacing ad-hoc badges on session detail and review | I | X.19 |
 
-Order: X.11 and X.12 start now in parallel (no owner input needed); X.14 after R-14; X.13 after X.12;
-X.15 after X.11; X.16, X.18, X.17 next. Each package: spec first, Rust tests with reference values, WASM
+Order: X.19 and X.11 start now in parallel (no owner input needed), then X.20 and X.22; X.12, X.14 after R-14;
+X.13 after X.12; X.15 after X.11; X.21 after V-8; X.16, X.18, X.23, X.17 next. Each package: spec first, Rust tests with reference values, WASM
 parity test (native == wasm32), console e2e, exports validated with the `frictionless` CLI in CI
 (dev tooling only).
 
