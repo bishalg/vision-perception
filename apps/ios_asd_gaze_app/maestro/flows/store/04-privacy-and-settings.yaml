@@ -4,8 +4,9 @@ tags:
   - store
 ---
 # Feature: privacy and settings (Tests/bdd/features/store_privacy_and_settings.feature)
-#   Privacy & Your Data (S-12) shows the saved sessions, delivery state, every opt-in
-#   (off by default), the signed consent and delete-all. Settings ends with About, the
+#   Privacy & Your Data (S-12) shows the saved sessions, delivery state, the opt-ins this
+#   build has (off by default; S-16: age-range check and clinic delivery only), the signed
+#   consent and delete-all. Settings ends with About, the
 #   legal links and the not-diagnostic disclaimer (S-6, S-13).
 #   Screenshots: 07_privacy_your_data, 08_settings_about.
 - launchApp:
@@ -44,6 +45,22 @@ tags:
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: 07_privacy_your_data
+# S-16: only the two opt-ins whose feature exists in the store build.
+- scrollUntilVisible:
+    element:
+      id: "privacy_optin_clinicDelivery"
+    direction: DOWN
+    timeout: 10000
+- assertVisible:
+    id: "privacy_optin_clinicDelivery"
+- assertNotVisible:
+    id: "privacy_optin_reminders"
+- assertNotVisible:
+    id: "privacy_optin_healthKitMood"
+- assertNotVisible:
+    id: "privacy_optin_dictation"
+- assertNotVisible:
+    id: "privacy_optin_photoAttachments"
 
 # Relaunch instead of a back gesture (no coordinates); the tabs reset to Capture.
 - launchApp:

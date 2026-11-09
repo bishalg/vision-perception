@@ -6,6 +6,10 @@ import HealthKit
 
 /// Unified HealthKit authorization and CRUD for mood / State of Mind samples.
 /// Local diary remains source of truth when Health is unavailable or denied.
+///
+/// S-15: authorization, save and fetch run only while the "Mood in the Health app" opt-in is
+/// on. Deleting stays allowed, so a guardian who turned the feature off can still remove what
+/// was written.
 @MainActor
 public final class HealthKitMoodStore: ObservableObject {
     public static let shared = HealthKitMoodStore()
@@ -25,10 +29,22 @@ public final class HealthKitMoodStore: ObservableObject {
     private let store = HKHealthStore()
     #endif
 
-    private init() {}
+    /// The guardian's opt-in (S-15). Injected so tests do not touch `UserDefaults.standard`.
+    private let optIn: @MainActor () -> Bool
+
+    init(optIn: @escaping @MainActor () -> Bool = { FeatureOptIns.shared.healthKitMood }) {
+        self.optIn = optIn
+    }
+
+    /// `true` while the opt-in is on.
+    public var isOptedIn: Bool { optIn() }
 
     public func requestAuthorization() async {
         lastErrorMessage = nil
+        guard optIn() else {
+            authorizationStatusText = Localizer.tr("healthkit_status_optin_off")
+            return
+        }
         guard isHealthDataAvailable else {
             authorizationStatusText = "Health data not available on this device"
             return
@@ -57,6 +73,7 @@ public final class HealthKitMoodStore: ObservableObject {
     @discardableResult
     public func save(_ entry: MoodDiaryEntry) async -> UUID? {
         lastErrorMessage = nil
+        guard optIn() else { return nil }
         #if canImport(HealthKit)
         #if compiler(>=6.0)
         if #available(iOS 18.0, *) {
@@ -99,6 +116,7 @@ public final class HealthKitMoodStore: ObservableObject {
     }
 
     public func fetchRecentStateOfMind(limit: Int = 50) async -> [MoodDiaryEntry] {
+        guard optIn() else { return [] }
         #if canImport(HealthKit)
         #if compiler(>=6.0)
         if #available(iOS 18.0, *) {

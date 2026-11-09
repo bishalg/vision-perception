@@ -2,16 +2,18 @@ import SwiftUI
 
 /// Settings row for registering this device with the clinic backend using the
 /// one-time enrolment code from the clinic console (WP-A.4). Present only when the
-/// study configuration carries an `apiBaseURL`.
+/// configuration carries an `apiBaseURL`. Enrolment follows the clinic delivery opt-in (S-19):
+/// the code field and Enrol are enabled only while it is on.
 struct DeviceEnrolmentRow: View {
     @ObservedObject var syncService: ResearchKitSyncService
+    @ObservedObject var optIns: FeatureOptIns = .shared
     @State private var code = ""
     @State private var isWorking = false
     @State private var message: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Clinic device enrolment")
+            Text(Localizer.tr("enrolment_title"))
                 .glassStyle(.headline)
             Text(statusText)
                 .glassStyle(.subheadline)
@@ -19,14 +21,20 @@ struct DeviceEnrolmentRow: View {
 
             if needsCode {
                 HStack {
-                    TextField("Enrolment code", text: $code)
+                    TextField(Localizer.tr("enrolment_code_placeholder"), text: $code)
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
                         .textContentType(.oneTimeCode)
+                        .disabled(!optIns.clinicDelivery)
                         .accessibilityIdentifier("settings_device_enrolment_code")
-                    Button("Enrol") { enrol() }
-                        .disabled(isWorking || code.trimmingCharacters(in: .whitespaces).isEmpty)
+                    Button(Localizer.tr("enrolment_submit")) { enrol() }
+                        .disabled(!optIns.clinicDelivery || isWorking || code.trimmingCharacters(in: .whitespaces).isEmpty)
                         .accessibilityIdentifier("settings_device_enrolment_submit")
+                }
+                if !optIns.clinicDelivery {
+                    Text(Localizer.tr("enrolment_needs_optin"))
+                        .glassStyle(.subheadline)
+                        .accessibilityIdentifier("settings_device_enrolment_optin_off")
                 }
             }
             if let message {
@@ -44,14 +52,15 @@ struct DeviceEnrolmentRow: View {
 
     private var statusText: String {
         switch syncService.deviceRegistration {
-        case .unavailable: return "Uploads are not set up in this build."
-        case .unregistered: return "Enter the code from your clinic to send sessions you have consented to share."
-        case .registered: return "This device is enrolled. Consented sessions upload when online."
-        case .needsEnrolment: return "Enrolment expired. Enter a new code from your clinic. Queued sessions stay on this device until then."
+        case .unavailable: return Localizer.tr("enrolment_status_unavailable")
+        case .unregistered: return Localizer.tr("enrolment_status_unregistered")
+        case .registered: return Localizer.tr("enrolment_status_registered")
+        case .needsEnrolment: return Localizer.tr("enrolment_status_expired")
         }
     }
 
     private func enrol() {
+        guard optIns.clinicDelivery else { return }
         isWorking = true
         message = nil
         let entered = code
@@ -61,7 +70,7 @@ struct DeviceEnrolmentRow: View {
                 code = ""
                 message = nil
             } catch {
-                message = "That code was not accepted. Check it and try again."
+                message = Localizer.tr("enrolment_code_rejected")
             }
             isWorking = false
         }

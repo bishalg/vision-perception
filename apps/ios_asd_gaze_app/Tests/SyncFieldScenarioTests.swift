@@ -74,7 +74,8 @@ final class SyncFieldScenarioTests: XCTestCase {
                 credentialStore: credentials,
                 clientInfo: SessionSyncServiceTests.client,
                 blobRoot: blobRoot,
-                transport: transport
+                transport: transport,
+                deliveryAuthorization: ClinicDeliveryAuthorization.optedInForTests
             )
         } else {
             service = ResearchKitSyncService(
@@ -87,7 +88,8 @@ final class SyncFieldScenarioTests: XCTestCase {
                 clientInfo: SessionSyncServiceTests.client,
                 blobRoot: blobRoot,
                 transport: transport,
-                retrySleep: { _ in try await Task.sleep(for: .seconds(86_400)) }
+                retrySleep: { _ in try await Task.sleep(for: .seconds(86_400)) },
+                deliveryAuthorization: ClinicDeliveryAuthorization.optedInForTests
             )
         }
         transport.onPathChange = { [weak service] online in

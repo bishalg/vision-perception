@@ -4,6 +4,7 @@ public enum PrivacyDashboardAccessibility {
     public static let view = "privacy_dashboard"
     public static let sessionCount = "privacy_session_count"
     public static let deliveryStatus = "privacy_delivery_status"
+    public static let deliveryOff = "privacy_delivery_off"
     public static let consentRecord = "privacy_consent_record"
     public static let withdraw = "privacy_withdraw_consent"
     public static let deleteAll = "privacy_delete_all"
@@ -120,7 +121,7 @@ public struct PrivacyDashboardView: View {
     private var deliverySection: some View {
         section(ConsentL10n.text("privacy.delivery.title", "Clinic delivery"), icon: "paperplane") {
             if let syncService, syncService.isSessionSyncEnabled {
-                ClinicDeliveryStatusRow(syncService: syncService)
+                ClinicDeliveryStatusRow(syncService: syncService, optIns: optIns)
             } else {
                 Text(ConsentL10n.text("privacy.delivery.notenrolled", "Not enrolled"))
                     .glassStyle(.headline)
@@ -135,9 +136,11 @@ public struct PrivacyDashboardView: View {
         section(ConsentL10n.text("privacy.optional.title", "Optional features"), icon: "switch.2") {
             Text(ConsentL10n.text("privacy.optional.intro", "Every optional feature is off until you turn it on. Sessions work with all of them off."))
                 .glassStyle(.subheadline)
-            ForEach(FeatureOptIn.allCases) { feature in
+            // S-16: only the opt-ins whose feature exists in this build.
+            let features = FeatureOptIn.available()
+            ForEach(features) { feature in
                 VStack(alignment: .leading, spacing: 4) {
-                    Toggle(isOn: Binding(get: { optIns.isOn(feature) }, set: { optIns.set(feature, $0) })) {
+                    Toggle(isOn: Binding(get: { optIns.isOn(feature) }, set: { setOptIn(feature, $0) })) {
                         Label(feature.title, systemImage: feature.systemImage)
                             .glassStyle(.headline)
                     }
@@ -154,7 +157,7 @@ public struct PrivacyDashboardView: View {
                     }
                     .tint(LiquidGlass.celestialTeal)
                 }
-                if feature != FeatureOptIn.allCases.last { GlassDivider() }
+                if feature != features.last { GlassDivider() }
             }
         }
     }
@@ -227,6 +230,22 @@ public struct PrivacyDashboardView: View {
 
     // MARK: Actions
 
+    /// Records the choice and applies it at once (S-15, S-18): reminders are rescheduled or
+    /// removed, and turning clinic delivery back on resumes the waiting queue.
+    private func setOptIn(_ feature: FeatureOptIn, _ value: Bool) {
+        optIns.set(feature, value)
+        switch feature {
+        case .reminders:
+            #if !ASD_STORE_BUILD
+            Task { await CarePlanStore.shared.resyncAlerts() }
+            #endif
+        case .clinicDelivery:
+            if value { syncService?.requestFlush(.foreground) }
+        case .ageRangeCheck, .healthKitMood, .dictation, .photoAttachments:
+            break
+        }
+    }
+
     private func deleteAll() {
         let report = DataDeletionService.live().deleteAll(includeCarePlans: false)
         let message = report.succeeded
@@ -258,12 +277,19 @@ public struct PrivacyDashboardView: View {
     }
 }
 
-/// Enrolment state of this device, observed live from the sync service.
+/// Enrolment state of this device, observed live from the sync service. With the clinic
+/// delivery opt-in off it says so and how many sessions wait on the device (S-19).
 private struct ClinicDeliveryStatusRow: View {
     @ObservedObject var syncService: ResearchKitSyncService
+    @ObservedObject var optIns: FeatureOptIns
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
+            if !optIns.clinicDelivery {
+                Text(ClinicSyncStatusLine.deliveryOffText(waiting: syncService.pendingQueueCount))
+                    .glassStyle(.subheadline, color: LiquidGlass.warmAmber)
+                    .accessibilityIdentifier(PrivacyDashboardAccessibility.deliveryOff)
+            }
             Text(isEnrolled
                  ? ConsentL10n.text("privacy.delivery.enrolled", "Enrolled")
                  : ConsentL10n.text("privacy.delivery.notenrolled", "Not enrolled"))
@@ -304,6 +330,9 @@ struct FeatureOptInDetailView: View {
                 detailBlock(ConsentL10n.text("optin.detail.what", "What it does"), feature.rowDescription)
                 detailBlock(ConsentL10n.text("optin.detail.stored", "What is stored"), feature.whatIsStored)
                 detailBlock(ConsentL10n.text("optin.detail.never", "What is never stored"), feature.whatIsNeverStored)
+                if let whenTurnedOff = feature.whenTurnedOff {
+                    detailBlock(ConsentL10n.text("optin.detail.off", "When you turn it off"), whenTurnedOff)
+                }
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text(ConsentL10n.text("optin.detail.permissions", "iOS permissions")).glassStyle(.headline)

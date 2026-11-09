@@ -18,17 +18,15 @@ public enum FeatureOptIn: String, CaseIterable, Identifiable, Sendable {
     /// UserDefaults key for the persisted Bool.
     public var storageKey: String { "org.curv.asd.optin.\(rawValue)" }
 
-    /// `true` once the feature itself checks `FeatureOptIns` before it runs. Until then the
-    /// toggle only records the guardian's choice, and the copy says so (S-12 honesty rule).
-    public var isGated: Bool {
-        switch self {
-        case .ageRangeCheck:
-            // Onboarding asks for the declared age range only when this is on (WP-S.5).
-            return true
-        case .clinicDelivery, .reminders, .healthKitMood, .dictation, .photoAttachments:
-            // WP-S.5b: gate each feature on its opt-in, then return true here.
-            return false
-        }
+    /// `true` when the feature itself checks `FeatureOptIns` before it runs (S-15). Every
+    /// feature is gated at its entry point and in the service behind it, in every build.
+    public var isGated: Bool { true }
+
+    /// The opt-ins whose feature exists in this build (S-16). The store build has no diary,
+    /// care alerts or Health mood surface, so it shows only the age-range check and clinic
+    /// delivery; the stored flags of the hidden features stay `false`.
+    public static func available(storeBuild: Bool = StoreBuild.isStoreBuild) -> [FeatureOptIn] {
+        storeBuild ? [.ageRangeCheck, .clinicDelivery] : allCases
     }
 
     public var title: String {
@@ -70,16 +68,21 @@ public enum FeatureOptIn: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// Row description: what it does, plus the honesty note while the feature is not gated yet.
-    public var rowDescription: String {
-        guard !isGated else { return oneLineWhatItDoes }
-        return oneLineWhatItDoes + " " + Self.notYetGatedNote
-    }
+    /// Row description in Privacy & Your Data.
+    public var rowDescription: String { oneLineWhatItDoes }
 
-    public static let notYetGatedNote = ConsentL10n.text(
-        "optin.notgated",
-        "Controls whether this feature is offered."
-    )
+    /// Extra text on the detail page: what turning the feature off does (S-18).
+    public var whenTurnedOff: String? {
+        switch self {
+        case .clinicDelivery:
+            return ConsentL10n.text(
+                "optin.delivery.off",
+                "Turning this off stops all sending: nothing new is queued and nothing waiting is sent. Sessions already waiting stay on this device and are sent when you turn it back on. A transfer already under way may finish. Sessions recorded while this is off stay on this device only. Delete all data also removes waiting sessions."
+            )
+        case .ageRangeCheck, .reminders, .healthKitMood, .dictation, .photoAttachments:
+            return nil
+        }
+    }
 
     public var whatIsStored: String {
         switch self {
@@ -129,8 +132,9 @@ public enum FeatureOptIn: String, CaseIterable, Identifiable, Sendable {
 
 /// The guardian's opt-in choices, persisted in UserDefaults. All default to `false`.
 ///
-/// WP-S.5b: the features read these flags before they run (clinic delivery in `ResearchKitSyncService`, reminders in
-/// `CareAlertScheduler`, HealthKit in `HealthKitMoodStore`, dictation and photos in the diary).
+/// The features read these flags before they run (S-15): clinic delivery in `ResearchKitSyncService`
+/// (through `ClinicDeliveryAuthorization`), reminders in `CareAlertScheduler`, HealthKit in
+/// `HealthKitMoodStore`, dictation and photos in `ObservationQuickLogBar`.
 @MainActor
 public final class FeatureOptIns: ObservableObject {
     public static let shared = FeatureOptIns()
@@ -176,7 +180,8 @@ public final class FeatureOptIns: ObservableObject {
         }
     }
 
-    /// Turns every opt-in off (used when consent is withdrawn).
+    /// Turns every opt-in off (used when consent is withdrawn). Covers the hidden features too,
+    /// so a flag left on by an earlier build cannot linger (S-16).
     public func resetAll() {
         for feature in FeatureOptIn.allCases { set(feature, false) }
     }

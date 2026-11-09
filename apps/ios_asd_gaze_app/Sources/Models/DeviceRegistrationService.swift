@@ -13,6 +13,8 @@ public enum DeviceRegistrationError: Error, Equatable, Sendable {
     case invalidResponse
     case insecureURL
     case storageFailed
+    /// The guardian has not turned on clinic delivery, so the device is not enrolled (S-19).
+    case deliveryOff
 }
 
 public enum DeviceRegistrationMethod: Sendable, Equatable {

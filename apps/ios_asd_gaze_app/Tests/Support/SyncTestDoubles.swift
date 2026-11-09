@@ -122,3 +122,16 @@ func httpResponse(_ request: URLRequest, _ status: Int, headers: [String: String
 func jsonData(_ object: Any) -> Data {
     (try? JSONSerialization.data(withJSONObject: object)) ?? Data()
 }
+
+extension ClinicDeliveryAuthorization {
+    /// Clinic delivery opted in with a current guardian consent (S-17); the research-study
+    /// consent still decides, as in Debug, so the existing consent tests keep their meaning.
+    static func optedInForTests(_ researchConsented: Bool) -> ClinicDeliveryAuthorization {
+        ClinicDeliveryAuthorization(
+            optedIn: true,
+            guardianConsentCurrent: true,
+            researchConsentRequired: true,
+            researchConsented: researchConsented
+        )
+    }
+}

@@ -1055,9 +1055,16 @@ public typealias DashboardView = CaregiverDashboardView
 
 /// SYNC-8: "n waiting · n uploading · n need attention · last synced <time>" for the
 /// clinic dashboard, with a one-tap retry while something needs attention (SYNC-4). No
-/// participant tokens or session ids appear here.
+/// participant tokens or session ids appear here. With the clinic delivery opt-in off it says
+/// so instead, with the number of sessions waiting on this device (S-19).
 struct ClinicSyncStatusLine: View {
     @ObservedObject var syncService: ResearchKitSyncService
+    @ObservedObject var optIns: FeatureOptIns = .shared
+
+    /// "Clinic delivery is off. N session(s) waiting on this device." (S-19)
+    static func deliveryOffText(waiting: Int, lang: AppLocale? = nil) -> String {
+        String(format: Localizer.tr("clinic_delivery_off_waiting", lang: lang), locale: Locale.current, waiting)
+    }
 
     static func text(for summary: SyncStatusSummary, now: Date = Date(), lang: AppLocale? = nil) -> String {
         var parts = [
@@ -1079,8 +1086,26 @@ struct ClinicSyncStatusLine: View {
     }
 
     var body: some View {
+        if optIns.clinicDelivery {
+            statusLine
+        } else {
+            HStack(spacing: 8) {
+                Image(systemName: "pause.circle")
+                    .foregroundStyle(LiquidGlass.warmAmber)
+                    .accessibilityHidden(true)
+                Text(Self.deliveryOffText(waiting: syncService.pendingQueueCount))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("clinic_delivery_off_line")
+                Spacer(minLength: 0)
+            }
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    private var statusLine: some View {
         let summary = syncService.statusSummary
-        HStack(spacing: 8) {
+        return HStack(spacing: 8) {
             Image(systemName: summary.needsAttention > 0 ? "exclamationmark.icloud" : "icloud.and.arrow.up")
                 .foregroundStyle(summary.needsAttention > 0 ? LiquidGlass.warmAmber : LiquidGlass.celestialTeal)
                 .accessibilityHidden(true)

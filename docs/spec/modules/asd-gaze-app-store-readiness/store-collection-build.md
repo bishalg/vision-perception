@@ -83,6 +83,55 @@ used for EarlyGaze.
   hi and ne-NP screenshots would show English text apart from the localised strings; none are
   kept while the listing is English-only (S-14).
 
+## Opt-in gating (WP-S.5b, design 2026-11-09)
+
+Findings behind the package (code survey 2026-11-09):
+
+- The six toggles in Privacy & Your Data (S-12) persist a choice, but only `ageRangeCheck` is
+  read by its feature. The row copy admits it ("Controls whether this feature is offered").
+- In the store build, reminders, HealthKit mood, dictation and photo attachments have no
+  surface at all: they live on the dashboard, in care alerts and in the diary, which S-2 and
+  S-6 hide. A toggle for a feature the build cannot use is itself an untrue statement.
+- Clinic delivery cannot work in the store build as wired: `ResearchKitSyncService` refuses
+  to queue or flush unless `ResearchStudyEnrollment.isConsented`, and the only screen that
+  sets it (`ResearchStudyConsentView`) is a dashboard modal the store build hides. The
+  failure text ("Parental research consent is not active.") is research wording (5.1.3).
+- `NormCollectionToggleRow` (research wording) is not behind `#if !ASD_STORE_BUILD`; it would
+  appear in a store build the moment a clinic configuration ships (S-4).
+
+| # | Decision | Why |
+| --- | --- | --- |
+| S-15 | Every opt-in gates its feature in every build: `FeatureOptIn.isGated` is `true` for all cases, `notYetGatedNote` and the row suffix are removed. Each feature reads `FeatureOptIns` at its entry point **and** in the service behind it (defence in depth): clinic delivery in `ResearchKitSyncService` (`enqueueSession`, `requestFlush`, `syncNow`), reminders in `CareAlertScheduler` (`requestAuthorizationIfNeeded`, `resync`) and the Settings care-alert toggles, HealthKit in `HealthKitMoodStore` (`requestAuthorization`, `save`, `fetchRecentStateOfMind`; `deleteHealthSample` stays allowed so a guardian who turned the feature off can still remove what was written) and the Settings row, dictation and photos in `ObservationQuickLogBar` and `ObservationDictationController.start`. Services take the opt-in as an injected closure so tests do not touch `UserDefaults.standard`. | S-12 honesty rule; 5.1.1(ii). |
+| S-16 | The store build shows only the opt-ins whose feature exists in that build: `FeatureOptIn.available(storeBuild:)` returns `[.ageRangeCheck, .clinicDelivery]` for the store build and `allCases` otherwise. `PrivacyDashboardView`, the detail view and `resetAll` iterate the available list; the stored flags for hidden features stay `false`. | A switch for an absent feature misleads the guardian (S-12). |
+| S-17 | Clinic delivery is authorised when **all** hold: the `clinicDelivery` opt-in is on; the guardian consent record matches `ConsentDocument.current` (`ConsentRecordStore.shared`); in Debug/DemoRelease additionally the research-study enrolment `isConsented` (existing behaviour, unchanged). One pure type `ClinicDeliveryAuthorization` (new file `Sources/Models/ClinicDeliveryGate.swift`) computes this from injected inputs; `ResearchKitSyncService` takes `deliveryAuthorized: @MainActor () -> Bool` (default: the real gate) and consults it in `enqueueSession` (refuse, remove the stray research log, log the reason), `requestFlush` (no-op) and `syncNow` (`.failed(reason:)` with the neutral text "Clinic delivery is off." or "Consent is not active."). The string "research" never appears in store-build status text. | The store build has no research consent screen; the guardian consent (S-10) is the consent that covers delivery. |
+| S-18 | Turning clinic delivery **off** stops every send (nothing new is queued, nothing queued is flushed, the retry timer and launch flush are no-ops through `requestFlush`/`syncNow`); items already in the queue stay on the device and resume when the opt-in is turned back on. Background `URLSession` tasks already in flight finish. Delete-all still purges the queue. Copy on the toggle's detail page says exactly this. | No silent data loss, no silent sending. |
+| S-19 | Enrolment follows the opt-in. The store build's Settings privacy section shows `DeviceEnrolmentRow` whenever `isSessionSyncEnabled`, not behind `isResearchEnabled`, and `NormCollectionToggleRow` is wrapped in `#if !ASD_STORE_BUILD`. The row's code field and Enrol button are enabled only while `clinicDelivery` is on; off, it reads "Turn on Clinic delivery in Privacy & Your Data to enrol this device." Its literals move to `Localizer.tr` keys (no new baseline entries) and lose the "consented to share" research phrasing. `ClinicDeliveryStatusRow` in Privacy & Your Data and `ClinicSyncStatusLine` (Sessions tab, result screen) show a delivery-off state: "Clinic delivery is off. N session(s) waiting on this device." `SessionStorageState` gains `.deliveryOff` with verdict-free text (covered by `testStorageCopyHasNoVerdictWording`). | S-4; the listing promises that nothing leaves the device without the guardian's choice. |
+| S-20 | "Before you begin" states delivery truthfully: `recordedItems(optIns:deliveryConfigured:isEnrolled:)` says "Delivered to your clinic" only when the opt-in is on, sync is configured and the device is enrolled; "Kept on this device until your clinic enrols it" when on but not enrolled; "Kept on this device only" otherwise. | S-13. |
+| S-21 | The facial-expression toggle is **not** reintroduced in this package. Consent already lists facial-expression measurements under "What is recorded" (S-12 as amended), which is true today. Dropping blendshape metrics per session in the kit (`FacialAffectMetrics`, `smileReactivityIndex` and siblings in `GazeSessionRecord` and the ingest payload, console schema impact) is **WP-S.5c, after submission**. | Kit and schema change; not needed for an honest submission. |
+
+Implementation notes: new strings go through `ConsentL10n.text(key, english)` in the consent files and
+`Localizer.tr` elsewhere (keys added to `Localizable.xcstrings` with hi/ne drafts marked
+`needs_review`); the literal baseline must not grow. Reminder opt-in changes trigger
+`CarePlanStore.shared.resyncAlerts()` (non-store builds) so pending notifications are removed at
+once. The StoreSim screenshot `07_privacy_your_data` changes (two toggles); regenerate with
+`scripts/run_store_screenshots.sh` and update `Tests/bdd/features/store_privacy_and_settings.feature`
+and `maestro/flows/store/04-privacy-and-settings` if they count toggles.
+
+Tests: `ConsentFlowTests` (all gated, store availability list, no "Controls whether" text, denylist
+sweep over the new copy), `ResearchKitSyncServiceTests` (opt-in off: no queue file and no research
+log after `enqueueSession`, `requestFlush` no-op, `syncNow` fails with the neutral reason; on again:
+the queued item flushes), `ClinicDeliveryAuthorization` truth table, `CareAlertScheduler` pure
+decision helper, `HealthKitMoodStore` save/fetch short-circuit, `StoreBuildTests` `.deliveryOff`,
+`BeforeYouBeginView.recordedItems` three states.
+
+## Status (2026-11-09, end of day)
+
+Landed on `dev`: WP-S.5b (S-15..S-21), App Review notes (`fastlane/review_notes.txt`, sent by
+`update_metadata`, checked by `validate_metadata` and the claims script), claims script flags made
+additive (the `ios_test.sh` claims gate previously ran only the secrets scan), README and HANDOFF
+sweep. Gates on the final tree: see the tracker row. Open before submission (code): WP-S.7b polish.
+Open before submission (human): `HANDOFF.md`, "Before submission: human".
+
 ## Status (2026-11-08, end of day)
 
 Landed on `dev`: WP-S.1, S.2, S.3, S.4, S.5. Gates on the final tree: Release and DemoRelease

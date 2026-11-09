@@ -507,6 +507,75 @@
         }
       }
     },
+    "clinic_delivery_consent_inactive" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Consent is not active."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "सहमति सक्रिय नहीं है।"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "सहमति सक्रिय छैन।"
+          }
+        }
+      }
+    },
+    "clinic_delivery_off" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clinic delivery is off."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "क्लिनिक डिलीवरी बंद है।"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "क्लिनिक डेलिभरी बन्द छ।"
+          }
+        }
+      }
+    },
+    "clinic_delivery_off_waiting" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clinic delivery is off. %d session(s) waiting on this device."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "क्लिनिक डिलीवरी बंद है। इस डिवाइस पर %d सत्र प्रतीक्षा में हैं।"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "क्लिनिक डेलिभरी बन्द छ। यस डिभाइसमा %d सत्र पर्खाइमा छन्।"
+          }
+        }
+      }
+    },
     "close" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -990,6 +1059,213 @@
         }
       }
     },
+    "enrolment_code_placeholder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enrolment code"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "नामांकन कोड"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "दर्ता कोड"
+          }
+        }
+      }
+    },
+    "enrolment_code_rejected" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "That code was not accepted. Check it and try again."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "वह कोड स्वीकार नहीं हुआ। जाँचें और फिर से प्रयास करें।"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "त्यो कोड स्वीकार भएन। जाँच गरी फेरि प्रयास गर्नुहोस्।"
+          }
+        }
+      }
+    },
+    "enrolment_needs_optin" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn on Clinic delivery in Privacy & Your Data to enrol this device."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "इस डिवाइस का नामांकन करने के लिए \"Privacy & Your Data\" में क्लिनिक डिलीवरी चालू करें।"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "यो डिभाइस दर्ता गर्न \"Privacy & Your Data\" मा क्लिनिक डेलिभरी खोल्नुहोस्।"
+          }
+        }
+      }
+    },
+    "enrolment_status_expired" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enrolment expired. Enter a new code from your clinic. Queued sessions stay on this device until then."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "नामांकन की अवधि समाप्त हो गई। अपने क्लिनिक से मिला नया कोड दर्ज करें। तब तक कतार के सत्र इसी डिवाइस पर रहेंगे।"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "दर्ताको म्याद सकियो। आफ्नो क्लिनिकबाट नयाँ कोड प्रविष्ट गर्नुहोस्। त्यतिन्जेल लाइनमा रहेका सत्रहरू यही डिभाइसमा रहन्छन्।"
+          }
+        }
+      }
+    },
+    "enrolment_status_registered" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This device is enrolled. Sessions are delivered to your clinic when online."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "यह डिवाइस नामांकित है। ऑनलाइन होने पर सत्र आपके क्लिनिक को भेजे जाते हैं।"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "यो डिभाइस दर्ता भएको छ। अनलाइन हुँदा सत्रहरू तपाईंको क्लिनिकमा पठाइन्छन्।"
+          }
+        }
+      }
+    },
+    "enrolment_status_unavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clinic delivery is not set up in this build."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "इस बिल्ड में क्लिनिक डिलीवरी सेट नहीं है।"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "यस बिल्डमा क्लिनिक डेलिभरी सेट गरिएको छैन।"
+          }
+        }
+      }
+    },
+    "enrolment_status_unregistered" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter the code from your clinic to enrol this device for clinic delivery."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "क्लिनिक डिलीवरी के लिए इस डिवाइस का नामांकन करने हेतु अपने क्लिनिक का कोड दर्ज करें।"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "क्लिनिक डेलिभरीका लागि यो डिभाइस दर्ता गर्न आफ्नो क्लिनिकको कोड प्रविष्ट गर्नुहोस्।"
+          }
+        }
+      }
+    },
+    "enrolment_submit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enrol"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "नामांकन करें"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "दर्ता गर्नुहोस्"
+          }
+        }
+      }
+    },
+    "enrolment_title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clinic device enrolment"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "क्लिनिक डिवाइस नामांकन"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "क्लिनिक डिभाइस दर्ता"
+          }
+        }
+      }
+    },
     "export_pdf" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1101,6 +1377,52 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "बेलुन हेरेर फुटाउनुहोस् • हात नछोई"
+          }
+        }
+      }
+    },
+    "healthkit_optin_off" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mood in the Health app is off. Turn it on in Privacy & Your Data."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Health ऐप में मूड बंद है। इसे \"Privacy & Your Data\" में चालू करें।"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Health एपमा मुड बन्द छ। यसलाई \"Privacy & Your Data\" मा खोल्नुहोस्।"
+          }
+        }
+      }
+    },
+    "healthkit_status_optin_off" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Off in Privacy & Your Data"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "\"Privacy & Your Data\" में बंद"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "\"Privacy & Your Data\" मा बन्द"
           }
         }
       }
@@ -1354,6 +1676,52 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "बेलुन फुल्दै छ... हेरिरहनुहोस्! ✨"
+          }
+        }
+      }
+    },
+    "quicklog_dictation_off" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dictation is off. Turn it on in Privacy & Your Data."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "डिक्टेशन बंद है। इसे \"Privacy & Your Data\" में चालू करें।"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "डिक्टेसन बन्द छ। यसलाई \"Privacy & Your Data\" मा खोल्नुहोस्।"
+          }
+        }
+      }
+    },
+    "quicklog_optins_off" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn on Dictation for notes or Photo attachments in Privacy & Your Data to use them."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "इनका उपयोग करने के लिए \"Privacy & Your Data\" में नोट्स के लिए डिक्टेशन या फ़ोटो संलग्नक चालू करें।"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "प्रयोग गर्न \"Privacy & Your Data\" मा नोटका लागि डिक्टेसन वा फोटो संलग्नक खोल्नुहोस्।"
           }
         }
       }
@@ -1906,6 +2274,29 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "iOS सेटिङ खोल्नुहोस्"
+          }
+        }
+      }
+    },
+    "settings_alerts_optin_off" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reminders are off. Turn on Reminders in Privacy & Your Data to use them."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "रिमाइंडर बंद हैं। इनका उपयोग करने के लिए \"Privacy & Your Data\" में रिमाइंडर चालू करें।"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "रिमाइन्डरहरू बन्द छन्। प्रयोग गर्न \"Privacy & Your Data\" मा रिमाइन्डर खोल्नुहोस्।"
           }
         }
       }
@@ -2987,6 +3378,29 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "दृष्टि क्यालिब्रेसन"
+          }
+        }
+      }
+    },
+    "store_storage_delivery_off" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kept on this device (clinic delivery is off)"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "इस डिवाइस पर रखा गया (क्लिनिक डिलीवरी बंद है)"
+          }
+        },
+        "ne" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "यस डिभाइसमा राखिएको (क्लिनिक डेलिभरी बन्द छ)"
           }
         }
       }

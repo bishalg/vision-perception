@@ -89,7 +89,8 @@ final class ResearchKitSyncServiceTests: XCTestCase {
             configuration: Self.studyConfig,
             store: researchStore,
             queueDirectory: tempQueueDir,
-            session: mockSession
+            session: mockSession,
+            deliveryAuthorization: ClinicDeliveryAuthorization.optedInForTests
         )
 
         XCTAssertEqual(service.pendingQueueCount, 0)
@@ -112,7 +113,8 @@ final class ResearchKitSyncServiceTests: XCTestCase {
             configuration: Self.studyConfig,
             store: researchStore,
             queueDirectory: tempQueueDir,
-            session: mockSession
+            session: mockSession,
+            deliveryAuthorization: ClinicDeliveryAuthorization.optedInForTests
         )
 
         let fileURL = service.generateDoctorShareFile()
@@ -139,7 +141,8 @@ final class ResearchKitSyncServiceTests: XCTestCase {
             configuration: Self.studyConfig,
             store: researchStore,
             queueDirectory: tempQueueDir,
-            session: mockSession
+            session: mockSession,
+            deliveryAuthorization: ClinicDeliveryAuthorization.optedInForTests
         )
 
         let fileURL = service.generateDoctorReportPDF(
@@ -165,7 +168,8 @@ final class ResearchKitSyncServiceTests: XCTestCase {
             configuration: Self.studyConfig,
             store: researchStore,
             queueDirectory: tempQueueDir,
-            session: mockSession
+            session: mockSession,
+            deliveryAuthorization: ClinicDeliveryAuthorization.optedInForTests
         )
 
         // Store is unconsented by default
@@ -177,7 +181,9 @@ final class ResearchKitSyncServiceTests: XCTestCase {
         wait(for: [exp], timeout: 3.0)
 
         if case .failed(let reason) = service.syncState {
-            XCTAssertTrue(reason.contains("consent is not active"))
+            // S-17: a neutral reason, never research wording.
+            XCTAssertEqual(reason, ClinicDeliveryAuthorization.consentInactiveText)
+            XCTAssertFalse(reason.lowercased().contains("research"))
         } else {
             XCTFail("Expected syncState to be failed due to missing consent")
         }
@@ -192,7 +198,8 @@ final class ResearchKitSyncServiceTests: XCTestCase {
             configuration: Self.studyConfig,
             store: researchStore,
             queueDirectory: tempQueueDir,
-            session: mockSession
+            session: mockSession,
+            deliveryAuthorization: ClinicDeliveryAuthorization.optedInForTests
         )
 
         // Enqueue a test payload
@@ -239,7 +246,8 @@ final class ResearchKitSyncServiceTests: XCTestCase {
             configuration: Self.studyConfig,
             store: researchStore,
             queueDirectory: tempQueueDir,
-            session: mockSession
+            session: mockSession,
+            deliveryAuthorization: ClinicDeliveryAuthorization.optedInForTests
         )
 
         service.enqueueStudyPayload(bundle: ["malformedPayload": true])
@@ -284,7 +292,8 @@ final class ResearchKitSyncServiceTests: XCTestCase {
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession,
-            startMonitoring: false
+            startMonitoring: false,
+            deliveryAuthorization: ClinicDeliveryAuthorization.optedInForTests
         )
 
         service.enqueueStudyPayload(bundle: ["study": "CURV-ASD", "retryMe": true])
@@ -320,7 +329,8 @@ final class ResearchKitSyncServiceTests: XCTestCase {
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession,
-            startMonitoring: false
+            startMonitoring: false,
+            deliveryAuthorization: ClinicDeliveryAuthorization.optedInForTests
         )
 
         service.enqueueStudyPayload(bundle: ["study": "CURV-ASD", "autoSync": true])
@@ -384,7 +394,8 @@ final class ResearchKitSyncServiceTests: XCTestCase {
             queueDirectory: tempQueueDir,
             session: mockSession,
             startMonitoring: false,
-            now: { clock.instant }
+            now: { clock.instant },
+            deliveryAuthorization: ClinicDeliveryAuthorization.optedInForTests
         )
         service.enqueueStudyPayload(bundle: ["study": "CURV-ASD", "backoff": true])
 
@@ -426,7 +437,8 @@ final class ResearchKitSyncServiceTests: XCTestCase {
             queueDirectory: tempQueueDir,
             session: mockSession,
             startMonitoring: false,
-            now: { clock.instant }
+            now: { clock.instant },
+            deliveryAuthorization: ClinicDeliveryAuthorization.optedInForTests
         )
         service.enqueueStudyPayload(bundle: ["study": "CURV-ASD", "exhaust": true])
 
@@ -459,7 +471,8 @@ final class ResearchKitSyncServiceTests: XCTestCase {
             queueDirectory: tempQueueDir,
             session: mockSession,
             startMonitoring: false,
-            now: { clock.instant }
+            now: { clock.instant },
+            deliveryAuthorization: ClinicDeliveryAuthorization.optedInForTests
         )
         service.enqueueStudyPayload(bundle: ["study": "CURV-ASD", "retryStuck": true])
 
@@ -519,7 +532,8 @@ final class ResearchKitSyncServiceTests: XCTestCase {
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession,
-            startMonitoring: false
+            startMonitoring: false,
+            deliveryAuthorization: ClinicDeliveryAuthorization.optedInForTests
         )
         let values = try tempQueueDir.resourceValues(forKeys: [.isExcludedFromBackupKey])
         XCTAssertEqual(values.isExcludedFromBackup, true)
@@ -532,7 +546,8 @@ final class ResearchKitSyncServiceTests: XCTestCase {
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession,
-            startMonitoring: false
+            startMonitoring: false,
+            deliveryAuthorization: ClinicDeliveryAuthorization.optedInForTests
         )
         service.enqueueStudyPayload(bundle: ["study": "CURV-ASD", "protected": true])
 
@@ -560,7 +575,8 @@ final class ResearchKitSyncServiceTests: XCTestCase {
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession,
-            startMonitoring: false
+            startMonitoring: false,
+            deliveryAuthorization: ClinicDeliveryAuthorization.optedInForTests
         )
         service.enqueueStudyPayload(bundle: ["bad": true])
         MockURLProtocol.requestHandler = { request in
@@ -583,7 +599,8 @@ final class ResearchKitSyncServiceTests: XCTestCase {
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession,
-            startMonitoring: false
+            startMonitoring: false,
+            deliveryAuthorization: ClinicDeliveryAuthorization.optedInForTests
         )
         for index in 0..<3 {
             service.enqueueStudyPayload(bundle: ["payload": index])
@@ -618,7 +635,8 @@ final class ResearchKitSyncServiceTests: XCTestCase {
             store: store,
             queueDirectory: tempQueueDir,
             session: mockSession,
-            startMonitoring: false
+            startMonitoring: false,
+            deliveryAuthorization: ClinicDeliveryAuthorization.optedInForTests
         )
         box.service = service
 
@@ -654,7 +672,8 @@ final class ResearchKitSyncServiceTests: XCTestCase {
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession,
-            startMonitoring: false
+            startMonitoring: false,
+            deliveryAuthorization: ClinicDeliveryAuthorization.optedInForTests
         )
         service.enqueueStudyPayload(bundle: ["inflight": true])
 
@@ -725,7 +744,8 @@ final class ResearchKitSyncServiceTests: XCTestCase {
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession,
-            startMonitoring: false
+            startMonitoring: false,
+            deliveryAuthorization: ClinicDeliveryAuthorization.optedInForTests
         )
         XCTAssertEqual(service.configuration, Self.studyConfig)
         XCTAssertEqual(service.configuration.ingestURL.scheme, "https")
@@ -740,7 +760,8 @@ final class ResearchKitSyncServiceTests: XCTestCase {
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession,
-            startMonitoring: false
+            startMonitoring: false,
+            deliveryAuthorization: ClinicDeliveryAuthorization.optedInForTests
         )
         service.enqueueStudyPayload(bundle: ["endpoint": true])
 
@@ -780,7 +801,8 @@ final class ResearchKitSyncServiceTests: XCTestCase {
             store: researchStore,
             queueDirectory: tempQueueDir,
             session: mockSession,
-            startMonitoring: false
+            startMonitoring: false,
+            deliveryAuthorization: ClinicDeliveryAuthorization.optedInForTests
         )
         service.enqueueStudyPayload(bundle: ["purge": true])
         XCTAssertEqual(service.pendingQueueCount, 1)

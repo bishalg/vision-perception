@@ -114,9 +114,6 @@ apps/ios_asd_gaze_app/Sources/Views/DemoToolsView.swift	swift-text	d39a2b7d2903	
 apps/ios_asd_gaze_app/Sources/Views/DemoToolsView.swift	swift-text	e5357a2d3c69	1
 apps/ios_asd_gaze_app/Sources/Views/DemoToolsView.swift	swift-text-field	dcaef40b3c04	1
 apps/ios_asd_gaze_app/Sources/Views/DemoToolsView.swift	swift-toggle	2139330c971d	1
-apps/ios_asd_gaze_app/Sources/Views/DeviceEnrolmentRow.swift	swift-button	aeb65b03425f	1
-apps/ios_asd_gaze_app/Sources/Views/DeviceEnrolmentRow.swift	swift-text	36ccccd7dde1	1
-apps/ios_asd_gaze_app/Sources/Views/DeviceEnrolmentRow.swift	swift-text-field	d531cd198f8d	1
 apps/ios_asd_gaze_app/Sources/Views/DiaryHistoryEditorView.swift	swift-button	1509f561f241	1
 apps/ios_asd_gaze_app/Sources/Views/DiaryHistoryEditorView.swift	swift-button	7d9eb7acb13e	1
 apps/ios_asd_gaze_app/Sources/Views/DiaryHistoryEditorView.swift	swift-button	85455e75c434	1

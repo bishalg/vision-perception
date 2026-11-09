@@ -3,8 +3,10 @@ import PhotosUI
 import Speech
 import SwiftUI
 
+/// S-15: dictation and photo attachments appear only while their opt-ins are on.
 public struct ObservationQuickLogBar: View {
     @ObservedObject var store: ObservationLogStore
+    @ObservedObject private var optIns = FeatureOptIns.shared
     @State private var isRecording = false
     @State private var speechError: String?
     @State private var pickerItem: PhotosPickerItem?
@@ -26,13 +28,15 @@ public struct ObservationQuickLogBar: View {
             HStack(alignment: .top, spacing: 8) {
                 TextField("What did you notice?", text: $store.today.notes, axis: .vertical)
                     .lineLimit(2...5)
-                Button {
-                    Task { await toggleDictation() }
-                } label: {
-                    Image(systemName: isRecording ? "mic.fill" : "mic")
-                        .foregroundStyle(isRecording ? LiquidGlass.signalAtypical : LiquidGlass.celestialTeal)
+                if optIns.dictation {
+                    Button {
+                        Task { await toggleDictation() }
+                    } label: {
+                        Image(systemName: isRecording ? "mic.fill" : "mic")
+                            .foregroundStyle(isRecording ? LiquidGlass.signalAtypical : LiquidGlass.celestialTeal)
+                    }
+                    .accessibilityLabel("Speech to text")
                 }
-                .accessibilityLabel("Speech to text")
             }
 
             HStack {
@@ -51,15 +55,23 @@ public struct ObservationQuickLogBar: View {
                 }
             }
 
-            PhotosPicker(selection: $pickerItem, matching: .images) {
-                Label(
-                    store.today.hasOnDeviceMedia ? "Photo attached on device" : "Attach a photo (stays on device)",
-                    systemImage: "photo.on.rectangle"
-                )
-                .font(.caption)
+            if optIns.photoAttachments {
+                PhotosPicker(selection: $pickerItem, matching: .images) {
+                    Label(
+                        store.today.hasOnDeviceMedia ? "Photo attached on device" : "Attach a photo (stays on device)",
+                        systemImage: "photo.on.rectangle"
+                    )
+                    .font(.caption)
+                }
+                .onChange(of: pickerItem) { _, item in
+                    store.today.hasOnDeviceMedia = item != nil
+                }
             }
-            .onChange(of: pickerItem) { _, item in
-                store.today.hasOnDeviceMedia = item != nil
+
+            if !optIns.dictation || !optIns.photoAttachments {
+                Text(Localizer.tr("quicklog_optins_off"))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
 
             if let speechError {
@@ -80,6 +92,8 @@ public struct ObservationQuickLogBar: View {
             }
             isRecording = true
             speechError = nil
+        } catch ObservationDictationError.optedOut {
+            speechError = Localizer.tr("quicklog_dictation_off")
         } catch {
             speechError = "Microphone or speech permission is required in Settings."
         }
@@ -92,8 +106,16 @@ final class ObservationDictationController: ObservableObject {
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private let engine = AVAudioEngine()
+    /// The Dictation opt-in (S-15). Injected so tests do not touch `UserDefaults.standard`.
+    private let optIn: @MainActor () -> Bool
 
+    init(optIn: @escaping @MainActor () -> Bool = { FeatureOptIns.shared.dictation }) {
+        self.optIn = optIn
+    }
+
+    /// Throws `.optedOut` before asking iOS for anything while the opt-in is off (S-15).
     func start(onUpdate: @escaping (String) -> Void) async throws {
+        guard optIn() else { throw ObservationDictationError.optedOut }
         let speech = await withCheckedContinuation { continuation in
             SFSpeechRecognizer.requestAuthorization { status in
                 continuation.resume(returning: status)
@@ -134,4 +156,4 @@ final class ObservationDictationController: ObservableObject {
     }
 }
 
-enum ObservationDictationError: Error { case denied }
+enum ObservationDictationError: Error { case denied, optedOut }

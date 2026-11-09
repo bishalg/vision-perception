@@ -175,11 +175,23 @@ final class ConsentFlowTests: XCTestCase {
             XCTAssertFalse(feature.oneLineWhatItDoes.isEmpty)
             XCTAssertFalse(feature.whatIsStored.isEmpty)
             XCTAssertFalse(feature.whatIsNeverStored.isEmpty)
-            if !feature.isGated {
-                XCTAssertTrue(feature.rowDescription.contains("Controls whether this feature is offered"),
-                              "\(feature) is not gated yet, so its row must say so")
-            }
+            // S-15: every opt-in gates its feature, so no row hedges about it any more.
+            XCTAssertTrue(feature.isGated, "\(feature)")
+            XCTAssertFalse(feature.rowDescription.contains("Controls whether"), "\(feature)")
+            XCTAssertEqual(feature.rowDescription, feature.oneLineWhatItDoes)
         }
+        XCTAssertNotNil(FeatureOptIn.clinicDelivery.whenTurnedOff, "S-18: the detail page says what off does")
+    }
+
+    /// S-16: the store build shows only the opt-ins whose feature it has.
+    func testStoreBuildOffersOnlyAgeRangeAndClinicDelivery() {
+        XCTAssertEqual(FeatureOptIn.available(storeBuild: true), [.ageRangeCheck, .clinicDelivery])
+        XCTAssertEqual(FeatureOptIn.available(storeBuild: false), FeatureOptIn.allCases)
+        #if ASD_STORE_BUILD
+        XCTAssertEqual(FeatureOptIn.available(), [.ageRangeCheck, .clinicDelivery])
+        #else
+        XCTAssertEqual(FeatureOptIn.available(), FeatureOptIn.allCases)
+        #endif
     }
 
     // MARK: PermissionKind
@@ -232,12 +244,27 @@ final class ConsentFlowTests: XCTestCase {
             texts += [section.title, section.summary, section.learnMore]
         }
         for feature in FeatureOptIn.allCases {
-            texts += [feature.title, feature.rowDescription, feature.whatIsStored, feature.whatIsNeverStored]
+            texts += [feature.title, feature.rowDescription, feature.whatIsStored, feature.whatIsNeverStored,
+                      feature.whenTurnedOff ?? ""]
         }
         for kind in PermissionKind.allCases {
             texts += [kind.title, kind.whatWeUse, kind.why, kind.neverStored, kind.statusNote ?? ""]
         }
         texts += BeforeYouBeginView.checklist.map(\.text)
+        let optIns = FeatureOptIns(defaults: defaults)
+        texts += BeforeYouBeginView.recordedItems(optIns: optIns, deliveryConfigured: true, isEnrolled: true)
+        optIns.clinicDelivery = true
+        for enrolled in [false, true] {
+            texts += BeforeYouBeginView.recordedItems(optIns: optIns, deliveryConfigured: true, isEnrolled: enrolled)
+        }
+        // WP-S.5b copy outside the consent files (Localizer keys).
+        texts += [ClinicDeliveryAuthorization.deliveryOffText, ClinicDeliveryAuthorization.consentInactiveText,
+                  ClinicSyncStatusLine.deliveryOffText(waiting: 1), SessionStorageState.deliveryOff.text]
+        texts += ["enrolment_title", "enrolment_code_placeholder", "enrolment_submit", "enrolment_status_unavailable",
+                  "enrolment_status_unregistered", "enrolment_status_registered", "enrolment_status_expired",
+                  "enrolment_code_rejected", "enrolment_needs_optin", "settings_alerts_optin_off",
+                  "healthkit_optin_off", "healthkit_status_optin_off", "quicklog_optins_off",
+                  "quicklog_dictation_off"].map { Localizer.tr($0, lang: .english) }
         texts.append(ConsentReviewView.confirmationSentence)
         texts += [UnsupportedDeviceContent.make(for: .consentOutdated).title,
                   UnsupportedDeviceContent.make(for: .consentOutdated).message]
@@ -260,11 +287,21 @@ final class ConsentFlowTests: XCTestCase {
 
     func testBeforeYouBeginReflectsOptIns() {
         let optIns = FeatureOptIns(defaults: defaults)
+        func items(configured: Bool, enrolled: Bool) -> [String] {
+            BeforeYouBeginView.recordedItems(optIns: optIns, deliveryConfigured: configured, isEnrolled: enrolled)
+        }
         // S-12 (amended): facial-expression measurements are always recorded, so always listed.
-        XCTAssertTrue(BeforeYouBeginView.recordedItems(optIns: optIns).contains { $0.contains("Facial") })
-        XCTAssertTrue(BeforeYouBeginView.recordedItems(optIns: optIns).contains { $0.contains("this device only") })
+        XCTAssertTrue(items(configured: true, enrolled: true).contains { $0.contains("Facial") })
+
+        // S-20: opt-in off -> kept on this device only, whatever the enrolment.
+        XCTAssertEqual(items(configured: true, enrolled: true).last, "Kept on this device only")
         optIns.clinicDelivery = true
-        XCTAssertTrue(BeforeYouBeginView.recordedItems(optIns: optIns).contains { $0.contains("clinic") })
+        // On, but no upload configured in this build.
+        XCTAssertEqual(items(configured: false, enrolled: false).last, "Kept on this device only")
+        // On and configured, not enrolled yet.
+        XCTAssertEqual(items(configured: true, enrolled: false).last, "Kept on this device until your clinic enrols it")
+        // On, configured and enrolled.
+        XCTAssertEqual(items(configured: true, enrolled: true).last, "Delivered to your clinic")
         XCTAssertEqual(BeforeYouBeginView.checklist.count, 4)
     }
 }

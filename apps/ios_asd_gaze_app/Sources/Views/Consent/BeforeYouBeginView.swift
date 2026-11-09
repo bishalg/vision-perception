@@ -34,21 +34,39 @@ public struct BeforeYouBeginView: View {
         ChecklistItem(icon: "hand.raised", text: ConsentL10n.text("begin.check.stop", "You can stop at any time.")),
     ]
 
-    /// What this session records, reflecting the opt-ins.
+    /// What this session records, reflecting the opt-ins and where the session goes (S-20):
+    /// "Delivered to your clinic" only when the opt-in is on, upload is configured and the
+    /// device is enrolled; "until your clinic enrols it" when on but not enrolled; otherwise
+    /// "Kept on this device only".
     @MainActor
-    public static func recordedItems(optIns: FeatureOptIns) -> [String] {
+    public static func recordedItems(optIns: FeatureOptIns, deliveryConfigured: Bool, isEnrolled: Bool) -> [String] {
         var items = [
             ConsentL10n.text("begin.rec.gaze", "Where your child looks on the screen"),
             ConsentL10n.text("begin.rec.head", "Head position and distance"),
             ConsentL10n.text("begin.rec.face", "Facial-expression measurements, for example how much your child smiles"),
             ConsentL10n.text("begin.rec.time", "Session time and length"),
         ]
-        if optIns.clinicDelivery {
-            items.append(ConsentL10n.text("begin.rec.delivery", "Delivered to your clinic once this device is enrolled"))
+        if optIns.clinicDelivery && deliveryConfigured && isEnrolled {
+            items.append(ConsentL10n.text("begin.rec.delivered", "Delivered to your clinic"))
+        } else if optIns.clinicDelivery && deliveryConfigured {
+            items.append(ConsentL10n.text("begin.rec.untilenrolled", "Kept on this device until your clinic enrols it"))
         } else {
             items.append(ConsentL10n.text("begin.rec.local", "Kept on this device only"))
         }
         return items
+    }
+
+    /// Upload is configured in this build (an `apiBaseURL`), from the shared sync service.
+    @MainActor
+    private static var liveDeliveryConfigured: Bool {
+        ResearchKitSyncService.shared?.isSessionSyncEnabled ?? false
+    }
+
+    /// This device holds a clinic enrolment, from the shared sync service.
+    @MainActor
+    private static var liveIsEnrolled: Bool {
+        if case .registered = ResearchKitSyncService.shared?.deviceRegistration { return true }
+        return false
     }
 
     public var body: some View {
@@ -87,7 +105,11 @@ public struct BeforeYouBeginView: View {
 
                     VStack(alignment: .leading, spacing: 10) {
                         Text(ConsentL10n.text("begin.rec.title", "This session records")).glassStyle(.sectionHeader)
-                        ForEach(Self.recordedItems(optIns: optIns), id: \.self) { item in
+                        ForEach(Self.recordedItems(
+                            optIns: optIns,
+                            deliveryConfigured: Self.liveDeliveryConfigured,
+                            isEnrolled: Self.liveIsEnrolled
+                        ), id: \.self) { item in
                             Label {
                                 Text(item).glassStyle(.body)
                             } icon: {

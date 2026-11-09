@@ -13,13 +13,21 @@ enum SessionStorageState: Equatable {
     case waiting
     case needsAttention
     case uploaded
+    /// Upload is configured but the guardian turned clinic delivery off (S-18, S-19).
+    case deliveryOff
 
-    static func resolve(endedAt: Date, syncConfigured: Bool, summary: SyncStatusSummary?) -> SessionStorageState {
+    static func resolve(
+        endedAt: Date,
+        syncConfigured: Bool,
+        deliveryOptedIn: Bool,
+        summary: SyncStatusSummary?
+    ) -> SessionStorageState {
         guard syncConfigured, let summary else { return .onDevice }
         let queued = summary.waiting + summary.uploading
         if queued == 0, summary.needsAttention == 0, let last = summary.lastSyncedAt, last >= endedAt {
             return .uploaded
         }
+        guard deliveryOptedIn else { return .deliveryOff }
         if queued == 0, summary.needsAttention > 0 {
             return .needsAttention
         }
@@ -32,6 +40,7 @@ enum SessionStorageState: Equatable {
         case .waiting: return "Waiting to upload"
         case .needsAttention: return "Upload needs attention"
         case .uploaded: return "Delivered to your clinic"
+        case .deliveryOff: return Localizer.tr("store_storage_delivery_off")
         }
     }
 
@@ -41,6 +50,7 @@ enum SessionStorageState: Equatable {
         case .waiting: return "icloud.and.arrow.up"
         case .needsAttention: return "exclamationmark.icloud"
         case .uploaded: return "checkmark.icloud"
+        case .deliveryOff: return "pause.circle"
         }
     }
 }
@@ -96,11 +106,13 @@ struct StoreSessionsView: View {
 private struct StoreSessionRow: View {
     let record: GazeSessionRecord
     let syncService: ResearchKitSyncService?
+    @ObservedObject private var optIns = FeatureOptIns.shared
 
     private var storage: SessionStorageState {
         SessionStorageState.resolve(
             endedAt: record.endedAt,
             syncConfigured: syncService != nil,
+            deliveryOptedIn: optIns.clinicDelivery,
             summary: syncService?.statusSummary
         )
     }

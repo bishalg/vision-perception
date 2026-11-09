@@ -238,6 +238,15 @@ public final class ResearchKitSyncService: ObservableObject {
     @Published public private(set) var deviceRegistration: DeviceRegistrationStatus = .unavailable
 
     public let configuration: ResearchStudyConfiguration
+
+    /// Clinic delivery gate (S-17): opt-in, guardian consent and, outside the store build,
+    /// research-study consent. Given the study store's consent, returns the decision.
+    private let deliveryAuthorizationProvider: @MainActor (_ researchConsented: Bool) -> ClinicDeliveryAuthorization
+
+    /// The current clinic delivery decision (S-17). Every queue, flush and send checks it.
+    public var deliveryAuthorization: ClinicDeliveryAuthorization {
+        deliveryAuthorizationProvider(store.fetchEnrollment().isConsented)
+    }
     private let store: ResearchKitStudyStore
     private var serverURL: URL { configuration.ingestURL }
     private let fileManager = FileManager.default
@@ -321,10 +330,14 @@ public final class ResearchKitSyncService: ObservableObject {
         clientInfo: SyncClientInfo? = nil,
         blobRoot: URL? = nil,
         transport: SyncTransport? = nil,
-        retrySleep: @escaping @Sendable (TimeInterval) async throws -> Void = { try await Task.sleep(for: .seconds($0)) }
+        retrySleep: @escaping @Sendable (TimeInterval) async throws -> Void = { try await Task.sleep(for: .seconds($0)) },
+        deliveryAuthorization: (@MainActor (_ researchConsented: Bool) -> ClinicDeliveryAuthorization)? = nil
     ) {
         self.configuration = configuration
         self.store = store
+        self.deliveryAuthorizationProvider = deliveryAuthorization ?? { researchConsented in
+            ClinicDeliveryAuthorization.live(researchConsented: researchConsented)
+        }
         self.session = session
         self.now = now
         self.retrySleep = retrySleep
@@ -411,12 +424,13 @@ public final class ResearchKitSyncService: ObservableObject {
         requestFlush(.launch)
     }
 
-    /// Schedules a flush of the queue when it can do anything: online, research consent
-    /// active, something queued. A trigger during a running flush runs one more flush
-    /// after it. Manual `syncNow` is unaffected by these conditions.
+    /// Schedules a flush of the queue when it can do anything: online, clinic delivery
+    /// authorised (S-17: opt-in on, consent active), something queued. A trigger during a
+    /// running flush runs one more flush after it. With delivery off this is a no-op, so the
+    /// retry timer, reconnects and the launch flush send nothing (S-18).
     public func requestFlush(_ trigger: SyncFlushTrigger) {
         guard isOnline == true else { return }
-        guard store.fetchEnrollment().isConsented else { return }
+        guard deliveryAuthorization.isAuthorized else { return }
         updatePendingCount()
         guard pendingQueueCount > 0 else { return }
         if syncState.isSyncing {
@@ -524,9 +538,10 @@ public final class ResearchKitSyncService: ObservableObject {
     /// Queues a finished session for `POST /v1/sessions` and, when the server
     /// returns pre-signed URLs, PUTs of the encrypted frames file and report.
     ///
-    /// Refused (returns `false`) when session sync is off, research consent is not
-    /// active, or the record is simulated or of legacy provenance (SIM-4/5). The
-    /// queue file is keyed by session id, so re-enqueueing replaces it (dedupe).
+    /// Refused (returns `false`) when session sync is off, clinic delivery is not authorised
+    /// (S-17: opt-in off or consent not active), or the record is simulated or of legacy
+    /// provenance (SIM-4/5). The queue file is keyed by session id, so re-enqueueing
+    /// replaces it (dedupe).
     @discardableResult
     public func enqueueSession(
         _ record: GazeSessionRecord,
@@ -535,11 +550,13 @@ public final class ResearchKitSyncService: ObservableObject {
         attentionFlag: AttentionFlag? = nil,
         battery: String? = nil
     ) -> Bool {
-        guard isSessionSyncEnabled, store.fetchEnrollment().isConsented else {
+        let authorization = deliveryAuthorization
+        guard isSessionSyncEnabled, authorization.isAuthorized else {
             // Not queued: the plain research log has no use, so it is not left behind.
             _ = researchLogFiles(for: record, framesFile: framesFile, keep: false)
             if isSessionSyncEnabled {
-                Self.logger.info("Session \(record.sessionId, privacy: .public) not queued: research consent is not active")
+                let reason = authorization.refusal == .optedOut ? "clinic delivery is off" : "consent is not active"
+                Self.logger.info("Session \(record.sessionId, privacy: .public) not queued: \(reason, privacy: .public)")
             }
             return false
         }
@@ -580,8 +597,11 @@ public final class ResearchKitSyncService: ObservableObject {
 
     /// Registers this device with the clinic's one-time enrolment code
     /// (`POST /v1/devices/register`) and stores the token in the Keychain.
+    ///
+    /// Refused while the clinic delivery opt-in is off (S-19): enrolment follows the opt-in.
     public func registerDevice(enrolCode: String) async throws {
         guard let sessionClient else { throw DeviceRegistrationError.notRegistered }
+        guard deliveryAuthorization.refusal != .optedOut else { throw DeviceRegistrationError.deliveryOff }
         do {
             try await sessionClient.registration.register(.enrolCode(enrolCode))
             refreshRegistrationStatus(authFailed: false)
@@ -781,9 +801,9 @@ public final class ResearchKitSyncService: ObservableObject {
             return
         }
 
-        let enrollment = store.fetchEnrollment()
-        guard enrollment.isConsented else {
-            syncState = .failed(reason: "Parental research consent is not active.")
+        // S-17: opt-in on and consent active, else a neutral reason (never research wording).
+        if let reason = deliveryAuthorization.refusalText {
+            syncState = .failed(reason: reason)
             completion?(false)
             return
         }

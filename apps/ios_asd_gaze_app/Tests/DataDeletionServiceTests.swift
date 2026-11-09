@@ -49,7 +49,8 @@ final class DataDeletionServiceTests: XCTestCase {
             configuration: ResearchKitSyncServiceTests.studyConfig,
             store: researchStore,
             queueDirectory: queueDir,
-            startMonitoring: false
+            startMonitoring: false,
+            deliveryAuthorization: ClinicDeliveryAuthorization.optedInForTests
         )
         box.service = syncService
 

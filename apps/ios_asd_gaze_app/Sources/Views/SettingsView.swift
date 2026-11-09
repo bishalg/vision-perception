@@ -13,6 +13,8 @@ public struct SettingsView: View {
     @ObservedObject private var alertPreferences = CareAlertPreferences.shared
     @ObservedObject private var healthKitMood = HealthKitMoodStore.shared
     @ObservedObject private var appMode = AppModeStore.shared
+    /// S-15: reminders and Health mood follow their opt-ins.
+    @ObservedObject private var optIns = FeatureOptIns.shared
     @State private var newConditionTitle: String = ""
     @State private var notificationStatusText: String = "Not determined"
     @State private var calibrationProfile: GazeCalibrationProfile = .identity
@@ -345,7 +347,15 @@ public struct SettingsView: View {
             GlassSectionHeader(title: Localizer.tr("settings_alerts_section"), icon: "bell.badge.fill")
 
             VStack(alignment: .leading, spacing: 12) {
+                if !optIns.reminders {
+                    // S-15: reminders run only while their opt-in is on.
+                    Text(Localizer.tr("settings_alerts_optin_off"))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(LiquidGlass.warmAmber)
+                        .accessibilityIdentifier("settings_alerts_optin_off")
+                }
                 Toggle(Localizer.tr("settings_alerts_master"), isOn: $alertPreferences.masterEnabled)
+                    .disabled(!optIns.reminders)
                     .onChange(of: alertPreferences.masterEnabled) { _, enabled in
                         Task {
                             if enabled { await CareAlertScheduler.shared.requestAuthorizationIfNeeded() }
@@ -354,11 +364,12 @@ public struct SettingsView: View {
                         }
                     }
                 Toggle(Localizer.tr("settings_alerts_alarmkit"), isOn: $alertPreferences.useAlarmKitWhenAvailable)
-                    .disabled(!CareAlertPreferences.isAlarmKitAvailable)
+                    .disabled(!optIns.reminders || !CareAlertPreferences.isAlarmKitAvailable)
                     .onChange(of: alertPreferences.useAlarmKitWhenAvailable) { _, _ in
                         Task { await CarePlanStore.shared.resyncAlerts() }
                     }
                 Toggle(Localizer.tr("settings_alerts_island"), isOn: $alertPreferences.useLiveActivityCountdown)
+                    .disabled(!optIns.reminders)
                     .onChange(of: alertPreferences.useLiveActivityCountdown) { _, _ in
                         Task { await CarePlanStore.shared.resyncAlerts() }
                     }
@@ -618,6 +629,16 @@ public struct SettingsView: View {
                     }
                 }
 
+                #if ASD_STORE_BUILD
+                // S-19: enrolment follows the clinic delivery opt-in, not a study; the norm
+                // collection row is not part of the store build.
+                if let syncService = ResearchKitSyncService.shared, syncService.isSessionSyncEnabled {
+                    GlassDivider()
+
+                    DeviceEnrolmentRow(syncService: syncService)
+                        .accessibilityIdentifier("settings_device_enrolment_row")
+                }
+                #else
                 // CNS-9: research rows exist only when a study is configured.
                 if ResearchStudyConfiguration.isResearchEnabled {
                     GlassDivider()
@@ -633,6 +654,7 @@ public struct SettingsView: View {
                             .accessibilityIdentifier("settings_device_enrolment_row")
                     }
                 }
+                #endif
 
                 GlassDivider()
 
@@ -946,12 +968,19 @@ public struct SettingsView: View {
             Text("Manual emotion logs can write State of Mind samples to the Health app.")
                 .font(.system(size: 11))
                 .foregroundColor(LiquidGlass.textSecondary)
-            Button("Authorize HealthKit") {
-                Task { await healthKitMood.requestAuthorization() }
+            if optIns.healthKitMood {
+                Button("Authorize HealthKit") {
+                    Task { await healthKitMood.requestAuthorization() }
+                }
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(LiquidGlass.celestialTeal)
+                .buttonStyle(.plain)
+            } else {
+                // S-15: Health mood runs only while its opt-in is on.
+                Text(Localizer.tr("healthkit_optin_off"))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(LiquidGlass.warmAmber)
             }
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundColor(LiquidGlass.celestialTeal)
-            .buttonStyle(.plain)
             if let err = healthKitMood.lastErrorMessage {
                 Text(err)
                     .font(.caption2)
@@ -989,6 +1018,8 @@ public struct SettingsView: View {
 }
 
 // MARK: - Normative Data Collection Opt-In
+
+#if !ASD_STORE_BUILD
 
 /// Consent-gated opt-in that contributes de-identified per-video metric sets toward
 /// building our own age-bracketed normative references (requires active research consent;
@@ -1033,3 +1064,4 @@ struct NormCollectionToggleRow: View {
         }
     }
 }
+#endif

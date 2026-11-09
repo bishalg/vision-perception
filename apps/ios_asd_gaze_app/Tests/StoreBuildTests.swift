@@ -41,30 +41,42 @@ final class StoreBuildTests: XCTestCase {
     private let ended = Date(timeIntervalSince1970: 1_000_000)
 
     func testWithoutSyncASessionIsOnTheDevice() {
-        XCTAssertEqual(SessionStorageState.resolve(endedAt: ended, syncConfigured: false, summary: nil), .onDevice)
+        XCTAssertEqual(SessionStorageState.resolve(endedAt: ended, syncConfigured: false, deliveryOptedIn: true, summary: nil), .onDevice)
         let summary = SyncStatusSummary(waiting: 0, uploading: 0, needsAttention: 0, lastSyncedAt: ended)
-        XCTAssertEqual(SessionStorageState.resolve(endedAt: ended, syncConfigured: false, summary: summary), .onDevice)
+        XCTAssertEqual(SessionStorageState.resolve(endedAt: ended, syncConfigured: false, deliveryOptedIn: true, summary: summary), .onDevice)
     }
 
     func testUploadedOnlyWhenQueueEmptyAndSyncedAfterTheSession() {
         let later = SyncStatusSummary(waiting: 0, uploading: 0, needsAttention: 0, lastSyncedAt: ended.addingTimeInterval(5))
-        XCTAssertEqual(SessionStorageState.resolve(endedAt: ended, syncConfigured: true, summary: later), .uploaded)
+        XCTAssertEqual(SessionStorageState.resolve(endedAt: ended, syncConfigured: true, deliveryOptedIn: true, summary: later), .uploaded)
 
         let earlier = SyncStatusSummary(waiting: 0, uploading: 0, needsAttention: 0, lastSyncedAt: ended.addingTimeInterval(-5))
-        XCTAssertEqual(SessionStorageState.resolve(endedAt: ended, syncConfigured: true, summary: earlier), .waiting)
+        XCTAssertEqual(SessionStorageState.resolve(endedAt: ended, syncConfigured: true, deliveryOptedIn: true, summary: earlier), .waiting)
 
         let queued = SyncStatusSummary(waiting: 1, uploading: 0, needsAttention: 0, lastSyncedAt: ended.addingTimeInterval(5))
-        XCTAssertEqual(SessionStorageState.resolve(endedAt: ended, syncConfigured: true, summary: queued), .waiting)
+        XCTAssertEqual(SessionStorageState.resolve(endedAt: ended, syncConfigured: true, deliveryOptedIn: true, summary: queued), .waiting)
     }
 
     func testDeadLetteredQueueNeedsAttention() {
         let stuck = SyncStatusSummary(waiting: 0, uploading: 0, needsAttention: 2, lastSyncedAt: nil)
-        XCTAssertEqual(SessionStorageState.resolve(endedAt: ended, syncConfigured: true, summary: stuck), .needsAttention)
+        XCTAssertEqual(SessionStorageState.resolve(endedAt: ended, syncConfigured: true, deliveryOptedIn: true, summary: stuck), .needsAttention)
+    }
+
+    /// S-18, S-19: with clinic delivery off, a waiting session says so; a delivered one stays delivered.
+    func testDeliveryOffState() {
+        let queued = SyncStatusSummary(waiting: 1, uploading: 0, needsAttention: 0, lastSyncedAt: nil)
+        XCTAssertEqual(SessionStorageState.resolve(endedAt: ended, syncConfigured: true, deliveryOptedIn: false, summary: queued), .deliveryOff)
+        let stuck = SyncStatusSummary(waiting: 0, uploading: 0, needsAttention: 1, lastSyncedAt: nil)
+        XCTAssertEqual(SessionStorageState.resolve(endedAt: ended, syncConfigured: true, deliveryOptedIn: false, summary: stuck), .deliveryOff)
+        let delivered = SyncStatusSummary(waiting: 0, uploading: 0, needsAttention: 0, lastSyncedAt: ended.addingTimeInterval(5))
+        XCTAssertEqual(SessionStorageState.resolve(endedAt: ended, syncConfigured: true, deliveryOptedIn: false, summary: delivered), .uploaded)
+        XCTAssertEqual(SessionStorageState.resolve(endedAt: ended, syncConfigured: false, deliveryOptedIn: false, summary: nil), .onDevice)
+        XCTAssertFalse(SessionStorageState.deliveryOff.text.isEmpty)
     }
 
     /// The Sessions tab and the result screen never word a verdict (S-3, ADR-0004).
     func testStorageCopyHasNoVerdictWording() {
-        let all: [SessionStorageState] = [.onDevice, .waiting, .needsAttention, .uploaded]
+        let all: [SessionStorageState] = [.onDevice, .waiting, .needsAttention, .uploaded, .deliveryOff]
         for state in all {
             for word in ["score", "flag", "risk", "diagnos", "screen"] {
                 XCTAssertFalse(state.text.lowercased().contains(word), "\(state.text) contains \(word)")

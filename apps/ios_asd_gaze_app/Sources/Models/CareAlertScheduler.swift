@@ -21,10 +21,30 @@ public final class CareAlertScheduler {
     private static let logger = Logger(subsystem: "org.curv.asd", category: "CareAlerts")
     private static let prefix = "org.curv.asd.care."
 
+    /// The guardian's Reminders opt-in (S-15). Injected so tests do not touch `UserDefaults.standard`.
+    private let remindersOptIn: @MainActor () -> Bool
+
+    public init(remindersOptIn: @escaping @MainActor () -> Bool = { FeatureOptIns.shared.reminders }) {
+        self.remindersOptIn = remindersOptIn
+    }
+
+    /// Whether to ask iOS for notification permission: only with the opt-in on and while iOS
+    /// has not asked yet (S-11, S-15).
+    nonisolated static func shouldRequestAuthorization(optedIn: Bool, status: UNAuthorizationStatus) -> Bool {
+        optedIn && status == .notDetermined
+    }
+
+    /// Whether `resync` schedules anything after clearing our pending requests: the Reminders
+    /// opt-in and the master switch must both be on (S-15). Off, pending reminders are removed.
+    nonisolated static func shouldSchedule(optedIn: Bool, masterEnabled: Bool) -> Bool {
+        optedIn && masterEnabled
+    }
+
     public func requestAuthorizationIfNeeded() async {
+        guard remindersOptIn() else { return }
         let center = UNUserNotificationCenter.current()
         let settings = await center.notificationSettings()
-        guard settings.authorizationStatus == .notDetermined else { return }
+        guard Self.shouldRequestAuthorization(optedIn: remindersOptIn(), status: settings.authorizationStatus) else { return }
         do {
             _ = try await center.requestAuthorization(options: [.alert, .sound, .badge])
         } catch {
@@ -38,7 +58,7 @@ public final class CareAlertScheduler {
         let ours = pending.filter { $0.identifier.hasPrefix(Self.prefix) }.map(\.identifier)
         center.removePendingNotificationRequests(withIdentifiers: ours)
 
-        guard preferences.masterEnabled else {
+        guard Self.shouldSchedule(optedIn: remindersOptIn(), masterEnabled: preferences.masterEnabled) else {
             await endLiveActivities()
             return
         }

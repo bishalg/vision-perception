@@ -61,8 +61,12 @@ final class SessionSyncServiceTests: XCTestCase {
 
     // MARK: - Helpers
 
+    /// `optIn` stands in for the clinic delivery opt-in (S-17); guardian consent is current.
     @MainActor
-    private func makeService(configuration: ResearchStudyConfiguration = SessionSyncServiceTests.studyConfig) -> ResearchKitSyncService {
+    private func makeService(
+        configuration: ResearchStudyConfiguration = SessionSyncServiceTests.studyConfig,
+        optIn: @escaping @MainActor () -> Bool = { true }
+    ) -> ResearchKitSyncService {
         let clock = self.clock!
         return ResearchKitSyncService(
             configuration: configuration,
@@ -73,7 +77,15 @@ final class SessionSyncServiceTests: XCTestCase {
             now: { clock.instant },
             credentialStore: credentials,
             clientInfo: Self.client,
-            blobRoot: blobRoot
+            blobRoot: blobRoot,
+            deliveryAuthorization: { researchConsented in
+                ClinicDeliveryAuthorization(
+                    optedIn: optIn(),
+                    guardianConsentCurrent: true,
+                    researchConsentRequired: true,
+                    researchConsented: researchConsented
+                )
+            }
         )
     }
 
@@ -835,6 +847,64 @@ final class SessionSyncServiceTests: XCTestCase {
         XCTAssertNil(norm["research_log_dropped"], "absent, not false")
     }
 
+    // MARK: - Clinic delivery opt-in (S-17, S-18)
+
+    @MainActor
+    func testDeliveryOffQueuesNothingAndRemovesTheResearchLog() {
+        consent()
+        let service = makeService(optIn: { false })
+        let logFile = writeResearchLog()
+        XCTAssertFalse(service.enqueueSession(researchRecord(), framesFile: writeBlob("session_SESS-0001.jsonl.enc")))
+        XCTAssertEqual(queuedFiles(), [], "no queue file while delivery is off")
+        XCTAssertEqual(service.pendingQueueCount, 0)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: logFile.path), "the research log is not left behind")
+    }
+
+    @MainActor
+    func testDeliveryOffStopsEverySendAndOnAgainFlushesTheWaitingItem() async {
+        consent()
+        registerToken()
+        let optIn = OptInBox(true)
+        let service = makeService(optIn: { optIn.on })
+        XCTAssertTrue(service.enqueueSession(record()))
+        route([Self.sessionsPath: Self.ingested()])
+
+        // Off: reconnect, timer and manual sync send nothing; the item stays on the device.
+        optIn.on = false
+        service.handlePathUpdate(status: .satisfied)
+        service.requestFlush(.timer)
+        await service.waitUntilIdle()
+        XCTAssertEqual(log.entries(path: Self.sessionsPath).count, 0, "requestFlush is a no-op while delivery is off")
+        service.syncNow(forceBundleCompile: false)
+        XCTAssertEqual(service.syncState, .failed(reason: ClinicDeliveryAuthorization.deliveryOffText))
+        XCTAssertFalse(ClinicDeliveryAuthorization.deliveryOffText.lowercased().contains("research"))
+        XCTAssertEqual(service.pendingQueueCount, 1, "queued items stay on the device")
+        XCTAssertEqual(queuedFiles().count, 1)
+
+        // On again: the waiting item flushes.
+        optIn.on = true
+        service.requestFlush(.foreground)
+        await service.waitUntilIdle()
+        XCTAssertEqual(log.entries(path: Self.sessionsPath).count, 1)
+        XCTAssertEqual(service.pendingQueueCount, 0)
+    }
+
+    @MainActor
+    func testRegisterDeviceIsRefusedWhileDeliveryIsOff() async {
+        let service = makeService(optIn: { false })
+        route([Self.registerPath: { request in
+            (httpResponse(request, 200), jsonData(["status": "registered", "device_token": "tok-new", "org_id": "org-clinic", "device_id": "dev-new"]))
+        }])
+        do {
+            try await service.registerDevice(enrolCode: "CLINIC-CODE")
+            XCTFail("enrolment follows the opt-in (S-19)")
+        } catch {
+            XCTAssertEqual(error as? DeviceRegistrationError, .deliveryOff)
+        }
+        XCTAssertEqual(log.entries(path: Self.registerPath).count, 0)
+        XCTAssertEqual(service.deviceRegistration, .unregistered)
+    }
+
     // MARK: - Registration through the service
 
     @MainActor
@@ -881,4 +951,11 @@ private final class SessionCounter: @unchecked Sendable {
     private var _value = 0
     var value: Int { lock.lock(); defer { lock.unlock() }; return _value }
     func increment() { lock.lock(); _value += 1; lock.unlock() }
+}
+
+/// A mutable stand-in for the clinic delivery opt-in.
+@MainActor
+private final class OptInBox {
+    var on: Bool
+    init(_ on: Bool) { self.on = on }
 }
