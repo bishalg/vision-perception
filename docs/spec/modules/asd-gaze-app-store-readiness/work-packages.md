@@ -92,10 +92,10 @@ Goal: CI-4 (files), ADR-0005 decisions 1-2.
 
 Files owned: `apps/ios_asd_gaze_app/fastlane/Appfile`, `Matchfile`, `config.yml`,
 `.env.example`, `Fastfile` (env-driven ids and `app_review_information` from env in
-`update_metadata`), `fastlane/README.md`, `.gitignore` (add
+`update_metadata`), `fastlane/SIGNING_AND_SECRETS.md`, `.gitignore` (add
 `apps/ios_asd_gaze_app/fastlane/metadata/review_information/`), delete
 `apps/ios_asd_gaze_app/fastlane/metadata/review_information/*`.
-Exact changes: no literal Apple ID, team name, phone, email or password remains; defaults for `APP_IDENTIFIER` stay `org.curv.asd.gazecollector` until H4. Document the `git filter-repo` command for H1 in `fastlane/README.md` without running it.
+Exact changes: no literal Apple ID, team name, phone, email or password remains; defaults for `APP_IDENTIFIER` stay `org.curv.asd.gazecollector` until H4. Document the `git filter-repo` command for H1 in `fastlane/SIGNING_AND_SECRETS.md` without running it.
 Commands: `python3 scripts/check_asd_claims.py --secrets` (after WP-1.5a lands; until then the grep line in `qa-validation.md`), `ruby -c apps/ios_asd_gaze_app/fastlane/Fastfile`.
 Depends on: nothing. Parallel with: WP-1.1, WP-1.4, WP-1.5a.
 

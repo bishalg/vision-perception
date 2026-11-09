@@ -80,7 +80,7 @@ both catalogues, `check_store_entitlements.sh` (S-22), `check_release_symbols.sh
    build (matches the manifest); export compliance (`ITSAppUsesNonExemptEncryption` is set in the plist);
    content rights (clips, H-8); the listing rename "Eye Gaze" -> "EarlyGaze".
 8. **Old secrets.** The 2026-10 handoff recorded a committed password still in history on `origin` and the
-   `cursor` remote (`fastlane/README.md`, "History cleanup", decision H1: no rewrite). Confirm it was
+   `cursor` remote (`fastlane/SIGNING_AND_SECRETS.md`, "History cleanup", decision H1: no rewrite). Confirm it was
    rotated; nothing in the current tree uses it.
 9. **Native hi/ne review** of the parked listing texts and of the `needs_review` catalogue strings: not
    needed for the en-US submission; needed before the hi/ne listing or in-app review-quality translations.
