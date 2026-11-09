@@ -6,6 +6,7 @@ import { getText } from "@/lib/i18n/server";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { createExperimentAction } from "../../actions";
+import { pathsFor } from "@/lib/paths";
 
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -21,7 +22,7 @@ export default async function NewExperimentPage({ params }: { params: Promise<{ 
   const tx = await getText();
   const t = tx.research.experiments;
   const { org } = await params;
-  const base = `/${encodeURIComponent(org)}/research/experiments`;
+  const base = pathsFor(org).research.experiments;
   if (!can(await currentRole(), "experiment.write")) {
     return (
       <>

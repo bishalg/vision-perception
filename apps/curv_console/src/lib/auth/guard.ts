@@ -1,3 +1,4 @@
+import { pathsFor } from "@/lib/paths";
 /** Pure routing decision used by proxy.ts, kept separate so it is unit-testable. */
 
 export type GuardDecision = "allow" | "redirect-login" | "refresh" | "redirect-home";
@@ -51,7 +52,7 @@ export function enforcementRedirect(
   org: string,
 ): string | null {
   if (profile?.totp_enforcement !== "required") return null;
-  const security = `/${encodeURIComponent(org)}/settings/security`;
+  const security = pathsFor(org).account.security;
   if (pathname !== null && (pathname === security || pathname.startsWith(`${security}/`))) return null;
   return `${security}?required=1`;
 }

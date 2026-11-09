@@ -7,6 +7,7 @@ import { getText } from "@/lib/i18n/server";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { createCatalogDraftAction } from "../actions";
+import { pathsFor } from "@/lib/paths";
 
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -26,7 +27,7 @@ export default async function NewCatalogDraftPage({
   const tx = await getText();
   const t = tx.catalog;
   const { org } = await params;
-  const base = `/${encodeURIComponent(org)}/config/catalog`;
+  const base = pathsFor(org).config.catalog;
   const role = await currentRole();
   if (!can(role, "config.manage")) {
     return (

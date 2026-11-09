@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ATTENTION_FLAGS, QUALITY_VERDICTS, TRACKING_VERDICTS, type SessionListQuery } from "@/lib/api";
 import { useText } from "@/lib/i18n/provider";
 import { enumLabel } from "@/messages/domain";
+import { pathsFor } from "@/lib/paths";
 
 /** Plain GET form: works without client JS and keeps filter state in the URL. */
 export function SessionFilters({ orgId, query }: { orgId: string; query: SessionListQuery }) {
@@ -61,7 +62,7 @@ export function SessionFilters({ orgId, query }: { orgId: string; query: Session
       </label>
       <div className="filter-actions">
         <button type="submit">{f.apply}</button>
-        <Link href={`/${encodeURIComponent(orgId)}/sessions`}>{f.reset}</Link>
+        <Link href={pathsFor(orgId).clinic.sessions}>{f.reset}</Link>
       </div>
     </form>
   );

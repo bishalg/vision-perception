@@ -7,6 +7,7 @@ import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { parseWorklistQuery } from "@/lib/worklistQuery";
 import { getText } from "@/lib/i18n/server";
+import { pathsFor } from "@/lib/paths";
 
 // A fixed title: nothing from the data (participant, MRN, impression) may reach the document title (UI-4).
 export async function generateMetadata(): Promise<Metadata> {
@@ -36,7 +37,7 @@ export default async function WorklistPage({
   const query = parseWorklistQuery(await searchParams);
   const api = await authedApi();
   const page = await loadOrNotFound(() => api.getWorklist(org, { ...query, limit: 50 }));
-  const base = `/${encodeURIComponent(org)}/worklist`;
+  const base = pathsFor(org).clinic.worklist;
   const keep = { state: query.state, flag: query.flag, assigned: query.assigned };
   return (
     <>

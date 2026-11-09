@@ -6,7 +6,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { type Page } from "@playwright/test";
-import { expect, test, LIVE, login } from "./helpers";
+import { expect, test, LIVE, login, paths, OVERVIEW_URL } from "./helpers";
 
 test.skip(LIVE, "mock-mode flows: they rely on the seeded mock research data");
 
@@ -17,7 +17,7 @@ const registry = JSON.parse(readFileSync(resolve(process.cwd(), "src/lib/researc
 
 async function researcher(page: Page): Promise<void> {
   await login(page, "researcher@example.org");
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page).toHaveURL(OVERVIEW_URL);
 }
 
 async function newExperiment(page: Page, name: string): Promise<void> {
@@ -33,7 +33,7 @@ async function newExperiment(page: Page, name: string): Promise<void> {
 
 test("a viewer has no Research entry; an admin reads the experiments list but cannot create one", async ({ page }) => {
   await login(page, "viewer@example.org");
-  await expect(page).toHaveURL(/\/overview$/);
+  await expect(page).toHaveURL(/\/clinic\/overview$/);
   await expect(nav(page).getByRole("link", { name: "Research", exact: true })).toHaveCount(0);
   const org = new URL(page.url()).pathname.split("/")[1]!;
   await page.goto(`/${org}/research`);
@@ -204,7 +204,7 @@ test("run again goes queued -> running -> finished, then shows provenance, resul
 test("the Quality tab draws the drift warn and hard lines from the effective profile", async ({ page }) => {
   await researcher(page);
   const org = new URL(page.url()).pathname.split("/")[1]!;
-  await page.goto(`/${org}/sessions?tracking=poor`);
+  await page.goto(`${paths(org).clinic.sessions}?tracking=poor`);
   const rows = page.locator("table.data tbody tr");
   test.skip((await rows.count()) === 0, "no poor-tracking sessions in this org");
   await rows.first().getByRole("link").click();
@@ -268,7 +268,7 @@ test("an age-profile run shows the shares under both baselines and hides the sma
 
 test("L.1d: a researcher whose locale is ne reads the research page in Nepali (lang=ne-NP)", async ({ page }) => {
   await login(page, "researcher+ne@example.org");
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page).toHaveURL(OVERVIEW_URL);
   const org = new URL(page.url()).pathname.split("/")[1]!;
   await page.goto(`/${org}/research`);
   await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");

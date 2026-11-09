@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Delivery, DeliveryStatus } from "@/lib/api/exports";
 import { formatDateTime } from "@/lib/format";
 import { useText } from "@/lib/i18n/provider";
+import { orgPaths } from "@/lib/paths";
 
 const BADGE: Record<DeliveryStatus, string> = {
   pending: "badge-yellow",
@@ -13,23 +14,26 @@ const BADGE: Record<DeliveryStatus, string> = {
 };
 
 /**
- * Delivery log rows. `exportBase`/`destinationBase` (a path such as `/{org}/exports`) link the other side of the
- * relation to `{base}/{id}` when given; they are strings, not functions, so a server page can pass them to this
- * client component.
+ * Delivery log rows. With `orgPath` (`/{org}`, see `orgBase`), `linkExports`/`linkDestinations` link the other side
+ * of the relation to its page (`data.export(id)` / `admin.integration(id)`); plain values (not functions), so a
+ * server page can pass them to this client component.
  */
 export function DeliveriesTable({
   items,
-  exportBase,
-  destinationBase,
+  orgPath,
+  linkExports = false,
+  linkDestinations = false,
 }: {
   items: Delivery[];
-  exportBase?: string;
-  destinationBase?: string;
+  orgPath?: string;
+  linkExports?: boolean;
+  linkDestinations?: boolean;
 }) {
   const t = useText().exports.deliveries;
   const c = t.cols;
-  const exportHref = exportBase ? (id: string) => `${exportBase}/${encodeURIComponent(id)}` : undefined;
-  const destinationHref = destinationBase ? (id: string) => `${destinationBase}/${encodeURIComponent(id)}` : undefined;
+  const paths = orgPath ? orgPaths(orgPath) : undefined;
+  const exportHref = paths && linkExports ? paths.data.export : undefined;
+  const destinationHref = paths && linkDestinations ? paths.admin.integration : undefined;
   if (items.length === 0) return <p className="muted">{t.empty}</p>;
   return (
     <div className="table-wrap">

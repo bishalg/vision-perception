@@ -300,7 +300,7 @@ describe("RunStatus", () => {
     await new Promise((r) => setTimeout(r, 40));
     expect(poll.mock.calls.length).toBe(calls);
     const link = screen.getByRole("link", { name: en.runs.exportResults });
-    expect(link.getAttribute("href")).toBe("/org/exports?format=analysis_results&run=run1");
+    expect(link.getAttribute("href")).toBe("/org/data/exports?format=analysis_results&run=run1");
     expect(screen.queryByRole("button", { name: en.runs.cancel })).toBeNull();
   });
 

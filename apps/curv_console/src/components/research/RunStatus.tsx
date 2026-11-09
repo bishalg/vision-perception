@@ -10,6 +10,7 @@ import { failureText, type ResearchResult } from "@/lib/research/result";
 import { exportPrefillHref, type RunSnapshot } from "@/lib/research/runs";
 import type { ResearchMessages } from "@/messages/research";
 import r from "./research.module.css";
+import { pathsFor } from "@/lib/paths";
 
 const POLL_MS = 1000;
 
@@ -87,7 +88,7 @@ export function RunStatus({
     setError(null);
     start(async () => {
       const res = await rerun(runId);
-      if (res.ok) router.push(`/${encodeURIComponent(orgId)}/research/runs/${encodeURIComponent(res.runId)}`);
+      if (res.ok) router.push(pathsFor(orgId).research.run(res.runId));
       else setError(failureText(res, text));
     });
   }

@@ -7,6 +7,7 @@ import { loadOrNotFound } from "@/lib/loaders";
 import { authedApi } from "@/lib/auth/server";
 import { getText } from "@/lib/i18n/server";
 import { enumLabel, type DomainGroup } from "@/messages/domain";
+import { pathsFor } from "@/lib/paths";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getText()).app.overview.title };
@@ -36,7 +37,7 @@ export default async function OverviewPage({ params }: { params: Promise<{ org: 
         <KpiCard label={t.devicesActive} value={m.devices_active} />
       </div>
       <p>
-        <Link href={`/${encodeURIComponent(org)}/review`}>{t.openQueue}</Link>
+        <Link href={pathsFor(org).clinic.review}>{t.openQueue}</Link>
       </p>
       <div className="two-col">
         <Distribution title={t.flags} counts={labelled("attention_flag", m.flag_distribution)} />

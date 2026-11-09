@@ -11,6 +11,7 @@ import { ApiError } from "@/lib/api";
 import { authedApi } from "@/lib/auth/server";
 import { snapshotOf, type RunSnapshot } from "@/lib/research/runs";
 import type { ResearchFailure, ResearchResult } from "@/lib/research/result";
+import { pathsFor } from "@/lib/paths";
 
 function failure(err: unknown): ResearchFailure {
   if (err instanceof ApiError) {
@@ -21,7 +22,7 @@ function failure(err: unknown): ResearchFailure {
 
 const invalid: ResearchFailure = { ok: false, slug: "validation-failed", status: 400 };
 const id = z.string().min(1).max(200);
-const runsPath = (org: string) => `/${encodeURIComponent(org)}/research/runs`;
+const runsPath = (org: string) => pathsFor(org).research.runs;
 
 /** One status poll. The run must belong to the org in the URL. */
 export async function pollRunAction(orgId: string, runId: string): Promise<ResearchResult<{ run: RunSnapshot }>> {

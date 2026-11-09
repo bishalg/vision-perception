@@ -10,6 +10,7 @@ import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { describeCohort } from "@/lib/research/cohort";
 import { archiveCohortAction } from "../actions";
+import { pathsFor } from "@/lib/paths";
 
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -30,7 +31,7 @@ export default async function CohortPage({ params }: { params: Promise<{ org: st
   const canWrite = can(await currentRole(), "analysis.run");
   return (
     <>
-      <p><Link href={`/${encodeURIComponent(org)}/research/cohorts`}>{t.allCohorts}</Link></p>
+      <p><Link href={pathsFor(org).research.cohorts}>{t.allCohorts}</Link></p>
       <h1>{cohort.name}</h1>
       <section className="panel stack" aria-label={t.definition}>
         <h2>{t.definition}</h2>

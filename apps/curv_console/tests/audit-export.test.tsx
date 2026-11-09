@@ -28,9 +28,9 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: () => undefined, replace: () => undefined, refresh: () => undefined }),
 }));
 
-import AuditPage from "@/app/[org]/audit/page";
-import { exportAuditCsvAction } from "@/app/[org]/audit/actions";
-import { auditExportFilters } from "@/app/[org]/audit/filters";
+import AuditPage from "@/app/[org]/data/audit/page";
+import { exportAuditCsvAction } from "@/app/[org]/data/audit/actions";
+import { auditExportFilters } from "@/app/[org]/data/audit/filters";
 
 const fd = (o: Record<string, string>) => {
   const f = new FormData();
@@ -98,7 +98,7 @@ describe("exportAuditCsvAction", () => {
       reason: "Quarterly audit review",
       filters: { action_prefix: "export.", from: "2026-10-01" },
     });
-    expect(to).toMatch(new RegExp(`^/${MOCK_ORG_ID}/exports/.+`));
+    expect(to).toMatch(new RegExp(`^/${MOCK_ORG_ID}/data/exports/.+`));
   });
 
   it("sends nothing for a role without audit.export and returns to the page with the reason", async () => {
@@ -112,7 +112,7 @@ describe("exportAuditCsvAction", () => {
 
   it("maps a backend refusal to an error key on the audit page", async () => {
     const to = await redirectOf(exportAuditCsvAction(MOCK_ORG_ID, fd({ reason: "short", actor_id: "u-1" })));
-    expect(to).toContain(`/${MOCK_ORG_ID}/audit?`);
+    expect(to).toContain(`/${MOCK_ORG_ID}/data/audit?`);
     expect(to).toContain("actor_id=u-1");
     expect(to).toMatch(/export_error=validation-failed/);
   });

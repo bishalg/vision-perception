@@ -1,5 +1,5 @@
 import { type Browser, type Page } from "@playwright/test";
-import { expect, test, LIVE, login } from "./helpers";
+import { expect, test, LIVE, login, paths, OVERVIEW_URL } from "./helpers";
 
 // WP-C.19 (SHR-8..10, HIP-9). Mock mode: synthetic seeded case package and share links, one per state.
 test.skip(LIVE, "share flows use the mock backend's seeded case package and links");
@@ -17,7 +17,7 @@ const PASSCODE = "MOCKPASS2345";
 
 async function signIn(page: Page, email: string): Promise<string> {
   await login(page, email);
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page).toHaveURL(OVERVIEW_URL);
   return new URL(page.url()).pathname.split("/")[1]!;
 }
 
@@ -51,9 +51,9 @@ async function enterPasscode(page: Page, passcode: string) {
 
 test("clinician shares a case; the recipient downloads it with the passcode once", async ({ page, browser }) => {
   const org = await signIn(page, "clinician@example.org");
-  await page.goto(`/${org}/participants`);
+  await page.goto(paths(org).clinic.participants);
   await page.locator("table.data tbody tr").first().getByRole("link").first().click();
-  await expect(page).toHaveURL(new RegExp(`/${org}/participants/[0-9a-f-]{36}$`), { timeout: 90_000 });
+  await expect(page).toHaveURL(new RegExp(`${paths(org).clinic.participants}/[0-9a-f-]{36}$`), { timeout: 90_000 });
 
   await page.getByRole("button", { name: "Share case" }).click();
   const dialog = page.getByRole("dialog", { name: "Share this case" });
@@ -68,7 +68,7 @@ test("clinician shares a case; the recipient downloads it with the passcode once
   await dialog.getByRole("button", { name: "Create case package" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.getByRole("link", { name: "Open the export to share it" }).click();
-  await expect(page).toHaveURL(new RegExp(`/${org}/exports/[0-9a-f-]{36}$`));
+  await expect(page).toHaveURL(new RegExp(`${paths(org).data.exports}/[0-9a-f-]{36}$`));
   await expect(page.getByText("Case package (ZIP)").first()).toBeVisible();
 
   const { path, passcode } = await createLink(page);
@@ -108,7 +108,7 @@ test("clinician shares a case; the recipient downloads it with the passcode once
 
 test("a revoked link answers like an unknown one", async ({ page, browser }) => {
   const org = await signIn(page, "owner@example.org");
-  await page.goto(`/${org}/exports/${CASE_EXPORT}`);
+  await page.goto(`${paths(org).data.exports}/${CASE_EXPORT}`);
   const { path, passcode } = await createLink(page);
   const row = page.locator(`tr[data-link-id="${path.split("/").pop()}"]`);
   await row.getByRole("button", { name: "Revoke" }).click();

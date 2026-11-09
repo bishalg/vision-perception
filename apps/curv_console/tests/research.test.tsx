@@ -18,7 +18,7 @@ import { MOCK_RESEARCH_IDS } from "@/lib/api/mock/research";
 import type { ParamSpec } from "@/lib/api/research";
 import { AsdCore, type AsdWasmExports } from "@/lib/asd/core";
 import { paramRegistry as wasmParamRegistry, reprocessSession } from "@/lib/asd/ops";
-import { navLinks } from "@/lib/nav";
+import { navItems } from "@/lib/nav";
 import { MAX_PREVIEW_SESSIONS, PREVIEW_TRACE_HZ, PREVIEW_DEBOUNCE_MS, debounce, paramsNotApplied, parseTrace, pickerSessions } from "@/lib/research/preview";
 import { clampParam, diffParams, getAt, groupOf, groupRegistry, paramRegistry, setAt, valueOf } from "@/lib/research/registry";
 import { MAX_SWEEP_VALUES, defaultSweep, sweepValues } from "@/lib/research/sweep";
@@ -516,8 +516,8 @@ describe("Workbench", () => {
 
 describe("navigation and mock seeds", () => {
   it("lists Research for the roles that read analysis results", () => {
-    expect(navLinks("/o", "researcher").some((l) => l.href === "/o/research")).toBe(true);
-    expect(navLinks("/o", "viewer").some((l) => l.href === "/o/research")).toBe(false);
+    expect(navItems("/o", "researcher").some((l) => l.href === "/o/research/experiments")).toBe(true);
+    expect(navItems("/o", "viewer").some((l) => l.href === "/o/research/experiments")).toBe(false);
   });
 
   it("the mock seeds an experiment the workbench opens with a profile the registry can read", async () => {

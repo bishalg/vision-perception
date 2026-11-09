@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useText } from "@/lib/i18n/provider";
 import type { SessionListQuery } from "@/lib/api";
 import { serializeSessionQuery } from "@/lib/sessionQuery";
+import { pathsFor } from "@/lib/paths";
 
 export function Pagination({
   orgId,
@@ -19,7 +20,7 @@ export function Pagination({
   total: number | null | undefined;
 }) {
   const t = useText().app;
-  const base = `/${encodeURIComponent(orgId)}/sessions`;
+  const base = pathsFor(orgId).clinic.sessions;
   const { cursor, ...filters } = query;
   return (
     <nav className="pagination" aria-label={t.common.pagination}>

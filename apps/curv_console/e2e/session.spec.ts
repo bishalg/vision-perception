@@ -1,9 +1,9 @@
-import { expect, test, LIVE, login, loginToOverview } from "./helpers";
+import { expect, test, LIVE, login, loginToOverview, paths, OVERVIEW_URL, navTo } from "./helpers";
 
 /** WP-L.1a: a mock user whose locale is `ne` (the `+ne` email tag) sees Devanagari headings under `lang="ne-NP"`. */
 async function loginNe(page: import("@playwright/test").Page): Promise<string> {
   await login(page, "admin+ne@example.org");
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page).toHaveURL(OVERVIEW_URL);
   await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");
   return new URL(page.url()).pathname.split("/")[1]!;
 }
@@ -11,15 +11,15 @@ async function loginNe(page: import("@playwright/test").Page): Promise<string> {
 
 test("sessions table -> session detail with Clips, Quality and Report tabs", async ({ page }) => {
   const org = await loginToOverview(page);
-  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Sessions" }).click();
-  await expect(page).toHaveURL(new RegExp(`/${org}/sessions$`));
+  await navTo(page, "Clinic", "Sessions");
+  await expect(page).toHaveURL(new RegExp(`${paths(org).clinic.sessions}$`));
   await expect(page.getByRole("heading", { name: "Sessions" })).toBeVisible();
   const rows = page.locator("table.data tbody tr");
   test.skip((await rows.count()) === 0, "no sessions in this org");
 
   const participant = (await rows.first().locator("td").nth(1).innerText()).trim();
   await rows.first().getByRole("link").click();
-  await expect(page).toHaveURL(new RegExp(`/${org}/sessions/[^/?]+$`));
+  await expect(page).toHaveURL(new RegExp(`${paths(org).clinic.sessions}/[^/?]+$`));
   await expect(page.getByRole("heading", { level: 1 })).toContainText(participant);
   for (const kpi of ["Composite", "Confidence", "Flag", "Quality", "Bundle"]) {
     await expect(page.getByRole("region", { name: kpi, exact: true })).toBeVisible();
@@ -41,7 +41,7 @@ test("sessions table -> session detail with Clips, Quality and Report tabs", asy
 
 test("filters live in the URL and narrow the table", async ({ page }) => {
   const org = await loginToOverview(page);
-  await page.goto(`/${org}/sessions?flag=red`);
+  await page.goto(`${paths(org).clinic.sessions}?flag=red`);
   await expect(page.getByLabel("Flag")).toHaveValue("red");
   // Flag badges only: the tracking column has its own badges (`badge-trk-*`).
   const badges = page.locator("table.data tbody tr .badge:not([class*='badge-trk'])");
@@ -51,7 +51,7 @@ test("filters live in the URL and narrow the table", async ({ page }) => {
 
 test("tracking filter narrows the table; Quality tab shows the tracking section", async ({ page }) => {
   const org = await loginToOverview(page);
-  await page.goto(`/${org}/sessions?tracking=poor`);
+  await page.goto(`${paths(org).clinic.sessions}?tracking=poor`);
   await expect(page.getByLabel("Tracking")).toHaveValue("poor");
   const rows = page.locator("table.data tbody tr");
   test.skip((await rows.count()) === 0, "no poor-tracking sessions in this org");
@@ -69,21 +69,21 @@ test("tracking filter narrows the table; Quality tab shows the tracking section"
 test("an unscorable 1.8 session shows Not scored instead of numbers (SCH-5)", async ({ page }) => {
   const org = await loginToOverview(page);
   // SESS-MOCK-0010 is a mock 1.8 session whose on-device scoring failed (aggregation_failed).
-  const response = await page.goto(`/${org}/sessions/SESS-MOCK-0010`);
+  const response = await page.goto(`${paths(org).clinic.sessions}/SESS-MOCK-0010`);
   test.skip(response?.status() === 404, "no unscorable session in this org");
   await expect(page.getByRole("region", { name: "Composite", exact: true })).toContainText("Not scored (aggregation failed)");
-  await page.goto(`/${org}/sessions/SESS-MOCK-0010?tab=quality`);
+  await page.goto(`${paths(org).clinic.sessions}/SESS-MOCK-0010?tab=quality`);
   await expect(page.getByText("Social preference").locator("xpath=following-sibling::dd")).toHaveText(
     "Not scored (aggregation failed)",
   );
-  await page.goto(`/${org}/sessions/SESS-MOCK-0010?tab=report`);
+  await page.goto(`${paths(org).clinic.sessions}/SESS-MOCK-0010?tab=report`);
   await expect(page.getByRole("status")).toContainText("Not scored (aggregation failed).");
 });
 
 test("sessions list and a session detail render in Nepali", async ({ page }) => {
   test.skip(LIVE, "locale flows use the mock backend's user locale seed");
   const org = await loginNe(page);
-  await page.goto(`/${org}/sessions`);
+  await page.goto(paths(org).clinic.sessions);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("सत्रहरू");
   const rows = page.locator("table.data tbody tr");
   test.skip((await rows.count()) === 0, "no sessions in this org");

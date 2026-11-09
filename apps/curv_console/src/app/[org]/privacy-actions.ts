@@ -9,6 +9,7 @@ import {
   type RetentionSweepResult,
 } from "@/lib/api/privacy";
 import { authedApi } from "@/lib/auth/server";
+import { pathsFor } from "@/lib/paths";
 
 function failure(err: unknown): PrivacyFailure {
   if (err instanceof ApiError) {
@@ -25,8 +26,8 @@ export async function requestErasureAction(
 ): Promise<PrivacyResult<{ duplicate: boolean }>> {
   try {
     const r = await (await authedApi()).requestParticipantErasure(orgId, participantId);
-    revalidatePath(`/${encodeURIComponent(orgId)}/participants`);
-    revalidatePath(`/${encodeURIComponent(orgId)}/erasure`);
+    revalidatePath(pathsFor(orgId).clinic.participants);
+    revalidatePath(pathsFor(orgId).data.erasure);
     return { ok: true, duplicate: r.duplicate === true };
   } catch (err) {
     return failure(err);

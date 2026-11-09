@@ -7,7 +7,7 @@ import { CreateUserForm, UsersTable } from "@/components/UsersAdmin";
 import { buildQuery, createLiveClient } from "@/lib/api/live";
 import { MOCK_ORG_ID, createMockClient } from "@/lib/api/mock";
 import type { AuditEntry, OrgUser, Participant } from "@/lib/api";
-import { navLinks } from "@/lib/nav";
+import { navItems } from "@/lib/nav";
 import { ROLES } from "@/lib/api";
 import { assignableRoles, can, canEditUserRole } from "@/lib/permissions";
 
@@ -21,13 +21,13 @@ describe("admin permissions and navigation", () => {
     for (const a of ["user.read", "user.manage", "audit.read"] as const) {
       expect(ROLES.filter((r) => can(r, a)).sort()).toEqual(["admin", "owner", "superadmin"]);
     }
-    const hrefs = (r: Parameters<typeof navLinks>[1]) => navLinks("/o", r).map((l) => l.href);
-    expect(hrefs("viewer")).toContain("/o/participants");
-    expect(hrefs("viewer")).not.toContain("/o/users");
-    expect(hrefs("viewer")).not.toContain("/o/audit");
-    expect(hrefs("clinician")).not.toContain("/o/audit");
-    expect(hrefs("admin")).toEqual(expect.arrayContaining(["/o/users", "/o/audit"]));
-    expect(hrefs("owner")).toEqual(expect.arrayContaining(["/o/users", "/o/audit"]));
+    const hrefs = (r: Parameters<typeof navItems>[1]) => navItems("/o", r).map((l) => l.href);
+    expect(hrefs("viewer")).toContain("/o/clinic/participants");
+    expect(hrefs("viewer")).not.toContain("/o/admin/users");
+    expect(hrefs("viewer")).not.toContain("/o/data/audit");
+    expect(hrefs("clinician")).not.toContain("/o/data/audit");
+    expect(hrefs("admin")).toEqual(expect.arrayContaining(["/o/admin/users", "/o/data/audit"]));
+    expect(hrefs("owner")).toEqual(expect.arrayContaining(["/o/admin/users", "/o/data/audit"]));
   });
 
   it("mirrors the REC-8 rows of the backend matrix (phase 7)", () => {

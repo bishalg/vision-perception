@@ -11,7 +11,7 @@ import { ApiError, ROLES } from "@/lib/api";
 import { createLiveClient } from "@/lib/api/live";
 import { createMockClient, MOCK_ORG_ID } from "@/lib/api/mock";
 import type { ErasureRequest } from "@/lib/api/privacy";
-import { navLinks } from "@/lib/nav";
+import { navItems } from "@/lib/nav";
 import { can } from "@/lib/permissions";
 
 const json = (body: unknown, status = 200) =>
@@ -26,10 +26,10 @@ const req = (over: Partial<ErasureRequest> = {}): ErasureRequest => ({
 describe("RBAC", () => {
   it("participant.erase is owner, admin and superadmin (the backend does not fence the superadmin)", () => {
     expect(ROLES.filter((r) => can(r, "participant.erase")).sort()).toEqual(["admin", "owner", "superadmin"]);
-    const hrefs = (r: Parameters<typeof navLinks>[1]) => navLinks("/o", r).map((l) => l.href);
-    expect(hrefs("owner")).toEqual(expect.arrayContaining(["/o/erasure", "/o/settings/retention"]));
-    expect(hrefs("clinician")).not.toContain("/o/erasure");
-    expect(hrefs("researcher")).not.toContain("/o/settings/retention");
+    const hrefs = (r: Parameters<typeof navItems>[1]) => navItems("/o", r).map((l) => l.href);
+    expect(hrefs("owner")).toEqual(expect.arrayContaining(["/o/data/erasure", "/o/data/retention"]));
+    expect(hrefs("clinician")).not.toContain("/o/data/erasure");
+    expect(hrefs("researcher")).not.toContain("/o/data/retention");
   });
 });
 
@@ -142,7 +142,7 @@ describe("components", () => {
   it("ErasureAction confirms in the page and notes a duplicate", async () => {
     const user = userEvent.setup();
     const request = vi.fn().mockResolvedValue({ ok: true, duplicate: true });
-    render(<ErasureAction token="child-001" request={request} requestsHref="/o/erasure" />);
+    render(<ErasureAction token="child-001" request={request} requestsHref="/o/data/erasure" />);
     await user.click(screen.getByRole("button", { name: /Request erasure/ }));
     expect(request).not.toHaveBeenCalled();
     expect(screen.getByRole("alertdialog")).toHaveTextContent("child-001");
@@ -156,7 +156,7 @@ describe("components", () => {
 
   it("ErasureAction shows a failure", async () => {
     const user = userEvent.setup();
-    render(<ErasureAction token="t" request={async () => ({ ok: false, slug: "forbidden", status: 403 })} requestsHref="/o/erasure" />);
+    render(<ErasureAction token="t" request={async () => ({ ok: false, slug: "forbidden", status: 403 })} requestsHref="/o/data/erasure" />);
     await user.click(screen.getByRole("button", { name: /Request erasure/ }));
     await user.click(screen.getByRole("button", { name: "Yes, request erasure" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Your role cannot do this.");

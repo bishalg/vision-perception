@@ -26,6 +26,7 @@ import { loadOrNotFound } from "@/lib/loaders";
 import { driftThresholds } from "@/lib/research/baselines";
 import { enumLabel } from "@/messages/domain";
 import { getText } from "@/lib/i18n/server";
+import { pathsFor } from "@/lib/paths";
 
 export default async function SessionDetailPage({
   params,
@@ -42,7 +43,7 @@ export default async function SessionDetailPage({
   if (session.org_id !== org) notFound();
   const text = await getText();
   const t = text.app.detail;
-  const basePath = `/${encodeURIComponent(org)}/sessions/${encodeURIComponent(id)}`;
+  const basePath = pathsFor(org).clinic.session(id);
   const role = await currentRole();
   const showClinical = can(role, "worklist.read");
   const clips = tab === "clips" ? await loadOrNotFound(() => api.getSessionClips(id)) : [];
@@ -54,7 +55,7 @@ export default async function SessionDetailPage({
   return (
     <>
       <p>
-        <Link href={`/${encodeURIComponent(org)}/sessions`}>{t.back}</Link>
+        <Link href={pathsFor(org).clinic.sessions}>{t.back}</Link>
       </p>
       <h1>
         {session.participant_token} <span className="muted">{formatDateTime(session.started_at)}</span>

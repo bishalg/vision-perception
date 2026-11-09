@@ -15,10 +15,11 @@ import {
   type ConfigBundleSummary,
 } from "@/lib/api/config";
 import { authedApi } from "@/lib/auth/server";
+import { pathsFor, type ConfigDocSegment } from "@/lib/paths";
 
 /** The document kinds these pages edit, and their URL segment. */
 export type EditableKind = "normative_baselines" | "scoring_profile";
-const SEGMENT: Record<EditableKind, string> = { normative_baselines: "baselines", scoring_profile: "scoring" };
+const SEGMENT: Record<EditableKind, ConfigDocSegment> = { normative_baselines: "baselines", scoring_profile: "scoring" };
 
 function failure(err: unknown): CatalogFailure {
   if (err instanceof ApiError) {
@@ -33,7 +34,7 @@ function failure(err: unknown): CatalogFailure {
   return { ok: false, slug: null, status: 0 };
 }
 
-const base = (orgId: string, kind: EditableKind) => `/${encodeURIComponent(orgId)}/config/${SEGMENT[kind]}`;
+const base = (orgId: string, kind: EditableKind) => pathsFor(orgId).config.doc(SEGMENT[kind]);
 
 const draftInput = (kind: EditableKind) =>
   z.object({
@@ -77,7 +78,7 @@ export async function transitionDocAction(
   try {
     const doc = await (await authedApi()).transitionConfigDocument(kind, version, step);
     revalidatePath(base(orgId, kind));
-    revalidatePath(`${base(orgId, kind)}/${encodeURIComponent(version)}`);
+    revalidatePath(pathsFor(orgId).config.docVersion(SEGMENT[kind], version));
     return { ok: true, status: doc.status };
   } catch (err) {
     return failure(err);
@@ -129,7 +130,7 @@ export async function composeBundleAction(
       ...(parsed.data.global ? {} : { org_id: orgId }),
       ...(Object.keys(parsed.data.featureFlags).length ? { feature_flags: parsed.data.featureFlags } : {}),
     });
-    revalidatePath(`/${encodeURIComponent(orgId)}/config/bundles`);
+    revalidatePath(pathsFor(orgId).config.bundles);
     return { ok: true, bundle };
   } catch (err) {
     return failure(err);

@@ -177,7 +177,7 @@ describe("components", () => {
     for (const name of ["actor_id", "action", "target_type", "target_id", "from", "to"]) {
       expect(form.querySelector(`[name="${name}"]`)).not.toBeNull();
     }
-    expect(screen.getByRole("link", { name: "Clear filters" })).toHaveAttribute("href", "/o%201/audit");
+    expect(screen.getByRole("link", { name: "Clear filters" })).toHaveAttribute("href", "/o%201/data/audit");
   });
 
   it("ExportForm shows the destination picker from the minimal destination shape", () => {

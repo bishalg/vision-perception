@@ -6,6 +6,7 @@ import { CLINICAL_STATES, WORKLIST_ASSIGNED, type WorklistItem } from "@/lib/api
 import { useText } from "@/lib/i18n/provider";
 import { labelOr } from "@/messages/participant";
 import { FlagBadge } from "@/components/FlagBadge";
+import { pathsFor } from "@/lib/paths";
 
 /**
  * Worklist rows. Links carry only the org and session ids: no patient reference, impression or free text is ever put
@@ -15,7 +16,7 @@ export function WorklistTable({ orgId, items }: { orgId: string; items: Worklist
   const text = useText();
   const t = text.clinical.worklist;
   if (items.length === 0) return <p className="muted">{t.empty}</p>;
-  const base = `/${encodeURIComponent(orgId)}/sessions`;
+  const sessions = pathsFor(orgId).clinic;
   return (
     <div className="table-wrap">
       <table className="data responsive worklist-table">
@@ -36,7 +37,7 @@ export function WorklistTable({ orgId, items }: { orgId: string; items: Worklist
             <tr key={w.id}>
               <td data-label={t.cols.received}>{t.hours(w.age_hours)}</td>
               <td data-label={t.cols.participant}>
-                <Link href={`${base}/${encodeURIComponent(w.id)}?tab=clinical`}>{w.participant_token}</Link>
+                <Link href={`${sessions.session(w.id)}?tab=clinical`}>{w.participant_token}</Link>
               </td>
               <td data-label={t.cols.flag}>
                 <FlagBadge flag={w.attention_flag} />

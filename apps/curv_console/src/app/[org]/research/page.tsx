@@ -4,6 +4,7 @@ import { authedApi } from "@/lib/auth/server";
 import { formatDateTime } from "@/lib/format";
 import { getText } from "@/lib/i18n/server";
 import { loadOrNotFound } from "@/lib/loaders";
+import { pathsFor } from "@/lib/paths";
 
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -25,7 +26,7 @@ export default async function ResearchOverviewPage({ params }: { params: Promise
     loadOrNotFound(() => api.listCohorts(org, { limit: RECENT })),
     loadOrNotFound(() => api.listAnalysisRuns(org, { limit: RECENT })),
   ]);
-  const base = `/${encodeURIComponent(org)}/research`;
+  const rp = pathsFor(org).research;
   return (
     <>
       <h1>{t.title}</h1>
@@ -35,16 +36,16 @@ export default async function ResearchOverviewPage({ params }: { params: Promise
           {experiments.items.length === 0 ? <p className="muted">{t.experiments.empty}</p> : (
             <ul>
               {experiments.items.map((e) => (
-                <li key={e.id}><Link href={`${base}/experiments/${encodeURIComponent(e.id)}`}>{e.name}</Link> <span className="muted">{t.experiments.status[e.status]}</span></li>
+                <li key={e.id}><Link href={rp.experiment(e.id)}>{e.name}</Link> <span className="muted">{t.experiments.status[e.status]}</span></li>
               ))}
             </ul>
           )}
-          <p><Link href={`${base}/experiments`}>{t.experiments.allExperiments}</Link></p>
+          <p><Link href={rp.experiments}>{t.experiments.allExperiments}</Link></p>
         </section>
         <section className="panel" aria-label={t.experiments.cohorts}>
           <h2>{t.experiments.cohorts}</h2>
           {cohorts.items.length === 0 ? <p className="muted">{t.experiments.noCohorts}</p> : (
-            <ul>{cohorts.items.map((c) => <li key={c.id}><Link href={`${base}/cohorts/${encodeURIComponent(c.id)}`}>{c.name}</Link></li>)}</ul>
+            <ul>{cohorts.items.map((c) => <li key={c.id}><Link href={rp.cohort(c.id)}>{c.name}</Link></li>)}</ul>
           )}
         </section>
         <section className="panel" aria-label={t.experiments.recentRuns}>
@@ -52,7 +53,7 @@ export default async function ResearchOverviewPage({ params }: { params: Promise
           {runs.items.length === 0 ? <p className="muted">{t.experiments.noRuns}</p> : (
             <ul>
               {runs.items.map((x) => (
-                <li key={x.id}><Link href={`${base}/runs/${encodeURIComponent(x.id)}`}>{t.runStatus[x.status]}</Link> <span className="muted">{formatDateTime(x.created_at)}</span></li>
+                <li key={x.id}><Link href={rp.run(x.id)}>{t.runStatus[x.status]}</Link> <span className="muted">{formatDateTime(x.created_at)}</span></li>
               ))}
             </ul>
           )}

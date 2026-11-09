@@ -10,6 +10,7 @@ import { serverFieldErrors } from "@/lib/catalog";
 import type { AsdCore, Envelope } from "@/lib/asd/core";
 import c from "./config.module.css";
 import { useText } from "@/lib/i18n/provider";
+import { pathsFor, type ConfigDocSegment } from "@/lib/paths";
 
 
 export type CoreCheck =
@@ -103,7 +104,7 @@ export function DraftShell<T>({
   children,
 }: {
   orgId: string;
-  segment: string;
+  segment: ConfigDocSegment;
   fromVersion: string | null;
   body: T | undefined;
   blocked: number;
@@ -130,7 +131,7 @@ export function DraftShell<T>({
     start(async () => {
       const r = await save({ version: version.trim(), notes: notes.trim(), body });
       if (r.ok) {
-        router.push(`/${encodeURIComponent(orgId)}/config/${segment}/${encodeURIComponent(r.version)}?created=1`);
+        router.push(`${pathsFor(orgId).config.docVersion(segment, r.version)}?created=1`);
         return;
       }
       const { fields, general } = serverFieldErrors(r.params ?? []);

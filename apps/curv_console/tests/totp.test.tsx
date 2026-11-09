@@ -18,7 +18,8 @@ import { TotpNudge } from "@/components/security/TotpNudge";
 import { RequiredPanel } from "@/components/security/RequiredPanel";
 import { formatDateTime } from "@/lib/format";
 import { userProfileSchema, type UserProfile } from "@/lib/api/clinical";
-import { navLinks } from "@/lib/nav";
+import { navItems } from "@/lib/nav";
+import { orgPaths } from "@/lib/paths";
 import { shouldNudgeTotp } from "@/lib/permissions";
 import { ROLES } from "@/lib/api";
 
@@ -127,7 +128,7 @@ describe("TOTP nudge (WP-C.17: driven by totp_enforcement, not a role list)", ()
 
   it("links to the security page", () => {
     render(<TotpNudge org="o 1" profile={profile({ totp_enforcement: "grace", totp_enrolled: false })} />);
-    expect(screen.getByRole("link", { name: "Set it up" })).toHaveAttribute("href", "/o%201/settings/security");
+    expect(screen.getByRole("link", { name: "Set it up" })).toHaveAttribute("href", "/o%201/account/security");
   });
 });
 
@@ -219,7 +220,8 @@ describe("TotpPanel", () => {
 });
 
 describe("nav", () => {
-  it("links every role to its own account security page", () => {
-    for (const role of ROLES) expect(navLinks("/o", role).some((l) => l.href === "/o/settings/security")).toBe(true);
+  it("keeps account security out of the divisions: every role reaches it from the Account menu", () => {
+    for (const role of ROLES) expect(navItems("/o", role).some((l) => l.href === "/o/account/security")).toBe(false);
+    expect(orgPaths("/o").account.security).toBe("/o/account/security");
   });
 });

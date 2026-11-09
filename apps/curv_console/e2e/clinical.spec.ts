@@ -1,18 +1,17 @@
-import { expect, test, LIVE, login, PASSWORD } from "./helpers";
+import { expect, test, LIVE, login, PASSWORD, paths, OVERVIEW_URL, navTo, sideNav } from "./helpers";
 
 // Mock mode picks the role from the email's local part; live runs need seeded clinicians, so these are mock-only.
 test.skip(LIVE, "clinical flows use the mock backend's seeded worklist");
 // Dev-mode first compiles of the session route can be slow on a busy machine.
 test.describe.configure({ timeout: 240_000 });
 
-const nav = (page: import("@playwright/test").Page) => page.getByRole("navigation", { name: "Main navigation" });
 
 async function openWorklist(page: import("@playwright/test").Page, email: string): Promise<string> {
   await login(page, email);
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page).toHaveURL(OVERVIEW_URL);
   const org = new URL(page.url()).pathname.split("/")[1]!;
-  await nav(page).getByRole("link", { name: "Worklist" }).click();
-  await expect(page).toHaveURL(new RegExp(`/${org}/worklist$`));
+  await navTo(page, "Clinic", "Worklist");
+  await expect(page).toHaveURL(new RegExp(`${paths(org).clinic.worklist}$`));
   await expect(page.getByRole("heading", { name: "Worklist" })).toBeVisible();
   return org;
 }
@@ -22,7 +21,7 @@ test("worklist -> claim -> save draft -> sign (wrong password first) -> final an
   const row = page.locator("table.worklist-table tbody tr").filter({ hasText: "Not started" }).first();
   const link = row.getByRole("link");
   const href = (await link.getAttribute("href"))!;
-  expect(href).toMatch(new RegExp(`^/${org}/sessions/[^/?]+\\?tab=clinical$`));
+  expect(href).toMatch(new RegExp(`^${paths(org).clinic.sessions}/[^/?]+\\?tab=clinical$`));
   await link.click();
 
   // The first visit compiles the session route in dev mode, which can be slow.
@@ -60,7 +59,7 @@ test("worklist -> claim -> save draft -> sign (wrong password first) -> final an
   await expect(page.getByRole("button", { name: "Amend" })).toBeVisible();
 
   // The final review leaves the worklist.
-  await page.goto(`/${org}/worklist`);
+  await page.goto(paths(org).clinic.worklist);
   await expect(page.locator(`a[href="${href}"]`)).toHaveCount(0);
 });
 
@@ -81,9 +80,10 @@ test("a review awaiting a second signature can be cosigned by another clinician"
 
 test("viewer sees no Worklist link and no Clinical review tab", async ({ page }) => {
   await login(page, "viewer@example.org");
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
-  await expect(nav(page).getByRole("link", { name: "Worklist" })).toHaveCount(0);
-  await nav(page).getByRole("link", { name: "Sessions" }).click();
+  await expect(page).toHaveURL(OVERVIEW_URL);
+  await expect(sideNav(page, "Clinic").getByRole("link", { name: "Overview" })).toBeVisible();
+  await expect(sideNav(page, "Clinic").getByRole("link", { name: "Worklist" })).toHaveCount(0);
+  await navTo(page, "Clinic", "Sessions");
   await page.locator("table.data tbody tr").first().getByRole("link").click();
   await expect(page).toHaveURL(/\/sessions\/[^/?]+$/, { timeout: 90_000 });
   await expect(page.getByRole("navigation", { name: "Session sections" }).getByRole("link", { name: "Clips" })).toBeVisible();
@@ -97,7 +97,7 @@ test("admin sees the worklist but no clinical text, and can change clinical sett
   await page.locator("table.worklist-table tbody tr").first().getByRole("link").click();
   await expect(page.getByRole("button", { name: "Claim review" })).toHaveCount(0);
 
-  await page.goto(`/${org}/settings/clinical`);
+  await page.goto(paths(org).admin.clinical);
   await expect(page.getByRole("heading", { name: "Clinical settings", level: 1 })).toBeVisible();
   await page.getByLabel("Second signature (cosign)").selectOption("none");
   await page.getByLabel("Paper size").selectOption("letter");
@@ -110,9 +110,9 @@ test("admin sees the worklist but no clinical text, and can change clinical sett
 
 test("clinician (ne): the worklist and the clinical review are in Nepali", async ({ page }) => {
   await login(page, "clinician+ne@example.org");
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page).toHaveURL(OVERVIEW_URL);
   const org = new URL(page.url()).pathname.split("/")[1]!;
-  await page.goto(`/${org}/worklist`);
+  await page.goto(paths(org).clinic.worklist);
   await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");
   await expect(page.getByRole("heading", { name: "कार्यसूची" })).toBeVisible();
   const row = page.locator("table.worklist-table tbody tr").filter({ hasText: "सुरु भएको छैन" }).first();

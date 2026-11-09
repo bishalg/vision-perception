@@ -6,8 +6,9 @@ import { authorText } from "@/components/catalog/authorText";
 import type { ConfigDocument } from "@/lib/api/catalog";
 import { formatDateTime } from "@/lib/format";
 import { useText } from "@/lib/i18n/provider";
+import { pathsFor, type ConfigDocSegment } from "@/lib/paths";
 
-export function DocVersionsTable({ base, items }: { base: string; items: ConfigDocument[] }) {
+export function DocVersionsTable({ org, segment, items }: { org: string; segment: ConfigDocSegment; items: ConfigDocument[] }) {
   const tx = useText();
   const t = tx.config;
   const ct = tx.catalog;
@@ -28,7 +29,7 @@ export function DocVersionsTable({ base, items }: { base: string; items: ConfigD
         <tbody>
           {items.map((d) => (
             <tr key={d.id}>
-              <td><Link href={`${base}/${encodeURIComponent(d.version)}`}>{d.version}</Link></td>
+              <td><Link href={pathsFor(org).config.docVersion(segment, d.version)}>{d.version}</Link></td>
               <td><ConfigStatusBadge status={d.status} /></td>
               <td>{formatDateTime(d.created_at)}</td>
               <td title={d.created_by ?? undefined}>{authorText(d.created_by, ct.system)}</td>

@@ -1,0 +1,52 @@
+/*
+ * WP-C.23 console shell (spec 03 §3a N-3). Kept apart from globals.css so the shell can be swapped for a design
+ * system's UI shell later. Top bar with the five divisions; grid `sidebar 240px | content` from 1024 px; below, the
+ * sidebar is a drawer opened by "Menu"; below 640 px the divisions move into the drawer too. Tokens from :root.
+ */
+.shell { min-height: 100vh; }
+.topbar { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; padding: .75rem 1.25rem; background: var(--surface); border-bottom: 1px solid var(--border); position: relative; z-index: 30; }
+.divisions { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; margin-left: .5rem; flex: 1; }
+.divisions a { text-decoration: none; padding: .25rem 0; border-bottom: 2px solid transparent; }
+.divisions a.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+.body { display: grid; grid-template-columns: 240px minmax(0, 1fr); align-items: start; }
+.shell[data-sidebar="off"] .body { grid-template-columns: minmax(0, 1fr); }
+.shell[data-sidebar="off"] .sidenav { display: none; }
+.content { padding: 1.25rem; max-width: 1280px; width: 100%; margin: 0 auto; min-width: 0; }
+.sidenav { position: sticky; top: 0; min-height: calc(100vh - 3.5rem); padding: 1rem .75rem; border-right: 1px solid var(--border); background: var(--surface); }
+.sidenav nav { display: flex; flex-direction: column; gap: .125rem; }
+.sidenavTitle { margin: 0 0 .5rem; padding: 0 .75rem; font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.sidenav a { display: block; padding: .4rem .75rem; border-radius: 6px; text-decoration: none; border-left: 3px solid transparent; }
+.sidenav a:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.sidenav a.active { color: var(--text); font-weight: 600; background: color-mix(in srgb, var(--accent) 12%, transparent); border-left-color: var(--accent); }
+.sidenav .drawerDivisions { display: none; }
+.menuButton { display: none; background: var(--surface); color: var(--text); border-color: var(--border); padding: .35rem .75rem; }
+.backdrop { display: none; }
+.breadcrumb ol { list-style: none; display: flex; flex-wrap: wrap; gap: .25rem; margin: 0 0 .75rem; padding: 0; font-size: .85rem; color: var(--muted); }
+.breadcrumb li + li::before { content: "\203A"; margin-right: .25rem; color: var(--muted); }
+.breadcrumb a { color: var(--muted); }
+.breadcrumb [aria-current="page"] { color: var(--text); }
+/* Disclosure menus (Account, the superadmin's org by id): `<details>`, so they work without JS. */
+.menu { position: relative; }
+.menu > summary { cursor: pointer; list-style: none; padding: .25rem .5rem; border: 1px solid var(--border); border-radius: 6px; color: var(--text); }
+.menu > summary::-webkit-details-marker { display: none; }
+.menu > summary::after { content: " \25BE"; color: var(--muted); }
+.menuPanel { position: absolute; right: 0; top: calc(100% + .25rem); z-index: 40; display: flex; flex-direction: column; align-items: flex-start; gap: .5rem; min-width: 12rem; padding: .75rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 6px 24px rgb(0 0 0 / .15); }
+.account { margin-left: auto; }
+.orgSwitcher { display: flex; gap: .5rem; align-items: center; }
+.orgSwitcher select { max-width: 16rem; }
+.orgById .menuPanel { left: 0; right: auto; }
+@media (max-width: 1023px) {
+  .body, .shell[data-sidebar="off"] .body { grid-template-columns: minmax(0, 1fr); }
+  .menuButton { display: inline-block; }
+  .sidenav, .shell[data-sidebar="off"] .sidenav { display: block; position: fixed; top: 0; bottom: 0; left: 0; width: min(280px, 85vw); min-height: 0; overflow-y: auto; z-index: 60; transform: translateX(-100%); visibility: hidden; transition: transform .2s ease, visibility 0s linear .2s; box-shadow: 0 0 32px rgb(0 0 0 / .25); }
+  /* Visible at once on open (so focus can move in); hidden only after the slide-out on close. */
+  .sidenav[data-open="true"] { transform: none; visibility: visible; transition: transform .2s ease, visibility 0s; }
+  .backdrop { display: block; position: fixed; inset: 0; z-index: 55; background: rgb(0 0 0 / .4); }
+  :global(body.drawer-open) { overflow: hidden; }
+}
+@media (max-width: 639px) {
+  .topbar .divisions { display: none; }
+  .sidenav .drawerDivisions { display: flex; margin-bottom: 1rem; padding-bottom: .75rem; border-bottom: 1px solid var(--border); }
+  .orgSwitcher select { max-width: 9rem; }
+}
+@media (prefers-reduced-motion: reduce) { .sidenav { transition: none; } }

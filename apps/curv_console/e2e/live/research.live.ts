@@ -11,7 +11,7 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { APIRequestContext, Cookie, Page } from "@playwright/test";
-import { expect, test } from "../helpers";
+import { expect, test, paths } from "../helpers";
 import { apiToken, env, signIn } from "./support";
 
 const RESEARCH_LIVE = Boolean(process.env.E2E_RESEARCH);
@@ -37,8 +37,8 @@ async function reuse(page: Page, email: string, signInFresh: () => Promise<void>
   const saved = sessions.get(email);
   if (saved) {
     await page.context().addCookies(saved);
-    await page.goto(`/${org()}/overview`);
-    if (new URL(page.url()).pathname === `/${org()}/overview`) return;
+    await page.goto(`${paths(org()).clinic.overview}`);
+    if (new URL(page.url()).pathname === `${paths(org()).clinic.overview}`) return;
   }
   await signInFresh();
   sessions.set(email, await page.context().cookies());
@@ -67,14 +67,14 @@ async function superadminSignIn(page: Page, email: string): Promise<void> {
   await expect(async () => {
     await page.getByLabel("Organisation id").fill(org());
     await page.getByRole("button", { name: "Switch" }).click();
-    await expect(page).toHaveURL(new RegExp(`/${org()}/overview$`), { timeout: 5_000 });
+    await expect(page).toHaveURL(new RegExp(`${paths(org()).clinic.overview}$`), { timeout: 5_000 });
   }).toPass({ timeout: 60_000 });
 }
 
 /** `analysis.read` audit rows for one run (owner reads the audit log). */
 async function analysisReads(request: APIRequestContext, runId: string): Promise<number> {
   const ownerToken = await token(request, env("E2E_OWNER_EMAIL"));
-  const res = await request.get(`${api()}/v1/orgs/${org()}/audit?action=analysis.read&target_id=${runId}&limit=100`, {
+  const res = await request.get(`${api()}/v1/orgs${paths(org()).data.audit}?action=analysis.read&target_id=${runId}&limit=100`, {
     headers: { Authorization: `Bearer ${ownerToken}` },
   });
   expect(res.status(), await res.text()).toBe(200);
@@ -241,7 +241,7 @@ test("analysis_results export from the pre-filled form downloads a valid file", 
   await page.getByRole("button", { name: "Request export" }).click();
   await expect(page.getByText("Export queued.")).toBeVisible({ timeout: 60_000 });
 
-  await page.goto(`/${org()}/exports`);
+  await page.goto(`${paths(org()).data.exports}`);
   const row = page.getByRole("row").filter({ hasText: "Analysis results" }).first();
   await expect(async () => {
     await page.reload();

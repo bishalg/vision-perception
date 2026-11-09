@@ -1,9 +1,9 @@
-import { expect, test, LIVE, MOCK_ORG_ID, PASSWORD, SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD, TARGET_ORG_ID, login, loginToOverview } from "./helpers";
+import { expect, test, LIVE, MOCK_ORG_ID, PASSWORD, SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD, TARGET_ORG_ID, login, loginToOverview, paths, OVERVIEW_URL, openAccountMenu } from "./helpers";
 
 test("unauthenticated visits go to /login and keep the target", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveURL(/\/login$/);
-  await page.goto(`/${MOCK_ORG_ID}/sessions?flag=red`);
+  await page.goto(`${paths(MOCK_ORG_ID).clinic.sessions}?flag=red`);
   await expect(page).toHaveURL(/\/login\?next=/);
 });
 
@@ -28,7 +28,7 @@ test.describe("TOTP step (mock mode)", () => {
     await expect(page.getByRole("alert").filter({ hasText: "That code is wrong" })).toBeVisible();
     await page.getByLabel("Authentication code").fill("123456");
     await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+    await expect(page).toHaveURL(OVERVIEW_URL);
   });
 });
 
@@ -45,6 +45,7 @@ test("login lands on the overview KPIs; the session cookie is httpOnly; sign out
   expect(access?.sameSite).toBe("Lax");
   expect(await page.evaluate(() => document.cookie)).not.toContain("curv_access");
 
+  await openAccountMenu(page);
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL(/\/login$/);
   await page.goto("/");
@@ -54,7 +55,7 @@ test("login lands on the overview KPIs; the session cookie is httpOnly; sign out
 test("the access cookie expiring triggers a silent refresh", async ({ page, context }) => {
   const org = await loginToOverview(page);
   await context.clearCookies({ name: "curv_access" });
-  await page.goto(`/${org}/sessions`);
+  await page.goto(paths(org).clinic.sessions);
   await expect(page.getByRole("heading", { name: "Sessions" })).toBeVisible();
   expect((await context.cookies()).some((c) => c.name === "curv_access")).toBe(true);
 });
@@ -68,8 +69,10 @@ test("superadmin (no home org) picks an org by id, then sees it in the switcher"
   await expect(page.getByRole("alert").filter({ hasText: "That is not a valid organisation id." })).toBeVisible();
   await page.getByLabel("Organisation id").fill(TARGET_ORG_ID);
   await page.getByRole("button", { name: "Switch" }).click();
-  await expect(page).toHaveURL(new RegExp(`/${TARGET_ORG_ID}/overview$`));
+  await expect(page).toHaveURL(new RegExp(`${paths(TARGET_ORG_ID).clinic.overview}$`));
   await expect(page.getByRole("combobox", { name: "Organisation", exact: true })).toHaveValue(TARGET_ORG_ID);
+  // WP-C.23: the superadmin's id field sits behind the compact switcher's disclosure.
+  await page.locator("summary", { hasText: "Organisation id" }).click();
   await expect(page.getByRole("textbox", { name: "Organisation id" })).toBeVisible();
 });
 
@@ -83,7 +86,7 @@ test("login page and overview render in Nepali for a ne user (lang=ne-NP)", asyn
   await ctx.close();
 
   await login(page, "admin+ne@example.org");
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page).toHaveURL(OVERVIEW_URL);
   await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("सारांश");
   await expect(page.getByRole("navigation", { name: "मुख्य नेभिगेसन" })).toBeVisible();

@@ -7,6 +7,7 @@ import { useText } from "@/lib/i18n/provider";
 import { ErasureAction } from "@/components/privacy/ErasureAction";
 import type { PrivacyResult } from "@/components/privacy/types";
 import { ageBracketLabel, languageLabel } from "@/components/participant/labels";
+import { pathsFor } from "@/lib/paths";
 
 /**
  * List with an optional "Request erasure" action per row (WP-B.9, owners and admins: the page passes `erase`, the
@@ -49,7 +50,7 @@ export function ParticipantsTable({
             <tr key={p.id}>
               <td data-label={c.token}>
                 {orgId ? (
-                  <Link href={`/${encodeURIComponent(orgId)}/participants/${encodeURIComponent(p.id)}`}>
+                  <Link href={pathsFor(orgId).clinic.participant(p.id)}>
                     {p.participant_token}
                   </Link>
                 ) : (
@@ -71,7 +72,7 @@ export function ParticipantsTable({
                   <ErasureAction
                     token={p.participant_token}
                     request={erase.bind(null, p.id)}
-                    requestsHref={`/${encodeURIComponent(orgId!)}/erasure`}
+                    requestsHref={pathsFor(orgId!).data.erasure}
                   />
                 </td>
               ) : null}

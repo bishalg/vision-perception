@@ -1,4 +1,4 @@
-import { caseSessionsAction, createCaseShareAction } from "@/app/[org]/participants/[id]/share-actions";
+import { caseSessionsAction, createCaseShareAction } from "@/app/[org]/clinic/participants/[id]/share-actions";
 import type { Participant } from "@/lib/api/admin";
 import { currentRole } from "@/lib/auth/server";
 import { formatDateTime } from "@/lib/format";
@@ -6,6 +6,7 @@ import { can } from "@/lib/permissions";
 import { getText } from "@/lib/i18n/server";
 import { ShareCaseDialog } from "./ShareCaseDialog";
 import { ageBracketLabel, languageLabel } from "./labels";
+import { orgBase } from "@/lib/paths";
 
 /**
  * Token, age bracket, withdrawn state and, for roles that may see it, whether an MRN is on file. The MRN itself is
@@ -57,7 +58,7 @@ export async function ParticipantHeader({ participant: p }: { participant: Parti
           canIdentified={can(role, "export.identified")}
           create={createCaseShareAction.bind(null, p.org_id, p.id)}
           loadSessions={caseSessionsAction.bind(null, p.org_id, p.id)}
-          exportsHref={`/${encodeURIComponent(p.org_id)}/exports`}
+          orgPath={orgBase(p.org_id)}
         />
       ) : null}
     </header>

@@ -7,6 +7,7 @@ import { formatDateTime } from "@/lib/format";
 import { useText } from "@/lib/i18n/provider";
 import { authorText } from "./authorText";
 import s from "./catalog.module.css";
+import { pathsFor } from "@/lib/paths";
 
 const STATUS_BADGE: Record<ConfigDocumentStatus, string> = {
   draft: "badge-yellow",
@@ -25,7 +26,7 @@ export function ConfigStatusBadge({ status }: { status: ConfigDocumentStatus }) 
 export function VersionsTable({ orgId, items }: { orgId: string; items: ConfigDocument[] }) {
   const tx = useText();
   const t = tx.catalog;
-  const base = `/${encodeURIComponent(orgId)}/config/catalog`;
+  const cp = pathsFor(orgId).config;
   if (!items.length) return <p className="muted">{t.empty}</p>;
   return (
     <div className="table-wrap">
@@ -43,7 +44,7 @@ export function VersionsTable({ orgId, items }: { orgId: string; items: ConfigDo
         <tbody>
           {items.map((d) => (
             <tr key={d.id}>
-              <td><Link href={`${base}/${encodeURIComponent(d.version)}`}>{d.version}</Link></td>
+              <td><Link href={cp.docVersion("catalog", d.version)}>{d.version}</Link></td>
               <td><ConfigStatusBadge status={d.status} /></td>
               <td>{formatDateTime(d.created_at)}</td>
               <td title={d.created_by ?? undefined}>{authorText(d.created_by, t.system)}</td>

@@ -1,7 +1,7 @@
 /** Shared steps of the live record and share specs (`run-record-live.sh` sets the environment). */
 import { readFileSync } from "node:fs";
 import type { APIRequestContext, Page } from "@playwright/test";
-import { expect } from "../helpers";
+import { expect, paths } from "../helpers";
 
 export const env = (name: string): string => {
   const v = process.env[name];
@@ -23,7 +23,7 @@ export async function signIn(page: Page, email: string, org: string): Promise<vo
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(env("E2E_PASSWORD"));
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(new RegExp(`/${org}/overview$`), { timeout: 120_000 });
+  await expect(page).toHaveURL(new RegExp(`${paths(org).clinic.overview}$`), { timeout: 120_000 });
 }
 
 /** A bearer token straight from the backend, for checks the console does not show (e.g. an export's sha256). */
@@ -55,13 +55,13 @@ export async function ingestSession(request: APIRequestContext, token: string): 
 
 /** Create a participant from the list page (code + QR shown once) and open its record. */
 export async function createParticipant(page: Page, org: string): Promise<{ token: string; path: string }> {
-  await page.goto(`/${org}/participants`);
+  await page.goto(paths(org).clinic.participants);
   await page.getByRole("button", { name: "New participant" }).click();
   await page.getByRole("button", { name: "Create participant" }).click();
   const token = (await page.getByTestId("created-token").innerText()).trim();
   expect(token).toMatch(/^child-[0-9a-f]{20}$/);
   await expect(page.getByRole("img", { name: `QR code for participant ${token}` })).toBeVisible();
   await page.getByRole("link", { name: "Open record" }).click();
-  await expect(page).toHaveURL(new RegExp(`/${org}/participants/[0-9a-f-]{36}$`));
+  await expect(page).toHaveURL(new RegExp(`${paths(org).clinic.participants}/[0-9a-f-]{36}$`));
   return { token, path: new URL(page.url()).pathname };
 }

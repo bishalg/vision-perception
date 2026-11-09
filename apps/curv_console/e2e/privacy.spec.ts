@@ -1,13 +1,12 @@
-import { expect, test, LIVE, login, loginToOverview } from "./helpers";
+import { expect, test, LIVE, login, loginToOverview, paths, OVERVIEW_URL, navTo } from "./helpers";
 
 test.skip(LIVE, "mock-mode flows: they rely on the seeded mock erasure requests and participants");
 
-const nav = (page: import("@playwright/test").Page) => page.getByRole("navigation", { name: "Main navigation" });
 
 test("erasure requests: list with statuses and the held explanation", async ({ page }) => {
   const org = await loginToOverview(page);
-  await nav(page).getByRole("link", { name: "Erasure requests" }).click();
-  await expect(page).toHaveURL(new RegExp(`/${org}/erasure$`));
+  await navTo(page, "Data", "Erasure requests");
+  await expect(page).toHaveURL(new RegExp(`${paths(org).data.erasure}$`));
   await expect(page.getByRole("heading", { name: "Erasure requests" })).toBeVisible();
   await expect(page.getByTestId("held-explainer")).toContainText("kept under clinical record hold");
   const table = page.getByRole("table");
@@ -19,8 +18,8 @@ test("erasure requests: list with statuses and the held explanation", async ({ p
 
 test("participants: request erasure after an in-page confirmation, then see the duplicate note", async ({ page }) => {
   const org = await loginToOverview(page);
-  await nav(page).getByRole("link", { name: "Participants" }).click();
-  await expect(page).toHaveURL(new RegExp(`/${org}/participants$`));
+  await navTo(page, "Clinic", "Participants");
+  await expect(page).toHaveURL(new RegExp(`${paths(org).clinic.participants}$`));
   const row = page.getByRole("row").nth(2);
   await row.getByRole("button", { name: /^Request erasure/ }).click();
   await expect(row.getByRole("alertdialog")).toContainText("Erase all data of participant");
@@ -33,13 +32,13 @@ test("participants: request erasure after an in-page confirmation, then see the 
   await row.getByRole("button", { name: "Yes, request erasure" }).click();
   await expect(row.getByText(/already open/)).toBeVisible();
   await row.getByRole("link", { name: "View erasure requests" }).click();
-  await expect(page).toHaveURL(new RegExp(`/${org}/erasure$`));
+  await expect(page).toHaveURL(new RegExp(`${paths(org).data.erasure}$`));
 });
 
 test("retention: preview then run the sweep and see the counts", async ({ page }) => {
   const org = await loginToOverview(page);
-  await nav(page).getByRole("link", { name: "Data retention" }).click();
-  await expect(page).toHaveURL(new RegExp(`/${org}/settings/retention$`));
+  await navTo(page, "Data", "Data retention");
+  await expect(page).toHaveURL(new RegExp(`${paths(org).data.retention}$`));
   await page.getByRole("button", { name: "Preview (dry run)" }).click();
   await expect(page.getByTestId("sweep-result")).toContainText("would be deleted", { timeout: 15_000 });
   await page.getByRole("button", { name: "Run sweep" }).click();
@@ -51,8 +50,8 @@ test("retention: preview then run the sweep and see the counts", async ({ page }
 
 test("exports: a dataset is de-identified research only and can include labels", async ({ page }) => {
   const org = await loginToOverview(page);
-  await nav(page).getByRole("link", { name: "Exports" }).click();
-  await expect(page).toHaveURL(new RegExp(`/${org}/exports$`));
+  await navTo(page, "Data", "Exports");
+  await expect(page).toHaveURL(new RegExp(`${paths(org).data.exports}$`));
   await page.getByLabel("Format").selectOption("dataset_jsonl");
   await expect(page.getByLabel("Mode")).toBeDisabled();
   await expect(page.getByLabel("Mode").locator("option")).toHaveText(["De-identified"]);
@@ -66,12 +65,12 @@ test("exports: a dataset is de-identified research only and can include labels",
 
 test("erasure requests and retention render in Nepali for a user whose locale is ne", async ({ page }) => {
   await login(page, "admin+ne@example.org");
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
-  const org = new URL(page.url()).pathname.split("/")[1];
-  await page.goto(`/${org}/erasure`);
+  await expect(page).toHaveURL(OVERVIEW_URL);
+  const org = new URL(page.url()).pathname.split("/")[1]!;
+  await page.goto(paths(org).data.erasure);
   await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");
   await expect(page.getByRole("heading", { name: "मेटाउने अनुरोध", level: 1 })).toBeVisible();
   await expect(page.getByTestId("held-explainer")).toContainText("क्लिनिकल अभिलेख रोकमा राखिएको");
-  await page.goto(`/${org}/settings/retention`);
+  await page.goto(paths(org).data.retention);
   await expect(page.getByRole("heading", { name: "डेटा राख्ने अवधि", level: 1 })).toBeVisible();
 });

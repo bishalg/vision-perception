@@ -7,6 +7,7 @@ import { ApiError } from "@/lib/api";
 import { cohortDefinitionSchema } from "@/lib/api/research";
 import { authedApi } from "@/lib/auth/server";
 import type { ResearchFailure, ResearchResult } from "@/lib/research/result";
+import { pathsFor } from "@/lib/paths";
 
 function failure(err: unknown): ResearchFailure {
   if (err instanceof ApiError) {
@@ -16,7 +17,7 @@ function failure(err: unknown): ResearchFailure {
 }
 
 const invalid: ResearchFailure = { ok: false, slug: "validation-failed", status: 400 };
-const cohortsPath = (org: string) => `/${encodeURIComponent(org)}/research/cohorts`;
+const cohortsPath = (org: string) => pathsFor(org).research.cohorts;
 const createInput = z.object({ name: z.string().trim().min(1).max(200), definition: cohortDefinitionSchema });
 
 /** `POST /v1/orgs/{id}/cohorts`; `409 conflict` when the name is taken. */

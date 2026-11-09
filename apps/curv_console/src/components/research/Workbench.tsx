@@ -15,6 +15,7 @@ import { RegistryForm } from "./RegistryForm";
 import { RunDialog, type RunStartInput } from "./RunDialog";
 import type { PickerSession } from "./SessionPicker";
 import r from "./research.module.css";
+import { pathsFor } from "@/lib/paths";
 
 export interface WorkbenchActions {
   update: (rowVersion: number, input: { name: string; description: string | null; profile: ProfileDoc }) => Promise<ResearchResult<{ rowVersion: number; profileHash: string }>>;
@@ -110,7 +111,7 @@ export function Workbench({
 
   return (
     <div className="stack">
-      <p><Link href={`/${encodeURIComponent(orgId)}/research/experiments`}>{w.back}</Link></p>
+      <p><Link href={pathsFor(orgId).research.experiments}>{w.back}</Link></p>
       <ExperimentHeader
         experiment={{ ...experiment, status, last_run_id: lastRunId }}
         name={name}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Integration } from "@/lib/api/exports";
 import { formatDateTime } from "@/lib/format";
 import { useText } from "@/lib/i18n/provider";
+import { pathsFor } from "@/lib/paths";
 
 /** Last test outcome: pass/fail with the error class (never remote text), or "Never run". */
 export function TestBadge({ i }: { i: Pick<Integration, "last_test_at" | "last_test_ok" | "last_test_error"> }) {
@@ -52,7 +53,7 @@ export function IntegrationsTable({ orgId, items }: { orgId: string; items: Inte
               <td data-label={c.credential}>{i.has_secret ? t.credentialSet : t.credentialMissing}</td>
               <td data-label={c.lastTest}><TestBadge i={i} /></td>
               <td data-label={c.actions}>
-                <Link href={`/${encodeURIComponent(orgId)}/settings/integrations/${encodeURIComponent(i.id)}`}>{t.manage}</Link>
+                <Link href={pathsFor(orgId).admin.integration(i.id)}>{t.manage}</Link>
               </td>
             </tr>
           ))}

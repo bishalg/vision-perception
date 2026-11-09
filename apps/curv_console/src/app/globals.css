@@ -21,12 +21,9 @@ h2 { font-size: 1rem; margin: 0 0 .5rem; }
 .muted { color: var(--muted); font-weight: 400; }
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
-.shell { min-height: 100vh; }
-.topbar { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; padding: .75rem 1.25rem; background: var(--surface); border-bottom: 1px solid var(--border); }
+/* The org shell (top bar, sidebar, breadcrumb) is styled in src/components/shell/shell.module.css (WP-C.23). */
 .brand { font-weight: 700; }
 .org-name { color: var(--muted); }
-.mainnav { display: flex; gap: 1rem; margin-left: 1rem; flex: 1; }
-.content { padding: 1.25rem; max-width: 1280px; margin: 0 auto; }
 
 button, .button { font: inherit; padding: .5rem 1rem; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-text); cursor: pointer; text-decoration: none; display: inline-block; }
 button:disabled { opacity: .6; cursor: progress; }
@@ -82,11 +79,6 @@ table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
   table.data .num { text-align: right; }
 }
 
-/* Org switcher, nav state */
-.org-switcher { display: flex; gap: .5rem; align-items: center; }
-.org-switcher select { max-width: 16rem; }
-.mainnav a { text-decoration: none; padding: .25rem 0; border-bottom: 2px solid transparent; }
-.mainnav a.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .sr-status { min-height: 1.5em; margin: .25rem 0; color: var(--muted); }
 

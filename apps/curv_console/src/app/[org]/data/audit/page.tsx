@@ -8,6 +8,7 @@ import { auditFilterParams, parseAuditQuery, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { getText } from "@/lib/i18n/server";
+import { pathsFor } from "@/lib/paths";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getText()).app.audit.title };
@@ -42,7 +43,7 @@ export default async function AuditPage({
   const filtered = Object.values(filters).some(Boolean);
   const api = await authedApi();
   const page = await loadOrNotFound(() => api.listAudit(org, { ...query, limit: 50 }));
-  const base = `/${encodeURIComponent(org)}/audit`;
+  const base = pathsFor(org).data.audit;
   return (
     <>
       <h1>{t.title}</h1>

@@ -7,6 +7,7 @@ import { EXPORT_PURPOSES, type ExportMode } from "@/lib/api/exports";
 import { formatDateTime } from "@/lib/format";
 import { useText } from "@/lib/i18n/provider";
 import { exportsErrorMessage } from "@/messages/exports";
+import { orgPaths } from "@/lib/paths";
 
 type SessionsResult = { ok: true; sessions: { id: string; startedAt: string }[] } | ActionFailure;
 
@@ -15,8 +16,8 @@ export interface ShareCaseDialogProps {
   canIdentified: boolean;
   create: (form: FormData) => Promise<ActionResult<{ id: string }>>;
   loadSessions: () => Promise<SessionsResult>;
-  /** `/[org]/exports`: the created export opens at `${exportsHref}/${id}`. */
-  exportsHref: string;
+  /** `/{org}` (see `orgBase`): the created export opens at `data.export(id)` under it. */
+  orgPath: string;
 }
 
 /**
@@ -24,7 +25,7 @@ export interface ShareCaseDialogProps {
  * format logic (UI-2); the one check made here is the backend's own `case-consent-missing` rule, refused before the
  * request with the API's message so a clinician is not sent round-trip for an empty field.
  */
-export function ShareCaseDialog({ canIdentified, create, loadSessions, exportsHref }: ShareCaseDialogProps) {
+export function ShareCaseDialog({ canIdentified, create, loadSessions, orgPath }: ShareCaseDialogProps) {
   const text = useText();
   const t = text.exports.shareCase;
   const [open, setOpen] = useState(false);
@@ -91,7 +92,7 @@ export function ShareCaseDialog({ canIdentified, create, loadSessions, exportsHr
       </div>
       {createdId ? (
         <p role="status">
-          {t.created} <Link href={`${exportsHref}/${encodeURIComponent(createdId)}`}>{t.view}</Link>
+          {t.created} <Link href={orgPaths(orgPath).data.export(createdId)}>{t.view}</Link>
         </p>
       ) : null}
       {open ? (

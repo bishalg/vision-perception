@@ -5,7 +5,7 @@
  * carry the strict policy, stamp the request's nonce on every script it serves, and hydrate.
  */
 import type { Page, Response } from "@playwright/test";
-import { expect, test, login, loginToOverview, MOCK_ORG_ID } from "./helpers";
+import { expect, test, login, loginToOverview, MOCK_ORG_ID, paths, OVERVIEW_URL, navTo } from "./helpers";
 
 const HSTS = "max-age=63072000; includeSubDomains";
 const nonceOf = (csp: string) => /'nonce-([^']+)'/.exec(csp)?.[1];
@@ -50,7 +50,7 @@ test("login page: strict policy, nonced scripts, hydrated", async ({ page }) => 
 });
 
 test("proxy redirects carry the policy and HSTS", async ({ request }) => {
-  const res = await request.get("/some-org/overview", { maxRedirects: 0 });
+  const res = await request.get("/some-org/clinic/overview", { maxRedirects: 0 });
   expect(res.status()).toBe(307);
   expect(res.headers()["location"]).toContain("/login?next=");
   expect(res.headers()["content-security-policy"]).toMatch(/script-src 'self' 'nonce-[^']+' 'strict-dynamic'/);
@@ -59,13 +59,13 @@ test("proxy redirects carry the policy and HSTS", async ({ request }) => {
 
 test("org overview after sign-in", async ({ page }) => {
   const org = await loginToOverview(page);
-  await expectStrictDocument(await page.goto(`/${org}/overview`));
+  await expectStrictDocument(await page.goto(paths(org).clinic.overview));
   await expectHydrated(page);
 });
 
 test("devices: enrol-code QR renders under the policy", async ({ page }) => {
   const org = await loginToOverview(page);
-  await expectStrictDocument(await page.goto(`/${org}/devices`));
+  await expectStrictDocument(await page.goto(paths(org).admin.devices));
   await page.getByRole("button", { name: "Generate enrol code" }).click();
   const code = page.getByTestId("enrol-code");
   await expect(code).toHaveText(/\S{4,}/);
@@ -76,11 +76,11 @@ test("devices: enrol-code QR renders under the policy", async ({ page }) => {
 test("participant print view", async ({ page }) => {
   test.setTimeout(180_000);
   await login(page, "clinician@example.org");
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page).toHaveURL(OVERVIEW_URL);
   const org = new URL(page.url()).pathname.split("/")[1]!;
-  await page.goto(`/${org}/participants`);
+  await page.goto(paths(org).clinic.participants);
   await page.locator("table.data tbody tr").first().getByRole("link").first().click();
-  await expect(page).toHaveURL(new RegExp(`/${org}/participants/[0-9a-f-]{36}$`), { timeout: 90_000 });
+  await expect(page).toHaveURL(new RegExp(`${paths(org).clinic.participants}/[0-9a-f-]{36}$`), { timeout: 90_000 });
   await page.getByRole("link", { name: "Print summary" }).click();
   await expect(page.getByRole("button", { name: "Print" })).toBeVisible();
   // Load the print view as a document too, so its raw HTML is checked.
@@ -95,7 +95,7 @@ test("scoring-profile editor loads asd_wasm under the policy", async ({ page }) 
   await login(page, "superadmin@example.org");
   await page.getByLabel("Organisation id").fill(MOCK_ORG_ID);
   await page.getByRole("button", { name: "Switch" }).click();
-  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Scoring", exact: true }).click();
+  await navTo(page, "Configuration", "Scoring");
   await page.getByRole("link", { name: /New draft from / }).click();
   await expect(page.getByText(/core unavailable/i)).toHaveCount(0);
   expect((await wasmLoaded).ok()).toBe(true);
@@ -105,7 +105,7 @@ test("scoring-profile editor loads asd_wasm under the policy", async ({ page }) 
 test("research workbench: registry form, preview cards and SVG charts load under the policy", async ({ page }) => {
   const wasmLoaded = page.waitForResponse((r) => r.url().includes("/asd-wasm/asd_wasm_bg.wasm"));
   await login(page, "researcher@example.org");
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page).toHaveURL(OVERVIEW_URL);
   const org = new URL(page.url()).pathname.split("/")[1]!;
   await page.goto(`/${org}/research/experiments`);
   await page.getByRole("link", { name: "Lower I-VT threshold" }).click();
@@ -121,7 +121,7 @@ test("research workbench: registry form, preview cards and SVG charts load under
 
 test("research runs: the 625-cell sweep heatmaps and the age tables render under the policy", async ({ page }) => {
   await login(page, "researcher@example.org");
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page).toHaveURL(OVERVIEW_URL);
   const org = new URL(page.url()).pathname.split("/")[1]!;
   // Seeded in mock/research.ts (WP-X.9): a two-axis param_sweep run and an age_profile run.
   await expectStrictDocument(await page.goto(`/${org}/research/runs/a0000000-0000-4000-8000-000000000004`));
@@ -134,7 +134,7 @@ test("research runs: the 625-cell sweep heatmaps and the age tables render under
 
 test("unmatched URL: 404 page is rendered per request, nonced and hydrated", async ({ page }) => {
   const org = await loginToOverview(page);
-  for (const path of [`/${org}/no-such-page`, `/${org}/sessions/x/y/z`]) {
+  for (const path of [`/${org}/no-such-page`, `${paths(org).clinic.sessions}/x/y/z`]) {
     const res = await page.goto(path);
     expect(res!.status()).toBe(404);
     await expectStrictDocument(res);

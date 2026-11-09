@@ -8,7 +8,7 @@
  * The Report tab must offer the download for a live (TrueDepth) capture: the server renders
  * the report from the stored record, whatever `report_pdf_available` (device upload) says.
  */
-import { expect, test } from "../helpers";
+import { expect, test, paths } from "../helpers";
 
 const env = (name: string): string => {
   const v = process.env[name];
@@ -25,19 +25,19 @@ test("clinician: login -> sessions list -> 1.7 detail (Quality, Report) -> workl
   await page.getByLabel("Email").fill(env("E2E_EMAIL"));
   await page.getByLabel("Password").fill(env("E2E_PASSWORD"));
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(new RegExp(`/${org}/overview$`), { timeout: 120_000 });
+  await expect(page).toHaveURL(new RegExp(`${paths(org).clinic.overview}$`), { timeout: 120_000 });
 
   // WP-C.17 (AUTH-12): a clinician without two-step sign-in is in grace; login set the deadline, shown on the nudge.
   // The past-deadline `required` path needs an aged database row, so the Rust tests (totp_policy.rs) cover it.
   await expect(page.getByTestId("totp-nudge")).toContainText(/Set it up by .+\d/);
 
   // Sessions list holds the ingested 1.7 session; open it.
-  await page.goto(`/${org}/sessions`);
+  await page.goto(paths(org).clinic.sessions);
   await expect(page.getByRole("heading", { name: "Sessions", level: 1 })).toBeVisible();
-  const link = page.locator(`table.data tbody tr a[href^="/${org}/sessions/${s17}"]`).first();
+  const link = page.locator(`table.data tbody tr a[href^="${paths(org).clinic.sessions}/${s17}"]`).first();
   await expect(link).toBeVisible();
   await link.click();
-  await expect(page).toHaveURL(new RegExp(`/${org}/sessions/${s17}`), { timeout: 120_000 });
+  await expect(page).toHaveURL(new RegExp(`${paths(org).clinic.sessions}/${s17}`), { timeout: 120_000 });
   await expect(page.getByRole("region", { name: "Composite", exact: true })).toBeVisible();
 
   // Quality tab: the 1.7 tracking-quality record is rendered.
@@ -56,7 +56,7 @@ test("clinician: login -> sessions list -> 1.7 detail (Quality, Report) -> workl
   expect((await pdf.body()).subarray(0, 4).toString()).toBe("%PDF");
 
   // Worklist: the unsigned 1.6 session is waiting.
-  await page.goto(`/${org}/worklist`);
+  await page.goto(paths(org).clinic.worklist);
   await expect(page.getByRole("heading", { name: "Worklist", level: 1 })).toBeVisible();
-  await expect(page.locator(`a[href^="/${org}/sessions/${s16}"]`).first()).toBeVisible();
+  await expect(page.locator(`a[href^="${paths(org).clinic.sessions}/${s16}"]`).first()).toBeVisible();
 });

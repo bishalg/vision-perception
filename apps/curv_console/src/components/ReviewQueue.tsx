@@ -16,6 +16,7 @@ import {
 import { useText } from "@/lib/i18n/provider";
 import { enumLabel } from "@/messages/domain";
 import { FlagBadge } from "./FlagBadge";
+import { pathsFor } from "@/lib/paths";
 
 /** The session columns the queue shows next to each item (fetched by the page; null when unavailable). */
 export interface ReviewSessionInfo {
@@ -74,8 +75,7 @@ export function ReviewQueue({
   }, [picking]);
 
   const current = rows[Math.min(selected, rows.length - 1)];
-  const sessionHref = (r: ReviewRow) =>
-    `/${encodeURIComponent(orgId)}/sessions/${encodeURIComponent(r.item.session_id)}`;
+  const sessionHref = (r: ReviewRow) => pathsFor(orgId).clinic.session(r.item.session_id);
 
   const run = useCallback(
     (action: TriageAction, label?: CaptureIssueLabel) => {

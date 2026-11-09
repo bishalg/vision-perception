@@ -1,4 +1,5 @@
 import { expect, test as base, type Page } from "@playwright/test";
+import { pathsFor, type OrgPaths } from "../src/lib/paths";
 
 /**
  * CSP-3: every page a test opens reports `securitypolicyviolation` events (page and worker-free main frame; the
@@ -52,9 +53,44 @@ export async function login(page: Page, email = EMAIL, password = PASSWORD): Pro
   await page.getByRole("button", { name: "Sign in" }).click();
 }
 
+/** WP-C.23 (N-4): every console URL in a spec comes from `src/lib/paths.ts` (`paths(org).clinic.sessions`, ...). */
+export function paths(org: string): OrgPaths {
+  return pathsFor(org);
+}
+
+/** The landing page after sign-in: `/{org}/clinic/overview`. */
+export const OVERVIEW_URL = /\/[0-9a-f-]{36}\/clinic\/overview$/;
+
+/** Top-bar division labels (spec 03 §3a). */
+export type DivisionName = "Clinic" | "Research" | "Configuration" | "Data" | "Administration";
+
+/** The top bar's division links. */
+export const mainNav = (page: Page) => page.getByRole("navigation", { name: "Main navigation" });
+
+/** The sidebar of a division (its `nav` is labelled with the division's name). */
+export const sideNav = (page: Page, division: DivisionName) => page.getByRole("navigation", { name: division, exact: true });
+
+/** Open a page the way a user does: the division in the top bar, then the item in its sidebar. */
+export async function navTo(page: Page, division: DivisionName, item: string): Promise<void> {
+  const divisionLink = mainNav(page).getByRole("link", { name: division, exact: true });
+  await divisionLink.click();
+  await expect(divisionLink).toHaveAttribute("aria-current", "true");
+  const link = sideNav(page, division).getByRole("link", { name: item, exact: true });
+  const href = (await link.getAttribute("href"))!;
+  await link.click();
+  // Wait for the client navigation, so the next step acts on the new page.
+  await expect(page).toHaveURL((u) => u.pathname === href);
+  await expect(link).toHaveAttribute("aria-current", "page");
+}
+
+/** Open the Account menu (top right): Account security and Sign out live there. */
+export async function openAccountMenu(page: Page): Promise<void> {
+  await page.locator("summary", { hasText: /^Account$/ }).click();
+}
+
 /** Log in as the default user and wait for the org overview. Returns the org id from the URL. */
 export async function loginToOverview(page: Page): Promise<string> {
   await login(page);
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page).toHaveURL(OVERVIEW_URL);
   return new URL(page.url()).pathname.split("/")[1]!;
 }

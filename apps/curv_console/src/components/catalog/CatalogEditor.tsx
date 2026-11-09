@@ -20,6 +20,7 @@ import { BatteryPanel } from "./BatteryPanel";
 import s from "./catalog.module.css";
 import { catalogFailureText, type CatalogResult } from "./types";
 import { useText } from "@/lib/i18n/provider";
+import { pathsFor } from "@/lib/paths";
 
 
 export interface DraftInput {
@@ -180,7 +181,7 @@ export function CatalogEditor({
     startTransition(async () => {
       const r = await save({ version: version.trim(), ...(notes.trim() ? { notes: notes.trim() } : {}), body: catalog });
       if (r.ok) {
-        router.push(`/${encodeURIComponent(orgId)}/config/catalog/${encodeURIComponent(r.version)}?created=1`);
+        router.push(`${pathsFor(orgId).config.docVersion("catalog", r.version)}?created=1`);
         return;
       }
       const { fields, general } = serverFieldErrors(r.params ?? []);
@@ -406,7 +407,7 @@ export function CatalogEditor({
         ) : null}
         <div className={s.row}>
           <button type="button" onClick={submit} disabled={pending}>{pending ? e.saving : e.submit}</button>
-          <a href={`/${encodeURIComponent(orgId)}/config/catalog`}>{e.cancel}</a>
+          <a href={pathsFor(orgId).config.catalog}>{e.cancel}</a>
         </div>
       </section>
     </div>

@@ -9,6 +9,7 @@ import { parseCursor, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { composeBundleAction } from "../docActions";
+import { pathsFor, type ConfigDocSegment } from "@/lib/paths";
 
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -17,7 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t.title };
 }
 
-const SEGMENT: Record<ConfigDocumentKind, string> = {
+const SEGMENT: Record<ConfigDocumentKind, ConfigDocSegment> = {
   stimulus_catalog: "catalog",
   normative_baselines: "baselines",
   scoring_profile: "scoring",
@@ -51,7 +52,7 @@ export default async function BundlesPage({
       loadOrNotFound(() => api.listConfigDocuments(k, { status: "published", limit: 1 })).then((p) => p.items[0]),
     ),
   ]);
-  const o = `/${encodeURIComponent(org)}/config`;
+  const cp = pathsFor(org).config;
   const ready = published.every(Boolean);
 
   return (
@@ -66,7 +67,7 @@ export default async function BundlesPage({
             return (
               <div key={k}>
                 <dt>{t.kinds[k]}</dt>
-                <dd>{d ? <Link href={`${o}/${SEGMENT[k]}/${encodeURIComponent(d.version)}`}>{d.version}</Link> : t.missing}</dd>
+                <dd>{d ? <Link href={cp.docVersion(SEGMENT[k], d.version)}>{d.version}</Link> : t.missing}</dd>
               </div>
             );
           })}
@@ -94,9 +95,9 @@ export default async function BundlesPage({
               {page.items.map((b) => (
                 <tr key={b.id}>
                   <td>{b.bundle_version}</td>
-                  <td><Link href={`${o}/catalog/${encodeURIComponent(b.catalog_version)}`}>{b.catalog_version}</Link></td>
-                  <td><Link href={`${o}/baselines/${encodeURIComponent(b.baselines_version)}`}>{b.baselines_version}</Link></td>
-                  <td><Link href={`${o}/scoring/${encodeURIComponent(b.scoring_profile_version)}`}>{b.scoring_profile_version}</Link></td>
+                  <td><Link href={cp.docVersion("catalog", b.catalog_version)}>{b.catalog_version}</Link></td>
+                  <td><Link href={cp.docVersion("baselines", b.baselines_version)}>{b.baselines_version}</Link></td>
+                  <td><Link href={cp.docVersion("scoring", b.scoring_profile_version)}>{b.scoring_profile_version}</Link></td>
                   <td>{b.key_id}</td>
                   <td>{formatDateTime(b.published_at)}</td>
                 </tr>
@@ -108,8 +109,8 @@ export default async function BundlesPage({
         <p className="muted">{t.empty}</p>
       )}
       <nav className="pagination" aria-label={tx.config.pagination}>
-        {cursor ? <Link href={`${o}/bundles`}>{t.first}</Link> : null}
-        {page.next_cursor ? <Link rel="next" href={`${o}/bundles${toSearch({ cursor: page.next_cursor })}`}>{t.next}</Link> : null}
+        {cursor ? <Link href={cp.bundles}>{t.first}</Link> : null}
+        {page.next_cursor ? <Link rel="next" href={`${cp.bundles}${toSearch({ cursor: page.next_cursor })}`}>{t.next}</Link> : null}
       </nav>
     </>
   );

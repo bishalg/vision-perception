@@ -1,14 +1,13 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
-import { logoutAction } from "@/app/login/actions";
-import { NavLinks } from "@/components/NavLinks";
-import { OrgSwitcher } from "@/components/OrgSwitcher";
+import { AppShell } from "@/components/shell/AppShell";
 import { enforcementRedirect } from "@/lib/auth/guard";
 import { authedApi, currentRole, homeOrg, recentOrgs } from "@/lib/auth/server";
 import { loadOrNotFound } from "@/lib/loaders";
-import { navLinks } from "@/lib/nav";
+import { navTree } from "@/lib/nav";
 import { getText } from "@/lib/i18n/server";
+import { orgBase, orgPaths } from "@/lib/paths";
 
 export default async function OrgLayout({
   children,
@@ -45,21 +44,14 @@ export default async function OrgLayout({
     { id: orgInfo.id, name: orgInfo.name },
     ...resolved.flatMap((r) => (r.status === "fulfilled" ? [{ id: r.value.id, name: r.value.name }] : [])),
   ];
-  const base = `/${encodeURIComponent(org)}`;
-  const links = navLinks(base, role, t);
+  const base = orgBase(org);
   return (
-    <div className="shell">
-      <header className="topbar">
-        <span className="brand">{t.app.appName}</span>
-        <OrgSwitcher current={orgInfo.id} orgs={orgs} allowAnyId={role === "superadmin"} />
-        <NavLinks links={links} label={t.app.nav.main} />
-        <form action={logoutAction}>
-          <button type="submit" className="link-button">
-            {t.app.nav.signOut}
-          </button>
-        </form>
-      </header>
-      <main className="content">{children}</main>
-    </div>
+    <AppShell
+      tree={navTree(base, role, t)}
+      accountSecurityHref={orgPaths(base).account.security}
+      orgs={{ current: orgInfo.id, list: orgs, allowAnyId: role === "superadmin" }}
+    >
+      {children}
+    </AppShell>
   );
 }

@@ -48,7 +48,6 @@
 .dialog { border: 1px solid var(--border); border-radius: 10px; padding: 1rem; max-width: 36rem; width: calc(100% - 2rem); background: var(--bg, var(--surface)); color: var(--text); }
 .dialog::backdrop { background: rgba(0, 0, 0, .4); }
 .row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: end; }
-.subnav { display: flex; flex-wrap: wrap; gap: 1rem; margin: 0 0 1rem; }
 
 /* WP-X.7 runs and cohorts pages: charts are inline SVG, coloured by tokens, never by a library. */
 .chart { margin: 0; display: grid; gap: .25rem; }

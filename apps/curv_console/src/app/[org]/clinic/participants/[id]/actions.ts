@@ -11,6 +11,7 @@ import {
   encounterKindSchema,
 } from "@/lib/api";
 import { authedApi } from "@/lib/auth/server";
+import { pathsFor } from "@/lib/paths";
 
 function failure(err: unknown): ActionFailure {
   if (err instanceof ApiError) {
@@ -25,8 +26,7 @@ const text = (form: FormData, name: string): string => {
   return typeof v === "string" ? v : "";
 };
 
-const page = (orgId: string, participantId: string) =>
-  `/${encodeURIComponent(orgId)}/participants/${encodeURIComponent(participantId)}`;
+const page = (orgId: string, participantId: string) => pathsFor(orgId).clinic.participant(participantId);
 
 /** POST /v1/participants/{id}/notes. The note text is sent once and never returned or put in a URL (UI-4). */
 export async function createNoteAction(orgId: string, participantId: string, form: FormData): Promise<ActionResult> {

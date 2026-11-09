@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useText } from "@/lib/i18n/provider";
+import { pathsFor } from "@/lib/paths";
 
 /** Slug of the 403 a user past their two-step sign-in deadline gets (AUTH-13). */
 const ENROLMENT_REQUIRED = "totp-enrolment-required";
@@ -20,7 +21,7 @@ export default function OrgError({ error, reset }: { error: Error & { slug?: str
       <div className="panel" role="alert">
         <h1>{t.title}</h1>
         <p>{t.enrolmentRequired}</p>
-        <Link href={`/${encodeURIComponent(org)}/settings/security?required=1`}>{t.securityLink}</Link>
+        <Link href={`${pathsFor(org).account.security}?required=1`}>{t.securityLink}</Link>
       </div>
     );
   }

@@ -1,5 +1,5 @@
 /** WP-C.15 TOTP enrolment (mock mode: password "demo", the mock accepts code 123456). */
-import { expect, test, LIVE, MOCK_ORG_ID, login, loginToOverview } from "./helpers";
+import { expect, test, LIVE, MOCK_ORG_ID, login, loginToOverview, paths, OVERVIEW_URL, sideNav, openAccountMenu } from "./helpers";
 
 test.skip(LIVE, "the mock backend's fixed TOTP code");
 
@@ -7,8 +7,9 @@ const CODE = "123456";
 
 test("enrol -> confirm -> enrolled, then turn off", async ({ page }) => {
   const org = await loginToOverview(page);
-  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Account security" }).click();
-  await expect(page).toHaveURL(new RegExp(`/${org}/settings/security$`));
+  await openAccountMenu(page);
+  await page.getByRole("link", { name: "Account security" }).click();
+  await expect(page).toHaveURL(new RegExp(`${paths(org).account.security}$`));
   await expect(page.getByRole("heading", { name: "Account security", level: 1 })).toBeVisible();
 
   const setup = page.getByRole("region", { name: "Set up two-step sign-in" });
@@ -52,23 +53,23 @@ test("enrol -> confirm -> enrolled, then turn off", async ({ page }) => {
 test.describe("mandatory two-step sign-in (WP-C.17, acceptance 26)", () => {
   test("grace: the overview nudge shows the deadline and nothing is locked", async ({ page }) => {
     await login(page, "grace@example.org");
-    await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+    await expect(page).toHaveURL(OVERVIEW_URL);
     await expect(page.getByTestId("totp-nudge")).toContainText(/Set it up by .*2026/);
     // Grace never locks the user out.
-    await page.goto(`/${MOCK_ORG_ID}/sessions`);
+    await page.goto(paths(MOCK_ORG_ID).clinic.sessions);
     await expect(page.getByRole("heading", { name: "Sessions", level: 1 })).toBeVisible();
   });
 
   test("a viewer never sees the nudge", async ({ page }) => {
     await login(page, "viewer@example.org");
-    await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+    await expect(page).toHaveURL(OVERVIEW_URL);
     await expect(page.getByRole("heading", { name: "Overview", level: 1 })).toBeVisible();
     await expect(page.getByTestId("totp-nudge")).toHaveCount(0);
   });
 
   test("required: redirected to the security page, enrols, then the overview renders", async ({ page }) => {
     await login(page, "required@example.org");
-    const security = new RegExp(`/${MOCK_ORG_ID}/settings/security\\?required=1$`);
+    const security = new RegExp(`${paths(MOCK_ORG_ID).account.security}\\?required=1$`);
     await expect(page).toHaveURL(security);
     await expect(page.getByTestId("totp-required")).toContainText("Your role requires two-step sign-in");
 
@@ -87,8 +88,8 @@ test.describe("mandatory two-step sign-in (WP-C.17, acceptance 26)", () => {
     await expect(page.getByRole("status")).toHaveText(/Two-step sign-in is on/);
     await expect(page.getByTestId("totp-required")).toHaveCount(0);
 
-    await page.goto(`/${MOCK_ORG_ID}/overview`);
-    await expect(page).toHaveURL(new RegExp(`/${MOCK_ORG_ID}/overview$`));
+    await page.goto(paths(MOCK_ORG_ID).clinic.overview);
+    await expect(page).toHaveURL(new RegExp(`${paths(MOCK_ORG_ID).clinic.overview}$`));
     await expect(page.getByRole("heading", { name: "Overview", level: 1 })).toBeVisible();
     await expect(page.getByTestId("totp-nudge")).toHaveCount(0);
   });
@@ -105,11 +106,11 @@ test.describe("automatic logoff (WP-C.21, acceptance 23)", () => {
   test("idle for 31 minutes: the next page load lands on /login?reason=idle", async ({ page }) => {
     const org = await loginToOverview(page);
     await stamp(page, "curv_last_seen", 31 * 60_000);
-    await page.goto(`/${org}/sessions`);
+    await page.goto(paths(org).clinic.sessions);
     await expect(page).toHaveURL(/\/login\?reason=idle/);
     await expect(page.getByTestId("logoff-reason")).toContainText("idle for 30 minutes");
     // The auth cookies are gone: a protected page now needs a fresh login.
-    await page.goto(`/${org}/overview`);
+    await page.goto(paths(org).clinic.overview);
     await expect(page).toHaveURL(/\/login/);
   });
 
@@ -117,9 +118,9 @@ test.describe("automatic logoff (WP-C.21, acceptance 23)", () => {
     const org = await loginToOverview(page);
     // Prove the click below is a client-side (RSC) navigation: a full load would reset this marker.
     await page.evaluate(() => ((window as unknown as { __spa: boolean }).__spa = true));
-    const nav = page.getByRole("navigation", { name: "Main navigation" });
+    const nav = sideNav(page, "Clinic");
     await nav.getByRole("link", { name: "Sessions" }).click();
-    await expect(page).toHaveURL(new RegExp(`/${org}/sessions`));
+    await expect(page).toHaveURL(new RegExp(paths(org).clinic.sessions));
     expect(await page.evaluate(() => (window as unknown as { __spa?: boolean }).__spa)).toBe(true);
 
     await stamp(page, "curv_last_seen", 31 * 60_000);
@@ -129,13 +130,13 @@ test.describe("automatic logoff (WP-C.21, acceptance 23)", () => {
     const names = (await page.context().cookies()).map((c) => c.name);
     expect(names).not.toContain("curv_access");
     expect(names).not.toContain("curv_refresh");
-    await page.goto(`/${org}/overview`);
+    await page.goto(paths(org).clinic.overview);
     await expect(page).toHaveURL(/\/login/);
   });
 
   test("an idle tab's server action does not run and lands on /login?reason=idle", async ({ page }) => {
     const org = await loginToOverview(page);
-    await page.goto(`/${org}/settings/security`);
+    await page.goto(paths(org).account.security);
     const setup = page.getByRole("region", { name: "Set up two-step sign-in" });
     await setup.getByLabel("Current password").fill("demo");
     await stamp(page, "curv_last_seen", 31 * 60_000);
@@ -148,7 +149,7 @@ test.describe("automatic logoff (WP-C.21, acceptance 23)", () => {
   test("an active session older than 12 hours lands on /login?reason=expired", async ({ page }) => {
     const org = await loginToOverview(page);
     await stamp(page, "curv_login_at", 13 * 3_600_000);
-    await page.goto(`/${org}/sessions`);
+    await page.goto(paths(org).clinic.sessions);
     await expect(page).toHaveURL(/\/login\?reason=expired/);
     await expect(page.getByTestId("logoff-reason")).toContainText("12-hour limit");
   });
@@ -156,16 +157,16 @@ test.describe("automatic logoff (WP-C.21, acceptance 23)", () => {
   test("a recent session is untouched", async ({ page }) => {
     const org = await loginToOverview(page);
     await stamp(page, "curv_last_seen", 5 * 60_000);
-    await page.goto(`/${org}/sessions`);
+    await page.goto(paths(org).clinic.sessions);
     await expect(page.getByRole("heading", { name: "Sessions", level: 1 })).toBeVisible();
   });
 });
 
 test("the security page renders in Nepali for a user whose locale is ne", async ({ page }) => {
   await login(page, "admin+ne@example.org");
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
-  const org = new URL(page.url()).pathname.split("/")[1];
-  await page.goto(`/${org}/settings/security`);
+  await expect(page).toHaveURL(OVERVIEW_URL);
+  const org = new URL(page.url()).pathname.split("/")[1]!;
+  await page.goto(paths(org).account.security);
   await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");
   await expect(page.getByRole("heading", { name: "खाता सुरक्षा", level: 1 })).toBeVisible();
   await expect(page.getByRole("region", { name: "दुई-चरण साइन इन मिलाउनुहोस्" })).toBeVisible();

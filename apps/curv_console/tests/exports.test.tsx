@@ -13,7 +13,7 @@ import { resolveExportDownload } from "@/lib/api/exportFile";
 import type { Export, Integration } from "@/lib/api/exports";
 import { createLiveClient } from "@/lib/api/live";
 import { createMockClient, MOCK_ORG_ID } from "@/lib/api/mock";
-import { navLinks } from "@/lib/nav";
+import { navItems } from "@/lib/nav";
 import { can } from "@/lib/permissions";
 
 const json = (body: unknown, status = 200) =>
@@ -185,11 +185,11 @@ describe("RBAC and navigation", () => {
   });
 
   it("shows the exports and integrations links by role", () => {
-    const hrefs = (r: Parameters<typeof navLinks>[1]) => navLinks("/o", r).map((l) => l.href);
-    expect(hrefs("researcher")).toContain("/o/exports");
-    expect(hrefs("researcher")).not.toContain("/o/settings/integrations");
-    expect(hrefs("admin")).toEqual(expect.arrayContaining(["/o/exports", "/o/settings/integrations"]));
-    expect(hrefs("viewer")).not.toContain("/o/exports");
+    const hrefs = (r: Parameters<typeof navItems>[1]) => navItems("/o", r).map((l) => l.href);
+    expect(hrefs("researcher")).toContain("/o/data/exports");
+    expect(hrefs("researcher")).not.toContain("/o/admin/integrations");
+    expect(hrefs("admin")).toEqual(expect.arrayContaining(["/o/data/exports", "/o/admin/integrations"]));
+    expect(hrefs("viewer")).not.toContain("/o/data/exports");
   });
 });
 
@@ -201,7 +201,7 @@ describe("components", () => {
     const rows = screen.getAllByRole("row").slice(1);
     expect(within(rows[0]!).getByText("Ready")).toHaveClass("badge-green");
     expect(within(rows[0]!).getByText(/No research consent 3, Withdrawn 1|Withdrawn 1, No research consent 3/)).toBeInTheDocument();
-    expect(within(rows[0]!).getByRole("link", { name: "Details" })).toHaveAttribute("href", "/org-1/exports/4f0e7a52-6a8c-4c3e-9a51-2f6b0c1d9e01");
+    expect(within(rows[0]!).getByRole("link", { name: "Details" })).toHaveAttribute("href", "/org-1/data/exports/4f0e7a52-6a8c-4c3e-9a51-2f6b0c1d9e01");
     expect(within(rows[1]!).getByText("Expired")).toBeInTheDocument();
     expect(within(rows[2]!).getByText("Failed")).toHaveClass("badge-red");
     const forms = container.querySelectorAll("form");
@@ -243,7 +243,7 @@ describe("components", () => {
     // React resets the form after an action, so the required reason is typed again.
     await user.type(screen.getByLabelText(/^Reason/), "Cohort extract for the study");
     await user.click(screen.getByRole("button", { name: "Request export" }));
-    expect(await screen.findByRole("link", { name: "View export" })).toHaveAttribute("href", "/org-1/exports/new-id");
+    expect(await screen.findByRole("link", { name: "View export" })).toHaveAttribute("href", "/org-1/data/exports/new-id");
   });
 
   it("DeliveriesTable shows status, attempts and the error class", () => {
@@ -254,13 +254,14 @@ describe("components", () => {
           status: "failed", attempts: 5, created_at: "2026-10-31T09:00:00.000Z", updated_at: "2026-10-31T09:10:00.000Z",
           last_error_class: "connect-failed",
         }]}
-        exportBase="/o/exports"
+        orgPath="/o"
+        linkExports
       />,
     );
     const row = screen.getAllByRole("row")[1]!;
     expect(within(row).getByText("Failed")).toHaveClass("badge-red");
     expect(within(row).getByText("connect-failed")).toBeInTheDocument();
-    expect(within(row).getByRole("link", { name: "4f0e7a52" })).toHaveAttribute("href", "/o/exports/4f0e7a52-0000");
+    expect(within(row).getByRole("link", { name: "4f0e7a52" })).toHaveAttribute("href", "/o/data/exports/4f0e7a52-0000");
   });
 
   it("IntegrationsTable shows credential and last-test state without any secret", () => {
@@ -287,7 +288,7 @@ describe("components", () => {
     expect(screen.queryByLabelText("Receiver URL (https only)")).toBeNull();
     await user.type(screen.getByLabelText("Name"), "Drop");
     await user.click(screen.getByRole("button", { name: "Add destination" }));
-    expect(await screen.findByRole("link", { name: "Open it to set up its credential." })).toHaveAttribute("href", "/o/settings/integrations/new");
+    expect(await screen.findByRole("link", { name: "Open it to set up its credential." })).toHaveAttribute("href", "/o/admin/integrations/new");
     unmount();
     render(<IntegrationForm save={save} orgId="o" existing={integration({ config: { url: "https://x.example.org/h", events: ["review.finalized"] } })} />);
     expect(screen.getByLabelText("Receiver URL (https only)")).toHaveValue("https://x.example.org/h");

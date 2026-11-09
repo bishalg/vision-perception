@@ -35,6 +35,7 @@ import {
   searchMrnAction,
   unlinkMrnAction,
 } from "./actions";
+import { orgBase, orgPaths } from "@/lib/paths";
 
 // No token, MRN or note text in the title (UI-4).
 export async function generateMetadata(): Promise<Metadata> {
@@ -83,13 +84,13 @@ export default async function ParticipantWorkspacePage({
   ];
   const tab = parseWorkspaceTab(sp.tab, tabs);
   const cursor = parseCursor(sp);
-  const orgPath = `/${encodeURIComponent(org)}`;
-  const basePath = `${orgPath}/participants/${encodeURIComponent(id)}`;
+  const orgPath = orgBase(org);
+  const basePath = orgPaths(orgPath).clinic.participant(id);
 
   return (
     <>
       <p className="no-print">
-        <Link href={`${orgPath}/participants`}>{t.back}</Link>
+        <Link href={orgPaths(orgPath).clinic.participants}>{t.back}</Link>
       </p>
       <ParticipantHeader participant={participant} />
       <ParticipantTabs basePath={basePath} active={tab} tabs={tabs} />

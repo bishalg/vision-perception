@@ -7,6 +7,7 @@ import { useText } from "@/lib/i18n/provider";
 import { AGE_GROUPS } from "@/messages/participant";
 import { ageBracketLabel, languageLabel } from "./labels";
 import { failureText, type ActionResult } from "./types";
+import { orgPaths } from "@/lib/paths";
 
 /** The languages a participant can be recorded with. */
 const LANGUAGES = ["en", "ne"] as const;
@@ -92,7 +93,7 @@ export function CreateParticipantDialog({
             <QrCode value={created.qr_payload} label={t.qrLabel(created.participant_token)} />
             <p className="muted">{t.qrHelp}</p>
             <div className="dialog-actions no-print">
-              <Link ref={done} className="button" href={`${orgPath}/participants/${encodeURIComponent(created.id)}`}>
+              <Link ref={done} className="button" href={orgPaths(orgPath).clinic.participant(created.id)}>
                 {t.open}
               </Link>
               <button type="button" className="secondary" onClick={() => window.print()}>{t.print}</button>

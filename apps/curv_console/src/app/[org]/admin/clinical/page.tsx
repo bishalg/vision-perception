@@ -5,7 +5,7 @@ import { authedApi, currentRole } from "@/lib/auth/server";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { getText } from "@/lib/i18n/server";
-import { saveClinicalSettingsAction, saveProfileAction } from "../../worklist/actions";
+import { saveClinicalSettingsAction, saveProfileAction } from "../../clinic/worklist/actions";
 import { saveOrgLanguageAction } from "./actions";
 
 export async function generateMetadata(): Promise<Metadata> {

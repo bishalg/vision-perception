@@ -6,6 +6,7 @@ import { parseCursor, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { getText } from "@/lib/i18n/server";
+import { pathsFor } from "@/lib/paths";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getText()).privacy.erasure.title };
@@ -32,7 +33,7 @@ export default async function ErasurePage({
   const cursor = parseCursor(await searchParams);
   const api = await authedApi();
   const page = await loadOrNotFound(() => api.listErasureRequests(org, { cursor, limit: 50 }));
-  const base = `/${encodeURIComponent(org)}/erasure`;
+  const base = pathsFor(org).data.erasure;
   return (
     <>
       <h1>{t.title}</h1>

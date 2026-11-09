@@ -105,20 +105,20 @@ describe("saveLanguageAction", () => {
   };
 
   it("calls updateMyProfile({ locale }) and revalidates the layout", async () => {
-    const { saveLanguageAction } = await import("@/app/[org]/settings/security/actions");
+    const { saveLanguageAction } = await import("@/app/[org]/account/security/actions");
     expect(await saveLanguageAction(fd("ne"))).toEqual({ ok: true });
     expect(updateMyProfile).toHaveBeenCalledWith({ locale: "ne" });
     expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
   });
 
   it("sends null for the organisation default", async () => {
-    const { saveLanguageAction } = await import("@/app/[org]/settings/security/actions");
+    const { saveLanguageAction } = await import("@/app/[org]/account/security/actions");
     expect(await saveLanguageAction(fd(""))).toEqual({ ok: true });
     expect(updateMyProfile).toHaveBeenCalledWith({ locale: null });
   });
 
   it("refuses an unknown locale without calling the backend", async () => {
-    const { saveLanguageAction } = await import("@/app/[org]/settings/security/actions");
+    const { saveLanguageAction } = await import("@/app/[org]/account/security/actions");
     expect(await saveLanguageAction(fd("fr"))).toMatchObject({ ok: false, status: 400 });
     expect(updateMyProfile).not.toHaveBeenCalled();
   });
@@ -126,7 +126,7 @@ describe("saveLanguageAction", () => {
 
 describe("org default language", () => {
   it("saveOrgLanguageAction patches default_locale and revalidates", async () => {
-    const { saveOrgLanguageAction } = await import("@/app/[org]/settings/clinical/actions");
+    const { saveOrgLanguageAction } = await import("@/app/[org]/admin/clinical/actions");
     const f = new FormData();
     f.set("default_locale", "ne");
     expect(await saveOrgLanguageAction("o1", f)).toEqual({ ok: true });
@@ -140,7 +140,7 @@ describe("org default language", () => {
   });
 
   it("the settings page shows the org selector to admin and hides it for clinician", async () => {
-    const { default: Page } = await import("@/app/[org]/settings/clinical/page");
+    const { default: Page } = await import("@/app/[org]/admin/clinical/page");
     getMyProfile.mockResolvedValue({ id: "u", email: "a@b.c", role: "admin", display_name: "A", professional_registration: "R" });
     render(await Page({ params: Promise.resolve({ org: "o" }) }));
     expect(screen.getByRole("region", { name: "Default language for this organisation" })).toBeInTheDocument();
@@ -156,7 +156,7 @@ describe("org default language", () => {
   });
 
   it("the security page shows the user selector to every role with the org's language in the first option", async () => {
-    const { default: Page } = await import("@/app/[org]/settings/security/page");
+    const { default: Page } = await import("@/app/[org]/account/security/page");
     role = "clinician";
     getMyProfile.mockResolvedValue({ id: "u", email: "a@b.c", role: "clinician", locale: "en", effective_locale: "en", totp_enrolled: false });
     render(await Page({ params: Promise.resolve({ org: "o" }), searchParams: Promise.resolve({}) }));

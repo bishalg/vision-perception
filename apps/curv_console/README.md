@@ -9,8 +9,8 @@ Next.js 16 (App Router), TypeScript strict, zod. Plain CSS (light/dark), strings
 
 - WP-C.1: login / refresh / logout (httpOnly cookies), org switcher, Overview KPIs (`/orgs/{id}/metrics`), Sessions
   table (filters + cursor pagination), Session detail (Clips, Quality, Report tabs).
-- WP-C.2: Review queue (`/[org]/review`: reasons, status/reason filters, SLA age, triage actions Confirm / Flag capture
-  issue / Exclude from norms / Dismiss, keyboard j/k, 1-4, o) and Devices (`/[org]/devices`: list, revoke, generate an
+- WP-C.2: Review queue (`/[org]/clinic/review`: reasons, status/reason filters, SLA age, triage actions Confirm / Flag capture
+  issue / Exclude from norms / Dismiss, keyboard j/k, 1-4, o) and Devices (`/[org]/admin/devices`: list, revoke, generate an
   enrol code shown as text and QR).
 
 Editors, participants, users, audit etc. arrive in later WP-C packages.
@@ -118,7 +118,14 @@ CI: `.github/workflows/console.yml`.
   stamp the nonce. zod is imported only through `src/lib/zod.ts` (ESLint enforces it), which sets `jitless` so zod
   never probes `new Function` under the policy.
 - URLs carry only opaque ids; filter state lives in the query string (the filter form is a plain GET form).
-- Mutations are server actions (`src/app/[org]/review/actions.ts`, `src/app/[org]/devices/actions.ts`) that call the
+- Navigation and routes (WP-C.23, spec 03 §3a): five divisions in the top bar (Clinic, Research, Configuration, Data,
+  Administration), the current division's pages in the sidebar (a drawer below 1024 px), Account security and Sign
+  out in the Account menu. Route folders mirror the tree: `src/app/[org]/{clinic,research,config,data,admin,account}`.
+  Every URL comes from `src/lib/paths.ts` (`pathsFor(org).clinic.session(id)`, ...), the menu from `navTree()` in
+  `src/lib/nav.ts`; the shell lives in `src/components/shell/` (own CSS module, one props contract, used only by the
+  org layout). The old flat paths (`/[org]/sessions`, `/[org]/settings/security`, ...) answer 308 for one release
+  (`next.config.ts`).
+- Mutations are server actions (`src/app/[org]/clinic/review/actions.ts`, `src/app/[org]/admin/devices/actions.ts`) that call the
   typed client with the caller's token and revalidate the affected pages.
 - Role: the login response's role is kept in an httpOnly `curv_role` cookie and used only to hide controls
   (`src/lib/permissions.ts` mirrors the backend RBAC matrix); the backend enforces RBAC on every call.
@@ -206,8 +213,8 @@ The console ships `en` and `ne` (ADR-0013). Plumbing only so far; the wave packa
 - **Formatting:** `src/lib/format.ts` takes a locale (default `en`); digits are Latin and the calendar Gregorian in both locales.
 - **Mock mode:** a `+ne` tag on the email's local part (`clinician+ne@example.org`) gives that user the locale `ne`;
   `PATCH /users/me` stores a locale per mock user; an untagged user follows the mock org's `default_locale`, then `Accept-Language`.
-- **Language selectors (WP-L.1c, I18N-20):** `/[org]/settings/security` has the user's own "Language" (`PATCH /users/me`
-  `locale`; "System default" sends `null`), `/[org]/settings/clinical` has the organisation's "Default language"
+- **Language selectors (WP-L.1c, I18N-20):** `/[org]/account/security` has the user's own "Language" (`PATCH /users/me`
+  `locale`; "System default" sends `null`), `/[org]/admin/clinical` has the organisation's "Default language"
   (`default_locale`, owner/admin only). Both are server actions that `revalidatePath("/", "layout")`, so the page
   re-renders in the chosen language. `/share/*` negotiates from `Accept-Language` only and shows the English
   "This is not a diagnostic tool." in addition to the Nepali text.

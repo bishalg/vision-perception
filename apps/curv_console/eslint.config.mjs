@@ -8,32 +8,24 @@ import curv from "./eslint-rules/no-literal-ui-props.mjs";
  * made clean here and they become `error`. The integration commit after the wave replaces this with `error` globally.
  */
 const LITERAL_GATE_ERROR_DIRS = [
-  // L.1a: console shell, sessions, review, devices, audit.
+  // WP-C.23 route groups (`[`/`]` are escaped: the entries are globs). The groups hold the pages made clean by
+  // L.1a (overview, sessions, review, devices, audit), L.1b (participants, worklist, follow-ups), L.1c (exports,
+  // erasure, retention, integrations, clinical, security) and L.1d (users, config, research).
   "src/app/login",
-  "src/app/[[]org]/overview",
-  "src/app/[[]org]/sessions",
-  "src/app/[[]org]/review",
-  "src/app/[[]org]/devices",
-  "src/app/[[]org]/audit",
-  // L.1c exports, privacy, security, settings, share (`[`/`]` are escaped: the entries are globs)
-  "src/app/\\[org\\]/exports",
-  "src/app/\\[org\\]/erasure",
-  "src/app/\\[org\\]/settings",
+  "src/app/\\[org\\]/clinic",
+  "src/app/\\[org\\]/data",
+  "src/app/\\[org\\]/admin",
+  "src/app/\\[org\\]/account",
+  "src/app/\\[org\\]/config",
+  "src/app/\\[org\\]/research",
   "src/app/share",
   "src/app/api",
+  "src/components/shell",
   "src/components/exports",
   "src/components/privacy",
   "src/components/security",
-  // L.1b: participants, encounters, attachments, follow-ups, worklist, clinical review (`[org]` is escaped: it is a glob).
-  "src/app/\\[org\\]/participants",
-  "src/app/\\[org\\]/worklist",
-  "src/app/\\[org\\]/follow-ups",
   "src/components/participant",
   "src/components/clinical",
-  // L.1d: users, catalog, config, research (a bracket is a glob class, so the dynamic segment is escaped)
-  "src/app/\\[org\\]/users",
-  "src/app/\\[org\\]/config",
-  "src/app/\\[org\\]/research",
   "src/components/catalog",
   "src/components/config",
   "src/components/research",

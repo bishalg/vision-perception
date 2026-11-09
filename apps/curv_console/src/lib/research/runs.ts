@@ -1,5 +1,6 @@
 /** The part of an analysis run that changes while it executes: what the status panel polls (WP-X.7). */
 import type { AnalysisRun, JobProgress, RunStatus } from "@/lib/api/research";
+import { pathsFor } from "@/lib/paths";
 
 export interface RunSnapshot {
   status: RunStatus;
@@ -13,5 +14,5 @@ export function snapshotOf(run: Pick<AnalysisRun, "status" | "progress" | "error
 
 /** `/{org}/exports?format=analysis_results&run={id}`: the export form with the run pre-filled (RUN-7). */
 export function exportPrefillHref(orgId: string, runId: string): string {
-  return `/${encodeURIComponent(orgId)}/exports?format=analysis_results&run=${encodeURIComponent(runId)}`;
+  return `${pathsFor(orgId).data.exports}?format=analysis_results&run=${encodeURIComponent(runId)}`;
 }

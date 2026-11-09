@@ -6,6 +6,7 @@ import { authedApi } from "@/lib/auth/server";
 import { getText } from "@/lib/i18n/server";
 import { parseCursor, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
+import { pathsFor } from "@/lib/paths";
 
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -32,15 +33,15 @@ export default async function RunSessionsPage({
   const run = await loadOrNotFound(() => api.getAnalysisRun(id));
   if (run.org_id !== org) notFound();
   const page = await loadOrNotFound(() => api.listAnalysisRunSessions(id, { limit: PAGE, ...(cursor ? { cursor } : {}) }));
-  const base = `/${encodeURIComponent(org)}/research/runs/${encodeURIComponent(id)}`;
+  const base = pathsFor(org).research.runSessions(id);
   return (
     <>
-      <p><Link href={base}>{t.backToRun}</Link></p>
+      <p><Link href={pathsFor(org).research.run(id)}>{t.backToRun}</Link></p>
       <h1>{t.sessionsTitle}</h1>
       <RunSessionsTable rows={page.items} text={tx.research} />
       <nav className="pagination" aria-label={t.sessionsTitle}>
-        {cursor ? <Link href={`${base}/sessions`}>{t.first}</Link> : null}
-        {page.next_cursor ? <Link rel="next" href={`${base}/sessions${toSearch({ cursor: page.next_cursor })}`}>{t.next}</Link> : null}
+        {cursor ? <Link href={base}>{t.first}</Link> : null}
+        {page.next_cursor ? <Link rel="next" href={`${base}${toSearch({ cursor: page.next_cursor })}`}>{t.next}</Link> : null}
       </nav>
     </>
   );

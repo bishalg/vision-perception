@@ -28,7 +28,7 @@ describe("components", () => {
     const { rerender } = render(<SessionsTable orgId={MOCK_ORG_ID} sessions={items} />);
     expect(screen.getAllByRole("row")).toHaveLength(4);
     const first = screen.getAllByRole("link")[0]!;
-    expect(first).toHaveAttribute("href", `/${MOCK_ORG_ID}/sessions/${items[0]!.id}`);
+    expect(first).toHaveAttribute("href", `/${MOCK_ORG_ID}/clinic/sessions/${items[0]!.id}`);
     rerender(<SessionsTable orgId={MOCK_ORG_ID} sessions={[]} />);
     expect(screen.getByText("No sessions match these filters.")).toBeInTheDocument();
   });
@@ -42,8 +42,8 @@ describe("components", () => {
 
   it("Pagination links keep filters and add the cursor; first-page link drops it", () => {
     render(<Pagination orgId="o" query={{ flag: "red", cursor: "20" }} nextCursor="40" shown={20} total={64} />);
-    expect(screen.getByRole("link", { name: "Next page" })).toHaveAttribute("href", "/o/sessions?flag=red&cursor=40");
-    expect(screen.getByRole("link", { name: "First page" })).toHaveAttribute("href", "/o/sessions?flag=red");
+    expect(screen.getByRole("link", { name: "Next page" })).toHaveAttribute("href", "/o/clinic/sessions?flag=red&cursor=40");
+    expect(screen.getByRole("link", { name: "First page" })).toHaveAttribute("href", "/o/clinic/sessions?flag=red");
     expect(screen.getByText("Showing 20 of 64 sessions")).toBeInTheDocument();
   });
 

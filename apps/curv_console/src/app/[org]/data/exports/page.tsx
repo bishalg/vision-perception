@@ -8,6 +8,7 @@ import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { getText } from "@/lib/i18n/server";
 import { createExportAction } from "./actions";
+import { pathsFor } from "@/lib/paths";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getText()).exports.exports.title };
@@ -42,7 +43,7 @@ export default async function ExportsPage({
   const destinations = can(role, "export.create")
     ? (await loadOrNotFound(() => api.listExportDestinations(org))).items.filter((i) => i.status === "active")
     : [];
-  const base = `/${encodeURIComponent(org)}/exports`;
+  const base = pathsFor(org).data.exports;
   return (
     <>
       <h1>{t.title}</h1>

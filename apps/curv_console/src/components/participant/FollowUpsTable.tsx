@@ -6,6 +6,7 @@ import type { FollowUp } from "@/lib/api/emr";
 import { formatDateTime } from "@/lib/format";
 import { useText } from "@/lib/i18n/provider";
 import { failureText, type ActionResult } from "./types";
+import { orgPaths } from "@/lib/paths";
 
 /** Earliest due first, whatever order the rows arrived in (the API already sorts; this keeps the page honest). */
 export function sortFollowUps(rows: FollowUp[]): FollowUp[] {
@@ -83,7 +84,7 @@ export function FollowUpsTable({
                   {overdue ? <span className="badge badge-red">{t.overdueBadge}</span> : today ? <span className="badge badge-yellow">{t.todayBadge}</span> : null}
                 </td>
                 <td data-label={c.participant}>
-                  <Link href={`${orgPath}/participants/${encodeURIComponent(f.participant_id)}?tab=visits`}>{f.participant_token}</Link>
+                  <Link href={`${orgPaths(orgPath).clinic.participant(f.participant_id)}?tab=visits`}>{f.participant_token}</Link>
                 </td>
                 <td data-label={c.visit}>
                   {text.participant.visits.visitLine(text.domain.enumLabel(text.locale, "encounter_kind", f.kind), formatDateTime(f.occurred_at))}

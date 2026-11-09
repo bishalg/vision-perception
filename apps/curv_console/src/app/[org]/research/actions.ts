@@ -14,6 +14,7 @@ import {
 } from "@/lib/api/research";
 import { authedApi } from "@/lib/auth/server";
 import type { ResearchFailure, ResearchResult } from "@/lib/research/result";
+import { pathsFor } from "@/lib/paths";
 
 function failure(err: unknown): ResearchFailure {
   if (err instanceof ApiError) {
@@ -29,7 +30,7 @@ function failure(err: unknown): ResearchFailure {
 }
 
 const invalid: ResearchFailure = { ok: false, slug: "validation-failed", status: 400 };
-const base = (org: string) => `/${encodeURIComponent(org)}/research`;
+const base = (org: string) => pathsFor(org).research.root;
 const id = z.string().min(1).max(200);
 const profileDoc = z.record(z.string(), z.unknown());
 
@@ -49,7 +50,7 @@ export async function createExperimentAction(orgId: string, input: unknown): Pro
       ...(parsed.data.description ? { description: parsed.data.description } : {}),
       ...(parsed.data.from_experiment_id ? { from_experiment_id: parsed.data.from_experiment_id } : {}),
     });
-    revalidatePath(`${base(orgId)}/experiments`);
+    revalidatePath(pathsFor(orgId).research.experiments);
     return { ok: true, id: created.id };
   } catch (err) {
     return failure(err);
@@ -73,7 +74,7 @@ export async function updateExperimentAction(
   if (!parsed.success || !Number.isInteger(rowVersion)) return invalid;
   try {
     const e = await (await authedApi()).updateExperiment(experimentId, rowVersion, parsed.data);
-    revalidatePath(`${base(orgId)}/experiments`);
+    revalidatePath(pathsFor(orgId).research.experiments);
     return { ok: true, rowVersion: e.row_version, profileHash: e.profile_hash };
   } catch (err) {
     return failure(err);
@@ -96,7 +97,7 @@ export async function promoteAction(
       version: parsed.data.version,
       ...(parsed.data.notes ? { notes: parsed.data.notes } : {}),
     });
-    revalidatePath(`${base(orgId)}/experiments`);
+    revalidatePath(pathsFor(orgId).research.experiments);
     return { ok: true, version: doc.version };
   } catch (err) {
     return failure(err);

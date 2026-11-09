@@ -6,6 +6,7 @@ import { getText } from "@/lib/i18n/server";
 import { can } from "@/lib/permissions";
 import { previewCohortAction } from "../../actions";
 import { createCohortAction } from "../actions";
+import { pathsFor } from "@/lib/paths";
 
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -18,7 +19,7 @@ export default async function NewCohortPage({ params }: { params: Promise<{ org:
   const tx = await getText();
   const t = tx.research.cohorts;
   const { org } = await params;
-  const back = `/${encodeURIComponent(org)}/research/cohorts`;
+  const back = pathsFor(org).research.cohorts;
   const allowed = can(await currentRole(), "analysis.run");
   return (
     <>

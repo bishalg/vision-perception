@@ -5,6 +5,7 @@ import { ApiError, roleSchema, userStatusSchema } from "@/lib/api";
 import { authedApi, currentRole } from "@/lib/auth/server";
 import { can } from "@/lib/permissions";
 import type { TotpResetResult, UserActionResult } from "@/components/UsersAdmin";
+import { pathsFor } from "@/lib/paths";
 
 function failure(err: unknown): UserActionResult {
   if (err instanceof ApiError) {
@@ -33,7 +34,7 @@ export async function createUserAction(orgId: string, formData: FormData): Promi
         ? { professional_registration: text(formData, "professional_registration") }
         : {}),
     });
-    revalidatePath(`/${encodeURIComponent(orgId)}/users`);
+    revalidatePath(pathsFor(orgId).admin.users);
     return { ok: true, email: user.email };
   } catch (err) {
     return failure(err);
@@ -54,7 +55,7 @@ export async function resetTotpAction(orgId: string, userId: string, formData: F
       ...(code ? { totp_code: code } : {}),
       reason: text(formData, "reason"),
     });
-    revalidatePath(`/${encodeURIComponent(orgId)}/users`);
+    revalidatePath(pathsFor(orgId).admin.users);
     return { ok: true };
   } catch (err) {
     if (err instanceof ApiError) {
@@ -75,7 +76,7 @@ export async function updateUserAction(orgId: string, userId: string, formData: 
   try {
     const api = await authedApi();
     const user = await api.updateUser(orgId, userId, { role: role.data, ...(status?.success ? { status: status.data } : {}) });
-    revalidatePath(`/${encodeURIComponent(orgId)}/users`);
+    revalidatePath(pathsFor(orgId).admin.users);
     return { ok: true, email: user.email };
   } catch (err) {
     return failure(err);

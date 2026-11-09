@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { ApiError, getApi } from "@/lib/api";
 import { safeNextPath } from "@/lib/auth/guard";
 import { clearSession, readRefreshToken, writeSession } from "@/lib/auth/server";
+import { pathsFor } from "@/lib/paths";
 
 export interface LoginState {
   error: "failed" | "unavailable" | "totp-invalid" | "rate-limited" | "server-problem" | null;
@@ -30,7 +31,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     await writeSession(pair);
     const org = pair.user.org_id;
     // The superadmin has no home org: without `next` it lands on `/`, which routes by the org cookie.
-    target = next ?? (org === null ? "/" : `/${encodeURIComponent(org)}/overview`);
+    target = next ?? (org === null ? "/" : pathsFor(org).clinic.overview);
   } catch (err) {
     if (err instanceof ApiError) {
       if (err.status === 401 && err.slug === "totp-required") return { error: null, step: "totp" };

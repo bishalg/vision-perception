@@ -9,6 +9,7 @@ import { failureText, type ResearchResult } from "@/lib/research/result";
 import type { ResearchMessages } from "@/messages/research";
 import { CohortPreview } from "./CohortPreview";
 import r from "./research.module.css";
+import { pathsFor } from "@/lib/paths";
 
 const toggle = (list: string[], v: string) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
 
@@ -73,7 +74,7 @@ export function CohortForm({
     if (!name.trim()) return setError(t.nameRequired);
     start(async () => {
       const res = await create({ name: name.trim(), definition: definition() });
-      if (res.ok) router.push(`/${encodeURIComponent(orgId)}/research/cohorts/${encodeURIComponent(res.id)}`);
+      if (res.ok) router.push(pathsFor(orgId).research.cohort(res.id));
       else setError(failureText(res, text));
     });
   }

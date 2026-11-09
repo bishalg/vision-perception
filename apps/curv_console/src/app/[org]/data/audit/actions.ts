@@ -6,10 +6,11 @@ import type { ExportFilters, ExportRequest } from "@/lib/api/exports";
 import { authedApi, currentRole } from "@/lib/auth/server";
 import { can } from "@/lib/permissions";
 import { auditExportFilters } from "./filters";
+import { pathsFor } from "@/lib/paths";
 
 const text = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 
-/** `/{org}/audit?...` with the current filters kept, so a failed export leaves the page as it was. */
+/** `/{org}/data/audit?...` with the current filters kept, so a failed export leaves the page as it was. */
 function backTo(orgId: string, filters: ExportFilters, error: string): string {
   const p = new URLSearchParams();
   if (filters.actor_id) p.set("actor_id", filters.actor_id);
@@ -17,7 +18,7 @@ function backTo(orgId: string, filters: ExportFilters, error: string): string {
   if (filters.from) p.set("from", filters.from);
   if (filters.to) p.set("to", filters.to);
   p.set("export_error", error);
-  return `/${encodeURIComponent(orgId)}/audit?${p.toString()}`;
+  return `${pathsFor(orgId).data.audit}?${p.toString()}`;
 }
 
 /**
@@ -42,5 +43,5 @@ export async function exportAuditCsvAction(orgId: string, formData: FormData): P
   } catch (err) {
     redirect(backTo(orgId, filters, err instanceof ApiError && err.slug ? err.slug : "unavailable"));
   }
-  redirect(`/${encodeURIComponent(orgId)}/exports/${encodeURIComponent(id)}`);
+  redirect(pathsFor(orgId).data.export(id));
 }

@@ -6,6 +6,7 @@ import { formatDateTime } from "@/lib/format";
 import { getText } from "@/lib/i18n/server";
 import { parseCursor, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
+import { pathsFor } from "@/lib/paths";
 
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -37,7 +38,8 @@ export default async function RunsPage({
     api.listExperiments(org, { limit: 100 }).then((p) => new Map(p.items.map((e) => [e.id, e.name]))).catch(() => new Map<string, string>()),
     api.listCohorts(org, { limit: 100 }).then((p) => new Map(p.items.map((c) => [c.id, c.name]))).catch(() => new Map<string, string>()),
   ]);
-  const base = `/${encodeURIComponent(org)}/research/runs`;
+  const rp = pathsFor(org).research;
+  const base = rp.runs;
   return (
     <>
       <h1>{t.title}</h1>
@@ -66,7 +68,7 @@ export default async function RunsPage({
             <tbody>
               {page.items.map((run) => (
                 <tr key={run.id}>
-                  <td><Link href={`${base}/${encodeURIComponent(run.id)}`}>{tx.research.runStatus[run.status]}</Link></td>
+                  <td><Link href={rp.run(run.id)}>{tx.research.runStatus[run.status]}</Link></td>
                   <td>{t.kind[run.kind]}</td>
                   <td>{(run.experiment_id && experiments.get(run.experiment_id)) || t.unknownExperiment}</td>
                   <td>{(run.cohort_id && cohorts.get(run.cohort_id)) || t.unknownCohort}</td>

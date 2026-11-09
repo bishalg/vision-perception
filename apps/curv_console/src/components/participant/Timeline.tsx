@@ -6,6 +6,7 @@ import { formatDateTime } from "@/lib/format";
 import { useText } from "@/lib/i18n/provider";
 import { FlagBadge } from "../FlagBadge";
 import { describeEntry, entryTab, flagOf } from "./timelineQuery";
+import { orgPaths } from "@/lib/paths";
 
 // The query parsers and `describeEntry` live in `timelineQuery.ts` (a server page calls them); re-exported here.
 export { describeEntry, parseDay, parseKinds } from "./timelineQuery";
@@ -93,7 +94,7 @@ export function Timeline({
                   <td data-label={t.cols.detail}>
                     {flagOf(e) ? <FlagBadge flag={flagOf(e)!} /> : describeEntry(e, text)}{" "}
                     {e.kind === "session" ? (
-                      <Link href={`${orgPath}/sessions/${encodeURIComponent(e.id)}`}>{t.openSession}</Link>
+                      <Link href={orgPaths(orgPath).clinic.session(e.id)}>{t.openSession}</Link>
                     ) : entryTab(e.kind) ? (
                       <Link href={`${basePath}?tab=${entryTab(e.kind)}`}>
                         {entryTab(e.kind) === "visits" ? t.openVisits : t.openFiles}

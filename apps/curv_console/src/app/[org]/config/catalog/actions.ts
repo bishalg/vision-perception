@@ -6,6 +6,7 @@ import type { CatalogFailure, CatalogResult } from "@/components/catalog/types";
 import { ApiError } from "@/lib/api";
 import { stimulusCatalogSchema, type ConfigTransition } from "@/lib/api/catalog";
 import { authedApi } from "@/lib/auth/server";
+import { pathsFor } from "@/lib/paths";
 
 function failure(err: unknown): CatalogFailure {
   if (err instanceof ApiError) {
@@ -26,7 +27,7 @@ const draftInput = z.object({
   body: stimulusCatalogSchema,
 });
 
-const base = (orgId: string) => `/${encodeURIComponent(orgId)}/config/catalog`;
+const base = (orgId: string) => pathsFor(orgId).config.catalog;
 
 /** POST /v1/config/stimulus_catalog. The body is checked for shape here; the backend validates it fully. */
 export async function createCatalogDraftAction(orgId: string, input: unknown): Promise<CatalogResult<{ version: string }>> {
@@ -58,7 +59,7 @@ export async function transitionCatalogAction(
   try {
     const doc = await (await authedApi()).transitionConfigDocument("stimulus_catalog", version, step);
     revalidatePath(base(orgId));
-    revalidatePath(`${base(orgId)}/${encodeURIComponent(version)}`);
+    revalidatePath(pathsFor(orgId).config.docVersion("catalog", version));
     return { ok: true, status: doc.status };
   } catch (err) {
     return failure(err);

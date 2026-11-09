@@ -23,7 +23,7 @@ import {
   setBattery,
   shapeErrors,
 } from "@/lib/catalog";
-import { navLinks } from "@/lib/nav";
+import { navItems } from "@/lib/nav";
 import { can } from "@/lib/permissions";
 import { catalogText } from "@/messages/catalog";
 
@@ -311,7 +311,7 @@ describe("RBAC", () => {
     const readers = ROLES.filter((r) => can(r, "config.read"));
     expect(readers).toEqual(["owner", "admin", "clinician", "researcher", "superadmin"]);
     expect(ROLES.filter((r) => can(r, "config.manage"))).toEqual(["superadmin"]);
-    expect(navLinks("/o", "researcher").some((l) => l.href === "/o/config/catalog")).toBe(true);
-    expect(navLinks("/o", "viewer").some((l) => l.href === "/o/config/catalog")).toBe(false);
+    expect(navItems("/o", "researcher").some((l) => l.href === "/o/config/catalog")).toBe(true);
+    expect(navItems("/o", "viewer").some((l) => l.href === "/o/config/catalog")).toBe(false);
   });
 });

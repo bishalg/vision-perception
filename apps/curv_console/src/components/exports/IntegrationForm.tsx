@@ -16,6 +16,7 @@ import {
 } from "@/lib/api/exports";
 import { useText } from "@/lib/i18n/provider";
 import { failureText, type ActionResult } from "./types";
+import { pathsFor } from "@/lib/paths";
 
 /** Kinds that can be created today (the backend refuses the others until their channels exist). */
 const CREATABLE: IntegrationKind[] = ["webhook", "sftp"];
@@ -153,7 +154,7 @@ export function IntegrationForm({
         <p role="status">
           {existing ? t.saved : t.created}{" "}
           {state.id ? (
-            <Link href={`/${encodeURIComponent(orgId)}/settings/integrations/${encodeURIComponent(state.id)}`}>{t.openCreated}</Link>
+            <Link href={pathsFor(orgId).admin.integration(state.id)}>{t.openCreated}</Link>
           ) : null}
         </p>
       ) : null}

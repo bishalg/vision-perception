@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Export, ExportStatus } from "@/lib/api/exports";
 import { formatDateTime } from "@/lib/format";
 import { useText } from "@/lib/i18n/provider";
+import { pathsFor } from "@/lib/paths";
 
 const STATUS_BADGE: Record<ExportStatus, string> = {
   queued: "badge-yellow",
@@ -73,7 +74,7 @@ export function ExportsTable({ orgId, items, canDownload }: { orgId: string; ite
               <td data-label={c.expires}>{e.expires_at ? formatDateTime(e.expires_at) : "-"}</td>
               <td data-label={c.actions}>
                 <span className="confirm">
-                  <Link href={`/${encodeURIComponent(orgId)}/exports/${encodeURIComponent(e.id)}`}>{t.details}</Link>
+                  <Link href={pathsFor(orgId).data.export(e.id)}>{t.details}</Link>
                   {canDownload && e.status === "succeeded" ? <DownloadForm exportId={e.id} /> : null}
                 </span>
               </td>

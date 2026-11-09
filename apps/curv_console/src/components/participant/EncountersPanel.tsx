@@ -8,6 +8,7 @@ import { formatDateTime } from "@/lib/format";
 import { useText } from "@/lib/i18n/provider";
 import { EncounterForm, type SessionChoice } from "./EncounterForm";
 import { failureText, type ActionResult } from "./types";
+import { orgPaths } from "@/lib/paths";
 
 /** Server actions of the Visits tab, already bound to the org and participant. */
 export interface VisitActions {
@@ -103,7 +104,7 @@ function VisitItem({
           <ul className="plain">
             {linked.map((s) => (
               <li key={s}>
-                <Link href={`${p.orgPath}/sessions/${encodeURIComponent(s)}`}>{sessionLabel(s)}</Link>{" "}
+                <Link href={orgPaths(p.orgPath).clinic.session(s)}>{sessionLabel(s)}</Link>{" "}
                 {p.canWrite && open ? (
                   <button
                     type="button"

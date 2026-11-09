@@ -8,6 +8,7 @@ import { useText } from "@/lib/i18n/provider";
 import { AGE_GROUPS } from "@/messages/participant";
 import { ageBracketLabel } from "./labels";
 import { failureText, type ActionResult } from "./types";
+import { orgPaths } from "@/lib/paths";
 
 type Search = (form: FormData) => Promise<ActionResult<{ page: ParticipantSearchPage }>>;
 
@@ -135,7 +136,7 @@ export function ParticipantSearch({ search, canMrn, orgPath }: { search: Search;
                 {rows.map((p) => (
                   <tr key={p.id} data-testid="search-row">
                     <td data-label={c.token}>
-                      <Link href={`${orgPath}/participants/${encodeURIComponent(p.id)}`}>{p.participant_token}</Link>
+                      <Link href={orgPaths(orgPath).clinic.participant(p.id)}>{p.participant_token}</Link>
                     </td>
                     <td data-label={c.age}>{p.age_bracket_at_enrol ? ageBracketLabel(text.locale, p.age_bracket_at_enrol) : "-"}</td>
                     <td data-label={c.sessions}>{p.session_count}</td>

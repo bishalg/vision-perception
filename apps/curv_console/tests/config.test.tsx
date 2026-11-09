@@ -23,7 +23,7 @@ import {
   recordSandboxRun,
   summarizeSandbox,
 } from "@/lib/configDocs";
-import { navLinks } from "@/lib/nav";
+import { navItems } from "@/lib/nav";
 import { can } from "@/lib/permissions";
 import { configText } from "@/messages/config";
 import { HAS_WASM } from "./asdCoreNode";
@@ -130,9 +130,9 @@ describe("mock and live API", () => {
 describe("RBAC and navigation", () => {
   it("bundles are composed by owner, admin and superadmin; config pages are in the nav for readers", () => {
     expect(ROLES.filter((r) => can(r, "config.publish"))).toEqual(["owner", "admin", "superadmin"]);
-    const hrefs = navLinks("/o", "researcher").map((l) => l.href);
+    const hrefs = navItems("/o", "researcher").map((l) => l.href);
     for (const p of ["baselines", "scoring", "sandbox", "bundles"]) expect(hrefs).toContain(`/o/config/${p}`);
-    expect(navLinks("/o", "viewer").some((l) => l.href === "/o/config/sandbox")).toBe(false);
+    expect(navItems("/o", "viewer").some((l) => l.href === "/o/config/sandbox")).toBe(false);
   });
 });
 

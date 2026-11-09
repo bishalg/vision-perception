@@ -5,7 +5,7 @@ import { ReviewQueue, type ReviewRow } from "@/components/ReviewQueue";
 import { QrCode } from "@/components/QrCode";
 import { EnrolCodePanel } from "@/components/EnrolCodePanel";
 import { DevicesTable } from "@/components/DevicesTable";
-import { OrgSwitcher } from "@/components/OrgSwitcher";
+import { OrgSwitcher } from "@/components/shell/OrgSwitcher";
 import type { Device, ReviewItem } from "@/lib/api";
 
 const push = vi.fn();
@@ -42,7 +42,7 @@ describe("ReviewQueue", () => {
     expect(within(rows[0]!).getByText("Red flag")).toBeInTheDocument();
     expect(within(rows[0]!).getByText("Red")).toHaveClass("badge-red");
     expect(within(rows[0]!).getByText("1h 0m")).toBeInTheDocument();
-    expect(within(rows[0]!).getByRole("link", { name: "child-001" })).toHaveAttribute("href", "/o/sessions/S1");
+    expect(within(rows[0]!).getByRole("link", { name: "child-001" })).toHaveAttribute("href", "/o/clinic/sessions/S1");
     expect(selectedToken()).toBe("child-001");
   });
 
@@ -56,7 +56,7 @@ describe("ReviewQueue", () => {
     await user.keyboard("k");
     expect(selectedToken()).toBe("child-002");
     await user.keyboard("o");
-    expect(push).toHaveBeenCalledWith("/o/sessions/S2");
+    expect(push).toHaveBeenCalledWith("/o/clinic/sessions/S2");
   });
 
   it("key 1 confirms the selected item, removes it from an open-only view and announces it", async () => {
@@ -128,7 +128,7 @@ describe("ReviewQueue", () => {
     expect(screen.getByText("The queue is empty for these filters.")).toBeInTheDocument();
     unmount();
     render(<ReviewQueue orgId="o" rows={[{ item: row(1).item, session: null }]} canWrite now={NOW} triage={vi.fn()} />);
-    expect(screen.getByRole("link", { name: "S1" })).toHaveAttribute("href", "/o/sessions/S1");
+    expect(screen.getByRole("link", { name: "S1" })).toHaveAttribute("href", "/o/clinic/sessions/S1");
   });
 });
 

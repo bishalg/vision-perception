@@ -18,7 +18,7 @@ import type { AuditEntry, Device, SessionDetail, SessionSummary } from "@/lib/ap
 import { flagAssessmentText, flagCase } from "@/lib/flagAssessment";
 import { messagesFor } from "@/lib/i18n/messages";
 import { LocaleProvider } from "@/lib/i18n/provider";
-import { navLinks } from "@/lib/nav";
+import { navItems } from "@/lib/nav";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
 
@@ -147,10 +147,10 @@ describe("other components in ne", () => {
     expect(screen.getByRole("option", { name: "उत्तम" })).toBeInTheDocument();
   });
 
-  it("navLinks takes its labels from the bundle", () => {
-    const links = navLinks("/o", "owner", messagesFor("ne"));
-    expect(links.find((l) => l.href === "/o/overview")?.text).toBe("सारांश");
-    expect(links.find((l) => l.href === "/o/audit")?.text).toMatch(DEVANAGARI);
-    expect(navLinks("/o", "owner").find((l) => l.href === "/o/overview")?.text).toBe("Overview");
+  it("navItems takes its labels from the bundle", () => {
+    const links = navItems("/o", "owner", messagesFor("ne"));
+    expect(links.find((l) => l.href === "/o/clinic/overview")?.text).toBe("सारांश");
+    expect(links.find((l) => l.href === "/o/data/audit")?.text).toMatch(DEVANAGARI);
+    expect(navItems("/o", "owner").find((l) => l.href === "/o/clinic/overview")?.text).toBe("Overview");
   });
 });

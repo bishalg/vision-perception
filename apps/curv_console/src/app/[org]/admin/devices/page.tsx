@@ -8,6 +8,7 @@ import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { getText } from "@/lib/i18n/server";
 import { createEnrolCodeAction, revokeDeviceAction } from "./actions";
+import { pathsFor } from "@/lib/paths";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getText()).app.devices.title };
@@ -26,7 +27,7 @@ export default async function DevicesPage({
   const api = await authedApi();
   const role = await currentRole();
   const page = await loadOrNotFound(() => api.listDevices(org, { cursor, limit: 50 }));
-  const base = `/${encodeURIComponent(org)}/devices`;
+  const base = pathsFor(org).admin.devices;
   return (
     <>
       <h1>{t.devices.title}</h1>

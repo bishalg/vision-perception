@@ -7,6 +7,7 @@ import { parseCursor, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { assignableRoles, can } from "@/lib/permissions";
 import { createUserAction, resetTotpAction, updateUserAction } from "./actions";
+import { pathsFor } from "@/lib/paths";
 
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -42,7 +43,7 @@ export default async function UsersPage({
   ]);
   const canManage = can(role, "user.manage");
   const roles = assignableRoles(role);
-  const base = `/${encodeURIComponent(org)}/users`;
+  const base = pathsFor(org).admin.users;
   return (
     <>
       <h1>{t.title}</h1>

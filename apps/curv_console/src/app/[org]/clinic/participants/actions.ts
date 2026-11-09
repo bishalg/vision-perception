@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { ActionFailure, ActionResult } from "@/components/participant/types";
 import { ApiError, type ParticipantSearchPage } from "@/lib/api";
 import { authedApi } from "@/lib/auth/server";
+import { pathsFor } from "@/lib/paths";
 
 function failure(err: unknown): ActionFailure {
   if (err instanceof ApiError) {
@@ -44,7 +45,7 @@ export async function createParticipantAction(orgId: string, form: FormData): Pr
       ...(text(form, "consent_version") ? { consent_version: text(form, "consent_version") } : {}),
       ...(consentDay && day(consentDay, "start") ? { consent_at: day(consentDay, "start") } : {}),
     });
-    revalidatePath(`/${encodeURIComponent(orgId)}/participants`);
+    revalidatePath(pathsFor(orgId).clinic.participants);
     return { ok: true, participant: { id: p.id, participant_token: p.participant_token, qr_payload: p.qr_payload } };
   } catch (err) {
     return failure(err);

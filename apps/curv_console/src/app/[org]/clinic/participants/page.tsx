@@ -9,8 +9,9 @@ import { parseCursor, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { getText } from "@/lib/i18n/server";
-import { requestErasureAction } from "../privacy-actions";
+import { requestErasureAction } from "../../privacy-actions";
 import { createParticipantAction, searchParticipantsAction } from "./actions";
+import { orgBase, orgPaths } from "@/lib/paths";
 
 // No token or search value in the title (UI-4).
 export async function generateMetadata(): Promise<Metadata> {
@@ -31,8 +32,8 @@ export default async function ParticipantsPage({
   const api = await authedApi();
   const role = await currentRole();
   const page = await loadOrNotFound(() => api.listParticipants(org, { cursor, limit: 50 }));
-  const orgPath = `/${encodeURIComponent(org)}`;
-  const base = `${orgPath}/participants`;
+  const orgPath = orgBase(org);
+  const base = orgPaths(orgPath).clinic.participants;
   return (
     <>
       <div className="filter-actions">

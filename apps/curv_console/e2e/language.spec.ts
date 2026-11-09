@@ -5,16 +5,16 @@
  * The mock keeps the user's choice per e-mail and the org default in memory, so each test uses its own e-mail
  * (a `+tag` that is not a locale does not seed a language) and the org default is put back at the end.
  */
-import { expect, test, LIVE, MOCK_ORG_ID, login } from "./helpers";
+import { expect, test, LIVE, MOCK_ORG_ID, login, paths, OVERVIEW_URL } from "./helpers";
 
 test.skip(LIVE, "the mock backend's in-memory user and organisation locale");
 
-const SECURITY = `/${MOCK_ORG_ID}/settings/security`;
-const CLINICAL = `/${MOCK_ORG_ID}/settings/clinical`;
+const SECURITY = paths(MOCK_ORG_ID).account.security;
+const CLINICAL = paths(MOCK_ORG_ID).admin.clinical;
 
 test("a user picks their own language on the security page and goes back to the organisation default", async ({ page }) => {
   await login(page, `clinician+lang1x${Date.now()}@example.org`);
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page).toHaveURL(OVERVIEW_URL);
   await page.goto(SECURITY);
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   const panel = page.getByRole("region", { name: "Language", exact: true });
@@ -39,7 +39,7 @@ test("a user picks their own language on the security page and goes back to the 
 
 test("an admin sets the organisation's default language; a clinician follows it and has no org selector", async ({ page, browser }) => {
   await login(page, "admin+lang2@example.org");
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page).toHaveURL(OVERVIEW_URL);
   await page.goto(CLINICAL);
   const org = page.getByRole("region", { name: "Default language for this organisation" });
   await expect(org.getByRole("combobox", { name: "Default language" })).toHaveValue("en");
@@ -56,7 +56,7 @@ test("an admin sets the organisation's default language; a clinician follows it 
     const other = await browser.newContext();
     const clinician = await other.newPage();
     await login(clinician, "clinician+lang3@example.org");
-    await expect(clinician).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+    await expect(clinician).toHaveURL(OVERVIEW_URL);
     await clinician.goto(CLINICAL);
     await expect(clinician.locator("html")).toHaveAttribute("lang", "ne-NP");
     await expect(clinician.getByRole("combobox", { name: "पूर्वनिर्धारित भाषा" })).toHaveCount(0);

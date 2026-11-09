@@ -16,6 +16,7 @@ import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { DocLifecycle } from "./DocLifecycle";
 import { BaselinesView, DocDiffView, ScoringProfileView } from "./DocViews";
+import { pathsFor, type ConfigDocSegment } from "@/lib/paths";
 
 export async function DocVersionPage({
   org,
@@ -32,7 +33,7 @@ export async function DocVersionPage({
   const t = tx.config;
   const isProfile = kind === "scoring_profile";
   const text = isProfile ? t.scoring : t.baselines;
-  const segment = isProfile ? "scoring" : "baselines";
+  const segment: ConfigDocSegment = isProfile ? "scoring" : "baselines";
   const role = await currentRole();
   if (!can(role, "config.read")) {
     return (
@@ -53,8 +54,9 @@ export async function DocVersionPage({
   const profile = isProfile ? parseProfile(doc.body) : null;
   const set = isProfile ? null : parseBaselines(doc.body);
   const readable = Boolean(profile ?? set);
-  const base = `/${encodeURIComponent(org)}/config/${segment}`;
-  const sandboxHref = `/${encodeURIComponent(org)}/config/sandbox${toSearch(isProfile ? { profile: doc.version } : { baselines: doc.version })}`;
+  const cp = pathsFor(org).config;
+  const base = cp.doc(segment);
+  const sandboxHref = `${cp.sandbox}${toSearch(isProfile ? { profile: doc.version } : { baselines: doc.version })}`;
   const others = history.items.filter((d) => d.version !== version);
   const f = t.facts;
 
@@ -94,7 +96,7 @@ export async function DocVersionPage({
           />
           {readable ? (
             <p>
-              <Link className="button" href={`${base}/new${toSearch({ from: doc.version })}`}>{t.editAsDraft}</Link>
+              <Link className="button" href={`${cp.docNew(segment)}${toSearch({ from: doc.version })}`}>{t.editAsDraft}</Link>
             </p>
           ) : null}
         </div>

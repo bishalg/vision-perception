@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/components/participant/types";
 import { ApiError } from "@/lib/api";
 import { authedApi } from "@/lib/auth/server";
+import { pathsFor } from "@/lib/paths";
 
 /**
  * Mark one follow-up done from the list: `FollowUp` carries no row version, so read the visit first and send its
@@ -14,7 +15,7 @@ export async function markFollowUpDoneAction(orgId: string, encounterId: string)
     const api = await authedApi();
     const e = await api.getEncounter(encounterId);
     await api.updateEncounter(encounterId, e.row_version, { follow_up_done_at: new Date().toISOString() });
-    revalidatePath(`/${encodeURIComponent(orgId)}/follow-ups`);
+    revalidatePath(pathsFor(orgId).clinic.followUps);
     return { ok: true };
   } catch (err) {
     if (err instanceof ApiError) return { ok: false, slug: err.slug, status: err.status };

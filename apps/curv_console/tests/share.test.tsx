@@ -295,7 +295,7 @@ describe("ShareCaseDialog", () => {
 
   async function openDialog(props: Partial<Parameters<typeof ShareCaseDialog>[0]> = {}) {
     const create = vi.fn().mockResolvedValue({ ok: true, id: "e9" });
-    render(<ShareCaseDialog canIdentified create={create} loadSessions={sessions} exportsHref="/o/exports" {...props} />);
+    render(<ShareCaseDialog canIdentified create={create} loadSessions={sessions} orgPath="/o" {...props} />);
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "Share case" }));
     return { user, create, dialog: screen.getByRole("dialog", { name: "Share this case" }) };
@@ -324,7 +324,7 @@ describe("ShareCaseDialog", () => {
     expect(data.get("mode")).toBe("deidentified");
     expect(data.getAll("session_ids")).toEqual(["s1"]);
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.getByRole("link", { name: "Open the export to share it" })).toHaveAttribute("href", "/o/exports/e9");
+    expect(screen.getByRole("link", { name: "Open the export to share it" })).toHaveAttribute("href", "/o/data/exports/e9");
   });
 
   it("offers no identified mode to a role without export.identified, and shows the API's refusal", async () => {

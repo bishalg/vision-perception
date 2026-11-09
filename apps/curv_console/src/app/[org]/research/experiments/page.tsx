@@ -5,6 +5,7 @@ import { formatDateTime } from "@/lib/format";
 import { getText } from "@/lib/i18n/server";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
+import { pathsFor } from "@/lib/paths";
 
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -22,13 +23,13 @@ export default async function ExperimentsPage({ params }: { params: Promise<{ or
   const role = await currentRole();
   const api = await authedApi();
   const page = await loadOrNotFound(() => api.listExperiments(org, { limit: PAGE }));
-  const base = `/${encodeURIComponent(org)}/research/experiments`;
+  const rp = pathsFor(org).research;
   const canWrite = can(role, "experiment.write");
   return (
     <>
       <h1>{t.title}</h1>
       <p className="muted">{t.intro}</p>
-      {canWrite ? <p><Link href={`${base}/new`}>{t.newLink}</Link></p> : <p className="muted">{t.readOnly}</p>}
+      {canWrite ? <p><Link href={rp.newExperiment}>{t.newLink}</Link></p> : <p className="muted">{t.readOnly}</p>}
       {page.items.length === 0 ? (
         <p className="muted">{t.empty}</p>
       ) : (
@@ -40,7 +41,7 @@ export default async function ExperimentsPage({ params }: { params: Promise<{ or
             <tbody>
               {page.items.map((e) => (
                 <tr key={e.id}>
-                  <td><Link href={`${base}/${encodeURIComponent(e.id)}`}>{e.name}</Link></td>
+                  <td><Link href={rp.experiment(e.id)}>{e.name}</Link></td>
                   <td>{t.status[e.status]}</td>
                   <td>{e.base_profile_version}</td>
                   <td>{formatDateTime(e.updated_at)}</td>

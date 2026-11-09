@@ -17,6 +17,7 @@ import { ATTENTION_FLAGS, QUALITY_VERDICTS } from "@/lib/api/types";
 import { CLINICAL_STATES } from "@/lib/api/clinical";
 import { useText } from "@/lib/i18n/provider";
 import { failureText, type ActionResult } from "./types";
+import { pathsFor } from "@/lib/paths";
 
 type State = ActionResult<{ id: string }> | null;
 
@@ -98,7 +99,7 @@ export function ExportForm({
         {state?.ok ? (
           <p role="status">
             {t.queued}{" "}
-            <Link href={`/${encodeURIComponent(orgId)}/exports/${encodeURIComponent(state.id)}`}>{t.view}</Link>
+            <Link href={pathsFor(orgId).data.export(state.id)}>{t.view}</Link>
           </p>
         ) : null}
         {state && !state.ok ? <p role="alert" className="error">{t.failed} {failureText(state, text.exports.errors)}</p> : null}
@@ -226,7 +227,7 @@ export function ExportForm({
       {state?.ok ? (
         <p role="status">
           {t.queued}{" "}
-          <Link href={`/${encodeURIComponent(orgId)}/exports/${encodeURIComponent(state.id)}`}>{t.view}</Link>
+          <Link href={pathsFor(orgId).data.export(state.id)}>{t.view}</Link>
         </p>
       ) : null}
       {state && !state.ok ? (

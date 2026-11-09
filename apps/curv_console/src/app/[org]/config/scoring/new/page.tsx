@@ -7,6 +7,7 @@ import { parseProfile } from "@/lib/configDocs";
 import { getText } from "@/lib/i18n/server";
 import { can } from "@/lib/permissions";
 import { createDocDraftAction, loadSandboxSessionsAction } from "../../docActions";
+import { pathsFor } from "@/lib/paths";
 
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -26,7 +27,7 @@ export default async function NewScoringDraftPage({
   const tx = await getText();
   const t = tx.config;
   const { org } = await params;
-  const base = `/${encodeURIComponent(org)}/config/scoring`;
+  const base = pathsFor(org).config.scoring;
   if (!can(await currentRole(), "config.manage")) {
     return (
       <>

@@ -13,6 +13,7 @@ import { toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { transitionCatalogAction } from "../actions";
+import { pathsFor } from "@/lib/paths";
 
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -54,7 +55,8 @@ export default async function CatalogVersionPage({
     ? await api.getConfigDocument("stimulus_catalog", compare).catch(() => null)
     : null;
   const otherCatalog = other ? parseCatalog(other.body) : null;
-  const base = `/${encodeURIComponent(org)}/config/catalog`;
+  const base = pathsFor(org).config.catalog;
+  const newDraft = pathsFor(org).config.docNew("catalog");
   const canManage = can(role, "config.manage");
   const others = history.items.filter((d) => d.version !== version);
 
@@ -87,7 +89,7 @@ export default async function CatalogVersionPage({
           <LifecycleActions status={doc.status} run={transitionCatalogAction.bind(null, org, doc.version)} />
           {catalog ? (
             <p>
-              <Link className="button" href={`${base}/new${toSearch({ from: doc.version })}`}>{t.view.editAsDraft}</Link>
+              <Link className="button" href={`${newDraft}${toSearch({ from: doc.version })}`}>{t.view.editAsDraft}</Link>
             </p>
           ) : null}
         </div>

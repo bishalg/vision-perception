@@ -23,6 +23,7 @@ import type { ResearchMessages } from "@/messages/research";
 import { useLocale, useText } from "@/lib/i18n/provider";
 import { paramText } from "@/lib/research/paramText";
 import r from "./research.module.css";
+import { pathsFor } from "@/lib/paths";
 
 export type RunKind = (typeof RUN_KINDS)[number];
 
@@ -160,7 +161,7 @@ export function RunDialog({
         ...(parsedSeed !== undefined && Number.isSafeInteger(parsedSeed) ? { seed: parsedSeed } : {}),
         ...(sweeping ? { sweep: sweepSpec(axes), options: { metrics } } : {}),
       });
-      if (res.ok) router.push(`/${encodeURIComponent(orgId)}/research/runs/${encodeURIComponent(res.runId)}`);
+      if (res.ok) router.push(pathsFor(orgId).research.run(res.runId));
       else {
         setServerFields(res.params);
         setError(failureText(res, text));

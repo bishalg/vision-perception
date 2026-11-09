@@ -14,6 +14,7 @@ import { can } from "@/lib/permissions";
 import { parseAgeProfile } from "@/lib/research/age-profile";
 import { snapshotOf } from "@/lib/research/runs";
 import { cancelRunAction, pollRunAction, rerunRunAction } from "../actions";
+import { pathsFor } from "@/lib/paths";
 
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -34,7 +35,7 @@ export default async function RunPage({ params }: { params: Promise<{ org: strin
   const api = await authedApi();
   const run = await loadOrNotFound(() => api.getAnalysisRun(id));
   if (run.org_id !== org) notFound();
-  const base = `/${encodeURIComponent(org)}/research`;
+  const rp = pathsFor(org).research;
   const k = run.summary?.small_cell_k ?? 0;
   const ageProfile = parseAgeProfile(run.summary?.age_profile);
   const [experiment, cohort, effective] = await Promise.all([
@@ -45,12 +46,12 @@ export default async function RunPage({ params }: { params: Promise<{ org: strin
   ]);
   return (
     <>
-      <p><Link href={`${base}/runs`}>{t.allRuns}</Link></p>
+      <p><Link href={rp.runs}>{t.allRuns}</Link></p>
       <h1>{t.heading(run.id)}</h1>
       <p className="muted">
         {t.kind[run.kind]}
-        {experiment ? <> · <Link href={`${base}/experiments/${encodeURIComponent(experiment.id)}`}>{experiment.name}</Link></> : null}
-        {cohort ? <> · <Link href={`${base}/cohorts/${encodeURIComponent(cohort.id)}`}>{cohort.name}</Link></> : null}
+        {experiment ? <> · <Link href={rp.experiment(experiment.id)}>{experiment.name}</Link></> : null}
+        {cohort ? <> · <Link href={rp.cohort(cohort.id)}>{cohort.name}</Link></> : null}
         {" · "}{formatDateTime(run.created_at)}
       </p>
       <RunStatus
@@ -65,7 +66,7 @@ export default async function RunPage({ params }: { params: Promise<{ org: strin
         canExport={can(role, "export.create")}
       />
       {run.status === "succeeded" ? (
-        <p><Link href={`${base}/runs/${encodeURIComponent(run.id)}/sessions`}>{t.sessionsLink}</Link></p>
+        <p><Link href={rp.runSessions(run.id)}>{t.sessionsLink}</Link></p>
       ) : null}
       <ProvenanceBlock run={run} />
       {run.summary?.sweep ? <SweepPanel sweep={run.summary.sweep} k={k} text={tx.research} locale={tx.locale} /> : null}

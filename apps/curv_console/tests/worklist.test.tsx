@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { WorklistTable } from "@/components/clinical/WorklistTable";
 import { ROLES } from "@/lib/api";
 import type { WorklistItem } from "@/lib/api/clinical";
-import { navLinks } from "@/lib/nav";
+import { navItems } from "@/lib/nav";
 import { can } from "@/lib/permissions";
 import { parseWorklistQuery } from "@/lib/worklistQuery";
 
@@ -21,7 +21,7 @@ describe("WorklistTable", () => {
     expect(within(rows[0]!).getByText("Required")).toBeInTheDocument();
     expect(within(rows[0]!).getByText("Linked")).toBeInTheDocument();
     expect(within(rows[0]!).getByText("Red")).toHaveClass("badge-red");
-    expect(within(rows[0]!).getByRole("link", { name: "child-001" })).toHaveAttribute("href", "/org-1/sessions/SESS-1?tab=clinical");
+    expect(within(rows[0]!).getByRole("link", { name: "child-001" })).toHaveAttribute("href", "/org-1/clinic/sessions/SESS-1?tab=clinical");
     expect(within(rows[1]!).getByText("Awaiting cosign")).toBeInTheDocument();
   });
 
@@ -34,15 +34,15 @@ describe("WorklistTable", () => {
     const { container } = render(<WorklistTable orgId="org-1" items={[item(1), item(2), item(3)]} />);
     const hrefs = [...container.querySelectorAll("a")].map((a) => a.getAttribute("href")!);
     expect(hrefs.length).toBe(3);
-    for (const h of hrefs) expect(h).toMatch(/^\/org-1\/sessions\/SESS-\d\?tab=clinical$/);
+    for (const h of hrefs) expect(h).toMatch(/^\/org-1\/clinic\/sessions\/SESS-\d\?tab=clinical$/);
     // Nothing other than the pseudonymous token is rendered from the participant.
     expect(container.textContent).not.toMatch(/mrn\s*[:=]?\s*\d/i);
   });
 });
 
 describe("role-based nav and permissions", () => {
-  const worklistLink = (role: Parameters<typeof navLinks>[1]) =>
-    navLinks("/o", role).some((l) => l.href === "/o/worklist");
+  const worklistLink = (role: Parameters<typeof navItems>[1]) =>
+    navItems("/o", role).some((l) => l.href === "/o/clinic/worklist");
 
   it("shows Worklist to owner, admin and clinician, and hides it from viewer, researcher and reviewer", () => {
     for (const r of ["owner", "admin", "clinician"] as const) expect(worklistLink(r)).toBe(true);

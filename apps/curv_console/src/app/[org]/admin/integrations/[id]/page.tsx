@@ -16,6 +16,7 @@ import {
   testIntegrationAction,
   updateIntegrationAction,
 } from "../actions";
+import { pathsFor } from "@/lib/paths";
 
 // Fixed title: the destination name and URL never reach the document title.
 export async function generateMetadata(): Promise<Metadata> {
@@ -46,10 +47,11 @@ export default async function IntegrationDetailPage({
   const integration = await loadOrNotFound(() => api.getIntegration(id));
   const deliveries = await loadOrNotFound(() => api.listIntegrationDeliveries(id, { cursor, limit: 50 }));
   const canManage = can(role, "integration.manage");
-  const base = `/${encodeURIComponent(org)}/settings/integrations/${encodeURIComponent(id)}`;
+  const paths = pathsFor(org);
+  const base = paths.admin.integration(id);
   return (
     <>
-      <p><Link href={`/${encodeURIComponent(org)}/settings/integrations`}>{t.back}</Link></p>
+      <p><Link href={paths.admin.integrations}>{t.back}</Link></p>
       <h1>{integration.name}</h1>
       <p className="muted">
         {t.kinds[integration.kind]} | {t.environments[integration.environment]} | {t.statuses[integration.status]} |{" "}
@@ -78,13 +80,14 @@ export default async function IntegrationDetailPage({
         <DeleteIntegrationPanel
           name={integration.name}
           remove={deleteIntegrationAction.bind(null, org, id)}
-          listHref={`/${encodeURIComponent(org)}/settings/integrations`}
+          listHref={paths.admin.integrations}
         />
       ) : null}
       <h2>{t.deliveries.title}</h2>
       <DeliveriesTable
         items={deliveries.items}
-        exportBase={can(role, "export.read") ? `/${encodeURIComponent(org)}/exports` : undefined}
+        orgPath={paths.root}
+        linkExports={can(role, "export.read")}
       />
       <p className="muted">{text.deliveries.showing(deliveries.items.length, deliveries.total)}</p>
       <nav className="pagination" aria-label={text.exports.pagination}>

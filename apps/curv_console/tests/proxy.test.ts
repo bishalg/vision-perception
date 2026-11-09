@@ -195,7 +195,7 @@ describe("automatic logoff (WP-C.21, HIP-2)", () => {
 
   it("an expired server action gets Next's action redirect to /login?reason=expired instead of running", async () => {
     const res = await proxy(
-      req("/abc/settings/security", session(MIN, 13 * HOUR), { "sec-fetch-dest": "empty", "next-action": "abc" }),
+      req("/abc/account/security", session(MIN, 13 * HOUR), { "sec-fetch-dest": "empty", "next-action": "abc" }),
     );
     expect(res.status).toBe(200);
     expect(res.headers.get("x-middleware-next")).toBeNull();
@@ -204,7 +204,7 @@ describe("automatic logoff (WP-C.21, HIP-2)", () => {
     const loc = new URL(target ?? "", "http://console.test");
     expect(loc.pathname).toBe("/login");
     expect(loc.searchParams.get("reason")).toBe("expired");
-    expect(loc.searchParams.get("next")).toBe("/abc/settings/security");
+    expect(loc.searchParams.get("next")).toBe("/abc/account/security");
     expect(refresh).not.toHaveBeenCalled();
     expectCleared(res);
   });

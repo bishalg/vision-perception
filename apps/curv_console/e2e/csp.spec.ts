@@ -6,7 +6,7 @@
  *
  * Runs in both projects: `chromium` (next dev: `'unsafe-eval'` allowed, no HSTS) and `prod` (next start: neither).
  */
-import { expect, test, LIVE, MOCK_ORG_ID, login } from "./helpers";
+import { expect, test, LIVE, MOCK_ORG_ID, login, navTo } from "./helpers";
 
 const nonceOf = (csp: string) => /'nonce-([^']+)'/.exec(csp)?.[1];
 
@@ -61,7 +61,7 @@ test.describe("mock pages", () => {
     await login(page, "superadmin@example.org");
     await page.getByLabel("Organisation id").fill(MOCK_ORG_ID);
     await page.getByRole("button", { name: "Switch" }).click();
-    await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Scoring", exact: true }).click();
+    await navTo(page, "Configuration", "Scoring");
     await expect(page.getByRole("heading", { name: "Scoring profile", exact: true })).toBeVisible();
     await page.getByRole("link", { name: /New draft from / }).click();
     await expect(page.getByText(/core unavailable/i)).toHaveCount(0);

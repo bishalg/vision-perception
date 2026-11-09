@@ -8,6 +8,7 @@ import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { getText } from "@/lib/i18n/server";
 import { createIntegrationAction } from "./actions";
+import { pathsFor } from "@/lib/paths";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getText()).exports.integrations.title };
@@ -35,7 +36,7 @@ export default async function IntegrationsPage({
   const api = await authedApi();
   const cursor = parseCursor(await searchParams);
   const page = await loadOrNotFound(() => api.listIntegrations(org, { cursor, limit: 50 }));
-  const base = `/${encodeURIComponent(org)}/settings/integrations`;
+  const base = pathsFor(org).admin.integrations;
   return (
     <>
       <h1>{t.title}</h1>

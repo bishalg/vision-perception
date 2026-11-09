@@ -1,9 +1,9 @@
-import { expect, test, LIVE, login, loginToOverview } from "./helpers";
+import { expect, test, LIVE, login, loginToOverview, paths, OVERVIEW_URL, navTo } from "./helpers";
 
 /** WP-L.1a: a mock user whose locale is `ne` (the `+ne` email tag) sees Devanagari headings under `lang="ne-NP"`. */
 async function loginNe(page: import("@playwright/test").Page): Promise<string> {
   await login(page, "admin+ne@example.org");
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page).toHaveURL(OVERVIEW_URL);
   await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");
   return new URL(page.url()).pathname.split("/")[1]!;
 }
@@ -11,8 +11,8 @@ async function loginNe(page: import("@playwright/test").Page): Promise<string> {
 
 test("review queue: keyboard triage closes the selected item (j, then 1 = Confirm)", async ({ page }) => {
   const org = await loginToOverview(page);
-  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Review" }).click();
-  await expect(page).toHaveURL(new RegExp(`/${org}/review$`));
+  await navTo(page, "Clinic", "Review");
+  await expect(page).toHaveURL(new RegExp(`${paths(org).clinic.review}$`));
   await expect(page.getByRole("heading", { name: "Review queue" })).toBeVisible();
   const rows = page.locator("table.review-table tbody tr");
   const before = await rows.count();
@@ -34,13 +34,13 @@ test("review queue: keyboard triage closes the selected item (j, then 1 = Confir
   // The decision is persisted: it is gone from the open queue after a reload and listed under Done.
   await page.reload();
   await expect(itemLinks).toHaveCount(linksBefore - 1);
-  await page.goto(`/${org}/review?status=done`);
+  await page.goto(`${paths(org).clinic.review}?status=done`);
   await expect(page.locator(`table.review-table a[href="${href}"]`).first()).toBeVisible();
 });
 
 test("review queue: Flag capture issue asks for a label first", async ({ page }) => {
   const org = await loginToOverview(page);
-  await page.goto(`/${org}/review`);
+  await page.goto(paths(org).clinic.review);
   const rows = page.locator("table.review-table tbody tr");
   const before = await rows.count();
   test.skip(before === 0, "needs an open review item");
@@ -56,7 +56,7 @@ test("review queue: Flag capture issue asks for a label first", async ({ page })
 test("review queue renders in Nepali", async ({ page }) => {
   test.skip(LIVE, "locale flows use the mock backend's user locale seed");
   const org = await loginNe(page);
-  await page.goto(`/${org}/review`);
+  await page.goto(paths(org).clinic.review);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("समीक्षा पङ्क्ति");
   await expect(page.getByLabel("अवस्था").first()).toBeVisible();
 }); 

@@ -78,18 +78,18 @@ describe("session cookies", () => {
 
 describe("enforcementRedirect (WP-C.17, AUTH-13)", () => {
   const org = "o";
-  const redirectTo = "/o/settings/security?required=1";
+  const redirectTo = "/o/account/security?required=1";
   const cases: [string, "not_required" | "grace" | "required" | undefined, string | null, string | null][] = [
     ["not_required never redirects", "not_required", "/o/overview", null],
     ["grace never redirects", "grace", "/o/overview", null],
     ["unknown profile (older backend or failed read) never redirects", undefined, "/o/overview", null],
     ["required on overview", "required", "/o/overview", redirectTo],
     ["required on sessions", "required", "/o/sessions", redirectTo],
-    ["required on the security page: no loop", "required", "/o/settings/security", null],
-    ["required below the security page", "required", "/o/settings/security/", null],
+    ["required on the security page: no loop", "required", "/o/account/security", null],
+    ["required below the security page", "required", "/o/account/security/", null],
     ["required with no pathname header goes to security", "required", null, redirectTo],
-    ["a look-alike path is not the security page", "required", "/o/settings/security-x", redirectTo],
-    ["another org's security page is not exempt", "required", "/p/settings/security", redirectTo],
+    ["a look-alike path is not the security page", "required", "/o/account/security-x", redirectTo],
+    ["another org's security page is not exempt", "required", "/p/account/security", redirectTo],
   ];
   for (const [name, enforcement, pathname, expected] of cases) {
     it(name, () => {
@@ -99,7 +99,7 @@ describe("enforcementRedirect (WP-C.17, AUTH-13)", () => {
 
   it("encodes the org id", () => {
     expect(enforcementRedirect({ totp_enforcement: "required" }, "/a%20b/overview", "a b")).toBe(
-      "/a%20b/settings/security?required=1",
+      "/a%20b/account/security?required=1",
     );
   });
 });

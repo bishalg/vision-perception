@@ -8,6 +8,7 @@ import { enumLabel } from "@/messages/domain";
 import { FlagBadge } from "./FlagBadge";
 import { ScoreValue } from "./ScoringStatus";
 import { TrackingBadge } from "./TrackingQuality";
+import { pathsFor } from "@/lib/paths";
 
 export function SessionsTable({ orgId, sessions }: { orgId: string; sessions: SessionSummary[] }) {
   const t = useText();
@@ -34,7 +35,7 @@ export function SessionsTable({ orgId, sessions }: { orgId: string; sessions: Se
           {sessions.map((s) => (
             <tr key={s.id}>
               <td data-label={c.started}>
-                <Link href={`/${encodeURIComponent(orgId)}/sessions/${encodeURIComponent(s.id)}`}>
+                <Link href={pathsFor(orgId).clinic.session(s.id)}>
                   {formatDateTime(s.started_at)}
                 </Link>
               </td>

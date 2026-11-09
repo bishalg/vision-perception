@@ -5,6 +5,7 @@ import type { ActionFailure, ActionResult } from "@/components/exports/types";
 import { ApiError } from "@/lib/api";
 import { exportModeSchema, exportPurposeSchema, type ExportRequest } from "@/lib/api/exports";
 import { authedApi } from "@/lib/auth/server";
+import { pathsFor } from "@/lib/paths";
 
 function failure(err: unknown): ActionFailure {
   if (err instanceof ApiError) {
@@ -55,7 +56,7 @@ export async function createCaseShareAction(
   };
   try {
     const created = await (await authedApi()).createExport(orgId, request);
-    revalidatePath(`/${encodeURIComponent(orgId)}/exports`);
+    revalidatePath(pathsFor(orgId).data.exports);
     return { ok: true, id: created.id };
   } catch (err) {
     return failure(err);

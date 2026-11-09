@@ -14,6 +14,7 @@ import {
 import { isDatasetFormat } from "@/lib/api/exports";
 import { SHARE_LINK_DAY_CHOICES, SHARE_LINK_DOWNLOAD_CHOICES, type CreatedShareLink } from "@/lib/api/share";
 import { authedApi } from "@/lib/auth/server";
+import { pathsFor } from "@/lib/paths";
 
 function failure(err: unknown): ActionFailure {
   if (err instanceof ApiError) {
@@ -61,7 +62,7 @@ export async function createExportAction(orgId: string, formData: FormData): Pro
         filters: filtersFrom(formData),
         include_labels: formData.get("include_labels") !== null,
       });
-      revalidatePath(`/${encodeURIComponent(orgId)}/exports`);
+      revalidatePath(pathsFor(orgId).data.exports);
       return { ok: true, id: created.id };
     } catch (err) {
       return failure(err);
@@ -87,7 +88,7 @@ export async function createExportAction(orgId: string, formData: FormData): Pro
         filters: {},
         analysis: analysis.data,
       });
-      revalidatePath(`/${encodeURIComponent(orgId)}/exports`);
+      revalidatePath(pathsFor(orgId).data.exports);
       return { ok: true, id: created.id };
     } catch (err) {
       return failure(err);
@@ -107,7 +108,7 @@ export async function createExportAction(orgId: string, formData: FormData): Pro
   };
   try {
     const created = await (await authedApi()).createExport(orgId, request);
-    revalidatePath(`/${encodeURIComponent(orgId)}/exports`);
+    revalidatePath(pathsFor(orgId).data.exports);
     return { ok: true, id: created.id };
   } catch (err) {
     return failure(err);
@@ -133,7 +134,7 @@ export async function createShareLinkAction(
       expires_in_days: intIn(formData, "expires_in_days", SHARE_LINK_DAY_CHOICES) ?? null,
       max_downloads: intIn(formData, "max_downloads", SHARE_LINK_DOWNLOAD_CHOICES) ?? null,
     });
-    revalidatePath(`/${encodeURIComponent(orgId)}/exports/${encodeURIComponent(exportId)}`);
+    revalidatePath(pathsFor(orgId).data.export(exportId));
     return { ok: true, created };
   } catch (err) {
     return failure(err);
@@ -144,7 +145,7 @@ export async function createShareLinkAction(
 export async function revokeShareLinkAction(orgId: string, exportId: string, linkId: string): Promise<ActionResult> {
   try {
     await (await authedApi()).revokeShareLink(linkId);
-    revalidatePath(`/${encodeURIComponent(orgId)}/exports/${encodeURIComponent(exportId)}`);
+    revalidatePath(pathsFor(orgId).data.export(exportId));
     return { ok: true };
   } catch (err) {
     return failure(err);

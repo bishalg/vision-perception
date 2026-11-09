@@ -8,6 +8,7 @@ import { parseBaselines } from "@/lib/configDocs";
 import { getText } from "@/lib/i18n/server";
 import { can } from "@/lib/permissions";
 import { createDocDraftAction, loadSandboxSessionsAction } from "../../docActions";
+import { pathsFor } from "@/lib/paths";
 
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -29,7 +30,7 @@ export default async function NewBaselinesDraftPage({
   const tx = await getText();
   const t = tx.config;
   const { org } = await params;
-  const base = `/${encodeURIComponent(org)}/config/baselines`;
+  const base = pathsFor(org).config.baselines;
   if (!can(await currentRole(), "config.manage")) {
     return (
       <>

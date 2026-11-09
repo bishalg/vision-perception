@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { AuditQuery } from "@/lib/api";
 import { useText } from "@/lib/i18n/provider";
+import { pathsFor } from "@/lib/paths";
 
 /** Plain GET form: works without client JS and keeps the filters in the URL (the backend validates them). */
 export function AuditFilters({ orgId, query }: { orgId: string; query: AuditQuery }) {
@@ -42,7 +43,7 @@ export function AuditFilters({ orgId, query }: { orgId: string; query: AuditQuer
       </label>
       <div className="filter-actions">
         <button type="submit">{f.apply}</button>
-        <Link href={`/${encodeURIComponent(orgId)}/audit`}>{f.reset}</Link>
+        <Link href={pathsFor(orgId).data.audit}>{f.reset}</Link>
       </div>
     </form>
   );

@@ -18,6 +18,7 @@ import {
   type SshPublicKey,
 } from "@/lib/api/exports";
 import { authedApi } from "@/lib/auth/server";
+import { pathsFor } from "@/lib/paths";
 
 function failure(err: unknown): ActionFailure {
   if (err instanceof ApiError) {
@@ -30,9 +31,9 @@ function failure(err: unknown): ActionFailure {
 const text = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 
 function touch(orgId: string, id?: string): void {
-  const base = `/${encodeURIComponent(orgId)}/settings/integrations`;
-  revalidatePath(base);
-  if (id) revalidatePath(`${base}/${encodeURIComponent(id)}`);
+  const ap = pathsFor(orgId).admin;
+  revalidatePath(ap.integrations);
+  if (id) revalidatePath(ap.integration(id));
 }
 
 /**

@@ -6,6 +6,7 @@ import { useText } from "@/lib/i18n/provider";
 import { failureText, type ResearchResult } from "@/lib/research/result";
 import type { ResearchMessages } from "@/messages/research";
 import r from "./research.module.css";
+import { pathsFor } from "@/lib/paths";
 
 /** Name, description and the starting point of a new experiment; on success opens its workbench. */
 export function NewExperimentForm({
@@ -41,7 +42,7 @@ export function NewExperimentForm({
         ...(description.trim() ? { description: description.trim() } : {}),
         ...(from ? { from_experiment_id: from } : {}),
       });
-      if (res.ok) router.push(`/${encodeURIComponent(orgId)}/research/experiments/${encodeURIComponent(res.id)}`);
+      if (res.ok) router.push(pathsFor(orgId).research.experiment(res.id));
       else setError(failureText(res, text));
     });
   }

@@ -15,7 +15,7 @@ import { downloadAttachment, uploadAttachmentContent } from "@/lib/api/attachmen
 import { MAX_ATTACHMENT_BYTES, type Attachment, type Encounter, type FollowUp } from "@/lib/api/emr";
 import { createLiveClient } from "@/lib/api/live";
 import { createMockClient, MOCK_ORG_ID } from "@/lib/api/mock";
-import { navLinks } from "@/lib/nav";
+import { navItems } from "@/lib/nav";
 import { can } from "@/lib/permissions";
 import { formatFileSize, participantErrorMessage } from "@/messages/participant";
 
@@ -64,7 +64,7 @@ describe("RBAC (REC-8)", () => {
   });
 
   it("the nav shows Follow-ups to the roles that record visits", () => {
-    const has = (role: (typeof ROLES)[number]) => navLinks("/o", role).some((l) => l.href === "/o/follow-ups");
+    const has = (role: (typeof ROLES)[number]) => navItems("/o", role).some((l) => l.href === "/o/clinic/follow-ups");
     expect(has("admin")).toBe(true);
     expect(has("clinician")).toBe(true);
     expect(has("viewer")).toBe(false);
@@ -458,7 +458,7 @@ describe("Visits tab", () => {
     const session = vi.fn(ok);
     const two = [...sessions, { id: "s2", label: "2026-10-31 09:00 UTC" }];
     render(<EncountersPanel encounters={[encounter({ session_ids: ["s1"] })]} sessions={two} canWrite canSummary canContent canReopen actions={actions({ session })} now={0} orgPath="/o" />);
-    expect(screen.getByRole("link", { name: two[0]!.label })).toHaveAttribute("href", "/o/sessions/s1");
+    expect(screen.getByRole("link", { name: two[0]!.label })).toHaveAttribute("href", "/o/clinic/sessions/s1");
     await user.click(screen.getByRole("button", { name: `Remove session ${two[0]!.label} from this visit` }));
     expect(session).toHaveBeenCalledWith("e1", "s1", false);
     await user.selectOptions(screen.getByLabelText("Link a session"), "s2");
@@ -557,7 +557,7 @@ describe("Follow-ups page", () => {
     expect(trs.map((tr) => within(tr).getByRole("link").textContent)).toEqual(["child-a", "child-b", "child-c"]);
     expect(trs[0]).toHaveAttribute("data-overdue", "true");
     expect(within(trs[1]!).getByText("Due today")).toBeInTheDocument();
-    expect(within(trs[0]!).getByRole("link")).toHaveAttribute("href", "/o/participants/p-a?tab=visits");
+    expect(within(trs[0]!).getByRole("link")).toHaveAttribute("href", "/o/clinic/participants/p-a?tab=visits");
   });
 
   it("marks one done and shows a failure in words", async () => {
@@ -588,7 +588,7 @@ describe("New participant and search", () => {
     await user.click(screen.getByRole("button", { name: "Create participant" }));
     expect(await screen.findByTestId("created-token")).toHaveTextContent("child-0123456789abcdef0123");
     expect(screen.getByRole("img", { name: "QR code for participant child-0123456789abcdef0123" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open record" })).toHaveAttribute("href", "/o/participants/p%2F9");
+    expect(screen.getByRole("link", { name: "Open record" })).toHaveAttribute("href", "/o/clinic/participants/p%2F9");
     expect((create.mock.calls[0]![0] as FormData).get("language")).toBe("ne");
     await user.click(screen.getByRole("button", { name: "Close" }));
     expect(screen.queryByRole("dialog")).toBeNull();

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { ApiError } from "@/lib/api";
 import { authedApi } from "@/lib/auth/server";
 import type { EnrolResult } from "@/components/EnrolCodePanel";
+import { pathsFor } from "@/lib/paths";
 
 function message(err: unknown): string {
   if (err instanceof ApiError) {
@@ -46,8 +47,8 @@ export async function revokeDeviceAction(orgId: string, deviceId: string): Promi
     const api = await authedApi();
     // The backend checks that the device belongs to the caller's org (404 otherwise).
     await api.revokeDevice(deviceId);
-    revalidatePath(`/${encodeURIComponent(orgId)}/devices`);
-    revalidatePath(`/${encodeURIComponent(orgId)}/overview`);
+    revalidatePath(pathsFor(orgId).admin.devices);
+    revalidatePath(pathsFor(orgId).clinic.overview);
     return { ok: true };
   } catch {
     return { ok: false };

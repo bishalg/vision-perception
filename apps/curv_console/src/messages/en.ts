@@ -37,6 +37,19 @@ export const en = {
     integrations: "Integrations",
     signOut: "Sign out",
     main: "Main navigation",
+    /** WP-C.23 (N-8): the five top-bar divisions; sidebar items reuse the page keys. */
+    divisions: {
+      clinic: "Clinic",
+      research: "Research",
+      config: "Configuration",
+      data: "Data",
+      admin: "Administration",
+    },
+    account: "Account",
+    menu: "Menu",
+    breadcrumb: "Breadcrumb",
+    /** Breadcrumb detail for a `…/new` page. */
+    newItem: "New",
   },
   orgs: {
     label: "Organisation",
@@ -372,6 +385,18 @@ const appNe: Widen<typeof appEn> = {
     integrations: "एकीकरण",
     signOut: "साइन आउट",
     main: "मुख्य नेभिगेसन",
+    // ne: draft (WP-C.23), needs native review
+    divisions: {
+      clinic: "क्लिनिक",
+      research: "अनुसन्धान",
+      config: "कन्फिगरेसन",
+      data: "डेटा",
+      admin: "प्रशासन",
+    },
+    account: "खाता",
+    menu: "मेनु",
+    breadcrumb: "पृष्ठको मार्ग",
+    newItem: "नयाँ",
   },
   orgs: {
     label: "संस्था",

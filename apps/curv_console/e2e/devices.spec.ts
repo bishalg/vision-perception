@@ -1,9 +1,9 @@
-import { expect, test, LIVE, login, loginToOverview } from "./helpers";
+import { expect, test, LIVE, login, loginToOverview, paths, OVERVIEW_URL, navTo } from "./helpers";
 
 /** WP-L.1a: a mock user whose locale is `ne` (the `+ne` email tag) sees Devanagari headings under `lang="ne-NP"`. */
 async function loginNe(page: import("@playwright/test").Page): Promise<string> {
   await login(page, "admin+ne@example.org");
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page).toHaveURL(OVERVIEW_URL);
   await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");
   return new URL(page.url()).pathname.split("/")[1]!;
 }
@@ -11,8 +11,8 @@ async function loginNe(page: import("@playwright/test").Page): Promise<string> {
 
 test("devices: generate an enrol code shown as text and QR", async ({ page }) => {
   const org = await loginToOverview(page);
-  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Devices" }).click();
-  await expect(page).toHaveURL(new RegExp(`/${org}/devices$`));
+  await navTo(page, "Administration", "Devices");
+  await expect(page).toHaveURL(new RegExp(`${paths(org).admin.devices}$`));
   await page.getByLabel(/Label/).fill("e2e iPad");
   await page.getByLabel("Max uses").fill("2");
   await page.getByRole("button", { name: "Generate enrol code" }).click();
@@ -25,7 +25,7 @@ test("devices: generate an enrol code shown as text and QR", async ({ page }) =>
 
 test("devices: revoke asks for confirmation and marks the device revoked", async ({ page }) => {
   const org = await loginToOverview(page);
-  await page.goto(`/${org}/devices`);
+  await page.goto(paths(org).admin.devices);
   const live = page.locator("table.data tbody tr", { has: page.getByRole("button", { name: "Revoke" }) });
   test.skip((await live.count()) === 0, "no live device to revoke");
   const before = await live.count();
@@ -41,7 +41,7 @@ test("devices: revoke asks for confirmation and marks the device revoked", async
 test("devices page renders in Nepali", async ({ page }) => {
   test.skip(LIVE, "locale flows use the mock backend's user locale seed");
   const org = await loginNe(page);
-  await page.goto(`/${org}/devices`);
+  await page.goto(paths(org).admin.devices);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("उपकरणहरू");
   await expect(page.getByRole("button", { name: "दर्ता कोड बनाउनुहोस्" })).toBeVisible();
 });

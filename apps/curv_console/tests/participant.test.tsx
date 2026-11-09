@@ -249,7 +249,7 @@ describe("Timeline", () => {
   it("shows all entries without a filter, links sessions, and describes headers only", () => {
     render(<Timeline entries={entries} kinds={[]} basePath="/o/participants/p1" orgPath="/o" nextCursor={null} hasCursor={false} />);
     expect(screen.getAllByRole("row")).toHaveLength(3);
-    expect(screen.getByRole("link", { name: "Open session" })).toHaveAttribute("href", "/o/sessions/s1");
+    expect(screen.getByRole("link", { name: "Open session" })).toHaveAttribute("href", "/o/clinic/sessions/s1");
     expect(screen.queryByRole("link", { name: "Older" })).toBeNull();
     expect(describeEntry(entry({ kind: "clinical_review", summary: { state: "awaiting_cosign", version_no: 2 } }))).toBe("Review awaiting cosign, version 2");
     expect(describeEntry(entry({ kind: "care_event", summary: { care_kind: "diary" } }))).toBe("Care event: diary");
@@ -528,7 +528,7 @@ describe("tabs, table and messages", () => {
         participants={[{ id: "p/1", org_id: "o", participant_token: "child-001", session_count: 1 }]}
       />,
     );
-    expect(screen.getByRole("link", { name: "child-001" })).toHaveAttribute("href", "/o%201/participants/p%2F1");
+    expect(screen.getByRole("link", { name: "child-001" })).toHaveAttribute("href", "/o%201/clinic/participants/p%2F1");
   });
 
   it("maps error slugs to text", () => {

@@ -12,6 +12,7 @@ import {
   type UpdateClinicalReviewRequest,
 } from "@/lib/api/clinical";
 import { authedApi } from "@/lib/auth/server";
+import { pathsFor } from "@/lib/paths";
 
 /** Failure outcome: the problem slug and status only. Never the request body, never a password. */
 function failure(err: unknown): ReviewResult {
@@ -20,7 +21,7 @@ function failure(err: unknown): ReviewResult {
 }
 
 function touch(orgId: string): void {
-  revalidatePath(`/${encodeURIComponent(orgId)}/worklist`);
+  revalidatePath(pathsFor(orgId).clinic.worklist);
 }
 
 export async function claimReviewAction(orgId: string, sessionId: string): Promise<ReviewResult> {
@@ -129,7 +130,7 @@ export async function saveClinicalSettingsAction(orgId: string, formData: FormDa
   if (Object.keys(patch).length === 0) return { ok: true };
   try {
     await (await authedApi()).updateOrgClinicalSettings(orgId, patch);
-    revalidatePath(`/${encodeURIComponent(orgId)}/settings/clinical`);
+    revalidatePath(pathsFor(orgId).admin.clinical);
     touch(orgId);
     return { ok: true };
   } catch (err) {
@@ -144,7 +145,7 @@ export async function saveProfileAction(orgId: string, formData: FormData): Prom
       display_name: String(formData.get("display_name") ?? "").trim(),
       professional_registration: String(formData.get("professional_registration") ?? "").trim(),
     });
-    revalidatePath(`/${encodeURIComponent(orgId)}/settings/clinical`);
+    revalidatePath(pathsFor(orgId).admin.clinical);
     return { ok: true };
   } catch (err) {
     return settingsFailure(err);

@@ -12,6 +12,7 @@ import { parseCursor, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { DocVersionsTable } from "./DocVersionsTable";
+import { pathsFor, type ConfigDocSegment } from "@/lib/paths";
 
 export async function DocVersionsPage({
   org,
@@ -24,7 +25,7 @@ export async function DocVersionsPage({
 }: {
   org: string;
   kind: ConfigDocumentKind;
-  segment: string;
+  segment: ConfigDocSegment;
   title: string;
   intro: string;
   role: Role | undefined;
@@ -52,7 +53,7 @@ export async function DocVersionsPage({
     loadOrNotFound(() => api.listConfigDocuments(kind, { status: "published", limit: 1 })),
   ]);
   const published = live.items[0];
-  const base = `/${encodeURIComponent(org)}/config/${segment}`;
+  const base = pathsFor(org).config.doc(segment);
   const filterHref = (st?: string) => `${base}${toSearch({ status: st })}`;
 
   return (
@@ -62,7 +63,7 @@ export async function DocVersionsPage({
       <p>{published ? t.current(published.version) : t.noneLive}</p>
       {can(role, "config.manage") ? (
         <p>
-          <Link className="button" href={`${base}/new${published ? toSearch({ from: published.version }) : ""}`}>
+          <Link className="button" href={`${pathsFor(org).config.docNew(segment)}${published ? toSearch({ from: published.version }) : ""}`}>
             {published ? t.newDraftFrom(published.version) : t.newDraft}
           </Link>
         </p>
@@ -79,7 +80,7 @@ export async function DocVersionsPage({
           </Link>
         ))}
       </nav>
-      <DocVersionsTable base={base} items={page.items} />
+      <DocVersionsTable org={org} segment={segment} items={page.items} />
       <p className="muted">{t.showing(page.items.length)}</p>
       <nav className="pagination" aria-label={t.pagination}>
         {cursor ? <Link href={filterHref(status)}>{ct.first}</Link> : null}

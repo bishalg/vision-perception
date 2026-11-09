@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { authedApi, homeOrg, recentOrgs } from "@/lib/auth/server";
 import { getText } from "@/lib/i18n/server";
+import { pathsFor } from "@/lib/paths";
 
 /**
  * Home: users with an org go to its overview. The superadmin has no home org, so this page lets them open
@@ -10,7 +11,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ i
   const text = await getText();
   const t = text.app.orgs;
   const org = await homeOrg();
-  if (org) redirect(`/${encodeURIComponent(org)}/overview`);
+  if (org) redirect(pathsFor(org).clinic.overview);
   const api = await authedApi();
   const recent = await Promise.allSettled((await recentOrgs()).map((id) => api.getOrg(id)));
   const orgs = recent.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
@@ -35,7 +36,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ i
             <ul>
               {orgs.map((o) => (
                 <li key={o.id}>
-                  <a href={`/${encodeURIComponent(o.id)}/overview`}>{o.name}</a>
+                  <a href={pathsFor(o.id).clinic.overview}>{o.name}</a>
                 </li>
               ))}
             </ul>

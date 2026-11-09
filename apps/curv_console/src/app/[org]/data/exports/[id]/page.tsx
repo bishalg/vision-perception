@@ -10,6 +10,7 @@ import { loadOrNotFound, requestTime } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { getText } from "@/lib/i18n/server";
 import { createShareLinkAction, revokeShareLinkAction } from "../actions";
+import { pathsFor } from "@/lib/paths";
 
 // Fixed title: nothing from the export (reason, filters) reaches the document title.
 export async function generateMetadata(): Promise<Metadata> {
@@ -45,11 +46,12 @@ export default async function ExportDetailPage({
     e.format === "case_package" && can(role, "sharelink.manage")
       ? await loadOrNotFound(() => api.listShareLinks(id, { limit: 100 }))
       : null;
-  const base = `/${encodeURIComponent(org)}/exports/${encodeURIComponent(id)}`;
+  const paths = pathsFor(org);
+  const base = paths.data.export(id);
   const filters = Object.entries(e.filters).filter(([, v]) => v != null && !(Array.isArray(v) && v.length === 0));
   return (
     <>
-      <p><Link href={`/${encodeURIComponent(org)}/exports`}>{d.back}</Link></p>
+      <p><Link href={paths.data.exports}>{d.back}</Link></p>
       <h1>{t.title}</h1>
       <section className="panel stack" aria-label={d.summary}>
         <dl>
@@ -84,7 +86,7 @@ export default async function ExportDetailPage({
               <>
                 <dt className="kpi-label">{d.participant}</dt>
                 <dd>
-                  <Link href={`/${encodeURIComponent(org)}/participants/${encodeURIComponent(e.case_participant_id)}`}>
+                  <Link href={paths.clinic.participant(e.case_participant_id)}>
                     {d.openParticipant}
                   </Link>
                 </dd>
@@ -132,7 +134,8 @@ export default async function ExportDetailPage({
       ) : (
         <DeliveriesTable
           items={deliveries.items}
-          destinationBase={can(role, "integration.read") ? `/${encodeURIComponent(org)}/settings/integrations` : undefined}
+          orgPath={paths.root}
+          linkDestinations={can(role, "integration.read")}
         />
       )}
       <p className="muted">{text.deliveries.showing(deliveries.items.length, deliveries.total)}</p>

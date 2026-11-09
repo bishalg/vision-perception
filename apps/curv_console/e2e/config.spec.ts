@@ -5,32 +5,31 @@
  * `scripts/prepare-asd-wasm.mjs` copied the build into public/.
  */
 import { type Page } from "@playwright/test";
-import { expect, test, LIVE, MOCK_ORG_ID, login, loginToOverview } from "./helpers";
+import { expect, test, LIVE, MOCK_ORG_ID, login, loginToOverview, paths, OVERVIEW_URL, navTo } from "./helpers";
 
 test.skip(LIVE, "mock-mode flows: they rely on the seeded mock config versions");
 
-const nav = (page: Page) => page.getByRole("navigation", { name: "Main navigation" });
 
 async function superadminTo(page: Page, link: string, heading: string): Promise<void> {
   await login(page, "superadmin@example.org");
   await expect(page.getByRole("heading", { name: "Choose an organisation" })).toBeVisible();
   await page.getByLabel("Organisation id").fill(MOCK_ORG_ID);
   await page.getByRole("button", { name: "Switch" }).click();
-  await expect(page).toHaveURL(new RegExp(`/${MOCK_ORG_ID}/overview$`));
-  await nav(page).getByRole("link", { name: link, exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`${paths(MOCK_ORG_ID).clinic.overview}$`));
+  await navTo(page, "Configuration", link);
   await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
 }
 
 test("config pages: an admin reads the history read-only and sees the bundle history", async ({ page }) => {
   await loginToOverview(page);
-  await nav(page).getByRole("link", { name: "Baselines", exact: true }).click();
+  await navTo(page, "Configuration", "Baselines");
   await expect(page.getByText("Published now: 2026.10.1")).toBeVisible();
   await expect(page.getByRole("link", { name: /New draft/ })).toHaveCount(0);
   await page.getByRole("link", { name: "2026.10.1" }).click();
   await expect(page.getByRole("button", { name: "Approve" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "stim_01_social_geo_10s" })).toBeVisible();
 
-  await nav(page).getByRole("link", { name: "Bundles", exact: true }).click();
+  await navTo(page, "Configuration", "Bundles");
   await expect(page.getByRole("heading", { name: "Config bundles" })).toBeVisible();
   await expect(page.getByRole("table", { name: "Config bundles" })).toContainText("2026.10.10-1");
 });
@@ -100,7 +99,7 @@ test("baselines: approve the seeded draft, compare with the published set, then 
   await expect(diff).toContainText("stim_01_social_geo_10s");
   await expect(diff).toContainText("segments.0.expectations.1.source");
 
-  await nav(page).getByRole("link", { name: "Bundles", exact: true }).click();
+  await navTo(page, "Configuration", "Bundles");
   await expect(page.getByRole("region", { name: "Composing now would sign" })).toContainText("2026.10.1");
   await page.getByLabel(/^Feature flags/).fill("sandbox_v2=true");
   await page.getByRole("button", { name: "Compose and sign bundle" }).click();
@@ -121,7 +120,7 @@ test("baselines editor: the Rust core names a clip without segments", async ({ p
 
 test("L.1d: a user whose locale is ne reads the config bundles page in Nepali (lang=ne-NP)", async ({ page }) => {
   await login(page, "demo+ne@example.org");
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page).toHaveURL(OVERVIEW_URL);
   const org = new URL(page.url()).pathname.split("/")[1]!;
   await page.goto(`/${org}/config/bundles`);
   await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");

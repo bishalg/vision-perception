@@ -5,6 +5,7 @@ import { ApiError } from "@/lib/api";
 import { authedApi } from "@/lib/auth/server";
 import { isCaptureIssueLabel, isTriageAction, triagePatch, type CaptureIssueLabel, type TriageAction } from "@/lib/review";
 import type { TriageResult } from "@/components/ReviewQueue";
+import { pathsFor } from "@/lib/paths";
 
 function message(err: unknown): string {
   if (err instanceof ApiError) return err.slug ?? `status ${err.status}`;
@@ -24,9 +25,9 @@ export async function triageAction(
     const api = await authedApi();
     // The backend checks that the item belongs to the caller's org (404 otherwise).
     const item = await api.updateReview(reviewId, triagePatch(action, label));
-    const base = `/${encodeURIComponent(orgId)}`;
-    revalidatePath(`${base}/review`);
-    revalidatePath(`${base}/overview`);
+    const cp = pathsFor(orgId).clinic;
+    revalidatePath(cp.review);
+    revalidatePath(cp.overview);
     return { ok: true, item };
   } catch (err) {
     return { ok: false, error: message(err) };

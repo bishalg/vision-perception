@@ -4,26 +4,25 @@
  * cannot be approved by the same user (four-eyes), while the seeded draft, authored by someone else, can.
  */
 import { type Page } from "@playwright/test";
-import { expect, test, LIVE, MOCK_ORG_ID, login, loginToOverview } from "./helpers";
+import { expect, test, LIVE, MOCK_ORG_ID, login, loginToOverview, paths, OVERVIEW_URL, navTo } from "./helpers";
 
 test.skip(LIVE, "mock-mode flows: they rely on the seeded mock catalog versions");
 
-const nav = (page: Page) => page.getByRole("navigation", { name: "Main navigation" });
 
 async function superadminToCatalog(page: Page): Promise<void> {
   await login(page, "superadmin@example.org");
   await expect(page.getByRole("heading", { name: "Choose an organisation" })).toBeVisible();
   await page.getByLabel("Organisation id").fill(MOCK_ORG_ID);
   await page.getByRole("button", { name: "Switch" }).click();
-  await expect(page).toHaveURL(new RegExp(`/${MOCK_ORG_ID}/overview$`));
-  await nav(page).getByRole("link", { name: "Catalog" }).click();
+  await expect(page).toHaveURL(new RegExp(`${paths(MOCK_ORG_ID).clinic.overview}$`));
+  await navTo(page, "Configuration", "Catalog");
   await expect(page).toHaveURL(new RegExp(`/${MOCK_ORG_ID}/config/catalog$`));
   await expect(page.getByRole("heading", { name: "Stimulus catalog" })).toBeVisible();
 }
 
 test("catalog: a non-superadmin sees the version history read-only", async ({ page }) => {
   const org = await loginToOverview(page);
-  await nav(page).getByRole("link", { name: "Catalog" }).click();
+  await navTo(page, "Configuration", "Catalog");
   await expect(page).toHaveURL(new RegExp(`/${org}/config/catalog$`));
   await expect(page.getByText("Published now: 2026.10.1")).toBeVisible();
   await expect(page.getByRole("link", { name: /New draft/ })).toHaveCount(0);
@@ -98,7 +97,7 @@ test("catalog lifecycle: approve and publish someone else's draft, then compare 
 
 test("L.1d: a user whose locale is ne reads the catalog page in Nepali (lang=ne-NP)", async ({ page }) => {
   await login(page, "demo+ne@example.org");
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page).toHaveURL(OVERVIEW_URL);
   const org = new URL(page.url()).pathname.split("/")[1]!;
   await page.goto(`/${org}/config/catalog`);
   await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");

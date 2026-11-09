@@ -8,6 +8,7 @@ import { loadOrNotFound, requestTime } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
 import { getText } from "@/lib/i18n/server";
 import { markFollowUpDoneAction } from "./actions";
+import { orgBase, orgPaths } from "@/lib/paths";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getText()).participant.followUps.title };
@@ -47,13 +48,13 @@ export default async function FollowUpsPage({
   const api = await authedApi();
   const role = await currentRole();
   const page = await loadOrNotFound(() => api.listFollowUps(org, query));
-  const orgPath = `/${encodeURIComponent(org)}`;
+  const orgPath = orgBase(org);
   const keep = new URLSearchParams();
   if (show !== "all") keep.set("show", show);
   if (mine) keep.set("mine", "1");
   const next = new URLSearchParams(keep);
   if (page.next_cursor) next.set("cursor", page.next_cursor);
-  const base = `${orgPath}/follow-ups`;
+  const base = orgPaths(orgPath).clinic.followUps;
   return (
     <>
       <h1>{t.title}</h1>

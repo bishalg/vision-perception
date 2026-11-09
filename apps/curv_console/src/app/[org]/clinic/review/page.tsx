@@ -9,6 +9,7 @@ import { can } from "@/lib/permissions";
 import { getText } from "@/lib/i18n/server";
 import { enumLabel } from "@/messages/domain";
 import { triageAction } from "./actions";
+import { pathsFor } from "@/lib/paths";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getText()).app.review.title };
@@ -51,7 +52,7 @@ export default async function ReviewPage({
     };
   });
   const statusParam = query.all ? "all" : query.status;
-  const base = `/${encodeURIComponent(org)}/review`;
+  const base = pathsFor(org).clinic.review;
   const triage = triageAction.bind(null, org);
   return (
     <>

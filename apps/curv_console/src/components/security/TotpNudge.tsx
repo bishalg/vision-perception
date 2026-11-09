@@ -5,6 +5,7 @@ import type { UserProfile } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { useText } from "@/lib/i18n/provider";
 import { shouldNudgeTotp } from "@/lib/permissions";
+import { pathsFor } from "@/lib/paths";
 
 /**
  * WP-C.15 / C.17: a reminder for users whose role requires two-step sign-in (`totp_enforcement` `grace`) and who have
@@ -18,7 +19,7 @@ export function TotpNudge({ org, profile }: { org: string; profile: UserProfile 
     <p className="panel" role="note" data-testid="totp-nudge">
       {t.nudge.text}
       {by ? ` ${t.nudge.deadline(formatDateTime(by))}` : ""}{" "}
-      <Link href={`/${encodeURIComponent(org)}/settings/security`}>{t.nudge.link}</Link>
+      <Link href={pathsFor(org).account.security}>{t.nudge.link}</Link>
     </p>
   );
 }

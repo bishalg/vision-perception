@@ -42,7 +42,7 @@ describe("loginAction", () => {
 
   it("sends email, password and code together, then signs in", async () => {
     login.mockResolvedValueOnce(pair);
-    await expect(loginAction(idle, fd({ email: "e@x.org", password: "pw", totp_code: "123 456" }))).rejects.toThrow("REDIRECT:/org1/overview");
+    await expect(loginAction(idle, fd({ email: "e@x.org", password: "pw", totp_code: "123 456" }))).rejects.toThrow("REDIRECT:/org1/clinic/overview");
     expect(login).toHaveBeenCalledWith("e@x.org", "pw", "123456");
     expect(writeSession).toHaveBeenCalledWith(pair);
   });

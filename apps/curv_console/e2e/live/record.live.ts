@@ -7,7 +7,7 @@
  * resets the clinician's two-step sign-in (TRS-3, `204`).
  */
 import { createHash } from "node:crypto";
-import { expect, test } from "../helpers";
+import { expect, test, paths } from "../helpers";
 import { RECORD_LIVE, SKIP_REASON, createParticipant, day, env, ingestSession, signIn } from "./support";
 
 test.skip(!RECORD_LIVE, SKIP_REASON);
@@ -52,7 +52,7 @@ test("clinician: participant + QR -> visit, session link, follow-up -> files rou
   // ---- link the device's session, unlink it, link it again (POST / DELETE /encounters/{id}/sessions) ----
   await visit.getByLabel("Link a session").selectOption({ index: 1 });
   await visit.getByRole("button", { name: "Link", exact: true }).click();
-  const sessionLink = visit.locator(`a[href="/${org}/sessions/${encodeURIComponent(sessionId)}"]`);
+  const sessionLink = visit.locator(`a[href="${paths(org).clinic.sessions}/${encodeURIComponent(sessionId)}"]`);
   await expect(sessionLink).toBeVisible();
   await visit.getByRole("button", { name: /^Remove session / }).click();
   await expect(sessionLink).toHaveCount(0);
@@ -116,7 +116,7 @@ test("clinician: participant + QR -> visit, session link, follow-up -> files rou
   expect((await over.json()).slug).toBe("attachment-too-large");
 
   // ---- search finds the participant by code prefix (POST body, never the URL) ----
-  await page.goto(`/${org}/participants`);
+  await page.goto(paths(org).clinic.participants);
   await page.getByLabel("Participant code (start of it)").fill(token.slice(0, 14));
   await page.getByLabel("Only participants with a follow-up due").check();
   await page.getByRole("button", { name: "Search", exact: true }).click();
@@ -129,7 +129,7 @@ test("clinician: participant + QR -> visit, session link, follow-up -> files rou
   expect(page.url()).not.toContain(token.slice(0, 14));
 
   // ---- follow-ups: due within the week (due_before), mark done ----
-  await page.goto(`/${org}/follow-ups?show=week`);
+  await page.goto(`${paths(org).clinic.followUps}?show=week`);
   const row = page.getByTestId("follow-up").filter({ hasText: token });
   await expect(row).toBeVisible();
   await row.getByRole("button", { name: `Mark follow-up for ${token} done` }).click();
@@ -142,7 +142,7 @@ test("owner resets the clinician's two-step sign-in (TRS-3)", async ({ page }) =
   const org = env("E2E_ORG_ID");
   const clinician = env("E2E_EMAIL");
   await signIn(page, env("E2E_OWNER_EMAIL"), org);
-  await page.goto(`/${org}/users`);
+  await page.goto(paths(org).admin.users);
   await page.getByRole("button", { name: `Reset two-step sign-in for ${clinician}` }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Why are you resetting it?").fill("Lost phone, confirmed in person");

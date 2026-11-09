@@ -3,13 +3,13 @@
  * Devanagari font loads without a CSP violation (the `cspViolations` fixture in `helpers.ts` fails the test on one).
  * Mock mode: a `+ne` tag on the email's local part seeds the user's own locale (`clinician+ne@example.org`).
  */
-import { expect, test, LIVE, login, loginToOverview } from "./helpers";
+import { expect, test, LIVE, login, loginToOverview, OVERVIEW_URL } from "./helpers";
 
 test.skip(LIVE, "locale flows use the mock backend's user locale seed");
 
 test("a user whose locale is ne gets lang=ne-NP and an en user gets lang=en", async ({ page }) => {
   await login(page, "clinician+ne@example.org");
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page).toHaveURL(OVERVIEW_URL);
   await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");
 
   await page.context().clearCookies();
@@ -37,7 +37,7 @@ test("the self-hosted Devanagari font is served from this origin under the stric
     if (/\.woff2(\?|$)/.test(r.url())) fonts.push(r.url());
   });
   await login(page, "clinician+ne@example.org");
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page).toHaveURL(OVERVIEW_URL);
   await expect(page.locator("html")).toHaveAttribute("lang", "ne-NP");
   for (const url of fonts) expect(new URL(url).origin).toBe(new URL(page.url()).origin);
   // The face is declared for the page (loaded lazily, only when Devanagari text is rendered).

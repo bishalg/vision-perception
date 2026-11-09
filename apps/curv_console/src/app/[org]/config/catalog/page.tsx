@@ -8,6 +8,7 @@ import { getText } from "@/lib/i18n/server";
 import { parseCursor, toSearch } from "@/lib/listQuery";
 import { loadOrNotFound } from "@/lib/loaders";
 import { can } from "@/lib/permissions";
+import { pathsFor } from "@/lib/paths";
 
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -47,7 +48,8 @@ export default async function CatalogPage({
     loadOrNotFound(() => api.listConfigDocuments("stimulus_catalog", { status: "published", limit: 1 })),
   ]);
   const published = live.items[0];
-  const base = `/${encodeURIComponent(org)}/config/catalog`;
+  const base = pathsFor(org).config.catalog;
+  const newDraft = pathsFor(org).config.docNew("catalog");
   const canManage = can(role, "config.manage");
   const filterHref = (st?: string) => `${base}${toSearch({ status: st })}`;
 
@@ -58,7 +60,7 @@ export default async function CatalogPage({
       <p>{published ? t.current(published.version) : t.noneLive}</p>
       {canManage ? (
         <p>
-          <Link className="button" href={`${base}/new${published ? toSearch({ from: published.version }) : ""}`}>
+          <Link className="button" href={`${newDraft}${published ? toSearch({ from: published.version }) : ""}`}>
             {published ? t.newDraftFrom(published.version) : t.newDraft}
           </Link>
         </p>

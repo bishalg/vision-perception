@@ -10,7 +10,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import type { Browser, Page } from "@playwright/test";
-import { expect, test } from "../helpers";
+import { expect, test, paths } from "../helpers";
 import { RECORD_LIVE, SKIP_REASON, apiToken, createParticipant, env, ingestSession, signIn } from "./support";
 
 test.skip(!RECORD_LIVE, SKIP_REASON);
@@ -61,7 +61,7 @@ test("clinician shares a case de-identified; the recipient downloads the ZIP onc
   await dialog.getByRole("button", { name: "Create case package" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.getByRole("link", { name: "Open the export to share it" }).click();
-  await expect(page).toHaveURL(new RegExp(`/${org}/exports/[0-9a-f-]{36}$`));
+  await expect(page).toHaveURL(new RegExp(`${paths(org).data.exports}/[0-9a-f-]{36}$`));
   const exportId = new URL(page.url()).pathname.split("/").pop()!;
 
   // The worker builds the ZIP; the page offers links once the export has succeeded.

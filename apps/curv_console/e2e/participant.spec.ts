@@ -1,5 +1,5 @@
 import { type Page } from "@playwright/test";
-import { expect, test, LIVE, login } from "./helpers";
+import { expect, test, LIVE, login, paths, OVERVIEW_URL, navTo } from "./helpers";
 
 // Mock mode picks the role from the email's local part and seeds notes, disclosures and MRNs on the newest participant.
 test.skip(LIVE, "participant workspace flows use the mock backend's seeded participants");
@@ -7,13 +7,13 @@ test.describe.configure({ timeout: 240_000 });
 
 async function openFirstParticipant(page: Page, email: string): Promise<{ org: string; base: string }> {
   await login(page, email);
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
+  await expect(page).toHaveURL(OVERVIEW_URL);
   const org = new URL(page.url()).pathname.split("/")[1]!;
-  await page.goto(`/${org}/participants`);
+  await page.goto(paths(org).clinic.participants);
   // The newest participant is the first row and carries the seeded notes and disclosure.
   const link = page.locator("table.data tbody tr").first().getByRole("link").first();
   await link.click();
-  await expect(page).toHaveURL(new RegExp(`/${org}/participants/[0-9a-f-]{36}$`), { timeout: 90_000 });
+  await expect(page).toHaveURL(new RegExp(`${paths(org).clinic.participants}/[0-9a-f-]{36}$`), { timeout: 90_000 });
   return { org, base: new URL(page.url()).pathname };
 }
 
@@ -136,7 +136,6 @@ test("a viewer sees the timeline and the print summary only, without clinical co
 
 // ---- WP-C.18 record workspace (visits, files, follow-ups, search, new participant, TOTP reset) ----------------
 
-const mainNav = (page: Page) => page.getByRole("navigation", { name: "Main navigation" });
 
 /** UI-4: nothing typed into the record ends up in the address bar or the title. */
 async function expectNotLeaked(page: Page, ...secrets: string[]) {
@@ -228,8 +227,8 @@ test("clinician: opens a file through the console route (no-store, download)", a
 
 test("clinician: follow-ups are listed earliest due first; marking one done removes it", async ({ page }) => {
   await login(page, "clinician@example.org");
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
-  await mainNav(page).getByRole("link", { name: "Follow-ups" }).click();
+  await expect(page).toHaveURL(OVERVIEW_URL);
+  await navTo(page, "Clinic", "Follow-ups");
   await expect(page.getByRole("heading", { name: "Follow-ups", level: 1 })).toBeVisible();
   const rows = page.getByTestId("follow-up");
   await expect(rows.first()).toBeVisible();
@@ -253,8 +252,8 @@ test("clinician: follow-ups are listed earliest due first; marking one done remo
 
 test("search: by code and open follow-up, as a POST; nothing in the address bar", async ({ page }) => {
   await login(page, "clinician@example.org");
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
-  await mainNav(page).getByRole("link", { name: "Participants" }).click();
+  await expect(page).toHaveURL(OVERVIEW_URL);
+  await navTo(page, "Clinic", "Participants");
   await expect(page).toHaveURL(/\/participants$/);
   const before = page.url();
   const search = page.getByRole("form", { name: "Find a participant" });
@@ -279,8 +278,8 @@ test("search: by code and open follow-up, as a POST; nothing in the address bar"
 
 test("admin: reset a clinician's two-step sign-in with a reason and the step-up", async ({ page }) => {
   await login(page, "admin@example.org");
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
-  await mainNav(page).getByRole("link", { name: "Users" }).click();
+  await expect(page).toHaveURL(OVERVIEW_URL);
+  await navTo(page, "Administration", "Users");
   // Not offered for an owner (higher rank) or for yourself.
   await expect(page.getByRole("button", { name: /^Reset two-step sign-in for owner/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Reset two-step sign-in for admin@demo.example.org" })).toHaveCount(0);
@@ -301,8 +300,8 @@ test("admin: reset a clinician's two-step sign-in with a reason and the step-up"
 // Last on purpose: a created participant becomes the newest row, which the tests above open as "first participant".
 test("admin: create a participant, see its code and QR, find it and open its record", async ({ page }) => {
   await login(page, "admin@example.org");
-  await expect(page).toHaveURL(/\/[0-9a-f-]{36}\/overview$/);
-  await mainNav(page).getByRole("link", { name: "Participants" }).click();
+  await expect(page).toHaveURL(OVERVIEW_URL);
+  await navTo(page, "Clinic", "Participants");
   await page.getByRole("button", { name: "New participant" }).click();
   const dialog = page.getByRole("dialog", { name: "New participant" });
   await dialog.getByLabel("Age group (optional)").selectOption("24–35 mo");
