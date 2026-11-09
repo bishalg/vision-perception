@@ -16,10 +16,13 @@ export function DriftChart({
   checks,
   warnDeg,
   hardDeg,
+  playheadSec,
 }: {
   checks: SessionTrackingQuality["drift_checks"];
   warnDeg?: number | null;
   hardDeg?: number | null;
+  /** Session time of the replay playhead (WP-X.20, V-4); a vertical line when inside the chart. */
+  playheadSec?: number | null;
 }) {
   const tracking = useText().app.detail.tracking;
   const t = tracking.drift;
@@ -48,6 +51,9 @@ export function DriftChart({
           </g>
         ))}
         {path ? <path className="line" d={path} /> : null}
+        {playheadSec != null && playheadSec >= 0 && playheadSec <= maxSec ? (
+          <line className="playhead" data-testid="drift-playhead" x1={x(playheadSec)} x2={x(playheadSec)} y1={PAD.t} y2={H - PAD.b} />
+        ) : null}
         {checks.map((c) =>
           c.offset_deg == null ? (
             <text key={c.at_sec} x={x(c.at_sec)} y={H - PAD.b - 4} textAnchor="middle">{t.missedMark(t.missed)}</text>

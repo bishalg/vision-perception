@@ -192,7 +192,7 @@ export const en = {
   },
   detail: {
     back: "Back to sessions",
-    tabs: { clips: "Clips", quality: "Quality", report: "Report", clinical: "Clinical review" },
+    tabs: { clips: "Clips", quality: "Quality", replay: "Replay", report: "Report", clinical: "Clinical review" },
     tabsLabel: "Session sections",
     composite: "Composite",
     confidence: "Confidence",
@@ -539,7 +539,7 @@ const appNe: Widen<typeof appEn> = {
   },
   detail: {
     back: "सत्रहरूमा फर्कनुहोस्",
-    tabs: { clips: "क्लिपहरू", quality: "गुणस्तर", report: "प्रतिवेदन", clinical: "क्लिनिकल समीक्षा" },
+    tabs: { clips: "क्लिपहरू", quality: "गुणस्तर", replay: "रिप्ले", report: "प्रतिवेदन", clinical: "क्लिनिकल समीक्षा" },
     tabsLabel: "सत्रका खण्डहरू",
     composite: "संयुक्त स्कोर",
     confidence: "विश्वसनीयता",

@@ -57,6 +57,8 @@ export const paramSpecSchema = z.object({
   helpKey: z.string(),
   since: z.string(),
   ownerGate: str,
+  /** WP-X.19b: `["replay"]` on a knob only the replay views read; absent when the knob feeds the results. */
+  affects: z.array(z.enum(["replay"])).optional(),
 });
 export type ParamSpec = z.infer<typeof paramSpecSchema>;
 

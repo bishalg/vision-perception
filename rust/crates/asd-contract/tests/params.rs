@@ -482,11 +482,47 @@ const DSP_ROWS: [(&str, f64); 16] = [
 ];
 
 #[test]
+fn the_replay_only_rows_are_fixation_frames_and_not_gated() {
+    for id in params::REPLAY_ONLY {
+        let spec = params::spec(id).unwrap_or_else(|| panic!("{id} registered"));
+        assert_eq!(spec.affects, [params::Affects::Replay], "{id}");
+        assert_eq!(spec.stage, Stage::Fixation, "{id}");
+        assert_eq!(spec.reprocess, Reprocess::Frames, "{id}");
+        assert!(spec.owner_gate.is_none(), "{id}");
+    }
+    assert_eq!(
+        params::spec("metrics.fixationAlgorithm").unwrap().default,
+        json!("ivt")
+    );
+    assert_eq!(
+        params::spec("metrics.idtDispersionNorm").unwrap().default,
+        json!(0.05)
+    );
+    assert_eq!(
+        params::spec("metrics.blinkMinSec").unwrap().default,
+        json!(0.05)
+    );
+    assert_eq!(
+        params::spec("metrics.blinkMaxSec").unwrap().default,
+        json!(0.5)
+    );
+    // Every other row feeds the results.
+    assert!(registry()
+        .iter()
+        .filter(|s| !params::REPLAY_ONLY.contains(&s.id.as_str()))
+        .all(|s| s.affects.is_empty()));
+}
+
+#[test]
 fn the_16_rows_of_1_3_0_are_registered_with_their_defaults() {
-    assert_eq!(registry().len(), 88 + 16, "acceptance 12: 104 rows");
+    assert_eq!(
+        registry().len(),
+        88 + 16 + params::REPLAY_ONLY.len(),
+        "acceptance 12: 104 rows, plus the WP-X.19b replay-only rows"
+    );
     let added: Vec<&str> = registry()
         .iter()
-        .filter(|s| s.since == "1.3.0")
+        .filter(|s| s.since == "1.3.0" && s.affects.is_empty())
         .map(|s| s.id.as_str())
         .collect();
     assert_eq!(added, DSP_ROWS.map(|(id, _)| id));

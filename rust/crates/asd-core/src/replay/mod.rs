@@ -47,7 +47,7 @@ pub use heatmap::{cohort_grid, difference, heatmap_grid, Grid, COHORT_MIN_N, MAX
 pub use outliers::{screen, Exclusion, MetricRow, Rule, RuleOutcome, Screening};
 pub use trace::{
     expected_bands, expected_bands_for_age, windowed_trace, BandThreshold, ExpectedBand, Trace,
-    TraceMetric, TracePoint, MAX_TRACE_POINTS,
+    TraceMetric, TracePoint, BAND_LABELS, MAX_TRACE_POINTS,
 };
 
 /// A replay input the functions cannot work with (never a panic).

@@ -189,10 +189,18 @@ export type DomainKey =
   | "param.flag.yellowFloor.label"
   | "param.lowConfidenceValidRatio.help"
   | "param.lowConfidenceValidRatio.label"
+  | "param.metrics.blinkMaxSec.help"
+  | "param.metrics.blinkMaxSec.label"
+  | "param.metrics.blinkMinSec.help"
+  | "param.metrics.blinkMinSec.label"
   | "param.metrics.fallbackFrameIntervalSec.help"
   | "param.metrics.fallbackFrameIntervalSec.label"
+  | "param.metrics.fixationAlgorithm.help"
+  | "param.metrics.fixationAlgorithm.label"
   | "param.metrics.flatAffectGain.help"
   | "param.metrics.flatAffectGain.label"
+  | "param.metrics.idtDispersionNorm.help"
+  | "param.metrics.idtDispersionNorm.label"
   | "param.metrics.ivtUnit.help"
   | "param.metrics.ivtUnit.label"
   | "param.metrics.ivtVelocityDegPerSec.help"
@@ -435,6 +443,9 @@ export type DomainKey =
   | "quality_verdict.degraded"
   | "quality_verdict.optimal"
   | "quality_verdict.rejected"
+  | "replay.band.atypicalAbove"
+  | "replay.band.atypicalBelow"
+  | "replay.band.expected"
   | "review_reason.flag_red"
   | "review_reason.low_quality"
   | "review_reason.low_tracking_quality"
@@ -731,10 +742,18 @@ export const DOMAIN: Record<DomainLocale, Record<DomainKey, string>> = {
     "param.flag.yellowFloor.label": "Yellow floor",
     "param.lowConfidenceValidRatio.help": "A clip with a valid-sample ratio below this value counts as low confidence.",
     "param.lowConfidenceValidRatio.label": "Low-confidence valid ratio",
+    "param.metrics.blinkMaxSec.help": "A longer run of invalid samples is drawn as lost tracking, not a blink. Only the replay uses it.",
+    "param.metrics.blinkMaxSec.label": "Longest blink",
+    "param.metrics.blinkMinSec.help": "A shorter run of invalid samples is drawn as a dropout, not a blink. Only the replay uses it.",
+    "param.metrics.blinkMinSec.label": "Shortest blink",
     "param.metrics.fallbackFrameIntervalSec.help": "Frame interval assumed when timestamps are missing.",
     "param.metrics.fallbackFrameIntervalSec.label": "Fallback frame interval",
+    "param.metrics.fixationAlgorithm.help": "How the replay finds fixations: by velocity (I-VT) or by dispersion (I-DT). Only the replay uses it.",
+    "param.metrics.fixationAlgorithm.label": "Replay fixation detector",
     "param.metrics.flatAffectGain.help": "Scales the facial-movement signal used for the flat-affect measure.",
     "param.metrics.flatAffectGain.label": "Flat affect gain",
+    "param.metrics.idtDispersionNorm.help": "Largest spread of gaze, in screen units, that the I-DT replay detector still counts as one fixation.",
+    "param.metrics.idtDispersionNorm.label": "I-DT dispersion threshold",
     "param.metrics.ivtUnit.help": "Whether the fixation threshold is in screen units or degrees.",
     "param.metrics.ivtUnit.label": "Fixation velocity unit",
     "param.metrics.ivtVelocityDegPerSec.help": "Fixation threshold in degrees per second; used when the unit is degrees.",
@@ -977,6 +996,9 @@ export const DOMAIN: Record<DomainLocale, Record<DomainKey, string>> = {
     "quality_verdict.degraded": "Degraded",
     "quality_verdict.optimal": "Optimal",
     "quality_verdict.rejected": "Rejected",
+    "replay.band.atypicalAbove": "Atypical above",
+    "replay.band.atypicalBelow": "Atypical below",
+    "replay.band.expected": "Expected",
     "review_reason.flag_red": "Red flag",
     "review_reason.low_quality": "Low quality",
     "review_reason.low_tracking_quality": "Low tracking quality",
@@ -1217,10 +1239,18 @@ export const DOMAIN: Record<DomainLocale, Record<DomainKey, string>> = {
     "param.flag.yellowFloor.label": "पहेँलो न्यूनतम सीमा",
     "param.lowConfidenceValidRatio.help": "वैध नमुना अनुपात यसभन्दा कम भएको क्लिप कम-विश्वासमा गनिन्छ।",
     "param.lowConfidenceValidRatio.label": "कम-विश्वास वैध अनुपात",
+    "param.metrics.blinkMaxSec.help": "यसभन्दा लामो अमान्य नमुनाको शृङ्खला झिम्काइ होइन, ट्र्याकिङ हराएको रूपमा देखाइन्छ। यो रिप्लेमा मात्र प्रयोग हुन्छ।",
+    "param.metrics.blinkMaxSec.label": "सबैभन्दा लामो झिम्काइ",
+    "param.metrics.blinkMinSec.help": "यसभन्दा छोटो अमान्य नमुनाको शृङ्खला झिम्काइ होइन, ड्रपआउटका रूपमा देखाइन्छ। यो रिप्लेमा मात्र प्रयोग हुन्छ।",
+    "param.metrics.blinkMinSec.label": "सबैभन्दा छोटो झिम्काइ",
     "param.metrics.fallbackFrameIntervalSec.help": "टाइमस्ट्याम्प नभएको बेला मानिने फ्रेम अन्तराल।",
     "param.metrics.fallbackFrameIntervalSec.label": "वैकल्पिक फ्रेम अन्तराल",
+    "param.metrics.fixationAlgorithm.help": "रिप्लेले फिक्सेसन कसरी पत्ता लगाउँछ: गति (I-VT) वा फैलावट (I-DT) बाट। यो रिप्लेमा मात्र प्रयोग हुन्छ।",
+    "param.metrics.fixationAlgorithm.label": "रिप्ले फिक्सेसन पहिचान विधि",
     "param.metrics.flatAffectGain.help": "सपाट भाव मापनमा प्रयोग हुने अनुहारको चाल संकेतलाई स्केल गर्छ।",
     "param.metrics.flatAffectGain.label": "सपाट भाव गेन",
+    "param.metrics.idtDispersionNorm.help": "I-DT रिप्ले पहिचानले एउटै फिक्सेसन मान्ने दृष्टिको स्क्रिन एकाइमा सबैभन्दा ठूलो फैलावट।",
+    "param.metrics.idtDispersionNorm.label": "I-DT फैलावट सीमा",
     "param.metrics.ivtUnit.help": "फिक्सेसन सीमा स्क्रिन एकाइमा हो कि डिग्रीमा।",
     "param.metrics.ivtUnit.label": "फिक्सेसन गति एकाइ",
     "param.metrics.ivtVelocityDegPerSec.help": "डिग्री प्रति सेकेन्डमा फिक्सेसन सीमा; एकाइ डिग्री हुँदा प्रयोग हुन्छ।",
@@ -1463,6 +1493,9 @@ export const DOMAIN: Record<DomainLocale, Record<DomainKey, string>> = {
     "quality_verdict.degraded": "कमजोर",
     "quality_verdict.optimal": "उत्तम",
     "quality_verdict.rejected": "अस्वीकृत",
+    "replay.band.atypicalAbove": "माथि असामान्य",
+    "replay.band.atypicalBelow": "तल असामान्य",
+    "replay.band.expected": "अपेक्षित",
     "review_reason.flag_red": "रातो फ्लाग",
     "review_reason.low_quality": "कम गुणस्तर",
     "review_reason.low_tracking_quality": "कम ट्र्याकिङ गुणस्तर",

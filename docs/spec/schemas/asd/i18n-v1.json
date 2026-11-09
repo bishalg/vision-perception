@@ -1104,6 +1104,30 @@
       "ne": "कम-विश्वास वैध अनुपात",
       "params": []
     },
+    "param.metrics.blinkMaxSec.help": {
+      "draft": true,
+      "en": "A longer run of invalid samples is drawn as lost tracking, not a blink. Only the replay uses it.",
+      "ne": "यसभन्दा लामो अमान्य नमुनाको शृङ्खला झिम्काइ होइन, ट्र्याकिङ हराएको रूपमा देखाइन्छ। यो रिप्लेमा मात्र प्रयोग हुन्छ।",
+      "params": []
+    },
+    "param.metrics.blinkMaxSec.label": {
+      "draft": true,
+      "en": "Longest blink",
+      "ne": "सबैभन्दा लामो झिम्काइ",
+      "params": []
+    },
+    "param.metrics.blinkMinSec.help": {
+      "draft": true,
+      "en": "A shorter run of invalid samples is drawn as a dropout, not a blink. Only the replay uses it.",
+      "ne": "यसभन्दा छोटो अमान्य नमुनाको शृङ्खला झिम्काइ होइन, ड्रपआउटका रूपमा देखाइन्छ। यो रिप्लेमा मात्र प्रयोग हुन्छ।",
+      "params": []
+    },
+    "param.metrics.blinkMinSec.label": {
+      "draft": true,
+      "en": "Shortest blink",
+      "ne": "सबैभन्दा छोटो झिम्काइ",
+      "params": []
+    },
     "param.metrics.fallbackFrameIntervalSec.help": {
       "draft": true,
       "en": "Frame interval assumed when timestamps are missing.",
@@ -1116,6 +1140,18 @@
       "ne": "वैकल्पिक फ्रेम अन्तराल",
       "params": []
     },
+    "param.metrics.fixationAlgorithm.help": {
+      "draft": true,
+      "en": "How the replay finds fixations: by velocity (I-VT) or by dispersion (I-DT). Only the replay uses it.",
+      "ne": "रिप्लेले फिक्सेसन कसरी पत्ता लगाउँछ: गति (I-VT) वा फैलावट (I-DT) बाट। यो रिप्लेमा मात्र प्रयोग हुन्छ।",
+      "params": []
+    },
+    "param.metrics.fixationAlgorithm.label": {
+      "draft": true,
+      "en": "Replay fixation detector",
+      "ne": "रिप्ले फिक्सेसन पहिचान विधि",
+      "params": []
+    },
     "param.metrics.flatAffectGain.help": {
       "draft": true,
       "en": "Scales the facial-movement signal used for the flat-affect measure.",
@@ -1126,6 +1162,18 @@
       "draft": true,
       "en": "Flat affect gain",
       "ne": "सपाट भाव गेन",
+      "params": []
+    },
+    "param.metrics.idtDispersionNorm.help": {
+      "draft": true,
+      "en": "Largest spread of gaze, in screen units, that the I-DT replay detector still counts as one fixation.",
+      "ne": "I-DT रिप्ले पहिचानले एउटै फिक्सेसन मान्ने दृष्टिको स्क्रिन एकाइमा सबैभन्दा ठूलो फैलावट।",
+      "params": []
+    },
+    "param.metrics.idtDispersionNorm.label": {
+      "draft": true,
+      "en": "I-DT dispersion threshold",
+      "ne": "I-DT फैलावट सीमा",
       "params": []
     },
     "param.metrics.ivtUnit.help": {
@@ -2578,6 +2626,24 @@
       "draft": true,
       "en": "Rejected",
       "ne": "अस्वीकृत",
+      "params": []
+    },
+    "replay.band.atypicalAbove": {
+      "draft": true,
+      "en": "Atypical above",
+      "ne": "माथि असामान्य",
+      "params": []
+    },
+    "replay.band.atypicalBelow": {
+      "draft": true,
+      "en": "Atypical below",
+      "ne": "तल असामान्य",
+      "params": []
+    },
+    "replay.band.expected": {
+      "draft": true,
+      "en": "Expected",
+      "ne": "अपेक्षित",
       "params": []
     },
     "review_reason.flag_red": {

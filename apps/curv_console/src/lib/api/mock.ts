@@ -39,6 +39,7 @@ import { createMockEmr } from "./mock/emr";
 import { createMockShare } from "./mock/share";
 import { createMockResearch } from "./mock/research";
 import { MOCK_TRACKING_CYCLE, mockTrackingQuality } from "./mock/tracking";
+import { mockAgeMonths, mockReplayFrames } from "./mock/replay";
 
 /** Real orgs are UUIDs (CON-20); the mock uses a fixed one so URLs look like production. */
 export const MOCK_ORG_ID = "5f0e1d2c-3b4a-4968-8776-655443322110";
@@ -298,6 +299,9 @@ export function mockSessionRaw(d: SessionDetail, clipRows: ClipScore[]): Session
       zeroRawVideoEnforced: true,
       perVideoComposite: d.composite_score ?? null,
       perVideo,
+      // WP-X.20: deterministic synthetic frames and the child's age, so the replay has something to draw.
+      ageMonths: mockAgeMonths(d.id),
+      frames: mockReplayFrames(d.id),
     },
     frames_available: false,
     frames_purged: false,

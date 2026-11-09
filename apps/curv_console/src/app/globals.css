@@ -3,12 +3,17 @@
   --bg: #f6f7f9; --surface: #ffffff; --text: #14181f; --muted: #5a6472; --border: #d8dde5;
   --accent: #1f5fd1; --accent-text: #ffffff;
   --green: #1e7a46; --yellow: #8a6100; --red: #b3261e; --grey: #4b5563;
+  /* WP-X.20 replay: AOI role colours (a legend always prints the role name). */
+  --role-social: #1f5fd1; --role-geometric: #b85c00; --role-eye: #0f7f7a; --role-mouth: #a3367a;
+  --role-orienting: #6b4fc4; --role-none: #6b7280;
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #0f1218; --surface: #181d26; --text: #e8ecf2; --muted: #9aa5b4; --border: #2c3442;
     --accent: #6ea0ff; --accent-text: #0b1220;
     --green: #5fd08b; --yellow: #f0c25a; --red: #ff8a80; --grey: #aab3c0;
+    --role-social: #6ea0ff; --role-geometric: #ffb067; --role-eye: #4fd1c5; --role-mouth: #f08cc9;
+    --role-orienting: #b39dff; --role-none: #aab3c0;
   }
 }
 * { box-sizing: border-box; }
@@ -131,4 +136,5 @@ button.secondary { background: var(--surface); color: var(--text); border-color:
 .drift-chart .line { fill: none; stroke: var(--text, currentColor); stroke-width: 2; }
 .drift-chart .warn { stroke: var(--yellow); stroke-dasharray: 4 3; }
 .drift-chart .hard { stroke: var(--red); stroke-dasharray: 4 3; }
+.drift-chart .playhead { stroke: var(--accent); stroke-width: 2; }
 .drift-chart text { font-size: 11px; fill: currentColor; }

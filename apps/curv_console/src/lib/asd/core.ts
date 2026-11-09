@@ -42,6 +42,31 @@ export interface AsdWasmExports {
     baselinesJson: string,
     optionsJson: string,
   ): string;
+  /** WP-X.19 (ADR-0015 V-1..V-5): the replay exports; absent from a core built before it. */
+  replayEvents?(framesJson: string, profileJson: string): string;
+  replayRibbon?(framesJson: string, clipJson: string, profileJson?: string | null): string;
+  replayTrace?(
+    framesJson: string,
+    clipJson: string,
+    baselinesJson: string,
+    profileJson: string,
+    metricJson: string,
+    windowSec: number,
+    stepSec: number,
+    ageMonths?: number | null,
+  ): string;
+  expectedBands?(baselinesJson: string, clipId: string, ageMonths: number, biomarker: string, targetAoi?: string | null): string;
+  replayHeatmap?(
+    framesJson: string,
+    clipId: string | null | undefined,
+    w: number,
+    h: number,
+    bandwidthNorm: number,
+    fromSec?: number | null,
+    toSec?: number | null,
+  ): string;
+  heatmapCohort?(gridsJson: string, minN?: number | null): string;
+  heatmapDifference?(aJson: string, bJson: string): string;
   lastPanic(): string | undefined;
 }
 
@@ -97,12 +122,15 @@ export class AsdCore {
   }
 
   /** Calls an export and decodes its envelope. Never throws. */
-  async call<T>(name: AsdExportName, ...args: (string | null | undefined)[]): Promise<Envelope<T>> {
+  async call<T>(name: AsdExportName, ...args: (string | number | null | undefined)[]): Promise<Envelope<T>> {
     let mod: AsdWasmExports;
     try {
       mod = await this.load();
     } catch (err) {
       return { ok: false, error: { kind: "unavailable", message: err instanceof Error ? err.message : String(err) } };
+    }
+    if (typeof mod[name] !== "function") {
+      return { ok: false, error: { kind: "unavailable", message: `${name}: this Rust core build does not export it` } };
     }
     let raw: string;
     try {

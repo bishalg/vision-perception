@@ -65,10 +65,9 @@ pub const DEFAULT_BLINK_MAX_SEC: f64 = 0.5;
 /// `ScoringProfile.metrics` (PRM-7): fixation and affect extraction.
 ///
 /// WP-X.19 added `fixationAlgorithm`, `idtDispersionNorm`, `blinkMinSec` and `blinkMaxSec`
-/// (replay events only; no metric reads them). Until the contract's `ScoringProfile` and the
-/// parameter registry carry them, each is left out of the JSON while it holds its default, so
-/// the core and contract sections still serialise identically; a profile that sets one is
-/// decoded here.
+/// (replay events only; no metric reads them). WP-X.19b added them to the contract's
+/// `ScoringProfile` and the parameter registry, so they always serialise, like every other
+/// member.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct MetricsParams {
@@ -80,33 +79,13 @@ pub struct MetricsParams {
     pub smile_reactivity_window_sec: f64,
     pub flat_affect_gain: f64,
     /// Replay fixation detector (default I-VT).
-    #[serde(skip_serializing_if = "is_default_algorithm")]
     pub fixation_algorithm: FixationAlgorithm,
     /// I-DT dispersion threshold, screen-normalised.
-    #[serde(skip_serializing_if = "is_default_idt_dispersion")]
     pub idt_dispersion_norm: f64,
     /// Shortest invalid run drawn as a blink, seconds.
-    #[serde(skip_serializing_if = "is_default_blink_min")]
     pub blink_min_sec: f64,
     /// Longest invalid run drawn as a blink, seconds.
-    #[serde(skip_serializing_if = "is_default_blink_max")]
     pub blink_max_sec: f64,
-}
-
-fn is_default_algorithm(v: &FixationAlgorithm) -> bool {
-    *v == FixationAlgorithm::default()
-}
-
-fn is_default_idt_dispersion(v: &f64) -> bool {
-    *v == DEFAULT_IDT_DISPERSION_NORM
-}
-
-fn is_default_blink_min(v: &f64) -> bool {
-    *v == DEFAULT_BLINK_MIN_SEC
-}
-
-fn is_default_blink_max(v: &f64) -> bool {
-    *v == DEFAULT_BLINK_MAX_SEC
 }
 
 impl Default for MetricsParams {

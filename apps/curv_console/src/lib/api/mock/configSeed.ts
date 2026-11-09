@@ -120,6 +120,11 @@ export function mockScoringProfile(strict = false): ScoringProfile {
       fallbackFrameIntervalSec: 1 / 60,
       smileReactivityWindowSec: 0.5,
       flatAffectGain: 50,
+      // WP-X.19b: replay-only knobs.
+      fixationAlgorithm: "ivt",
+      idtDispersionNorm: 0.05,
+      blinkMinSec: 0.05,
+      blinkMaxSec: 0.5,
     },
     aoi: { marginNorm: 0, dwellCapMs: 100 },
     ageBands: [

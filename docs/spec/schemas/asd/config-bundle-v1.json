@@ -573,6 +573,21 @@
       },
       "type": "object"
     },
+    "FixationAlgorithm": {
+      "description": "Fixation detector of the replay events (`metrics.fixationAlgorithm`, WP-X.19b, ADR-0015\nV-1). Replay only: the metrics always use I-VT (the Swift oracle).",
+      "oneOf": [
+        {
+          "const": "ivt",
+          "description": "Velocity threshold (`ivtVelocityUnitsPerSec`, `minFixationDurationSec`).",
+          "type": "string"
+        },
+        {
+          "const": "idt",
+          "description": "Dispersion threshold (Salvucci and Goldberg 2000): `idtDispersionNorm`,\n`minFixationDurationSec`.",
+          "type": "string"
+        }
+      ]
+    },
     "FlagThresholds": {
       "description": "Traffic-light thresholds (`AttentionFlagAlgorithm`).",
       "properties": {
@@ -661,14 +676,34 @@
     "MetricsParams": {
       "description": "Fixation and affect extraction parameters (PRM-7). Defaults are the asd-core constants.",
       "properties": {
+        "blinkMaxSec": {
+          "default": 0.5,
+          "description": "Longest invalid run drawn as a blink, seconds (replay only).",
+          "type": "number"
+        },
+        "blinkMinSec": {
+          "default": 0.05,
+          "description": "Shortest invalid run drawn as a blink, seconds (replay only).",
+          "type": "number"
+        },
         "fallbackFrameIntervalSec": {
           "default": 0.016666666666666666,
           "description": "Frame interval assumed where timestamps do not give one (60 Hz).",
           "type": "number"
         },
+        "fixationAlgorithm": {
+          "$ref": "#/$defs/FixationAlgorithm",
+          "default": "ivt",
+          "description": "Replay fixation detector (WP-X.19b; replay only, no metric reads it)."
+        },
         "flatAffectGain": {
           "default": 50.0,
           "description": "Gain of the flat-affect score (`1 - mean expressivity x gain`, clamped to [0, 1]).",
+          "type": "number"
+        },
+        "idtDispersionNorm": {
+          "default": 0.05,
+          "description": "I-DT dispersion threshold, screen-normalised (replay only).",
           "type": "number"
         },
         "ivtUnit": {
@@ -1091,8 +1126,12 @@
           },
           "lowConfidenceValidRatio": 0.6,
           "metrics": {
+            "blinkMaxSec": 0.5,
+            "blinkMinSec": 0.05,
             "fallbackFrameIntervalSec": 0.016666666666666666,
+            "fixationAlgorithm": "ivt",
             "flatAffectGain": 50.0,
+            "idtDispersionNorm": 0.05,
             "ivtUnit": "norm",
             "ivtVelocityDegPerSec": 30.0,
             "ivtVelocityUnitsPerSec": 5.0,
@@ -1457,8 +1496,12 @@
         "metrics": {
           "$ref": "#/$defs/MetricsParams",
           "default": {
+            "blinkMaxSec": 0.5,
+            "blinkMinSec": 0.05,
             "fallbackFrameIntervalSec": 0.016666666666666666,
+            "fixationAlgorithm": "ivt",
             "flatAffectGain": 50.0,
+            "idtDispersionNorm": 0.05,
             "ivtUnit": "norm",
             "ivtVelocityDegPerSec": 30.0,
             "ivtVelocityUnitsPerSec": 5.0,

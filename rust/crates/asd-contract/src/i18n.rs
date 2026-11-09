@@ -520,6 +520,14 @@ pub fn required_groups() -> Vec<KeyGroup> {
             asd_core::display::DisplayMetric::ALL.map(|m| m.as_str()),
         ),
         KeyGroup::of_values("problem", problem::ALL_SLUGS.iter().copied()),
+        // WP-X.19b (ADR-0015 V-2): the expected-band line labels of `asd_core::replay`.
+        KeyGroup {
+            group: "replay".into(),
+            keys: asd_core::replay::BAND_LABELS
+                .iter()
+                .map(|l| format!("replay.band.{l}"))
+                .collect(),
+        },
     ]
 }
 

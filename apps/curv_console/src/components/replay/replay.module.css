@@ -1,0 +1,75 @@
+/* WP-X.20 replay views. Colours are tokens (globals.css `--role-*`); no colour carries meaning alone. */
+.layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 1rem; max-width: 1280px; align-items: start; }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+.stack { display: grid; gap: .75rem; min-width: 0; }
+.canvasWrap { position: relative; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); overflow: hidden; }
+.canvas { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; }
+.controls { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.controls input[type="range"] { flex: 1 1 12rem; min-width: 8rem; }
+.time { font-variant-numeric: tabular-nums; min-width: 5.5rem; }
+.legend { list-style: none; display: flex; flex-wrap: wrap; gap: .25rem 1rem; padding: 0; margin: 0; font-size: .85rem; }
+.legend li { display: inline-flex; gap: .35rem; align-items: center; }
+.swatch { display: inline-block; width: .8rem; height: .8rem; border-radius: 2px; border: 1px solid var(--border); }
+.dot { display: inline-block; width: .7rem; height: .7rem; border-radius: 50%; }
+.role_social { background: var(--role-social); }
+.role_geometric { background: var(--role-geometric); }
+.role_eye { background: var(--role-eye); }
+.role_mouth { background: var(--role-mouth); }
+.role_orienting { background: var(--role-orienting); }
+.role_none { background: var(--role-none); }
+.gazeDot { background: var(--text); }
+.greyDot { background: var(--grey); opacity: .6; }
+.status { font-size: .85rem; }
+
+/* timeline (SVG) */
+.strip { width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); cursor: pointer; }
+.strip text, .chart text { font-size: 10px; fill: var(--muted); }
+.fill_social { fill: var(--role-social); }
+.fill_geometric { fill: var(--role-geometric); }
+.fill_eye { fill: var(--role-eye); }
+.fill_mouth { fill: var(--role-mouth); }
+.fill_orienting { fill: var(--role-orienting); }
+.fill_none { fill: var(--role-none); }
+.fill_invalid { fill: color-mix(in srgb, var(--grey) 25%, transparent); }
+.fill_blink { fill: var(--yellow); }
+.fill_lost { fill: var(--red); }
+.bg_blink { background: var(--yellow); }
+.bg_lost { background: var(--red); }
+.bg_invalid { background: color-mix(in srgb, var(--grey) 25%, transparent); }
+.targetBar { fill: color-mix(in srgb, var(--accent) 20%, transparent); stroke: var(--accent); stroke-width: .5; }
+.playhead { stroke: var(--text); stroke-width: 2; }
+.rowLine { stroke: var(--border); stroke-width: 1; }
+
+/* trace chart (SVG) */
+.chart { width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+.axis { stroke: var(--muted); stroke-width: 1; }
+.band { fill: color-mix(in srgb, var(--green) 20%, transparent); stroke: var(--green); stroke-width: 1; }
+.mean { stroke: var(--green); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.threshold { stroke: var(--red); stroke-width: 1; stroke-dasharray: 3 3; }
+.thresholdLabel { fill: var(--text) !important; }
+.line { fill: none; stroke: var(--accent); stroke-width: 2; }
+.hoverDot { fill: var(--accent); }
+.figure { margin: 0; display: grid; gap: .35rem; }
+.figure figcaption { font-weight: 600; }
+.chartBar { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+
+/* clip list */
+.clipList { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.clipItem { border: 1px solid var(--border); border-radius: 6px; padding: .5rem; background: var(--surface); display: grid; gap: .3rem; }
+.clipItem[aria-current="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.clipButton { all: unset; cursor: pointer; font-weight: 600; }
+.clipButton:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.clipMeta { display: flex; flex-wrap: wrap; gap: .25rem .75rem; font-size: .85rem; color: var(--muted); }
+.track { position: relative; height: .9rem; border-radius: 4px; background: color-mix(in srgb, var(--grey) 15%, transparent); }
+.trackBand { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--green) 30%, transparent); border: 1px solid var(--green); border-radius: 3px; }
+.trackDot { position: absolute; top: 50%; width: .7rem; height: .7rem; margin: -.35rem 0 0 -.35rem; border-radius: 50%; background: var(--text); border: 2px solid var(--surface); }
+
+/* heatmaps */
+.heatGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .75rem; }
+.heatCanvas { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+
+/* workbench tuning view */
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+@media (max-width: 1200px) { .pair { grid-template-columns: 1fr; } }
+.bg_band { background: color-mix(in srgb, var(--green) 30%, transparent); border-color: var(--green); }
+.bg_line { background: var(--accent); }

@@ -212,7 +212,12 @@ pub struct ExpectedBand {
     pub source: String,
 }
 
+/// The band label names, in the order a `band` expectation draws them; each message key is
+/// `replay.band.<name>` (the domain catalogue requires exactly these, I18N-2).
+pub const BAND_LABELS: [&str; 3] = ["expected", "atypicalBelow", "atypicalAbove"];
+
 fn line(key: &str, value: f64) -> BandThreshold {
+    debug_assert!(BAND_LABELS.contains(&key));
     BandThreshold {
         label_key: format!("replay.band.{key}"),
         value,

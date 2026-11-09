@@ -21,6 +21,7 @@ import { MAX_SWEEP_STEPS, defaultSweep, sweepValues } from "@/lib/research/sweep
 import type { ResearchMessages } from "@/messages/research";
 import { useLocale, useText } from "@/lib/i18n/provider";
 import { paramText } from "@/lib/research/paramText";
+import { TuningReplay } from "@/components/replay/TuningReplay";
 import { PreviewCard, type CardData } from "./PreviewCard";
 import { SessionPicker, type PickerSession } from "./SessionPicker";
 import { SweepCurve, type CurvePoint } from "./SweepCurve";
@@ -62,6 +63,9 @@ export function PreviewPanel(props: PreviewPanelProps) {
   const [defaultAge, setDefaultAge] = useState(DEFAULT_AGE_MONTHS);
   const [cards, setCards] = useState<CardData[]>([]);
   const [note, setNote] = useState<string | null>(null);
+  // V-6: the tuning view replaces the cards while on; the scanpath cards stay the default.
+  const [replayOn, setReplayOn] = useState(false);
+  const [replaySession, setReplaySession] = useState("");
   const [, startTransition] = useTransition();
 
   const records = useRef(new Map<string, Record<string, unknown>>());
@@ -71,6 +75,7 @@ export function PreviewPanel(props: PreviewPanelProps) {
 
   const ageOf = (id: string) => ages[id] ?? defaultAge;
   const ids = sessions.filter((s) => selected.has(s.id)).map((s) => s.id);
+  const replayId = ids.includes(replaySession) ? replaySession : (ids[0] ?? "");
   const draftKey = JSON.stringify(draft);
   const runKey = `${draftKey}|${ids.join(",")}|${ids.map(ageOf).join(",")}|${baselines ? 1 : 0}`;
 
@@ -217,9 +222,35 @@ export function PreviewPanel(props: PreviewPanelProps) {
         text={text}
       />
       {note ? <p role="alert" className="muted">{note}</p> : null}
-      <div className={r.cards}>
-        {cards.map((c) => <PreviewCard key={c.id} card={c} text={text} />)}
+      <div className={r.row}>
+        <button type="button" aria-pressed={replayOn} onClick={() => setReplayOn((v) => !v)} disabled={!ids.length}>
+          {text.replay.tuning.toggle}
+        </button>
+        {replayOn && ids.length > 1 ? (
+          <label>
+            {text.replay.tuning.session}{" "}
+            <select value={replayId} onChange={(ev) => setReplaySession(ev.currentTarget.value)}>
+              {sessions.filter((x) => selected.has(x.id)).map((x) => <option key={x.id} value={x.id}>{x.token}</option>)}
+            </select>
+          </label>
+        ) : null}
       </div>
+      {replayOn && replayId ? (
+        <TuningReplay
+          key={replayId}
+          core={core}
+          sessionId={replayId}
+          getRecord={async (id) => ((await ensureRecords([id])) ? null : (records.current.get(id) ?? null))}
+          catalog={catalog ?? null}
+          publishedProfile={publishedProfile}
+          draft={draft}
+          text={text}
+        />
+      ) : (
+        <div className={r.cards}>
+          {cards.map((c) => <PreviewCard key={c.id} card={c} text={text} />)}
+        </div>
+      )}
       <SweepSection
         registry={registry}
         publishedProfile={publishedProfile}

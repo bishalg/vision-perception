@@ -7,6 +7,7 @@ import { QualityPanel } from "@/components/QualityPanel";
 import { ReportPanel } from "@/components/ReportPanel";
 import { notScoredLabel } from "@/components/ScoringStatus";
 import { SessionTabs, parseTab } from "@/components/SessionTabs";
+import { SessionReplay } from "@/components/replay/SessionReplay";
 import { ReviewPanel } from "@/components/clinical/ReviewPanel";
 import { ApiError } from "@/lib/api";
 import { authedApi, currentRole } from "@/lib/auth/server";
@@ -27,6 +28,7 @@ import { driftThresholds } from "@/lib/research/baselines";
 import { enumLabel } from "@/messages/domain";
 import { getText } from "@/lib/i18n/server";
 import { pathsFor } from "@/lib/paths";
+import { ageMonthsOfRecord, framesOfRecord } from "@/lib/asd/replay";
 
 export default async function SessionDetailPage({
   params,
@@ -73,6 +75,7 @@ export default async function SessionDetailPage({
       <SessionTabs basePath={basePath} active={tab} hidden={showClinical ? [] : ["clinical"]} labels={t.tabs} label={t.tabsLabel} />
       {tab === "clips" ? <ClipsTable clips={clips} /> : null}
       {tab === "quality" ? <QualityPanel session={session} warnDeg={drift.warnDeg} hardDeg={drift.hardDeg} /> : null}
+      {tab === "replay" ? <ReplayTab org={org} sessionId={id} /> : null}
       {tab === "report" ? <ReportPanel session={session} /> : null}
       {tab === "clinical" ? (
         showClinical ? (
@@ -82,6 +85,36 @@ export default async function SessionDetailPage({
         )
       ) : null}
     </>
+  );
+}
+
+/**
+ * WP-X.20 Replay tab: the stored record's frames (`GET /sessions/{id}/raw`, audited `session.raw_read`), the effective
+ * catalog, baselines and profile (GOV-6), and the clips' stored scoring status. A role without config access gets no
+ * catalog or baselines: the replay then draws events without areas or bands.
+ */
+async function ReplayTab({ org, sessionId }: { org: string; sessionId: string }) {
+  const api = await authedApi();
+  const [raw, effective, clips] = await Promise.all([
+    // A role that may not read the stored record (403) or a purged one (404/410) replays nothing.
+    api.getSessionRaw(sessionId).catch((err: unknown) => {
+      if (err instanceof ApiError && [403, 404, 410].includes(err.status)) return null;
+      throw err;
+    }),
+    api.getEffectiveConfig(org).catch(() => null),
+    api.getSessionClips(sessionId).catch(() => []),
+  ]);
+  const record = raw?.raw_payload ?? null;
+  return (
+    <SessionReplay
+      sessionId={sessionId}
+      frames={framesOfRecord(record)}
+      ageMonths={ageMonthsOfRecord(record)}
+      catalog={effective?.stimulus_catalog.body ?? null}
+      baselines={effective?.normative_baselines.body ?? null}
+      profile={effective?.scoring_profile.body ?? null}
+      clipStatuses={Object.fromEntries(clips.map((c) => [c.clip_id, c.status ?? null]))}
+    />
   );
 }
 

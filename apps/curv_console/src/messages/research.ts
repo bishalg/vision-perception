@@ -392,6 +392,99 @@ export interface ResearchMessages {
     interval: string;
     noData: string;
   };
+  /** WP-X.20 (ADR-0015 V-1..V-4, V-6): the session replay and the workbench tuning view. */
+  replay: {
+    tab: string;
+    title: string;
+    intro: string;
+    play: string;
+    pause: string;
+    speed: string;
+    speedValue: (x: number) => string;
+    step: string;
+    stepBack: string;
+    stepForward: string;
+    scrubber: string;
+    clip: string;
+    aoi: string;
+    noAoi: string;
+    roles: string;
+    noRole: string;
+    trail: string;
+    gaze: string;
+    fixation: string;
+    saccade: string;
+    blink: string;
+    lost: string;
+    recorded: string;
+    expected: string;
+    table: string;
+    chart: string;
+    downloadCsv: string;
+    noMedia: string;
+    noCohort: string;
+    legend: string;
+    keys: string;
+    blinkAndLost: string;
+    seconds: (sec: string) => string;
+    canvasLabel: (clip: string, time: string, aoi: string) => string;
+    age: string;
+    needAge: string;
+    noFrames: string;
+    noClip: (id: string) => string;
+    coreUnavailable: string;
+    failed: (message: string) => string;
+    warning: (code: string) => string;
+    timeline: {
+      title: string;
+      ribbon: string;
+      loss: string;
+      targets: string;
+      playhead: (time: string) => string;
+      alt: (clip: string, segments: number) => string;
+      segment: (what: string, from: string, to: string) => string;
+      invalid: string;
+    };
+    trace: {
+      title: (aoi: string) => string;
+      axisX: string;
+      axisY: (aoi: string) => string;
+      alt: (aoi: string, points: number) => string;
+      point: (t: string, value: string, n: number) => string;
+      noValue: string;
+      noBands: string;
+      window: (windowSec: string, stepSec: string) => string;
+      cols: { tSec: string; value: string; validRatio: string; nFrames: string };
+      band: (low: string, high: string) => string;
+      bandOpen: (bound: string, above: boolean) => string;
+      mean: string;
+      threshold: (label: string, value: string) => string;
+      segmentBand: (segment: string, band: string) => string;
+    };
+    clips: {
+      title: string;
+      duration: (sec: string) => string;
+      recorded: (value: string) => string;
+      expected: (range: string) => string;
+      notScored: string;
+      noBand: string;
+      select: (title: string) => string;
+    };
+    heatmap: {
+      title: string;
+      session: string;
+      cohort: string;
+      difference: string;
+      alt: (what: string) => string;
+      samples: (n: number) => string;
+      cohortN: (n: number, minN: number) => string;
+      suppressed: (n: number, minN: number) => string;
+      scale: string;
+      diffScale: string;
+    };
+    quality: { playhead: (clip: string, time: string) => string; none: string };
+    tuning: { toggle: string; intro: string; published: string; draft: string; session: string; noFrames: string };
+  };
   /** WP-X.9: the sweep and age-profile sections of a run page (SWP-3, AGE-1). */
   analysis: {
     sweepTitle: string;
@@ -930,6 +1023,105 @@ const en: ResearchMessages = {
     deltaBars: (label) => `Change in ${label} by age band`,
     interval: "95% interval of the mean",
     noData: "No data.",
+  },
+  replay: {
+    tab: "Replay",
+    title: "Gaze replay",
+    intro: "The recorded gaze over each clip. Fixations, saccades, blinks and areas hit are computed by the Rust core with the scoring profile; the expected range is the published baseline for the child's age. A research view of the recording, not a clinical finding.",
+    play: "Play",
+    pause: "Pause",
+    speed: "Speed",
+    speedValue: (x) => `${x}x`,
+    step: "Frame step",
+    stepBack: "Previous frame",
+    stepForward: "Next frame",
+    scrubber: "Clip time",
+    clip: "Clip",
+    aoi: "Area of interest",
+    noAoi: "outside every area",
+    roles: "Roles",
+    noRole: "no role",
+    trail: "Gaze trail (last 300 ms)",
+    gaze: "Gaze point",
+    fixation: "Fixation (size is duration)",
+    saccade: "Saccade",
+    blink: "Blink",
+    lost: "Tracking lost",
+    recorded: "Recorded",
+    expected: "Expected range",
+    table: "Table",
+    chart: "Chart",
+    downloadCsv: "Download CSV",
+    noMedia: "No clip video on the server: the areas of interest are drawn as a wireframe.",
+    noCohort: "No cohort heatmap: this session is not linked to an analysis run.",
+    legend: "Legend",
+    keys: "Keys: Space plays or pauses, left and right arrows step one frame.",
+    blinkAndLost: "Blink or tracking lost (grey)",
+    seconds: (sec) => `${sec} s`,
+    canvasLabel: (clip, time, aoi) => `Gaze replay of ${clip} at ${time}, gaze ${aoi}`,
+    age: "Age (months)",
+    needAge: "Enter the child's age in months to draw the expected range.",
+    noFrames: "This stored record has no gaze frames, so there is nothing to replay.",
+    noClip: (id) => `Clip ${id} is not in the effective catalog: no areas of interest to draw.`,
+    coreUnavailable: "The Rust core is unavailable in this browser, so the replay cannot be computed.",
+    failed: (message) => `The replay could not be computed: ${message}`,
+    warning: (code) => `Note from the core: ${code}`,
+    timeline: {
+      title: "Timeline",
+      ribbon: "Area hit",
+      loss: "Blink and loss",
+      targets: "Areas on screen",
+      playhead: (time) => `Playhead at ${time}`,
+      alt: (clip, segments) => `Timeline of ${clip}: ${segments} area-hit segments; click to seek`,
+      segment: (what, from, to) => `${what}: ${from} to ${to} s`,
+      invalid: "no valid gaze",
+    },
+    trace: {
+      title: (aoi) => `Share of gaze on ${aoi} over the clip`,
+      axisX: "Clip time (s)",
+      axisY: (aoi) => `share of gaze on ${aoi}`,
+      alt: (aoi, points) => `Share of gaze on ${aoi} in a sliding window, ${points} points, with the expected range shaded`,
+      point: (t, value, n) => `${t} s: ${value} (${n} frames)`,
+      noValue: "no valid frame",
+      noBands: "No published expected range for this clip and age.",
+      window: (windowSec, stepSec) => `Window ${windowSec} s, step ${stepSec} s`,
+      cols: { tSec: "Time (s)", value: "Share", validRatio: "Valid frames", nFrames: "Frames" },
+      band: (low, high) => `Expected range ${low} to ${high}`,
+      bandOpen: (bound, above) => (above ? `Expected range ${bound} and above` : `Expected range up to ${bound}`),
+      mean: "Expected value (dashed)",
+      threshold: (label, value) => `${label} ${value}`,
+      segmentBand: (segment, band) => `${segment}: ${band}`,
+    },
+    clips: {
+      title: "Clips",
+      duration: (sec) => `${sec} s`,
+      recorded: (value) => `Recorded ${value}`,
+      expected: (range) => `expected ${range}`,
+      notScored: "Not scored",
+      noBand: "No expected range",
+      select: (title) => `Show ${title}`,
+    },
+    heatmap: {
+      title: "Where the gaze went",
+      session: "This session",
+      cohort: "Age-band cohort",
+      difference: "Session minus cohort",
+      alt: (what) => `Gaze density heatmap: ${what}`,
+      samples: (n) => `${n} gaze samples`,
+      cohortN: (n, minN) => `n = ${n} sessions (minimum ${minN})`,
+      suppressed: (n, minN) => `Suppressed: ${n} sessions, fewer than ${minN}`,
+      scale: "Lighter is less gaze, darker is more",
+      diffScale: "Blue: more than the cohort; red: less than the cohort",
+    },
+    quality: { playhead: (clip, time) => `Replay position: ${clip} at ${time}`, none: "Open the Replay tab to place a playhead." },
+    tuning: {
+      toggle: "Replay",
+      intro: "The same frames replayed with the published and the draft parameters; fixations and areas hit follow the knobs.",
+      published: "Published parameters",
+      draft: "Draft parameters",
+      session: "Session",
+      noFrames: "The picked session's record has no gaze frames to replay.",
+    },
   },
   analysis: {
     sweepTitle: "Parameter sweep",
@@ -1490,6 +1682,106 @@ const ne: ResearchMessages = {
     deltaBars: (label) => `उमेर समूह अनुसार ${label} मा परिवर्तन`,
     interval: "औसतको ९५% अन्तराल",
     noData: "डाटा छैन।",
+  },
+  // ne: draft (WP-X.20; WP-L.3 reviews)
+  replay: {
+    tab: "रिप्ले",
+    title: "दृष्टि रिप्ले",
+    intro: "प्रत्येक क्लिपमा रेकर्ड गरिएको दृष्टि। फिक्सेसन, स्याकेड, झिम्काइ र छोइएका क्षेत्रहरू स्कोरिङ प्रोफाइलसहित Rust कोरले गणना गर्छ; अपेक्षित दायरा बच्चाको उमेरका लागि प्रकाशित आधाररेखा हो। यो रेकर्डिङको अनुसन्धान दृश्य हो, क्लिनिकल निष्कर्ष होइन।",
+    play: "चलाउनुहोस्",
+    pause: "रोक्नुहोस्",
+    speed: "गति",
+    speedValue: (x) => `${x}x`,
+    step: "फ्रेम चरण",
+    stepBack: "अघिल्लो फ्रेम",
+    stepForward: "अर्को फ्रेम",
+    scrubber: "क्लिप समय",
+    clip: "क्लिप",
+    aoi: "चासोको क्षेत्र",
+    noAoi: "कुनै क्षेत्र बाहिर",
+    roles: "भूमिकाहरू",
+    noRole: "भूमिका छैन",
+    trail: "दृष्टि रेखा (पछिल्लो ३०० ms)",
+    gaze: "दृष्टि बिन्दु",
+    fixation: "फिक्सेसन (आकार अवधि हो)",
+    saccade: "स्याकेड",
+    blink: "झिम्काइ",
+    lost: "ट्र्याकिङ हरायो",
+    recorded: "रेकर्ड गरिएको",
+    expected: "अपेक्षित दायरा",
+    table: "तालिका",
+    chart: "चार्ट",
+    downloadCsv: "CSV डाउनलोड",
+    noMedia: "सर्भरमा क्लिप भिडियो छैन: चासोका क्षेत्रहरू रेखाचित्रका रूपमा देखाइन्छन्।",
+    noCohort: "समूह हिटम्याप छैन: यो सत्र कुनै विश्लेषण रनसँग जोडिएको छैन।",
+    legend: "सङ्केत",
+    keys: "कुञ्जी: स्पेसले चलाउँछ वा रोक्छ, बायाँ र दायाँ तीरले एक फ्रेम सार्छ।",
+    blinkAndLost: "झिम्काइ वा ट्र्याकिङ हरायो (खैरो)",
+    seconds: (sec) => `${sec} से`,
+    canvasLabel: (clip, time, aoi) => `${clip} को ${time} मा दृष्टि रिप्ले, दृष्टि ${aoi}`,
+    age: "उमेर (महिना)",
+    needAge: "अपेक्षित दायरा देखाउन बच्चाको उमेर महिनामा लेख्नुहोस्।",
+    noFrames: "यो भण्डारण गरिएको रेकर्डमा दृष्टि फ्रेम छैन, त्यसैले रिप्ले गर्न केही छैन।",
+    noClip: (id) => `क्लिप ${id} प्रभावी क्याटलगमा छैन: देखाउन चासोको क्षेत्र छैन।`,
+    coreUnavailable: "यो ब्राउजरमा Rust कोर उपलब्ध छैन, त्यसैले रिप्ले गणना गर्न सकिँदैन।",
+    failed: (message) => `रिप्ले गणना गर्न सकिएन: ${message}`,
+    warning: (code) => `कोरको टिप्पणी: ${code}`,
+    timeline: {
+      title: "समयरेखा",
+      ribbon: "छोइएको क्षेत्र",
+      loss: "झिम्काइ र हानि",
+      targets: "स्क्रिनमा क्षेत्रहरू",
+      playhead: (time) => `प्लेहेड ${time} मा`,
+      alt: (clip, segments) => `${clip} को समयरेखा: ${segments} क्षेत्र खण्ड; खोज्न क्लिक गर्नुहोस्`,
+      segment: (what, from, to) => `${what}: ${from} देखि ${to} से`,
+      invalid: "मान्य दृष्टि छैन",
+    },
+    trace: {
+      title: (aoi) => `क्लिपभरि ${aoi} मा दृष्टिको अंश`,
+      axisX: "क्लिप समय (से)",
+      axisY: (aoi) => `${aoi} मा दृष्टिको अंश`,
+      alt: (aoi, points) => `सर्ने विन्डोमा ${aoi} मा दृष्टिको अंश, ${points} बिन्दु, अपेक्षित दायरा छायाँमा`,
+      point: (t, value, n) => `${t} से: ${value} (${n} फ्रेम)`,
+      noValue: "मान्य फ्रेम छैन",
+      noBands: "यो क्लिप र उमेरका लागि प्रकाशित अपेक्षित दायरा छैन।",
+      window: (windowSec, stepSec) => `विन्डो ${windowSec} से, चरण ${stepSec} से`,
+      cols: { tSec: "समय (से)", value: "अंश", validRatio: "मान्य फ्रेम", nFrames: "फ्रेम" },
+      band: (low, high) => `अपेक्षित दायरा ${low} देखि ${high}`,
+      bandOpen: (bound, above) => (above ? `अपेक्षित दायरा ${bound} र माथि` : `अपेक्षित दायरा ${bound} सम्म`),
+      mean: "अपेक्षित मान (टुक्रे रेखा)",
+      threshold: (label, value) => `${label} ${value}`,
+      segmentBand: (segment, band) => `${segment}: ${band}`,
+    },
+    clips: {
+      title: "क्लिपहरू",
+      duration: (sec) => `${sec} से`,
+      recorded: (value) => `रेकर्ड ${value}`,
+      expected: (range) => `अपेक्षित ${range}`,
+      notScored: "स्कोर गरिएको छैन",
+      noBand: "अपेक्षित दायरा छैन",
+      select: (title) => `${title} देखाउनुहोस्`,
+    },
+    heatmap: {
+      title: "दृष्टि कहाँ गयो",
+      session: "यो सत्र",
+      cohort: "उमेर समूहको समूह",
+      difference: "सत्र घटाउ समूह",
+      alt: (what) => `दृष्टि घनत्व हिटम्याप: ${what}`,
+      samples: (n) => `${n} दृष्टि नमुना`,
+      cohortN: (n, minN) => `n = ${n} सत्र (न्यूनतम ${minN})`,
+      suppressed: (n, minN) => `लुकाइएको: ${n} सत्र, ${minN} भन्दा कम`,
+      scale: "हल्का भनेको कम दृष्टि, गाढा भनेको बढी",
+      diffScale: "निलो: समूहभन्दा बढी; रातो: समूहभन्दा कम",
+    },
+    quality: { playhead: (clip, time) => `रिप्ले स्थिति: ${clip}, ${time}`, none: "प्लेहेड राख्न रिप्ले ट्याब खोल्नुहोस्।" },
+    tuning: {
+      toggle: "रिप्ले",
+      intro: "उही फ्रेम प्रकाशित र मस्यौदा प्यारामिटरसहित रिप्ले; फिक्सेसन र छोइएका क्षेत्रहरू नबसँगै बदलिन्छन्।",
+      published: "प्रकाशित प्यारामिटर",
+      draft: "मस्यौदा प्यारामिटर",
+      session: "सत्र",
+      noFrames: "छानिएको सत्रको रेकर्डमा रिप्ले गर्न दृष्टि फ्रेम छैन।",
+    },
   },
   // ne: draft (WP-X.9; WP-L.3 reviews)
   analysis: {

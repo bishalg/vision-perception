@@ -44,7 +44,8 @@ pub use evaluate::{
 };
 pub use profile::{
     AnalysisProfile, AoiParams, FixationAlgorithm, GazeProcessingView, IvtUnit, MetricsParams,
-    NormsParams, ReviewParams,
+    NormsParams, ReviewParams, DEFAULT_BLINK_MAX_SEC, DEFAULT_BLINK_MIN_SEC,
+    DEFAULT_IDT_DISPERSION_NORM,
 };
 pub use suppress::suppress;
 pub use sweep::{SweepAggregator, SweepError, SweepGrid};

@@ -29,6 +29,8 @@ const LITERAL_GATE_ERROR_DIRS = [
   "src/components/catalog",
   "src/components/config",
   "src/components/research",
+  // WP-X.20 replay views.
+  "src/components/replay",
 ];
 
 const literalRules = (level) => ({

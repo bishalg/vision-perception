@@ -147,6 +147,13 @@ pub fn scoring_profile_problems(p: &ScoringProfile) -> Vec<ProfileProblem> {
             q.optimal_min_valid_ratio,
             "sessionQuality.acceptableMinValidRatio must not exceed optimalMinValidRatio",
         ),
+        // WP-X.19b: the replay blink window.
+        (
+            "metrics.blinkMinSec",
+            p.metrics.blink_min_sec,
+            p.metrics.blink_max_sec,
+            "metrics.blinkMinSec must not exceed blinkMaxSec",
+        ),
     ] {
         if lower.is_finite() && upper.is_finite() && lower > upper {
             problems.push(ProfileProblem::new(path, message));
@@ -245,6 +252,10 @@ mod tests {
             scoring_profile_problem_messages(&p),
             ["qualityGate.maxYawRad and maxPitchRad must be positive"]
         );
+
+        let mut p = ScoringProfile::default();
+        p.metrics.blink_min_sec = 0.6;
+        assert_eq!(paths(&p), ["metrics.blinkMinSec"]);
 
         let p = ScoringProfile {
             schema_version: "  ".into(),

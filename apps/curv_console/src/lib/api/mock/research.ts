@@ -7,6 +7,8 @@
  * evaluation, suppression and audit live in the Rust backend and core.
  */
 import { ApiError, PROBLEM_BASE } from "../types";
+import { SEED_CATALOG } from "./catalogSeed";
+import { MOCK_REPLAY_CLIPS, mockReplayBaselineVideos } from "./replay";
 import type {
   AnalysisRun,
   AnalysisSessionRow,
@@ -58,12 +60,13 @@ function baselineBody(): Record<string, unknown> {
     schemaVersion: "1.0.0", status: "provisional-literature-seeded", provenance: "Mock",
     ageBrackets: [{ id: "24-35", minMonths: 24, maxMonths: 35 }, { id: "36-47", minMonths: 36, maxMonths: 47 }],
     videos: {
+      ...mockReplayBaselineVideos(),
       mock_clip: {
         title: "Mock clip", category: "Social", weight: 1,
         segments: [{
           id: "full", description: "Whole clip", startSec: 0, endSec: 8,
           expectations: [{
-            biomarker: "eye_dwell_ratio", direction: "higher", citation: "Synthetic", source: "literature",
+            biomarker: "eye_dwell_ratio", direction: "higherBetter", citation: "Synthetic", source: "literature",
             byAge: { "24-35": { acceptableLow: 0.25, acceptableHigh: 0.5, expected: 0.38 } },
           }],
         }],
@@ -617,7 +620,8 @@ export function createMockResearch(ctx: MockResearchContext): ResearchApi {
         // The drift thresholds (INV-2) are what the session Quality tab draws as warn/hard lines.
         scoring_profile: { version: "1.1.0", body: { ...profile(5), trackingQuality: { drift: { warnDeg: 1.5, hardDeg: 3 } } } },
         normative_baselines: { version: "2026.10.0", body: baselineBody() },
-        stimulus_catalog: { version: "1.4.0", body: {} },
+        // WP-X.20: the replay clips (areas of interest) ahead of the bundled ones.
+        stimulus_catalog: { version: "1.4.0", body: { ...SEED_CATALOG, clips: [...MOCK_REPLAY_CLIPS, ...SEED_CATALOG.clips] } },
       };
     },
   };

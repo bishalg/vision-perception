@@ -626,9 +626,15 @@ mod tests {
         assert_eq!(e.ivt_velocity_units_per_sec, 2.0);
         assert_eq!(e.idt_dispersion_norm, 0.1);
         assert_eq!(e.min_fixation_duration_sec, 0.08);
-        // Defaults reproduce today's profile JSON exactly (no new keys).
+        // WP-X.19b: the contract carries the four knobs, so their defaults serialise like
+        // every other member (and a body without them still decodes to the defaults).
         let json = serde_json::to_value(MetricsParams::default()).unwrap();
-        assert!(json.get("fixationAlgorithm").is_none());
+        assert_eq!(json["fixationAlgorithm"], "ivt");
+        assert_eq!(json["idtDispersionNorm"], 0.05);
+        assert_eq!(json["blinkMinSec"], 0.05);
+        assert_eq!(json["blinkMaxSec"], 0.5);
+        let bare: MetricsParams = serde_json::from_value(serde_json::json!({})).unwrap();
+        assert_eq!(bare, MetricsParams::default());
         let decoded: MetricsParams =
             serde_json::from_value(serde_json::json!({"fixationAlgorithm": "idt"})).unwrap();
         assert_eq!(decoded.fixation_algorithm, FixationAlgorithm::Idt);

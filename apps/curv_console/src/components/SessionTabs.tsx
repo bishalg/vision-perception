@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const TABS = ["clips", "quality", "report", "clinical"] as const;
+export const TABS = ["clips", "quality", "replay", "report", "clinical"] as const;
 export type Tab = (typeof TABS)[number];
 
 export function parseTab(value: string | string[] | undefined): Tab {

@@ -26,6 +26,16 @@
       ],
       "type": "string"
     },
+    "Affects": {
+      "description": "An output a parameter is limited to ([`ParamSpec::affects`]).",
+      "oneOf": [
+        {
+          "const": "replay",
+          "description": "The replay events, ribbon and traces (ADR-0015 V-1, `asd_core::replay`).",
+          "type": "string"
+        }
+      ]
+    },
     "AgeBracket": {
       "properties": {
         "id": {
@@ -5874,6 +5884,21 @@
       },
       "type": "object"
     },
+    "FixationAlgorithm": {
+      "description": "Fixation detector of the replay events (`metrics.fixationAlgorithm`, WP-X.19b, ADR-0015\nV-1). Replay only: the metrics always use I-VT (the Swift oracle).",
+      "oneOf": [
+        {
+          "const": "ivt",
+          "description": "Velocity threshold (`ivtVelocityUnitsPerSec`, `minFixationDurationSec`).",
+          "type": "string"
+        },
+        {
+          "const": "idt",
+          "description": "Dispersion threshold (Salvucci and Goldberg 2000): `idtDispersionNorm`,\n`minFixationDurationSec`.",
+          "type": "string"
+        }
+      ]
+    },
     "FlagCounts": {
       "description": "Flag counts; `null` when suppressed.",
       "properties": {
@@ -7422,14 +7447,34 @@
     "MetricsParams": {
       "description": "Fixation and affect extraction parameters (PRM-7). Defaults are the asd-core constants.",
       "properties": {
+        "blinkMaxSec": {
+          "default": 0.5,
+          "description": "Longest invalid run drawn as a blink, seconds (replay only).",
+          "type": "number"
+        },
+        "blinkMinSec": {
+          "default": 0.05,
+          "description": "Shortest invalid run drawn as a blink, seconds (replay only).",
+          "type": "number"
+        },
         "fallbackFrameIntervalSec": {
           "default": 0.016666666666666666,
           "description": "Frame interval assumed where timestamps do not give one (60 Hz).",
           "type": "number"
         },
+        "fixationAlgorithm": {
+          "$ref": "#/$defs/FixationAlgorithm",
+          "default": "ivt",
+          "description": "Replay fixation detector (WP-X.19b; replay only, no metric reads it)."
+        },
         "flatAffectGain": {
           "default": 50.0,
           "description": "Gain of the flat-affect score (`1 - mean expressivity x gain`, clamped to [0, 1]).",
+          "type": "number"
+        },
+        "idtDispersionNorm": {
+          "default": 0.05,
+          "description": "I-DT dispersion threshold, screen-normalised (replay only).",
           "type": "number"
         },
         "ivtUnit": {
@@ -8103,6 +8148,13 @@
     "ParamSpec": {
       "description": "One registry row (PRM-1).",
       "properties": {
+        "affects": {
+          "description": "Which outputs read the parameter when not every one does: `[\"replay\"]` marks a knob\nthat only the replay views read (WP-X.19b); no stored metric or score depends on it.\nEmpty (left out) means the parameter feeds the results.",
+          "items": {
+            "$ref": "#/$defs/Affects"
+          },
+          "type": "array"
+        },
         "default": {
           "description": "The value in `ScoringProfile::default()`."
         },
@@ -9875,8 +9927,12 @@
           },
           "lowConfidenceValidRatio": 0.6,
           "metrics": {
+            "blinkMaxSec": 0.5,
+            "blinkMinSec": 0.05,
             "fallbackFrameIntervalSec": 0.016666666666666666,
+            "fixationAlgorithm": "ivt",
             "flatAffectGain": 50.0,
+            "idtDispersionNorm": 0.05,
             "ivtUnit": "norm",
             "ivtVelocityDegPerSec": 30.0,
             "ivtVelocityUnitsPerSec": 5.0,
@@ -10241,8 +10297,12 @@
         "metrics": {
           "$ref": "#/$defs/MetricsParams",
           "default": {
+            "blinkMaxSec": 0.5,
+            "blinkMinSec": 0.05,
             "fallbackFrameIntervalSec": 0.016666666666666666,
+            "fixationAlgorithm": "ivt",
             "flatAffectGain": 50.0,
+            "idtDispersionNorm": 0.05,
             "ivtUnit": "norm",
             "ivtVelocityDegPerSec": 30.0,
             "ivtVelocityUnitsPerSec": 5.0,

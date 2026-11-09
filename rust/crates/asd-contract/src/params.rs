@@ -159,6 +159,19 @@ pub struct ParamSpec {
     /// vary it (ADR-0012 open question 9).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub owner_gate: Option<String>,
+    /// Which outputs read the parameter when not every one does: `["replay"]` marks a knob
+    /// that only the replay views read (WP-X.19b); no stored metric or score depends on it.
+    /// Empty (left out) means the parameter feeds the results.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub affects: Vec<Affects>,
+}
+
+/// An output a parameter is limited to ([`ParamSpec::affects`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Affects {
+    /// The replay events, ribbon and traces (ADR-0015 V-1, `asd_core::replay`).
+    Replay,
 }
 
 /// The exported registry document (`param-registry-v1.json`, PRM-4).
@@ -204,6 +217,15 @@ const CAL_MODELS: &[&str] = &[
     "screenPoly2",
 ];
 const IVT_UNITS: &[&str] = &["norm", "deg"];
+const FIXATION_ALGORITHMS: &[&str] = &["ivt", "idt"];
+
+/// Rows only the replay views read (`affects: ["replay"]`, WP-X.19b).
+pub const REPLAY_ONLY: &[&str] = &[
+    "metrics.fixationAlgorithm",
+    "metrics.idtDispersionNorm",
+    "metrics.blinkMinSec",
+    "metrics.blinkMaxSec",
+];
 
 use Reprocess::{CaptureOnly, Frames, Score};
 use Stage::{Capture, Display, Fixation, Flag, Metrics, Norms, Preprocess, Scoring};
@@ -301,6 +323,11 @@ const ROWS: &[Row] = &[
     ("metrics.fallbackFrameIntervalSec", K::Num(0.001, 0.1, 0.001, Seconds), Metrics, Frames, V120, None),
     ("metrics.smileReactivityWindowSec", K::Num(0.1, 5.0, 0.1, Seconds), Metrics, Frames, V120, None),
     ("metrics.flatAffectGain", K::Num(1.0, 500.0, 1.0, Unit::None), Metrics, Frames, V120, None),
+    // ---- 1.3.0 (WP-X.19b): replay-only fixation and blink knobs (REPLAY_ONLY)
+    ("metrics.fixationAlgorithm", K::Enum(FIXATION_ALGORITHMS), Fixation, Frames, V130, None),
+    ("metrics.idtDispersionNorm", K::Num(0.005, 0.5, 0.005, NormUnits), Fixation, Frames, V130, None),
+    ("metrics.blinkMinSec", K::Num(0.0, 1.0, 0.01, Seconds), Fixation, Frames, V130, None),
+    ("metrics.blinkMaxSec", K::Num(0.05, 5.0, 0.05, Seconds), Fixation, Frames, V130, None),
     // ---- 1.2.0: AOI hit testing
     ("aoi.marginNorm", K::Num(-0.1, 0.1, 0.005, NormUnits), Metrics, Frames, V120, None),
     ("aoi.dwellCapMs", K::Int(16, 1000, Millis), Metrics, Frames, V120, None),
@@ -387,6 +414,11 @@ pub fn registry() -> &'static [ParamSpec] {
                 help_key: format!("param.{id}.help"),
                 since: since.to_owned(),
                 owner_gate: owner_gate.map(str::to_owned),
+                affects: if REPLAY_ONLY.contains(&id) {
+                    vec![Affects::Replay]
+                } else {
+                    Vec::new()
+                },
             })
             .collect()
     })

@@ -238,6 +238,31 @@ impl IvtUnit {
     }
 }
 
+/// Fixation detector of the replay events (`metrics.fixationAlgorithm`, WP-X.19b, ADR-0015
+/// V-1). Replay only: the metrics always use I-VT (the Swift oracle).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum FixationAlgorithm {
+    /// Velocity threshold (`ivtVelocityUnitsPerSec`, `minFixationDurationSec`).
+    #[default]
+    Ivt,
+    /// Dispersion threshold (Salvucci and Goldberg 2000): `idtDispersionNorm`,
+    /// `minFixationDurationSec`.
+    Idt,
+}
+
+impl FixationAlgorithm {
+    /// The wire values in declaration order.
+    pub const ALL: [FixationAlgorithm; 2] = [FixationAlgorithm::Ivt, FixationAlgorithm::Idt];
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            FixationAlgorithm::Ivt => "ivt",
+            FixationAlgorithm::Idt => "idt",
+        }
+    }
+}
+
 /// Fixation and affect extraction parameters (PRM-7). Defaults are the asd-core constants.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", default)]
@@ -255,6 +280,14 @@ pub struct MetricsParams {
     pub smile_reactivity_window_sec: f64,
     /// Gain of the flat-affect score (`1 - mean expressivity x gain`, clamped to [0, 1]).
     pub flat_affect_gain: f64,
+    /// Replay fixation detector (WP-X.19b; replay only, no metric reads it).
+    pub fixation_algorithm: FixationAlgorithm,
+    /// I-DT dispersion threshold, screen-normalised (replay only).
+    pub idt_dispersion_norm: f64,
+    /// Shortest invalid run drawn as a blink, seconds (replay only).
+    pub blink_min_sec: f64,
+    /// Longest invalid run drawn as a blink, seconds (replay only).
+    pub blink_max_sec: f64,
 }
 
 impl Default for MetricsParams {
@@ -267,6 +300,10 @@ impl Default for MetricsParams {
             fallback_frame_interval_sec: asd_core::metrics::FRAME_INTERVAL_SEC,
             smile_reactivity_window_sec: 0.5,
             flat_affect_gain: 50.0,
+            fixation_algorithm: FixationAlgorithm::Ivt,
+            idt_dispersion_norm: asd_core::analysis::DEFAULT_IDT_DISPERSION_NORM,
+            blink_min_sec: asd_core::analysis::DEFAULT_BLINK_MIN_SEC,
+            blink_max_sec: asd_core::analysis::DEFAULT_BLINK_MAX_SEC,
         }
     }
 }

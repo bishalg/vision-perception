@@ -28,10 +28,13 @@ export function TrackingQuality({
   session,
   warnDeg,
   hardDeg,
+  playheadSec,
 }: {
   session: SessionDetail;
   warnDeg?: number | null;
   hardDeg?: number | null;
+  /** Session time of the replay playhead (V-4); drawn on the drift chart. */
+  playheadSec?: number | null;
 }) {
   const text = useText();
   const t = text.app.detail.tracking;
@@ -61,7 +64,7 @@ export function TrackingQuality({
           <h3>{t.loss.title}</h3>
           <LossBar loss={q.loss} durationSec={session.duration_sec} />
           <h3>{t.drift.title}</h3>
-          <DriftChart checks={q.drift_checks} warnDeg={warnDeg} hardDeg={hardDeg} />
+          <DriftChart checks={q.drift_checks} warnDeg={warnDeg} hardDeg={hardDeg} playheadSec={playheadSec} />
           <h3>{t.conditions.title}</h3>
           <dl className="facts">
             <Fact label={t.conditions.distanceMedian}>{num(q.conditions.distance_cm_median, 0)}</Fact>

@@ -9,10 +9,10 @@ use std::path::PathBuf;
 
 use asd_contract::config::{
     AoiParams, ConfigBundle, DisplayBands, DisplayParams, EyeDwellBand, FirstEyeLatencyBand,
-    FlagThresholds, FlatAffectBand, IvtUnit, MetricsParams, MouthDwellBand, NormsParams,
-    QualityGateParams, ReviewParams, ScoringProfile, SessionQualityParams, SmileIntensityBand,
-    SmileReactivityBand, SocialPreferenceBand, SurpriseBand, TrackingQualityParams,
-    SCORING_PROFILE_SCHEMA_VERSION,
+    FixationAlgorithm, FlagThresholds, FlatAffectBand, IvtUnit, MetricsParams, MouthDwellBand,
+    NormsParams, QualityGateParams, ReviewParams, ScoringProfile, SessionQualityParams,
+    SmileIntensityBand, SmileReactivityBand, SocialPreferenceBand, SurpriseBand,
+    TrackingQualityParams, SCORING_PROFILE_SCHEMA_VERSION,
 };
 use asd_contract::schema;
 use asd_core::types::AgeBracket;
@@ -135,6 +135,11 @@ fn default_scoring_profile_literal_values() {
                 fallback_frame_interval_sec: 1.0 / 60.0,
                 smile_reactivity_window_sec: 0.5,
                 flat_affect_gain: 50.0,
+                // WP-X.19b: replay-only knobs.
+                fixation_algorithm: FixationAlgorithm::Ivt,
+                idt_dispersion_norm: 0.05,
+                blink_min_sec: 0.05,
+                blink_max_sec: 0.5,
             },
             aoi: AoiParams {
                 margin_norm: 0.0,
@@ -228,7 +233,11 @@ fn scoring_profile_is_camel_case() {
                 "minFixationDurationSec": 0.08,
                 "fallbackFrameIntervalSec": 1.0 / 60.0,
                 "smileReactivityWindowSec": 0.5,
-                "flatAffectGain": 50.0
+                "flatAffectGain": 50.0,
+                "fixationAlgorithm": "ivt",
+                "idtDispersionNorm": 0.05,
+                "blinkMinSec": 0.05,
+                "blinkMaxSec": 0.5
             },
             "aoi": {"marginNorm": 0.0, "dwellCapMs": 100},
             "ageBands": [
