@@ -31,7 +31,7 @@ serde_json.workspace = true
 thiserror.workspace = true
 # Manifest hashes (SHA-256) and the de-identification pseudonyms (HMAC-SHA256, XC-4).
 sha2.workspace = true
-hmac = "0.12"
+hmac = "0.13"
 # FHIR timestamps: RFC 3339 in, ISO 8601 whole seconds UTC out (as ISO8601DateFormatter).
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 # Org time zones (IANA, NOTE-7): HL7 `TS`, printed and spreadsheet times (trap 11).
