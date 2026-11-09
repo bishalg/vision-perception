@@ -92,4 +92,4 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - uses: fsfe/reuse-action@v5
+      - uses: fsfe/reuse-action@v6
