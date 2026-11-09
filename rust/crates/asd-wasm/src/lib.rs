@@ -24,6 +24,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 pub mod api;
 pub mod error;
+pub mod replay;
 pub mod session;
 
 use error::envelope;
@@ -228,4 +229,112 @@ pub fn reprocess_session(
         baselines_json,
         options_json,
     ))
+}
+
+// --- replay (WP-X.19, ADR-0015 V-1..V-5) -------------------------------------------------------
+
+/// `{params, clips: [{stimulusId, events: [{kind: fixation|saccade|blink|lost, ...}]}],
+/// warnings}`: replay events of `[GazeFrame]` with the profile's `metrics` parameters.
+#[wasm_bindgen(js_name = replayEvents)]
+pub fn replay_events(frames_json: &str, profile_json: &str) -> String {
+    envelope(replay::replay_events(frames_json, profile_json))
+}
+
+/// `{stimulusId, segments: [{startSec, endSec, valid, aoi, roles, hits}]}`: the AOI-hit
+/// ribbon of one catalog clip (`Clip`) over its frames. `profile_json` (optional) supplies
+/// `aoi.marginNorm` and `aoi.dwellCapMs`.
+#[wasm_bindgen(js_name = replayRibbon)]
+pub fn replay_ribbon(frames_json: &str, clip_json: &str, profile_json: Option<String>) -> String {
+    envelope(replay::replay_ribbon(
+        frames_json,
+        clip_json,
+        profile_json.as_deref(),
+    ))
+}
+
+/// `{stimulusId, trace: {metric, windowSec, stepSec, points: [{tSec, value, validRatio,
+/// nFrames}]}, bracketId, bands: [ExpectedBand]}`. `metric_json` is a `TraceMetric`
+/// (`{"kind":"aoiDwell","aoi":"Actor_Face"}`, `{"kind":"roleDwell","role":"social"}`,
+/// `{"kind":"anyAoi"}`, `{"kind":"validRatio"}`); bands need `age_months`.
+#[allow(clippy::too_many_arguments)]
+#[wasm_bindgen(js_name = replayTrace)]
+pub fn replay_trace(
+    frames_json: &str,
+    clip_json: &str,
+    baselines_json: &str,
+    profile_json: &str,
+    metric_json: &str,
+    window_sec: f64,
+    step_sec: f64,
+    age_months: Option<i32>,
+) -> String {
+    envelope(replay::replay_trace(
+        frames_json,
+        clip_json,
+        baselines_json,
+        profile_json,
+        metric_json,
+        window_sec,
+        step_sec,
+        age_months.map(i64::from),
+    ))
+}
+
+/// `[ExpectedBand]` of one baseline expectation of a clip for a child's age.
+#[wasm_bindgen(js_name = expectedBands)]
+pub fn expected_bands(
+    baselines_json: &str,
+    clip_id: &str,
+    age_months: i32,
+    biomarker: &str,
+    target_aoi: Option<String>,
+) -> String {
+    envelope(replay::expected_bands(
+        baselines_json,
+        clip_id,
+        i64::from(age_months),
+        biomarker,
+        target_aoi.as_deref(),
+    ))
+}
+
+/// `{w, h, cells, nSamples, nGrids}`: Gaussian KDE of the valid samples, max 1.
+#[wasm_bindgen(js_name = replayHeatmap)]
+pub fn replay_heatmap(
+    frames_json: &str,
+    clip_id: Option<String>,
+    w: u32,
+    h: u32,
+    bandwidth_norm: f64,
+    from_sec: Option<f64>,
+    to_sec: Option<f64>,
+) -> String {
+    envelope(replay::replay_heatmap(
+        frames_json,
+        clip_id.as_deref(),
+        w,
+        h,
+        bandwidth_norm,
+        from_sec,
+        to_sec,
+    ))
+}
+
+/// `{n, minN, suppressed, grid}`: mean of session grids, suppressed below `min_n` (12).
+#[wasm_bindgen(js_name = heatmapCohort)]
+pub fn heatmap_cohort(grids_json: &str, min_n: Option<u32>) -> String {
+    envelope(replay::heatmap_cohort(grids_json, min_n))
+}
+
+/// `a - b` of two grids, clamped to [-1, 1].
+#[wasm_bindgen(js_name = heatmapDifference)]
+pub fn heatmap_difference(a_json: &str, b_json: &str) -> String {
+    envelope(replay::heatmap_difference(a_json, b_json))
+}
+
+/// `{kept, excluded: [{sessionId, ruleId, value, bound}], rules: [{ruleId, nBefore, nAfter,
+/// nUsed, low, high}]}`: outlier and quality screening of `[MetricRow]` with `[Rule]`.
+#[wasm_bindgen(js_name = outlierScreen)]
+pub fn outlier_screen(rows_json: &str, rules_json: &str) -> String {
+    envelope(replay::outlier_screen(rows_json, rules_json))
 }

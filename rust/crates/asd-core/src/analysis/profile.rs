@@ -40,7 +40,35 @@ pub enum IvtUnit {
     Deg,
 }
 
+/// Fixation detector of the replay events (`metrics.fixationAlgorithm`, WP-X.19, ADR-0015
+/// R-6). The metrics (`fixation_count`, `mean_fixation_duration_ms`) always use I-VT, the
+/// Swift oracle; this only selects what [`crate::replay::events`] draws.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FixationAlgorithm {
+    /// Velocity threshold (`ivtVelocityUnitsPerSec`, `minFixationDurationSec`): today's rule.
+    #[default]
+    Ivt,
+    /// Dispersion threshold (Salvucci and Goldberg 2000): `idtDispersionNorm` and
+    /// `minFixationDurationSec`.
+    Idt,
+}
+
+/// `metrics.idtDispersionNorm` default: `(max x - min x) + (max y - min y)` of a fixation
+/// window, screen-normalised (about 1 degree of visual angle on a tablet at 40 cm).
+pub const DEFAULT_IDT_DISPERSION_NORM: f64 = 0.05;
+/// `metrics.blinkMinSec` default: a shorter invalid run is a dropout (`lost`), not a blink.
+pub const DEFAULT_BLINK_MIN_SEC: f64 = 0.05;
+/// `metrics.blinkMaxSec` default: a longer invalid run is track loss, not a blink.
+pub const DEFAULT_BLINK_MAX_SEC: f64 = 0.5;
+
 /// `ScoringProfile.metrics` (PRM-7): fixation and affect extraction.
+///
+/// WP-X.19 added `fixationAlgorithm`, `idtDispersionNorm`, `blinkMinSec` and `blinkMaxSec`
+/// (replay events only; no metric reads them). Until the contract's `ScoringProfile` and the
+/// parameter registry carry them, each is left out of the JSON while it holds its default, so
+/// the core and contract sections still serialise identically; a profile that sets one is
+/// decoded here.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct MetricsParams {
@@ -51,6 +79,34 @@ pub struct MetricsParams {
     pub fallback_frame_interval_sec: f64,
     pub smile_reactivity_window_sec: f64,
     pub flat_affect_gain: f64,
+    /// Replay fixation detector (default I-VT).
+    #[serde(skip_serializing_if = "is_default_algorithm")]
+    pub fixation_algorithm: FixationAlgorithm,
+    /// I-DT dispersion threshold, screen-normalised.
+    #[serde(skip_serializing_if = "is_default_idt_dispersion")]
+    pub idt_dispersion_norm: f64,
+    /// Shortest invalid run drawn as a blink, seconds.
+    #[serde(skip_serializing_if = "is_default_blink_min")]
+    pub blink_min_sec: f64,
+    /// Longest invalid run drawn as a blink, seconds.
+    #[serde(skip_serializing_if = "is_default_blink_max")]
+    pub blink_max_sec: f64,
+}
+
+fn is_default_algorithm(v: &FixationAlgorithm) -> bool {
+    *v == FixationAlgorithm::default()
+}
+
+fn is_default_idt_dispersion(v: &f64) -> bool {
+    *v == DEFAULT_IDT_DISPERSION_NORM
+}
+
+fn is_default_blink_min(v: &f64) -> bool {
+    *v == DEFAULT_BLINK_MIN_SEC
+}
+
+fn is_default_blink_max(v: &f64) -> bool {
+    *v == DEFAULT_BLINK_MAX_SEC
 }
 
 impl Default for MetricsParams {
@@ -63,6 +119,10 @@ impl Default for MetricsParams {
             fallback_frame_interval_sec: FRAME_INTERVAL_SEC,
             smile_reactivity_window_sec: SMILE_REACTIVITY_WINDOW_SEC,
             flat_affect_gain: FLAT_AFFECT_GAIN,
+            fixation_algorithm: FixationAlgorithm::Ivt,
+            idt_dispersion_norm: DEFAULT_IDT_DISPERSION_NORM,
+            blink_min_sec: DEFAULT_BLINK_MIN_SEC,
+            blink_max_sec: DEFAULT_BLINK_MAX_SEC,
         }
     }
 }

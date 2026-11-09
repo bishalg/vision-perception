@@ -12,6 +12,7 @@ pub mod gaze;
 pub mod metrics;
 pub mod norms;
 pub mod quality;
+pub mod replay;
 pub mod scoring;
 #[cfg(feature = "synth")]
 pub mod synth;

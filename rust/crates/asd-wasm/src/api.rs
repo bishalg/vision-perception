@@ -38,7 +38,7 @@ use serde_json::Value;
 use crate::error::BoundaryError;
 use crate::session;
 
-fn decode<T: DeserializeOwned>(json: &str, what: &str) -> Result<T, BoundaryError> {
+pub(crate) fn decode<T: DeserializeOwned>(json: &str, what: &str) -> Result<T, BoundaryError> {
     serde_json::from_str(json).map_err(|e| BoundaryError::invalid_json(what, e))
 }
 
@@ -412,7 +412,7 @@ fn check_age(age_months: i64) -> Result<(), BoundaryError> {
 
 /// A scoring profile: the contract shape first (so a malformed draft is refused exactly as
 /// before), then the core's view of it (`AnalysisProfile`, the members the core reads).
-fn decode_profile(profile_json: &str) -> Result<AnalysisProfile, BoundaryError> {
+pub(crate) fn decode_profile(profile_json: &str) -> Result<AnalysisProfile, BoundaryError> {
     decode::<ScoringProfile>(profile_json, "scoring profile")?;
     decode(profile_json, "scoring profile")
 }

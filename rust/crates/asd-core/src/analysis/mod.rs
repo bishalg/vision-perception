@@ -43,8 +43,8 @@ pub use evaluate::{
     SessionInput, Unscorable,
 };
 pub use profile::{
-    AnalysisProfile, AoiParams, GazeProcessingView, IvtUnit, MetricsParams, NormsParams,
-    ReviewParams,
+    AnalysisProfile, AoiParams, FixationAlgorithm, GazeProcessingView, IvtUnit, MetricsParams,
+    NormsParams, ReviewParams,
 };
 pub use suppress::suppress;
 pub use sweep::{SweepAggregator, SweepError, SweepGrid};

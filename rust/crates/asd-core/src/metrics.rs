@@ -300,14 +300,15 @@ pub fn fixation_stats_with(valid_frames: &[GazeFrame], params: &MetricsParams) -
 
 /// One I-VT run kept as a fixation: frames `start..end` of the valid-frame list it was found in.
 #[derive(Debug, Clone, Copy, PartialEq)]
-struct IvtRun {
-    start: usize,
-    end: usize,
-    duration_sec: f64,
+pub(crate) struct IvtRun {
+    pub(crate) start: usize,
+    pub(crate) end: usize,
+    pub(crate) duration_sec: f64,
 }
 
-/// The I-VT runs of `frames` (valid frames of one clip), in order.
-fn ivt_runs(frames: &[&GazeFrame], params: &MetricsParams) -> Vec<IvtRun> {
+/// The I-VT runs of `frames` (valid frames of one clip), in order. Also the I-VT of
+/// [`crate::replay::events`], so a replay shows exactly the fixations the metrics count.
+pub(crate) fn ivt_runs(frames: &[&GazeFrame], params: &MetricsParams) -> Vec<IvtRun> {
     let mut runs: Vec<IvtRun> = Vec::new();
     let mut run_start: Option<usize> = None;
 
@@ -478,7 +479,7 @@ pub fn extract_with(
 }
 
 /// Frame indices per `stimulusId ?? "session_untagged"`, in first-appearance order.
-fn group_indices(frames: &[GazeFrame]) -> Vec<(&str, Vec<usize>)> {
+pub(crate) fn group_indices(frames: &[GazeFrame]) -> Vec<(&str, Vec<usize>)> {
     let mut groups: Vec<(&str, Vec<usize>)> = Vec::new();
     let mut index_by_id: HashMap<&str, usize> = HashMap::new();
     for (i, frame) in frames.iter().enumerate() {
