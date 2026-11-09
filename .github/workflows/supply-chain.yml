@@ -1,0 +1,95 @@
+name: supply-chain
+
+# WP-O.2 / ADR-0014 O-4. Independent jobs so one failure does not mask another.
+on:
+  push:
+    branches: [dev]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supply-chain-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cargo-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+      - name: cargo audit
+        # Unmaintained-crate warnings do not fail the job; vulnerabilities (exit 1) do.
+        working-directory: rust
+        run: cargo audit
+
+  npm-audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/curv_console
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/curv_console/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm audit --omit=dev --audit-level=high
+
+  gitleaks:
+    # Diff-only scan: gitleaks-action scans the PR commits, or the commits in the push.
+    # A full-history scan is deliberately not used: history holds a known, already rotated
+    # secret, so it would fail forever. The working tree is also covered by
+    # `check_asd_claims.py --secrets`. (No .gitleaks.toml allowlist: the "History cleanup"
+    # section the brief referenced does not exist in apps/ios_asd_gaze_app/fastlane/README.md.)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Rust SBOM (CycloneDX)
+        working-directory: rust
+        run: |
+          cargo install cargo-cyclonedx --locked
+          cargo cyclonedx --format json
+      - name: Console SBOM (CycloneDX)
+        working-directory: apps/curv_console
+        run: |
+          npm ci --ignore-scripts
+          npm sbom --sbom-format cyclonedx --omit dev > console.cdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: |
+            rust/**/*.cdx.json
+            apps/curv_console/console.cdx.json
+          if-no-files-found: error
+
+  reuse:
+    # Expected to fail until WP-O.1 adds SPDX headers and REUSE.toml (licence metadata).
+    # Drop continue-on-error once WP-O.1 lands.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: fsfe/reuse-action@v5

@@ -1,0 +1,30 @@
+name: codeql
+
+# WP-O.2 / ADR-0014 O-4. JavaScript/TypeScript only: the Swift app needs macOS runners
+# plus the git-ignored clips/models to build, so the default Linux runner cannot analyse
+# it. Add a macOS `swift` matrix entry later if the build can run without private assets.
+on:
+  push:
+    branches: [dev]
+  pull_request:
+  schedule:
+    - cron: "23 4 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          build-mode: none
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:javascript-typescript

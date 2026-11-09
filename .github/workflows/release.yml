@@ -1,0 +1,56 @@
+name: release
+
+# WP-O.2 / ADR-0014 O-4: on a v* tag build linux x86_64 binaries, SBOMs, keyless cosign
+# signatures and GitHub build-provenance attestations, then attach all to the release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write      # create the release
+      id-token: write      # Sigstore keyless + attestations (OIDC)
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: sigstore/cosign-installer@v3
+      - name: Build release binaries
+        working-directory: rust
+        run: cargo build --release --locked -p asd-backend -p asd-cli
+      - name: Package archive
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          name="asd-${GITHUB_REF_NAME}-linux-x86_64"
+          mkdir "$name"
+          cp rust/target/release/asd-backend rust/target/release/asd-cli "$name/"
+          tar -czf "dist/${name}.tar.gz" "$name"
+      - name: SBOMs (CycloneDX)
+        run: |
+          set -euo pipefail
+          cargo install cargo-cyclonedx --locked
+          (cd rust && cargo cyclonedx --format json)
+          mkdir -p dist/sbom
+          find rust -name '*.cdx.json' -not -path '*/target/*' -exec cp {} dist/sbom/ \;
+          (cd dist && tar -czf "asd-${GITHUB_REF_NAME}-sbom.tar.gz" sbom)
+      - name: Sign archives (cosign keyless)
+        run: |
+          set -euo pipefail
+          for f in dist/*.tar.gz; do
+            cosign sign-blob --yes --bundle "${f}.sigstore.json" "$f"
+          done
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/*.tar.gz
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --generate-notes dist/*.tar.gz dist/*.sigstore.json

@@ -1,0 +1,45 @@
+# WP-O.2 / ADR-0014 O-4: weekly dependency updates, minor+patch grouped, max 5 open PRs each.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /rust
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+    groups:
+      cargo-minor-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: npm
+    directory: /apps/curv_console
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: npm
+    directory: /apps/cesium_viewer
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: npm
+    directory: /apps/annotation_studio
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: swift
+    directory: /domains/asd_screening/ios
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+    groups:
+      swift-minor-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+    groups:
+      actions-minor-patch:
+        update-types: [minor, patch]
