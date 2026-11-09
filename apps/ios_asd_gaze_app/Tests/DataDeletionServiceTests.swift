@@ -110,6 +110,50 @@ final class DataDeletionServiceTests: XCTestCase {
         XCTAssertEqual(carePlanDeletes, 2)
     }
 
+    /// S-24: the store build's single confirmation removes everything, including the consent
+    /// record, every opt-in and the child profile; `deleteAll` alone keeps them.
+    func testDeleteEverythingAlsoRemovesConsentOptInsAndProfile() throws {
+        seedEverything()
+        let consentURL = root.appendingPathComponent("consent.json")
+        let consent = ConsentRecordStore(fileURL: consentURL)
+        XCTAssertNotNil(consent.agree(guardianName: "Delete Guardian", relationship: .parent))
+        let optIns = FeatureOptIns(defaults: defaults)
+        for feature in FeatureOptIn.allCases { optIns.set(feature, true) }
+        profileStore.profile.childName = "Delete Child"
+        profileStore.save()
+        XCTAssertNotNil(defaults.data(forKey: ChildProfileStore.storageKey))
+
+        let service = makeService(resetConsentAndSettings: { [profileStore] in
+            consent.revoke()
+            optIns.resetAll()
+            profileStore?.reset()
+        })
+
+        // deleteAll keeps consent, opt-ins and the profile (non-store builds).
+        service.deleteAll(includeCarePlans: false)
+        XCTAssertNotNil(consent.record)
+        XCTAssertTrue(optIns.isOn(.clinicDelivery))
+        XCTAssertEqual(profileStore.profile.childName, "Delete Child")
+
+        try Data("cipher".utf8).write(to: vaultDir.appendingPathComponent("session-C.jsonl.enc"))
+        let report = service.deleteEverything()
+
+        XCTAssertEqual(report.failures, [])
+        XCTAssertEqual(contents(of: vaultDir), [])
+        XCTAssertEqual(regularFiles(under: queueDir), [])
+        XCTAssertTrue(historyStore.records.isEmpty)
+        XCTAssertNil(consent.record)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: consentURL.path))
+        XCTAssertNil(ConsentRecordStore(fileURL: consentURL).record)
+        for feature in FeatureOptIn.allCases {
+            XCTAssertFalse(optIns.isOn(feature), "\(feature) must be off after delete-all")
+            XCTAssertFalse(FeatureOptIns(defaults: defaults).isOn(feature))
+        }
+        XCTAssertEqual(profileStore.profile.childName, ChildProfile.defaultProfile.childName)
+        XCTAssertNil(defaults.data(forKey: ChildProfileStore.storageKey))
+        XCTAssertEqual(carePlanDeletes, 0, "The store build has no care plans to delete")
+    }
+
     func testDeleteAllToleratesMissingDirectories() throws {
         try FileManager.default.removeItem(at: blendShapeDir)
         try FileManager.default.removeItem(at: benchLogDir)
@@ -172,7 +216,10 @@ final class DataDeletionServiceTests: XCTestCase {
 
     // MARK: - Helpers
 
-    private func makeService(benchLogDirectory: URL? = nil) -> DataDeletionService {
+    private func makeService(
+        benchLogDirectory: URL? = nil,
+        resetConsentAndSettings: @escaping @MainActor () -> Void = {}
+    ) -> DataDeletionService {
         DataDeletionService(
             vaultDirectory: vaultDir,
             blendShapeDirectory: blendShapeDir,
@@ -182,7 +229,8 @@ final class DataDeletionServiceTests: XCTestCase {
             purgeQueues: { [syncService] in syncService?.purgeAllQueued() },
             resetCalibration: { [weak self] in self?.calibrationResets += 1 },
             forgetParticipantToken: { [profileStore] in profileStore?.forgetParticipantToken() },
-            deleteCarePlans: { [weak self] in self?.carePlanDeletes += 1 }
+            deleteCarePlans: { [weak self] in self?.carePlanDeletes += 1 },
+            resetConsentAndSettings: resetConsentAndSettings
         )
     }
 

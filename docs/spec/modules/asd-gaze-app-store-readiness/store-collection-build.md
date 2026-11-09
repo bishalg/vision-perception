@@ -124,6 +124,19 @@ the queued item flushes), `ClinicDeliveryAuthorization` truth table, `CareAlertS
 decision helper, `HealthKitMoodStore` save/fetch short-circuit, `StoreBuildTests` `.deliveryOff`,
 `BeforeYouBeginView.recordedItems` three states.
 
+## Submission hardening (WP-S.7b + S.9, design 2026-11-09, afternoon)
+
+Owner request 2026-11-09: finish every code-side item so the next build can go straight to review.
+
+| # | Decision | Why |
+| --- | --- | --- |
+| S-22 | The store build signs with `Resources/AsdGazeCollector-Store.entitlements`, which carries only `com.apple.developer.declared-age-range`. `Release` and `StoreSim` use it (`CODE_SIGN_ENTITLEMENTS` per configuration in `project.yml`); Debug and DemoRelease keep the full file with HealthKit. HealthKit stays linked (the mood store is compiled in every build) but no HealthKit API runs in the store build: `HealthKitMoodStore` must not touch `HKHealthStore` at init or at launch. A static gate (`scripts/check_store_entitlements.sh`, run by `ios_test.sh`) asserts the store file has no `healthkit` key and that `project.yml` maps Release to it. The HealthKit usage strings stay in the plist (harmless; needed by the other builds). | The store build offers no HealthKit feature (S-6, S-16); Apple rejects unused entitlements (2.5.1). |
+| S-23 | Plain-language Settings in every build (WP-S.7b). Catalogue values change (en; hi/ne drafts updated, `needs_review`): section "Camera and sensors"; "Face-tracking camera" / "Available on this device" / "Not available on this device"; status "On" instead of "Active"; "Movement filter" / "Ignores samples taken while the device is tilted or shaken"; "Calibration saved for this device"; "No video is saved" / "Camera frames are processed in memory only. No photo or video is ever saved or sent." The literal "Unsupported" becomes a catalogue key. Every user-visible "vault" in store-build files becomes "encrypted session storage" or "sessions on this device". | Guardians and clinic operators, not engineers, read Settings; 1.4.1 and the App Review walk-through. |
+| S-24 | Store-build delete-all is one confirmation that removes everything (sessions, queue, consent record, opt-ins, profile); no "keep care plans" question. Non-store builds unchanged. | The store build has no care plans; a second prompt about them is confusing and untrue. |
+| S-25 | iPad readable width: every consent, primer, before-you-begin, privacy-dashboard and onboarding screen constrains its content column to 640 points, centred (`BeforeYouBeginView` already does; `PermissionPrimerView` moves from 560 to 640). Verified by the iPad Pro 13-inch store screenshots. | WP-S.7 finding: consent text ran edge to edge on iPad. |
+| S-26 | Sync status text is neutral in every build: `ResearchSyncState.description` becomes "Ready", "Sending sessions...", "Sent <time>", "Could not send: <reason>"; the receipt id leaves the user string (kept on the enum for logs/tests). Any other model string containing "study" or "research" that a store-build view can display is reworded or hidden; strings on Debug/Demo-only screens may stay. | 5.1.3 wording; the claims gate scans view call lines, not model `description`s. |
+| S-27 | One lane, `fastlane ios release_check`, runs `validate_metadata`, `validate_privacy_manifest`, `scripts/check_store_entitlements.sh` and `ruby -c Fastfile`, and is the first line of the submission runbook. | One command answers "is the tree submittable". |
+
 ## Status (2026-11-09, end of day)
 
 Landed on `dev`: WP-S.5b (S-15..S-21), App Review notes (`fastlane/review_notes.txt`, sent by

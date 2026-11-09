@@ -26,7 +26,10 @@ public final class HealthKitMoodStore: ObservableObject {
     }
 
     #if canImport(HealthKit)
-    private let store = HKHealthStore()
+    /// Created on first use, never at init (S-22): `SettingsView` observes `shared` in every
+    /// build, and the store build signs without the HealthKit entitlement, so no HealthKit
+    /// object may exist until a guardian who opted in uses the feature.
+    private lazy var store = HKHealthStore()
     #endif
 
     /// The guardian's opt-in (S-15). Injected so tests do not touch `UserDefaults.standard`.

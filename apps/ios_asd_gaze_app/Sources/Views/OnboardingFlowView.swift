@@ -45,6 +45,7 @@ public struct OnboardingFlowView: View {
                     .padding(.horizontal, 24)
                     .padding(.top, 16)
                     .padding(.bottom, 12)
+                    .readableColumn()
 
                 // Main Content Carousel
                 ScrollView {
@@ -65,12 +66,15 @@ public struct OnboardingFlowView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 8)
+                    // S-25: one centred readable column on iPad.
+                    .readableColumn()
                 }
 
                 // Anchored Bottom Navigation Controls
                 bottomActionBar
                     .padding(.horizontal, 24)
                     .padding(.vertical, 20)
+                    .readableColumn()
             }
         }
         .onChange(of: currentStep) { _, newStep in

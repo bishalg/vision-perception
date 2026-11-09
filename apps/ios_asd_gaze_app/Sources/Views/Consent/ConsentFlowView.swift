@@ -78,6 +78,7 @@ public struct ConsentFlowView: View {
                 .buttonStyle(.plain)
                 .padding(.horizontal, 24)
                 .padding(.vertical, 16)
+                .readableColumn()
                 .accessibilityIdentifier(ConsentAccessibility.next)
             }
             .background(LiquidGlass.deepCanvas.ignoresSafeArea())
@@ -131,9 +132,22 @@ public struct ConsentFlowView: View {
             }
             .padding(.horizontal, 28)
             .padding(.bottom, 48)
-            .frame(maxWidth: 560)
-            .frame(maxWidth: .infinity)
+            .readableColumn()
         }
+    }
+}
+
+/// S-25: consent, primer, before-you-begin, privacy and onboarding screens keep their content
+/// in one centred column of readable width, so text does not run edge to edge on iPad.
+public enum ConsentLayout {
+    public static let readableWidth: CGFloat = 640
+}
+
+extension View {
+    /// Constrains the content to `ConsentLayout.readableWidth` and centres it (S-25).
+    func readableColumn(alignment: Alignment = .center) -> some View {
+        frame(maxWidth: ConsentLayout.readableWidth, alignment: alignment)
+            .frame(maxWidth: .infinity)
     }
 }
 
@@ -155,7 +169,7 @@ struct ConsentLearnMoreSheet: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(24)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .readableColumn(alignment: .leading)
             }
             .background(LiquidGlass.deepCanvas.ignoresSafeArea())
             .toolbar {
@@ -204,6 +218,7 @@ public struct ConsentOutdatedView: View {
                 .accessibilityIdentifier(ConsentAccessibility.reviewOutdated)
             }
             .padding(28)
+            .readableColumn()
         }
         .fullScreenCover(isPresented: $showConsentFlow) {
             ConsentFlowView(

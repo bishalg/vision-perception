@@ -6,7 +6,7 @@
 # Steps: Rust core xcframework (FFI-2), kit tests (incl. GoldenParityTests), kit TSAN,
 # kit warnings-as-errors build (Swift 6 language mode), xcodegen, app tests on an iPhone simulator, unsigned
 # Release and DemoRelease builds, then static gates (claims, schema, privacy API audit,
-# Release and DemoRelease symbols).
+# store entitlements, Release and DemoRelease symbols).
 #
 # Environment:
 #   DERIVED_DATA  derived-data root, never inside the repo (default /private/tmp/asd-app-dd).
@@ -143,6 +143,9 @@ run "$ASD_TARGET/debug/asd-cli" i18n check \
 
 step "Static gate: privacy API use"
 run bash scripts/check_privacy_api_use.sh
+
+step "Static gate: store entitlements (S-22, no HealthKit in the store build)"
+run bash scripts/check_store_entitlements.sh
 
 step "Static gate: Release binary symbols"
 run bash scripts/check_release_symbols.sh \

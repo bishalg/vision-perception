@@ -11,6 +11,69 @@ public enum PrivacyDashboardAccessibility {
     public static func toggle(_ feature: FeatureOptIn) -> String { "privacy_optin_\(feature.rawValue)" }
 }
 
+/// Delete-all copy shared by Privacy & Your Data and Settings. In the store build delete-all is
+/// one confirmation that also removes the consent record, opt-ins and the child profile (S-24).
+public enum DeleteAllCopy {
+    public static var title: String {
+        ConsentL10n.text("privacy.delete.title", "Delete all data")
+    }
+
+    public static var button: String {
+        ConsentL10n.text("privacy.delete.button", "Delete all data on this device")
+    }
+
+    public static var confirmTitle: String {
+        ConsentL10n.text("privacy.delete.confirm.title", "Delete all data on this device?")
+    }
+
+    public static var confirm: String {
+        ConsentL10n.text("privacy.delete.confirm", "Delete all data")
+    }
+
+    public static var cancel: String {
+        ConsentL10n.text("privacy.cancel", "Cancel")
+    }
+
+    public static var message: String {
+        #if ASD_STORE_BUILD
+        ConsentL10n.text("privacy.delete.message.store", "This permanently removes saved sessions, session history, sessions waiting to be sent, calibration, your consent record, your optional feature choices and the child profile from this device. It cannot be undone.")
+        #else
+        ConsentL10n.text("privacy.delete.message", "This permanently removes saved sessions, session history, queued uploads and calibration from this device. It cannot be undone.")
+        #endif
+    }
+
+    public static var detail: String {
+        #if ASD_STORE_BUILD
+        ConsentL10n.text("privacy.delete.detail.store", "Removes every session, the history, calibration, your consent record, your optional feature choices and the child profile from this device. To delete sessions already delivered, ask your clinic.")
+        #else
+        ConsentL10n.text("privacy.delete.detail", "Removes every session, the history and calibration from this device. To delete sessions already delivered, ask your clinic.")
+        #endif
+    }
+
+    public static var done: String {
+        #if ASD_STORE_BUILD
+        ConsentL10n.text("privacy.delete.done.store", "All data on this device was deleted. The app will ask for consent again before the next session.")
+        #else
+        ConsentL10n.text("privacy.delete.done", "All observation data on this device was deleted.")
+        #endif
+    }
+
+    public static var failed: String {
+        ConsentL10n.text("privacy.delete.failed", "Some data could not be deleted. Please try again.")
+    }
+
+    /// Runs the delete for this build: everything in the store build (S-24), observation data
+    /// only elsewhere (care plans have their own prompt in Settings).
+    @MainActor
+    public static func perform(_ service: DataDeletionService = .live()) -> DataDeletionService.Report {
+        #if ASD_STORE_BUILD
+        service.deleteEverything()
+        #else
+        service.deleteAll(includeCarePlans: false)
+        #endif
+    }
+}
+
 /// "Privacy & Your Data" (S-12): what is never collected, what is on this device, clinic
 /// delivery state, one toggle per optional feature, the signed consent record, delete-all
 /// and the legal links. Shown in every build.
@@ -49,8 +112,7 @@ public struct PrivacyDashboardView: View {
                 NotDiagnosticFooter()
             }
             .padding(20)
-            .frame(maxWidth: 680)
-            .frame(maxWidth: .infinity)
+            .readableColumn()
         }
         .background(LiquidGlass.deepCanvas.ignoresSafeArea())
         .navigationTitle(ConsentL10n.text("privacy.title", "Privacy & Your Data"))
@@ -72,14 +134,14 @@ public struct PrivacyDashboardView: View {
             Text(ConsentL10n.text("privacy.withdraw.message", "No new sessions can start until you agree again. Sessions already on this device stay until you delete them."))
         }
         .confirmationDialog(
-            ConsentL10n.text("privacy.delete.confirm.title", "Delete all data on this device?"),
+            DeleteAllCopy.confirmTitle,
             isPresented: $showDeleteConfirmation,
             titleVisibility: .visible
         ) {
-            Button(ConsentL10n.text("privacy.delete.confirm", "Delete all data"), role: .destructive, action: deleteAll)
-            Button(ConsentL10n.text("privacy.cancel", "Cancel"), role: .cancel) {}
+            Button(DeleteAllCopy.confirm, role: .destructive, action: deleteAll)
+            Button(DeleteAllCopy.cancel, role: .cancel) {}
         } message: {
-            Text(ConsentL10n.text("privacy.delete.message", "This permanently removes saved sessions, session history, queued uploads and calibration from this device. It cannot be undone."))
+            Text(DeleteAllCopy.message)
         }
         .alert(
             ConsentL10n.text("privacy.title", "Privacy & Your Data"),
@@ -198,11 +260,11 @@ public struct PrivacyDashboardView: View {
     }
 
     private var deleteSection: some View {
-        section(ConsentL10n.text("privacy.delete.title", "Delete all data"), icon: "trash") {
-            Text(ConsentL10n.text("privacy.delete.detail", "Removes every session, the history and calibration from this device. To delete sessions already delivered, ask your clinic."))
+        section(DeleteAllCopy.title, icon: "trash") {
+            Text(DeleteAllCopy.detail)
                 .glassStyle(.subheadline)
                 .fixedSize(horizontal: false, vertical: true)
-            Button(ConsentL10n.text("privacy.delete.button", "Delete all data on this device"), role: .destructive) {
+            Button(DeleteAllCopy.button, role: .destructive) {
                 showDeleteConfirmation = true
             }
             .foregroundColor(LiquidGlass.signalAtypical)
@@ -247,10 +309,8 @@ public struct PrivacyDashboardView: View {
     }
 
     private func deleteAll() {
-        let report = DataDeletionService.live().deleteAll(includeCarePlans: false)
-        let message = report.succeeded
-            ? ConsentL10n.text("privacy.delete.done", "All observation data on this device was deleted.")
-            : ConsentL10n.text("privacy.delete.failed", "Some data could not be deleted. Please try again.")
+        let report = DeleteAllCopy.perform()
+        let message = report.succeeded ? DeleteAllCopy.done : DeleteAllCopy.failed
         // Present after the confirmation dialog finishes dismissing.
         DispatchQueue.main.async { resultMessage = message }
     }
@@ -362,6 +422,7 @@ struct FeatureOptInDetailView: View {
                 .glassCard(cornerRadius: 14, padding: 14)
             }
             .padding(20)
+            .readableColumn()
         }
         .background(LiquidGlass.deepCanvas.ignoresSafeArea())
         .navigationTitle(feature.title)

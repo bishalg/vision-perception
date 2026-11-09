@@ -922,3 +922,29 @@ private final class ResultBox: @unchecked Sendable {
 private final class SyncServiceBox: @unchecked Sendable {
     weak var service: ResearchKitSyncService?
 }
+
+/// S-26: sync status text is neutral in every build; the receipt id is never shown.
+final class ResearchSyncStateTextTests: XCTestCase {
+    func testStatusTextIsNeutralAndHidesReceipt() {
+        let states: [ResearchSyncState] = [
+            .idle,
+            .syncing,
+            .synced(timestamp: Date(timeIntervalSince1970: 1_800_000_000), receiptId: "RCPT-ABCDEF123456"),
+            .failed(reason: "Offline. Data safely queued."),
+        ]
+        for state in states {
+            let text = state.description.lowercased()
+            for banned in ["study", "research", "receipt", "rcpt-abcdef", "transmitting", "sync error"] {
+                XCTAssertFalse(text.contains(banned), "\(state) shows '\(banned)': \(state.description)")
+            }
+        }
+        XCTAssertEqual(states[2].receiptId, "RCPT-ABCDEF123456", "the receipt stays reachable for logs and tests")
+        XCTAssertNil(states[0].receiptId)
+        if AppLocale.current == .english {
+            XCTAssertEqual(ResearchSyncState.idle.description, "Ready")
+            XCTAssertEqual(ResearchSyncState.syncing.description, "Sending sessions...")
+            XCTAssertTrue(states[2].description.hasPrefix("Sent "))
+            XCTAssertEqual(states[3].description, "Could not send: Offline. Data safely queued.")
+        }
+    }
+}

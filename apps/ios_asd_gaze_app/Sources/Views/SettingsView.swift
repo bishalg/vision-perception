@@ -482,8 +482,8 @@ public struct SettingsView: View {
             VStack(spacing: 12) {
                 GlassDiagnosticRow(
                     title: Localizer.tr("settings_truedepth_title"),
-                    subtitle: isTrueDepthAvailable ? Localizer.tr("settings_truedepth_available") : Self.faceTrackingUnavailableText,
-                    statusText: isTrueDepthAvailable ? Localizer.tr("settings_status_active") : "Unsupported",
+                    subtitle: isTrueDepthAvailable ? Localizer.tr("settings_truedepth_available") : Localizer.tr("settings_truedepth_unavailable"),
+                    statusText: isTrueDepthAvailable ? Localizer.tr("settings_status_active") : Localizer.tr("settings_status_unavailable"),
                     isGood: isTrueDepthAvailable
                 )
 
@@ -662,6 +662,20 @@ public struct SettingsView: View {
             }
             .glassCard(cornerRadius: 14, padding: 14)
         }
+        #if ASD_STORE_BUILD
+        // S-24: one confirmation that removes everything; the store build has no care plans.
+        .confirmationDialog(
+            DeleteAllCopy.confirmTitle,
+            isPresented: $showDeleteAllConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button(DeleteAllCopy.confirm, role: .destructive, action: deleteAllObservationData)
+                .accessibilityIdentifier("settings_delete_all_confirm")
+            Button(DeleteAllCopy.cancel, role: .cancel) {}
+        } message: {
+            Text(DeleteAllCopy.message)
+        }
+        #else
         .confirmationDialog(
             "Delete all observation data?",
             isPresented: $showDeleteAllConfirmation,
@@ -686,6 +700,7 @@ public struct SettingsView: View {
         } message: {
             Text("Your observation data has been removed. Care plans, medications and milestones are your own notes. Would you also like to delete them?")
         }
+        #endif
         .alert(
             "Delete all observation data",
             isPresented: Binding(
@@ -712,8 +727,8 @@ public struct SettingsView: View {
     /// Delete-all copy names research data only in a build that has a study (CNS-9).
     static var deleteAllConfirmationMessage: String {
         #if ASD_STORE_BUILD
-        // Store build: no M-CHAT or care data exists; same scope as Privacy & Your Data.
-        return ConsentL10n.text("privacy.delete.message", "This permanently removes saved sessions, session history, queued uploads and calibration from this device. It cannot be undone.")
+        // Store build: no M-CHAT or care data exists; same scope as Privacy & Your Data (S-24).
+        return DeleteAllCopy.message
         #else
         return ResearchStudyConfiguration.isResearchEnabled
             ? "This permanently removes saved sessions, session history, queued research uploads, calibration, M-CHAT-R/F answers and study enrollment from this device. It cannot be undone."
@@ -723,8 +738,8 @@ public struct SettingsView: View {
 
     static var deleteAllRowDetail: String {
         #if ASD_STORE_BUILD
-        // What `DataDeletionService.deleteAll` removes; it keeps the consent record and settings.
-        return ConsentL10n.text("settings.delete.store.detail", "Removes every session, the session history and calibration from this device. Sessions already delivered to your clinic are deleted by asking the clinic.")
+        // What `DataDeletionService.deleteEverything` removes (S-24).
+        return DeleteAllCopy.detail
         #else
         return ResearchStudyConfiguration.isResearchEnabled
             ? "Sessions, history, uploads queue, calibration, M-CHAT-R/F answers and enrollment."
@@ -733,7 +748,7 @@ public struct SettingsView: View {
     }
 
     /// CNS-6: reachable in one tap from Settings, behind a confirmation dialog;
-    /// care plans are offered on a second, separate prompt.
+    /// care plans are offered on a second, separate prompt (not in the store build, S-24).
     private var deleteAllDataRow: some View {
         Button(role: .destructive) {
             showDeleteAllConfirmation = true
@@ -742,8 +757,13 @@ public struct SettingsView: View {
                 Image(systemName: "trash.fill")
                     .font(.system(size: 18))
                 VStack(alignment: .leading, spacing: 2) {
+                    #if ASD_STORE_BUILD
+                    Text(DeleteAllCopy.button)
+                        .font(.system(size: 15, weight: .semibold))
+                    #else
                     Text("Delete all observation data")
                         .font(.system(size: 15, weight: .semibold))
+                    #endif
                     Text(Self.deleteAllRowDetail)
                         .glassStyle(.subheadline)
                         .multilineTextAlignment(.leading)
@@ -757,6 +777,14 @@ public struct SettingsView: View {
     }
 
     private func deleteAllObservationData() {
+        #if ASD_STORE_BUILD
+        // S-24: everything goes, including consent, opt-ins and the child profile; no second prompt.
+        let report = DeleteAllCopy.perform()
+        calibrationProfile = BoundCalibrationStore.load(for: calibrationCheckBinding)
+        let message = report.succeeded ? DeleteAllCopy.done : DeleteAllCopy.failed
+        // Present after the confirmation dialog finishes dismissing.
+        DispatchQueue.main.async { deletionResultMessage = message }
+        #else
         let report = DataDeletionService.live().deleteAll(includeCarePlans: false)
         calibrationProfile = BoundCalibrationStore.load(for: calibrationCheckBinding)
         if report.succeeded {
@@ -765,6 +793,7 @@ public struct SettingsView: View {
         } else {
             deletionResultMessage = "Some data could not be deleted: \(report.failures.joined(separator: ", ")). Please try again."
         }
+        #endif
     }
 
     // MARK: - Section 4: About

@@ -163,6 +163,17 @@ platform :ios do
     check_privacy_manifest_file(path, warn_only: options[:warn_only])
   end
 
+  # S-27 (store-collection-build.md): first line of the submission runbook. Local only; no
+  # App Store Connect call. sh runs in this fastlane directory, so the repo root is ../../..
+  desc "Local pre-submission check: metadata, privacy manifest, store entitlements, Fastfile syntax"
+  lane :release_check do
+    validate_metadata
+    validate_privacy_manifest
+    sh("bash", "../../../scripts/check_store_entitlements.sh")
+    sh("ruby", "-c", "Fastfile")
+    UI.success("release_check: the tree passes the local pre-submission checks")
+  end
+
   desc "Run App Store precheck rules on metadata"
   lane :appstore_precheck do
     precheck(

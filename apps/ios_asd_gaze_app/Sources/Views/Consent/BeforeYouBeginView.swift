@@ -123,8 +123,7 @@ public struct BeforeYouBeginView: View {
                     .glassCard(cornerRadius: 14, padding: 14)
                 }
                 .padding(24)
-                .frame(maxWidth: 640)
-                .frame(maxWidth: .infinity)
+                .readableColumn()
             }
 
             VStack(spacing: 10) {
@@ -148,6 +147,7 @@ public struct BeforeYouBeginView: View {
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 16)
+            .readableColumn()
         }
         .background(LiquidGlass.deepCanvas.ignoresSafeArea())
         // A container keeps the children's own ids (Maestro taps them, WP-S.7).

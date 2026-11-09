@@ -16,8 +16,8 @@ Suggested path
 Privacy
 Camera frames are processed in memory and never saved or sent. Session data is encrypted on the device and excluded from backups. The app has no analytics, ads or tracking, and the privacy manifest declares no collected data because this build sends nothing off the device.
 
-Health entitlement
-The HealthKit entitlement is present for an optional mood-journal feature that is not offered in this build; the app never reads or writes Health data unless the guardian turns that feature on in a build where it exists.
+Health data
+The app does not use HealthKit. The App Store build carries no HealthKit entitlement and never reads or writes Health data.
 
 Declared Age Range
 The app can ask iOS for the declared age range of the signed-in account as an optional check; it is off by default and the app works without it.

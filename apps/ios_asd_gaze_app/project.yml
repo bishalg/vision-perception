@@ -68,6 +68,7 @@ targets:
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "You can attach a photo to a diary entry. Attached photos stay on this device."
         INFOPLIST_KEY_NSHealthShareUsageDescription: "Mood diary entries can be read from State of Mind in the Health app, so you see one history across apps."
         INFOPLIST_KEY_NSHealthUpdateUsageDescription: "When you log a mood in this app, it can save a State of Mind entry to the Health app."
+        # Debug and DemoRelease: full entitlements (HealthKit mood). Release and StoreSim override (S-22).
         CODE_SIGN_ENTITLEMENTS: Resources/AsdGazeCollector.entitlements
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: false
         INFOPLIST_KEY_NSSupportsLiveActivities: true
@@ -92,6 +93,9 @@ targets:
           CODE_SIGN_STYLE: Manual
           CODE_SIGN_IDENTITY: "Apple Distribution"
           PROVISIONING_PROFILE_SPECIFIER: "Eye Gaze AppStore"
+          # S-22: the store build has no HealthKit feature, so it signs without the HealthKit
+          # entitlement (age range only). Checked by scripts/check_store_entitlements.sh.
+          CODE_SIGN_ENTITLEMENTS: Resources/AsdGazeCollector-Store.entitlements
         # StoreSim (WP-S.7): the store UI (ASD_STORE_BUILD) on a simulator, for the Maestro
         # store flows and App Store screenshots (scripts/run_store_screenshots.sh). Debug-type,
         # never archived. ASD_STORE_SCREENSHOTS compiles the screenshot fixture
@@ -100,6 +104,7 @@ targets:
         # .debug conditions, so the kit's simulation API does not exist here (like Release).
         StoreSim:
           OTHER_SWIFT_FLAGS: "$(inherited) -DASD_STORE_BUILD -DASD_STORE_SCREENSHOTS -DASD_APP_STORE_AGE_ASSURANCE $(ASD_MCHAT_FLAG)"
+          CODE_SIGN_ENTITLEMENTS: Resources/AsdGazeCollector-Store.entitlements
     dependencies:
       - package: CurvAsdGazeKit
       - package: CurvAsdGazeKit

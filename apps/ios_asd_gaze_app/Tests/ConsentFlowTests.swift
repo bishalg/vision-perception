@@ -266,6 +266,17 @@ final class ConsentFlowTests: XCTestCase {
                   "healthkit_optin_off", "healthkit_status_optin_off", "quicklog_optins_off",
                   "quicklog_dictation_off"].map { Localizer.tr($0, lang: .english) }
         texts.append(ConsentReviewView.confirmationSentence)
+        // Submission hardening: delete-all copy (S-24), plain Settings rows (S-23), sync status (S-26).
+        texts += [DeleteAllCopy.title, DeleteAllCopy.button, DeleteAllCopy.confirmTitle, DeleteAllCopy.confirm,
+                  DeleteAllCopy.message, DeleteAllCopy.detail, DeleteAllCopy.done, DeleteAllCopy.failed]
+        texts += ["settings_sensors_section", "settings_truedepth_title", "settings_truedepth_available",
+                  "settings_truedepth_unavailable", "settings_status_active", "settings_status_unavailable",
+                  "settings_coremotion", "settings_coremotion_sub", "settings_calibrated_sub",
+                  "settings_zero_video_title", "settings_zero_video_desc", "settings_encrypted_vault_title",
+                  "settings_encrypted_vault_desc", "sync_state_ready", "sync_state_sending", "sync_state_sent",
+                  "sync_state_failed"].map { Localizer.tr($0, lang: .english) }
+        texts += [ResearchSyncState.idle.description, ResearchSyncState.syncing.description,
+                  ResearchSyncState.failed(reason: "Offline. Data safely queued.").description]
         texts += [UnsupportedDeviceContent.make(for: .consentOutdated).title,
                   UnsupportedDeviceContent.make(for: .consentOutdated).message]
         for text in texts {

@@ -87,8 +87,7 @@ public struct ConsentReviewView: View {
                     .accessibilityIdentifier(ConsentAccessibility.notNow)
             }
             .padding(24)
-            .frame(maxWidth: 640)
-            .frame(maxWidth: .infinity)
+            .readableColumn()
         }
         .background(LiquidGlass.deepCanvas.ignoresSafeArea())
         .navigationTitle(ConsentL10n.text("consent.review.navtitle", "Review and sign"))
@@ -157,6 +156,7 @@ public struct ConsentRecordView: View {
                 }
             }
             .padding(20)
+            .readableColumn()
         }
         .background(LiquidGlass.deepCanvas.ignoresSafeArea())
         .navigationTitle(ConsentL10n.text("consent.record.title", "Your consent"))

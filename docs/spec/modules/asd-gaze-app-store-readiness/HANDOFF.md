@@ -1,6 +1,6 @@
 # Handoff: EarlyGaze App Store readiness (as of 2026-11-09)
 
-Read first: `store-collection-build.md` (the store build, decisions S-1..S-21), `i18n-readiness.md`,
+Read first: `store-collection-build.md` (the store build, decisions S-1..S-27), `i18n-readiness.md`,
 `public-site-alignment.md`, `work-packages.md` (file ownership and traps for the older packages),
 `technical.md`, `acceptance.md`, `qa-validation.md`, ADR-0001..0005. Tracker:
 `docs/roadmap_2026q4/04_asd_phased_work_packages.md` (rows WP-A.*, WP-S.*, WP-LN.*, WP-W.1).
@@ -22,13 +22,16 @@ Identity: bundle id `com.open-spectrum.eye-gaze`, widget `com.open-spectrum.eye-
 App Store Connect app id 6828468388 (record currently named "Eye Gaze"; the rename to "EarlyGaze" is a
 metadata change on this version, S-7). Display name "EarlyGaze". `MARKETING_VERSION` 1.0.0, build 3,
 iOS 18.0+. Category HEALTH_AND_FITNESS. Privacy manifest: no tracking, no collected data (true while the
-default build sends nothing off the device, S-4). Entitlements: HealthKit, Declared Age Range.
+default build sends nothing off the device, S-4). Entitlements: the store build (Release, StoreSim) signs with
+`Resources/AsdGazeCollector-Store.entitlements` (Declared Age Range only, S-22); Debug and DemoRelease keep
+HealthKit and Declared Age Range.
 
 Gates (all in `scripts/ios_test.sh`; run from the repo root): kit tests, kit TSAN, XcodeGen, app tests
 on a simulator, Release and DemoRelease builds, `check_asd_claims.py --swift --prose --secrets`, privacy
 API check, `asd-cli i18n lint` against `scripts/i18n/literal-baseline.txt`, `asd-cli i18n check` on
-both catalogues, `check_release_symbols.sh` for Release and DemoRelease. Plus `fastlane validate_metadata`
-and `ruby -c fastlane/Fastfile`. Last full green run: 2026-11-09 (WP-S.5b integration). Note: before 2026-11-09 the `ios_test.sh` claims step ran only the secrets scan (flag exclusivity in the script); the claims scan itself was green when run on its own.
+both catalogues, `check_store_entitlements.sh` (S-22), `check_release_symbols.sh` for Release and DemoRelease. Plus
+`fastlane ios release_check` (S-27: `validate_metadata`, `validate_privacy_manifest`,
+`check_store_entitlements.sh`, `ruby -c Fastfile`). Last full green run: 2026-11-09 (WP-S.5b integration). Note: before 2026-11-09 the `ios_test.sh` claims step ran only the secrets scan (flag exclusivity in the script); the claims scan itself was green when run on its own.
 
 ## Before submission: code
 
@@ -36,7 +39,10 @@ and `ruby -c fastlane/Fastfile`. Last full green run: 2026-11-09 (WP-S.5b integr
 | --- | --- | --- |
 | WP-S.5b opt-in gating (every toggle gates its feature; store build shows only the opt-ins whose feature exists; clinic delivery authorised by guardian consent + opt-in + enrolment) | done 2026-11-09 | `store-collection-build.md` S-15..S-21 |
 | App Review notes sent with the metadata (`fastlane/review_notes.txt` -> `app_review_information[:notes]`), checked by the claims gate | done 2026-11-09 | `fastlane/Fastfile` `update_metadata` |
-| WP-S.7b polish: plain-language Settings rows (CoreMotion filter, vault wording), iPad readable-width consent layout | todo | tracker |
+| WP-S.7b polish: plain-language Settings rows (CoreMotion filter, vault wording), iPad readable-width consent layout, neutral sync status text | done 2026-11-09 | `store-collection-build.md` S-23, S-25, S-26 |
+| Store entitlements without HealthKit (Release and StoreSim sign with `AsdGazeCollector-Store.entitlements`; no HealthKit object at launch), static gate in `ios_test.sh` | done 2026-11-09 | S-22, `scripts/check_store_entitlements.sh` |
+| Store-build delete-all: one confirmation removes sessions, queue, consent record, opt-ins and child profile | done 2026-11-09 | S-24, `DataDeletionService.deleteEverything()` |
+| `fastlane ios release_check` (local pre-submission check) | done 2026-11-09 | S-27, first line of the runbook |
 | Regenerate screenshots before upload (PNGs are git-ignored; the S.5b run on 2026-11-09 produced all 16) | at submission time | `apps/ios_asd_gaze_app/scripts/run_store_screenshots.sh` |
 | README drift sweep (`apps/ios_asd_gaze_app/README.md`) | done 2026-11-09 | |
 | WP-LN.2 literal burn-down of store-build files, WP-LN.4 pseudo-locale run | nice to have for en-US; needed before hi/ne listing | `i18n-readiness.md` |
@@ -51,14 +57,15 @@ and `ruby -c fastlane/Fastfile`. Last full green run: 2026-11-09 (WP-S.5b integr
    (the entitlement is in the build; without the capability the archive fails to sign).
    Decide the publisher name shown on the listing and the privacy page (copyright reads "Curv
    Engineering"; the site is "Open Spectrum Tracking").
-2. **HealthKit entitlement in the store build.** The store build offers no HealthKit feature (S-6, S-16).
-   Apple rejects entitlements for features the build does not use (2.5.1 / HealthKit rules). Recommended:
-   a Release-only entitlements file without `com.apple.developer.healthkit`, or accept the review risk
-   and keep the note in `review_notes.txt`. Owner decision.
-3. **Public pages live.** Merge the landing repo `dev` -> `main` so
-   `https://open-spectrum-tracking.vercel.app/earlygaze`, `/privacy/earlygaze` and `/support/earlygaze`
-   resolve (the listing and the in-app links already point there; the pages ship `noindex` while
-   `[TODO]` placeholders remain). Legal review of the privacy policy text. Replace the support email
+2. **HealthKit entitlement in the store build.** Resolved in code (S-22): Release signs with
+   `Resources/AsdGazeCollector-Store.entitlements` (Declared Age Range only). The App ID and the
+   "Eye Gaze AppStore" profile may keep the HealthKit capability (a build may sign with a subset).
+   `fastlane/review_notes.txt` says the store build carries no HealthKit entitlement. Nothing left to do.
+3. **Public pages.** `https://open-spectrum-tracking.vercel.app/earlygaze`, `/privacy/earlygaze` and
+   `/support/earlygaze` are live from `main` (checked 2026-11-09). The landing repo `dev` is ahead
+   (effective date, retention defaults, enrolment steps; commit b2f19fe): merge `dev` -> `main`. Three
+   owner placeholders remain in `apps/web/landing/content/earlygaze.ts` and keep the pages `noindex`:
+   publisher legal name and postal address (H-6), hosting region and provider (O-7), support response time. Legal review of the privacy policy text. Replace the support email
    `support@curv.engineering` in the descriptions if the domain changes.
 4. **Review contact.** Set `REVIEW_CONTACT_FIRST_NAME`, `REVIEW_CONTACT_LAST_NAME`, `REVIEW_CONTACT_EMAIL`,
    `REVIEW_CONTACT_PHONE` before `fastlane update_metadata` (never committed, CI-4). No demo account is
@@ -82,13 +89,14 @@ and `ruby -c fastlane/Fastfile`. Last full green run: 2026-11-09 (WP-S.5b integr
 
 ```bash
 cd apps/ios_asd_gaze_app
-bundle exec fastlane validate_metadata          # lengths, URLs, claims mirror
+fastlane ios release_check                      # S-27: metadata, privacy manifest, store entitlements, Fastfile syntax
+fastlane ios validate_metadata          # lengths, URLs, claims mirror
 bash scripts/run_store_screenshots.sh           # 16 en-US captures from the StoreSim build
-bundle exec fastlane appstore_precheck          # Apple precheck rules on the metadata
-bundle exec fastlane sync_store_listing         # metadata (+ review info from env) and screenshots
-bundle exec fastlane beta                       # archive Release, upload to TestFlight (build number bump)
+fastlane ios appstore_precheck          # Apple precheck rules on the metadata
+fastlane ios sync_store_listing         # metadata (+ review info from env) and screenshots
+fastlane ios beta                       # archive Release, upload to TestFlight (build number bump)
 # TestFlight install on a Face ID device, run U7, then:
-bundle exec fastlane submit_app_store           # submit the processed build, manual release
+fastlane ios submit_app_store           # submit the processed build, manual release
 ```
 
 ## Traps that still apply
@@ -103,6 +111,7 @@ bundle exec fastlane submit_app_store           # submit the processed build, ma
 - `StoreSim` is a debug-type configuration for the simulator only; it is never archived.
   `check_release_symbols.sh` proves the fixture launch keys are absent from Release and DemoRelease.
 - Delete-all: observation data is deleted when the first dialog is confirmed; answering "Keep care plans"
-  on the second prompt does not undo it (non-store builds).
+  on the second prompt does not undo it (non-store builds). The store build has one confirmation that also
+  removes the consent record, opt-ins and child profile (S-24).
 - Docker Desktop's disk is too small for the `rust/Dockerfile` build; that build runs in CI only
   (unrelated to iOS, but it bites anyone running the full repo gates locally).

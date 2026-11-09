@@ -6,7 +6,7 @@ import Foundation
 import Network
 import os
 
-/// State of research study synchronization with the clinical backend.
+/// State of session delivery to the clinic backend.
 public enum ResearchSyncState: Sendable, Equatable {
     case idle
     case syncing
@@ -18,17 +18,26 @@ public enum ResearchSyncState: Sendable, Equatable {
         return false
     }
 
+    /// User-facing status (S-26): neutral wording in every build. The receipt id stays on the
+    /// enum for logs and tests and is never shown.
     public var description: String {
         switch self {
-        case .idle: return "Ready"
-        case .syncing: return "Transmitting study data..."
-        case .synced(let ts, let receipt):
+        case .idle: return Localizer.tr("sync_state_ready")
+        case .syncing: return Localizer.tr("sync_state_sending")
+        case .synced(let ts, _):
             let f = DateFormatter()
             f.timeStyle = .short
             f.locale = Locale.current
-            return "Synced at \(f.string(from: ts)) (Receipt #\(receipt.prefix(8)))"
-        case .failed(let err): return "Sync error: \(err)"
+            return String(format: Localizer.tr("sync_state_sent"), locale: Locale.current, f.string(from: ts))
+        case .failed(let err):
+            return String(format: Localizer.tr("sync_state_failed"), locale: Locale.current, err)
         }
+    }
+
+    /// The server receipt of the last successful send, for logs and tests (not shown to users).
+    public var receiptId: String? {
+        if case .synced(_, let receipt) = self { return receipt }
+        return nil
     }
 }
 
@@ -944,7 +953,7 @@ public final class ResearchKitSyncService: ObservableObject {
                 completion?(false)
             } else {
                 Self.logger.info("Sync held \(transientFailures) retryable failures and \(deferredCount) waiting payloads")
-                syncState = .failed(reason: "Unable to reach research server. Data safely queued.")
+                syncState = .failed(reason: "Unable to reach the clinic server. Data safely queued.")
                 completion?(false)
             }
         }

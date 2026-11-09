@@ -114,6 +114,14 @@ Validate App Store metadata string lengths and character constraints (and review
 
 Validate iOS PrivacyInfo.xcprivacy manifest
 
+### ios release_check
+
+```sh
+[bundle exec] fastlane ios release_check
+```
+
+Local pre-submission check: metadata, privacy manifest, store entitlements, Fastfile syntax
+
 ### ios appstore_precheck
 
 ```sh

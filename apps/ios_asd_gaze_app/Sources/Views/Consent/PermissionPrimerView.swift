@@ -56,8 +56,7 @@ public struct PermissionPrimerView: View {
                     PermissionPrimerRow(icon: "gearshape", title: ConsentL10n.text("primer.later", "Change it later"), text: kind.howToChangeLater)
                 }
                 .padding(24)
-                .frame(maxWidth: 560)
-                .frame(maxWidth: .infinity)
+                .readableColumn()
             }
 
             VStack(spacing: 10) {
@@ -88,6 +87,7 @@ public struct PermissionPrimerView: View {
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 16)
+            .readableColumn()
         }
         .background(LiquidGlass.deepCanvas.ignoresSafeArea())
         // A container keeps the children's own ids (Maestro taps them, WP-S.7).

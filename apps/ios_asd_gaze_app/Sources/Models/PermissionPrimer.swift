@@ -207,7 +207,10 @@ public enum PermissionKind: String, CaseIterable, Identifiable, Sendable {
             #endif
 
         case .healthKit:
-            #if canImport(HealthKit)
+            #if ASD_STORE_BUILD
+            // S-22: the store build has no HealthKit feature and no HealthKit entitlement.
+            return .unavailable
+            #elseif canImport(HealthKit)
             guard HKHealthStore.isHealthDataAvailable() else { return .unavailable }
             // Only the write status is visible to apps; read access is never reported by iOS.
             switch HKHealthStore().authorizationStatus(for: HKStateOfMindType.stateOfMindType()) {

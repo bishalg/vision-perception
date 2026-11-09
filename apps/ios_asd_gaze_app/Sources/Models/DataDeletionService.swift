@@ -11,6 +11,10 @@ import os
 /// and the child profile's participant token (REC-11: later sessions are a new participant). CareKit care
 /// plans are the parent's own notes, not telemetry: they are deleted only when
 /// the caller passes `includeCarePlans: true` after a separate confirmation.
+///
+/// S-24: the store build has no care plans and offers one confirmation that removes
+/// everything: `deleteEverything()` also removes the guardian consent record, every
+/// opt-in and the child profile, so the app starts over as on first launch.
 @MainActor
 public final class DataDeletionService {
     /// Items that could not be deleted, named for the user-facing error.
@@ -34,6 +38,7 @@ public final class DataDeletionService {
     private let resetCalibration: @MainActor () -> Void
     private let forgetParticipantToken: @MainActor () -> Void
     private let deleteCarePlansAction: @MainActor () -> Void
+    private let resetConsentAndSettings: @MainActor () -> Void
 
     public init(
         vaultDirectory: URL,
@@ -45,6 +50,7 @@ public final class DataDeletionService {
         resetCalibration: @escaping @MainActor () -> Void,
         forgetParticipantToken: @escaping @MainActor () -> Void,
         deleteCarePlans: @escaping @MainActor () -> Void,
+        resetConsentAndSettings: @escaping @MainActor () -> Void = {},
         fileManager: FileManager = .default
     ) {
         self.vaultDirectory = vaultDirectory
@@ -56,6 +62,7 @@ public final class DataDeletionService {
         self.resetCalibration = resetCalibration
         self.forgetParticipantToken = forgetParticipantToken
         self.deleteCarePlansAction = deleteCarePlans
+        self.resetConsentAndSettings = resetConsentAndSettings
         self.fileManager = fileManager
     }
 
@@ -76,7 +83,12 @@ public final class DataDeletionService {
                 )
             },
             forgetParticipantToken: { ChildProfileStore.shared.forgetParticipantToken() },
-            deleteCarePlans: { CarePlanStore.shared.deleteAllCarePlanData() }
+            deleteCarePlans: { CarePlanStore.shared.deleteAllCarePlanData() },
+            resetConsentAndSettings: {
+                ConsentRecordStore.shared.revoke()
+                FeatureOptIns.shared.resetAll()
+                ChildProfileStore.shared.reset()
+            }
         )
     }
 
@@ -103,7 +115,7 @@ public final class DataDeletionService {
         var report = Report()
 
         if !removeContents(of: vaultDirectory) {
-            report.failures.append("session vault")
+            report.failures.append("encrypted session storage")
         }
         historyStore.clear()
         researchStore.deleteAllStudyData()
@@ -126,6 +138,18 @@ public final class DataDeletionService {
         } else {
             Self.logger.error("Observation data deletion incomplete: \(report.failures.joined(separator: ", "), privacy: .public)")
         }
+        return report
+    }
+
+    /// Store-build delete-all (S-24), behind a single confirmation: every observation store
+    /// (as `deleteAll(includeCarePlans: false)`; the store build has no care plans), then the
+    /// guardian consent record, every opt-in and the child profile. The consent and settings
+    /// reset runs even when a file could not be removed, so nothing keeps the old consent.
+    @discardableResult
+    public func deleteEverything() -> Report {
+        let report = deleteAll(includeCarePlans: false)
+        resetConsentAndSettings()
+        Self.logger.info("Reset consent record, opt-ins and child profile")
         return report
     }
 
